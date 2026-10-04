@@ -358,7 +358,7 @@ class GrammarValidator:
             result.metadata["node_types_count"] = len(node_types)
 
             # Test memory usage during parsing
-            memory_usage = self._test_memory_usage(language)
+            memory_usage = self._test_memory_usage(language, grammar_path)
             if memory_usage:
                 result.performance_metrics.update(memory_usage)
 
@@ -369,6 +369,7 @@ class GrammarValidator:
                 large_parse_success, large_parse_errors = self.test_parse_samples(
                     language,
                     large_samples,
+                    grammar_path,
                 )
                 large_parse_time = time.time() - start_time
 
@@ -461,7 +462,9 @@ class GrammarValidator:
         except Exception:
             return []
 
-    def _test_memory_usage(self, language: str) -> dict[str, float] | None:
+    def _test_memory_usage(
+        self, language: str, grammar_path: Path
+    ) -> dict[str, float] | None:
         """Test memory usage during parsing operations."""
         try:
             import os
@@ -474,7 +477,7 @@ class GrammarValidator:
             # Perform some parsing operations
             samples = self._get_test_samples(language)
             if samples:
-                self.test_parse_samples(language, samples)
+                self.test_parse_samples(language, samples, grammar_path)
 
             after_memory = process.memory_info().rss / 1024 / 1024  # MB
 
@@ -498,6 +501,8 @@ class GrammarValidator:
         key_data = (
             f"{grammar_path}:{language}:{level.value}:{stat.st_mtime}:{stat.st_size}"
         )
+        if level == ValidationLevel.EXTENSIVE:
+            key_data += ":selected-grammar-v1"
         return hashlib.sha256(key_data.encode()).hexdigest()
 
     def _load_validation_cache(self) -> dict[str, Any]:
