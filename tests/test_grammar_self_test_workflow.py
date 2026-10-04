@@ -1,9 +1,12 @@
 """Grammar self-test utilities use current APIs without network installation."""
 
+import shutil
 import sys
 from pathlib import Path
 
-from chunker.grammar_management.core import load_compiled_grammar
+import pytest
+
+from chunker.grammar_management.core import GrammarManager, load_compiled_grammar
 from chunker.grammar_management.testing import IntegrationTester, SystemValidator
 from tree_sitter_language_pack import cache_dir
 
@@ -58,3 +61,42 @@ def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
     tester.cleanup()
     assert work_dir.exists()
     assert list(home.iterdir()) == []
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Registry discovers .so files")
+def test_health_report_distinguishes_parseable_and_broken_local_grammars(
+    tmp_path: Path,
+) -> None:
+    source_grammar = ROOT / "build/python.so"
+    if not source_grammar.exists():
+        source_grammar = Path(cache_dir()) / "libtree_sitter_python.so"
+    assert source_grammar.exists()
+
+    user_dir = tmp_path / "user"
+    package_dir = tmp_path / "package"
+    user_dir.mkdir()
+    package_dir.mkdir()
+    python_grammar = user_dir / "libpython.so"
+    shutil.copyfile(source_grammar, python_grammar)
+    (user_dir / "libjavascript.so").touch()
+
+    source = FIXTURE.read_bytes()
+    assert (
+        not load_compiled_grammar(python_grammar, "python")
+        .parse(source)
+        .root_node.has_error
+    )
+
+    manager = GrammarManager(
+        user_dir=user_dir,
+        package_dir=package_dir,
+        cache_dir=tmp_path / "cache",
+    )
+    report = manager.check_grammar_health()
+
+    assert set(report) == {"python", "javascript"}
+    assert report["python"]["is_healthy"] is True
+    assert report["python"]["errors"] == []
+    assert report["javascript"]["is_healthy"] is False
+    assert "empty" in " ".join(report["javascript"]["errors"]).lower()
+    assert all(entry["last_checked"] > 0 for entry in report.values())
