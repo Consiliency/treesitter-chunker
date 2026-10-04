@@ -68,6 +68,40 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     assert "Grammar for 'missing' not found" in missing.output
 
 
+def test_click_build_without_local_source_preserves_compiled_grammar(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cache_dir = tmp_path / "grammar-cache"
+    user_dir = cache_dir / "grammars" / "user"
+    user_dir.mkdir(parents=True)
+    compiled = user_dir / "libpython.so"
+    shutil.copyfile(native_spec.origin, compiled)
+    original = compiled.read_bytes()
+
+    no_tools = tmp_path / "no-tools"
+    no_tools.mkdir()
+    monkeypatch.setenv("PATH", str(no_tools))
+    result = CliRunner().invoke(
+        grammar_cli, ["--cache-dir", str(cache_dir), "build", "python"]
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "No source found for 'python' grammar" in result.output
+    assert "Try fetching first" in result.output
+    assert compiled.read_bytes() == original
+    assert not parser.parse(source).root_node.has_error
+    assert not home.exists()
+
+
 def test_click_remove_only_deletes_user_installed_grammar(
     tmp_path: Path, monkeypatch
 ) -> None:
