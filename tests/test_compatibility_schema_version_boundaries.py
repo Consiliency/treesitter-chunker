@@ -170,3 +170,31 @@ def test_seeded_python_report_uses_numeric_version_bounds(tmp_path: Path) -> Non
         )
     finally:
         reopened.database.close()
+
+
+def test_python_report_bounds_match_prerelease_range_order(tmp_path: Path) -> None:
+    fixture = FIXTURES / "python/app/service.py"
+    assert not get_parser("python").parse(fixture.read_bytes()).root_node.has_error
+
+    db_path = tmp_path / "compatibility.db"
+    with CompatibilityDatabase(db_path) as database:
+        assert database.add_language_version(LanguageVersion("python", "3.11a2"))
+        assert database.add_language_version(LanguageVersion("python", "3.11.1"))
+        assert database.add_breaking_change(
+            BreakingChange(
+                "python", "3.11.1", "3.11.1", "syntax", "Patch change", "medium"
+            )
+        )
+
+    manager = DatabaseManager(db_path)
+    try:
+        assert (
+            len(manager.database.get_breaking_changes("python", "3.11a2", "3.11.1"))
+            == 1
+        )
+        assert (
+            "3.11.1 -> 3.11.1: Patch change"
+            in manager.generate_compatibility_report("python")
+        )
+    finally:
+        manager.database.close()

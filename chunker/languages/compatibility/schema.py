@@ -830,6 +830,17 @@ class CompatibilitySchema:
         except ValueError:
             return False
 
+    @staticmethod
+    def _version_sort_key(version: str) -> tuple[int, ...]:
+        if re.fullmatch(r"ES\d+", version, re.IGNORECASE):
+            return (int(version[2:]),)
+        try:
+            return tuple(
+                int(part) for part in re.sub(r"[a-zA-Z].*$", "", version).split(".")
+            )
+        except ValueError:
+            return ()
+
     def _version_in_range(
         self,
         version: str,
@@ -842,18 +853,14 @@ class CompatibilitySchema:
                 bool(re.fullmatch(r"ES\d+", value, re.IGNORECASE))
                 for value in (version, from_version, to_version)
             ]
-            if any(editions):
-                if not all(editions):
-                    return False
-                return int(from_version[2:]) <= int(version[2:]) <= int(to_version[2:])
+            if any(editions) and not all(editions):
+                return False
 
-            v_parts = [int(x) for x in re.sub(r"[a-zA-Z].*$", "", version).split(".")]
-            from_parts = [
-                int(x) for x in re.sub(r"[a-zA-Z].*$", "", from_version).split(".")
-            ]
-            to_parts = [
-                int(x) for x in re.sub(r"[a-zA-Z].*$", "", to_version).split(".")
-            ]
+            v_parts = list(self._version_sort_key(version))
+            from_parts = list(self._version_sort_key(from_version))
+            to_parts = list(self._version_sort_key(to_version))
+            if not v_parts or not from_parts or not to_parts:
+                return False
 
             max_len = max(len(v_parts), len(from_parts), len(to_parts))
             v_parts.extend([0] * (max_len - len(v_parts)))

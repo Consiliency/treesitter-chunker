@@ -2,7 +2,6 @@
 
 import json
 import logging
-import re
 import shutil
 import sqlite3
 import tempfile
@@ -1268,8 +1267,8 @@ class DatabaseManager:
             if lang_versions:
                 report_versions = sorted(
                     lang_versions,
-                    key=lambda item: tuple(
-                        int(part) for part in re.findall(r"\d+", item.version)
+                    key=lambda item: self.database.schema._version_sort_key(
+                        item.version
                     ),
                 )
                 first_version = report_versions[0].version
