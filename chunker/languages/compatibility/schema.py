@@ -611,6 +611,8 @@ class CompatibilitySchema:
         """Get breaking changes between two versions."""
         try:
             language = language.lower().strip()
+            if not self._version_in_range(from_version, from_version, to_version):
+                return []
             result = []
 
             for change in self.breaking_changes:

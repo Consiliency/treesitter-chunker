@@ -629,6 +629,10 @@ class CompatibilityDatabase:
             List of BreakingChange objects
         """
         try:
+            if not self.schema._version_in_range(
+                from_version, from_version, to_version
+            ):
+                return []
             cursor = self.conn.cursor()
             cursor.execute(
                 """

@@ -89,6 +89,7 @@ def test_breaking_change_lookup_uses_numeric_interval_overlap(tmp_path: Path) ->
         internal,
     ]
     assert schema.get_breaking_changes("python", "3.14", "3.15") == []
+    assert schema.get_breaking_changes("python", "3.11", "3.10") == []
 
     with CompatibilityDatabase(tmp_path / "compatibility.db") as database:
         assert database.add_breaking_change(enclosing)
@@ -105,3 +106,4 @@ def test_breaking_change_lookup_uses_numeric_interval_overlap(tmp_path: Path) ->
             for change in reopened.get_breaking_changes("python", "3.9", "3.11")
         } == {"Spanning change", "Internal change"}
         assert reopened.get_breaking_changes("python", "3.14", "3.15") == []
+        assert reopened.get_breaking_changes("python", "3.11", "3.10") == []
