@@ -67,6 +67,50 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     assert "Grammar for 'missing' not found" in missing.output
 
 
+def test_click_remove_only_deletes_user_installed_grammar(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cache_dir = tmp_path / "grammar-cache"
+    user_dir = cache_dir / "grammars" / "user"
+    package_dir = cache_dir / "grammars" / "package"
+    build_dir = cache_dir / "grammars" / "build"
+    user_source = user_dir / "python"
+    user_source.mkdir(parents=True)
+    package_dir.mkdir(parents=True)
+    build_dir.mkdir(parents=True)
+    (user_source / "service.py").write_bytes(source)
+    user_library = user_dir / "libpython.so"
+    package_library = package_dir / "libpython.so"
+    compiled_library = build_dir / "tree_sitter_python.so"
+    for candidate in (user_library, package_library, compiled_library):
+        shutil.copyfile(native_spec.origin, candidate)
+
+    runner = CliRunner()
+    command = ["--cache-dir", str(cache_dir), "remove", "python"]
+    cancelled = runner.invoke(grammar_cli, command, input="n\n")
+    assert cancelled.exit_code == 0, cancelled.output
+    assert "Removal cancelled" in cancelled.output
+    assert user_source.exists() and user_library.exists() and compiled_library.exists()
+
+    removed = runner.invoke(grammar_cli, [*command, "--no-confirm"])
+    assert removed.exit_code == 0, removed.output
+    assert "Successfully removed 3 grammar components" in removed.output
+    assert not user_source.exists()
+    assert not user_library.exists()
+    assert not compiled_library.exists()
+    assert package_library.exists()
+    assert not get_parser("python").parse(source).root_node.has_error
+    assert not home.exists()
+
+
 def test_click_list_all_reveals_shadowed_priority_candidate(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:

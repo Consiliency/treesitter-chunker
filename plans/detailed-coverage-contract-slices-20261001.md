@@ -445,6 +445,31 @@ coverage. The run executed 29,625 of 40,202 statements (73.6904%), with
 Slice 54 covers the public grammar CLI's AST display separately from parse
 success and failure. The contract and killed mutation determine acceptance.
 
+Remeasurement on clean `main` at `ae8f9348` before slice 55 used the full
+`tests` + `spec_tests` suite with `--cov=chunker --cov-report=term-missing`:
+3,627 passed, 4 skipped; 29,713 of 40,277 statements executed (73.7716%),
+10,564 missed. The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice55/coverage.json`, SHA-256
+`d38f57aa7cb48c0e7854682b63ea46636c3e21baae605f18fc67fb1738add2a7`.
+The sole zero-covered module stays first; it still lacks a confirmed consumer
+contract. The next largest supported gap is the public grammar CLI, so slice 55
+covers user-only removal as one command behavior.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 559 / 1,219 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/core.py` | 398 / 736 | H |
+| 5 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 6 | `build/builder.py` | 253 / 339 | H |
+| 7 | `languages/compatibility/schema.py` | 181 / 407 | H |
+| 8 | `cli/grammar_commands.py` | 170 / 270 | H |
+| 9 | `languages/compatibility/database.py` | 167 / 452 | H |
+| 10 | `debug/interactive/node_explorer.py` | 156 / 289 | M |
+| 11 | `validation/validation_framework.py` | 141 / 763 | M |
+| 12 | `languages/compatibility/grammar_analyzer.py` | 140 / 288 | M |
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -555,6 +580,7 @@ with the original source restored before committing.
 | 52 — compatibility database backup | `languages/compatibility/database.py` `CompatibilityDatabase.backup_database`: a backup captures committed Python language and grammar records, remains selectable after reopening as its own database, excludes records added afterward, and leaves the live database usable. Restoring a valid backup without refreshing the live selection schema is a separate defect in treesitter-chunker#303. | Parse the checked-in Python service fixture with the pinned parser, then use temporary SQLite files and the exported database API. Mutation **skip the backup file copy** must fail because no saved snapshot exists. Extend the existing language compatibility records contract tests; keep restore repair separate. |
 | 53 — build platform metadata | `build/system.py` `PlatformSupportImpl.detect_platform` and `build/platform.py`: Windows AMD64, macOS arm64, and Linux x86_64 hosts report normalized OS, architecture, wheel platform tag, current Python tag/version/implementation, and Linux-only libc metadata. Do not invoke dependency installation. | Parse the checked-in Python service fixture with the pinned parser before each public wrapper call; substitute only host-identification inputs. Mutation **replace the Windows AMD64 wheel tag** must fail. Add one focused platform contract test. Keep the Linux ARM tag defect in treesitter-chunker#305 outside this coverage slice. |
 | 54 — grammar test AST display | `grammar_management/cli.py` public `grammar test --ast`: a checked-in BAML declaration fixture parses successfully through its locally compiled grammar, the default output omits the tree, and `--ast` prints the same root tree produced by the real parser. Malformed input and wrong grammar keep their existing nonzero results. | Extend the existing Linux local-grammar CLI contract with a second invocation against the real BAML fixture. Mutation **omit the parsed AST payload** must fail the `--ast` output assertion. This slice changes no production code or coverage gate. |
+| 55 — user grammar removal | `grammar_management/cli.py` public `grammar remove`: cancelling leaves the user's source and libraries intact; confirmed removal deletes only the user's source and compiled libraries while preserving a package grammar and leaving the pinned parser usable. | Parse the checked-in Python service fixture before and after invoking the public Click command against isolated user and package candidates. Mutation **skip user-library unlink** must fail because the installed user library remains. Extend the public grammar CLI contract test without changing production code or adding a coverage gate. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
