@@ -728,6 +728,7 @@ with the original source restored before committing.
 | 66 — forced grammar rebuild preflight | `grammar_management/cli.py` public `grammar build --force`: with an existing compiled local BAML grammar, `--force` skips the rebuild prompt; if Node.js is unavailable, the command reports the missing tool and preserves the exact compiled artifact, which still parses the checked-in fixture. | Reuse the isolated compiled BAML parser and declarations fixture from slice 65, then remove build tools from `PATH` and invoke the public Click command with `--force`. Mutation **ignore the force flag when deciding whether to prompt** must fail because it cancels instead of reporting the missing Node.js requirement. Parametrize the existing public grammar CLI contract test without changing production code or adding a coverage gate. |
 | 67 — package-only grammar removal refusal | `grammar_management/cli.py` public `grammar remove`: after a local user grammar is removed and only a package candidate remains, a second removal request reports that no user grammar exists and that the package grammar cannot be removed, returns an error, preserves the package artifact byte-for-byte, and leaves the isolated home untouched. | Parse the checked-in Python service fixture with the pinned parser before and after the public Click commands. Mutation **report success when no user grammar exists** must fail the second command's error assertion. Extend the existing public grammar CLI contract test without changing production code or adding a coverage gate. |
 | 68 — build without local grammar source | `grammar_management/cli.py` public `grammar build`: a known Python grammar with a local compiled artifact but no source directory returns an error with fetch-first guidance before starting build tools, preserves the artifact byte-for-byte, and leaves the isolated home untouched. | Parse the checked-in Python service fixture with the pinned parser before and after the public Click command; remove build tools from `PATH` in the test. Mutation **report success when local source is absent** must fail the command exit-code assertion. Add one focused public grammar CLI contract test without changing production code or adding a coverage gate. |
+| 69 — persisted compatibility regression detection | `grammar_management/compatibility.py` `CompatibilityChecker.detect_breaking_changes`: fresh SQLite records for two Python grammar versions report an incompatible new version, a greater-than-50% parse-time regression, and a drop in real fixture parse success; equal compatible records report no breaking change. The zero-time baseline defect is separate in treesitter-chunker#345. | Parse the checked-in Python service fixture and its deliberately malformed copy with the pinned parser, persist corresponding compatibility results in a temporary database, reopen it, and inspect the public comparison output. Mutation **raise the performance-regression threshold from 1.5× to 3×** must fail the performance-change assertion. Extend the existing compatibility contract test without changing production code or adding a coverage gate. |
 
 Remeasurement on clean `main` at `7e08b1f5` before slice 61 used the full
 `tests` + `spec_tests` suite with `--cov=chunker --cov-report=term-missing`:
@@ -908,6 +909,28 @@ SHA-256 `80f5bb0339254718eda843ce240bfe97834edefece60cb89810378fa58201cac`.
 | 7 | `cli/grammar_commands.py` | 170 / 270 | H |
 | 8 | `debug/interactive/node_explorer.py` | 156 / 289 | M |
 | 9 | `performance/core/performance_framework.py` | 138 / 769 | M |
+| 10 | `validation/validation_framework.py` | 138 / 763 | M |
+| 11 | `languages/java.py` | 136 / 162 | M |
+| 12 | `export/formats/database.py` | 133 / 234 | H |
+
+Remeasurement on clean `main` at `f0106078` before slice 69 used the full
+`tests` + `spec_tests` suite with `--cov=chunker --cov-report=term-missing`:
+3,655 passed and 4 skipped. Diagnostic coverage was 30,063 of 40,314
+statements (74.5721%), with 10,251 missed. The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice69-full-coverage.json`,
+SHA-256 `9abe78dcdbd09086cb65904a78388175f4a75b95a8681546b76661063edb1968`.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 501 / 1,219 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/compatibility.py` | 380 / 848 | M |
+| 5 | `grammar_management/core.py` | 339 / 741 | H |
+| 6 | `build/builder.py` | 253 / 339 | H |
+| 7 | `cli/grammar_commands.py` | 170 / 270 | H |
+| 8 | `debug/interactive/node_explorer.py` | 156 / 289 | M |
+| 9 | `performance/core/performance_framework.py` | 139 / 769 | M |
 | 10 | `validation/validation_framework.py` | 138 / 763 | M |
 | 11 | `languages/java.py` | 136 / 162 | M |
 | 12 | `export/formats/database.py` | 133 / 234 | H |
