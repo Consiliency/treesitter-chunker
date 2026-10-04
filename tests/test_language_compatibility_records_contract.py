@@ -1,6 +1,7 @@
 """Language constraints and persisted rules keep grammar selection stable."""
 
 import json
+import os
 import shutil
 import sqlite3
 import time
@@ -153,6 +154,72 @@ def test_backup_rejects_active_transaction_and_source_path(tmp_path: Path) -> No
             assert not backup_path.exists()
         finally:
             live.conn.rollback()
+
+
+def test_backup_rejects_hard_link_to_source(tmp_path: Path) -> None:
+    db_path = tmp_path / "live.db"
+    linked_path = tmp_path / "linked.db"
+    with CompatibilityDatabase(db_path) as live:
+        try:
+            os.link(db_path, linked_path)
+        except OSError:
+            pytest.skip("File hard links are unavailable on this host")
+        with pytest.raises(shutil.SameFileError):
+            live.backup_database(linked_path)
+
+
+@pytest.mark.parametrize("journal_mode", ["delete", "wal"])
+def test_backup_fails_in_bounded_time_when_destination_reader_blocks(
+    tmp_path: Path,
+    journal_mode: str,
+) -> None:
+    db_path = tmp_path / "live.db"
+    backup_path = tmp_path / "backup.db"
+    with CompatibilityDatabase(db_path) as live:
+        assert live.add_language_version(LanguageVersion("python", "3.11"))
+        with closing(sqlite3.connect(backup_path)) as destination:
+            destination.execute("CREATE TABLE marker (value INTEGER)")
+            destination.execute("INSERT INTO marker VALUES (1)")
+            destination.commit()
+            assert (
+                destination.execute(f"PRAGMA journal_mode={journal_mode}").fetchone()[0]
+                == journal_mode
+            )
+        with closing(sqlite3.connect(backup_path)) as reader:
+            reader.execute("BEGIN")
+            assert reader.execute("SELECT value FROM marker").fetchone()[0] == 1
+            started = time.monotonic()
+            with pytest.raises(sqlite3.OperationalError, match="Backup blocked"):
+                live.backup_database(backup_path)
+            assert time.monotonic() - started < 5
+            assert live.get_language_versions("python") == [
+                LanguageVersion("python", "3.11")
+            ]
+        with closing(sqlite3.connect(backup_path)) as destination:
+            assert destination.execute("SELECT value FROM marker").fetchone()[0] == 1
+
+
+def test_backup_over_existing_wal_destination_restores_current_data(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "live.db"
+    backup_path = tmp_path / "backup.db"
+    restored_path = tmp_path / "restored.db"
+    language = LanguageVersion("python", "3.11")
+    with CompatibilityDatabase(db_path) as live:
+        assert live.add_language_version(language)
+        with CompatibilityDatabase(backup_path) as old_backup:
+            assert (
+                old_backup.conn.execute("PRAGMA journal_mode=WAL").fetchone()[0]
+                == "wal"
+            )
+            assert old_backup.add_language_version(LanguageVersion("rust", "2021"))
+        live.backup_database(backup_path)
+
+    with CompatibilityDatabase(restored_path) as restored:
+        restored.restore_database(backup_path)
+        assert restored.get_language_versions("python") == [language]
+        assert restored.get_language_versions("rust") == []
 
 
 def test_export_import_preserves_language_grammar_rules_and_breaking_changes(
