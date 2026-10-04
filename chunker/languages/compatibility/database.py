@@ -645,9 +645,14 @@ class CompatibilityDatabase:
                 change_from = row["from_version"]
                 change_to = row["to_version"]
 
-                # Simple check - could be improved
-                if (change_from >= from_version and change_from <= to_version) or (
-                    change_to >= from_version and change_to <= to_version
+                if (
+                    self.schema._version_in_range(change_from, from_version, to_version)
+                    or self.schema._version_in_range(
+                        change_to, from_version, to_version
+                    )
+                    or self.schema._version_in_range(
+                        from_version, change_from, change_to
+                    )
                 ):
                     breaking_change = BreakingChange(
                         language=row["language"],

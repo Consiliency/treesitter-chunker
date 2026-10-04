@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from chunker import get_parser
+from chunker.languages.compatibility.database import CompatibilityDatabase
 from chunker.languages.compatibility.schema import (
     BreakingChange,
     CompatibilityLevel,
@@ -61,3 +62,46 @@ def test_breaking_change_lookup_includes_endpoints() -> None:
     assert schema.get_breaking_changes("python", "3.11", "3.11") == [change]
     assert schema.get_breaking_changes("python", "3.12", "3.13") == []
     assert schema.get_breaking_changes("javascript", "3.10", "3.11") == []
+
+
+def test_breaking_change_lookup_uses_numeric_interval_overlap(tmp_path: Path) -> None:
+    fixture = FIXTURES / "python/app/service.py"
+    assert not get_parser("python").parse(fixture.read_bytes()).root_node.has_error
+
+    enclosing = BreakingChange(
+        "python", "3.9", "3.13", "syntax", "Spanning change", "medium"
+    )
+    internal = BreakingChange(
+        "python", "3.10", "3.10", "syntax", "Internal change", "medium"
+    )
+    later = BreakingChange("python", "4.0", "4.1", "syntax", "Later change", "medium")
+    schema = CompatibilitySchema()
+    schema.add_breaking_change(enclosing)
+    schema.add_breaking_change(internal)
+    schema.add_breaking_change(later)
+    assert schema.get_breaking_changes("python", "3.10", "3.11") == [
+        enclosing,
+        internal,
+    ]
+    assert schema.get_breaking_changes("python", "3.13", "3.13") == [enclosing]
+    assert schema.get_breaking_changes("python", "3.9", "3.11") == [
+        enclosing,
+        internal,
+    ]
+    assert schema.get_breaking_changes("python", "3.14", "3.15") == []
+
+    with CompatibilityDatabase(tmp_path / "compatibility.db") as database:
+        assert database.add_breaking_change(enclosing)
+        assert database.add_breaking_change(internal)
+        assert database.add_breaking_change(later)
+
+    with CompatibilityDatabase(tmp_path / "compatibility.db") as reopened:
+        assert {
+            change.description
+            for change in reopened.get_breaking_changes("python", "3.10", "3.11")
+        } == {"Spanning change", "Internal change"}
+        assert {
+            change.description
+            for change in reopened.get_breaking_changes("python", "3.9", "3.11")
+        } == {"Spanning change", "Internal change"}
+        assert reopened.get_breaking_changes("python", "3.14", "3.15") == []

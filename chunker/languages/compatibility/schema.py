@@ -618,14 +618,22 @@ class CompatibilitySchema:
                     continue
 
                 # Check if change is in the version range
-                if self._version_in_range(
-                    change.from_version,
-                    from_version,
-                    to_version,
-                ) or self._version_in_range(
-                    change.to_version,
-                    from_version,
-                    to_version,
+                if (
+                    self._version_in_range(
+                        change.from_version,
+                        from_version,
+                        to_version,
+                    )
+                    or self._version_in_range(
+                        change.to_version,
+                        from_version,
+                        to_version,
+                    )
+                    or self._version_in_range(
+                        from_version,
+                        change.from_version,
+                        change.to_version,
+                    )
                 ):
                     result.append(change)
 
