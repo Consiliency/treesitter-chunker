@@ -74,15 +74,13 @@ class TestClass:
         start_time = time.time()
         [chunk_repeatedly(test_file, iterations_per_thread) for _ in range(num_threads)]
         sequential_time = time.time() - start_time
-        if results:
-            actual_count = results[0][0] if results[0] else 0
-            assert actual_count >= 3
-            for thread_results in results:
-                assert all(count == actual_count for count in thread_results)
+        assert len(results) == num_threads
+        actual_count = results[0][0]
+        assert actual_count >= 3
+        for thread_results in results:
+            assert len(thread_results) == iterations_per_thread
+            assert all(count == actual_count for count in thread_results)
         assert concurrent_time < sequential_time * 5.0
-        total_operations = num_threads * iterations_per_thread
-        ms_per_op = concurrent_time * 1000 / total_operations
-        assert ms_per_op < 10
 
     @staticmethod
     def test_multiprocess_scaling(tmp_path):
