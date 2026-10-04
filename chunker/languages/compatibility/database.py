@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import shutil
 import sqlite3
 import tempfile
@@ -1265,8 +1266,14 @@ class DatabaseManager:
 
             # Breaking changes
             if lang_versions:
-                first_version = lang_versions[0].version
-                last_version = lang_versions[-1].version
+                report_versions = sorted(
+                    lang_versions,
+                    key=lambda item: tuple(
+                        int(part) for part in re.findall(r"\d+", item.version)
+                    ),
+                )
+                first_version = report_versions[0].version
+                last_version = report_versions[-1].version
                 changes = self.database.get_breaking_changes(
                     language,
                     first_version,

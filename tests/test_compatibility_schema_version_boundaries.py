@@ -149,3 +149,24 @@ def test_seeded_javascript_edition_change_survives_report_reload(
         )
     finally:
         reopened.database.close()
+
+
+def test_seeded_python_report_uses_numeric_version_bounds(tmp_path: Path) -> None:
+    fixture = FIXTURES / "python/app/service.py"
+    assert not get_parser("python").parse(fixture.read_bytes()).root_node.has_error
+
+    db_path = tmp_path / "compatibility.db"
+    manager = DatabaseManager(db_path)
+    manager.add_known_compatibility_data()
+    assert manager.database.add_breaking_change(
+        BreakingChange("python", "3.11", "3.12", "syntax", "New syntax", "medium")
+    )
+    manager.database.close()
+
+    reopened = DatabaseManager(db_path)
+    try:
+        assert "3.11 -> 3.12: New syntax" in reopened.generate_compatibility_report(
+            "python"
+        )
+    finally:
+        reopened.database.close()
