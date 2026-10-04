@@ -804,8 +804,11 @@ def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -
 @pytest.mark.skipif(
     sys.platform != "linux", reason="Local shared-library build is Linux-only"
 )
-def test_click_build_cancel_preserves_compiled_local_grammar(
-    tmp_path: Path, monkeypatch
+@pytest.mark.parametrize(
+    "force", [False, True], ids=["decline-rebuild", "forced-rebuild-missing-node"]
+)
+def test_click_build_preserves_compiled_local_grammar_without_build_tools(
+    tmp_path: Path, monkeypatch, force: bool
 ) -> None:
     home = tmp_path / "home"
     monkeypatch.setenv("HOME", str(home))
@@ -846,11 +849,22 @@ def test_click_build_cancel_preserves_compiled_local_grammar(
     monkeypatch.setenv("PATH", str(empty_path))
     result = CliRunner().invoke(
         grammar_cli,
-        ["--cache-dir", str(cache_dir), "build", "baml"],
+        [
+            "--cache-dir",
+            str(cache_dir),
+            "build",
+            "baml",
+            *(["--force"] if force else []),
+        ],
         input="n\n",
     )
-    assert result.exit_code == 0, result.output
-    assert "Build cancelled" in result.output
+    if force:
+        assert result.exit_code == 1, result.output
+        assert "Node.js is required but not found" in result.output
+        assert "Rebuild anyway?" not in result.output
+    else:
+        assert result.exit_code == 0, result.output
+        assert "Build cancelled" in result.output
     assert compiled.read_bytes() == original
     assert (
         not load_compiled_grammar(compiled, "baml").parse(fixture).root_node.has_error
