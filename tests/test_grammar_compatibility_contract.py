@@ -422,6 +422,52 @@ def test_performance_trends_filter_language_age_and_preserve_order(
     }
 
 
+@pytest.mark.parametrize(
+    ("samples", "expected_trend"),
+    [
+        ([(10.0, 8.0)], "insufficient_data"),
+        ([(10.0, 8.0), (10.0, 8.0)], "stable"),
+        ([(10.0, 8.0), (20.0, 4.0)], "improving"),
+        ([(20.0, 4.0), (10.0, 8.0)], "declining"),
+    ],
+)
+def test_performance_trends_distinguish_single_stable_and_directional_samples(
+    tmp_path: Path,
+    samples: list[tuple[float, float]],
+    expected_trend: str,
+) -> None:
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_bytes()
+    tree = get_parser("python").parse(source)
+    assert not tree.root_node.has_error
+
+    database_path = tmp_path / "trends.db"
+    database = CompatibilityDatabase(database_path)
+    now = time.time()
+    for index, (throughput, memory_delta) in enumerate(samples):
+        database.store_test_result(
+            GrammarTestResult(
+                language="python",
+                grammar_version="pinned",
+                test_type="parse",
+                success=True,
+                duration=0.1,
+                sample_results=[{"root_type": tree.root_node.type}],
+                performance_metrics={
+                    "avg_throughput_lines_per_sec": throughput,
+                    "memory_delta_mb": memory_delta,
+                },
+                timestamp=now - (len(samples) - index) * 3600,
+            )
+        )
+
+    trends = CompatibilityDatabase(database_path).get_performance_trends("python")
+    assert trends["data_points"] == len(samples)
+    assert trends["throughput"]["trend"] == expected_trend
+    assert trends["memory"]["trend"] == expected_trend
+
+
 def test_database_stats_count_persisted_parse_records_and_date_span(
     tmp_path: Path,
 ) -> None:
