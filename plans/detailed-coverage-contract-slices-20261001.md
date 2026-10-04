@@ -574,6 +574,36 @@ asserting that unused stubs raise their hard-coded errors.
 | 11 | `languages/compatibility/grammar_analyzer.py` | 140 / 288 | M |
 | 12 | `performance/core/performance_framework.py` | 139 / 769 | M |
 
+Remeasurement on clean `main` at `bf282b2d` before slice 60 used the full
+`tests` + `spec_tests` suite with `--cov=chunker --cov-report=term-missing`:
+3,636 passed, 4 skipped, and one failure in the already tracked
+treesitter-chunker#131 streaming-variance threshold (2.2709 versus 0.05);
+the exact test passed on a narrow coverage rerun.
+Diagnostic coverage was 29,748 of 40,280 statements (73.8530%), with 10,532
+missed. The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice60/coverage.json`, SHA-256
+`b437f703cc7d43a90d486a1fad224766524e7f1c48932dbb3ad9ed239c875a98`.
+`interfaces/stubs.py` remains the sole zero-covered module pending a real
+consumer contract. Grammar CLI remains the largest active gap; slice 59 covered
+its file export. Slice 60 covers the separate core validator's extensive
+reporting contract. The observed parser-selection defect in its additional
+checks is tracked separately in treesitter-chunker#326.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 551 / 1,219 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 5 | `grammar_management/core.py` | 373 / 739 | H |
+| 6 | `build/builder.py` | 253 / 339 | H |
+| 7 | `languages/compatibility/schema.py` | 181 / 407 | H |
+| 8 | `cli/grammar_commands.py` | 170 / 270 | H |
+| 9 | `languages/compatibility/database.py` | 167 / 452 | H |
+| 10 | `debug/interactive/node_explorer.py` | 156 / 289 | M |
+| 11 | `validation/validation_framework.py` | 141 / 763 | M |
+| 12 | `languages/compatibility/grammar_analyzer.py` | 140 / 288 | M |
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -689,6 +719,7 @@ with the original source restored before committing.
 | 57 — local grammar health report | `grammar_management/core.py` `GrammarManager.check_grammar_health`: the report lists each discovered local candidate and distinguishes a parseable Python grammar from an empty JavaScript artifact, with errors and check times. The existing native-suffix gap on macOS and Windows is tracked in treesitter-chunker#117; this contract runs on Linux. | Parse the checked-in Python service fixture using a copied real compiled grammar, then check the isolated manager report. Mutation **mark every discovered grammar healthy** must fail because the broken artifact is reported healthy. Extend the existing grammar self-test contract file without changing production code or adding a coverage gate. |
 | 58 — core grammar cache cleanup | `grammar_management/core.py` `GrammarManager.cleanup_cache`: a requested 20-day cutoff removes a stale downloaded Python source and stale validation record with correct removal counts/bytes, while preserving a recent build source and recent record in an isolated cache. Mixed-age directory deletion is a separate defect in treesitter-chunker#318. | Parse the checked-in Python service fixture before and after cleanup with the pinned parser. Mutation **reverse validation-record age selection** must fail because the stale record remains and the recent record disappears. Extend the existing grammar self-test contract file without changing production code or adding a coverage gate. |
 | 59 — grammar configuration export | `grammar_management/cli.py` public `grammar export`: JSON and YAML exports each contain the discovered local Python grammar's path and existence metadata; an empty cache returns an error without creating a file, and the isolated home remains untouched. | Parse the checked-in Python service fixture with the pinned parser, install a local candidate under a temporary grammar cache, and invoke the public Click command. Mutation **replace the exported grammar map with an empty map** must fail both format variants. Extend the public grammar CLI contract test without changing production code or adding a coverage gate. |
+| 60 — extensive grammar validation report | `grammar_management/core.py` `GrammarValidator.validate_grammar(..., EXTENSIVE)`: a real local Python grammar parses the checked-in service fixture and produces a valid extensive report with standard and large-sample counts, parse timing, file size, and process-memory readings in an isolated validation cache. The additional checks currently use the bundled parser rather than the selected candidate; repair is separate in treesitter-chunker#326. | Copy the pinned compiled Python grammar into `tmp_path`, parse the real fixture through that copy before and after validation, and inspect the exported validation result. Mutation **skip large-sample validation** must fail because its sample count disappears. Extend the public grammar validator contract test without changing production code or adding a coverage gate. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
