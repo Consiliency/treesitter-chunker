@@ -472,3 +472,65 @@ def test_database_stats_count_persisted_parse_records_and_date_span(
     assert stats["oldest_record"] == oldest
     assert stats["newest_record"] == newest
     assert stats["data_span_days"] == pytest.approx(2)
+
+
+def test_database_cleanup_removes_old_records_and_preserves_recent_parses(
+    tmp_path: Path,
+) -> None:
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+
+    database = CompatibilityDatabase(tmp_path / "cleanup.db")
+    now = time.time()
+    for version, age_days, throughput in (
+        ("old", 45, 10.0),
+        ("recent", 1, 20.0),
+    ):
+        timestamp = now - age_days * 24 * 60 * 60
+        database.store_compatibility_result(
+            CompatibilityResult(
+                language="python",
+                grammar_version=version,
+                language_version=None,
+                level=CompatibilityLevel.COMPATIBLE,
+                score=1.0,
+                test_results={"parsed_bytes": len(source)},
+                timestamp=timestamp,
+            )
+        )
+        database.store_test_result(
+            GrammarTestResult(
+                language="python",
+                grammar_version=version,
+                test_type="parse",
+                success=True,
+                duration=0.1,
+                sample_results=[{"parsed_bytes": len(source)}],
+                performance_metrics={"avg_throughput_lines_per_sec": throughput},
+                timestamp=timestamp,
+            )
+        )
+
+    before = database.get_database_stats()
+    assert before["compatibility_results"] == 2
+    assert before["test_results"] == 2
+    assert database.cleanup_old_data(days_to_keep=30) == {
+        "compatibility_results": 1,
+        "test_results": 1,
+    }
+
+    reopened = CompatibilityDatabase(database.database_path)
+    assert reopened.get_compatibility_result("python", "old") is None
+    recent = reopened.get_compatibility_result("python", "recent")
+    assert recent is not None
+    assert recent.test_results == {"parsed_bytes": len(source)}
+    after = reopened.get_database_stats()
+    assert after["compatibility_results"] == 1
+    assert after["test_results"] == 1
+    trends = reopened.get_performance_trends("python", days=30)
+    assert trends["data_points"] == 1
+    assert trends["throughput"]["average"] == 20.0
+    assert not parser.parse(source).root_node.has_error
