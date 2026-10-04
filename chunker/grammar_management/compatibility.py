@@ -2161,25 +2161,33 @@ class CompatibilityDatabase:
                 }
 
                 if parse_times:
+                    if len(parse_times) < 2:
+                        throughput_trend = "insufficient_data"
+                    elif parse_times[-1] > parse_times[0]:
+                        throughput_trend = "improving"
+                    elif parse_times[-1] < parse_times[0]:
+                        throughput_trend = "declining"
+                    else:
+                        throughput_trend = "stable"
                     trends["throughput"] = {
                         "average": statistics.mean(parse_times),
                         "median": statistics.median(parse_times),
-                        "trend": (
-                            "improving"
-                            if parse_times[-1] > parse_times[0]
-                            else "declining"
-                        ),
+                        "trend": throughput_trend,
                     }
 
                 if memory_usage:
+                    if len(memory_usage) < 2:
+                        memory_trend = "insufficient_data"
+                    elif memory_usage[-1] < memory_usage[0]:
+                        memory_trend = "improving"
+                    elif memory_usage[-1] > memory_usage[0]:
+                        memory_trend = "declining"
+                    else:
+                        memory_trend = "stable"
                     trends["memory"] = {
                         "average_delta": statistics.mean(memory_usage),
                         "median_delta": statistics.median(memory_usage),
-                        "trend": (
-                            "improving"
-                            if memory_usage[-1] < memory_usage[0]
-                            else "declining"
-                        ),
+                        "trend": memory_trend,
                     }
 
                 return trends
