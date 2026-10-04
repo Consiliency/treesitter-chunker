@@ -547,6 +547,33 @@ covers the separate core grammar manager cleanup path.
 | 11 | `languages/compatibility/grammar_analyzer.py` | 140 / 288 | M |
 | 12 | `performance/core/performance_framework.py` | 139 / 769 | M |
 
+Remeasurement on clean `main` at `cca2f376` before slice 59 used the full
+`tests` + `spec_tests` suite with `--cov=chunker --cov-report=term-missing`:
+3,634 passed, 4 skipped; 29,739 of 40,280 statements executed (73.8307%),
+10,541 missed. The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice59/coverage.json`, SHA-256
+`d3dffb70f7b6d41928d811a3f6fe8e49fec76a0a7f9960aad704df58e7557e63`.
+`interfaces/stubs.py` remains the sole zero-covered module. Repository search
+found no live import of those placeholder implementations; archive examples
+mention them, but the downstream consumer contract remains unconfirmed. Slice
+59 covers the exported grammar CLI's separate file-export behavior instead of
+asserting that unused stubs raise their hard-coded errors.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 558 / 1,219 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 5 | `grammar_management/core.py` | 373 / 739 | H |
+| 6 | `build/builder.py` | 253 / 339 | H |
+| 7 | `languages/compatibility/schema.py` | 181 / 407 | H |
+| 8 | `cli/grammar_commands.py` | 170 / 270 | H |
+| 9 | `languages/compatibility/database.py` | 167 / 452 | H |
+| 10 | `debug/interactive/node_explorer.py` | 156 / 289 | M |
+| 11 | `languages/compatibility/grammar_analyzer.py` | 140 / 288 | M |
+| 12 | `performance/core/performance_framework.py` | 139 / 769 | M |
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -661,6 +688,7 @@ with the original source restored before committing.
 | 56 — grammar removal path safety | `grammar_management/cli.py` public `grammar remove`: a language containing a parent-directory component is rejected before deletion, preserving a source fixture outside the user grammar directory even with `--no-confirm`. | Parse the checked-in Python service fixture from an isolated cache directory, invoke the public Click command with `../escape`, and confirm the file remains parseable. Mutation **bypass the path-component guard** must fail because the command removes the outside directory. Extend the public grammar CLI contract test without changing production code or adding a coverage gate. |
 | 57 — local grammar health report | `grammar_management/core.py` `GrammarManager.check_grammar_health`: the report lists each discovered local candidate and distinguishes a parseable Python grammar from an empty JavaScript artifact, with errors and check times. The existing native-suffix gap on macOS and Windows is tracked in treesitter-chunker#117; this contract runs on Linux. | Parse the checked-in Python service fixture using a copied real compiled grammar, then check the isolated manager report. Mutation **mark every discovered grammar healthy** must fail because the broken artifact is reported healthy. Extend the existing grammar self-test contract file without changing production code or adding a coverage gate. |
 | 58 — core grammar cache cleanup | `grammar_management/core.py` `GrammarManager.cleanup_cache`: a requested 20-day cutoff removes a stale downloaded Python source and stale validation record with correct removal counts/bytes, while preserving a recent build source and recent record in an isolated cache. Mixed-age directory deletion is a separate defect in treesitter-chunker#318. | Parse the checked-in Python service fixture before and after cleanup with the pinned parser. Mutation **reverse validation-record age selection** must fail because the stale record remains and the recent record disappears. Extend the existing grammar self-test contract file without changing production code or adding a coverage gate. |
+| 59 — grammar configuration export | `grammar_management/cli.py` public `grammar export`: JSON and YAML exports each contain the discovered local Python grammar's path and existence metadata; an empty cache returns an error without creating a file, and the isolated home remains untouched. | Parse the checked-in Python service fixture with the pinned parser, install a local candidate under a temporary grammar cache, and invoke the public Click command. Mutation **replace the exported grammar map with an empty map** must fail both format variants. Extend the public grammar CLI contract test without changing production code or adding a coverage gate. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
