@@ -111,6 +111,35 @@ def test_click_remove_only_deletes_user_installed_grammar(
     assert not home.exists()
 
 
+def test_click_remove_rejects_path_outside_user_grammars(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cache_dir = tmp_path / "grammar-cache"
+    outside_user_dir = cache_dir / "grammars" / "escape"
+    outside_user_dir.mkdir(parents=True)
+    outside_fixture = outside_user_dir / "service.py"
+    outside_fixture.write_bytes(source)
+
+    result = CliRunner().invoke(
+        grammar_cli,
+        ["--cache-dir", str(cache_dir), "remove", "../escape", "--no-confirm"],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "Invalid grammar language" in result.output
+    assert outside_fixture.read_bytes() == source
+    assert (
+        not get_parser("python").parse(outside_fixture.read_bytes()).root_node.has_error
+    )
+    assert not home.exists()
+
+
 def test_click_list_all_reveals_shadowed_priority_candidate(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
