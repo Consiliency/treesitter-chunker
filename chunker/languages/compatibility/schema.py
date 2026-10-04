@@ -838,6 +838,15 @@ class CompatibilitySchema:
     ) -> bool:
         """Check if a version is within a range."""
         try:
+            editions = [
+                bool(re.fullmatch(r"ES\d+", value, re.IGNORECASE))
+                for value in (version, from_version, to_version)
+            ]
+            if any(editions):
+                if not all(editions):
+                    return False
+                return int(from_version[2:]) <= int(version[2:]) <= int(to_version[2:])
+
             v_parts = [int(x) for x in re.sub(r"[a-zA-Z].*$", "", version).split(".")]
             from_parts = [
                 int(x) for x in re.sub(r"[a-zA-Z].*$", "", from_version).split(".")

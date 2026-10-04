@@ -3,7 +3,10 @@
 from pathlib import Path
 
 from chunker import get_parser
-from chunker.languages.compatibility.database import CompatibilityDatabase
+from chunker.languages.compatibility.database import (
+    CompatibilityDatabase,
+    DatabaseManager,
+)
 from chunker.languages.compatibility.schema import (
     BreakingChange,
     CompatibilityLevel,
@@ -107,3 +110,42 @@ def test_breaking_change_lookup_uses_numeric_interval_overlap(tmp_path: Path) ->
         } == {"Spanning change", "Internal change"}
         assert reopened.get_breaking_changes("python", "3.14", "3.15") == []
         assert reopened.get_breaking_changes("python", "3.11", "3.10") == []
+
+
+def test_seeded_javascript_edition_change_survives_report_reload(
+    tmp_path: Path,
+) -> None:
+    fixture = FIXTURES / "javascript/service.js"
+    assert not get_parser("javascript").parse(fixture.read_bytes()).root_node.has_error
+
+    db_path = tmp_path / "compatibility.db"
+    manager = DatabaseManager(db_path)
+    manager.add_known_compatibility_data()
+    manager.update_breaking_changes()
+    manager.database.close()
+
+    reopened = DatabaseManager(db_path)
+    try:
+        assert (
+            len(
+                reopened.database.get_breaking_changes("javascript", "ES2015", "ES2015")
+            )
+            == 1
+        )
+        assert (
+            len(
+                reopened.database.schema.get_breaking_changes(
+                    "javascript", "ES2015", "ES2023"
+                )
+            )
+            == 1
+        )
+        assert (
+            reopened.database.get_breaking_changes("javascript", "ES2023", "ES2015")
+            == []
+        )
+        assert "Breaking Changes (1):" in reopened.generate_compatibility_report(
+            "javascript"
+        )
+    finally:
+        reopened.database.close()
