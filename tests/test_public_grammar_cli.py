@@ -464,6 +464,7 @@ def test_click_removes_listed_user_library_and_keeps_package_fallback(
     package_library = package_dir / "libpython.so"
     shutil.copyfile(native_spec.origin, user_library)
     shutil.copyfile(native_spec.origin, package_library)
+    package_bytes = package_library.read_bytes()
 
     runner = CliRunner()
     command = ["--cache-dir", str(cache_dir)]
@@ -481,6 +482,16 @@ def test_click_removes_listed_user_library_and_keeps_package_fallback(
     info = runner.invoke(grammar_cli, [*command, "info", "python"])
     assert info.exit_code == 0
     assert f"Path: {package_library}" in info.output
+
+    package_only = runner.invoke(
+        grammar_cli, [*command, "remove", "python", "--no-confirm"]
+    )
+    assert package_only.exit_code == 1, package_only.output
+    assert "No user-installed grammar found" in package_only.output
+    assert "Only user-installed grammars can be removed" in package_only.output
+    assert package_library.read_bytes() == package_bytes
+    assert not get_parser("python").parse(source).root_node.has_error
+    assert not (tmp_path / "home").exists()
 
 
 def test_click_remove_respects_declined_confirmation(
