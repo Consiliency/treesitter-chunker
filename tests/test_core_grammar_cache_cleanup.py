@@ -1,5 +1,6 @@
 """Core grammar cache cleanup preserves recent files inside stale directories."""
 
+import logging
 import os
 import time
 from pathlib import Path
@@ -13,7 +14,9 @@ FIXTURE = (
 )
 
 
-def test_old_cache_directory_keeps_recent_parseable_child(tmp_path: Path) -> None:
+def test_old_cache_directory_keeps_recent_parseable_child(
+    tmp_path: Path, caplog
+) -> None:
     source = FIXTURE.read_bytes()
     parser = get_parser("python")
     assert not parser.parse(source).root_node.has_error
@@ -36,13 +39,15 @@ def test_old_cache_directory_keeps_recent_parseable_child(tmp_path: Path) -> Non
         package_dir=tmp_path / "package",
         cache_dir=cache_dir,
     )
-    result = manager.cleanup_cache(older_than_days=20)
+    with caplog.at_level(logging.WARNING):
+        result = manager.cleanup_cache(older_than_days=20)
 
     assert result["errors"] == []
-    assert result["files_removed"] == 1
-    assert result["bytes_freed"] == len(source)
-    assert result["directories_cleaned"] == ["downloads"]
-    assert not stale_source.exists()
+    assert result["files_removed"] == 0
+    assert result["bytes_freed"] == 0
+    assert result["directories_cleaned"] == []
+    assert "Skipping mixed-age cache directory" in caplog.text
+    assert stale_source.read_bytes() == source
     assert recent_source.read_bytes() == source
     assert not parser.parse(recent_source.read_bytes()).root_node.has_error
 
@@ -71,7 +76,7 @@ def test_entirely_old_cache_directory_is_removed_with_accurate_file_count(
     result = manager.cleanup_cache(older_than_days=20)
 
     assert result["errors"] == []
-    assert result["files_removed"] == 2
+    assert result["files_removed"] == 1
     assert result["bytes_freed"] == 2 * len(source)
     assert result["directories_cleaned"] == ["downloads"]
     assert not old_directory.exists()
