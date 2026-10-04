@@ -948,17 +948,48 @@ class CompatibilityDatabase:
         """
         try:
             backup_path = Path(backup_path)
+            if not self.db_path.exists():
+                raise FileNotFoundError(f"Database file not found: {self.db_path}")
+            if backup_path.exists() and backup_path.samefile(self.db_path):
+                raise shutil.SameFileError(
+                    f"Backup path is the database: {backup_path}"
+                )
 
-            # Close current connection
-            if self._conn:
-                self._conn.close()
+            if self._conn is None:
+                self._conn = sqlite3.connect(str(self.db_path))
+                self._conn.row_factory = sqlite3.Row
+            if self._conn.in_transaction:
+                raise sqlite3.OperationalError(
+                    "Cannot backup while a database transaction is active"
+                )
+            with closing(sqlite3.connect(str(backup_path))) as backup_conn:
+                backup_conn.execute("PRAGMA busy_timeout=100")
+                try:
+                    mode = backup_conn.execute("PRAGMA journal_mode=DELETE").fetchone()[
+                        0
+                    ]
+                except sqlite3.OperationalError as error:
+                    if "locked" in str(error).lower():
+                        raise sqlite3.OperationalError(
+                            "Backup blocked by another database reader"
+                        ) from error
+                    raise
+                if mode != "delete":
+                    raise sqlite3.OperationalError(
+                        "Backup blocked by another database reader"
+                    )
+                deadline = time.monotonic() + 2
 
-            # Copy database file
-            shutil.copy2(self.db_path, backup_path)
+                def stop_if_blocked(status: int, _remaining: int, _total: int) -> None:
+                    if status in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                        if time.monotonic() >= deadline:
+                            raise sqlite3.OperationalError(
+                                "Backup blocked by another database reader"
+                            )
 
-            # Reopen connection
-            self._conn = sqlite3.connect(str(self.db_path))
-            self._conn.row_factory = sqlite3.Row
+                self._conn.backup(
+                    backup_conn, pages=16, progress=stop_if_blocked, sleep=0.05
+                )
 
             logger.info(f"Database backed up to {backup_path}")
 
