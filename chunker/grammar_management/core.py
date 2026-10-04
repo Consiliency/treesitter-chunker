@@ -1706,6 +1706,14 @@ class GrammarManager:
                             item.unlink()
                             stats["files_removed"] += 1
                         elif item.is_dir():
+                            if any(
+                                child.lstat().st_mtime >= cutoff_time
+                                for child in item.rglob("*")
+                            ):
+                                logger.warning(
+                                    "Skipping mixed-age cache directory: %s", item
+                                )
+                                continue
                             dir_size = sum(
                                 f.stat().st_size for f in item.rglob("*") if f.is_file()
                             )
