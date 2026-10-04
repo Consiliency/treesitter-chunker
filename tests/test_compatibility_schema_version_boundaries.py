@@ -3,6 +3,10 @@
 from pathlib import Path
 
 from chunker import get_parser
+from chunker.languages.compatibility.database import (
+    CompatibilityDatabase,
+    DatabaseManager,
+)
 from chunker.languages.compatibility.schema import (
     BreakingChange,
     CompatibilityLevel,
@@ -61,3 +65,136 @@ def test_breaking_change_lookup_includes_endpoints() -> None:
     assert schema.get_breaking_changes("python", "3.11", "3.11") == [change]
     assert schema.get_breaking_changes("python", "3.12", "3.13") == []
     assert schema.get_breaking_changes("javascript", "3.10", "3.11") == []
+
+
+def test_breaking_change_lookup_uses_numeric_interval_overlap(tmp_path: Path) -> None:
+    fixture = FIXTURES / "python/app/service.py"
+    assert not get_parser("python").parse(fixture.read_bytes()).root_node.has_error
+
+    enclosing = BreakingChange(
+        "python", "3.9", "3.13", "syntax", "Spanning change", "medium"
+    )
+    internal = BreakingChange(
+        "python", "3.10", "3.10", "syntax", "Internal change", "medium"
+    )
+    later = BreakingChange("python", "4.0", "4.1", "syntax", "Later change", "medium")
+    schema = CompatibilitySchema()
+    schema.add_breaking_change(enclosing)
+    schema.add_breaking_change(internal)
+    schema.add_breaking_change(later)
+    assert schema.get_breaking_changes("python", "3.10", "3.11") == [
+        enclosing,
+        internal,
+    ]
+    assert schema.get_breaking_changes("python", "3.13", "3.13") == [enclosing]
+    assert schema.get_breaking_changes("python", "3.9", "3.11") == [
+        enclosing,
+        internal,
+    ]
+    assert schema.get_breaking_changes("python", "3.14", "3.15") == []
+    assert schema.get_breaking_changes("python", "3.11", "3.10") == []
+
+    with CompatibilityDatabase(tmp_path / "compatibility.db") as database:
+        assert database.add_breaking_change(enclosing)
+        assert database.add_breaking_change(internal)
+        assert database.add_breaking_change(later)
+
+    with CompatibilityDatabase(tmp_path / "compatibility.db") as reopened:
+        assert {
+            change.description
+            for change in reopened.get_breaking_changes("python", "3.10", "3.11")
+        } == {"Spanning change", "Internal change"}
+        assert {
+            change.description
+            for change in reopened.get_breaking_changes("python", "3.9", "3.11")
+        } == {"Spanning change", "Internal change"}
+        assert reopened.get_breaking_changes("python", "3.14", "3.15") == []
+        assert reopened.get_breaking_changes("python", "3.11", "3.10") == []
+
+
+def test_seeded_javascript_edition_change_survives_report_reload(
+    tmp_path: Path,
+) -> None:
+    fixture = FIXTURES / "javascript/service.js"
+    assert not get_parser("javascript").parse(fixture.read_bytes()).root_node.has_error
+
+    db_path = tmp_path / "compatibility.db"
+    manager = DatabaseManager(db_path)
+    manager.add_known_compatibility_data()
+    manager.update_breaking_changes()
+    manager.database.close()
+
+    reopened = DatabaseManager(db_path)
+    try:
+        assert (
+            len(
+                reopened.database.get_breaking_changes("javascript", "ES2015", "ES2015")
+            )
+            == 1
+        )
+        assert (
+            len(
+                reopened.database.schema.get_breaking_changes(
+                    "javascript", "ES2015", "ES2023"
+                )
+            )
+            == 1
+        )
+        assert (
+            reopened.database.get_breaking_changes("javascript", "ES2023", "ES2015")
+            == []
+        )
+        assert "Breaking Changes (1):" in reopened.generate_compatibility_report(
+            "javascript"
+        )
+    finally:
+        reopened.database.close()
+
+
+def test_seeded_python_report_uses_numeric_version_bounds(tmp_path: Path) -> None:
+    fixture = FIXTURES / "python/app/service.py"
+    assert not get_parser("python").parse(fixture.read_bytes()).root_node.has_error
+
+    db_path = tmp_path / "compatibility.db"
+    manager = DatabaseManager(db_path)
+    manager.add_known_compatibility_data()
+    assert manager.database.add_breaking_change(
+        BreakingChange("python", "3.11", "3.12", "syntax", "New syntax", "medium")
+    )
+    manager.database.close()
+
+    reopened = DatabaseManager(db_path)
+    try:
+        assert "3.11 -> 3.12: New syntax" in reopened.generate_compatibility_report(
+            "python"
+        )
+    finally:
+        reopened.database.close()
+
+
+def test_python_report_bounds_match_prerelease_range_order(tmp_path: Path) -> None:
+    fixture = FIXTURES / "python/app/service.py"
+    assert not get_parser("python").parse(fixture.read_bytes()).root_node.has_error
+
+    db_path = tmp_path / "compatibility.db"
+    with CompatibilityDatabase(db_path) as database:
+        assert database.add_language_version(LanguageVersion("python", "3.11a2"))
+        assert database.add_language_version(LanguageVersion("python", "3.11.1"))
+        assert database.add_breaking_change(
+            BreakingChange(
+                "python", "3.11.1", "3.11.1", "syntax", "Patch change", "medium"
+            )
+        )
+
+    manager = DatabaseManager(db_path)
+    try:
+        assert (
+            len(manager.database.get_breaking_changes("python", "3.11a2", "3.11.1"))
+            == 1
+        )
+        assert (
+            "3.11.1 -> 3.11.1: Patch change"
+            in manager.generate_compatibility_report("python")
+        )
+    finally:
+        manager.database.close()

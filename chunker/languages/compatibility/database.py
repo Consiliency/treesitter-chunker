@@ -629,6 +629,10 @@ class CompatibilityDatabase:
             List of BreakingChange objects
         """
         try:
+            if not self.schema._version_in_range(
+                from_version, from_version, to_version
+            ):
+                return []
             cursor = self.conn.cursor()
             cursor.execute(
                 """
@@ -645,9 +649,14 @@ class CompatibilityDatabase:
                 change_from = row["from_version"]
                 change_to = row["to_version"]
 
-                # Simple check - could be improved
-                if (change_from >= from_version and change_from <= to_version) or (
-                    change_to >= from_version and change_to <= to_version
+                if (
+                    self.schema._version_in_range(change_from, from_version, to_version)
+                    or self.schema._version_in_range(
+                        change_to, from_version, to_version
+                    )
+                    or self.schema._version_in_range(
+                        from_version, change_from, change_to
+                    )
                 ):
                     breaking_change = BreakingChange(
                         language=row["language"],
@@ -1256,8 +1265,14 @@ class DatabaseManager:
 
             # Breaking changes
             if lang_versions:
-                first_version = lang_versions[0].version
-                last_version = lang_versions[-1].version
+                report_versions = sorted(
+                    lang_versions,
+                    key=lambda item: self.database.schema._version_sort_key(
+                        item.version
+                    ),
+                )
+                first_version = report_versions[0].version
+                last_version = report_versions[-1].version
                 changes = self.database.get_breaking_changes(
                     language,
                     first_version,
