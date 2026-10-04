@@ -1707,7 +1707,7 @@ class GrammarManager:
                             stats["files_removed"] += 1
                         elif item.is_dir():
                             if any(
-                                child.stat().st_mtime >= cutoff_time
+                                child.lstat().st_mtime >= cutoff_time
                                 for child in item.rglob("*")
                             ):
                                 logger.warning(
