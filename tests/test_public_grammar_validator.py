@@ -127,3 +127,42 @@ def test_extensive_validation_reports_metrics_after_local_grammar_parse(
     assert result.performance_metrics["memory_before_mb"] > 0
     assert result.performance_metrics["memory_after_mb"] > 0
     assert not parser.parse(source).root_node.has_error
+
+
+def test_extensive_validation_uses_selected_grammar_for_all_parse_checks(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
+    source = (FIXTURE_DIR / "service.py").read_bytes()
+    assert not get_pack_parser("python").parse(source).root_node.has_error
+    javascript_parser = get_pack_parser("javascript")
+    assert javascript_parser.parse(source).root_node.has_error
+    native_name = (
+        f"tree_sitter_python{suffix}"
+        if sys.platform == "win32"
+        else f"libtree_sitter_python{suffix}"
+    )
+    candidate = tmp_path / f"libpython{suffix}"
+    shutil.copyfile(Path(cache_dir()) / native_name, candidate)
+    assert (
+        not load_compiled_grammar(candidate, "python").parse(source).root_node.has_error
+    )
+
+    fallback_calls = []
+
+    def wrong_default(language):
+        fallback_calls.append(language)
+        return javascript_parser
+
+    monkeypatch.setattr("chunker.parser.get_parser", wrong_default)
+    validator = GrammarValidator(cache_dir=tmp_path / "validator-cache")
+    result = validator.validate_grammar(candidate, "python", ValidationLevel.EXTENSIVE)
+
+    assert result.is_valid, result.errors
+    assert result.warnings == []
+    assert result.performance_metrics["samples_tested"] == 3
+    assert result.performance_metrics["large_samples_tested"] == 1
+    assert result.performance_metrics["memory_before_mb"] > 0
+    assert result.performance_metrics["memory_after_mb"] > 0
+    assert fallback_calls == []
