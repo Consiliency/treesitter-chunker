@@ -13,6 +13,7 @@ from io import BytesIO
 from pathlib import Path
 
 import pytest
+import yaml
 from click.testing import CliRunner
 from chunker import get_parser
 from chunker.grammar_management import ComprehensiveGrammarCLI, grammar_cli
@@ -217,6 +218,71 @@ def test_exported_grammar_list_json_filters_local_grammars(
 
     assert cli.list_grammars(language_filter="missing", output_format="json") == 1
     assert "No grammars found matching 'missing'" in capsys.readouterr().out
+    assert not home.exists()
+
+
+@pytest.mark.parametrize("output_format", ["json", "yaml"])
+def test_click_export_contains_discovered_local_grammar(
+    tmp_path: Path, monkeypatch, output_format: str
+) -> None:
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cache_dir = tmp_path / "grammar-cache"
+    user_library = cache_dir / "grammars" / "user" / "libpython.so"
+    user_library.parent.mkdir(parents=True)
+    shutil.copyfile(native_spec.origin, user_library)
+    output_file = tmp_path / f"grammars.{output_format}"
+
+    result = CliRunner().invoke(
+        grammar_cli,
+        [
+            "--cache-dir",
+            str(cache_dir),
+            "export",
+            str(output_file),
+            "--format",
+            output_format,
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    exported = (
+        json.loads(output_file.read_text(encoding="utf-8"))
+        if output_format == "json"
+        else yaml.safe_load(output_file.read_text(encoding="utf-8"))
+    )
+    assert exported["version"] == "1.0"
+    assert list(exported["grammars"]) == ["python"]
+    assert exported["grammars"]["python"]["path"] == str(user_library)
+    assert exported["grammars"]["python"]["exists"] is True
+    assert not get_parser("python").parse(source).root_node.has_error
+    assert not home.exists()
+
+
+def test_click_export_empty_cache_does_not_create_output(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    output_file = tmp_path / "grammars.json"
+
+    result = CliRunner().invoke(
+        grammar_cli,
+        ["--cache-dir", str(tmp_path / "empty-cache"), "export", str(output_file)],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "No grammars found to export" in result.output
+    assert not output_file.exists()
     assert not home.exists()
 
 
