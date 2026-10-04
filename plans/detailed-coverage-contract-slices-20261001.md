@@ -723,6 +723,7 @@ with the original source restored before committing.
 | 61 — compatibility schema JSON round-trip and validation | `languages/compatibility/schema.py` `CompatibilitySchema.to_dict`, `from_dict`, and `validate_schema`: a Python language/grammar pairing, compatibility rule, and breaking change survive JSON storage; the restored rule still controls compatibility level, while a rule referring to absent versions reports both missing sides. | Parse the checked-in Python service fixture with the pinned parser, serialize the schema to an isolated JSON file, reload it, and inspect selection, rule level, breaking change, and validation errors. Mutation **omit compatibility-rule restoration** must fail the restored compatibility-level assertion. Add one focused contract test without changing production code or adding a coverage gate. |
 | 62 — compatibility version boundaries | `languages/compatibility/schema.py` `LanguageVersion`, `CompatibilityRule`, and `CompatibilitySchema.get_breaking_changes`: a newer minor Python version accepts an older same-major version, rejects a later minor or another language, range and wildcard rules include their stated bounds, and breaking-change lookup includes both endpoints but excludes unrelated ranges. | Parse the checked-in Python and JavaScript service fixtures with pinned real parsers, then exercise version and rule contracts. Mutation **reverse minor-version compatibility ordering** must fail the older-version acceptance assertion. Add one focused contract test without changing production code or adding a coverage gate. |
 | 63 — compiled grammar analysis report and export | `languages/compatibility/grammar_analyzer.py` `GrammarAnalyzer.generate_grammar_report` and `export_analysis_data`: a compiled local BAML grammar appears as supported with its version and symbol count in a human-readable report; a missing grammar reports unsupported; JSON export preserves the grammar file path and measured capabilities. | Compile the checked-in BAML grammar, parse the real declarations fixture before and after analysis, then inspect the report and isolated JSON export. Mutation **omit capabilities from JSON export** must fail the exported symbol/support assertions. Extend the existing Linux analyzer contract without changing production code or adding a coverage gate. |
+| 64 — compatibility history cleanup | `grammar_management/compatibility.py` `CompatibilityDatabase.cleanup_old_data`: a 30-day cleanup deletes old compatibility and parse-test records, preserves recent records across database reopen, and reports accurate deletion counts. The single-sample trend label defect is separate in treesitter-chunker#334. | Parse the checked-in Python service fixture before and after storing isolated SQLite results with one 45-day-old and one 1-day-old record in each table. Mutation **reverse the compatibility-record age comparison** must fail because the old record survives and the recent record disappears. Extend the compatibility contract test without changing production code or adding a coverage gate. |
 
 Remeasurement on clean `main` at `7e08b1f5` before slice 61 used the full
 `tests` + `spec_tests` suite with `--cov=chunker --cov-report=term-missing`:
@@ -794,6 +795,28 @@ treesitter-chunker#332, which closed treesitter-chunker#331.
 | 10 | `validation/validation_framework.py` | 138 / 763 | M |
 | 11 | `languages/compatibility/grammar_analyzer.py` | 138 / 288 | M |
 | 12 | `languages/java.py` | 136 / 162 | M |
+
+Remeasurement on clean `main` at `73ebdc21` before slice 64 used the full
+`tests` + `spec_tests` suite with `--cov=chunker --cov-report=term-missing`:
+3,647 passed and 4 skipped. Diagnostic coverage was 30,002 of 40,300
+statements (74.4467%), with 10,298 missed. The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice64/coverage.json`, SHA-256
+`b544a9d0802795554dfd6f9ac38d920ee64126ae71a4cb5545732da66e68d4b7`.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 551 / 1,219 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 5 | `grammar_management/core.py` | 339 / 741 | H |
+| 6 | `build/builder.py` | 253 / 339 | H |
+| 7 | `cli/grammar_commands.py` | 170 / 270 | H |
+| 8 | `debug/interactive/node_explorer.py` | 156 / 289 | M |
+| 9 | `performance/core/performance_framework.py` | 138 / 769 | M |
+| 10 | `validation/validation_framework.py` | 138 / 763 | M |
+| 11 | `languages/java.py` | 136 / 162 | M |
+| 12 | `export/formats/database.py` | 133 / 234 | H |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
