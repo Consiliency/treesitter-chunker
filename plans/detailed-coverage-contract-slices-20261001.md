@@ -470,6 +470,31 @@ covers user-only removal as one command behavior.
 | 11 | `validation/validation_framework.py` | 141 / 763 | M |
 | 12 | `languages/compatibility/grammar_analyzer.py` | 140 / 288 | M |
 
+Remeasurement on clean `main` at `b812ae29` before slice 56 used the full
+`tests` + `spec_tests` suite with `--cov=chunker --cov-report=term-missing`:
+3,628 passed, 4 skipped; 29,717 of 40,277 statements executed (73.7816%),
+10,560 missed. The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice56/coverage.json`, SHA-256
+`ed3b15063c41f25a5db0ed1edbad9ec18ec2d312e6abbcdff5a2eae91325e376`.
+The sole zero-covered module remains first pending a consumer contract. The
+public grammar CLI has the largest supported gap; slice 56 tests its separate
+path-escape rejection behavior during removal.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 558 / 1,219 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/core.py` | 398 / 736 | H |
+| 5 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 6 | `build/builder.py` | 253 / 339 | H |
+| 7 | `languages/compatibility/schema.py` | 181 / 407 | H |
+| 8 | `cli/grammar_commands.py` | 170 / 270 | H |
+| 9 | `languages/compatibility/database.py` | 167 / 452 | H |
+| 10 | `debug/interactive/node_explorer.py` | 156 / 289 | M |
+| 11 | `validation/validation_framework.py` | 141 / 763 | M |
+| 12 | `languages/compatibility/grammar_analyzer.py` | 140 / 288 | M |
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -581,6 +606,7 @@ with the original source restored before committing.
 | 53 — build platform metadata | `build/system.py` `PlatformSupportImpl.detect_platform` and `build/platform.py`: Windows AMD64, macOS arm64, and Linux x86_64 hosts report normalized OS, architecture, wheel platform tag, current Python tag/version/implementation, and Linux-only libc metadata. Do not invoke dependency installation. | Parse the checked-in Python service fixture with the pinned parser before each public wrapper call; substitute only host-identification inputs. Mutation **replace the Windows AMD64 wheel tag** must fail. Add one focused platform contract test. Keep the Linux ARM tag defect in treesitter-chunker#305 outside this coverage slice. |
 | 54 — grammar test AST display | `grammar_management/cli.py` public `grammar test --ast`: a checked-in BAML declaration fixture parses successfully through its locally compiled grammar, the default output omits the tree, and `--ast` prints the same root tree produced by the real parser. Malformed input and wrong grammar keep their existing nonzero results. | Extend the existing Linux local-grammar CLI contract with a second invocation against the real BAML fixture. Mutation **omit the parsed AST payload** must fail the `--ast` output assertion. This slice changes no production code or coverage gate. |
 | 55 — user grammar removal | `grammar_management/cli.py` public `grammar remove`: cancelling leaves the user's source and libraries intact; confirmed removal deletes only the user's source and compiled libraries while preserving a package grammar and leaving the pinned parser usable. | Parse the checked-in Python service fixture before and after invoking the public Click command against isolated user and package candidates. Mutation **skip user-library unlink** must fail because the installed user library remains. Extend the public grammar CLI contract test without changing production code or adding a coverage gate. |
+| 56 — grammar removal path safety | `grammar_management/cli.py` public `grammar remove`: a language containing a parent-directory component is rejected before deletion, preserving a source fixture outside the user grammar directory even with `--no-confirm`. | Parse the checked-in Python service fixture from an isolated cache directory, invoke the public Click command with `../escape`, and confirm the file remains parseable. Mutation **bypass the path-component guard** must fail because the command removes the outside directory. Extend the public grammar CLI contract test without changing production code or adding a coverage gate. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
