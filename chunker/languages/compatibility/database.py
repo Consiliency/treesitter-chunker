@@ -948,6 +948,8 @@ class CompatibilityDatabase:
         """
         try:
             backup_path = Path(backup_path)
+            if not self.db_path.exists():
+                raise FileNotFoundError(f"Database file not found: {self.db_path}")
             if backup_path.exists() and backup_path.samefile(self.db_path):
                 raise shutil.SameFileError(
                     f"Backup path is the database: {backup_path}"

@@ -168,6 +168,20 @@ def test_backup_rejects_hard_link_to_source(tmp_path: Path) -> None:
             live.backup_database(linked_path)
 
 
+def test_backup_rejects_missing_source_after_close(tmp_path: Path) -> None:
+    db_path = tmp_path / "live.db"
+    backup_path = tmp_path / "backup.db"
+    live = CompatibilityDatabase(db_path)
+    live.close()
+    db_path.unlink()
+
+    for destination in (backup_path, db_path):
+        with pytest.raises(FileNotFoundError, match="Database file not found"):
+            live.backup_database(destination)
+    assert not db_path.exists()
+    assert not backup_path.exists()
+
+
 @pytest.mark.parametrize("journal_mode", ["delete", "wal"])
 def test_backup_fails_in_bounded_time_when_destination_reader_blocks(
     tmp_path: Path,
