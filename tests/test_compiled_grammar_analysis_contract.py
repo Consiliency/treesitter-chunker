@@ -1,5 +1,6 @@
 """Compiled grammar analysis reports real artifacts and absent languages."""
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -57,3 +58,22 @@ def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) ->
     assert missing["version"] is None
     assert missing["symbols_count"] == 0
     assert missing["file_size"] == 0
+
+    report = analyzer.generate_grammar_report("baml")
+    assert "Status: Supported" in report
+    assert f"Version: {grammar.version}" in report
+    assert f"Symbols Count: {capabilities['symbols_count']}" in report
+    assert "Status: Not Supported" in analyzer.generate_grammar_report("missing")
+
+    export_path = tmp_path / "analysis.json"
+    analyzer.export_analysis_data(export_path)
+    exported = json.loads(export_path.read_text(encoding="utf-8"))
+    assert exported["metadata"]["total_languages"] == 1
+    assert exported["grammars"]["baml"]["file"] == str(grammar_path)
+    assert exported["grammars"]["baml"]["capabilities"]["supported"] is True
+    assert exported["grammars"]["baml"]["capabilities"]["symbols_count"] > 0
+    assert (
+        not load_compiled_grammar(grammar_path, "baml")
+        .parse(source)
+        .root_node.has_error
+    )
