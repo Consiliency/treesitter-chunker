@@ -24,6 +24,7 @@ CI_SMOKE_TESTS = [
     "tests/test_grammar_compatibility_contract.py",
     "tests/test_compatibility_database_reload.py",
     "tests/test_language_compatibility_records_contract.py",
+    "tests/test_compatibility_schema_json_contract.py",
     "tests/test_compiled_grammar_analysis_contract.py",
     "tests/test_git_aware_linked_worktree.py",
     "tests/test_git_aware_contract.py",
