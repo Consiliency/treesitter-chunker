@@ -100,6 +100,8 @@ def test_extensive_validation_reports_metrics_after_local_grammar_parse(
     tmp_path: Path,
 ) -> None:
     suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
+    source = (FIXTURE_DIR / "service.py").read_bytes()
+    assert not get_pack_parser("python").parse(source).root_node.has_error
     native_name = (
         f"tree_sitter_python{suffix}"
         if sys.platform == "win32"
@@ -109,7 +111,6 @@ def test_extensive_validation_reports_metrics_after_local_grammar_parse(
     assert native.exists()
     candidate = tmp_path / f"libpython{suffix}"
     shutil.copyfile(native, candidate)
-    source = (FIXTURE_DIR / "service.py").read_bytes()
     parser = load_compiled_grammar(candidate, "python")
     assert not parser.parse(source).root_node.has_error
 
