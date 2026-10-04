@@ -721,6 +721,7 @@ with the original source restored before committing.
 | 59 — grammar configuration export | `grammar_management/cli.py` public `grammar export`: JSON and YAML exports each contain the discovered local Python grammar's path and existence metadata; an empty cache returns an error without creating a file, and the isolated home remains untouched. | Parse the checked-in Python service fixture with the pinned parser, install a local candidate under a temporary grammar cache, and invoke the public Click command. Mutation **replace the exported grammar map with an empty map** must fail both format variants. Extend the public grammar CLI contract test without changing production code or adding a coverage gate. |
 | 60 — extensive grammar validation report | `grammar_management/core.py` `GrammarValidator.validate_grammar(..., EXTENSIVE)`: a real local Python grammar parses the checked-in service fixture and produces a valid extensive report with standard and large-sample counts, parse timing, file size, and process-memory readings in an isolated validation cache. The additional checks currently use the bundled parser rather than the selected candidate; repair is separate in treesitter-chunker#326. | Copy the pinned compiled Python grammar into `tmp_path`, parse the real fixture through that copy before and after validation, and inspect the exported validation result. Mutation **skip large-sample validation** must fail because its sample count disappears. Extend the public grammar validator contract test without changing production code or adding a coverage gate. |
 | 61 — compatibility schema JSON round-trip and validation | `languages/compatibility/schema.py` `CompatibilitySchema.to_dict`, `from_dict`, and `validate_schema`: a Python language/grammar pairing, compatibility rule, and breaking change survive JSON storage; the restored rule still controls compatibility level, while a rule referring to absent versions reports both missing sides. | Parse the checked-in Python service fixture with the pinned parser, serialize the schema to an isolated JSON file, reload it, and inspect selection, rule level, breaking change, and validation errors. Mutation **omit compatibility-rule restoration** must fail the restored compatibility-level assertion. Add one focused contract test without changing production code or adding a coverage gate. |
+| 62 — compatibility version boundaries | `languages/compatibility/schema.py` `LanguageVersion`, `CompatibilityRule`, and `CompatibilitySchema.get_breaking_changes`: a newer minor Python version accepts an older same-major version, rejects a later minor or another language, range and wildcard rules include their stated bounds, and breaking-change lookup includes both endpoints but excludes unrelated ranges. | Parse the checked-in Python and JavaScript service fixtures with pinned real parsers, then exercise version and rule contracts. Mutation **reverse minor-version compatibility ordering** must fail the older-version acceptance assertion. Add one focused contract test without changing production code or adding a coverage gate. |
 
 Remeasurement on clean `main` at `7e08b1f5` before slice 61 used the full
 `tests` + `spec_tests` suite with `--cov=chunker --cov-report=term-missing`:
@@ -745,6 +746,29 @@ treesitter-chunker#328, which closed treesitter-chunker#326.
 | 10 | `debug/interactive/node_explorer.py` | 156 / 289 | M |
 | 11 | `languages/compatibility/grammar_analyzer.py` | 140 / 288 | M |
 | 12 | `performance/core/performance_framework.py` | 139 / 769 | M |
+
+Remeasurement on clean `main` at `99fcc99a` before slice 62 used the full
+`tests` + `spec_tests` suite with `--cov=chunker --cov-report=term-missing`:
+3,641 passed and 4 skipped. Diagnostic coverage was 29,862 of 40,282
+statements (74.1324%), with 10,420 missed. The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice62/coverage.json`, SHA-256
+`aedd6f1127c560ab6a087595082f9d1b9608782221b17a47ab2c2c658106a7ee`.
+The schema has 105 / 407 missed statements after slice 61, down from 181.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 551 / 1,219 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 5 | `grammar_management/core.py` | 339 / 741 | H |
+| 6 | `build/builder.py` | 253 / 339 | H |
+| 7 | `cli/grammar_commands.py` | 170 / 270 | H |
+| 8 | `languages/compatibility/database.py` | 167 / 452 | H |
+| 9 | `debug/interactive/node_explorer.py` | 156 / 289 | M |
+| 10 | `languages/compatibility/grammar_analyzer.py` | 140 / 288 | M |
+| 11 | `performance/core/performance_framework.py` | 139 / 769 | M |
+| 12 | `validation/validation_framework.py` | 138 / 763 | M |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
