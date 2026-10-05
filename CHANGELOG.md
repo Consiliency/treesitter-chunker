@@ -5,8 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [5.2.0] — Grammar management and context correctness
 
+- Correct Python and JavaScript scope lookup, import bindings, symbol references,
+  and cache identity so context results follow the parsed source tree.
+- Repair grammar management configuration, discovery, validation, compatibility
+  history, and CLI error reporting. Improve cache cleanup and backup safety.
+- Improve platform-aware grammar selection and source-build handling, including
+  Linux aarch64 and versioned Conda artifact checks.
+- Preserve GraphML and SQLite export contracts and improve diagnostics for
+  parser, performance, and memory failures.
+- Add real-fixture contract coverage across grammar management, context,
+  packaging, and export behavior. Coverage work continues under
+  treesitter-chunker#69.
 - Remove the unsupported `chunker.build.cross_compile` placeholder. The main
   package continues to publish one universal wheel through the Release workflow.
 
