@@ -13,6 +13,21 @@ The grammar management system consists of several components:
 
 ## Features
 
+Public grammar cleanup can run when core cannot import or its manager fails to
+initialize. The degraded package exports `ComprehensiveGrammarCLI`,
+`grammar_cli`, `ProgressIndicator` and `GrammarStatus`; core types are absent
+when core cannot import. Normal imports retain the existing core exports. In this
+fallback mode, a directory is removed only when it and all its descendants are
+older than the requested cutoff; a fresh descendant preserves the whole entry.
+Linked entries and Windows reparse points are preserved and reported as errors.
+Fallback removal counts describe successfully removed top-level entries, and
+bytes are their regular files' logical sizes, counted only after successful
+removal. These sizes do not measure physical disk reclamation for hard links or
+sparse files. Namespace roots remain in place.
+This static check does not coordinate simultaneous writers; the transaction
+repair is tracked separately in treesitter-chunker#323. Core-mode cleanup is
+unchanged and still needs that issue's containment and accounting repairs.
+
 Grammar analysis reports `unknown` when it cannot extract a version from the
 artifact. File modification times are not grammar versions or release dates;
 without release metadata, `GrammarVersion.release_date` is `None`. Copying the
