@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- C++ standard hints use release chronology, so C++98 no longer outranks newer
+  declared standards or feature-macro requirements.
+
 - Cached parallel quality checks verify real persisted chunks and warm cache
   reuse without a load-sensitive one-second timing limit.
 

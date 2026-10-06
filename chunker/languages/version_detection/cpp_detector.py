@@ -234,7 +234,10 @@ class CppVersionDetector:
 
             if standards:
                 # Return the highest standard detected
-                max_standard = max(standards)
+                max_standard = max(
+                    standards,
+                    key=lambda standard: self.cpp_standard_map[standard]["year"],
+                )
                 logger.debug("Detected C++ standard: C++%s", max_standard)
                 return max_standard
 
@@ -299,7 +302,10 @@ class CppVersionDetector:
 
             if min_standards:
                 # Return the highest minimum standard
-                max_min_standard = max(min_standards)
+                max_min_standard = max(
+                    min_standards,
+                    key=lambda standard: self.cpp_standard_map[standard]["year"],
+                )
                 logger.debug("Mapped features to C++%s", max_min_standard)
                 return max_min_standard
 

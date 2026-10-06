@@ -34,6 +34,12 @@ parse the checked-in widget fixture and verify public detector precedence.
 Changelog records this user-visible inference repair. Existing API and source
 hint precedence stay unchanged; no new user configuration is introduced.
 
+During test writing, the existing constexpr pattern also matched the suffix
+of __cpp_if_constexpr and weakened primary inference. This independent defect
+is reproduced on unchanged main and filed as treesitter-chunker#424. Use the
+structured-bindings macro for the isolated C++17 chronology case; preserve the
+initial failure/restoration logs as excluded evidence. No keyword fix here.
+
 ## Dependencies and order
 
 Independent detector slice. Register this plan before tests/source edits,
