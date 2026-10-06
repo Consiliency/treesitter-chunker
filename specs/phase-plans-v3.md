@@ -4,7 +4,7 @@
 
 Cleanup initiative, audited 2026-10-06 against current main. This is a new roadmap; v1/v2 remain historical inputs. See [complete inventory](../docs/development/backlog-inventory-20261006.md) for every issue, draft, planning artifact and disposition.
 
-Closed fixed treesitter-chunker#124 and treesitter-chunker#107, and superseded draft treesitter-chunker#171. Added historical-record tracker treesitter-chunker#361 and review follow-ups treesitter-chunker#362, treesitter-chunker#363, treesitter-chunker#365 and treesitter-chunker#368; newly reported treesitter-chunker#367 joins SIGNATURE. The inventory has 65 issues, four held drafts and active drafts treesitter-chunker#364/treesitter-chunker#366. treesitter-chunker#69 reflects behavior/mutation acceptance.
+Closed fixed treesitter-chunker#124 and treesitter-chunker#107, and superseded draft treesitter-chunker#171. Added historical-record tracker treesitter-chunker#361 and independently tracked review findings. Accepted repairs treesitter-chunker#366, treesitter-chunker#374 and treesitter-chunker#378 closed their associated issues with evidence. The inventory has 67 open issues, four held drafts and active drafts treesitter-chunker#364, treesitter-chunker#372, treesitter-chunker#373 and treesitter-chunker#380. treesitter-chunker#69 reflects behavior/mutation acceptance.
 
 5.2.0 is published; this quality/correctness campaign does not itself require another release. Planning uses existing source, merged verification and GitHub metadata; no fresh full-suite measurement is claimed.
 
@@ -54,6 +54,7 @@ P0: Implement verified provenance and isolated post-parse acknowledgment in Gram
 
 treesitter-chunker#165, treesitter-chunker#151, treesitter-chunker#164. Single lane: one independently landable shared admission/probe implementation PR carries tests and code together, preceded by independent design review. Keep one mechanism to prevent competing trust protocols. Retain draft treesitter-chunker#159 until its replacement is accepted. Existing local artifacts without an independently approved provenance pin fail closed; document migration for embedding callers without deriving trust from discovered bytes.
 An independently landable metadata precursor in treesitter-chunker#366 covers treesitter-chunker#365 and treesitter-chunker#368: remove timestamp-derived releases/versions and prevent unknown versions satisfying numeric rules. Accept it before landing the shared probe; it does not produce the native IF gate.
+Legacy compilation-date metadata is separately repaired in treesitter-chunker#380 for treesitter-chunker#376. Accept that precursor before native implementation acceptance; rebuilding or copying an artifact cannot establish its compilation date.
 
 Load-path disposition: analyzer and legacy manager/tools are secured here. Registry ambient discovery and fallback loads, central GrammarValidator and CLI validation are explicitly unsecured until GRAMMARS integrates the shared contract. The exported low-level loader remains a caller-trusted primitive, never a discovery admission boundary. Modern installer publication and legacy replacement both belong to GRAMMARS. Serialize shared analyzer work with GATES and shared registry work with RUNTIME; unrelated RUNTIME/GATES fixes do not imply native admission protection.
 Planning depth: Detailed design.
@@ -95,6 +96,11 @@ P0: Preserve recent files already present and published during cleanup, preserve
 
 treesitter-chunker#323, treesitter-chunker#324, treesitter-chunker#177, with separately filed coupled defects treesitter-chunker#369 (public fallback import) and treesitter-chunker#370 (validation-cache lost writes/containment). Two behavior areas: cache protocol/public fallback in core.py/cli.py/config.py/__init__.py, and auxiliary isolation in testing.py. Independently land static treesitter-chunker#324/treesitter-chunker#369 first; treesitter-chunker#177 is independent; then land the complete transaction repair treesitter-chunker#323/treesitter-chunker#370. Each bounded slice has its own active detailed plan, code, tests, docs, mutations and review. No intermediate PR claims concurrent safety. Freeze actual roots, whole-entry eviction, ordered publication generations, short writer transactions, staging/rollback ownership, validation JSON merging and no-follow deletion before protocol implementation. All participants obey one actual-root protocol; copied mtime cannot establish publication age. IF-0-CLEANUP-1 requires complete implementation/interleaving/platform/review acceptance.
 Planning depth: Detailed for writer/deleter protocol; bounded plan for self-test isolation.
+The complete transaction proposal in phase-plan-v3-CLEANUP.md is held after its
+three-round design allowance; it does not authorize a transaction worker or
+produce IF-0-CLEANUP-1. Execute only the separately bounded static fallback,
+auxiliary isolation and clean_cache=False flag contracts. The last is
+treesitter-chunker#375 and is independent of transaction coordination.
 Decompose into 2 lanes, one per behavior area, with a terminal evidence reducer; each repair uses a separate bounded detailed plan before implementation.
 
 **Non-goals**
@@ -296,6 +302,7 @@ P1/P2: Correctness runs assert outcomes under representative load without single
 **Scope notes**
 
 treesitter-chunker#131, treesitter-chunker#143, treesitter-chunker#194, treesitter-chunker#195, treesitter-chunker#200, treesitter-chunker#207, treesitter-chunker#322, treesitter-chunker#342. Decompose into 2 lanes with disjoint test files: streaming/parallel/performance and config/signal/grammar probes. One issue or tightly related test cluster per PR. Profile treesitter-chunker#195 before changing its target; production timeout changes are separate from test-only fixes.
+treesitter-chunker#131 is accepted via treesitter-chunker#378; its coupled import precursor treesitter-chunker#377 is closed. The full benchmark runner's remaining obsolete API calls are treesitter-chunker#379 and require their own real-fixture contract. This partial delivery produces no whole-phase GATES acceptance.
 Planning depth: Inline per test cluster; detailed only if profiling finds product work.
 
 **Non-goals**

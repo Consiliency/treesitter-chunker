@@ -198,19 +198,6 @@ class SmartGrammarManager:
         except Exception:
             pass
 
-        # Check compilation date
-        so_file = self.build_dir / f"{language}.so"
-        if so_file.exists():
-            try:
-                stat = so_file.stat()
-                import datetime
-
-                compatibility.compilation_date = datetime.datetime.fromtimestamp(
-                    stat.st_mtime,
-                ).isoformat()
-            except Exception:
-                pass
-
         # Calculate compatibility score
         score = 0.0
         if compatibility.tree_sitter_version != "unknown":
@@ -218,8 +205,6 @@ class SmartGrammarManager:
         if compatibility.system_architecture != "unknown":
             score += 0.3
         if compatibility.os_platform != "unknown":
-            score += 0.2
-        if compatibility.compilation_date:
             score += 0.2
         compatibility.compatibility_score = score
 
