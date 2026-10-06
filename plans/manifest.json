@@ -1093,6 +1093,81 @@
     },
     {
       "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T20:24:52.067598+00:00",
+      "file": "plans/detailed-config-contention-contract-200.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-config-contention-contract-200/.dev-skills/handoffs/codex-plan-detailed/20261006-config-contention-contract-200.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T20:24:52.067598+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-config-contention-contract-200.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T20:24:52Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-config-contention-contract-200.md",
+            "run_id": "20261006-config-contention-contract-200"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-config-contention-contract-200/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "config-contention-contract-200",
+      "status": "executing",
+      "task_summary": "Observe actual concurrent configuration reads and parsed fixture results (treesitter-chunker#200)",
+      "type": "detailed",
+      "updated_at": "2026-10-06T20:24:52Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T20:07:41.161247+00:00",
+      "file": "plans/detailed-nullable-compatibility-history-135.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-nullable-compatibility-history-135/.dev-skills/handoffs/codex-plan-detailed/20261006-nullable-compatibility-history-135.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T20:07:41.161247+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-nullable-compatibility-history-135.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T20:30:36Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "accepted_prerequisite": "treesitter-chunker#404",
+            "plan_path": "plans/detailed-nullable-compatibility-history-135.md",
+            "plan_review_acceptance": "Opus/Sol R2 AGREE; Astra/Gemini R1 carried",
+            "plan_review_rounds": 2,
+            "run_id": "20261006-nullable-history-135"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-nullable-compatibility-history-135/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "nullable-compatibility-history-135",
+      "status": "executing",
+      "task_summary": "Reconcile nullable compatibility records without losing legacy rows",
+      "type": "detailed",
+      "updated_at": "2026-10-06T20:30:36Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
       "created_at": "2026-10-06T19:35:06.106028+00:00",
       "file": "plans/detailed-baml-auto-detection-402.md",
       "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-baml-auto-detection-402/.dev-skills/handoffs/codex-plan-detailed/20261006-baml-auto-detection-402.md",
