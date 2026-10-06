@@ -20,6 +20,7 @@ import tempfile
 import time
 from concurrent.futures import Future, ProcessPoolExecutor
 from contextlib import closing
+from dataclasses import asdict, replace
 from multiprocessing.util import Finalize
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -27,6 +28,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from chunker._internal.cache import ASTCache
+from chunker.core import chunk_file
 from chunker.parallel import ParallelChunker, chunk_directory_parallel
 
 
@@ -165,24 +167,56 @@ class TestWorkerPoolSizing:
         finally:
             shutil.rmtree(temp_dir)
 
-    @classmethod
-    def test_io_bound_sizing(cls, temp_directory_with_files):
-        """Test worker sizing for I/O-bound workloads with cache."""
-        chunker = ParallelChunker(
-            "python",
-            num_workers=mp.cpu_count() * 2,
-            use_cache=True,
+    @pytest.mark.parametrize("num_workers", [1, 2])
+    def test_io_bound_sizing(self, tmp_path, num_workers):
+        """Cold writes and warm reads retain actual parsed fixture payloads."""
+        fixture = (
+            Path(__file__).resolve().parent
+            / "fixtures/boundary_ir/repos/python/app/service.py"
         )
-        results1 = chunker.chunk_files_parallel(
-            list(temp_directory_with_files.glob("*.py")),
-        )
-        start_time = time.time()
-        results2 = chunker.chunk_files_parallel(
-            list(temp_directory_with_files.glob("*.py")),
-        )
-        cached_duration = time.time() - start_time
-        assert len(results1) == len(results2)
-        assert cached_duration < 1.0
+        source = fixture.read_bytes()
+        paths = [tmp_path / "first.py", tmp_path / "second.py"]
+        for path in paths:
+            path.write_bytes(source)
+        expected = {path: chunk_file(path, "python") for path in paths}
+        assert all(expected.values())
+
+        cache_dir = tmp_path / "cache"
+        chunker = ParallelChunker("python", num_workers=num_workers, use_cache=False)
+        chunker.cache = ASTCache(cache_dir=cache_dir)
+        chunker.use_cache = True
+        cold = chunker.chunk_files_parallel(paths)
+        assert set(cold) == set(paths)
+        reopened = ASTCache(cache_dir=cache_dir)
+        annotated = {}
+        for path in paths:
+            assert [asdict(chunk) for chunk in cold[path]] == [
+                asdict(chunk) for chunk in expected[path]
+            ]
+            stored = reopened.get_cached_chunks(path, "python")
+            assert stored is not None
+            assert [asdict(chunk) for chunk in stored] == [
+                asdict(chunk) for chunk in cold[path]
+            ]
+            annotated[path] = [
+                replace(
+                    chunk,
+                    metadata={
+                        **chunk.metadata,
+                        "cache_reuse_contract": path.name,
+                    },
+                )
+                for chunk in stored
+            ]
+            reopened.cache_chunks(path, "python", annotated[path])
+
+        warm = chunker.chunk_files_parallel(paths)
+        assert set(warm) == set(paths)
+        for path in paths:
+            assert [asdict(chunk) for chunk in warm[path]] == [
+                asdict(chunk) for chunk in annotated[path]
+            ]
+            assert path.read_bytes() == source
 
 
 class PermissionDeniedChunker(ParallelChunker):
