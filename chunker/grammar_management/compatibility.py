@@ -27,6 +27,7 @@ import logging
 import sqlite3
 import statistics
 import time
+from contextlib import closing
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -1877,7 +1878,7 @@ class CompatibilityDatabase:
     def _init_database(self):
         """Initialize database schema."""
         try:
-            with sqlite3.connect(self.database_path) as conn:
+            with closing(sqlite3.connect(self.database_path)) as conn, conn:
                 conn.executescript(
                     """
                     CREATE TABLE IF NOT EXISTS compatibility_results (
@@ -1937,7 +1938,7 @@ class CompatibilityDatabase:
             result: Compatibility result to store
         """
         try:
-            with sqlite3.connect(self.database_path) as conn:
+            with closing(sqlite3.connect(self.database_path)) as conn, conn:
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO compatibility_results
@@ -1989,7 +1990,7 @@ class CompatibilityDatabase:
             Cached compatibility result or None
         """
         try:
-            with sqlite3.connect(self.database_path) as conn:
+            with closing(sqlite3.connect(self.database_path)) as conn, conn:
                 cursor = conn.execute(
                     """
                     SELECT level, score, issues, warnings, breaking_changes,
@@ -2032,7 +2033,7 @@ class CompatibilityDatabase:
             result: Test result to store
         """
         try:
-            with sqlite3.connect(self.database_path) as conn:
+            with closing(sqlite3.connect(self.database_path)) as conn, conn:
                 conn.execute(
                     """
                     INSERT INTO test_results
@@ -2072,7 +2073,7 @@ class CompatibilityDatabase:
             List of historical compatibility results
         """
         try:
-            with sqlite3.connect(self.database_path) as conn:
+            with closing(sqlite3.connect(self.database_path)) as conn, conn:
                 cursor = conn.execute(
                     """
                     SELECT grammar_version, language_version, level, score,
@@ -2122,7 +2123,7 @@ class CompatibilityDatabase:
         try:
             cutoff_time = time.time() - (days * 24 * 60 * 60)
 
-            with sqlite3.connect(self.database_path) as conn:
+            with closing(sqlite3.connect(self.database_path)) as conn, conn:
                 cursor = conn.execute(
                     """
                     SELECT performance_metrics, timestamp
@@ -2210,27 +2211,28 @@ class CompatibilityDatabase:
 
             stats = {"compatibility_results": 0, "test_results": 0}
 
-            with sqlite3.connect(self.database_path) as conn:
-                # Clean compatibility results
-                cursor = conn.execute(
-                    """
-                    DELETE FROM compatibility_results WHERE timestamp < ?
-                """,
-                    (cutoff_time,),
-                )
-                stats["compatibility_results"] = cursor.rowcount
+            with closing(sqlite3.connect(self.database_path)) as conn:
+                with conn:
+                    # Clean compatibility results
+                    cursor = conn.execute(
+                        """
+                        DELETE FROM compatibility_results WHERE timestamp < ?
+                    """,
+                        (cutoff_time,),
+                    )
+                    stats["compatibility_results"] = cursor.rowcount
 
-                # Clean test results
-                cursor = conn.execute(
-                    """
-                    DELETE FROM test_results WHERE timestamp < ?
-                """,
-                    (cutoff_time,),
-                )
-                stats["test_results"] = cursor.rowcount
+                    # Clean test results
+                    cursor = conn.execute(
+                        """
+                        DELETE FROM test_results WHERE timestamp < ?
+                    """,
+                        (cutoff_time,),
+                    )
+                    stats["test_results"] = cursor.rowcount
 
-            # Vacuum after the deletions commit; SQLite rejects VACUUM in a transaction.
-            conn.execute("VACUUM")
+                # Vacuum after the deletions commit; SQLite rejects VACUUM in a transaction.
+                conn.execute("VACUUM")
             logger.info(f"Cleaned up {stats} old database records")
 
             return stats
@@ -2246,7 +2248,7 @@ class CompatibilityDatabase:
             Database usage statistics
         """
         try:
-            with sqlite3.connect(self.database_path) as conn:
+            with closing(sqlite3.connect(self.database_path)) as conn, conn:
                 stats = {}
 
                 # Count records
