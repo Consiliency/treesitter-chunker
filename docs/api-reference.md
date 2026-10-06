@@ -244,9 +244,10 @@ class ParserConfig:
 
 Configuration options for parser instances.
 
-Invalid or unsupported configuration raises `ParserConfigError` before factory
-language lookup, including requests for unavailable languages. Omit unsupported
-options when requesting on-demand grammar acquisition.
+Invalid option types, negative timeouts and unsupported timeout/logger requests
+raise `ParserConfigError` before factory language lookup, including requests for
+unavailable languages. Omit unsupported options when requesting on-demand grammar
+acquisition. Range elements are checked when Tree-sitter applies the ranges.
 
 **Attributes:**
 - `timeout_ms`: Applied only on runtimes exposing the legacy timeout API.

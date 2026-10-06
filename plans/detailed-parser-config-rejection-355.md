@@ -66,8 +66,10 @@ to the compatibility branch.
   outside ParserConfig.logger. CHANGELOG.md records this observable compatibility
   change. This plan and its own typed plans/manifest.json row are owned.
 
-The docs state that invalid/unsupported configuration takes precedence over
-factory language lookup. No fetch/build mocks or native-loading guarantee is
+The docs state that invalid option types, negative timeouts and unsupported
+timeout/logger requests take precedence over factory language lookup; range
+element validation remains Tree-sitter's application-time check. No fetch/build
+mocks or native-loading guarantee is
 introduced by the real unavailable-language request cases.
 
 ## Dependencies and order
