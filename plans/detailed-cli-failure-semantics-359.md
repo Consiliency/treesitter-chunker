@@ -32,6 +32,11 @@ contract in tests/test_iface_cli_detection.py, which stays intact.
   Progress uses stderr so structured stdout stays clean without quiet too.
   Catch Exception at these per-input boundaries, including real decoding and
   I/O failures, without catching BaseException. No new error envelope or flags.
+  Round-one reconciliation puts stdin decoding inside the handler, renders
+  input/exception text literally with wrapping disabled, sends load_config
+  warnings to stderr, and lets an empty selected batch reach its existing
+  structured serializer. Batch usage diagnostics also use stderr. Malformed
+  config still falls back as before; its warning is not converted to an error.
 - tests/test_cli.py: real subprocesses through the installed entrypoint, real
   checked-in Python source, no parser/worker/exception mocks. Cover unsupported
   language for file, stdin and batch in JSON/JSONL, with quiet and without;
@@ -40,6 +45,12 @@ contract in tests/test_iface_cli_detection.py, which stays intact.
   parallel batches; successful control and successfully empty Python input.
   Compare successful nonempty content with the actual fixture and assert no
   diagnostics in stdout. Parse every JSONL line strictly; empty JSONL is valid.
+  Add real bracketed-language/path, strict invalid UTF-8 stdin, malformed-config
+  warning and empty-batch subprocess cases. Write BAML fixture bytes unchanged
+  so Windows CRLF translation cannot invalidate the content comparison.
+- .github/workflows/test.yml: install the existing pinned optional baml extra
+  in hosted platform environments so the real mixed BAML cases actually run.
+  This is a verification dependency, not a parser pin or native admission change.
 - docs/cli-reference.md and CHANGELOG.md: replace the known limitation with
   status/output migration and explicit partial-batch policy. Unmapped extensions
   still warn and skip; failures mean selected inputs that actually raise.
@@ -76,6 +87,8 @@ Do not change native admission, pins, consumer locks, ledgers or checkpoints.
 Named mutations: report_failed_extraction_as_success removes failure exits;
 emit_extraction_diagnostics_on_stdout redirects extraction diagnostics. Each
 must fail real subprocess assertions and restore the complete focused batch.
+Also kill read_stdin_outside_handler and emit_config_warning_on_stdout to
+cover the independently reproduced round-one input/output failures.
 Windows runs the changed cases and standing preflight; exact-head CI confirms
 Linux/macOS/Windows. External reviews/platform records are supplementary manual
 evidence, not a fabricated runner amendment or formal IF acceptance.

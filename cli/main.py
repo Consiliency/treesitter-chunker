@@ -239,8 +239,12 @@ def load_config(
                 tomllib.TOMLDecodeError,
             ) as e:
                 if not os.environ.get("CHUNKER_QUIET"):
-                    console.print(
-                        f"[yellow]Warning: Failed to load config from {config_file}: {e}[/yellow]",
+                    stderr_console.print(
+                        f"Warning: Failed to load config from {config_file}: {e}",
+                        style="yellow",
+                        markup=False,
+                        highlight=False,
+                        soft_wrap=True,
                     )
 
     return config
@@ -403,8 +407,6 @@ def chunk(
     failed = False
     # Check input source
     if stdin:
-        # Read from stdin
-        content = sys.stdin.read()
         if not language:
             stderr_console.print(
                 "[red]Error: --lang is required when reading from stdin[/red]",
@@ -413,6 +415,7 @@ def chunk(
 
         # Use chunk_text from the simplified API
         try:
+            content = sys.stdin.read()
             chunks = chunk_text(content, language)
             results = []
             # Apply filters
@@ -450,7 +453,13 @@ def chunk(
                     },
                 )
         except Exception as e:
-            stderr_console.print(f"[red]Error processing stdin: {e}[/red]")
+            stderr_console.print(
+                f"Error processing stdin: {e}",
+                style="red",
+                markup=False,
+                highlight=False,
+                soft_wrap=True,
+            )
             results = []
             failed = True
     else:
@@ -481,7 +490,13 @@ def chunk(
         try:
             results = process_file(file_path, language, types_list, min_size, max_size)
         except Exception as e:
-            stderr_console.print(f"[red]Error processing {file_path}: {e}[/red]")
+            stderr_console.print(
+                f"Error processing {file_path}: {e}",
+                style="red",
+                markup=False,
+                highlight=False,
+                soft_wrap=True,
+            )
             failed = True
 
     # Handle output format
@@ -705,14 +720,13 @@ def batch(
                         )
                     )
     else:
-        console.print(
+        stderr_console.print(
             "[red]Error: No files specified. Use paths, --pattern, or --stdin[/red]",
         )
         raise typer.Exit(1)
 
-    if not files_to_process:
-        console.print("[yellow]No files to process[/yellow]")
-        return
+    if not files_to_process and not quiet:
+        stderr_console.print("[yellow]No files to process[/yellow]")
 
     # Process files
     all_results = []
@@ -732,7 +746,11 @@ def batch(
                     all_results.extend(future.result())
                 except Exception as e:
                     stderr_console.print(
-                        f"[red]Error processing {futures[future]}: {e}[/red]"
+                        f"Error processing {futures[future]}: {e}",
+                        style="red",
+                        markup=False,
+                        highlight=False,
+                        soft_wrap=True,
                     )
                     failed = True
     else:
@@ -759,7 +777,11 @@ def batch(
                         all_results.extend(future.result())
                     except Exception as e:
                         stderr_console.print(
-                            f"[red]Error processing {futures[future]}: {e}[/red]"
+                            f"Error processing {futures[future]}: {e}",
+                            style="red",
+                            markup=False,
+                            highlight=False,
+                            soft_wrap=True,
                         )
                         failed = True
                     progress.advance(task)
