@@ -406,6 +406,16 @@ project_root/
 
 ### Programmatic Access
 
+The separate Python `GrammarManager.remove_grammar(language, clean_cache=False)`
+option retains that language's download and build cache while removing its
+installed library and installation metadata. The default `True` cleans both
+caches. `GrammarInstaller.remove_grammar` keeps its positional
+`clean_dependencies` argument; cache control is a separate keyword-only
+`clean_cache` argument. Dependency cleanup currently logs its intent. These
+options do not coordinate concurrent cache writers and deletion. The CLI command
+above does not expose this manager option; the separate programmatic
+`ComprehensiveGrammarCLI` flag remains tracked in treesitter-chunker#384.
+
 ```python
 from chunker._internal.user_grammar_tools import UserGrammarTools
 from pathlib import Path
