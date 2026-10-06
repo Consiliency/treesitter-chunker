@@ -49,7 +49,9 @@ lookup/store behavior without changing the production cache or its identity.
   content-hash identity and actual reported counts. A second real input entry
   in the supplied private cache must survive the comprehensive cold loops.
   Private HOME/USERPROFILE must acquire no default cache. Default demo and
-  comprehensive roots are disposable, explicit roots remain reopenable.
+  comprehensive roots are disposable, explicit roots remain reopenable for
+  direct method calls. Generic run_all teardown treats custom setup paths as
+  disposable; it is outside this direct-method retention contract.
 - Kill import_unexported_parallel_helper and omit_example_cache_population,
   the latter separately in both modules. Intended tests must fail; restore exact
   bytes and pass the focused batch after each mutation. Also kill
