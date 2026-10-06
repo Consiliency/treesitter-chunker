@@ -28,6 +28,343 @@ def trusted_artifacts(path: Path) -> dict[str, dict[str, str]]:
     return {"baml": {"sha256": sha256(path.read_bytes()).hexdigest()}}
 
 
+def _compile_probe_fixture(tmp_path: Path, sources: list[Path]) -> Path:
+    from setuptools._distutils.compilers.C.base import new_compiler
+    from setuptools._distutils.sysconfig import customize_compiler
+
+    compiler = new_compiler()
+    customize_compiler(compiler)
+    suffix = (
+        ".dll"
+        if sys.platform == "win32"
+        else ".dylib" if sys.platform == "darwin" else ".so"
+    )
+    library = tmp_path / f"probe{suffix}"
+    objects = compiler.compile(
+        [str(source) for source in sources],
+        output_dir=str(tmp_path / "objects"),
+        include_dirs=[str(SOURCE)],
+    )
+    compiler.link_shared_object(objects, str(library))
+    assert library.is_file()
+    return library
+
+
+def test_portable_probe_parses_real_baml_and_releases_snapshot(tmp_path: Path) -> None:
+    from chunker.grammar.integrity import probe_native_grammar
+
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+    snapshots = []
+
+    def inspect(snapshot: Path) -> None:
+        assert snapshot != library
+        assert snapshot.read_bytes() == library.read_bytes()
+        snapshots.append(snapshot)
+
+    result = probe_native_grammar(
+        library,
+        "baml",
+        provenance=trusted_artifacts(library)["baml"],
+        sample=FIXTURE.read_bytes(),
+        inspect_artifact=inspect,
+    )
+    assert result.supported and result.reason == "ok"
+    assert result.artifact_sha256 == sha256(library.read_bytes()).hexdigest()
+    assert len(snapshots) == 1 and not snapshots[0].exists()
+    assert (
+        not load_compiled_grammar(library, "baml")
+        .parse(FIXTURE.read_bytes())
+        .root_node.has_error
+    )
+
+
+@pytest.mark.parametrize(
+    ("action", "reason"),
+    [
+        ("exit(0);", "ack_missing"),
+        ("_exit(0);", "ack_missing"),
+        ("abort();", "child_failed"),
+        ("PAUSE();", "timeout"),
+    ],
+)
+def test_native_constructor_failure_never_admits_grammar(
+    tmp_path: Path, monkeypatch, action: str, reason: str
+) -> None:
+    from chunker.grammar.integrity import probe_native_grammar
+
+    sentinel = tmp_path / "entered"
+    monkeypatch.setenv("CHUNKER_TEST_NATIVE_SENTINEL", str(sentinel))
+    code = tmp_path / "constructor.c"
+    code.write_text(
+        """
+#include <stdio.h>
+#include <stdlib.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <process.h>
+#define PAUSE() Sleep(60000)
+#else
+#include <unistd.h>
+#define PAUSE() sleep(60)
+#endif
+static void enter(void) {
+    FILE *marker = fopen(getenv("CHUNKER_TEST_NATIVE_SENTINEL"), "wb");
+    if (marker) { fputs("entered", marker); fclose(marker); }
+    ACTION
+}
+#ifdef _WIN32
+BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
+    if (reason == DLL_PROCESS_ATTACH) enter();
+    return TRUE;
+}
+#else
+__attribute__((constructor)) static void start(void) { enter(); }
+#endif
+""".replace(
+            "ACTION", action
+        ),
+        encoding="utf-8",
+    )
+    library = _compile_probe_fixture(tmp_path, [code])
+    assert probe_native_grammar(library, "baml", provenance=None).reason == "untrusted"
+    assert not sentinel.exists()
+    result = probe_native_grammar(
+        library,
+        "baml",
+        provenance=trusted_artifacts(library)["baml"],
+        timeout=2,
+    )
+    assert sentinel.read_bytes() == b"entered"
+    assert not result.supported and result.reason == reason
+    assert result.artifact_sha256 is None
+    renamed = library.with_name("released" + library.suffix)
+    library.rename(renamed)
+    renamed.unlink()
+
+
+@pytest.mark.parametrize("fault", ["duplicate", "nonce", "malformed", "numeric_flags"])
+def test_probe_rejects_altered_real_child_acknowledgment(
+    tmp_path: Path, monkeypatch, fault: str
+) -> None:
+    from chunker.grammar import integrity
+
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+    original = integrity._read_child
+    calls = []
+
+    def alter(*args):
+        rc, stdout, stderr, timed_out, overflow = original(*args)
+        assert rc == 0 and not timed_out and not overflow
+        calls.append(json.loads(stdout))
+        if fault == "duplicate":
+            stdout = stdout.rstrip()[:-1] + b', "loader_returned": true}'
+        elif fault in {"nonce", "numeric_flags"}:
+            record = json.loads(stdout)
+            if fault == "nonce":
+                record["nonce"] = "wrong"
+            else:
+                record["loader_returned"] = record["parse_returned"] = 1
+            stdout = json.dumps(record).encode()
+        else:
+            stdout = b"not JSON"
+        return rc, stdout, stderr, timed_out, overflow
+
+    monkeypatch.setattr(integrity, "_read_child", alter)
+    result = integrity.probe_native_grammar(
+        library,
+        "baml",
+        provenance=trusted_artifacts(library)["baml"],
+        sample=FIXTURE.read_bytes(),
+    )
+    assert len(calls) == 1 and calls[0]["parse_returned"]
+    assert not result.supported and result.reason == "ack_invalid"
+    assert result.artifact_sha256 is None
+
+
+def test_probe_ignores_candidate_pythonpath_shadow(tmp_path: Path, monkeypatch) -> None:
+    from chunker.grammar.integrity import probe_native_grammar
+
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+    sentinel = tmp_path / "shadow-entered"
+    (tmp_path / "sitecustomize.py").write_text(
+        f"from pathlib import Path; Path({str(sentinel)!r}).write_text('entered')",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("PYTHONPATH", str(tmp_path))
+    result = probe_native_grammar(
+        library,
+        "baml",
+        provenance=trusted_artifacts(library)["baml"],
+        sample=FIXTURE.read_bytes(),
+    )
+    assert result.supported
+    assert not sentinel.exists()
+    control = subprocess.run(
+        [sys.executable, "-c", "pass"], cwd=tmp_path, check=False, capture_output=True
+    )
+    assert control.returncode == 0 and sentinel.read_text() == "entered"
+
+
+def test_probe_inspects_snapshot_after_original_replacement(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from chunker.grammar import integrity
+
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+    original_bytes = library.read_bytes()
+    expected = trusted_artifacts(library)["baml"]
+    original = integrity._read_child
+    captured = []
+
+    def replace(*args):
+        result = original(*args)
+        assert result[0] == 0
+        replacement = library.with_name("replacement" + library.suffix)
+        replacement.write_bytes(b"replacement bytes")
+        replacement.replace(library)
+        return result
+
+    monkeypatch.setattr(integrity, "_read_child", replace)
+    result = integrity.probe_native_grammar(
+        library,
+        "baml",
+        provenance=expected,
+        sample=FIXTURE.read_bytes(),
+        inspect_artifact=lambda path: captured.append(path.read_bytes()),
+    )
+    assert result.supported and captured == [original_bytes]
+    assert result.artifact_sha256 == expected["sha256"]
+    rejected = integrity.probe_native_grammar(library, "baml", provenance=expected)
+    assert not rejected.supported and rejected.reason == "integrity_mismatch"
+
+
+def test_probe_loads_snapshot_when_original_changes_before_child(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from chunker.grammar import integrity
+
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+    expected = trusted_artifacts(library)["baml"]
+    real_child = integrity._read_child
+    entered = []
+
+    def replace_then_load(command, cwd, timeout):
+        library.write_bytes(b"replaced original")
+        entered.append(True)
+        return real_child(command, cwd, timeout)
+
+    monkeypatch.setattr(integrity, "_read_child", replace_then_load)
+    result = integrity.probe_native_grammar(
+        library, "baml", provenance=expected, sample=FIXTURE.read_bytes()
+    )
+    assert entered == [True]
+    assert result.supported and result.artifact_sha256 == expected["sha256"]
+
+
+@pytest.mark.parametrize("consumer", ["analyzer", "manager"])
+def test_native_consumers_revalidate_same_stat_replacement_and_removal(
+    tmp_path: Path, consumer: str
+) -> None:
+    from chunker._internal.grammar_management import SmartGrammarManager
+
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+    grammar = tmp_path / "baml.so"
+    grammar.write_bytes(library.read_bytes())
+    pins = trusted_artifacts(grammar)
+    if consumer == "analyzer":
+        owner = GrammarAnalyzer(tmp_path, trusted_artifacts=pins)
+
+        def supported():
+            return owner.get_grammar_capabilities("baml")["supported"]
+
+    else:
+        owner = SmartGrammarManager(
+            tmp_path, tmp_path / "sources", trusted_artifacts=pins
+        )
+
+        def supported():
+            return owner.diagnose_grammar_issues("baml").status == "healthy"
+
+    assert supported()
+    initial_stat = grammar.stat()
+    original = grammar.read_bytes()
+    grammar.write_bytes(b"x" * len(original))
+    os.utime(grammar, ns=(initial_stat.st_atime_ns, initial_stat.st_mtime_ns))
+    assert grammar.stat().st_size == initial_stat.st_size
+    assert grammar.stat().st_mtime_ns == initial_stat.st_mtime_ns
+    assert not supported()
+    grammar.write_bytes(original)
+    assert supported()
+    owner.trusted_artifacts["baml"]["sha256"] = "0" * 64
+    assert not supported()
+    owner.trusted_artifacts = pins
+    assert supported()
+    grammar.unlink()
+    assert not supported()
+
+
+@pytest.mark.parametrize("artifact_state", ["missing", "stale_pin"])
+def test_unchanged_real_repository_update_validates_installed_artifact(
+    tmp_path: Path, monkeypatch, artifact_state: str
+) -> None:
+    from chunker._internal.user_grammar_tools import UserGrammarTools
+    from chunker.grammar.integrity import probe_native_grammar
+
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+    grammar = tmp_path / "baml.so"
+    grammar.write_bytes(library.read_bytes())
+    pins = trusted_artifacts(grammar)
+    assert probe_native_grammar(
+        grammar, "baml", provenance=pins["baml"], sample=FIXTURE.read_bytes()
+    ).supported
+    sources = tmp_path / "sources"
+    checkout = sources / "tree-sitter-baml"
+    checkout.mkdir(parents=True)
+    (checkout / "declarations.baml").write_bytes(FIXTURE.read_bytes())
+    real_run = subprocess.run
+    for args in (
+        ["git", "init", "-b", "main"],
+        ["git", "add", "declarations.baml"],
+        [
+            "git",
+            "-c",
+            "user.name=Native Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-m",
+            "fixture",
+        ],
+        [
+            "git",
+            "remote",
+            "add",
+            "origin",
+            "https://github.com/Consiliency/native-fixture.git",
+        ],
+    ):
+        real_run(args, cwd=checkout, check=True, capture_output=True)
+
+    def offline_fetch(args, **kwargs):
+        if args == ["git", "fetch", "origin"]:
+            args = ["git", "fetch", str(checkout), "main:refs/remotes/origin/main"]
+        return real_run(args, **kwargs)
+
+    monkeypatch.setattr(
+        "chunker._internal.user_grammar_tools.subprocess.run", offline_fetch
+    )
+    tools = UserGrammarTools(tmp_path, sources, trusted_artifacts=pins)
+    if artifact_state == "missing":
+        grammar.unlink()
+    else:
+        grammar.write_bytes(b"x" * grammar.stat().st_size)
+    result = tools.update_grammar("baml")
+    assert result["status"] == "warning", result
+    assert "Fetched latest changes" in result["steps_completed"]
+    assert any("already up to date" in warning for warning in result["warnings"])
+    assert any("failed native admission" in warning for warning in result["warnings"])
+
+
 @pytest.mark.skipif(sys.platform != "linux", reason="Analyzer inspects ELF .so symbols")
 def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) -> None:
     grammar_path = tmp_path / "baml.so"

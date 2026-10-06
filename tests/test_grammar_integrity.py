@@ -1,6 +1,7 @@
 """Regression tests for grammar artifact provenance."""
 
 import hashlib
+import sys
 from pathlib import Path
 
 import pytest
@@ -8,9 +9,40 @@ import pytest
 from chunker.grammar.download import GrammarDownloadManager
 from chunker.grammar.integrity import (
     ArtifactIntegrityError,
+    _read_child,
     probe_native_grammar,
     verify_artifact,
 )
+
+
+def test_child_timeout_still_applies_after_pipes_close(tmp_path):
+    code = "import os,time; os.close(1); os.close(2); time.sleep(60)"
+    returncode, stdout, stderr, timed_out, overflow = _read_child(
+        [sys.executable, "-I", "-c", code], tmp_path, 1
+    )
+    assert returncode != 0
+    assert timed_out and not overflow
+    assert stdout == stderr == b""
+
+
+@pytest.mark.parametrize(("descriptor", "limit"), [(1, 16384), (2, 65536)])
+def test_child_diagnostic_overflow_is_bounded(tmp_path, descriptor, limit):
+    code = f"import os,time; os.write({descriptor}, b'x' * 131072); time.sleep(60)"
+    returncode, stdout, stderr, timed_out, overflow = _read_child(
+        [sys.executable, "-I", "-c", code], tmp_path, 5
+    )
+    assert returncode != 0
+    assert overflow and not timed_out
+    assert len(stdout if descriptor == 1 else stderr) <= limit
+
+
+def test_child_closed_pipes_do_not_hide_normal_completion(tmp_path):
+    result = _read_child(
+        [sys.executable, "-I", "-c", "import os; os.close(1); os.close(2)"],
+        tmp_path,
+        5,
+    )
+    assert result == (0, b"", b"", False, False)
 
 
 def test_verify_artifact_rejects_checksum_mismatch(tmp_path):

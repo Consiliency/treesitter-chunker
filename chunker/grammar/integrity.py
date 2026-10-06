@@ -8,7 +8,6 @@ import hmac
 import json
 import os
 import re
-import selectors
 import stat
 import subprocess
 import sys
@@ -110,9 +109,7 @@ def _read_child(
     )
     assert process.stdout is not None
     assert process.stderr is not None
-    selector = selectors.DefaultSelector()
-    selector.register(process.stdout, selectors.EVENT_READ, "stdout")
-    selector.register(process.stderr, selectors.EVENT_READ, "stderr")
+    pipes = {"stdout": process.stdout, "stderr": process.stderr}
     streams = {"stdout": bytearray(), "stderr": bytearray()}
     limits = {"stdout": _ACK_LIMIT, "stderr": _DIAGNOSTIC_LIMIT}
     timed_out = False
@@ -121,21 +118,67 @@ def _read_child(
     deadline = time.monotonic() + timeout
 
     try:
-        while selector.get_map():
+        if sys.platform == "win32":
+            import ctypes
+            import msvcrt
+            from ctypes import wintypes
+
+            peek = ctypes.WinDLL("kernel32", use_last_error=True).PeekNamedPipe
+            peek.argtypes = [
+                wintypes.HANDLE,
+                wintypes.LPVOID,
+                wintypes.DWORD,
+                wintypes.LPVOID,
+                ctypes.POINTER(wintypes.DWORD),
+                wintypes.LPVOID,
+            ]
+            peek.restype = wintypes.BOOL
+        else:
+            for pipe in pipes.values():
+                os.set_blocking(pipe.fileno(), False)
+
+        while True:
             remaining = deadline - time.monotonic()
-            if remaining <= 0 and not terminated:
+            if process.poll() is not None and (overflow or remaining <= 0):
+                break
+            if remaining <= 0 and not terminated and process.poll() is None:
                 timed_out = True
                 process.terminate()
                 terminated = True
                 deadline = time.monotonic() + 1
-                remaining = 1
-            events = selector.select(max(0, min(remaining, 0.1)))
-            for key, _ in events:
-                data = os.read(key.fd, 8192)
-                if not data:
-                    selector.unregister(key.fileobj)
+            if terminated and time.monotonic() >= deadline and process.poll() is None:
+                process.kill()
+                process.wait()
+            read_any = False
+            for name, pipe in list(pipes.items()):
+                if sys.platform == "win32":
+                    available = wintypes.DWORD()
+                    if not peek(
+                        msvcrt.get_osfhandle(pipe.fileno()),
+                        None,
+                        0,
+                        None,
+                        ctypes.byref(available),
+                        None,
+                    ):
+                        error = ctypes.get_last_error()
+                        if error in {109, 233}:
+                            del pipes[name]
+                            continue
+                        raise ctypes.WinError(error)
+                    if not available.value:
+                        continue
+                    size = min(8192, available.value)
+                else:
+                    size = 8192
+                try:
+                    data = os.read(pipe.fileno(), size)
+                except BlockingIOError:
                     continue
-                name = key.data
+                if not data:
+                    del pipes[name]
+                    continue
+                read_any = True
                 if len(streams[name]) + len(data) > limits[name]:
                     overflow = True
                     if not terminated:
@@ -144,20 +187,10 @@ def _read_child(
                         deadline = time.monotonic() + 1
                     continue
                 streams[name].extend(data)
-            if terminated and time.monotonic() >= deadline and process.poll() is None:
-                process.kill()
-                deadline = time.monotonic() + 1
-            if process.poll() is not None and not events:
-                for key in list(selector.get_map().values()):
-                    data = os.read(key.fd, 8192)
-                    if data:
-                        name = key.data
-                        if len(streams[name]) + len(data) <= limits[name]:
-                            streams[name].extend(data)
-                        else:
-                            overflow = True
-                    else:
-                        selector.unregister(key.fileobj)
+            if process.poll() is not None and not read_any:
+                break
+            if not read_any:
+                time.sleep(0.01)
         return (
             process.wait(),
             bytes(streams["stdout"]),
@@ -166,7 +199,6 @@ def _read_child(
             overflow,
         )
     finally:
-        selector.close()
         if process.poll() is None:
             process.kill()
             process.wait()
@@ -201,7 +233,7 @@ def probe_native_grammar(
         return _failure("timeout")
 
     try:
-        source_fd = os.open(candidate, os.O_RDONLY)
+        source_fd = os.open(candidate, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
     except FileNotFoundError:
         return _failure("missing")
     except OSError:
@@ -260,18 +292,28 @@ def probe_native_grammar(
                     base64.b64encode(sample).decode("ascii"),
                     nonce,
                 ]
-                returncode, stdout, _stderr, timed_out, overflow = _read_child(
-                    command, snapshot_dir, timeout
-                )
+                try:
+                    returncode, stdout, _stderr, timed_out, overflow = _read_child(
+                        command, snapshot_dir, timeout
+                    )
+                except OSError:
+                    return _failure("child_failed")
                 if timed_out:
                     return _failure("timeout")
                 if overflow:
                     return _failure("ack_invalid")
                 try:
-                    acknowledgment = json.loads(stdout.decode("utf-8"))
+                    pairs = json.loads(stdout.decode("utf-8"), object_pairs_hook=list)
                 except (UnicodeDecodeError, json.JSONDecodeError):
+                    if returncode != 0:
+                        return _failure("child_failed")
                     return _failure("ack_missing" if not stdout else "ack_invalid")
-                if not isinstance(acknowledgment, dict):
+                if not isinstance(pairs, list) or not all(
+                    isinstance(pair, tuple) and len(pair) == 2 for pair in pairs
+                ):
+                    return _failure("ack_invalid")
+                acknowledgment = dict(pairs)
+                if len(acknowledgment) != len(pairs):
                     return _failure("ack_invalid")
                 common = {
                     "schema": _ACK_SCHEMA,
@@ -292,7 +334,11 @@ def probe_native_grammar(
                     "loader_returned": True,
                     "parse_returned": True,
                 }
-                if acknowledgment != expected_acknowledgment:
+                if (
+                    acknowledgment != expected_acknowledgment
+                    or acknowledgment.get("loader_returned") is not True
+                    or acknowledgment.get("parse_returned") is not True
+                ):
                     return _failure("ack_invalid")
                 if not hmac.compare_digest(
                     hashlib.sha256(snapshot.read_bytes()).hexdigest(), digest

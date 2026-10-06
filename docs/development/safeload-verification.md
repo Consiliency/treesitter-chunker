@@ -1,5 +1,7 @@
 # SAFELOAD verification record
 
+Maintainer/internal documentation. This page is intentionally omitted from public navigation.
+
 Status: local implementation evidence only; `IF-0-SAFELOAD-1` is not produced
 by this record.
 
