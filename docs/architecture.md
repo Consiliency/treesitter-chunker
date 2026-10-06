@@ -123,9 +123,9 @@ pins or build untrusted grammars to bypass compatibility checks.
 
 Custom parser ranges require `tree_sitter.Range` objects with source byte
 offsets and matching points; see [user guide](user-guide.md#custom-parser-configuration).
-The legacy `timeout_ms` and logger settings are not applied on the pinned
-runtime; this limitation is tracked in
-[treesitter-chunker#355](https://github.com/Consiliency/treesitter-chunker/issues/355).
+The pinned runtime rejects explicit `timeout_ms` values and non-`None` parser
+logger settings with `ParserConfigError`. Omit those options and configure Python
+application logging separately. This parser does not provide a parse deadline.
 
 ## Security Considerations
 
