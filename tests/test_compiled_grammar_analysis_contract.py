@@ -56,7 +56,7 @@ def _compile_probe_fixture(tmp_path: Path, sources: list[Path]) -> Path:
         ).strip()
         vcvars = Path(installation) / "VC/Auxiliary/Build/vcvars64.bat"
         environment = subprocess.check_output(
-            ["cmd", "/d", "/s", "/c", f'""{vcvars}" >nul && set"'],
+            f'cmd.exe /d /s /c ""{vcvars}" >nul && set"',
             text=True,
         )
         compiler_env = {
