@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: SAFELOAD
 roadmap: specs/phase-plans-v3.md
-roadmap_sha256: 3adf700dd9c28440b04071e104039cc497b07699fa812dc55a6a3e2e10cde15a
+roadmap_sha256: 997648400ec040bfa6fbf1581c4f28ef1f82c7b786e133ea6771edea15780544
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_grammar_integrity.py tests/test_compiled_grammar_analysis_contract.py tests/test_grammar_management.py -q"
 ---
