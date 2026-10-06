@@ -28,9 +28,9 @@ Merged treesitter-chunker#383 resolves treesitter-chunker#382 by normalizing
 phase-only metadata fields while preserving their historical detailed values.
 All manifest entries validate; no transaction IF was accepted.
 Separate remaining findings are treesitter-chunker#384 (CLI cache-option wiring)
-and treesitter-chunker#386 (Windows open temporary-archive cleanup). Native local
-verification has passed, but final publication/platform/review acceptance remains
-pending. Publication encountered the ambiguous-push diagnostic loss tracked by
+and treesitter-chunker#386 (Windows open temporary-archive cleanup). Native final
+publication/platform/review acceptance remains pending. Publication encountered
+the ambiguous-push diagnostic loss tracked by
 [agent-harness#910](https://github.com/Consiliency/agent-harness/issues/910#issuecomment-6016950283);
 supported authority recovery requires an explicit operator attestation. No broker
 state or protected train ledger was manually edited.
@@ -55,13 +55,13 @@ already treesitter-chunker#322; no duplicate was filed.
 | treesitter-chunker#128 | Kept open; completed portions identified | [Reconciliation](https://github.com/Consiliency/treesitter-chunker/issues/128#issuecomment-6011568804); treesitter-chunker#218 fixed signature/options, treesitter-chunker#219 fixed bulk filenames, but wrong-library validation remains. |
 | treesitter-chunker#361 | New record-reconciliation tracker | Exposes stale plan status and residuals missing from the issue queue; audit/triage only. |
 
-Counts: initially 61 issues/five drafts; two issues and one superseded draft closed, one previously untracked records issue opened. The initial inventory contained 60 issues. Review added treesitter-chunker#362, treesitter-chunker#363, treesitter-chunker#365 and treesitter-chunker#368; newly reported treesitter-chunker#367 is also enrolled. **65 open issues, four held drafts and active drafts treesitter-chunker#364/treesitter-chunker#366 remain.** No item was closed merely for age or overlapping scope.
+Prior planning checkpoint: initially 61 issues/five drafts; two issues and one superseded draft closed, one previously untracked records issue opened. The initial inventory contained 60 issues. Review added treesitter-chunker#362, treesitter-chunker#363, treesitter-chunker#365 and treesitter-chunker#368; newly reported treesitter-chunker#367 was also enrolled. That checkpoint had **65 open issues, four held drafts and active drafts treesitter-chunker#364/treesitter-chunker#366**. No item was closed merely for age or overlapping scope.
 
 Execution update: treesitter-chunker#366 merged at a74e58f2 with accepted metadata/mutation evidence and green changed-head Linux/macOS/Windows checks. Commented and closed treesitter-chunker#365 and treesitter-chunker#368; the clean repair worktree is pruned. CLEANUP review reproduced and separately filed treesitter-chunker#369 and treesitter-chunker#370. Live backlog remains 65 open issues; the two accepted precursors are moved out of the open map below. The native implementation runs against its frozen reviewed input in a separate worktree; downstream plan amendments do not edit that active runner state.
 
 ## Remaining draft PRs
 
-Further execution exposed and filed deployment-notice policy drift as treesitter-chunker#371, then resolved it in separately merged treesitter-chunker#374. Its nine hygiene tests and strict docs build passed, and hosted Linux/macOS/Windows checks were green. The clean worktree was pruned. The open map returns to 65 issues. Active repair drafts are treesitter-chunker#372 (native admission) and treesitter-chunker#373 (static fallback).
+Prior execution checkpoint: deployment-notice policy drift was filed as treesitter-chunker#371, then resolved in separately merged treesitter-chunker#374. Its nine hygiene tests and strict docs build passed, and hosted Linux/macOS/Windows checks were green. The clean worktree was pruned. At that checkpoint the open map returned to 65 issues, and active repair drafts were treesitter-chunker#372 (native admission) and treesitter-chunker#373 (static fallback).
 
 CLEANUP transaction design remains unaccepted after three review rounds: Gemini agrees; Opus, Astra and Sol identify blocking recovery, lifetime, containment and dispatch gaps. The full proposal is preserved in immutable history and the operator evidence archive, and its implementation scope is removed from active plan intake. phase-plan-v3-CLEANUP.md is now a non-executable held record with an orphaned manifest lifecycle. Static fallback and auxiliary isolation proceed only through their separate bounded plans. No fourth design round or IF-0-CLEANUP-1 acceptance is claimed.
 

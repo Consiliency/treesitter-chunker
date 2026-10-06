@@ -348,12 +348,16 @@
             "diagnostic": "accepted",
             "dirty_path_classification": "clean; preserved evidence outside merged worktree",
             "evidence_archive": "/home/viperjuice/workspace/evidence/treesitter-chunker/static-fallback-324/ba0ac7c0",
+            "final_integration_artifact_path": "/home/viperjuice/workspace/evidence/treesitter-chunker/static-fallback-324/ba0ac7c0/final-integration-verification.json",
             "pr": "treesitter-chunker#373",
             "reconciled_after_merge": true,
             "reflection_metadata": {
               "recorded": true,
               "skill": "codex-execute-detailed"
-            }
+            },
+            "verification_artifact_path": "/home/viperjuice/workspace/evidence/treesitter-chunker/static-fallback-324/ba0ac7c0/runner-runs/20261006-static-integrated-ba0ac/verification.json",
+            "verification_head": "ba0ac7c007caeb52d5e9a60af58ebdf0548d6110",
+            "verification_status": "passed"
           },
           "transition": "completed"
         }
@@ -447,7 +451,10 @@
             "reflection_metadata": {
               "recorded": true,
               "skill": "codex-execute-detailed"
-            }
+            },
+            "verification_artifact_path": "/home/viperjuice/workspace/evidence/treesitter-chunker/cache-flag-375/0c565622/runner-runs/20261006-cache-flag-375-r2-final/verification.json",
+            "verification_head": "0c56562217919ecf880d5a57332269a02f18f11a",
+            "verification_status": "passed"
           },
           "transition": "completed"
         }
@@ -647,7 +654,11 @@
             "reflection_metadata": {
               "recorded": true,
               "skill": "codex-execute-detailed"
-            }
+            },
+            "verification_artifact_path": "/home/viperjuice/workspace/evidence/treesitter-chunker/phase-metadata-382/2705f427/verification.json",
+            "verification_head": "2705f427011ca2e0dff606347a9bae3b5ec29c1b",
+            "verification_scope": "metadata validation and independent review; no product runner executed",
+            "verification_status": "passed"
           },
           "transition": "completed"
         }
@@ -677,6 +688,17 @@
             "reconciliation_only": true
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T13:57:18Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "execution_event_reconciled_now": true,
+            "prior_local_execution_record_omitted": true,
+            "reconciliation_only": true,
+            "run": "20261006-completion-record-r2"
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -684,10 +706,10 @@
       "reflection_ref": null,
       "roadmap_ref": null,
       "slug": "completion-record-20261006",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Reconcile accepted cleanup lifecycle and current open issue inventory",
       "type": "detailed",
-      "updated_at": "2026-10-06T13:21:50.572590+00:00"
+      "updated_at": "2026-10-06T13:57:18Z"
     }
   ],
   "schema_version": 1
