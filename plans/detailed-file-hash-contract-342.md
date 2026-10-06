@@ -22,13 +22,14 @@ Existing parser fixtures and the installed parser provide real fixture evidence.
   reads, including empty input. Copy bytes from the checked-in Python service
   fixture, verify actual nonempty parsing of the fixture, and repeat its bytes
   sufficiently to cross the default read boundary. Compare each actual file hash
-  to independent hashlib.sha256 of the entire input. Change a byte and require
+  to independent hashlib.sha256 of the entire input. Append a byte and require
   the new digest to match its independent oracle and differ from the old digest.
   Empty input must have the standard empty SHA-256 digest. No speed gate, parser
   mock, file mock or newly measured performance budget.
 - Temporarily mutate the actual update loop in chunker/streaming.py
-  as omit_final_partial_hash_chunk: skip updating the final short read. Nonempty
-  real fixture tests must fail; restore exact production bytes and pass focused
+  as omit_final_partial_hash_chunk: skip updating the final short read. Cases
+  with a partial final read must fail; one-byte reads correctly survive this
+  particular mutation. Restore exact production bytes and pass focused
   tests. This module has no permanent change.
 - scripts/run_platform_core.py: select the new hash contract cases on every
   hosted platform alongside the existing parsed streaming fixture case.
