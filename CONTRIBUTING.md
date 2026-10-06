@@ -80,6 +80,8 @@ and named mutations.
 Reproduce a matrix failure with the narrow affected test before retrying CI.
 Use explicit UTF-8 file I/O, portable paths, and robust process readiness
 checks. Avoid assertions that depend on tight wall-clock limits.
+File-hash checks compare actual fixture bytes with an independent SHA-256 oracle
+across read sizes and input changes, without individual timing-ratio gates.
 
 Before pushing changes to configuration, paths, temporary files, extraction,
 fallback logic, or export formatting, run the standing Windows preflight:
