@@ -1,6 +1,18 @@
 # Zero-Configuration API
 
-The Zero-Config API provides the simplest way to use treesitter-chunker with automatic language detection, grammar management, and intelligent fallbacks.
+`chunker.auto.ZeroConfigAPI` provides detection and fallback around an
+application-supplied `UniversalRegistryContract`. It is not a no-argument
+top-level API, and `UniversalRegistryStub` is a test double: it simulates
+installation and returns an unconfigured parser. It does not download or parse
+real grammars. For ordinary parsing use `chunker.chunk_file`/`chunk_text`; for
+offline pack setup, prefetch the needed languages as described in
+[getting started](getting-started.md).
+
+The examples below that use `UniversalRegistryStub` illustrate orchestration
+and result shapes for testing, not a production setup. Downloads and version
+selection are delegated to the supplied registry. A real
+`chunker.grammar.registry.UniversalLanguageRegistry` requires a library path,
+discovery service and download service; configure those explicitly.
 
 ## Overview
 
@@ -13,7 +25,7 @@ The `ZeroConfigAPI` class provides a high-level interface that:
 ## Basic Usage
 
 ```python
-from chunker import ZeroConfigAPI
+from chunker.auto import ZeroConfigAPI
 from chunker.contracts.registry_stub import UniversalRegistryStub
 
 # Create API instance with a registry
@@ -222,7 +234,7 @@ for root, dirs, files in os.walk("src"):
 ## Example: Complete Workflow
 
 ```python
-from chunker import ZeroConfigAPI
+from chunker.auto import ZeroConfigAPI
 from chunker.contracts.registry_stub import UniversalRegistryStub
 
 # Initialize

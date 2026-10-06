@@ -84,7 +84,8 @@ The cache module provides AST caching with SQLite:
 ```python
 # Public API available!
 from chunker import ASTCache  # This is still public
-cache = ASTCache(cache_dir="./cache")
+from pathlib import Path
+cache = ASTCache(cache_dir=Path("./cache"))
 ```
 
 Remember: These internal APIs may change or be removed in any version without notice!

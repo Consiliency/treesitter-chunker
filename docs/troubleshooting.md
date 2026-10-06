@@ -1,225 +1,104 @@
-# Tree-sitter Chunker Troubleshooting Guide
+# Troubleshooting
 
-## Common Issues and Solutions
+## Confirm the Environment
 
-### Installation Issues
-
-#### ABI Version Mismatch
-**Error**: `RuntimeError: Cannot create language version 15, expected 13-14`
-
-**Solution**: Install the pinned py-tree-sitter version used by treesitter-chunker:
 ```bash
-uv pip install "tree-sitter>=0.26,<0.27" "tree-sitter-language-pack>=1.20,<1.21"
+python -c "from importlib.metadata import version; print(version('treesitter-chunker')); print(version('tree-sitter')); print(version('tree-sitter-language-pack'))"
+python -m pip check
+treesitter-chunker --help
 ```
 
-#### Windows: Grammar Library Fails to Load (WinError 126)
-**Error**: `OSError: [WinError 126] The specified module could not be found`
+Use the same interpreter/environment for installation and execution. The
+5.2.0 stack pins Tree-sitter 0.26 and language-pack 1.20. In a source checkout,
+restore the locked environment with `uv sync --locked --all-extras`; do not
+install py-tree-sitter from Git to work around an ABI mismatch. Linux parser
+wheels require glibc 2.34 or newer. See [packaging](packaging.md).
 
-**Cause**: On Windows, `ctypes.CDLL()` does not automatically search the DLL's own directory
-for its dependencies. This was fixed in v2.2.22 via `os.add_dll_directory()`.
+## Import Errors
 
-**Solution**: Upgrade to v2.2.22 or later:
-```bash
-pip install --upgrade treesitter-chunker
-```
+These imports are supported:
 
-#### macOS: `languages` Command Shows Empty Table
-**Symptom**: Running `chunker languages` returns a table with no rows despite grammars being built.
-
-**Cause**: On macOS, compiled grammars use the `.dylib` extension. Versions before v2.2.22
-scanned for `.so` files only, so no grammars were found. Fixed in v2.2.22.
-
-**Solution**: Upgrade to v2.2.22 or later:
-```bash
-pip install --upgrade treesitter-chunker
-```
-
-#### Grammar Compilation Failed
-**Error**: `Failed to compile grammars`
-
-**Solution**:
-1. Ensure you have a C compiler installed (gcc/clang)
-2. Run the build scripts in order:
-   ```bash
-   python scripts/fetch_grammars.py
-   python scripts/build_lib.py
-   ```
-
-### Import Errors
-
-#### Module Import Errors
-**Error**: `ImportError: cannot import name 'chunk_file' from 'chunker'`
-
-**Solution**: Use the correct module path:
 ```python
-# Old (incorrect)
-from chunker import chunk_file
-
-# New (correct)
-from chunker.core import chunk_file
+from chunker import ASTCache, CodeChunk, chunk_file, chunk_text
+from chunker.parallel import chunk_files_parallel, chunk_directory_parallel
+from chunker.streaming import StreamingChunker
+from chunker.auto import ZeroConfigAPI
 ```
 
-Common import corrections:
-- `from chunker.core import chunk_file`
-- `from chunker.parallel import chunk_files_parallel`
-- `from chunker.streaming import chunk_file_streaming`
-- `from chunker.plugin_manager import get_plugin_manager`
-- `from chunker.cache import ASTCache`
-- `from chunker.export.json_export import JSONExporter, JSONLExporter`
-- `from chunker.export.formatters import SchemaType`
+`chunker.cache`, `chunker.factory` and `chunker.registry` are old paths; prefer
+public APIs. `chunker.chunker` contains token helpers, not `chunk_file`.
+`ZeroConfigAPI` requires a registry; it is not a top-level export or a universal
+no-argument grammar installer. See [Zero-Config API](zero_config_api.md).
 
-#### Circular Import Errors
-**Error**: `ImportError: cannot import name '_walk' from partially initialized module`
+## No Chunks Returned
 
-**Solution**: This has been fixed in the latest version. Ensure you're using the latest code where circular dependencies have been resolved by moving shared functions to `chunker.core`.
+A loadable grammar is not a promise of verified semantic extraction. Check
+[language coverage](language-coverage.md), input content, selected node types
+and size filters. There is no default rule that excludes all test files.
+Inspect the nearest `.chunkerrc` and any explicit `--include`/`--exclude` flags.
 
-### Runtime Issues
-
-#### No Chunks Returned
-**Problem**: `chunk_file()` returns empty list
-
-**Possible causes**:
-1. **File too small**: Default `min_chunk_size` is 3 lines. Adjust if needed:
-   ```python
-   from chunker.chunker_config import ChunkerConfig
-   config = ChunkerConfig(min_chunk_size=1)
-   ```
-
-2. **Language not supported**: Check available languages:
-   ```python
-   from chunker.parser import list_languages
-   print(list_languages())
-   ```
-
-3. **File excluded by pattern**: When using batch processing, files with "test" in the name are excluded by default:
-   ```bash
-   treesitter-chunker batch src/ --exclude "*.tmp" --include "*.py"
-   ```
-
-#### Parser Not Available
-**Error**: `LanguageNotFoundError: Language 'xyz' not found`
-
-**Solution**:
-1. Check if language is supported:
-   ```python
-   from chunker.parser import list_languages
-   print(list_languages())
-   ```
-
-2. For universal language support, use ZeroConfigAPI:
-   ```python
-   from chunker.auto import ZeroConfigAPI
-   api = ZeroConfigAPI()
-   result = api.auto_chunk_file("file.xyz")  # Auto-downloads grammar if available
-   ```
-
-### CLI Issues
-
-#### JSON Parse Errors in Tests
-**Error**: `json.decoder.JSONDecodeError: Invalid control character`
-
-**Solution**: This can occur when test output contains ANSI escape codes. The latest version includes fallback parsing to handle this.
-
-#### Batch Command Not Finding Files
-**Problem**: No files processed when running batch command
-
-**Common issues**:
-1. Default exclude pattern filters out test files
-2. Wrong file extension pattern
-3. Incorrect path
-
-**Solution**:
 ```bash
-# Override default excludes
-python cli/main.py batch src/ --exclude "" --include "*.py"
-
-# Be explicit about patterns
-python cli/main.py batch src/ --pattern "**/*.py"
+treesitter-chunker chunk example.py --lang python --min-size 1 --json
+treesitter-chunker batch src/ --lang python --include '*.py' --quiet --output-format jsonl
 ```
 
-### Performance Issues
+For Python, verify that the file contains a function or class; a file of only
+assignments may correctly produce no semantic chunks. The CLI's size limits
+filter chunks; they do not split large chunks into smaller ones.
 
-#### Slow Processing
-**Problem**: Chunking takes too long
+## Parser or Grammar Failures
 
-**Solutions**:
-1. Enable caching:
-   ```python
-   from chunker.cache import ASTCache
-   cache = ASTCache()
-   ```
+First try prefetching the required pack grammar while online:
 
-2. Use parallel processing:
-   ```python
-   from chunker.parallel import chunk_files_parallel
-   results = chunk_files_parallel(files, "python", max_workers=4)
-   ```
+```bash
+python -c "import tree_sitter_language_pack as p; p.prefetch(['python'])"
+```
 
-3. Use streaming for large files:
-   ```python
-   from chunker.streaming import chunk_file_streaming
-   chunks = list(chunk_file_streaming("large_file.py", "python"))
-   ```
+BAML needs the companion extra:
 
-### Export Issues
+```bash
+python -m pip install 'treesitter-chunker[baml]==5.2.0'
+```
 
-#### Memory Issues with Large Exports
-**Problem**: Out of memory when exporting large datasets
+Local grammar compilation is an auxiliary workflow. Check pinned provenance,
+compiler availability and the recorded error before building. Do not delete
+cache trees or replace a loaded native library as a generic recovery step.
+See [grammar management](grammar_management.md).
 
-**Solution**: Use streaming export:
+## CLI Output and Subprocesses
+
+`chunk` and `batch` already detect languages when `--lang` is omitted. There are
+no `auto-chunk` or `auto-batch` commands. Use `--help` on the installed command
+rather than older examples. Use `--quiet --output-format json` (or `jsonl`) for
+successful machine-readable output; always check the exit status before parsing.
+
+CLI JSON is an array of chunk objects. The source REST server wraps chunks in
+an object containing `chunks`, `total_chunks` and `language`. These are
+different response shapes; see [cross-language usage](cross-language-usage.md).
+
+## Slow Processing or Large Exports
+
+Direct `chunk_file()` does not automatically use the SQLite chunk cache.
+See [performance](performance-guide.md) for explicit caching and correctly
+configured process pools. Streaming saves chunk-list memory but still builds
+a whole syntax tree.
+
 ```python
-from chunker.export.json_export import JSONLExporter
-from chunker.streaming import chunk_file_streaming
+from chunker import chunk_file_streaming
+from chunker.export import JSONLExporter
 
-exporter = JSONLExporter()
-exporter.stream_export(
-    chunk_file_streaming("large_file.py", "python"),
-    "output.jsonl"
+JSONLExporter().stream_export(
+    chunk_file_streaming("example.py", "python"), "output.jsonl"
 )
 ```
 
-### Testing Issues
+For `JSONExporter`/`JSONLExporter`, `compress=True` appends `.gz` to the supplied
+filename; pass `output.json` rather than `output.json.gz`.
 
-#### Skipped Tests
-**Notice**: Some tests are skipped with "ABI version mismatch"
+## Tests and Support
 
-**Explanation**: This is expected when grammars were compiled with different ABI versions. The skip markers prevent false failures. To run these tests, recompile grammars with matching ABI version.
-
-#### Coverage Module Issues
-**Error**: Circular import errors from coverage module
-
-**Solution**: Run tests without coverage:
-```bash
-python -m pytest -p no:cov
-```
-
-### Language-Specific Issues
-
-#### Language Plugin Not Found
-**Error**: `Plugin for language 'xyz' not found`
-
-**Solution**:
-1. Load built-in plugins:
-   ```python
-   from chunker.plugin_manager import get_plugin_manager
-   manager = get_plugin_manager()
-   manager.load_built_in_plugins()
-   ```
-
-2. Check available plugins:
-   ```python
-   print(manager.list_plugins())
-   ```
-
-### Getting Help
-
-If you encounter issues not covered here:
-
-1. Check the [GitHub Issues](https://github.com/anthropics/claude-code/issues)
-2. Review the [API Reference](api-reference.md)
-3. See the [User Guide](user-guide.md) for detailed examples
-4. File a new issue with:
-   - Python version
-   - Tree-sitter chunker version
-   - Minimal code to reproduce
-   - Full error traceback
+Follow [CONTRIBUTING.md](https://github.com/Consiliency/treesitter-chunker/blob/main/CONTRIBUTING.md)
+for the locked test tiers. A new skip or xfail needs an explanation, rather
+than being dismissed as an expected ABI mismatch. Include package versions,
+platform, a small real fixture, the exact invocation and the error traceback in
+this repository's [issue tracker](https://github.com/Consiliency/treesitter-chunker/issues).

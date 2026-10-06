@@ -5,6 +5,11 @@ The Tree-sitter Chunker supports environment variables for configuration in two 
 1. **Variable expansion in config files** - Use `${VAR}` syntax in configuration files
 2. **Override configuration values** - Use `CHUNKER_*` environment variables
 
+These expansion and override features belong to `ChunkerConfig` when it loads
+a file, and to applications that pass the resulting settings to plugin APIs. They do not configure the
+`chunk`/`batch` CLI TOML loader or direct `chunk_file()` calls. See
+[Configuration](configuration.md).
+
 ## Variable Expansion in Config Files
 
 You can use environment variables directly in your configuration files using the `${VAR}` or `${VAR:default}` syntax.
@@ -20,7 +25,7 @@ plugin_dirs = ["${HOME}/.chunker/plugins", "${CUSTOM_PLUGIN_DIR}"]
 
 ```toml
 [chunker.default_plugin_config]
-min_chunk_size = "${MIN_CHUNK_SIZE:3}"  # Uses 3 if MIN_CHUNK_SIZE not set
+include_docstrings = "${INCLUDE_DOCSTRINGS:true}"  # Custom option string; plugin must consume it
 ```
 
 ### Examples
@@ -34,11 +39,10 @@ chunker:
   
 languages:
   python:
-    max_chunk_size: ${PYTHON_MAX_SIZE:500}
+    max_chunk_size: 500
 ```
 
 ```json
-// JSON example
 {
   "chunker": {
     "plugin_dirs": ["${HOME}/.chunker/plugins", "${WORK_DIR}/plugins"]
@@ -93,7 +97,8 @@ For any language, you can set:
 
 ### Custom Language Options
 
-Any custom option for a language can be set:
+Custom language overrides are stored as strings in `custom_options`; a plugin
+must consume them to affect behavior:
 
 ```bash
 # Python custom options
@@ -155,8 +160,8 @@ export CHUNKER_LANGUAGES_PYTHON_MAX_CHUNK_SIZE=3000
 # Run with custom plugin directory
 export CUSTOM_PLUGINS=/opt/custom-chunker-plugins
 
-# Your chunker command here
-python -m chunker.cli chunk large_file.py
+# These variables affect a PluginManager configured from a loaded file.
+# The installed chunk/batch commands do not consume them.
 ```
 
 ## Precedence Order
@@ -202,6 +207,6 @@ for var, description in env_info.items():
 
 3. **Document your variables**: If you're using custom environment variables, document them in your project
 
-4. **Validate values**: Environment variables are strings, so numeric values are converted. Make sure to handle potential conversion errors
+4. **Validate values**: Supported numeric override fields are converted to integers; `${VAR}` expansion itself remains a string
 
 5. **Security**: Be cautious about accepting environment variables from untrusted sources, especially in production environments

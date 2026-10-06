@@ -55,9 +55,8 @@ from chunker.processors.markdown import MarkdownProcessor, ProcessorConfig
 
 config = ProcessorConfig(
     chunk_size=100,           # Target lines per chunk
-    preserve_headers=True,    # Keep headers with content
-    group_sections=True,      # Group by header sections
-    preserve_code_blocks=True # Keep code blocks intact
+    preserve_structure=True, # Keep document structure
+    group_related=True       # Group related elements
 )
 
 processor = MarkdownProcessor(config)

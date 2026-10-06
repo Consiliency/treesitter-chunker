@@ -73,7 +73,7 @@ To use this plugin:
 from chunker import get_plugin_manager
 
 manager = get_plugin_manager()
-manager.register_plugin(GoPlugin)
+manager.registry.register(GoPlugin)
 
 # Now you can chunk Go files
 chunks = chunk_file("main.go", "go")
@@ -545,16 +545,16 @@ from your_plugin import SwiftPlugin
 def test_swift_plugin_registration():
     """Test plugin registration."""
     manager = get_plugin_manager()
-    manager.register_plugin(SwiftPlugin)
+    manager.registry.register(SwiftPlugin)
     
-    assert "swift" in manager.list_plugins()
+    assert "swift" in manager.registry.list_languages()
     plugin = manager.get_plugin("swift")
     assert isinstance(plugin, SwiftPlugin)
 
 def test_swift_chunking():
     """Test Swift file chunking."""
     manager = get_plugin_manager()
-    manager.register_plugin(SwiftPlugin)
+    manager.registry.register(SwiftPlugin)
     
     # Create test file
     swift_code = '''
@@ -600,7 +600,7 @@ def test_swift_plugin_with_real_files():
     import tempfile
     
     manager = get_plugin_manager()
-    manager.register_plugin(SwiftPlugin)
+    manager.registry.register(SwiftPlugin)
     
     # Create a more complex Swift file
     swift_content = '''
@@ -682,7 +682,9 @@ swift-chunker-plugin/
 
 ### 2. Entry Points
 
-Use setuptools entry points for automatic discovery:
+A package can declare an entry point, but the current `PluginManager` scans
+directories rather than loading entry points automatically. Register the
+installed class explicitly as shown below:
 
 ```toml
 # pyproject.toml
@@ -696,12 +698,15 @@ Users can install your plugin:
 
 ```bash
 pip install swift-chunker-plugin
+```
 
-# The plugin is automatically discovered
+```python
+# Register the installed class explicitly, or load a plugin directory
 from chunker import get_plugin_manager
 
 manager = get_plugin_manager()
-manager.discover_plugins()  # Finds entry point plugins
+from swift_chunker.plugin import SwiftPlugin
+manager.registry.register(SwiftPlugin)
 ```
 
 ### 4. Plugin Directory
@@ -713,7 +718,7 @@ from pathlib import Path
 from chunker import get_plugin_manager
 
 manager = get_plugin_manager()
-manager.load_plugin_directory(Path("~/.chunker/plugins"))
+manager.load_plugins_from_directory(Path("~/.chunker/plugins").expanduser())
 ```
 
 ## Built-in Plugin Examples
@@ -857,7 +862,7 @@ class MyPlugin(LanguagePlugin):
     Example:
         >>> from chunker import get_plugin_manager
         >>> manager = get_plugin_manager()
-        >>> manager.register_plugin(MyPlugin)
+        >>> manager.registry.register(MyPlugin)
         >>> chunks = chunk_file("example.ml", "mylang")
     """
 ```

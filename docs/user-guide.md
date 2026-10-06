@@ -62,7 +62,8 @@ pip install "treesitter-chunker[viz]"
 pip install "treesitter-chunker[all]"
 ```
 
-**Note**: Prebuilt wheels include compiled Tree-sitter grammars for common languages (Python, JavaScript, Rust, C, C++), so no local compilation is required!
+The main wheel is pure Python. The pinned grammar pack supplies native parsers
+and may download them on first use; see [packaging](packaging.md).
 
 ### Development Installation
 
@@ -73,15 +74,8 @@ If you want to contribute or need the latest development version:
 git clone https://github.com/Consiliency/treesitter-chunker.git
 cd treesitter-chunker
 
-# Install in development mode
-uv pip install -e ".[dev]"
-
-# Install py-tree-sitter with ABI 15 support
-uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
-
-# Build language grammars (only needed for development)
-python scripts/fetch_grammars.py
-python scripts/build_lib.py
+# Install the locked project environment
+uv sync --locked --all-extras
 ```
 
 ### Verify Installation
@@ -95,7 +89,7 @@ print(f"Available languages: {languages}")
 
 # Get language details
 info = get_language_info("python")
-print(f"Python ABI version: {info.version}")
+print(f"Grammar metadata version: {info.version}")
 print(f"Node types: {info.node_types_count}")
 ```
 
@@ -147,7 +141,7 @@ treesitter-chunker boundary src/ --lang python --fail-fast
 ### Python API - Simple
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 
 # Chunk a Python file
 chunks = chunk_file("example.py", "python")
@@ -280,7 +274,7 @@ int process_data(int* data) {  // function_definition
 ### Understanding CodeChunk
 
 ```python
-from chunker.chunker import CodeChunk
+from chunker import CodeChunk
 
 # Example chunk structure
 chunk = CodeChunk(
@@ -362,7 +356,7 @@ def analyze_file_structure(file_path, language):
 ### Working with the Language Registry
 
 ```python
-from chunker.registry import LanguageRegistry
+from chunker._internal.registry import LanguageRegistry
 from pathlib import Path
 
 # Access the registry directly
@@ -386,7 +380,7 @@ if registry.has_language("python"):
 
 ```python
 from chunker.parser import get_parser
-from chunker.factory import ParserConfig
+from chunker.parser import ParserConfig
 
 # Configure parser with timeout
 config = ParserConfig(
@@ -433,35 +427,16 @@ chunks = process_directory("src", "python", max_workers=8)
 
 ### Cache Management
 
-```python
-from chunker.parser import clear_cache, _factory
-
-# Monitor cache performance
-def process_with_stats(files, language):
-    # Clear cache for fresh start
-    clear_cache()
-    
-    # Process files
-    for file in files:
-        chunk_file(file, language)
-    
-    # Get statistics
-    stats = _factory.get_stats()
-    print(f"Cache Performance:")
-    print(f"  Hits: {stats['cache_hits']}")
-    print(f"  Misses: {stats['cache_misses']}")
-    print(f"  Hit rate: {stats['hit_rate']:.2%}")
-    print(f"  Current cache size: {stats['cache_size']}")
-    
-    return stats
-```
+Parser-cache statistics are internal. Use measured runs in the
+[Performance Guide](performance-guide.md#benchmarking), rather than private
+`_factory` globals. `clear_cache()` clears parser state, not the SQLite chunk cache.
 
 ## Integration Patterns
 
 ### Integration with Embedding Systems
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 import numpy as np
 
 def create_code_embeddings(file_path, language, embedding_model):
@@ -514,7 +489,7 @@ def semantic_search(query, embeddings, embedding_model, top_k=5):
 
 ```python
 import ast
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 
 def extract_docstrings(project_path, output_file):
     """Extract all docstrings from Python project."""
@@ -567,7 +542,7 @@ def extract_docstrings(project_path, output_file):
 ### Code Quality Analysis
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 import re
 
 def analyze_code_quality(file_path, language):
@@ -662,10 +637,10 @@ from chunker.plugin_manager import get_plugin_manager
 
 # Load built-in plugins
 manager = get_plugin_manager()
-manager.load_built_in_plugins()
+manager.load_builtin_plugins()
 
 # List available plugins
-print(manager.list_plugins())
+print(manager.registry.list_languages())
 # Output: ['python', 'javascript', 'rust', 'c', 'cpp']
 
 # Chunk files using plugins
@@ -678,7 +653,7 @@ Configure plugins through configuration files or programmatically:
 
 ```python
 from chunker.chunker_config import ChunkerConfig
-from chunker.plugin_manager import PluginConfig
+from chunker import PluginConfig
 
 # Load configuration from file
 config = ChunkerConfig("chunker.config.toml")
@@ -705,84 +680,52 @@ from chunker.plugin_manager import get_plugin_manager
 
 # Load plugins from a directory
 manager = get_plugin_manager()
-manager.load_plugin_directory(Path("~/.chunker/plugins"))
+manager.load_plugins_from_directory(Path("~/.chunker/plugins").expanduser())
 
 # Or register a plugin class directly
 from my_plugin import SwiftPlugin
-manager.register_plugin(SwiftPlugin)
+manager.registry.register(SwiftPlugin)
 ```
 
 ## Performance Features
 
 ### AST Caching
 
-The AST cache provides up to 11.9x speedup for repeated file processing:
-
-```python
-from chunker.core import chunk_file
-from chunker.cache import ASTCache
-
-# Caching is enabled by default
-chunks1 = chunk_file("large_file.py", "python")  # First run: parses
-chunks2 = chunk_file("large_file.py", "python")  # Second run: uses cache (11.9x faster)
-
-# Monitor cache performance
-cache = ASTCache(max_size=200)
-stats = cache.get_stats()
-print(f"Cache hit rate: {stats['hit_rate']:.2%}")
-print(f"Cache size: {stats['size']}/{stats['max_size']}")
-```
+`ASTCache` stores chunk lists in SQLite. Direct `chunk_file()` does not consult
+it automatically. See [Performance Guide](performance-guide.md#ast-caching)
+for an explicit cache example and invalidation limits.
 
 ### Parallel File Processing
-
-Process multiple files concurrently for maximum performance:
 
 ```python
 from chunker.parallel import chunk_files_parallel, chunk_directory_parallel
 
-# Process specific files
-files = ["src/main.py", "src/utils.py", "src/models.py"]
-results = chunk_files_parallel(
-    files, 
-    "python", 
-    max_workers=8,
-    show_progress=True
-)
-
-# Process entire directory
-results = chunk_directory_parallel(
-    "src/",
-    "python",
-    pattern="**/*.py",
-    max_workers=8
-)
-
-for file_path, chunks in results.items():
-    print(f"{file_path}: {len(chunks)} chunks")
+if __name__ == "__main__":
+    results = chunk_files_parallel(
+        ["example.py"], "python", num_workers=2, use_cache=False
+    )
+    directory_results = chunk_directory_parallel(
+        "src/", "python", extensions=[".py"], num_workers=2, use_cache=False
+    )
+    for path, chunks in directory_results.items():
+        print(path, len(chunks))
 ```
+
+These are process-pool APIs. Results have `Path` keys; `num_workers` controls
+worker count. They do not accept `max_workers`, `pattern` or `show_progress`.
 
 ### Streaming Large Files
 
-For very large files, use streaming to avoid loading everything into memory:
-
 ```python
-from chunker.streaming import chunk_file_streaming
+from chunker import chunk_file_streaming
 
-# Process a huge file incrementally
-for chunk in chunk_file_streaming("massive_codebase.py", "python"):
-    # Process each chunk as it's found
-    print(f"Found {chunk.node_type} at lines {chunk.start_line}-{chunk.end_line}")
-    # Save to database, send to API, etc.
-    process_chunk(chunk)
+for chunk in chunk_file_streaming("example.py", "python"):
+    print(chunk.node_type, chunk.start_line, chunk.end_line)
 ```
 
-### Performance Tips
-
-1. **Enable Caching**: Always use caching for files that are processed multiple times
-2. **Use Parallel Processing**: Take advantage of multiple CPU cores
-3. **Stream Large Files**: Use streaming for files over 10MB
-4. **Configure Cache Size**: Adjust based on available memory
-5. **Batch Operations**: Process files in batches rather than one at a time
+Streaming yields chunks lazily but still parses a complete syntax tree. It
+cannot promise files larger than available memory will fit. See
+[performance](performance-guide.md) for extraction parity and measurement.
 
 ## Export Formats
 
@@ -828,7 +771,7 @@ def chunk_generator():
     for chunk in chunk_file_streaming("huge_file.py", "python"):
         yield chunk
 
-exporter.export_streaming(chunk_generator(), "large_output.jsonl")
+exporter.stream_export(chunk_generator(), "large_output.jsonl")
 ```
 
 ### Parquet Export
@@ -850,10 +793,8 @@ exporter = ParquetExporter(
 exporter.export(chunks, "output.parquet")
 
 # Export with partitioning for large datasets
-exporter.export_partitioned(
-    chunks,
-    "output_dir/",
-    partition_cols=["language", "node_type"]
+ParquetExporter(partition_by=["language", "node_type"]).export(
+    chunks, "output_dir/"
 )
 
 # Stream export for memory efficiency
@@ -906,10 +847,8 @@ for file_path, chunks in results.items():
 
 # Export to Parquet with partitioning
 exporter = ParquetExporter(compression="zstd")
-exporter.export_partitioned(
-    processed_chunks,
-    "exports/myproject/",
-    partition_cols=["node_type"]
+ParquetExporter(partition_by=["node_type"]).export(
+    processed_chunks, "exports/myproject/"
 )
 ```
 
@@ -944,76 +883,30 @@ with ThreadPoolExecutor(max_workers=8) as executor:
     results = [f.result() for f in futures]
 ```
 
-### 3. Configure Cache Size
+### 3. Cache and large-file limits
 
-```python
-import os
+Parser reuse and SQLite chunk caching are different mechanisms. Environment
+variables such as `CHUNKER_CACHE_SIZE` and `CHUNKER_POOL_SIZE` do not configure
+the public parser factory. Use the documented APIs and measure your workload;
+see [performance](performance-guide.md).
 
-# Set via environment variables
-os.environ['CHUNKER_CACHE_SIZE'] = '20'
-os.environ['CHUNKER_POOL_SIZE'] = '10'
-
-# Or configure factory directly
-from chunker.factory import ParserFactory
-from chunker.registry import LanguageRegistry
-
-registry = LanguageRegistry(Path("build/my-languages.so"))
-factory = ParserFactory(registry, cache_size=20, pool_size=10)
-```
-
-### 4. Handle Large Files
-
-```python
-def chunk_large_file(file_path, language, max_size_mb=10):
-    """Handle large files efficiently."""
-    from pathlib import Path
-    
-    file_size = Path(file_path).stat().st_size / (1024 * 1024)
-    
-    if file_size > max_size_mb:
-        # Process in chunks using included_ranges
-        from chunker.factory import ParserConfig
-        
-        chunk_size = int(max_size_mb * 1024 * 1024)
-        ranges = []
-        
-        with open(file_path, 'rb') as f:
-            data = f.read()
-            for i in range(0, len(data), chunk_size):
-                ranges.append((i, min(i + chunk_size, len(data))))
-        
-        all_chunks = []
-        for start, end in ranges:
-            config = ParserConfig(included_ranges=[(start, end)])
-            parser = get_parser(language, config)
-            # Process range...
-            
-        return all_chunks
-    else:
-        return chunk_file(file_path, language)
-```
+Use lazy chunk iteration to avoid retaining every chunk. It still builds a
+whole tree, and arbitrary byte ranges are not guaranteed to preserve syntax.
+`ParserConfig.included_ranges` requires Tree-sitter `Range` objects, not tuples.
 
 ## Configuration
 
 ### Environment Variables
 
-```bash
-# Set logging level
-export CHUNKER_LOG_LEVEL=DEBUG
-
-# Configure cache sizes
-export CHUNKER_CACHE_SIZE=20
-export CHUNKER_POOL_SIZE=10
-
-# Run with custom configuration
-python cli/main.py chunk file.py -l python
-```
+See [Environment Variables](environment_variables.md) for actual consumers.
+`CHUNKER_LOG_LEVEL`, `CHUNKER_CACHE_SIZE` and `CHUNKER_POOL_SIZE` are not global
+controls for core chunking. Configure Python logging in your application.
 
 ### Programmatic Configuration
 
 ```python
 import logging
-from chunker.factory import ParserConfig
+from chunker.parser import ParserConfig
 
 # Configure logging
 logging.basicConfig(
@@ -1023,7 +916,7 @@ logging.basicConfig(
 
 # Configure parser
 config = ParserConfig(
-    timeout_ms=10000,  # 10 second timeout
+    timeout_ms=10000,  # Legacy field; not a deadline on pinned Tree-sitter 0.26
     logger=logging.getLogger("parser")
 )
 ```
@@ -1062,8 +955,8 @@ python scripts/build_lib.py
 ```bash
 # Error: Language 'python' ABI version 14 doesn't match parser version 13
 
-# Solution: Update py-tree-sitter
-uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
+# Solution in a source checkout: restore the locked stack
+uv sync --locked --all-extras
 ```
 
 #### Empty Results
@@ -1092,18 +985,11 @@ if not chunks:
 ### Debug Information
 
 ```python
-from chunker.parser import _factory, _registry
-
-# Check loaded languages
-print("Loaded languages:", _registry.list_languages())
-
-# Check cache statistics
-stats = _factory.get_stats()
-print("Cache stats:", stats)
-
-# Enable detailed logging
 import logging
-logging.getLogger("chunker").setLevel(logging.DEBUG)
+from chunker import list_languages
+
+print("Registered languages:", list_languages())
+logging.basicConfig(level=logging.DEBUG)
 ```
 
 ### Getting Help
@@ -1120,7 +1006,7 @@ When reporting issues:
 
 2. **Minimal Example**:
    ```python
-   from chunker.chunker import chunk_file
+   from chunker import chunk_file
    chunks = chunk_file("problem_file.py", "python")
    ```
 

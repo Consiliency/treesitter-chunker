@@ -144,7 +144,7 @@ Create a Python script to analyze the chunks:
 
 ```python
 # save as analyze_chunks.py
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.parser import list_languages, get_language_info
 
 # Check available languages
@@ -193,7 +193,7 @@ Extract all functions with their metadata:
 
 ```python
 # save as extract_functions.py
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from pathlib import Path
 import json
 
@@ -249,7 +249,7 @@ Analyze the structure of your codebase:
 
 ```python
 # save as analyze_structure.py
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from collections import defaultdict
 import statistics
 
@@ -321,7 +321,7 @@ Build a searchable index across multiple files:
 
 ```python
 # save as build_index.py
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.exceptions import LanguageNotFoundError
 from pathlib import Path
 import json
@@ -466,10 +466,10 @@ from chunker.core import chunk_file
 
 # Load built-in plugins
 manager = get_plugin_manager()
-manager.load_built_in_plugins()
+manager.load_builtin_plugins()
 
 # List available plugins
-print("Available plugins:", manager.list_plugins())
+print("Available plugins:", manager.registry.list_languages())
 # Output: ['python', 'javascript', 'rust', 'c', 'cpp']
 
 # Chunk with plugins loaded
@@ -483,33 +483,34 @@ Process multiple files in parallel for better performance:
 
 ```python
 # save as parallel_processing.py
+# Put executable calls under if __name__ == "__main__" on spawn-based platforms.
 from chunker.parallel import chunk_files_parallel, chunk_directory_parallel
 from pathlib import Path
 
-# Create some test files
-test_files = ["example.py", "analyze_chunks.py", "extract_functions.py"]
+if __name__ == "__main__":
+    # Create some test files
+    test_files = ["example.py", "analyze_chunks.py", "extract_functions.py"]
 
-# Process files in parallel
-results = chunk_files_parallel(
-    test_files,
-    "python",
-    max_workers=4,
-    show_progress=True
-)
-
-print(f"\nProcessed {len(results)} files:")
-for file_path, chunks in results.items():
-    print(f"  {file_path}: {len(chunks)} chunks")
-
-# Process entire directory
-if Path("src").exists():
-    dir_results = chunk_directory_parallel(
-        "src/",
+    # Process files in parallel
+    results = chunk_files_parallel(
+        test_files,
         "python",
-        pattern="**/*.py",
-        max_workers=4
+        num_workers=4
     )
-    print(f"\nDirectory processing: {len(dir_results)} files")
+
+    print(f"\nProcessed {len(results)} files:")
+    for file_path, chunks in results.items():
+        print(f"  {file_path}: {len(chunks)} chunks")
+
+    # Process entire directory
+    if Path("src").exists():
+        dir_results = chunk_directory_parallel(
+            "src/",
+            "python",
+            extensions=[".py"],
+            num_workers=4
+        )
+        print(f"\nDirectory processing: {len(dir_results)} files")
 ```
 
 ### Export Formats
@@ -640,7 +641,7 @@ Now analyze all three languages:
 
 ```python
 # save as compare_languages.py
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 
 files = [
     ("example.py", "python"),
@@ -677,7 +678,7 @@ for file_path, language in files:
 ### 1. Handle Errors Gracefully
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.exceptions import LanguageNotFoundError, ChunkerError
 
 def safe_chunk_file(file_path, language):
@@ -699,7 +700,7 @@ def safe_chunk_file(file_path, language):
 
 ```python
 from typing import List, Dict, Optional
-from chunker.chunker import CodeChunk
+from chunker import CodeChunk
 
 def analyze_chunks(chunks: List[CodeChunk]) -> Dict[str, int]:
     """Analyze chunks and return statistics."""
@@ -717,7 +718,7 @@ from pathlib import Path
 
 def process_codebase(root_dir: str, max_workers: int = 4):
     """Process a large codebase in parallel."""
-    from chunker.chunker import chunk_file
+    from chunker import chunk_file
     
     # Collect all Python files
     py_files = list(Path(root_dir).rglob("*.py"))
@@ -762,7 +763,7 @@ from chunker.core import chunk_file
 from chunker.parallel import chunk_files_parallel, chunk_directory_parallel
 from chunker.streaming import chunk_file_streaming
 from chunker.plugin_manager import get_plugin_manager
-from chunker.cache import ASTCache
+from chunker import ASTCache
 from chunker.chunker_config import ChunkerConfig
 from chunker.types import CodeChunk
 from chunker.parser import get_parser, list_languages
@@ -775,7 +776,7 @@ chunks = chunk_file("file.py", "python")
 
 # Parallel processing
 results = chunk_files_parallel(["file1.py", "file2.py"], "python")
-dir_results = chunk_directory_parallel("src/", "python", pattern="**/*.py")
+dir_results = chunk_directory_parallel("src/", "python", extensions=[".py"])
 
 # Streaming for large files
 for chunk in chunk_file_streaming("huge_file.py", "python"):
@@ -783,7 +784,7 @@ for chunk in chunk_file_streaming("huge_file.py", "python"):
 
 # Plugin management
 manager = get_plugin_manager()
-manager.load_built_in_plugins()
+manager.load_builtin_plugins()
 
 # Export formats
 exporter = JSONExporter(schema_type=SchemaType.NESTED)

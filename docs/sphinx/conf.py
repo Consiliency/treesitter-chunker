@@ -3,6 +3,7 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 import sys
+from importlib.metadata import version
 from pathlib import Path
 
 sys.path.insert(0, Path("../..").resolve())
@@ -13,7 +14,7 @@ sys.path.insert(0, Path("../..").resolve())
 project = "TreeSitter Chunker"
 copyright = "2025, ViperJuice"
 author = "ViperJuice"
-release = "2.2.22"
+release = version("treesitter-chunker")
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

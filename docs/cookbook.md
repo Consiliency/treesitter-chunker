@@ -26,7 +26,7 @@ Create a fast, searchable database of all functions in your codebase.
 ```python
 import sqlite3
 from pathlib import Path
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.parser import list_languages
 from chunker.exceptions import LanguageNotFoundError
 from datetime import datetime
@@ -226,7 +226,7 @@ if __name__ == "__main__":
 Build an interactive symbol navigator for your codebase.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from pathlib import Path
 from collections import defaultdict
 import json
@@ -405,7 +405,7 @@ Extract comprehensive API documentation including type hints and examples.
 
 ```python
 import ast
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from pathlib import Path
 from typing import List, Dict, Any
 import re
@@ -731,7 +731,7 @@ print(f"Generated documentation for {len(all_docs)} items")
 Automatically generate project documentation from your codebase.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.parser import list_languages
 from pathlib import Path
 import re
@@ -976,7 +976,7 @@ print("README.md generated successfully!")
 Analyze code complexity using various metrics.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.parser import get_parser
 import ast
 from dataclasses import dataclass
@@ -1186,7 +1186,7 @@ analyzer.generate_report(all_reports)
 Find duplicate or similar code blocks.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from pathlib import Path
 import hashlib
 from difflib import SequenceMatcher
@@ -1497,7 +1497,7 @@ class SwiftProjectAnalyzer:
     
     def __init__(self):
         self.manager = get_plugin_manager()
-        self.manager.register_plugin(SwiftPlugin)
+        self.manager.registry.register(SwiftPlugin)
     
     def analyze_swift_project(self, project_path: str):
         """Analyze a Swift project structure."""
@@ -1566,193 +1566,19 @@ if Path("MySwiftProject").exists():
 
 ### Plugin with Custom Chunk Rules
 
-Create a plugin with advanced chunking rules.
+`chunker.languages.base.ChunkRule` accepts `node_types`, `include_children`,
+`priority` and `metadata`. It does not accept regex `pattern`, `parent_type` or
+a `metadata_extractor` callback. Use a plugin's node/name hooks or analyze
+returned content explicitly; see [Plugin Development](plugin-development.md).
 
 ```python
-from chunker.languages.plugin_base import LanguagePlugin
 from chunker.languages.base import ChunkRule
-from chunker import get_plugin_manager
-import re
 
-class AdvancedPythonPlugin(LanguagePlugin):
-    """Enhanced Python plugin with custom chunk rules."""
-    
-    @property
-    def language_name(self) -> str:
-        return "python_advanced"
-    
-    @property
-    def supported_extensions(self) -> Set[str]:
-        return {".py"}
-    
-    @property
-    def default_chunk_types(self) -> Set[str]:
-        # Standard Python chunk types
-        return {
-            "function_definition",
-            "class_definition",
-            "async_function_definition",
-            "decorated_definition"
-        }
-    
-    def get_chunk_rules(self) -> list[ChunkRule]:
-        """Define custom chunking rules."""
-        return [
-            # Extract FastAPI endpoints
-            ChunkRule(
-                name="fastapi_endpoint",
-                node_type="decorated_definition",
-                pattern=r'@(app|router)\.(get|post|put|delete|patch)',
-                priority=100,
-                metadata_extractor=self._extract_endpoint_metadata
-            ),
-            
-            # Extract Django views
-            ChunkRule(
-                name="django_view",
-                node_type="class_definition",
-                pattern=r'class\s+\w+\s*\(.*View.*\)',
-                priority=90
-            ),
-            
-            # Extract test classes and functions
-            ChunkRule(
-                name="test_case",
-                node_type="function_definition",
-                pattern=r'def\s+test_\w+',
-                priority=80,
-                parent_type="class_definition"
-            ),
-            
-            # Extract dataclasses
-            ChunkRule(
-                name="dataclass",
-                node_type="decorated_definition",
-                pattern=r'@dataclass',
-                priority=85
-            ),
-            
-            # Extract Pydantic models
-            ChunkRule(
-                name="pydantic_model",
-                node_type="class_definition",
-                pattern=r'class\s+\w+\s*\(.*BaseModel.*\)',
-                priority=85
-            )
-        ]
-    
-    def _extract_endpoint_metadata(self, chunk) -> dict:
-        """Extract metadata from FastAPI endpoints."""
-        content = chunk.content
-        metadata = {}
-        
-        # Extract HTTP method and path
-        match = re.search(r'@(?:app|router)\.(\w+)\(["\']([^"\']*)["\'\]', content)
-        if match:
-            metadata['http_method'] = match.group(1).upper()
-            metadata['path'] = match.group(2)
-        
-        # Extract response model
-        response_match = re.search(r'response_model=([\w\.]+)', content)
-        if response_match:
-            metadata['response_model'] = response_match.group(1)
-        
-        # Extract dependencies
-        deps = re.findall(r'Depends\(([\w\.]+)\)', content)
-        if deps:
-            metadata['dependencies'] = deps
-        
-        return metadata
-    
-    def get_node_name(self, node: Node, source: bytes) -> Optional[str]:
-        """Extract name with special handling for decorators."""
-        content = source[node.start_byte:node.end_byte].decode('utf-8')
-        
-        # For decorated functions, skip decorators
-        lines = content.split('\n')
-        for line in lines:
-            if line.strip().startswith('def ') or line.strip().startswith('class '):
-                match = re.search(r'(?:def|class)\s+(\w+)', line)
-                if match:
-                    return match.group(1)
-        
-        return None
-
-# Example: Analyze a FastAPI project
-class FastAPIAnalyzer:
-    """Analyze FastAPI projects with custom rules."""
-    
-    def __init__(self):
-        self.manager = get_plugin_manager()
-        self.manager.register_plugin(AdvancedPythonPlugin)
-    
-    def analyze_api_structure(self, project_path: str):
-        """Analyze FastAPI project structure."""
-        from pathlib import Path
-        from chunker import chunk_file
-        
-        endpoints = []
-        models = []
-        
-        for py_file in Path(project_path).rglob("*.py"):
-            chunks = chunk_file(str(py_file), "python_advanced")
-            
-            for chunk in chunks:
-                if hasattr(chunk, 'metadata'):
-                    if 'http_method' in chunk.metadata:
-                        endpoints.append({
-                            'file': str(py_file),
-                            'name': chunk.content.split('\n')[0],
-                            'method': chunk.metadata['http_method'],
-                            'path': chunk.metadata.get('path', 'Unknown'),
-                            'response_model': chunk.metadata.get('response_model'),
-                            'dependencies': chunk.metadata.get('dependencies', [])
-                        })
-                    elif chunk.node_type == "pydantic_model":
-                        models.append({
-                            'file': str(py_file),
-                            'name': self._extract_class_name(chunk),
-                            'fields': self._extract_model_fields(chunk)
-                        })
-        
-        # Generate API documentation
-        print("FastAPI Project Structure:")
-        print("=" * 60)
-        print(f"\nEndpoints ({len(endpoints)}):")
-        for ep in sorted(endpoints, key=lambda x: (x['path'], x['method'])):
-            print(f"  {ep['method']:6} {ep['path']:30} -> {Path(ep['file']).name}")
-            if ep['response_model']:
-                print(f"         Response: {ep['response_model']}")
-        
-        print(f"\nModels ({len(models)}):")
-        for model in models:
-            print(f"  {model['name']} ({len(model['fields'])} fields)")
-        
-        return {'endpoints': endpoints, 'models': models}
-    
-    def _extract_class_name(self, chunk):
-        """Extract class name from chunk."""
-        match = re.search(r'class\s+(\w+)', chunk.content)
-        return match.group(1) if match else "Unknown"
-    
-    def _extract_model_fields(self, chunk):
-        """Extract Pydantic model fields."""
-        fields = []
-        lines = chunk.content.split('\n')
-        for line in lines[1:]:  # Skip class definition
-            if ':' in line and not line.strip().startswith('#'):
-                field_match = re.match(r'\s*(\w+)\s*:\s*([^=]+)', line)
-                if field_match:
-                    fields.append({
-                        'name': field_match.group(1),
-                        'type': field_match.group(2).strip()
-                    })
-        return fields
-
-# Usage
-analyzer = FastAPIAnalyzer()
-if Path("fastapi_project").exists():
-    api_structure = analyzer.analyze_api_structure("fastapi_project")
+rule = ChunkRule(
+    node_types={"function_definition"}, priority=100,
+    metadata={"name": "functions"}
+)
+print(rule.name)
 ```
 
 ## Export Format Recipes
@@ -1762,7 +1588,8 @@ if Path("fastapi_project").exists():
 Export chunks to multiple formats with transformations.
 
 ```python
-from chunker import chunk_file, chunk_directory_parallel
+from chunker import chunk_file
+from chunker.parallel import chunk_directory_parallel
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
 from chunker.exporters import ParquetExporter
 from pathlib import Path
@@ -1936,8 +1763,8 @@ class ProjectExporter:
         results = chunk_directory_parallel(
             project_path,
             "python",  # Adjust for your project
-            pattern="**/*.py",
-            max_workers=8
+            extensions=[".py"],
+            num_workers=8
         )
         
         # Flatten results
@@ -1961,10 +1788,8 @@ class ProjectExporter:
         
         # Export with partitioning by language and node type
         partitioned_dir = output_dir / "partitioned_chunks"
-        exporter.export_partitioned(
-            chunks,
-            str(partitioned_dir),
-            partition_cols=["language", "node_type"]
+        ParquetExporter(partition_by=["language", "node_type"]).export(
+            chunks, str(partitioned_dir)
         )
         
         print(f"\nCreated partitioned export in: {partitioned_dir}")
@@ -2254,9 +2079,9 @@ class MarkdownDocExporter:
 exporter = MarkdownDocExporter()
 
 # Export documentation for a project
-from chunker import chunk_directory_parallel
+from chunker.parallel import chunk_directory_parallel
 
-results = chunk_directory_parallel("src/", "python", pattern="**/*.py")
+results = chunk_directory_parallel("src/", "python", extensions=[".py"])
 all_chunks = []
 for chunks in results.values():
     all_chunks.extend(chunks)
@@ -2275,7 +2100,7 @@ exporter.export_to_markdown(
 Create vector embeddings for semantic code search.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.parser import list_languages
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -2511,7 +2336,7 @@ embedding_system.save("./code_embeddings")
 Create datasets for training code understanding models.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from pathlib import Path
 import json
 import random
@@ -2819,127 +2644,23 @@ generator.save_dataset(bug_dataset, "./datasets/bug_detection")
 
 ## Performance Optimization
 
-### Using New Parallel Processing APIs
+### Using Parallel Processing APIs
 
-Leverage the new parallel processing APIs for maximum performance.
+Save as a script and run with a real source directory. The helpers use a
+process pool, extension lists and `num_workers`:
 
 ```python
-from chunker import (
-    chunk_files_parallel,
-    chunk_directory_parallel,
-    ASTCache
-)
-from pathlib import Path
-import time
+from chunker.parallel import chunk_directory_parallel
 
-class OptimizedBatchProcessor:
-    """High-performance batch processor using new APIs."""
-    
-    def __init__(self):
-        # Configure for maximum performance
-        self.cache = ASTCache(max_size=1000)
-    
-    def process_large_project(self, project_root: str):
-        """Process a large project efficiently."""
-        start_time = time.time()
-        
-        # Process by language for better cache utilization
-        languages = {
-            'python': '**/*.py',
-            'javascript': '**/*.js',
-            'rust': '**/*.rs'
-        }
-        
-        all_results = {}
-        total_chunks = 0
-        
-        for language, pattern in languages.items():
-            print(f"\nProcessing {language} files...")
-            
-            # Use the new parallel directory API
-            results = chunk_directory_parallel(
-                project_root,
-                language,
-                pattern=pattern,
-                max_workers=8,  # Adjust based on CPU
-                show_progress=True
-            )
-            
-            # Aggregate results
-            language_chunks = sum(len(chunks) for chunks in results.values())
-            total_chunks += language_chunks
-            all_results.update(results)
-            
-            print(f"  Processed {len(results)} {language} files")
-            print(f"  Found {language_chunks} chunks")
-            
-            # Show cache performance
-            cache_stats = self.cache.get_stats()
-            print(f"  Cache hit rate: {cache_stats['hit_rate']:.1%}")
-        
-        # Summary
-        duration = time.time() - start_time
-        print(f"\nTotal Processing Summary:")
-        print(f"  Files: {len(all_results)}")
-        print(f"  Chunks: {total_chunks}")
-        print(f"  Duration: {duration:.2f}s")
-        print(f"  Speed: {len(all_results)/duration:.1f} files/sec")
-        
-        return all_results
-    
-    def compare_sequential_vs_parallel(self, test_files: List[str], language: str):
-        """Compare sequential vs parallel performance."""
-        from chunker import chunk_file
-        
-        # Sequential processing
-        print("Sequential processing...")
-        start = time.time()
-        sequential_results = {}
-        for file in test_files:
-            sequential_results[file] = chunk_file(file, language)
-        sequential_time = time.time() - start
-        
-        # Clear cache for fair comparison
-        self.cache.clear()
-        
-        # Parallel processing
-        print("Parallel processing...")
-        start = time.time()
-        parallel_results = chunk_files_parallel(
-            test_files,
-            language,
-            max_workers=8,
-            show_progress=False
-        )
-        parallel_time = time.time() - start
-        
-        # Results
-        print(f"\nPerformance Comparison:")
-        print(f"  Sequential: {sequential_time:.2f}s")
-        print(f"  Parallel: {parallel_time:.2f}s")
-        print(f"  Speedup: {sequential_time/parallel_time:.2f}x")
-        print(f"  Files processed: {len(test_files)}")
-        
-        return {
-            'sequential_time': sequential_time,
-            'parallel_time': parallel_time,
-            'speedup': sequential_time/parallel_time
-        }
-
-# Usage
-processor = OptimizedBatchProcessor()
-
-# Process entire project
-results = processor.process_large_project("./large_project")
-
-# Compare performance
-test_files = list(Path("src/").glob("*.py"))[:20]
-if test_files:
-    comparison = processor.compare_sequential_vs_parallel(
-        [str(f) for f in test_files],
-        "python"
+if __name__ == "__main__":
+    results = chunk_directory_parallel(
+        "src/", "python", extensions=[".py"], num_workers=2, use_cache=False
     )
+    print(sum(len(chunks) for chunks in results.values()))
 ```
+
+See [performance](performance-guide.md) for explicit SQLite caching and
+comparisons that separate warm caches from parser work.
 
 ### Streaming Processing for Huge Files
 
@@ -3295,7 +3016,7 @@ print(f"Processed with custom config: {len(chunks)} chunks")
 Process large codebases efficiently with detailed progress tracking.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.parser import get_parser, return_parser, clear_cache
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
@@ -3573,7 +3294,7 @@ if __name__ == "__main__":
 Process only changed files for efficiency.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from pathlib import Path
 import hashlib
 import json
@@ -3828,7 +3549,7 @@ if history:
 
 ```python
 import ast
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from typing import List, Dict, Any
 
 class PythonAnalyzer:
@@ -3887,7 +3608,7 @@ class PythonAnalyzer:
 ### JavaScript/TypeScript: Extract Exports and Imports
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 import re
 
 class JavaScriptAnalyzer:
@@ -3959,7 +3680,7 @@ class JavaScriptAnalyzer:
 ### Rust: Analyze Traits and Implementations
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 import re
 
 class RustAnalyzer:
@@ -4023,7 +3744,7 @@ Save as .git/hooks/pre-commit and make executable.
 import subprocess
 import sys
 from pathlib import Path
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.exceptions import ChunkerError
 
 # Configuration
@@ -4129,19 +3850,16 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.13'
     
     - name: Install dependencies
       run: |
         pip install uv
-        uv pip install -e .
-        uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
-        python scripts/fetch_grammars.py
-        python scripts/build_lib.py
+        uv sync --locked --all-extras
     
     - name: Run code analysis
       run: |
-        python .github/scripts/analyze_code.py
+        uv run --locked python .github/scripts/analyze_code.py
     
     - name: Upload results
       if: always()

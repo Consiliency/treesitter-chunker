@@ -33,7 +33,7 @@ Welcome to the Tree-sitter Chunker documentation! Tree-sitter Chunker is a power
 ### Language Support
 - **[Grammar Discovery](grammar_discovery.md)** - Automatic grammar discovery from GitHub
 - **[Grammar Management](grammar_management.md)** - Maintainer and CLI workflows for grammar health
-- **[Zero-Config API](zero_config_api.md)** - Simple API that requires no setup
+- **[Zero-Config API](zero_config_api.md)** - Registry-backed detection and fallback API
 
 ## What is Tree-sitter Chunker?
 
@@ -49,7 +49,7 @@ Tree-sitter Chunker leverages the power of Tree-sitter parsers to understand cod
 ## Quick Example
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 
 # Chunk a Python file
 chunks = chunk_file("example.py", "python")
@@ -72,9 +72,9 @@ Extract meaningful code units:
 
 ### 🏎️ Performance Optimized
 Built for speed and efficiency:
-- **AST Caching**: Reuse parsed trees for repeated files
+- **AST Caching**: Reuse chunk lists through an explicit SQLite cache
 - **Parallel Processing**: Process directories with multiple workers
-- **Streaming Support**: Handle files larger than memory
+- **Streaming Support**: Yield chunks lazily while retaining the syntax tree
 - **LRU Parser Caching**: Efficient parser reuse
 - **Thread-Safe Operations**: Safe concurrent processing
 
@@ -237,14 +237,14 @@ def process_files(file_list, language):
 - **JSON / JSONL / Parquet** with compression & partitioning (see Export Formats)
 
 ### 🎛️ Configuration
-- `.chunkerrc` (TOML/YAML/JSON), per-language chunk types and rules, env vars
+- TOML `.chunkerrc` for CLI filters; separate TOML/YAML/JSON plugin settings
 
 ### 🖥️ CLI
 - Batch processing, filters, progress, JSON/JSONL output, zero-config modes
 
 ## Performance Tips
 
-1. **Enable Caching**: Use ASTCache for 11.9x speedup on repeated files
+1. **Enable Caching**: Use an explicit ASTCache for repeated files; measure your workload
 2. **Parallel Processing**: Use `chunk_files_parallel()` for multiple files
 3. **Stream Large Files**: Use `chunk_file_streaming()` for files >10MB
 4. **Optimize Workers**: Set `max_workers` based on CPU count

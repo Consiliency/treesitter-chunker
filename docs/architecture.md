@@ -31,7 +31,7 @@ Tree-sitter Chunker is designed as a modular, efficient system for semantic code
 graph TB
     subgraph "User Interface Layer"
         CLI[CLI Interface<br/>Rich UI]
-        API[Python API<br/>27 Exports]
+        API[Python API]
     end
     
     subgraph "Plugin Layer"
@@ -48,8 +48,8 @@ graph TB
     end
     
     subgraph "Performance Layer"
-        AC[ASTCache<br/>11.9x Speedup]
-        TP[Thread Pool]
+        AC[SQLite Chunk Cache]
+        TP[Process Pool]
     end
     
     subgraph "Parser Management Layer"
@@ -68,7 +68,7 @@ graph TB
     end
     
     subgraph "Native Layer"
-        SO[Compiled .so Library<br/>tree-sitter grammars]
+        SO[Native Grammar Pack<br/>and BAML Companion]
         TS[tree-sitter<br/>Parser Runtime]
     end
     
@@ -249,7 +249,7 @@ def clear_cache() -> None
 - Simple API for parser management
 - Thread-safe singleton pattern
 
-### 2. Language Registry (`chunker/registry.py`)
+### 2. Language Registry (`chunker/_internal/registry.py`)
 
 Manages dynamic language discovery and loading:
 
@@ -267,7 +267,7 @@ class LanguageRegistry:
 - Language function loading via ctypes
 - Compatibility checking
 
-### 3. Parser Factory (`chunker/factory.py`)
+### 3. Parser Factory (`chunker/_internal/factory.py`)
 
 Provides efficient parser creation with caching and pooling:
 
@@ -328,121 +328,58 @@ ChunkerError (base)
     └── LibraryLoadError
 ```
 
-### 6. Plugin Manager (`chunker/plugins/manager.py`)
+### 6. Plugin Manager (`chunker/plugin_manager.py`)
 
 Manages dynamic plugin loading and registration:
 
-```python
-class PluginManager:
-    def __init__(self)
-    def register_plugin(plugin: LanguagePlugin) -> None
-    def get_plugin(language: str) -> Optional[LanguagePlugin]
-    def list_plugins() -> List[str]
-    def load_built_in_plugins() -> None
-    def load_plugin_directory(directory: Path) -> int
-```
+Construct `PluginManager()` without arguments. Load built-ins with
+`load_builtin_plugins()`, load directories with `load_plugins_from_directory`,
+and register classes through `manager.registry.register`. List languages through
+`manager.registry.list_languages()`. Pass a `PluginConfig` to `chunk_file()`
+or `get_plugin()` when needed. See [API Reference](api-reference.md#pluginmanager).
 
 **Key Features:**
 - Dynamic plugin discovery from directories
 - Built-in plugin support (Python, JavaScript, Rust, C, C++)
 - Plugin validation and error handling
-- Thread-safe plugin registration
+- Register plugins during initialization
 
-### 7. AST Cache (`chunker/cache.py`)
+### 7. AST Cache (`chunker/_internal/cache.py`)
 
-Provides intelligent caching for parsed ASTs with 11.9x performance improvement:
-
-```python
-class ASTCache:
-    def __init__(self, max_size: int = 100, ttl_seconds: int = 3600)
-    def get(file_path: str, language: str) -> Optional[CachedAST]
-    def set(file_path: str, language: str, tree: Tree) -> None
-    def clear() -> None
-    def get_stats() -> Dict[str, Any]
-```
-
-**Cache Strategy:**
-- LRU eviction policy
-- File modification time tracking
-- Size-based eviction
-- Thread-safe operations
-- Memory usage monitoring
+`chunker.ASTCache` stores serialized chunk lists in SQLite. It checks file hash
+and modification time and exposes `get_cached_chunks`, `cache_chunks`,
+`invalidate_cache` and `get_cache_stats`. It is not a live AST cache or an LRU
+with TTL. Direct core extraction does not use it automatically.
 
 ### 8. Parallel Chunker (`chunker/parallel.py`)
 
-Enables high-performance parallel processing:
-
-```python
-def chunk_files_parallel(file_paths, language, max_workers=None, show_progress=True)
-def chunk_directory_parallel(directory, language, pattern="**/*", max_workers=None)
-```
-
-**Features:**
-- Thread pool executor for concurrent processing
-- Progress tracking with rich progress bars
-- Automatic worker count optimization
-- Error isolation per file
-- Batch result aggregation
+The Python helpers use `ProcessPoolExecutor` with `num_workers`, `use_cache`
+and `use_streaming`. Directory selection uses `extensions`. They return a
+mapping from `Path` to chunk lists. The installed CLI batch command separately
+uses a thread pool. See [performance](performance-guide.md).
 
 ### 9. Streaming Chunker (`chunker/streaming.py`)
 
-Memory-efficient processing for large files:
+The source is memory-mapped and parsed into a complete syntax tree. Traversal
+then yields chunks lazily. There is no partial-AST streaming or configurable
+read-buffer size. Language-specific span adjustments can differ from core
+extraction; see [performance](performance-guide.md#streaming-large-files).
 
-```python
-def chunk_file_streaming(file_path, language, chunk_size=1024*1024)
-```
+### 10. Configuration System (`chunker/chunker_config.py`)
 
-**Streaming Features:**
-- Incremental file reading
-- Partial AST parsing
-- Generator-based chunk yield
-- Configurable buffer size
-- Memory usage bounds
-
-### 10. Configuration System (`chunker/config.py`)
-
-Flexible configuration management:
-
-```python
-@dataclass
-class ChunkerConfig:
-    min_chunk_size: int = 3
-    max_chunk_size: int = 300
-    chunk_types: List[str] = None
-    plugin_dirs: List[str] = None
-    
-@dataclass
-class LanguageConfig:
-    chunk_types: List[str]
-    min_chunk_size: int
-    max_chunk_size: int
-    include_comments: bool = False
-```
-
-**Configuration Sources:**
-- `.chunkerrc` files
-- TOML/YAML/JSON configs
-- Environment variables
-- Runtime overrides
-- Language-specific settings
+`ChunkerConfig` loads TOML/YAML/JSON for `PluginManager` consumers and supports
+selected environment overrides. The installed `chunk`/`batch` commands have
+a separate TOML `.chunkerrc` loader. See [configuration](configuration.md) for
+discovery, supported keys and precedence.
 
 ### 11. Export System (`chunker/export/`, `chunker/exporters/`)
 
 Comprehensive export format support:
 
-```python
-# JSON/JSONL Exporters
-class JSONExporter:
-    def export(chunks, output_path, schema_type=SchemaType.FLAT)
-    
-class JSONLExporter:
-    def export_streaming(chunk_generator, output_path)
-
-# Parquet Exporter
-class ParquetExporter:
-    def export(chunks, output_path, compression="snappy")
-    def export_partitioned(chunks, output_dir, partition_cols)
-```
+JSON exporters take schema options in the constructor, then `export(chunks,
+output, ...)`. JSONL offers `stream_export(iterator, output, ...)`. Parquet
+takes `compression` and `partition_by` in its constructor and offers `export`
+and `export_streaming`. See [Export Formats](export-formats.md).
 
 **Export Features:**
 - Multiple schema types (flat, nested, relational)
@@ -672,37 +609,12 @@ class ExtendedLanguageRegistry(LanguageRegistry):
 
 ## Performance Considerations
 
-### Memory Usage
-
-- **Parser Size**: ~1MB per parser instance
-- **AST Size**: ~10x source file size
-- **Parser Cache**: N parsers × parser size
-- **Pool Overhead**: M languages × pool size × parser size
-- **AST Cache**: Configurable limit (default 100 cached trees)
-- **Streaming Buffer**: Configurable (default 1MB chunks)
-
-### Performance Benchmarks
-
-- **Without AST Cache**: ~50ms per file
-- **With AST Cache**: ~4.2ms per file (11.9x speedup)
-- **Sequential Processing**: O(n) with file count
-- **Parallel Processing**: O(n/workers) with sufficient cores
-- **Streaming Overhead**: ~5% vs full file parsing
-
-### CPU Usage
-
-- **Parser Creation**: ~10-50ms (one-time cost)
-- **Parsing**: O(n) with file size
-- **Chunk Extraction**: O(m) with node count
-- **Cache Lookup**: O(1) average case
-
-### Optimization Opportunities
-
-1. **Parallel Processing**: Thread pool for multiple files
-2. **Incremental Parsing**: Use tree-sitter's incremental parsing
-3. **Lazy Loading**: Load languages only when needed
-4. **Memory Mapping**: For very large files
-5. **Custom Allocators**: For AST memory management
+Measure parser initialization, extraction, export, cold/warm grammar loading
+and SQLite caching separately. Source size, language, workload and worker count
+affect both elapsed time and peak resident memory. Streaming retains the AST;
+process pools add startup and serialization costs. No fixed speedup, memory
+multiplier or linear scaling is guaranteed. See the reproducible example in
+[Performance Guide](performance-guide.md#benchmarking).
 
 ## Security Considerations
 
@@ -765,7 +677,7 @@ graph TB
 The plugin architecture is fully implemented with an abstract base class:
 
 ```python
-from chunker.plugins import LanguagePlugin
+from chunker.languages.plugin_base import LanguagePlugin
 from typing import Set, Dict, Any, Optional
 
 class GoPlugin(LanguagePlugin):
@@ -850,16 +762,16 @@ from pathlib import Path
 manager = get_plugin_manager()
 
 # Load built-in plugins
-manager.load_built_in_plugins()
-print(f"Loaded plugins: {manager.list_plugins()}")
+manager.load_builtin_plugins()
+print(f"Loaded plugins: {manager.registry.list_languages()}")
 # Output: ['python', 'javascript', 'rust', 'c', 'cpp']
 
 # Register custom plugin
 go_plugin = GoPlugin()
-manager.register_plugin(go_plugin)
+manager.registry.register(go_plugin)
 
 # Load plugins from directory
-plugin_count = manager.load_plugin_directory(Path("./custom_plugins"))
+plugin_count = manager.load_plugins_from_directory(Path("./custom_plugins"))
 print(f"Loaded {plugin_count} custom plugins")
 
 # Get plugin for a language
@@ -1032,7 +944,7 @@ Many features from the roadmap have been successfully implemented:
    - Per-plugin configuration management
 
 2. **Performance Enhancements** ✅
-   - AST Caching with 11.9x speedup
+   - Explicit SQLite chunk caching
    - Parallel processing with configurable workers
    - Streaming API for large file handling
    - Progress tracking with rich UI
