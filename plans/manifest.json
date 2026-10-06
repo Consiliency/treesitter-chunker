@@ -336,6 +336,40 @@
       "task_summary": "Correctness streaming gate and informational benchmark timings for treesitter-chunker#131; coupled cache import treesitter-chunker#377",
       "type": "detailed",
       "updated_at": "2026-10-06T10:40:27Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T12:02:26.702075+00:00",
+      "file": "plans/detailed-cache-flag-375.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/latest.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T12:02:26.702075+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {},
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T12:02:26Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "owner_authorized_roadmap_execution": true,
+            "plan": "plans/detailed-cache-flag-375.md"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": null,
+      "roadmap_ref": null,
+      "slug": "cache-flag-375",
+      "status": "executing",
+      "task_summary": "Respect removal cache flag for treesitter-chunker#375",
+      "type": "detailed",
+      "updated_at": "2026-10-06T12:02:26Z"
     }
   ],
   "schema_version": 1

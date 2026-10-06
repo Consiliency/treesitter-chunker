@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Grammar removal respects `clean_cache=False`, preserving associated download
+  and build files while removing the installed library and metadata.
+
 - Legacy grammar compatibility leaves compilation dates unknown when no
   authentic metadata exists; file modification time is not a compilation date.
   Unknown compilation dates no longer inflate compatibility scores.

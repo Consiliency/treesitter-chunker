@@ -204,6 +204,14 @@ python -m chunker.cli grammar update python
 ### `grammar remove <language>`
 Removes a grammar and its source code.
 
+The Python `GrammarManager.remove_grammar(language, clean_cache=False)` option
+retains that language's download and build cache while removing its installed
+library and installation metadata. The default `True` cleans both caches.
+`GrammarInstaller.remove_grammar` keeps its positional `clean_dependencies`
+argument; cache control is a separate keyword-only `clean_cache` argument.
+Dependency cleanup currently logs its intent. These options do not coordinate
+concurrent cache writers and deletion.
+
 **Example:**
 ```bash
 python -m chunker.cli grammar remove python
