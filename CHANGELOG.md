@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files. Its guides describe existing 2.0/2.1 versions, migration from 1.x, and
   the further package 4.0.0 identity break.
 
+- File-hash quality checks verify complete SHA-256 results across read sizes and
+  changed inputs rather than comparing noisy individual wall-clock durations.
+
 - The main CLI detects `.baml` files automatically with the optional BAML
   companion installed. Missing companions produce installation guidance and
   status 1; implicit ZeroConfigAPI detection retains its text fallback.
