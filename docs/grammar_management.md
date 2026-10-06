@@ -426,6 +426,13 @@ when the old average parse time is available and positive. A zero, missing or
 nonpositive baseline does not establish a percentage regression; independently
 detected incompatibility and parse-success regressions remain in the report.
 
+Detailed compatibility checks classify supplied parse-time metadata above two
+seconds as slow (score multiplier 0.8) and above five seconds as very slow
+(multiplier 0.5 and degraded compatibility). Exactly two seconds receives no
+penalty; exactly five stays in the slow category. Independent validation errors
+remain incompatible, and actual sample failures still affect the result.
+These thresholds interpret metadata; they do not impose a wall-clock test gate.
+
 An explicit `GrammarManager(cache_dir=...)` supplies the validation cache root for
 its registry, installer and default `CompatibilityChecker`/`GrammarTester`
 validators. Passing an actual `validator=` object to either helper preserves that
