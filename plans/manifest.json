@@ -350,16 +350,16 @@
       "status": "committed",
       "task_summary": "Trusted native admission and isolated probe plan for treesitter-chunker#165, treesitter-chunker#151 and treesitter-chunker#164",
       "type": "phase",
-      "updated_at": "2026-10-06T09:01:20.241150+00:00",
+      "updated_at": "2026-10-06T09:21:00.101525+00:00",
       "manual_amendment": {
-        "at": "2026-10-06T09:01:20.241150+00:00",
-        "phase_plan_sha256": "bd4644d9271e506b07deb049f5edf3e6542e8cc98329ba99c776288cbab84338",
-        "reason": "final reviewer input-binding wording corrections; no implementation gate produced"
+        "at": "2026-10-06T09:21:00.101525+00:00",
+        "phase_plan_sha256": "3868fcff5fa04eac00c4a426513512edc856bdbb73b821bf7f64e0cdcc2b7704",
+        "reason": "CLEANUP review reconciliation and independent slice routing; active native execution retains its frozen separate-worktree input"
       },
-      "roadmap_sha256": "d89176be38022c12d110aec465e9bd6f6ebef8a3c83bec6ee8dc02d96d997cc9"
+      "roadmap_sha256": "3adf700dd9c28440b04071e104039cc497b07699fa812dc55a6a3e2e10cde15a"
     },
     {
-      "acceptance_criteria_count": null,
+      "acceptance_criteria_count": 2,
       "created_at": "2026-10-06T08:21:44.113338+00:00",
       "file": "plans/phase-plan-v3-CLEANUP.md",
       "handoff_ref": ".dev-skills/handoffs/codex-plan-phase/20261006T082144Z-CLEANUP-plan.md",
@@ -392,13 +392,13 @@
       "status": "committed",
       "task_summary": null,
       "type": "phase",
-      "updated_at": "2026-10-06T08:41:58.198667+00:00",
+      "updated_at": "2026-10-06T09:21:00.102349+00:00",
       "manual_amendment": {
-        "at": "2026-10-06T08:41:58.198574+00:00",
-        "phase_plan_sha256": "6e0d0b5e04c9bbac7f15730aa51371567d5c75f7f5f6fbda8f0a5700e10bdfa8",
-        "reason": "independent review input-binding corrections; no implementation gate produced"
+        "at": "2026-10-06T09:21:00.102349+00:00",
+        "phase_plan_sha256": "2e443eb963ed94891134c0b46ef6bfee4d2fc58fae8b136a7622357f372e08e7",
+        "reason": "CLEANUP review reconciliation and independent slice routing; active native execution retains its frozen separate-worktree input"
       },
-      "roadmap_sha256": "d89176be38022c12d110aec465e9bd6f6ebef8a3c83bec6ee8dc02d96d997cc9"
+      "roadmap_sha256": "3adf700dd9c28440b04071e104039cc497b07699fa812dc55a6a3e2e10cde15a"
     }
   ],
   "schema_version": 1
