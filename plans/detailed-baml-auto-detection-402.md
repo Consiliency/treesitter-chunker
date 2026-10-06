@@ -27,7 +27,8 @@ never substitutes an ambient BAML grammar or downloads it.
   parser/backend or pin change.
 - chunker/symbol_graph.py and chunker/boundary/adapter.py: retain missing/wrong
   companion skipping in automatic repository scans and implicit file detection.
-  Explicit language requests retain installation guidance. With the extra,
+  Explicit language requests receive the existing BAML installation guidance
+  instead of being hidden by the old map omission. With the extra,
   actual Boundary IR parsing of the fixture must produce14 source-backed nodes
   and no diagnostics; no addition to the pack census or twelve-language golden
   contract. SemanticQuery uses the same guarded collector.

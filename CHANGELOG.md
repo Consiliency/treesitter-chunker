@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The main CLI detects `.baml` files automatically with the optional BAML
   companion installed. Missing companions produce installation guidance and
   status 1; implicit ZeroConfigAPI detection retains its text fallback.
+  Symbol/Boundary scans include structural BAML output with the extra and skip
+  it automatically when the companion is missing or mismatched.
 
 - Chunk and batch extraction failures return status 1 with errors on stderr,
   including quiet mode. Structured stdout stays parseable; batches retain
