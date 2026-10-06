@@ -74,6 +74,8 @@ def test_remove_grammar_respects_cache_option(tmp_path, consumer, clean_cache):
     elif consumer == "installer":
         result = installer.remove_grammar("python", clean_cache=clean_cache)
     else:
+        with pytest.raises(TypeError):
+            installer.remove_grammar("python", True, False)
         result = installer.remove_grammar("python", False)
     assert result == (True, None)
     assert not installed.exists()
