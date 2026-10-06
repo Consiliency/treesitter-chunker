@@ -744,6 +744,40 @@
       "task_summary": "Close download staging handles for treesitter-chunker#386",
       "type": "detailed",
       "updated_at": "2026-10-06T16:49:18Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T12:26:38.148576+00:00",
+      "file": "plans/detailed-auxiliary-isolation-177.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/latest.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T12:26:38.148576+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {},
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T12:26:38Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "owner_authorized_roadmap_execution": true,
+            "plan": "plans/detailed-auxiliary-isolation-177.md"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": null,
+      "roadmap_ref": null,
+      "slug": "auxiliary-isolation-177",
+      "status": "executing",
+      "task_summary": "Isolated truthful auxiliary self-tests for treesitter-chunker#177",
+      "type": "detailed",
+      "updated_at": "2026-10-06T12:26:38Z"
     }
   ],
   "schema_version": 1
