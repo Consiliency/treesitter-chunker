@@ -62,7 +62,7 @@ class TestPerformanceImpactOfConfigLookups:
         )
         config = ChunkerConfig(config_path, use_env_vars=False)
         manager = PluginManager()
-        manager.registry.register_plugin(PythonPlugin)
+        manager.registry.register(PythonPlugin)
         fixture = (
             Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
         )
