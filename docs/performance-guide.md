@@ -3,7 +3,8 @@
 Correctness tests compare repeated streaming output with eager fixture parsing.
 They do not enforce wall-clock variance on shared hosts. The existing streaming
 benchmark records per-file timing samples and variance in seconds squared as
-informational metadata; its duration is the mean per logical file. Run performance
+informational metadata; its duration is the sum of per-file means for one logical
+pass. Run performance
 comparisons under controlled host load, and keep those observations separate
 from content, ordering and line-bound correctness.
 

@@ -21,7 +21,7 @@ and plans/manifest.json.
   mock streamer, percentage gate or wider performance-test rewrite.
 - Record repeated streaming timings and their variance as informational
   metadata in the existing streaming benchmark. Keep logical file/chunk counts;
-  duration reports the mean per logical file. No CI pass/fail threshold.
+  duration sums the per-file means for one logical pass. No CI pass/fail threshold.
 - Coupled prerequisite treesitter-chunker#377 was reproduced separately: this
   existing benchmark imports removed chunker.cache. Use the current exported
   ASTCache and preserve the existing chunker.parallel helper import so
