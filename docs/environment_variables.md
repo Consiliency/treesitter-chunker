@@ -10,6 +10,19 @@ a file, and to applications that pass the resulting settings to plugin APIs. The
 `chunk`/`batch` CLI TOML loader or direct `chunk_file()` calls. See
 [Configuration](configuration.md).
 
+## CLI and Grammar Discovery
+
+`CHUNKER_QUIET` suppresses CLI configuration-load warning messages; it is not
+a guarantee of error-free stdout. `CHUNKER_GRAMMAR_BUILD_DIR` adds a native
+grammar discovery directory for development/testing; it does not bypass
+compatibility checks or change the pinned installed parser stack.
+
+`CHUNKER_WHEEL_LANGS` selects comma-separated languages for the auxiliary
+`scripts/fetch_grammars.py` and `scripts/build_lib.py` workflows (default:
+`python,javascript,rust`). It does not configure the installed CLI or replace
+the release's parser pairing. There are no current consumers of
+`CHUNKER_BUILD_VERBOSE` or `CHUNKER_BUILD_TIMEOUT`.
+
 ## Variable Expansion in Config Files
 
 You can use environment variables directly in your configuration files using the `${VAR}` or `${VAR:default}` syntax.
@@ -68,7 +81,7 @@ filesystem-backed endpoints can serve requests.
 
 | Environment Variable | Description | Example |
 |---------------------|-------------|---------|
-| `TREE_SITTER_CHUNKER_API_TOKEN` | Required Bearer token for `/chunk/file`, `/graph/xref`, and `/export/postgres` | `change-me` |
+| `TREE_SITTER_CHUNKER_API_TOKEN` | Required Bearer token for `/chunk/file`, `/graph/xref`, `/export/postgres`, and `/nearest-tests` | `change-me` |
 | `TREE_SITTER_CHUNKER_API_ROOT` | Canonical root for relative filesystem paths; defaults to the process working directory | `/srv/source` |
 | `TREE_SITTER_CHUNKER_API_CORS_ORIGINS` | Comma-separated allowed browser origins; wildcard origins are ignored | `https://app.example.com` |
 | `TREE_SITTER_CHUNKER_POSTGRES_HOSTS` | Exact comma-separated host allowlist for direct Postgres exports | `db.internal,localhost` |

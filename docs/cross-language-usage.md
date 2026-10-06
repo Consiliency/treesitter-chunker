@@ -23,7 +23,7 @@ chunks = chunk_text("function hello() { return 1; }", language="javascript")
 
 # Chunk entire directory
 if __name__ == "__main__":
-    results = chunk_directory("src/", language="python", num_workers=2)
+    results = chunk_directory("src/", language="python", num_workers=2, use_cache=False)
 ```
 
 ### 2. Command-Line Interface (Any Language)
@@ -38,7 +38,7 @@ treesitter-chunker chunk file.py --lang python --output-format json
 echo "def hello(): pass" | treesitter-chunker chunk --stdin --lang python --json
 
 # Batch process with quiet mode
-treesitter-chunker batch src/ --pattern "*.js" --output-format jsonl --quiet
+treesitter-chunker batch src/ --include "*.js" --output-format jsonl --quiet
 
 # Minimal output format for easy parsing
 treesitter-chunker chunk file.py --output-format minimal
@@ -130,7 +130,8 @@ curl -X POST http://localhost:8000/chunk/file \
   }'
 ```
 
-See `/api/examples/` for client examples in Python, JavaScript, and Go.
+The source `api/examples/` clients are illustrative; add the required Bearer
+header before using their filesystem endpoints.
 
 ### 4. Docker Container
 
@@ -189,14 +190,16 @@ functions do not accept those filter keywords; filter returned chunks yourself.
 
 ## Error Handling
 
-All methods return appropriate error codes:
-- CLI: Non-zero exit code on error
-- API: HTTP status codes (400 for bad request, 404 for not found)
-- Subprocess: Check return code and stderr
+Check exit status, stderr **and the decoded payload**. The current main CLI
+catches some per-file errors, prints them on stdout and can still exit zero;
+`--quiet` does not suppress those errors. A JSON parse failure is also a failed
+operation. REST clients should check HTTP status and the response schema.
 
 ## Examples Repository
 
-See `/api/examples/` for complete working examples:
+The source `api/examples/` clients are illustrative. Filesystem endpoints
+require the Bearer header shown above; bundled clients may need that header
+added before use:
 - `client.py` - Python API client
 - `client.js` - Node.js API client
 - `client.go` - Go API client

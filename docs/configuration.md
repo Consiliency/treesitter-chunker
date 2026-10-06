@@ -7,7 +7,9 @@ consumers differ; loading a configuration object does not configure every API.
 
 `treesitter-chunker chunk` and `batch` load **TOML** through `cli.main.load_config`.
 `--config PATH` selects one file explicitly. Otherwise discovery walks upward
-from the input path (the working directory for stdin), then checks `~/.chunkerrc`.
+from the input path (first path for batch), then checks `~/.chunkerrc`.
+Batch stdin checks only the working directory and home, without walking
+parents. A missing explicit config path is currently ignored.
 It uses the first successfully loaded file; it does not merge a stack of files.
 The conventional filename is `.chunkerrc`.
 
@@ -91,6 +93,8 @@ not automatic implementations of progress, logging, memory or export controls.
 Core `chunk_file()` and `chunk_text()` do not take a `ChunkerConfig` argument.
 `PluginManager` also does not accept that object in its constructor; your
 application must apply `plugin_dirs` and `enabled_languages` explicitly.
+`PluginConfig.enabled` is not enforced by the manager; callers must check it
+before invoking extraction.
 
 ## Environment Variables
 
@@ -110,8 +114,8 @@ print(config.get_plugin_config("python"))
 
 There is no general `config.validate()` method. File decoding and supported
 constructor/method contracts provide validation; test the consuming plugin
-with representative fixtures. To write TOML with `config.save()`, install the
-optional `tomli-w` dependency.
+with representative fixtures. TOML writing with `config.save()` uses the
+included `tomli-w` dependency.
 
 ## See Also
 

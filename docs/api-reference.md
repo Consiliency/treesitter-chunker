@@ -73,20 +73,21 @@ uv sync --locked --all-extras
 ## Quick Start
 
 ```python
+from pathlib import Path
 from chunker.core import chunk_file
 from chunker.plugin_manager import get_plugin_manager
 
 # Basic usage
 chunks = chunk_file("example.py", "python")
 
-# With plugins
+# Explicit plugin path; core chunk_file does not use registered plugins
 manager = get_plugin_manager()
-manager.load_builtin_plugins()
-chunks = chunk_file("example.py", "python")
+chunks = manager.chunk_file(Path("example.py"), "python")
 
 # Parallel processing
 from chunker.parallel import chunk_files_parallel
-results = chunk_files_parallel(["file1.py", "file2.py", "file3.py"], "python")
+if __name__ == "__main__":
+    results = chunk_files_parallel(["file1.py", "file2.py", "file3.py"], "python")
 
 # Export to Parquet
 from chunker.exporters import ParquetExporter
@@ -168,7 +169,7 @@ Represents a semantic chunk of code extracted from a file.
 get_parser(language: str, config: Optional[ParserConfig] = None) -> Parser
 ```
 
-Get a parser instance for the specified language with optional configuration. Parsers are cached and pooled for efficiency.
+Get a parser instance for the specified language with optional configuration. Default parsers are owned by the calling thread; configured calls create fresh parsers for efficiency.
 
 **Parameters:**
 - `language` (str): The name of the language (e.g., "python", "javascript", "rust")
@@ -196,7 +197,7 @@ extraction are separate; see [language coverage](language-coverage.md).
 **Example:**
 ```python
 languages = list_languages()
-print(languages)  # ['c', 'cpp', 'javascript', 'python', 'rust']
+print(languages)  # Availability depends on the installed grammars
 ```
 
 ### get_language_info
@@ -315,7 +316,7 @@ class PluginConfig:
 Configuration for individual plugins.
 
 **Attributes:**
-- `enabled`: Whether the plugin is enabled
+- `enabled`: Application selection flag; the manager does not enforce it
 - `chunk_types`: Override default chunk types
 - `min_chunk_size`: Minimum chunk size in lines
 - `max_chunk_size`: Maximum chunk size in lines
@@ -333,8 +334,7 @@ Get the global plugin manager instance (singleton).
 ```python
 from chunker.plugin_manager import get_plugin_manager
 
-manager = get_plugin_manager()
-manager.load_builtin_plugins()
+manager = get_plugin_manager()  # Built-ins are already loaded
 
 # List available plugins
 plugins = manager.registry.list_languages()
@@ -392,6 +392,11 @@ print(cache.get_cache_stats())
 There is no `max_size`, `get_stats()` or LRU/TTL policy. Direct `chunk_file()`
 does not use this cache automatically. See [performance](performance-guide.md)
 for invalidation limits.
+
+Parallel helpers default to `use_cache=True` and share
+`~/.cache/treesitter-chunker/ast_cache.db`; no directory override is exposed.
+Disable with `use_cache=False` unless you manage invalidation when parser pins
+or extraction mode/options change.
 
 ### chunk_files_parallel
 
@@ -485,6 +490,10 @@ class JSONLExporter:
 
 ### Parquet Export
 
+Use a dedicated directory for partitioned datasets, not a file with a suffix.
+Re-exporting into an existing dataset with a different partition specification
+raises an error; use a fresh directory.
+
 ```python
 from chunker.exporters import ParquetExporter
 
@@ -493,7 +502,7 @@ exporter = ParquetExporter(
     partition_by=["language"],
     compression="snappy"
 )
-exporter.export(chunks, "output.parquet")
+exporter.export(chunks, "partitioned_output/")
 
 # Export with custom schema
 ParquetExporter(partition_by=["language", "node_type"]).export(chunks, "output_dir/")

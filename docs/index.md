@@ -75,8 +75,8 @@ Built for speed and efficiency:
 - **AST Caching**: Reuse chunk lists through an explicit SQLite cache
 - **Parallel Processing**: Process directories with multiple workers
 - **Streaming Support**: Yield chunks lazily while retaining the syntax tree
-- **LRU Parser Caching**: Efficient parser reuse
-- **Thread-Safe Operations**: Safe concurrent processing
+- **Parser Reuse**: Thread-owned defaults and explicit exclusive leases
+- **Concurrent Processing**: Separate parsers for concurrent workers
 
 ### 🛠️ Developer Friendly
 Simple API with powerful capabilities:
@@ -240,14 +240,14 @@ def process_files(file_list, language):
 - TOML `.chunkerrc` for CLI filters; separate TOML/YAML/JSON plugin settings
 
 ### 🖥️ CLI
-- Batch processing, filters, progress, JSON/JSONL output, zero-config modes
+- Batch processing, filters, progress, JSON/JSONL output and language detection
 
 ## Performance Tips
 
 1. **Enable Caching**: Use an explicit ASTCache for repeated files; measure your workload
 2. **Parallel Processing**: Use `chunk_files_parallel()` for multiple files
 3. **Stream Large Files**: Use `chunk_file_streaming()` for files >10MB
-4. **Optimize Workers**: Set `max_workers` based on CPU count
+4. **Optimize Workers**: Set `num_workers` for Python process helpers; measure the workload
 5. **Choose Right Export**: Parquet for analytics, JSONL for streaming
 
 ## Community

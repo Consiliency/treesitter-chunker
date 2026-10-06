@@ -379,18 +379,22 @@ if registry.has_language("python"):
 ### Custom Parser Configuration
 
 ```python
-from chunker.parser import get_parser
-from chunker.parser import ParserConfig
+from tree_sitter import Range
+from chunker.parser import get_parser, ParserConfig
 
-# Configure parser with timeout
-config = ParserConfig(
-    timeout_ms=5000,  # 5 second timeout
-    included_ranges=[(0, 1000), (2000, 3000)]  # Parse only specific byte ranges
-)
-
+source = b"def hello():\n    return 1\n"
+config = ParserConfig(included_ranges=[Range(
+    start_point=(0, 0), end_point=(2, 0),
+    start_byte=0, end_byte=len(source)
+)])
 parser = get_parser("python", config)
-# Parser will only parse specified ranges and timeout after 5s
+print(parser.parse(source).root_node)
 ```
+
+Ranges require both byte offsets and corresponding points in the original
+source. This example selects a complete function. The legacy `timeout_ms`
+field does not impose a deadline on pinned Tree-sitter 0.26; see
+[treesitter-chunker#355](https://github.com/Consiliency/treesitter-chunker/issues/355).
 
 ### Concurrent Processing
 
@@ -633,18 +637,18 @@ def generate_quality_report(directory, language):
 Tree-sitter Chunker comes with built-in plugins for Python, JavaScript, Rust, C, and C++:
 
 ```python
+from pathlib import Path
 from chunker.plugin_manager import get_plugin_manager
 
 # Load built-in plugins
-manager = get_plugin_manager()
-manager.load_builtin_plugins()
+manager = get_plugin_manager()  # Built-ins are already loaded
 
 # List available plugins
 print(manager.registry.list_languages())
-# Output: ['python', 'javascript', 'rust', 'c', 'cpp']
+# Output depends on the registered plugins
 
 # Chunk files using plugins
-chunks = chunk_file("example.py", "python")
+chunks = manager.chunk_file(Path("example.py"), "python")
 ```
 
 ### Plugin Configuration
@@ -787,7 +791,7 @@ exporter.export(chunks, "output.parquet")
 
 # Export with custom columns and compression
 exporter = ParquetExporter(
-    columns=["language", "file_path", "node_type", "content", "start_line", "end_line"],
+    columns=["language", "file_path", "node_type", "content"],
     compression="snappy"  # Options: snappy, gzip, brotli, lz4, zstd
 )
 exporter.export(chunks, "output.parquet")
@@ -806,11 +810,12 @@ def process_directory(directory):
         for chunk in file_chunks:
             yield chunk
 
-exporter.export_streaming(
-    process_directory("large_codebase/"),
-    "streaming_output.parquet",
-    batch_size=1000
-)
+if __name__ == "__main__":
+    exporter.export_streaming(
+        process_directory("large_codebase/"),
+        "streaming_output.parquet",
+        batch_size=1000
+    )
 ```
 
 ### Export Format Comparison
@@ -824,32 +829,33 @@ exporter.export_streaming(
 ### Custom Export Example
 
 ```python
+from datetime import datetime
 # Export chunks with filtering and transformation
 from chunker.parallel import chunk_directory_parallel
 from chunker.exporters import ParquetExporter
 
-# Process a project
-results = chunk_directory_parallel("myproject/", "python")
+if __name__ == "__main__":
+    # Process a project
+    results = chunk_directory_parallel("myproject/", "python")
 
-# Filter and transform chunks
-processed_chunks = []
-for file_path, chunks in results.items():
-    for chunk in chunks:
-        # Only export functions and classes
-        if chunk.node_type in ["function_definition", "class_definition"]:
-            # Add custom metadata
-            chunk.metadata = {
-                "project": "myproject",
-                "version": "1.0.0",
-                "extracted_at": datetime.now().isoformat()
-            }
-            processed_chunks.append(chunk)
+    # Filter and transform chunks
+    processed_chunks = []
+    for file_path, chunks in results.items():
+        for chunk in chunks:
+            # Only export functions and classes
+            if chunk.node_type in ["function_definition", "class_definition"]:
+                # Add custom metadata
+                chunk.metadata = {
+                    "project": "myproject",
+                    "version": "1.0.0",
+                    "extracted_at": datetime.now().isoformat()
+                }
+                processed_chunks.append(chunk)
 
-# Export to Parquet with partitioning
-exporter = ParquetExporter(compression="zstd")
-ParquetExporter(partition_by=["node_type"]).export(
-    processed_chunks, "exports/myproject/"
-)
+    # Export to Parquet with partitioning
+    ParquetExporter(compression="zstd", partition_by=["node_type"]).export(
+        processed_chunks, "exports/myproject/"
+    )
 ```
 
 ## Performance Best Practices

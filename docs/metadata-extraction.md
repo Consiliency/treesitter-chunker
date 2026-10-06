@@ -1,176 +1,73 @@
 # Metadata Extraction
 
-The metadata extraction feature enriches code chunks with detailed information about functions, methods, and classes, including signatures, complexity metrics, documentation, and dependencies.
+Core extraction adds metadata by default. Fields depend on the language, node
+type and extractor: do not assume every chunk has a signature, docstring,
+complexity record or import list. Call spans describe syntax, not resolved
+runtime targets or a complete call graph.
 
-## Overview
-
-When enabled, the chunker automatically extracts the following metadata for each chunk:
-
-- **Function/Method Signatures**: Parameter names, types, default values, return types
-- **Complexity Metrics**: Cyclomatic and cognitive complexity, nesting depth, lines of code
-- **Documentation**: Docstrings, JSDoc comments, and other documentation
-- **Dependencies**: External symbols referenced by the chunk
-- **Imports/Exports**: Module dependencies and exported symbols
-
-## Usage
-
-### Basic Usage
+## Basic Usage
 
 ```python
-from chunker.chunker import chunk_text
+from chunker import chunk_text
 
-# Extract chunks with metadata (default)
-chunks = chunk_text(code, 'python')
-
-# Access metadata
+code = 'def hello(name: str):\n    """Say hello."""\n    return print(name)\n'
+chunks = chunk_text(code, "python")
 for chunk in chunks:
-    print(f"Function: {chunk.metadata['signature']['name']}")
-    print(f"Complexity: {chunk.metadata['complexity']['cyclomatic']}")
-    print(f"Docstring: {chunk.metadata['docstring']}")
+    print(chunk.metadata.get("signature", {}))
+    print(chunk.metadata.get("complexity", {}))
+    print(chunk.metadata.get("docstring"))
+    print(chunk.metadata.get("call_spans", []))
 ```
 
-### Disabling Metadata Extraction
+Disable optional metadata extraction when the consumer does not need it:
 
 ```python
-# Disable metadata extraction for performance
-chunks = chunk_text(code, 'python', extract_metadata=False)
+chunks = chunk_text(code, "python", extract_metadata=False)
 ```
 
-## Metadata Structure
+Chunk identity and extraction bookkeeping are separate from these optional
+fields. See [chunk identity](chunk-identity.md).
 
-Each chunk's metadata dictionary contains:
+## Call Span Contract
+
+`call_spans` records have `name`, `start` and `end` keys, with optional
+`function_start`, `function_end`, `arguments_start` and `arguments_end` offsets.
+Offsets are bytes in the original UTF-8 source; ends are exclusive. Slice
+source bytes before decoding, rather than indexing a Unicode string with them.
+There is no universal decoded argument list, call-type field or target binding.
+Nested chunks may repeat a call; deduplicate by file and byte span for file
+counts. See the [cookbook](cookbook.md#call-span-extraction-and-metadata-analysis).
+
+## Extractors and Complexity Analyzers
+
+The factory has specialized metadata extractors for Python, JavaScript,
+TypeScript/JSX/TSX, Rust, Go and C/C++; specialized complexity analyzers cover
+Python and JavaScript/TypeScript variants. Generic core extraction also handles
+call spans for other languages; parser coverage and metadata completeness are
+different questions. Inspect the available specialized registrations:
 
 ```python
-{
-    'signature': {
-        'name': 'function_name',
-        'parameters': [
-            {'name': 'param1', 'type': 'str', 'default': None},
-            {'name': 'param2', 'type': 'int', 'default': '0'}
-        ],
-        'return_type': 'bool',
-        'decorators': ['staticmethod', 'lru_cache'],
-        'modifiers': ['async', 'staticmethod']
-    },
-    'complexity': {
-        'cyclomatic': 5,
-        'cognitive': 8,
-        'nesting_depth': 3,
-        'lines_of_code': 25,
-        'logical_lines': 18
-    },
-    'docstring': 'Function documentation...',
-    'dependencies': ['external_func', 'SomeClass'],
-    'imports': ['import os', 'from typing import List'],
-    'exports': ['exported_function', 'ExportedClass']
-}
+from chunker.metadata import MetadataExtractorFactory
+
+print(MetadataExtractorFactory.supported_languages())
+extractor = MetadataExtractorFactory.create_extractor("python")
+analyzer = MetadataExtractorFactory.create_analyzer("python")
 ```
 
-## Supported Languages
+Factory creation can return `None`. Extractor methods such as `extract_calls`
+take `(tree_sitter.Node, source_bytes)`, not a `CodeChunk`. The abstract
+`BaseMetadataExtractor` cannot be directly instantiated. For consumers, prefer
+the metadata already attached to chunks.
 
-Currently, metadata extraction is supported for:
+Complexity metrics are static heuristics over syntax. They do not prove runtime
+cost or behavior; the available measures and node handling vary by language.
+Additional application classification should be tested on representative
+fixtures and labeled as a heuristic.
 
-- **Python**: Full support including type annotations, decorators, async/await
-- **JavaScript**: Functions, arrow functions, async, generators, JSDoc
-- **TypeScript**: All JavaScript features plus interfaces, type annotations
-- **JSX/TSX**: Same as JavaScript/TypeScript
+## Extending Extraction
 
-## Language-Specific Features
-
-### Python
-
-- Type annotations from function signatures
-- Decorators and their parameters
-- Async function detection
-- Docstring extraction (Google, NumPy, and Sphinx styles)
-- Special method modifiers (staticmethod, classmethod)
-
-### JavaScript/TypeScript
-
-- JSDoc comment parsing
-- Arrow function support
-- Async/await and generator detection
-- TypeScript type annotations
-- Interface method signatures
-- Method modifiers (static, private, protected)
-
-## Complexity Metrics
-
-### Cyclomatic Complexity
-
-Measures the number of linearly independent paths through the code:
-- Base complexity: 1
-- +1 for each: if, while, for, case, catch, and, or
-- Higher values indicate more complex control flow
-
-### Cognitive Complexity
-
-Measures how difficult code is to understand:
-- Considers nesting levels
-- Penalizes deeply nested conditions
-- Accounts for logical operators and recursion
-
-### Example
-
-```python
-def example(items):         # Cyclomatic: 1 (base)
-    for item in items:      # Cyclomatic: 2, Cognitive: 1
-        if item > 0:        # Cyclomatic: 3, Cognitive: 3 (nesting penalty)
-            process(item)
-```
-
-## Performance Considerations
-
-Metadata extraction adds overhead to the chunking process. For large codebases where metadata is not needed, disable it:
-
-```python
-# Faster chunking without metadata
-chunks = chunk_file('large_file.py', 'python', extract_metadata=False)
-```
-
-## Extending Metadata Extraction
-
-To add support for a new language:
-
-1. Create a new extractor class inheriting from `BaseMetadataExtractor`
-2. Create a complexity analyzer inheriting from `BaseComplexityAnalyzer`
-3. Register them in `MetadataExtractorFactory`
-
-Example:
-
-```python
-from chunker.metadata.extractor import BaseMetadataExtractor
-
-class RubyMetadataExtractor(BaseMetadataExtractor):
-    def extract_signature(self, node, source):
-        # Implement Ruby-specific signature extraction
-        pass
-```
-
-## API Reference
-
-### MetadataExtractorFactory
-
-```python
-# Create extractors for a language
-extractor = MetadataExtractorFactory.create_extractor('python')
-analyzer = MetadataExtractorFactory.create_analyzer('python')
-
-# Check language support
-if MetadataExtractorFactory.is_supported('ruby'):
-    # Extract metadata for Ruby
-    pass
-```
-
-### Chunk Methods
-
-```python
-chunk = chunks[0]
-
-# Access metadata
-signature = chunk.metadata.get('signature', {})
-complexity = chunk.metadata.get('complexity', {})
-
-# Dependencies are also stored in the chunk
-deps = chunk.dependencies  # List of dependency names
-```
+Implement the abstract extractor contracts, register the concrete class in
+the existing factory, and use real parsing fixtures for signatures, docstrings,
+calls and any optional fields you promise. Add a complexity analyzer only when
+its separate contract is needed. Follow
+[CONTRIBUTING.md](https://github.com/Consiliency/treesitter-chunker/blob/main/CONTRIBUTING.md).

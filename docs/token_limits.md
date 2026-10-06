@@ -180,7 +180,7 @@ def large_function():
 
 1. **Choose Appropriate Limits**: Consider the LLM's context window and leave room for prompts:
    ```python
-   # For GPT-4 (8k context), leave room for prompts
+   # Leave room for prompts within the target model's documented context limit
    chunks = chunk_file_with_token_limit("file.py", "python", max_tokens=6000)
    ```
 
@@ -200,7 +200,9 @@ def large_function():
 
 ## Integration with Fallback Strategies
 
-Token limits work seamlessly with the fallback chunking system. When tree-sitter chunks are too large, the sliding window fallback can be used:
+Sliding-window fallback is a separate interface; callers must invoke it
+explicitly when their application needs it. It is not automatically wired
+into token-aware extraction:
 
 ```python
 from chunker.fallback import SlidingWindowFallback

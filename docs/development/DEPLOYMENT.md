@@ -55,7 +55,8 @@ export TREE_SITTER_CHUNKER_API_ROOT="$(pwd)"
 uv run --locked uvicorn api.server:app --host 127.0.0.1 --port 8000
 ```
 
-Set `TREE_SITTER_CHUNKER_API_TOKEN` before calling filesystem-backed endpoints.
+Set `TREE_SITTER_CHUNKER_API_TOKEN` in the server environment before starting
+it to enable filesystem-backed endpoints.
 `/chunk/file` accepts paths relative to the configured root and requires a
 Bearer token; absolute paths, traversal and symlink escapes are rejected.
 `/chunk/text`, `/health` and `/languages` do not require that token. Request

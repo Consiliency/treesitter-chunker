@@ -112,7 +112,7 @@ treesitter-chunker debug ast example.py --lang python --fmt tree
 
 ### Configuration
 
-You can pass a configuration file to adjust chunk sizes, language rules, and filters:
+You can pass a configuration file to adjust chunk sizes and filters:
 
 ```bash
 treesitter-chunker chunk example.py --config .chunkerrc --lang python
@@ -129,8 +129,13 @@ Use exporters from Python for structured outputs (JSON, JSONL, Parquet, GraphML,
 
 `chunk` supports `table`, `json`, `jsonl` and `minimal`. `batch` supports
 `summary`, `json`, `jsonl`, `minimal` and `csv`. Use `--quiet` for machine-readable
-batch output, and check the exit status before parsing. `chunk` takes one file;
+batch output. Check exit status and validate the decoded payload: some
+per-file errors print on stdout and still exit zero. `--quiet` does not suppress
+those errors. `chunk` takes one file;
 use `batch` or `boundary` for a directory.
+
+The per-file status/stdout limitation is tracked in
+[treesitter-chunker#359](https://github.com/Consiliency/treesitter-chunker/issues/359).
 
 ```bash
 python -c "from importlib.metadata import version; print(version('treesitter-chunker'))"

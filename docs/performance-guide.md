@@ -21,7 +21,9 @@ python -c "import tree_sitter_language_pack as p; p.prefetch(['python', 'javascr
 
 The publicly exported `ASTCache` stores **chunk lists in SQLite**, rather than
 live Tree-sitter AST objects. `chunk_file()` does not consult this cache
-automatically. Use it explicitly, or use the parallel APIs with `use_cache=True`.
+automatically. The parallel APIs enable caching by default (`use_cache=True`)
+at `~/.cache/treesitter-chunker/ast_cache.db`. Their helpers do not accept a
+custom cache directory. Use `use_cache=False` unless you manage invalidation.
 
 ```python
 from pathlib import Path
@@ -42,7 +44,11 @@ Statistics contain `total_files`, `total_size_bytes` and `cache_db_size`; there
 are no hit-rate counters, `max_size` constructor argument, TTL or LRU eviction.
 Cache validation checks the file's hash and modification time. This cache does
 not key entries by grammar/runtime version or extraction options; invalidate
-it when those change. Use a private cache directory for each workload.
+it when those change, including when switching core/streaming extraction.
+The private-directory example above applies to explicit `ASTCache` use; it
+does not redirect the parallel helpers' shared default cache.
+The extraction-mode/pin cache gap is tracked in
+[treesitter-chunker#358](https://github.com/Consiliency/treesitter-chunker/issues/358).
 
 ## Incremental Boundary IR
 
@@ -106,10 +112,13 @@ whole syntax tree. It does not provide bounded-memory parsing, a read-buffer
 `chunk_size` option, or arbitrary stream input. Turning its result into a list
 retains all chunks in memory.
 
-Streaming selection matches core chunking for mainstream languages. Special
-span adjustments for Dart, R, Elixir and Svelte can differ; see the
-[known verification gaps](development/xfail-inventory.md). Compare results on
-your own fixtures before switching extraction modes.
+Streaming uses the core node-selection predicate, but does not repeat core's
+per-language type/span rewrites, merged or synthesized chunks, or optional
+metadata and file/definition/symbol identities. Types, spans and IDs can differ
+(including C++ methods); CRLF handling can also differ. Treat the two outputs
+as different extraction modes and compare real fixtures before switching.
+Invalidate cached chunks when changing modes; do not mix their output in one
+index assuming equivalence.
 
 ## Benchmarking
 

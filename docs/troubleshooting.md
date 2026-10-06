@@ -70,7 +70,7 @@ See [grammar management](grammar_management.md).
 `chunk` and `batch` already detect languages when `--lang` is omitted. There are
 no `auto-chunk` or `auto-batch` commands. Use `--help` on the installed command
 rather than older examples. Use `--quiet --output-format json` (or `jsonl`) for
-successful machine-readable output; always check the exit status before parsing.
+successful machine-readable output; always check the exit status and validate the payload before parsing.
 
 CLI JSON is an array of chunk objects. The source REST server wraps chunks in
 an object containing `chunks`, `total_chunks` and `language`. These are

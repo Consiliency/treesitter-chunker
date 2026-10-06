@@ -461,19 +461,18 @@ Tree-sitter Chunker now includes a plugin system for language support:
 
 ```python
 # save as use_plugins.py
+from pathlib import Path
 from chunker.plugin_manager import get_plugin_manager
-from chunker.core import chunk_file
 
 # Load built-in plugins
-manager = get_plugin_manager()
-manager.load_builtin_plugins()
+manager = get_plugin_manager()  # Built-ins are already loaded
 
 # List available plugins
 print("Available plugins:", manager.registry.list_languages())
-# Output: ['python', 'javascript', 'rust', 'c', 'cpp']
+# Output depends on the installed and registered plugins
 
-# Chunk with plugins loaded
-chunks = chunk_file("example.py", "python")
+# Explicit plugin route; core chunk_file bypasses registered plugins
+chunks = manager.chunk_file(Path("example.py"), "python")
 print(f"Chunked {len(chunks)} items with plugin support")
 ```
 
@@ -483,7 +482,7 @@ Process multiple files in parallel for better performance:
 
 ```python
 # save as parallel_processing.py
-# Put executable calls under if __name__ == "__main__" on spawn-based platforms.
+# Put executable calls under if __name__ == "__main__" for spawn or forkserver.
 from chunker.parallel import chunk_files_parallel, chunk_directory_parallel
 from pathlib import Path
 
@@ -747,7 +746,7 @@ def process_codebase(root_dir: str, max_workers: int = 4):
 You've now learned the basics of Tree-sitter Chunker! Here's what to explore next:
 
 1. **[User Guide](user-guide.md)** - Comprehensive documentation including plugins and performance
-2. **[API Reference](api-reference.md)** - Detailed documentation of all 27 exported APIs
+2. **[API Reference](api-reference.md)** - Detailed documentation of all public APIs
 3. **[Plugin Development](plugin-development.md)** - Create custom language plugins
 4. **[Configuration](configuration.md)** - Advanced configuration options
 5. **[Performance Guide](performance-guide.md)** - Optimization strategies
@@ -771,55 +770,56 @@ from chunker.export.json_export import JSONExporter, JSONLExporter
 from chunker.export.formatters import SchemaType
 from chunker.exporters.parquet import ParquetExporter
 
-# Basic chunking
-chunks = chunk_file("file.py", "python")
+if __name__ == "__main__":
+    # Basic chunking
+    chunks = chunk_file("file.py", "python")
 
-# Parallel processing
-results = chunk_files_parallel(["file1.py", "file2.py"], "python")
-dir_results = chunk_directory_parallel("src/", "python", extensions=[".py"])
+    # Parallel processing
+    results = chunk_files_parallel(["file1.py", "file2.py"], "python")
+    dir_results = chunk_directory_parallel("src/", "python", extensions=[".py"])
 
-# Streaming for large files
-for chunk in chunk_file_streaming("huge_file.py", "python"):
-    process(chunk)
+    # Streaming for large files
+    for chunk in chunk_file_streaming("huge_file.py", "python"):
+        print(chunk.node_type, chunk.content)
 
-# Plugin management
-manager = get_plugin_manager()
-manager.load_builtin_plugins()
+    # Plugin management
+    manager = get_plugin_manager()  # Built-ins are already loaded
 
-# Export formats
-exporter = JSONExporter(schema_type=SchemaType.NESTED)
-exporter.export(chunks, "output.json")
+    # Export formats
+    exporter = JSONExporter(schema_type=SchemaType.NESTED)
+    exporter.export(chunks, "output.json")
 
-parquet = ParquetExporter(compression="snappy")
-parquet.export(chunks, "output.parquet")
+    parquet = ParquetExporter(compression="snappy")
+    parquet.export(chunks, "output.parquet")
 
-# Configuration
-config = ChunkerConfig(".chunkerrc")
+    # Configuration
+    config = ChunkerConfig("chunker.config.toml")  # Existing plugin settings file
 
-# Available languages
-languages = list_languages()  # ['c', 'cpp', 'javascript', 'python', 'rust']
+    # Available languages
+    languages = list_languages()  # Installed parser availability
 
-# Chunk properties
-chunk.language       # Programming language
-chunk.file_path      # Source file path  
-chunk.node_type      # e.g., "function_definition"
-chunk.start_line     # Starting line (1-indexed)
-chunk.end_line       # Ending line
-chunk.byte_start     # Starting byte offset
-chunk.byte_end       # Ending byte offset
-chunk.parent_context # e.g., "class:MyClass"
-chunk.content        # Actual source code
-chunk.chunk_id       # Unique identifier
+    # Chunk properties
+    chunk = chunks[0]  # This example assumes nonempty extraction
+    chunk.language       # Programming language
+    chunk.file_path      # Source file path
+    chunk.node_type      # e.g., "function_definition"
+    chunk.start_line     # Starting line (1-indexed)
+    chunk.end_line       # Ending line
+    chunk.byte_start     # Starting byte offset
+    chunk.byte_end       # Ending byte offset
+    chunk.parent_context # e.g., "class:MyClass"
+    chunk.content        # Actual source code
+    chunk.chunk_id       # Unique identifier
 
-# CLI usage
-# python cli/main.py chunk <file> -l <language> [options]
-# Options: --json, --jsonl, --config, --parallel, --progress
+    # CLI usage
+    # treesitter-chunker chunk <file> --lang <language> --json
+    # treesitter-chunker batch <directory> --parallel 2 --quiet --output-format jsonl
 
-# Common patterns
-functions = [c for c in chunks if "function" in c.node_type]
-classes = [c for c in chunks if c.node_type == "class_definition"]
-methods = [c for c in chunks if c.parent_context]
-large_functions = [c for c in chunks if c.end_line - c.start_line > 50]
+    # Common patterns
+    functions = [c for c in chunks if "function" in c.node_type]
+    classes = [c for c in chunks if c.node_type == "class_definition"]
+    methods = [c for c in chunks if c.parent_context]
+    large_functions = [c for c in chunks if c.end_line - c.start_line > 50]
 ```
 
 Happy chunking! 🚀
