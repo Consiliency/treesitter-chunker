@@ -220,7 +220,7 @@ def cmd_grammar_info(args: argparse.Namespace) -> int:
             for i, step in enumerate(plan["recovery_steps"], 1):
                 print(f"      {i}. {step}")
 
-        return 0
+        return 0 if health.status == "healthy" else 1
 
     except Exception as e:
         print(f"❌ Error getting grammar info: {e}", file=sys.stderr)
