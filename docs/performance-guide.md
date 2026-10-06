@@ -130,6 +130,20 @@ index assuming equivalence.
 
 ## Benchmarking
 
+`benchmarks.benchmark.PerformanceBenchmark.run_all_benchmarks()` uses current
+sequential and parallel APIs. Its cached benchmark explicitly reads and writes
+SQLite chunk records: the cold pass includes lookup, parsing and population;
+the warm pass counts a hit only when lookup returns cached chunks. It retains
+one logical file/chunk count per pass. Durations and the observed cold/warm ratio
+are informational, with no promised speedup. Cache identity limitations described
+above still apply.
+
+The default benchmark cache uses the shared home SQLite database. Running the
+cached benchmark invalidates and rewrites records for its input paths, so it can
+affect later cached parallel calls. Invalidate those records before switching
+between core and streaming extraction; their modes are not distinguished by the
+current cache identity (treesitter-chunker#358).
+
 Run this from a directory containing `example.py`. It measures repeated direct
 parsing, not SQLite cache hits:
 
@@ -162,5 +176,6 @@ print({
 
 For comparisons, record the source snapshot, hardware, worker count, cache
 state and output equivalence. Compare uncached sequential and parallel runs
-with `use_cache=False`, then measure caching separately. Record multiple runs
+with the parallel API's `use_cache=False`; sequential `chunk_file` does not accept
+that option. Measure explicit caching separately. Record multiple runs
 and peak resident memory; do not infer a speedup from a single warm run.
