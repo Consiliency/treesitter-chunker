@@ -10,6 +10,8 @@ Use this checklist for any production PyPI release.
 - `main` is green in GitHub Actions
 - choose one `TARGET_VERSION` in `X.Y.Z` form
 - `pyproject.toml` has `TARGET_VERSION`
+- the `chunker/__init__.py` fallback, `chunker/_version.py` mirrors, and
+  project entry in `uv.lock` match `TARGET_VERSION`
 - the top `CHANGELOG.md` heading matches `TARGET_VERSION`
 - no uncommitted local changes remain in the release branch
 
@@ -64,7 +66,7 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 
 ## Release Hygiene Gates
 
-- `uv run --with toml --all-extras --with mkdocs --with mkdocs-material --with mkdocstrings-python mkdocs build --strict`
+- `uv run --locked --with toml --all-extras --with mkdocs --with mkdocs-material --with mkdocstrings-python mkdocs build --strict --site-dir "$(mktemp -d)"`
 - `uv run --with toml --all-extras pytest tests/test_release_hygiene_policy.py tests/test_auto.py tests/test_fallback_chunking.py tests/test_overlapping_fallback.py -q`
 - no xpass results in focused tests or smoke validation; any xfail is listed in the capped `docs/development/xfail-inventory.md` with its clearing phase
 
@@ -90,7 +92,10 @@ Confirm `git status --short` is clean before creating or pushing the release tag
 - confirm the GitHub Release exists with expected artifacts
 - confirm the new version is visible on PyPI
 - test installation from PyPI in a clean environment
-- spot-check `treesitter-chunker --version`
+- check the installed version with
+  `python -c "from importlib.metadata import version; print(version('treesitter-chunker'))"`
+- run `treesitter-chunker --help` and chunk a real source file with
+  `treesitter-chunker chunk example.py --lang python --json`
 
 ## If Release Fails
 

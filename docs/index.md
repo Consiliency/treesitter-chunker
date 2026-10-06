@@ -5,7 +5,7 @@ Welcome to the Tree-sitter Chunker documentation! Tree-sitter Chunker is a power
 ## Quick Links
 
 - **[Getting Started](getting-started.md)** - Installation and your first chunking project
-- **[API Reference](api-reference.md)** - Complete API documentation with all 107+ exported APIs
+- **[API Reference](api-reference.md)** - Python API documentation
 - **[REST API Security](environment_variables.md#rest-api-security)** - Required API token, root confinement, and CORS settings
 - **[User Guide](user-guide.md)** - Comprehensive usage guide with plugins and performance
 - **[Plugin Development](plugin-development.md)** - Create custom language plugins
@@ -68,11 +68,11 @@ Extract meaningful code units:
 - Classes and structures
 - Nested contexts preserved
 - Accurate line and byte positions
-- Support for 5 languages with plugin architecture
+- Per-language extraction results in the [language coverage report](language-coverage.md)
 
 ### 🏎️ Performance Optimized
 Built for speed and efficiency:
-- **AST Caching**: 11.9x speedup for repeated files
+- **AST Caching**: Reuse parsed trees for repeated files
 - **Parallel Processing**: Process directories with multiple workers
 - **Streaming Support**: Handle files larger than memory
 - **LRU Parser Caching**: Efficient parser reuse
@@ -102,7 +102,10 @@ pip install "treesitter-chunker[viz]"
 pip install "treesitter-chunker[all]"
 ```
 
-**Note**: Prebuilt wheels include compiled Tree-sitter grammars for common languages (Python, JavaScript, Rust, C, C++), so no local compilation is required!
+The main wheel is universal Python. The pinned language pack downloads parser
+libraries on first use and caches them by version and platform. Prefetch required
+languages while online for offline use; see [packaging](packaging.md) for platform
+limits and parser integrity. BAML requires the optional `baml` extra.
 
 ### Development Installation
 
@@ -113,19 +116,14 @@ If you want to contribute or need the latest development version:
 git clone https://github.com/Consiliency/treesitter-chunker.git
 cd treesitter-chunker
 
-# Install with uv (recommended)
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-uv pip install -e ".[dev]"
-uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
+# Install the reviewed parser/runtime pairing and development dependencies
+uv sync --locked --all-extras
 
-# Build language grammars
-python scripts/fetch_grammars.py
-python scripts/build_lib.py
+# Prefetch the grammars needed by your work while online
+uv run --locked python -c "import tree_sitter_language_pack as p; p.prefetch(['python', 'javascript', 'typescript'])"
 
 # Verify installation
-python -c "from chunker.parser import list_languages; print(list_languages())"
-# Output: ['c', 'cpp', 'javascript', 'python', 'rust']
+uv run --locked python -c "from chunker.parser import list_languages; print(list_languages())"
 ```
 
 ## Use Cases
@@ -190,7 +188,7 @@ for chunk in chunks:
 ```python
 from chunker.parser import list_languages
 print(list_languages())
-# Output: ['c', 'cpp', 'javascript', 'python', 'rust']
+# Returns the available safe language names from the pinned parser stack.
 ```
 
 ### Get Language Information

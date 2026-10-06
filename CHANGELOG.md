@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.2.0] — Grammar management and context correctness
 
+Published 2026-10-05. [Release](https://github.com/Consiliency/treesitter-chunker/releases/tag/v5.2.0).
+
 - Correct Python and JavaScript scope lookup, import bindings, symbol references,
   and cache identity so context results follow the parsed source tree.
 - Repair grammar management configuration, discovery, validation, compatibility
@@ -23,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.1.1] — Python 3.14 wheel-only installation
 
+Published 2026-10-01. [Release](https://github.com/Consiliency/treesitter-chunker/releases/tag/v5.1.1).
+
 - CPython 3.14 uses its Unicode 16.0.0 standard-library tables for canon v1,
   removing the backport wheel gap from its runtime dependency closure. Other
   interpreters retain the pinned Unicode 16.0.0 backport. Canonical bytes,
@@ -34,12 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.1.0] — Optional BAML structural chunking
 
+Published 2026-09-29. [Release](https://github.com/Consiliency/treesitter-chunker/releases/tag/v5.1.0).
+
 - Add optional BAML structural chunking through the pinned 0.1.0 companion
   grammar, including BAML 0.20.1 backtick prompts. The base wheel stays
   universal; malformed BAML files fail atomically, and base installs retain
   text fallback for implicit `.baml` files.
 
 ## [5.0.1] — First published v5 package
+
+Published 2026-09-28. [Release](https://github.com/Consiliency/treesitter-chunker/releases/tag/v5.0.1).
 
 This is the first published v5 package. It includes the Tree-sitter 0.26 supply
 normalization and breaking changes documented under 5.0.0 below. The v5.0.0
