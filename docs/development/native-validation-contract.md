@@ -118,7 +118,7 @@ caller pin injection and stale-record migration belong to treesitter-chunker#362
 and COMPAT and must preserve existing data until explicitly reconciled.
 
 Legacy health maps missing to `missing`; empty/load/parse/null-symbol failures to
-`corrupted`; trust, integrity, child, acknowledgment and deadline failures to
+`corrupted`; trust, integrity, child, acknowledgment, inspection and deadline failures to
 `incompatible`; only successful completion to `healthy`. Existing findings and
 recommendations carry the cause. Tools forward these outcomes and invalidate
 observations after install/update. No alternate parent loader may bypass this
@@ -126,7 +126,9 @@ gate in the scoped consumers.
 Both install and update report `warning` with the validation cause when an
 artifact fails admission, including unchanged revisions and missing artifacts.
 Existing changed-revision operations write in place before checking: a warning
-does not imply safe staging, restored old bytes or a successful command exit.
+does not imply safe staging or restored old bytes. The existing argparse CLI
+still exits zero on these warnings; correcting that exit status belongs to
+treesitter-chunker#362 in GRAMMARS.
 Neither reports `success` for an unapproved artifact. The following GRAMMARS phase
 adds approved staging/publication and CLI migration; this first repair does not
 grant trust to downloaded source or promise rollback.
@@ -143,6 +145,8 @@ fixture execution on acceptance platforms; missing compilers do not pass gates.
 Also replace the original candidate between successful child completion and
 metadata extraction, and verify that every reported artifact-derived field and
 digest still describe the admitted snapshot.
+Probe a pinned artifact without embedded metadata twice and require `unknown`
+version and None release_date on both admitted snapshot observations.
 Cover a raising inspection callback without partial metadata publication and
 shadow modules planted in both caller cwd and the candidate directory. Derive
 each report/export entry from one admitted record, so replacement between

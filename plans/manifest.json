@@ -350,11 +350,11 @@
       "status": "committed",
       "task_summary": "Trusted native admission and isolated probe plan for treesitter-chunker#165, treesitter-chunker#151 and treesitter-chunker#164",
       "type": "phase",
-      "updated_at": "2026-10-06T08:41:58.197873+00:00",
+      "updated_at": "2026-10-06T09:01:20.241150+00:00",
       "manual_amendment": {
-        "at": "2026-10-06T08:41:58.197736+00:00",
-        "phase_plan_sha256": "10be23783634be9b203033e123ebe7bc3a08391411a4b8d40300e5cf30a2f678",
-        "reason": "independent review input-binding corrections; no implementation gate produced"
+        "at": "2026-10-06T09:01:20.241150+00:00",
+        "phase_plan_sha256": "bd4644d9271e506b07deb049f5edf3e6542e8cc98329ba99c776288cbab84338",
+        "reason": "final reviewer input-binding wording corrections; no implementation gate produced"
       },
       "roadmap_sha256": "d89176be38022c12d110aec465e9bd6f6ebef8a3c83bec6ee8dc02d96d997cc9"
     },
