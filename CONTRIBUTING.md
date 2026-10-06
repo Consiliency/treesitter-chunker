@@ -80,6 +80,9 @@ and named mutations.
 Reproduce a matrix failure with the narrow affected test before retrying CI.
 Use explicit UTF-8 file I/O, portable paths, and robust process readiness
 checks. Avoid assertions that depend on tight wall-clock limits.
+Concurrent configuration checks assert actual fixture results for every worker
+using a preloaded configuration. They do not impose throughput or lock-wait
+budgets, or claim concurrent configuration writes are supported.
 
 Before pushing changes to configuration, paths, temporary files, extraction,
 fallback logic, or export formatting, run the standing Windows preflight:
