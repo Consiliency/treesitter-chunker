@@ -1,6 +1,7 @@
 """Compiled grammar analysis reports real artifacts and absent languages."""
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -77,3 +78,60 @@ def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) ->
         .parse(source)
         .root_node.has_error
     )
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux", reason="Fixture uses ELF compiler comments"
+)
+def test_grammar_metadata_does_not_infer_versions_or_releases_from_mtime(
+    tmp_path: Path,
+) -> None:
+    first_dir = tmp_path / "first"
+    second_dir = tmp_path / "second"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    first = first_dir / "baml.so"
+    second = second_dir / "baml.so"
+    subprocess.run(
+        [
+            "cc",
+            "-shared",
+            "-fPIC",
+            "-O2",
+            "-I",
+            str(SOURCE),
+            str(SOURCE / "parser.c"),
+            "-o",
+            str(first),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["objcopy", "--remove-section=.comment", str(first)],
+        check=True,
+        capture_output=True,
+    )
+    tree = load_compiled_grammar(first, "baml").parse(FIXTURE.read_bytes())
+    assert tree.root_node.type == "source_file"
+    assert not tree.root_node.has_error
+    second.write_bytes(first.read_bytes())
+    os.utime(first, (1609459200, 1609459200))
+    os.utime(second, (1640995200, 1640995200))
+    assert first.read_bytes() == second.read_bytes()
+    assert first.stat().st_mtime != second.stat().st_mtime
+
+    for directory, artifact in ((first_dir, first), (second_dir, second)):
+        analyzer = GrammarAnalyzer(directory)
+        assert analyzer.extract_grammar_version(artifact) is None
+        grammar = analyzer.analyze_grammar_file("baml")
+        assert grammar is not None
+        assert grammar.version == "unknown"
+        assert grammar.release_date is None
+        assert grammar.to_dict()["release_date"] is None
+        assert "Version: unknown" in analyzer.generate_grammar_report("baml")
+        export = directory / "analysis.json"
+        analyzer.export_analysis_data(export)
+        exported = json.loads(export.read_text(encoding="utf-8"))
+        assert exported["grammars"]["baml"]["version"] == "unknown"
+        assert exported["grammars"]["baml"]["capabilities"]["version"] == "unknown"

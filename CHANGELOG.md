@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- Grammar analysis no longer invents versions or release dates from file
+  timestamps. Missing version information is reported as `unknown`.
+
 ## [5.2.0] — Grammar management and context correctness
 
 Published 2026-10-05. [Release](https://github.com/Consiliency/treesitter-chunker/releases/tag/v5.2.0).

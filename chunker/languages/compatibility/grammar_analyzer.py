@@ -81,10 +81,9 @@ class GrammarAnalyzer:
             # Extract version
             version = self.extract_grammar_version(grammar_path)
             if not version:
-                # Use default version if extraction fails
-                version = "1.0.0"
+                version = "unknown"
                 logger.warning(
-                    f"Could not extract version for {language}, using default: {version}",
+                    f"Could not extract version for {language}: {version}",
                 )
 
             # Analyze symbols
@@ -107,7 +106,6 @@ class GrammarAnalyzer:
                 supported_features=features,
                 min_language_version=min_version,
                 max_language_version=max_version,
-                release_date=datetime.fromtimestamp(grammar_path.stat().st_mtime),
             )
 
             # Cache the result
@@ -153,13 +151,7 @@ class GrammarAnalyzer:
             if version:
                 return version
 
-            # Method 4: Use file modification time as version hint
-            mtime = so_file_path.stat().st_mtime
-            date_version = datetime.fromtimestamp(mtime).strftime("%Y.%m.%d")
-            logger.debug(
-                f"Using date-based version for {so_file_path.name}: {date_version}",
-            )
-            return date_version
+            return None
 
         except Exception as e:
             logger.error(f"Error extracting version from {so_file_path}: {e}")

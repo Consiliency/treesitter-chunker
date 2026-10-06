@@ -13,6 +13,11 @@ The grammar management system consists of several components:
 
 ## Features
 
+Grammar analysis reports `unknown` when it cannot extract a version from the
+artifact. File modification times are not grammar versions or release dates;
+without release metadata, `GrammarVersion.release_date` is `None`. Copying the
+same compiled grammar to a different timestamp does not create a new release.
+
 ### 🧠 Smart Error Handling
 - **Automatic diagnosis** of grammar issues
 - **Context-aware recommendations** based on error type
