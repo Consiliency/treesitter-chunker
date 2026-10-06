@@ -1,12 +1,14 @@
 """BAML uses the pinned companion and preserves source spans across routes."""
 
 import json
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import pytest
 
 from chunker._internal.registry import LanguageRegistry
 from chunker.auto import ZeroConfigAPI
+from chunker.boundary.adapter import extract_boundary_ir
 from chunker.chunker import chunk_text_with_token_limit
 from chunker.core import chunk_file, chunk_text
 from chunker.exceptions import BamlExtraRequiredError, ParserInitError, ParsingError
@@ -14,6 +16,11 @@ from chunker.grammar.registry import UniversalLanguageRegistry
 from chunker.parser import acquire_parser, get_parser
 from chunker.repo.processor import GitAwareRepoProcessor, RepoProcessor
 from chunker.streaming import chunk_file_streaming
+from chunker.symbol_graph import (
+    collect_source_files,
+    extract_symbol_facts_for_file,
+    extract_symbol_graph,
+)
 from chunker.vfs import LocalFileSystem
 from chunker.vfs_chunker import VFSChunker
 
@@ -115,6 +122,100 @@ def test_crlf_bytes_and_zero_config(tmp_path):
     auto = ZeroConfigAPI(_InstalledRegistry()).auto_chunk_file(path)
     assert auto.language == "baml" and not auto.fallback_used
     assert [c["content"] for c in auto.chunks] == [c.content for c in regular]
+
+
+def test_canonical_baml_detection_with_actual_registry(tmp_path):
+    source = (FIXTURES / "declarations.baml").read_bytes()
+    path = tmp_path / "declarations.baml"
+    path.write_bytes(source)
+    registry = UniversalLanguageRegistry(
+        tmp_path / "missing.so",
+        discovery_service=None,
+        download_service=None,
+        cache_dir=tmp_path / "metadata",
+    )
+    api = ZeroConfigAPI(registry)
+    assert registry.is_language_installed("baml")
+    assert api.EXTENSION_MAP[path.suffix] == "baml"
+    assert api.detect_language(path) == "baml"
+    implicit = api.auto_chunk_file(path)
+    explicit = api.auto_chunk_file(path, language="baml")
+    assert implicit.language == explicit.language == "baml"
+    assert not implicit.fallback_used and not explicit.fallback_used
+    assert len(implicit.chunks) == 14
+    assert implicit.chunks == explicit.chunks
+    assert all(c["content"] in source.decode("utf-8") for c in implicit.chunks)
+    assert api.list_supported_extensions()["baml"] == [".baml"]
+    assert collect_source_files(tmp_path) == [path]
+    boundary = extract_boundary_ir(tmp_path, cache_dir=tmp_path / "boundary-cache")
+    assert boundary["files"][0]["language"] == "baml"
+    assert boundary["files"][0]["status"] == "parsed"
+    assert len(boundary["nodes"]) == 14
+    assert not boundary["diagnostics"]
+    regular = chunk_file(path, "baml", extract_metadata=False)
+    assert {
+        (n["span"]["byte_start"], n["span"]["byte_end"]) for n in boundary["nodes"]
+    } == {(c.byte_start, c.byte_end) for c in regular}
+    assert all(
+        source[c.byte_start : c.byte_end].decode("utf-8") == c.content for c in regular
+    )
+
+
+@pytest.mark.parametrize("companion_version", [None, "0.2.0"])
+def test_automatic_baml_scans_require_supported_companion(
+    tmp_path, monkeypatch, companion_version
+):
+    def distribution_version(name):
+        if name == "treesitter-chunker-baml-grammar":
+            if companion_version is None:
+                raise PackageNotFoundError(name)
+            return companion_version
+        return version(name)
+
+    monkeypatch.setattr("chunker._internal.registry.version", distribution_version)
+    baml = tmp_path / "declarations.baml"
+    baml.write_bytes((FIXTURES / "declarations.baml").read_bytes())
+    python = tmp_path / "service.py"
+    python.write_bytes(
+        (
+            Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+        ).read_bytes()
+    )
+    registry = UniversalLanguageRegistry(
+        tmp_path / "missing.so",
+        discovery_service=None,
+        download_service=None,
+        cache_dir=tmp_path / "metadata",
+    )
+    api = ZeroConfigAPI(registry)
+    assert "baml" not in api.list_supported_extensions()
+    assert api.detect_language(baml) is None
+    assert api.auto_chunk_file(baml).fallback_used
+    assert collect_source_files(tmp_path) == [python]
+    graph = extract_symbol_graph(tmp_path, fail_fast=True)
+    assert graph["metadata"]["files_processed"] == 1
+    assert not graph["metadata"]["errors"]
+    assert graph["symbols"]["functions"]
+    facts = extract_symbol_facts_for_file(baml, tmp_path, fail_fast=True)
+    assert (
+        facts["language"] is None and not facts["chunk_records"] and not facts["errors"]
+    )
+    boundary = extract_boundary_ir(
+        tmp_path, cache_dir=tmp_path / "boundary-cache", fail_fast=True
+    )
+    assert [f["path"] for f in boundary["files"]] == ["service.py"]
+    assert boundary["nodes"] and not boundary["diagnostics"]
+    direct = extract_boundary_ir(
+        baml, cache_dir=tmp_path / "direct-cache", fail_fast=True
+    )
+    assert direct["files"][0]["language"] is None
+    assert not direct["nodes"] and not direct["diagnostics"]
+    with pytest.raises(BamlExtraRequiredError):
+        extract_symbol_facts_for_file(baml, tmp_path, "baml", fail_fast=True)
+    with pytest.raises(BamlExtraRequiredError):
+        extract_boundary_ir(
+            baml, "baml", cache_dir=tmp_path / "explicit-cache", fail_fast=True
+        )
 
 
 def test_large_prompt_token_splits_preserve_source():
