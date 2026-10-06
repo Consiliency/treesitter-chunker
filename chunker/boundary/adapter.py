@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from chunker.auto import ZeroConfigAPI
+from chunker._internal.registry import baml_companion_available
 from chunker.core import chunk_file
 from chunker.symbol_graph import (
     assemble_symbol_graph,
@@ -75,6 +76,8 @@ def _module_name(display_path: str) -> str:
 def _detect_language(file_path: Path, fallback: str | None) -> str | None:
     if fallback:
         return fallback.lower()
+    if file_path.suffix.lower() == ".baml" and not baml_companion_available():
+        return None
     return ZeroConfigAPI.EXTENSION_MAP.get(file_path.suffix.lower())
 
 

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .auto import ZeroConfigAPI
+from ._internal.registry import baml_companion_available
 from .core import chunk_file
 from .types import RESOLUTION_MODES, ResolutionMode, ResolutionStatus
 
@@ -45,7 +46,10 @@ _IMPORT_KEYWORDS = {
 def _candidate_extensions(language: str | None) -> set[str]:
     extension_map = ZeroConfigAPI.EXTENSION_MAP
     if language is None:
-        return set(extension_map)
+        extensions = set(extension_map)
+        if not baml_companion_available():
+            extensions.discard(".baml")
+        return extensions
     normalized = language.lower()
     return {ext for ext, lang in extension_map.items() if lang == normalized}
 
@@ -81,6 +85,8 @@ def _detect_language(
 ) -> str | None:
     if fallback_language:
         return fallback_language.lower()
+    if file_path.suffix.lower() == ".baml" and not baml_companion_available():
+        return None
     return ZeroConfigAPI.EXTENSION_MAP.get(file_path.suffix.lower())
 
 

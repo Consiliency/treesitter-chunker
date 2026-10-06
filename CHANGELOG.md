@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- The main CLI detects `.baml` files automatically with the optional BAML
+  companion installed. Missing companions produce installation guidance and
+  status 1; implicit ZeroConfigAPI detection retains its text fallback.
+  Symbol/Boundary scans include structural BAML output with the extra and skip
+  it automatically when the companion is missing or mismatched.
+
 - Compatibility history replaces unspecified-version records consistently,
   prefers exact version reads and reports fallback versions truthfully. Legacy
   duplicates migrate transactionally with complete displaced rows preserved.
