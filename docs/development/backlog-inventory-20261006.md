@@ -10,10 +10,30 @@ No tests/builds were run during the initial planning audit. Subsequent execution
 
 ## Cleanup completed before planning
 
-Current execution checkpoint: main is `c078b61b3053a0e00468a468446a1be49fb62fb0`.
-There are 66 open issues, four preserved held drafts, and active drafts
-treesitter-chunker#364, treesitter-chunker#372 and treesitter-chunker#373.
+Current execution checkpoint: main is `f85c14d32cc17077eb76462377d919c1e5a39ec0`.
+The fresh GitHub snapshot has 65 open issues, four preserved held drafts, and
+active drafts treesitter-chunker#372 and treesitter-chunker#385. The accepted
+roadmap planning PR treesitter-chunker#364 is merged.
 Later checkpoint facts supersede historical counts below.
+Merged treesitter-chunker#373 resolves treesitter-chunker#324 and
+treesitter-chunker#369: four manual seats accepted the implementation and final
+input-binding confirmations; the original full runner passed 3,669 tests/four
+skipped and final integration passed 53 focused tests plus all platform checks.
+Merged treesitter-chunker#381 resolves treesitter-chunker#375 with four-seat
+review, a killed/restored cache-option mutation, 3,664 full-suite tests/four
+skipped and exact-head platform checks. Both clean worktrees were pruned after
+their evidence was archived. Their completion histories are reconciled separately
+from the accepted code heads.
+Merged treesitter-chunker#383 resolves treesitter-chunker#382 by normalizing
+phase-only metadata fields while preserving their historical detailed values.
+All manifest entries validate; no transaction IF was accepted.
+Separate remaining findings are treesitter-chunker#384 (CLI cache-option wiring)
+and treesitter-chunker#386 (Windows open temporary-archive cleanup). Native final
+publication/platform/review acceptance remains pending. Publication encountered
+the ambiguous-push diagnostic loss tracked by
+[agent-harness#910](https://github.com/Consiliency/agent-harness/issues/910#issuecomment-6016950283);
+supported authority recovery requires an explicit operator attestation. No broker
+state or protected train ledger was manually edited.
 Merged treesitter-chunker#378 resolved treesitter-chunker#131 and
 treesitter-chunker#377 with four-seat review, killed/restored mutation, fresh
 runner verification (3,658 passed/four skipped) and final-head platform checks.
@@ -22,8 +42,8 @@ Merged treesitter-chunker#380 resolved treesitter-chunker#376 with real provider
 and exact-artifact parsing, killed/restored mtime mutation, converged manual
 review, fresh runner verification (3,659 passed/four skipped) and final-head
 platform checks. Its clean worktree was also pruned after evidence retention.
-New independent findings are treesitter-chunker#375, treesitter-chunker#376 and
-treesitter-chunker#379. The SIGINT failure reproduced during verification is
+Earlier independent findings were treesitter-chunker#375, treesitter-chunker#376
+and treesitter-chunker#379; the first two are now accepted and closed. The SIGINT failure reproduced during verification is
 already treesitter-chunker#322; no duplicate was filed.
 
 | Item | Disposition | Evidence/comment |
@@ -35,17 +55,19 @@ already treesitter-chunker#322; no duplicate was filed.
 | treesitter-chunker#128 | Kept open; completed portions identified | [Reconciliation](https://github.com/Consiliency/treesitter-chunker/issues/128#issuecomment-6011568804); treesitter-chunker#218 fixed signature/options, treesitter-chunker#219 fixed bulk filenames, but wrong-library validation remains. |
 | treesitter-chunker#361 | New record-reconciliation tracker | Exposes stale plan status and residuals missing from the issue queue; audit/triage only. |
 
-Counts: initially 61 issues/five drafts; two issues and one superseded draft closed, one previously untracked records issue opened. The initial inventory contained 60 issues. Review added treesitter-chunker#362, treesitter-chunker#363, treesitter-chunker#365 and treesitter-chunker#368; newly reported treesitter-chunker#367 is also enrolled. **65 open issues, four held drafts and active drafts treesitter-chunker#364/treesitter-chunker#366 remain.** No item was closed merely for age or overlapping scope.
+Prior planning checkpoint: initially 61 issues/five drafts; two issues and one superseded draft closed, one previously untracked records issue opened. The initial inventory contained 60 issues. Review added treesitter-chunker#362, treesitter-chunker#363, treesitter-chunker#365 and treesitter-chunker#368; newly reported treesitter-chunker#367 was also enrolled. That checkpoint had **65 open issues, four held drafts and active drafts treesitter-chunker#364/treesitter-chunker#366**. No item was closed merely for age or overlapping scope.
 
 Execution update: treesitter-chunker#366 merged at a74e58f2 with accepted metadata/mutation evidence and green changed-head Linux/macOS/Windows checks. Commented and closed treesitter-chunker#365 and treesitter-chunker#368; the clean repair worktree is pruned. CLEANUP review reproduced and separately filed treesitter-chunker#369 and treesitter-chunker#370. Live backlog remains 65 open issues; the two accepted precursors are moved out of the open map below. The native implementation runs against its frozen reviewed input in a separate worktree; downstream plan amendments do not edit that active runner state.
 
 ## Remaining draft PRs
 
-Further execution exposed and filed deployment-notice policy drift as treesitter-chunker#371, then resolved it in separately merged treesitter-chunker#374. Its nine hygiene tests and strict docs build passed, and hosted Linux/macOS/Windows checks were green. The clean worktree was pruned. The open map returns to 65 issues. Active repair drafts are treesitter-chunker#372 (native admission) and treesitter-chunker#373 (static fallback).
+Prior execution checkpoint: deployment-notice policy drift was filed as treesitter-chunker#371, then resolved in separately merged treesitter-chunker#374. Its nine hygiene tests and strict docs build passed, and hosted Linux/macOS/Windows checks were green. The clean worktree was pruned. At that checkpoint the open map returned to 65 issues, and active repair drafts were treesitter-chunker#372 (native admission) and treesitter-chunker#373 (static fallback).
 
 CLEANUP transaction design remains unaccepted after three review rounds: Gemini agrees; Opus, Astra and Sol identify blocking recovery, lifetime, containment and dispatch gaps. The full proposal is preserved in immutable history and the operator evidence archive, and its implementation scope is removed from active plan intake. phase-plan-v3-CLEANUP.md is now a non-executable held record with an orphaned manifest lifecycle. Static fallback and auxiliary isolation proceed only through their separate bounded plans. No fourth design round or IF-0-CLEANUP-1 acceptance is claimed.
 
-All listed heads had successful executable hosted CI checks (the optional code-review bot check was skipped). None has a completed current integration/review acceptance; old green checks do not clear the reproduced blockers.
+The four held draft heads listed below had successful executable hosted CI at
+the initial audit (the optional review bot was skipped). None has current
+integration/review acceptance; those historical checks do not clear its blockers.
 
 | PR | Exact audited head | State against main | Required next disposition |
 | --- | --- | --- | --- |
@@ -66,11 +88,10 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P0 | SAFELOAD | [treesitter-chunker#151](https://github.com/Consiliency/treesitter-chunker/issues/151) — GrammarAnalyzer reports empty shared library as supported grammar |
 | P0 | SAFELOAD | [treesitter-chunker#164](https://github.com/Consiliency/treesitter-chunker/issues/164) — Validate legacy grammar fallbacks without mapping source or accepting null language |
 | P0 | CLEANUP | [treesitter-chunker#323](https://github.com/Consiliency/treesitter-chunker/issues/323) — Core grammar cleanup can remove a file created during directory deletion |
-| P0 | CLEANUP | [treesitter-chunker#324](https://github.com/Consiliency/treesitter-chunker/issues/324) — Grammar CLI fallback deletes recent files inside old cache directories |
 | P0 | CLEANUP | [treesitter-chunker#177](https://github.com/Consiliency/treesitter-chunker/issues/177) — Reconcile auxiliary grammar self-test and CLI validator scenarios |
-| P1 | CLEANUP | [treesitter-chunker#369](https://github.com/Consiliency/treesitter-chunker/issues/369) — Public fallback cannot import when core is unavailable; coupled static fallback boundary |
 | P0 | CLEANUP | [treesitter-chunker#370](https://github.com/Consiliency/treesitter-chunker/issues/370) — Validation-cache writers lose fresh records and follow outside symlinks |
-| P1 | CLEANUP | [treesitter-chunker#375](https://github.com/Consiliency/treesitter-chunker/issues/375) — Removing a grammar ignores clean_cache=False; independent flag contract |
+| P1 | GRAMMARS | [treesitter-chunker#384](https://github.com/Consiliency/treesitter-chunker/issues/384) — CLI removal ignores clean_cache; independent option wiring after accepted treesitter-chunker#381 |
+| P1 | GRAMMARS | [treesitter-chunker#386](https://github.com/Consiliency/treesitter-chunker/issues/386) — Windows download cleanup deletes an open temporary archive; independent portable handle-lifetime repair |
 | P0/P1 | GRAMMARS | [treesitter-chunker#162](https://github.com/Consiliency/treesitter-chunker/issues/162) — Updating a loaded grammar in place can crash the Python process |
 | P0/P1 | GRAMMARS | [treesitter-chunker#160](https://github.com/Consiliency/treesitter-chunker/issues/160) — Legacy grammar tools ignore native macOS and Windows library extensions |
 | P0/P1 | GRAMMARS | [treesitter-chunker#117](https://github.com/Consiliency/treesitter-chunker/issues/117) — GrammarRegistry ignores native library suffixes on Windows and macOS |

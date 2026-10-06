@@ -281,6 +281,195 @@
       "updated_at": "2026-07-11T05:57:24Z"
     },
     {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T10:59:02.932260+00:00",
+      "file": "plans/detailed-compilation-date-376.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-compilation-date-376/.dev-skills/handoffs/codex-plan-detailed/latest.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T10:59:02Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan": "plans/detailed-compilation-date-376.md",
+            "run_id": "20261006-compilation-date-376"
+          },
+          "transition": "executing"
+        },
+        {
+          "at": "2026-10-06T11:30:43Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "accepted_head": "f27dc18c555232603fda8323a23dee3cf01c8306",
+            "accepted_pr": "treesitter-chunker#380",
+            "dirty_path_classification": "clean; only plan-owned edits before merge",
+            "no_whole_phase_gate": true,
+            "review": "manual four-seat convergence",
+            "verification_artifact_path": "/home/viperjuice/workspace/evidence/treesitter-chunker/compilation-date-376/f27dc18c/20261006-compilation-date-376-final-r2/verification.json",
+            "verification_status": "passed"
+          },
+          "transition": "completed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/treesitter-chunker/compilation-date-376/20261006.md",
+      "roadmap_ref": null,
+      "slug": "compilation-date-376",
+      "status": "completed",
+      "task_summary": "Truthful compilation dates for treesitter-chunker#376",
+      "type": "detailed",
+      "updated_at": "2026-10-06T11:30:43Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T10:01:31.027585+00:00",
+      "file": "plans/detailed-static-fallback-324.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/latest.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T10:02:09Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "if_gate_claimed": false,
+            "plan": "plans/detailed-static-fallback-324.md",
+            "run": "20261006-static-fallback"
+          },
+          "transition": "executing"
+        },
+        {
+          "at": "2026-10-06T13:17:15Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "accepted_head": "a6d4e6865ffa2247cb2541132a515242d7e257e7",
+            "diagnostic": "accepted",
+            "dirty_path_classification": "clean; preserved evidence outside merged worktree",
+            "evidence_archive": "/home/viperjuice/workspace/evidence/treesitter-chunker/static-fallback-324/ba0ac7c0",
+            "final_integration_artifact_path": "/home/viperjuice/workspace/evidence/treesitter-chunker/static-fallback-324/ba0ac7c0/final-integration-verification.json",
+            "pr": "treesitter-chunker#373",
+            "reconciled_after_merge": true,
+            "reflection_metadata": {
+              "recorded": true,
+              "skill": "codex-execute-detailed"
+            },
+            "verification_artifact_path": "/home/viperjuice/workspace/evidence/treesitter-chunker/static-fallback-324/ba0ac7c0/runner-runs/20261006-static-integrated-ba0ac/verification.json",
+            "verification_head": "ba0ac7c007caeb52d5e9a60af58ebdf0548d6110",
+            "verification_status": "passed"
+          },
+          "transition": "completed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/treesitter-chunker/static-fallback-324/20261006.md",
+      "roadmap_ref": null,
+      "slug": "static-fallback-324",
+      "status": "completed",
+      "task_summary": "Static fallback cleanup and public degraded import for treesitter-chunker#324 and treesitter-chunker#369",
+      "type": "detailed",
+      "updated_at": "2026-10-06T13:17:15Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T10:40:27.542915+00:00",
+      "file": "plans/detailed-streaming-contract-131.md",
+      "handoff_ref": null,
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T10:40:27Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "no_whole_phase_gate": true,
+            "plan": "plans/detailed-streaming-contract-131.md",
+            "run": "20261006-streaming-contract"
+          },
+          "transition": "executing"
+        },
+        {
+          "at": "2026-10-06T11:30:43Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "accepted_head": "56463cfcdb225dd20fd5609fc81959fdb945351d",
+            "accepted_pr": "treesitter-chunker#378",
+            "dirty_path_classification": "clean; only plan-owned edits before merge",
+            "no_whole_phase_gate": true,
+            "review": "manual four-seat convergence",
+            "verification_artifact_path": "/home/viperjuice/workspace/evidence/treesitter-chunker/streaming-131/56463cfc/runner-verification/verification.json",
+            "verification_status": "passed"
+          },
+          "transition": "completed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": null,
+      "roadmap_ref": null,
+      "slug": "streaming-contract-131",
+      "status": "completed",
+      "task_summary": "Correctness streaming gate and informational benchmark timings for treesitter-chunker#131; coupled cache import treesitter-chunker#377",
+      "type": "detailed",
+      "updated_at": "2026-10-06T11:30:43Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T12:02:26.702075+00:00",
+      "file": "plans/detailed-cache-flag-375.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/latest.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T12:02:26.702075+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {},
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T12:02:26Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "owner_authorized_roadmap_execution": true,
+            "plan": "plans/detailed-cache-flag-375.md"
+          },
+          "transition": "executing"
+        },
+        {
+          "at": "2026-10-06T13:17:15Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "accepted_head": "0c56562217919ecf880d5a57332269a02f18f11a",
+            "diagnostic": "accepted",
+            "dirty_path_classification": "clean; preserved evidence outside merged worktree",
+            "evidence_archive": "/home/viperjuice/workspace/evidence/treesitter-chunker/cache-flag-375/0c565622",
+            "pr": "treesitter-chunker#381",
+            "reconciled_after_merge": true,
+            "reflection_metadata": {
+              "recorded": true,
+              "skill": "codex-execute-detailed"
+            },
+            "verification_artifact_path": "/home/viperjuice/workspace/evidence/treesitter-chunker/cache-flag-375/0c565622/runner-runs/20261006-cache-flag-375-r2-final/verification.json",
+            "verification_head": "0c56562217919ecf880d5a57332269a02f18f11a",
+            "verification_status": "passed"
+          },
+          "transition": "completed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": null,
+      "roadmap_ref": null,
+      "slug": "cache-flag-375",
+      "status": "completed",
+      "task_summary": "Respect removal cache flag for treesitter-chunker#375",
+      "type": "detailed",
+      "updated_at": "2026-10-06T13:17:15Z"
+    },
+    {
       "acceptance_criteria_count": null,
       "created_at": "2026-10-06T07:30:51Z",
       "file": "plans/phase-plan-v2-GATES.md",
@@ -624,6 +813,36 @@
           "by": "codex-plan-detailed",
           "metadata": {},
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T13:17:15Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "reason": "Execution event missing from accepted metadata repair; recorded now, not backdated",
+            "reconciliation_only": true
+          },
+          "transition": "executing"
+        },
+        {
+          "at": "2026-10-06T13:17:15Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "accepted_head": "2705f427011ca2e0dff606347a9bae3b5ec29c1b",
+            "diagnostic": "accepted",
+            "dirty_path_classification": "clean; preserved evidence outside merged worktree",
+            "evidence_archive": "/home/viperjuice/workspace/evidence/treesitter-chunker/phase-metadata-382/2705f427",
+            "pr": "treesitter-chunker#383",
+            "reconciled_after_merge": true,
+            "reflection_metadata": {
+              "recorded": true,
+              "skill": "codex-execute-detailed"
+            },
+            "verification_artifact_path": "/home/viperjuice/workspace/evidence/treesitter-chunker/phase-metadata-382/2705f427/verification.json",
+            "verification_head": "2705f427011ca2e0dff606347a9bae3b5ec29c1b",
+            "verification_scope": "metadata validation and independent review; no product runner executed",
+            "verification_status": "passed"
+          },
+          "transition": "completed"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -631,10 +850,48 @@
       "reflection_ref": null,
       "roadmap_ref": null,
       "slug": "phase-metadata-382",
-      "status": "committed",
+      "status": "completed",
       "task_summary": "Normalize phase-only fields for treesitter-chunker#382",
       "type": "detailed",
-      "updated_at": "2026-10-06T12:10:17.419868+00:00"
+      "updated_at": "2026-10-06T13:17:15Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T13:21:50.572590+00:00",
+      "file": "plans/detailed-completion-record-20261006.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-completion-record-20261006/.dev-skills/handoffs/codex-plan-detailed/20261006-completion-record.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T13:21:50.572590+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "reconciliation_only": true
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T13:57:18Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "execution_event_reconciled_now": true,
+            "prior_local_execution_record_omitted": true,
+            "reconciliation_only": true,
+            "run": "20261006-completion-record-r2"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": null,
+      "roadmap_ref": null,
+      "slug": "completion-record-20261006",
+      "status": "executing",
+      "task_summary": "Reconcile accepted cleanup lifecycle and current open issue inventory",
+      "type": "detailed",
+      "updated_at": "2026-10-06T13:57:18Z"
     }
   ],
   "schema_version": 1
