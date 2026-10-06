@@ -75,14 +75,21 @@ this defect. Accepted treesitter-chunker#394 connection closure must remain.
 - Exercise repeated NULL writes, concrete-version replacement and unrelated
   keys with a fresh actual database and a cold reopen. Assert exact counts and
   actual payload/version identity, including newer fallback versus older exact.
-- Use the actual checker and manager with the installed trusted BAML fixture
-  library and real declarations.baml, a private HOME/USERPROFILE/cache and real
+- Use the actual checker and manager with a known BAML fixture compiled from
+  the checked-in pinned source, real declarations.baml, a private
+  HOME/USERPROFILE/cache and real
   SQLite. Seed a fresh NULL record with a conflicting parse-derived outcome;
   a concrete request must perform actual successful sample parsing and persist
   that concrete result without changing the NULL row. Reopen and verify both.
   An unspecified checker request still returns its actual fresh NULL record.
+  The installed companion wheel intentionally hides the direct C grammar
+  symbol; it cannot substitute for this native-library fixture. Follow the
+  existing Linux cc-built fixture convention and verify its actual parse before
+  checker use. Record its non-Linux skip explicitly; DB migration/lookup tests
+  remain portable and must run on Windows. No native-platform expansion here.
 - Seed duplicate NULL legacy rows with distinct complete payloads, out-of-order
-  timestamps and a tie at the maximum timestamp. Reopen through the actual constructor; assert
+  timestamps and a tie at the maximum timestamp. Reopen through the actual
+  constructor; assert
   the deterministic retained original id and every displaced column/value in
   the archive. Assert concrete rows, test results and grammar metadata survive.
   Reopen again, write a replacement and require unchanged migration archive.
@@ -133,7 +140,8 @@ for treesitter-chunker#345 before implementation: both own compatibility.py.
 Reproduce real SQLite failures first, then implement and verify the migration
 and lookup contracts. Serialize mutations and original full runners. Collect
 each complete manual review round before fixing; maximum three substantive
-rounds. Run the original five checks, dependency refresh/full suite, actual
+rounds. Run the original five checks plus Linux platform-core, dependency
+refresh/full suite, actual
 changed-source Windows plus standing preflight and exact hosted platforms.
 External panel/platform records are supplementary manual evidence, not formal
 IF proof; no runner amendment is invented. Publish through the supported adapter.
