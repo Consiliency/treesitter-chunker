@@ -364,7 +364,7 @@ class CompatibilityRule:
 
             return 0
         except Exception:
-            return 0
+            raise
 
 
 @dataclass
