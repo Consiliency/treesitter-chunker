@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from .grammar_management import SmartGrammarManager
@@ -15,7 +16,13 @@ logger = logging.getLogger(__name__)
 class UserGrammarTools:
     """User-friendly tools for grammar management."""
 
-    def __init__(self, build_dir: Path, grammars_dir: Path):
+    def __init__(
+        self,
+        build_dir: Path,
+        grammars_dir: Path,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, Any]] | None = None,
+    ):
         """Initialize user grammar tools.
 
         Args:
@@ -24,7 +31,11 @@ class UserGrammarTools:
         """
         self.build_dir = Path(build_dir)
         self.grammars_dir = Path(grammars_dir)
-        self.manager = SmartGrammarManager(build_dir, grammars_dir)
+        self.manager = SmartGrammarManager(
+            build_dir,
+            grammars_dir,
+            trusted_artifacts=trusted_artifacts,
+        )
 
     def install_grammar(
         self,
@@ -164,7 +175,7 @@ class UserGrammarTools:
             else:
                 result["status"] = "warning"
                 result["warnings"].append(
-                    f"Grammar installed but has issues: {health.status}",
+                    f"Grammar installed but native admission failed: {health.status}",
                 )
 
         except Exception as e:
@@ -279,7 +290,14 @@ class UserGrammarTools:
 
                 if current == latest:
                     result["warnings"].append("Grammar is already up to date")
-                    result["status"] = "success"
+                    health = self.manager.diagnose_grammar_issues(language)
+                    if health.status == "healthy":
+                        result["status"] = "success"
+                    else:
+                        result["status"] = "warning"
+                        result["warnings"].append(
+                            f"Existing grammar failed native admission: {health.status}",
+                        )
                     return result
 
                 # Checkout latest
@@ -337,7 +355,14 @@ class UserGrammarTools:
                 result["errors"].append("No .so files found after regeneration")
                 return result
 
-            result["status"] = "success"
+            health = self.manager.diagnose_grammar_issues(language)
+            if health.status == "healthy":
+                result["status"] = "success"
+            else:
+                result["status"] = "warning"
+                result["warnings"].append(
+                    f"Updated grammar failed native admission: {health.status}",
+                )
 
         except Exception as e:
             result["status"] = "error"

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Native grammar analysis and legacy diagnosis now require caller-supplied,
+  independently approved SHA-256 provenance. Unpinned, replaced, malformed, or
+  failed native artifacts are reported as unsupported rather than loaded in the
+  parent process.
 - Grammar analysis no longer invents versions or release dates from file
   timestamps. A version that cannot be extracted is reported as `unknown`.
 - Numeric compatibility rules reject versions they cannot compare instead of

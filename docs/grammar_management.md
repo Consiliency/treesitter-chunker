@@ -93,6 +93,29 @@ Pin downloaded archives to an immutable commit and add its SHA-256 to the
 repository-owned artifact manifest before compiling it. The downloader fails
 closed when no manifest entry is available.
 
+### Native grammar admission
+
+The compatibility analyzer and legacy grammar tools now require an independently
+approved SHA-256 pin for every local native grammar they inspect. Embedding
+applications provide these pins with the keyword-only `trusted_artifacts`
+mapping, keyed by language, for example:
+
+```python
+GrammarAnalyzer(
+    grammar_directory,
+    trusted_artifacts={"python": {"sha256": approved_digest}},
+)
+```
+
+Without a pin, a discovered grammar is reported as unsupported with validation
+reason `untrusted`; discovery, filenames, timestamps, and a prior successful
+probe cannot create approval. Approved bytes are copied to a private snapshot
+and loaded in an isolated child process. The analyzer and legacy tools do not
+load the original path in their parent process. A warning after install or
+update means the current bytes failed admission; it does not mean the previous
+grammar was restored or safely staged. The current CLI still exits zero for
+that warning, and its exit-status migration is tracked for GRAMMARS.
+
 ## CLI Commands Reference
 
 ### `grammar list`

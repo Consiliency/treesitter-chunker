@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,10 @@ from chunker.languages.compatibility.schema import (
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "packages/baml-grammar/src"
 FIXTURE = ROOT / "packages/baml-grammar/tests/fixtures/declarations.baml"
+
+
+def trusted_artifacts(path: Path) -> dict[str, dict[str, str]]:
+    return {"baml": {"sha256": sha256(path.read_bytes()).hexdigest()}}
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Analyzer inspects ELF .so symbols")
@@ -53,7 +58,10 @@ def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) ->
     assert tree.root_node.type == "source_file"
     assert not tree.root_node.has_error
 
-    analyzer = GrammarAnalyzer(tmp_path)
+    assert GrammarAnalyzer(tmp_path).analyze_grammar_file("baml") is None
+    analyzer = GrammarAnalyzer(
+        tmp_path, trusted_artifacts=trusted_artifacts(grammar_path)
+    )
     assert analyzer.supported_languages == ["baml"]
     grammar = analyzer.analyze_grammar_file("baml")
     assert grammar is not None
@@ -66,6 +74,10 @@ def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) ->
     assert capabilities["version"] == grammar.version
     assert capabilities["file_size"] == grammar_path.stat().st_size
     assert capabilities["symbols_count"] > 0
+    assert (
+        capabilities["artifact_sha256"]
+        == trusted_artifacts(grammar_path)["baml"]["sha256"]
+    )
 
     assert analyzer.analyze_grammar_file("missing") is None
     missing = analyzer.get_grammar_capabilities("missing")
@@ -73,6 +85,7 @@ def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) ->
     assert missing["version"] is None
     assert missing["symbols_count"] == 0
     assert missing["file_size"] == 0
+    assert missing["validation_reason"] == "missing"
 
     report = analyzer.generate_grammar_report("baml")
     assert "Status: Supported" in report
@@ -87,6 +100,7 @@ def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) ->
     assert exported["grammars"]["baml"]["file"] == str(grammar_path)
     assert exported["grammars"]["baml"]["capabilities"]["supported"] is True
     assert exported["grammars"]["baml"]["capabilities"]["symbols_count"] > 0
+    assert exported["validation_failures"] == {}
     assert (
         not load_compiled_grammar(grammar_path, "baml")
         .parse(source)
@@ -139,7 +153,9 @@ def test_grammar_metadata_does_not_infer_versions_or_releases_from_mtime(
     assert first.stat().st_mtime != second.stat().st_mtime
 
     for directory, artifact in ((first_dir, first), (second_dir, second)):
-        analyzer = GrammarAnalyzer(directory)
+        analyzer = GrammarAnalyzer(
+            directory, trusted_artifacts=trusted_artifacts(artifact)
+        )
         assert analyzer.extract_grammar_version(artifact) is None
         grammar = analyzer.analyze_grammar_file("baml")
         assert grammar is not None
@@ -164,3 +180,48 @@ def test_grammar_metadata_does_not_infer_versions_or_releases_from_mtime(
         exported = json.loads(export.read_text(encoding="utf-8"))
         assert exported["grammars"]["baml"]["version"] == "unknown"
         assert exported["grammars"]["baml"]["capabilities"]["version"] == "unknown"
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux", reason="Fixture uses ELF linking and compiler comments"
+)
+def test_analyzer_rejects_partial_inspection_and_preserves_failure_export(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    grammar_path = tmp_path / "baml.so"
+    subprocess.run(
+        [
+            "cc",
+            "-shared",
+            "-fPIC",
+            "-O2",
+            "-I",
+            str(SOURCE),
+            str(SOURCE / "parser.c"),
+            "-o",
+            str(grammar_path),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    analyzer = GrammarAnalyzer(
+        tmp_path, trusted_artifacts=trusted_artifacts(grammar_path)
+    )
+
+    def inspect_raises(_: Path) -> str:
+        raise RuntimeError("inspection failed")
+
+    monkeypatch.setattr(analyzer, "extract_grammar_version", inspect_raises)
+    assert analyzer.analyze_grammar_file("baml") is None
+    capabilities = analyzer.get_grammar_capabilities("baml")
+    assert capabilities["supported"] is False
+    assert capabilities["validation_reason"] == "inspect_failed"
+
+    export_path = tmp_path / "analysis.json"
+    analyzer.export_analysis_data(export_path)
+    exported = json.loads(export_path.read_text(encoding="utf-8"))
+    assert exported["grammars"] == {}
+    assert (
+        exported["validation_failures"]["baml"]["validation_reason"] == "inspect_failed"
+    )
