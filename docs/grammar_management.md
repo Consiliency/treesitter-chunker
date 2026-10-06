@@ -427,9 +427,12 @@ installed library and installation metadata. The default `True` cleans both
 caches. `GrammarInstaller.remove_grammar` keeps its positional
 `clean_dependencies` argument; cache control is a separate keyword-only
 `clean_cache` argument. Dependency cleanup currently logs its intent. These
-options do not coordinate concurrent cache writers and deletion. The CLI command
-above does not expose this manager option; the separate programmatic
-`ComprehensiveGrammarCLI` flag remains tracked in treesitter-chunker#384.
+options do not coordinate concurrent cache writers and deletion. The exported
+Click `grammar_cli remove` command uses default cleanup. The separate programmatic
+`ComprehensiveGrammarCLI.remove_grammar(..., clean_cache=False)` retains its compiled
+build copy while deleting installed user sources and libraries; `True` also removes
+the build copy. Both values preserve packaged libraries. Its cache flag does not
+add concurrent deletion coordination.
 
 ```python
 from chunker._internal.user_grammar_tools import UserGrammarTools
@@ -532,6 +535,46 @@ for language, health in all_health.items():
 - [Tree-sitter Documentation](https://tree-sitter.github.io/tree-sitter/)
 - [Grammar Development Guide](https://tree-sitter.github.io/tree-sitter/creating-parsers)
 - [Community Grammars](https://github.com/topics/tree-sitter-grammar)
+
+## Local grammar self-tests
+
+The auxiliary helpers in `chunker.grammar_management.testing` use disposable
+directories by default. `CLIValidator`, `SystemValidator` and
+`PerformanceBenchmark` support context managers and a keyword-only `test_dir`.
+They preserve caller files in a supplied root, keep helper-created configuration
+in a private directory, and use supplied manager/configuration objects.
+Cleanup errors are visible; use `cleanup()` when not using a context manager.
+Default roots use a temporary parent outside operator home; if the normal
+temporary directory is under home, the helper uses `/tmp` on POSIX or the Windows
+system temporary directory. Failure to create that root is reported rather than
+falling back to home. CLI negative checks use a private cache so colliding
+caller-owned grammar names are not removed. Metadata timing reads the registry
+without loading a grammar; native validation remains explicitly unsupported in
+that benchmark. Cross-component observations cover configuration and cache
+links; compatibility and selection simulations are explicitly unsupported.
+
+`run_complete_test_suite()` returns observations without writing an operator-home
+report. Supply `sample_path`, `language` and `grammar_path` for a real local
+workflow, and `report_path` only when a UTF-8 JSON report is wanted. The parent
+owns the temporary operation root and reaps its bounded worker before cleanup.
+Fixture DLLs are loaded only in that worker, which also checks parse errors.
+These inputs are trusted caller fixtures; process isolation is not native
+admission or a security sandbox for malicious code.
+
+Missing/corrupt local artifacts, CLI missing-artifact exit codes, exported help,
+configuration validation and bounded metadata operations are observed through
+current APIs. Network/build/version lookup without offline fixtures, simulated
+disk/permission recovery, invented usability scores, scalability and speculative
+cache speedups are unsupported. Resource metrics are observations, and the suite
+does not run a default minute-long stability loop. Summary counts distinguish
+passes, failures and unsupported work; any observed failure prevents success.
+Configuration observations omit directory paths that could refer to a cleaned
+operation root; successful validation is recorded separately.
+The compatibility-database capability check initializes a private SQLite file
+in a bounded worker, reaped before cleanup. It does not inspect or modify a
+caller's existing compatibility database.
+Timeout cleanup also waits for the interpreter behind a Windows virtual-environment
+launcher before deleting the worker's files.
 
 ## Conclusion
 

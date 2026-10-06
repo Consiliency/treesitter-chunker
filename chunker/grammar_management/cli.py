@@ -1721,7 +1721,7 @@ if __name__ == "__main__":
 
             # Check compiled grammar
             compiled_grammar = self.build_dir / f"tree_sitter_{language}.so"
-            if compiled_grammar.exists():
+            if clean_cache and compiled_grammar.exists():
                 locations_to_remove.append(("compiled grammar", compiled_grammar))
 
             if not locations_to_remove:

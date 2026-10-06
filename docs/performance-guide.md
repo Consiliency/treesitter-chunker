@@ -138,6 +138,12 @@ one logical file/chunk count per pass. Durations and the observed cold/warm rati
 are informational, with no promised speedup. Cache identity limitations described
 above still apply.
 
+The default benchmark cache uses the shared home SQLite database. Running the
+cached benchmark invalidates and rewrites records for its input paths, so it can
+affect later cached parallel calls. Invalidate those records before switching
+between core and streaming extraction; their modes are not distinguished by the
+current cache identity (treesitter-chunker#358).
+
 Run this from a directory containing `example.py`. It measures repeated direct
 parsing, not SQLite cache hits:
 
