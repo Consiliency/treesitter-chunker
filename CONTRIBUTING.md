@@ -82,6 +82,9 @@ Use explicit UTF-8 file I/O, portable paths, and robust process readiness
 checks. Avoid assertions that depend on tight wall-clock limits.
 File-hash checks compare actual fixture bytes with an independent SHA-256 oracle
 across read sizes and input changes, without individual timing-ratio gates.
+Concurrent configuration checks assert actual fixture results for every worker
+using a preloaded configuration. They do not impose throughput or lock-wait
+budgets, or claim concurrent configuration writes are supported.
 
 Before pushing changes to configuration, paths, temporary files, extraction,
 fallback logic, or export formatting, run the standing Windows preflight:

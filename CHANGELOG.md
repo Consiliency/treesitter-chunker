@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File-hash quality checks verify complete SHA-256 results across read sizes and
   changed inputs rather than comparing noisy individual wall-clock durations.
 
+- The main CLI detects `.baml` files automatically with the optional BAML
+  companion installed. Missing companions produce installation guidance and
+  status 1; implicit ZeroConfigAPI detection retains its text fallback.
+  Symbol/Boundary scans include structural BAML output with the extra and skip
+  it automatically when the companion is missing or mismatched.
+
+- Compatibility history replaces unspecified-version records consistently,
+  prefers exact version reads and reports fallback versions truthfully. Legacy
+  duplicates migrate transactionally with complete displaced rows preserved.
+  Concrete checker requests evaluate instead of reusing unspecified cached results.
+
+- Concurrent configuration quality checks exercise real fixture parsing and
+  verify every worker result, avoiding noisy absolute timing/scaling gates.
+
 - Chunk and batch extraction failures return status 1 with errors on stderr,
   including quiet mode. Structured stdout stays parseable; batches retain
   successful chunks when another selected input fails. Unmapped extensions
