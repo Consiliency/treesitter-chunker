@@ -55,7 +55,8 @@ No native admission, implicit network download, consumer lock or broker edits.
 - uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/
 - uv run --locked --all-extras python scripts/mypy_gate.py
 - uv run --locked --with toml --all-extras python scripts/run_ci_smoke.py
-- uv run --locked --all-extras pytest -q
+- uv run --locked --with toml --all-extras python scripts/run_platform_core.py --platform linux
+- uv run --locked --with toml --all-extras python scripts/run_full_suite.py
 
 Removing the mapping must fail both real installed CLI detection tests; restore
 exact source and the full focused batch. The existing test_cli platform selection

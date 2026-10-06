@@ -2,6 +2,7 @@
 
 from dataclasses import asdict
 import importlib.util
+import json
 import shutil
 import subprocess
 import sys
@@ -26,11 +27,74 @@ from chunker.grammar_management.compatibility import (
 from chunker.grammar_management.core import (
     GrammarManager,
     GrammarValidator,
+    ValidationLevel,
     load_compiled_grammar,
 )
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.mark.parametrize(
+    "helper_type", [CompatibilityChecker, GrammarTester], ids=["checker", "tester"]
+)
+@pytest.mark.parametrize(
+    "supplied_validator", [False, True], ids=["default", "supplied"]
+)
+def test_compatibility_helpers_confine_cache_roots(
+    tmp_path, monkeypatch, helper_type, supplied_validator
+):
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_bytes()
+    tree = get_parser("python").parse(source)
+    assert tree.root_node.child_count > 0
+    assert not tree.root_node.has_error
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cache = tmp_path / "grammar-cache"
+    manager = GrammarManager(
+        user_dir=tmp_path / "user", package_dir=tmp_path / "package", cache_dir=cache
+    )
+    supplied = (
+        GrammarValidator(tmp_path / "supplied-cache") if supplied_validator else None
+    )
+    helper = helper_type(manager, validator=supplied)
+    assert not (home / ".cache" / "treesitter-chunker").exists()
+    if supplied is not None:
+        assert helper.validator is supplied
+    expected = tmp_path / "supplied-cache" if supplied is not None else cache
+    if supplied is not None:
+        assert expected != cache
+    validators = [
+        manager._validator,
+        manager._installer._validator,
+        manager._registry._installer._validator,
+    ]
+    assert all(validator._cache_dir == cache for validator in validators)
+    assert helper.validator._cache_dir == expected
+    success, errors = helper.validator.test_parse_samples(
+        "python", [source.decode("utf-8")]
+    )
+    assert success and errors == []
+    assert not helper.validator._validation_cache.exists()
+    for index, validator in enumerate([helper.validator, *validators]):
+        candidate = tmp_path / f"directory-not-grammar-{index}"
+        candidate.mkdir()
+        result = validator.validate_grammar(candidate, "python", ValidationLevel.BASIC)
+        assert not result.is_valid
+        assert result.errors == [f"Grammar path is not a file: {candidate}"]
+        records = json.loads(validator._validation_cache.read_text(encoding="utf-8"))
+        assert records
+        assert all(
+            not record["is_valid"] and record["errors"] == result.errors
+            for record in records.values()
+        )
+    assert not (home / ".cache" / "treesitter-chunker").exists()
+    assert (cache / "validation_cache.json").is_file()
+    assert (expected / "validation_cache.json").is_file()
 
 
 @pytest.mark.parametrize(
@@ -456,6 +520,72 @@ def test_breaking_changes_compare_persisted_real_parse_outcomes(
         )
     assert checker.detect_breaking_changes("python", "3.0", "4.0") == []
     assert not home.exists()
+
+
+@pytest.mark.parametrize(
+    "old_timing",
+    [
+        {"average_parse_time": 0.0},
+        {"other_metric": 1.0},
+        {"average_parse_time": None},
+        {"average_parse_time": -0.02},
+    ],
+    ids=["zero", "missing", "unavailable", "negative"],
+)
+def test_unavailable_timing_preserves_persisted_real_parse_regressions(
+    tmp_path: Path, old_timing
+) -> None:
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_bytes()
+    parser = get_parser("python")
+    valid_tree = parser.parse(source)
+    invalid_tree = parser.parse(source + b"\ndef broken(\n")
+    assert not valid_tree.root_node.has_error
+    assert invalid_tree.root_node.has_error
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    user_dir = tmp_path / "user"
+    package_dir = tmp_path / "package"
+    user_dir.mkdir()
+    package_dir.mkdir()
+    shutil.copyfile(native_spec.origin, user_dir / "libpython.so")
+    manager = GrammarManager(
+        user_dir=user_dir, package_dir=package_dir, cache_dir=tmp_path / "cache"
+    )
+    database_path = tmp_path / "history.db"
+    database = CompatibilityDatabase(database_path)
+    old_result = CompatibilityResult(
+        language="python",
+        grammar_version="1.0",
+        language_version=None,
+        level=CompatibilityLevel.COMPATIBLE,
+        performance_impact=old_timing,
+        test_results={"success_rate": float(not valid_tree.root_node.has_error)},
+    )
+    new_result = CompatibilityResult(
+        language="python",
+        grammar_version="2.0",
+        language_version=None,
+        level=CompatibilityLevel.INCOMPATIBLE,
+        issues=["Fixture contains parse errors"],
+        performance_impact={"average_parse_time": 0.04},
+        test_results={"success_rate": float(not invalid_tree.root_node.has_error)},
+    )
+    database.store_compatibility_result(old_result)
+    database.store_compatibility_result(new_result)
+    reopened = CompatibilityDatabase(database_path)
+    stored = reopened.get_compatibility_result("python", "1.0")
+    assert stored is not None and stored.performance_impact == old_timing
+    checker = CompatibilityChecker(manager, reopened)
+    changes = checker.detect_breaking_changes("python", "1.0", "2.0")
+    assert [change["type"] for change in changes] == [
+        BreakingChangeType.ABI_INCOMPATIBLE.value,
+        BreakingChangeType.STRUCTURE_CHANGED.value,
+    ]
+    assert changes[0]["issues"] == new_result.issues
+    assert changes[1]["impact"] == "high"
 
 
 def test_performance_trends_filter_language_age_and_preserve_order(
