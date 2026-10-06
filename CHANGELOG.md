@@ -7,8 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Go build-version hints compare major/minor numbers, selecting1.10 over1.9
-  in both modern and legacy positive constraint formats.
+- Go build-version hints compare major/minor numbers, selecting 1.10 over 1.9
+  across separately detected modern and legacy positive constraint lines.
 
 - The main CLI detects `.baml` files automatically with the optional BAML
   companion installed. Missing companions produce installation guidance and

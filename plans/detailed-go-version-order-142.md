@@ -9,8 +9,8 @@ automation:
 
 Resolve treesitter-chunker#142, the Go numeric-order subset of EC-COMPAT-2.
 GoVersionDetector.detect_from_build_constraints uses string max for both
-modern and legacy positive constraints. Separate lines requiring1.9 and1.10
-incorrectly select1.9. Existing tests parse the checked-in Go service fixture
+modern and legacy positive constraints. Separate lines requiring 1.9 and 1.10
+incorrectly select 1.9. Existing tests parse the checked-in Go service fixture
 and verify module-over-source precedence through the public detection API.
 
 ## Changes
@@ -21,10 +21,11 @@ and verify module-over-source precedence through the public detection API.
   strings and modern-over-legacy branch priority. Do not introduce Boolean
   expression evaluation, negated-constraint semantics or Go language support.
 - tests/test_go_version_hints_contract.py: parameterize modern/legacy separate
-  constraint lines and both orders across1.9/1.10 and1.99/2.0. Prefix the actual
+  constraint lines and both orders across 1.9/1.10 and 1.99/2.0. Prefix the actual
   checked-in Go service source, parse it using the real installed Go parser,
   write/read a private source fixture and verify detector/primary results.
-  Retain the existing go.mod precedence/export control. No mocks or timings.
+  Retain the existing go.mod precedence/export control. Modern multi-line cases
+  test extracted text hints, not acceptance by the Go compiler. No mocks or timings.
 - CHANGELOG.md: describe numeric comparison for detected Go build-version hints.
 - This plan and its typed plans/manifest.json entry are owned control paths.
 
@@ -54,8 +55,8 @@ external panel records supplement the runner without formal IF acceptance.
 
 ## Acceptance criteria
 
-- [ ] EC-COMPAT-2 Go subset: both positive constraint formats select1.10 over1.9
-  and2.0 over1.99 regardless of line order, using real parsed source fixtures.
+- [ ] EC-COMPAT-2 Go subset: detected positive constraint lines select 1.10 over
+  1.9 and 2.0 over 1.99 regardless of order, using real parsed source fixtures.
 - [ ] Existing module-over-source precedence remains; restoring string max in
   the named actual production mutation fails numeric-order cases and restores.
 - [ ] Original six checks, locked refresh/full tests/spec_tests, Windows, exact
