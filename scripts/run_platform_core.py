@@ -9,6 +9,9 @@ import sys
 
 
 COMMON_TESTS = [
+    "tests/test_plugin_system.py::test_replacing_warm_plugin_invokes_new_hook",
+    "tests/test_plugin_system.py::test_failed_replacement_preserves_warm_plugin",
+    "tests/test_plugin_system.py::test_warm_plugin_lookup_survives_replacement_interleaving",
     "tests/test_streaming.py::test_full_benchmark_runner_observes_real_cache_and_chunk_counts",
     "tests/test_grammar_integrity.py::test_download_archive_handle_lifetime",
     "tests/test_grammar_management.py::test_real_grammar_mtimes_do_not_invent_compilation_dates",
