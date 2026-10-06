@@ -85,15 +85,15 @@ def test_database_operations_release_handles_without_gc(tmp_path, operation):
         "store_test": lambda: database.store_test_result(parsed),
         "history": lambda: database.get_compatibility_history("python"),
         "trends": lambda: database.get_performance_trends("python"),
-        "cleanup": lambda: database.cleanup_old_data(),
-        "stats": lambda: database.get_database_stats(),
+        "cleanup": database.cleanup_old_data,
+        "stats": database.get_database_stats,
         "failed_store": lambda: database.store_compatibility_result(
             replace(compatibility, score=None)
         ),
         "failed_query": lambda: database.get_compatibility_result(
             "python", "fixture", "3.13"
         ),
-        "failed_cleanup": lambda: database.cleanup_old_data(),
+        "failed_cleanup": database.cleanup_old_data,
     }
     gc.collect()
     was_enabled = gc.isenabled()
