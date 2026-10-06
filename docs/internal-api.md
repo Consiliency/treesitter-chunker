@@ -72,7 +72,7 @@ The factory creates and manages parser instances with pooling:
 ```python
 # Internal use only!
 from chunker._internal.factory import ParserFactory, ParserConfig
-config = ParserConfig(timeout_ms=1000)
+config = ParserConfig()
 factory = ParserFactory(registry)
 parser = factory.get_parser("python", config)
 ```

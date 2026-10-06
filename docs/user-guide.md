@@ -392,9 +392,10 @@ print(parser.parse(source).root_node)
 ```
 
 Ranges require both byte offsets and corresponding points in the original
-source. This example selects a complete function. The legacy `timeout_ms`
-field does not impose a deadline on pinned Tree-sitter 0.26; see
-[treesitter-chunker#355](https://github.com/Consiliency/treesitter-chunker/issues/355).
+source. This example selects a complete function. On pinned Tree-sitter 0.26,
+explicit `timeout_ms` values (including zero) raise `ParserConfigError`;
+omit the option. Non-`None` `logger` values also raise that error. Configure
+Python application logging separately; this parser supplies no parse deadline.
 
 ### Concurrent Processing
 
@@ -921,11 +922,8 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# Configure parser
-config = ParserConfig(
-    timeout_ms=10000,  # Legacy field; not a deadline on pinned Tree-sitter 0.26
-    logger=logging.getLogger("parser")
-)
+# Configure parser; application logging is independent of ParserConfig
+config = ParserConfig()
 ```
 
 ## Troubleshooting
