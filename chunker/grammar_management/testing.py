@@ -39,7 +39,11 @@ class IntegrationTester:
         self.test_results = {}
         self.performance_metrics = {}
         self.test_languages = ["python", "javascript", "rust", "go", "java"]
-        self._setup_test_environment()
+        try:
+            self._setup_test_environment()
+        except Exception:
+            self.cleanup()
+            raise
 
     def _setup_test_environment(self) -> None:
         """Set up test environment."""
@@ -437,16 +441,31 @@ class IntegrationTester:
     def cleanup(self) -> None:
         """Clean up test environment."""
         if self._owns_test_dir and self.test_dir.exists():
-            shutil.rmtree(self.test_dir, ignore_errors=True)
+            shutil.rmtree(self.test_dir)
 
 
 class CLIValidator:
     """Validates CLI functionality and user experience."""
 
-    def __init__(self):
+    def __init__(self, *, test_dir: Path | None = None):
         """Initialize CLI validator."""
         self.test_results = {}
-        self.cli = ComprehensiveGrammarCLI()
+        self._environment = IntegrationTester(test_dir)
+        self.test_dir = self._environment.test_dir
+        try:
+            self.cli = ComprehensiveGrammarCLI(cache_dir=self._environment.cache_dir)
+        except Exception:
+            self.cleanup()
+            raise
+
+    def cleanup(self) -> None:
+        self._environment.cleanup()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        self.cleanup()
 
     def test_all_commands(self) -> dict[str, Any]:
         """Test all CLI commands."""
@@ -664,11 +683,28 @@ class SystemValidator:
         self,
         grammar_manager: GrammarManager | None = None,
         config: UserConfig | None = None,
+        *,
+        test_dir: Path | None = None,
     ):
         """Initialize system validator."""
         self.health_metrics = {}
-        self.grammar_manager = grammar_manager or GrammarManager()
-        self.config = config or UserConfig()
+        self._environment = IntegrationTester(test_dir)
+        self.test_dir = self._environment.test_dir
+        self.grammar_manager = (
+            grammar_manager
+            if grammar_manager is not None
+            else self._environment.grammar_manager
+        )
+        self.config = config if config is not None else self._environment.config
+
+    def cleanup(self) -> None:
+        self._environment.cleanup()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        self.cleanup()
 
     def check_system_health(self) -> dict[str, Any]:
         """Check overall system health."""
@@ -784,7 +820,7 @@ class SystemValidator:
         results = {"status": "valid", "config_items": {}, "errors": []}
 
         try:
-            config = UserConfig()
+            config = self.config
 
             # Check required configuration items
             required_items = [
@@ -820,10 +856,30 @@ class SystemValidator:
 class PerformanceBenchmark:
     """Benchmarks system performance and scalability."""
 
-    def __init__(self, grammar_manager: GrammarManager | None = None):
+    def __init__(
+        self,
+        grammar_manager: GrammarManager | None = None,
+        *,
+        test_dir: Path | None = None,
+    ):
         """Initialize performance benchmark."""
         self.benchmark_results = {}
-        self.grammar_manager = grammar_manager or GrammarManager()
+        self._environment = IntegrationTester(test_dir)
+        self.test_dir = self._environment.test_dir
+        self.grammar_manager = (
+            grammar_manager
+            if grammar_manager is not None
+            else self._environment.grammar_manager
+        )
+
+    def cleanup(self) -> None:
+        self._environment.cleanup()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        self.cleanup()
 
     def benchmark_grammar_operations(self) -> dict[str, Any]:
         """Benchmark grammar management operations."""

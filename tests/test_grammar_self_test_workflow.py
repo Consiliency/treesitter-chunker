@@ -10,13 +10,57 @@ from pathlib import Path
 import pytest
 
 from chunker.grammar_management.core import GrammarManager, load_compiled_grammar
-from chunker.grammar_management.testing import IntegrationTester, SystemValidator
+from chunker.grammar_management.testing import (
+    CLIValidator,
+    IntegrationTester,
+    PerformanceBenchmark,
+    SystemValidator,
+)
 from chunker.parser import get_parser
 from tree_sitter_language_pack import cache_dir
 
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+
+
+@pytest.mark.parametrize(
+    "component", [CLIValidator, SystemValidator, PerformanceBenchmark]
+)
+def test_default_auxiliary_roots_are_disposable_and_outside_home(
+    tmp_path, monkeypatch, component
+):
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+    home = tmp_path / "operator-home"
+    home.mkdir()
+    sentinel = home / "service.py"
+    sentinel.write_bytes(source)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "config"))
+    with component() as tester:
+        owned_root = tester.test_dir
+        assert owned_root.is_dir()
+        assert not owned_root.is_relative_to(home)
+        assert list(home.iterdir()) == [sentinel]
+    assert not owned_root.exists()
+    assert sentinel.read_bytes() == source
+
+
+@pytest.mark.parametrize(
+    "component", [CLIValidator, SystemValidator, PerformanceBenchmark]
+)
+def test_auxiliary_cleanup_preserves_supplied_root(tmp_path, component):
+    root = tmp_path / "caller-root"
+    root.mkdir()
+    sentinel = root / "service.py"
+    sentinel.write_bytes(FIXTURE.read_bytes())
+    with component(test_dir=root) as tester:
+        assert tester.test_dir == root
+    assert sentinel.read_bytes() == FIXTURE.read_bytes()
+    assert not get_parser("python").parse(sentinel.read_bytes()).root_node.has_error
 
 
 def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
@@ -59,6 +103,7 @@ def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
 
     health = SystemValidator(tester.grammar_manager, tester.config)
     assert health.check_system_health()["status"] == "healthy"
+    health.cleanup()
     integration = tester.test_cross_component_integration()
     assert integration["status"] == "pass", integration
     assert "config-cache" in integration["integration_points"]
