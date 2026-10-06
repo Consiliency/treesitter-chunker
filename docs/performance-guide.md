@@ -18,8 +18,9 @@ The large-file test parses 5,000 generated Python functions in an isolated
 process and checks their actual JSON export: complete ordered contents,
 distinct IDs, kinds and file attribution. It keeps the existing 500 MiB
 post-chunk RSS limit. RSS is sampled after chunking; it is not peak memory.
-These checks run before timing is considered. Default correctness runs report
-chunk/export times without classifying slow covered execution as wrong output.
+These checks run before timing is considered. Default correctness runs print
+chunk/export times, visible with `-s`, `-rP` or on failure, without classifying
+slow covered execution as wrong output.
 
 For an explicit controlled check, prefetch Python, use a quiet host, disable
 coverage and run:
