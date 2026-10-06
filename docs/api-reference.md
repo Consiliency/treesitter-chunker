@@ -244,12 +244,18 @@ class ParserConfig:
 
 Configuration options for parser instances.
 
+Invalid option types, negative timeouts and unsupported timeout/logger requests
+raise `ParserConfigError` before factory language lookup, including requests for
+unavailable languages. Omit unsupported options when requesting on-demand grammar
+acquisition. Range elements are checked when Tree-sitter applies the ranges.
+
 **Attributes:**
-- `timeout_ms`: Compatibility option; applied only on runtimes exposing the old
-  timeout API. It does not impose a deadline on the pinned 0.26 runtime
-  (tracked in [treesitter-chunker#355](https://github.com/Consiliency/treesitter-chunker/issues/355)).
+- `timeout_ms`: Applied only on runtimes exposing the legacy timeout API.
+  Any explicit value, including zero, raises `ParserConfigError` on the pinned
+  0.26 runtime. Omit this option there; no parse deadline is provided.
 - `included_ranges`: List of Tree-sitter `Range` objects for partial parsing
-- `logger`: Accepted configuration field; the factory does not currently attach it
+- `logger`: Any non-`None` value raises `ParserConfigError`. Configure Python
+  application logging separately; this field does not attach a parser logger.
 
 ## Plugin System
 

@@ -33,7 +33,8 @@ contract in tests/test_iface_cli_detection.py, which stays intact.
   Catch Exception at these per-input boundaries, including real decoding and
   I/O failures, without catching BaseException. No new error envelope or flags.
   Round-one reconciliation puts stdin decoding inside the handler, renders
-  input/exception text literally with wrapping disabled, sends load_config
+  input/exception text without interpreting Rich markup, with wrapping disabled,
+  sends load_config
   warnings to stderr, and lets an empty selected batch reach its existing
   structured serializer. Batch usage diagnostics also use stderr. Malformed
   config still falls back as before; its warning is not converted to an error.

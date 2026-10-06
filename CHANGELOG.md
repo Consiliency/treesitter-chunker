@@ -11,7 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   including quiet mode. Structured stdout stays parseable; batches retain
   successful chunks when another selected input fails. Unmapped extensions
   continue to warn and skip. Configuration warnings, progress and usage errors
-  use stderr; diagnostic input text is rendered literally.
+  use stderr; diagnostic input text does not interpret Rich markup.
+
+- Parser configuration rejects unsupported timeout requests on the pinned runtime
+  and non-`None` logger requests with `ParserConfigError`. Omit those options;
+  supported ranges and Python application logging remain available independently.
+  Invalid option types, negative timeouts and unsupported timeout/logger requests
+  take precedence over factory language lookup.
 
 - Default compatibility checker and grammar tester validators use their supplied
   manager's validation cache directory, avoiding additional home caches when that
