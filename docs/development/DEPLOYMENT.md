@@ -1,6 +1,6 @@
 # Deployment Guide
 
-> Maintainer documentation. This page is omitted from public navigation.
+> Maintainer/internal documentation. This page is intentionally omitted from public navigation.
 
 ## Supported Installation
 
