@@ -44,6 +44,8 @@ nav:
 not_in_nav: |
   /development/DEPLOYMENT.md
   /development/RELEASE_CHECKLIST.md
+  /development/backlog-inventory-20261006.md
+  /development/native-validation-contract.md
   /final-integration-testing.md
 plugins:
   - search
