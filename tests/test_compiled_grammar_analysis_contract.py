@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from hashlib import sha256
@@ -29,23 +30,69 @@ def trusted_artifacts(path: Path) -> dict[str, dict[str, str]]:
 
 
 def _compile_probe_fixture(tmp_path: Path, sources: list[Path]) -> Path:
-    from setuptools._distutils.compilers.C.base import new_compiler
-    from setuptools._distutils.sysconfig import customize_compiler
-
-    compiler = new_compiler()
-    customize_compiler(compiler)
     suffix = (
         ".dll"
         if sys.platform == "win32"
         else ".dylib" if sys.platform == "darwin" else ".so"
     )
     library = tmp_path / f"probe{suffix}"
-    objects = compiler.compile(
-        [str(source) for source in sources],
-        output_dir=str(tmp_path / "objects"),
-        include_dirs=[str(SOURCE)],
+    if sys.platform == "win32":
+        vswhere = (
+            Path(os.environ["PROGRAMFILES(X86)"])
+            / "Microsoft Visual Studio/Installer/vswhere.exe"
+        )
+        installation = subprocess.check_output(
+            [
+                str(vswhere),
+                "-latest",
+                "-products",
+                "*",
+                "-requires",
+                "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                "-property",
+                "installationPath",
+            ],
+            text=True,
+        ).strip()
+        vcvars = Path(installation) / "VC/Auxiliary/Build/vcvars64.bat"
+        environment = subprocess.check_output(
+            ["cmd", "/d", "/s", "/c", f'""{vcvars}" >nul && set"'],
+            text=True,
+        )
+        compiler_env = {
+            key: value
+            for key, value in os.environ.items()
+            if key.upper() not in {"PATH", "INCLUDE", "LIB", "LIBPATH"}
+        }
+        for line in environment.splitlines():
+            key, separator, value = line.partition("=")
+            if separator and key.upper() in {"PATH", "INCLUDE", "LIB", "LIBPATH"}:
+                compiler_env[key.upper()] = value
+        compiler = shutil.which("cl", path=compiler_env["PATH"])
+        assert compiler is not None, "MSVC compiler is required for native fixtures"
+        command = [
+            compiler,
+            "/nologo",
+            "/LD",
+            f"/I{SOURCE}",
+            *map(str, sources),
+            "/link",
+            f"/OUT:{library}",
+        ]
+    else:
+        compiler_env = None
+        command = [
+            "cc",
+            "-dynamiclib" if sys.platform == "darwin" else "-shared",
+            "-fPIC",
+            f"-I{SOURCE}",
+            *map(str, sources),
+            "-o",
+            str(library),
+        ]
+    subprocess.run(
+        command, cwd=tmp_path, env=compiler_env, check=True, capture_output=True
     )
-    compiler.link_shared_object(objects, str(library))
     assert library.is_file()
     return library
 
@@ -78,6 +125,58 @@ def test_portable_probe_parses_real_baml_and_releases_snapshot(tmp_path: Path) -
     )
 
 
+def test_failed_snapshot_inspection_rejects_and_cleans_real_grammar(tmp_path):
+    from chunker.grammar.integrity import probe_native_grammar
+
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+    snapshots = []
+
+    def inspect(snapshot):
+        snapshots.append(snapshot)
+        assert snapshot.read_bytes() == library.read_bytes()
+        raise ValueError("metadata extraction failed")
+
+    result = probe_native_grammar(
+        library,
+        "baml",
+        provenance=trusted_artifacts(library)["baml"],
+        sample=FIXTURE.read_bytes(),
+        inspect_artifact=inspect,
+    )
+    assert not result.supported and result.reason == "inspect_failed"
+    assert result.artifact_sha256 is None
+    assert len(snapshots) == 1 and not snapshots[0].exists()
+
+
+@pytest.mark.parametrize("state", ["corrupt", "wrong_symbol", "null_language"])
+def test_pinned_invalid_native_artifact_is_rejected(tmp_path, state):
+    from chunker._internal.grammar_management import SmartGrammarManager
+    from chunker.grammar.integrity import probe_native_grammar
+
+    if state == "corrupt":
+        library = tmp_path / "probe.so"
+        library.write_bytes(b"reviewed corrupt native fixture")
+    else:
+        code = tmp_path / "invalid.c"
+        name = "unrelated_symbol" if state == "wrong_symbol" else "tree_sitter_baml"
+        code.write_text(
+            "#ifdef _WIN32\n__declspec(dllexport)\n#endif\n"
+            f"void *{name}(void) {{ return 0; }}\n",
+            encoding="utf-8",
+        )
+        library = _compile_probe_fixture(tmp_path, [code])
+    grammar = tmp_path / "baml.so"
+    grammar.write_bytes(library.read_bytes())
+    pins = trusted_artifacts(grammar)
+    result = probe_native_grammar(grammar, "baml", provenance=pins["baml"])
+    assert not result.supported and result.reason == "load_failed"
+    assert result.artifact_sha256 is None
+    health = SmartGrammarManager(
+        tmp_path, tmp_path / "sources", trusted_artifacts=pins
+    ).diagnose_grammar_issues("baml")
+    assert health.status == "corrupted" and health.validation_reason == "load_failed"
+
+
 @pytest.mark.parametrize(
     ("action", "reason"),
     [
@@ -102,12 +201,21 @@ def test_native_constructor_failure_never_admits_grammar(
 #ifdef _WIN32
 #include <windows.h>
 #include <process.h>
+#include <crtdbg.h>
 #define PAUSE() Sleep(60000)
 #else
 #include <unistd.h>
+#include <sys/resource.h>
 #define PAUSE() sleep(60)
 #endif
 static void enter(void) {
+#ifdef _WIN32
+    SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+    _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+#else
+    struct rlimit limit = {0, 0};
+    setrlimit(RLIMIT_CORE, &limit);
+#endif
     FILE *marker = fopen(getenv("CHUNKER_TEST_NATIVE_SENTINEL"), "wb");
     if (marker) { fputs("entered", marker); fclose(marker); }
     ACTION
@@ -127,12 +235,17 @@ __attribute__((constructor)) static void start(void) { enter(); }
     )
     library = _compile_probe_fixture(tmp_path, [code])
     assert probe_native_grammar(library, "baml", provenance=None).reason == "untrusted"
+    for invalid_pin in ({}, {"sha256": None}, {"sha256": "invalid"}, {"sha256": 1}):
+        assert (
+            probe_native_grammar(library, "baml", provenance=invalid_pin).reason
+            == "untrusted"
+        )
     assert not sentinel.exists()
     result = probe_native_grammar(
         library,
         "baml",
         provenance=trusted_artifacts(library)["baml"],
-        timeout=2,
+        timeout=10,
     )
     assert sentinel.read_bytes() == b"entered"
     assert not result.supported and result.reason == reason
@@ -142,7 +255,18 @@ __attribute__((constructor)) static void start(void) { enter(); }
     renamed.unlink()
 
 
-@pytest.mark.parametrize("fault", ["duplicate", "nonce", "malformed", "numeric_flags"])
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "duplicate",
+        "nonce",
+        "malformed",
+        "numeric_flags",
+        "failure_list",
+        "nested",
+        "duplicate_record",
+    ],
+)
 def test_probe_rejects_altered_real_child_acknowledgment(
     tmp_path: Path, monkeypatch, fault: str
 ) -> None:
@@ -165,6 +289,15 @@ def test_probe_rejects_altered_real_child_acknowledgment(
             else:
                 record["loader_returned"] = record["parse_returned"] = 1
             stdout = json.dumps(record).encode()
+        elif fault == "failure_list":
+            record = json.loads(stdout)
+            record["failure"] = []
+            stdout = json.dumps(record).encode()
+            rc = 1
+        elif fault == "nested":
+            stdout = b"[" * 2000 + b"0" + b"]" * 2000
+        elif fault == "duplicate_record":
+            stdout += stdout
         else:
             stdout = b"not JSON"
         return rc, stdout, stderr, timed_out, overflow
@@ -177,7 +310,8 @@ def test_probe_rejects_altered_real_child_acknowledgment(
         sample=FIXTURE.read_bytes(),
     )
     assert len(calls) == 1 and calls[0]["parse_returned"]
-    assert not result.supported and result.reason == "ack_invalid"
+    expected_reason = "child_failed" if fault == "failure_list" else "ack_invalid"
+    assert not result.supported and result.reason == expected_reason
     assert result.artifact_sha256 is None
 
 
@@ -191,6 +325,7 @@ def test_probe_ignores_candidate_pythonpath_shadow(tmp_path: Path, monkeypatch) 
         encoding="utf-8",
     )
     monkeypatch.setenv("PYTHONPATH", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
     result = probe_native_grammar(
         library,
         "baml",

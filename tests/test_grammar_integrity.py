@@ -45,6 +45,24 @@ def test_child_closed_pipes_do_not_hide_normal_completion(tmp_path):
     assert result == (0, b"", b"", False, False)
 
 
+def test_child_drains_all_output_after_exit(tmp_path):
+    result = _read_child(
+        [sys.executable, "-I", "-c", "import os; os.write(1, b'x' * 12000)"],
+        tmp_path,
+        10,
+    )
+    assert result == (0, b"x" * 12000, b"", False, False)
+
+
+@pytest.mark.parametrize("timeout", [float("nan"), float("inf"), -float("inf")])
+def test_nonfinite_probe_deadline_is_rejected(tmp_path, timeout):
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"not native")
+    result = probe_native_grammar(candidate, "test", provenance=None, timeout=timeout)
+    assert not result.supported and result.reason == "timeout"
+    assert result.artifact_sha256 is None
+
+
 def test_verify_artifact_rejects_checksum_mismatch(tmp_path):
     artifact = tmp_path / "grammar.tar.gz"
     artifact.write_bytes(b"untrusted")

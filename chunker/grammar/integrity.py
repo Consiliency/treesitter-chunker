@@ -6,6 +6,7 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import os
 import re
 import stat
@@ -187,7 +188,7 @@ def _read_child(
                         deadline = time.monotonic() + 1
                     continue
                 streams[name].extend(data)
-            if process.poll() is not None and not read_any:
+            if process.poll() is not None and not pipes:
                 break
             if not read_any:
                 time.sleep(0.01)
@@ -229,9 +230,10 @@ def probe_native_grammar(
         return _failure("untrusted")
     if not isinstance(language, str) or not language:
         return _failure("load_failed")
-    if timeout <= 0:
+    if not math.isfinite(timeout) or timeout <= 0:
         return _failure("timeout")
 
+    source_fd: int | None
     try:
         source_fd = os.open(candidate, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
     except FileNotFoundError:
@@ -263,10 +265,17 @@ def probe_native_grammar(
                     os.fdopen(os.dup(source_fd), "rb") as source,
                     os.fdopen(snapshot_fd, "wb") as destination,
                 ):
-                    for block in iter(lambda: source.read(1024 * 1024), b""):
+                    remaining_bytes = source_stat.st_size
+                    while remaining_bytes:
+                        block = source.read(min(1024 * 1024, remaining_bytes))
+                        if not block:
+                            break
                         destination.write(block)
+                        remaining_bytes -= len(block)
                     destination.flush()
                     os.fsync(destination.fileno())
+                os.close(source_fd)
+                source_fd = None
                 try:
                     verify_artifact(snapshot, provenance)
                 except ArtifactIntegrityError:
@@ -304,7 +313,7 @@ def probe_native_grammar(
                     return _failure("ack_invalid")
                 try:
                     pairs = json.loads(stdout.decode("utf-8"), object_pairs_hook=list)
-                except (UnicodeDecodeError, json.JSONDecodeError):
+                except (UnicodeDecodeError, json.JSONDecodeError, RecursionError):
                     if returncode != 0:
                         return _failure("child_failed")
                     return _failure("ack_missing" if not stdout else "ack_invalid")
@@ -323,10 +332,18 @@ def probe_native_grammar(
                 }
                 if returncode != 0:
                     failure = acknowledgment.get("failure")
-                    if all(
-                        acknowledgment.get(key) == value
-                        for key, value in common.items()
-                    ) and failure in {"load_failed", "parse_failed"}:
+                    if (
+                        all(
+                            acknowledgment.get(key) == value
+                            for key, value in common.items()
+                        )
+                        and isinstance(failure, str)
+                        and failure
+                        in {
+                            "load_failed",
+                            "parse_failed",
+                        }
+                    ):
                         return _failure(failure)
                     return _failure("child_failed")
                 expected_acknowledgment = {
@@ -352,5 +369,8 @@ def probe_native_grammar(
                 return NativeProbeResult(True, "ok", digest)
             finally:
                 snapshot.unlink(missing_ok=True)
+    except OSError:
+        return _failure("child_failed")
     finally:
-        os.close(source_fd)
+        if source_fd is not None:
+            os.close(source_fd)

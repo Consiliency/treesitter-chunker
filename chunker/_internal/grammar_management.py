@@ -22,6 +22,9 @@ class GrammarHealth:
     issues: list[str] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
     last_checked: str | None = None
+    validation_reason: str | None = None
+    artifact_sha256: str | None = None
+    file_size: int = 0
 
 
 @dataclass
@@ -74,11 +77,21 @@ class SmartGrammarManager:
         health = GrammarHealth(language=language, status="unknown")
 
         so_file = (self.build_dir / f"{language}.so").absolute()
+        snapshot_metadata = {}
+
+        def inspect(snapshot: Path) -> None:
+            snapshot_metadata["file_size"] = snapshot.stat().st_size
+
         probe = probe_native_grammar(
             so_file,
             language,
             provenance=self.trusted_artifacts.get(language),
+            inspect_artifact=inspect,
         )
+        health.validation_reason = probe.reason
+        health.artifact_sha256 = probe.artifact_sha256
+        if probe.supported:
+            health.file_size = snapshot_metadata["file_size"]
         if probe.reason == "missing":
             health.status = "missing"
             health.issues.append(f"Grammar library {so_file} not found")
@@ -213,7 +226,9 @@ class SmartGrammarManager:
         self.compatibility_cache[language] = compatibility
         return compatibility
 
-    def generate_recovery_plan(self, language: str) -> dict[str, Any]:
+    def generate_recovery_plan(
+        self, language: str, *, health: GrammarHealth | None = None
+    ) -> dict[str, Any]:
         """Generate a recovery plan for a problematic grammar.
 
         Args:
@@ -222,10 +237,13 @@ class SmartGrammarManager:
         Returns:
             Recovery plan with specific steps
         """
-        health = self.diagnose_grammar_issues(language)
-        plan = {
+        if health is None:
+            health = self.diagnose_grammar_issues(language)
+        plan: dict[str, Any] = {
             "language": language,
             "current_status": health.status,
+            "validation_reason": health.validation_reason,
+            "artifact_sha256": health.artifact_sha256,
             "issues": health.issues,
             "recovery_steps": [],
             "estimated_time": "unknown",
@@ -265,6 +283,10 @@ class SmartGrammarManager:
             plan["estimated_time"] = "10-30 minutes"
             plan["difficulty"] = "medium"
 
+        if health.status != "healthy":
+            plan["recovery_steps"].append(
+                "Supply an independently approved SHA-256 provenance pin for the final artifact"
+            )
         return plan
 
     def validate_all_grammars(self) -> dict[str, GrammarHealth]:

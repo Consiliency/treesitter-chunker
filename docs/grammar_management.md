@@ -116,6 +116,11 @@ update means the current bytes failed admission; it does not mean the previous
 grammar was restored or safely staged. The current CLI still exits zero for
 that warning, and its exit-status migration is tracked for GRAMMARS.
 
+Analyzer reports and legacy health records include the validation reason and,
+on success, the admitted artifact SHA-256. Update warnings retain the specific
+failure reason. Recovery instructions require approval of the final artifact;
+rebuilding it alone does not approve its bytes.
+
 ## CLI Commands Reference
 
 ### `grammar list`

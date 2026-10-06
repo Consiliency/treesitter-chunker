@@ -137,20 +137,34 @@ class TestSmartGrammarManager:
         assert len(health.issues) > 0
         assert "empty" in health.issues[0] or "0 bytes" in health.issues[0]
 
-    @patch("chunker._internal.grammar_management.probe_native_grammar")
-    def test_diagnose_grammar_healthy(self, mock_probe, manager, temp_dirs):
+    def test_diagnose_grammar_healthy(self, manager, temp_dirs, tmp_path):
         """Test diagnosing a healthy grammar."""
         build_dir, _ = temp_dirs
 
-        # Create a mock .so file with some content (not empty)
-        so_file = build_dir / "healthy_lang.so"
-        so_file.write_bytes(b"mock_so_content")
+        from tests.test_compiled_grammar_analysis_contract import (
+            FIXTURE,
+            SOURCE,
+            _compile_probe_fixture,
+            load_compiled_grammar,
+            trusted_artifacts,
+        )
 
-        mock_probe.return_value = NativeProbeResult(True, "ok", "a" * 64)
-        health = manager.diagnose_grammar_issues("healthy_lang")
+        library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+        so_file = build_dir / "baml.so"
+        so_file.write_bytes(library.read_bytes())
+        assert (
+            not load_compiled_grammar(so_file, "baml")
+            .parse(FIXTURE.read_bytes())
+            .root_node.has_error
+        )
+        manager.trusted_artifacts = trusted_artifacts(so_file)
+        health = manager.diagnose_grammar_issues("baml")
 
-        assert health.language == "healthy_lang"
+        assert health.language == "baml"
         assert health.status == "healthy"
+        assert health.validation_reason == "ok"
+        assert health.file_size == len(library.read_bytes())
+        assert health.artifact_sha256 == manager.trusted_artifacts["baml"]["sha256"]
         assert len(health.recommendations) > 0
 
     @patch("chunker._internal.grammar_management.probe_native_grammar")

@@ -175,7 +175,7 @@ class UserGrammarTools:
             else:
                 result["status"] = "warning"
                 result["warnings"].append(
-                    f"Grammar installed but native admission failed: {health.status}",
+                    f"Grammar installed but native admission failed: {health.validation_reason}",
                 )
 
         except Exception as e:
@@ -296,7 +296,7 @@ class UserGrammarTools:
                     else:
                         result["status"] = "warning"
                         result["warnings"].append(
-                            f"Existing grammar failed native admission: {health.status}",
+                            f"Existing grammar failed native admission: {health.validation_reason}",
                         )
                     return result
 
@@ -361,7 +361,7 @@ class UserGrammarTools:
             else:
                 result["status"] = "warning"
                 result["warnings"].append(
-                    f"Updated grammar failed native admission: {health.status}",
+                    f"Updated grammar failed native admission: {health.validation_reason}",
                 )
 
         except Exception as e:
@@ -398,7 +398,9 @@ class UserGrammarTools:
                 "recommendations": health.recommendations,
                 "compatibility_score": compatibility.compatibility_score,
                 "compilation_date": compatibility.compilation_date,
-                "file_size": so_file.stat().st_size if so_file.exists() else 0,
+                "file_size": health.file_size,
+                "validation_reason": health.validation_reason,
+                "artifact_sha256": health.artifact_sha256,
             }
 
             result["grammars"][language] = grammar_info
@@ -428,14 +430,17 @@ class UserGrammarTools:
         }
 
         # Get health status
-        result["health"] = self.manager.diagnose_grammar_issues(language)
+        health = self.manager.diagnose_grammar_issues(language)
+        result["health"] = health
 
         # Get compatibility info
         result["compatibility"] = self.manager.get_grammar_compatibility(language)
 
         # Get recovery plan if needed
-        if result["health"].status != "healthy":
-            result["recovery_plan"] = self.manager.generate_recovery_plan(language)
+        if health.status != "healthy":
+            result["recovery_plan"] = self.manager.generate_recovery_plan(
+                language, health=health
+            )
 
         # Get source repository info
         source_dir = self.grammars_dir / f"tree-sitter-{language}"

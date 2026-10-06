@@ -383,6 +383,8 @@ class GrammarAnalyzer:
             report = []
             report.append(f"Grammar Analysis Report: {language}")
             report.append("=" * 50)
+            report.append(f"Validation reason: {capabilities['validation_reason']}")
+            report.append(f"Artifact SHA-256: {capabilities['artifact_sha256']}")
 
             if capabilities["supported"]:
                 report.append("Status: Supported")
@@ -402,7 +404,7 @@ class GrammarAnalyzer:
                         report.append(f"  - {feature}")
             else:
                 report.append("Status: Not Supported")
-                report.append("Grammar file not found or could not be analyzed")
+                report.append("Grammar did not pass native admission")
 
             return "\n".join(report)
 
