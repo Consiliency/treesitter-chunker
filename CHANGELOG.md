@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Compatibility sample checks retain independent validation incompatibility
+  when some samples parse successfully, preserving counts, errors and scores.
+
 - Compatibility checks reach the existing very-slow metadata classification
   above five seconds, while preserving independent validation and sample
   failures. Moderate timing thresholds retain their existing behavior.
