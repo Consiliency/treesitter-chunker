@@ -12,6 +12,7 @@ import sysconfig
 import tempfile
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from cli.main import (
@@ -23,6 +24,256 @@ from cli.main import (
 )
 
 runner = CliRunner()
+
+
+@pytest.mark.parametrize("command", ["file", "stdin", "batch"])
+@pytest.mark.parametrize("output_format", ["json", "jsonl"])
+@pytest.mark.parametrize("quiet", [False, True])
+@pytest.mark.parametrize("language", ["cli_contract_missing_grammar", "[/red]"])
+def test_failed_extraction_has_status_and_structured_stdout(
+    tmp_path, command, output_format, quiet, language
+):
+    fixture = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+    source = fixture.read_text(encoding="utf-8")
+    path = tmp_path / "[id]-service.py"
+    path.write_text(source, encoding="utf-8")
+    args = ["batch" if command == "batch" else "chunk"]
+    args += ["--stdin"] if command == "stdin" else [str(path)]
+    args += ["--lang", language, "--output-format", output_format]
+    if quiet:
+        args.append("--quiet")
+    suffix = ".exe" if sys.platform == "win32" else ""
+    entrypoint = Path(sysconfig.get_path("scripts")) / f"treesitter-chunker{suffix}"
+    result = subprocess.run(
+        [str(entrypoint), *args],
+        input=source if command == "stdin" else None,
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env={**os.environ, "PYTHONUTF8": "1"},
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 1, (result.stdout, result.stderr)
+    if output_format == "json":
+        assert json.loads(result.stdout) == []
+    else:
+        assert result.stdout == ""
+    assert "Error processing" in result.stderr
+    assert language in result.stderr
+    assert ("stdin" if command == "stdin" else path.name) in result.stderr
+
+
+@pytest.mark.parametrize("output_format", ["json", "jsonl"])
+@pytest.mark.parametrize("parallel", [1, 2])
+@pytest.mark.parametrize("quiet", [False, True])
+def test_mixed_batch_preserves_real_success_and_reports_failure(
+    tmp_path, output_format, parallel, quiet
+):
+    fixture = (
+        Path(__file__).parents[1]
+        / "packages/baml-grammar/tests/fixtures/declarations.baml"
+    )
+    source_bytes = fixture.read_bytes()
+    source = source_bytes.decode("utf-8")
+    good = tmp_path / "declarations.baml"
+    good.write_bytes(source_bytes)
+    bad = tmp_path / "invalid.baml"
+    bad.write_bytes(b"\xff")
+    suffix = ".exe" if sys.platform == "win32" else ""
+    entrypoint = Path(sysconfig.get_path("scripts")) / f"treesitter-chunker{suffix}"
+    args = [
+        "batch",
+        str(good),
+        "--lang",
+        "baml",
+        "--output-format",
+        output_format,
+        "--parallel",
+        str(parallel),
+    ]
+    if quiet:
+        args.append("--quiet")
+    control = subprocess.run(
+        [str(entrypoint), *args],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env={**os.environ, "PYTHONUTF8": "1"},
+        timeout=60,
+        check=False,
+    )
+    assert control.returncode == 0, control.stderr
+    control_chunks = (
+        json.loads(control.stdout)
+        if output_format == "json"
+        else [json.loads(line) for line in control.stdout.splitlines()]
+    )
+    assert control_chunks
+    assert all(c["content"] and c["content"] in source for c in control_chunks)
+    assert any("class Box" in c["content"] for c in control_chunks)
+    args.insert(2, str(bad))
+    mixed = subprocess.run(
+        [str(entrypoint), *args],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env={**os.environ, "PYTHONUTF8": "1"},
+        timeout=60,
+        check=False,
+    )
+    assert mixed.returncode == 1, (mixed.stdout, mixed.stderr)
+    mixed_chunks = (
+        json.loads(mixed.stdout)
+        if output_format == "json"
+        else [json.loads(line) for line in mixed.stdout.splitlines()]
+    )
+    assert mixed_chunks == control_chunks
+    assert "Error processing" in mixed.stderr and bad.name in mixed.stderr
+    assert "utf-8" in mixed.stderr.lower()
+
+
+@pytest.mark.parametrize("output_format", ["json", "jsonl"])
+@pytest.mark.parametrize("quiet", [False, True])
+def test_stdin_decode_failure_retains_structured_stdout(tmp_path, output_format, quiet):
+    suffix = ".exe" if sys.platform == "win32" else ""
+    entrypoint = Path(sysconfig.get_path("scripts")) / f"treesitter-chunker{suffix}"
+    args = ["chunk", "--stdin", "--lang", "python", "--output-format", output_format]
+    if quiet:
+        args.append("--quiet")
+    result = subprocess.run(
+        [str(entrypoint), *args],
+        input=b"\xff",
+        cwd=tmp_path,
+        capture_output=True,
+        env={**os.environ, "PYTHONIOENCODING": "utf-8:strict", "PYTHONUTF8": "1"},
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 1
+    stdout = result.stdout.decode("utf-8")
+    if output_format == "json":
+        assert json.loads(stdout) == []
+    else:
+        assert stdout == ""
+    stderr = result.stderr.decode("utf-8")
+    assert "Error processing stdin" in stderr and "utf-8" in stderr.lower()
+    assert "Traceback" not in stderr
+
+
+@pytest.mark.parametrize("command", ["file", "stdin", "batch"])
+@pytest.mark.parametrize("output_format", ["json", "jsonl"])
+def test_config_warning_preserves_real_structured_chunks(
+    tmp_path, command, output_format
+):
+    source = (
+        Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_text(encoding="utf-8")
+    path = tmp_path / "service.py"
+    path.write_text(source, encoding="utf-8")
+    config = tmp_path / "[id]-broken.toml"
+    config.write_text("broken = [\n", encoding="utf-8")
+    suffix = ".exe" if sys.platform == "win32" else ""
+    entrypoint = Path(sysconfig.get_path("scripts")) / f"treesitter-chunker{suffix}"
+    args = ["batch" if command == "batch" else "chunk"]
+    args += ["--stdin"] if command == "stdin" else [str(path)]
+    args += [
+        "--lang",
+        "python",
+        "--config",
+        str(config),
+        "--quiet",
+        "--output-format",
+        output_format,
+    ]
+    env = {**os.environ, "PYTHONUTF8": "1"}
+    env.pop("CHUNKER_QUIET", None)
+    result = subprocess.run(
+        [str(entrypoint), *args],
+        input=source if command == "stdin" else None,
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    chunks = (
+        json.loads(result.stdout)
+        if output_format == "json"
+        else [json.loads(line) for line in result.stdout.splitlines()]
+    )
+    assert chunks and all(c["content"] and c["content"] in source for c in chunks)
+    assert "Warning: Failed to load config" in result.stderr
+    assert config.name in result.stderr
+
+
+@pytest.mark.parametrize("output_format", ["json", "jsonl"])
+def test_empty_batch_retains_structured_output(tmp_path, output_format):
+    suffix = ".exe" if sys.platform == "win32" else ""
+    entrypoint = Path(sysconfig.get_path("scripts")) / f"treesitter-chunker{suffix}"
+    result = subprocess.run(
+        [
+            str(entrypoint),
+            "batch",
+            str(tmp_path),
+            "--quiet",
+            "--output-format",
+            output_format,
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env={**os.environ, "PYTHONUTF8": "1"},
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    if output_format == "json":
+        assert json.loads(result.stdout) == []
+    else:
+        assert result.stdout == ""
+
+
+@pytest.mark.parametrize("output_format", ["json", "jsonl"])
+def test_successfully_empty_structured_extraction_stays_successful(
+    tmp_path, output_format
+):
+    path = tmp_path / "empty.py"
+    path.write_text("", encoding="utf-8")
+    suffix = ".exe" if sys.platform == "win32" else ""
+    entrypoint = Path(sysconfig.get_path("scripts")) / f"treesitter-chunker{suffix}"
+    result = subprocess.run(
+        [
+            str(entrypoint),
+            "chunk",
+            str(path),
+            "--lang",
+            "python",
+            "--quiet",
+            "--output-format",
+            output_format,
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env={**os.environ, "PYTHONUTF8": "1"},
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Error processing" not in result.stderr
+    if output_format == "json":
+        assert json.loads(result.stdout) == []
+    else:
+        assert result.stdout == ""
 
 
 def test_installed_help_with_cp1252_output():
