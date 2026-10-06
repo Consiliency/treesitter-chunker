@@ -377,10 +377,10 @@ class CLIValidator:
     def cleanup(self) -> None:
         self._environment.cleanup()
 
-    def __enter__(self):
+    def __enter__(self) -> "CLIValidator":
         return self
 
-    def __exit__(self, exc_type, exc, traceback):
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
         self.cleanup()
 
     def test_all_commands(self) -> dict[str, Any]:
@@ -516,10 +516,10 @@ class SystemValidator:
     def cleanup(self) -> None:
         self._environment.cleanup()
 
-    def __enter__(self):
+    def __enter__(self) -> "SystemValidator":
         return self
 
-    def __exit__(self, exc_type, exc, traceback):
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
         self.cleanup()
 
     def check_system_health(self) -> dict[str, Any]:
@@ -667,10 +667,10 @@ class PerformanceBenchmark:
     def cleanup(self) -> None:
         self._environment.cleanup()
 
-    def __enter__(self):
+    def __enter__(self) -> "PerformanceBenchmark":
         return self
 
-    def __exit__(self, exc_type, exc, traceback):
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
         self.cleanup()
 
     def benchmark_grammar_operations(self) -> dict[str, Any]:
