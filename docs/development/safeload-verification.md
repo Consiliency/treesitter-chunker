@@ -34,6 +34,12 @@ and restored separately on a clean tree; logs are operational inputs under the
 plan's allowlist. Full-runner, platform and final review evidence remains pending
 for this final batch. No acceptance gate is claimed.
 
+The broadened Windows batch exposed an unrelated open temporary-archive handle
+in the existing downloader, filed independently as treesitter-chunker#386. The
+native platform batch now names the five pipe/deadline tests explicitly, alongside
+the real legacy healthy fixture. Download cleanup acceptance is not a SAFELOAD
+contract; its recorded failure is preserved for the separate repair.
+
 - Obtain an independently reviewed final implementation at the exact commit.
 - Record the required Linux, macOS, and Windows compiled-fixture outcomes.
 - Run and record baseline, killed, path-entered, and restored results for all
