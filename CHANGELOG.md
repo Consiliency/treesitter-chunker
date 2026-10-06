@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files. Its guides describe existing 2.0/2.1 versions, migration from 1.x, and
   the further package 4.0.0 identity break.
 
+- Language-compatibility database upserts refresh live metadata and selection
+  order to match persisted records, including same-version replacements.
+
+- Cached parallel quality checks verify real persisted chunks and warm cache
+  reuse without a load-sensitive one-second timing limit.
+
 - File-hash quality checks verify complete SHA-256 results across read sizes and
   changed inputs rather than comparing noisy individual wall-clock durations.
 
