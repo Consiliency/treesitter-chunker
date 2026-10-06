@@ -426,6 +426,15 @@ when the old average parse time is available and positive. A zero, missing or
 nonpositive baseline does not establish a percentage regression; independently
 detected incompatibility and parse-success regressions remain in the report.
 
+Detailed compatibility checks classify supplied parse-time metadata above two
+seconds as slow (score multiplier 0.8) and above five seconds as very slow
+(multiplier 0.5 and degraded compatibility). Exactly two seconds receives no
+penalty; exactly five stays in the slow category. The slow warning applies above
+two through five seconds. The timing adjustment preserves incompatible validation
+results; sample checks then apply their existing level and score classifications.
+Sample-stage validation precedence is tracked separately in treesitter-chunker#416.
+These thresholds interpret metadata; they do not impose a wall-clock test gate.
+
 An explicit `GrammarManager(cache_dir=...)` supplies the validation cache root for
 its registry, installer and default `CompatibilityChecker`/`GrammarTester`
 validators. Passing an actual `validator=` object to either helper preserves that
@@ -591,6 +600,13 @@ launcher before deleting the worker's files.
 The grammar-management `CompatibilityDatabase` closes its connection after each
 operation, including failures. Cleanup commits both deletions before vacuuming,
 then closes the connection; a failure in either deletion rolls back the transaction.
+
+The separate language-compatibility database updates its live selection schema
+after a successful language or grammar version upsert. Replacements use the
+persisted metadata and record order immediately, matching a cold reopen.
+Failed writes retain the previous live and persisted state. Direct schema-only
+additions are not persisted database records and are discarded by the next
+successful language or grammar version upsert.
 
 Compatibility records have one canonical row per language, grammar version and
 language version, including an unspecified (`None`) language version. Repeated
