@@ -103,7 +103,6 @@ class PerformanceBenchmark:
                 chunk_file,
                 file_path,
                 self.language,
-                use_cache=False,
             )
             duration += file_duration
             total_chunks += len(chunks)
@@ -151,37 +150,29 @@ class PerformanceBenchmark:
 
     def benchmark_cached_chunking(self) -> BenchmarkResult:
         """Benchmark chunking with cache (cold and warm)."""
+
+        def read_or_parse(file_path):
+            cached = self.cache.get_cached_chunks(file_path, self.language)
+            if cached is not None:
+                return cached, True
+            chunks = chunk_file(file_path, self.language)
+            self.cache.cache_chunks(file_path, self.language, chunks)
+            return chunks, False
+
         for file_path in self.test_files:
             self.cache.invalidate_cache(file_path)
         cold_duration = 0
         total_chunks = 0
         for file_path in self.test_files:
-            file_duration, chunks = self._measure_time(
-                chunk_file,
-                file_path,
-                self.language,
-                use_cache=True,
-            )
+            file_duration, (chunks, _) = self._measure_time(read_or_parse, file_path)
             cold_duration += file_duration
             total_chunks += len(chunks)
         cache_hits = 0
         warm_duration = 0
         for file_path in self.test_files:
-            file_duration, chunks = self._measure_time(
-                chunk_file,
-                file_path,
-                self.language,
-                use_cache=True,
-            )
+            file_duration, (chunks, hit) = self._measure_time(read_or_parse, file_path)
             warm_duration += file_duration
-            if (
-                self.cache.get_cached_chunks(
-                    file_path,
-                    self.language,
-                )
-                is not None
-            ):
-                cache_hits += 1
+            cache_hits += int(hit)
         return BenchmarkResult(
             name="Cached Chunking",
             duration=warm_duration,

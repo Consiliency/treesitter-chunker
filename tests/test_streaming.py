@@ -742,6 +742,50 @@ class TestConcurrentStreaming:
             assert [c.chunk_id for c in result] == [c.chunk_id for c in first_result]
 
 
+def test_full_benchmark_runner_observes_real_cache_and_chunk_counts(
+    tmp_path, monkeypatch
+):
+    from benchmarks.benchmark import PerformanceBenchmark
+
+    fixture = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+    source = fixture.read_bytes()
+    tree = get_parser("python").parse(source)
+    assert tree.root_node.type == "module"
+    assert tree.root_node.child_count > 0
+    assert not tree.root_node.has_error
+    paths = [tmp_path / "first.py", tmp_path / "second.py"]
+    for path in paths:
+        path.write_bytes(source)
+    references = {path: chunk_file(path, "python") for path in paths}
+    assert all(references.values())
+    expected_chunks = sum(len(chunks) for chunks in references.values())
+    home = tmp_path / "benchmark-home"
+    with monkeypatch.context() as isolated:
+        isolated.setattr(Path, "home", classmethod(lambda cls: home))
+        benchmark = PerformanceBenchmark(paths, "python")
+    assert benchmark.cache.db_path.is_relative_to(home)
+
+    suite = benchmark.run_all_benchmarks()
+    assert len(suite.results) == 7
+    for result in suite.results:
+        assert result.files_processed == 2, result
+        assert result.chunks_processed == expected_chunks, result
+    cached = next(
+        result for result in suite.results if result.name == "Cached Chunking"
+    )
+    assert cached.cache_hits == 2
+    assert benchmark.cache.get_cache_stats()["total_files"] == 2
+    for path, reference in references.items():
+        observed = benchmark.cache.get_cached_chunks(path, "python")
+        assert observed is not None
+        assert [
+            (c.node_type, c.start_line, c.end_line, c.content) for c in observed
+        ] == [(c.node_type, c.start_line, c.end_line, c.content) for c in reference]
+    summary = suite.get_summary()
+    assert summary["total_files"] == 14
+    assert summary["total_chunks"] == expected_chunks * 7
+
+
 @pytest.fixture
 def temp_directory_with_files():
     """Create a temporary directory with multiple Python files."""
