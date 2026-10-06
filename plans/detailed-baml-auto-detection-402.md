@@ -1,0 +1,72 @@
+---
+automation:
+  suite_command: "uv run --locked --all-extras pytest tests/test_cli.py tests/test_baml_language.py tests/test_iface_cli_detection.py -q"
+---
+
+# Detailed plan: Detect BAML through the canonical extension map
+
+## Task
+
+Resolve treesitter-chunker#402 independently of treesitter-chunker#359. The
+installed companion already parses this fixture; main CLI detection skips it.
+
+## Research summary
+
+ZeroConfigAPI._detect_by_extension has a companion-aware BAML special case, but
+the public EXTENSION_MAP lacks .baml. cli/main.py process_file reads that map
+directly. RepoProcessor has its own companion-aware map. The existing optional
+companion guards must retain their behavior: implicit ZeroConfigAPI falls back
+to text when absent, explicit BAML raises installation guidance, and registry
+never substitutes an ambient BAML grammar or downloads it.
+
+## Changes
+
+- chunker/auto.py: add .baml -> baml to EXTENSION_MAP, retaining the earlier
+  companion-aware _detect_by_extension guard. No parser/backend or pin change.
+- tests/test_cli.py: actual installed entrypoint on checked-in declarations.baml
+  copied to private temporary input, file and batch JSON with no language option.
+  Compare nonempty structural chunks with explicit --lang baml on identical
+  inputs, requiring no warning and matching actual fixture contents.
+- tests/test_baml_language.py: actual UniversalLanguageRegistry with private
+  metadata root, inactive None discovery/download services as in the existing
+  BAML registry test, and actual ZeroConfigAPI parsing. Canonical map and detected
+  language agree; implicit and explicit outputs agree and are not fallback.
+  Retain all existing missing/wrong companion tests and real span/fixture cases.
+- docs/cli-reference.md and CHANGELOG.md: describe automatic .baml selection
+  with the optional installed companion. Main CLI without it reports actionable
+  installation failure; implicit ZeroConfigAPI retains its documented fallback.
+- This plan and its typed plans/manifest.json row are owned control paths.
+
+## Dependencies and order
+
+Register before source edits. Integrate accepted treesitter-chunker#359 first so
+new main CLI companion failures have the accepted nonzero/stderr semantics.
+Reproduce current skip versus 14 real explicit chunks. Add tests, fix only the
+map, kill and restore omit_canonical_baml_mapping, then original checks plus
+dependency refresh/full suite. Require changed Windows tests/standing preflight,
+hosted platforms and manual tool-enabled review, at most three substantive rounds.
+No native admission, implicit network download, consumer lock or broker edits.
+
+## Verification
+
+- uv sync --locked --all-extras
+- uv run --locked --all-extras pytest tests/test_cli.py tests/test_baml_language.py tests/test_iface_cli_detection.py -q
+- uv run --locked --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
+- uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/
+- uv run --locked --all-extras python scripts/mypy_gate.py
+- uv run --locked --with toml --all-extras python scripts/run_ci_smoke.py
+- uv run --locked --all-extras pytest -q
+
+Removing the mapping must fail both real installed CLI detection tests; restore
+exact source and the full focused batch. The existing test_cli platform selection
+covers both new subprocess cases. Manual platform/review records supplement the
+original runner without inventing a runner-stamped amendment or IF acceptance.
+
+## Acceptance criteria
+
+- [ ] Actual file and batch CLI without a language option return nonempty BAML
+  chunks equal to explicit parsing, with no skip warning, and kill the mutation.
+- [ ] Actual API detection/parsing agrees with the canonical map and preserves
+  existing absent/wrong-companion and unknown-extension contracts.
+- [ ] Original runner, current source/test Windows evidence, exact hosted checks
+  and bounded reviews accept the repair with matching consumer documentation.
