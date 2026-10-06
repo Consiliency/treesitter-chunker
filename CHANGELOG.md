@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Compatibility history replaces unspecified-version records consistently,
+  prefers exact version reads and reports fallback versions truthfully. Legacy
+  duplicates migrate transactionally with complete displaced rows preserved.
+  Concrete checker requests evaluate instead of reusing unspecified cached results.
+
 - Concurrent configuration quality checks exercise real fixture parsing and
   verify every worker result, avoiding noisy absolute timing/scaling gates.
 
