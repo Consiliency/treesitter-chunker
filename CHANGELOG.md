@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Grammar compatibility database operations close their SQLite connections on
+  return or failure, allowing immediate file removal without garbage collection.
+  Cleanup commits its deletions before vacuuming within the connection lifetime.
+
 - The full benchmark runner uses supported sequential parsing calls and explicit
   SQLite cache reads/writes. Cached hit counts reflect actual lookups, with timings
   retained as informational observations.
