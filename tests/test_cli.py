@@ -10,6 +10,7 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import pytest
@@ -24,6 +25,33 @@ from cli.main import (
 )
 
 runner = CliRunner()
+
+
+@pytest.mark.parametrize("command", ["chunk", "batch"])
+@pytest.mark.parametrize("companion_version", [None, "0.2.0"])
+def test_implicit_cli_baml_requires_supported_companion(
+    tmp_path, monkeypatch, command, companion_version
+):
+    def distribution_version(name):
+        if name == "treesitter-chunker-baml-grammar":
+            if companion_version is None:
+                raise PackageNotFoundError(name)
+            return companion_version
+        return version(name)
+
+    monkeypatch.setattr("chunker._internal.registry.version", distribution_version)
+    fixture = (
+        Path(__file__).parents[1]
+        / "packages/baml-grammar/tests/fixtures/declarations.baml"
+    )
+    path = tmp_path / "declarations.baml"
+    path.write_bytes(fixture.read_bytes())
+    result = runner.invoke(
+        app, [command, str(path), "--output-format", "json", "--quiet"]
+    )
+    assert result.exit_code == 1, result.output
+    assert json.loads(result.stdout) == []
+    assert "treesitter-chunker[baml]" in result.stderr
 
 
 @pytest.mark.parametrize("command", ["chunk", "batch"])

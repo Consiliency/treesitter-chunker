@@ -423,6 +423,8 @@ class ZeroConfigAPI(ZeroConfigContract):
         """
         language_extensions: dict[str, list[str]] = {}
         for ext, lang in self.EXTENSION_MAP.items():
+            if lang == "baml" and not baml_companion_available():
+                continue
             if lang not in language_extensions:
                 language_extensions[lang] = []
             language_extensions[lang].append(ext)

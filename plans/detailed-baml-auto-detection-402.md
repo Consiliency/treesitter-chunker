@@ -22,17 +22,34 @@ never substitutes an ambient BAML grammar or downloads it.
 ## Changes
 
 - chunker/auto.py: add .baml -> baml to EXTENSION_MAP, retaining the earlier
-  companion-aware _detect_by_extension guard. No parser/backend or pin change.
+  companion-aware _detect_by_extension guard. Filter absent companions out of
+  list_supported_extensions rather than advertising a missing parser. No
+  parser/backend or pin change.
+- chunker/symbol_graph.py and chunker/boundary/adapter.py: retain missing/wrong
+  companion skipping in automatic repository scans and implicit file detection.
+  Explicit language requests retain installation guidance. With the extra,
+  actual Boundary IR parsing of the fixture must produce14 source-backed nodes
+  and no diagnostics; no addition to the pack census or twelve-language golden
+  contract. SemanticQuery uses the same guarded collector.
 - tests/test_cli.py: actual installed entrypoint on checked-in declarations.baml
   copied to private temporary input, file and batch JSON with no language option.
   Compare nonempty structural chunks with explicit --lang baml on identical
   inputs, requiring no warning and matching actual fixture contents.
+  Missing/wrong external companion metadata must yield status1, installation
+  guidance on stderr and an empty parseable JSON payload without --lang.
 - tests/test_baml_language.py: actual UniversalLanguageRegistry with private
   metadata root, inactive None discovery/download services as in the existing
   BAML registry test, and actual ZeroConfigAPI parsing. Canonical map and detected
   language agree; implicit and explicit outputs agree and are not fallback.
   Retain all existing missing/wrong companion tests and real span/fixture cases.
-- docs/cli-reference.md and CHANGELOG.md: describe automatic .baml selection
+- Add absent and wrong-version cases by changing only external distribution
+  metadata, not the production detection/parser functions. An actual registry
+  and API must omit BAML from supported extensions and fall back on file input;
+  automatic symbol/Boundary directory scans skip it and parse a real Python
+  control without errors. Implicit direct symbol/Boundary file detection also
+  skips BAML; explicit requests retain installation errors.
+- docs/cli-reference.md, README.md, docs/language-coverage.md and CHANGELOG.md:
+  describe automatic .baml selection
   with the optional installed companion. Main CLI without it reports actionable
   installation failure; implicit ZeroConfigAPI retains its documented fallback.
 - This plan and its typed plans/manifest.json row are owned control paths.
@@ -60,7 +77,10 @@ No native admission, implicit network download, consumer lock or broker edits.
 
 Removing the mapping must fail both real installed CLI detection tests; restore
 exact source and the full focused batch. The existing test_cli platform selection
-covers both new subprocess cases. Manual platform/review records supplement the
+covers both new subprocess cases. Also kill advertise_absent_baml_companion
+(omit the list-supported guard) and ignore_scan_companion_gate (omit the
+automatic symbol collector gate); missing/wrong companion cases must fail and
+the entire focused batch must restore after each. Manual platform/review records supplement the
 original runner without inventing a runner-stamped amendment or IF acceptance.
 
 ## Acceptance criteria
