@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Cached parallel quality checks verify real persisted chunks and warm cache
+  reuse without a load-sensitive one-second timing limit.
+
 - File-hash quality checks verify complete SHA-256 results across read sizes and
   changed inputs rather than comparing noisy individual wall-clock durations.
 
