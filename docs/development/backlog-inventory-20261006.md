@@ -17,7 +17,7 @@ No tests/builds were run during this planning audit. Historical verification is 
 | treesitter-chunker#128 | Kept open; completed portions identified | [Reconciliation](https://github.com/Consiliency/treesitter-chunker/issues/128#issuecomment-6011568804); treesitter-chunker#218 fixed signature/options, treesitter-chunker#219 fixed bulk filenames, but wrong-library validation remains. |
 | treesitter-chunker#361 | New record-reconciliation tracker | Exposes stale plan status and residuals missing from the issue queue; audit/triage only. |
 
-Counts: initially 61 issues/five drafts; two issues and one superseded draft closed, one previously untracked records issue opened. **60 open issues, four draft PRs remain.** No other item was closed merely for age or overlapping scope.
+Counts: initially 61 issues/five drafts; two issues and one superseded draft closed, one previously untracked records issue opened. The initial inventory contained 60 issues; independent review added treesitter-chunker#362 and treesitter-chunker#363. **62 open issues, four draft PRs remain.** No other item was closed merely for age or overlapping scope.
 
 ## Remaining draft PRs
 
@@ -50,6 +50,8 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P0/P1 | GRAMMARS | [treesitter-chunker#128](https://github.com/Consiliency/treesitter-chunker/issues/128) — Compiled grammar validate accepts libraries without verifying the requested language |
 | P0/P1 | GRAMMARS | [treesitter-chunker#120](https://github.com/Consiliency/treesitter-chunker/issues/120) — Grammar Click list reports an invalid local grammar as healthy |
 | P0/P1 | GRAMMARS | [treesitter-chunker#156](https://github.com/Consiliency/treesitter-chunker/issues/156) — Grammar info command returns success for a missing grammar |
+| P0 | GRAMMARS | [treesitter-chunker#362](https://github.com/Consiliency/treesitter-chunker/issues/362) — Remaining native admission, verdict-reuse and dependency-inspection paths |
+| P1 | GRAMMARS | [treesitter-chunker#363](https://github.com/Consiliency/treesitter-chunker/issues/363) — Failed update logs rollback without restoring the old installation |
 | P1 | CACHE | [treesitter-chunker#358](https://github.com/Consiliency/treesitter-chunker/issues/358) — Parallel chunk cache reuses core results for streaming requests and ignores parser pins |
 | P1 | CACHE | [treesitter-chunker#136](https://github.com/Consiliency/treesitter-chunker/issues/136) — Explicit grammar cache directory does not reach registry and compatibility helpers |
 | P1 | WHEELS | [treesitter-chunker#155](https://github.com/Consiliency/treesitter-chunker/issues/155) — Legacy build verifier rejects the supported pure Python wheel |

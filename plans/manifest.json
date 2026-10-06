@@ -312,7 +312,7 @@
       "acceptance_criteria_count": 2,
       "created_at": "2026-10-06T07:55:17.820113+00:00",
       "file": "plans/phase-plan-v3-SAFELOAD.md",
-      "handoff_ref": ".dev-skills/handoffs/codex-plan-phase/20261006T075517Z-SAFELOAD-plan.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-phase/20261006T080644Z-SAFELOAD-plan.md",
       "if_gates_produced": [
         "IF-0-SAFELOAD-1"
       ],
@@ -326,11 +326,20 @@
           "by": "codex-plan-phase",
           "metadata": {},
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T08:06:44.142045+00:00",
+          "by": "codex-plan-phase",
+          "metadata": {
+            "action": "refresh_plan",
+            "roadmap_sha256": "b2fd4eb685a2362137e6a2da5783e0eb2d760cf9dcfc0c90fcc62a8352b82f14"
+          },
+          "transition": "committed"
         }
       ],
       "owner_skill": "codex-plan-phase",
       "phase_alias": "SAFELOAD",
-      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-phase/reflections/007f2158e199/codex-backlog-cleanup-20261006/20261006T075517Z-SAFELOAD-plan.md",
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-phase/reflections/007f2158e199/codex-backlog-cleanup-20261006/20261006T080644Z-SAFELOAD-plan.md",
       "roadmap_ref": {
         "file": "specs/phase-plans-v3.md",
         "slug": "phase-plans-v3",
@@ -341,7 +350,7 @@
       "status": "committed",
       "task_summary": "Trusted native admission and isolated probe plan for treesitter-chunker#165, treesitter-chunker#151 and treesitter-chunker#164",
       "type": "phase",
-      "updated_at": "2026-10-06T07:55:17.820113+00:00"
+      "updated_at": "2026-10-06T08:06:44.142045+00:00"
     }
   ],
   "schema_version": 1

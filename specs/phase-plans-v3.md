@@ -4,7 +4,7 @@
 
 Cleanup initiative, audited 2026-10-06 against current main. This is a new roadmap; v1/v2 remain historical inputs. See [complete inventory](../docs/development/backlog-inventory-20261006.md) for every issue, draft, planning artifact and disposition.
 
-Closed fixed treesitter-chunker#124 and treesitter-chunker#107, and superseded draft treesitter-chunker#171. Added historical-record tracker treesitter-chunker#361: 60 issues and four drafts remain. treesitter-chunker#69 now reflects behavior/mutation acceptance.
+Closed fixed treesitter-chunker#124 and treesitter-chunker#107, and superseded draft treesitter-chunker#171. Added historical-record tracker treesitter-chunker#361 and review follow-ups treesitter-chunker#362/treesitter-chunker#363: 62 issues and four drafts remain. treesitter-chunker#69 now reflects behavior/mutation acceptance.
 
 5.2.0 is published; this quality/correctness campaign does not itself require another release. Planning uses existing source, merged verification and GitHub metadata; no fresh full-suite measurement is claimed.
 
@@ -35,6 +35,7 @@ No consumer lock updates, broker/authority edits, admitted train ledger/checkpoi
 ## Top Interface-Freeze Gates
 
 - IF-0-SAFELOAD-1 — Native provenance, isolated probe acknowledgment and immutable artifact contract.
+- IF-0-CLEANUP-1 — Accepted cache writer/deleter ownership, staging and publication-recency contract.
 
 ## Phases
 
@@ -91,7 +92,7 @@ P0: Preserve recent files already present and published during cleanup, preserve
 
 **Scope notes**
 
-treesitter-chunker#323, treesitter-chunker#324, treesitter-chunker#177. Decompose into 2 lanes: cache deletion protocol in core.py/cli.py, and auxiliary self-test isolation in testing.py. Separate PRs for treesitter-chunker#323, treesitter-chunker#324 and treesitter-chunker#177; coordinate writer ownership before changing deletion.
+treesitter-chunker#323, treesitter-chunker#324, treesitter-chunker#177. Decompose into 2 lanes: cache deletion protocol in core.py/cli.py/config.py, and auxiliary self-test isolation in testing.py. Separate PRs for treesitter-chunker#323, treesitter-chunker#324 and treesitter-chunker#177. Freeze staging roots, writer/deleter ownership and publication markers before changing deletion. All participating deleters and writers must observe the same protocol; inherited source mtime from copy2 cannot establish publication age. Produce IF-0-CLEANUP-1 only after implementation, deterministic interleaving, symlink/junction and review acceptance.
 Planning depth: Detailed for writer/deleter protocol; bounded plan for self-test isolation.
 
 **Non-goals**
@@ -103,6 +104,7 @@ Unrelated changes.
 - `chunker/grammar_management/core.py`
 - `chunker/grammar_management/cli.py`
 - `chunker/grammar_management/testing.py`
+- `chunker/grammar_management/config.py`
 
 **Depends on**
 
@@ -110,6 +112,7 @@ Unrelated changes.
 
 **Produces**
 
+- IF-0-CLEANUP-1 — Accepted writer/deleter and staging contract consumed by grammar publication.
 - Reviewed repairs with issue-specific evidence.
 
 **Spec closeout policy**
@@ -129,7 +132,7 @@ P0/P1: Never overwrite a mapped grammar inode; validate staged artifacts before 
 
 **Scope notes**
 
-treesitter-chunker#162, treesitter-chunker#160, treesitter-chunker#117, treesitter-chunker#128, treesitter-chunker#120, treesitter-chunker#156. Decompose into 2 lanes: legacy replacement/suffix/info commands and exported registry/Click validation/health. Registry discovery/fallback, central validator and CLI validation must integrate the accepted SAFELOAD contract before claiming safe native admission. Inventory each direct load, including the low-level caller-trusted primitive, and test that no discovery consumer bypasses admission. Both modern installer and legacy tool publication require immutable replacement/reload evidence. Land treesitter-chunker#162 before suffix integration, then refresh treesitter-chunker#161; only then refresh treesitter-chunker#157. Keep treesitter-chunker#117 distinct from treesitter-chunker#160. Serialize core.py with CLEANUP/CACHE and registry.py with RUNTIME; no simultaneous writable ownership.
+treesitter-chunker#162, treesitter-chunker#160, treesitter-chunker#117, treesitter-chunker#128, treesitter-chunker#120, treesitter-chunker#156, treesitter-chunker#362, treesitter-chunker#363. Decompose into 2 lanes: legacy replacement/suffix/info commands and exported registry/Click validation/health. Registry discovery/fallback, central validator and CLI validation integrate accepted SAFELOAD before claiming safe native admission. treesitter-chunker#362 inventories and integrates or retires additional loads in grammar/validator.py, grammar/download.py, grammar_manager.py and analyzer dependency inspection, including verdict reuse; the low-level loader stays explicitly caller-trusted. Both modern installer and legacy publication consume IF-0-CLEANUP-1 and require immutable replacement/reload evidence. Repair failed-update restoration separately under treesitter-chunker#363. Land treesitter-chunker#162 before suffix integration, then refresh treesitter-chunker#161; only then refresh treesitter-chunker#157. Keep treesitter-chunker#117 distinct from treesitter-chunker#160. Serialize core.py with CLEANUP/CACHE and registry.py with RUNTIME; no simultaneous writable ownership. Document migration for changed health and info exit codes.
 Planning depth: Detailed replacement lifecycle; small suffix/display/status fixes inline.
 
 **Non-goals**
@@ -148,6 +151,7 @@ Unrelated changes.
 **Depends on**
 
 - SAFELOAD
+- CLEANUP
 
 **Produces**
 
@@ -209,7 +213,7 @@ P1: Verify supported pure/native wheels against an authoritative payload manifes
 
 **Scope notes**
 
-treesitter-chunker#155, treesitter-chunker#174, treesitter-chunker#175, treesitter-chunker#176, treesitter-chunker#182, treesitter-chunker#183, treesitter-chunker#184, treesitter-chunker#185. Decompose into 2 lanes: authoritative payload/layout implementation and real-artifact mutation/installed-runtime tests, with disjoint files. Refresh draft treesitter-chunker#180 from main only in its eventual repair worktree. Never merge a known incomplete verifier because old CI is green; retain each separately filed acceptance finding.
+treesitter-chunker#155, treesitter-chunker#174, treesitter-chunker#175, treesitter-chunker#176, treesitter-chunker#182, treesitter-chunker#183, treesitter-chunker#184, treesitter-chunker#185. Decompose into 2 serialized behavior lanes: authoritative manifest/metadata and installed payload/entrypoint/native checks. Each lane owns its repair code and real-artifact tests together; builder.py ownership never overlaps concurrently. Refresh draft treesitter-chunker#180 from main only in its eventual repair worktree. Never merge a known incomplete verifier because old CI is green; retain each separately filed acceptance finding. Name the verifier used by releases separately from the legacy verify_build path and demonstrate the intended integration.
 Land authoritative manifest repair first, then one behavior repair per PR with its regression and mutation in the same PR. Lanes coordinate work inside each PR; tests never land separately from their repair.
 Planning depth: Detailed artifact manifest and install-layout contract.
 
@@ -307,7 +311,7 @@ Unrelated changes.
 
 **Depends on**
 
-- (none)
+- SAFELOAD
 
 **Produces**
 
@@ -343,6 +347,7 @@ Unrelated changes.
 
 - `chunker/grammar_management/compatibility.py`
 - `chunker/languages/compatibility/schema.py`
+- `chunker/languages/compatibility/database.py`
 - `chunker/languages/version_detection/`
 
 **Depends on**
@@ -554,10 +559,11 @@ schema: spec_delta_closeout.v1; decision: no_spec_delta; targets: issue-acceptan
 ```mermaid
 graph TD
     SAFELOAD --> GRAMMARS
+    CLEANUP --> GRAMMARS
+    SAFELOAD --> GATES
     GRAMMARS --> COVERAGE
     WHEELS --> COVERAGE
     GATES --> COVERAGE
-    CLEANUP
     CACHE
     RUNTIME
     COMPAT
@@ -572,7 +578,7 @@ graph TD
 Next phase: SAFELOAD — Trusted native grammar validation.
 Next command: `codex-plan-phase specs/phase-plans-v3.md SAFELOAD`.
 
-Plan the shared native contract first. CLEANUP is an independent P0 root. CACHE, WHEELS, RUNTIME and GATES can be planned independently; execute only with disjoint ownership, serializing shared grammar CLI/compatibility files and CI selection scripts. GRAMMARS follows SAFELOAD. Later semantic/export/signature work remains independently landable; its ordering does not depend on finishing every earlier phase.
+Plan the shared native contract first. CLEANUP is an independent P0 root. CACHE, WHEELS and RUNTIME can proceed with disjoint ownership. GATES may plan independent test repairs early, but its analyzer deadline repair treesitter-chunker#207 consumes IF-0-SAFELOAD-1; final phase acceptance depends on SAFELOAD. Serialize analyzer, registry, grammar CLI/compatibility files and CI selection scripts. GRAMMARS follows SAFELOAD and CLEANUP. Later semantic/export/signature work remains independently landable; its ordering does not depend on finishing every earlier phase.
 
 RECORDS triage may start immediately even though lower priority. COVERAGE follows accepted held contracts and stable gates; stop repeating low-impact coverage additions while higher-risk defects remain. A future release requires separate preparation and dispatch plans under the current release-process spec.
 
@@ -583,6 +589,7 @@ Runtime 0.7.23 clears the old publication dependency. Recheck supported publicat
 Downstream plans must provide focused machine-checkable commands and an effective `automation.suite_command`, followed by repository Ruff, Black, mypy gate, CI smoke and affected platform checks from CONTRIBUTING.md. Native/path changes need standing Windows preflight and Linux/macOS/Windows exact-head CI. Artifact work requires an installed-wheel test outside the checkout.
 
 Each repair proves its named fixture contract, fails under a named mutation, then passes after restoration. Destructive/native tests run only in isolated homes or subprocesses. Controlled benchmarks are separate from correctness budgets. Documentation changes use strict MkDocs/Sphinx builds to temporary directories.
+Signature/semantic changes that intentionally alter Boundary IR require locked-stack golden regeneration and conformance checks from CONTRIBUTING.md; never edit goldens by hand. Pack-managed artifact acquisition has a distinct pinned supplier trust boundary; local candidates cannot borrow that trust.
 
 For COVERAGE only, measure then-current main with the repo full-suite equivalent of `pytest tests spec_tests --cov=chunker --cov-report=term-missing --cov-report=json:<private-output>`; report scope, failures and digest without adding a fail-under gate. Operational evidence must name its artifact and use a runner-stamped amendment before it is treated as gate acceptance.
 

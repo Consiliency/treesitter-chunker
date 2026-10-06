@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: SAFELOAD
 roadmap: specs/phase-plans-v3.md
-roadmap_sha256: c1812a46acb53ba34fea35fa683f407e684efabf4dc76bb00207670f208041cd
+roadmap_sha256: 70d731b3f8db948f13feca632c6a79dcaef035e9620ab66816af4d8732f64f81
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_grammar_integrity.py tests/test_compiled_grammar_analysis_contract.py tests/test_grammar_management.py -q"
 ---
@@ -15,9 +15,9 @@ Implement treesitter-chunker#165, treesitter-chunker#151 and treesitter-chunker#
 
 Current construction sites: `GrammarAnalyzer.analyze_grammar_file` accepts metadata/date fallbacks without proving loadability; `SmartGrammarManager.diagnose_grammar_issues` maps discovered libraries in the parent and only checks symbol presence; `UserGrammarTools` delegates validation to that manager. Existing `verify_artifact` provides SHA-256 comparison, and `load_compiled_grammar` constructs a Parser with the pinned capsule API and rejects null pointers. Reuse both rather than inventing another loader. The existing compiled BAML test supplies reviewed source and a real sample.
 
-There is one implementation lane and a dependent documentation/evidence reducer, not independent native implementations. SAFELOAD has no upstream dependency; GRAMMARS consumes its accepted gate. Coordinate exclusive access to the analyzer with GATES and legacy tools with GRAMMARS. Destination publication/reload, native suffix discovery, registry health/CLI semantics and other native-loader consumers remain GRAMMARS work; this phase must not claim repository-wide native-load coverage.
+One independently landable implementation PR carries the shared code, tests and documentation together. Its single implementation lane is followed by a documentation/evidence reducer; the reducer is part of that PR, not a separately landed repair. SAFELOAD has no upstream dependency; GRAMMARS consumes its accepted gate. Coordinate exclusive access to the analyzer with GATES and legacy tools with GRAMMARS. Destination publication/reload, native suffix discovery, registry health/CLI semantics and other native-loader consumers remain GRAMMARS work; this phase must not claim repository-wide native-load coverage.
 
-The tracked roadmap hash matches the requested input. Canonical `.phase-loop/events.jsonl` records the current planning run on the clean checkout; older state/handoff topology refers to the preceding dry run. Use the newer ledger and live git state, leave runner state runner-owned, and do not consult legacy state as authority.
+The tracked roadmap hash matches the requested input. The newer canonical `.phase-loop/events.jsonl` run event marks SAFELOAD unplanned after the roadmap amendment, and live git topology confirms a clean starting checkout. Older state and handoff snapshots describe the previous plan against the superseded hash. Refresh this plan from the current roadmap; leave canonical runner state runner-owned and treat legacy `.codex/phase-loop/` files only as compatibility artifacts.
 
 ## Interface Freeze Gates
 
@@ -27,7 +27,7 @@ The tracked roadmap hash matches the requested input. Canonical `.phase-loop/eve
 
 Extend the existing integrity module with:
 
-`probe_native_grammar(path: Path, language: str, *, provenance: Mapping[str, Any] | None, sample: bytes = b"", timeout: float = 10.0) -> NativeProbeResult`.
+`probe_native_grammar(path: Path, language: str, *, provenance: Mapping[str, Any] | None, sample: bytes = b"", timeout: float = 10.0, inspect_artifact: Callable[[Path], None] | None = None) -> NativeProbeResult`.
 
 Freeze `NativeProbeResult` as an immutable record with `supported: bool`, `reason: str`, `artifact_sha256: str | None`. Reasons are `ok`, `missing`, `empty`, `untrusted`, `integrity_mismatch`, `load_failed`, `parse_failed`, `timeout`, `child_failed`, `ack_missing`, `ack_invalid`. Missing/empty bytes are rejected without execution; all other candidates need trusted provenance before any native load.
 
@@ -39,19 +39,23 @@ Copy candidate bytes from one open regular file into an exclusively created, pri
 
 ### Probe and acknowledgment
 
+Parent metadata extraction uses `inspect_artifact(snapshot_path)` only after successful child completion and before removing that same verified snapshot. Analyzer versions, symbols and file size derive from this snapshot, while the public path remains the original candidate and reports carry the admitted digest. Callback failure cannot produce healthy or partial metadata. Add a deterministic replacement specifically between completion and extraction and kill `inspect_original_after_probe`; cache metadata stays digest-bound.
+
 Use `sys.executable` and an argument array, without a shell, to invoke a private child entrypoint in the existing integrity module. Import `load_compiled_grammar` lazily inside the child. The child verifies the snapshot, calls that pinned loader, invokes `Parser.parse(sample)`, observes a returned root, and only then emits one structured completion record:
 
 `{"schema":"native_probe.v1","nonce":"<per-request>","language":"<requested>","sha256":"<snapshot>","loader_returned":true,"parse_returned":true}`.
 
 The parent accepts only zero exit plus exactly one well-formed acknowledgment matching schema, nonce, language and digest with both flags true. Native diagnostic stdout is not itself success; malformed, duplicate, missing or mismatched records fail closed. Acknowledgment proves completion, not a sandbox or authenticity against deliberately trusted malicious code. Empty-parse completion proves basic loadability, not all language semantics; positive BAML coverage must separately parse the checked-in nonempty declaration fixture without errors.
 
-Timeout terminates and reaps the child before snapshot cleanup; crashes, nonzero exit and premature `exit(0)`/`_exit(0)` never yield support. Use bounded captured diagnostics and return the stable reason, not fabricated capability metadata. Keep ordinary timeout policy changes for GATES separate.
+Timeout allows at most one second after termination before forced termination/reaping, all before snapshot cleanup; crashes, nonzero exit and premature `exit(0)`/`_exit(0)` never yield support. Capture at most 64 KiB per diagnostic stream and a 16 KiB acknowledgment; overflow fails closed without unbounded buffering. Distinct child failure records convey load_failed or parse_failed but cannot count as successful completion. Return the stable reason, not fabricated capability metadata. Keep ordinary timeout policy changes for GATES separate.
 
 ### Consumer behavior and compatibility
 
 Analyze metadata only after admission and acknowledgment succeed. Failed `analyze_grammar_file` returns `None`; capabilities retain `supported=False` and empty/default fields, with an additive `validation_reason`; reports and exports preserve that reason. Metadata defaults cannot rescue failed validation. Cached analyzer and manager results must revalidate current content/provenance before reuse, including removal and same-stat replacement; do not cache by language alone.
 
-Legacy diagnosis maps missing to `missing`, empty/load/parse/null-symbol failures to `corrupted`, untrusted/integrity/child/protocol/deadline failures to `incompatible`, and only `ok` to `healthy`. Existing issues/recommendations carry the reason and recovery guidance. Tools preserve existing result shapes, propagate these findings, and invalidate old health observations after install/update. No parent `CDLL` or alternate loader may bypass the shared gate in these consumers. The exported low-level loader and other registry/validator consumers are pre-existing trusted-code interfaces, not newly secured by this phase.
+Keep export successes under `grammars` and add `validation_failures` for rejected discoveries with supported=false, cause and path. All positive analyzer results are content/provenance revalidated. Default CLI/database factories without pins expose unsupported discoveries and actionable cause; do not fabricate analysis or new accepted records. Existing database rows remain historical, not admission receipts; default factory pin injection and stale-record reconciliation are owned by treesitter-chunker#362/COMPAT. In scoped tools, both install and update (including unchanged revision) must return warning plus cause when bytes are staged but unapproved, never unconditional success. Do not silently fix unrelated database persistence or downstream publication here.
+
+Legacy diagnosis maps missing to `missing`, empty/load/parse/null-symbol failures to `corrupted`, untrusted/integrity/child/protocol/deadline failures to `incompatible`, and only `ok` to `healthy`. Existing issues/recommendations carry the reason and recovery guidance. Tools preserve existing result shapes, propagate these findings, and invalidate old health observations after install/update. No parent `CDLL` or alternate loader may bypass the shared gate in these consumers. The exported low-level loader remains a caller-trusted primitive, never a discovery admission boundary. Registry ambient discovery/fallback loads, central GrammarValidator and CLI validation remain explicitly unsecured until GRAMMARS integrates this contract. Modern installer publication and legacy replacement also remain GRAMMARS work. RUNTIME and GATES repairs do not establish native admission safety.
 
 ## Lane Index & Dependencies
 
@@ -71,14 +75,14 @@ SL-2 — Documentation and evidence reducer
 
 - **Scope**: Freeze the contract, then implement and falsify one admission/probe mechanism across analyzer and legacy validation.
 - **Owned files**: `chunker/grammar/integrity.py`, `chunker/languages/compatibility/grammar_analyzer.py`, `chunker/_internal/grammar_management.py`, `chunker/_internal/user_grammar_tools.py`, `tests/test_grammar_integrity.py`, `tests/test_compiled_grammar_analysis_contract.py`, `tests/test_grammar_management.py`, `docs/development/native-validation-contract.md`
-- **Interfaces provided**: `IF-0-SAFELOAD-1`, `SAFELOAD fixture and mutation results`
+- **Interfaces provided**: `SAFELOAD implementation candidate`, `SAFELOAD contract review evidence`, `SAFELOAD fixture and mutation results`
 - **Interfaces consumed**: `verify_artifact`, `load_compiled_grammar`, `GrammarHealth` (pre-existing)
 - **Parallel-safe**: no
 - **Tasks**:
   - test: Extend existing test files first. Compile BAML from `packages/baml-grammar/src/parser.c`; keep adversarial C snippets in the existing compiled-contract test and outputs under pytest temporary roots. Parameterize analyzer and legacy production entrypoints, including tools delegation. Require an available compiler in native acceptance jobs; do not convert missing compiler support into a passing gate.
   - test: Cover absent/empty/corrupt/wrong-symbol/null-language candidates, missing/malformed/mismatched pins, relative paths, stale cache removal and same-stat replacement, altered source after snapshot creation, malformed/mismatched/duplicate acknowledgment, timeout and crash. An unadmitted constructor writes a temporary sentinel if loaded: assert rejection and no sentinel. Use a separately confined deliberate-load positive control to prove that fixture really writes it.
   - test: Deliberately pin reviewed constructor fixtures calling `exit(0)` and `_exit(0)`; require rejection without acknowledgment while the outer process survives. Instrument the real child loader/parse path for path-entered controls; mocks may test protocol parsing but cannot replace native evidence. Check repeated diagnose/replace/diagnose cycles in an outer subprocess and source rename/removal after probing, including Windows handle release.
-  - impl: Write the canonical contract before behavior changes and obtain independent review of trust origin, snapshot race handling, child completion and failure mappings. Preserve unresolved review findings as blockers to gate production. Then add the shared probe beside the existing integrity verifier and wire all three consumers. Replace mock-CDLL-as-health expectations with observable contract tests.
+  - impl: Review and, where needed, refine the existing proposed `docs/development/native-validation-contract.md` before behavior changes. Obtain independent design review of trust origin, snapshot race handling, child completion and failure mappings; record its evidence before implementing. Resolve blocking disagreement before continuing. Design approval alone produces no IF gate and closes no implementation issue. Then add the shared probe beside the existing integrity verifier and wire all three consumers. Replace mock-CDLL-as-health expectations with observable contract tests.
   - impl: Keep import boundaries lazy and package exports unchanged; no new dependency, env variable, pin, generated golden or committed native library is needed. Do not modify source fixtures or retrofit unrelated loading paths.
   - verify: Run the focused suite in Verification, then named mutations below with fresh subprocesses and isolated HOME/USERPROFILE. Restore each mutation and rerun the affected tests before handing results to SL-2.
 
@@ -86,12 +90,12 @@ SL-2 — Documentation and evidence reducer
 
 - **Scope**: Reduce SL-1 behavior, review and verification into accurate user documentation and acceptance evidence.
 - **Owned files**: `docs/grammar_management.md`, `CHANGELOG.md`, `docs/development/safeload-verification.md`
-- **Interfaces provided**: `SAFELOAD acceptance evidence`
-- **Interfaces consumed**: `IF-0-SAFELOAD-1`, `SAFELOAD fixture and mutation results`
+- **Interfaces provided**: `SAFELOAD acceptance evidence`, `IF-0-SAFELOAD-1` (only after final acceptance)
+- **Interfaces consumed**: `SAFELOAD implementation candidate`, `SAFELOAD contract review evidence`, `SAFELOAD fixture and mutation results`
 - **Parallel-safe**: no
 - **Tasks**:
   - test: Check documentation examples against the actual constructor parameters and untrusted/healthy outcomes; inspect every EC/IF claim against SL-1 fixture and review results.
-  - impl: Document provenance migration, failure reasons, trust limitations and downstream GRAMMARS responsibilities; add an Unreleased changelog entry. Record per-platform fixture outcomes, positive controls, killed mutations, command/result metadata and independent review references in the evidence document. Distinguish preliminary contract review from final accepted IF production.
+  - impl: Document provenance migration, failure reasons, trust limitations and downstream GRAMMARS responsibilities; add an Unreleased changelog entry. Record per-platform fixture outcomes, positive controls, killed mutations, command/result metadata and independent review references in the evidence document. Distinguish preliminary contract review from final accepted IF production. Require independent implementation review and passing fixture, mutation and platform results for the final reviewed implementation; only then emit IF-0-SAFELOAD-1 and record eligibility to close treesitter-chunker#151, treesitter-chunker#164 and treesitter-chunker#165.
   - verify: Run remaining Verification commands after SL-1, build documentation into a temporary directory, and reduce runner-owned evidence into EC/IF decisions. Do not claim ratification without independent review; a Sol-authored ratified review also requires cross-vendor ablation evidence. File separately discovered defects separately.
 
 ## Execution Notes
@@ -100,11 +104,11 @@ Start with `codex-execute-phase plans/phase-plan-v3-SAFELOAD.md`. Execute SL-1 s
 
 Ownership self-check: eight SL-1 paths and three SL-2 paths are disjoint; SL-2 depends explicitly on the only producer. There is no writer fanout. Runtime evidence belongs to the runner under `.phase-loop/`, not a lane write glob. If any additional tracked path is required, amend ownership before touching it.
 
+Policy precedence is CLI/operator override, phase-plan policy, roadmap policy, Dispatch Hints, then registry defaults. Dispatch Hints are executor-only fallback. No silent model/effort downgrade without explicit fallback or default inheritance.
+
 ## Execution Policy
 
 - SL-2: work-unit=`phase_reducer`, reason=`terminal documentation and evidence synthesis`
-
-Other policy inherits normally: CLI/operator override, phase-plan policy, roadmap policy, Dispatch Hints, registry defaults. No silent model/effort downgrade without explicit fallback or default inheritance.
 
 ## Verification
 
@@ -128,6 +132,7 @@ Named mutations at production construction sites:
 2. `accept_exit_zero_without_ack`: substitute return-code-only success in the same probe; each real premature-clean-exit fixture becomes incorrectly supported.
 3. `reload_original_after_verify`: use the original path instead of the verified snapshot; deterministic replacement introduces wrong bytes and fails identity/parse assertions.
 4. `reuse_language_only_health`: bypass fresh content verification in analyzer/manager; same-stat replacement and repeated legacy validation tests fail.
+5. `inspect_original_after_probe`: read metadata from the replaced original path instead of the retained admitted snapshot; the post-completion replacement fixture fails metadata/digest assertions.
 
 For each, record baseline pass, mutation-triggered failure, path-entered control and restored pass. No tight scheduler timing assertions. Keep evidence metadata-only in `docs/development/safeload-verification.md`, pointing to runner-owned `.phase-loop/` verification artifacts. Operational review/remote-platform evidence must use the runner-stamped amendment mechanism with artifact path and digest; do not substitute proxy evidence or hand-edit runner ledgers. If such an amendment cannot be recorded, leave acceptance unresolved.
 
