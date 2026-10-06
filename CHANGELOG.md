@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Programmatic `ComprehensiveGrammarCLI.remove_grammar` honors `clean_cache=False`
+  for compiled build copies while removing installed user components and preserving
+  packaged libraries. The Click command retains default cache cleanup.
+
 - In fallback mode, public grammar cleanup preserves entries with fresh
   descendants, reports linked entries without following them, and counts only
   completed removals. The public fallback remains importable when grammar core

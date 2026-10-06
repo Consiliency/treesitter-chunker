@@ -146,6 +146,44 @@ def test_click_remove_only_deletes_user_installed_grammar(
     assert not home.exists()
 
 
+@pytest.mark.parametrize("clean_cache", [False, True])
+def test_programmatic_cli_removal_honors_build_cache_flag(
+    tmp_path: Path, monkeypatch, clean_cache: bool
+) -> None:
+    source = FIXTURE.read_bytes()
+    tree = get_parser("python").parse(source)
+    assert tree.root_node.type == "module"
+    assert tree.root_node.child_count > 0
+    assert not tree.root_node.has_error
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cli = ComprehensiveGrammarCLI(cache_dir=tmp_path / "cache")
+    user_source = cli.user_grammars_dir / "python"
+    user_source.mkdir()
+    (user_source / "service.py").write_bytes(source)
+    installed = cli.user_grammars_dir / "libpython.so"
+    cached = cli.build_dir / "tree_sitter_python.so"
+    packaged = cli.package_grammars_dir / "libpython.so"
+    for candidate in (installed, cached, packaged):
+        shutil.copyfile(native_spec.origin, candidate)
+    cached_bytes = cached.read_bytes()
+    packaged_bytes = packaged.read_bytes()
+
+    assert cli.remove_grammar("python", confirm=False, clean_cache=clean_cache) == 0
+    assert not user_source.exists()
+    assert not installed.exists()
+    assert packaged.read_bytes() == packaged_bytes
+    if clean_cache:
+        assert not cached.exists()
+    else:
+        assert cached.read_bytes() == cached_bytes
+    assert not get_parser("python").parse(source).root_node.has_error
+    assert not home.exists()
+
+
 def test_click_remove_rejects_path_outside_user_grammars(
     tmp_path: Path, monkeypatch
 ) -> None:

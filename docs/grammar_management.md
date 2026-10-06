@@ -428,8 +428,11 @@ caches. `GrammarInstaller.remove_grammar` keeps its positional
 `clean_dependencies` argument; cache control is a separate keyword-only
 `clean_cache` argument. Dependency cleanup currently logs its intent. These
 options do not coordinate concurrent cache writers and deletion. The CLI command
-above does not expose this manager option; the separate programmatic
-`ComprehensiveGrammarCLI` flag remains tracked in treesitter-chunker#384.
+above uses default cleanup. The separate programmatic
+`ComprehensiveGrammarCLI.remove_grammar(..., clean_cache=False)` retains its compiled
+build copy while deleting installed user sources and libraries; `True` also removes
+the build copy. Both values preserve packaged libraries. Its cache flag does not
+add concurrent deletion coordination.
 
 ```python
 from chunker._internal.user_grammar_tools import UserGrammarTools
