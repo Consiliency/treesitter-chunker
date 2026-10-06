@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Rust version information can retain an explicit Cargo `rust_version` beside
+  a source compiler hint, preserving legacy exports when the new field is omitted.
+
 - File-hash quality checks verify complete SHA-256 results across read sizes and
   changed inputs rather than comparing noisy individual wall-clock durations.
 
