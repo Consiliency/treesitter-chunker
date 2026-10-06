@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   above five seconds, while preserving independent validation and sample
   failures. Moderate timing thresholds retain their existing behavior.
 
+- Boundary IR's published schema allows null language/parser only for skipped
+  files. Its guides describe existing 2.0/2.1 versions, migration from 1.x, and
+  the further package 4.0.0 identity break.
+
 - Language-compatibility database upserts refresh live metadata and selection
   order to match persisted records, including same-version replacements.
 
