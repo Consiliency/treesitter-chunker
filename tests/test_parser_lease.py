@@ -62,35 +62,40 @@ def test_configured_lease_is_not_reused() -> None:
 
 
 @pytest.mark.parametrize("leased", [False, True], ids=["public", "leased"])
+@pytest.mark.parametrize("language", ["python", "grammar_not_available"])
 @pytest.mark.parametrize(
     "config",
     [
         ParserConfig(timeout_ms=0),
         ParserConfig(timeout_ms=1),
         ParserConfig(logger=logging.getLogger("parser-config-contract")),
+        ParserConfig(timeout_ms=-1),
     ],
-    ids=["timeout-zero", "timeout-positive", "logger"],
+    ids=["timeout-zero", "timeout-positive", "logger", "malformed-timeout"],
 )
-def test_unsupported_options_reject_actual_parser_requests(config, leased):
+def test_unsupported_options_reject_actual_parser_requests(config, leased, language):
     fixture = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
     source = fixture.read_bytes()
     baseline = get_parser("python").parse(source)
     assert baseline.root_node.child_count > 0 and not baseline.root_node.has_error
     factory = _factory()
-    with pytest.raises(ParserConfigError, match="not support") as error:
+    with pytest.raises(
+        ParserConfigError, match="Invalid parser configuration"
+    ) as error:
         if leased:
-            with factory.acquire_parser("python", config) as parser:
+            with factory.acquire_parser(language, config) as parser:
                 parser.parse(source)
         else:
-            get_parser("python", config).parse(source)
+            get_parser(language, config).parse(source)
     option = "timeout_ms" if config.timeout_ms is not None else "logger"
     assert error.value.config_name == option
     assert error.value.value == getattr(config, option)
-    assert (
-        "omit" in error.value.reason
-        if option == "timeout_ms"
-        else "logging" in error.value.reason
-    )
+    if option == "logger":
+        assert "logging" in error.value.reason
+    elif config.timeout_ms < 0:
+        assert "non-negative" in error.value.reason
+    else:
+        assert "omit" in error.value.reason
     tree = get_parser("python").parse(source)
     assert tree.root_node.child_count > 0
     assert not tree.root_node.has_error

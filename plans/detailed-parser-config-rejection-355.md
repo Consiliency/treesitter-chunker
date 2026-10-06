@@ -13,6 +13,12 @@ mechanism or runtime/pin upgrade is included. Download recovery remains
 treesitter-chunker#357; native admission and complete RUNTIME acceptance remain
 separate.
 
+Round-one reconciliation also owns treesitter-chunker#399, filed separately before
+this amendment. The public on-demand retry can mask configuration errors when
+the factory resolves a language first. Validate request shape and installed
+runtime capability before factory language resolution, parser creation or idle
+checkout; these rejected requests then cannot enter the acquisition retry.
+
 ## Research summary
 
 ParserConfig validates input types. Both public get_parser and exclusive
@@ -34,8 +40,15 @@ to the compatibility branch.
   with ParserConfigError and guidance to configure Python application logging.
   Check the unsupported logger before applying ranges. Retain ParserConfig
   signatures/type validation, supported ranges and thread/lease ownership.
+- In the same file, ParserConfig.validate checks the installed Parser type's
+  actual legacy timeout capability and rejects unsupported timeout/logger
+  requests after shape checks. ParserFactory._validate_request calls validation
+  before checking language availability. Direct _apply_config compatibility
+  guards remain for its legacy setter/property use.
 - tests/test_parser_lease.py: add real checked-in fixture tests for public and
-  lease rejection of timeout 0, timeout 1 and an actual logging.Logger. Assert
+  lease rejection of timeout 0, timeout 1 and an actual logging.Logger for both
+  available and unavailable requested languages; malformed negative timeouts
+  retain their option-specific shape error. Assert
   error option/guidance and subsequent unconfigured parsing remains usable.
   Add actual full-fixture Range parsing through a configured lease; no production
   factory, parser or configuration mocks. Existing configured-lease lifetime test
@@ -52,6 +65,10 @@ to the compatibility branch.
   examples to supported ParserConfig/ranges. Python application logging stays
   outside ParserConfig.logger. CHANGELOG.md records this observable compatibility
   change. This plan and its own typed plans/manifest.json row are owned.
+
+The docs state that invalid/unsupported configuration takes precedence over
+factory language lookup. No fetch/build mocks or native-loading guarantee is
+introduced by the real unavailable-language request cases.
 
 ## Dependencies and order
 
@@ -80,6 +97,10 @@ require every focused test to pass. Require the original sealed runner,
 changed-source Windows tests and standing preflight, exact-head hosted platforms,
 and manual code review. This supplies rejection evidence, not parse cancellation
 or a performance budget.
+
+The additional resolve_language_before_configuration mutation moves request
+validation below language lookup. All eight unavailable-language cases must
+fail with the wrong exception category and restore with the entire focused suite.
 
 ## Acceptance criteria
 

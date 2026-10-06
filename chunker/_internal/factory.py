@@ -52,6 +52,20 @@ class ParserConfig:
                 self.included_ranges,
                 "Must be a list of Range objects",
             )
+        if self.timeout_ms is not None and not (
+            hasattr(Parser, "set_timeout_micros") or hasattr(Parser, "timeout_micros")
+        ):
+            raise ParserConfigError(
+                "timeout_ms",
+                self.timeout_ms,
+                "This parser runtime does not support timeout_ms; omit this option",
+            )
+        if self.logger is not None:
+            raise ParserConfigError(
+                "logger",
+                self.logger,
+                "ParserConfig.logger is not supported; configure Python application logging instead",
+            )
 
 
 class LRUCache:
@@ -274,6 +288,8 @@ class ParserFactory:
         language: str,
         config: ParserConfig | None,
     ) -> None:
+        if config is not None:
+            config.validate()
         if language == "baml" and not self._registry.has_language(language):
             installed = baml_companion_version()
             if installed is not None:
@@ -282,8 +298,6 @@ class ParserFactory:
         if not self._registry.has_language(language):
             available = self._registry.list_languages()
             raise LanguageNotFoundError(language, available)
-        if config:
-            config.validate()
 
     def _thread_parsers(self) -> dict[str, Parser]:
         if getattr(self._thread_local, "generation", None) != self._cache_generation:

@@ -244,6 +244,10 @@ class ParserConfig:
 
 Configuration options for parser instances.
 
+Invalid or unsupported configuration raises `ParserConfigError` before factory
+language lookup, including requests for unavailable languages. Omit unsupported
+options when requesting on-demand grammar acquisition.
+
 **Attributes:**
 - `timeout_ms`: Applied only on runtimes exposing the legacy timeout API.
   Any explicit value, including zero, raises `ParserConfigError` on the pinned

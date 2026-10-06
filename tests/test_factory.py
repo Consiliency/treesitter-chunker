@@ -18,7 +18,7 @@ class TestParserConfig:
 
     def test_valid_config(self):
         """Test valid configuration."""
-        config = ParserConfig(timeout_ms=1000)
+        config = ParserConfig()
         config.validate()
         config = ParserConfig(included_ranges=[])
         config.validate()
