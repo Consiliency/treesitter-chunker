@@ -634,7 +634,8 @@ def generate_quality_report(directory, language):
 
 ### Using Built-in Plugins
 
-Tree-sitter Chunker comes with built-in plugins for Python, JavaScript, Rust, C, and C++:
+Built-in plugins include Python, JavaScript, Rust, C and C++, among others.
+Inspect the manager's registered languages rather than relying on a fixed list:
 
 ```python
 from pathlib import Path
@@ -805,7 +806,7 @@ ParquetExporter(partition_by=["language", "node_type"]).export(
 from chunker.parallel import chunk_directory_parallel
 
 def process_directory(directory):
-    results = chunk_directory_parallel(directory, "python")
+    results = chunk_directory_parallel(directory, "python", use_cache=False)
     for file_path, file_chunks in results.items():
         for chunk in file_chunks:
             yield chunk
@@ -836,7 +837,7 @@ from chunker.exporters import ParquetExporter
 
 if __name__ == "__main__":
     # Process a project
-    results = chunk_directory_parallel("myproject/", "python")
+    results = chunk_directory_parallel("myproject/", "python", use_cache=False)
 
     # Filter and transform chunks
     processed_chunks = []

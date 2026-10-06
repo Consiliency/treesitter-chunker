@@ -775,8 +775,8 @@ if __name__ == "__main__":
     chunks = chunk_file("file.py", "python")
 
     # Parallel processing
-    results = chunk_files_parallel(["file1.py", "file2.py"], "python")
-    dir_results = chunk_directory_parallel("src/", "python", extensions=[".py"])
+    results = chunk_files_parallel(["file1.py", "file2.py"], "python", use_cache=False)
+    dir_results = chunk_directory_parallel("src/", "python", extensions=[".py"], use_cache=False)
 
     # Streaming for large files
     for chunk in chunk_file_streaming("huge_file.py", "python"):

@@ -1764,7 +1764,7 @@ class ProjectExporter:
             project_path,
             "python",  # Adjust for your project
             extensions=[".py"],
-            num_workers=8
+            num_workers=8, use_cache=False
         )
         
         # Flatten results
@@ -2081,7 +2081,7 @@ if __name__ == "__main__":
     # Export documentation for a project
     from chunker.parallel import chunk_directory_parallel
 
-    results = chunk_directory_parallel("src/", "python", extensions=[".py"])
+    results = chunk_directory_parallel("src/", "python", extensions=[".py"], use_cache=False)
     all_chunks = []
     for chunks in results.values():
         all_chunks.extend(chunks)
@@ -3744,18 +3744,20 @@ class CustomChunker:
 ### Extract Function Call Spans with Precise Byte Offsets
 
 Consume the metadata already attached by core extraction. This example reads
-a real file once, deduplicates calls repeated by nested chunks, and slices UTF-8
+a real UTF-8 file once, parses its exact decoded text with `chunk_text()`
+(to preserve CRLF newlines), deduplicates calls repeated by nested chunks, and slices UTF-8
 bytes using the recorded offsets. Save a Python file as `example.py` first.
 
 ```python
 from pathlib import Path
-from chunker import chunk_file
+from chunker import chunk_text
 
 def collect_calls(file_path, language):
     source = Path(file_path).read_bytes()
     seen = set()
     calls = []
-    for chunk in chunk_file(file_path, language):
+    text = source.decode("utf-8")
+    for chunk in chunk_text(text, language, file_path=str(file_path)):
         for span in chunk.metadata.get("call_spans", []):
             key = (span["start"], span["end"])
             if key in seen:

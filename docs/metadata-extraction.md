@@ -32,8 +32,12 @@ fields. See [chunk identity](chunk-identity.md).
 
 `call_spans` records have `name`, `start` and `end` keys, with optional
 `function_start`, `function_end`, `arguments_start` and `arguments_end` offsets.
-Offsets are bytes in the original UTF-8 source; ends are exclusive. Slice
-source bytes before decoding, rather than indexing a Unicode string with them.
+Offsets refer to the UTF-8 bytes **actually parsed**; ends are exclusive.
+`chunk_text()` encodes the supplied string directly, so reading UTF-8 bytes and
+decoding them explicitly preserves CRLF for byte slicing. Ordinary
+`chunk_file()` reads with universal-newline conversion (and can replace invalid
+UTF-8), so its offsets may differ from the original on-disk bytes. Slice the
+same parsed source bytes, not a Unicode string or a differently normalized file.
 There is no universal decoded argument list, call-type field or target binding.
 Nested chunks may repeat a call; deduplicate by file and byte span for file
 counts. See the [cookbook](cookbook.md#call-span-extraction-and-metadata-analysis).
@@ -42,9 +46,10 @@ counts. See the [cookbook](cookbook.md#call-span-extraction-and-metadata-analysi
 
 The factory has specialized metadata extractors for Python, JavaScript,
 TypeScript/JSX/TSX, Rust, Go and C/C++; specialized complexity analyzers cover
-Python and JavaScript/TypeScript variants. Generic core extraction also handles
-call spans for other languages; parser coverage and metadata completeness are
-different questions. Inspect the available specialized registrations:
+Python and JavaScript/TypeScript variants. Core call spans require a registered
+extractor; branches for other languages in the abstract base class do not
+register them automatically. Parser coverage and metadata completeness are
+different questions. Inspect the registrations:
 
 ```python
 from chunker.metadata import MetadataExtractorFactory

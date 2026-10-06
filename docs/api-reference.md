@@ -72,27 +72,27 @@ uv sync --locked --all-extras
 
 ## Quick Start
 
+Run this with a real `example.py` fixture. All process-worker setup and exports
+are under the main guard so spawn/forkserver workers do not repeat them.
+
 ```python
 from pathlib import Path
-from chunker.core import chunk_file
+from chunker import chunk_file
 from chunker.plugin_manager import get_plugin_manager
-
-# Basic usage
-chunks = chunk_file("example.py", "python")
-
-# Explicit plugin path; core chunk_file does not use registered plugins
-manager = get_plugin_manager()
-chunks = manager.chunk_file(Path("example.py"), "python")
-
-# Parallel processing
 from chunker.parallel import chunk_files_parallel
-if __name__ == "__main__":
-    results = chunk_files_parallel(["file1.py", "file2.py", "file3.py"], "python")
-
-# Export to Parquet
 from chunker.exporters import ParquetExporter
-exporter = ParquetExporter()
-exporter.export(chunks, "output.parquet")
+
+if __name__ == "__main__":
+    chunks = chunk_file("example.py", "python")
+
+    # Explicit plugin path; core chunk_file does not use registered plugins
+    manager = get_plugin_manager()
+    plugin_chunks = manager.chunk_file(Path("example.py"), "python")
+
+    results = chunk_files_parallel(
+        ["example.py"], "python", num_workers=2, use_cache=False
+    )
+    ParquetExporter().export(chunks, "output.parquet")
 ```
 
 ## Core APIs
@@ -169,7 +169,7 @@ Represents a semantic chunk of code extracted from a file.
 get_parser(language: str, config: Optional[ParserConfig] = None) -> Parser
 ```
 
-Get a parser instance for the specified language with optional configuration. Default parsers are owned by the calling thread; configured calls create fresh parsers for efficiency.
+Get a parser instance for the specified language with optional configuration. Default parsers are owned by the calling thread; configured calls create fresh, uncached parsers.
 
 **Parameters:**
 - `language` (str): The name of the language (e.g., "python", "javascript", "rust")

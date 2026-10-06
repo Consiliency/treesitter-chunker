@@ -201,8 +201,9 @@ def large_function():
 ## Integration with Fallback Strategies
 
 Sliding-window fallback is a separate interface; callers must invoke it
-explicitly when their application needs it. It is not automatically wired
-into token-aware extraction:
+explicitly for an application-defined fallback policy. Core does have a narrow
+automatic fallback on `RecursionError`; constructing the object below does not
+change token-aware extraction's policy:
 
 ```python
 from chunker.fallback import SlidingWindowFallback

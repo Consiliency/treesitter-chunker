@@ -32,10 +32,10 @@ flowchart TD
 | `chunker/_internal/factory.py` | Thread-owned parsers and explicit exclusive parser leases |
 | `chunker/languages/` | Core `LanguageConfig` registrations and explicit plugin classes |
 | `chunker/plugin_manager.py` | Plugin discovery, registration and plugin-driven file extraction |
-| `chunker/cache.py` | Explicit SQLite cache of extracted chunks |
+| `chunker/_internal/cache.py` | Explicit SQLite cache of extracted chunks |
 | `chunker/parallel.py` | Process-based file/directory helpers with optional chunk caching |
 | `chunker/streaming.py` | Memory-mapped file parsing and lazy chunk iteration |
-| `chunker/export/` | Serialization and export formats |
+| `chunker/export/`, `chunker/exporters/` | Serialization and export formats |
 
 The default installed parser path uses the pinned language pack; it does not
 require building one combined grammar library. The optional BAML companion has
@@ -136,8 +136,9 @@ configured root, and caps request bodies at 1 MiB.
 
 Tree-sitter uses native C code. Python lifetime management does not make all
 native code memory-safe. Do not replace a loaded native library in place.
-Parser ownership prevents simultaneous mutable parser use; caller-owned chunks
-remain mutable. The legacy timeout field provides no parser deadline here.
+Library code follows parser ownership and lease conventions. Callers must not
+share raw parsers between threads; caller-owned chunks remain mutable. The
+legacy timeout field provides no parser deadline here.
 
 ## Troubleshooting Guide
 

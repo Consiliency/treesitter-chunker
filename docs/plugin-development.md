@@ -64,10 +64,15 @@ chunks = manager.chunk_file(
 assert chunks and all(c.metadata["example_label"] == "checked" for c in chunks)
 ```
 
+Loading a custom plugin directory imports and executes its Python modules;
+use trusted plugin code.
+
 Load built-ins with `manager.load_builtin_plugins()` and custom directories
 with `manager.load_plugins_from_directory(Path(...))`. Register a replacement
-after built-ins when intentionally overriding a language. Inspect registered
-languages with `manager.registry.list_languages()`.
+after built-ins and **before first use** when overriding a language. Registration
+does not evict an already cached plugin instance; use a fresh `PluginManager`
+when changing an active application's plugin. Inspect registered languages
+with `manager.registry.list_languages()`.
 
 ## Configuration
 
