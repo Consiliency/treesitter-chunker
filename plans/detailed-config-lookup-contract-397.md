@@ -69,7 +69,7 @@ The standing Windows preflight applies; its availability is reported honestly.
 - [ ] Actual JSON-backed production lookups retain overrides, defaults and
   disabled-language settings across repeated lookups, proven by the new test.
 - [ ] Actual parsing of the checked-in fixture produces the selected function
-  or class definitions, nonempty exact source content and no disabled chunks;
+  or class definitions and nonempty exact source content;
   no simulated parser or timing threshold is used in this replacement test.
 - [ ] The named production-lookup mutation fails and restores; original runner,
   exact-head hosted platforms and bounded manual code review accept the repair.

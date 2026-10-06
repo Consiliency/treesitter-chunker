@@ -1,7 +1,7 @@
 """Advanced configuration tests for Phase 2.1 scenarios - Fixed version.
 
 This module tests:
-1. Performance impact of config lookups during parsing
+1. Configuration lookup correctness during real parsing
 2. Config hot-reloading during active chunking
 3. Memory usage with large config hierarchies
 4. Circular dependency detection edge cases
@@ -21,9 +21,12 @@ from typing import Any
 import psutil
 import pytest
 
+from chunker.chunker_config import ChunkerConfig
 from chunker.config import StrategyConfig
 from chunker.exceptions import ConfigurationError
 from chunker.languages.base import LanguageConfig, PluginConfig
+from chunker.languages.python import PythonPlugin
+from chunker.plugin_manager import PluginManager
 
 try:
     pass
@@ -38,103 +41,53 @@ class TestPerformanceImpactOfConfigLookups:
     """Test performance impact of config lookups during parsing."""
 
     @staticmethod
-    def test_config_lookup_overhead_during_parsing():
-        """Test the overhead of frequent config lookups during parsing."""
-
-        class MockParser:
-            def __init__(self, config: dict[str, Any]):
-                self.config = config
-                self.lookup_count = 0
-                self.parse_time = 0
-
-            def parse_with_config_lookups(
-                self,
-                text: str,
-                lookup_frequency: int,
-            ) -> list[dict]:
-                """Parse text with config lookups every N tokens."""
-                start_time = time.time()
-                tokens = text.split()
-                chunks = []
-                for i, _token in enumerate(tokens):
-                    if i % lookup_frequency == 0:
-                        self.lookup_count += 1
-                        self._lookup_config("parser.chunk_size", 1000)
-                        self._lookup_config("parser.enabled", True)
-                        self._lookup_config("parser.language", "python")
-                    if i % 50 == 0:
-                        chunks.append(
-                            {
-                                "start": i,
-                                "end": min(i + 50, len(tokens)),
-                                "type": "function",
-                            },
-                        )
-                self.parse_time = time.time() - start_time
-                return chunks
-
-            def _lookup_config(self, key: str, default: Any) -> Any:
-                """Simulate hierarchical config lookup."""
-                parts = key.split(".")
-                value = self.config
-                for part in parts:
-                    if isinstance(value, dict) and part in value:
-                        value = value[part]
-                    else:
-                        return default
-                return value
-
-        test_text = " ".join([f"token_{i}" for i in range(10000)])
-        config = {
-            "parser": {
-                "chunk_size": 500,
-                "enabled": True,
-                "language": "python",
-                "optimizations": {"cache_enabled": True, "parallel": False},
-            },
-            "languages": {"python": {"indent_size": 4, "max_line_length": 120}},
-        }
-        frequencies = [1, 10, 50, 100, 500]
-        results = {}
-        for freq in frequencies:
-            parser = MockParser(config)
-            chunks = parser.parse_with_config_lookups(test_text, freq)
-            results[freq] = {
-                "parse_time": parser.parse_time,
-                "lookup_count": parser.lookup_count,
-                "chunks_created": len(chunks),
-                "lookups_per_second": (
-                    parser.lookup_count / parser.parse_time
-                    if parser.parse_time > 0
-                    else 0
-                ),
-            }
-        baseline = results[500]
-        for freq in frequencies:
-            if freq != 500:
-                baseline_time = baseline["parse_time"]
-                current_time = results[freq]["parse_time"]
-                if baseline_time <= 0:
-                    overhead = 0.0
-                else:
-                    overhead = ((current_time - baseline_time) / baseline_time) * 100
-                print(
-                    f"Lookup every {freq} tokens: {overhead:.1f}% overhead, {results[freq]['lookups_per_second']:.0f} lookups/sec",
-                )
-                if baseline_time < 0.01:
-                    absolute_delta = current_time - baseline_time
-                    assert (
-                        absolute_delta < 0.05
-                    ), f"Excessive absolute overhead with tiny baseline: {absolute_delta:.4f}s"
-                    continue
-                if freq == 1:
-                    assert (
-                        overhead < 3000
-                    ), f"Excessive overhead with frequent lookups: {overhead:.1f}%"
-                elif freq == 10:
-                    assert (
-                        overhead < 800
-                    ), f"High overhead with moderate lookups: {overhead:.1f}%"
+    def test_config_lookups_preserve_real_parsing_contract(tmp_path):
+        """Repeated actual lookups preserve selected fixture chunk types."""
+        config_path = tmp_path / "chunker.config.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "chunker": {
+                        "enabled_languages": ["python", "rust"],
+                        "default_plugin_config": {
+                            "chunk_types": ["class_definition"],
+                        },
+                    },
+                    "languages": {
+                        "python": {"chunk_types": ["function_definition"]},
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        config = ChunkerConfig(config_path, use_env_vars=False)
+        manager = PluginManager()
+        manager.registry.register_plugin(PythonPlugin)
+        fixture = (
+            Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+        )
+        source = fixture.read_text(encoding="utf-8")
+        for _ in range(3):
+            selected = config.get_plugin_config("python")
+            default = config.get_plugin_config("rust")
+            disabled = config.get_plugin_config("javascript")
+            assert selected.enabled
+            assert selected.chunk_types == {"function_definition"}
+            assert default.chunk_types == {"class_definition"}
+            assert not disabled.enabled
+            functions = manager.chunk_file(fixture, "python", selected)
+            classes = manager.chunk_file(fixture, "python", default)
+            assert len(functions) == 2
+            assert all(chunk.node_type == "function_definition" for chunk in functions)
+            assert any("def render(" in chunk.content for chunk in functions)
+            assert any("def render_report(" in chunk.content for chunk in functions)
+            assert len(classes) == 1
+            assert classes[0].node_type == "class_definition"
+            assert "class Renderer:" in classes[0].content
+            assert all(
+                chunk.content and chunk.content in source
+                for chunk in functions + classes
+            )
 
     @staticmethod
     def test_config_caching_effectiveness():
