@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   continue to warn and skip. Configuration warnings, progress and usage errors
   use stderr; diagnostic input text is rendered literally.
 
+- Default compatibility checker and grammar tester validators use their supplied
+  manager's validation cache directory, avoiding additional home caches when that
+  manager is isolated. An explicitly supplied validator retains its own chosen
+  cache root; the manager's user grammar directory is configured separately.
+
 - Successful plugin replacement evicts the prior cached instance, so subsequent
   parsing invokes the new plugin without requiring a fresh manager. Failed
   registration preserves the existing plugin.

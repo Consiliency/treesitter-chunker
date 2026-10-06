@@ -421,6 +421,13 @@ project_root/
 
 ### Programmatic Access
 
+An explicit `GrammarManager(cache_dir=...)` supplies the validation cache root for
+its registry, installer and default `CompatibilityChecker`/`GrammarTester`
+validators. Passing an actual `validator=` object to either helper preserves that
+object and its chosen cache root. Set `user_dir=...` separately to isolate installed
+user grammars as well. This controls grammar helper storage; concurrent
+validation-cache writer coordination remains treesitter-chunker#370.
+
 The separate Python `GrammarManager.remove_grammar(language, clean_cache=False)`
 option retains that language's download and build cache while removing its
 installed library and installation metadata. The default `True` cleans both
