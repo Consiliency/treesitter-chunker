@@ -1,5 +1,6 @@
 """Tests for the grammar management system."""
 
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -13,6 +14,30 @@ from chunker._internal.grammar_management import (
     SmartGrammarManager,
 )
 from chunker._internal.user_grammar_tools import UserGrammarTools
+
+
+def test_real_grammar_mtimes_do_not_invent_compilation_dates(tmp_path):
+    import tree_sitter_language_pack as provider
+
+    from chunker import get_parser
+
+    fixture = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+    assert not get_parser("python").parse(fixture.read_bytes()).root_node.has_error
+    libraries = list(Path(provider.cache_dir()).glob("*tree_sitter_python.*"))
+    assert len(libraries) == 1
+    actual_bytes = libraries[0].read_bytes()
+    assert actual_bytes
+    dates = []
+    for index, timestamp in enumerate((946684800, 1735689600)):
+        root = tmp_path / str(index)
+        root.mkdir()
+        artifact = root / "python.so"
+        artifact.write_bytes(actual_bytes)
+        os.utime(artifact, (timestamp, timestamp))
+        assert artifact.read_bytes() == actual_bytes
+        manager = SmartGrammarManager(root, root / "sources")
+        dates.append(manager.get_grammar_compatibility("python").compilation_date)
+    assert dates == [None, None]
 
 
 class TestGrammarHealth:
