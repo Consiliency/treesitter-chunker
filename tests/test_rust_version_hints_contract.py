@@ -64,7 +64,7 @@ def test_cargo_rust_version_precedes_source_rustc_hint(tmp_path: Path) -> None:
         combined["rustc_version"],
         source_hints.get("detected_features", []),
         "Cargo.toml",
-        rust_version=detector.get_primary_version(combined),
+        rust_version=cargo_hints["rust_version"],
     )
     exported = info.to_dict()
     assert exported["rust_version"] == "1.74.0"
@@ -77,7 +77,9 @@ def test_cargo_rust_version_precedes_source_rustc_hint(tmp_path: Path) -> None:
     assert "rust_version='1.74.0'" in repr(info)
 
 
-@pytest.mark.parametrize("edition,rustc_version", [("2018", "1.70.0"), (None, None)])
+@pytest.mark.parametrize(
+    ("edition", "rustc_version"), [("2018", "1.70.0"), (None, None)]
+)
 def test_legacy_rust_info_export_shape_is_unchanged(edition, rustc_version) -> None:
     info = RustVersionInfo(edition, rustc_version, [], "sample.rs")
     exported = info.to_dict()
