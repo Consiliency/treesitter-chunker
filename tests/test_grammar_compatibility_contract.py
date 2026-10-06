@@ -522,6 +522,72 @@ def test_breaking_changes_compare_persisted_real_parse_outcomes(
     assert not home.exists()
 
 
+@pytest.mark.parametrize(
+    "old_timing",
+    [
+        {"average_parse_time": 0.0},
+        {"other_metric": 1.0},
+        {"average_parse_time": None},
+        {"average_parse_time": -0.02},
+    ],
+    ids=["zero", "missing", "unavailable", "negative"],
+)
+def test_unavailable_timing_preserves_persisted_real_parse_regressions(
+    tmp_path: Path, old_timing
+) -> None:
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_bytes()
+    parser = get_parser("python")
+    valid_tree = parser.parse(source)
+    invalid_tree = parser.parse(source + b"\ndef broken(\n")
+    assert not valid_tree.root_node.has_error
+    assert invalid_tree.root_node.has_error
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    user_dir = tmp_path / "user"
+    package_dir = tmp_path / "package"
+    user_dir.mkdir()
+    package_dir.mkdir()
+    shutil.copyfile(native_spec.origin, user_dir / "libpython.so")
+    manager = GrammarManager(
+        user_dir=user_dir, package_dir=package_dir, cache_dir=tmp_path / "cache"
+    )
+    database_path = tmp_path / "history.db"
+    database = CompatibilityDatabase(database_path)
+    old_result = CompatibilityResult(
+        language="python",
+        grammar_version="1.0",
+        language_version=None,
+        level=CompatibilityLevel.COMPATIBLE,
+        performance_impact=old_timing,
+        test_results={"success_rate": float(not valid_tree.root_node.has_error)},
+    )
+    new_result = CompatibilityResult(
+        language="python",
+        grammar_version="2.0",
+        language_version=None,
+        level=CompatibilityLevel.INCOMPATIBLE,
+        issues=["Fixture contains parse errors"],
+        performance_impact={"average_parse_time": 0.04},
+        test_results={"success_rate": float(not invalid_tree.root_node.has_error)},
+    )
+    database.store_compatibility_result(old_result)
+    database.store_compatibility_result(new_result)
+    reopened = CompatibilityDatabase(database_path)
+    stored = reopened.get_compatibility_result("python", "1.0")
+    assert stored is not None and stored.performance_impact == old_timing
+    checker = CompatibilityChecker(manager, reopened)
+    changes = checker.detect_breaking_changes("python", "1.0", "2.0")
+    assert [change["type"] for change in changes] == [
+        BreakingChangeType.ABI_INCOMPATIBLE.value,
+        BreakingChangeType.STRUCTURE_CHANGED.value,
+    ]
+    assert changes[0]["issues"] == new_result.issues
+    assert changes[1]["impact"] == "high"
+
+
 def test_performance_trends_filter_language_age_and_preserve_order(
     tmp_path: Path,
 ) -> None:

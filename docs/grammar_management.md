@@ -421,6 +421,11 @@ project_root/
 
 ### Programmatic Access
 
+Compatibility breaking-change reports calculate a percentage slowdown only
+when the old average parse time is available and positive. A zero, missing or
+nonpositive baseline does not establish a percentage regression; independently
+detected incompatibility and parse-success regressions remain in the report.
+
 An explicit `GrammarManager(cache_dir=...)` supplies the validation cache root for
 its registry, installer and default `CompatibilityChecker`/`GrammarTester`
 validators. Passing an actual `validator=` object to either helper preserves that

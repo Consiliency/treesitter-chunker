@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Compatibility breaking-change reports preserve independent findings when an
+  old timing baseline is zero or unavailable. Percentage slowdown comparisons
+  require a positive baseline.
+
 - Parser configuration rejects unsupported timeout requests on the pinned runtime
   and non-`None` logger requests with `ParserConfigError`. Omit those options;
   supported ranges and Python application logging remain available independently.
