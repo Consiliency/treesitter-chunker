@@ -10,6 +10,18 @@ No tests/builds were run during the initial planning audit. Subsequent execution
 
 ## Cleanup completed before planning
 
+Current execution checkpoint: main is `9ed3b75fa60f7d59361b86a6ad614c7fa46cecf6`.
+There are 67 open issues, four preserved held drafts, and active drafts
+treesitter-chunker#364, treesitter-chunker#372, treesitter-chunker#373 and
+treesitter-chunker#380. Later checkpoint facts supersede historical counts below.
+Merged treesitter-chunker#378 resolved treesitter-chunker#131 and
+treesitter-chunker#377 with four-seat review, killed/restored mutation, fresh
+runner verification (3,658 passed/four skipped) and final-head platform checks.
+Its clean worktree was pruned after verification evidence was archived.
+New independent findings are treesitter-chunker#375, treesitter-chunker#376 and
+treesitter-chunker#379. The SIGINT failure reproduced during verification is
+already treesitter-chunker#322; no duplicate was filed.
+
 | Item | Disposition | Evidence/comment |
 | --- | --- | --- |
 | treesitter-chunker#124 | Closed as repaired duplicate | [Closeout](https://github.com/Consiliency/treesitter-chunker/issues/124#issuecomment-6011531341); treesitter-chunker#222 fixed the same defect tracked as treesitter-chunker#220; current source uses one sentinel and fixture regressions cover missing/present/None/reload/removal. |
@@ -54,6 +66,8 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P0 | CLEANUP | [treesitter-chunker#177](https://github.com/Consiliency/treesitter-chunker/issues/177) — Reconcile auxiliary grammar self-test and CLI validator scenarios |
 | P1 | CLEANUP | [treesitter-chunker#369](https://github.com/Consiliency/treesitter-chunker/issues/369) — Public fallback cannot import when core is unavailable; coupled static fallback boundary |
 | P0 | CLEANUP | [treesitter-chunker#370](https://github.com/Consiliency/treesitter-chunker/issues/370) — Validation-cache writers lose fresh records and follow outside symlinks |
+| P1 | CLEANUP | [treesitter-chunker#375](https://github.com/Consiliency/treesitter-chunker/issues/375) — Removing a grammar ignores clean_cache=False; independent flag contract |
+| P1 | SAFELOAD | [treesitter-chunker#376](https://github.com/Consiliency/treesitter-chunker/issues/376) — Legacy compatibility fabricates compilation dates from mtime; metadata precursor in treesitter-chunker#380 |
 | P0/P1 | GRAMMARS | [treesitter-chunker#162](https://github.com/Consiliency/treesitter-chunker/issues/162) — Updating a loaded grammar in place can crash the Python process |
 | P0/P1 | GRAMMARS | [treesitter-chunker#160](https://github.com/Consiliency/treesitter-chunker/issues/160) — Legacy grammar tools ignore native macOS and Windows library extensions |
 | P0/P1 | GRAMMARS | [treesitter-chunker#117](https://github.com/Consiliency/treesitter-chunker/issues/117) — GrammarRegistry ignores native library suffixes on Windows and macOS |
@@ -76,7 +90,7 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P1 | RUNTIME | [treesitter-chunker#357](https://github.com/Consiliency/treesitter-chunker/issues/357) — Fresh first-use grammar download can fail its 60-second deadline on a working slow connection |
 | P1 | RUNTIME | [treesitter-chunker#359](https://github.com/Consiliency/treesitter-chunker/issues/359) — Main chunk CLI exits zero and mixes diagnostics into quiet JSON after per-file errors |
 | P1 | RUNTIME | [treesitter-chunker#360](https://github.com/Consiliency/treesitter-chunker/issues/360) — Replacing a registered plugin leaves the prior cached instance active |
-| P1/P2 | GATES | [treesitter-chunker#131](https://github.com/Consiliency/treesitter-chunker/issues/131) — Streaming variance assertion flakes in representative coverage suite |
+| P2 | GATES | [treesitter-chunker#379](https://github.com/Consiliency/treesitter-chunker/issues/379) — Full benchmark runner passes the removed use_cache argument; direct streaming observation works |
 | P1/P2 | GATES | [treesitter-chunker#143](https://github.com/Consiliency/treesitter-chunker/issues/143) — Language-pack Python smoke can hit five-second parse deadline under coverage load |
 | P1/P2 | GATES | [treesitter-chunker#194](https://github.com/Consiliency/treesitter-chunker/issues/194) — Cached parallel sizing test has load-sensitive one-second gate |
 | P1/P2 | GATES | [treesitter-chunker#195](https://github.com/Consiliency/treesitter-chunker/issues/195) — Large-file chunking exceeds ten-second performance gate under coverage |
