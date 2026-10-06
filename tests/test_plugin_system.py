@@ -49,6 +49,78 @@ def test_plugin_discovery():
     assert "JavaScriptPlugin" in plugin_names
 
 
+def test_replacing_warm_plugin_invokes_new_hook(tmp_path):
+    source = (
+        Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_bytes()
+    path = tmp_path / "service.py"
+    path.write_bytes(source)
+    manager = PluginManager()
+    manager.registry.register(PythonPlugin)
+    manager.registry.register(JavaScriptPlugin)
+    original_chunks = manager.chunk_file(path, "python")
+    assert original_chunks
+    original = manager.registry.get_plugin("python")
+    unrelated = manager.registry.get_plugin("javascript")
+
+    class ReplacementPythonPlugin(PythonPlugin):
+        def process_node(self, node, source, file_path, parent_context=None):
+            chunk = super().process_node(node, source, file_path, parent_context)
+            if chunk is not None:
+                chunk.metadata["replacement_marker"] = self.config.custom_options.get(
+                    "marker", "replacement"
+                )
+            return chunk
+
+    manager.registry.register(ReplacementPythonPlugin)
+    replacement_chunks = manager.chunk_file(path, "python")
+    assert replacement_chunks
+    assert all(
+        c.metadata["replacement_marker"] == "replacement" for c in replacement_chunks
+    )
+    assert [c.content for c in replacement_chunks] == [
+        c.content for c in original_chunks
+    ]
+    replacement = manager.registry.get_plugin("python")
+    assert isinstance(replacement, ReplacementPythonPlugin)
+    assert replacement is not original
+    assert manager.registry.get_plugin("python") is replacement
+    assert manager.registry.get_plugin("javascript") is unrelated
+    assert manager.registry.get_language_for_file(path) == "python"
+    config = PluginConfig(custom_options={"marker": "configured"})
+    configured_chunks = manager.chunk_file(path, "python", config=config)
+    assert configured_chunks
+    assert all(
+        c.metadata["replacement_marker"] == "configured" for c in configured_chunks
+    )
+    assert manager.registry.get_plugin("python") is replacement
+
+
+def test_failed_replacement_preserves_warm_plugin(tmp_path):
+    path = tmp_path / "service.py"
+    path.write_bytes(
+        (
+            Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+        ).read_bytes()
+    )
+    manager = PluginManager()
+    manager.registry.register(PythonPlugin)
+    chunks = manager.chunk_file(path, "python")
+    assert chunks
+    original = manager.registry.get_plugin("python")
+
+    class FailedPythonPlugin(PythonPlugin):
+        def __init__(self, config=None):
+            raise RuntimeError("fixture constructor fails")
+
+    with pytest.raises(RuntimeError, match="fixture constructor fails"):
+        manager.registry.register(FailedPythonPlugin)
+    assert manager.registry.get_plugin("python") is original
+    assert [c.content for c in manager.chunk_file(path, "python")] == [
+        c.content for c in chunks
+    ]
+
+
 def test_plugin_config():
     """Test plugin configuration."""
     config = PluginConfig(

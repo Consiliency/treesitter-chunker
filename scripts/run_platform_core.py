@@ -9,6 +9,8 @@ import sys
 
 
 COMMON_TESTS = [
+    "tests/test_plugin_system.py::test_replacing_warm_plugin_invokes_new_hook",
+    "tests/test_plugin_system.py::test_failed_replacement_preserves_warm_plugin",
     "tests/test_grammar_integrity.py::test_download_archive_handle_lifetime",
     "tests/test_grammar_management.py::test_real_grammar_mtimes_do_not_invent_compilation_dates",
     "tests/test_streaming.py::TestBufferOptimization::test_repeated_streaming_preserves_eager_fixture_chunks",

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Successful plugin replacement evicts the prior cached instance, so subsequent
+  parsing invokes the new plugin without requiring a fresh manager. Failed
+  registration preserves the existing plugin.
+
 - Programmatic `ComprehensiveGrammarCLI.remove_grammar` honors `clean_cache=False`
   for compiled build copies while removing installed user components and preserving
   packaged libraries. The Click command retains default cache cleanup.

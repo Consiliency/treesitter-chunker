@@ -203,7 +203,9 @@ class PluginRegistry:
                 language,
                 ", ".join(extension_conflicts),
             )
-        self._plugins[language] = plugin_class
+        with self._instance_lock:
+            self._plugins[language] = plugin_class
+            self._instances.pop(language, None)
         for ext in supported_exts:
             if isinstance(ext, str):
                 self._extension_map[ext] = language
