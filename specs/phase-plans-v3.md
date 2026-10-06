@@ -93,8 +93,9 @@ P0: Preserve recent files already present and published during cleanup, preserve
 
 **Scope notes**
 
-treesitter-chunker#323, treesitter-chunker#324, treesitter-chunker#177. Decompose into 2 lanes: cache deletion protocol in core.py/cli.py/config.py, and auxiliary self-test isolation in testing.py. Separate PRs for treesitter-chunker#323, treesitter-chunker#324 and treesitter-chunker#177. Freeze staging roots, writer/deleter ownership and publication markers before changing deletion. All participating deleters and writers must observe the same protocol; inherited source mtime from copy2 cannot establish publication age. Produce IF-0-CLEANUP-1 only after implementation, deterministic interleaving, symlink/junction and review acceptance.
+treesitter-chunker#323, treesitter-chunker#324, treesitter-chunker#177, with separately filed coupled defects treesitter-chunker#369 (public fallback import) and treesitter-chunker#370 (validation-cache lost writes/containment). Two behavior areas: cache protocol/public fallback in core.py/cli.py/config.py/__init__.py, and auxiliary isolation in testing.py. Independently land static treesitter-chunker#324/treesitter-chunker#369 first; treesitter-chunker#177 is independent; then land the complete transaction repair treesitter-chunker#323/treesitter-chunker#370. Each bounded slice has its own active detailed plan, code, tests, docs, mutations and review. No intermediate PR claims concurrent safety. Freeze actual roots, whole-entry eviction, ordered publication generations, short writer transactions, staging/rollback ownership, validation JSON merging and no-follow deletion before protocol implementation. All participants obey one actual-root protocol; copied mtime cannot establish publication age. IF-0-CLEANUP-1 requires complete implementation/interleaving/platform/review acceptance.
 Planning depth: Detailed for writer/deleter protocol; bounded plan for self-test isolation.
+Decompose into 2 lanes, one per behavior area, with a terminal evidence reducer; each repair uses a separate bounded detailed plan before implementation.
 
 **Non-goals**
 
@@ -106,6 +107,7 @@ Unrelated changes.
 - `chunker/grammar_management/cli.py`
 - `chunker/grammar_management/testing.py`
 - `chunker/grammar_management/config.py`
+- `chunker/grammar_management/__init__.py`
 
 **Depends on**
 

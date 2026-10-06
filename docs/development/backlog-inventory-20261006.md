@@ -19,6 +19,8 @@ No tests/builds were run during this planning audit. Historical verification is 
 
 Counts: initially 61 issues/five drafts; two issues and one superseded draft closed, one previously untracked records issue opened. The initial inventory contained 60 issues. Review added treesitter-chunker#362, treesitter-chunker#363, treesitter-chunker#365 and treesitter-chunker#368; newly reported treesitter-chunker#367 is also enrolled. **65 open issues, four held drafts and active drafts treesitter-chunker#364/treesitter-chunker#366 remain.** No item was closed merely for age or overlapping scope.
 
+Execution update: treesitter-chunker#366 merged at a74e58f2 with accepted metadata/mutation evidence and green changed-head Linux/macOS/Windows checks. Commented and closed treesitter-chunker#365 and treesitter-chunker#368; the clean repair worktree is pruned. CLEANUP review reproduced and separately filed treesitter-chunker#369 and treesitter-chunker#370. Live backlog remains 65 open issues; the two accepted precursors are moved out of the open map below. The native implementation runs against its frozen reviewed input in a separate worktree; downstream plan amendments do not edit that active runner state.
+
 ## Remaining draft PRs
 
 All listed heads had successful executable hosted CI checks (the optional code-review bot check was skipped). None has a completed current integration/review acceptance; old green checks do not clear the reproduced blockers.
@@ -41,11 +43,11 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P0 | SAFELOAD | [treesitter-chunker#165](https://github.com/Consiliency/treesitter-chunker/issues/165) — Design provenance-safe compiled grammar validation with parse acknowledgment |
 | P0 | SAFELOAD | [treesitter-chunker#151](https://github.com/Consiliency/treesitter-chunker/issues/151) — GrammarAnalyzer reports empty shared library as supported grammar |
 | P0 | SAFELOAD | [treesitter-chunker#164](https://github.com/Consiliency/treesitter-chunker/issues/164) — Validate legacy grammar fallbacks without mapping source or accepting null language |
-| P1 | SAFELOAD | [treesitter-chunker#365](https://github.com/Consiliency/treesitter-chunker/issues/365) — Timestamp-derived grammar versions and release dates; independent precursor treesitter-chunker#366 |
-| P1 | SAFELOAD | [treesitter-chunker#368](https://github.com/Consiliency/treesitter-chunker/issues/368) — Unknown versions incorrectly satisfy numeric rules; blocks that precursor's migration |
 | P0 | CLEANUP | [treesitter-chunker#323](https://github.com/Consiliency/treesitter-chunker/issues/323) — Core grammar cleanup can remove a file created during directory deletion |
 | P0 | CLEANUP | [treesitter-chunker#324](https://github.com/Consiliency/treesitter-chunker/issues/324) — Grammar CLI fallback deletes recent files inside old cache directories |
 | P0 | CLEANUP | [treesitter-chunker#177](https://github.com/Consiliency/treesitter-chunker/issues/177) — Reconcile auxiliary grammar self-test and CLI validator scenarios |
+| P1 | CLEANUP | [treesitter-chunker#369](https://github.com/Consiliency/treesitter-chunker/issues/369) — Public fallback cannot import when core is unavailable; coupled static fallback boundary |
+| P0 | CLEANUP | [treesitter-chunker#370](https://github.com/Consiliency/treesitter-chunker/issues/370) — Validation-cache writers lose fresh records and follow outside symlinks |
 | P0/P1 | GRAMMARS | [treesitter-chunker#162](https://github.com/Consiliency/treesitter-chunker/issues/162) — Updating a loaded grammar in place can crash the Python process |
 | P0/P1 | GRAMMARS | [treesitter-chunker#160](https://github.com/Consiliency/treesitter-chunker/issues/160) — Legacy grammar tools ignore native macOS and Windows library extensions |
 | P0/P1 | GRAMMARS | [treesitter-chunker#117](https://github.com/Consiliency/treesitter-chunker/issues/117) — GrammarRegistry ignores native library suffixes on Windows and macOS |
