@@ -23,6 +23,9 @@ in-progress constructor from restoring the superseded instance.
 - chunker/plugin_manager.py: after existing registration validation, publish the
   class and evict only its language's cached instance under _instance_lock.
   Preserve metadata/extension validation, error behavior, APIs and config semantics.
+  Read the unlocked cache hit once, so eviction cannot occur between a separate
+  membership test and indexing. An overlapping caller may use its already
+  obtained old instance, but must not fail with KeyError.
 - tests/test_plugin_system.py: parse the checked-in Python service fixture through
   an actual manager before and after replacement. A concrete Python subclass
   stamps returned chunk metadata in its real processing hook. Assert the old warm
@@ -30,6 +33,9 @@ in-progress constructor from restoring the superseded instance.
   config invokes the new hook without replacing its default cached instance,
   unrelated language instances survive and failed registration preserves the
   previous class/instance. No production parser/plugin mocks or timing gate.
+  Exercise the real warmed getter/registration interleaving with a per-thread
+  Python line trace and events; restore the prior trace in finally. The trace
+  pauses a cache-hit return without substituting registry data or methods.
 - scripts/run_platform_core.py: select the replacement regression on all platforms.
 - docs/plugin-development.md and CHANGELOG.md: remove the fresh-manager workaround
   and document invalidation after successful registration. Existing references to
@@ -55,7 +61,9 @@ file unrelated defects; no native admission, parser pin or consumer lock change.
 - uv run --locked --all-extras pytest -q
 
 Kill retain_old_cached_plugin by removing only the cache eviction. The real
-replacement assertion must fail, then restore all focused modules. Run changed
+replacement assertion must fail, then restore all focused modules. Kill
+cache_hit_split_lookup by restoring separate membership/indexing; the real
+interleaved getter must fail, then restore all focused modules. Run changed
 fixture tests on Windows, exact-head hosted platforms and manual tool-enabled
 review. Original runner records remain untouched; no supplemental IF is claimed.
 

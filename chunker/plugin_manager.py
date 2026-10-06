@@ -240,8 +240,10 @@ class PluginRegistry:
         """Get or create a plugin instance."""
         if language not in self._plugins:
             raise ValueError(f"No plugin registered for language: {language}")
-        if language in self._instances and config is None:
-            return self._instances[language]
+        if config is None:
+            cached_instance = self._instances.get(language)
+            if cached_instance is not None:
+                return cached_instance
         with self._instance_lock:
             # Double-checked to reuse existing instance when no config is provided
             if language in self._instances and config is None:

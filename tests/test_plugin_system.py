@@ -3,7 +3,10 @@
 Tests for the plugin architecture components.
 """
 
+import inspect
+import sys
 import tempfile
+import threading
 from pathlib import Path
 
 import pytest
@@ -11,6 +14,7 @@ import pytest
 from chunker import CodeChunk, PluginConfig, PluginManager, get_plugin_manager
 from chunker.chunker_config import ChunkerConfig
 from chunker.languages import JavaScriptPlugin, PythonPlugin, RustPlugin
+from chunker.plugin_manager import PluginRegistry
 
 
 def test_plugin_registry():
@@ -119,6 +123,65 @@ def test_failed_replacement_preserves_warm_plugin(tmp_path):
     assert [c.content for c in manager.chunk_file(path, "python")] == [
         c.content for c in chunks
     ]
+
+
+def test_warm_plugin_lookup_survives_replacement_interleaving(tmp_path):
+    path = tmp_path / "service.py"
+    path.write_bytes(
+        (
+            Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+        ).read_bytes()
+    )
+    manager = PluginManager()
+    manager.registry.register(PythonPlugin)
+    reference = manager.chunk_file(path, "python")
+    assert reference
+
+    class ReplacementPythonPlugin(PythonPlugin):
+        pass
+
+    lines, start = inspect.getsourcelines(PluginRegistry.get_plugin)
+    return_line = next(
+        start + i for i, line in enumerate(lines) if line.strip().startswith("return ")
+    )
+    paused = threading.Event()
+    resume = threading.Event()
+    results = []
+    errors = []
+
+    def trace(frame, event, arg):
+        if (
+            frame.f_code is PluginRegistry.get_plugin.__code__
+            and event == "line"
+            and frame.f_lineno == return_line
+            and not paused.is_set()
+        ):
+            paused.set()
+            assert resume.wait(10), "Replacement observation did not release lookup"
+        return trace
+
+    def parse():
+        previous = sys.gettrace()
+        try:
+            sys.settrace(trace)
+            results.extend(manager.chunk_file(path, "python"))
+        except Exception as error:
+            errors.append(error)
+        finally:
+            sys.settrace(previous)
+
+    worker = threading.Thread(target=parse)
+    worker.start()
+    try:
+        assert paused.wait(10), "Warm cache lookup did not reach observation"
+        manager.registry.register(ReplacementPythonPlugin)
+    finally:
+        resume.set()
+        worker.join(10)
+    assert not worker.is_alive()
+    assert errors == []
+    assert [c.content for c in results] == [c.content for c in reference]
+    assert isinstance(manager.registry.get_plugin("python"), ReplacementPythonPlugin)
 
 
 def test_plugin_config():
