@@ -538,7 +538,8 @@ for language, health in all_health.items():
 The auxiliary helpers in `chunker.grammar_management.testing` use disposable
 directories by default. `CLIValidator`, `SystemValidator` and
 `PerformanceBenchmark` support context managers and a keyword-only `test_dir`.
-They preserve a supplied root and use supplied manager/configuration objects.
+They preserve caller files in a supplied root, keep helper-created configuration
+in a private directory, and use supplied manager/configuration objects.
 Cleanup errors are visible; use `cleanup()` when not using a context manager.
 Default roots use a temporary parent outside operator home; if the normal
 temporary directory is under home, the helper uses `/tmp` on POSIX or the Windows
@@ -546,7 +547,8 @@ system temporary directory. Failure to create that root is reported rather than
 falling back to home. CLI negative checks use a private cache so colliding
 caller-owned grammar names are not removed. Metadata timing reads the registry
 without loading a grammar; native validation remains explicitly unsupported in
-that benchmark.
+that benchmark. Cross-component observations cover configuration and cache
+links; compatibility and selection simulations are explicitly unsupported.
 
 `run_complete_test_suite()` returns observations without writing an operator-home
 report. Supply `sample_path`, `language` and `grammar_path` for a real local
@@ -563,6 +565,8 @@ disk/permission recovery, invented usability scores, scalability and speculative
 cache speedups are unsupported. Resource metrics are observations, and the suite
 does not run a default minute-long stability loop. Summary counts distinguish
 passes, failures and unsupported work; any observed failure prevents success.
+Configuration observations omit directory paths that could refer to a cleaned
+operation root; successful validation is recorded separately.
 
 ## Conclusion
 

@@ -60,9 +60,16 @@ def test_auxiliary_cleanup_preserves_supplied_root(tmp_path, component):
     root.mkdir()
     sentinel = root / "service.py"
     sentinel.write_bytes(FIXTURE.read_bytes())
+    config = root / "config" / "config.json"
+    config.parent.mkdir()
+    config.write_bytes(b'{"caller": true}')
+    pending = config.with_suffix(".tmp")
+    pending.write_bytes(b"caller pending configuration")
     with component(test_dir=root) as tester:
         assert tester.test_dir == root
     assert sentinel.read_bytes() == FIXTURE.read_bytes()
+    assert config.read_bytes() == b'{"caller": true}'
+    assert pending.read_bytes() == b"caller pending configuration"
     assert not get_parser("python").parse(sentinel.read_bytes()).root_node.has_error
 
 
@@ -121,6 +128,7 @@ def test_system_validation_uses_supplied_valid_configuration(tmp_path):
         invalid = health.validate_configuration()
         assert invalid["status"] == "invalid", invalid
         assert "positive integer" in invalid["errors"][0]
+        assert result["config_items"]["cache"]["max_size_mb"] == 1
 
 
 def test_local_error_and_cli_checks_preserve_colliding_caller_fixtures(tmp_path):
@@ -132,12 +140,15 @@ def test_local_error_and_cli_checks_preserve_colliding_caller_fixtures(tmp_path)
     installed.mkdir(parents=True)
     sentinel = installed / "caller.py"
     sentinel.write_bytes(FIXTURE.read_bytes())
+    missing = root / "missing.py"
+    missing.write_bytes(FIXTURE.read_bytes())
     tester = IntegrationTester(root)
     assert tester.test_error_scenarios()["status"] == "unsupported"
     with CLIValidator(test_dir=root) as cli:
         assert cli.test_all_commands()["status"] == "unsupported"
     assert corrupt.read_bytes() == FIXTURE.read_bytes()
     assert sentinel.read_bytes() == FIXTURE.read_bytes()
+    assert missing.read_bytes() == FIXTURE.read_bytes()
 
 
 @pytest.mark.parametrize(
@@ -191,6 +202,15 @@ def test_complete_suite_returns_truthful_results_and_opt_in_report(
     assert result["summary"]["failed"] == 0
     assert result["summary"]["unsupported"] > 0
     assert result["test_suites"]["integration"]["workflow"]["status"] == "unsupported"
+    cross = result["test_suites"]["integration"]["cross_component"]
+    assert cross["status"] == "unsupported", cross
+    assert set(cross["unsupported"]) == {
+        "core-compatibility",
+        "compatibility-selector",
+    }
+    configuration = result["test_suites"]["system"]["configuration"]
+    assert "directories" not in configuration["config_items"]
+    assert configuration["directories_validated"] is True
     assert json.loads(report.read_text(encoding="utf-8")) == result
     assert (root / "sentinel").read_text(encoding="utf-8") == "preserve"
     assert list(home.iterdir()) == [sentinel]
@@ -232,9 +252,19 @@ def test_real_worker_failure_is_reaped_before_private_root_cleanup(
     monkeypatch.setattr(
         "chunker.grammar_management.testing.subprocess.run", faulty_worker
     )
-    result = _run_test_worker(root, "workflow", None, "python", None, timeout=0.5)
+    result = _run_test_worker(
+        root, "workflow", None, "python", None, timeout=5 if fault == "timeout" else 10
+    )
     assert result["status"] == "fail", result
     assert result["errors"]
+    cause = {
+        "missing_result": "response.json",
+        "malformed_result": "Expecting property name",
+        "invalid_status": "no valid observed status",
+        "crash": "exit status 7",
+        "timeout": "timed out",
+    }[fault]
+    assert cause in result["errors"][0], result
     assert not psutil.pid_exists(int(pid_file.read_text()))
     assert list(root.iterdir()) == [sentinel]
     assert sentinel.read_bytes() == FIXTURE.read_bytes()
@@ -248,6 +278,12 @@ def test_complete_suite_native_fixture_and_owned_cleanup(tmp_path, monkeypatch):
     if not grammar.exists():
         grammar = Path(cache_dir()) / f"libtree_sitter_python{suffix}"
     assert grammar.is_file()
+    home = tmp_path / "isolated-home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "config"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(home / "cache"))
     owned_roots = []
     real_mkdtemp = __import__("tempfile").mkdtemp
 
@@ -283,6 +319,7 @@ def test_complete_suite_native_fixture_and_owned_cleanup(tmp_path, monkeypatch):
     assert rejected["status"] == "fail", rejected
     assert rejected["summary"]["failed"] > 0
     assert owned_roots and all(not path.exists() for path in owned_roots)
+    assert list(home.iterdir()) == []
 
 
 def test_explicit_report_failure_is_visible(tmp_path):
@@ -327,6 +364,64 @@ def test_registry_benchmark_does_not_load_copied_grammar_in_parent(
     copied.unlink()
 
 
+def test_cross_component_observation_does_not_load_registered_native_fixture(
+    tmp_path, monkeypatch
+):
+    import tree_sitter_language_pack as provider
+    from chunker.grammar_management import core
+
+    assert (
+        not provider.get_parser("python")
+        .parse(FIXTURE.read_bytes())
+        .root_node.has_error
+    )
+    libraries = list(Path(provider.cache_dir()).glob("*tree_sitter_python.*"))
+    assert len(libraries) == 1
+    root = tmp_path / "caller"
+    grammar = root / "grammars" / "libpython.so"
+    grammar.parent.mkdir(parents=True)
+    grammar.write_bytes(libraries[0].read_bytes())
+    tester = IntegrationTester(root)
+    assert tester.grammar_manager._registry.get_language_info("python") is not None
+    calls = []
+
+    def forbidden_parent_load(*args, **kwargs):
+        calls.append(args)
+        raise AssertionError("Cross-component observations must not load a DLL")
+
+    monkeypatch.setattr(core, "load_compiled_grammar", forbidden_parent_load)
+    result = tester.test_cross_component_integration()
+    assert result["status"] == "unsupported", result
+    assert result["integration_points"] == ["core-config", "config-cache"]
+    assert set(result["unsupported"]) == {
+        "core-compatibility",
+        "compatibility-selector",
+    }
+    assert calls == []
+    tester.cleanup()
+    grammar.unlink()
+
+
+def test_relative_caller_root_runs_real_worker_fixture(tmp_path, monkeypatch):
+    import tree_sitter_language_pack as provider
+
+    assert (
+        not provider.get_parser("python")
+        .parse(FIXTURE.read_bytes())
+        .root_node.has_error
+    )
+    libraries = list(Path(provider.cache_dir()).glob("*tree_sitter_python.*"))
+    assert len(libraries) == 1
+    grammar = libraries[0].resolve()
+    monkeypatch.chdir(tmp_path)
+    root = Path("relative-caller")
+    tester = IntegrationTester(root)
+    result = tester.test_complete_workflow(FIXTURE, "python", grammar)
+    assert result["status"] == "pass", result
+    tester.cleanup()
+    assert root.is_dir()
+
+
 def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -344,6 +439,10 @@ def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "config"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(home / "cache"))
     work_dir = tmp_path / "self-test"
     tester = IntegrationTester(work_dir)
     assert tester.dir_manager.base_dir == work_dir
@@ -369,7 +468,7 @@ def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
     assert health.check_system_health()["status"] == "healthy"
     health.cleanup()
     integration = tester.test_cross_component_integration()
-    assert integration["status"] == "pass", integration
+    assert integration["status"] == "unsupported", integration
     assert "config-cache" in integration["integration_points"]
     tester.cleanup()
     assert work_dir.exists()

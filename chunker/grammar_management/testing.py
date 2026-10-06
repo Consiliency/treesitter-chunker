@@ -3,6 +3,7 @@ Integration and testing module for Phase 1.8 grammar management system.
 """
 
 import contextlib
+import copy
 import ctypes
 import io
 import json
@@ -61,6 +62,7 @@ class IntegrationTester:
         self.test_results = {}
         self.performance_metrics = {}
         self.test_languages = ["python", "javascript", "rust", "go", "java"]
+        self._config_operation: tempfile.TemporaryDirectory[str] | None = None
         try:
             self._setup_test_environment()
         except Exception:
@@ -71,7 +73,10 @@ class IntegrationTester:
         """Set up test environment."""
         # Create test directories
         self.test_dir.mkdir(parents=True, exist_ok=True)
-        self.config_dir = self.test_dir / "config"
+        self._config_operation = tempfile.TemporaryDirectory(
+            prefix="config-", dir=self.test_dir
+        )
+        self.config_dir = Path(self._config_operation.name)
         self.grammar_dir = self.test_dir / "grammars"
         self.cache_dir = self.test_dir / "cache"
 
@@ -265,47 +270,37 @@ class IntegrationTester:
         }
 
     def test_cross_component_integration(self) -> dict[str, Any]:
-        """Test integration between all components."""
+        """Observe local configuration/cache links; retire native simulations."""
         results = {
-            "status": "pass",
+            "status": "unsupported",
             "components_tested": [],
             "integration_points": [],
             "errors": [],
+            "unsupported": {
+                "core-compatibility": "No registered compatibility fixture contract",
+                "compatibility-selector": "No controlled selection fixture contract",
+            },
         }
 
         try:
             # Test Core-Config integration
             self.config.set("grammars.auto_install", True)
-            if self.config.get("grammars.auto_install"):
-                results["integration_points"].append("core-config")
-
-            # Test Core-Compatibility integration
-            compat_result = self.compatibility_checker.check_compatibility(
-                "python",
-                "1.0.0",
-                "3.9.0",
-            )
-            if compat_result:
-                results["integration_points"].append("core-compatibility")
+            if self.config.get("grammars.auto_install") is not True:
+                raise ValueError("Configuration did not retain the observed setting")
+            results["integration_points"].append("core-config")
 
             # Test Config-Cache integration
             cache_size = self.cache_manager.get_cache_size()
-            if cache_size["total_bytes"] >= 0 and self.cache_manager.cache_dir == (
+            if cache_size["total_bytes"] < 0 or self.cache_manager.cache_dir != (
                 self.dir_manager.get_directory("cache")
             ):
-                results["integration_points"].append("config-cache")
-
-            # Test Compatibility-Selector integration
-            selection = self.smart_selector.select_best_grammar("python")
-            if selection:
-                results["integration_points"].append("compatibility-selector")
+                raise ValueError("Cache observation does not match configuration")
+            results["integration_points"].append("config-cache")
 
             results["components_tested"] = [
                 "core",
                 "config",
-                "compatibility",
                 "cache",
-                "selector",
             ]
 
         except Exception as e:
@@ -405,8 +400,12 @@ class IntegrationTester:
 
     def cleanup(self) -> None:
         """Clean up test environment."""
-        if self._owns_test_dir and self.test_dir.exists():
-            shutil.rmtree(self.test_dir)
+        try:
+            if self._config_operation is not None:
+                self._config_operation.cleanup()
+        finally:
+            if self._owns_test_dir and self.test_dir.exists():
+                shutil.rmtree(self.test_dir)
 
 
 class CLIValidator:
@@ -422,9 +421,8 @@ class CLIValidator:
             self._cli_operation = tempfile.TemporaryDirectory(
                 prefix="cli-validator-", dir=self.test_dir
             )
-            self.cli = ComprehensiveGrammarCLI(
-                cache_dir=Path(self._cli_operation.name) / "cache"
-            )
+            self._cli_root = Path(self._cli_operation.name)
+            self.cli = ComprehensiveGrammarCLI(cache_dir=self._cli_root / "cache")
         except Exception:
             self.cleanup()
             raise
@@ -478,7 +476,8 @@ class CLIValidator:
             (
                 "test",
                 lambda: self.cli.test_grammar(
-                    "missing_grammar", str(self.test_dir / "missing.py")
+                    "missing_grammar",
+                    str(self._cli_root / "missing.py"),
                 ),
                 1,
                 "Test file not found:",
@@ -713,11 +712,22 @@ class SystemValidator:
 
     def validate_configuration(self) -> dict[str, Any]:
         """Validate the actual supplied configuration with its current schema."""
-        results = {"status": "valid", "config_items": {}, "errors": []}
+        results: dict[str, Any] = {
+            "status": "valid",
+            "config_items": {},
+            "errors": [],
+        }
         try:
             configured = self.config.get_all()
             self.config._validate_config(configured)
-            results["config_items"] = configured
+            results["config_items"] = copy.deepcopy(
+                {
+                    key: value
+                    for key, value in configured.items()
+                    if key != "directories"
+                }
+            )
+            results["directories_validated"] = True
         except Exception as error:
             results["status"] = "invalid"
             results["errors"].append(str(error))
@@ -871,7 +881,7 @@ def _run_test_worker(
 ) -> dict[str, Any]:
     """Reap a bounded fixture worker before removing its private operation root."""
     with tempfile.TemporaryDirectory(prefix="worker-", dir=test_dir) as temporary:
-        root = Path(temporary)
+        root = Path(temporary).resolve()
         request = root / "request.json"
         response = root / "response.json"
         request.write_text(
