@@ -11,6 +11,8 @@ updated in the same commit, or this test fails and catches the drift.
 from __future__ import annotations
 
 import json
+import re
+from copy import deepcopy
 from pathlib import Path
 
 import jsonschema
@@ -76,3 +78,69 @@ def test_emitted_ir_with_timings_matches_schema() -> None:
     )
     errors = sorted(_validator().iter_errors(ir), key=lambda e: list(e.path))
     assert not errors, "\n".join(f"{list(e.path)}: {e.message}" for e in errors[:10])
+
+
+@pytest.fixture
+def actual_boundary_records(tmp_path: Path) -> tuple[dict, dict]:
+    parsed = extract_boundary_ir(fixture_path("python"), "python", canonical=True)
+    assert parsed["nodes"] and parsed["files"][0]["status"] == "parsed"
+    unmapped = tmp_path / "service.unmapped"
+    unmapped.write_bytes((fixture_path("python") / "app/service.py").read_bytes())
+    skipped = extract_boundary_ir(unmapped, canonical=True)
+    return parsed, skipped
+
+
+def test_actual_skipped_unknown_metadata_matches_schema(
+    actual_boundary_records: tuple[dict, dict],
+) -> None:
+    parsed, skipped = actual_boundary_records
+    _validator().validate(parsed)
+    assert skipped["files"][0]["status"] == "skipped"
+    assert skipped["files"][0]["language"] is None
+    assert skipped["files"][0]["parser"] is None
+    assert skipped["nodes"] == []
+    assert skipped["metrics"]["parse_failures"] == 0
+    _validator().validate(skipped)
+
+
+@pytest.mark.parametrize("status", ["parsed", "error"])
+@pytest.mark.parametrize("field", ["language", "parser"])
+def test_parsed_and_error_metadata_reject_null(
+    actual_boundary_records: tuple[dict, dict], status: str, field: str
+) -> None:
+    invalid = deepcopy(actual_boundary_records[0])
+    invalid["files"][0]["status"] = status
+    invalid["files"][0][field] = None
+    errors = list(_validator().iter_errors(invalid))
+    assert any(list(error.path) == ["files", 0, field] for error in errors)
+
+
+@pytest.mark.parametrize("field", ["language", "parser"])
+def test_skipped_metadata_rejects_arbitrary_types(
+    actual_boundary_records: tuple[dict, dict], field: str
+) -> None:
+    invalid = deepcopy(actual_boundary_records[1])
+    invalid["files"][0][field] = 42
+    errors = list(_validator().iter_errors(invalid))
+    assert any(list(error.path) == ["files", 0, field] for error in errors)
+
+
+def test_actual_syntax_and_semantic_versions_match_schema() -> None:
+    syntax = extract_boundary_ir(fixture_path("python"), "python", canonical=True)
+    semantic = extract_boundary_ir(
+        fixture_path("python"), "python", canonical=True, semantic_resolvers=()
+    )
+    assert syntax["nodes"] and semantic["nodes"]
+    assert syntax["schema_version"] == "2.0"
+    assert semantic["schema_version"] == "2.1"
+    _validator().validate(syntax)
+    _validator().validate(semantic)
+
+
+def test_guide_baseline_example_matches_published_schema() -> None:
+    guide = (SCHEMA_PATH.parents[2] / "docs/interface-boundary-spec.md").read_text(
+        encoding="utf-8"
+    )
+    match = re.search(r"## Minimal Baseline Example.*?```json\n(.*?)\n```", guide, re.S)
+    assert match is not None
+    _validator().validate(json.loads(match.group(1)))
