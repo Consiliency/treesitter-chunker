@@ -104,6 +104,7 @@ def test_feature_macros_use_release_order(
         source_path.read_text(encoding="utf-8"), source_path
     )
     assert hints["feature_test_macros"] == [name for name, _ in macros]
+    assert hints["cxx_standard"] is None
     assert hints["standard_from_features"] == expected
     assert detector.get_primary_version(hints) == f"C++{expected}"
 

@@ -19,6 +19,9 @@ parse the checked-in widget fixture and verify public detector precedence.
   two affected methods with the existing standard-map year as the key.
   Preserve strings, recognized standards/macros, extraction and primary
   precedence. Do not change C standard inference or compiler semantics.
+  Use runtime-neutral typing.cast for the existing integer year and string
+  macro-standard values in heterogeneous lookup dictionaries so the locked
+  mypy gate can check the comparison. Do not change its debt baseline.
 - tests/test_cpp_version_hints_contract.py: parse actual checked-in widget
   bytes with mixed C++98/newer comments in both orders for each recognized
   newer standard, and exercise the original __cplusplus98/newer20 case.
