@@ -775,13 +775,247 @@ def test_click_cleanup_fallback_preserves_recent_local_fixture(
         grammar_cli, ["--cache-dir", str(cache_dir), "cleanup", "--days", "20"]
     )
     assert result.exit_code == 0, result.output
-    assert "Files removed: 1" in result.output
-    assert "Directories cleaned: downloads\n" in result.output
-    assert not stale.exists()
+    assert f"Files removed: {0 if stale_directory else 1}" in result.output
+    if stale_directory:
+        assert stale.is_dir()
+        assert not parser.parse((stale / "service.py").read_bytes()).root_node.has_error
+    else:
+        assert "Directories cleaned: downloads\n" in result.output
+        assert not stale.exists()
     assert recent.read_bytes() == source
     assert not parser.parse(recent.read_bytes()).root_node.has_error
     assert not parser.parse(recent_build.read_bytes()).root_node.has_error
     assert not isolated_home.exists()
+
+
+@pytest.mark.parametrize("failure", ["import", "constructor"])
+def test_public_fallback_reaches_cleanup_without_core(
+    tmp_path: Path, failure: str
+) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+    cache = tmp_path / "cache"
+    entry = cache / "downloads" / "old-parent"
+    entry.mkdir(parents=True)
+    surviving = entry / "service.py"
+    surviving.write_bytes(source)
+    old = time.time() - 40 * 86400
+    os.utime(entry, (old, old))
+    if failure == "constructor":
+        (cache / "builds").write_text("not a directory", encoding="utf-8")
+    code = r"""
+import importlib.abc
+import sys
+from pathlib import Path
+if sys.argv[2] == "import":
+    class DenyCore(importlib.abc.MetaPathFinder):
+        def find_spec(self, fullname, path=None, target=None):
+            if fullname == "chunker.grammar_management.core":
+                raise ImportError("deliberately unavailable core")
+    sys.meta_path.insert(0, DenyCore())
+import chunker.grammar_management as public
+from click.testing import CliRunner
+if sys.argv[2] == "import":
+    assert not hasattr(public, "GrammarManager")
+    assert not hasattr(public, "GrammarPriority")
+    assert not hasattr(public, "ValidationLevel")
+    assert public.__all__ == ["ComprehensiveGrammarCLI", "GrammarStatus", "ProgressIndicator", "grammar_cli"]
+else:
+    from chunker.grammar_management.core import GrammarManager
+    assert public.GrammarManager is GrammarManager
+    assert set(public.__all__) == {"ComprehensiveGrammarCLI", "GrammarInstallationError", "GrammarInstaller", "GrammarManagementError", "GrammarManager", "GrammarPriority", "GrammarRegistry", "GrammarRegistryError", "GrammarStatus", "GrammarValidationError", "GrammarValidator", "InstallationInfo", "ProgressIndicator", "ValidationLevel", "ValidationResult", "grammar_cli"}
+cli = public.ComprehensiveGrammarCLI(cache_dir=Path(sys.argv[1]))
+assert cli.grammar_manager is None
+result = CliRunner().invoke(public.grammar_cli, ["--cache-dir", sys.argv[1], "cleanup", "--days", "20"])
+assert "Files removed: 0" in result.output, result.output
+assert result.exit_code == (1 if sys.argv[2] == "constructor" else 0), result.output
+"""
+    env = os.environ.copy()
+    for name in ("HOME", "USERPROFILE", "XDG_CACHE_HOME", "XDG_CONFIG_HOME"):
+        env[name] = str(tmp_path / name.lower())
+    completed = subprocess.run(
+        [sys.executable, "-c", code, str(cache), failure],
+        cwd=Path(__file__).parent.parent,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert surviving.read_bytes() == source
+    assert not parser.parse(surviving.read_bytes()).root_node.has_error
+
+
+def test_fallback_removes_only_wholly_expired_entries(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        "chunker.grammar_management.cli.GRAMMAR_COMPONENTS_AVAILABLE", False
+    )
+    monkeypatch.setattr("chunker.grammar_management.cli.time.time", lambda: 100 * 86400)
+    cli = ComprehensiveGrammarCLI(cache_dir=tmp_path / "cache")
+    downloads = cli.cache_dir / "downloads"
+    downloads.mkdir()
+    expired = downloads / "expired"
+    expired.mkdir()
+    old_source = expired / "service.py"
+    old_source.write_bytes(FIXTURE.read_bytes())
+    cutoff = 80 * 86400
+    os.utime(old_source, (cutoff - 1, cutoff - 1))
+    os.utime(expired, (cutoff - 1, cutoff - 1))
+    boundary = downloads / "boundary"
+    boundary.mkdir()
+    nested = boundary / "nested"
+    nested.mkdir()
+    boundary_source = nested / "service.py"
+    boundary_source.write_bytes(FIXTURE.read_bytes())
+    os.utime(boundary_source, (cutoff, cutoff))
+    os.utime(nested, (cutoff - 1, cutoff - 1))
+    os.utime(boundary, (cutoff - 1, cutoff - 1))
+    parser = get_parser("python")
+    assert not parser.parse(old_source.read_bytes()).root_node.has_error
+    result = cli._cleanup_cache_fallback(20)
+    assert result == {
+        "files_removed": 1,
+        "bytes_freed": len(FIXTURE.read_bytes()),
+        "directories_cleaned": ["downloads"],
+        "errors": [],
+    }
+    assert not expired.exists()
+    assert not parser.parse(boundary_source.read_bytes()).root_node.has_error
+    assert downloads.is_dir()
+
+
+@pytest.mark.parametrize("location", ["namespace", "payload", "descendant"])
+def test_fallback_preserves_link_targets(
+    tmp_path: Path, monkeypatch, location: str
+) -> None:
+    monkeypatch.setattr(
+        "chunker.grammar_management.cli.GRAMMAR_COMPONENTS_AVAILABLE", False
+    )
+    cli = ComprehensiveGrammarCLI(cache_dir=tmp_path / "cache")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    sentinel = outside / "service.py"
+    sentinel.write_bytes(FIXTURE.read_bytes())
+    old = time.time() - 40 * 86400
+    os.utime(sentinel, (old, old))
+    os.utime(outside, (old, old))
+    downloads = cli.cache_dir / "downloads"
+    if location == "namespace":
+        link = downloads
+    else:
+        downloads.mkdir()
+        link = downloads / "entry"
+        if location == "descendant":
+            link.mkdir()
+            link /= "linked"
+    if sys.platform == "win32":
+        result = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(link), str(outside)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+    else:
+        link.symlink_to(outside, target_is_directory=True)
+    if location == "descendant":
+        os.utime(link.parent, (old, old))
+    result = cli._cleanup_cache_fallback(20)
+    assert result["errors"]
+    if location != "namespace":
+        assert any(
+            "Linked cache entry preserved" in error for error in result["errors"]
+        )
+    assert result["files_removed"] == result["bytes_freed"] == 0
+    assert sentinel.read_bytes() == FIXTURE.read_bytes()
+    assert not get_parser("python").parse(sentinel.read_bytes()).root_node.has_error
+    assert link.exists()
+
+
+@pytest.mark.parametrize("directory", [False, True])
+def test_fallback_does_not_count_failed_removal(
+    tmp_path: Path, monkeypatch, directory: bool
+) -> None:
+    monkeypatch.setattr(
+        "chunker.grammar_management.cli.GRAMMAR_COMPONENTS_AVAILABLE", False
+    )
+    cli = ComprehensiveGrammarCLI(cache_dir=tmp_path / "cache")
+    downloads = cli.cache_dir / "downloads"
+    downloads.mkdir()
+    entry = downloads / "expired"
+    if directory:
+        entry.mkdir()
+        source = entry / "service.py"
+    else:
+        source = entry
+    source.write_bytes(FIXTURE.read_bytes())
+    old = time.time() - 40 * 86400
+    os.utime(source, (old, old))
+    os.utime(entry, (old, old))
+
+    def deny(*args, **kwargs):
+        raise PermissionError("injected filesystem denial")
+
+    if directory:
+        monkeypatch.setattr("chunker.grammar_management.cli.shutil.rmtree", deny)
+    else:
+        monkeypatch.setattr(Path, "unlink", deny)
+    result = cli._cleanup_cache_fallback(20)
+    assert result["files_removed"] == result["bytes_freed"] == 0
+    assert result["directories_cleaned"] == []
+    assert "injected filesystem denial" in result["errors"][0]
+    assert not get_parser("python").parse(source.read_bytes()).root_node.has_error
+
+
+def test_fallback_preserves_empty_namespace_roots(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "chunker.grammar_management.cli.GRAMMAR_COMPONENTS_AVAILABLE", False
+    )
+    cli = ComprehensiveGrammarCLI(cache_dir=tmp_path / "cache")
+    namespaces = [cli.cache_dir / name for name in ("downloads", "builds", "tmp")]
+    for namespace in namespaces:
+        namespace.mkdir()
+        os.utime(namespace, (1, 1))
+    assert cli._cleanup_cache_fallback(20) == {
+        "files_removed": 0,
+        "bytes_freed": 0,
+        "directories_cleaned": [],
+        "errors": [],
+    }
+    assert all(namespace.is_dir() for namespace in namespaces)
+
+
+def test_fallback_rejects_linked_cache_root(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "chunker.grammar_management.cli.GRAMMAR_COMPONENTS_AVAILABLE", False
+    )
+    cli = ComprehensiveGrammarCLI(cache_dir=tmp_path / "cache")
+    cli.cache_dir.rename(tmp_path / "original")
+    outside = tmp_path / "outside"
+    downloads = outside / "downloads"
+    downloads.mkdir(parents=True)
+    sentinel = downloads / "service.py"
+    sentinel.write_bytes(FIXTURE.read_bytes())
+    os.utime(sentinel, (1, 1))
+    if sys.platform == "win32":
+        result = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(cli.cache_dir), str(outside)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+    else:
+        cli.cache_dir.symlink_to(outside, target_is_directory=True)
+    result = cli._cleanup_cache_fallback(20)
+    assert result["errors"]
+    assert result["files_removed"] == result["bytes_freed"] == 0
+    assert sentinel.read_bytes() == FIXTURE.read_bytes()
+    assert not get_parser("python").parse(sentinel.read_bytes()).root_node.has_error
 
 
 def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -> None:
