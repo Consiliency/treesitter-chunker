@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   duplicates migrate transactionally with complete displaced rows preserved.
   Concrete checker requests evaluate instead of reusing unspecified cached results.
 
+- Chunk and batch extraction failures return status 1 with errors on stderr,
+  including quiet mode. Structured stdout stays parseable; batches retain
+  successful chunks when another selected input fails. Unmapped extensions
+  continue to warn and skip. Configuration warnings, progress and usage errors
+  use stderr; diagnostic input text does not interpret Rich markup.
+
 - Compatibility breaking-change reports preserve independent findings when an
   old timing baseline is zero or unavailable. Percentage slowdown comparisons
   require a positive baseline.
