@@ -11,6 +11,7 @@ Tests cover:
 """
 
 import concurrent.futures
+import hashlib
 import mmap
 import shutil
 import tempfile
@@ -466,16 +467,27 @@ class TestBufferOptimization:
     """Test buffer size optimization and performance."""
 
     @staticmethod
-    def test_file_hash_computation_performance(large_python_file):
-        """Test efficient file hash computation."""
-        start_time = time.time()
-        hash1 = compute_file_hash(large_python_file)
-        default_time = time.time() - start_time
-        start_time = time.time()
-        hash2 = compute_file_hash(large_python_file, chunk_size=1024 * 1024)
-        large_chunk_time = time.time() - start_time
-        assert hash1 == hash2
-        assert large_chunk_time <= default_time * 1.1
+    @pytest.mark.parametrize("chunk_size", [None, 1, 7, 8192, 1024 * 1024])
+    @pytest.mark.parametrize("empty", [False, True])
+    def test_file_hash_matches_sha256_for_chunk_sizes(tmp_path, chunk_size, empty):
+        """Hash every byte independently of read size and elapsed time."""
+        fixture = (
+            Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+        ).read_bytes()
+        tree = get_parser("python").parse(fixture)
+        assert not tree.root_node.has_error and tree.root_node.named_child_count
+        source = b"" if empty else fixture * (8192 // len(fixture) + 2)
+        path = tmp_path / "service.py"
+        path.write_bytes(source)
+        arguments = {} if chunk_size is None else {"chunk_size": chunk_size}
+        expected = hashlib.sha256(source).hexdigest()
+        assert compute_file_hash(path, **arguments) == expected
+        changed = source + b"\n"
+        path.write_bytes(changed)
+        assert (
+            compute_file_hash(path, **arguments) == hashlib.sha256(changed).hexdigest()
+        )
+        assert compute_file_hash(path, **arguments) != expected
 
     @staticmethod
     def test_repeated_streaming_preserves_eager_fixture_chunks():
