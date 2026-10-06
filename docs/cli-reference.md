@@ -135,6 +135,10 @@ JSON emits `[]` when none succeeded; JSONL emits no lines in that case. A batch
 continues after individual failures, emits successful chunks, and returns 1 if
 any selected input failed. Successful empty structured extraction returns 0.
 Unmapped extensions still warn and skip rather than failing extraction.
+`.baml` files select BAML automatically. Install `treesitter-chunker[baml]`
+to parse them; a missing companion produces installation guidance and status 1.
+Implicit ZeroConfigAPI detection separately retains its text fallback when the
+companion is absent.
 `chunk` takes one file;
 use `batch` or `boundary` for a directory.
 

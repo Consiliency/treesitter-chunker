@@ -599,6 +599,30 @@ Failed writes retain the previous live and persisted state. Direct schema-only
 additions are not persisted database records and are discarded by the next
 successful language or grammar version upsert.
 
+Compatibility records have one canonical row per language, grammar version and
+language version, including an unspecified (`None`) language version. Repeated
+writes replace that key's row in write order. Reads prefer an exact concrete
+version over a newer unspecified fallback; a fallback reports its stored `None`,
+so it does not establish compatibility with the requested version. The checker
+treats such a fallback as a cache miss for a concrete request and evaluates the
+request before storing its concrete result. Unspecified checker requests still
+reuse fresh unspecified records.
+
+On the first open of a legacy database, duplicate unspecified records are
+reconciled in one write transaction. The greatest timestamp wins, with the
+greatest original ID breaking ties. Every displaced complete row is preserved
+in `compatibility_results_null_archive` with its original ID. Any migration
+failure rolls back the archive, reconciliation and unique index together.
+That first open needs write access and waits for SQLite's normal write-lock
+timeout; it raises if migration cannot complete. Subsequent migrated opens
+do not acquire this migration write lock. Keep a backup when moving between
+software versions. Partial indexes require SQLite 3.8 or newer.
+
+Canonical history, record counts, date spans and retention exclude the archive;
+the file-size statistic includes all SQLite storage. Cleanup retains the archive,
+and normal replacements do not add migration-history rows. Archive export or
+removal is a separate operator action outside these APIs.
+
 ## Conclusion
 
 The smart grammar management system provides comprehensive tools for managing tree-sitter grammars with intelligent error handling and user guidance. By following the best practices and using the provided tools, you can maintain a healthy and up-to-date grammar ecosystem for optimal code parsing performance.
