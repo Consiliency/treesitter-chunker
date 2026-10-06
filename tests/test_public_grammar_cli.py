@@ -926,6 +926,10 @@ def test_fallback_preserves_link_targets(
         os.utime(link.parent, (old, old))
     result = cli._cleanup_cache_fallback(20)
     assert result["errors"]
+    if location != "namespace":
+        assert any(
+            "Linked cache entry preserved" in error for error in result["errors"]
+        )
     assert result["files_removed"] == result["bytes_freed"] == 0
     assert sentinel.read_bytes() == FIXTURE.read_bytes()
     assert not get_parser("python").parse(sentinel.read_bytes()).root_node.has_error
