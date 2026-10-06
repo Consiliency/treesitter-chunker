@@ -86,14 +86,18 @@ func chunkFile(filePath, language string) ([]Chunk, error) {
 
 ### 3. REST API (HTTP)
 
-Run the API server:
+The REST server lives in the source checkout; the main PyPI wheel includes
+`chunker` and `cli`, but not the `api` package. The `api` extra supplies server
+dependencies. Run from a checkout:
 ```bash
-# Install with API dependencies
-pip install "treesitter-chunker[api]"
+git clone https://github.com/Consiliency/treesitter-chunker.git
+cd treesitter-chunker
+uv sync --locked --all-extras
 
-# Start the server
-python -m api.server
-# Or: uvicorn api.server:app --reload
+# Set a secret token before using filesystem-backed endpoints
+export TREE_SITTER_CHUNKER_API_TOKEN="replace-with-a-secret-token"
+export TREE_SITTER_CHUNKER_API_ROOT="$(pwd)"
+uv run --locked uvicorn api.server:app --host 127.0.0.1 --port 8000
 ```
 
 The API provides these endpoints:

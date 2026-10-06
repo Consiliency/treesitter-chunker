@@ -15,8 +15,8 @@ Tree-sitter Chunker intelligently splits source code into semantic chunks like f
 
 - Python 3.11 or higher
 - Basic command line familiarity
-- ~~A C compiler (for building grammars)~~ **No longer required for basic usage!**
-- ~~Git (for fetching grammar repositories)~~ **No longer required for basic usage!**
+- Network access for first-use parser downloads, or a cache prefetched while online
+- A C compiler only when building custom grammars or installing a BAML source distribution
 
 ## Installation
 
@@ -65,7 +65,7 @@ python -c "import chunker; print('Version:', chunker.__version__)"
 
 # List available languages
 python -c "from chunker.parser import list_languages; print(list_languages())"
-# Should output: ['c', 'cpp', 'javascript', 'python', 'rust']
+# Returns the available safe language names from the pinned parser stack.
 ```
 
 ## Your First Chunking Project

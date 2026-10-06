@@ -27,7 +27,7 @@ before offline BAML parsing, which then needs no network or compiler.
   dependencies and exercised outside the source checkout. Distribution checksums
   are retained with the artifacts and verified before publication.
 
-### Native package status for the v5 candidate
+### Native package status for v5
 
 The owner approved **PyPI-only v5 distribution on 2026-09-11**. Debian, RPM and
 Homebrew distribution is suspended. `.github/workflows/packages.yml` has no tag
@@ -55,9 +55,9 @@ before restoring native release triggers or advertising native installation:
   artifacts before any native asset upload. Review the exact recipe/workflow
   candidate and its platform receipts before restoring distribution.
 
-This suspension resolves the native release-path scope question only. The v5
-candidate has passed the local full-suite matrix but still requires accepted
-review and release gates. It has not been released.
+The main package is published on PyPI; native system packages remain suspended.
+See the [release history](https://github.com/Consiliency/treesitter-chunker/releases)
+for published versions.
 
 ## Parser artifact integrity and offline custody
 
@@ -74,7 +74,7 @@ bundle and extracted grammar hashes alongside the wheel hash, prefetch required
 languages while online, and validate the prepared cache with networking disabled.
 Do not treat a cache directory from a different OS/architecture as interchangeable.
 The accepted binary Linux path uses glibc 2.34 or newer. musl and older-glibc
-source-build/runtime paths have not been accepted for this candidate.
+source-build/runtime paths have not been accepted for the current parser stack.
 
 ## Version Source of Truth
 
@@ -87,13 +87,15 @@ source-build/runtime paths have not been accepted for this candidate.
 
 1. Make sure `main` is green
 2. Choose one `TARGET_VERSION` in `X.Y.Z` form
-3. Bump `pyproject.toml` to `TARGET_VERSION`
+3. Bump `pyproject.toml` and the version mirrors in `chunker/__init__.py` and
+   `chunker/_version.py` to `TARGET_VERSION`; regenerate `uv.lock` with the uv
+   version pinned in `release.yml` and review the diff for unrelated pin changes
 4. Update the top `CHANGELOG.md` entry to `TARGET_VERSION`
 5. Run the focused release tests, hygiene gates, registry gates, and local package checks
 6. Run the repo local-first validation loop plus Linux platform-core and Windows preflight on `win`
 7. Commit the release prep
 8. Confirm the tracked working tree is clean
-9. Create and push a tag such as `v2.2.24`
+9. Create and push the matching `vX.Y.Z` tag
 10. Let `release.yml` build distributions, create the GitHub Release, and publish to PyPI
 
 See `docs/development/RELEASE_CHECKLIST.md` for the maintainer checklist.
@@ -111,7 +113,7 @@ See `docs/development/RELEASE_CHECKLIST.md` for the maintainer checklist.
 Local package building is still useful for validation and troubleshooting.
 
 ```bash
-TARGET_VERSION=2.2.24
+TARGET_VERSION=5.2.0  # Use the version in pyproject.toml
 OUTDIR="dist/phase9-release-check-${TARGET_VERSION}"
 uv run --with toml --all-extras python -m build --outdir "$OUTDIR"
 uv run --with toml --all-extras python -m twine check "$OUTDIR"/*
