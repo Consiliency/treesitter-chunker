@@ -592,6 +592,13 @@ The grammar-management `CompatibilityDatabase` closes its connection after each
 operation, including failures. Cleanup commits both deletions before vacuuming,
 then closes the connection; a failure in either deletion rolls back the transaction.
 
+The separate language-compatibility database updates its live selection schema
+after a successful language or grammar version upsert. Replacements use the
+persisted metadata and record order immediately, matching a cold reopen.
+Failed writes retain the previous live and persisted state. Direct schema-only
+additions are not persisted database records and are discarded by the next
+successful language or grammar version upsert.
+
 Compatibility records have one canonical row per language, grammar version and
 language version, including an unspecified (`None`) language version. Repeated
 writes replace that key's row in write order. Reads prefer an exact concrete
