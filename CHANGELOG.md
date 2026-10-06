@@ -8,8 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Default compatibility checker and grammar tester validators use their supplied
-  manager's cache directory, avoiding implicit home-cache creation. An explicitly
-  supplied validator retains its own chosen cache root.
+  manager's validation cache directory, avoiding additional home caches when that
+  manager is isolated. An explicitly supplied validator retains its own chosen
+  cache root; the manager's user grammar directory is configured separately.
 
 - Grammar compatibility database operations close their SQLite connections on
   return or failure, allowing immediate file removal without garbage collection.

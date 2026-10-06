@@ -65,7 +65,9 @@ def test_compatibility_helpers_confine_cache_roots(
     assert not (home / ".cache" / "treesitter-chunker").exists()
     if supplied is not None:
         assert helper.validator is supplied
-    expected = supplied._cache_dir if supplied is not None else cache
+    expected = tmp_path / "supplied-cache" if supplied is not None else cache
+    if supplied is not None:
+        assert expected != cache
     validators = [
         manager._validator,
         manager._installer._validator,
@@ -77,9 +79,10 @@ def test_compatibility_helpers_confine_cache_roots(
         "python", [source.decode("utf-8")]
     )
     assert success and errors == []
-    candidate = tmp_path / "directory-not-grammar"
-    candidate.mkdir()
-    for validator in [*validators, helper.validator]:
+    assert not helper.validator._validation_cache.exists()
+    for index, validator in enumerate([helper.validator, *validators]):
+        candidate = tmp_path / f"directory-not-grammar-{index}"
+        candidate.mkdir()
         result = validator.validate_grammar(candidate, "python", ValidationLevel.BASIC)
         assert not result.is_valid
         assert result.errors == [f"Grammar path is not a file: {candidate}"]
