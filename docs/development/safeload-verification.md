@@ -23,6 +23,12 @@ or an exact-head independent implementation review.
 
 ## Remaining acceptance work
 
+The focused suite now passes 69 tests after the accepted compilation-date
+precursor in treesitter-chunker#380. The Windows fixture compiler's command
+quoting was checked by compiling an actual DLL on the Windows host; the hosted
+matrix still must verify this implementation revision. These preliminary
+observations do not replace the final runner, mutations or implementation review.
+
 - Obtain an independently reviewed final implementation at the exact commit.
 - Record the required Linux, macOS, and Windows compiled-fixture outcomes.
 - Run and record baseline, killed, path-entered, and restored results for all
