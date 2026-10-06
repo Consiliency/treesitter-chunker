@@ -35,6 +35,11 @@ same compiled grammar to a different timestamp does not create a new release.
 An unknown version does not satisfy numeric compatibility constraints; explicit
 wildcard rules retain their meaning.
 
+Legacy `GrammarCompatibility.compilation_date` is `None` without authentic
+compilation metadata. File modification time cannot supply that date or earn
+a compilation-date bonus in the compatibility score. Explicit dates supplied
+when constructing a `GrammarCompatibility` record remain supported.
+
 ### 🧠 Smart Error Handling
 - **Automatic diagnosis** of grammar issues
 - **Context-aware recommendations** based on error type

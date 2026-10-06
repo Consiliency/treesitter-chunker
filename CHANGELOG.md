@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   descendants, reports linked entries without following them, and counts only
   completed removals. The public fallback remains importable when grammar core
   is unavailable. Core-mode cleanup still needs the treesitter-chunker#323 repair.
+- Legacy grammar compatibility leaves compilation dates unknown when no
+  authentic metadata exists; file modification time is not a compilation date.
+  Unknown compilation dates no longer inflate compatibility scores.
+
 - Repeated streaming is checked against parsed fixture content and bounds.
   Timing variance is informational benchmark data rather than a correctness gate.
 - Grammar analysis no longer invents versions or release dates from file

@@ -26,6 +26,8 @@ PUBLIC_BOUNDARY_DOCS = {
 INTERNAL_DOCS = {
     "development/DEPLOYMENT.md",
     "development/RELEASE_CHECKLIST.md",
+    "development/backlog-inventory-20261006.md",
+    "development/native-validation-contract.md",
 }
 UNTRACKED_INTERNAL_DOCS = {
     "development/xfail-inventory.md",
