@@ -101,7 +101,7 @@ def test_performance_retirement_does_not_touch_ambient_cache(tmp_path, monkeypat
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
     with PerformanceBenchmark() as tester:
         operations = tester.benchmark_grammar_operations()
-        assert operations["status"] == "pass", operations
+        assert operations["status"] == "unsupported", operations
         assert set(operations["operations"]) == {"discover", "get_info"}
         assert operations["errors"] == []
         assert tester.test_scalability()["status"] == "unsupported"
@@ -117,6 +117,57 @@ def test_system_validation_uses_supplied_valid_configuration(tmp_path):
         result = health.validate_configuration()
         assert result["status"] == "valid", result
         assert result["config_items"]["cache"]["max_size_mb"] == 1
+        tester.config._config["cache"]["max_size_mb"] = 0
+        invalid = health.validate_configuration()
+        assert invalid["status"] == "invalid", invalid
+        assert "positive integer" in invalid["errors"][0]
+
+
+def test_local_error_and_cli_checks_preserve_colliding_caller_fixtures(tmp_path):
+    root = tmp_path / "caller"
+    corrupt = root / "grammars" / "corrupt.so"
+    corrupt.parent.mkdir(parents=True)
+    corrupt.write_bytes(FIXTURE.read_bytes())
+    installed = root / "cache" / "grammars" / "user" / "missing_grammar"
+    installed.mkdir(parents=True)
+    sentinel = installed / "caller.py"
+    sentinel.write_bytes(FIXTURE.read_bytes())
+    tester = IntegrationTester(root)
+    assert tester.test_error_scenarios()["status"] == "unsupported"
+    with CLIValidator(test_dir=root) as cli:
+        assert cli.test_all_commands()["status"] == "unsupported"
+    assert corrupt.read_bytes() == FIXTURE.read_bytes()
+    assert sentinel.read_bytes() == FIXTURE.read_bytes()
+
+
+@pytest.mark.parametrize(
+    "component", [CLIValidator, SystemValidator, PerformanceBenchmark]
+)
+def test_default_root_rejects_home_temporary_parent(tmp_path, monkeypatch, component):
+    home = tmp_path / "home"
+    temporary = home / "temporary"
+    temporary.mkdir(parents=True)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    monkeypatch.setattr("tempfile.gettempdir", lambda: str(temporary))
+    with component() as tester:
+        assert not tester.test_dir.resolve().is_relative_to(home.resolve())
+    assert list(home.iterdir()) == [temporary]
+
+
+def test_cli_does_not_count_unexpected_error_output_as_rejection(tmp_path, monkeypatch):
+    import click
+    from chunker.grammar_management.cli import ComprehensiveGrammarCLI
+
+    def broken_info(self, *args, **kwargs):
+        click.echo("Error showing grammar info: AttributeError: stale API")
+        return 1
+
+    monkeypatch.setattr(ComprehensiveGrammarCLI, "info_grammar", broken_info)
+    with CLIValidator(test_dir=tmp_path) as tester:
+        result = tester.test_all_commands()
+        assert result["status"] == "fail", result
+        assert "info" in result["failed"]
+        assert "info" not in result["passed"]
 
 
 def test_complete_suite_returns_truthful_results_and_opt_in_report(
@@ -128,6 +179,9 @@ def test_complete_suite_returns_truthful_results_and_opt_in_report(
     sentinel.write_bytes(FIXTURE.read_bytes())
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "config"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(home / "cache"))
     root = tmp_path / "caller-root"
     root.mkdir()
     (root / "sentinel").write_text("preserve", encoding="utf-8")
@@ -143,7 +197,8 @@ def test_complete_suite_returns_truthful_results_and_opt_in_report(
 
 
 @pytest.mark.parametrize(
-    "fault", ["missing_result", "malformed_result", "crash", "timeout"]
+    "fault",
+    ["missing_result", "malformed_result", "invalid_status", "crash", "timeout"],
 )
 def test_real_worker_failure_is_reaped_before_private_root_cleanup(
     tmp_path, monkeypatch, fault
@@ -159,6 +214,7 @@ def test_real_worker_failure_is_reaped_before_private_root_cleanup(
     programs = {
         "missing_result": "pass",
         "malformed_result": "Path(sys.argv[1]).write_text('{', encoding='utf-8')",
+        "invalid_status": 'Path(sys.argv[1]).write_text(\'{"operation":"workflow","result":{"status":[]}}\', encoding=\'utf-8\')',
         "crash": "os._exit(7)",
         "timeout": "time.sleep(30)",
     }
@@ -232,6 +288,43 @@ def test_complete_suite_native_fixture_and_owned_cleanup(tmp_path, monkeypatch):
 def test_explicit_report_failure_is_visible(tmp_path):
     with pytest.raises(FileNotFoundError):
         run_complete_test_suite(report_path=tmp_path / "missing-parent" / "report.json")
+
+
+def test_registry_benchmark_does_not_load_copied_grammar_in_parent(
+    tmp_path, monkeypatch
+):
+    import tree_sitter_language_pack as provider
+    from chunker.grammar_management import core
+
+    assert (
+        not provider.get_parser("python")
+        .parse(FIXTURE.read_bytes())
+        .root_node.has_error
+    )
+    libraries = list(Path(provider.cache_dir()).glob("*tree_sitter_python.*"))
+    assert len(libraries) == 1
+    manager = GrammarManager(
+        user_dir=tmp_path / "user",
+        package_dir=tmp_path / "package",
+        cache_dir=tmp_path / "cache",
+    )
+    copied = tmp_path / "user" / "libpython.so"
+    copied.write_bytes(libraries[0].read_bytes())
+    assert manager._registry.get_language_info("python") is not None
+    calls = []
+
+    def forbidden_parent_load(*args, **kwargs):
+        calls.append(args)
+        raise AssertionError("The benchmark must not enter the native loader")
+
+    monkeypatch.setattr(core, "load_compiled_grammar", forbidden_parent_load)
+    with PerformanceBenchmark(manager) as tester:
+        result = tester.benchmark_grammar_operations()
+        assert result["status"] == "unsupported", result
+        assert result["operations"]["get_info"]["samples"] == 3
+        assert result["errors"] == []
+    assert calls == []
+    copied.unlink()
 
 
 def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(

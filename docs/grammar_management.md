@@ -540,6 +540,13 @@ directories by default. `CLIValidator`, `SystemValidator` and
 `PerformanceBenchmark` support context managers and a keyword-only `test_dir`.
 They preserve a supplied root and use supplied manager/configuration objects.
 Cleanup errors are visible; use `cleanup()` when not using a context manager.
+Default roots use a temporary parent outside operator home; if the normal
+temporary directory is under home, the helper uses `/tmp` on POSIX or the Windows
+system temporary directory. Failure to create that root is reported rather than
+falling back to home. CLI negative checks use a private cache so colliding
+caller-owned grammar names are not removed. Metadata timing reads the registry
+without loading a grammar; native validation remains explicitly unsupported in
+that benchmark.
 
 `run_complete_test_suite()` returns observations without writing an operator-home
 report. Supply `sample_path`, `language` and `grammar_path` for a real local

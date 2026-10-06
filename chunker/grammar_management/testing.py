@@ -3,9 +3,11 @@ Integration and testing module for Phase 1.8 grammar management system.
 """
 
 import contextlib
+import ctypes
 import io
 import json
 import logging
+import os
 import shutil
 import subprocess
 import sys
@@ -38,7 +40,24 @@ class IntegrationTester:
     def __init__(self, test_dir: Path | None = None):
         """Initialize integration tester."""
         self._owns_test_dir = test_dir is None
-        self.test_dir = test_dir or Path(tempfile.mkdtemp(prefix="grammar_test_"))
+        if test_dir is None:
+            temporary_parent = Path(tempfile.gettempdir()).resolve()
+            home = Path.home().resolve()
+            if temporary_parent.is_relative_to(home):
+                temporary_parent = (
+                    Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "Temp"
+                    if sys.platform == "win32"
+                    else Path("/tmp")
+                ).resolve()
+            if temporary_parent.is_relative_to(home):
+                raise ValueError(
+                    "Grammar self-tests require a temporary parent outside home"
+                )
+            self.test_dir = Path(
+                tempfile.mkdtemp(prefix="grammar_test_", dir=temporary_parent)
+            )
+        else:
+            self.test_dir = test_dir
         self.test_results = {}
         self.performance_metrics = {}
         self.test_languages = ["python", "javascript", "rust", "go", "java"]
@@ -298,6 +317,14 @@ class IntegrationTester:
         return results
 
     def test_error_scenarios(self) -> dict[str, Any]:
+        """Keep even corrupt-artifact loader checks in a short-lived worker."""
+        result = _run_test_worker(
+            self.test_dir, "error_scenarios", None, "python", None
+        )
+        self.test_results["error_scenarios"] = result
+        return result
+
+    def _test_error_scenarios_local(self) -> dict[str, Any]:
         """Observe local rejection; retire unimplemented simulations."""
         results = {
             "status": "unsupported",
@@ -328,20 +355,42 @@ class IntegrationTester:
 
     def _test_invalid_language_error(self) -> bool:
         """Reject a missing local artifact without installation."""
-        result = self.validator.validate_grammar(
-            self.grammar_dir / "nonexistent_language.so", "nonexistent_language"
-        )
-        return not result.is_valid and bool(result.errors)
+        from .core import ValidationLevel
+
+        with tempfile.TemporaryDirectory(
+            prefix="missing-fixture-", dir=self.test_dir
+        ) as operation:
+            missing = Path(operation) / "missing.so"
+            result = GrammarValidator(Path(operation) / "cache").validate_grammar(
+                missing, "nonexistent_language", ValidationLevel.BASIC
+            )
+            try:
+                missing.stat()
+            except FileNotFoundError as error:
+                expected = f"Validation error: {error}"
+            else:
+                return False
+            return not result.is_valid and result.errors == [expected]
 
     def _test_corrupt_grammar_error(self) -> bool:
         """Reject actual corrupt bytes through the current validator."""
-        corrupt_file = self.grammar_dir / "corrupt.so"
-        corrupt_file.write_bytes(b"corrupt data")
-        try:
-            result = self.validator.validate_grammar(corrupt_file, "corrupt")
-            return not result.is_valid and bool(result.errors)
-        finally:
-            corrupt_file.unlink()
+        with tempfile.TemporaryDirectory(
+            prefix="corrupt-fixture-", dir=self.test_dir
+        ) as operation:
+            corrupt_file = Path(operation) / "corrupt.so"
+            corrupt_file.write_bytes(b"corrupt data")
+            result = GrammarValidator(Path(operation) / "cache").validate_grammar(
+                corrupt_file, "corrupt"
+            )
+            try:
+                ctypes.CDLL(str(corrupt_file))
+            except OSError as error:
+                expected = (
+                    f"ABI compatibility issue: ABI compatibility check failed: {error}"
+                )
+            else:
+                return False
+            return not result.is_valid and result.errors == [expected]
 
     def test_performance_under_load(self) -> dict[str, Any]:
         """Concurrent load claims need a controlled workload and join budget."""
@@ -368,14 +417,24 @@ class CLIValidator:
         self.test_results = {}
         self._environment = IntegrationTester(test_dir)
         self.test_dir = self._environment.test_dir
+        self._cli_operation = None
         try:
-            self.cli = ComprehensiveGrammarCLI(cache_dir=self._environment.cache_dir)
+            self._cli_operation = tempfile.TemporaryDirectory(
+                prefix="cli-validator-", dir=self.test_dir
+            )
+            self.cli = ComprehensiveGrammarCLI(
+                cache_dir=Path(self._cli_operation.name) / "cache"
+            )
         except Exception:
             self.cleanup()
             raise
 
     def cleanup(self) -> None:
-        self._environment.cleanup()
+        try:
+            if self._cli_operation is not None:
+                self._cli_operation.cleanup()
+        finally:
+            self._environment.cleanup()
 
     def __enter__(self) -> "CLIValidator":
         return self
@@ -397,13 +456,24 @@ class CLIValidator:
                 "build": "No local generation fixture",
             },
         }
-        for name, operation, expected in (
-            ("list", lambda: self.cli.list_grammars(output_format="json"), 1),
-            ("info", lambda: self.cli.info_grammar("missing_grammar"), 1),
+        for name, operation, expected, diagnostic in (
+            (
+                "list",
+                lambda: self.cli.list_grammars(output_format="json"),
+                1,
+                "No grammars found",
+            ),
+            (
+                "info",
+                lambda: self.cli.info_grammar("missing_grammar"),
+                1,
+                "Grammar for 'missing_grammar' not found",
+            ),
             (
                 "remove",
                 lambda: self.cli.remove_grammar("missing_grammar", confirm=False),
                 1,
+                "No user-installed grammar found for 'missing_grammar'",
             ),
             (
                 "test",
@@ -411,8 +481,14 @@ class CLIValidator:
                     "missing_grammar", str(self.test_dir / "missing.py")
                 ),
                 1,
+                "Test file not found:",
             ),
-            ("validate", lambda: self.cli.validate_grammar("missing_grammar"), 1),
+            (
+                "validate",
+                lambda: self.cli.validate_grammar("missing_grammar"),
+                1,
+                "Grammar for 'missing_grammar' not found",
+            ),
         ):
             results["commands_tested"].append(name)
             output = io.StringIO()
@@ -424,7 +500,11 @@ class CLIValidator:
                     "output": output.getvalue(),
                 }
                 results[
-                    "passed" if code == expected and output.getvalue() else "failed"
+                    (
+                        "passed"
+                        if code == expected and diagnostic in output.getvalue()
+                        else "failed"
+                    )
                 ].append(name)
             except Exception as error:
                 results["failed"].append(f"{name}: {error}")
@@ -676,7 +756,7 @@ class PerformanceBenchmark:
     def benchmark_grammar_operations(self) -> dict[str, Any]:
         """Measure current metadata APIs and report actual failures."""
         results = {
-            "status": "pass",
+            "status": "unsupported",
             "operations": {},
             "errors": [],
             "timestamp": datetime.now().isoformat(),
@@ -684,7 +764,10 @@ class PerformanceBenchmark:
         }
         for name, operation in (
             ("discover", self.grammar_manager.discover_available_grammars),
-            ("get_info", lambda: self.grammar_manager.get_grammar_metadata("python")),
+            (
+                "get_info",
+                lambda: self.grammar_manager._registry.get_language_info("python"),
+            ),
         ):
             times = []
             for _ in range(3):
@@ -836,17 +919,32 @@ def _run_test_worker(
             if not isinstance(envelope, dict) or envelope.get("operation") != operation:
                 raise ValueError("Worker result does not match the operation")
             result = envelope.get("result")
-            if not isinstance(result, dict) or result.get("status") not in {
-                "pass",
-                "fail",
-                "unsupported",
-            }:
+            if (
+                not isinstance(result, dict)
+                or not isinstance(result.get("status"), str)
+                or result["status"]
+                not in {
+                    "pass",
+                    "fail",
+                    "unsupported",
+                }
+            ):
                 raise ValueError("Worker result has no valid observed status")
             if operation == "workflow":
                 if not isinstance(result.get("errors"), list) or not isinstance(
                     result.get("workflows_tested"), list
                 ):
                     raise ValueError("Worker workflow result is incomplete")
+            elif operation == "error_scenarios":
+                if not all(
+                    isinstance(result.get(field), list)
+                    for field in (
+                        "scenarios_tested",
+                        "recovery_successful",
+                        "recovery_failed",
+                    )
+                ) or not isinstance(result.get("unsupported"), dict):
+                    raise ValueError("Worker scenario result is incomplete")
             elif not isinstance(result.get("summary"), dict) or not isinstance(
                 result.get("test_suites"), dict
             ):
@@ -862,6 +960,10 @@ def _run_test_worker(
                 "status": "fail",
                 "errors": [f"Fixture worker failed: {error}"],
                 "workflows_tested": [],
+                "scenarios_tested": [],
+                "recovery_successful": [],
+                "recovery_failed": [f"Fixture worker failed: {error}"],
+                "unsupported": {},
                 "test_suites": {},
                 "summary": {
                     "total_tests": 1,
@@ -887,6 +989,8 @@ def _test_worker_main(request_path: str, response_path: str) -> None:
         result = _complete_suite_local(
             environment, sample, request["language"], grammar
         )
+    elif request["operation"] == "error_scenarios":
+        result = environment._test_error_scenarios_local()
     else:
         raise ValueError("Unknown fixture worker operation")
     Path(response_path).write_text(
@@ -923,7 +1027,7 @@ def _complete_suite_local(
             "integration": {
                 "workflow": workflow,
                 "cross_component": environment.test_cross_component_integration(),
-                "error_scenarios": environment.test_error_scenarios(),
+                "error_scenarios": environment._test_error_scenarios_local(),
             },
             "cli": {
                 "commands": cli.test_all_commands(),
