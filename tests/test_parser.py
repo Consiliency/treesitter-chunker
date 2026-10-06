@@ -60,7 +60,7 @@ class TestParserAPI:
     @classmethod
     def test_parser_with_config(cls):
         """Test parser with configuration."""
-        config = ParserConfig(timeout_ms=1000)
+        config = ParserConfig()
         parser = get_parser("python", config)
         assert isinstance(parser, Parser)
 

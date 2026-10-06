@@ -254,10 +254,20 @@ class ParserFactory:
                 parser.set_timeout_micros(timeout_micros)
             elif hasattr(parser, "timeout_micros"):
                 parser.timeout_micros = timeout_micros
+            else:
+                raise ParserConfigError(
+                    "timeout_ms",
+                    config.timeout_ms,
+                    "This parser runtime does not support timeout_ms; omit this option",
+                )
+        if config.logger is not None:
+            raise ParserConfigError(
+                "logger",
+                config.logger,
+                "ParserConfig.logger is not supported; configure Python application logging instead",
+            )
         if config.included_ranges is not None:
             parser.included_ranges = config.included_ranges
-        if config.logger is not None:
-            pass
 
     def _validate_request(
         self,

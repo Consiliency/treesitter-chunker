@@ -156,7 +156,7 @@ class TestParserFactory:
     def test_parser_with_config(self, registry):
         """Test parser creation with configuration."""
         factory = ParserFactory(registry)
-        config = ParserConfig(timeout_ms=1000)
+        config = ParserConfig()
         parser = factory.get_parser("python", config)
         assert isinstance(parser, Parser)
         parser2 = factory.get_parser("python", config)
@@ -262,7 +262,8 @@ class TestParserFactory:
             pass
 
         parser_without_timeout_api = ParserWithoutTimeoutApi()
-        ParserFactory._apply_config(parser_without_timeout_api, config)
+        with pytest.raises(ParserConfigError, match="does not support timeout_ms"):
+            ParserFactory._apply_config(parser_without_timeout_api, config)
 
 
 if __name__ == "__main__":

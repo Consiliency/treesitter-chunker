@@ -262,14 +262,12 @@ class TestParserConfiguration:
     """Test parser configuration across languages."""
 
     @classmethod
-    def test_timeout_configuration(cls):
-        """Test timeout configuration for all languages."""
-        languages = list_languages()
+    def test_unsupported_timeout_configuration(cls):
+        """Unsupported timeouts are explicitly rejected on the pinned runtime."""
         config = ParserConfig(timeout_ms=100)
-        for lang in languages:
-            parser = get_parser(lang, config)
-            tree = parser.parse(b"test")
-            assert tree is not None
+        for lang in ["python", "javascript"]:
+            with pytest.raises(ParserConfigError, match="does not support timeout_ms"):
+                get_parser(lang, config)
 
     @classmethod
     def test_invalid_configurations(cls):
