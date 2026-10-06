@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Grammar downloads close the temporary archive's creation handle before
+  downloading, verifying or extracting it, allowing Windows to reopen and
+  remove the staging file after success or failure.
+
 - In fallback mode, public grammar cleanup preserves entries with fresh
   descendants, reports linked entries without following them, and counts only
   completed removals. The public fallback remains importable when grammar core
