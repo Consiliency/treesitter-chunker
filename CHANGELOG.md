@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   above five seconds, while preserving independent validation and sample
   failures. Moderate timing thresholds retain their existing behavior.
 
+- Language-compatibility database upserts refresh live metadata and selection
+  order to match persisted records, including same-version replacements.
+
 - Cached parallel quality checks verify real persisted chunks and warm cache
   reuse without a load-sensitive one-second timing limit.
 
