@@ -37,6 +37,15 @@ CREATE TABLE compatibility_results (
     timestamp REAL NOT NULL,
     UNIQUE(language, grammar_version, language_version)
 );
+CREATE TABLE test_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, language TEXT NOT NULL,
+    grammar_version TEXT NOT NULL, test_type TEXT NOT NULL, success BOOLEAN NOT NULL,
+    duration REAL NOT NULL, memory_usage REAL, error_message TEXT,
+    sample_results TEXT, performance_metrics TEXT, timestamp REAL NOT NULL
+);
+CREATE TABLE grammar_metadata (
+    language TEXT PRIMARY KEY, last_updated REAL, available_versions TEXT, metadata TEXT
+);
 """
 
 
@@ -138,7 +147,7 @@ def legacy_database(tmp_path, parsed_results):
     valid, invalid = parsed_results
     now = time.time()
     observations = [
-        replace(valid, timestamp=now - 100 * 86400),
+        replace(valid, timestamp=now - 150 * 86400),
         replace(invalid, timestamp=now - 10),
         replace(valid, timestamp=now - 50),
         replace(valid, timestamp=now - 10),
@@ -179,14 +188,7 @@ def test_legacy_migration_preserves_complete_rows_and_canonical_retention(
     path, original = legacy_database
     expected_archive = original[:3]
     expected_canonical = original[3:]
-    database = CompatibilityDatabase(path)
     with closing(sqlite3.connect(path)) as connection, connection:
-        canonical = connection.execute(
-            "SELECT * FROM compatibility_results ORDER BY id"
-        ).fetchall()
-        archive = connection.execute(
-            "SELECT * FROM compatibility_results_null_archive ORDER BY id"
-        ).fetchall()
         connection.execute(
             "INSERT INTO grammar_metadata (language, metadata) VALUES (?, ?)",
             ("python", json.dumps({"root_type": "module"})),
@@ -195,6 +197,25 @@ def test_legacy_migration_preserves_complete_rows_and_canonical_retention(
             "INSERT INTO test_results (language, grammar_version, test_type, success, duration, timestamp) "
             "VALUES ('python', 'fixture', 'parse', 1, 0.01, ?)",
             (time.time() - 100 * 86400,),
+        )
+        metadata_before = connection.execute(
+            "SELECT * FROM grammar_metadata"
+        ).fetchall()
+        tests_before = connection.execute("SELECT * FROM test_results").fetchall()
+    database = CompatibilityDatabase(path)
+    with closing(sqlite3.connect(path)) as connection, connection:
+        canonical = connection.execute(
+            "SELECT * FROM compatibility_results ORDER BY id"
+        ).fetchall()
+        archive = connection.execute(
+            "SELECT * FROM compatibility_results_null_archive ORDER BY id"
+        ).fetchall()
+        assert (
+            connection.execute("SELECT * FROM grammar_metadata").fetchall()
+            == metadata_before
+        )
+        assert (
+            connection.execute("SELECT * FROM test_results").fetchall() == tests_before
         )
     assert canonical == expected_canonical
     assert archive == expected_archive
