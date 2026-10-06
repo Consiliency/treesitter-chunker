@@ -145,7 +145,7 @@ class CompatibilityChecker:
         """
         self.grammar_manager = grammar_manager
         self.database = database
-        self.validator = validator or GrammarValidator()
+        self.validator = validator or GrammarValidator(grammar_manager._cache_dir)
 
         # Language version patterns for detection
         self.version_patterns = {
@@ -755,7 +755,7 @@ class GrammarTester:
             validator: Optional validator with an isolated cache directory
         """
         self.grammar_manager = grammar_manager
-        self.validator = validator or GrammarValidator()
+        self.validator = validator or GrammarValidator(grammar_manager._cache_dir)
 
         # Built-in test suites
         self.test_suites = {

@@ -891,6 +891,15 @@
           "by": "codex-plan-detailed",
           "metadata": {},
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T18:20:03Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "owner_authorized_roadmap_execution": true,
+            "shared_module_predecessor": "treesitter-chunker#394 merged"
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -898,10 +907,10 @@
       "reflection_ref": null,
       "roadmap_ref": null,
       "slug": "helper-cache-root-136",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Confine compatibility helper caches for treesitter-chunker#136",
       "type": "detailed",
-      "updated_at": "2026-10-06T18:06:45.584436+00:00"
+      "updated_at": "2026-10-06T18:20:03Z"
     }
   ],
   "schema_version": 1

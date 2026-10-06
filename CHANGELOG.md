@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Default compatibility checker and grammar tester validators use their supplied
+  manager's cache directory, avoiding implicit home-cache creation. An explicitly
+  supplied validator retains its own chosen cache root.
+
 - Grammar compatibility database operations close their SQLite connections on
   return or failure, allowing immediate file removal without garbage collection.
   Cleanup commits its deletions before vacuuming within the connection lifetime.

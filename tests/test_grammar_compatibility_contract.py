@@ -2,6 +2,7 @@
 
 from dataclasses import asdict
 import importlib.util
+import json
 import shutil
 import subprocess
 import sys
@@ -26,11 +27,71 @@ from chunker.grammar_management.compatibility import (
 from chunker.grammar_management.core import (
     GrammarManager,
     GrammarValidator,
+    ValidationLevel,
     load_compiled_grammar,
 )
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.mark.parametrize(
+    "helper_type", [CompatibilityChecker, GrammarTester], ids=["checker", "tester"]
+)
+@pytest.mark.parametrize(
+    "supplied_validator", [False, True], ids=["default", "supplied"]
+)
+def test_compatibility_helpers_confine_cache_roots(
+    tmp_path, monkeypatch, helper_type, supplied_validator
+):
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_bytes()
+    tree = get_parser("python").parse(source)
+    assert tree.root_node.child_count > 0
+    assert not tree.root_node.has_error
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cache = tmp_path / "grammar-cache"
+    manager = GrammarManager(
+        user_dir=tmp_path / "user", package_dir=tmp_path / "package", cache_dir=cache
+    )
+    supplied = (
+        GrammarValidator(tmp_path / "supplied-cache") if supplied_validator else None
+    )
+    helper = helper_type(manager, validator=supplied)
+    assert not (home / ".cache" / "treesitter-chunker").exists()
+    if supplied is not None:
+        assert helper.validator is supplied
+    expected = supplied._cache_dir if supplied is not None else cache
+    validators = [
+        manager._validator,
+        manager._installer._validator,
+        manager._registry._installer._validator,
+    ]
+    assert all(validator._cache_dir == cache for validator in validators)
+    assert helper.validator._cache_dir == expected
+    success, errors = helper.validator.test_parse_samples(
+        "python", [source.decode("utf-8")]
+    )
+    assert success and errors == []
+    candidate = tmp_path / "directory-not-grammar"
+    candidate.mkdir()
+    for validator in [*validators, helper.validator]:
+        result = validator.validate_grammar(candidate, "python", ValidationLevel.BASIC)
+        assert not result.is_valid
+        assert result.errors == [f"Grammar path is not a file: {candidate}"]
+        records = json.loads(validator._validation_cache.read_text(encoding="utf-8"))
+        assert records
+        assert all(
+            not record["is_valid"] and record["errors"] == result.errors
+            for record in records.values()
+        )
+    assert not (home / ".cache" / "treesitter-chunker").exists()
+    assert (cache / "validation_cache.json").is_file()
+    assert (expected / "validation_cache.json").is_file()
 
 
 @pytest.mark.parametrize(
