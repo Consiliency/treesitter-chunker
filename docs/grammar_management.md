@@ -570,6 +570,8 @@ operation root; successful validation is recorded separately.
 The compatibility-database capability check initializes a private SQLite file
 in a bounded worker, reaped before cleanup. It does not inspect or modify a
 caller's existing compatibility database.
+Timeout cleanup also waits for the interpreter behind a Windows virtual-environment
+launcher before deleting the worker's files.
 
 ## Conclusion
 

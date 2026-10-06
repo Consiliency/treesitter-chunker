@@ -916,15 +916,30 @@ def _run_test_worker(
         ]
         try:
             # CLI printing cannot pollute the result or grow captured pipes.
-            # subprocess.run kills and reaps a timed-out direct worker.
-            subprocess.run(
+            # Windows venv launchers can have a separate interpreter child.
+            with subprocess.Popen(
                 command,
                 cwd=root,
-                check=True,
-                timeout=timeout,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-            )
+            ) as process:
+                try:
+                    returncode = process.wait(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    children = []
+                    with contextlib.suppress(psutil.NoSuchProcess):
+                        children = psutil.Process(process.pid).children(recursive=True)
+                    for child in reversed(children):
+                        with contextlib.suppress(psutil.NoSuchProcess):
+                            child.kill()
+                    process.kill()
+                    process.wait()
+                    _, alive = psutil.wait_procs(children, timeout=5)
+                    if alive:
+                        raise RuntimeError("Fixture interpreter did not exit")
+                    raise
+                if returncode:
+                    raise subprocess.CalledProcessError(returncode, command)
             with response.open("rb") as result_file:
                 payload = result_file.read(1024 * 1024 + 1)
             if len(payload) > 1024 * 1024:

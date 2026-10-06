@@ -219,7 +219,14 @@ def test_complete_suite_returns_truthful_results_and_opt_in_report(
 
 @pytest.mark.parametrize(
     "fault",
-    ["missing_result", "malformed_result", "invalid_status", "crash", "timeout"],
+    [
+        "missing_result",
+        "malformed_result",
+        "invalid_status",
+        "crash",
+        "timeout",
+        "launcher_timeout",
+    ],
 )
 def test_real_worker_failure_is_reaped_before_private_root_cleanup(
     tmp_path, monkeypatch, fault
@@ -231,7 +238,7 @@ def test_real_worker_failure_is_reaped_before_private_root_cleanup(
     sentinel = root / "sentinel"
     sentinel.write_bytes(FIXTURE.read_bytes())
     pid_file = tmp_path / "worker.pid"
-    real_run = subprocess.run
+    real_popen = subprocess.Popen
     programs = {
         "missing_result": "pass",
         "malformed_result": "Path(sys.argv[1]).write_text('{', encoding='utf-8')",
@@ -242,19 +249,34 @@ def test_real_worker_failure_is_reaped_before_private_root_cleanup(
 
     def faulty_worker(command, **kwargs):
         program = (
-            "import os, sys, time; from pathlib import Path; "
-            "Path(sys.argv[2]).write_text(str(os.getpid())); " + programs[fault]
+            (
+                "import os, sys, time; from pathlib import Path; "
+                "Path(sys.argv[2]).write_text(str(os.getpid())); " + programs[fault]
+            )
+            if fault != "launcher_timeout"
+            else (
+                "import subprocess, sys, time; "
+                "subprocess.Popen([sys.executable, '-I', '-c', "
+                '"import os,time;from pathlib import Path;'
+                "Path(__import__('sys').argv[1]).write_text(str(os.getpid()));time.sleep(30)\", "
+                "sys.argv[2]]); time.sleep(30)"
+            )
         )
-        return real_run(
+        return real_popen(
             [sys.executable, "-I", "-c", program, command[-1], str(pid_file)],
             **kwargs,
         )
 
     monkeypatch.setattr(
-        "chunker.grammar_management.testing.subprocess.run", faulty_worker
+        "chunker.grammar_management.testing.subprocess.Popen", faulty_worker
     )
     result = _run_test_worker(
-        root, "workflow", None, "python", None, timeout=5 if fault == "timeout" else 10
+        root,
+        "workflow",
+        None,
+        "python",
+        None,
+        timeout=5 if fault in {"timeout", "launcher_timeout"} else 10,
     )
     assert result["status"] == "fail", result
     assert result["errors"]
@@ -264,9 +286,16 @@ def test_real_worker_failure_is_reaped_before_private_root_cleanup(
         "invalid_status": "no valid observed status",
         "crash": "exit status 7",
         "timeout": "timed out",
+        "launcher_timeout": "timed out",
     }[fault]
     assert cause in result["errors"][0], result
-    assert not psutil.pid_exists(int(pid_file.read_text()))
+    worker_pid = int(pid_file.read_text())
+    worker_alive = psutil.pid_exists(worker_pid)
+    if worker_alive:
+        worker = psutil.Process(worker_pid)
+        worker.kill()
+        worker.wait(timeout=5)
+    assert not worker_alive, "Actual interpreter must exit before worker cleanup"
     assert list(root.iterdir()) == [sentinel]
     assert sentinel.read_bytes() == FIXTURE.read_bytes()
 
@@ -277,7 +306,8 @@ def test_complete_suite_native_fixture_and_owned_cleanup(tmp_path, monkeypatch):
     suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
     grammar = ROOT / "build" / f"python{suffix}"
     if not grammar.exists():
-        grammar = Path(cache_dir()) / f"libtree_sitter_python{suffix}"
+        prefix = "tree_sitter_" if sys.platform == "win32" else "libtree_sitter_"
+        grammar = Path(cache_dir()) / f"{prefix}python{suffix}"
     assert grammar.is_file()
     home = tmp_path / "isolated-home"
     home.mkdir()
@@ -473,7 +503,8 @@ def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
     suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
     grammar_path = ROOT / "build" / f"python{suffix}"
     if not grammar_path.exists():
-        grammar_path = Path(cache_dir()) / f"libtree_sitter_python{suffix}"
+        prefix = "tree_sitter_" if sys.platform == "win32" else "libtree_sitter_"
+        grammar_path = Path(cache_dir()) / f"{prefix}python{suffix}"
     assert grammar_path.exists()
     assert (
         not load_compiled_grammar(grammar_path, "python")
