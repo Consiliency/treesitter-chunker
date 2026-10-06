@@ -359,18 +359,12 @@
       "roadmap_sha256": "997648400ec040bfa6fbf1581c4f28ef1f82c7b786e133ea6771edea15780544"
     },
     {
-      "acceptance_criteria_count": 2,
+      "acceptance_criteria_count": 0,
       "created_at": "2026-10-06T08:21:44.113338+00:00",
       "file": "plans/phase-plan-v3-CLEANUP.md",
       "handoff_ref": ".dev-skills/handoffs/codex-plan-phase/20261006T082144Z-CLEANUP-plan.md",
-      "if_gates_produced": [
-        "IF-0-CLEANUP-1"
-      ],
-      "lanes": [
-        "SL-1",
-        "SL-2",
-        "SL-3"
-      ],
+      "if_gates_produced": [],
+      "lanes": [],
       "lifecycle": [
         {
           "at": "2026-10-06T08:21:44.113338+00:00",
@@ -410,7 +404,20 @@
         "phase_plan_sha256": "49d84415bb08bd0204462f4a56b1660674b44725fa9299db83439e1818505401",
         "reason": "final CLEANUP contract round; independent slice routing and documentation hygiene; no implementation IF produced"
       },
-      "roadmap_sha256": "997648400ec040bfa6fbf1581c4f28ef1f82c7b786e133ea6771edea15780544"
+      "roadmap_sha256": "997648400ec040bfa6fbf1581c4f28ef1f82c7b786e133ea6771edea15780544",
+      "retired_proposal_metadata": {
+        "acceptance_criteria_count": 2,
+        "accepted": false,
+        "declared_if_gates": [
+          "IF-0-CLEANUP-1"
+        ],
+        "lanes": [
+          "SL-1",
+          "SL-2",
+          "SL-3"
+        ],
+        "preserved_commit": "69606f61c9b4898378b0e446828d4a2f45dce6fd"
+      }
     },
     {
       "acceptance_criteria_count": 3,
