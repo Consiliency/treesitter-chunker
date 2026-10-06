@@ -639,7 +639,11 @@ class SystemValidator:
 
         # Check compatibility database
         try:
-            CompatibilityDatabase(self.config.config_dir / "compatibility.db")
+            observation = _run_test_worker(
+                self.test_dir, "compatibility_database", None, "python", None
+            )
+            if observation["status"] != "pass":
+                raise RuntimeError(str(observation.get("errors", [])))
             results["components"]["compatibility_db"] = "healthy"
         except Exception as e:
             logger.debug("Compatibility DB health check failed: %s", e)
@@ -955,6 +959,9 @@ def _run_test_worker(
                     )
                 ) or not isinstance(result.get("unsupported"), dict):
                     raise ValueError("Worker scenario result is incomplete")
+            elif operation == "compatibility_database":
+                if result.get("components") != {"compatibility_db": "healthy"}:
+                    raise ValueError("Worker database observation is incomplete")
             elif not isinstance(result.get("summary"), dict) or not isinstance(
                 result.get("test_suites"), dict
             ):
@@ -1001,6 +1008,15 @@ def _test_worker_main(request_path: str, response_path: str) -> None:
         )
     elif request["operation"] == "error_scenarios":
         result = environment._test_error_scenarios_local()
+    elif request["operation"] == "compatibility_database":
+        database = CompatibilityDatabase(root / "compatibility.db")
+        statistics = database.get_database_stats()
+        if any(
+            statistics.get(table) != 0
+            for table in ("compatibility_results", "test_results", "grammar_metadata")
+        ):
+            raise ValueError(f"Private database initialization failed: {statistics}")
+        result = {"status": "pass", "components": {"compatibility_db": "healthy"}}
     else:
         raise ValueError("Unknown fixture worker operation")
     Path(response_path).write_text(

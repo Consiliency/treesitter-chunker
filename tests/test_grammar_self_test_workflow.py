@@ -3,6 +3,7 @@
 import json
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
@@ -400,6 +401,49 @@ def test_cross_component_observation_does_not_load_registered_native_fixture(
     assert calls == []
     tester.cleanup()
     grammar.unlink()
+
+
+def test_database_health_probe_reaps_worker_and_preserves_caller_database(
+    tmp_path, monkeypatch
+):
+    from contextlib import closing
+
+    root = tmp_path / "caller-root"
+    environment = IntegrationTester(root)
+    database_path = environment.config.config_dir / "compatibility.db"
+    with closing(sqlite3.connect(database_path)) as connection:
+        connection.execute("CREATE TABLE caller_data (value TEXT)")
+        connection.execute("INSERT INTO caller_data VALUES ('preserve')")
+        connection.commit()
+    original = database_path.read_bytes()
+    calls = []
+
+    def forbidden_parent_database(*args, **kwargs):
+        calls.append(args)
+        raise AssertionError("Database capability probes must run in the worker")
+
+    monkeypatch.setattr(
+        "chunker.grammar_management.testing.CompatibilityDatabase",
+        forbidden_parent_database,
+    )
+    with SystemValidator(
+        environment.grammar_manager, environment.config, test_dir=root
+    ) as health:
+        result = health.check_system_health()
+        assert result["status"] == "healthy", result
+        assert result["components"]["compatibility_db"] == "healthy"
+        assert calls == []
+        assert database_path.read_bytes() == original
+        assert not any(
+            Path(file.path).name == "compatibility.db"
+            for file in psutil.Process().open_files()
+        )
+        assert not list(root.glob("worker-*"))
+    with closing(sqlite3.connect(database_path)) as connection:
+        assert connection.execute("SELECT value FROM caller_data").fetchall() == [
+            ("preserve",)
+        ]
+    environment.cleanup()
 
 
 def test_relative_caller_root_runs_real_worker_fixture(tmp_path, monkeypatch):
