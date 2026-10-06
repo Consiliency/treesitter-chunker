@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   manager is isolated. An explicitly supplied validator retains its own chosen
   cache root; the manager's user grammar directory is configured separately.
 
+- Successful plugin replacement evicts the prior cached instance, so subsequent
+  parsing invokes the new plugin without requiring a fresh manager. Failed
+  registration preserves the existing plugin.
+
 - Grammar compatibility database operations close their SQLite connections on
   return or failure, allowing immediate file removal without garbage collection.
   Cleanup commits its deletions before vacuuming within the connection lifetime.

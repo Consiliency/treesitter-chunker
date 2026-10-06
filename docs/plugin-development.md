@@ -69,9 +69,10 @@ use trusted plugin code.
 
 Load built-ins with `manager.load_builtin_plugins()` and custom directories
 with `manager.load_plugins_from_directory(Path(...))`. Register a replacement
-after built-ins and **before first use** when overriding a language. Registration
-does not evict an already cached plugin instance; use a fresh `PluginManager`
-when changing an active application's plugin. Inspect registered languages
+after built-ins when overriding a language. Successful registration evicts that
+language's cached instance, so subsequent manager calls use the replacement.
+Previously returned instances and calls already in progress are not migrated.
+Inspect registered languages
 with `manager.registry.list_languages()`.
 
 ## Configuration
