@@ -8,19 +8,22 @@ Tree-sitter Chunker can be used from any programming language through multiple i
 
 For Python projects, use the package directly:
 
-```python
-pip install treesitter-chunker
+```bash
+python -m pip install treesitter-chunker
+```
 
+```python
 from chunker import chunk_file, chunk_text, chunk_directory
 
 # Chunk a file
 chunks = chunk_file("example.py", language="python")
 
 # Chunk text directly
-chunks = chunk_text(code_string, language="javascript")
+chunks = chunk_text("function hello() { return 1; }", language="javascript")
 
 # Chunk entire directory
-results = chunk_directory("src/", language="python")
+if __name__ == "__main__":
+    results = chunk_directory("src/", language="python", num_workers=2, use_cache=False)
 ```
 
 ### 2. Command-Line Interface (Any Language)
@@ -35,7 +38,7 @@ treesitter-chunker chunk file.py --lang python --output-format json
 echo "def hello(): pass" | treesitter-chunker chunk --stdin --lang python --json
 
 # Batch process with quiet mode
-treesitter-chunker batch src/ --pattern "*.js" --output-format jsonl --quiet
+treesitter-chunker batch src/ --include "*.js" --output-format jsonl --quiet
 
 # Minimal output format for easy parsing
 treesitter-chunker chunk file.py --output-format minimal
@@ -46,18 +49,18 @@ treesitter-chunker chunk file.py --output-format minimal
 - `json` - Pretty-printed JSON
 - `jsonl` - JSON Lines (one object per line)
 - `minimal` - Simple format: `file:start-end:type`
-- `csv` - CSV with headers
-- `table` - Rich table (default, human-readable)
+- `csv` - CSV with headers (`batch` only)
+- `table` - Rich table (`chunk` default); `batch` defaults to `summary`
 
 **Example from Node.js:**
 ```javascript
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const util = require('util');
-const execPromise = util.promisify(exec);
+const execPromise = util.promisify(execFile);
 
 async function chunkFile(filePath, language) {
     const { stdout } = await execPromise(
-        `treesitter-chunker chunk "${filePath}" --lang ${language} --json`
+        'treesitter-chunker', ['chunk', filePath, '--lang', language, '--quiet', '--json']
     );
     return JSON.parse(stdout);
 }
@@ -95,7 +98,7 @@ cd treesitter-chunker
 uv sync --locked --all-extras
 
 # Set a secret token before using filesystem-backed endpoints
-export TREE_SITTER_CHUNKER_API_TOKEN="replace-with-a-secret-token"
+# Supply TREE_SITTER_CHUNKER_API_TOKEN through your secret mechanism
 export TREE_SITTER_CHUNKER_API_ROOT="$(pwd)"
 uv run --locked uvicorn api.server:app --host 127.0.0.1 --port 8000
 ```
@@ -117,33 +120,25 @@ curl -X POST http://localhost:8000/chunk/text \
     "language": "python"
   }'
 
-# Chunk file
+# Chunk a file relative to TREE_SITTER_CHUNKER_API_ROOT; token required
 curl -X POST http://localhost:8000/chunk/file \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TREE_SITTER_CHUNKER_API_TOKEN" \
   -d '{
-    "file_path": "/path/to/file.js",
+    "file_path": "example.js",
     "language": "javascript"
   }'
 ```
 
-See `/api/examples/` for client examples in Python, JavaScript, and Go.
+The source `api/examples/` clients are illustrative; add the required Bearer
+header before using their filesystem endpoints.
 
 ### 4. Docker Container
 
-Use the Docker image for isolated execution:
-
-```bash
-# Pull the image
-docker pull ghcr.io/consiliency/treesitter-chunker:latest
-
-# Run as CLI
-docker run --rm -v $(pwd):/workspace \
-  treesitter-chunker chunk /workspace/file.py -l python --json
-
-# Run as API server
-docker run -p 8000:8000 \
-  treesitter-chunker python -m api.server
-```
+Build a CLI image for your deployment using the recipe in the
+[deployment guide](development/DEPLOYMENT.md#containers). There is no current
+container publication workflow, and the main wheel does not include the REST
+server. Do not assume a GHCR `latest` tag provides either.
 
 ### 5. Language-Specific Bindings (Future)
 
@@ -155,7 +150,9 @@ Planned native bindings:
 
 ## API Response Format
 
-All methods return chunks with this structure:
+The REST server returns this wrapper. CLI `chunk --json` returns an array of
+chunk objects; Python functions return `CodeChunk` objects (directory helpers
+return a mapping). Do not assume these interfaces share a response shape:
 
 ```json
 {
@@ -176,10 +173,13 @@ All methods return chunks with this structure:
 
 ## Filtering Options
 
-All methods support these filters:
+The REST endpoints accept these fields:
 - `min_chunk_size` - Minimum lines per chunk
 - `max_chunk_size` - Maximum lines per chunk
 - `chunk_types` - List of node types to include
+
+CLI equivalents are `--min-size`, `--max-size` and `--types`. Core Python
+functions do not accept those filter keywords; filter returned chunks yourself.
 
 ## Performance Considerations
 
@@ -190,14 +190,16 @@ All methods support these filters:
 
 ## Error Handling
 
-All methods return appropriate error codes:
-- CLI: Non-zero exit code on error
-- API: HTTP status codes (400 for bad request, 404 for not found)
-- Subprocess: Check return code and stderr
+Check exit status, stderr **and the decoded payload**. The current main CLI
+catches some per-file errors, prints them on stdout and can still exit zero;
+`--quiet` does not suppress those errors. A JSON parse failure is also a failed
+operation. REST clients should check HTTP status and the response schema.
 
 ## Examples Repository
 
-See `/api/examples/` for complete working examples:
+The source `api/examples/` clients are illustrative. Filesystem endpoints
+require the Bearer header shown above; bundled clients may need that header
+added before use:
 - `client.py` - Python API client
 - `client.js` - Node.js API client
 - `client.go` - Go API client
@@ -205,7 +207,7 @@ See `/api/examples/` for complete working examples:
 
 ## Supported Languages
 
-Run `treesitter-chunker list-languages` or `GET /languages` to see all supported languages.
+Run `treesitter-chunker languages` or `GET /languages` to see all supported languages.
 
 Common languages include:
 - Python, JavaScript, TypeScript, Go, Rust
@@ -215,13 +217,13 @@ Common languages include:
 
 ## Configuration
 
-All methods respect `.chunkerrc` configuration files in TOML/YAML/JSON format:
+`chunk` and `batch` read TOML `.chunkerrc` files. Python plugin configuration
+uses `ChunkerConfig`; REST filters come from the request. See
+[Configuration](configuration.md) for the separate consumers.
 
 ```toml
-# .chunkerrc
-min_chunk_size = 5
+# .chunkerrc: consumed by CLI chunk/batch
+min_chunk_size = 1
 max_chunk_size = 100
-
-[languages.python]
 chunk_types = ["function_definition", "class_definition"]
 ```

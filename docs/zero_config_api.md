@@ -1,19 +1,27 @@
 # Zero-Configuration API
 
-The Zero-Config API provides the simplest way to use treesitter-chunker with automatic language detection, grammar management, and intelligent fallbacks.
+`chunker.auto.ZeroConfigAPI` provides language detection and fallback around
+an application-supplied `UniversalRegistryContract`. It is not a no-argument
+top-level API. The registry supplies installation checks/orchestration; actual
+parsing then delegates to core or token-aware extraction using the pinned
+grammar pack, rather than the registry's parser.
 
-## Overview
+`UniversalRegistryStub` is a test double which simulates installation and
+does not download grammars. However, these auto-chunk examples can still parse
+real source through core, and the grammar pack may download on first use.
+Stub installation status is not evidence of offline readiness. Prefetch real
+grammars as described in [getting started](getting-started.md).
 
-The `ZeroConfigAPI` class provides a high-level interface that:
-- Automatically detects programming languages from file extensions and content
-- Downloads and sets up tree-sitter grammars as needed
-- Falls back to intelligent text chunking when tree-sitter is unavailable
-- Supports batch operations and preloading for offline use
+A real `chunker.grammar.registry.UniversalLanguageRegistry` requires an
+explicit library path, discovery service and download service. Registry
+version selection does not replace the core parser pins. Detection, batch
+operation and text fallback are orchestration features; validate them with
+the concrete registry and parser environment used by your application.
 
 ## Basic Usage
 
 ```python
-from chunker import ZeroConfigAPI
+from chunker.auto import ZeroConfigAPI
 from chunker.contracts.registry_stub import UniversalRegistryStub
 
 # Create API instance with a registry
@@ -222,7 +230,7 @@ for root, dirs, files in os.walk("src"):
 ## Example: Complete Workflow
 
 ```python
-from chunker import ZeroConfigAPI
+from chunker.auto import ZeroConfigAPI
 from chunker.contracts.registry_stub import UniversalRegistryStub
 
 # Initialize

@@ -53,7 +53,7 @@ Parallel processing::
 
     from chunker import chunk_directory
 
-    results = chunk_directory("src/", language="python", workers=4)
-
-    for result in results:
-        print(f"{result.file_path}: {len(result.chunks)} chunks")
+    if __name__ == "__main__":
+        results = chunk_directory("src/", language="python", num_workers=4, use_cache=False)
+        for path, chunks in results.items():
+            print(f"{path}: {len(chunks)} chunks")

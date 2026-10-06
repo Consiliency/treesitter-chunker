@@ -53,7 +53,9 @@ pip install "treesitter-chunker[viz]"
 pip install "treesitter-chunker[all]"
 ```
 
-**Note**: Prebuilt wheels include compiled Tree-sitter grammars for common languages (Python, JavaScript, Rust, C, C++), so no local compilation is required!
+The main wheel is pure Python. The pinned grammar pack loads native parsers,
+which may be downloaded on first use; prefetch for offline operation. See
+[packaging](packaging.md) for platform requirements.
 
 ### Development Installation
 
@@ -64,37 +66,33 @@ If you want to contribute or need the latest development version:
 git clone https://github.com/Consiliency/treesitter-chunker.git
 cd treesitter-chunker
 
-# Install with uv (recommended)
-uv pip install -e ".[dev]"
-uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
-
-# Build language grammars (only needed for development)
-python scripts/fetch_grammars.py
-python scripts/build_lib.py
+# Install the locked project environment
+uv sync --locked --all-extras
 ```
 
 ## Quick Start
 
+Run this with a real `example.py` fixture. All process-worker setup and exports
+are under the main guard so spawn/forkserver workers do not repeat them.
+
 ```python
-from chunker.core import chunk_file
+from pathlib import Path
+from chunker import chunk_file
 from chunker.plugin_manager import get_plugin_manager
-
-# Basic usage
-chunks = chunk_file("example.py", "python")
-
-# With plugins
-manager = get_plugin_manager()
-manager.load_built_in_plugins()
-chunks = chunk_file("example.py", "python")
-
-# Parallel processing
 from chunker.parallel import chunk_files_parallel
-results = chunk_files_parallel(["file1.py", "file2.py", "file3.py"], "python")
-
-# Export to Parquet
 from chunker.exporters import ParquetExporter
-exporter = ParquetExporter()
-exporter.export(chunks, "output.parquet")
+
+if __name__ == "__main__":
+    chunks = chunk_file("example.py", "python")
+
+    # Explicit plugin path; core chunk_file does not use registered plugins
+    manager = get_plugin_manager()
+    plugin_chunks = manager.chunk_file(Path("example.py"), "python")
+
+    results = chunk_files_parallel(
+        ["example.py"], "python", num_workers=2, use_cache=False
+    )
+    ParquetExporter().export(chunks, "output.parquet")
 ```
 
 ## Core APIs
@@ -171,7 +169,7 @@ Represents a semantic chunk of code extracted from a file.
 get_parser(language: str, config: Optional[ParserConfig] = None) -> Parser
 ```
 
-Get a parser instance for the specified language with optional configuration. Parsers are cached and pooled for efficiency.
+Get a parser instance for the specified language with optional configuration. Default parsers are owned by the calling thread; configured calls create fresh, uncached parsers.
 
 **Parameters:**
 - `language` (str): The name of the language (e.g., "python", "javascript", "rust")
@@ -190,7 +188,8 @@ Get a parser instance for the specified language with optional configuration. Pa
 list_languages() -> List[str]
 ```
 
-List all available languages discovered from the compiled shared library.
+List registered parser languages. Parser availability and verified semantic
+extraction are separate; see [language coverage](language-coverage.md).
 
 **Returns:**
 - `List[str]`: Sorted list of available language names
@@ -198,7 +197,7 @@ List all available languages discovered from the compiled shared library.
 **Example:**
 ```python
 languages = list_languages()
-print(languages)  # ['c', 'cpp', 'javascript', 'python', 'rust']
+print(languages)  # Availability depends on the installed grammars
 ```
 
 ### get_language_info
@@ -221,7 +220,9 @@ Get detailed metadata about a specific language including version, capabilities,
 return_parser(language: str, parser: Parser) -> None
 ```
 
-Return a parser to the pool for reuse. This is a performance optimization - parsers will be automatically cleaned up if not returned, but returning them enables better reuse.
+Compatibility no-op for thread-owned parsers. Use `acquire_parser()` as a
+context manager when a parser must return to the shared idle pool. See
+[parser concurrency](performance-guide/parser-concurrency.md).
 
 ### clear_cache
 
@@ -237,39 +238,39 @@ Clear the parser cache. This forces all parsers to be recreated on next request.
 @dataclass
 class ParserConfig:
     timeout_ms: Optional[int] = None
-    included_ranges: Optional[List[Tuple[int, int]]] = None
+    included_ranges: Optional[List[tree_sitter.Range]] = None
     logger: Optional[Any] = None
 ```
 
 Configuration options for parser instances.
 
 **Attributes:**
-- `timeout_ms`: Parser timeout in milliseconds (prevents infinite loops)
-- `included_ranges`: List of (start_byte, end_byte) ranges to parse (for partial parsing)
-- `logger`: Optional logger for parser debug events
+- `timeout_ms`: Compatibility option; applied only on runtimes exposing the old
+  timeout API. It does not impose a deadline on the pinned 0.26 runtime
+  (tracked in [treesitter-chunker#355](https://github.com/Consiliency/treesitter-chunker/issues/355)).
+- `included_ranges`: List of Tree-sitter `Range` objects for partial parsing
+- `logger`: Accepted configuration field; the factory does not currently attach it
 
 ## Plugin System
 
 ### PluginManager
 
 ```python
-class PluginManager:
-    def __init__(self, config: Optional[ChunkerConfig] = None)
-    def register_plugin(self, plugin_class: Type[LanguagePlugin]) -> None
-    def load_plugin_directory(self, directory: Path) -> List[Type[LanguagePlugin]]
-    def load_built_in_plugins() -> None
-    def get_plugin(self, language: str) -> Optional[LanguagePlugin]
-    def list_plugins() -> List[str]
+from pathlib import Path
+from chunker import PluginManager, PluginConfig
+
+manager = PluginManager()
+manager.load_builtin_plugins()
+print(manager.registry.list_languages())
+chunks = manager.chunk_file(
+    Path("example.py"), "python", config=PluginConfig(min_chunk_size=1)
+)
 ```
 
-Manages plugin discovery, loading, and lifecycle.
-
-**Key Methods:**
-- `register_plugin`: Register a plugin class
-- `load_plugin_directory`: Load plugins from a directory
-- `load_built_in_plugins`: Load all built-in language plugins
-- `get_plugin`: Get a plugin instance for a language
-- `list_plugins`: List all registered plugin languages
+`load_plugins_from_directory(Path(...))` discovers and registers plugins from
+a directory. Register a class explicitly with `manager.registry.register(cls)`.
+`get_plugin(language, config=None)` returns a plugin instance. The constructor
+takes no configuration object; pass a `PluginConfig` to the consuming method.
 
 ### LanguagePlugin
 
@@ -307,15 +308,15 @@ Abstract base class for language plugins. All language plugins must inherit from
 class PluginConfig:
     enabled: bool = True
     chunk_types: Optional[Set[str]] = None
-    min_chunk_size: int = 0
-    max_chunk_size: int = 1000000
+    min_chunk_size: int = 1
+    max_chunk_size: int | None = None
     custom_options: Dict[str, Any] = field(default_factory=dict)
 ```
 
 Configuration for individual plugins.
 
 **Attributes:**
-- `enabled`: Whether the plugin is enabled
+- `enabled`: Application selection flag; the manager does not enforce it
 - `chunk_types`: Override default chunk types
 - `min_chunk_size`: Minimum chunk size in lines
 - `max_chunk_size`: Maximum chunk size in lines
@@ -333,11 +334,10 @@ Get the global plugin manager instance (singleton).
 ```python
 from chunker.plugin_manager import get_plugin_manager
 
-manager = get_plugin_manager()
-manager.load_built_in_plugins()
+manager = get_plugin_manager()  # Built-ins are already loaded
 
 # List available plugins
-plugins = manager.list_plugins()
+plugins = manager.registry.list_languages()
 print(plugins)  # ['python', 'rust', 'javascript', 'c', 'cpp']
 ```
 
@@ -364,163 +364,82 @@ Configuration manager supporting TOML, YAML, and JSON formats.
 - `.yaml` / `.yml` - YAML configuration
 - `.json` - JSON configuration
 
-**Example Configuration (TOML):**
-```toml
-# chunker.config.toml
-plugin_dirs = ["./plugins", "~/.chunker/plugins"]
-enabled_languages = ["python", "rust", "javascript"]
-
-[plugins.python]
-enabled = true
-chunk_types = ["function_definition", "class_definition", "async_function_definition"]
-min_chunk_size = 3
-max_chunk_size = 500
-
-[plugins.python.custom_options]
-include_docstrings = true
-include_type_hints = true
-```
+For file schemas, discovery and actual consumers, see
+[Configuration](configuration.md). CLI `.chunkerrc` settings and
+`ChunkerConfig` plugin settings are separate interfaces.
 
 ## Performance Features
 
 ### ASTCache
 
+`from chunker import ASTCache` exposes a SQLite cache of **chunk lists**:
+
 ```python
-class ASTCache:
-    def __init__(self, max_size: int = 100)
-    def get(self, file_path: Path, language: str) -> Optional[ParsedAST]
-    def put(self, file_path: Path, language: str, ast: ParsedAST) -> None
-    def clear() -> None
-    def get_stats() -> Dict[str, Any]
+from pathlib import Path
+from chunker import ASTCache, chunk_file
+
+path = Path("example.py").resolve()
+cache = ASTCache(Path(".cache/chunks"))
+chunks = cache.get_cached_chunks(path, "python")
+if chunks is None:
+    chunks = chunk_file(path, "python")
+    cache.cache_chunks(path, "python", chunks)
+print(cache.get_cache_stats())
 ```
 
-LRU cache for parsed ASTs providing up to 11.9x speedup for repeated file processing.
+`get_cache_stats()` returns `total_files`, `total_size_bytes` and `cache_db_size`.
+`invalidate_cache(path)` removes a file; `invalidate_cache()` removes all entries.
+There is no `max_size`, `get_stats()` or LRU/TTL policy. Direct `chunk_file()`
+does not use this cache automatically. See [performance](performance-guide.md)
+for invalidation limits.
 
-**Key Methods:**
-- `get`: Retrieve cached AST if available
-- `put`: Store AST in cache
-- `clear`: Clear all cached entries
-- `get_stats`: Get cache performance statistics
-
-**Example:**
-```python
-from chunker.cache import ASTCache
-
-cache = ASTCache(max_size=200)
-# Cache is used automatically by chunk_file when available
-chunks = chunk_file("large_file.py", "python")  # First run: parses
-chunks = chunk_file("large_file.py", "python")  # Second run: uses cache (11.9x faster)
-
-# Check cache stats
-stats = cache.get_stats()
-print(f"Cache hits: {stats['hits']}, misses: {stats['misses']}")
-print(f"Hit rate: {stats['hit_rate']:.2%}")
-```
+Parallel helpers default to `use_cache=True` and share
+`~/.cache/treesitter-chunker/ast_cache.db`; no directory override is exposed.
+Disable with `use_cache=False` unless you manage invalidation when parser pins
+or extraction mode/options change.
 
 ### chunk_files_parallel
 
-```python
-chunk_files_parallel(
-    file_paths: List[Union[str, Path]], 
-    language: str,
-    max_workers: Optional[int] = None,
-    show_progress: bool = True
-) -> Dict[str, List[CodeChunk]]
-```
+Import from `chunker.parallel`. Returns `dict[Path, list[CodeChunk]]` using a
+**process pool**, with `num_workers`, `use_cache` and `use_streaming` options:
 
-Process multiple files in parallel using thread pool.
-
-**Parameters:**
-- `file_paths`: List of file paths to process
-- `language`: Programming language
-- `max_workers`: Maximum number of worker threads (defaults to CPU count)
-- `show_progress`: Whether to show progress bar
-
-**Returns:**
-- `Dict[str, List[CodeChunk]]`: Map of file path to chunks
-
-**Example:**
 ```python
 from chunker.parallel import chunk_files_parallel
 
-files = ["src/main.py", "src/utils.py", "src/models.py"]
-results = chunk_files_parallel(files, "python", max_workers=4)
-
-for file_path, chunks in results.items():
-    print(f"{file_path}: {len(chunks)} chunks")
+if __name__ == "__main__":
+    results = chunk_files_parallel(
+        ["example.py"], "python", num_workers=2, use_cache=False
+    )
+    for path, chunks in results.items():
+        print(path, len(chunks))
 ```
 
 ### chunk_directory_parallel
 
-```python
-chunk_directory_parallel(
-    directory: Union[str, Path],
-    language: str,
-    pattern: str = "**/*",
-    max_workers: Optional[int] = None,
-    show_progress: bool = True
-) -> Dict[str, List[CodeChunk]]
-```
-
-Process all matching files in a directory in parallel.
-
-**Parameters:**
-- `directory`: Directory to process
-- `language`: Programming language
-- `pattern`: Glob pattern for file matching
-- `max_workers`: Maximum number of worker threads
-- `show_progress`: Whether to show progress bar
+Import from `chunker.parallel`, or use its alias `chunker.chunk_directory`.
+Accepts `extensions=[".py"]`, `num_workers`, `use_cache` and `use_streaming`.
+It recurses through the directory; it does not accept `pattern` or `show_progress`.
 
 ### chunk_file_streaming
 
-```python
-chunk_file_streaming(
-    path: Union[str, Path],
-    language: str,
-    chunk_size: int = 1048576  # 1MB
-) -> Iterator[CodeChunk]
-```
-
-Stream chunks from a file without loading the entire file into memory. Ideal for very large files.
-
-**Parameters:**
-- `path`: Path to the file
-- `language`: Programming language
-- `chunk_size`: Size of each read chunk in bytes
-
-**Returns:**
-- `Iterator[CodeChunk]`: Iterator yielding chunks as they are found
-
-**Example:**
-```python
-from chunker.streaming import chunk_file_streaming
-
-# Process a very large file
-for chunk in chunk_file_streaming("huge_codebase.py", "python"):
-    # Process each chunk as it's found
-    process_chunk(chunk)
-```
+Import from `chunker` or `chunker.streaming`. Takes `path`, `language` and
+`include_retrieval_metadata=False`; yields `CodeChunk` objects. It memory-maps
+source and parses a whole tree, then yields chunks lazily. It does not accept a
+read-buffer `chunk_size`. See [performance](performance-guide.md) for language
+parity limitations.
 
 ### StreamingChunker
 
-```python
-class StreamingChunker:
-    def __init__(self, language: str, chunk_size: int = 1048576)
-    def process_stream(self, stream: IO[bytes]) -> Iterator[CodeChunk]
-```
-
-Low-level streaming chunker for custom stream processing.
+Import from `chunker.streaming`. Construct with `StreamingChunker(language)`;
+call `chunk_file_streaming(Path(...))`. There is no `process_stream()` method.
 
 ### ParallelChunker
 
-```python
-class ParallelChunker:
-    def __init__(self, language: str, max_workers: Optional[int] = None)
-    def process_files(self, file_paths: List[Path]) -> Dict[str, List[CodeChunk]]
-    def process_directory(self, directory: Path, pattern: str = "**/*") -> Dict[str, List[CodeChunk]]
-```
-
-Low-level parallel processing API for advanced use cases.
+Import from `chunker.parallel`. Construct with `language`, `num_workers`,
+`use_cache`, `use_streaming` and optional `timeout_seconds`. Methods are
+`chunk_files_parallel(list[Path])` and
+`chunk_directory_parallel(Path, extensions=None)`. A timeout bounds result
+collection; it does not guarantee termination of an already running worker.
 
 ## Export Formats
 
@@ -556,7 +475,7 @@ exporter = JSONLExporter(schema_type=SchemaType.FLAT)
 exporter.export(chunks, "output.jsonl", compress=True)
 
 # Streaming export for large datasets
-exporter.export_streaming(chunk_iterator, "large_output.jsonl")
+exporter.stream_export(chunk_iterator, "large_output.jsonl")
 ```
 
 **JSONLExporter Methods:**
@@ -565,11 +484,15 @@ class JSONLExporter:
     def __init__(self, schema_type: SchemaType = SchemaType.FLAT)
     def export(self, chunks: list[CodeChunk], output: Union[str, Path, IO[str]], 
                compress: bool = False) -> None
-    def export_streaming(self, chunks: Iterator[CodeChunk], 
+    def stream_export(self, chunks: Iterator[CodeChunk],
                         output: Union[str, Path, IO[str]], compress: bool = False) -> None
 ```
 
 ### Parquet Export
+
+Use a dedicated directory for partitioned datasets, not a file with a suffix.
+Re-exporting into an existing dataset with a different partition specification
+raises an error; use a fresh directory.
 
 ```python
 from chunker.exporters import ParquetExporter
@@ -579,10 +502,10 @@ exporter = ParquetExporter(
     partition_by=["language"],
     compression="snappy"
 )
-exporter.export(chunks, "output.parquet")
+exporter.export(chunks, "partitioned_output/")
 
 # Export with custom schema
-exporter.export_partitioned(chunks, "output_dir/", partition_cols=["language", "node_type"])
+ParquetExporter(partition_by=["language", "node_type"]).export(chunks, "output_dir/")
 ```
 
 **ParquetExporter Methods:**
@@ -592,8 +515,6 @@ class ParquetExporter:
                  partition_by: Optional[List[str]] = None,
                  compression: str = "snappy")
     def export(self, chunks: List[CodeChunk], output_path: Union[str, Path]) -> None
-    def export_partitioned(self, chunks: List[CodeChunk], output_dir: Union[str, Path],
-                          partition_cols: Optional[List[str]] = None) -> None
     def export_streaming(self, chunk_iterator: Iterator[CodeChunk],
                         output_path: Union[str, Path], batch_size: int = 1000) -> None
 ```
@@ -659,89 +580,22 @@ except LanguageNotFoundError as e:
     print(f"Available languages: {', '.join(available)}")
 except LibraryNotFoundError as e:
     print(f"Library not found: {e}")
-    print("Run: python scripts/build_lib.py")
+    print("Check the locked parser stack and grammar availability")
 ```
 
 ## Thread Safety
 
-The library is designed to be thread-safe for concurrent processing:
-
-### Thread-Safe Components
-
-- **LanguageRegistry**: Thread-safe for all read operations after initialization
-- **ParserFactory**: Thread-safe with internal locking for cache and pool operations
-- **PluginManager**: Thread-safe plugin registration and retrieval
-- **ASTCache**: Thread-safe with concurrent access support
-- **get_parser/return_parser**: Thread-safe API functions
-
-### Non Thread-Safe Components
-
-- **Parser instances**: NOT thread-safe - each thread must use its own parser
-- **Tree objects**: NOT thread-safe - parse results should not be shared
-- **CodeChunk objects**: Safe to share after creation (immutable)
-
-### Concurrent Usage Example
-
-```python
-import threading
-from concurrent.futures import ThreadPoolExecutor
-from chunker.core import chunk_file
-from chunker.parallel import chunk_files_parallel
-
-# Safe concurrent processing using high-level API
-files = ["file1.py", "file2.py", "file3.py"]
-results = chunk_files_parallel(files, "python", max_workers=4)
-
-# Manual concurrent processing
-def process_file(file_path):
-    # Each thread gets its own parser automatically
-    return chunk_file(file_path, "python")
-
-with ThreadPoolExecutor(max_workers=4) as executor:
-    futures = [executor.submit(process_file, f) for f in files]
-    results = [f.result() for f in futures]
-```
+`get_parser()` owns its mutable parser per thread; do not pass it to another
+thread. `acquire_parser()` provides an exclusive lease. See
+[parser concurrency](performance-guide/parser-concurrency.md). Treat plugin
+registration as initialization; do not assume arbitrary shared plugin mutation
+is synchronized. The SQLite chunk cache opens a separate connection per operation.
 
 ## Performance Optimization
 
-### Best Practices
-
-1. **Use AST Caching**: Enable caching for repeated file processing
-   ```python
-   # Cache is enabled by default
-   chunks1 = chunk_file("file.py", "python")  # Parses
-   chunks2 = chunk_file("file.py", "python")  # Uses cache (11.9x faster)
-   ```
-
-2. **Process Files in Parallel**: Use parallel processing for multiple files
-   ```python
-   results = chunk_files_parallel(file_list, "python", max_workers=8)
-   ```
-
-3. **Stream Large Files**: Use streaming for very large files
-   ```python
-   for chunk in chunk_file_streaming("huge_file.py", "python"):
-       process_chunk(chunk)
-   ```
-
-4. **Configure Cache Size**: Adjust cache size based on available memory
-   ```python
-   from chunker.cache import ASTCache
-   cache = ASTCache(max_size=500)  # Cache up to 500 ASTs
-   ```
-
-5. **Use Appropriate Export Format**: Choose format based on use case
-   - JSON: Human-readable, good for small datasets
-   - JSONL: Streaming-friendly, good for large datasets
-   - Parquet: Best for analytics, supports compression and partitioning
-
-### Performance Metrics
-
-- **Parser Creation**: ~10-50ms (one-time cost)
-- **Parsing**: O(n) with file size
-- **Caching**: 11.9x speedup for cached files
-- **Parallel Processing**: Near-linear speedup with CPU cores
-- **Memory Usage**: ~10x source file size for AST
+See [Performance Guide](performance-guide.md) for explicit caching, process-pool
+examples, streaming limits and reproducible measurement. No fixed speedup or
+near-linear scaling is guaranteed.
 
 ## See Also
 

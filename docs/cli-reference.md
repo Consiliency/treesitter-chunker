@@ -37,15 +37,18 @@ treesitter-chunker batch src/ --recursive
 treesitter-chunker batch src/ --include "**/*.py" --exclude "**/tests/**,**/*.tmp"
 ```
 
-### Zero-config auto-detection
+### Automatic language detection
+
+`chunk` and `batch` detect language from file paths when `--lang` is omitted:
 
 ```bash
-# Automatically detect language for a file and chunk it
-treesitter-chunker auto-chunk path/to/file
-
-# Auto-chunk an entire directory using detection + intelligent fallbacks
-treesitter-chunker auto-batch path/to/repo
+treesitter-chunker chunk example.py --json
+treesitter-chunker batch src/ --quiet --output-format jsonl
 ```
+
+For stdin, pass `--lang` explicitly. Detection is not a promise of text fallback
+for every unknown extension; see [language coverage](language-coverage.md).
+There are no `auto-chunk` or `auto-batch` commands.
 
 ### List available languages
 
@@ -104,27 +107,42 @@ python -m chunker.cli symbols extract src/ --language python --resolution-mode s
 treesitter-chunker debug --help
 
 # AST visualization
-treesitter-chunker debug ast example.py --lang python --format tree
+treesitter-chunker debug ast example.py --lang python --fmt tree
 ```
 
 ### Configuration
 
-You can pass a configuration file to adjust chunk sizes, language rules, and filters:
+You can pass a configuration file to adjust chunk sizes and filters:
 
 ```bash
-treesitter-chunker chunk src/ --config .chunkerrc
+treesitter-chunker chunk example.py --config .chunkerrc --lang python
 ```
 
-Supported formats: TOML, YAML, JSON. See the Configuration guide for details.
+The `chunk`/`batch` CLI loader accepts TOML. Plugin configuration is a separate
+TOML/YAML/JSON interface; see [Configuration](configuration.md).
 
 ### Export helpers
 
 Use exporters from Python for structured outputs (JSON, JSONL, Parquet, GraphML, Neo4j). See the Export Formats guide for examples.
 
-## Environment variables
+## Output and installed version
 
-- `CHUNKER_BUILD_VERBOSE=1` — enable verbose build logs (build system)
-- `CHUNKER_WHEEL_LANGS=python,javascript,rust` — limit grammars compiled into wheels
-- `CHUNKER_BUILD_TIMEOUT=240` — build timeout in seconds
+`chunk` supports `table`, `json`, `jsonl` and `minimal`. `batch` supports
+`summary`, `json`, `jsonl`, `minimal` and `csv`. Use `--quiet` for machine-readable
+batch output. Check exit status and validate the decoded payload: some
+per-file errors print on stdout and still exit zero. `--quiet` does not suppress
+those errors. `chunk` takes one file;
+use `batch` or `boundary` for a directory.
 
-These are primarily for contributors building distribution artifacts.
+The per-file status/stdout limitation is tracked in
+[treesitter-chunker#359](https://github.com/Consiliency/treesitter-chunker/issues/359).
+
+```bash
+python -c "from importlib.metadata import version; print(version('treesitter-chunker'))"
+treesitter-chunker --help
+treesitter-chunker batch --help
+```
+
+The installed CLI has no `--version` option. See
+[Environment Variables](environment_variables.md) for the settings actually
+consumed by each interface.

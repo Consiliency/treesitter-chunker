@@ -26,7 +26,7 @@ Create a fast, searchable database of all functions in your codebase.
 ```python
 import sqlite3
 from pathlib import Path
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.parser import list_languages
 from chunker.exceptions import LanguageNotFoundError
 from datetime import datetime
@@ -226,7 +226,7 @@ if __name__ == "__main__":
 Build an interactive symbol navigator for your codebase.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from pathlib import Path
 from collections import defaultdict
 import json
@@ -405,7 +405,7 @@ Extract comprehensive API documentation including type hints and examples.
 
 ```python
 import ast
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from pathlib import Path
 from typing import List, Dict, Any
 import re
@@ -731,7 +731,7 @@ print(f"Generated documentation for {len(all_docs)} items")
 Automatically generate project documentation from your codebase.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.parser import list_languages
 from pathlib import Path
 import re
@@ -976,7 +976,7 @@ print("README.md generated successfully!")
 Analyze code complexity using various metrics.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.parser import get_parser
 import ast
 from dataclasses import dataclass
@@ -1186,7 +1186,7 @@ analyzer.generate_report(all_reports)
 Find duplicate or similar code blocks.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from pathlib import Path
 import hashlib
 from difflib import SequenceMatcher
@@ -1497,7 +1497,7 @@ class SwiftProjectAnalyzer:
     
     def __init__(self):
         self.manager = get_plugin_manager()
-        self.manager.register_plugin(SwiftPlugin)
+        self.manager.registry.register(SwiftPlugin)
     
     def analyze_swift_project(self, project_path: str):
         """Analyze a Swift project structure."""
@@ -1515,7 +1515,7 @@ class SwiftProjectAnalyzer:
         }
         
         for file_path in swift_files:
-            chunks = chunk_file(str(file_path), "swift")
+            chunks = self.manager.chunk_file(file_path, "swift")
             stats['total_chunks'] += len(chunks)
             
             for chunk in chunks:
@@ -1566,193 +1566,19 @@ if Path("MySwiftProject").exists():
 
 ### Plugin with Custom Chunk Rules
 
-Create a plugin with advanced chunking rules.
+`chunker.languages.base.ChunkRule` accepts `node_types`, `include_children`,
+`priority` and `metadata`. It does not accept regex `pattern`, `parent_type` or
+a `metadata_extractor` callback. Use a plugin's node/name hooks or analyze
+returned content explicitly; see [Plugin Development](plugin-development.md).
 
 ```python
-from chunker.languages.plugin_base import LanguagePlugin
 from chunker.languages.base import ChunkRule
-from chunker import get_plugin_manager
-import re
 
-class AdvancedPythonPlugin(LanguagePlugin):
-    """Enhanced Python plugin with custom chunk rules."""
-    
-    @property
-    def language_name(self) -> str:
-        return "python_advanced"
-    
-    @property
-    def supported_extensions(self) -> Set[str]:
-        return {".py"}
-    
-    @property
-    def default_chunk_types(self) -> Set[str]:
-        # Standard Python chunk types
-        return {
-            "function_definition",
-            "class_definition",
-            "async_function_definition",
-            "decorated_definition"
-        }
-    
-    def get_chunk_rules(self) -> list[ChunkRule]:
-        """Define custom chunking rules."""
-        return [
-            # Extract FastAPI endpoints
-            ChunkRule(
-                name="fastapi_endpoint",
-                node_type="decorated_definition",
-                pattern=r'@(app|router)\.(get|post|put|delete|patch)',
-                priority=100,
-                metadata_extractor=self._extract_endpoint_metadata
-            ),
-            
-            # Extract Django views
-            ChunkRule(
-                name="django_view",
-                node_type="class_definition",
-                pattern=r'class\s+\w+\s*\(.*View.*\)',
-                priority=90
-            ),
-            
-            # Extract test classes and functions
-            ChunkRule(
-                name="test_case",
-                node_type="function_definition",
-                pattern=r'def\s+test_\w+',
-                priority=80,
-                parent_type="class_definition"
-            ),
-            
-            # Extract dataclasses
-            ChunkRule(
-                name="dataclass",
-                node_type="decorated_definition",
-                pattern=r'@dataclass',
-                priority=85
-            ),
-            
-            # Extract Pydantic models
-            ChunkRule(
-                name="pydantic_model",
-                node_type="class_definition",
-                pattern=r'class\s+\w+\s*\(.*BaseModel.*\)',
-                priority=85
-            )
-        ]
-    
-    def _extract_endpoint_metadata(self, chunk) -> dict:
-        """Extract metadata from FastAPI endpoints."""
-        content = chunk.content
-        metadata = {}
-        
-        # Extract HTTP method and path
-        match = re.search(r'@(?:app|router)\.(\w+)\(["\']([^"\']*)["\'\]', content)
-        if match:
-            metadata['http_method'] = match.group(1).upper()
-            metadata['path'] = match.group(2)
-        
-        # Extract response model
-        response_match = re.search(r'response_model=([\w\.]+)', content)
-        if response_match:
-            metadata['response_model'] = response_match.group(1)
-        
-        # Extract dependencies
-        deps = re.findall(r'Depends\(([\w\.]+)\)', content)
-        if deps:
-            metadata['dependencies'] = deps
-        
-        return metadata
-    
-    def get_node_name(self, node: Node, source: bytes) -> Optional[str]:
-        """Extract name with special handling for decorators."""
-        content = source[node.start_byte:node.end_byte].decode('utf-8')
-        
-        # For decorated functions, skip decorators
-        lines = content.split('\n')
-        for line in lines:
-            if line.strip().startswith('def ') or line.strip().startswith('class '):
-                match = re.search(r'(?:def|class)\s+(\w+)', line)
-                if match:
-                    return match.group(1)
-        
-        return None
-
-# Example: Analyze a FastAPI project
-class FastAPIAnalyzer:
-    """Analyze FastAPI projects with custom rules."""
-    
-    def __init__(self):
-        self.manager = get_plugin_manager()
-        self.manager.register_plugin(AdvancedPythonPlugin)
-    
-    def analyze_api_structure(self, project_path: str):
-        """Analyze FastAPI project structure."""
-        from pathlib import Path
-        from chunker import chunk_file
-        
-        endpoints = []
-        models = []
-        
-        for py_file in Path(project_path).rglob("*.py"):
-            chunks = chunk_file(str(py_file), "python_advanced")
-            
-            for chunk in chunks:
-                if hasattr(chunk, 'metadata'):
-                    if 'http_method' in chunk.metadata:
-                        endpoints.append({
-                            'file': str(py_file),
-                            'name': chunk.content.split('\n')[0],
-                            'method': chunk.metadata['http_method'],
-                            'path': chunk.metadata.get('path', 'Unknown'),
-                            'response_model': chunk.metadata.get('response_model'),
-                            'dependencies': chunk.metadata.get('dependencies', [])
-                        })
-                    elif chunk.node_type == "pydantic_model":
-                        models.append({
-                            'file': str(py_file),
-                            'name': self._extract_class_name(chunk),
-                            'fields': self._extract_model_fields(chunk)
-                        })
-        
-        # Generate API documentation
-        print("FastAPI Project Structure:")
-        print("=" * 60)
-        print(f"\nEndpoints ({len(endpoints)}):")
-        for ep in sorted(endpoints, key=lambda x: (x['path'], x['method'])):
-            print(f"  {ep['method']:6} {ep['path']:30} -> {Path(ep['file']).name}")
-            if ep['response_model']:
-                print(f"         Response: {ep['response_model']}")
-        
-        print(f"\nModels ({len(models)}):")
-        for model in models:
-            print(f"  {model['name']} ({len(model['fields'])} fields)")
-        
-        return {'endpoints': endpoints, 'models': models}
-    
-    def _extract_class_name(self, chunk):
-        """Extract class name from chunk."""
-        match = re.search(r'class\s+(\w+)', chunk.content)
-        return match.group(1) if match else "Unknown"
-    
-    def _extract_model_fields(self, chunk):
-        """Extract Pydantic model fields."""
-        fields = []
-        lines = chunk.content.split('\n')
-        for line in lines[1:]:  # Skip class definition
-            if ':' in line and not line.strip().startswith('#'):
-                field_match = re.match(r'\s*(\w+)\s*:\s*([^=]+)', line)
-                if field_match:
-                    fields.append({
-                        'name': field_match.group(1),
-                        'type': field_match.group(2).strip()
-                    })
-        return fields
-
-# Usage
-analyzer = FastAPIAnalyzer()
-if Path("fastapi_project").exists():
-    api_structure = analyzer.analyze_api_structure("fastapi_project")
+rule = ChunkRule(
+    node_types={"function_definition"}, priority=100,
+    metadata={"name": "functions"}
+)
+print(rule.name)
 ```
 
 ## Export Format Recipes
@@ -1762,7 +1588,8 @@ if Path("fastapi_project").exists():
 Export chunks to multiple formats with transformations.
 
 ```python
-from chunker import chunk_file, chunk_directory_parallel
+from chunker import chunk_file
+from chunker.parallel import chunk_directory_parallel
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
 from chunker.exporters import ParquetExporter
 from pathlib import Path
@@ -1936,8 +1763,8 @@ class ProjectExporter:
         results = chunk_directory_parallel(
             project_path,
             "python",  # Adjust for your project
-            pattern="**/*.py",
-            max_workers=8
+            extensions=[".py"],
+            num_workers=8, use_cache=False
         )
         
         # Flatten results
@@ -1957,14 +1784,10 @@ class ProjectExporter:
     
     def _create_partitioned_export(self, chunks: List, output_dir: Path):
         """Create partitioned Parquet export for large datasets."""
-        exporter = ParquetExporter()
-        
         # Export with partitioning by language and node type
         partitioned_dir = output_dir / "partitioned_chunks"
-        exporter.export_partitioned(
-            chunks,
-            str(partitioned_dir),
-            partition_cols=["language", "node_type"]
+        ParquetExporter(partition_by=["language", "node_type"]).export(
+            chunks, str(partitioned_dir)
         )
         
         print(f"\nCreated partitioned export in: {partitioned_dir}")
@@ -1973,17 +1796,18 @@ class ProjectExporter:
             rel_path = partition.relative_to(partitioned_dir)
             print(f"  {rel_path}")
 
-# Usage
-exporter = ProjectExporter()
+if __name__ == "__main__":
+    # Usage
+    exporter = ProjectExporter()
 
-# Export a project
-if Path("my_project").exists():
-    outputs = exporter.export_project("my_project", "exports")
+    # Export a project
+    if Path("my_project").exists():
+        outputs = exporter.export_project("my_project", "exports")
     
-    # Read back the Parquet file for analysis
-    df = pd.read_parquet(outputs['parquet'])
-    print(f"\nDataFrame shape: {df.shape}")
-    print(f"Columns: {df.columns.tolist()}")
+        # Read back the Parquet file for analysis
+        df = pd.read_parquet(outputs['parquet'])
+        print(f"\nDataFrame shape: {df.shape}")
+        print(f"Columns: {df.columns.tolist()}")
 ```
 
 ### Custom Export Format for Documentation
@@ -2250,22 +2074,23 @@ class MarkdownDocExporter:
         """Create a valid markdown anchor from text."""
         return re.sub(r'[^a-zA-Z0-9-]', '-', text.lower())
 
-# Usage
-exporter = MarkdownDocExporter()
+if __name__ == "__main__":
+    # Usage
+    exporter = MarkdownDocExporter()
 
-# Export documentation for a project
-from chunker import chunk_directory_parallel
+    # Export documentation for a project
+    from chunker.parallel import chunk_directory_parallel
 
-results = chunk_directory_parallel("src/", "python", pattern="**/*.py")
-all_chunks = []
-for chunks in results.values():
-    all_chunks.extend(chunks)
+    results = chunk_directory_parallel("src/", "python", extensions=[".py"], use_cache=False)
+    all_chunks = []
+    for chunks in results.values():
+        all_chunks.extend(chunks)
 
-exporter.export_to_markdown(
-    all_chunks,
-    "project_documentation.md",
-    project_name="My Python Project"
-)
+    exporter.export_to_markdown(
+        all_chunks,
+        "project_documentation.md",
+        project_name="My Python Project"
+    )
 ```
 
 ## AI/ML Integration
@@ -2275,7 +2100,7 @@ exporter.export_to_markdown(
 Create vector embeddings for semantic code search.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.parser import list_languages
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -2511,7 +2336,7 @@ embedding_system.save("./code_embeddings")
 Create datasets for training code understanding models.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from pathlib import Path
 import json
 import random
@@ -2819,127 +2644,23 @@ generator.save_dataset(bug_dataset, "./datasets/bug_detection")
 
 ## Performance Optimization
 
-### Using New Parallel Processing APIs
+### Using Parallel Processing APIs
 
-Leverage the new parallel processing APIs for maximum performance.
+Save as a script and run with a real source directory. The helpers use a
+process pool, extension lists and `num_workers`:
 
 ```python
-from chunker import (
-    chunk_files_parallel,
-    chunk_directory_parallel,
-    ASTCache
-)
-from pathlib import Path
-import time
+from chunker.parallel import chunk_directory_parallel
 
-class OptimizedBatchProcessor:
-    """High-performance batch processor using new APIs."""
-    
-    def __init__(self):
-        # Configure for maximum performance
-        self.cache = ASTCache(max_size=1000)
-    
-    def process_large_project(self, project_root: str):
-        """Process a large project efficiently."""
-        start_time = time.time()
-        
-        # Process by language for better cache utilization
-        languages = {
-            'python': '**/*.py',
-            'javascript': '**/*.js',
-            'rust': '**/*.rs'
-        }
-        
-        all_results = {}
-        total_chunks = 0
-        
-        for language, pattern in languages.items():
-            print(f"\nProcessing {language} files...")
-            
-            # Use the new parallel directory API
-            results = chunk_directory_parallel(
-                project_root,
-                language,
-                pattern=pattern,
-                max_workers=8,  # Adjust based on CPU
-                show_progress=True
-            )
-            
-            # Aggregate results
-            language_chunks = sum(len(chunks) for chunks in results.values())
-            total_chunks += language_chunks
-            all_results.update(results)
-            
-            print(f"  Processed {len(results)} {language} files")
-            print(f"  Found {language_chunks} chunks")
-            
-            # Show cache performance
-            cache_stats = self.cache.get_stats()
-            print(f"  Cache hit rate: {cache_stats['hit_rate']:.1%}")
-        
-        # Summary
-        duration = time.time() - start_time
-        print(f"\nTotal Processing Summary:")
-        print(f"  Files: {len(all_results)}")
-        print(f"  Chunks: {total_chunks}")
-        print(f"  Duration: {duration:.2f}s")
-        print(f"  Speed: {len(all_results)/duration:.1f} files/sec")
-        
-        return all_results
-    
-    def compare_sequential_vs_parallel(self, test_files: List[str], language: str):
-        """Compare sequential vs parallel performance."""
-        from chunker import chunk_file
-        
-        # Sequential processing
-        print("Sequential processing...")
-        start = time.time()
-        sequential_results = {}
-        for file in test_files:
-            sequential_results[file] = chunk_file(file, language)
-        sequential_time = time.time() - start
-        
-        # Clear cache for fair comparison
-        self.cache.clear()
-        
-        # Parallel processing
-        print("Parallel processing...")
-        start = time.time()
-        parallel_results = chunk_files_parallel(
-            test_files,
-            language,
-            max_workers=8,
-            show_progress=False
-        )
-        parallel_time = time.time() - start
-        
-        # Results
-        print(f"\nPerformance Comparison:")
-        print(f"  Sequential: {sequential_time:.2f}s")
-        print(f"  Parallel: {parallel_time:.2f}s")
-        print(f"  Speedup: {sequential_time/parallel_time:.2f}x")
-        print(f"  Files processed: {len(test_files)}")
-        
-        return {
-            'sequential_time': sequential_time,
-            'parallel_time': parallel_time,
-            'speedup': sequential_time/parallel_time
-        }
-
-# Usage
-processor = OptimizedBatchProcessor()
-
-# Process entire project
-results = processor.process_large_project("./large_project")
-
-# Compare performance
-test_files = list(Path("src/").glob("*.py"))[:20]
-if test_files:
-    comparison = processor.compare_sequential_vs_parallel(
-        [str(f) for f in test_files],
-        "python"
+if __name__ == "__main__":
+    results = chunk_directory_parallel(
+        "src/", "python", extensions=[".py"], num_workers=2, use_cache=False
     )
+    print(sum(len(chunks) for chunks in results.values()))
 ```
+
+See [performance](performance-guide.md) for explicit SQLite caching and
+comparisons that separate warm caches from parser work.
 
 ### Streaming Processing for Huge Files
 
@@ -3055,247 +2776,40 @@ processor.batch_process_large_files("./large_project", size_threshold_mb=10)
 
 ## Configuration Recipes
 
-### Dynamic Configuration Based on Project Type
+### Explicit Plugin Configuration
 
-Automatically configure based on detected project type.
+Write a supported file and pass the resulting plugin configuration to the
+actual consumer. The loader does not accept `.chunkerrc`, merge `extends`, or
+configure cache/worker settings. Those belong to other interfaces.
 
 ```python
-from chunker import ChunkerConfig, chunk_file
 from pathlib import Path
-import toml
-import yaml
-import json
+from chunker import ChunkerConfig, PluginManager
 
-class SmartConfigurator:
-    """Automatically configure chunker based on project characteristics."""
-    
-    def __init__(self):
-        self.project_patterns = {
-            'django': {
-                'files': ['manage.py', 'settings.py'],
-                'config': {
-                    'languages': {
-                        'python': {
-                            'chunk_types': [
-                                'function_definition',
-                                'class_definition',
-                                'decorated_definition'
-                            ],
-                            'custom_options': {
-                                'include_views': True,
-                                'include_models': True,
-                                'include_serializers': True
-                            }
-                        }
-                    }
-                }
-            },
-            'react': {
-                'files': ['package.json', 'src/App.js'],
-                'config': {
-                    'languages': {
-                        'javascript': {
-                            'chunk_types': [
-                                'function_declaration',
-                                'arrow_function',
-                                'class_declaration',
-                                'jsx_element'
-                            ],
-                            'custom_options': {
-                                'include_jsx': True,
-                                'include_hooks': True
-                            }
-                        }
-                    }
-                }
-            },
-            'rust': {
-                'files': ['Cargo.toml'],
-                'config': {
-                    'languages': {
-                        'rust': {
-                            'chunk_types': [
-                                'function_item',
-                                'impl_item',
-                                'trait_item',
-                                'struct_item',
-                                'enum_item'
-                            ],
-                            'custom_options': {
-                                'include_tests': False,
-                                'include_macros': True
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    
-    def detect_project_type(self, project_root: str) -> str:
-        """Detect the type of project."""
-        root = Path(project_root)
-        
-        for project_type, pattern in self.project_patterns.items():
-            if all(any(root.rglob(f)) for f in pattern['files']):
-                return project_type
-        
-        return 'generic'
-    
-    def generate_config(self, project_root: str) -> ChunkerConfig:
-        """Generate optimal configuration for the project."""
-        project_type = self.detect_project_type(project_root)
-        print(f"Detected project type: {project_type}")
-        
-        if project_type == 'generic':
-            # Analyze project to create custom config
-            config_dict = self._analyze_project(project_root)
-        else:
-            config_dict = self.project_patterns[project_type]['config']
-        
-        # Add common settings
-        config_dict.update({
-            'cache_enabled': True,
-            'cache_size': 200,
-            'parallel_workers': 4,
-            'exclude_patterns': [
-                '*test*', '__pycache__', 'node_modules',
-                '.git', '.venv', 'build', 'dist'
-            ]
-        })
-        
-        # Save configuration
-        config_path = Path(project_root) / '.chunkerrc'
-        self._save_config(config_dict, config_path)
-        
-        print(f"Generated configuration saved to: {config_path}")
-        return ChunkerConfig(str(config_path))
-    
-    def _analyze_project(self, project_root: str) -> dict:
-        """Analyze project structure to generate config."""
-        root = Path(project_root)
-        config = {
-            'languages': {},
-            'chunk_types': []
-        }
-        
-        # Count files by extension
-        file_counts = {}
-        for file in root.rglob("*"):
-            if file.is_file():
-                ext = file.suffix.lower()
-                if ext in ['.py', '.js', '.rs', '.c', '.cpp']:
-                    file_counts[ext] = file_counts.get(ext, 0) + 1
-        
-        # Configure based on predominant languages
-        for ext, count in sorted(file_counts.items(), key=lambda x: x[1], reverse=True):
-            if ext == '.py':
-                config['languages']['python'] = {
-                    'enabled': True,
-                    'chunk_types': [
-                        'function_definition',
-                        'class_definition',
-                        'async_function_definition'
-                    ],
-                    'min_chunk_size': 3,
-                    'max_chunk_size': 300
-                }
-            elif ext in ['.js', '.jsx']:
-                config['languages']['javascript'] = {
-                    'enabled': True,
-                    'chunk_types': [
-                        'function_declaration',
-                        'arrow_function',
-                        'class_declaration'
-                    ]
-                }
-        
-        return config
-    
-    def _save_config(self, config: dict, path: Path):
-        """Save configuration in appropriate format."""
-        if path.suffix == '.toml' or path.name == '.chunkerrc':
-            with open(path, 'w') as f:
-                toml.dump(config, f)
-        elif path.suffix in ['.yaml', '.yml']:
-            with open(path, 'w') as f:
-                yaml.dump(config, f, default_flow_style=False)
-        else:
-            with open(path, 'w') as f:
-                json.dump(config, f, indent=2)
-    
-    def create_environment_configs(self, project_root: str):
-        """Create different configs for different environments."""
-        base_config = self.generate_config(project_root)
-        
-        # Development config
-        dev_config = {
-            'extends': '.chunkerrc',
-            'cache_size': 500,
-            'log_level': 'DEBUG',
-            'include_tests': True,
-            'languages': {
-                'python': {
-                    'custom_options': {
-                        'include_docstrings': True,
-                        'include_type_hints': True
-                    }
-                }
-            }
-        }
-        
-        # Production config
-        prod_config = {
-            'extends': '.chunkerrc',
-            'cache_size': 100,
-            'log_level': 'WARNING',
-            'include_tests': False,
-            'min_chunk_size': 5,
-            'exclude_patterns': [
-                '*test*', '*_test.py', 'test_*.py',
-                '__pycache__', '.pytest_cache'
-            ]
-        }
-        
-        # CI config
-        ci_config = {
-            'extends': '.chunkerrc',
-            'parallel_workers': 2,
-            'show_progress': False,
-            'output_format': 'json',
-            'fail_on_error': True
-        }
-        
-        # Save environment configs
-        root = Path(project_root)
-        self._save_config(dev_config, root / 'chunker.dev.toml')
-        self._save_config(prod_config, root / 'chunker.prod.toml')
-        self._save_config(ci_config, root / 'chunker.ci.toml')
-        
-        print("Created environment-specific configurations:")
-        print("  - chunker.dev.toml (development)")
-        print("  - chunker.prod.toml (production)")
-        print("  - chunker.ci.toml (CI/CD)")
-
-# Usage
-configurator = SmartConfigurator()
-
-# Generate config for current project
-config = configurator.generate_config(".")
-
-# Create environment-specific configs
-configurator.create_environment_configs(".")
-
-# Use the generated config
-chunks = chunk_file("example.py", "python")
-print(f"Processed with custom config: {len(chunks)} chunks")
+path = Path("chunker.config.toml")
+path.write_text("""[languages.python]
+min_chunk_size = 1
+max_chunk_size = 200
+chunk_types = ["function_definition"]
+""", encoding="utf-8")
+config = ChunkerConfig(path)
+manager = PluginManager()
+manager.load_builtin_plugins()
+chunks = manager.chunk_file(
+    Path("example.py"), "python", config=config.get_plugin_config("python")
+)
+print(len(chunks))
 ```
+
+For batch worker counts and file patterns use CLI flags/TOML `.chunkerrc`; see
+[Configuration](configuration.md).
 
 ### Parallel Processing with Progress Tracking
 
 Process large codebases efficiently with detailed progress tracking.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.parser import get_parser, return_parser, clear_cache
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
@@ -3573,7 +3087,7 @@ if __name__ == "__main__":
 Process only changed files for efficiency.
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from pathlib import Path
 import hashlib
 import json
@@ -3828,7 +3342,7 @@ if history:
 
 ```python
 import ast
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from typing import List, Dict, Any
 
 class PythonAnalyzer:
@@ -3887,7 +3401,7 @@ class PythonAnalyzer:
 ### JavaScript/TypeScript: Extract Exports and Imports
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 import re
 
 class JavaScriptAnalyzer:
@@ -3959,7 +3473,7 @@ class JavaScriptAnalyzer:
 ### Rust: Analyze Traits and Implementations
 
 ```python
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 import re
 
 class RustAnalyzer:
@@ -4023,7 +3537,7 @@ Save as .git/hooks/pre-commit and make executable.
 import subprocess
 import sys
 from pathlib import Path
-from chunker.chunker import chunk_file
+from chunker import chunk_file
 from chunker.exceptions import ChunkerError
 
 # Configuration
@@ -4129,19 +3643,16 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.13'
     
     - name: Install dependencies
       run: |
         pip install uv
-        uv pip install -e .
-        uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
-        python scripts/fetch_grammars.py
-        python scripts/build_lib.py
+        uv sync --locked --all-extras
     
     - name: Run code analysis
       run: |
-        python .github/scripts/analyze_code.py
+        uv run --locked python .github/scripts/analyze_code.py
     
     - name: Upload results
       if: always()
@@ -4232,830 +3743,75 @@ class CustomChunker:
 
 ### Extract Function Call Spans with Precise Byte Offsets
 
-Extract precise call-site information including byte spans, line numbers, and context for function calls across multiple programming languages.
+Consume the metadata already attached by core extraction. This example reads
+a real UTF-8 file once, parses its exact decoded text with `chunk_text()`
+(to preserve CRLF newlines), deduplicates calls repeated by nested chunks, and slices UTF-8
+bytes using the recorded offsets. Save a Python file as `example.py` first.
 
 ```python
-from chunker import chunk_file
-from chunker.metadata import BaseMetadataExtractor
 from pathlib import Path
-import json
+from chunker import chunk_text
 
-class CallSpanAnalyzer:
-    """Analyze function calls with precise byte spans and metadata."""
-    
-    def __init__(self):
-        self.extractor = BaseMetadataExtractor()
-        self.call_data = []
-    
-    def analyze_file(self, file_path: str, language: str):
-        """Analyze a file and extract all function call information."""
-        chunks = chunk_file(file_path, language)
-        
-        for chunk in chunks:
-            # Extract calls from each chunk
-            calls = self.extractor.extract_calls(chunk)
-            
-            for call in calls:
-                call_info = {
-                    'file': file_path,
-                    'chunk_type': chunk.node_type,
-                    'chunk_start_line': chunk.start_line,
-                    'chunk_end_line': chunk.end_line,
-                    'call_type': call.get('type', 'unknown'),
-                    'function_name': call.get('name', 'unknown'),
-                    'call_start_byte': call.get('start_byte'),
-                    'call_end_byte': call.get('end_byte'),
-                    'call_start_line': call.get('start_line'),
-                    'call_end_line': call.get('end_line'),
-                    'arguments': call.get('arguments', []),
-                    'context': call.get('context', ''),
-                    'parent_context': chunk.parent_context
-                }
-                
-                self.call_data.append(call_info)
-        
-        return self.call_data
-    
-    def analyze_directory(self, directory: str, language: str):
-        """Analyze all files in a directory."""
-        path = Path(directory)
-        language_extensions = {
-            'python': '.py',
-            'javascript': '.js',
-            'rust': '.rs',
-            'go': '.go',
-            'c': '.c',
-            'cpp': '.cpp'
-        }
-        
-        ext = language_extensions.get(language, '.py')
-        
-        for file_path in path.rglob(f"*{ext}"):
-            if self._should_skip(file_path):
+def collect_calls(file_path, language):
+    source = Path(file_path).read_bytes()
+    seen = set()
+    calls = []
+    text = source.decode("utf-8")
+    for chunk in chunk_text(text, language, file_path=str(file_path)):
+        for span in chunk.metadata.get("call_spans", []):
+            key = (span["start"], span["end"])
+            if key in seen:
                 continue
-            
-            try:
-                self.analyze_file(str(file_path), language)
-            except Exception as e:
-                print(f"Error processing {file_path}: {e}")
-        
-        return self.call_data
-    
-    def _should_skip(self, file_path):
-        """Check if file should be skipped."""
-        skip_patterns = ['__pycache__', 'node_modules', '.git', 'venv', 'target']
-        return any(pattern in str(file_path) for pattern in skip_patterns)
-    
-    def generate_call_report(self):
-        """Generate a comprehensive call analysis report."""
-        if not self.call_data:
-            return "No call data available."
-        
-        report = {
-            'summary': {
-                'total_calls': len(self.call_data),
-                'files_analyzed': len(set(call['file'] for call in self.call_data)),
-                'languages': list(set(call.get('language', 'unknown') for call in self.call_data))
-            },
-            'call_types': {},
-            'function_frequency': {},
-            'file_statistics': {}
-        }
-        
-        # Analyze call types
-        for call in self.call_data:
-            call_type = call['call_type']
-            report['call_types'][call_type] = report['call_types'].get(call_type, 0) + 1
-            
-            # Function frequency
-            func_name = call['function_name']
-            if func_name != 'unknown':
-                report['function_frequency'][func_name] = report['function_frequency'].get(func_name, 0) + 1
-        
-        # File statistics
-        for call in self.call_data:
-            file_path = call['file']
-            if file_path not in report['file_statistics']:
-                report['file_statistics'][file_path] = {
-                    'total_calls': 0,
-                    'unique_functions': set(),
-                    'call_types': set()
-                }
-            
-            report['file_statistics'][file_path]['total_calls'] += 1
-            report['file_statistics'][file_path]['unique_functions'].add(call['function_name'])
-            report['file_statistics'][file_path]['call_types'].add(call['call_type'])
-        
-        # Convert sets to lists for JSON serialization
-        for file_stats in report['file_statistics'].values():
-            file_stats['unique_functions'] = list(file_stats['unique_functions'])
-            file_stats['call_types'] = list(file_stats['call_types'])
-        
-        return report
-    
-    def find_function_usage(self, function_name: str):
-        """Find all usages of a specific function."""
-        usages = []
-        
-        for call in self.call_data:
-            if call['function_name'] == function_name:
-                usages.append({
-                    'file': call['file'],
-                    'line': call['call_start_line'],
-                    'context': call['context'],
-                    'arguments': call['arguments']
-                })
-        
-        return usages
-    
-    def export_call_data(self, output_path: str):
-        """Export call data to JSON for further analysis."""
-        with open(output_path, 'w') as f:
-            json.dump(self.call_data, f, indent=2)
-        
-        print(f"Call data exported to: {output_path}")
-    
-    def print_call_summary(self):
-        """Print a summary of call analysis."""
-        if not self.call_data:
-            print("No call data available.")
-            return
-        
-        print("Call Span Analysis Summary")
-        print("=" * 60)
-        print(f"Total function calls analyzed: {len(self.call_data)}")
-        print(f"Files analyzed: {len(set(call['file'] for call in self.call_data))}")
-        
-        # Most common function calls
-        func_counts = {}
-        for call in self.call_data:
-            func_name = call['function_name']
-            if func_name != 'unknown':
-                func_counts[func_name] = func_counts.get(func_name, 0) + 1
-        
-        if func_counts:
-            print("\nMost common function calls:")
-            for func, count in sorted(func_counts.items(), key=lambda x: x[1], reverse=True)[:10]:
-                print(f"  {func}: {count} calls")
-        
-        # Call types
-        call_type_counts = {}
-        for call in self.call_data:
-            call_type = call['call_type']
-            call_type_counts[call_type] = call_type_counts.get(call_type, 0) + 1
-        
-        print("\nCall types:")
-        for call_type, count in sorted(call_type_counts.items()):
-            print(f"  {call_type}: {count}")
+            seen.add(key)
+            calls.append({
+                "file": str(file_path),
+                "language": language,
+                "name": span["name"],
+                "start_byte": span["start"],
+                "end_byte": span["end"],
+                "start_line": source[:span["start"]].count(b"\n") + 1,
+                "text": source[span["start"]:span["end"]].decode("utf-8"),
+            })
+    return calls
 
-# Usage example
-analyzer = CallSpanAnalyzer()
-
-# Analyze a single file
-calls = analyzer.analyze_file("example.py", "python")
-print(f"Found {len(calls)} function calls in example.py")
-
-# Analyze entire project
-project_calls = analyzer.analyze_directory("./src", "python")
-print(f"Found {len(project_calls)} total function calls in project")
-
-# Generate report
-report = analyzer.generate_call_report()
-print(json.dumps(report, indent=2))
-
-# Find specific function usage
-usages = analyzer.find_function_usage("process_data")
-print(f"Function 'process_data' used {len(usages)} times")
-
-# Export data
-analyzer.export_call_data("call_analysis.json")
-analyzer.print_call_summary()
+calls = collect_calls("example.py", "python")
+for call in calls:
+    print(call["name"], call["start_line"], call["text"])
 ```
 
 ### Advanced Metadata Extraction with Language-Specific Patterns
 
-Extract rich metadata including function calls, method calls, imports, and language-specific constructs with precise location information.
-
-```python
-from chunker import chunk_file
-from chunker.metadata import BaseMetadataExtractor
-from typing import Dict, List, Any
-import re
-
-class AdvancedMetadataExtractor:
-    """Extract comprehensive metadata from code chunks."""
-    
-    def __init__(self):
-        self.base_extractor = BaseMetadataExtractor()
-        self.metadata_cache = {}
-    
-    def extract_comprehensive_metadata(self, file_path: str, language: str) -> Dict[str, Any]:
-        """Extract all available metadata from a file."""
-        chunks = chunk_file(file_path, language)
-        
-        metadata = {
-            'file_info': {
-                'path': file_path,
-                'language': language,
-                'total_chunks': len(chunks),
-                'total_lines': sum(chunk.end_line - chunk.start_line + 1 for chunk in chunks)
-            },
-            'chunks': [],
-            'imports': [],
-            'function_calls': [],
-            'class_definitions': [],
-            'dependencies': set(),
-            'complexity_metrics': {}
-        }
-        
-        for chunk in chunks:
-            chunk_metadata = self._extract_chunk_metadata(chunk, language)
-            metadata['chunks'].append(chunk_metadata)
-            
-            # Extract imports
-            if chunk.node_type in ['import_statement', 'import_declaration']:
-                import_info = self._extract_import_info(chunk, language)
-                if import_info:
-                    metadata['imports'].append(import_info)
-                    metadata['dependencies'].add(import_info['module'])
-            
-            # Extract function calls
-            calls = self.base_extractor.extract_calls(chunk)
-            for call in calls:
-                call_info = self._enrich_call_info(call, chunk, language)
-                metadata['function_calls'].append(call_info)
-            
-            # Extract class definitions
-            if chunk.node_type == 'class_definition':
-                class_info = self._extract_class_info(chunk, language)
-                metadata['class_definitions'].append(class_info)
-        
-        # Convert set to list for JSON serialization
-        metadata['dependencies'] = list(metadata['dependencies'])
-        
-        # Calculate complexity metrics
-        metadata['complexity_metrics'] = self._calculate_complexity_metrics(chunks)
-        
-        return metadata
-    
-    def _extract_chunk_metadata(self, chunk, language: str) -> Dict[str, Any]:
-        """Extract metadata from a single chunk."""
-        chunk_meta = {
-            'type': chunk.node_type,
-            'start_line': chunk.start_line,
-            'end_line': chunk.end_line,
-            'start_byte': getattr(chunk, 'start_byte', None),
-            'end_byte': getattr(chunk, 'end_byte', None),
-            'parent_context': chunk.parent_context,
-            'content_preview': chunk.content[:200] + '...' if len(chunk.content) > 200 else chunk.content
-        }
-        
-        # Language-specific metadata
-        if language == 'python':
-            chunk_meta.update(self._extract_python_metadata(chunk))
-        elif language == 'javascript':
-            chunk_meta.update(self._extract_javascript_metadata(chunk))
-        elif language == 'rust':
-            chunk_meta.update(self._extract_rust_metadata(chunk))
-        
-        return chunk_meta
-    
-    def _extract_python_metadata(self, chunk) -> Dict[str, Any]:
-        """Extract Python-specific metadata."""
-        metadata = {}
-        
-        if chunk.node_type == 'function_definition':
-            # Extract decorators
-            decorators = re.findall(r'@(\w+)', chunk.content)
-            if decorators:
-                metadata['decorators'] = decorators
-            
-            # Extract async status
-            if 'async def' in chunk.content:
-                metadata['is_async'] = True
-            
-            # Extract parameters
-            param_match = re.search(r'def\s+\w+\s*\(([^)]*)\)', chunk.content)
-            if param_match:
-                params = param_match.group(1).split(',')
-                metadata['parameters'] = [p.strip() for p in params if p.strip() and p.strip() != 'self']
-        
-        elif chunk.node_type == 'class_definition':
-            # Extract base classes
-            base_match = re.search(r'class\s+\w+\s*\(([^)]*)\)', chunk.content)
-            if base_match:
-                bases = base_match.group(1).split(',')
-                metadata['base_classes'] = [b.strip() for b in bases if b.strip()]
-        
-        return metadata
-    
-    def _extract_javascript_metadata(self, chunk) -> Dict[str, Any]:
-        """Extract JavaScript-specific metadata."""
-        metadata = {}
-        
-        if chunk.node_type == 'function_declaration':
-            # Extract async status
-            if 'async function' in chunk.content:
-                metadata['is_async'] = True
-            
-            # Extract arrow function
-            if '=>' in chunk.content:
-                metadata['is_arrow_function'] = True
-        
-        elif chunk.node_type == 'class_declaration':
-            # Extract extends
-            extends_match = re.search(r'class\s+\w+\s+extends\s+(\w+)', chunk.content)
-            if extends_match:
-                metadata['extends'] = extends_match.group(1)
-        
-        return metadata
-    
-    def _extract_rust_metadata(self, chunk) -> Dict[str, Any]:
-        """Extract Rust-specific metadata."""
-        metadata = {}
-        
-        if chunk.node_type == 'function_item':
-            # Extract async status
-            if 'async fn' in chunk.content:
-                metadata['is_async'] = True
-            
-            # Extract visibility
-            if chunk.content.strip().startswith('pub '):
-                metadata['visibility'] = 'public'
-            else:
-                metadata['visibility'] = 'private'
-        
-        elif chunk.node_type == 'struct_item':
-            # Extract visibility
-            if chunk.content.strip().startswith('pub struct'):
-                metadata['visibility'] = 'public'
-            else:
-                metadata['visibility'] = 'private'
-        
-        return metadata
-    
-    def _extract_import_info(self, chunk, language: str) -> Dict[str, Any]:
-        """Extract import information from a chunk."""
-        import_info = {
-            'type': chunk.node_type,
-            'start_line': chunk.start_line,
-            'end_line': chunk.end_line
-        }
-        
-        if language == 'python':
-            # Python import patterns
-            from_match = re.search(r'from\s+([\w.]+)\s+import', chunk.content)
-            if from_match:
-                import_info['module'] = from_match.group(1)
-                import_info['import_type'] = 'from_import'
-            else:
-                import_match = re.search(r'import\s+([\w.]+)', chunk.content)
-                if import_match:
-                    import_info['module'] = import_match.group(1)
-                    import_info['import_type'] = 'direct_import'
-        
-        elif language == 'javascript':
-            # JavaScript import patterns
-            from_match = re.search(r'from\s+["\']([^"\']+)["\']', chunk.content)
-            if from_match:
-                import_info['module'] = from_match.group(1)
-                import_info['import_type'] = 'es6_import'
-            else:
-                require_match = re.search(r'require\s*\(\s*["\']([^"\']+)["\']', chunk.content)
-                if require_match:
-                    import_info['module'] = require_match.group(1)
-                    import_info['import_type'] = 'commonjs_require'
-        
-        elif language == 'rust':
-            # Rust use patterns
-            use_match = re.search(r'use\s+([\w:]+)', chunk.content)
-            if use_match:
-                import_info['module'] = use_match.group(1)
-                import_info['import_type'] = 'use_statement'
-        
-        return import_info if 'module' in import_info else None
-    
-    def _enrich_call_info(self, call: Dict, chunk, language: str) -> Dict[str, Any]:
-        """Enrich call information with additional context."""
-        enriched_call = call.copy()
-        enriched_call.update({
-            'chunk_type': chunk.node_type,
-            'chunk_start_line': chunk.start_line,
-            'chunk_end_line': chunk.end_line,
-            'parent_context': chunk.parent_context,
-            'language': language
-        })
-        
-        # Extract call context (what's calling this function)
-        if chunk.node_type == 'function_definition':
-            enriched_call['caller_type'] = 'function'
-            # Try to extract function name
-            func_match = re.search(r'(?:def|fn|function)\s+(\w+)', chunk.content)
-            if func_match:
-                enriched_call['caller_name'] = func_match.group(1)
-        elif chunk.node_type == 'method_definition':
-            enriched_call['caller_type'] = 'method'
-        
-        return enriched_call
-    
-    def _extract_class_info(self, chunk, language: str) -> Dict[str, Any]:
-        """Extract class-specific information."""
-        class_info = {
-            'name': self._extract_class_name(chunk.content, language),
-            'start_line': chunk.start_line,
-            'end_line': chunk.end_line,
-            'methods': [],
-            'properties': []
-        }
-        
-        # Extract methods and properties (simplified)
-        lines = chunk.content.split('\n')
-        for line in lines:
-            if language == 'python':
-                if 'def ' in line and 'def __' not in line:
-                    method_match = re.search(r'def\s+(\w+)', line)
-                    if method_match:
-                        class_info['methods'].append(method_match.group(1))
-            elif language == 'javascript':
-                if 'function ' in line or '()' in line:
-                    method_match = re.search(r'(\w+)\s*\(', line)
-                    if method_match:
-                        class_info['methods'].append(method_match.group(1))
-        
-        return class_info
-    
-    def _extract_class_name(self, content: str, language: str) -> str:
-        """Extract class name from content."""
-        if language == 'python':
-            match = re.search(r'class\s+(\w+)', content)
-        elif language == 'javascript':
-            match = re.search(r'class\s+(\w+)', content)
-        elif language == 'rust':
-            match = re.search(r'struct\s+(\w+)', content)
-        else:
-            match = re.search(r'class\s+(\w+)', content)
-        
-        return match.group(1) if match else 'Unknown'
-    
-    def _calculate_complexity_metrics(self, chunks) -> Dict[str, Any]:
-        """Calculate complexity metrics for the file."""
-        total_lines = sum(chunk.end_line - chunk.start_line + 1 for chunk in chunks)
-        total_chunks = len(chunks)
-        
-        # Count control flow statements
-        control_flow_count = 0
-        for chunk in chunks:
-            content = chunk.content.lower()
-            control_flow_count += content.count('if ') + content.count('for ') + content.count('while ')
-            control_flow_count += content.count('try:') + content.count('except:') + content.count('finally:')
-        
-        return {
-            'total_lines': total_lines,
-            'total_chunks': total_chunks,
-            'average_chunk_size': total_lines / total_chunks if total_chunks > 0 else 0,
-            'control_flow_density': control_flow_count / total_lines if total_lines > 0 else 0,
-            'cyclomatic_complexity': control_flow_count + total_chunks
-        }
-    
-    def export_metadata(self, metadata: Dict[str, Any], output_path: str):
-        """Export metadata to JSON file."""
-        import json
-        
-        with open(output_path, 'w') as f:
-            json.dump(metadata, f, indent=2)
-        
-        print(f"Metadata exported to: {output_path}")
-    
-    def generate_metadata_summary(self, metadata: Dict[str, Any]):
-        """Generate a human-readable summary of metadata."""
-        print("Metadata Analysis Summary")
-        print("=" * 50)
-        print(f"File: {metadata['file_info']['path']}")
-        print(f"Language: {metadata['file_info']['language']}")
-        print(f"Total chunks: {metadata['file_info']['total_chunks']}")
-        print(f"Total lines: {metadata['file_info']['total_lines']}")
-        
-        print(f"\nImports: {len(metadata['imports'])}")
-        for imp in metadata['imports'][:5]:  # Show first 5
-            print(f"  - {imp['module']} ({imp['import_type']})")
-        
-        print(f"\nFunction calls: {len(metadata['function_calls'])}")
-        if metadata['function_calls']:
-            call_types = {}
-            for call in metadata['function_calls']:
-                call_type = call.get('type', 'unknown')
-                call_types[call_type] = call_types.get(call_type, 0) + 1
-            
-            for call_type, count in call_types.items():
-                print(f"  - {call_type}: {count}")
-        
-        print(f"\nClasses: {len(metadata['class_definitions'])}")
-        for cls in metadata['class_definitions']:
-            print(f"  - {cls['name']} ({len(cls['methods'])} methods)")
-        
-        print(f"\nComplexity Metrics:")
-        metrics = metadata['complexity_metrics']
-        print(f"  - Cyclomatic complexity: {metrics['cyclomatic_complexity']}")
-        print(f"  - Control flow density: {metrics['control_flow_density']:.3f}")
-        print(f"  - Average chunk size: {metrics['average_chunk_size']:.1f} lines")
-
-# Usage example
-extractor = AdvancedMetadataExtractor()
-
-# Extract metadata from a file
-metadata = extractor.extract_comprehensive_metadata("example.py", "python")
-
-# Generate summary
-extractor.generate_metadata_summary(metadata)
-
-# Export metadata
-extractor.export_metadata(metadata, "metadata_analysis.json")
-
-# Analyze multiple files
-files_to_analyze = [
-    ("src/main.py", "python"),
-    ("src/utils.js", "javascript"),
-    ("src/lib.rs", "rust")
-]
-
-all_metadata = {}
-for file_path, language in files_to_analyze:
-    try:
-        file_metadata = extractor.extract_comprehensive_metadata(file_path, language)
-        all_metadata[file_path] = file_metadata
-    except Exception as e:
-        print(f"Error analyzing {file_path}: {e}")
-
-# Export combined metadata
-extractor.export_metadata(all_metadata, "project_metadata.json")
-```
+`signature`, `complexity`, `docstring` and `imports` are optional metadata
+fields. Use `.get()` and inspect real output before building reports. Span
+records contain names and byte offsets, plus optional callee/argument offsets;
+they do not universally contain decoded arguments, call categories or a
+resolved target. Application classification is a separate heuristic. See
+[metadata extraction](metadata-extraction.md).
 
 ### Cross-Language Call Pattern Analysis
 
-Analyze function call patterns across multiple programming languages to identify common patterns and language-specific differences.
+Reuse `collect_calls()` on supported-language fixtures. Count syntax records
+without inferring an argument count or a runtime signature from missing data:
 
 ```python
-from chunker import chunk_file
-from chunker.metadata import BaseMetadataExtractor
-from collections import defaultdict
-from typing import Dict, List, Set
+from collections import Counter
 import json
 
-class CrossLanguageCallAnalyzer:
-    """Analyze function call patterns across multiple programming languages."""
-    
-    def __init__(self):
-        self.extractor = BaseMetadataExtractor()
-        self.language_patterns = defaultdict(list)
-        self.call_patterns = defaultdict(int)
-        self.function_signatures = defaultdict(set)
-    
-    def analyze_language(self, file_path: str, language: str):
-        """Analyze call patterns in a specific language file."""
-        try:
-            chunks = chunk_file(file_path, language)
-            
-            for chunk in chunks:
-                calls = self.extractor.extract_calls(chunk)
-                
-                for call in calls:
-                    pattern_info = self._analyze_call_pattern(call, chunk, language)
-                    self.language_patterns[language].append(pattern_info)
-                    
-                    # Track call patterns
-                    pattern_key = f"{language}:{call.get('type', 'unknown')}"
-                    self.call_patterns[pattern_key] += 1
-                    
-                    # Track function signatures
-                    if call.get('name'):
-                        signature = self._create_function_signature(call, language)
-                        self.function_signatures[language].add(signature)
-            
-            print(f"Analyzed {file_path} ({language}): {len(calls)} calls found")
-            
-        except Exception as e:
-            print(f"Error analyzing {file_path} ({language}): {e}")
-    
-    def _analyze_call_pattern(self, call: Dict, chunk, language: str) -> Dict:
-        """Analyze a single call pattern."""
-        pattern = {
-            'language': language,
-            'call_type': call.get('type', 'unknown'),
-            'function_name': call.get('name', 'unknown'),
-            'arguments': call.get('arguments', []),
-            'context': {
-                'chunk_type': chunk.node_type,
-                'start_line': chunk.start_line,
-                'end_line': chunk.end_line,
-                'parent_context': chunk.parent_context
-            },
-            'location': {
-                'start_byte': call.get('start_byte'),
-                'end_byte': call.get('end_byte'),
-                'start_line': call.get('start_line'),
-                'end_line': call.get('end_line')
-            }
-        }
-        
-        # Language-specific pattern analysis
-        if language == 'python':
-            pattern.update(self._analyze_python_pattern(call, chunk))
-        elif language == 'javascript':
-            pattern.update(self._analyze_javascript_pattern(call, chunk))
-        elif language == 'rust':
-            pattern.update(self._analyze_rust_pattern(call, chunk))
-        
-        return pattern
-    
-    def _analyze_python_pattern(self, call: Dict, chunk) -> Dict:
-        """Analyze Python-specific call patterns."""
-        pattern = {}
-        
-        # Check for method calls vs function calls
-        if call.get('type') == 'call':
-            # Check if it's a method call
-            if '.' in call.get('name', ''):
-                pattern['call_category'] = 'method_call'
-                pattern['object_type'] = 'attribute_access'
-            else:
-                pattern['call_category'] = 'function_call'
-        
-        # Check for decorators
-        if chunk.node_type == 'decorated_definition':
-            pattern['has_decorators'] = True
-        
-        return pattern
-    
-    def _analyze_javascript_pattern(self, call: Dict, chunk) -> Dict:
-        """Analyze JavaScript-specific call patterns."""
-        pattern = {}
-        
-        # Check for method calls
-        if call.get('type') == 'call_expression':
-            if '.' in call.get('name', ''):
-                pattern['call_category'] = 'method_call'
-            else:
-                pattern['call_category'] = 'function_call'
-        
-        # Check for arrow functions
-        if '=>' in chunk.content:
-            pattern['arrow_function_context'] = True
-        
-        return pattern
-    
-    def _analyze_rust_pattern(self, call: Dict, chunk) -> Dict:
-        """Analyze Rust-specific call patterns."""
-        pattern = {}
-        
-        # Check for method calls
-        if call.get('type') == 'call_expression':
-            if '::' in call.get('name', ''):
-                pattern['call_category'] = 'associated_function'
-            elif '.' in call.get('name', ''):
-                pattern['call_category'] = 'method_call'
-            else:
-                pattern['call_category'] = 'function_call'
-        
-        # Check for macro calls
-        if '!' in call.get('name', ''):
-            pattern['call_category'] = 'macro_call'
-        
-        return pattern
-    
-    def _create_function_signature(self, call: Dict, language: str) -> str:
-        """Create a function signature for tracking."""
-        name = call.get('name', 'unknown')
-        args = call.get('arguments', [])
-        
-        if language == 'python':
-            return f"{name}({len(args)} args)"
-        elif language == 'javascript':
-            return f"{name}({len(args)} args)"
-        elif language == 'rust':
-            return f"{name}({len(args)} args)"
-        else:
-            return f"{name}({len(args)} args)"
-    
-    def generate_cross_language_report(self) -> Dict:
-        """Generate a comprehensive cross-language analysis report."""
-        report = {
-            'summary': {
-                'languages_analyzed': list(self.language_patterns.keys()),
-                'total_calls': sum(len(patterns) for patterns in self.language_patterns.values()),
-                'unique_patterns': len(self.call_patterns)
-            },
-            'language_comparison': {},
-            'common_patterns': {},
-            'language_specific_patterns': {},
-            'function_signature_analysis': {}
-        }
-        
-        # Language comparison
-        for language, patterns in self.language_patterns.items():
-            report['language_comparison'][language] = {
-                'total_calls': len(patterns),
-                'call_types': defaultdict(int),
-                'call_categories': defaultdict(int),
-                'average_arguments': 0
-            }
-            
-            total_args = 0
-            for pattern in patterns:
-                call_type = pattern.get('call_type', 'unknown')
-                report['language_comparison'][language]['call_types'][call_type] += 1
-                
-                call_category = pattern.get('call_category', 'unknown')
-                report['language_comparison'][language]['call_categories'][call_category] += 1
-                
-                total_args += len(pattern.get('arguments', []))
-            
-            if patterns:
-                report['language_comparison'][language]['average_arguments'] = total_args / len(patterns)
-        
-        # Common patterns across languages
-        for pattern_key, count in self.call_patterns.items():
-            if count > 1:  # Only show patterns that appear multiple times
-                report['common_patterns'][pattern_key] = count
-        
-        # Language-specific patterns
-        for language, patterns in self.language_patterns.items():
-            language_specific = []
-            for pattern in patterns:
-                if pattern.get('call_category'):
-                    language_specific.append({
-                        'type': pattern['call_type'],
-                        'category': pattern['call_category'],
-                        'function': pattern['function_name']
-                    })
-            
-            if language_specific:
-                report['language_specific_patterns'][language] = language_specific
-        
-        # Function signature analysis
-        for language, signatures in self.function_signatures.items():
-            report['function_signature_analysis'][language] = {
-                'total_signatures': len(signatures),
-                'signatures': list(signatures)
-            }
-        
-        return report
-    
-    def print_cross_language_summary(self):
-        """Print a human-readable summary of cross-language analysis."""
-        report = self.generate_cross_language_report()
-        
-        print("Cross-Language Call Pattern Analysis")
-        print("=" * 60)
-        print(f"Languages analyzed: {', '.join(report['summary']['languages_analyzed'])}")
-        print(f"Total function calls: {report['summary']['total_calls']}")
-        print(f"Unique call patterns: {report['summary']['unique_patterns']}")
-        
-        print("\nLanguage Comparison:")
-        for language, stats in report['language_comparison'].items():
-            print(f"\n  {language.upper()}:")
-            print(f"    Total calls: {stats['total_calls']}")
-            print(f"    Average arguments: {stats['average_arguments']:.1f}")
-            
-            print("    Call types:")
-            for call_type, count in stats['call_types'].items():
-                print(f"      - {call_type}: {count}")
-            
-            print("    Call categories:")
-            for category, count in stats['call_categories'].items():
-                if category != 'unknown':
-                    print(f"      - {category}: {count}")
-        
-        print("\nCommon Patterns:")
-        for pattern, count in sorted(report['common_patterns'].items(), key=lambda x: x[1], reverse=True):
-            print(f"  {pattern}: {count} occurrences")
-        
-        print("\nFunction Signatures:")
-        for language, sig_info in report['function_signature_analysis'].items():
-            print(f"  {language}: {sig_info['total_signatures']} unique signatures")
-    
-    def export_analysis(self, output_path: str):
-        """Export the complete analysis to JSON."""
-        report = self.generate_cross_language_report()
-        
-        with open(output_path, 'w') as f:
-            json.dump(report, f, indent=2)
-        
-        print(f"Cross-language analysis exported to: {output_path}")
-
-# Usage example
-analyzer = CrossLanguageCallAnalyzer()
-
-# Analyze files in different languages
-analyzer.analyze_language("src/main.py", "python")
-analyzer.analyze_language("src/utils.js", "javascript")
-analyzer.analyze_language("src/lib.rs", "rust")
-
-# Generate and display report
-analyzer.print_cross_language_summary()
-
-# Export analysis
-analyzer.export_analysis("cross_language_analysis.json")
+all_calls = collect_calls("example.py", "python")
+all_calls += collect_calls("example.js", "javascript")
+counts = Counter((call["language"], call["name"]) for call in all_calls)
+report = [
+    {"language": language, "name": name, "count": count}
+    for (language, name), count in sorted(counts.items())
+]
+Path("call_analysis.json").write_text(
+    json.dumps(report, indent=2), encoding="utf-8"
+)
 ```
+
+The JavaScript fixture must also exist. Extraction coverage varies by language
+and selected chunk types; this is a report of returned call spans, not proof
+that all top-level or dynamic calls were found.
 
 ## See Also
 

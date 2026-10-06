@@ -1,925 +1,158 @@
 # Performance Guide
 
-This guide provides comprehensive strategies and best practices for optimizing Tree-sitter Chunker performance. Learn how to leverage caching, parallel processing, and streaming to handle codebases of any size efficiently.
+Performance depends on source size, language, grammar availability, storage and
+worker count. Measure your workload; this guide makes no fixed speedup or memory
+multiplier claim.
 
-## Table of Contents
+## Parser reuse
 
-1. [Performance Overview](#performance-overview)
-2. [AST Caching](#ast-caching)
-3. [Incremental Boundary IR](#incremental-boundary-ir)
-4. [Parallel Processing](#parallel-processing)
-5. [Streaming Large Files](#streaming-large-files)
-6. [Memory Management](#memory-management)
-7. [Benchmarking](#benchmarking)
-8. [Configuration Tuning](#configuration-tuning)
-9. [Common Bottlenecks](#common-bottlenecks)
-10. [Performance Monitoring](#performance-monitoring)
-11. [Best Practices](#best-practices)
+`get_parser(language)` reuses a parser owned by the calling thread. It does not
+cache a file's extracted chunks. For exclusive temporary parsing, use
+`acquire_parser(language)` as a context manager. See [parser concurrency](performance-guide/parser-concurrency.md).
 
-## Performance Overview
+Prefetch the grammars you need before measuring so network downloads do not
+obscure parsing costs:
 
-Tree-sitter Chunker is designed for high performance with several key optimizations:
-
-- **AST Caching**: Up to 11.9x speedup for repeated file processing
-- **Parser Pooling**: Efficient reuse of parser instances
-- **Parallel Processing**: Near-linear speedup with CPU cores
-- **Streaming Support**: Process files larger than available memory
-- **Lazy Loading**: Languages loaded only when needed
-- **Incremental Boundary IR**: Persistent per-file cache records for repeated
-  Boundary IR runs on changing repositories
-
-### Performance Metrics
-
-| Operation | Performance | Notes |
-|-----------|------------|-------|
-| Parser Creation | ~10-50ms | One-time cost per language |
-| File Parsing | O(n) with file size | ~1MB/s typical |
-| Cached Parse | ~0.1ms | 11.9x speedup |
-| Chunk Extraction | O(n) with AST nodes | Linear traversal |
-| Memory Usage | ~10x source size | For AST storage |
+```bash
+python -c "import tree_sitter_language_pack as p; p.prefetch(['python', 'javascript'])"
+```
 
 ## AST Caching
 
-The AST cache dramatically improves performance when processing files multiple times.
-
-### Basic Usage
-
-```python
-from chunker import chunk_file, ASTCache
-
-# Caching is enabled by default
-chunks1 = chunk_file("large_file.py", "python")  # Parses file
-chunks2 = chunk_file("large_file.py", "python")  # Uses cache (11.9x faster)
-```
-
-### Cache Configuration
+The publicly exported `ASTCache` stores **chunk lists in SQLite**, rather than
+live Tree-sitter AST objects. `chunk_file()` does not consult this cache
+automatically. The parallel APIs enable caching by default (`use_cache=True`)
+at `~/.cache/treesitter-chunker/ast_cache.db`. Their helpers do not accept a
+custom cache directory. Use `use_cache=False` unless you manage invalidation.
 
 ```python
-from chunker import ASTCache
+from pathlib import Path
+from chunker import ASTCache, chunk_file
 
-# Create cache with custom size
-cache = ASTCache(max_size=500)  # Cache up to 500 ASTs
-
-# Monitor cache performance
-stats = cache.get_stats()
-print(f"Hit rate: {stats['hit_rate']:.2%}")
-print(f"Hits: {stats['hits']}, Misses: {stats['misses']}")
-print(f"Current size: {stats['size']}/{stats['max_size']}")
-
-# Clear cache when needed
-cache.clear()
+path = Path("example.py").resolve()
+cache = ASTCache(cache_dir=Path(".cache/chunks"))
+chunks = cache.get_cached_chunks(path, "python")
+if chunks is None:
+    chunks = chunk_file(path, "python")
+    cache.cache_chunks(path, "python", chunks)
+print(cache.get_cache_stats())
+# Invalidate a file, or omit the argument to invalidate all cached entries.
+cache.invalidate_cache(path)
 ```
 
-### Cache Key Strategy
-
-The cache uses a composite key based on:
-- File path (absolute)
-- File modification time
-- File size
-- Language
-
-This ensures cache invalidation when files change.
+Statistics contain `total_files`, `total_size_bytes` and `cache_db_size`; there
+are no hit-rate counters, `max_size` constructor argument, TTL or LRU eviction.
+Cache validation checks the file's hash and modification time. This cache does
+not key entries by grammar/runtime version or extraction options; invalidate
+it when those change, including when switching core/streaming extraction.
+The private-directory example above applies to explicit `ASTCache` use; it
+does not redirect the parallel helpers' shared default cache.
+The extraction-mode/pin cache gap is tracked in
+[treesitter-chunker#358](https://github.com/Consiliency/treesitter-chunker/issues/358).
 
 ## Incremental Boundary IR
 
-Boundary IR generation can reuse persisted per-file records across runs:
+Boundary IR has a separate persistent cache:
 
 ```bash
 treesitter-chunker boundary src/ --lang python --incremental --cache-dir .cache/boundary > boundary.json
 treesitter-chunker boundary src/ --lang python --incremental --cache-dir .cache/boundary > boundary.json
-```
-
-Cold incremental runs populate JSON cache records. Warm runs reuse valid records
-and recompute only added, deleted, changed, malformed, forced, or impacted
-neighbor files. Impacted neighbors include reverse import, dependency, and call
-references that mention changed modules or symbols.
-
-Use `--force-rebuild` to bypass cache reads and refresh all records:
-
-```bash
 treesitter-chunker boundary src/ --lang python --incremental --cache-dir .cache/boundary --force-rebuild
 ```
 
-Cache keys include file path, content hash, language, a grammar fingerprint
-containing the installed `tree-sitter-language-pack` and `tree-sitter` runtime
-versions, tool/schema versions, resolution mode, `fail_fast`, and retrieval
-metadata mode. A grammar-pack or runtime update therefore invalidates old
-records before they can be mixed with new extraction output. Timing fields and
-cache directory paths are excluded, so warm output remains byte-identical to
-cold output for the same snapshot when `--include-timings` is not used. Cache
-stats are intentionally kept out of stdout JSON.
-
-### Advanced Caching
-
-```python
-from chunker import ASTCache
-from pathlib import Path
-import time
-
-class SmartChunker:
-    def __init__(self, cache_size=200):
-        self.cache = ASTCache(max_size=cache_size)
-        
-    def process_with_cache_warmup(self, files, language):
-        """Warm up cache for frequently accessed files."""
-        # Pre-process popular files
-        popular_files = self.identify_popular_files(files)
-        for file in popular_files[:self.cache.max_size]:
-            chunk_file(file, language)  # Warm cache
-        
-        # Process all files
-        results = {}
-        for file in files:
-            results[file] = chunk_file(file, language)
-        
-        return results
-    
-    def monitor_cache_efficiency(self):
-        """Monitor and report cache efficiency."""
-        stats = self.cache.get_stats()
-        if stats['hit_rate'] < 0.5 and stats['size'] == stats['max_size']:
-            print("Consider increasing cache size for better performance")
-        return stats
-```
+Cold runs populate records. Warm runs reuse valid records and recompute changed
+files and impacted neighbors. Keys include content, language, grammar/runtime
+fingerprint, tool/schema versions and extraction options. Malformed records
+are recomputed. Without `--include-timings`, output for an unchanged snapshot
+remains canonical and identical between cold and warm runs. Cache statistics
+are excluded from stdout JSON.
 
 ## Parallel Processing
 
-Leverage multiple CPU cores for processing many files simultaneously.
+The Python parallel APIs use a process pool. Use `num_workers`, not
+`max_workers`, and `extensions`, not a glob `pattern`. Results map `Path`
+objects to lists of chunks. Put calls behind a main guard for platforms that
+start workers by importing the script.
 
-### Basic Parallel Processing
-
-```python
-from chunker import chunk_files_parallel
-
-# Process multiple files in parallel
-files = ["file1.py", "file2.py", "file3.py", "file4.py"]
-results = chunk_files_parallel(
-    files,
-    "python",
-    max_workers=4,  # Use 4 CPU cores
-    show_progress=True
-)
-
-# Results is a dict mapping file paths to chunks
-for file_path, chunks in results.items():
-    print(f"{file_path}: {len(chunks)} chunks")
-```
-
-### Directory Processing
+Save this as `parallel_example.py` and run it with files under `src/`:
 
 ```python
-from chunker import chunk_directory_parallel
+from chunker.parallel import chunk_directory_parallel, chunk_files_parallel
 
-# Process entire directory tree
-results = chunk_directory_parallel(
-    "src/",
-    "python",
-    pattern="**/*.py",  # Glob pattern
-    max_workers=8,
-    show_progress=True
-)
-
-print(f"Processed {len(results)} files")
+if __name__ == "__main__":
+    results = chunk_files_parallel(
+        ["example.py"], "python", num_workers=2, use_cache=False
+    )
+    directory_results = chunk_directory_parallel(
+        "src/", "python", extensions=[".py"], num_workers=2, use_cache=False
+    )
+    for path, chunks in directory_results.items():
+        print(path, len(chunks))
 ```
 
-### Custom Parallel Implementation
+`chunker.chunk_directory` aliases `chunk_directory_parallel`. Default extensions
+come from language mappings. Worker failures can appear as empty chunk lists;
+inspect reported errors before treating results as complete. Parallelism has
+startup and serialization costs and may be slower for small workloads.
 
-```python
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from chunker import chunk_file
-import multiprocessing as mp
-
-def process_large_codebase(directory, language):
-    """Custom parallel processing with fine control."""
-    from pathlib import Path
-    
-    # Find all files
-    files = list(Path(directory).rglob(f"*.{language[:2]}"))
-    
-    # Determine optimal worker count
-    cpu_count = mp.cpu_count()
-    worker_count = min(cpu_count, len(files), 32)  # Cap at 32
-    
-    results = {}
-    failed = []
-    
-    # Process with progress tracking
-    with ProcessPoolExecutor(max_workers=worker_count) as executor:
-        # Submit all tasks
-        future_to_file = {
-            executor.submit(chunk_file, str(f), language): f 
-            for f in files
-        }
-        
-        # Process completed tasks
-        for future in as_completed(future_to_file):
-            file = future_to_file[future]
-            try:
-                chunks = future.result(timeout=30)
-                results[str(file)] = chunks
-            except Exception as e:
-                print(f"Failed to process {file}: {e}")
-                failed.append(file)
-    
-    return results, failed
-
-# Use it
-results, failed = process_large_codebase("large_project/", "python")
-print(f"Processed: {len(results)}, Failed: {len(failed)}")
-```
-
-### Parallel Processing Best Practices
-
-1. **Worker Count**: Use `min(cpu_count, file_count)` workers
-2. **Batch Size**: Group small files to reduce overhead
-3. **Memory Limits**: Monitor memory usage with many workers
-4. **Error Handling**: Isolate failures to individual files
+The CLI `batch --parallel N` uses threads; it is a different interface from the
+Python process-pool helpers. See [CLI Reference](cli-reference.md).
 
 ## Streaming Large Files
 
-For files too large to fit in memory, use streaming processing.
-
-### Basic Streaming
-
 ```python
 from chunker import chunk_file_streaming
 
-# Process a very large file
-for chunk in chunk_file_streaming("huge_codebase.py", "python"):
-    # Each chunk is yielded as it's found
-    print(f"Found {chunk.node_type} at lines {chunk.start_line}-{chunk.end_line}")
-    
-    # Process immediately without storing all chunks
-    if chunk.node_type == "function_definition":
-        analyze_function(chunk)
+for chunk in chunk_file_streaming("example.py", "python"):
+    print(chunk.node_type, chunk.start_line, chunk.end_line)
 ```
 
-### Streaming with Batching
+Streaming yields chunks lazily and memory-maps the source, but still parses a
+whole syntax tree. It does not provide bounded-memory parsing, a read-buffer
+`chunk_size` option, or arbitrary stream input. Turning its result into a list
+retains all chunks in memory.
 
-```python
-from chunker import chunk_file_streaming
-from itertools import islice
-
-def process_in_batches(file_path, language, batch_size=100):
-    """Process chunks in batches to balance memory and efficiency."""
-    stream = chunk_file_streaming(file_path, language)
-    
-    while True:
-        # Get next batch
-        batch = list(islice(stream, batch_size))
-        if not batch:
-            break
-            
-        # Process batch
-        process_batch(batch)
-        
-        # Optional: Clear memory between batches
-        import gc
-        gc.collect()
-
-def process_batch(chunks):
-    """Process a batch of chunks."""
-    # Example: Save to database
-    records = [chunk_to_record(chunk) for chunk in chunks]
-    db.insert_many(records)
-```
-
-### Custom Streaming Implementation
-
-```python
-from chunker import StreamingChunker
-import mmap
-
-class MemoryEfficientChunker:
-    def __init__(self, language):
-        self.chunker = StreamingChunker(language)
-    
-    def process_huge_file(self, file_path):
-        """Process files of any size efficiently."""
-        with open(file_path, 'rb') as f:
-            # Use memory mapping for efficient access
-            with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmapped:
-                # Process in chunks
-                chunk_size = 1024 * 1024  # 1MB chunks
-                offset = 0
-                
-                while offset < len(mmapped):
-                    # Read chunk
-                    end = min(offset + chunk_size, len(mmapped))
-                    data = mmapped[offset:end]
-                    
-                    # Process chunk
-                    for code_chunk in self.chunker.process_bytes(data, offset):
-                        yield code_chunk
-                    
-                    offset = end
-```
-
-## Memory Management
-
-Optimize memory usage for large-scale processing.
-
-### Memory Profiling
-
-```python
-import psutil
-import os
-from chunker import chunk_file
-
-def profile_memory_usage(file_path, language):
-    """Profile memory usage during chunking."""
-    process = psutil.Process(os.getpid())
-    
-    # Baseline memory
-    baseline = process.memory_info().rss / 1024 / 1024  # MB
-    
-    # Process file
-    chunks = chunk_file(file_path, language)
-    
-    # Peak memory
-    peak = process.memory_info().rss / 1024 / 1024  # MB
-    
-    print(f"Memory usage: {peak - baseline:.1f} MB")
-    print(f"Memory per chunk: {(peak - baseline) / len(chunks):.2f} MB")
-    
-    return chunks
-```
-
-### Memory Optimization Strategies
-
-```python
-from chunker import chunk_files_parallel, ASTCache
-import gc
-
-class MemoryOptimizedProcessor:
-    def __init__(self):
-        # Smaller cache for memory-constrained environments
-        self.cache = ASTCache(max_size=50)
-    
-    def process_with_memory_limit(self, files, language, memory_limit_mb=1000):
-        """Process files while staying within memory limit."""
-        import resource
-        
-        # Set memory limit (Unix only)
-        if hasattr(resource, 'RLIMIT_AS'):
-            resource.setrlimit(
-                resource.RLIMIT_AS,
-                (memory_limit_mb * 1024 * 1024, -1)
-            )
-        
-        # Process in smaller batches
-        batch_size = max(1, memory_limit_mb // 100)  # Rough estimate
-        results = {}
-        
-        for i in range(0, len(files), batch_size):
-            batch = files[i:i + batch_size]
-            batch_results = chunk_files_parallel(batch, language, max_workers=2)
-            results.update(batch_results)
-            
-            # Force garbage collection between batches
-            gc.collect()
-            
-            # Clear cache if memory pressure
-            if self.get_memory_usage() > memory_limit_mb * 0.8:
-                self.cache.clear()
-        
-        return results
-    
-    def get_memory_usage(self):
-        """Get current memory usage in MB."""
-        import psutil
-        process = psutil.Process(os.getpid())
-        return process.memory_info().rss / 1024 / 1024
-```
+Streaming uses the core node-selection predicate, but does not repeat core's
+per-language type/span rewrites, merged or synthesized chunks, or optional
+metadata and file/definition/symbol identities. Types, spans and IDs can differ
+(including C++ methods); CRLF handling can also differ. Treat the two outputs
+as different extraction modes and compare real fixtures before switching.
+Invalidate cached chunks when changing modes; do not mix their output in one
+index assuming equivalence.
 
 ## Benchmarking
 
-Measure and compare performance across different scenarios.
-
-### Basic Benchmarking
-
-```python
-import time
-from chunker import chunk_file, chunk_files_parallel
-
-def benchmark_single_vs_parallel(files, language):
-    """Compare single-threaded vs parallel processing."""
-    
-    # Single-threaded
-    start = time.time()
-    results_single = {}
-    for file in files:
-        results_single[file] = chunk_file(file, language)
-    single_time = time.time() - start
-    
-    # Clear cache for fair comparison
-    from chunker import clear_cache
-    clear_cache()
-    
-    # Parallel
-    start = time.time()
-    results_parallel = chunk_files_parallel(files, language)
-    parallel_time = time.time() - start
-    
-    print(f"Single-threaded: {single_time:.2f}s")
-    print(f"Parallel: {parallel_time:.2f}s")
-    print(f"Speedup: {single_time / parallel_time:.2f}x")
-    
-    return results_parallel
-```
-
-### Comprehensive Benchmark Suite
+Run this from a directory containing `example.py`. It measures repeated direct
+parsing, not SQLite cache hits:
 
 ```python
-import time
-import statistics
+from importlib.metadata import version
 from pathlib import Path
-from chunker import chunk_file, ASTCache, chunk_file_streaming
-
-class ChunkerBenchmark:
-    def __init__(self):
-        self.results = {}
-    
-    def benchmark_cache_performance(self, file_path, language, iterations=10):
-        """Benchmark cache hit performance."""
-        times_cold = []
-        times_hot = []
-        
-        for i in range(iterations):
-            # Cold cache
-            cache = ASTCache()
-            cache.clear()
-            
-            start = time.perf_counter()
-            chunk_file(file_path, language)
-            times_cold.append(time.perf_counter() - start)
-            
-            # Hot cache
-            start = time.perf_counter()
-            chunk_file(file_path, language)
-            times_hot.append(time.perf_counter() - start)
-        
-        cold_avg = statistics.mean(times_cold)
-        hot_avg = statistics.mean(times_hot)
-        
-        self.results['cache'] = {
-            'cold_avg': cold_avg,
-            'hot_avg': hot_avg,
-            'speedup': cold_avg / hot_avg,
-            'cold_stdev': statistics.stdev(times_cold),
-            'hot_stdev': statistics.stdev(times_hot)
-        }
-        
-        print(f"Cache Performance:")
-        print(f"  Cold: {cold_avg*1000:.1f}ms ± {statistics.stdev(times_cold)*1000:.1f}ms")
-        print(f"  Hot:  {hot_avg*1000:.1f}ms ± {statistics.stdev(times_hot)*1000:.1f}ms")
-        print(f"  Speedup: {cold_avg / hot_avg:.1f}x")
-    
-    def benchmark_file_sizes(self, language):
-        """Benchmark performance across different file sizes."""
-        # Create test files of different sizes
-        test_sizes = [100, 1000, 10000, 100000]  # lines
-        
-        for size in test_sizes:
-            content = self.generate_test_file(size, language)
-            file_path = f"test_{size}.{language[:2]}"
-            
-            with open(file_path, 'w') as f:
-                f.write(content)
-            
-            start = time.perf_counter()
-            chunks = chunk_file(file_path, language)
-            elapsed = time.perf_counter() - start
-            
-            print(f"{size} lines: {elapsed*1000:.1f}ms, {len(chunks)} chunks")
-            print(f"  Rate: {size/elapsed:.0f} lines/sec")
-            
-            Path(file_path).unlink()  # Clean up
-    
-    def generate_test_file(self, lines, language):
-        """Generate test file with specified number of lines."""
-        if language == "python":
-            template = """def function_{i}(x, y):
-    \"\"\"Function {i} docstring.\"\"\"
-    result = x + y + {i}
-    return result
-
-"""
-            functions = lines // 5  # Each function is ~5 lines
-            return '\n'.join(template.format(i=i) for i in range(functions))
-        
-        # Add other languages as needed
-        return '\n' * lines
-```
-
-## Configuration Tuning
-
-Optimize configuration for your specific use case.
-
-### Cache Size Tuning
-
-```python
-from chunker import ASTCache
-import psutil
-
-def determine_optimal_cache_size():
-    """Determine optimal cache size based on available memory."""
-    # Get available memory
-    available_mb = psutil.virtual_memory().available / 1024 / 1024
-    
-    # Use 10% of available memory for cache (rough estimate)
-    # Assume average AST size of 1MB
-    optimal_size = int(available_mb * 0.1)
-    
-    # Apply reasonable bounds
-    optimal_size = max(50, min(optimal_size, 1000))
-    
-    print(f"Recommended cache size: {optimal_size} entries")
-    return optimal_size
-
-# Use it
-cache = ASTCache(max_size=determine_optimal_cache_size())
-```
-
-### Worker Count Optimization
-
-```python
-import multiprocessing as mp
-from chunker import chunk_files_parallel
-
-def determine_optimal_workers(file_count):
-    """Determine optimal number of workers."""
-    cpu_count = mp.cpu_count()
-    
-    # Rules of thumb:
-    # - Don't exceed CPU count
-    # - Don't create more workers than files
-    # - Account for memory constraints
-    # - Leave some CPUs for system
-    
-    if file_count < 10:
-        return min(file_count, 2)
-    elif file_count < 100:
-        return min(file_count, cpu_count // 2)
-    else:
-        return min(32, cpu_count - 1)  # Leave one CPU free
-
-# Use it
-files = ["file1.py", "file2.py", ...]  # Your files
-optimal_workers = determine_optimal_workers(len(files))
-results = chunk_files_parallel(files, "python", max_workers=optimal_workers)
-```
-
-### Configuration File Optimization
-
-```toml
-# chunker.config.toml - Optimized for large codebases
-
-# Performance settings
-[performance]
-cache_size = 500  # Increase for frequently accessed files
-parser_pool_size = 10  # Number of parsers per language
-parallel_workers = 8  # Adjust based on CPU count
-
-# Memory management
-[memory]
-max_file_size_mb = 50  # Stream files larger than this
-streaming_chunk_size = 1048576  # 1MB chunks for streaming
-gc_threshold = 100  # Run GC after processing N files
-
-# Language-specific optimizations
-[languages.python]
-enabled = true
-# Only chunk what you need
-chunk_types = ["function_definition", "class_definition"]
-min_chunk_size = 5  # Skip tiny functions
-max_chunk_size = 500  # Split huge functions
-
-[languages.javascript]
-enabled = true
-# Include only important constructs
-chunk_types = ["function_declaration", "class_declaration", "arrow_function"]
-# Skip minified files
-exclude_patterns = ["*.min.js", "*bundle.js"]
-```
-
-## Common Bottlenecks
-
-### 1. Parser Creation Overhead
-
-**Problem**: Creating parsers is expensive (~10-50ms each).
-
-**Solution**: Reuse parsers with pooling.
-
-```python
-from chunker import get_parser, return_parser
-
-# Bad: Creating new parser each time
-def process_files_slow(files, language):
-    results = []
-    for file in files:
-        parser = get_parser(language)  # Expensive!
-        # ... use parser ...
-    return results
-
-# Good: Reuse parser
-def process_files_fast(files, language):
-    parser = get_parser(language)  # Create once
-    try:
-        results = []
-        for file in files:
-            # ... use same parser ...
-            results.append(result)
-        return results
-    finally:
-        return_parser(language, parser)  # Return for reuse
-```
-
-### 2. Memory Exhaustion
-
-**Problem**: Processing too many large files at once.
-
-**Solution**: Use streaming and batching.
-
-```python
-# Bad: Load everything into memory
-def process_all_at_once(directory, language):
-    all_chunks = []
-    for file in Path(directory).rglob("*.py"):
-        chunks = chunk_file(file, language)
-        all_chunks.extend(chunks)  # Memory grows unbounded!
-    return all_chunks
-
-# Good: Process and release
-def process_incrementally(directory, language):
-    for file in Path(directory).rglob("*.py"):
-        chunks = chunk_file(file, language)
-        yield from chunks  # Yield immediately
-        # Chunks are garbage collected after use
-```
-
-### 3. Cache Thrashing
-
-**Problem**: Cache constantly evicting useful entries.
-
-**Solution**: Increase cache size or implement smarter eviction.
-
-```python
-from chunker import ASTCache
-
-class SmartCache(ASTCache):
-    def __init__(self, max_size=100):
-        super().__init__(max_size)
-        self.access_counts = {}
-    
-    def get(self, file_path, language):
-        result = super().get(file_path, language)
-        if result:
-            # Track access frequency
-            key = (str(file_path), language)
-            self.access_counts[key] = self.access_counts.get(key, 0) + 1
-        return result
-    
-    def evict_least_frequently_used(self):
-        """Evict based on access frequency instead of recency."""
-        if len(self.cache) >= self.max_size:
-            # Find least frequently used
-            lfu_key = min(self.access_counts.items(), key=lambda x: x[1])[0]
-            del self.cache[lfu_key]
-            del self.access_counts[lfu_key]
-```
-
-## Performance Monitoring
-
-### Real-time Monitoring
-
-```python
-import time
-import psutil
-import threading
-from chunker import chunk_files_parallel
-
-class PerformanceMonitor:
-    def __init__(self):
-        self.running = False
-        self.stats = {
-            'files_processed': 0,
-            'chunks_extracted': 0,
-            'processing_time': 0,
-            'peak_memory_mb': 0,
-            'cpu_percent': []
-        }
-    
-    def start_monitoring(self):
-        """Start background monitoring thread."""
-        self.running = True
-        self.monitor_thread = threading.Thread(target=self._monitor)
-        self.monitor_thread.start()
-    
-    def stop_monitoring(self):
-        """Stop monitoring and return stats."""
-        self.running = False
-        self.monitor_thread.join()
-        return self.stats
-    
-    def _monitor(self):
-        """Background monitoring loop."""
-        process = psutil.Process()
-        
-        while self.running:
-            # CPU usage
-            cpu = process.cpu_percent(interval=0.1)
-            self.stats['cpu_percent'].append(cpu)
-            
-            # Memory usage
-            memory_mb = process.memory_info().rss / 1024 / 1024
-            self.stats['peak_memory_mb'] = max(
-                self.stats['peak_memory_mb'], 
-                memory_mb
-            )
-            
-            time.sleep(0.1)
-    
-    def process_with_monitoring(self, files, language):
-        """Process files while monitoring performance."""
-        self.start_monitoring()
-        start_time = time.time()
-        
-        try:
-            results = chunk_files_parallel(files, language)
-            
-            # Update stats
-            self.stats['files_processed'] = len(results)
-            self.stats['chunks_extracted'] = sum(
-                len(chunks) for chunks in results.values()
-            )
-            self.stats['processing_time'] = time.time() - start_time
-            
-            return results
-        finally:
-            stats = self.stop_monitoring()
-            self.print_report(stats)
-    
-    def print_report(self, stats):
-        """Print performance report."""
-        print("\nPerformance Report:")
-        print(f"Files processed: {stats['files_processed']}")
-        print(f"Chunks extracted: {stats['chunks_extracted']}")
-        print(f"Processing time: {stats['processing_time']:.2f}s")
-        print(f"Peak memory: {stats['peak_memory_mb']:.1f} MB")
-        
-        if stats['cpu_percent']:
-            avg_cpu = sum(stats['cpu_percent']) / len(stats['cpu_percent'])
-            print(f"Average CPU: {avg_cpu:.1f}%")
-        
-        if stats['processing_time'] > 0:
-            rate = stats['files_processed'] / stats['processing_time']
-            print(f"Processing rate: {rate:.1f} files/sec")
-```
-
-### Logging Performance Metrics
-
-```python
-import logging
-from functools import wraps
+from statistics import median
+from time import perf_counter
+import platform
 from chunker import chunk_file
 
-# Configure performance logger
-perf_logger = logging.getLogger('chunker.performance')
-perf_logger.setLevel(logging.INFO)
-
-def log_performance(func):
-    """Decorator to log function performance."""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        result = func(*args, **kwargs)
-        elapsed = time.perf_counter() - start
-        
-        perf_logger.info(
-            f"{func.__name__} completed in {elapsed:.3f}s"
-        )
-        return result
-    return wrapper
-
-# Use it
-@log_performance
-def process_codebase(directory, language):
-    # Your processing logic
-    pass
+path = Path("example.py")
+chunk_file(path, "python")  # Warm grammar loading and parser initialization.
+times = []
+for _ in range(10):
+    start = perf_counter()
+    chunks = chunk_file(path, "python")
+    times.append(perf_counter() - start)
+print({
+    "python": platform.python_version(),
+    "platform": platform.platform(),
+    "chunker": version("treesitter-chunker"),
+    "tree_sitter": version("tree-sitter"),
+    "grammar_pack": version("tree-sitter-language-pack"),
+    "source_bytes": path.stat().st_size,
+    "chunks": len(chunks),
+    "median_seconds": median(times),
+})
 ```
 
-## Best Practices
-
-### 1. Profile Before Optimizing
-
-Always measure before optimizing:
-
-```python
-import cProfile
-import pstats
-
-def profile_chunking(file_path, language):
-    """Profile chunking performance."""
-    profiler = cProfile.Profile()
-    profiler.enable()
-    
-    # Run the code
-    chunks = chunk_file(file_path, language)
-    
-    profiler.disable()
-    
-    # Print stats
-    stats = pstats.Stats(profiler)
-    stats.sort_stats('cumulative')
-    stats.print_stats(10)  # Top 10 functions
-    
-    return chunks
-```
-
-### 2. Choose the Right Tool
-
-- **Small files (<1MB)**: Use `chunk_file()`
-- **Many files**: Use `chunk_files_parallel()`
-- **Large files (>10MB)**: Use `chunk_file_streaming()`
-- **Entire codebases**: Use `chunk_directory_parallel()`
-
-### 3. Optimize for Your Use Case
-
-```python
-# For CI/CD - Speed matters most
-config = {
-    'max_workers': mp.cpu_count(),
-    'cache_size': 1000,
-    'show_progress': False
-}
-
-# For development - Memory efficiency matters
-config = {
-    'max_workers': 2,
-    'cache_size': 100,
-    'streaming_threshold': 5 * 1024 * 1024  # 5MB
-}
-
-# For analysis - Completeness matters
-config = {
-    'max_workers': 4,
-    'timeout': None,  # No timeout
-    'ignore_errors': False
-}
-```
-
-### 4. Monitor and Adjust
-
-Continuously monitor and adjust based on real-world usage:
-
-```python
-from chunker import ASTCache
-
-# Periodic cache effectiveness check
-def check_cache_effectiveness():
-    cache = ASTCache()
-    stats = cache.get_stats()
-    
-    if stats['hit_rate'] < 0.3:
-        print("Low cache hit rate - consider:")
-        print("- Increasing cache size")
-        print("- Pre-warming cache with common files")
-        print("- Checking if files are being modified")
-    
-    if stats['size'] == stats['max_size'] and stats['misses'] > stats['hits']:
-        print("Cache is full but ineffective - increase size")
-```
-
-### 5. Error Recovery
-
-Build resilient systems that handle failures gracefully:
-
-```python
-def robust_processing(files, language, max_retries=3):
-    """Process files with retry logic and error handling."""
-    results = {}
-    failed = []
-    
-    for file in files:
-        for attempt in range(max_retries):
-            try:
-                chunks = chunk_file(file, language)
-                results[file] = chunks
-                break
-            except Exception as e:
-                if attempt == max_retries - 1:
-                    print(f"Failed to process {file} after {max_retries} attempts: {e}")
-                    failed.append((file, str(e)))
-                else:
-                    time.sleep(0.1 * (attempt + 1))  # Exponential backoff
-    
-    return results, failed
-```
-
-## See Also
-
-- [API Reference](api-reference.md) - Complete API documentation
-- [User Guide](user-guide.md) - General usage guide
-- [Export Formats](export-formats.md) - Output format optimization
-- [Configuration](configuration.md) - Performance-related settings
+For comparisons, record the source snapshot, hardware, worker count, cache
+state and output equivalence. Compare uncached sequential and parallel runs
+with `use_cache=False`, then measure caching separately. Record multiple runs
+and peak resident memory; do not infer a speedup from a single warm run.

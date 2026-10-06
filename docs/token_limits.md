@@ -5,7 +5,7 @@ The treesitter-chunker now includes built-in support for respecting token limits
 ## Quick Start
 
 ```python
-from chunker import chunk_file_with_token_limit
+from chunker.chunker import chunk_file_with_token_limit
 
 # Chunk a file ensuring no chunk exceeds 1000 tokens
 chunks = chunk_file_with_token_limit(
@@ -23,15 +23,16 @@ for chunk in chunks:
 
 ### 1. Token-Aware Chunking
 
-The chunker automatically adds token count information to each chunk's metadata:
+Token-aware helpers add token metadata. For ordinary core chunks, count tokens
+explicitly:
 
 ```python
-from chunker import chunk_file
+from chunker import chunk_file, count_chunk_tokens
 
 chunks = chunk_file("example.py", "python")
 for chunk in chunks:
-    # Token info is automatically added
-    print(f"Tokens: {chunk.metadata.get('token_count', 'N/A')}")
+    # Core chunk_file does not add token counts automatically
+    print(count_chunk_tokens(chunk, model="gpt-4"))
 ```
 
 ### 2. Automatic Chunk Splitting
@@ -45,7 +46,10 @@ chunks = chunk_file_with_token_limit("large_file.py", "python", max_tokens=500)
 
 ### 3. Multiple Tokenizer Models
 
-Support for different LLM tokenizers:
+This implementation uses tiktoken. The `claude`, `claude-3`, `claude-3.5` and
+`llama` aliases, as well as unknown names, use `cl100k_base`; these are estimates,
+not those providers' native tokenizers or current context-window guarantees.
+Use an explicit budget and the target provider's tokenizer for final acceptance:
 
 ```python
 # GPT-4 (default)
@@ -106,7 +110,7 @@ Counts tokens in an existing chunk.
 For advanced use cases, you can use the token-aware chunker directly:
 
 ```python
-from chunker import TreeSitterTokenAwareChunker
+from chunker.token.chunker import TreeSitterTokenAwareChunker
 
 chunker = TreeSitterTokenAwareChunker()
 
@@ -115,7 +119,7 @@ chunks_with_tokens = chunker.add_token_info(chunks, model="gpt-4")
 
 # Chunk with token limits
 limited_chunks = chunker.chunk_with_token_limit(
-    "file.py", "python", max_tokens=1000
+    "example.py", "python", max_tokens=1000, model="gpt-4"
 )
 ```
 
@@ -176,11 +180,11 @@ def large_function():
 
 1. **Choose Appropriate Limits**: Consider the LLM's context window and leave room for prompts:
    ```python
-   # For GPT-4 (8k context), leave room for prompts
+   # Leave room for prompts within the target model's documented context limit
    chunks = chunk_file_with_token_limit("file.py", "python", max_tokens=6000)
    ```
 
-2. **Model-Specific Tokenization**: Use the same model for tokenization as you'll use for processing:
+2. **Model-Specific Tokenization**: Verify the target model with its native tokenizer; the aliases here are estimates:
    ```python
    # If using Claude for processing
    chunks = chunk_file_with_token_limit("file.py", "python", 
@@ -196,14 +200,17 @@ def large_function():
 
 ## Integration with Fallback Strategies
 
-Token limits work seamlessly with the fallback chunking system. When tree-sitter chunks are too large, the sliding window fallback can be used:
+Sliding-window fallback is a separate interface; callers must invoke it
+explicitly for an application-defined fallback policy. Core does have a narrow
+automatic fallback on `RecursionError`; constructing the object below does not
+change token-aware extraction's policy:
 
 ```python
 from chunker.fallback import SlidingWindowFallback
 
 fallback = SlidingWindowFallback()
-# Automatically uses sliding window for files that can't be parsed
-# or produce chunks exceeding token limits
+# This constructs a fallback; it does not automatically wire it into core
+# or token-aware chunking. Call its chunking method explicitly.
 ```
 
 ## Performance Considerations

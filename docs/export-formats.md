@@ -46,28 +46,22 @@ Open `chunks.graphml` in yEd/Gephi to explore the call/import graph.
 
 ## Neo4j Walkthrough
 
-Export relationships to Neo4j for graph queries:
+Generate a Cypher import file. This exporter does not connect to a live database
+or provide `uri`, `user`, `password` or `flush` options:
 
 ```python
-from chunker.core import chunk_file
-from chunker.export.formats.graph import Neo4jExporter
+from pathlib import Path
+from chunker import chunk_file
+from chunker.export.neo4j_exporter import Neo4jExporter
 
 chunks = chunk_file("example.py", "python")
-exporter = Neo4jExporter(uri="bolt://localhost:7687", user="neo4j", password="pass")
+exporter = Neo4jExporter()
 exporter.add_chunks(chunks)
 exporter.extract_relationships(chunks)
-exporter.flush()  # Push nodes/edges to Neo4j
+exporter.export(Path("chunks.cypher"), fmt="cypher")
 ```
 
-Example Cypher queries:
-
-```cypher
-// Functions calling function named 'process'
-MATCH (a:Chunk)-[:CALLS]->(b:Chunk {name: 'process'}) RETURN a, b
-
-// Modules importing others
-MATCH (a:Chunk)-[:IMPORTS]->(b:Chunk) RETURN a.file_path, b.file_path LIMIT 25
-```
+Inspect the generated file before importing it with your Neo4j tooling.
 
 ## JSON Export
 
@@ -90,7 +84,7 @@ exporter.export(chunks, "output.json")
 exporter.export(chunks, "output.json", indent=2)
 
 # Export with compression
-exporter.export(chunks, "output.json.gz", compress=True)
+exporter.export(chunks, "output.json", compress=True)
 ```
 
 ### Schema Types
@@ -266,7 +260,7 @@ exporter = JSONLExporter()
 exporter.export(chunks, "output.jsonl")
 
 # Export with compression
-exporter.export(chunks, "output.jsonl.gz", compress=True)
+exporter.export(chunks, "output.jsonl", compress=True)
 ```
 
 ### Streaming Export
@@ -289,7 +283,7 @@ def export_large_codebase(directory, language):
                 yield chunk
     
     # Stream export
-    exporter.export_streaming(
+    exporter.stream_export(
         chunk_generator(),
         "large_export.jsonl",
         compress=True
@@ -308,7 +302,7 @@ class FilteredJSONLExporter(JSONLExporter):
     def export_filtered(self, chunks, output_path, filter_func):
         """Export only chunks that pass filter."""
         filtered = (chunk for chunk in chunks if filter_func(chunk))
-        self.export_streaming(filtered, output_path)
+        self.stream_export(filtered, output_path)
 
 # Example: Export only large functions
 exporter = FilteredJSONLExporter()
@@ -655,14 +649,11 @@ Normalized for relational databases:
 
 ### Compression Comparison
 
-| Algorithm | Compression Ratio | Speed | Use Case |
-|-----------|------------------|-------|----------|
-| None | 1:1 | Fastest | Local processing |
-| Snappy | 2-4:1 | Very Fast | Default choice |
-| LZ4 | 2-4:1 | Fastest | Speed critical |
-| Gzip | 5-10:1 | Slow | Network transfer |
-| Zstd | 5-15:1 | Medium | Balanced |
-| Brotli | 10-20:1 | Very Slow | Storage critical |
+Compression ratio and speed depend on input, codec settings and hardware.
+JSON/JSONL exporters offer gzip via `compress=True`; Parquet compression is
+selected with the `compression` constructor option. Measure candidate codecs
+on representative data instead of assuming a fixed ratio. JSON exporters
+append `.gz` themselves, so pass a filename without that suffix.
 
 ### Compression Examples
 
@@ -670,7 +661,7 @@ Normalized for relational databases:
 # JSON with gzip
 from chunker.export import JSONExporter
 exporter = JSONExporter()
-exporter.export(chunks, "output.json.gz", compress=True)
+exporter.export(chunks, "output.json", compress=True)
 
 # JSONL with custom compression
 import gzip
@@ -712,7 +703,7 @@ class StreamingExporter:
         
         if output_format == "jsonl":
             exporter = JSONLExporter()
-            exporter.export_streaming(
+            exporter.stream_export(
                 chunk_generator(),
                 f"export.{output_format}",
                 compress=True
@@ -779,7 +770,7 @@ class ParallelStreamingExporter:
             while not self.done.is_set() or not self.chunk_queue.empty():
                 try:
                     chunk = self.chunk_queue.get(timeout=0.1)
-                    exporter._write_chunk(chunk, f)
+                    exporter.stream_export(iter([chunk]), f)
                 except queue.Empty:
                     continue
 ```
@@ -920,7 +911,7 @@ class SQLiteExporter:
 
 ```python
 from elasticsearch import Elasticsearch, helpers
-from chunker import chunk_directory_parallel
+from chunker.parallel import chunk_directory_parallel
 
 def index_to_elasticsearch(directory, language, es_host="localhost:9200"):
     """Index chunks to Elasticsearch."""
