@@ -1,6 +1,7 @@
 """Persisted grammar compatibility cleanup using parsed source fixtures."""
 
 import gc
+import json
 import sqlite3
 import time
 from contextlib import closing
@@ -107,6 +108,18 @@ def test_database_operations_release_handles_without_gc(tmp_path, operation):
             rows = connection.execute(
                 "SELECT grammar_version, score, test_results FROM compatibility_results"
             ).fetchall()
+            if operation == "store_test":
+                test_rows = connection.execute(
+                    "SELECT sample_results, performance_metrics FROM test_results"
+                ).fetchall()
+                assert len(test_rows) == 2
+                assert all(
+                    json.loads(row[0]) == parsed.sample_results for row in test_rows
+                )
+                assert all(
+                    json.loads(row[1]) == parsed.performance_metrics
+                    for row in test_rows
+                )
         if operation == "cleanup":
             assert result == {"compatibility_results": 1, "test_results": 0}
             assert rows == []
@@ -204,7 +217,7 @@ def test_cleanup_removes_stale_records_and_keeps_recent_parses(tmp_path: Path) -
     assert stats["test_results"] == 1
     assert reopened.get_compatibility_result("python", "stale") is None
     assert reopened.get_compatibility_result("python", "recent") is not None
-    with sqlite3.connect(database_path) as conn:
+    with closing(sqlite3.connect(database_path)) as conn:
         assert conn.execute("SELECT grammar_version FROM test_results").fetchall() == [
             ("recent",)
         ]
