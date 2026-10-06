@@ -34,13 +34,19 @@ grammar-management history repair in treesitter-chunker#135.
   breaking changes. Replace an earlier tied grammar and require the live winner
   to follow persisted replacement/id order, matching reopen. Use real SQLite
   ABORT triggers for each upsert type to prove false return, unchanged live
-  state and unchanged persisted state after failure. No production/parser/DB
-  mocks. Schema-only duplicate semantics stay covered by existing tests.
+  state and unchanged persisted state after failure. AFTER INSERT corruption
+  triggers exercise candidate decoding; real deferred foreign-key violations
+  exercise failed commit after a valid candidate read, with the same unchanged
+  live/persisted assertions. No production/parser/DB mocks. Public schema-only
+  duplicate semantics are unchanged; schema.py is not modified.
 - Named mutations: stale_language_upsert and stale_grammar_upsert restore the
   old schema.add_* publication for that method; each must fail the corresponding
-  live/cold consistency contract. preserve_old_tie_order retains the replaced
-  grammar in its former live position and must fail tied selection. Restore
-  exact production bytes and pass the focused batch after every mutation.
+  live/cold consistency contract. preserve_old_tie_order changes the reader to
+  version-descending rather than persisted id order and must fail the declared
+  replacement ordering. commit_before_candidate_read and
+  publish_before_commit must fail the decoding and deferred-commit cases
+  respectively. Restore exact production bytes and pass the focused batch
+  after every mutation.
 - Update docs/grammar_management.md and CHANGELOG.md with successful database
   upserts becoming visible immediately and consistently after reopen. Own this
   plan and its typed plans/manifest.json row. No platform-runner edit is needed:
@@ -73,7 +79,7 @@ are supplementary code acceptance, not whole COMPAT/IF authority.
 - [ ] EC-COMPAT-1 upsert subset: focused actual SQLite/parsed-fixture tests show
   successful language/grammar replacements, all fields and tied selection agree
   live and after reopen, with unrelated persisted records preserved.
-- [ ] Real failed upserts leave live and persisted state unchanged; all three
+- [ ] Real failed upserts leave live and persisted state unchanged; all five
   named mutations fail intended contracts and each exact restoration passes.
 - [ ] Original six checks, locked refresh, full tests/spec_tests, matching-source
   Windows, exact hosted platforms and bounded review support this repair only;

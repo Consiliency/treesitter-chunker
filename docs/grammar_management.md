@@ -596,7 +596,8 @@ The separate language-compatibility database updates its live selection schema
 after a successful language or grammar version upsert. Replacements use the
 persisted metadata and record order immediately, matching a cold reopen.
 Failed writes retain the previous live and persisted state. Direct schema-only
-additions are not persisted database records.
+additions are not persisted database records and are discarded by the next
+successful language or grammar version upsert.
 
 ## Conclusion
 
