@@ -15,8 +15,11 @@ chunks intentionally overlap their parent declaration and carry a distinct
 qualified route. File content and byte spans preserve CRLF and Unicode source.
 Malformed BAML raises `ParsingError` before emitting chunks from that file;
 repository scans report a file error and continue. Without the extra, explicit
-BAML calls give install guidance, automatic file chunking falls back to text,
-and repository scans skip `.baml`.
+BAML calls and main CLI `.baml` inputs give install guidance (CLI status 1).
+Implicit ZeroConfigAPI file chunking falls back to text; RepoProcessor and
+automatic symbol/Boundary repository scans skip `.baml`. With the extra, those
+scans parse BAML structurally, without extending the twelve-language golden
+contract or the pack census.
 
 The companion uses BoundaryML's pinned official grammar plus a one-rule
 temporary overlay for BAML 0.20.1 backtick prompts. The companion distribution

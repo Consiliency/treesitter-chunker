@@ -209,7 +209,11 @@ class CompatibilityChecker:
                     grammar_version,
                     language_version,
                 )
-                if cached_result and self._is_cache_valid(cached_result):
+                if (
+                    cached_result
+                    and cached_result.language_version == language_version
+                    and self._is_cache_valid(cached_result)
+                ):
                     return cached_result
 
             # Perform compatibility checks
@@ -1931,6 +1935,45 @@ class CompatibilityDatabase:
                 """,
                 )
 
+                index_query = (
+                    "SELECT 1 FROM sqlite_master WHERE type = 'index' "
+                    "AND name = 'idx_compatibility_null_version'"
+                )
+                if not conn.execute(index_query).fetchone():
+                    conn.execute("BEGIN IMMEDIATE")
+                    if not conn.execute(index_query).fetchone():
+                        conn.execute(
+                            "CREATE TABLE IF NOT EXISTS compatibility_results_null_archive "
+                            "AS SELECT * FROM compatibility_results WHERE 0"
+                        )
+                        conn.execute(
+                            "CREATE UNIQUE INDEX IF NOT EXISTS idx_compatibility_null_archive_id "
+                            "ON compatibility_results_null_archive(id)"
+                        )
+                        displaced = """
+                            language_version IS NULL AND EXISTS (
+                                SELECT 1 FROM compatibility_results AS newer
+                                WHERE newer.language = compatibility_results.language
+                                AND newer.grammar_version = compatibility_results.grammar_version
+                                AND newer.language_version IS NULL
+                                AND (newer.timestamp > compatibility_results.timestamp
+                                    OR (newer.timestamp = compatibility_results.timestamp
+                                        AND newer.id > compatibility_results.id))
+                            )
+                        """
+                        conn.execute(
+                            "INSERT INTO compatibility_results_null_archive "
+                            "SELECT * FROM compatibility_results WHERE " + displaced
+                        )
+                        conn.execute(
+                            "DELETE FROM compatibility_results WHERE " + displaced
+                        )
+                        conn.execute(
+                            "CREATE UNIQUE INDEX idx_compatibility_null_version "
+                            "ON compatibility_results(language, grammar_version) "
+                            "WHERE language_version IS NULL"
+                        )
+
                 logger.info(f"Initialized compatibility database: {self.database_path}")
 
         except Exception as e:
@@ -2000,11 +2043,11 @@ class CompatibilityDatabase:
                 cursor = conn.execute(
                     """
                     SELECT level, score, issues, warnings, breaking_changes,
-                           performance_impact, test_results, timestamp
+                           performance_impact, test_results, timestamp, language_version
                     FROM compatibility_results
                     WHERE language = ? AND grammar_version = ?
                     AND (language_version = ? OR language_version IS NULL)
-                    ORDER BY timestamp DESC
+                    ORDER BY language_version IS NULL, timestamp DESC, id DESC
                     LIMIT 1
                 """,
                     (language, grammar_version, language_version),
@@ -2015,7 +2058,7 @@ class CompatibilityDatabase:
                     return CompatibilityResult(
                         language=language,
                         grammar_version=grammar_version,
-                        language_version=language_version,
+                        language_version=row[8],
                         level=CompatibilityLevel(row[0]),
                         score=row[1],
                         issues=json.loads(row[2]) if row[2] else [],
