@@ -3,8 +3,11 @@
 import logging
 import subprocess
 from dataclasses import dataclass, field
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+
+from chunker.grammar.integrity import probe_native_grammar
 
 
 logger = logging.getLogger(__name__)
@@ -19,6 +22,9 @@ class GrammarHealth:
     issues: list[str] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
     last_checked: str | None = None
+    validation_reason: str | None = None
+    artifact_sha256: str | None = None
+    file_size: int = 0
 
 
 @dataclass
@@ -36,7 +42,13 @@ class GrammarCompatibility:
 class SmartGrammarManager:
     """Smart grammar manager with intelligent error handling and user guidance."""
 
-    def __init__(self, build_dir: Path, grammars_dir: Path):
+    def __init__(
+        self,
+        build_dir: Path,
+        grammars_dir: Path,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, Any]] | None = None,
+    ):
         """Initialize the smart grammar manager.
 
         Args:
@@ -45,6 +57,11 @@ class SmartGrammarManager:
         """
         self.build_dir = Path(build_dir)
         self.grammars_dir = Path(grammars_dir)
+        self.trusted_artifacts = {
+            language: dict(provenance)
+            for language, provenance in (trusted_artifacts or {}).items()
+            if isinstance(provenance, Mapping)
+        }
         self.health_cache: dict[str, GrammarHealth] = {}
         self.compatibility_cache: dict[str, GrammarCompatibility] = {}
 
@@ -57,14 +74,25 @@ class SmartGrammarManager:
         Returns:
             GrammarHealth object with detailed diagnosis
         """
-        if language in self.health_cache:
-            return self.health_cache[language]
-
         health = GrammarHealth(language=language, status="unknown")
 
-        # Check if .so file exists
-        so_file = self.build_dir / f"{language}.so"
-        if not so_file.exists():
+        so_file = (self.build_dir / f"{language}.so").absolute()
+        snapshot_metadata = {}
+
+        def inspect(snapshot: Path) -> None:
+            snapshot_metadata["file_size"] = snapshot.stat().st_size
+
+        probe = probe_native_grammar(
+            so_file,
+            language,
+            provenance=self.trusted_artifacts.get(language),
+            inspect_artifact=inspect,
+        )
+        health.validation_reason = probe.reason
+        health.artifact_sha256 = probe.artifact_sha256
+        if probe.supported:
+            health.file_size = snapshot_metadata["file_size"]
+        if probe.reason == "missing":
             health.status = "missing"
             health.issues.append(f"Grammar library {so_file} not found")
             health.recommendations.extend(
@@ -74,47 +102,28 @@ class SmartGrammarManager:
                     "Verify the grammar repository was cloned correctly",
                 ],
             )
+        elif probe.reason in {"empty", "load_failed", "parse_failed"}:
+            health.status = "corrupted"
+            health.issues.append(f"Native admission failed: {probe.reason}")
+            health.recommendations.append("Recompile the grammar from source")
+        elif probe.supported:
+            health.status = "healthy"
+            health.recommendations.append("Grammar appears to be working correctly")
         else:
-            # Check file integrity
-            try:
-                if so_file.stat().st_size == 0:
-                    health.status = "corrupted"
-                    health.issues.append("Grammar library file is empty (0 bytes)")
-                    health.recommendations.append("Recompile the grammar from source")
-                else:
-                    # Try to load the grammar
-                    try:
-                        import ctypes
-
-                        lib = ctypes.CDLL(str(so_file))
-                        symbol_name = f"tree_sitter_{language}"
-                        if hasattr(lib, symbol_name):
-                            health.status = "healthy"
-                            health.recommendations.append(
-                                "Grammar appears to be working correctly",
-                            )
-                        else:
-                            health.status = "corrupted"
-                            health.issues.append(
-                                f"Missing expected symbol: {symbol_name}",
-                            )
-                            health.recommendations.append(
-                                "Recompile the grammar from source",
-                            )
-                    except Exception as e:
-                        health.status = "incompatible"
-                        health.issues.append(f"Failed to load grammar: {e}")
-                        health.recommendations.extend(
-                            [
-                                "Check system compatibility (architecture, OS)",
-                                "Verify tree-sitter version compatibility",
-                                "Try recompiling on current system",
-                            ],
-                        )
-            except Exception as e:
-                health.status = "corrupted"
-                health.issues.append(f"Error accessing grammar file: {e}")
-                health.recommendations.append("Check file permissions and disk space")
+            health.status = "incompatible"
+            health.issues.append(f"Native admission failed: {probe.reason}")
+            if probe.reason in {"untrusted", "integrity_mismatch"}:
+                health.recommendations.append(
+                    "Supply an independently approved SHA-256 provenance pin",
+                )
+            else:
+                health.recommendations.extend(
+                    [
+                        "Check system compatibility (architecture, OS)",
+                        "Verify tree-sitter version compatibility",
+                        "Try recompiling on current system",
+                    ],
+                )
 
         # Check source repository
         source_dir = self.grammars_dir / f"tree-sitter-{language}"
@@ -202,7 +211,9 @@ class SmartGrammarManager:
         self.compatibility_cache[language] = compatibility
         return compatibility
 
-    def generate_recovery_plan(self, language: str) -> dict[str, Any]:
+    def generate_recovery_plan(
+        self, language: str, *, health: GrammarHealth | None = None
+    ) -> dict[str, Any]:
         """Generate a recovery plan for a problematic grammar.
 
         Args:
@@ -211,10 +222,13 @@ class SmartGrammarManager:
         Returns:
             Recovery plan with specific steps
         """
-        health = self.diagnose_grammar_issues(language)
-        plan = {
+        if health is None:
+            health = self.diagnose_grammar_issues(language)
+        plan: dict[str, Any] = {
             "language": language,
             "current_status": health.status,
+            "validation_reason": health.validation_reason,
+            "artifact_sha256": health.artifact_sha256,
             "issues": health.issues,
             "recovery_steps": [],
             "estimated_time": "unknown",
@@ -254,6 +268,10 @@ class SmartGrammarManager:
             plan["estimated_time"] = "10-30 minutes"
             plan["difficulty"] = "medium"
 
+        if health.status != "healthy":
+            plan["recovery_steps"].append(
+                "Supply an independently approved SHA-256 provenance pin for the final artifact"
+            )
         return plan
 
     def validate_all_grammars(self) -> dict[str, GrammarHealth]:

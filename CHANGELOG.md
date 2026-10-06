@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Native grammar analysis and legacy diagnosis now require caller-supplied,
+  independently approved SHA-256 provenance. Unpinned, replaced, malformed, or
+  failed native artifacts are reported as unsupported rather than loaded in the
+  parent process.
 - In fallback mode, public grammar cleanup preserves entries with fresh
   descendants, reports linked entries without following them, and counts only
   completed removals. The public fallback remains importable when grammar core

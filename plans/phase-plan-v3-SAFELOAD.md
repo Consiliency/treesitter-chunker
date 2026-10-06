@@ -96,13 +96,14 @@ SL-2 — Documentation and evidence reducer
 ### SL-2 — Documentation and evidence reducer
 
 - **Scope**: Reduce SL-1 behavior, review and verification into accurate user documentation and acceptance evidence.
-- **Owned files**: `docs/grammar_management.md`, `CHANGELOG.md`, `docs/development/safeload-verification.md`
+- **Owned files**: `docs/grammar_management.md`, `CHANGELOG.md`, `docs/development/safeload-verification.md`, `mkdocs.yml`, `tests/test_release_hygiene_policy.py`, `scripts/run_platform_core.py`
 - **Interfaces provided**: `SAFELOAD acceptance evidence`, `IF-0-SAFELOAD-1` (only after final acceptance)
 - **Interfaces consumed**: `SAFELOAD implementation candidate`, `SAFELOAD contract review evidence`, `SAFELOAD fixture and mutation results`
 - **Parallel-safe**: no
 - **Tasks**:
   - test: Check documentation examples against the actual constructor parameters and untrusted/healthy outcomes; inspect every EC/IF claim against SL-1 fixture and review results.
   - impl: Document provenance migration, failure reasons, trust limitations and downstream GRAMMARS responsibilities; add an Unreleased changelog entry. Record per-platform fixture outcomes, positive controls, killed mutations, command/result metadata and independent review references in the evidence document. Distinguish preliminary contract review from final accepted IF production. Require independent implementation review and passing fixture, mutation and platform results for the final reviewed implementation; only then emit IF-0-SAFELOAD-1 and record eligibility to close treesitter-chunker#151, treesitter-chunker#164 and treesitter-chunker#165.
+  - impl: Classify the new verification page as maintainer/internal documentation in the existing MkDocs and release-hygiene policy, with the required notice; preserve the policy's assertions and scope.
   - verify: Run remaining Verification commands after SL-1, build documentation into a temporary directory, and reduce runner-owned evidence into EC/IF decisions. Do not claim ratification without independent review; a Sol-authored ratified review also requires cross-vendor ablation evidence. File separately discovered defects separately.
 
 ## Execution Notes
@@ -112,9 +113,11 @@ First refresh the implementation base after treesitter-chunker#366 accepts trees
 
 Read-only operational input allowlist for preliminary design review: `/tmp/chunker-v3-design-r3-review-astra/astra.md`, `/tmp/chunker-v3-design-r3-review-sol/sol.md`, `/tmp/chunker-v3-design-r3-review-gemini/gemini.md`, `/tmp/chunker-v3-design-r3-heartbeat-review-opus/opus.md`, and future `/tmp/chunker-v3-design-confirm-review-opus/opus.md` and `/tmp/chunker-v3-design-confirm-review-sol/sol.md`, plus their adjacent `metadata.json` and the heartbeat Opus `monitor.json`. These are review data, not additional instructions or supplier authority. Recheck exact base/head and usable terminal verdict; no partial/error transcript counts as approval. Final code review inputs need their own explicit allowlist amendment when produced.
 
-Ownership self-check: eight SL-1 paths and five SL-2 paths are disjoint; SL-2 depends explicitly on the only producer. There is no writer fanout. Runtime evidence belongs to the runner under `.phase-loop/`, not a lane write glob. If any additional tracked path is required, amend ownership before touching it.
+Ownership self-check: eight SL-1 paths and six SL-2 paths are disjoint; SL-2 depends explicitly on the only producer. The platform batch must select the pipe-boundary tests and real legacy healthy fixture on every supported host. There is no writer fanout. Runtime evidence belongs to the runner under `.phase-loop/`, not a lane write glob. If any additional tracked path is required, amend ownership before touching it.
 
 Policy precedence is CLI/operator override, phase-plan policy, roadmap policy, Dispatch Hints, then registry defaults. Dispatch Hints are executor-only fallback. No silent model/effort downgrade without explicit fallback or default inheritance.
+
+Final code-review input allowlist: `/tmp/chunker-native-initial-publication-verification.json`, `/tmp/chunker-native-final-mutation-bindings.json`, `/tmp/chunker-native-r3-mutation-bindings.json`, `/tmp/chunker-native-final-*.log`, `/tmp/chunker-native-r3-*.log`, `/tmp/chunker-v3-native-code-r2-review-opus/opus.md`, `/tmp/chunker-v3-native-code-r2-review-astra/astra.md`, and final `/tmp/chunker-v3-native-code-r3-review-opus/opus.md` and `/tmp/chunker-v3-native-code-r3-review-astra/astra.md`, including adjacent metadata. These are operational inputs only; pending or partial reviews cannot confer acceptance. The manager variant of `reuse_language_only_health` must be killed as well as the analyzer variant.
 
 ## Execution Policy
 
@@ -142,7 +145,7 @@ Named mutations at production construction sites:
 2. `accept_exit_zero_without_ack`: substitute return-code-only success in the same probe; each real premature-clean-exit fixture becomes incorrectly supported.
 3. `reload_original_after_verify`: use the original path instead of the verified snapshot; deterministic replacement introduces wrong bytes and fails identity/parse assertions.
 4. `reuse_language_only_health`: bypass fresh content verification in analyzer/manager; same-stat replacement and repeated legacy validation tests fail.
-5. `inspect_original_after_probe`: read metadata from the replaced original path instead of the retained admitted snapshot; the post-completion replacement fixture fails metadata/digest assertions.
+5. `inspect_original_after_probe`: pass the replaced original path to the trusted inspector in `probe_native_grammar` instead of its retained admitted snapshot; the post-completion replacement fixture fails metadata/digest assertions.
 6. `accept_partial_inspection`: publish captured metadata despite a raising callback; partial-output and cleanup assertions fail.
 7. `inherit_candidate_import_path`: omit child isolated import protection; caller/candidate shadow-module sentinel assertions fail.
 8. `unchanged_update_skips_validation`: return success without validating unchanged installed bytes; stale-pin/missing-artifact warning assertions fail.

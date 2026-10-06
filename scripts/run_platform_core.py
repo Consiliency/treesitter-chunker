@@ -9,6 +9,12 @@ import sys
 
 
 COMMON_TESTS = [
+    "tests/test_grammar_integrity.py::test_child_timeout_still_applies_after_pipes_close",
+    "tests/test_grammar_integrity.py::test_child_diagnostic_overflow_is_bounded",
+    "tests/test_grammar_integrity.py::test_child_closed_pipes_do_not_hide_normal_completion",
+    "tests/test_grammar_integrity.py::test_child_drains_all_output_after_exit",
+    "tests/test_grammar_integrity.py::test_nonfinite_probe_deadline_is_rejected",
+    "tests/test_grammar_management.py::TestSmartGrammarManager::test_diagnose_grammar_healthy",
     "tests/test_grammar_management.py::test_real_grammar_mtimes_do_not_invent_compilation_dates",
     "tests/test_streaming.py::TestBufferOptimization::test_repeated_streaming_preserves_eager_fixture_chunks",
     "tests/test_config.py",

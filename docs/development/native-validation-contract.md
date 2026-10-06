@@ -83,7 +83,10 @@ Accept only zero exit and one well-formed record matching schema, nonce,
 language and digest with both booleans true. Diagnostic output is not completion;
 missing, duplicate, malformed and mismatched acknowledgments fail closed.
 Constructor `exit(0)` or `_exit(0)` therefore cannot establish support. Capture
-at most 64 KiB per stdout/stderr diagnostic stream and a 16 KiB acknowledgment;
+at most 64 KiB per stdout/stderr stream and a 16 KiB acknowledgment. Stdout is
+reserved for the acknowledgment: extra native stdout fails acknowledgment
+validation rather than being accepted as separate diagnostics. Stderr may carry
+bounded diagnostics;
 output overflow fails closed without unbounded buffering. Distinct child load
 and parse failure records carry the stable reason but never count as completion.
 On deadline terminate, allow at most one second of grace, then force termination
