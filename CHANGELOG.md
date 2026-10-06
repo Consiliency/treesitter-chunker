@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Programmatic `ComprehensiveGrammarCLI.remove_grammar` honors `clean_cache=False`
   for compiled build copies while removing installed user components and preserving
   packaged libraries. The Click command retains default cache cleanup.
+- Auxiliary grammar self-tests use disposable roots and short-lived native
+  workers, report unsupported simulations honestly, and return results without
+  writing an implicit home report. Reports require an explicit caller path.
 - Grammar downloads close the temporary archive's creation handle before
   downloading, verifying or extracting it, allowing Windows to reopen and
   remove the staging file after success or failure.
