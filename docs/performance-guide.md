@@ -1,5 +1,13 @@
 # Performance Guide
 
+Correctness tests compare repeated streaming output with eager fixture parsing.
+They do not enforce wall-clock variance on shared hosts. The existing streaming
+benchmark records per-file timing samples and variance in seconds squared as
+informational metadata; its duration is the sum of per-file means for one logical
+pass. Run performance
+comparisons under controlled host load, and keep those observations separate
+from content, ordering and line-bound correctness.
+
 Performance depends on source size, language, grammar availability, storage and
 worker count. Measure your workload; this guide makes no fixed speedup or memory
 multiplier claim.

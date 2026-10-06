@@ -7,9 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from chunker.cache import ASTCache
-
-from chunker import chunk_file
+from chunker import ASTCache, chunk_file
 from chunker.parallel import chunk_files_parallel
 from chunker.streaming import chunk_file_streaming
 
@@ -121,18 +119,34 @@ class PerformanceBenchmark:
         """Benchmark streaming chunking."""
         total_chunks = 0
         duration = 0
+        observations = []
         for file_path in self.test_files:
-            file_duration, chunks = self._measure_time(
-                lambda: list(chunk_file_streaming(file_path, self.language)),
-            )
-            duration += file_duration
+            samples = []
+            for _ in range(3):
+                file_duration, chunks = self._measure_time(
+                    lambda: list(chunk_file_streaming(file_path, self.language)),
+                )
+                samples.append(file_duration)
+            duration += statistics.mean(samples)
             total_chunks += len(chunks)
+            observations.append(
+                {
+                    "file": str(file_path),
+                    "samples_seconds": samples,
+                    "variance_seconds_squared": statistics.pvariance(samples),
+                }
+            )
         return BenchmarkResult(
             name="Streaming Chunking",
             duration=duration,
             chunks_processed=total_chunks,
             files_processed=len(self.test_files),
-            metadata={"method": "streaming", "cache": False, "streaming": True},
+            metadata={
+                "method": "streaming",
+                "cache": False,
+                "streaming": True,
+                "timing_observations": observations,
+            },
         )
 
     def benchmark_cached_chunking(self) -> BenchmarkResult:
