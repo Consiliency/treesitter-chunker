@@ -2,11 +2,14 @@
 Integration and testing module for Phase 1.8 grammar management system.
 """
 
+import contextlib
+import io
 import json
 import logging
 import shutil
+import subprocess
+import sys
 import tempfile
-import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -24,7 +27,7 @@ from .compatibility import (
 from .config import CacheManager, DirectoryManager, UserConfig
 
 # Import from all other Phase 1.8 tasks
-from .core import GrammarInstaller, GrammarManager, GrammarValidator
+from .core import GrammarManager, GrammarValidator
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +80,19 @@ class IntegrationTester:
         )
 
     def test_complete_workflow(
+        self,
+        sample_path: Path | None = None,
+        language: str = "python",
+        grammar_path: Path | None = None,
+    ) -> dict[str, Any]:
+        """Validate a caller-supplied fixture in a short-lived worker."""
+        result = _run_test_worker(
+            self.test_dir, "workflow", sample_path, language, grammar_path
+        )
+        self.test_results["complete_workflow"] = result
+        return result
+
+    def _test_complete_workflow_local(
         self,
         sample_path: Path | None = None,
         language: str = "python",
@@ -282,159 +298,59 @@ class IntegrationTester:
         return results
 
     def test_error_scenarios(self) -> dict[str, Any]:
-        """Test error handling and recovery."""
+        """Observe local rejection; retire unimplemented simulations."""
         results = {
-            "status": "pass",
+            "status": "unsupported",
             "scenarios_tested": [],
             "recovery_successful": [],
             "recovery_failed": [],
+            "unsupported": {
+                "network_failure": "No offline network fixture supplied",
+                "disk_full": "Eviction does not demonstrate disk exhaustion",
+                "permission_denied": "No portable recovery fixture supplied",
+            },
         }
-
-        scenarios = [
+        for name, operation in (
             ("invalid_language", self._test_invalid_language_error),
             ("corrupt_grammar", self._test_corrupt_grammar_error),
-            ("network_failure", self._test_network_failure_error),
-            ("disk_full", self._test_disk_full_error),
-            ("permission_denied", self._test_permission_denied_error),
-        ]
-
-        for scenario_name, scenario_func in scenarios:
+        ):
+            results["scenarios_tested"].append(name)
             try:
-                recovery = scenario_func()
-                results["scenarios_tested"].append(scenario_name)
-                if recovery:
-                    results["recovery_successful"].append(scenario_name)
-                else:
-                    results["recovery_failed"].append(scenario_name)
-            except Exception as e:
-                results["recovery_failed"].append(f"{scenario_name}: {e!s}")
-
+                results[
+                    "recovery_successful" if operation() else "recovery_failed"
+                ].append(name)
+            except Exception as error:
+                results["recovery_failed"].append(f"{name}: {error}")
         if results["recovery_failed"]:
-            results["status"] = "partial"
-
+            results["status"] = "fail"
         self.test_results["error_scenarios"] = results
         return results
 
     def _test_invalid_language_error(self) -> bool:
-        """Test handling of invalid language.
-
-        Returns:
-            bool: True if error was handled gracefully, False otherwise.
-        """
-        try:
-            result = self.grammar_manager.install_grammar("nonexistent_language")
-            return not result  # Should fail gracefully
-        except (ValueError, KeyError, RuntimeError) as e:
-            logger.debug("Expected error during invalid language test: %s", e)
-            return True  # Exception handling is recovery
+        """Reject a missing local artifact without installation."""
+        result = self.validator.validate_grammar(
+            self.grammar_dir / "nonexistent_language.so", "nonexistent_language"
+        )
+        return not result.is_valid and bool(result.errors)
 
     def _test_corrupt_grammar_error(self) -> bool:
-        """Test handling of corrupt grammar file."""
-        # Create a corrupt grammar file
+        """Reject actual corrupt bytes through the current validator."""
         corrupt_file = self.grammar_dir / "corrupt.so"
-        corrupt_file.write_text("corrupt data")
-
+        corrupt_file.write_bytes(b"corrupt data")
         try:
-            validator = self.validator
-            result = validator.validate_integrity(corrupt_file)
-            return not result.get("valid", False)
-        except (OSError, ValueError) as e:
-            logger.debug("Expected error during corrupt grammar test: %s", e)
-            return True
+            result = self.validator.validate_grammar(corrupt_file, "corrupt")
+            return not result.is_valid and bool(result.errors)
         finally:
-            corrupt_file.unlink(missing_ok=True)
-
-    def _test_network_failure_error(self) -> bool:
-        """Test handling of network failures.
-
-        Returns:
-            bool: True if error was handled gracefully, False otherwise.
-        """
-        # Simulate network failure by using invalid URL
-        try:
-            installer = GrammarInstaller(self.grammar_dir)
-            installer.download_grammar(
-                "python",
-                "1.0.0",
-                "https://invalid.url.test",
-            )
-            return False  # Should not succeed
-        except (OSError, TimeoutError, ConnectionError) as e:
-            logger.debug("Expected error during network failure test: %s", e)
-            return True  # Should handle gracefully
-
-    def _test_disk_full_error(self) -> bool:
-        """Test handling of disk full errors."""
-        # Test cache cleanup when disk is "full"
-        self.cache_manager.max_size_mb = 0.001  # Very small limit
-        try:
-            self.cache_manager.cleanup_cache()
-            return True
-        except OSError as e:
-            logger.debug("Error during disk full test: %s", e)
-            return False
-
-    def _test_permission_denied_error(self) -> bool:
-        """Test handling of permission errors."""
-        # Create read-only directory
-        readonly_dir = self.test_dir / "readonly"
-        readonly_dir.mkdir(exist_ok=True)
-        readonly_dir.chmod(0o444)
-
-        try:
-            DirectoryManager(readonly_dir)
-            return False  # Should not succeed
-        except PermissionError as e:
-            logger.debug("Expected error during permission denied test: %s", e)
-            return True  # Should handle gracefully
-        finally:
-            readonly_dir.chmod(0o755)
-            shutil.rmtree(readonly_dir, ignore_errors=True)
+            corrupt_file.unlink()
 
     def test_performance_under_load(self) -> dict[str, Any]:
-        """Test system performance under load."""
+        """Concurrent load claims need a controlled workload and join budget."""
         results = {
-            "status": "pass",
+            "status": "unsupported",
             "concurrent_operations": 0,
-            "average_response_time": 0,
-            "peak_memory_usage": 0,
             "errors": [],
+            "reason": "No controlled concurrent workload fixture",
         }
-
-        try:
-            # Test concurrent grammar operations
-            threads = []
-            operation_times = []
-
-            def worker(language: str, times_list: list):
-                start = time.time()
-                self.grammar_manager.get_grammar_metadata(language)
-                times_list.append(time.time() - start)
-
-            # Start concurrent threads
-            for i in range(10):
-                language = self.test_languages[i % len(self.test_languages)]
-                t = threading.Thread(target=worker, args=(language, operation_times))
-                threads.append(t)
-                t.start()
-
-            # Wait for completion
-            for t in threads:
-                t.join(timeout=10)
-
-            results["concurrent_operations"] = len(threads)
-            results["average_response_time"] = (
-                sum(operation_times) / len(operation_times) if operation_times else 0
-            )
-
-            # Measure memory usage
-            process = psutil.Process()
-            results["peak_memory_usage"] = process.memory_info().rss / 1024 / 1024  # MB
-
-        except Exception as e:
-            results["status"] = "fail"
-            results["errors"].append(str(e))
-
         self.test_results["performance_load"] = results
         return results
 
@@ -468,210 +384,110 @@ class CLIValidator:
         self.cleanup()
 
     def test_all_commands(self) -> dict[str, Any]:
-        """Test all CLI commands."""
-        results = {"status": "pass", "commands_tested": [], "passed": [], "failed": []}
-
-        commands = [
-            ("list", self._test_list_command),
-            ("info", self._test_info_command),
-            ("versions", self._test_versions_command),
-            ("fetch", self._test_fetch_command),
-            ("build", self._test_build_command),
-            ("remove", self._test_remove_command),
-            ("test", self._test_test_command),
-            ("validate", self._test_validate_command),
-        ]
-
-        for cmd_name, cmd_func in commands:
+        """Check observed local exit codes; network/build work is unsupported."""
+        results = {
+            "status": "unsupported",
+            "commands_tested": [],
+            "passed": [],
+            "failed": [],
+            "observations": {},
+            "unsupported": {
+                "versions": "No offline version fixture",
+                "fetch": "No offline download fixture",
+                "build": "No local generation fixture",
+            },
+        }
+        for name, operation, expected in (
+            ("list", lambda: self.cli.list_grammars(output_format="json"), 1),
+            ("info", lambda: self.cli.info_grammar("missing_grammar"), 1),
+            (
+                "remove",
+                lambda: self.cli.remove_grammar("missing_grammar", confirm=False),
+                1,
+            ),
+            (
+                "test",
+                lambda: self.cli.test_grammar(
+                    "missing_grammar", str(self.test_dir / "missing.py")
+                ),
+                1,
+            ),
+            ("validate", lambda: self.cli.validate_grammar("missing_grammar"), 1),
+        ):
+            results["commands_tested"].append(name)
+            output = io.StringIO()
             try:
-                if cmd_func():
-                    results["passed"].append(cmd_name)
-                else:
-                    results["failed"].append(cmd_name)
-                results["commands_tested"].append(cmd_name)
-            except Exception as e:
-                results["failed"].append(f"{cmd_name}: {e!s}")
-
+                with contextlib.redirect_stdout(output):
+                    code = operation()
+                results["observations"][name] = {
+                    "exit_code": code,
+                    "output": output.getvalue(),
+                }
+                results[
+                    "passed" if code == expected and output.getvalue() else "failed"
+                ].append(name)
+            except Exception as error:
+                results["failed"].append(f"{name}: {error}")
         if results["failed"]:
-            results["status"] = "partial" if results["passed"] else "fail"
-
+            results["status"] = "fail"
         self.test_results["all_commands"] = results
         return results
 
-    def _test_list_command(self) -> bool:
-        """Test list command."""
-        try:
-            self.cli.list_grammars(format="table")
-            return True
-        except Exception as e:
-            logger.debug("Error in list command test: %s", e)
-            return False
-
-    def _test_info_command(self) -> bool:
-        """Test info command."""
-        try:
-            self.cli.show_grammar_info("python", detailed=False)
-            return True
-        except Exception as e:
-            logger.debug("Error in info command test: %s", e)
-            return False
-
-    def _test_versions_command(self) -> bool:
-        """Test versions command."""
-        try:
-            self.cli.list_versions("python")
-            return True
-        except Exception as e:
-            logger.debug("Error in versions command test: %s", e)
-            return False
-
-    def _test_fetch_command(self) -> bool:
-        """Test fetch command."""
-        # Skip actual download in tests
-        return True
-
-    def _test_build_command(self) -> bool:
-        """Test build command."""
-        # Skip actual build in tests
-        return True
-
-    def _test_remove_command(self) -> bool:
-        """Test remove command."""
-        try:
-            # Test with dry run
-            self.cli.remove_grammar("python", force=True)
-            return True
-        except Exception as e:
-            logger.debug("Error in remove command test: %s", e)
-            return False
-
-    def _test_test_command(self) -> bool:
-        """Test test command."""
-        # Skip actual testing in tests
-        return True
-
-    def _test_validate_command(self) -> bool:
-        """Test validate command."""
-        try:
-            self.cli.validate_grammar("python")
-            return True
-        except Exception as e:
-            logger.debug("Error in validate command test: %s", e)
-            return False
-
     def test_user_experience(self) -> dict[str, Any]:
-        """Test user experience workflows."""
-        results = {"status": "pass", "workflows": [], "usability_score": 0}
-
-        workflows = [
-            ("help_system", self._test_help_system),
-            ("error_messages", self._test_error_messages),
-            ("progress_feedback", self._test_progress_feedback),
-            ("output_formats", self._test_output_formats),
-        ]
-
-        scores = []
-        for workflow_name, workflow_func in workflows:
-            score = workflow_func()
-            scores.append(score)
-            results["workflows"].append({"name": workflow_name, "score": score})
-
-        results["usability_score"] = sum(scores) / len(scores) if scores else 0
-
-        if results["usability_score"] < 0.5:
+        """Observe actual help and formats without invented usability scores."""
+        results = {
+            "status": "unsupported",
+            "help": self.test_help_and_documentation(),
+            "formats": {},
+            "unsupported": {"usability": "No user study fixture"},
+        }
+        for output_format in ("table", "json", "yaml"):
+            output = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(output):
+                    code = self.cli.list_grammars(output_format=output_format)
+                results["formats"][output_format] = {
+                    "exit_code": code,
+                    "output": output.getvalue(),
+                }
+                if code != 1 or "No grammars found" not in output.getvalue():
+                    results["status"] = "fail"
+            except Exception as error:
+                results["formats"][output_format] = {"error": str(error)}
+                results["status"] = "fail"
+        if results["help"]["status"] != "pass":
             results["status"] = "fail"
-        elif results["usability_score"] < 0.8:
-            results["status"] = "partial"
-
         self.test_results["user_experience"] = results
         return results
 
-    def _test_help_system(self) -> float:
-        """Test help system quality."""
-        # Check if help text exists for commands
-        return 0.9  # Placeholder score
-
-    def _test_error_messages(self) -> float:
-        """Test error message clarity."""
-        # Test error message quality
-        return 0.85  # Placeholder score
-
-    def _test_progress_feedback(self) -> float:
-        """Test progress feedback quality."""
-        # Test progress indicators
-        return 0.9  # Placeholder score
-
-    def _test_output_formats(self) -> float:
-        """Test output format support."""
-        formats_working = 0
-        for fmt in ["table", "json", "yaml"]:
-            try:
-                self.cli.list_grammars(format=fmt)
-                formats_working += 1
-            except Exception as e:
-                logger.debug("Output format %s failed: %s", fmt, e)
-
-        return formats_working / 3
-
     def test_error_handling(self) -> dict[str, Any]:
-        """Test CLI error handling."""
+        """Report observed missing-artifact outcomes, never stale-API success."""
+        commands = self.test_all_commands()
         results = {
-            "status": "pass",
-            "error_cases": [],
-            "handled_gracefully": [],
-            "crashed": [],
+            "status": "fail" if commands["failed"] else "pass",
+            "error_cases": ["info", "remove", "test", "validate"],
+            "observations": {
+                name: commands["observations"].get(name)
+                for name in ("info", "remove", "test", "validate")
+            },
+            "errors": commands["failed"],
         }
-
-        error_cases = [
-            ("invalid_command_args", lambda: self.cli.show_grammar_info(None)),
-            (
-                "missing_file",
-                lambda: self.cli.test_grammar("python", Path("/nonexistent")),
-            ),
-            ("invalid_format", lambda: self.cli.list_grammars(format="invalid")),
-        ]
-
-        for case_name, case_func in error_cases:
-            try:
-                case_func()
-                results["handled_gracefully"].append(case_name)
-            except SystemExit:
-                results["crashed"].append(case_name)
-            except Exception as e:
-                logger.debug("Error case %s handled gracefully: %s", case_name, e)
-                results["handled_gracefully"].append(case_name)
-
-            results["error_cases"].append(case_name)
-
-        if results["crashed"]:
-            results["status"] = "fail"
-
         self.test_results["error_handling"] = results
         return results
 
     def test_help_and_documentation(self) -> dict[str, Any]:
-        """Test help system and documentation."""
+        """Inspect actual Click help without asserting documentation quality."""
+        from click.testing import CliRunner
+        from .cli import grammar_cli
+
+        observed = CliRunner().invoke(grammar_cli, ["--help"])
+        available = observed.exit_code == 0 and "Commands:" in observed.output
         results = {
-            "status": "pass",
-            "help_available": False,
-            "examples_provided": False,
-            "documentation_complete": False,
+            "status": "pass" if available else "fail",
+            "help_available": available,
+            "exit_code": observed.exit_code,
+            "output": observed.output,
         }
-
-        # Check help availability
-        results["help_available"] = hasattr(self.cli, "__doc__") and self.cli.__doc__
-
-        # Check examples
-        results["examples_provided"] = True  # Assume examples exist
-
-        # Check documentation completeness
-        results["documentation_complete"] = all(
-            [results["help_available"], results["examples_provided"]],
-        )
-
-        if not results["documentation_complete"]:
-            results["status"] = "partial"
-
         self.test_results["help_documentation"] = results
         return results
 
@@ -816,39 +632,15 @@ class SystemValidator:
         return results
 
     def validate_configuration(self) -> dict[str, Any]:
-        """Validate system configuration."""
+        """Validate the actual supplied configuration with its current schema."""
         results = {"status": "valid", "config_items": {}, "errors": []}
-
         try:
-            config = self.config
-
-            # Check required configuration items
-            required_items = [
-                "grammars.default_source",
-                "grammars.auto_update",
-                "cache.max_size_mb",
-                "cache.cleanup_age_days",
-            ]
-
-            for item in required_items:
-                value = config.get(item)
-                if value is not None:
-                    results["config_items"][item] = "present"
-                else:
-                    results["config_items"][item] = "missing"
-                    results["errors"].append(f"Missing config: {item}")
-
-            # Validate configuration values
-            if config.get("cache.max_size_mb", 1024) < 100:
-                results["errors"].append("Cache size too small")
-
-            if results["errors"]:
-                results["status"] = "invalid"
-
-        except Exception as e:
-            results["status"] = "error"
-            results["errors"].append(str(e))
-
+            configured = self.config.get_all()
+            self.config._validate_config(configured)
+            results["config_items"] = configured
+        except Exception as error:
+            results["status"] = "invalid"
+            results["errors"].append(str(error))
         self.health_metrics["configuration"] = results
         return results
 
@@ -882,117 +674,55 @@ class PerformanceBenchmark:
         self.cleanup()
 
     def benchmark_grammar_operations(self) -> dict[str, Any]:
-        """Benchmark grammar management operations."""
-        results = {"operations": {}, "timestamp": datetime.now().isoformat()}
-
-        operations = [
-            ("discover", self.grammar_manager.discover_grammars),
-            ("get_info", lambda: self.grammar_manager.get_grammar_info("python")),
-            ("validate", lambda: self.grammar_manager.validate_grammar("python")),
-        ]
-
-        for op_name, op_func in operations:
+        """Measure current metadata APIs and report actual failures."""
+        results = {
+            "status": "pass",
+            "operations": {},
+            "errors": [],
+            "timestamp": datetime.now().isoformat(),
+            "unsupported": {"validate": "No explicit grammar fixture supplied"},
+        }
+        for name, operation in (
+            ("discover", self.grammar_manager.discover_available_grammars),
+            ("get_info", lambda: self.grammar_manager.get_grammar_metadata("python")),
+        ):
             times = []
-            for _ in range(10):
-                start = time.time()
+            for _ in range(3):
+                start = time.perf_counter()
                 try:
-                    op_func()
-                    duration = time.time() - start
-                    times.append(duration)
-                except Exception as e:
-                    logger.debug("Benchmark operation %s failed: %s", op_name, e)
-
+                    operation()
+                    times.append(time.perf_counter() - start)
+                except Exception as error:
+                    results["status"] = "fail"
+                    results["errors"].append(f"{name}: {error}")
             if times:
-                results["operations"][op_name] = {
+                results["operations"][name] = {
                     "avg_time": sum(times) / len(times),
                     "min_time": min(times),
                     "max_time": max(times),
                     "samples": len(times),
                 }
-
         self.benchmark_results["operations"] = results
         return results
 
     def test_scalability(self, max_grammars: int = 10) -> dict[str, Any]:
-        """Test system scalability."""
+        """Do not claim scalability without distinct grammar populations."""
         results = {
-            "max_grammars_tested": max_grammars,
-            "performance_degradation": [],
-            "memory_usage": [],
-            "status": "scalable",
+            "status": "unsupported",
+            "max_grammars_tested": 0,
+            "reason": "No distinct grammar population fixtures supplied",
         }
-
-        base_memory = psutil.Process().memory_info().rss / 1024 / 1024
-
-        for i in range(1, min(max_grammars + 1, 11)):
-            # Measure performance with i grammars
-            start = time.time()
-            self.grammar_manager.discover_grammars()
-            duration = time.time() - start
-
-            # Measure memory
-            current_memory = psutil.Process().memory_info().rss / 1024 / 1024
-
-            results["performance_degradation"].append(
-                {"grammar_count": i, "response_time": duration},
-            )
-
-            results["memory_usage"].append(
-                {"grammar_count": i, "memory_mb": current_memory - base_memory},
-            )
-
-        # Check for scalability issues
-        if len(results["performance_degradation"]) > 1:
-            first_time = results["performance_degradation"][0]["response_time"]
-            last_time = results["performance_degradation"][-1]["response_time"]
-
-            if last_time > first_time * 10:
-                results["status"] = "poor_scalability"
-
         self.benchmark_results["scalability"] = results
         return results
 
     def optimize_performance(self) -> dict[str, Any]:
-        """Identify and apply performance optimizations."""
-        results = {"optimizations": [], "improvements": {}, "recommendations": []}
-
-        # Test cache effectiveness
-        cache_manager = CacheManager(
-            Path.home() / ".cache" / "treesitter-chunker" / "cache",
-        )
-
-        # Measure with cache
-        start = time.time()
-        self.grammar_manager.discover_grammars()
-        with_cache = time.time() - start
-
-        # Clear cache
-        cache_manager.cleanup_cache(target_size_mb=0)
-
-        # Measure without cache
-        start = time.time()
-        self.grammar_manager.discover_grammars()
-        without_cache = time.time() - start
-
-        if with_cache < without_cache * 0.8:
-            results["optimizations"].append("cache_effective")
-            results["improvements"]["cache"] = {
-                "speedup": without_cache / with_cache,
-                "time_saved": without_cache - with_cache,
-            }
-
-        # Recommendations
-        if without_cache > 1.0:
-            results["recommendations"].append(
-                "Consider implementing lazy loading for grammar discovery",
-            )
-
-        process = psutil.Process()
-        if process.memory_info().rss / 1024 / 1024 > 200:
-            results["recommendations"].append(
-                "High memory usage detected. Consider implementing memory pooling",
-            )
-
+        """Do not alter caches to invent a speedup observation."""
+        results = {
+            "status": "unsupported",
+            "optimizations": [],
+            "recommendations": [],
+            "reason": "No controlled cache-effectiveness fixture supplied",
+        }
         self.benchmark_results["optimization"] = results
         return results
 
@@ -1047,98 +777,225 @@ class PerformanceBenchmark:
         return "\n".join(report)
 
 
-def run_complete_test_suite() -> dict[str, Any]:
-    """Run complete test suite for grammar management system."""
-    results = {
-        "status": "pass",
-        "test_suites": {},
-        "summary": {},
-        "timestamp": datetime.now().isoformat(),
-    }
-
-    logger.info("Starting complete Phase 1.8 test suite")
-
-    # Run integration tests
-    logger.info("Running integration tests...")
-    integration_tester = IntegrationTester()
-    try:
-        results["test_suites"]["integration"] = {
-            "workflow": integration_tester.test_complete_workflow(),
-            "cross_component": integration_tester.test_cross_component_integration(),
-            "error_scenarios": integration_tester.test_error_scenarios(),
-            "performance_load": integration_tester.test_performance_under_load(),
-        }
-    finally:
-        integration_tester.cleanup()
-
-    # Run CLI validation
-    logger.info("Running CLI validation...")
-    cli_validator = CLIValidator()
-    results["test_suites"]["cli"] = {
-        "commands": cli_validator.test_all_commands(),
-        "user_experience": cli_validator.test_user_experience(),
-        "error_handling": cli_validator.test_error_handling(),
-        "help_docs": cli_validator.test_help_and_documentation(),
-    }
-
-    # Run system validation
-    logger.info("Running system validation...")
-    system_validator = SystemValidator()
-    results["test_suites"]["system"] = {
-        "health": system_validator.check_system_health(),
-        "resources": system_validator.monitor_resource_usage(),
-        "stability": system_validator.test_stability(duration_minutes=1),
-        "configuration": system_validator.validate_configuration(),
-    }
-
-    # Run performance benchmarks
-    logger.info("Running performance benchmarks...")
-    benchmark = PerformanceBenchmark()
-    results["test_suites"]["performance"] = {
-        "operations": benchmark.benchmark_grammar_operations(),
-        "scalability": benchmark.test_scalability(max_grammars=5),
-        "optimization": benchmark.optimize_performance(),
-    }
-
-    # Generate performance report
-    results["performance_report"] = benchmark.generate_performance_report()
-
-    # Generate summary
-    total_tests = 0
-    passed_tests = 0
-
-    for suite_name, suite_results in results["test_suites"].items():
-        for test_name, test_result in suite_results.items():
-            total_tests += 1
-            if isinstance(test_result, dict):
-                if test_result.get("status") in ["pass", "healthy", "stable", "valid"]:
-                    passed_tests += 1
-
-    results["summary"] = {
-        "total_tests": total_tests,
-        "passed": passed_tests,
-        "failed": total_tests - passed_tests,
-        "pass_rate": passed_tests / total_tests if total_tests > 0 else 0,
-    }
-
-    if results["summary"]["pass_rate"] < 1.0:
-        results["status"] = (
-            "partial" if results["summary"]["pass_rate"] > 0.5 else "fail"
+def _run_test_worker(
+    test_dir: Path,
+    operation: str,
+    sample_path: Path | None,
+    language: str,
+    grammar_path: Path | None,
+    *,
+    timeout: float = 30.0,
+) -> dict[str, Any]:
+    """Reap a bounded fixture worker before removing its private operation root."""
+    with tempfile.TemporaryDirectory(prefix="worker-", dir=test_dir) as temporary:
+        root = Path(temporary)
+        request = root / "request.json"
+        response = root / "response.json"
+        request.write_text(
+            json.dumps(
+                {
+                    "operation": operation,
+                    "test_dir": str(root),
+                    "sample_path": str(sample_path.absolute()) if sample_path else None,
+                    "language": language,
+                    "grammar_path": (
+                        str(grammar_path.absolute()) if grammar_path else None
+                    ),
+                }
+            ),
+            encoding="utf-8",
         )
+        package_root = Path(__file__).resolve().parents[2]
+        command = [
+            sys.executable,
+            "-I",
+            "-c",
+            "import sys; sys.path.insert(0, sys.argv[1]); "
+            "from chunker.grammar_management.testing import _test_worker_main; "
+            "_test_worker_main(sys.argv[2], sys.argv[3])",
+            str(package_root),
+            str(request),
+            str(response),
+        ]
+        try:
+            # CLI printing cannot pollute the result or grow captured pipes.
+            # subprocess.run kills and reaps a timed-out direct worker.
+            subprocess.run(
+                command,
+                cwd=root,
+                check=True,
+                timeout=timeout,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            with response.open("rb") as result_file:
+                payload = result_file.read(1024 * 1024 + 1)
+            if len(payload) > 1024 * 1024:
+                raise ValueError("Worker result exceeds the size limit")
+            envelope = json.loads(payload)
+            if not isinstance(envelope, dict) or envelope.get("operation") != operation:
+                raise ValueError("Worker result does not match the operation")
+            result = envelope.get("result")
+            if not isinstance(result, dict) or result.get("status") not in {
+                "pass",
+                "fail",
+                "unsupported",
+            }:
+                raise ValueError("Worker result has no valid observed status")
+            if operation == "workflow":
+                if not isinstance(result.get("errors"), list) or not isinstance(
+                    result.get("workflows_tested"), list
+                ):
+                    raise ValueError("Worker workflow result is incomplete")
+            elif not isinstance(result.get("summary"), dict) or not isinstance(
+                result.get("test_suites"), dict
+            ):
+                raise ValueError("Worker suite result is incomplete")
+            return result
+        except (
+            OSError,
+            ValueError,
+            RecursionError,
+            subprocess.SubprocessError,
+        ) as error:
+            return {
+                "status": "fail",
+                "errors": [f"Fixture worker failed: {error}"],
+                "workflows_tested": [],
+                "test_suites": {},
+                "summary": {
+                    "total_tests": 1,
+                    "passed": 0,
+                    "failed": 1,
+                    "unsupported": 0,
+                },
+            }
 
-    logger.info(
-        f"Test suite complete. Pass rate: {results['summary']['pass_rate']:.1%}",
+
+def _test_worker_main(request_path: str, response_path: str) -> None:
+    """Execute only caller-supplied local fixtures; this is not native admission."""
+    request = json.loads(Path(request_path).read_text(encoding="utf-8"))
+    root = Path(request["test_dir"])
+    sample = Path(request["sample_path"]) if request["sample_path"] else None
+    grammar = Path(request["grammar_path"]) if request["grammar_path"] else None
+    environment = IntegrationTester(root)
+    if request["operation"] == "workflow":
+        result = environment._test_complete_workflow_local(
+            sample, request["language"], grammar
+        )
+    elif request["operation"] == "suite":
+        result = _complete_suite_local(
+            environment, sample, request["language"], grammar
+        )
+    else:
+        raise ValueError("Unknown fixture worker operation")
+    Path(response_path).write_text(
+        json.dumps({"operation": request["operation"], "result": result}),
+        encoding="utf-8",
     )
 
-    # Save results
-    results_file = Path.home() / ".cache" / "treesitter-chunker" / "test_results.json"
-    results_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(results_file, "w") as f:
-        json.dump(results, f, indent=2, default=str)
 
-    logger.info(f"Test results saved to {results_file}")
+def _complete_suite_local(
+    environment: IntegrationTester,
+    sample_path: Path | None,
+    language: str,
+    grammar_path: Path | None,
+) -> dict[str, Any]:
+    """Run bounded offline observations in the already isolated worker."""
+    if sample_path is None or grammar_path is None:
+        workflow = {
+            "status": "unsupported",
+            "reason": "Explicit sample and grammar fixtures required",
+        }
+    else:
+        workflow = environment._test_complete_workflow_local(
+            sample_path, language, grammar_path
+        )
+    root = environment.test_dir
+    with (
+        CLIValidator(test_dir=root) as cli,
+        SystemValidator(
+            environment.grammar_manager, environment.config, test_dir=root
+        ) as system,
+        PerformanceBenchmark(environment.grammar_manager, test_dir=root) as benchmark,
+    ):
+        suites = {
+            "integration": {
+                "workflow": workflow,
+                "cross_component": environment.test_cross_component_integration(),
+                "error_scenarios": environment.test_error_scenarios(),
+            },
+            "cli": {
+                "commands": cli.test_all_commands(),
+                "user_experience": cli.test_user_experience(),
+                "error_handling": cli.test_error_handling(),
+                "help_docs": cli.test_help_and_documentation(),
+            },
+            "system": {
+                "health": system.check_system_health(),
+                "configuration": system.validate_configuration(),
+                "resources": {
+                    "status": "unsupported",
+                    "reason": "Resource metrics are observations, not health assertions",
+                    "observations": system.monitor_resource_usage(),
+                },
+                "stability": {
+                    "status": "unsupported",
+                    "reason": "A bounded discovery check does not establish long-term stability",
+                },
+            },
+            "performance": {
+                "operations": benchmark.benchmark_grammar_operations(),
+                "scalability": benchmark.test_scalability(),
+                "optimization": benchmark.optimize_performance(),
+            },
+        }
+        performance_report = benchmark.generate_performance_report()
+    summary = {"total_tests": 0, "passed": 0, "failed": 0, "unsupported": 0}
+    for suite in suites.values():
+        for observation in suite.values():
+            summary["total_tests"] += 1
+            status = (
+                observation.get("status") if isinstance(observation, dict) else None
+            )
+            if status in {"pass", "healthy", "valid"}:
+                summary["passed"] += 1
+            elif status == "unsupported":
+                summary["unsupported"] += 1
+            else:
+                summary["failed"] += 1
+    return {
+        "status": (
+            "fail"
+            if summary["failed"]
+            else "unsupported" if summary["unsupported"] else "pass"
+        ),
+        "test_suites": suites,
+        "summary": summary,
+        "timestamp": datetime.now().isoformat(),
+        "performance_report": performance_report,
+    }
 
-    return results
+
+def run_complete_test_suite(
+    *,
+    test_dir: Path | None = None,
+    sample_path: Path | None = None,
+    language: str = "python",
+    grammar_path: Path | None = None,
+    report_path: Path | None = None,
+) -> dict[str, Any]:
+    """Return isolated local observations; persist only to an explicit report."""
+    environment = IntegrationTester(test_dir)
+    try:
+        result = _run_test_worker(
+            environment.test_dir, "suite", sample_path, language, grammar_path
+        )
+    finally:
+        environment.cleanup()
+    if report_path is not None:
+        report_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    return result
 
 
 if __name__ == "__main__":
@@ -1158,7 +1015,7 @@ if __name__ == "__main__":
     print(f"Total Tests: {results['summary']['total_tests']}")
     print(f"Passed: {results['summary']['passed']}")
     print(f"Failed: {results['summary']['failed']}")
-    print(f"Pass Rate: {results['summary']['pass_rate']:.1%}")
+    print(f"Unsupported: {results['summary']['unsupported']}")
     print("=" * 60)
 
     if "performance_report" in results:

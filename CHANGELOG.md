@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Auxiliary grammar self-tests use disposable roots and short-lived native
+  workers, report unsupported simulations honestly, and return results without
+  writing an implicit home report. Reports require an explicit caller path.
 - In fallback mode, public grammar cleanup preserves entries with fresh
   descendants, reports linked entries without following them, and counts only
   completed removals. The public fallback remains importable when grammar core
