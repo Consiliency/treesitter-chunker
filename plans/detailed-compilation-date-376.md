@@ -22,6 +22,7 @@ this plan and plans/manifest.json.
 
 - Remove the mtime-derived compilation_date block. Retain the existing optional
   field and explicit dataclass values; do not invent a replacement date source.
+  Remove the now-unreachable date bonus from manager-derived scores.
 - Add a real Python parser fixture contract: parse the checked-in service.py,
   copy the parser provider's actual compiled Python grammar into two isolated
   manager roots, vary only mtimes, require identical bytes and None dates.

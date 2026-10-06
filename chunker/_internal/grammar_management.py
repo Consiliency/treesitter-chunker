@@ -197,8 +197,6 @@ class SmartGrammarManager:
             score += 0.3
         if compatibility.os_platform != "unknown":
             score += 0.2
-        if compatibility.compilation_date:
-            score += 0.2
         compatibility.compatibility_score = score
 
         self.compatibility_cache[language] = compatibility

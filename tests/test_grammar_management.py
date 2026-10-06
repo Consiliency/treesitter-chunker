@@ -19,12 +19,21 @@ from chunker._internal.user_grammar_tools import UserGrammarTools
 def test_real_grammar_mtimes_do_not_invent_compilation_dates(tmp_path):
     import tree_sitter_language_pack as provider
 
-    from chunker import get_parser
+    from chunker.grammar_management.core import load_compiled_grammar
 
     fixture = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
-    assert not get_parser("python").parse(fixture.read_bytes()).root_node.has_error
+    assert (
+        not provider.get_parser("python")
+        .parse(fixture.read_bytes())
+        .root_node.has_error
+    )
     libraries = list(Path(provider.cache_dir()).glob("*tree_sitter_python.*"))
     assert len(libraries) == 1
+    assert (
+        not load_compiled_grammar(libraries[0], "python")
+        .parse(fixture.read_bytes())
+        .root_node.has_error
+    )
     actual_bytes = libraries[0].read_bytes()
     assert actual_bytes
     dates = []

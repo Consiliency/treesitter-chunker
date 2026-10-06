@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Legacy grammar compatibility leaves compilation dates unknown when no
   authentic metadata exists; file modification time is not a compilation date.
+  Unknown compilation dates no longer inflate compatibility scores.
 
 - Grammar analysis no longer invents versions or release dates from file
   timestamps. A version that cannot be extracted is reported as `unknown`.
