@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- The full benchmark runner uses supported sequential parsing calls and explicit
+  SQLite cache reads/writes. Cached hit counts reflect actual lookups, with timings
+  retained as informational observations.
+
 - Grammar downloads close the temporary archive's creation handle before
   downloading, verifying or extracting it, allowing Windows to reopen and
   remove the staging file after success or failure.
