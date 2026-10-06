@@ -313,7 +313,7 @@ def probe_native_grammar(
                     return _failure("ack_invalid")
                 try:
                     pairs = json.loads(stdout.decode("utf-8"), object_pairs_hook=list)
-                except (UnicodeDecodeError, json.JSONDecodeError, RecursionError):
+                except (ValueError, RecursionError):
                     if returncode != 0:
                         return _failure("child_failed")
                     return _failure("ack_missing" if not stdout else "ack_invalid")

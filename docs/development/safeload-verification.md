@@ -23,11 +23,12 @@ or an exact-head independent implementation review.
 
 ## Remaining acceptance work
 
-The focused suite now passes 69 tests after the accepted compilation-date
-precursor in treesitter-chunker#380. The Windows fixture compiler's command
-quoting was checked by compiling an actual DLL on the Windows host; the hosted
-matrix still must verify this implementation revision. These preliminary
-observations do not replace the final runner, mutations or implementation review.
+The previous implementation revision passed its full runner and hosted matrix.
+Round-two feedback requires a fresh final run after adding malformed-number
+rejection, child-only legacy fixture loading, portable pipe-test selection, and
+real local-repository installation warning checks. Generator execution is an
+explicit external boundary in those warning checks; they do not establish the
+generator's compilation contract. Final evidence remains pending below.
 
 - Obtain an independently reviewed final implementation at the exact commit.
 - Record the required Linux, macOS, and Windows compiled-fixture outcomes.

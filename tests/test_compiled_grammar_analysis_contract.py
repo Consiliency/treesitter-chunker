@@ -264,6 +264,7 @@ __attribute__((constructor)) static void start(void) { enter(); }
         "numeric_flags",
         "failure_list",
         "nested",
+        "oversized_integer",
         "duplicate_record",
     ],
 )
@@ -296,6 +297,8 @@ def test_probe_rejects_altered_real_child_acknowledgment(
             rc = 1
         elif fault == "nested":
             stdout = b"[" * 2000 + b"0" + b"]" * 2000
+        elif fault == "oversized_integer":
+            stdout = b"9" * 5000
         elif fault == "duplicate_record":
             stdout += stdout
         else:
@@ -436,6 +439,76 @@ def test_native_consumers_revalidate_same_stat_replacement_and_removal(
     assert supported()
     grammar.unlink()
     assert not supported()
+
+
+@pytest.mark.parametrize("pin_state", ["missing", "stale"])
+def test_real_repository_install_reports_failed_native_admission(
+    tmp_path: Path, monkeypatch, pin_state: str
+) -> None:
+    from chunker._internal.user_grammar_tools import UserGrammarTools
+    from chunker.grammar.integrity import probe_native_grammar
+
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+    pins = trusted_artifacts(library)
+    assert probe_native_grammar(
+        library, "baml", provenance=pins["baml"], sample=FIXTURE.read_bytes()
+    ).supported
+    repository = tmp_path / "fixture-repository"
+    repository.mkdir()
+    (repository / "baml.so").write_bytes(library.read_bytes())
+    (repository / "declarations.baml").write_bytes(FIXTURE.read_bytes())
+    real_run = subprocess.run
+    for args in (
+        ["git", "init", "-b", "main"],
+        ["git", "add", "."],
+        [
+            "git",
+            "-c",
+            "user.name=Native Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-m",
+            "fixture",
+        ],
+    ):
+        real_run(args, cwd=repository, check=True, capture_output=True)
+
+    def offline_install(args, **kwargs):
+        if args[:2] == ["git", "clone"]:
+            args = [*args[:-2], str(repository), args[-1]]
+        elif args == ["tree-sitter", "generate"]:
+            # This boundary supplies a precompiled real grammar, not a claim
+            # about the external generator's compilation behavior.
+            args = [
+                sys.executable,
+                "-I",
+                "-c",
+                "from pathlib import Path; assert Path('baml.so').is_file()",
+            ]
+        return real_run(args, **kwargs)
+
+    monkeypatch.setattr(
+        "chunker._internal.user_grammar_tools.subprocess.run", offline_install
+    )
+    rejected_pins = {} if pin_state == "missing" else {"baml": {"sha256": "0" * 64}}
+    build = tmp_path / "installed"
+    build.mkdir()
+    tools = UserGrammarTools(
+        build, tmp_path / "sources", trusted_artifacts=rejected_pins
+    )
+    result = tools.install_grammar(
+        "baml", "https://github.com/Consiliency/native-fixture.git"
+    )
+    assert result["status"] == "warning", result
+    assert not result["errors"]
+    assert "Cloned repository" in result["steps_completed"]
+    assert "Copied baml.so to build directory" in result["steps_completed"]
+    assert (build / "baml.so").read_bytes() == library.read_bytes()
+    reason = "untrusted" if pin_state == "missing" else "integrity_mismatch"
+    assert result["warnings"] == [
+        f"Grammar installed but native admission failed: {reason}"
+    ]
 
 
 @pytest.mark.parametrize("artifact_state", ["missing", "stale_pin"])
@@ -654,29 +727,14 @@ def test_grammar_metadata_does_not_infer_versions_or_releases_from_mtime(
         assert exported["grammars"]["baml"]["capabilities"]["version"] == "unknown"
 
 
-@pytest.mark.skipif(
-    sys.platform != "linux", reason="Fixture uses ELF linking and compiler comments"
-)
 def test_analyzer_rejects_partial_inspection_and_preserves_failure_export(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     grammar_path = tmp_path / "baml.so"
-    subprocess.run(
-        [
-            "cc",
-            "-shared",
-            "-fPIC",
-            "-O2",
-            "-I",
-            str(SOURCE),
-            str(SOURCE / "parser.c"),
-            "-o",
-            str(grammar_path),
-        ],
-        check=True,
-        capture_output=True,
-    )
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+    if library != grammar_path:
+        grammar_path.write_bytes(library.read_bytes())
     analyzer = GrammarAnalyzer(
         tmp_path, trusted_artifacts=trusted_artifacts(grammar_path)
     )

@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -179,17 +180,30 @@ class TestSmartGrammarManager:
             FIXTURE,
             SOURCE,
             _compile_probe_fixture,
-            load_compiled_grammar,
             trusted_artifacts,
         )
 
         library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
         so_file = build_dir / "baml.so"
         so_file.write_bytes(library.read_bytes())
-        assert (
-            not load_compiled_grammar(so_file, "baml")
-            .parse(FIXTURE.read_bytes())
-            .root_node.has_error
+        subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                "-c",
+                "import sys; from pathlib import Path; "
+                "sys.path.insert(0, sys.argv[1]); "
+                "from chunker.grammar_management.core import load_compiled_grammar; "
+                "root = load_compiled_grammar(Path(sys.argv[2]), 'baml')"
+                ".parse(Path(sys.argv[3]).read_bytes()).root_node; "
+                "assert root.type == 'source_file' and not root.has_error",
+                str(Path(__file__).resolve().parents[1]),
+                str(so_file),
+                str(FIXTURE),
+            ],
+            check=True,
+            capture_output=True,
+            timeout=20,
         )
         manager.trusted_artifacts = trusted_artifacts(so_file)
         health = manager.diagnose_grammar_issues("baml")
