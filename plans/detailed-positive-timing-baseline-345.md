@@ -51,7 +51,8 @@ duplicate/NULL history repair (treesitter-chunker#135), pin or consumer lock edi
 - uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/
 - uv run --locked --all-extras python scripts/mypy_gate.py
 - uv run --locked --with toml --all-extras python scripts/run_ci_smoke.py
-- uv run --locked --all-extras pytest -q
+- uv run --locked --with toml --all-extras python scripts/run_platform_core.py --platform linux
+- uv run --locked --with toml --all-extras python scripts/run_full_suite.py
 
 Restoring unconditional ratio calculation must fail the zero-baseline real DB
 case and restoring bytes must pass the whole focused module. Changed-source
