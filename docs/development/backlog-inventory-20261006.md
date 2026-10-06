@@ -72,17 +72,17 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P1/P2 | GATES | [treesitter-chunker#207](https://github.com/Consiliency/treesitter-chunker/issues/207) — Compiled grammar symbol analysis times out in Linux CI under load |
 | P1/P2 | GATES | [treesitter-chunker#322](https://github.com/Consiliency/treesitter-chunker/issues/322) — SIGINT integration test has load-sensitive startup and shutdown timeout |
 | P1/P2 | GATES | [treesitter-chunker#342](https://github.com/Consiliency/treesitter-chunker/issues/342) — File-hash chunk-size timing assertion flakes under coverage |
-| P2 | COMPAT | [treesitter-chunker#133](https://github.com/Consiliency/treesitter-chunker/issues/133) — Successful caller samples still degrade local grammar compatibility score |
-| P2 | COMPAT | [treesitter-chunker#134](https://github.com/Consiliency/treesitter-chunker/issues/134) — Grammar selector assigns one language install record to every local candidate |
-| P2 | COMPAT | [treesitter-chunker#135](https://github.com/Consiliency/treesitter-chunker/issues/135) — Nullable language version duplicates compatibility records and mislabels fallback reads |
-| P2 | COMPAT | [treesitter-chunker#149](https://github.com/Consiliency/treesitter-chunker/issues/149) — CompatibilityDatabase upserts leave live schema stale |
-| P2 | COMPAT | [treesitter-chunker#170](https://github.com/Consiliency/treesitter-chunker/issues/170) — ES-style JavaScript versions silently bypass grammar min/max constraints |
-| P2 | COMPAT | [treesitter-chunker#344](https://github.com/Consiliency/treesitter-chunker/issues/344) — SmartSelector silently ignores global grammar-selection constraints |
-| P2 | COMPAT | [treesitter-chunker#345](https://github.com/Consiliency/treesitter-chunker/issues/345) — Breaking-change detection loses findings when old parse time is zero |
-| P2 | COMPAT | [treesitter-chunker#138](https://github.com/Consiliency/treesitter-chunker/issues/138) — Python version detector ignores pyproject requires-python and selects broad classifier |
-| P2 | COMPAT | [treesitter-chunker#141](https://github.com/Consiliency/treesitter-chunker/issues/141) — Rust version info export cannot retain selected Cargo rust-version |
-| P2 | COMPAT | [treesitter-chunker#142](https://github.com/Consiliency/treesitter-chunker/issues/142) — Go build-constraint detector orders 1.9 after 1.10 lexicographically |
-| P2 | COMPAT | [treesitter-chunker#146](https://github.com/Consiliency/treesitter-chunker/issues/146) — C++ standard inference orders C++98 above newer standards |
+| P1 | COMPAT | [treesitter-chunker#133](https://github.com/Consiliency/treesitter-chunker/issues/133) — Successful caller samples still degrade local grammar compatibility score |
+| P1 | COMPAT | [treesitter-chunker#134](https://github.com/Consiliency/treesitter-chunker/issues/134) — Grammar selector assigns one language install record to every local candidate |
+| P1 | COMPAT | [treesitter-chunker#135](https://github.com/Consiliency/treesitter-chunker/issues/135) — Nullable language version duplicates compatibility records and mislabels fallback reads |
+| P1 | COMPAT | [treesitter-chunker#149](https://github.com/Consiliency/treesitter-chunker/issues/149) — CompatibilityDatabase upserts leave live schema stale |
+| P1 | COMPAT | [treesitter-chunker#170](https://github.com/Consiliency/treesitter-chunker/issues/170) — ES-style JavaScript versions silently bypass grammar min/max constraints |
+| P1 | COMPAT | [treesitter-chunker#344](https://github.com/Consiliency/treesitter-chunker/issues/344) — SmartSelector silently ignores global grammar-selection constraints |
+| P1 | COMPAT | [treesitter-chunker#345](https://github.com/Consiliency/treesitter-chunker/issues/345) — Breaking-change detection loses findings when old parse time is zero |
+| P1 | COMPAT | [treesitter-chunker#138](https://github.com/Consiliency/treesitter-chunker/issues/138) — Python version detector ignores pyproject requires-python and selects broad classifier |
+| P1 | COMPAT | [treesitter-chunker#141](https://github.com/Consiliency/treesitter-chunker/issues/141) — Rust version info export cannot retain selected Cargo rust-version |
+| P1 | COMPAT | [treesitter-chunker#142](https://github.com/Consiliency/treesitter-chunker/issues/142) — Go build-constraint detector orders 1.9 after 1.10 lexicographically |
+| P1 | COMPAT | [treesitter-chunker#146](https://github.com/Consiliency/treesitter-chunker/issues/146) — C++ standard inference orders C++98 above newer standards |
 | P2 | SEMANTICS | [treesitter-chunker#274](https://github.com/Consiliency/treesitter-chunker/issues/274) — Python definition lookup misses module function and class declarations |
 | P2 | SEMANTICS | [treesitter-chunker#278](https://github.com/Consiliency/treesitter-chunker/issues/278) — Honor Python assignment-expression scope in comprehensions and defaults |
 | P2 | SEMANTICS | [treesitter-chunker#283](https://github.com/Consiliency/treesitter-chunker/issues/283) — JavaScript definition lookup leaks block-local declarations |
@@ -93,18 +93,18 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P2 | SIGNATURE | [treesitter-chunker#352](https://github.com/Consiliency/treesitter-chunker/issues/352) — Go method_declaration signatures are never extracted |
 | P2 | SIGNATURE | [treesitter-chunker#353](https://github.com/Consiliency/treesitter-chunker/issues/353) — C++ in-class member function declarations get no signature |
 | P2 | SIGNATURE | [treesitter-chunker#354](https://github.com/Consiliency/treesitter-chunker/issues/354) — Add signature metadata extractors for Java, C#, Kotlin, Swift, PHP and Ruby |
-| P2 | EXPORT | [treesitter-chunker#167](https://github.com/Consiliency/treesitter-chunker/issues/167) — Graph exporters collapse distinct chunks sharing a line span |
-| P2 | EXPORT | [treesitter-chunker#168](https://github.com/Consiliency/treesitter-chunker/issues/168) — GraphML export emits XML-invalid control characters from metadata |
-| P2 | EXPORT | [treesitter-chunker#169](https://github.com/Consiliency/treesitter-chunker/issues/169) — GraphML metadata named label produces duplicate key IDs |
+| P1 | EXPORT | [treesitter-chunker#167](https://github.com/Consiliency/treesitter-chunker/issues/167) — Graph exporters collapse distinct chunks sharing a line span |
+| P1 | EXPORT | [treesitter-chunker#168](https://github.com/Consiliency/treesitter-chunker/issues/168) — GraphML export emits XML-invalid control characters from metadata |
+| P1 | EXPORT | [treesitter-chunker#169](https://github.com/Consiliency/treesitter-chunker/issues/169) — GraphML metadata named label produces duplicate key IDs |
 | P3 | RECORDS | [treesitter-chunker#361](https://github.com/Consiliency/treesitter-chunker/issues/361) — Reconcile historical plan status and residual work with current main |
 | P3 | COVERAGE | [treesitter-chunker#69](https://github.com/Consiliency/treesitter-chunker/issues/69) — Expand representative coverage with reviewed behavior and mutation contracts |
 
 ## Deduplication decisions
 
 - treesitter-chunker#117 is the exported GrammarRegistry suffix bug; treesitter-chunker#160 concerns legacy managers/tools. Separate implementations and tests.
-- treesitter-chunker#164 is source validation/mapping; treesitter-chunker#162 is destination replacement. treesitter-chunker#165 adds every-load provenance and explicit parse acknowledgment. One shared design can unblock them, but their contracts are not duplicates.
+- treesitter-chunker#164 is source validation/mapping; treesitter-chunker#162 is destination replacement. treesitter-chunker#165 establishes provenance and explicit parse acknowledgment for analyzer/legacy consumers. GRAMMARS must integrate registry/central/CLI admission and both installer publication paths before any wider guarantee. Contract review alone closes no implementation issue. One shared design can unblock them, but their contracts are not duplicates.
 - treesitter-chunker#323 is concurrent publication versus deletion; treesitter-chunker#324 is a static mixed-age bug in a different fallback. The core static case already fixed by treesitter-chunker#320 does not close either.
-- Wheel reports specify different install-invalid/unsafe cases. Keep them as acceptance items even if a coordinated verifier repair lands them together.
+- Wheel reports specify different install-invalid/unsafe cases. Land the authoritative manifest foundation first, then one independently reviewable behavior PR per finding, each with its code, regression and mutation together.
 - treesitter-chunker#170 concerns GrammarVersion’s ES comparison, which current source still mishandles. treesitter-chunker#332 fixed a different breaking-change interval comparator.
 - Python/JavaScript reference classifiers, declaration lookup and scope visibility are distinct observable contracts. treesitter-chunker#354 adds six language extractors; it does not repair Go/C++ defects treesitter-chunker#352/treesitter-chunker#353.
 - Eight remaining timing/deadline reports target different tests or product probe paths. Passing a rerun or fixing continuous processing does not close them.

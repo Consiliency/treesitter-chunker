@@ -42,16 +42,18 @@ No consumer lock updates, broker/authority edits, admitted train ledger/checkpoi
 
 **Objective**
 
-P0: Require verified provenance before loading a native artifact; require an explicit acknowledgment after the pinned loader and parse return. Reject empty, corrupt, wrong-symbol, null-language and premature-clean-exit artifacts without constructor side effects.
+P0: Implement verified provenance and isolated post-parse acknowledgment in GrammarAnalyzer, SmartGrammarManager and UserGrammarTools. Reject empty, corrupt, wrong-symbol, null-language and premature-clean-exit artifacts without unapproved constructor side effects. This phase does not secure every native load in the repository.
 
 **Exit criteria**
 
-- [ ] EC-SAFELOAD-1 — A reviewed contract specifies provenance, immutable artifact identity, isolated probing, acknowledgment and failure reporting across analyzer and legacy fallbacks.
-- [ ] EC-SAFELOAD-2 — Real compiled-fixture falsifiers include constructor side effects and exit(0)/_exit(0); ordinary trusted fixture parsing remains supported.
+- [ ] EC-SAFELOAD-1 — Independently review the contract before implementation, then implement provenance, immutable artifact identity, isolated probing, acknowledgment and failure reporting across analyzer and legacy fallbacks. Contract approval alone neither produces the final IF gate nor closes an implementation issue.
+- [ ] EC-SAFELOAD-2 — The implemented consumers pass real compiled-fixture falsifiers for constructor side effects and exit(0)/_exit(0), positive trusted parsing, and named mutations at the final reviewed head. Only then may treesitter-chunker#151, treesitter-chunker#164 and treesitter-chunker#165 close.
 
 **Scope notes**
 
-treesitter-chunker#165, treesitter-chunker#151, treesitter-chunker#164. Single lane: one shared admission/probe contract. Freeze one shared admission/probe contract before the dependent implementations; inspect current loader consumers, then design the smallest shared mechanism. Retain draft treesitter-chunker#159 until its replacement is reviewed.
+treesitter-chunker#165, treesitter-chunker#151, treesitter-chunker#164. Single lane: one independently landable shared admission/probe implementation PR carries tests and code together, preceded by independent design review. Keep one mechanism to prevent competing trust protocols. Retain draft treesitter-chunker#159 until its replacement is accepted. Existing local artifacts without an independently approved provenance pin fail closed; document migration for embedding callers without deriving trust from discovered bytes.
+
+Load-path disposition: analyzer and legacy manager/tools are secured here. Registry ambient discovery and fallback loads, central GrammarValidator and CLI validation are explicitly unsecured until GRAMMARS integrates the shared contract. The exported low-level loader remains a caller-trusted primitive, never a discovery admission boundary. Modern installer publication and legacy replacement both belong to GRAMMARS. Serialize shared analyzer work with GATES and shared registry work with RUNTIME; unrelated RUNTIME/GATES fixes do not imply native admission protection.
 Planning depth: Detailed design.
 
 **Non-goals**
@@ -70,7 +72,7 @@ Unrelated changes.
 
 **Produces**
 
-- IF-0-SAFELOAD-1 — Reviewed native admission and probe contract.
+- IF-0-SAFELOAD-1 — Independently reviewed contract and accepted analyzer/legacy implementation; no repository-wide native safety claim.
 
 **Spec closeout policy**
 
@@ -127,7 +129,7 @@ P0/P1: Never overwrite a mapped grammar inode; validate staged artifacts before 
 
 **Scope notes**
 
-treesitter-chunker#162, treesitter-chunker#160, treesitter-chunker#117, treesitter-chunker#128, treesitter-chunker#120, treesitter-chunker#156. Decompose into 2 lanes: legacy replacement/suffix/info commands and exported registry/Click validation/health. Central validation integrates the frozen SAFELOAD contract. Land treesitter-chunker#162 before suffix integration, then refresh treesitter-chunker#161; only then refresh treesitter-chunker#157. Keep treesitter-chunker#117 distinct from treesitter-chunker#160.
+treesitter-chunker#162, treesitter-chunker#160, treesitter-chunker#117, treesitter-chunker#128, treesitter-chunker#120, treesitter-chunker#156. Decompose into 2 lanes: legacy replacement/suffix/info commands and exported registry/Click validation/health. Registry discovery/fallback, central validator and CLI validation must integrate the accepted SAFELOAD contract before claiming safe native admission. Inventory each direct load, including the low-level caller-trusted primitive, and test that no discovery consumer bypasses admission. Both modern installer and legacy tool publication require immutable replacement/reload evidence. Land treesitter-chunker#162 before suffix integration, then refresh treesitter-chunker#161; only then refresh treesitter-chunker#157. Keep treesitter-chunker#117 distinct from treesitter-chunker#160. Serialize core.py with CLEANUP/CACHE and registry.py with RUNTIME; no simultaneous writable ownership.
 Planning depth: Detailed replacement lifecycle; small suffix/display/status fixes inline.
 
 **Non-goals**
@@ -141,6 +143,7 @@ Unrelated changes.
 - `chunker/grammar_management/core.py`
 - `chunker/grammar_management/cli.py`
 - `chunker/cli/grammar_commands.py`
+- `chunker/_internal/registry.py`
 
 **Depends on**
 
@@ -207,6 +210,7 @@ P1: Verify supported pure/native wheels against an authoritative payload manifes
 **Scope notes**
 
 treesitter-chunker#155, treesitter-chunker#174, treesitter-chunker#175, treesitter-chunker#176, treesitter-chunker#182, treesitter-chunker#183, treesitter-chunker#184, treesitter-chunker#185. Decompose into 2 lanes: authoritative payload/layout implementation and real-artifact mutation/installed-runtime tests, with disjoint files. Refresh draft treesitter-chunker#180 from main only in its eventual repair worktree. Never merge a known incomplete verifier because old CI is green; retain each separately filed acceptance finding.
+Land authoritative manifest repair first, then one behavior repair per PR with its regression and mutation in the same PR. Lanes coordinate work inside each PR; tests never land separately from their repair.
 Planning depth: Detailed artifact manifest and install-layout contract.
 
 **Non-goals**
@@ -245,6 +249,7 @@ P1: Unsupported timeout/logger requests must not silently promise protection; sl
 **Scope notes**
 
 treesitter-chunker#355, treesitter-chunker#357, treesitter-chunker#359, treesitter-chunker#360. Decompose into 2 lanes: parser/download configuration and CLI/plugin behavior. Define partial-batch failure policy explicitly, and keep artifact download deadlines separate from parse cancellation.
+Document migration for callers requesting unsupported timeout/logger settings and callers relying on successful exit codes after failed chunking; test both old-input rejection and supported recovery.
 Planning depth: Bounded plan for cancellation/download; CLI/plugin fixes inline.
 
 **Non-goals**
@@ -316,7 +321,7 @@ schema: spec_delta_closeout.v1; decision: no_spec_delta; targets: issue-acceptan
 
 **Objective**
 
-P2: Candidate metadata belongs to its artifact; caller samples count as evidence; live and reopened DB selection agree after upserts; NULL history has explicit write/lookup semantics; global constraints are enforced or rejected; zero timing baselines preserve independent findings; numeric/ES/C++ versions and Python/Cargo declarations retain meaning.
+P1: Candidate metadata belongs to its artifact; caller samples count as evidence; live and reopened DB selection agree after upserts; NULL history has explicit write/lookup semantics; global constraints are enforced or rejected; zero timing baselines preserve independent findings; numeric/ES/C++ versions and Python/Cargo declarations retain meaning.
 
 **Exit criteria**
 
@@ -327,6 +332,8 @@ P2: Candidate metadata belongs to its artifact; caller samples count as evidence
 
 treesitter-chunker#133, treesitter-chunker#134, treesitter-chunker#135, treesitter-chunker#149, treesitter-chunker#170, treesitter-chunker#344, treesitter-chunker#345, treesitter-chunker#138, treesitter-chunker#141, treesitter-chunker#142, treesitter-chunker#146. Decompose into 2 lanes: serialized small PRs in grammar_management/compatibility.py and language schema/detectors. Keep separate tests for each issue; the ES interval repair in treesitter-chunker#332 does not fix GrammarVersion._compare_versions in treesitter-chunker#170.
 Planning depth: Detailed for persistence/candidate constraints; detector and arithmetic fixes inline.
+
+Define migration for existing duplicate/NULL database rows before upsert changes; test reopened legacy databases and document rejection or reconciliation without silent data loss.
 
 **Non-goals**
 
@@ -427,7 +434,7 @@ schema: spec_delta_closeout.v1; decision: no_spec_delta; targets: issue-acceptan
 
 **Objective**
 
-P2: Distinct same-line-span chunks survive export with stable addressable identities; plain/yEd XML rejects or safely represents forbidden controls; key IDs including label remain unique.
+P1: Distinct same-line-span chunks survive export with stable addressable identities; plain/yEd XML rejects or safely represents forbidden controls; key IDs including label remain unique.
 
 **Exit criteria**
 

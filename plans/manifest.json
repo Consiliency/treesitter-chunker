@@ -307,6 +307,41 @@
       "task_summary": null,
       "type": "phase",
       "updated_at": "2026-10-06T07:30:51Z"
+    },
+    {
+      "acceptance_criteria_count": 2,
+      "created_at": "2026-10-06T07:55:17.820113+00:00",
+      "file": "plans/phase-plan-v3-SAFELOAD.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-phase/20261006T075517Z-SAFELOAD-plan.md",
+      "if_gates_produced": [
+        "IF-0-SAFELOAD-1"
+      ],
+      "lanes": [
+        "SL-1",
+        "SL-2"
+      ],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T07:55:17.820113+00:00",
+          "by": "codex-plan-phase",
+          "metadata": {},
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-phase",
+      "phase_alias": "SAFELOAD",
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-phase/reflections/007f2158e199/codex-backlog-cleanup-20261006/20261006T075517Z-SAFELOAD-plan.md",
+      "roadmap_ref": {
+        "file": "specs/phase-plans-v3.md",
+        "slug": "phase-plans-v3",
+        "status": "committed",
+        "type": "phase"
+      },
+      "slug": "v3-SAFELOAD",
+      "status": "committed",
+      "task_summary": "Trusted native admission and isolated probe plan for treesitter-chunker#165, treesitter-chunker#151 and treesitter-chunker#164",
+      "type": "phase",
+      "updated_at": "2026-10-06T07:55:17.820113+00:00"
     }
   ],
   "schema_version": 1
