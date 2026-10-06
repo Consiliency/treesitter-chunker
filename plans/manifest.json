@@ -377,6 +377,18 @@
           "by": "codex-plan-phase",
           "metadata": {},
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T11:42:54Z",
+          "by": "codex-plan-phase",
+          "metadata": {
+            "held_record": "plans/phase-plan-v3-CLEANUP.md",
+            "if_gate_claimed": false,
+            "independent_bounded_slices_continue": true,
+            "preserved_design": "https://github.com/Consiliency/treesitter-chunker/blob/69606f61/plans/phase-plan-v3-CLEANUP.md",
+            "reason": "Three substantive design rounds exhausted with blocking findings; transaction implementation scope removed"
+          },
+          "transition": "orphaned"
         }
       ],
       "owner_skill": "codex-plan-phase",
@@ -389,10 +401,10 @@
         "type": "phase"
       },
       "slug": "v3-CLEANUP",
-      "status": "committed",
+      "status": "orphaned",
       "task_summary": null,
       "type": "phase",
-      "updated_at": "2026-10-06T09:51:08.529681+00:00",
+      "updated_at": "2026-10-06T11:42:54Z",
       "manual_amendment": {
         "at": "2026-10-06T09:51:08.529681+00:00",
         "phase_plan_sha256": "49d84415bb08bd0204462f4a56b1660674b44725fa9299db83439e1818505401",

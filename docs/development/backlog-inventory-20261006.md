@@ -43,7 +43,7 @@ Execution update: treesitter-chunker#366 merged at a74e58f2 with accepted metada
 
 Further execution exposed and filed deployment-notice policy drift as treesitter-chunker#371, then resolved it in separately merged treesitter-chunker#374. Its nine hygiene tests and strict docs build passed, and hosted Linux/macOS/Windows checks were green. The clean worktree was pruned. The open map returns to 65 issues. Active repair drafts are treesitter-chunker#372 (native admission) and treesitter-chunker#373 (static fallback).
 
-CLEANUP transaction design remains unaccepted after three review rounds: Gemini agrees; Opus, Astra and Sol identify blocking recovery, lifetime, containment and dispatch gaps. The transaction proposal in phase-plan-v3-CLEANUP.md is held design material, not implementation authorization. Static fallback and auxiliary isolation proceed only through their separate bounded plans. No fourth design round or IF-0-CLEANUP-1 acceptance is claimed.
+CLEANUP transaction design remains unaccepted after three review rounds: Gemini agrees; Opus, Astra and Sol identify blocking recovery, lifetime, containment and dispatch gaps. The full proposal is preserved in immutable history and the operator evidence archive, and its implementation scope is removed from active plan intake. phase-plan-v3-CLEANUP.md is now a non-executable held record with an orphaned manifest lifecycle. Static fallback and auxiliary isolation proceed only through their separate bounded plans. No fourth design round or IF-0-CLEANUP-1 acceptance is claimed.
 
 All listed heads had successful executable hosted CI checks (the optional code-review bot check was skipped). None has a completed current integration/review acceptance; old green checks do not clear the reproduced blockers.
 

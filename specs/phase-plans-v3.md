@@ -96,9 +96,11 @@ P0: Preserve recent files already present and published during cleanup, preserve
 
 treesitter-chunker#323, treesitter-chunker#324, treesitter-chunker#177, with separately filed coupled defects treesitter-chunker#369 (public fallback import) and treesitter-chunker#370 (validation-cache lost writes/containment). Two behavior areas: cache protocol/public fallback in core.py/cli.py/config.py/__init__.py, and auxiliary isolation in testing.py. Independently land static treesitter-chunker#324/treesitter-chunker#369 first; treesitter-chunker#177 is independent; then land the complete transaction repair treesitter-chunker#323/treesitter-chunker#370. Each bounded slice has its own active detailed plan, code, tests, docs, mutations and review. No intermediate PR claims concurrent safety. Freeze actual roots, whole-entry eviction, ordered publication generations, short writer transactions, staging/rollback ownership, validation JSON merging and no-follow deletion before protocol implementation. All participants obey one actual-root protocol; copied mtime cannot establish publication age. IF-0-CLEANUP-1 requires complete implementation/interleaving/platform/review acceptance.
 Planning depth: Detailed for writer/deleter protocol; bounded plan for self-test isolation.
-The complete transaction proposal in phase-plan-v3-CLEANUP.md is held after its
-three-round design allowance; it does not authorize a transaction worker or
-produce IF-0-CLEANUP-1. Execute only the separately bounded static fallback,
+The complete transaction proposal was not accepted within its three-round design
+allowance and is removed from active plan intake. phase-plan-v3-CLEANUP.md is a
+held record with no executable lanes; the full proposal remains in immutable
+design history. No transaction worker or IF-0-CLEANUP-1 is authorized.
+Execute only the separately bounded static fallback,
 auxiliary isolation and clean_cache=False flag contracts. The last is
 treesitter-chunker#375 and is independent of transaction coordination.
 Decompose into 2 lanes, one per behavior area, with a terminal evidence reducer; each repair uses a separate bounded detailed plan before implementation.
