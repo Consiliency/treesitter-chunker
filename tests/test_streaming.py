@@ -11,7 +11,6 @@ Tests cover:
 """
 
 import concurrent.futures
-import gc
 import mmap
 import shutil
 import tempfile
@@ -32,6 +31,7 @@ from chunker.streaming import (
     get_file_metadata,
 )
 from chunker.types import CodeChunk
+from chunker.parser import get_parser
 
 
 def generate_large_python_code(num_functions: int = 1000) -> str:
@@ -478,23 +478,23 @@ class TestBufferOptimization:
         assert large_chunk_time <= default_time * 1.1
 
     @staticmethod
-    def test_streaming_performance_consistency(medium_python_file):
-        """Test that streaming performance is consistent across runs."""
-        # Warmup run (not timed) to initialize caches and JIT
-        list(chunk_file_streaming(medium_python_file, "python"))
-
-        times = []
+    def test_repeated_streaming_preserves_eager_fixture_chunks():
+        """Repeated streaming preserves ordered parsed content and bounds."""
+        fixture = (
+            Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+        )
+        assert not get_parser("python").parse(fixture.read_bytes()).root_node.has_error
+        expected = [
+            (c.node_type, c.content, c.start_line, c.end_line)
+            for c in chunk_file(fixture, "python")
+        ]
+        assert expected
         for _ in range(3):
-            # Start each sample at the same GC phase; collection remains enabled.
-            gc.collect()
-            start_time = time.perf_counter()
-            list(chunk_file_streaming(medium_python_file, "python"))
-            elapsed = time.perf_counter() - start_time
-            times.append(elapsed)
-        avg_time = sum(times) / len(times)
-        variance = sum((t - avg_time) ** 2 for t in times) / len(times)
-        # Absolute variance in seconds squared, not a percentage.
-        assert variance < 0.05, f"High variance in streaming times: {variance}; {times}"
+            observed = [
+                (c.node_type, c.content, c.start_line, c.end_line)
+                for c in chunk_file_streaming(fixture, "python")
+            ]
+            assert observed == expected
 
 
 class TestProgressCallbacks:
