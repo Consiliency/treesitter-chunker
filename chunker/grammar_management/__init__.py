@@ -23,21 +23,28 @@ Integration Features:
 - Graceful degradation when components are unavailable
 """
 
-from .cli import ComprehensiveGrammarCLI, ProgressIndicator, grammar_cli
-from .core import (
-    GrammarInstallationError,
-    GrammarInstaller,
-    GrammarManagementError,
-    GrammarManager,
-    GrammarPriority,
-    GrammarRegistry,
-    GrammarRegistryError,
-    GrammarValidationError,
-    GrammarValidator,
-    InstallationInfo,
-    ValidationLevel,
-    ValidationResult,
+from .cli import (
+    GRAMMAR_COMPONENTS_AVAILABLE,
+    ComprehensiveGrammarCLI,
+    ProgressIndicator,
+    grammar_cli,
 )
+
+if GRAMMAR_COMPONENTS_AVAILABLE:
+    from .core import (
+        GrammarInstallationError,
+        GrammarInstaller,
+        GrammarManagementError,
+        GrammarManager,
+        GrammarPriority,
+        GrammarRegistry,
+        GrammarRegistryError,
+        GrammarValidationError,
+        GrammarValidator,
+        InstallationInfo,
+        ValidationLevel,
+        ValidationResult,
+    )
 
 # Re-export GrammarStatus from interfaces for compatibility
 try:
@@ -77,3 +84,11 @@ __all__ = [
     "ValidationResult",
     "grammar_cli",
 ]
+
+if not GRAMMAR_COMPONENTS_AVAILABLE:
+    __all__ = [
+        "ComprehensiveGrammarCLI",
+        "GrammarStatus",
+        "ProgressIndicator",
+        "grammar_cli",
+    ]

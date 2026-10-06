@@ -13,6 +13,15 @@ The grammar management system consists of several components:
 
 ## Features
 
+Public grammar cleanup can run when the grammar core is unavailable. In this
+fallback mode, a directory is removed only when it and all its descendants are
+older than the requested cutoff; a fresh descendant preserves the whole entry.
+Linked entries and Windows reparse points are preserved and reported as errors.
+Removal counts describe successfully removed top-level entries, and freed bytes
+are counted only after successful removal. Namespace roots remain in place.
+This static check does not coordinate simultaneous writers; the transaction
+repair is tracked separately in treesitter-chunker#323.
+
 Grammar analysis reports `unknown` when it cannot extract a version from the
 artifact. File modification times are not grammar versions or release dates;
 without release metadata, `GrammarVersion.release_date` is `None`. Copying the

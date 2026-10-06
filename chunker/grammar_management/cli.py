@@ -29,6 +29,7 @@ import json
 import logging
 import platform
 import shutil
+import stat
 import subprocess
 import sys
 import threading
@@ -2512,34 +2513,68 @@ if __name__ == "__main__":
             self.cache_dir / "tmp",
         ]
 
+        try:
+            root_stat = self.cache_dir.lstat()
+            if not stat.S_ISDIR(root_stat.st_mode) or getattr(
+                root_stat, "st_file_attributes", 0
+            ) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0):
+                raise ValueError("Cache root must be a regular directory")
+        except Exception as e:
+            stats["errors"].append(f"Failed to access {self.cache_dir}: {e}")
+            return stats
+
         for cache_dir in cache_dirs:
-            if cache_dir.exists():
-                try:
-                    removed_before = stats["files_removed"]
-                    for item in cache_dir.iterdir():
-                        try:
-                            item_stat = item.stat()
-                            if item_stat.st_mtime < cutoff_time:
-                                if item.is_file():
-                                    stats["bytes_freed"] += item_stat.st_size
-                                    item.unlink()
-                                    stats["files_removed"] += 1
-                                elif item.is_dir():
-                                    stats["bytes_freed"] += sum(
-                                        f.stat().st_size
-                                        for f in item.rglob("*")
-                                        if f.is_file()
-                                    )
-                                    shutil.rmtree(item)
-                                    stats["files_removed"] += 1
-                        except Exception as e:
-                            stats["errors"].append(f"Failed to clean {item}: {e}")
+            try:
+                namespace_stat = cache_dir.lstat()
+            except FileNotFoundError:
+                continue
+            except Exception as e:
+                stats["errors"].append(f"Failed to access {cache_dir}: {e}")
+                continue
+            try:
+                if not stat.S_ISDIR(namespace_stat.st_mode) or getattr(
+                    namespace_stat, "st_file_attributes", 0
+                ) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0):
+                    raise ValueError("Cache namespace must be a regular directory")
+                removed_before = stats["files_removed"]
+                for item in cache_dir.iterdir():
+                    try:
+                        pending = [item]
+                        bytes_to_free = 0
+                        expired = True
+                        while pending:
+                            path = pending.pop()
+                            path_stat = path.lstat()
+                            if stat.S_ISLNK(path_stat.st_mode) or getattr(
+                                path_stat, "st_file_attributes", 0
+                            ) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0):
+                                raise ValueError(
+                                    f"Linked cache entry preserved: {path}"
+                                )
+                            if path_stat.st_mtime >= cutoff_time:
+                                expired = False
+                            if stat.S_ISDIR(path_stat.st_mode):
+                                pending.extend(path.iterdir())
+                            elif stat.S_ISREG(path_stat.st_mode):
+                                bytes_to_free += path_stat.st_size
+                            else:
+                                raise ValueError(f"Unsupported cache entry: {path}")
+                        item_stat = item.lstat()
+                        if expired:
+                            if stat.S_ISREG(item_stat.st_mode):
+                                item.unlink()
+                            else:
+                                shutil.rmtree(item)
+                            stats["bytes_freed"] += bytes_to_free
+                            stats["files_removed"] += 1
+                    except Exception as e:
+                        stats["errors"].append(f"Failed to clean {item}: {e}")
 
-                    if stats["files_removed"] > removed_before:
-                        stats["directories_cleaned"].append(cache_dir.name)
+                if stats["files_removed"] > removed_before:
+                    stats["directories_cleaned"].append(cache_dir.name)
 
-                except Exception as e:
-                    stats["errors"].append(f"Failed to access {cache_dir}: {e}")
+            except Exception as e:
+                stats["errors"].append(f"Failed to access {cache_dir}: {e}")
 
         return stats
 

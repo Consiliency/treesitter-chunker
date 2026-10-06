@@ -287,16 +287,27 @@
       "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/latest.md",
       "if_gates_produced": [],
       "lanes": [],
-      "lifecycle": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T10:02:09Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "if_gate_claimed": false,
+            "plan": "plans/detailed-static-fallback-324.md",
+            "run": "20261006-static-fallback"
+          },
+          "transition": "executing"
+        }
+      ],
       "owner_skill": "codex-plan-detailed",
       "phase_alias": null,
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/treesitter-chunker/static-fallback-324/20261006.md",
       "roadmap_ref": null,
       "slug": "static-fallback-324",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Static fallback cleanup and public degraded import for treesitter-chunker#324 and treesitter-chunker#369",
       "type": "detailed",
-      "updated_at": "2026-10-06T10:01:31.027585+00:00"
+      "updated_at": "2026-10-06T10:02:09Z"
     }
   ],
   "schema_version": 1
