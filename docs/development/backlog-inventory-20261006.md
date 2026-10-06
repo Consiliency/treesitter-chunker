@@ -25,7 +25,9 @@ Execution update: treesitter-chunker#366 merged at a74e58f2 with accepted metada
 
 ## Remaining draft PRs
 
-Further execution exposed and filed the existing deployment-notice policy drift as treesitter-chunker#371. The current open map has 66 issues; documentation classification/link corrections are part of planning treesitter-chunker#364, with no gate waiver.
+Further execution exposed and filed deployment-notice policy drift as treesitter-chunker#371, then resolved it in separately merged treesitter-chunker#374. Its nine hygiene tests and strict docs build passed, and hosted Linux/macOS/Windows checks were green. The clean worktree was pruned. The open map returns to 65 issues. Active repair drafts are treesitter-chunker#372 (native admission) and treesitter-chunker#373 (static fallback).
+
+CLEANUP transaction design remains unaccepted after three review rounds: Gemini agrees; Opus, Astra and Sol identify blocking recovery, lifetime, containment and dispatch gaps. The transaction proposal in phase-plan-v3-CLEANUP.md is held design material, not implementation authorization. Static fallback and auxiliary isolation proceed only through their separate bounded plans. No fourth design round or IF-0-CLEANUP-1 acceptance is claimed.
 
 All listed heads had successful executable hosted CI checks (the optional code-review bot check was skipped). None has a completed current integration/review acceptance; old green checks do not clear the reproduced blockers.
 
@@ -52,7 +54,6 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P0 | CLEANUP | [treesitter-chunker#177](https://github.com/Consiliency/treesitter-chunker/issues/177) — Reconcile auxiliary grammar self-test and CLI validator scenarios |
 | P1 | CLEANUP | [treesitter-chunker#369](https://github.com/Consiliency/treesitter-chunker/issues/369) — Public fallback cannot import when core is unavailable; coupled static fallback boundary |
 | P0 | CLEANUP | [treesitter-chunker#370](https://github.com/Consiliency/treesitter-chunker/issues/370) — Validation-cache writers lose fresh records and follow outside symlinks |
-| P2 | RECORDS | [treesitter-chunker#371](https://github.com/Consiliency/treesitter-chunker/issues/371) — Deployment maintainer classification drifts from existing release-hygiene policy |
 | P0/P1 | GRAMMARS | [treesitter-chunker#162](https://github.com/Consiliency/treesitter-chunker/issues/162) — Updating a loaded grammar in place can crash the Python process |
 | P0/P1 | GRAMMARS | [treesitter-chunker#160](https://github.com/Consiliency/treesitter-chunker/issues/160) — Legacy grammar tools ignore native macOS and Windows library extensions |
 | P0/P1 | GRAMMARS | [treesitter-chunker#117](https://github.com/Consiliency/treesitter-chunker/issues/117) — GrammarRegistry ignores native library suffixes on Windows and macOS |

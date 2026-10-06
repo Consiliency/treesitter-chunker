@@ -11,7 +11,7 @@ automation:
 
 ## Context
 
-Plan three separately reviewed repairs: treesitter-chunker#323 (concurrent cache publication), treesitter-chunker#324 (static mixed-age CLI fallback), and treesitter-chunker#177 (auxiliary self-tests). Two implementation lanes preserve the roadmap decomposition; a terminal reducer assembles documentation and acceptance evidence. This is an executable plan, not independent design approval or a produced IF gate.
+Plan three separately reviewed repairs: treesitter-chunker#323 (concurrent cache publication), treesitter-chunker#324 (static mixed-age CLI fallback), and treesitter-chunker#177 (auxiliary self-tests). This parent plan is HELD after its third design-review round at 4465de927a7e670960c4f11552fdbda91aad0513. Blocking transaction findings remain recorded on treesitter-chunker#323 and treesitter-chunker#364. Do not dispatch this parent's lanes, execute its transaction proposal, or produce IF-0-CLEANUP-1. Static and auxiliary repairs may proceed only through their separate bounded detailed plans. The contract below is retained as rejected/unaccepted design history pending a scoped replacement; no fourth round is authorized by this document.
 
 ### Independently landable slices
 
