@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: CLEANUP
 roadmap: specs/phase-plans-v3.md
-roadmap_sha256: 8ec60de75e921b988b33ecdd24414fa8043e3a6536128fde54794de525bb3817
+roadmap_sha256: 02aa04c0021c25499377509e2263f66ace0a3810ca1b0efc28e68666ae12c9ba
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_core_grammar_cache_cleanup.py tests/test_public_grammar_cli.py tests/test_public_grammar_config.py tests/test_grammar_self_test_workflow.py tests/test_grammar_installer_language_safety.py tests/test_grammar_source_validation.py -q"
 ---

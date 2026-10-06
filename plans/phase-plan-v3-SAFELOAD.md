@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: SAFELOAD
 roadmap: specs/phase-plans-v3.md
-roadmap_sha256: 8ec60de75e921b988b33ecdd24414fa8043e3a6536128fde54794de525bb3817
+roadmap_sha256: 02aa04c0021c25499377509e2263f66ace0a3810ca1b0efc28e68666ae12c9ba
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_grammar_integrity.py tests/test_compiled_grammar_analysis_contract.py tests/test_grammar_management.py -q"
 ---
@@ -10,6 +10,10 @@ automation:
 # SAFELOAD: Trusted native grammar validation
 
 ## Context
+
+Metadata prerequisites are accepted: treesitter-chunker#366 repaired version and
+release metadata, and treesitter-chunker#380 repaired legacy compilation dates.
+Neither produces IF-0-SAFELOAD-1. Native implementation acceptance remains pending.
 
 Implement treesitter-chunker#165, treesitter-chunker#151 and treesitter-chunker#164 as one shared native-admission behavior cluster. This plan is execution-ready but is not a ratified design review or a produced IF gate. Retain draft treesitter-chunker#159 until its reviewed successor is accepted; do not spend another review round on that held draft.
 
