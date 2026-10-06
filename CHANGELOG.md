@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Chunk and batch extraction failures return status 1 with errors on stderr,
+  including quiet mode. Structured stdout stays parseable; batches retain
+  successful chunks when another selected input fails. Unmapped extensions
+  continue to warn and skip.
+
 - Successful plugin replacement evicts the prior cached instance, so subsequent
   parsing invokes the new plugin without requiring a fresh manager. Failed
   registration preserves the existing plugin.

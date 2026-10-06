@@ -18,7 +18,6 @@ from rich.table import Table
 # Ensure language configs are loaded
 from chunker import chunk_file, chunk_text
 from chunker.boundary import dumps_boundary_ir, extract_boundary_ir
-from chunker.exceptions import ChunkerError
 from chunker.export import write_boundary_ir
 from chunker.parser import list_languages
 
@@ -313,42 +312,35 @@ def process_file(
             )
             return []
 
-    try:
-        chunks = chunk_file(file_path, language)
-        results = []
+    chunks = chunk_file(file_path, language)
+    results = []
 
-        # Debug: print chunk count
-        # print(f"DEBUG: Found {len(chunks)} chunks for {file_path}")
+    for chunk in chunks:
+        # Apply chunk type filter
+        if chunk_types and chunk.node_type not in chunk_types:
+            continue
 
-        for chunk in chunks:
-            # Apply chunk type filter
-            if chunk_types and chunk.node_type not in chunk_types:
-                continue
+        # Apply size filters
+        chunk_size = chunk.end_line - chunk.start_line + 1
+        if min_size and chunk_size < min_size:
+            continue
+        if max_size and chunk_size > max_size:
+            continue
 
-            # Apply size filters
-            chunk_size = chunk.end_line - chunk.start_line + 1
-            if min_size and chunk_size < min_size:
-                continue
-            if max_size and chunk_size > max_size:
-                continue
+        results.append(
+            {
+                "file_path": str(file_path),
+                "language": language,
+                "node_type": chunk.node_type,
+                "start_line": chunk.start_line,
+                "end_line": chunk.end_line,
+                "size": chunk_size,
+                "parent_context": chunk.parent_context,
+                "content": chunk.content,
+            },
+        )
 
-            results.append(
-                {
-                    "file_path": str(file_path),
-                    "language": language,
-                    "node_type": chunk.node_type,
-                    "start_line": chunk.start_line,
-                    "end_line": chunk.end_line,
-                    "size": chunk_size,
-                    "parent_context": chunk.parent_context,
-                    "content": chunk.content,
-                },
-            )
-
-        return results
-    except ChunkerError as e:
-        console.print(f"[red]Error processing {file_path}: {e}[/red]")
-        return []
+    return results
 
 
 @app.command()
@@ -407,15 +399,16 @@ def chunk(
     ),
 ):
     """Chunk a single source file or stdin input."""
+    results = []
+    failed = False
     # Check input source
     if stdin:
         # Read from stdin
         content = sys.stdin.read()
         if not language:
-            if not quiet:
-                console.print(
-                    "[red]Error: --lang is required when reading from stdin[/red]",
-                )
+            stderr_console.print(
+                "[red]Error: --lang is required when reading from stdin[/red]",
+            )
             sys.exit(1)
 
         # Use chunk_text from the simplified API
@@ -457,16 +450,15 @@ def chunk(
                     },
                 )
         except Exception as e:
-            if not quiet:
-                console.print(f"[red]Error processing stdin: {e}[/red]")
-            sys.exit(1)
+            stderr_console.print(f"[red]Error processing stdin: {e}[/red]")
+            results = []
+            failed = True
     else:
         # Process from file
         if not file_path:
-            if not quiet:
-                console.print(
-                    "[red]Error: Either provide a file path or use --stdin[/red]",
-                )
+            stderr_console.print(
+                "[red]Error: Either provide a file path or use --stdin[/red]",
+            )
             sys.exit(1)
 
         # Load config
@@ -486,7 +478,11 @@ def chunk(
         if max_size is None and "max_chunk_size" in cfg:
             max_size = cfg["max_chunk_size"]
 
-        results = process_file(file_path, language, types_list, min_size, max_size)
+        try:
+            results = process_file(file_path, language, types_list, min_size, max_size)
+        except Exception as e:
+            stderr_console.print(f"[red]Error processing {file_path}: {e}[/red]")
+            failed = True
 
     # Handle output format
     if json_out or output_format == "json":
@@ -519,6 +515,8 @@ def chunk(
         console.print(tbl)
 
     # Exit with appropriate code
+    if failed:
+        raise typer.Exit(1)
     # For machine-readable outputs (json/jsonl/minimal), do not treat
     # empty results as an error to allow chaining
     if not results and not quiet:
@@ -718,6 +716,7 @@ def batch(
 
     # Process files
     all_results = []
+    failed = False
 
     def process_with_progress(file_path: Path):
         return process_file(file_path, language, types_list, min_size, max_size)
@@ -729,8 +728,13 @@ def batch(
                 executor.submit(process_with_progress, f): f for f in files_to_process
             }
             for future in as_completed(futures):
-                results = future.result()
-                all_results.extend(results)
+                try:
+                    all_results.extend(future.result())
+                except Exception as e:
+                    stderr_console.print(
+                        f"[red]Error processing {futures[future]}: {e}[/red]"
+                    )
+                    failed = True
     else:
         # Process with progress bar
         with Progress(
@@ -738,7 +742,7 @@ def batch(
             BarColumn(),
             MofNCompleteColumn(),
             TimeRemainingColumn(),
-            console=console,
+            console=stderr_console,
         ) as progress:
             task = progress.add_task(
                 "[cyan]Processing files...",
@@ -751,8 +755,13 @@ def batch(
                     for f in files_to_process
                 }
                 for future in as_completed(futures):
-                    results = future.result()
-                    all_results.extend(results)
+                    try:
+                        all_results.extend(future.result())
+                    except Exception as e:
+                        stderr_console.print(
+                            f"[red]Error processing {futures[future]}: {e}[/red]"
+                        )
+                        failed = True
                     progress.advance(task)
 
     # Output results based on format
@@ -801,6 +810,9 @@ def batch(
             tbl.add_row(lang, node_type, str(summary[key]))
 
         console.print(tbl)
+
+    if failed:
+        raise typer.Exit(1)
 
 
 @app.command()
