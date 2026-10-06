@@ -403,7 +403,7 @@ def chunk(
     ),
 ):
     """Chunk a single source file or stdin input."""
-    results = []
+    results: list[dict[str, Any]] = []
     failed = False
     # Check input source
     if stdin:

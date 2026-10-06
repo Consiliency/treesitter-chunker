@@ -83,7 +83,8 @@ Do not change native admission, pins, consumer locks, ledgers or checkpoints.
 - uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/
 - uv run --locked --all-extras python scripts/mypy_gate.py
 - uv run --locked --with toml --all-extras python scripts/run_ci_smoke.py
-- uv run --locked --all-extras pytest -q
+- uv run --locked --with toml --all-extras python scripts/run_platform_core.py --platform linux
+- uv run --locked --with toml --all-extras python scripts/run_full_suite.py
 
 Named mutations: report_failed_extraction_as_success removes failure exits;
 emit_extraction_diagnostics_on_stdout redirects extraction diagnostics. Each
