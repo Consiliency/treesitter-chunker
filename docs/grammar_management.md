@@ -592,6 +592,12 @@ The grammar-management `CompatibilityDatabase` closes its connection after each
 operation, including failures. Cleanup commits both deletions before vacuuming,
 then closes the connection; a failure in either deletion rolls back the transaction.
 
+The separate language-compatibility database updates its live selection schema
+after a successful language or grammar version upsert. Replacements use the
+persisted metadata and record order immediately, matching a cold reopen.
+Failed writes retain the previous live and persisted state. Direct schema-only
+additions are not persisted database records.
+
 ## Conclusion
 
 The smart grammar management system provides comprehensive tools for managing tree-sitter grammars with intelligent error handling and user guidance. By following the best practices and using the provided tools, you can maintain a healthy and up-to-date grammar ecosystem for optimal code parsing performance.

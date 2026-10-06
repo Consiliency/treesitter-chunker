@@ -1,6 +1,11 @@
 """Persisted compatibility records restore selection after a cold open."""
 
+from datetime import datetime
 from pathlib import Path
+
+import pytest
+
+from chunker import get_parser
 
 from chunker.languages.compatibility.database import CompatibilityDatabase
 from chunker.languages.compatibility.schema import (
@@ -62,3 +67,122 @@ def test_tied_grammar_selection_survives_reopen(tmp_path: Path) -> None:
 
     with CompatibilityDatabase(db_path) as reopened:
         assert reopened.find_compatible_grammar(language) == first
+
+
+FIXTURE = (
+    Path(__file__).resolve().parents[1]
+    / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+)
+
+
+def test_language_upsert_matches_live_schema_and_reopen(tmp_path: Path) -> None:
+    tree = get_parser("python").parse(FIXTURE.read_bytes())
+    assert tree.root_node.named_child_count and not tree.root_node.has_error
+    path = tmp_path / "language.db"
+    old = LanguageVersion("python", "3.11", features=["old"])
+    replacement = LanguageVersion(
+        "python",
+        "3.11",
+        edition="updated",
+        build="build-2",
+        features=["match", "annotations"],
+        release_date=datetime(2022, 10, 24),
+        end_of_life=datetime(2027, 10, 1),
+    )
+    other = LanguageVersion("javascript", "1.0", features=["modules"])
+    with CompatibilityDatabase(path) as db:
+        assert db.add_language_version(old)
+        assert db.add_language_version(other)
+        assert db.add_language_version(replacement)
+        assert db.get_language_versions("python") == [replacement]
+        assert db.schema.get_language_versions("python") == [replacement]
+        assert db.schema.get_language_versions("javascript") == [other]
+    with CompatibilityDatabase(path) as reopened:
+        assert reopened.schema.get_language_versions("python") == [replacement]
+        assert reopened.get_language_versions("javascript") == [other]
+
+
+def test_grammar_upsert_preserves_metadata_and_persisted_tie_order(
+    tmp_path: Path,
+) -> None:
+    tree = get_parser("python").parse(FIXTURE.read_bytes())
+    assert tree.root_node.named_child_count and not tree.root_node.has_error
+    path = tmp_path / "grammar.db"
+    language = LanguageVersion("python", "3.11", features=["match"])
+    first = GrammarVersion("python", "2.0", "first.so")
+    second = GrammarVersion("python", "1.0", "second.so")
+    other = GrammarVersion("javascript", "1.0", "javascript.so")
+    replacement = GrammarVersion(
+        "python",
+        "2.0",
+        "updated.so",
+        supported_features=["match", "annotations"],
+        min_language_version="3.10",
+        max_language_version="3.12",
+        breaking_changes=["changed-query"],
+        release_date=datetime(2026, 1, 2),
+    )
+    rule = CompatibilityRule(
+        "python", ">=3.10", ">=1.0", CompatibilityLevel.FULLY_COMPATIBLE
+    )
+    change = BreakingChange(
+        "python", "3.10", "3.11", "syntax", "Match statement", "medium"
+    )
+    with CompatibilityDatabase(path) as db:
+        assert db.add_language_version(language)
+        assert db.add_grammar_version(first)
+        assert db.add_grammar_version(second)
+        assert db.add_grammar_version(other)
+        assert db.add_compatibility_rule(rule)
+        assert db.add_breaking_change(change)
+        assert db.find_compatible_grammar(language) == first
+        assert db.add_grammar_version(replacement)
+        assert db.get_grammar_versions("python") == [second, replacement]
+        assert db.schema.get_grammar_versions("python") == [second, replacement]
+        assert db.find_compatible_grammar(language) == second
+        assert db.schema.get_language_versions("python") == [language]
+        assert db.schema.get_grammar_versions("javascript") == [other]
+        assert db.schema.compatibility_rules == [rule]
+        assert db.schema.breaking_changes == [change]
+    with CompatibilityDatabase(path) as reopened:
+        assert reopened.schema.get_grammar_versions("python") == [second, replacement]
+        assert reopened.find_compatible_grammar(language) == second
+        assert reopened.schema.get_grammar_versions("javascript") == [other]
+        assert reopened.schema.compatibility_rules == [rule]
+        assert reopened.schema.breaking_changes == [change]
+
+
+@pytest.mark.parametrize("kind", ["language", "grammar"])
+def test_failed_upsert_preserves_live_and_persisted_state(
+    tmp_path: Path, kind: str
+) -> None:
+    tree = get_parser("python").parse(FIXTURE.read_bytes())
+    assert tree.root_node.named_child_count and not tree.root_node.has_error
+    path = tmp_path / f"failed-{kind}.db"
+    language = LanguageVersion("python", "3.11", features=["match"])
+    grammar = GrammarVersion("python", "1.0", "python.so")
+    with CompatibilityDatabase(path) as db:
+        assert db.add_language_version(language)
+        assert db.add_grammar_version(grammar)
+        db.conn.execute(
+            f"CREATE TRIGGER reject_replacement BEFORE INSERT ON {kind}_versions "
+            "BEGIN SELECT RAISE(ABORT, 'test rejects replacement'); END"
+        )
+        db.conn.commit()
+        if kind == "language":
+            assert not db.add_language_version(
+                LanguageVersion("python", "3.11", features=["wrong"])
+            )
+        else:
+            assert not db.add_grammar_version(
+                GrammarVersion("python", "1.0", "wrong.so")
+            )
+        assert db.get_language_versions("python") == [language]
+        assert db.get_grammar_versions("python") == [grammar]
+        assert db.schema.get_language_versions("python") == [language]
+        assert db.schema.get_grammar_versions("python") == [grammar]
+        assert db.find_compatible_grammar(language) == grammar
+    with CompatibilityDatabase(path) as reopened:
+        assert reopened.schema.get_language_versions("python") == [language]
+        assert reopened.schema.get_grammar_versions("python") == [grammar]
+        assert reopened.find_compatible_grammar(language) == grammar
