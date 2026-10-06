@@ -1054,6 +1054,42 @@
       "task_summary": "Preserve independent compatibility findings with unavailable timing",
       "type": "detailed",
       "updated_at": "2026-10-06T19:48:02Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T19:24:16.045631+00:00",
+      "file": "plans/detailed-cli-failure-semantics-359.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-cli-failure-semantics-359/.dev-skills/handoffs/codex-plan-detailed/20261006-cli-failure-semantics-359.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T19:24:16.045631+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-cli-failure-semantics-359.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T19:24:16Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-cli-failure-semantics-359.md",
+            "run_id": "20261006-cli-failure-semantics-359"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-cli-failure-semantics-359/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "cli-failure-semantics-359",
+      "status": "executing",
+      "task_summary": "Repair treesitter-chunker#359 CLI failure status and structured output",
+      "type": "detailed",
+      "updated_at": "2026-10-06T19:24:16Z"
     }
   ],
   "schema_version": 1

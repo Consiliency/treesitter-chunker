@@ -129,13 +129,18 @@ Use exporters from Python for structured outputs (JSON, JSONL, Parquet, GraphML,
 
 `chunk` supports `table`, `json`, `jsonl` and `minimal`. `batch` supports
 `summary`, `json`, `jsonl`, `minimal` and `csv`. Use `--quiet` for machine-readable
-batch output. Check exit status and validate the decoded payload: some
-per-file errors print on stdout and still exit zero. `--quiet` does not suppress
-those errors. `chunk` takes one file;
+batch output. An extraction failure returns status 1 and reports its input/error
+on stderr, including with `--quiet`. Structured stdout contains only chunks:
+JSON emits `[]` when none succeeded; JSONL emits no lines in that case. A batch
+continues after individual failures, emits successful chunks, and returns 1 if
+any selected input failed. Successful empty structured extraction returns 0.
+Unmapped extensions still warn and skip rather than failing extraction.
+`chunk` takes one file;
 use `batch` or `boundary` for a directory.
 
-The per-file status/stdout limitation is tracked in
-[treesitter-chunker#359](https://github.com/Consiliency/treesitter-chunker/issues/359).
+Callers upgrading from the earlier per-file status/stdout behavior should check
+the nonzero status while retaining useful partial-batch stdout. Validate the
+decoded payload as usual.
 
 ```bash
 python -c "from importlib.metadata import version; print(version('treesitter-chunker'))"
