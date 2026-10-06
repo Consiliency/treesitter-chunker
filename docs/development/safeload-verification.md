@@ -28,7 +28,11 @@ Round-two feedback requires a fresh final run after adding malformed-number
 rejection, child-only legacy fixture loading, portable pipe-test selection, and
 real local-repository installation warning checks. Generator execution is an
 explicit external boundary in those warning checks; they do not establish the
-generator's compilation contract. Final evidence remains pending below.
+generator's compilation contract. All 72 focused tests pass. All eight named
+mutations, including both consumer variants of stale health reuse, were killed
+and restored separately on a clean tree; logs are operational inputs under the
+plan's allowlist. Full-runner, platform and final review evidence remains pending
+for this final batch. No acceptance gate is claimed.
 
 - Obtain an independently reviewed final implementation at the exact commit.
 - Record the required Linux, macOS, and Windows compiled-fixture outcomes.
