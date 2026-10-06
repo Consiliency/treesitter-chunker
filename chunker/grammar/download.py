@@ -115,21 +115,22 @@ class GrammarDownloadManager(GrammarDownloadContract):
             suffix=".tar.gz",
             delete=False,
         ) as tmp:
-            try:
-                self._download_file(url, tmp.name, language, progress_callback)
-                if provenance is not None:
-                    verify_artifact(Path(tmp.name), provenance)
-                grammar_dir.mkdir(parents=True, exist_ok=True)
-                self._extract_archive(tmp.name, grammar_dir)
-                self._metadata["grammars"][language] = {
-                    "version": version,
-                    "path": str(grammar_dir),
-                    "repo": repo,
-                }
-                self._save_metadata()
-                return grammar_dir
-            finally:
-                Path(tmp.name).unlink(missing_ok=True)
+            archive_path = Path(tmp.name)
+        try:
+            self._download_file(url, str(archive_path), language, progress_callback)
+            if provenance is not None:
+                verify_artifact(archive_path, provenance)
+            grammar_dir.mkdir(parents=True, exist_ok=True)
+            self._extract_archive(str(archive_path), grammar_dir)
+            self._metadata["grammars"][language] = {
+                "version": version,
+                "path": str(grammar_dir),
+                "repo": repo,
+            }
+            self._save_metadata()
+            return grammar_dir
+        finally:
+            archive_path.unlink(missing_ok=True)
 
     @classmethod
     def _download_file(

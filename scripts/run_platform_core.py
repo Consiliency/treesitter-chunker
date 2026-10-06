@@ -9,6 +9,7 @@ import sys
 
 
 COMMON_TESTS = [
+    "tests/test_grammar_integrity.py::test_download_archive_handle_lifetime",
     "tests/test_grammar_management.py::test_real_grammar_mtimes_do_not_invent_compilation_dates",
     "tests/test_streaming.py::TestBufferOptimization::test_repeated_streaming_preserves_eager_fixture_chunks",
     "tests/test_config.py",
