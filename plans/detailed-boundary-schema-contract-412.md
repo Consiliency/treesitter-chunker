@@ -12,7 +12,10 @@ treesitter-chunker#414 in one bounded published-contract repair. The adapter
 already emits skipped unmapped files with language/parser null, while fileRecord
 requires strings. The guide calls itself canonical but describes 1.0/1.1;
 live types and JSON Schema require 2.0/2.1 following the existing canonical
-identity break in chunker 3.0.0. No emitter change or new protocol is proposed.
+identity break in chunker 3.0.0, proven by release commit
+455867ad31161060085f4c9af08d549cd75f9230 (treesitter-chunker#75). Package 4.0.0
+introduced a further identity/byte break even though IR versions stayed 2.0/2.1.
+No emitter change or new protocol is proposed.
 
 Frozen vocabulary from docs/interface-boundary-spec.md: "The Phase 0 top-level
 Boundary IR object keys are frozen as" schema_version, source, files, nodes,
@@ -48,6 +51,10 @@ skipped, error. Preserve these keys, values, identity and canonical ordering.
   Phase 0 checklist as historical instead of rewriting its acceptance events.
 - CHANGELOG.md: record conditional skipped-file schema validation and corrected
   existing-version documentation. Own this detailed plan and typed manifest.
+- docs/user-guide.md and docs/interface-boundary-roadmap.md: correct the same
+  stale 1.0/1.1 references and link the authoritative migration explanation.
+  Published schema descriptions must acknowledge the additional 4.0.0 package
+  identity break without falsely dating the 2.x introduction to that release.
 
 ## Dependencies and order
 

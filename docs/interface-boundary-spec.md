@@ -4,7 +4,11 @@ This document is the canonical implementation-facing Boundary IR contract for
 `treesitter-chunker`. Current syntax-only output uses `schema_version == "2.0"`,
 and opt-in semantic output uses `"2.1"`. The original Phase 0 (`SCHEMA`) contract
 used `1.0`; the canonical identity change in chunker 3.0.0 introduced the existing
-2.x boundary. Consumers of 1.x documents must re-extract and re-index.
+2.x boundary, as recorded in the [3.0.0 release commit](https://github.com/Consiliency/treesitter-chunker/commit/455867ad31161060085f4c9af08d549cd75f9230).
+Consumers of 1.x documents must re-extract and re-index. Chunker 4.0.0 introduced
+a further breaking chunk-identity and Boundary IR byte-output change. Consumers
+upgrading from earlier package versions must re-extract and re-index for that
+break too, even when their documents already use IR 2.0/2.1.
 
 The repository already implements additional Boundary IR capabilities beyond the
 original Phase 0 boundary. Those later contracts remain documented here only as
@@ -147,6 +151,9 @@ The top-level `schema_version` field is required. Syntax-only output must use
 `"2.0"`; explicit semantic enrichment uses `"2.1"`. The current published JSON
 Schema rejects 1.x documents. The existing major-version migration changed
 canonical IDs and bytes; consumers must re-extract and re-index old documents.
+IR 2.0/2.1 existed before package 4.0.0, whose further identity/byte break is
+documented in CHANGELOG.md. Checking the IR version alone does not establish
+that persisted pre-4.0.0 chunk identities are compatible with current output.
 
 Compatibility policy is frozen as:
 
