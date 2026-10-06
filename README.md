@@ -88,7 +88,7 @@ Install the optional companion grammar for structural `.baml` chunking:
 
 ```bash
 pip install 'treesitter-chunker[baml]'
-treesitter-chunker chunk example.baml --lang baml --json
+treesitter-chunker chunk example.baml --json
 ```
 
 The extra pins `treesitter-chunker-baml-grammar==0.1.0`. It uses BoundaryML's
@@ -96,8 +96,9 @@ official grammar with a temporary overlay for BAML 0.20.1 backtick prompts.
 Native wheels cover Linux glibc x86_64/aarch64, macOS x86_64/arm64, and Windows
 x86_64, with tests on Python 3.11–3.13. Source installs require a C compiler.
 
-Without the extra, explicit BAML parsing gives installation guidance and
-implicit file chunking falls back to text. Malformed BAML fails before
+Without the extra, main CLI BAML inputs give installation guidance and status 1;
+implicit ZeroConfigAPI file chunking falls back to text, and automatic symbol
+and Boundary repository scans skip BAML. Malformed BAML fails before
 returning structural chunks. See the [companion grammar README](packages/baml-grammar/README.md).
 
 ## Documentation
