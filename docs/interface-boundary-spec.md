@@ -1,9 +1,10 @@
 # Interface Boundary Specification
 
 This document is the canonical implementation-facing Boundary IR contract for
-`treesitter-chunker`. Phase 0 (`SCHEMA`) freezes the syntax-only Boundary IR
-baseline around `schema_version == "1.0"` so downstream adapters, serializers,
-tests, and external orchestrators have a stable contract to build on.
+`treesitter-chunker`. Current syntax-only output uses `schema_version == "2.0"`,
+and opt-in semantic output uses `"2.1"`. The original Phase 0 (`SCHEMA`) contract
+used `1.0`; the canonical identity change in chunker 3.0.0 introduced the existing
+2.x boundary. Consumers of 1.x documents must re-extract and re-index.
 
 The repository already implements additional Boundary IR capabilities beyond the
 original Phase 0 boundary. Those later contracts remain documented here only as
@@ -39,8 +40,9 @@ Those concerns live in downstream phases or in external orchestrators.
 
 ## Phase 0 Baseline
 
-The syntax-only Boundary IR schema version is `1.0`. The live constant for that
-baseline is `BOUNDARY_IR_SCHEMA_VERSION` in `chunker.boundary.types`.
+The current syntax-only Boundary IR schema version is `2.0`. Its live constant
+is `BOUNDARY_IR_SCHEMA_VERSION` in `chunker.boundary.types`. The original Phase 0
+key and identity vocabulary remains applicable across the 2.x migration.
 
 The Phase 0 top-level Boundary IR object keys are frozen as:
 
@@ -58,6 +60,11 @@ These keys match the live `TOP_LEVEL_KEYS` constant in
 
 `source` identifies the input repository or source root. `files`, `nodes`,
 `edges`, and `diagnostics` are arrays. `metrics` and `run` are objects.
+
+File records use status `parsed`, `skipped`, or `error`. An unmapped file is
+`skipped`; its unknown `language` and `parser` values are null. Parsed and error
+records require a string `language`, and a supplied `parser` must be a string.
+Null metadata is allowed only for skipped files. Node languages remain strings.
 
 ## Identity Precedence
 
@@ -137,7 +144,9 @@ via `_canonicalize_value`.
 ## Compatibility
 
 The top-level `schema_version` field is required. Syntax-only output must use
-`"1.0"`.
+`"2.0"`; explicit semantic enrichment uses `"2.1"`. The current published JSON
+Schema rejects 1.x documents. The existing major-version migration changed
+canonical IDs and bytes; consumers must re-extract and re-index old documents.
 
 Compatibility policy is frozen as:
 
@@ -173,7 +182,7 @@ on top of the Phase 0 baseline.
 
 Incremental cache keys, warm-run invalidation rules, and impacted-neighbor
 recompute behavior are downstream additive contracts. They do not change the
-syntax-only `1.0` baseline or the Phase 0 canonical JSON rules.
+syntax-only `2.0` baseline or the canonical JSON rules.
 
 Each cache key includes the installed `tree-sitter-language-pack` and
 `tree-sitter` runtime versions. A grammar-pack or runtime change therefore
@@ -192,17 +201,25 @@ agreement cannot silently redefine the contract.
 
 Optional semantic resolvers are a downstream additive extension. When callers
 explicitly supply semantic resolvers, enriched output may use the additive
-semantic schema version `1.1`
+semantic schema version `2.1`
 (`BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION`). Semantic enrichment remains opt-in and
-must not redefine or replace the syntax-only `1.0` baseline.
+must not redefine or replace the syntax-only `2.0` baseline.
 
 ## Minimal Baseline Example
 
+This schema-valid output comes from a Python file containing only
+`# A source file with no declarations.` followed by a newline. Volatile source
+and run paths are shown as `empty.py`; the tool version is illustrative.
+
 ```json
-{"diagnostics":[],"edges":[],"files":[],"metrics":{},"nodes":[],"run":{"canonical":true},"schema_version":"1.0","source":{"kind":"repository","path":"."}}
+{"diagnostics":[],"edges":[],"files":[{"content_hash":"sha1:7eb4e49617b13df62d2b7cc8f24b036e2493c7b3","diagnostics":[],"id":"62a603819930ab104a88fbe7f15a28da7ab28e86","language":"python","parser":"tree-sitter-python","path":"empty.py","status":"parsed"}],"metrics":{"ambiguous_edges":0,"diagnostics_total":0,"edges_total":0,"failure_buckets":{},"files_failed":0,"files_parsed":1,"files_processed":1,"files_skipped":0,"files_total":1,"graph_failures":0,"metadata_failures":0,"nodes_total":0,"parse_failures":0,"resolved_edges":0,"serialization_failures":0,"unresolved_edges":0},"nodes":[],"run":{"canonical":true,"created_at":null,"options":{"fail_fast":false,"include_retrieval_metadata":true,"include_timings":false,"language":"python","resolution_mode":"strict"},"root":"empty.py","timings":{"graph_assembly_ms":null,"metadata_normalization_ms":null,"parse_ms":null,"resolution_ms":null,"serialization_ms":null,"total_ms":null},"tool":"treesitter-chunker","tool_version":"5.2.0"},"schema_version":"2.0","source":{"kind":"file","path":"empty.py"}}
 ```
 
-## SCHEMA Contract Checklist
+## Historical Phase 0 SCHEMA Contract Checklist
+
+The checklist below records the original Phase 0 1.0 contract. It is historical
+acceptance, not a claim that current emitters use 1.0 or a new IF approval.
+The current version and migration requirements are described above.
 
 - [x] IF-0-SCHEMA-1: `docs/interface-boundary-spec.md` is the canonical
   implementation-facing Boundary IR contract, and the Phase 0 base contract is

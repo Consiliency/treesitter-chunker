@@ -42,8 +42,9 @@ skipped, error. Preserve these keys, values, identity and canonical ordering.
 - docs/interface-boundary-spec.md: describe current 2.0/2.1 constants and the
   existing 1.x re-extract/re-index migration, not a newly introduced version.
   Explain skipped unknown metadata and parsed/error string requirements. Replace
-  the obsolete minimal JSON with a schema-valid actual empty-directory emitted
-  example. Preserve frozen keys/identity/canonical policy. Label the original
+  the obsolete minimal JSON with a schema-valid actual no-declaration Python
+  file example, with volatile paths labeled as illustrative. Preserve frozen
+  keys/identity/canonical policy. Label the original
   Phase 0 checklist as historical instead of rewriting its acceptance events.
 - CHANGELOG.md: record conditional skipped-file schema validation and corrected
   existing-version documentation. Own this detailed plan and typed manifest.

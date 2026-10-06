@@ -69,12 +69,23 @@
     "fileRecord": {
       "type": "object",
       "required": ["id", "path", "language", "status", "content_hash", "diagnostics"],
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "skipped" } } },
+          "else": {
+            "properties": {
+              "language": { "type": "string" },
+              "parser": { "type": "string" }
+            }
+          }
+        }
+      ],
       "additionalProperties": true,
       "properties": {
         "id": { "type": "string" },
         "path": { "type": "string" },
-        "language": { "type": "string" },
-        "parser": { "type": "string" },
+        "language": { "type": ["string", "null"] },
+        "parser": { "type": ["string", "null"] },
         "status": {
           "type": "string",
           "enum": ["parsed", "skipped", "error"]
