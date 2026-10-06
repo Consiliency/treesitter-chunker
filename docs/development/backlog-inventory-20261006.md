@@ -10,14 +10,18 @@ No tests/builds were run during the initial planning audit. Subsequent execution
 
 ## Cleanup completed before planning
 
-Current execution checkpoint: main is `9ed3b75fa60f7d59361b86a6ad614c7fa46cecf6`.
-There are 67 open issues, four preserved held drafts, and active drafts
-treesitter-chunker#364, treesitter-chunker#372, treesitter-chunker#373 and
-treesitter-chunker#380. Later checkpoint facts supersede historical counts below.
+Current execution checkpoint: main is `c078b61b3053a0e00468a468446a1be49fb62fb0`.
+There are 66 open issues, four preserved held drafts, and active drafts
+treesitter-chunker#364, treesitter-chunker#372 and treesitter-chunker#373.
+Later checkpoint facts supersede historical counts below.
 Merged treesitter-chunker#378 resolved treesitter-chunker#131 and
 treesitter-chunker#377 with four-seat review, killed/restored mutation, fresh
 runner verification (3,658 passed/four skipped) and final-head platform checks.
 Its clean worktree was pruned after verification evidence was archived.
+Merged treesitter-chunker#380 resolved treesitter-chunker#376 with real provider
+and exact-artifact parsing, killed/restored mtime mutation, converged manual
+review, fresh runner verification (3,659 passed/four skipped) and final-head
+platform checks. Its clean worktree was also pruned after evidence retention.
 New independent findings are treesitter-chunker#375, treesitter-chunker#376 and
 treesitter-chunker#379. The SIGINT failure reproduced during verification is
 already treesitter-chunker#322; no duplicate was filed.
@@ -67,7 +71,6 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P1 | CLEANUP | [treesitter-chunker#369](https://github.com/Consiliency/treesitter-chunker/issues/369) — Public fallback cannot import when core is unavailable; coupled static fallback boundary |
 | P0 | CLEANUP | [treesitter-chunker#370](https://github.com/Consiliency/treesitter-chunker/issues/370) — Validation-cache writers lose fresh records and follow outside symlinks |
 | P1 | CLEANUP | [treesitter-chunker#375](https://github.com/Consiliency/treesitter-chunker/issues/375) — Removing a grammar ignores clean_cache=False; independent flag contract |
-| P1 | SAFELOAD | [treesitter-chunker#376](https://github.com/Consiliency/treesitter-chunker/issues/376) — Legacy compatibility fabricates compilation dates from mtime; metadata precursor in treesitter-chunker#380 |
 | P0/P1 | GRAMMARS | [treesitter-chunker#162](https://github.com/Consiliency/treesitter-chunker/issues/162) — Updating a loaded grammar in place can crash the Python process |
 | P0/P1 | GRAMMARS | [treesitter-chunker#160](https://github.com/Consiliency/treesitter-chunker/issues/160) — Legacy grammar tools ignore native macOS and Windows library extensions |
 | P0/P1 | GRAMMARS | [treesitter-chunker#117](https://github.com/Consiliency/treesitter-chunker/issues/117) — GrammarRegistry ignores native library suffixes on Windows and macOS |

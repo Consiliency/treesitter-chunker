@@ -4,7 +4,7 @@
 
 Cleanup initiative, audited 2026-10-06 against current main. This is a new roadmap; v1/v2 remain historical inputs. See [complete inventory](../docs/development/backlog-inventory-20261006.md) for every issue, draft, planning artifact and disposition.
 
-Closed fixed treesitter-chunker#124 and treesitter-chunker#107, and superseded draft treesitter-chunker#171. Added historical-record tracker treesitter-chunker#361 and independently tracked review findings. Accepted repairs treesitter-chunker#366, treesitter-chunker#374 and treesitter-chunker#378 closed their associated issues with evidence. The inventory has 67 open issues, four held drafts and active drafts treesitter-chunker#364, treesitter-chunker#372, treesitter-chunker#373 and treesitter-chunker#380. treesitter-chunker#69 reflects behavior/mutation acceptance.
+Closed fixed treesitter-chunker#124 and treesitter-chunker#107, and superseded draft treesitter-chunker#171. Added historical-record tracker treesitter-chunker#361 and independently tracked review findings. Accepted repairs treesitter-chunker#366, treesitter-chunker#374, treesitter-chunker#378 and treesitter-chunker#380 closed their associated issues with evidence. The inventory snapshot has 66 open issues, four held drafts and active drafts treesitter-chunker#364, treesitter-chunker#372 and treesitter-chunker#373. treesitter-chunker#69 reflects behavior/mutation acceptance.
 
 5.2.0 is published; this quality/correctness campaign does not itself require another release. Planning uses existing source, merged verification and GitHub metadata; no fresh full-suite measurement is claimed.
 
