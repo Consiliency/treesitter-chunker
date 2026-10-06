@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Compatibility breaking-change reports preserve independent findings when an
+  old timing baseline is zero or unavailable. Percentage slowdown comparisons
+  require a positive baseline.
+
 - Default compatibility checker and grammar tester validators use their supplied
   manager's validation cache directory, avoiding additional home caches when that
   manager is isolated. An explicitly supplied validator retains its own chosen
