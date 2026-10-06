@@ -8,7 +8,9 @@ automation:
 ## Task and research summary
 
 Resolve treesitter-chunker#392 independently of accepted treesitter-chunker#379.
-Both example modules import an unexported parallel-directory helper from chunker,
+The separately discovered evaluated-annotation import error is
+treesitter-chunker#410, filed before this same import-behavior correction.
+Both example modules import unexported parallel helpers from chunker,
 then pass obsolete use_cache keywords to direct chunk_file. Neither direct call
 queries or populates SQLite. The comprehensive cache example also clears the
 global cache. Existing supported ASTCache methods permit explicit isolated
@@ -17,8 +19,16 @@ lookup/store behavior without changing the production cache or its identity.
 ## Changes
 
 - benchmarks/comprehensive_suite.py and benchmarks/example_benchmark.py:
-  import chunk_directory_parallel from chunker.parallel. Retain other supported
-  exports; remove the obsolete keyword only within the declared cache examples.
+  import chunk_directory_parallel and chunk_files_parallel from chunker.parallel;
+  import the comprehensive example's chunk_file_with_token_limit from
+  chunker.chunker. Actual root exports do not include these helpers. Retain
+  other supported exports; remove the obsolete keyword only within the declared
+  cache examples. The first directory-import repair exposed these additional
+  failures in the same broken-import cluster; preserve that failed attempt.
+- benchmarks/comprehensive_suite.py: replace the three existing callable
+  annotations with collections.abc.Callable, so the evaluated optional teardown
+  union is a type rather than Python's built-in callable function. No unrelated
+  typing refactor. The actual class-declaration failure is treesitter-chunker#410.
 - ComprehensiveBenchmarkSuite._benchmark_cache: use a private disposable cache
   by default, with context['cache_dir'] as an optional explicit root. Clear only
   the selected input before each cold iteration, query actual SQLite, parse with
@@ -42,7 +52,8 @@ lookup/store behavior without changing the production cache or its identity.
   comprehensive roots are disposable, explicit roots remain reopenable.
 - Kill import_unexported_parallel_helper and omit_example_cache_population,
   the latter separately in both modules. Intended tests must fail; restore exact
-  bytes and pass the focused batch after each mutation.
+  bytes and pass the focused batch after each mutation. Also kill
+  invalid_callable_union by restoring the broken evaluated teardown declaration.
 - scripts/run_platform_core.py: select the new module on all hosted platforms
   after accepted treesitter-chunker#342 to preserve its shared runner changes.
 - docs/performance-guide.md and CHANGELOG.md: describe explicit isolated example
