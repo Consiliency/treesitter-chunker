@@ -28,7 +28,7 @@ Production ChunkerConfig has no contention counter or concurrent-write contract.
   counts. Future exceptions propagate; no error queue can hide them. The
   generous barrier timeout diagnoses readiness failure. Completion timeouts
   are not a termination guarantee: executor shutdown can still wait on a hung
-  worker, with the original runner/CI providing the outer process bound. No
+  worker; hosted CI job limits provide an outer process bound. No
   performance threshold or lock-contention measurement. Remove the unused
   queue import. No mock
   config store, parser, plugin or timing instrumentation.
