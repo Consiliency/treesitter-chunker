@@ -9,6 +9,7 @@ import sys
 
 
 COMMON_TESTS = [
+    "tests/test_streaming.py::TestBufferOptimization::test_repeated_streaming_preserves_eager_fixture_chunks",
     "tests/test_config.py",
     "tests/test_env_config.py",
     "tests/test_config_advanced_scenarios.py",
