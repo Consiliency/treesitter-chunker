@@ -36,6 +36,7 @@ CI_SMOKE_TESTS = [
     "tests/test_java_version_hints_contract.py",
     "tests/test_cpp_version_hints_contract.py",
     "tests/test_graphml_yed_export_contract.py",
+    "tests/test_supported_wheel_verification.py",
     "tests/test_sqlite_export_contract.py",
     "tests/test_platform_support_contract.py",
     "tests/test_env_config.py",
