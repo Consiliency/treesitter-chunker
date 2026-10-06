@@ -54,9 +54,22 @@ the original candidate pathname for identification and carry the admitted
 digest; cached metadata is bound to that digest. Callback failure cannot yield
 healthy or partially accepted metadata. A deterministic replacement between
 probe completion and metadata extraction must still report the admitted bytes.
+The callback is trusted synchronous application code: it may inspect but must
+not mutate or native-load the snapshot. Commit its captured metadata only after
+`ok`; a raising callback returns `supported=False`, `reason="inspect_failed"`
+and no accepted digest, with cleanup in `finally`. Recheck snapshot identity
+before inspection. Artifact version/date fields never derive from source or
+snapshot timestamps: missing version is `unknown` and release_date is None
+without authentic release metadata. The separately reviewed precursor
+treesitter-chunker#366 addresses treesitter-chunker#365 and its numeric-rule
+consumer blocker treesitter-chunker#368 before this metadata migration lands.
 
-Launch a child with `sys.executable` and an argument array, without a shell. The
-child independently verifies the snapshot hash, lazily invokes the existing
+Launch a child with `sys.executable -I`, an argument array and cwd set to the
+private snapshot directory, without a shell. Bootstrap the package from the
+parent's known installed/approved package location; never add the caller or
+candidate directory or inherit PYTHONPATH to find it. Caller/candidate shadow
+modules cannot execute before verification. The child independently verifies
+the snapshot hash, lazily invokes the existing
 pinned capsule loader, parses the supplied sample and observes a returned root.
 Only afterwards may it emit exactly one completion record:
 
@@ -87,7 +100,8 @@ must separately parse without errors to demonstrate its language contract.
 
 Reasons: `ok`, `missing`, `empty`, `untrusted`, `integrity_mismatch`,
 `load_failed`, `parse_failed`, `timeout`, `child_failed`, `ack_missing`,
-`ack_invalid`. Only `ok` permits `supported=True` and capability metadata.
+`ack_invalid`, `inspect_failed`. Only `ok` permits `supported=True`, an accepted
+artifact digest and capability metadata; failures return no accepted digest.
 Analyzer failure returns `None`; capability/report/export results retain
 `supported=False` and an additive `validation_reason`. Metadata fallbacks cannot
 rescue failed admission. Revalidate content and provenance before returning
@@ -109,9 +123,11 @@ Legacy health maps missing to `missing`; empty/load/parse/null-symbol failures t
 recommendations carry the cause. Tools forward these outcomes and invalidate
 observations after install/update. No alternate parent loader may bypass this
 gate in the scoped consumers.
-Both install and update report `warning` with the validation cause when bytes
-were staged but admission fails; neither reports `success` for an unapproved
-artifact, including an unchanged-revision update. The following GRAMMARS phase
+Both install and update report `warning` with the validation cause when an
+artifact fails admission, including unchanged revisions and missing artifacts.
+Existing changed-revision operations write in place before checking: a warning
+does not imply safe staging, restored old bytes or a successful command exit.
+Neither reports `success` for an unapproved artifact. The following GRAMMARS phase
 adds approved staging/publication and CLI migration; this first repair does not
 grant trust to downloaded source or promise rollback.
 
@@ -127,6 +143,10 @@ fixture execution on acceptance platforms; missing compilers do not pass gates.
 Also replace the original candidate between successful child completion and
 metadata extraction, and verify that every reported artifact-derived field and
 digest still describe the admitted snapshot.
+Cover a raising inspection callback without partial metadata publication and
+shadow modules planted in both caller cwd and the candidate directory. Derive
+each report/export entry from one admitted record, so replacement between
+separate observations cannot create internally contradictory nested fields.
 
 Kill `bypass_native_provenance`, `accept_exit_zero_without_ack`,
 `reload_original_after_verify`, `inspect_original_after_probe` and
@@ -135,3 +155,5 @@ and rerun affected tests. The final accepted interface gate requires scoped
 implementation, fixtures, mutations, exact-head independent review and required
 platform verification. Discovery integration and immutable publication in
 GRAMMARS receive their own review and acceptance.
+Also kill `accept_partial_inspection`, `inherit_candidate_import_path` and
+`unchanged_update_skips_validation`, with restored passes and path controls.

@@ -4,7 +4,7 @@
 
 Cleanup initiative, audited 2026-10-06 against current main. This is a new roadmap; v1/v2 remain historical inputs. See [complete inventory](../docs/development/backlog-inventory-20261006.md) for every issue, draft, planning artifact and disposition.
 
-Closed fixed treesitter-chunker#124 and treesitter-chunker#107, and superseded draft treesitter-chunker#171. Added historical-record tracker treesitter-chunker#361 and review follow-ups treesitter-chunker#362/treesitter-chunker#363: 62 issues and four drafts remain. treesitter-chunker#69 now reflects behavior/mutation acceptance.
+Closed fixed treesitter-chunker#124 and treesitter-chunker#107, and superseded draft treesitter-chunker#171. Added historical-record tracker treesitter-chunker#361 and review follow-ups treesitter-chunker#362, treesitter-chunker#363, treesitter-chunker#365 and treesitter-chunker#368; newly reported treesitter-chunker#367 joins SIGNATURE. The inventory has 65 issues, four held drafts and active drafts treesitter-chunker#364/treesitter-chunker#366. treesitter-chunker#69 reflects behavior/mutation acceptance.
 
 5.2.0 is published; this quality/correctness campaign does not itself require another release. Planning uses existing source, merged verification and GitHub metadata; no fresh full-suite measurement is claimed.
 
@@ -53,6 +53,7 @@ P0: Implement verified provenance and isolated post-parse acknowledgment in Gram
 **Scope notes**
 
 treesitter-chunker#165, treesitter-chunker#151, treesitter-chunker#164. Single lane: one independently landable shared admission/probe implementation PR carries tests and code together, preceded by independent design review. Keep one mechanism to prevent competing trust protocols. Retain draft treesitter-chunker#159 until its replacement is accepted. Existing local artifacts without an independently approved provenance pin fail closed; document migration for embedding callers without deriving trust from discovered bytes.
+An independently landable metadata precursor in treesitter-chunker#366 covers treesitter-chunker#365 and treesitter-chunker#368: remove timestamp-derived releases/versions and prevent unknown versions satisfying numeric rules. Accept it before landing the shared probe; it does not produce the native IF gate.
 
 Load-path disposition: analyzer and legacy manager/tools are secured here. Registry ambient discovery and fallback loads, central GrammarValidator and CLI validation are explicitly unsecured until GRAMMARS integrates the shared contract. The exported low-level loader remains a caller-trusted primitive, never a discovery admission boundary. Modern installer publication and legacy replacement both belong to GRAMMARS. Serialize shared analyzer work with GATES and shared registry work with RUNTIME; unrelated RUNTIME/GATES fixes do not imply native admission protection.
 Planning depth: Detailed design.
@@ -403,7 +404,7 @@ schema: spec_delta_closeout.v1; decision: no_spec_delta; targets: issue-acceptan
 
 **Objective**
 
-P2: Go methods expose field_identifier names and actual parameters rather than receivers; C++ member declarations preserve qualifiers; Java/C#/Kotlin/Swift/PHP/Ruby get documented signature contracts.
+P2: Go methods expose field_identifier names and actual parameters rather than receivers; C++ member declarations preserve qualifiers; Rust methods retain receiver and return information; Java/C#/Kotlin/Swift/PHP/Ruby get documented signature contracts.
 
 **Exit criteria**
 
@@ -412,7 +413,7 @@ P2: Go methods expose field_identifier names and actual parameters rather than r
 
 **Scope notes**
 
-treesitter-chunker#352, treesitter-chunker#353, treesitter-chunker#354. Decompose into 2 lanes: Go/C++ repairs and new language extractors partitioned by file. treesitter-chunker#354 is one umbrella with six independently reviewable language PRs; it does not subsume the two existing-language defects.
+treesitter-chunker#352, treesitter-chunker#353, treesitter-chunker#354, treesitter-chunker#367. Decompose into 2 lanes: Go/C++/Rust repairs and new language extractors partitioned by file. treesitter-chunker#354 is one umbrella with six independently reviewable language PRs; it does not subsume the existing-language defects. Rust receiver/return handling is its own real-fixture PR with a receiver-omission mutation.
 Planning depth: Go/C++ inline; bounded per-language plans for new extractors.
 
 **Non-goals**

@@ -17,7 +17,7 @@ No tests/builds were run during this planning audit. Historical verification is 
 | treesitter-chunker#128 | Kept open; completed portions identified | [Reconciliation](https://github.com/Consiliency/treesitter-chunker/issues/128#issuecomment-6011568804); treesitter-chunker#218 fixed signature/options, treesitter-chunker#219 fixed bulk filenames, but wrong-library validation remains. |
 | treesitter-chunker#361 | New record-reconciliation tracker | Exposes stale plan status and residuals missing from the issue queue; audit/triage only. |
 
-Counts: initially 61 issues/five drafts; two issues and one superseded draft closed, one previously untracked records issue opened. The initial inventory contained 60 issues; independent review added treesitter-chunker#362 and treesitter-chunker#363. **62 open issues, four draft PRs remain.** No other item was closed merely for age or overlapping scope.
+Counts: initially 61 issues/five drafts; two issues and one superseded draft closed, one previously untracked records issue opened. The initial inventory contained 60 issues. Review added treesitter-chunker#362, treesitter-chunker#363, treesitter-chunker#365 and treesitter-chunker#368; newly reported treesitter-chunker#367 is also enrolled. **65 open issues, four held drafts and active drafts treesitter-chunker#364/treesitter-chunker#366 remain.** No item was closed merely for age or overlapping scope.
 
 ## Remaining draft PRs
 
@@ -41,6 +41,8 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P0 | SAFELOAD | [treesitter-chunker#165](https://github.com/Consiliency/treesitter-chunker/issues/165) — Design provenance-safe compiled grammar validation with parse acknowledgment |
 | P0 | SAFELOAD | [treesitter-chunker#151](https://github.com/Consiliency/treesitter-chunker/issues/151) — GrammarAnalyzer reports empty shared library as supported grammar |
 | P0 | SAFELOAD | [treesitter-chunker#164](https://github.com/Consiliency/treesitter-chunker/issues/164) — Validate legacy grammar fallbacks without mapping source or accepting null language |
+| P1 | SAFELOAD | [treesitter-chunker#365](https://github.com/Consiliency/treesitter-chunker/issues/365) — Timestamp-derived grammar versions and release dates; independent precursor treesitter-chunker#366 |
+| P1 | SAFELOAD | [treesitter-chunker#368](https://github.com/Consiliency/treesitter-chunker/issues/368) — Unknown versions incorrectly satisfy numeric rules; blocks that precursor's migration |
 | P0 | CLEANUP | [treesitter-chunker#323](https://github.com/Consiliency/treesitter-chunker/issues/323) — Core grammar cleanup can remove a file created during directory deletion |
 | P0 | CLEANUP | [treesitter-chunker#324](https://github.com/Consiliency/treesitter-chunker/issues/324) — Grammar CLI fallback deletes recent files inside old cache directories |
 | P0 | CLEANUP | [treesitter-chunker#177](https://github.com/Consiliency/treesitter-chunker/issues/177) — Reconcile auxiliary grammar self-test and CLI validator scenarios |
@@ -95,6 +97,7 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P2 | SIGNATURE | [treesitter-chunker#352](https://github.com/Consiliency/treesitter-chunker/issues/352) — Go method_declaration signatures are never extracted |
 | P2 | SIGNATURE | [treesitter-chunker#353](https://github.com/Consiliency/treesitter-chunker/issues/353) — C++ in-class member function declarations get no signature |
 | P2 | SIGNATURE | [treesitter-chunker#354](https://github.com/Consiliency/treesitter-chunker/issues/354) — Add signature metadata extractors for Java, C#, Kotlin, Swift, PHP and Ruby |
+| P2 | SIGNATURE | [treesitter-chunker#367](https://github.com/Consiliency/treesitter-chunker/issues/367) — Rust method signatures omit receiver and return type |
 | P1 | EXPORT | [treesitter-chunker#167](https://github.com/Consiliency/treesitter-chunker/issues/167) — Graph exporters collapse distinct chunks sharing a line span |
 | P1 | EXPORT | [treesitter-chunker#168](https://github.com/Consiliency/treesitter-chunker/issues/168) — GraphML export emits XML-invalid control characters from metadata |
 | P1 | EXPORT | [treesitter-chunker#169](https://github.com/Consiliency/treesitter-chunker/issues/169) — GraphML metadata named label produces duplicate key IDs |

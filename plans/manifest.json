@@ -350,7 +350,55 @@
       "status": "committed",
       "task_summary": "Trusted native admission and isolated probe plan for treesitter-chunker#165, treesitter-chunker#151 and treesitter-chunker#164",
       "type": "phase",
-      "updated_at": "2026-10-06T08:06:44.142045+00:00"
+      "updated_at": "2026-10-06T08:41:58.197873+00:00",
+      "manual_amendment": {
+        "at": "2026-10-06T08:41:58.197736+00:00",
+        "phase_plan_sha256": "10be23783634be9b203033e123ebe7bc3a08391411a4b8d40300e5cf30a2f678",
+        "reason": "independent review input-binding corrections; no implementation gate produced"
+      },
+      "roadmap_sha256": "d89176be38022c12d110aec465e9bd6f6ebef8a3c83bec6ee8dc02d96d997cc9"
+    },
+    {
+      "acceptance_criteria_count": null,
+      "created_at": "2026-10-06T08:21:44.113338+00:00",
+      "file": "plans/phase-plan-v3-CLEANUP.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-phase/20261006T082144Z-CLEANUP-plan.md",
+      "if_gates_produced": [
+        "IF-0-CLEANUP-1"
+      ],
+      "lanes": [
+        "SL-1",
+        "SL-2",
+        "SL-3"
+      ],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T08:21:44.113338+00:00",
+          "by": "codex-plan-phase",
+          "metadata": {},
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-phase",
+      "phase_alias": "CLEANUP",
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-phase/reflections/007f2158e199/codex-backlog-cleanup-20261006/20261006T082144Z-CLEANUP-plan.md",
+      "roadmap_ref": {
+        "file": "specs/phase-plans-v3.md",
+        "slug": "phase-plans-v3",
+        "status": "committed",
+        "type": "phase"
+      },
+      "slug": "v3-CLEANUP",
+      "status": "committed",
+      "task_summary": null,
+      "type": "phase",
+      "updated_at": "2026-10-06T08:41:58.198667+00:00",
+      "manual_amendment": {
+        "at": "2026-10-06T08:41:58.198574+00:00",
+        "phase_plan_sha256": "6e0d0b5e04c9bbac7f15730aa51371567d5c75f7f5f6fbda8f0a5700e10bdfa8",
+        "reason": "independent review input-binding corrections; no implementation gate produced"
+      },
+      "roadmap_sha256": "d89176be38022c12d110aec465e9bd6f6ebef8a3c83bec6ee8dc02d96d997cc9"
     }
   ],
   "schema_version": 1
