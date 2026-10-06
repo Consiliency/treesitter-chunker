@@ -10,11 +10,11 @@ This module tests:
 import gc
 import json
 import os
-import queue
 import sys
 import threading
 import time
 import weakref
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -178,95 +178,77 @@ class TestPerformanceImpactOfConfigLookups:
         assert parser.cache_misses == old_misses + len(common_keys)
 
     @staticmethod
-    def test_parallel_parsing_config_contention():
-        """Test config lookup performance with parallel parsing."""
-
-        class ThreadSafeConfigStore:
-            def __init__(self, config: dict[str, Any]):
-                self.config = config
-                self.lock = threading.RLock()
-                self.access_count = 0
-                self.contention_events = 0
-                self.max_wait_time = 0
-
-            def get(self, key: str, default: Any = None) -> Any:
-                """Thread-safe config getter."""
-                start_wait = time.time()
-                acquired = self.lock.acquire(timeout=0.001)
-                if not acquired:
-                    self.contention_events += 1
-                    self.lock.acquire()
-                wait_time = time.time() - start_wait
-                self.max_wait_time = max(self.max_wait_time, wait_time)
-                try:
-                    self.access_count += 1
-                    time.sleep(1e-05)
-                    return self.config.get(key, default)
-                finally:
-                    self.lock.release()
-
-        config_store = ThreadSafeConfigStore(
-            {"chunk_size": 1000, "parallel_threads": 4, "cache_enabled": True},
+    @pytest.mark.parametrize("num_threads", [1, 2, 4, 8, 16])
+    def test_parallel_parsing_config_contention(tmp_path, num_threads):
+        """Concurrent actual config reads preserve each parsed fixture result."""
+        config_path = tmp_path / "chunker.config.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "chunker": {
+                        "enabled_languages": ["python", "rust"],
+                        "default_plugin_config": {
+                            "chunk_types": ["class_definition"],
+                        },
+                    },
+                    "languages": {
+                        "python": {"chunk_types": ["function_definition"]},
+                    },
+                }
+            ),
+            encoding="utf-8",
         )
-        results = queue.Queue()
-        errors = queue.Queue()
+        config = ChunkerConfig(config_path, use_env_vars=False)
+        manager = PluginManager()
+        manager.registry.register(PythonPlugin)
+        fixture = (
+            Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+        )
+        source = fixture.read_text(encoding="utf-8")
+        ready = threading.Barrier(num_threads)
 
-        def parse_file_segment(segment_id: int, iterations: int):
-            """Simulate parsing a file segment."""
-            try:
-                local_results = []
-                for i in range(iterations):
-                    chunk_size = config_store.get("chunk_size")
-                    config_store.get("parallel_threads")
-                    config_store.get("cache_enabled")
-                    time.sleep(0.0001)
-                    if i % 10 == 0:
-                        local_results.append(
-                            {
-                                "segment": segment_id,
-                                "chunk": i // 10,
-                                "size": chunk_size,
-                            },
-                        )
-                results.put(local_results)
-            except (OSError, IndexError, KeyError) as e:
-                errors.put((segment_id, str(e)))
+        def parse_segment(segment_id):
+            ready.wait(timeout=30)
+            observations = []
+            for _ in range(3):
+                selected = config.get_plugin_config("python")
+                default = config.get_plugin_config("rust")
+                disabled = config.get_plugin_config("javascript")
+                assert selected.enabled
+                assert selected.chunk_types == {"function_definition"}
+                assert default.enabled
+                assert default.chunk_types == {"class_definition"}
+                assert not disabled.enabled
+                functions = manager.chunk_file(fixture, "python", selected)
+                classes = manager.chunk_file(fixture, "python", default)
+                assert len(functions) == 2
+                assert all(
+                    chunk.node_type == "function_definition" for chunk in functions
+                )
+                assert any("def render(" in chunk.content for chunk in functions)
+                assert any("def render_report(" in chunk.content for chunk in functions)
+                assert len(classes) == 1
+                assert classes[0].node_type == "class_definition"
+                assert "class Renderer:" in classes[0].content
+                assert all(
+                    chunk.content and chunk.content in source
+                    for chunk in functions + classes
+                )
+                observations.append(
+                    ([chunk.content for chunk in functions], classes[0].content)
+                )
+            return segment_id, observations
 
-        thread_counts = [1, 2, 4, 8, 16]
-        performance_results = {}
-        for num_threads in thread_counts:
-            config_store.access_count = 0
-            config_store.contention_events = 0
-            config_store.max_wait_time = 0
-            start_time = time.time()
-            threads = []
-            for i in range(num_threads):
-                t = threading.Thread(target=parse_file_segment, args=(i, 100))
-                threads.append(t)
-                t.start()
-            for t in threads:
-                t.join()
-            elapsed = time.time() - start_time
-            performance_results[num_threads] = {
-                "elapsed_time": elapsed,
-                "total_accesses": config_store.access_count,
-                "contention_events": config_store.contention_events,
-                "max_wait_time": config_store.max_wait_time,
-                "accesses_per_second": config_store.access_count / elapsed,
-            }
-        single_thread_time = performance_results[1]["elapsed_time"]
-        for num_threads in thread_counts[1:]:
-            speedup = (
-                single_thread_time / performance_results[num_threads]["elapsed_time"]
-            )
-            efficiency = speedup / num_threads * 100
-            print(
-                f"{num_threads} threads: {speedup:.2f}x speedup, {efficiency:.0f}% efficiency, {performance_results[num_threads]['contention_events']} contentions",
-            )
-            if num_threads <= 4:
-                assert efficiency > 5, f"Poor scaling with {num_threads} threads"
-            if num_threads <= 8:
-                assert performance_results[num_threads]["max_wait_time"] < 0.35
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [executor.submit(parse_segment, i) for i in range(num_threads)]
+            results = [future.result(timeout=60) for future in futures]
+        assert sorted(segment for segment, _ in results) == list(range(num_threads))
+        expected = results[0][1][0]
+        assert all(
+            len(observations) == 3
+            and all(observation == expected for observation in observations)
+            for _, observations in results
+        )
 
 
 class TestConfigHotReloadingDuringChunking:
