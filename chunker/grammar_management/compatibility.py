@@ -359,16 +359,22 @@ class CompatibilityChecker:
 
             # Compare performance impact
             if old_result.performance_impact and new_result.performance_impact:
-                old_performance = old_result.performance_impact.get(
-                    "average_parse_time",
-                    0,
+                old_performance = (
+                    old_result.performance_impact.get(
+                        "average_parse_time",
+                        0,
+                    )
+                    or 0
                 )
-                new_performance = new_result.performance_impact.get(
-                    "average_parse_time",
-                    0,
+                new_performance = (
+                    new_result.performance_impact.get(
+                        "average_parse_time",
+                        0,
+                    )
+                    or 0
                 )
 
-                if new_performance > old_performance * 1.5:  # 50% slower
+                if old_performance > 0 and new_performance > old_performance * 1.5:
                     breaking_changes.append(
                         {
                             "type": BreakingChangeType.PERFORMANCE_DEGRADED.value,

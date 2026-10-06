@@ -25,9 +25,12 @@ Production ChunkerConfig has no contention counter or concurrent-write contract.
   settings and disabled JavaScript; parse the checked-in Python service with
   actual selected function and class configurations. Every expected worker
   result and iteration must exist and match actual fixture content, types and
-  counts. Future exceptions propagate; no error queue can hide them. Use a
-  generous bounded readiness/completion timeout only to diagnose deadlocks,
-  not a performance threshold. Remove the now-unused queue import. No mock
+  counts. Future exceptions propagate; no error queue can hide them. The
+  generous barrier timeout diagnoses readiness failure. Completion timeouts
+  are not a termination guarantee: executor shutdown can still wait on a hung
+  worker, with the original runner/CI providing the outer process bound. No
+  performance threshold or lock-contention measurement. Remove the unused
+  queue import. No mock
   config store, parser, plugin or timing instrumentation.
 - Temporarily mutate the existing ChunkerConfig.get_plugin_config return in
   chunker/chunker_config.py to ignore_language_override. The concurrent fixture
