@@ -20,6 +20,29 @@ from chunker.languages.compatibility.schema import (
 FIXTURES = Path(__file__).parent / "fixtures/boundary_ir/repos"
 
 
+def test_unknown_grammar_versions_do_not_satisfy_numeric_rules() -> None:
+    for language, fixture in (
+        ("python", FIXTURES / "python/app/service.py"),
+        ("javascript", FIXTURES / "javascript/service.js"),
+    ):
+        tree = get_parser(language).parse(fixture.read_bytes())
+        assert not tree.root_node.has_error
+        assert tree.root_node.named_child_count > 0
+        unknown = GrammarVersion(language, "unknown", f"{language}.so")
+        known = GrammarVersion(language, "1.5", f"{language}.so")
+        for constraint in (">=1.0", "<=2.0", "1.0-2.0"):
+            rule = CompatibilityRule(
+                language, "*", constraint, CompatibilityLevel.FULLY_COMPATIBLE
+            )
+            assert not rule.matches_grammar_version(unknown)
+            assert rule.matches_grammar_version(known)
+        for constraint in ("*", "unknown"):
+            rule = CompatibilityRule(
+                language, "*", constraint, CompatibilityLevel.FULLY_COMPATIBLE
+            )
+            assert rule.matches_grammar_version(unknown)
+
+
 def test_language_versions_and_rules_respect_inclusive_boundaries() -> None:
     for language, fixture in (
         ("python", FIXTURES / "python/app/service.py"),

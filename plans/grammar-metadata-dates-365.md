@@ -11,6 +11,10 @@ artifact version/date fields. Reports and exports preserve the unknown value.
 This repair does not secure native admission, cache identity or arbitrary string
 attribution. Those contracts remain independently reviewed in the cleanup
 roadmap. It does not claim that an empty library is supported safely.
+treesitter-chunker#368 is an explicit coupled consumer blocker: numeric
+CompatibilityRule comparisons must reject unknown/unparseable versions rather
+than treating parsing failure as equality. Preserve known numeric comparison,
+exact equality and unconstrained wildcard behavior.
 
 ## Owned files and steps
 
@@ -20,6 +24,10 @@ roadmap. It does not claim that an empty library is supported safely.
   remove compiler comment metadata in the temporary artifact, prove actual
   declarations parse, and compare identical copies with different mtimes using
   fresh analyzers. Check unknown versions, None dates, reports and JSON exports.
+- `chunker/languages/compatibility/schema.py`: let failed numeric rule
+  comparisons reach the existing fail-closed constraint handler.
+- `tests/test_compatibility_schema_version_boundaries.py`: portable real-parser
+  fixtures and public rule/selection tests for unknown and known versions.
 - `docs/grammar_management.md`, `CHANGELOG.md`: document the changed unknown
   metadata contract without claiming the pending native safety repairs.
 - This plan is a control artifact.
@@ -32,6 +40,10 @@ by restoring the timestamp fallback, require regression failure, restore the
 repair and rerun. Also kill `infer_release_from_mtime` by restoring the old
 release-date argument, then restore and rerun. Use temporary compiled artifacts,
 no mocks of the analyzer.
+Also kill `invalid_comparison_is_equality`, exercise actual analyzed BAML output
+through numeric rules/schema selection, and restore before broader checks.
+Kill `discard_embedded_version` by suppressing the real embedded version;
+the positive-control fixture must reject that mutation.
 The native reproduction uses the existing Linux ELF fixture conventions;
 record that scope, and require hosted platform checks before merge.
 
@@ -47,10 +59,11 @@ treesitter-chunker#365, then prune the clean merged worktree.
 ## Local verification
 
 The new regression failed against unchanged code at the timestamp-version
-assertion. The repair passed both focused files: 32 tests. Restoring each named
-mutation failed at its intended version/date assertion; restored code passed
-32 tests. Ruff and Black passed, mypy reported no new errors, and CI smoke
-passed 770 tests. Standing Windows main preflight passed 148 tests with one
+assertion. The consumer regression also failed before its repair. The repair
+passed six focused files: 64 tests. Each of the four named mutations failed at
+its intended assertion, and restored code passed again. Ruff and Black passed,
+mypy reported no new errors, and CI smoke passed 771 tests. Strict documentation
+built successfully. Standing Windows main preflight passed 148 tests with one
 skip; it supplements, rather than replaces, changed-head hosted CI. Raw command
 logs are private operational outputs under `/tmp/chunker-365-*.log`; no native
 artifact, fixture golden or parser pin was committed. Exact-head review and

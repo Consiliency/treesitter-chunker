@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Grammar analysis no longer invents versions or release dates from file
-  timestamps. Missing version information is reported as `unknown`.
+  timestamps. A version that cannot be extracted is reported as `unknown`.
+- Numeric compatibility rules reject versions they cannot compare instead of
+  treating them as equal to the requested version.
 
 ## [5.2.0] — Grammar management and context correctness
 

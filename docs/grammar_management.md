@@ -17,6 +17,8 @@ Grammar analysis reports `unknown` when it cannot extract a version from the
 artifact. File modification times are not grammar versions or release dates;
 without release metadata, `GrammarVersion.release_date` is `None`. Copying the
 same compiled grammar to a different timestamp does not create a new release.
+An unknown version does not satisfy numeric compatibility constraints; explicit
+wildcard rules retain their meaning.
 
 ### 🧠 Smart Error Handling
 - **Automatic diagnosis** of grammar issues
