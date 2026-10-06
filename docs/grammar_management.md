@@ -576,6 +576,10 @@ caller's existing compatibility database.
 Timeout cleanup also waits for the interpreter behind a Windows virtual-environment
 launcher before deleting the worker's files.
 
+The grammar-management `CompatibilityDatabase` closes its connection after each
+operation, including failures. Cleanup commits both deletions before vacuuming,
+then closes the connection; a failure in either deletion rolls back the transaction.
+
 ## Conclusion
 
 The smart grammar management system provides comprehensive tools for managing tree-sitter grammars with intelligent error handling and user guidance. By following the best practices and using the provided tools, you can maintain a healthy and up-to-date grammar ecosystem for optimal code parsing performance.
