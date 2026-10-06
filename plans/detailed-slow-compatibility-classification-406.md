@@ -13,13 +13,16 @@ before elif >5 seconds, so the declared very-slow score multiplier and DEGRADED
 classification are unreachable. The method receives performance metadata and
 parses actual caller samples through its validator. Timing inputs are metadata,
 not a new measured wall-clock correctness gate. Existing validation errors must
-remain INCOMPATIBLE when this formerly unreachable branch becomes active.
+remain INCOMPATIBLE within the timing adjustment when this formerly unreachable
+branch becomes active. The later sample-stage precedence defect is independently
+tracked as treesitter-chunker#416 and remains outside this timing repair.
 
 ## Changes
 
 - chunker/grammar_management/compatibility.py: put the existing >5 threshold
   before >2. Very-slow metadata halves the score and degrades otherwise compatible
-  validation, preserving INCOMPATIBLE if independent validation errors exist.
+  validation, preserving INCOMPATIBLE within that timing branch if independent
+  validation errors exist.
   Preserve moderate 0.8 multiplier and existing slow warning, exact threshold
   strictness, validation errors/warnings and subsequent actual sample outcomes.
   No timing-source, baseline arithmetic, missing-sample classification, database
@@ -29,13 +32,15 @@ remain INCOMPATIBLE when this formerly unreachable branch becomes active.
   actual checker. Parameterize metadata 0,2,2.01,5,5.01,6 seconds. Require exact
   compatible/degraded classification, score and warning at every boundary plus
   actual successful sample counts. Additional validation-error and malformed
-  sample cases at six seconds must retain their independent incompatibility
-  and parse-failure findings. No parser/validator/checker/time mocks.
+  sample cases at six seconds must prove that the timing branch retains
+  validation incompatibility and that actual sample failures still produce
+  their existing independent observations. Mixed validation errors with partial
+  sample success remain treesitter-chunker#416. No parser/validator/checker/time mocks.
 - Named mutations broad_threshold_first and overwrite_incompatible_level must
   fail the very-slow and independent-validation contracts respectively. Restore
   exact production bytes and pass the focused batch after every mutation.
 - docs/grammar_management.md and CHANGELOG.md: clarify metadata threshold
-  classification and precedence of independent incompatibility; no performance
+  classification and timing-stage precedence of independent incompatibility; no performance
   SLA or new wall-clock gate. Own this detailed plan and typed manifest.
 
 ## Dependencies and order
@@ -65,7 +70,7 @@ treesitter-chunker#133 and treesitter-chunker#149 remain outside this repair.
 
 - [ ] EC-COMPAT-1 threshold subset: focused actual parsing/checker tests prove
   existing strict boundaries, moderate/very-slow scores and warning observations,
-  with independent validation/sample failures retained.
+  with timing-stage validation precedence and actual sample-failure observations.
 - [ ] Both named actual production mutations fail intended contracts; each exact
   restoration passes the focused batch without time-budget correctness gates.
 - [ ] Valid original six checks/refresh/full tests/spec_tests, matching-source
