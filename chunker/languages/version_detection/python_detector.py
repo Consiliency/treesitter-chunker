@@ -2,6 +2,7 @@
 
 import logging
 import re
+import tomllib
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -148,7 +149,7 @@ class PythonVersionDetector:
         return None
 
     def detect_from_requirements(self, content: str) -> str | None:
-        """Extract Python version from requirements.txt or setup.py.
+        """Extract Python requirements from project metadata or source hints.
 
         Args:
             content: The file content to search
@@ -157,6 +158,15 @@ class PythonVersionDetector:
             Version constraint like ">=3.7" or None if not found
         """
         try:
+            try:
+                project = tomllib.loads(content).get("project", {})
+            except tomllib.TOMLDecodeError:
+                project = {}
+            if isinstance(project, dict):
+                requirement = project.get("requires-python")
+                if isinstance(requirement, str) and requirement.strip():
+                    return requirement
+
             # Check setup.py patterns
             patterns = [
                 r'python_requires\s*=\s*[\'"]([^\'"]+)[\'"]',

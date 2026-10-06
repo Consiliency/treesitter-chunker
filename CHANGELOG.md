@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Python version detection prefers declared PEP 621 `requires-python` constraints
+  over broad project classifiers, preserving the constraint operators.
+
 - File-hash quality checks verify complete SHA-256 results across read sizes and
   changed inputs rather than comparing noisy individual wall-clock durations.
 
