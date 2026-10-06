@@ -680,12 +680,15 @@ class GrammarInstaller:
         self,
         language: str,
         clean_dependencies: bool = True,
+        *,
+        clean_cache: bool = True,
     ) -> tuple[bool, str | None]:
         """Remove an installed grammar.
 
         Args:
             language: Language name
             clean_dependencies: Whether to clean up dependencies
+            clean_cache: Whether to clean associated download and build files
 
         Returns:
             Tuple of (success, error_message)
@@ -708,7 +711,8 @@ class GrammarInstaller:
                     logger.warning(f"Failed to remove grammar file: {e}")
 
             # Clean up cache files
-            self._cleanup_cache(language)
+            if clean_cache:
+                self._cleanup_cache(language)
 
             # Remove installation metadata
             self._remove_installation_info(language)
@@ -1480,7 +1484,9 @@ class GrammarManager:
                 return False, f"Grammar for {language} not found"
 
             # Remove using installer
-            success, error = self._installer.remove_grammar(language, clean_cache)
+            success, error = self._installer.remove_grammar(
+                language, clean_cache=clean_cache
+            )
 
             if success:
                 # Clear registry cache

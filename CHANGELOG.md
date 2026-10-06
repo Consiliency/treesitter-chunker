@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   independently approved SHA-256 provenance. Unpinned, replaced, malformed, or
   failed native artifacts are reported as unsupported rather than loaded in the
   parent process.
+- In fallback mode, public grammar cleanup preserves entries with fresh
+  descendants, reports linked entries without following them, and counts only
+  completed removals. The public fallback remains importable when grammar core
+  is unavailable. Core-mode cleanup still needs the treesitter-chunker#323 repair.
+- `GrammarManager.remove_grammar` respects `clean_cache=False`, preserving
+  associated download and build files while removing the installed library and
+  metadata. `GrammarInstaller` exposes the same option as a keyword-only argument.
+
 - Legacy grammar compatibility leaves compilation dates unknown when no
   authentic metadata exists; file modification time is not a compilation date.
   Unknown compilation dates no longer inflate compatibility scores.
