@@ -1,5 +1,7 @@
 # Native validation contract
 
+> Maintainer/internal documentation. This page is intentionally omitted from public navigation.
+
 Status: proposed design for treesitter-chunker#165, treesitter-chunker#151 and
 treesitter-chunker#164. Independent design review precedes implementation.
 Neither this document nor design approval establishes a repaired implementation.

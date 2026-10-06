@@ -1,10 +1,12 @@
 # Backlog inventory — 2026-10-06
 
+> Maintainer/internal documentation. This page is intentionally omitted from public navigation.
+
 ## Audit scope and evidence
 
 Audited Consiliency/treesitter-chunker’s open issues and PRs, their bodies/comments, exact draft heads/checks, merged repair history, current source, tracked plans/roadmaps, active specs and historical residual inventories. Primary main was clean at `d11186b9b97ce63eeb665885a2f89e51634c425d`. Snapshot facts are audit evidence, not future acceptance pins.
 
-No tests/builds were run during this planning audit. Historical verification is attributed to its actual PR/run. [Roadmap v3](../../specs/phase-plans-v3.md) schedules the remaining work; older plans are inputs, not an automatic execution queue.
+No tests/builds were run during the initial planning audit. Subsequent execution results are attributed to their actual PR/run. [Roadmap v3](https://github.com/Consiliency/treesitter-chunker/blob/main/specs/phase-plans-v3.md) schedules the remaining work; older plans are inputs, not an automatic execution queue.
 
 ## Cleanup completed before planning
 
@@ -22,6 +24,8 @@ Counts: initially 61 issues/five drafts; two issues and one superseded draft clo
 Execution update: treesitter-chunker#366 merged at a74e58f2 with accepted metadata/mutation evidence and green changed-head Linux/macOS/Windows checks. Commented and closed treesitter-chunker#365 and treesitter-chunker#368; the clean repair worktree is pruned. CLEANUP review reproduced and separately filed treesitter-chunker#369 and treesitter-chunker#370. Live backlog remains 65 open issues; the two accepted precursors are moved out of the open map below. The native implementation runs against its frozen reviewed input in a separate worktree; downstream plan amendments do not edit that active runner state.
 
 ## Remaining draft PRs
+
+Further execution exposed and filed the existing deployment-notice policy drift as treesitter-chunker#371. The current open map has 66 issues; documentation classification/link corrections are part of planning treesitter-chunker#364, with no gate waiver.
 
 All listed heads had successful executable hosted CI checks (the optional code-review bot check was skipped). None has a completed current integration/review acceptance; old green checks do not clear the reproduced blockers.
 
@@ -48,6 +52,7 @@ Each issue appears once. “Inline” means a short focused implementation/verif
 | P0 | CLEANUP | [treesitter-chunker#177](https://github.com/Consiliency/treesitter-chunker/issues/177) — Reconcile auxiliary grammar self-test and CLI validator scenarios |
 | P1 | CLEANUP | [treesitter-chunker#369](https://github.com/Consiliency/treesitter-chunker/issues/369) — Public fallback cannot import when core is unavailable; coupled static fallback boundary |
 | P0 | CLEANUP | [treesitter-chunker#370](https://github.com/Consiliency/treesitter-chunker/issues/370) — Validation-cache writers lose fresh records and follow outside symlinks |
+| P2 | RECORDS | [treesitter-chunker#371](https://github.com/Consiliency/treesitter-chunker/issues/371) — Deployment maintainer classification drifts from existing release-hygiene policy |
 | P0/P1 | GRAMMARS | [treesitter-chunker#162](https://github.com/Consiliency/treesitter-chunker/issues/162) — Updating a loaded grammar in place can crash the Python process |
 | P0/P1 | GRAMMARS | [treesitter-chunker#160](https://github.com/Consiliency/treesitter-chunker/issues/160) — Legacy grammar tools ignore native macOS and Windows library extensions |
 | P0/P1 | GRAMMARS | [treesitter-chunker#117](https://github.com/Consiliency/treesitter-chunker/issues/117) — GrammarRegistry ignores native library suffixes on Windows and macOS |

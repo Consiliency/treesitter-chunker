@@ -489,7 +489,7 @@ P3: One current evidence crosswalk distinguishes completed, superseded, contract
 
 **Scope notes**
 
-treesitter-chunker#361. Decompose into 2 lanes: planning lifecycle crosswalk and residual/consumer triage, partitioned by artifact. Keep runner/admitted ledgers unchanged. Reproduce residuals before separate implementation issues; no broad code cleanup in this phase.
+treesitter-chunker#361 and separately filed documentation-policy drift treesitter-chunker#371. Decompose into 2 lanes: planning lifecycle crosswalk and residual/consumer triage, partitioned by artifact. Keep runner/admitted ledgers unchanged. Reproduce residuals before separate implementation issues; no broad code cleanup. Restore maintainer notice/navigation bookkeeping under the existing release-hygiene contract, with its targeted test and strict-doc evidence.
 Planning depth: Bounded audit plan.
 
 **Non-goals**

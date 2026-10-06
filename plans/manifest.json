@@ -350,13 +350,13 @@
       "status": "committed",
       "task_summary": "Trusted native admission and isolated probe plan for treesitter-chunker#165, treesitter-chunker#151 and treesitter-chunker#164",
       "type": "phase",
-      "updated_at": "2026-10-06T09:21:00.101525+00:00",
+      "updated_at": "2026-10-06T09:51:08.528889+00:00",
       "manual_amendment": {
-        "at": "2026-10-06T09:21:00.101525+00:00",
-        "phase_plan_sha256": "3868fcff5fa04eac00c4a426513512edc856bdbb73b821bf7f64e0cdcc2b7704",
-        "reason": "CLEANUP review reconciliation and independent slice routing; active native execution retains its frozen separate-worktree input"
+        "at": "2026-10-06T09:51:08.528889+00:00",
+        "phase_plan_sha256": "d8121a792e966cedffe4841acbe5dcd19e6711f3b0ff72a626ef40beff2bd750",
+        "reason": "final CLEANUP contract round; independent slice routing and documentation hygiene; no implementation IF produced"
       },
-      "roadmap_sha256": "3adf700dd9c28440b04071e104039cc497b07699fa812dc55a6a3e2e10cde15a"
+      "roadmap_sha256": "997648400ec040bfa6fbf1581c4f28ef1f82c7b786e133ea6771edea15780544"
     },
     {
       "acceptance_criteria_count": 2,
@@ -392,13 +392,13 @@
       "status": "committed",
       "task_summary": null,
       "type": "phase",
-      "updated_at": "2026-10-06T09:21:00.102349+00:00",
+      "updated_at": "2026-10-06T09:51:08.529681+00:00",
       "manual_amendment": {
-        "at": "2026-10-06T09:21:00.102349+00:00",
-        "phase_plan_sha256": "2e443eb963ed94891134c0b46ef6bfee4d2fc58fae8b136a7622357f372e08e7",
-        "reason": "CLEANUP review reconciliation and independent slice routing; active native execution retains its frozen separate-worktree input"
+        "at": "2026-10-06T09:51:08.529681+00:00",
+        "phase_plan_sha256": "49d84415bb08bd0204462f4a56b1660674b44725fa9299db83439e1818505401",
+        "reason": "final CLEANUP contract round; independent slice routing and documentation hygiene; no implementation IF produced"
       },
-      "roadmap_sha256": "3adf700dd9c28440b04071e104039cc497b07699fa812dc55a6a3e2e10cde15a"
+      "roadmap_sha256": "997648400ec040bfa6fbf1581c4f28ef1f82c7b786e133ea6771edea15780544"
     }
   ],
   "schema_version": 1
