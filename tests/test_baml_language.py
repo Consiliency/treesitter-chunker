@@ -117,6 +117,29 @@ def test_crlf_bytes_and_zero_config(tmp_path):
     assert [c["content"] for c in auto.chunks] == [c.content for c in regular]
 
 
+def test_canonical_baml_detection_with_actual_registry(tmp_path):
+    source = (FIXTURES / "declarations.baml").read_bytes()
+    path = tmp_path / "declarations.baml"
+    path.write_bytes(source)
+    registry = UniversalLanguageRegistry(
+        tmp_path / "missing.so",
+        discovery_service=None,
+        download_service=None,
+        cache_dir=tmp_path / "metadata",
+    )
+    api = ZeroConfigAPI(registry)
+    assert registry.is_language_installed("baml")
+    assert api.EXTENSION_MAP[path.suffix] == "baml"
+    assert api.detect_language(path) == "baml"
+    implicit = api.auto_chunk_file(path)
+    explicit = api.auto_chunk_file(path, language="baml")
+    assert implicit.language == explicit.language == "baml"
+    assert not implicit.fallback_used and not explicit.fallback_used
+    assert len(implicit.chunks) == 14
+    assert implicit.chunks == explicit.chunks
+    assert all(c["content"] in source.decode("utf-8") for c in implicit.chunks)
+
+
 def test_large_prompt_token_splits_preserve_source():
     source = (FIXTURES / "complex-prompt.baml").read_text(encoding="utf-8")
     chunks = chunk_text_with_token_limit(source, "baml", 30)

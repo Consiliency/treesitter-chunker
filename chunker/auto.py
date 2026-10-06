@@ -36,6 +36,7 @@ class ZeroConfigAPI(ZeroConfigContract):
     """
 
     EXTENSION_MAP: ClassVar[dict[str, str]] = {
+        ".baml": "baml",
         ".py": "python",
         ".js": "javascript",
         ".jsx": "javascript",

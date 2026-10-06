@@ -26,6 +26,43 @@ from cli.main import (
 runner = CliRunner()
 
 
+@pytest.mark.parametrize("command", ["chunk", "batch"])
+def test_installed_cli_automatically_selects_baml(tmp_path, command):
+    fixture = (
+        Path(__file__).parents[1]
+        / "packages/baml-grammar/tests/fixtures/declarations.baml"
+    )
+    source = fixture.read_bytes()
+    path = tmp_path / "declarations.baml"
+    path.write_bytes(source)
+    suffix = ".exe" if sys.platform == "win32" else ""
+    entrypoint = Path(sysconfig.get_path("scripts")) / f"treesitter-chunker{suffix}"
+    args = [command, str(path), "--output-format", "json", "--quiet"]
+
+    def invoke(arguments):
+        return subprocess.run(
+            [str(entrypoint), *arguments],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env={**os.environ, "PYTHONUTF8": "1"},
+            timeout=60,
+            check=False,
+        )
+
+    explicit = invoke([*args, "--lang", "baml"])
+    assert explicit.returncode == 0, (explicit.stdout, explicit.stderr)
+    chunks = json.loads(explicit.stdout)
+    assert len(chunks) == 14
+    assert all(c["content"] and c["content"] in source.decode("utf-8") for c in chunks)
+    assert any("class Box" in c["content"] for c in chunks)
+    implicit = invoke(args)
+    assert implicit.returncode == 0, (implicit.stdout, implicit.stderr)
+    assert implicit.stderr == ""
+    assert json.loads(implicit.stdout) == chunks
+
+
 @pytest.mark.parametrize("command", ["file", "stdin", "batch"])
 @pytest.mark.parametrize("output_format", ["json", "jsonl"])
 @pytest.mark.parametrize("quiet", [False, True])
