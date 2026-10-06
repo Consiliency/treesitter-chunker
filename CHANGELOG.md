@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Language-compatibility database upserts refresh live metadata and selection
   order to match persisted records, including same-version replacements.
 
+- Cached parallel quality checks verify real persisted chunks and warm cache
+  reuse without a load-sensitive one-second timing limit.
+
+- File-hash quality checks verify complete SHA-256 results across read sizes and
+  changed inputs rather than comparing noisy individual wall-clock durations.
+
 - The main CLI detects `.baml` files automatically with the optional BAML
   companion installed. Missing companions produce installation guidance and
   status 1; implicit ZeroConfigAPI detection retains its text fallback.

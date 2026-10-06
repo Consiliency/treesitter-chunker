@@ -80,6 +80,10 @@ and named mutations.
 Reproduce a matrix failure with the narrow affected test before retrying CI.
 Use explicit UTF-8 file I/O, portable paths, and robust process readiness
 checks. Avoid assertions that depend on tight wall-clock limits.
+Cached parallel checks verify persisted fixture chunks and actual warm cache
+payload reuse. Performance observations belong in a controlled benchmark run.
+File-hash checks compare actual fixture bytes with an independent SHA-256 oracle
+across read sizes and input changes, without individual timing-ratio gates.
 Concurrent configuration checks assert actual fixture results for every worker
 using a preloaded configuration. They do not impose throughput or lock-wait
 budgets, or claim concurrent configuration writes are supported.
