@@ -818,10 +818,13 @@ import chunker.grammar_management as public
 from click.testing import CliRunner
 if sys.argv[2] == "import":
     assert not hasattr(public, "GrammarManager")
+    assert not hasattr(public, "GrammarPriority")
+    assert not hasattr(public, "ValidationLevel")
     assert public.__all__ == ["ComprehensiveGrammarCLI", "GrammarStatus", "ProgressIndicator", "grammar_cli"]
 else:
     from chunker.grammar_management.core import GrammarManager
     assert public.GrammarManager is GrammarManager
+    assert set(public.__all__) == {"ComprehensiveGrammarCLI", "GrammarInstallationError", "GrammarInstaller", "GrammarManagementError", "GrammarManager", "GrammarPriority", "GrammarRegistry", "GrammarRegistryError", "GrammarStatus", "GrammarValidationError", "GrammarValidator", "InstallationInfo", "ProgressIndicator", "ValidationLevel", "ValidationResult", "grammar_cli"}
 cli = public.ComprehensiveGrammarCLI(cache_dir=Path(sys.argv[1]))
 assert cli.grammar_manager is None
 result = CliRunner().invoke(public.grammar_cli, ["--cache-dir", sys.argv[1], "cleanup", "--days", "20"])
@@ -864,9 +867,12 @@ def test_fallback_removes_only_wholly_expired_entries(
     os.utime(expired, (cutoff - 1, cutoff - 1))
     boundary = downloads / "boundary"
     boundary.mkdir()
-    boundary_source = boundary / "service.py"
+    nested = boundary / "nested"
+    nested.mkdir()
+    boundary_source = nested / "service.py"
     boundary_source.write_bytes(FIXTURE.read_bytes())
     os.utime(boundary_source, (cutoff, cutoff))
+    os.utime(nested, (cutoff - 1, cutoff - 1))
     os.utime(boundary, (cutoff - 1, cutoff - 1))
     parser = get_parser("python")
     assert not parser.parse(old_source.read_bytes()).root_node.has_error
@@ -977,6 +983,35 @@ def test_fallback_preserves_empty_namespace_roots(tmp_path: Path, monkeypatch) -
         "errors": [],
     }
     assert all(namespace.is_dir() for namespace in namespaces)
+
+
+def test_fallback_rejects_linked_cache_root(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "chunker.grammar_management.cli.GRAMMAR_COMPONENTS_AVAILABLE", False
+    )
+    cli = ComprehensiveGrammarCLI(cache_dir=tmp_path / "cache")
+    cli.cache_dir.rename(tmp_path / "original")
+    outside = tmp_path / "outside"
+    downloads = outside / "downloads"
+    downloads.mkdir(parents=True)
+    sentinel = downloads / "service.py"
+    sentinel.write_bytes(FIXTURE.read_bytes())
+    os.utime(sentinel, (1, 1))
+    if sys.platform == "win32":
+        result = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(cli.cache_dir), str(outside)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+    else:
+        cli.cache_dir.symlink_to(outside, target_is_directory=True)
+    result = cli._cleanup_cache_fallback(20)
+    assert result["errors"]
+    assert result["files_removed"] == result["bytes_freed"] == 0
+    assert sentinel.read_bytes() == FIXTURE.read_bytes()
+    assert not get_parser("python").parse(sentinel.read_bytes()).root_node.has_error
 
 
 def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -> None:
