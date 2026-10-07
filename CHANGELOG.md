@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   until the separate cache identity repair in treesitter-chunker#358 is accepted.
   See [Python selection migration](docs/chunk-identity.md#python-selection-migration-for-600).
 
+- Regular file parsing preserves valid UTF-8 CRLF source bytes instead of
+  normalizing them to LF, correcting chunk content, byte spans and occurrence
+  IDs (treesitter-chunker#464). Rechunk CRLF sources and rebuild ID-based joins
+  and parent links for 6.0.0. R Markdown snippet pseudo paths and their
+  path-based structural IDs can also change. LF identities and identity
+  algorithms are unchanged; replacement decoding remains lossy. Lone CR is
+  preserved too; CR-only Python parsing/line recovery remains unsupported by
+  this contract (treesitter-chunker#471). See
+  [raw newline migration](docs/chunk-identity.md#raw-file-newlines-and-the-600-migration).
+
 - The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter` modules
   use `node_label`/`edge_label` for structural labels. Caller `label` metadata
   retains `n_label`/`e_label`, preserving distinct declarations and values.
