@@ -1777,6 +1777,33 @@
       "task_summary": "Preserve complete diagnostic literal messages while normalizing locations for treesitter-chunker#431",
       "type": "detailed",
       "updated_at": "2026-10-07T00:52:25Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-07T03:05:51.830127+00:00",
+      "file": "plans/detailed-graph-identity-167.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-graph-identity-167/.dev-skills/handoffs/codex-plan-detailed/20261006-graph-identity-167.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-07T03:05:51.830127+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-graph-identity-167.md"
+          },
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-graph-identity-167/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "graph-identity-167",
+      "status": "committed",
+      "task_summary": "Detailed graph occurrence identity and legacy-parent migration contract for treesitter-chunker#167 under EC-EXPORT-1; design review required before execution",
+      "type": "detailed",
+      "updated_at": "2026-10-07T03:05:51.830127+00:00"
     }
   ],
   "schema_version": 1
