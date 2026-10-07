@@ -1885,6 +1885,33 @@
       "task_summary": "Bounded six C++ keyword identifier controls and real parsing mutations for treesitter-chunker#441, dependent on accepted treesitter-chunker#440",
       "type": "detailed",
       "updated_at": "2026-10-07T03:28:32Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-07T03:45:48.147609+00:00",
+      "file": "plans/detailed-graphml-xml-characters-168.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-graphml-xml-characters-168/.dev-skills/handoffs/codex-plan-detailed/20261006-graphml-xml-characters-168.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-07T03:45:48.147609+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-graphml-xml-characters-168.md"
+          },
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-graphml-xml-characters-168/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "graphml-xml-characters-168",
+      "status": "committed",
+      "task_summary": "Plan treesitter-chunker#168 XML character rejection after accepted treesitter-chunker#443",
+      "type": "detailed",
+      "updated_at": "2026-10-07T03:45:48.147609+00:00"
     }
   ],
   "schema_version": 1
