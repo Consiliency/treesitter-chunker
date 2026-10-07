@@ -23,6 +23,16 @@ treesitter-chunker#456 first code head demonstrated all eleven LF delimiters
 becoming CRLF on Windows, including the shebang and five continuations. The
 script writer is separate from the two CSV writes and the Cypher text writer.
 The current graph tests already provide real error-free parsed same-span chunks.
+Actual Bash with an isolated argument-capture command also reproduced unquoted
+space-containing basenames becoming different arguments. This is separately
+filed before implementation as treesitter-chunker#460. This LF-writing slice
+keeps script construction unchanged and tests ordinary shell-safe basenames;
+filename quoting is a separate repair. Private reproduction reads are explicitly
+allowlisted at `/tmp/chunker-457-script-arguments-probe.py`,
+`/tmp/chunker-457-script-arguments-reproduction.json` and
+`/tmp/chunker-457-filename-followup-issue.md`. Prior newline probe evidence is
+`/tmp/chunker-454-noncsv-probe.py`, `/tmp/chunker-454-noncsv-linux.json` and
+`/tmp/chunker-454-noncsv-windows.json`, with Linux as the no-translation control.
 
 ## Changes
 
@@ -56,6 +66,8 @@ The current graph tests already provide real error-free parsed same-span chunks.
   a certified Neo4j server import and the separate structured API. Add a
   qualified Fixed entry for treesitter-chunker#457. Keep the separate direct
   Cypher newline fidelity issue treesitter-chunker#458 explicit.
+  Retain the separate filename-argument limitation treesitter-chunker#460; do not
+  imply that LF transport fixes shell quoting or database-version compatibility.
 
 ### This plan and `plans/manifest.json` (modify)
 
