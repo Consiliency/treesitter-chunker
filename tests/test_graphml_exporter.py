@@ -3,6 +3,7 @@
 import csv
 import io
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -757,6 +758,70 @@ def test_xml_legal_characters_and_relationships_round_trip(parsed_xml_graph, pre
         data = graph.find(f".//{ns}data[@key='{key}']")
         assert data is not None
         assert data.text == value.replace("\r", "\n")
+
+
+@pytest.mark.parametrize("with_edges", [False, True], ids=["no-edges", "edges"])
+@pytest.mark.parametrize(
+    "basename",
+    [
+        "chunks",
+        "graph name",
+        "graph'quote",
+        "graph;printf injected",
+        "graph$(printf injected)",
+        "graph`printf injected`",
+        "graph中文",
+    ],
+    ids=[
+        "ordinary",
+        "space",
+        "apostrophe",
+        "semicolon",
+        "dollar",
+        "backtick",
+        "unicode",
+    ],
+)
+def test_neo4j_import_script_preserves_filename_arguments(
+    parsed_same_span, with_edges, basename, tmp_path
+):
+    parent, child = parsed_same_span[:2]
+    exporter = Neo4jExporter()
+    exporter.add_chunks([parent, child])
+    if with_edges:
+        exporter.add_relationship(parent, child, "CALLS")
+    exporter.export(tmp_path / basename, fmt="csv")
+    nodes = tmp_path / f"{basename}_nodes.csv"
+    relationships = tmp_path / f"{basename}_relationships.csv"
+    script = tmp_path / f"{basename}_import.sh"
+    raw = script.read_bytes()
+    assert raw.startswith(b"#!/bin/bash\n")
+    assert b"\r" not in raw
+    assert nodes.is_file()
+    assert relationships.is_file() == with_edges
+    assert raw == exporter._generate_import_command(
+        nodes, relationships if with_edges else None
+    ).encode("utf-8")
+    expected = ["import", "--database=neo4j", f"--nodes={basename}_nodes.csv"]
+    if with_edges:
+        expected.append(f"--relationships={basename}_relationships.csv")
+    expected.extend(["--skip-bad-relationships=true", "--skip-duplicate-nodes=true"])
+    if os.name == "posix" and (bash := shutil.which("bash")):
+        command = tmp_path / "neo4j-admin"
+        command.write_text('#!/bin/sh\nprintf "%s\\0" "$@"\n', encoding="utf-8")
+        command.chmod(0o700)
+        result = subprocess.run(
+            [bash, str(script)],
+            env={"PATH": str(tmp_path)},
+            capture_output=True,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == b"".join(
+            arg.encode("utf-8") + b"\0" for arg in expected
+        )
+    tokens = shlex.split(raw.decode("utf-8").replace("\\\n", ""), comments=True)
+    assert tokens == ["neo4j-admin", *expected]
 
 
 @pytest.mark.parametrize("with_edges", [False, True], ids=["no-edges", "edges"])
