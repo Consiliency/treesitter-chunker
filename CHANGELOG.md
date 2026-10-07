@@ -27,10 +27,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The direct Neo4j CSV exporter writes UTF-8 node and relationship payloads
+  without platform newline translation. Embedded LF, CR and CRLF in caller IDs,
+  endpoints and string properties match generated strings on Linux and Windows
+  (treesitter-chunker#454). The separate structured API and Cypher writes are
+  unchanged; this does not certify a live Neo4j import.
+
 - The direct Neo4j CSV generators remove only the final generated record
   delimiter, preserving leading caller-ID and trailing property whitespace in
-  strings and files (treesitter-chunker#448). Windows file output's embedded
-  CRLF translation remains separate (treesitter-chunker#454).
+  strings and files (treesitter-chunker#448). Windows CSV newline fidelity is
+  fixed separately by treesitter-chunker#454, described above.
 
 - The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter` modules
   reject XML 1.0-invalid characters in element text, tail and attribute values
