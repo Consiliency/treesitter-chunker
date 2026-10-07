@@ -118,18 +118,26 @@ class StreamingChunker:
         parent_qualified_route: list[str] | None = None,
         include_retrieval_metadata: bool = False,
         should_chunk: Callable[[str], bool] | None = None,
+        should_ignore: Callable[[str], bool] | None = None,
     ) -> Iterator[CodeChunk]:
         """Yield chunks as they're found without building a full list in memory.
 
         ``mmap_data`` is the byte buffer ``node`` was parsed from (an ``mmap`` or
         a ``bytes`` object — ``vfs_chunker`` calls this directly as
         ``chunker._walk_streaming(root, content, path)``). ``should_chunk`` is
-        the per-language predicate; it is resolved once at the top of the walk
-        and threaded through the recursion so selection matches ``chunk_file``.
+        the per-language chunk predicate. Both predicates are resolved at the
+        top of the walk and threaded through recursion; ignored nodes stop
+        traversal just as they do in ``chunk_file``.
         """
-        if should_chunk is None:
-            should_chunk, _ = resolve_chunk_predicates(self.language)
-        if self.language in {"ruby", "python"} and not node.is_named:
+        if should_chunk is None or should_ignore is None:
+            default_chunk, default_ignore = resolve_chunk_predicates(self.language)
+            if should_chunk is None:
+                should_chunk = default_chunk
+            if should_ignore is None:
+                should_ignore = default_ignore
+        if should_ignore(node.type) or (
+            self.language in {"ruby", "python"} and not node.is_named
+        ):
             return
 
         parent_route = (parent_route or []).copy()
@@ -195,6 +203,7 @@ class StreamingChunker:
                 parent_qualified_route,
                 include_retrieval_metadata,
                 should_chunk,
+                should_ignore,
             )
 
     def chunk_file_streaming(
@@ -212,7 +221,7 @@ class StreamingChunker:
         if path.stat().st_size == 0:
             return
 
-        should_chunk, _ = resolve_chunk_predicates(self.language)
+        should_chunk, should_ignore = resolve_chunk_predicates(self.language)
         with (
             Path(path).open("rb") as f,
             mmap.mmap(
@@ -234,6 +243,7 @@ class StreamingChunker:
                 str(path),
                 include_retrieval_metadata=include_retrieval_metadata,
                 should_chunk=should_chunk,
+                should_ignore=should_ignore,
             )
 
 

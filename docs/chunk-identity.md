@@ -58,10 +58,31 @@ and exclude unnamed keyword leaves. Earlier versions also emitted keyword-only
 from downstream indexes when adopting 6.0.0 (treesitter-chunker#446). The identity
 algorithm and IDs of retained chunks for the same source and file path are
 unchanged. Regular extraction keeps its existing ignored-subtree rules.
-Streaming traversal of ignored strings remains a separate gap tracked in
-treesitter-chunker#466; this selection repair does not change that policy.
+Streaming honors those configured ignored-subtree boundaries too
+(treesitter-chunker#466).
 
 The two APIs preserve spans, contents, occurrence IDs, parents and routes for
 the same-path Python lambda fixture. This does not certify all languages or
 metadata fields; streaming language-specific transformation exceptions remain
 documented in `chunker.streaming.StreamingChunker`.
+
+## Streaming ignored-subtree migration for 6.0.0
+
+Streaming traversal stops at the language configuration's ignored nodes, as
+regular extraction does, in every language. The migration applies to all
+configured ignores, including Elixir strings and Kotlin string literals.
+Python strings and JavaScript/TypeScript template strings are representative
+examples: they do not contribute nested lambda or arrow-expression chunks.
+Their enclosing function or variable chunks still retain the full source text,
+including the ignored string. Visible expressions outside ignored subtrees keep
+their contents, spans, parents, routes and occurrence IDs for unchanged source
+at the same path (treesitter-chunker#466).
+
+Earlier streaming output included those nested expressions. Regenerate affected
+streaming and VFS collections in every affected language and remove their extra
+records from downstream indexes when adopting 6.0.0. Real fixture contracts
+compare the declared tuples in both metadata modes for Python, JavaScript and
+TypeScript; they do not certify
+every grammar, all metadata fields or language-specific span transformations.
+Existing cached payloads are not invalidated: keep `use_cache=False` with
+parallel helpers until treesitter-chunker#358 is resolved.
