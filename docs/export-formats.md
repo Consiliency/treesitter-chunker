@@ -89,6 +89,12 @@ generated strings on Linux and Windows (treesitter-chunker#454). Read CSV files
 with `newline=""` to preserve embedded line breaks. This direct CSV API is
 separate from the package-level structured export API and live database import.
 
+The generated `chunks_import.sh` helper retains LF shell syntax on Linux and
+Windows and is intended for Bash (treesitter-chunker#457). Its script transport
+and ordinary filename arguments do not certify a live Neo4j import. Filename
+quoting for spaces and shell punctuation remains treesitter-chunker#460; direct
+Cypher file newline fidelity remains treesitter-chunker#458.
+
 ## JSON Export
 
 JSON export provides a flexible, human-readable format with support for different schema types.

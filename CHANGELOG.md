@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The direct Neo4j import shell helper retains LF shebang and line-continuation
+  syntax when exported on Windows or Linux, with unchanged names, flags and
+  supported executable mode (treesitter-chunker#457). Filename quoting remains
+  treesitter-chunker#460; direct Cypher newline fidelity remains
+  treesitter-chunker#458. This does not certify a live database import.
+
 - The direct Neo4j CSV exporter writes UTF-8 node and relationship payloads
   without platform newline translation. Embedded LF, CR and CRLF in caller IDs,
   endpoints and string properties match generated strings on Linux and Windows
