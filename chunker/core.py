@@ -526,7 +526,9 @@ def _walk(
     current_qualified_route: list[str] | None = None
 
     # Skip ignored nodes
-    if should_ignore(node.type) or (language == "ruby" and not node.is_named):
+    if should_ignore(node.type) or (
+        language in {"ruby", "python"} and not node.is_named
+    ):
         return chunks
 
     # Ensure route lists

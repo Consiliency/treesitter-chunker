@@ -2192,6 +2192,15 @@
             "run_id": "20261007-python-lambda-selection-446-plan"
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T11:09:47Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan": "plans/detailed-python-lambda-selection-446.md",
+            "run_id": "20261007-python-lambda-selection-446"
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -2199,10 +2208,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/python-lambda-selection-446/20261007-python-lambda-selection-446-plan.md",
       "roadmap_ref": null,
       "slug": "python-lambda-selection-446",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Exclude unnamed Python keyword chunks in regular/streaming APIs for treesitter-chunker#446 after treesitter-chunker#462.",
       "type": "detailed",
-      "updated_at": "2026-10-07T11:02:52.023940+00:00"
+      "updated_at": "2026-10-07T11:09:47Z"
     }
   ],
   "schema_version": 1

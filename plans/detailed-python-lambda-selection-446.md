@@ -126,3 +126,29 @@ No coverage-percentage, performance or duration acceptance gate is introduced.
 - [ ] Original six/refresh/full valid seal, current Windows/standing, exact
   hosted, all four substantive code agreements and final manual Astra ruling
   qualify only this selector repair; independent defects are separately filed.
+
+## Execution notes
+
+Accepted treesitter-chunker#462 was integrated before execution, preserving all
+58 canonical manifest rows plus this own row. The unchanged production baseline
+fails seven strengthened/new Python contracts with 36 controls passing. On the
+formatted candidate, `select_unnamed_python_core` fails seven cases (36 pass),
+and `select_unnamed_python_streaming` fails four (39 pass). These include the
+affected API's two metadata-mode selection cases and both API-parity cases;
+the other API's selection cases pass. Each exact restoration passes all 43.
+The core mutant also fails the three strengthened regular lambda cases.
+
+Actual before/after snapshots for both APIs and both metadata modes retain exact
+named-chunk contents, spans, IDs, parents and routes for the canonical same-span
+fixture, removing only the two keyword records per result. These observations
+do not establish global metadata, cache or cross-language parity. The formatter
+only adjusted changed source/test layout; final gates must bind formatted bytes.
+A first private mutation helper referenced a nonexistent identity module and
+failed before any mutation; actual identity functions live in `chunker/types.py`.
+The corrected helper and raw setup failure are preserved, with no passing gate
+claimed for the failed attempt. No type-baseline update is performed.
+
+Original six/locked refresh/full suite, fresh exact-head Windows focus/standing,
+hosted checks, four substantive manual CODE reviews and final supplemental Astra
+chair remain required. Their completion is recorded in the immutable private
+packet and acceptance comment, rather than changing reviewed candidate bytes.

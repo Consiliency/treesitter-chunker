@@ -19,3 +19,21 @@ Incremental diffs match named definitions by `definition_id`, so a body-only
 edit is a `MODIFIED` change rather than a delete-and-add pair. Graph/export
 maps use `chunk_id`/`node_id` (the same namespace). Boundary symbol indexes
 also prefer the emitted `definition_id` contract when it is available.
+
+## Python selection migration for 6.0.0
+
+Regular and streaming extraction select complete named Python lambda expressions
+and exclude unnamed keyword leaves. Earlier versions also emitted keyword-only
+`lambda` records. Regenerate Python chunk collections and remove those records
+from downstream indexes when adopting 6.0.0 (treesitter-chunker#446). The identity
+algorithm and IDs of retained chunks for the same source and file path are
+unchanged. Existing ignored-subtree rules still apply.
+
+The two APIs preserve spans, contents, occurrence IDs, parents and routes for
+the same-path Python lambda fixture. This does not certify all languages or
+metadata fields; streaming language-specific transformation exceptions remain
+documented in `chunker.streaming.StreamingChunker`.
+
+Parallel cache identity is tracked separately in treesitter-chunker#358. Use
+`use_cache=False` with parallel extraction until that repair is accepted to avoid
+reusing cached chunks from an earlier extraction mode or selection contract.
