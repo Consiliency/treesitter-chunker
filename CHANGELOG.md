@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- The POSIX CLI SIGINT quality check observes actual fixture parsing readiness,
+  drains and reaps its child, avoiding startup guesses and early-completion skips.
+
 - Rust version information can retain an explicit Cargo `rust_version` beside
   a source compiler hint, preserving legacy exports when the new field is omitted.
 
