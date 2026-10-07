@@ -134,3 +134,28 @@ agent-harness#1271; no governed supplier/IF/native-fill or percentage/time gate.
   and standing selectors remain; original six/refresh/full seal, Windows/hosted,
   four substantive agreements and final manual Astra ruling qualify only this
   bounded repair with precise docs and separate treesitter-chunker#458 tracking.
+
+## Execution notes
+
+Accepted treesitter-chunker#456 integrated before implementation. All 55 current
+canonical manifest rows remain exact, with this own executing row making 56.
+Only the import-shell file write disables platform translation; CSV generators
+and writes, Cypher and script construction remain unchanged. Two new real-parser
+contracts verify LF bytes, literal names/flags, supported executable mode and
+actual Bash interpretation against an isolated argument-capture command for
+ordinary basenames. The final Linux focused selection passes 422; lint, format
+and type gates pass without baseline updates.
+
+The first test insertion accidentally put inherited XML assertions inside the
+new test, producing two NameErrors and lint failures. That setup error is
+corrected before the frozen candidate; removing only the new test/imports now
+reconstructs every inherited test byte exactly. Those initial logs are retained
+and excluded from product/mutation evidence. Filename-space argument splitting
+was independently reproduced and filed as treesitter-chunker#460 before code;
+this slice leaves script construction unchanged. Cypher fidelity remains
+treesitter-chunker#458.
+
+Actual Windows baseline/mutation/restoration, current-head Windows/standing,
+original six/locked-refresh/full, required hosted jobs, four manual substantive
+agreements and final manual Astra ruling remain mandatory independent gates.
+No partial machine check or fixture-only Bash observation certifies a live import.
