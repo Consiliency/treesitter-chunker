@@ -124,3 +124,48 @@ def test_unrecognized_features_do_not_invent_a_standard() -> None:
     assert detector.map_features_to_standard([]) is None
     assert detector.map_features_to_standard(["__cpp_unknown"]) is None
     assert detector.map_features_to_standard(["__cpp_exceptions"]) == "98"
+
+
+@pytest.mark.parametrize(
+    ("prefix", "direct", "feature", "primary"),
+    [
+        ("#if __cpp_if_constexpr >= 201606L\n#endif\n", None, "17", "C++17"),
+        ("int custom_constexpr = 1;\n", None, None, None),
+        ("int widgetconstexpr = 1;\n", None, None, None),
+        ("constexpr int answer = 42;\n", "11", None, "C++11"),
+        (
+            "int choose() { if constexpr (true) { return 1; } else { return 0; } }\n",
+            "17",
+            None,
+            "C++17",
+        ),
+    ],
+    ids=[
+        "feature-macro",
+        "underscore-identifier",
+        "identifier",
+        "keyword",
+        "if-keyword",
+    ],
+)
+def test_constexpr_keyword_hints_do_not_match_identifier_suffixes(
+    tmp_path: Path,
+    prefix: str,
+    direct: str | None,
+    feature: str | None,
+    primary: str | None,
+) -> None:
+    source = prefix + FIXTURE.read_text(encoding="utf-8")
+    source_path = tmp_path / "widget.cpp"
+    source_path.write_text(source, encoding="utf-8")
+    assert not get_parser("cpp").parse(source.encode("utf-8")).root_node.has_error
+    detector = CppVersionDetector()
+    hints = detector.detect_version(
+        source_path.read_text(encoding="utf-8"), source_path
+    )
+    assert hints["cxx_standard"] == direct
+    assert hints.get("standard_from_features") == feature
+    assert hints.get("feature_test_macros", []) == (
+        ["__cpp_if_constexpr"] if feature else []
+    )
+    assert detector.get_primary_version(hints) == primary
