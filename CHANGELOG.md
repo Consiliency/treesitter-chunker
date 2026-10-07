@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Grammar validation returns actionable missing-file and directory diagnostics
+  at every requested level before cache lookup or storage.
+
 - Legacy benchmark cache examples use supported imports and explicit isolated
   SQLite lookups/stores, report actual hits and preserve unrelated cache entries.
 

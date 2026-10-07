@@ -7,6 +7,8 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
+
 from chunker import get_parser
 from chunker.grammar_management import GrammarValidator, ValidationLevel
 from chunker.grammar_management.core import load_compiled_grammar
@@ -14,6 +16,36 @@ from tree_sitter_language_pack import cache_dir, get_parser as get_pack_parser
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app"
+
+
+@pytest.mark.parametrize("level", tuple(ValidationLevel))
+@pytest.mark.parametrize("path_kind", ["missing", "directory"])
+def test_invalid_grammar_path_keeps_actionable_diagnostic(
+    tmp_path: Path, level: ValidationLevel, path_kind: str
+) -> None:
+    source = (FIXTURE_DIR / "service.py").read_bytes()
+    tree = get_parser("python").parse(source)
+    assert tree.root_node.type == "module"
+    assert not tree.root_node.has_error
+
+    candidate = tmp_path / "grammar"
+    if path_kind == "directory":
+        candidate.mkdir()
+        expected = f"Grammar path is not a file: {candidate}"
+    else:
+        expected = f"Grammar file does not exist: {candidate}"
+    cache = tmp_path / "validator-cache"
+    validator = GrammarValidator(cache_dir=cache)
+
+    for _ in range(2):
+        result = validator.validate_grammar(candidate, "python", level)
+        assert not result.is_valid
+        assert result.level == level
+        assert result.errors == [expected]
+        assert result.warnings == []
+        assert result.metadata == {}
+        assert result.performance_metrics == {}
+        assert not (cache / "validation_cache.json").exists()
 
 
 def test_parse_samples_accepts_python_fixtures(tmp_path: Path) -> None:
