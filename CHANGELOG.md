@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- The POSIX CLI SIGINT quality check observes actual fixture parsing readiness and drains
-  and reaps its child, avoiding startup guesses and early-completion skips.
+- The POSIX CLI SIGINT quality check observes actual fixture parsing readiness,
+  drains and reaps its child, avoiding startup guesses and early-completion skips.
+
+- Rust version information can retain an explicit Cargo `rust_version` beside
+  a source compiler hint, preserving legacy exports when the new field is omitted.
+
+- Python version detection prefers declared PEP 621 `requires-python` constraints
+  over broad project classifiers, preserving the constraint operators.
 
 - Go build-version hints compare major/minor numbers, selecting 1.10 over 1.9
   across separately detected modern and legacy positive constraint lines.
