@@ -124,7 +124,7 @@ class GraphNode:
     """
 
     def __init__(self, chunk: CodeChunk):
-        self.id = f"{chunk.file_path}:{chunk.start_line}:{chunk.end_line}"
+        self.id = chunk.node_id or chunk.chunk_id or chunk.generate_id()
         self.chunk = chunk
         chunk_type = (
             chunk.metadata.get(
@@ -234,24 +234,60 @@ class GraphExporterBase(ABC):
 
         Subclasses can override to add more relationship types.
         """
-        chunk_map = {self._get_chunk_id(chunk): chunk for chunk in chunks}
-        chunk_id_map = {chunk.chunk_id: chunk for chunk in chunks if chunk.chunk_id}
-
+        canonical_aliases: dict[str, dict[str, CodeChunk]] = {}
+        chunk_aliases: dict[str, dict[str, CodeChunk]] = {}
+        span_aliases: dict[str, dict[str, CodeChunk]] = {}
         for chunk in chunks:
+            graph_id = self._get_chunk_id(chunk)
+            for alias in (chunk.node_id, chunk.chunk_id):
+                if alias:
+                    canonical_aliases.setdefault(alias, {})[graph_id] = chunk
+            if chunk.chunk_id:
+                chunk_aliases.setdefault(chunk.chunk_id, {})[graph_id] = chunk
+            span = f"{chunk.file_path}:{chunk.start_line}:{chunk.end_line}"
+            span_aliases.setdefault(span, {})[graph_id] = chunk
+
+        def resolve_parent(alias: str, field: str) -> CodeChunk | None:
+            aliases = chunk_aliases if field == "parent_chunk_id" else canonical_aliases
+            matches = aliases.get(alias, {})
+            if not matches and field == "parent_id":
+                matches = span_aliases.get(alias, {})
+            if len(matches) > 1:
+                raise ValueError(
+                    f"Ambiguous {field} alias {alias!r}; provide a unique parent occurrence reference"
+                )
+            return next(iter(matches.values()), None)
+
+        resolved_parents = [
+            (
+                (
+                    resolve_parent(chunk.metadata["parent_id"], "parent_id")
+                    if chunk.metadata and "parent_id" in chunk.metadata
+                    else None
+                ),
+                (
+                    resolve_parent(chunk.parent_chunk_id, "parent_chunk_id")
+                    if chunk.parent_chunk_id
+                    else None
+                ),
+            )
+            for chunk in chunks
+        ]
+
+        for chunk, (legacy_parent, parent_chunk) in zip(
+            chunks, resolved_parents, strict=True
+        ):
             # Handle legacy parent_id in metadata
-            if chunk.metadata and "parent_id" in chunk.metadata:
-                parent_id = chunk.metadata["parent_id"]
-                if parent_id in chunk_map:
-                    self.add_relationship(
-                        chunk_map[parent_id],
-                        chunk,
-                        "CONTAINS",
-                        {"relationship_source": "hierarchy"},
-                    )
+            if legacy_parent is not None:
+                self.add_relationship(
+                    legacy_parent,
+                    chunk,
+                    "CONTAINS",
+                    {"relationship_source": "hierarchy"},
+                )
 
             # Handle parent_chunk_id for DEFINES relationship
-            if chunk.parent_chunk_id and chunk.parent_chunk_id in chunk_id_map:
-                parent_chunk = chunk_id_map[chunk.parent_chunk_id]
+            if parent_chunk is not None:
                 self.add_relationship(
                     parent_chunk,
                     chunk,
@@ -292,7 +328,7 @@ class GraphExporterBase(ABC):
     @staticmethod
     def _get_chunk_id(chunk: CodeChunk) -> str:
         """Generate a unique ID for a chunk."""
-        return f"{chunk.file_path}:{chunk.start_line}:{chunk.end_line}"
+        return chunk.node_id or chunk.chunk_id or chunk.generate_id()
 
     @staticmethod
     def _matches_import(import_name: str, chunk: CodeChunk) -> bool:
