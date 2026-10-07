@@ -1558,7 +1558,7 @@
       "roadmap_ref": null,
       "slug": "cli-sigint-readiness-322",
       "status": "executing",
-      "task_summary": "Observable FIFO reader readiness, pipe draining and reaping for treesitter-chunker#322",
+      "task_summary": "Observe real regular-file parsing, bound the signal pause and drain/reap the CLI for treesitter-chunker#322",
       "type": "detailed",
       "updated_at": "2026-10-07T00:39:36Z"
     }

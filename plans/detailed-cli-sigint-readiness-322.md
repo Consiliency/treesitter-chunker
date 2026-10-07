@@ -14,7 +14,7 @@ prove the CLI reached a signal-ready execution point.
 cli.main chunk reads the provided file through the real chunker. Observe its
 actual process_file return after parsing a regular fixture file. A child-side
 Python profile observer records the real returned chunks atomically and pauses
-in a finite Python sleep loop. This test harness does not replace CLI functions
+in a loop of short Python sleeps, bounded independently at60seconds. This test harness does not replace CLI functions
 or parser calls; it supplies a controlled signal point after real parsing.
 Own evidence is allowlisted at /tmp/chunker-322-*.
 
@@ -26,7 +26,9 @@ Own evidence is allowlisted at /tmp/chunker-322-*.
   a regular file consumed by cli.main chunk via runpy in a child process.
   Observe process_file's real nonempty return with sys.setprofile; atomically
   record those rows in a private readiness marker and pause the observer in
-  a finite sleep loop. Check real row paths/language/content before signaling.
+  a loop of short sleeps with an independent60second self-deadline, after which
+  the observer exits with failure. This prevents an indefinite orphan pause if
+  the parent dies before cleanup. Check real row paths/language/content before signaling.
   Bound marker readiness monotonically at30seconds and fail on premature exit
   instead of skipping. Send SIGINT only after readiness, drain both outputs
   with communicate(timeout=15), and accept interruption statuses130/-SIGINT
@@ -82,7 +84,7 @@ behavior, public command syntax, parser pins and package version remain intact.
 - uv run --locked --with toml --all-extras python scripts/run_platform_core.py --platform linux
 - uv run --locked --with toml --all-extras python scripts/run_full_suite.py
 
-Original six, locked refresh/full tests/spec_tests, matching-source Windows
+Original seven (six standing plus the covered SIGINT contract), locked refresh/full tests/spec_tests, matching-source Windows
 control/standing preflight and exact hosted Linux/macOS/Windows jobs are required.
 No native, broker, ledger, checkpoint, pin or consumer-lock changes.
 
