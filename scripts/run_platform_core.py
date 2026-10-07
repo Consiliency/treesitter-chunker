@@ -9,6 +9,9 @@ import sys
 
 
 COMMON_TESTS = [
+    "tests/test_mypy_gate.py",
+    "tests/test_benchmark_examples.py",
+    "tests/test_parallel.py::TestWorkerPoolSizing::test_io_bound_sizing",
     "tests/test_plugin_system.py::test_replacing_warm_plugin_invokes_new_hook",
     "tests/test_plugin_system.py::test_failed_replacement_preserves_warm_plugin",
     "tests/test_plugin_system.py::test_warm_plugin_lookup_survives_replacement_interleaving",

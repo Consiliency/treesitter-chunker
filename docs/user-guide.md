@@ -170,8 +170,9 @@ observed_ir = extract_boundary_ir(
 )
 ```
 
-Syntax-only Boundary IR stays on `schema_version == "1.0"` unless optional
-semantic resolvers are supplied. The top-level `chunker.extract_boundary_ir`
+Syntax-only Boundary IR uses `schema_version == "2.0"`; optional semantic
+resolvers select `"2.1"`. See the [Boundary IR specification](interface-boundary-spec.md)
+for schema and package identity migration requirements. The top-level `chunker.extract_boundary_ir`
 export matches `chunker.boundary.extract_boundary_ir`, and
 `treesitter-chunker boundary <path> --lang <language>` writes canonical JSON to
 stdout unless `--output` is provided.

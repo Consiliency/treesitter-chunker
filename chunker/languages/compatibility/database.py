@@ -351,8 +351,9 @@ class CompatibilityDatabase:
                 ),
             )
 
+            schema = self._read_schema(self.conn)
             self.conn.commit()
-            self.schema.add_language_version(lang_version)
+            self.schema = schema
             logger.debug(f"Added language version: {lang_version}")
             return True
 
@@ -396,8 +397,9 @@ class CompatibilityDatabase:
                 ),
             )
 
+            schema = self._read_schema(self.conn)
             self.conn.commit()
-            self.schema.add_grammar_version(grammar_version)
+            self.schema = schema
             logger.debug(f"Added grammar version: {grammar_version}")
             return True
 

@@ -63,6 +63,12 @@ lane, and the Test Suite workflow confirms platform-core behavior on Linux,
 macOS, and Windows. The scheduled CI job and release validation run the full
 `tests/` and `spec_tests/` suite.
 
+The type gate compares complete messages and error codes, independent of
+source line numbers. For a diagnostic-format migration, measure and reconcile
+the baseline from unchanged accepted code before candidate edits. A new
+candidate's errors must be fixed or tracked separately; do not use `--update`
+to absorb them into the baseline. Ordinary baseline updates remove cleared debt.
+
 For broad behavior changes, run the platform-core and full tiers locally:
 
 ```bash
@@ -80,6 +86,8 @@ and named mutations.
 Reproduce a matrix failure with the narrow affected test before retrying CI.
 Use explicit UTF-8 file I/O, portable paths, and robust process readiness
 checks. Avoid assertions that depend on tight wall-clock limits.
+Cached parallel checks verify persisted fixture chunks and actual warm cache
+payload reuse. Performance observations belong in a controlled benchmark run.
 File-hash checks compare actual fixture bytes with an independent SHA-256 oracle
 across read sizes and input changes, without individual timing-ratio gates.
 Concurrent configuration checks assert actual fixture results for every worker
