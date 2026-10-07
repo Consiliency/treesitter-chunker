@@ -50,6 +50,14 @@ exact restoration must pass. Preserve original cli/main.py bytes and bind their
 hash plus test hashes; no permanent production modification is permitted.
 Collect four tool-enabled reviews, maximum three substantive rounds.
 
+All four R1 reviewers agreed. Hosted Linux3.11 nevertheless failed twice after
+reader readiness, while hosted Linux3.12/macOS and a private locked local3.11
+covered reproduction passed. Before another retry, add scoped timeout diagnostics
+to the same test: parent SIGINT disposition/mask, Linux child signal-status
+fields and captured stdout/stderr. Preserve both failed hosted logs. These
+diagnostics establish the execution context; do not increase the timeout or
+claim an unproven production cause. Collect R2 only after diagnosing the failure.
+
 ## Documentation impact
 
 Only contributor/test-reliability guidance changes. The runtime's signal

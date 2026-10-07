@@ -337,8 +337,30 @@ class TestSignalHandling:
                     time.sleep(0.01)
             assert os.write(writer, source) == len(source)
             process.send_signal(signal.SIGINT)
-            process.communicate(timeout=15)
-            assert process.returncode in {-signal.SIGINT, 130}
+            try:
+                stdout, stderr = process.communicate(timeout=15)
+            except subprocess.TimeoutExpired as error:
+                child_signals = "unavailable"
+                if sys.platform.startswith("linux"):
+                    try:
+                        status = Path(f"/proc/{process.pid}/status").read_text()
+                        child_signals = "; ".join(
+                            line
+                            for line in status.splitlines()
+                            if line.startswith(
+                                ("SigPnd:", "ShdPnd:", "SigBlk:", "SigIgn:", "SigCgt:")
+                            )
+                        )
+                    except OSError:
+                        pass
+                pytest.fail(
+                    f"Readied CLI did not exit after SIGINT; parent handler="
+                    f"{signal.getsignal(signal.SIGINT)!r}; parent mask="
+                    f"{signal.pthread_sigmask(signal.SIG_BLOCK, [])!r}; "
+                    f"child signals={child_signals}; stdout={error.stdout!r}; "
+                    f"stderr={error.stderr!r}"
+                )
+            assert process.returncode in {-signal.SIGINT, 130}, (stdout, stderr)
         finally:
             if writer is not None:
                 os.close(writer)
