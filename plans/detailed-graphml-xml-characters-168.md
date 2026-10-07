@@ -18,6 +18,11 @@ Use the existing GraphMLExporter and its yEd subclass. Both file methods obtain
 the exported string before opening/writing the output path. Real Python service
 fixtures and the existing GraphML/yEd contract modules provide the tests. This
 slice deliberately rejects invalid characters rather than deleting user data.
+The real-fixture reproduction in `/tmp/chunker-168-key-registry-reproduction.json`
+found that an invalid metadata name remains cached after the property is removed.
+This is separately filed as treesitter-chunker#451 and explicitly included in
+the rejection/recovery cluster before source edits. Key uniqueness and pretty
+attribute whitespace remain treesitter-chunker#169 and treesitter-chunker#450.
 
 ## Observable contract
 
@@ -36,12 +41,17 @@ slice deliberately rejects invalid characters rather than deleting user data.
 4. Invalid file export leaves an existing output unchanged and creates no new
    output file. Existing graph collections remain usable after a failed export;
    removing the caller's invalid property allows an actual subsequent export.
+   Check both node/edge values and names. Newly supplied invalid names must be
+   rejected before registration so they do not poison cached declarations.
+   Retain existing valid/custom schema entries and shared registry dictionaries.
 
 ## Changes
 
 - `chunker/export/graphml_exporter.py`: add one shared XML character validator
   over the constructed ElementTree and call it before both serialization paths.
   Use standard-library character checks; no dependency, schema or identity change.
+  Reuse that validator on each new node/edge key element before caching its name
+  in _register_attributes, explicitly resolving treesitter-chunker#451.
 - `chunker/export/graphml_yed_exporter.py`: invoke the inherited validation for
   its actual yEd tree before serialization. Retain plain delegation.
 - `tests/test_graphml_exporter.py`: use actual chunk_file parsing of the checked-in
@@ -51,6 +61,8 @@ slice deliberately rejects invalid characters rather than deleting user data.
   Test legal range boundaries, Unicode/metacharacter round-trip and allowed
   whitespace with ElementTree parsing, deriving IDs from actual chunks. Exercise
   failed new/existing file output and recovery on the same exporter instance.
+  Assert recovery after invalid node/edge names are removed, and that existing
+  custom schemas and shared dictionary objects remain intact.
 - `tests/test_graphml_yed_export_contract.py`: real parsed chunks exercise the
   same invalid/valid behavior with use_yed=True/False and both pretty settings,
   preserving existing direction/graphics checks. No fake parser/exporter objects.
@@ -73,6 +85,10 @@ shared validator and narrow yEd call. Run actual `skip_graphml_xml_validation` a
 validation call: the corresponding plain/yEd invalid-input cases must fail, while
 valid controls remain. Restore exact source bytes after each mutation; the full
 focused command passes and final source/test hashes agree before/after.
+Also run `register_invalid_graphml_key`: remove only the two new registration
+checks, retaining final tree checks. Initial rejection still occurs, but the
+same-instance name-removal recovery assertions must fail. Restore exact source
+bytes and rerun the entire focused command.
 
 File additional defects separately before considering their repair. Collect all
 four substantive code reviews before candidate revisions, maximum three rounds.
