@@ -2,6 +2,7 @@
 
 import csv
 import io
+import json
 import os
 import shlex
 import shutil
@@ -286,6 +287,100 @@ def parsed_same_span():
     assert any(len(ids) >= 2 for ids in spans.values())
     assert len({chunk.node_id for chunk in chunks}) == len(chunks)
     return chunks
+
+
+@pytest.mark.parametrize("use_clusters", [False, True])
+@pytest.mark.parametrize("file_output", [False, True])
+@pytest.mark.parametrize(
+    ("caller_ids", "expected_names"),
+    [
+        (("a-b", "a_b"), {"tc_612d62", "tc_615f62"}),
+        (("a:b", "a_b"), None),
+        (("a/b", "a_b"), None),
+        (("a.b", "a_b"), None),
+        (("a b", "a_b"), None),
+        (('a"b', "plain"), None),
+        (("a\\b", "plain"), None),
+        (("a\\", "a"), {"tc_615c", "a"}),
+        (("a\nb", "a\rb"), None),
+        (("a\tb", "a\x00b"), None),
+        (("Σ", "σ"), {"tc_cea3", "tc_cf83"}),
+        (("é", "e\u0301"), {"tc_c3a9", "tc_65cc81"}),
+        (("a-b", "tc_612d62"), {"tc_612d62", "tc_74635f363132643632"}),
+        (("00aF", "00Af"), {"00aF", "00Af"}),
+    ],
+)
+def test_dot_caller_ids_preserve_compiled_graph(
+    parsed_same_span, tmp_path, caller_ids, expected_names, use_clusters, file_output
+):
+    dot = shutil.which("dot")
+    if dot is None:
+        pytest.skip("Graphviz executable is required for compiled DOT contracts")
+
+    def compile_graph(payload, path=None):
+        result = subprocess.run(
+            [dot, "-Tjson", *([str(path)] if path is not None else [])],
+            input=payload if path is None else None,
+            encoding="utf-8",
+            capture_output=True,
+            timeout=30,
+            check=True,
+        )
+        return json.loads(result.stdout)
+
+    chunks = [
+        chunk for chunk in parsed_same_span if chunk.node_type == "function_definition"
+    ]
+    assert len(chunks) == 2
+    assert [chunk.metadata["signature"]["name"] for chunk in chunks] == ["f", "g"]
+    parser_ids = [chunk.node_id for chunk in chunks]
+    original = [(chunk.chunk_id, chunk.content) for chunk in chunks]
+    control = DotExporter()
+    control.add_chunks(chunks)
+    control.add_relationship(chunks[0], chunks[1], "CALLS")
+    reference = compile_graph(control.export_string(use_clusters=use_clusters))
+    reference_nodes = reference["objects"][reference.get("_subgraph_cnt", 0) :]
+    assert {node["name"] for node in reference_nodes} == set(parser_ids)
+    labels = {node["name"]: node["label"] for node in reference_nodes}
+
+    for chunk, caller_id in zip(chunks, caller_ids, strict=True):
+        chunk.node_id = caller_id
+    exporter = DotExporter()
+    exporter.add_chunks(chunks)
+    exporter.add_relationship(chunks[0], chunks[1], "CALLS")
+    assert set(exporter.nodes) == set(caller_ids)
+    assert [(edge.source_id, edge.target_id) for edge in exporter.edges] == [caller_ids]
+    assert [(chunk.chunk_id, chunk.content) for chunk in chunks] == original
+    output = exporter.export_string(use_clusters=use_clusters)
+    assert output == exporter.export_string(use_clusters=use_clusters)
+    path = tmp_path / "caller.dot" if file_output else None
+    if path is not None:
+        exporter.export(path, use_clusters=use_clusters)
+        output = path.read_text(encoding="utf-8")
+        assert output == exporter.export_string(use_clusters=use_clusters)
+    graph = compile_graph(output, path)
+    cluster_count = graph.get("_subgraph_cnt", 0)
+    nodes = graph["objects"][cluster_count:]
+    assert len(nodes) == 2
+    assert len({node["name"] for node in nodes}) == 2
+    if expected_names is not None:
+        assert {node["name"] for node in nodes} == expected_names
+    by_label = {node["label"]: node["_gvid"] for node in nodes}
+    assert set(by_label) == set(labels.values())
+    assert len(graph["edges"]) == 1
+    edge = graph["edges"][0]
+    assert (edge["tail"], edge["head"]) == (
+        by_label[labels[parser_ids[0]]],
+        by_label[labels[parser_ids[1]]],
+    )
+    assert edge["tail"] != edge["head"]
+    assert edge["label"] == "CALLS"
+    assert cluster_count == int(use_clusters)
+    if use_clusters:
+        cluster = graph["objects"][0]
+        assert cluster["nodes"] == reference["objects"][0]["nodes"]
+        assert set(cluster["nodes"]) == {node["_gvid"] for node in nodes}
+        assert cluster["label"] == reference["objects"][0]["label"]
 
 
 @pytest.mark.parametrize(

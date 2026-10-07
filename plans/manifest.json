@@ -2359,6 +2359,42 @@
       "task_summary": "Give the existing real Julia Unicode fixture explicit UTF-8, reproduce platform-default mutation on actual Windows and retain parsing assertions for treesitter-chunker#468",
       "type": "detailed",
       "updated_at": "2026-10-07T14:19:36Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-07T14:54:54.574960+00:00",
+      "file": "plans/detailed-dot-caller-identities-444.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-dot-caller-identities-444/.dev-skills/handoffs/codex-plan-detailed/20261006-dot-caller-identities-444.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-07T14:54:54.574960+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-dot-caller-identities-444.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T14:56:41Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-dot-caller-identities-444.md",
+            "run_id": "20261007-dot-caller-identities-444"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-dot-caller-identities-444/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "dot-caller-identities-444",
+      "status": "executing",
+      "task_summary": "Preserve distinct caller DOT identities and directed compiled endpoints with real parser fixtures and a named punctuation-collapse mutation",
+      "type": "detailed",
+      "updated_at": "2026-10-07T14:56:41Z"
     }
   ],
   "schema_version": 1

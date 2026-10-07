@@ -64,8 +64,9 @@ class DotExporter(GraphExporterBase):
     @staticmethod
     def _format_node_id(node_id: str) -> str:
         """Format node ID for DOT syntax."""
-        safe_id = node_id.replace(":", "_").replace("/", "_").replace(".", "_")
-        safe_id = safe_id.replace("-", "_").replace(" ", "_")
+        safe_id = node_id
+        if not node_id or any(char not in "0123456789abcdefABCDEF" for char in node_id):
+            safe_id = "tc_" + node_id.encode("utf-8").hex()
         return f'"{safe_id}"'
 
     def _get_node_attributes(self, node: GraphNode) -> dict[str, str]:
