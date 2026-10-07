@@ -183,8 +183,20 @@ independent CONTAINS and DEFINES relationships.
 Ordinary populated IDs agree with Unified conversion. If callers clear both
 fields, the graph fallback can generate an ID, but that generated value is not
 an exact parent alias and UnifiedGraphNode.from_chunk retains its empty fallback.
-DOT punctuation encoding for arbitrary caller IDs remains treesitter-chunker#444;
-distinct serialized DOT IDs are verified for parser-generated hexadecimal IDs.
+The direct DOT exporter preserves nonempty ASCII hexadecimal IDs exactly,
+including case and leading zeroes. Other valid UTF-8 caller IDs serialize as
+`tc_` followed by their UTF-8 bytes in hexadecimal, preserving distinct IDs and
+directed endpoints (treesitter-chunker#444). For example, `a-b` becomes
+`tc_612d62`, while `a_b` becomes `tc_615f62`. Prefix-looking caller strings are
+encoded too: a caller ID `tc_612d62` becomes `tc_74635f363132643632`.
+This is a BREAKING serialized-ID change reserved for 6.0.0. Regenerate DOT output
+and update joins that use nonhex serialized IDs; retain the graph model's raw
+ID when matching back to chunks. Source labels, raw chunk/graph IDs, file
+clusters and occurrence identity algorithms are unchanged. Empty preferred IDs
+still use the graph model's existing fallback; lone surrogate strings are not
+valid UTF-8 caller IDs. This node-ID contract does not certify arbitrary DOT
+attribute/relationship labels; relationship-label quoting remains
+treesitter-chunker#473.
 The direct Neo4j CSV exporter preserves leading spaces, tabs and Unicode
 whitespace in caller IDs and trailing property whitespace, including boundary
 rows (treesitter-chunker#448). Preserve these values when joining endpoints.

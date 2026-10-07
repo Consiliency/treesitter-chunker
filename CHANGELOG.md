@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ⚠️ BREAKING
 
+- The direct DOT exporter encodes nonhex UTF-8 caller IDs in a distinct `tc_`
+  namespace, preventing punctuation collisions and invalid quoted IDs while
+  preserving hexadecimal IDs, labels and directed endpoints
+  (treesitter-chunker#444). Regenerate DOT and update serialized-ID joins for
+  6.0.0; raw graph/chunk IDs are unchanged. See
+  [graph ID migration](docs/graphml_export.md#graph-id-migration-for-600).
+  Relationship-label quoting remains treesitter-chunker#473.
+
 - Streaming and VFS extraction in every language honor its configured
   ignored-subtree boundaries, excluding previously emitted descendant chunks
   while preserving visible chunks and ancestor source text (treesitter-chunker#466).
