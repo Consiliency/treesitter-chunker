@@ -438,8 +438,10 @@ seconds as slow (score multiplier 0.8) and above five seconds as very slow
 (multiplier 0.5 and degraded compatibility). Exactly two seconds receives no
 penalty; exactly five stays in the slow category. The slow warning applies above
 two through five seconds. The timing adjustment preserves incompatible validation
-results; sample checks then apply their existing level and score classifications.
-Sample-stage validation precedence is tracked separately in treesitter-chunker#416.
+results. Sample checks retain independent validation incompatibility, even when
+some samples parse successfully. Without validation errors, success below 0.5
+is incompatible and success from 0.5 through below 0.8 is limited; sample counts,
+parse errors and existing score multipliers remain available in the result.
 These thresholds interpret metadata; they do not impose a wall-clock test gate.
 
 An explicit `GrammarManager(cache_dir=...)` supplies the validation cache root for

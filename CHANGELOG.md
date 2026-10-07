@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Grammar validation returns actionable missing-file and directory diagnostics
   at every requested level before cache lookup or storage.
 
+- Python version detection prefers declared PEP 621 `requires-python` constraints
+  over broad project classifiers, preserving the constraint operators.
+
+- Go build-version hints compare major/minor numbers, selecting 1.10 over 1.9
+  across separately detected modern and legacy positive constraint lines.
+
+- Type-checking compares complete diagnostic messages and error codes, preventing
+  distinct new errors from being hidden by wrapped baseline headers.
+
+- Compatibility sample checks retain independent validation incompatibility
+  when some samples parse successfully, preserving counts, errors and scores.
+
 - Legacy benchmark cache examples use supported imports and explicit isolated
   SQLite lookups/stores, report actual hits and preserve unrelated cache entries.
 

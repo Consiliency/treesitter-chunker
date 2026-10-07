@@ -50,7 +50,11 @@ def _signature(line: str) -> str:
 
 
 def _run_mypy() -> list[str]:
-    proc = subprocess.run(MYPY_CMD, capture_output=True, text=True)
+    proc = subprocess.run(
+        [*MYPY_CMD, "--no-pretty", "--show-error-codes"],
+        capture_output=True,
+        text=True,
+    )
     errors = [ln for ln in proc.stdout.splitlines() if " error:" in ln]
     if proc.returncode not in (0, 1) or (proc.returncode == 1 and not errors):
         raise RuntimeError(
