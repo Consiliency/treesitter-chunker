@@ -325,6 +325,7 @@ function 🚀(speed)
     println("Launching at speed $speed!")
 end
 """,
+            encoding="utf-8",
         )
         chunks = chunk_file(src, "julia")
         func_chunks = [c for c in chunks if "function" in c.node_type]
