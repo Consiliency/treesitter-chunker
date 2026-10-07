@@ -126,3 +126,36 @@ percentage, performance or duration acceptance is claimed.
 - [ ] Original six/refresh/full-suite seal, fresh Windows/standing, exact hosted
   jobs, four substantive agreements and final manual Astra ruling qualify this
   bounded repair alone; docs state its measured contract and limits.
+
+## Execution notes
+
+Final formatted Linux focus passes 420. Actual Windows unchanged production and
+node translation mutation each fail 12 cases with 408 controls; the relationship
+translation mutation fails six edge cases with 414 controls. Each exact source
+restoration passes 420 with bound source/test/fixture/support hashes; actual
+candidate Windows focus passes 420 and standing preflight passes 204 with one
+existing skip. CR-only cases preserve field values but detect translated record
+delimiters through the exact-byte contract.
+
+CODE R1 at `1ec7f000c2aad767181b254a6a4e4dfc133865ca` collected all four complete
+opinions: Opus, Gemini and Astra agreed; Sol partially agreed because the adjacent
+accepted whitespace changelog entry still described the newly repaired Windows
+CSV limitation as separate. Reconcile that sentence explicitly, retaining all
+source/test bytes. The original six/locked-refresh/full run at that head passes
+4397 with four skips and actual seal
+`2e37aa38b25828768a84b80c2e7233fe496085754b2f8af1b866b6258c963001`;
+raw opinions, pending president preflight and that original run remain preserved
+as R1 history, not final acceptance.
+
+Opus also identified two independent non-CSV writers. Actual same-source Linux
+and Windows probes reproduce CRLF shebang/continuations in the import script and
+LF-to-CRLF caller IDs/properties in the direct Cypher file. These are separately
+filed as treesitter-chunker#457 and treesitter-chunker#458; no silent repair or
+live database certification is included here. The probe source/outputs remain
+private supplemental evidence alongside the named Windows mutations.
+
+The documentation-only reconciliation requires four manual CODE R2 confirmations,
+fresh original six/refresh/full evidence, actual current-head Windows/standing,
+supported candidate publication and all exact-head hosted jobs, then the final
+manual Astra president ruling. It does not upgrade a partial R1 verdict, change
+protected state, or claim governed operational amendments/IF admission.
