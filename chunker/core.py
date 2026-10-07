@@ -1268,7 +1268,8 @@ def chunk_file(
         src = p.read_bytes().decode("utf-8")
     else:
         try:
-            src = p.read_text(encoding="utf-8")
+            with p.open("r", encoding="utf-8", newline="") as file:
+                src = file.read()
         except UnicodeDecodeError:
             # Fallback: replace invalid bytes to avoid crashing on bad encodings
             src = p.read_bytes().decode("utf-8", errors="replace")

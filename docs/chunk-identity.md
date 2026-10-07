@@ -19,3 +19,33 @@ Incremental diffs match named definitions by `definition_id`, so a body-only
 edit is a `MODIFIED` change rather than a delete-and-add pair. Graph/export
 maps use `chunk_id`/`node_id` (the same namespace). Boundary symbol indexes
 also prefer the emitted `definition_id` contract when it is available.
+
+## Raw file newlines and the 6.0.0 migration
+
+For valid UTF-8 files, regular `chunk_file` parsing preserves LF and CRLF bytes
+instead of translating CRLF to LF. Byte spans and chunk content refer to that
+source byte sequence. The existing identity algorithms are unchanged; LF chunk
+identities remain unchanged. Previously normalized CRLF content and offsets
+produce corrected occurrence IDs in 6.0.0. R Markdown snippet pseudo paths also
+include source string offsets: CRLF preservation can change those paths and
+their path-based structural IDs, including `definition_id`. Rechunk CRLF sources
+and rebuild ID-based joins and parent links (treesitter-chunker#464).
+
+Lone CR bytes are also preserved. CR-only Python parsing and line recovery are
+not covered by the LF/CRLF contract: the raw parser reports errors and both
+functions in the recorded CR-only fixture report line 1. Convert CR-only source
+to LF when accurate line recovery is required until treesitter-chunker#471 is
+resolved. Raw spans can end between CR and LF when the parser includes CR in a
+token, such as a Python comment; source slicing still retains those exact bytes.
+
+An explicit `identity_path` still determines regular chunk identities independently
+of the physical read path. Invalid UTF-8 outside BAML retains replacement
+decoding, which is lossy and does not promise raw-byte roundtrips. BAML decoding
+remains strict. Language-specific transformations, such as R Markdown extraction,
+and regular/streaming selection differences are separate contracts; this change
+does not establish global API parity. CLI stdin retains text-stream newline
+handling and is not certified as raw-byte-equivalent to file input.
+
+Cached parallel processing has a separate cache-identity defect
+(treesitter-chunker#358). Use `use_cache=False` until that repair is accepted;
+newline preservation does not invalidate or repair existing cached payloads.

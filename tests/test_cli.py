@@ -273,7 +273,12 @@ def test_config_warning_preserves_real_structured_chunks(
         if output_format == "json"
         else [json.loads(line) for line in result.stdout.splitlines()]
     )
-    assert chunks and all(c["content"] and c["content"] in source for c in chunks)
+    expected_source = (
+        source if command == "stdin" else path.read_bytes().decode("utf-8")
+    )
+    assert chunks and all(
+        c["content"] and c["content"] in expected_source for c in chunks
+    )
     assert "Warning: Failed to load config" in result.stderr
     assert config.name in result.stderr
 
