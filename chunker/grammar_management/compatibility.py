@@ -529,14 +529,15 @@ class CompatibilityChecker:
 
                 # Adjust score based on performance
                 avg_parse_time = performance_metrics.get("parse_time", 0)
-                if avg_parse_time > 2.0:  # Slow parsing
+                if avg_parse_time > 5.0:  # Very slow
+                    if result.level != CompatibilityLevel.INCOMPATIBLE:
+                        result.level = CompatibilityLevel.DEGRADED
+                    result.score *= 0.5
+                elif avg_parse_time > 2.0:  # Slow parsing
                     result.score *= 0.8
                     result.warnings.append(
                         f"Slow parsing detected: {avg_parse_time:.2f}s average",
                     )
-                elif avg_parse_time > 5.0:  # Very slow
-                    result.level = CompatibilityLevel.DEGRADED
-                    result.score *= 0.5
 
             # Test with code samples if provided
             if code_samples:
@@ -551,7 +552,8 @@ class CompatibilityChecker:
                     result.level = CompatibilityLevel.INCOMPATIBLE
                     result.score *= success_rate
                 elif success_rate < 0.8:
-                    result.level = CompatibilityLevel.LIMITED
+                    if result.level != CompatibilityLevel.INCOMPATIBLE:
+                        result.level = CompatibilityLevel.LIMITED
                     result.score *= success_rate
 
             return result

@@ -82,6 +82,20 @@ does not redirect the parallel helpers' shared default cache.
 The extraction-mode/pin cache gap is tracked in
 [treesitter-chunker#358](https://github.com/Consiliency/treesitter-chunker/issues/358).
 
+The legacy `benchmarks.comprehensive_suite` cache scenario and
+`benchmarks.example_benchmark.demo_cached_chunking` use explicit SQLite
+lookups/stores in disposable private caches by default. Their optional
+`cache_dir` inputs preserve a caller-owned cache when these methods are called
+directly. The comprehensive scenario reports hits, misses and chunk counts;
+the demo reports warm hits, chunk counts and cached-file totals. Both report
+observations with either default or explicit cache roots. The comprehensive
+suite's generic `run_all` teardown treats paths returned by a custom scenario
+setup as disposable; do not supply a persistent cache through that setup.
+The comprehensive scenario modifies its input to
+measure invalidation; supply a disposable fixture copy. It invalidates only
+that selected input, preserving unrelated entries. Timings and speedups remain
+informational, without a correctness threshold.
+
 ## Incremental Boundary IR
 
 Boundary IR has a separate persistent cache:

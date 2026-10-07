@@ -9,11 +9,10 @@ from pathlib import Path
 
 from chunker import (
     ASTCache,
-    chunk_directory_parallel,
     chunk_file,
     chunk_file_streaming,
-    chunk_files_parallel,
 )
+from chunker.parallel import chunk_directory_parallel, chunk_files_parallel
 
 
 def create_test_files(num_files: int = 10) -> Path:
@@ -127,39 +126,44 @@ def demo_streaming_chunking():
     shutil.rmtree(temp_dir)
 
 
-def demo_cached_chunking():
+def demo_cached_chunking(test_file=None, cache_dir=None):
     """Demonstrate cached chunking."""
     print("\n3. Cached Chunking Demo")
     print("-" * 40)
 
-    temp_dir = create_test_files(1)
-    test_file = next(iter(temp_dir.glob("*.py")))
-
-    # Clear cache
-    cache = ASTCache()
-    cache.invalidate_cache(test_file)
-
-    # First run (cold cache)
-    start = time.time()
-    chunks1 = chunk_file(test_file, "python", use_cache=True)
-    cold_duration = time.time() - start
-
-    # Second run (warm cache)
-    start = time.time()
-    chunk_file(test_file, "python", use_cache=True)
-    warm_duration = time.time() - start
-
-    print(f"File: {test_file.name}")
-    print(f"Chunks: {len(chunks1)}")
-    print(f"Cold cache: {cold_duration:.3f}s")
-    print(f"Warm cache: {warm_duration:.3f}s")
-    print(f"Speedup: {cold_duration / warm_duration:.2f}x")
-
-    # Show cache stats
-    stats = cache.get_cache_stats()
-    print(f"Cache stats: {stats['total_files']} files cached")
-
-    shutil.rmtree(temp_dir)
+    temp_dir = create_test_files(1) if test_file is None else None
+    test_file = next(iter(temp_dir.glob("*.py"))) if temp_dir else Path(test_file)
+    try:
+        with tempfile.TemporaryDirectory(prefix="chunker-cache-demo-") as scratch:
+            cache = ASTCache(Path(cache_dir) if cache_dir is not None else Path(scratch))
+            cache.invalidate_cache(test_file)
+            start = time.perf_counter()
+            chunks1 = chunk_file(test_file, "python")
+            cache.cache_chunks(test_file, "python", chunks1)
+            cold_duration = time.perf_counter() - start
+            start = time.perf_counter()
+            chunks2 = cache.get_cached_chunks(test_file, "python")
+            hits = int(chunks2 is not None)
+            if chunks2 is None:
+                chunks2 = chunk_file(test_file, "python")
+                cache.cache_chunks(test_file, "python", chunks2)
+            warm_duration = time.perf_counter() - start
+            print(f"File: {test_file.name}")
+            print(f"Chunks: {len(chunks1)}")
+            print(f"Cold cache: {cold_duration:.3f}s")
+            print(f"Warm cache: {warm_duration:.3f}s")
+            print(f"Speedup: {cold_duration / warm_duration:.2f}x")
+            print(f"Cache hits: {hits}")
+            stats = cache.get_cache_stats()
+            print(f"Cache stats: {stats['total_files']} files cached")
+            return {
+                "chunks": len(chunks1),
+                "cache_hits": hits,
+                "files_cached": stats["total_files"],
+            }
+    finally:
+        if temp_dir is not None:
+            shutil.rmtree(temp_dir)
 
 
 def demo_parallel_processing():
