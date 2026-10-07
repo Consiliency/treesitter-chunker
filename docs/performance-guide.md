@@ -12,6 +12,30 @@ Performance depends on source size, language, grammar availability, storage and
 worker count. Measure your workload; this guide makes no fixed speedup or memory
 multiplier claim.
 
+## Large-file quality check
+
+The large-file test parses 5,000 generated Python functions in an isolated
+process and checks their actual JSON export: complete ordered contents,
+distinct IDs, kinds and file attribution. It keeps the existing 500 MiB
+post-chunk RSS limit. RSS is sampled after chunking; it is not peak memory.
+These checks run before timing is considered. Default correctness runs print
+chunk/export times, visible with `-s`, `-rP` or on failure, without classifying
+slow covered execution as wrong output.
+
+For an explicit controlled check, prefetch Python, use a quiet host, disable
+coverage and run:
+
+```bash
+CHUNKER_CONTROLLED_PERFORMANCE=1 uv run --locked --all-extras pytest tests/test_performance_advanced.py::TestScalabilityLimits::test_very_large_file_handling --no-cov -q -s
+```
+
+This retains the existing targets: chunking below ten seconds, JSON export
+below five seconds, and post-chunk RSS below 500 MiB. The command reports both
+timing failures together and rejects active coverage for controlled timing.
+Measurements include host CPU use before the workload; retain them with the
+source/environment snapshot. Passing this workload is not a throughput
+guarantee for other inputs or machines.
+
 ## Parser reuse
 
 `get_parser(language)` reuses a parser owned by the calling thread. It does not
