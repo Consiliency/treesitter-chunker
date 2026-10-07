@@ -385,6 +385,8 @@ class RustVersionInfo:
         rustc_version: str | None,
         features: list[str],
         source: str,
+        *,
+        rust_version: str | None = None,
     ):
         """Initialize version info container.
 
@@ -393,9 +395,11 @@ class RustVersionInfo:
             rustc_version: Rust compiler version
             features: List of detected features
             source: The source of the version detection
+            rust_version: Explicit Cargo requirement, separate from a rustc hint
         """
         self.edition = edition
         self.rustc_version = rustc_version
+        self.rust_version = rust_version
         self.features = features or []
         self.source = source
         self.detected_at = datetime.now()
@@ -406,13 +410,16 @@ class RustVersionInfo:
         Returns:
             Dictionary with all version info fields
         """
-        return {
+        result = {
             "edition": self.edition,
             "rustc_version": self.rustc_version,
             "features": self.features,
             "source": self.source,
             "detected_at": self.detected_at.isoformat(),
         }
+        if self.rust_version is not None:
+            result["rust_version"] = self.rust_version
+        return result
 
     def __str__(self) -> str:
         """String representation of version info.
@@ -421,6 +428,8 @@ class RustVersionInfo:
             Human-readable version info string
         """
         parts = []
+        if self.rust_version is not None:
+            parts.append(f"rust-version {self.rust_version}")
         if self.edition:
             parts.append(f"Edition {self.edition}")
         if self.rustc_version:
@@ -438,7 +447,12 @@ class RustVersionInfo:
         Returns:
             Detailed representation for debugging
         """
+        requirement = (
+            f", rust_version={self.rust_version!r}"
+            if self.rust_version is not None
+            else ""
+        )
         return (
             f"RustVersionInfo(edition='{self.edition}', rustc_version='{self.rustc_version}', "
-            f"features={self.features}, source='{self.source}')"
+            f"features={self.features}, source='{self.source}'{requirement})"
         )

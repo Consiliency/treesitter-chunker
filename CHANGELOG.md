@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- C++ standard hints use release chronology, so C++98 no longer outranks newer
+  declared standards or feature-macro requirements.
+
+- The POSIX CLI SIGINT quality check observes actual fixture parsing readiness,
+  drains and reaps its child, avoiding startup guesses and early-completion skips.
+
+- Rust version information can retain an explicit Cargo `rust_version` beside
+  a source compiler hint, preserving legacy exports when the new field is omitted.
+
 - Python version detection prefers declared PEP 621 `requires-python` constraints
   over broad project classifiers, preserving the constraint operators.
 
