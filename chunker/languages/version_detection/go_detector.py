@@ -104,7 +104,9 @@ class GoVersionDetector:
             if matches:
                 # Get the highest version from constraints
                 versions = [f"{major}.{minor}" for major, minor in matches]
-                max_version = max(versions)
+                max_version = max(
+                    versions, key=lambda value: tuple(map(int, value.split(".")))
+                )
                 logger.debug("Found go:build constraint: %s", max_version)
                 return max_version
 
@@ -113,7 +115,9 @@ class GoVersionDetector:
             matches = re.findall(pattern, content)
             if matches:
                 versions = [f"{major}.{minor}" for major, minor in matches]
-                max_version = max(versions)
+                max_version = max(
+                    versions, key=lambda value: tuple(map(int, value.split(".")))
+                )
                 logger.debug("Found +build constraint: %s", max_version)
                 return max_version
 

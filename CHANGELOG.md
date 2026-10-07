@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Go build-version hints compare major/minor numbers, selecting 1.10 over 1.9
+  across separately detected modern and legacy positive constraint lines.
+
 - Type-checking compares complete diagnostic messages and error codes, preventing
   distinct new errors from being hidden by wrapped baseline headers.
 

@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from chunker import get_parser
 from chunker.languages.version_detection.go_detector import (
     GoVersionDetector,
@@ -13,6 +15,33 @@ FIXTURE = (
     Path(__file__).resolve().parents[1]
     / "tests/fixtures/boundary_ir/repos/go/service.go"
 )
+
+
+@pytest.mark.parametrize("prefix", ["//go:build", "// +build"])
+@pytest.mark.parametrize(
+    ("versions", "expected"),
+    [
+        (("1.9", "1.10"), "1.10"),
+        (("1.10", "1.9"), "1.10"),
+        (("1.99", "2.0"), "2.0"),
+        (("2.0", "1.99"), "2.0"),
+    ],
+)
+def test_go_build_constraint_versions_are_numeric(
+    tmp_path: Path, prefix: str, versions: tuple[str, str], expected: str
+) -> None:
+    constraints = "".join(f"{prefix} go{version}\n" for version in versions)
+    source = constraints + FIXTURE.read_text(encoding="utf-8")
+    source_path = tmp_path / "service.go"
+    source_path.write_text(source, encoding="utf-8")
+    assert not get_parser("go").parse(source.encode("utf-8")).root_node.has_error
+
+    detector = GoVersionDetector()
+    hints = detector.detect_version(
+        source_path.read_text(encoding="utf-8"), source_path
+    )
+    assert hints["build_constraints"] == expected
+    assert detector.get_primary_version(hints) == expected
 
 
 def test_go_mod_version_precedes_source_build_constraint(tmp_path: Path) -> None:
