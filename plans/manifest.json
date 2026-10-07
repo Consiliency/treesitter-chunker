@@ -2339,6 +2339,15 @@
             "plan_path": "plans/detailed-julia-unicode-fixture-468.md"
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T14:19:36Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-julia-unicode-fixture-468.md",
+            "run_id": "20261007-julia-unicode-fixture-468"
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -2346,10 +2355,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-julia-unicode-fixture-468/20261006-planning.md",
       "roadmap_ref": null,
       "slug": "julia-unicode-fixture-468",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Give the existing real Julia Unicode fixture explicit UTF-8, reproduce platform-default mutation on actual Windows and retain parsing assertions for treesitter-chunker#468",
       "type": "detailed",
-      "updated_at": "2026-10-07T14:18:30.180559+00:00"
+      "updated_at": "2026-10-07T14:19:36Z"
     }
   ],
   "schema_version": 1

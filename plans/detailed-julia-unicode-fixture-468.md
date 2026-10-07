@@ -86,3 +86,14 @@ DOT, cache and native items remain separate. This is manual supplemental code
 acceptance, not agent-harness#1271 governed amendment/supplier/native-fill/IF,
 whole-phase or release acceptance. Unreleased stays reserved for 6.0.0; no tag.
 
+## Execution notes before CODE R1
+
+Plan-only draft treesitter-chunker#474 was published before implementation from
+accepted main 8a8313fab058305c25f47304b5836ce472321e43. Unchanged Linux Unicode
+case passed; the preserved Windows baseline fails before parsing with CP1252.
+Current Linux Unicode case and all 15 Julia tests pass, with separate Ruff,
+Black and type gate exits zero; no type baseline update. Removing the one
+encoding line reconstructs the accepted test module byte-for-byte. All 62
+canonical manifest entries remain exact plus own executing row 63. Fresh
+original, exact-head Windows and hosted gates, all four CODE opinions and
+supplemental chair remain required; no acceptance is inferred from Linux.
