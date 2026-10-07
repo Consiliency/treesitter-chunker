@@ -899,6 +899,7 @@ def test_configured_streaming_ignore_boundaries(case, api, retrieval_metadata):
     expression = expressions[0]
     assert expression.content == visible
     assert expression.parent_chunk_id == parent.node_id
+    assert expression.parent_context == parent.node_type
     assert expression.parent_route == [*parent.parent_route, expression_type]
     assert expression.qualified_route[:-1] == parent.qualified_route
     assert expression.chunk_id == expression.node_id
@@ -928,6 +929,7 @@ def _ignore_boundary_tuples(chunks):
             c.node_id,
             c.chunk_id,
             c.parent_chunk_id,
+            c.parent_context,
             tuple(c.parent_route),
             tuple(c.qualified_route),
         )
@@ -966,6 +968,37 @@ def test_vfs_streaming_ignored_boundary_defaults(case):
         for c in chunks
     )
     assert _ignore_boundary_tuples(chunks) == _ignore_boundary_tuples(regular)
+
+
+@pytest.mark.parametrize(
+    "case", _IGNORE_BOUNDARY_CASES, ids=["python", "javascript", "typescript"]
+)
+def test_streaming_preserves_supplied_chunk_predicate(case):
+    fixture, source, visible_node, _, _ = _ignored_boundary_fixture(case)
+    expression_type = case[2]
+    root = get_parser(case[0]).parse(source).root_node
+    chunks = list(
+        StreamingChunker(case[0])._walk_streaming(
+            root,
+            source,
+            str(fixture),
+            should_chunk=lambda node_type: node_type == expression_type,
+        )
+    )
+    assert len(chunks) == 1
+    chunk = chunks[0]
+    assert chunk.node_type == expression_type
+    assert chunk.content == case[-2]
+    assert (chunk.byte_start, chunk.byte_end) == (
+        visible_node.start_byte,
+        visible_node.end_byte,
+    )
+    assert chunk.parent_chunk_id is None
+    assert chunk.parent_context == ""
+    assert chunk.parent_route == [expression_type]
+    assert len(chunk.qualified_route) == 1
+    assert chunk.qualified_route[0].startswith(f"{expression_type}:")
+    assert chunk.chunk_id == chunk.node_id
 
 
 @pytest.fixture

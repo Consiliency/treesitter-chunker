@@ -144,3 +144,56 @@ focus/standing, all required hosted checks, four substantive manual CODE R1
 opinions and the final supplemental Astra chair remain required. Their actual
 outcomes are recorded in immutable evidence and the acceptance comment rather
 than changing the reviewed candidate later. No type-baseline update is made.
+
+### R1 hold and R2 reconciliation
+
+All four R1 opinions and the original runner completed before edits. Gemini,
+Astra and Sol agreed; Opus partially agreed because the changelog named only
+the representative tested languages despite the generic configured-ignore
+repair. The original six/refresh/full passed with 4473 passed/four skipped;
+Windows focus 189 passed/one skip and standing 204 passed/one skip with driver
+zero; all seven hosted jobs succeeded. These outcomes and the partial opinion
+remain preserved as excluded R1 history and do not qualify the new candidate.
+
+R2 migration guidance explicitly covers every affected language's configured
+ignores, including existing Elixir/Kotlin string policies, without claiming new
+parser fixture acceptance for those languages. Production and all fixture bytes
+remain unchanged. Three real-parser direct-walker cases supply only a custom
+chunk predicate and require default ignore resolution to retain that filter,
+omit hidden expressions and avoid synthesizing parent chunks. Parent context is
+now explicitly checked and included in the existing declared API tuples; actual
+R1 projections already showed equality for this field.
+
+The original second ignore-boundary mutant is equivalent to disabling ignores
+for config-backed languages: configured chunk predicates reject ignored types.
+It is retained as historical evidence, not credited as an independent kill.
+R2 requires fresh accepted-baseline and `traverse_ignored_streaming_subtrees`
+evidence plus the distinct `replace_supplied_streaming_chunk_predicate` mutation,
+which wrongly overwrites an explicit predicate while resolving the missing one.
+All source/test/fixture/support bindings and exact restorations must be fresh;
+bind the actual `chunker/_internal/vfs.py` implementation and the unchanged
+Elixir/Kotlin policy files too. Preserve all canonical manifest rows.
+
+Fresh R2 original six/refresh/full, actual Windows stages/focus/standing, current
+hosted, all four manual CODE R2 opinions and final supplemental Astra remain
+mandatory. This is round two of at most three complete substantive rounds.
+
+An initial private R2 mutation helper retained the old 15-failure expectation;
+the actual accepted-baseline run correctly failed 18 new cases, so the helper
+stopped with an assertion and restored production bytes in its finally block.
+The failed helper/log remain preserved. A corrected helper uses fresh `r2f`
+artifact paths and the declared 18/6 versus 3/21 failure sets; old evidence is
+not relabeled or reused as a passing current gate.
+
+Final formatted R2 accepted-baseline and ignore-boundary mutation each fail
+18 cases with six regular controls passing. Predicate overwrite fails only the
+three new supplied-filter cases, with 21 other contracts passing. Each exact
+restoration passes 24 (35 existing module cases deselected). All 18 per-stage
+projections verify the declared affected and unaffected controls: the first two
+stages retain every remaining tuple after removing hidden expressions; predicate
+overwrite leaves all 15 ordinary API/VFS projections exact but adds unwanted
+parent chunks and changes routes/IDs in the three custom-filter outputs, retaining
+their physical visible expression spans/content. Current focus passes 193;
+Ruff/Black/type gate exit zero with no baseline update. Twenty-eight current
+test/fixture/source/support hashes include the actual internal VFS implementation
+and the existing Elixir/Kotlin policies. Final R2 head gates remain independent.
