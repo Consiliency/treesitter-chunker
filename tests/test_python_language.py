@@ -1209,6 +1209,7 @@ class 多语言类:
     def 获取信息(self):
         return "信息\"
 """,
+        encoding="utf-8",
     )
     chunks = chunk_file(src, "python")
     assert any("🐍 Python rocks! 🚀" in c.content for c in chunks)

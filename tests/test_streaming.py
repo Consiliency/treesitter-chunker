@@ -14,6 +14,7 @@ import concurrent.futures
 import hashlib
 import mmap
 import shutil
+import sys
 import tempfile
 import threading
 import time
@@ -388,6 +389,9 @@ class TestStreamingErrorRecovery:
             list(chunk_file_streaming(medium_python_file, "unsupported_lang"))
 
     @classmethod
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="chmod read denial is a POSIX-only contract"
+    )
     def test_permission_error_handling(cls):
         """Test handling of permission errors."""
         with tempfile.NamedTemporaryFile(
