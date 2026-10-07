@@ -34,8 +34,7 @@ MYPY_CMD = [
     "--no-error-summary",
     "--no-color-output",
 ]
-_LINECOL = re.compile(r":\d+:\d+:")
-_LINE = re.compile(r":\d+:")
+_LOCATION = re.compile(r"(.+?):\d+(?::\d+)?: (error:.*)")
 
 
 def _signature(line: str) -> str:
@@ -45,8 +44,13 @@ def _signature(line: str) -> str:
     platforms: mypy emits ``chunker\\foo.py`` on Windows but ``chunker/foo.py``
     on Linux, and the baseline is generated on Linux — without this the gate
     would flag EVERY baseline signature as "new" on Windows.
+    Only the leading location changes; literal values in messages are retained.
     """
-    return _LINE.sub(":", _LINECOL.sub(":", line)).strip().replace("\\", "/")
+    match = _LOCATION.fullmatch(line.strip())
+    if match:
+        path = match.group(1).replace("\\", "/")
+        return path + ": " + match.group(2)
+    return line.strip()
 
 
 def _run_mypy() -> list[str]:

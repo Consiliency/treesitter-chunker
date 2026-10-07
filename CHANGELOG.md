@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Type-checking preserves literal message values while normalizing only leading
+  file locations, so colon-number and backslash changes cannot reuse old debt.
+
 - Type-checking compares complete diagnostic messages and error codes, preventing
   distinct new errors from being hidden by wrapped baseline headers.
 

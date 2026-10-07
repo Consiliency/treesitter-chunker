@@ -1,5 +1,6 @@
 """A crashed checker must never pass or erase the tracked type-debt baseline."""
 
+import json
 import os
 import subprocess
 import sys
@@ -51,6 +52,7 @@ def test_completed_checker_uses_current_interpreter(monkeypatch, returncode, std
 def test_real_checker_distinguishes_wrapped_messages_and_ignores_line_shifts(
     monkeypatch, tmp_path, capsys, new_annotation
 ):
+    monkeypatch.setenv("MYPY_FORCE_TERMINAL_WIDTH", "80")
     existing = "ExistingExpectedValueType" + "Detail" * 16
     different = "DifferentNewExpectedValueType" + "Detail" * 16
     fixture = tmp_path / "fixture.py"
@@ -100,6 +102,7 @@ def test_real_checker_distinguishes_wrapped_messages_and_ignores_line_shifts(
     fixture.write_text("\n\n\n" + code, encoding="utf-8")
     assert mypy_gate.main([]) == 0
     assert baseline.read_bytes() == accepted
+
     capsys.readouterr()
     annotation = different if new_annotation == "different_class" else new_annotation
     fixture.write_text(
@@ -120,3 +123,65 @@ def test_real_checker_distinguishes_wrapped_messages_and_ignores_line_shifts(
     assert mypy_gate.main([]) == 1
     assert annotation in capsys.readouterr().err
     assert baseline.read_bytes() == accepted
+
+
+@pytest.mark.parametrize(
+    ("accepted_literal", "new_literal"),
+    [("a:1:", "a:2:"), (r"a\b", "a//b")],
+)
+def test_real_checker_keeps_literal_values_in_diagnostic_messages(
+    monkeypatch, tmp_path, capsys, accepted_literal, new_literal
+):
+    monkeypatch.setenv("MYPY_FORCE_TERMINAL_WIDTH", "80")
+    fixture = tmp_path / "literal_fixture.py"
+    config = tmp_path / "mypy.ini"
+    config.write_text("[mypy]\nstrict = True\n", encoding="utf-8")
+    monkeypatch.setattr(
+        mypy_gate,
+        "MYPY_CMD",
+        [
+            sys.executable,
+            "-m",
+            "mypy",
+            str(fixture),
+            "--config-file",
+            str(config),
+            "--cache-dir",
+            str(tmp_path / "mypy-cache"),
+            "--no-error-summary",
+            "--no-color-output",
+        ],
+    )
+    baseline = tmp_path / "baseline.txt"
+    monkeypatch.setattr(mypy_gate, "BASELINE", baseline)
+    code = (
+        "from typing import Literal\n"
+        f"value: Literal[{json.dumps(accepted_literal)}] = 'wrong'\n"
+    )
+    fixture.write_text(code, encoding="utf-8")
+    assert mypy_gate.main(["--update"]) == 0
+    accepted = baseline.read_bytes()
+    assert mypy_gate.main([]) == 0
+    fixture.write_text("\n\n\n" + code, encoding="utf-8")
+    assert mypy_gate.main([]) == 0
+    assert baseline.read_bytes() == accepted
+    fixture.write_text(
+        code.replace(json.dumps(accepted_literal), json.dumps(new_literal)),
+        encoding="utf-8",
+    )
+    errors = mypy_gate._run_mypy()
+    assert len(errors) == 1 and errors[0].endswith("[assignment]")
+    assert mypy_gate.main([]) == 1
+    assert baseline.read_bytes() == accepted
+    signature = mypy_gate._signature(errors[0])
+    location, separator, message = errors[0].partition(": error:")
+    assert separator
+    assert signature.partition(": error:")[2] == message
+    assert message in capsys.readouterr().err
+    path = location.rsplit(":", 1)[0]
+    for variant in (
+        path + ":999" + separator + message,
+        path + ":999:42" + separator + message,
+        path.replace("/", "\\") + ":999:42" + separator + message,
+    ):
+        assert mypy_gate._signature(variant) == signature
