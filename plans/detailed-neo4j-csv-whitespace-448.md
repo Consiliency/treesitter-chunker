@@ -51,8 +51,11 @@ and graph controls; `tests/test_phase12_integration.py` supplies file controls.
   graphs retain valid header-only data and omit nonexistent relationship files.
 - Existing plain/yEd GraphML identity, character, label and platform controls
   remain byte-for-byte after integration. This slice does not promise embedded
-  CR/LF field fidelity through the pre-existing platform file-writing policy;
-  any newly reproduced independent defect is filed separately before changes.
+  CR/LF field fidelity through the pre-existing platform file-writing policy.
+  Actual same-source Linux/Windows Python 3.13.15 runs reproduced Windows file
+  CRLF doubling in IDs and properties; separately filed treesitter-chunker#454
+  before implementation. Its node/relationship file-writing repair and Windows
+  mutation are a separate slice, not silently included here.
 
 ### `docs/graphml_export.md` and `docs/export-formats.md` (modify)
 
