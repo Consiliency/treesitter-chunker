@@ -196,8 +196,19 @@ clusters and occurrence identity algorithms are unchanged. Empty preferred IDs
 still use the graph model's existing fallback. Lone surrogate strings are not
 valid UTF-8 caller IDs and raise `UnicodeEncodeError` during string export as
 well as file export. This node-ID contract does not certify arbitrary DOT
-attribute/relationship labels; relationship-label quoting remains
-treesitter-chunker#473.
+attribute values.
+
+Direct DOT relationship labels preserve caller text containing quotes,
+backslashes, Unicode, tabs and carriage returns in string and file output
+(treesitter-chunker#473). Literal backslash sequences such as `\N` and `\n`
+remain visible text; they do not substitute graph identities or create lines.
+Physical LF creates a centered line break. Physical CR remains in the compiled
+label value; renderer typography and control-character display are separate.
+HTML-looking labels remain plain text. This contract covers valid UTF-8 text
+without NUL, not arbitrary control bytes, invalid surrogates or arbitrary
+attribute values. Other node-label and tooltip escaping paths retain their
+existing behavior, including the separate tab defect treesitter-chunker#476.
+
 The direct Neo4j CSV exporter preserves leading spaces, tabs and Unicode
 whitespace in caller IDs and trailing property whitespace, including boundary
 rows (treesitter-chunker#448). Preserve these values when joining endpoints.

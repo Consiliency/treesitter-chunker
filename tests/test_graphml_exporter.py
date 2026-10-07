@@ -383,6 +383,105 @@ def test_dot_caller_ids_preserve_compiled_graph(
         assert cluster["label"] == reference["objects"][0]["label"]
 
 
+@pytest.mark.parametrize("use_clusters", [False, True])
+@pytest.mark.parametrize("file_output", [False, True])
+@pytest.mark.parametrize(
+    ("relationship", "compiled_label"),
+    [
+        ("CALLS", "CALLS"),
+        ("", ""),
+        ('CALLS"suffix', 'CALLS"suffix'),
+        ('CALLS\\"suffix', 'CALLS\\\\"suffix'),
+        ("CALLS\\", "CALLS\\\\"),
+        (r"CALLS\N\E\G\T\H\L", r"CALLS\\N\\E\\G\\T\\H\\L"),
+        (r"CALLS\n\l\r\t", r"CALLS\\n\\l\\r\\t"),
+        (r"CALLS\\suffix", r"CALLS\\\\suffix"),
+        ("CALLS\nsuffix", r"CALLS\nsuffix"),
+        ("CALLS\rsuffix", "CALLS\rsuffix"),
+        ("CALLS\r\nsuffix", "CALLS\r\\nsuffix"),
+        ("CALLS\tsuffix", "CALLS\tsuffix"),
+        ("Σé", "Σé"),
+        ("e\u0301", "e\u0301"),
+        ("<b>CALLS</b>", "<b>CALLS</b>"),
+    ],
+)
+def test_dot_relationship_labels_preserve_compiled_text(
+    parsed_same_span, tmp_path, relationship, compiled_label, use_clusters, file_output
+):
+    dot = shutil.which("dot")
+    if dot is None:
+        pytest.skip("Graphviz executable is required for compiled DOT contracts")
+
+    def compile_graph(payload, format_name, path=None):
+        result = subprocess.run(
+            [dot, "-T" + format_name, *([str(path)] if path is not None else [])],
+            input=payload if path is None else None,
+            encoding="utf-8",
+            capture_output=True,
+            timeout=30,
+            check=True,
+        )
+        return result.stdout
+
+    chunks = [
+        chunk for chunk in parsed_same_span if chunk.node_type == "function_definition"
+    ]
+    assert len(chunks) == 2
+    assert [chunk.metadata["signature"]["name"] for chunk in chunks] == ["f", "g"]
+    ids = [chunk.node_id for chunk in chunks]
+    properties = {"note": 'tip"\\tail'}
+    control = DotExporter()
+    control.add_chunks(chunks)
+    control.add_relationship(chunks[0], chunks[1], "CALLS", properties)
+    reference = json.loads(
+        compile_graph(control.export_string(use_clusters=use_clusters), "json")
+    )
+    exporter = DotExporter()
+    exporter.add_chunks(chunks)
+    exporter.add_relationship(chunks[0], chunks[1], relationship, properties)
+    assert exporter.edges[0].relationship_type == relationship
+    assert exporter.edges[0].properties == properties
+    output = exporter.export_string(use_clusters=use_clusters)
+    assert output == exporter.export_string(use_clusters=use_clusters)
+    path = tmp_path / "relationship.dot" if file_output else None
+    if path is not None:
+        exporter.export(path, use_clusters=use_clusters)
+        assert path.read_bytes().replace(b"\r\n", b"\n") == output.encode("utf-8")
+    graph = json.loads(compile_graph(output, "json", path))
+    cluster_count = graph.get("_subgraph_cnt", 0)
+    nodes = graph["objects"][cluster_count:]
+    reference_nodes = reference["objects"][reference.get("_subgraph_cnt", 0) :]
+    assert len(nodes) == 2
+    assert {node["name"] for node in nodes} == set(ids)
+    assert {node["name"]: node["label"] for node in nodes} == {
+        node["name"]: node["label"] for node in reference_nodes
+    }
+    node_ids = {node["name"]: node["_gvid"] for node in nodes}
+    assert len(graph["edges"]) == 1
+    edge = graph["edges"][0]
+    assert (edge["tail"], edge["head"]) == (node_ids[ids[0]], node_ids[ids[1]])
+    assert edge["label"] == compiled_label
+    assert edge["tooltip"] == reference["edges"][0]["tooltip"]
+    if relationship == "CALLS":
+        assert edge["color"] == "red"
+        assert edge["style"] == "dotted"
+    assert cluster_count == int(use_clusters)
+    if use_clusters:
+        assert graph["objects"][0]["label"] == reference["objects"][0]["label"]
+        assert set(graph["objects"][0]["nodes"]) == set(node_ids.values())
+    svg = ET.fromstring(compile_graph(output, "svg", path))
+    edges = [
+        element
+        for element in svg.iter("{http://www.w3.org/2000/svg}g")
+        if element.get("class") == "edge"
+    ]
+    assert len(edges) == 1
+    rendered = [
+        element.text for element in edges[0].iter("{http://www.w3.org/2000/svg}text")
+    ]
+    assert rendered == (relationship.split("\n") if relationship else [])
+
+
 @pytest.mark.parametrize(
     "exporter_type", [GraphMLExporter, GraphMLyEdExporter, DotExporter, Neo4jExporter]
 )

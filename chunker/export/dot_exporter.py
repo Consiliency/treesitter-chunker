@@ -111,7 +111,11 @@ class DotExporter(GraphExporterBase):
         attrs = self.edge_attrs.copy()
         if edge.relationship_type in self.edge_type_styles:
             attrs.update(self.edge_type_styles[edge.relationship_type])
-        attrs["label"] = edge.relationship_type
+        attrs["label"] = (
+            edge.relationship_type.replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("\n", "\\n")
+        )
         if edge.properties:
             tooltip_parts = [f"{k}: {v}" for k, v in edge.properties.items()]
             attrs["tooltip"] = self._escape_label("; ".join(tooltip_parts))
