@@ -523,3 +523,137 @@ def test_graph_identity_fallback_does_not_mutate_chunk(parsed_same_span):
     chunk.chunk_id = None
     assert GraphNode(chunk).id == chunk.generate_id()
     assert chunk.node_id is None and chunk.chunk_id is None
+
+
+@pytest.fixture(params=["plain", "yed", "delegated"])
+def parsed_xml_graph(request):
+    fixture = (
+        Path(__file__).resolve().parents[1]
+        / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    )
+    assert not get_parser("python").parse(fixture.read_bytes()).root_node.has_error
+    chunks = chunk_file(fixture, "python")
+    assert len(chunks) >= 2
+    exporter = GraphMLExporter() if request.param == "plain" else GraphMLyEdExporter()
+    exporter.add_chunks(chunks[:2])
+    exporter.add_relationship(chunks[0], chunks[1], "CALLS")
+    options = {"use_yed": False} if request.param == "delegated" else {}
+    return exporter, chunks[:2], options
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+@pytest.mark.parametrize("codepoint", [0, 8, 11, 31, 0xD800, 0xDFFF, 0xFFFE, 0xFFFF])
+@pytest.mark.parametrize(
+    "location", ["node_value", "edge_value", "graph", "node_name", "edge_name", "id"]
+)
+def test_xml_invalid_characters_are_rejected(
+    parsed_xml_graph, pretty, codepoint, location
+):
+    exporter, chunks, options = parsed_xml_graph
+    value = f"private-prefix{chr(codepoint)}private-suffix"
+    if location == "node_value":
+        exporter.nodes[chunks[0].node_id].properties["caller"] = value
+    elif location == "edge_value":
+        exporter.edges[0].properties["caller"] = value
+    elif location == "graph":
+        exporter.graph_attrs["id"] = value
+    elif location == "node_name":
+        exporter.nodes[chunks[0].node_id].properties[value] = "legal"
+    elif location == "edge_name":
+        exporter.edges[0].properties[value] = "legal"
+    else:
+        exporter.nodes[value] = exporter.nodes.pop(chunks[0].node_id)
+    with pytest.raises(ValueError) as error:
+        exporter.export_string(pretty_print=pretty, **options)
+    message = str(error.value)
+    assert f"U+{codepoint:04X}" in message
+    assert "private-prefix" not in message and "private-suffix" not in message
+    expected = {
+        "node_value": "data.text",
+        "edge_value": "data.text",
+        "graph": "graph.attribute 'id'",
+        "node_name": "key.attribute 'id'",
+        "edge_name": "key.attribute 'id'",
+        "id": "node.attribute 'id'",
+    }
+    assert expected[location] in message
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+def test_xml_legal_characters_and_relationships_round_trip(parsed_xml_graph, pretty):
+    exporter, chunks, options = parsed_xml_graph
+    value = "\t\n\r &<>\"'中文😀 " + "".join(
+        chr(cp) for cp in [0x20, 0xD7FF, 0xE000, 0xFFFD, 0x10000, 0x10FFFF]
+    )
+    exporter.nodes[chunks[0].node_id].properties["caller"] = value
+    exporter.edges[0].properties["caller"] = value
+    exporter.graph_attrs["caller"] = "中文😀 &<>\"'"
+    root = ET.fromstring(exporter.export_string(pretty_print=pretty, **options))
+    ns = "{http://graphml.graphdrawing.org/xmlns}"
+    graph = root.find(f"{ns}graph")
+    assert graph is not None
+    assert graph.get("caller") == exporter.graph_attrs["caller"]
+    assert {node.get("id") for node in graph.findall(f"{ns}node")} == {
+        chunk.node_id for chunk in chunks
+    }
+    edge = graph.find(f"{ns}edge")
+    assert edge is not None
+    assert (edge.get("source"), edge.get("target")) == tuple(
+        chunk.node_id for chunk in chunks
+    )
+    for key in ["n_caller", "e_caller"]:
+        data = graph.find(f".//{ns}data[@key='{key}']")
+        assert data is not None
+        assert data.text == value.replace("\r", "\n")
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+@pytest.mark.parametrize(
+    "location", ["node_value", "edge_value", "node_name", "edge_name"]
+)
+def test_xml_rejected_file_preserves_output_and_registry_recovery(
+    parsed_xml_graph, tmp_path, pretty, location
+):
+    exporter, chunks, options = parsed_xml_graph
+    node_attrs, edge_attrs = exporter.node_attrs, exporter.edge_attrs
+    node_attrs["custom-node"] = "double"
+    edge_attrs["custom-edge"] = "boolean"
+    properties = (
+        exporter.nodes[chunks[0].node_id].properties
+        if location.startswith("node")
+        else exporter.edges[0].properties
+    )
+    key = "caller\x00name" if location.endswith("name") else "caller"
+    properties[key] = "legal" if location.endswith("name") else "caller\x00value"
+    existing, absent = tmp_path / "existing.graphml", tmp_path / "absent.graphml"
+    existing.write_bytes(b"original output")
+    before_nodes, before_edges = dict(exporter.nodes), list(exporter.edges)
+    for path in [existing, absent]:
+        with pytest.raises(ValueError, match="U\\+0000"):
+            exporter.export(path, pretty_print=pretty, **options)
+    assert existing.read_bytes() == b"original output"
+    assert not absent.exists()
+    assert exporter.nodes == before_nodes and exporter.edges == before_edges
+    del properties[key]
+    root = ET.fromstring(exporter.export_string(pretty_print=pretty, **options))
+    assert root.tag == "{http://graphml.graphdrawing.org/xmlns}graphml"
+    assert exporter.node_attrs is node_attrs and exporter.edge_attrs is edge_attrs
+    assert node_attrs["custom-node"] == "double"
+    assert edge_attrs["custom-edge"] == "boolean"
+    if location == "node_name":
+        assert key not in node_attrs
+    if location == "edge_name":
+        assert key not in edge_attrs
+
+
+def test_xml_validator_checks_tail_of_real_export(parsed_xml_graph):
+    exporter, _, options = parsed_xml_graph
+    root = ET.fromstring(exporter.export_string(pretty_print=False, **options))
+    graph = root.find("{http://graphml.graphdrawing.org/xmlns}graph")
+    assert graph is not None
+    graph.tail = "private\x00tail"
+    with pytest.raises(ValueError, match="U\\+0000.*graph.tail") as error:
+        exporter._validate_xml_characters(root)
+    assert "private" not in str(error.value)
+    graph.tail = "\t\n\r 中文😀"
+    exporter._validate_xml_characters(root)

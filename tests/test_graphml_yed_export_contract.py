@@ -3,7 +3,9 @@
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from chunker import chunk_file
+import pytest
+
+from chunker import chunk_file, get_parser
 from chunker.export.graphml_yed_exporter import GraphMLyEdExporter
 
 
@@ -43,3 +45,31 @@ def test_yed_export_keeps_unique_nodes_edges_and_direction() -> None:
     assert plain_graph is not None
     assert len(plain_graph.findall(f"{GRAPHML}node")) == 2
     assert len(plain_graph.findall(f"{GRAPHML}edge")) == 1
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+def test_yed_graphics_are_validated_and_recover(pretty):
+    assert not get_parser("python").parse(FIXTURE.read_bytes()).root_node.has_error
+    chunks = chunk_file(FIXTURE, "python")
+    assert len(chunks) >= 2
+    exporter = GraphMLyEdExporter()
+    exporter.add_chunks(chunks[:2])
+    exporter.add_relationship(chunks[0], chunks[1], "CALLS")
+    style = exporter.default_edge_styles["CALLS"]
+    original = style["color"]
+    style["color"] = "private\x00color"
+    with pytest.raises(ValueError, match="U\\+0000.*y:LineStyle.attribute 'color'"):
+        exporter.export_string(pretty_print=pretty)
+    style["color"] = original
+    root = ET.fromstring(exporter.export_string(pretty_print=pretty))
+    graph = root.find(f"{GRAPHML}graph")
+    assert graph is not None
+    assert all(
+        node.find(f"{GRAPHML}data/{YED}ShapeNode") is not None
+        for node in graph.findall(f"{GRAPHML}node")
+    )
+    edge = graph.find(f"{GRAPHML}edge")
+    assert edge is not None
+    assert edge.find(f"{GRAPHML}data/{YED}PolyLineEdge") is not None
+    assert edge.get("source") == chunks[0].node_id
+    assert edge.get("target") == chunks[1].node_id

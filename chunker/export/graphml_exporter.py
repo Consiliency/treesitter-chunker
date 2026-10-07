@@ -25,11 +25,44 @@ class GraphMLExporter(GraphExporterBase):
         for node in self.nodes.values():
             for key, value in node.properties.items():
                 if key not in self.node_attrs:
+                    self._validate_xml_characters(
+                        ET.Element("key", {"id": f"n_{key}", "attr.name": key}),
+                    )
                     self.node_attrs[key] = self._infer_type(value)
         for edge in self.edges:
             for key, value in edge.properties.items():
                 if key not in self.edge_attrs:
+                    self._validate_xml_characters(
+                        ET.Element("key", {"id": f"e_{key}", "attr.name": key}),
+                    )
                     self.edge_attrs[key] = self._infer_type(value)
+
+    @staticmethod
+    def _validate_xml_characters(root: ET.Element) -> None:
+        """Reject characters forbidden by XML 1.0 before serialization."""
+        for element in root.iter():
+            values = [
+                ("text", element.text),
+                ("tail", element.tail),
+                *(
+                    (f"attribute {name!r}", value)
+                    for name, value in element.attrib.items()
+                ),
+            ]
+            for location, value in values:
+                if value is None:
+                    continue
+                for character in value:
+                    codepoint = ord(character)
+                    if not (
+                        codepoint in (0x09, 0x0A, 0x0D)
+                        or 0x20 <= codepoint <= 0xD7FF
+                        or 0xE000 <= codepoint <= 0xFFFD
+                        or 0x10000 <= codepoint <= 0x10FFFF
+                    ):
+                        raise ValueError(
+                            f"XML 1.0 forbids U+{codepoint:04X} at {element.tag}.{location}",
+                        )
 
     @staticmethod
     def _infer_type(value: Any) -> str:
@@ -131,6 +164,7 @@ class GraphMLExporter(GraphExporterBase):
             self._create_node_element(graph, node_id, node)
         for i, edge in enumerate(self.edges):
             self._create_edge_element(graph, edge, i)
+        self._validate_xml_characters(root)
         if pretty_print:
             rough_string = ET.tostring(root, encoding="unicode")
             reparsed = minidom.parseString(rough_string)
