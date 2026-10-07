@@ -2303,6 +2303,15 @@
             "plan_path": "plans/detailed-streaming-ignore-boundaries-466.md"
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T13:13:29Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-streaming-ignore-boundaries-466.md",
+            "run_id": "20261007-streaming-ignore-boundaries-466"
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -2310,10 +2319,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-streaming-ignore-boundaries-466/20261006-planning.md",
       "roadmap_ref": null,
       "slug": "streaming-ignore-boundaries-466",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Honor existing configured streaming ignored subtrees with real Python JS TS and VFS contracts, named mutations and exact manual code review gates",
       "type": "detailed",
-      "updated_at": "2026-10-07T13:11:32.931373+00:00"
+      "updated_at": "2026-10-07T13:13:29Z"
     }
   ],
   "schema_version": 1

@@ -34,6 +34,8 @@ from chunker.streaming import (
 )
 from chunker.types import CodeChunk
 from chunker.parser import get_parser
+from chunker.vfs import InMemoryFileSystem
+from chunker.vfs_chunker import VFSChunker
 
 
 def generate_large_python_code(num_functions: int = 1000) -> str:
@@ -800,6 +802,170 @@ def test_full_benchmark_runner_observes_real_cache_and_chunk_counts(
     summary = suite.get_summary()
     assert summary["total_files"] == 14
     assert summary["total_chunks"] == expected_chunks * 7
+
+
+_IGNORE_BOUNDARY_CASES = [
+    (
+        "python",
+        "py",
+        "lambda",
+        "string",
+        "function_definition",
+        "lambda visible: visible",
+        "lambda hidden: hidden",
+    ),
+    (
+        "javascript",
+        "js",
+        "arrow_function",
+        "template_string",
+        "variable_declarator",
+        "(visible) => visible",
+        "(hidden) => hidden",
+    ),
+    (
+        "typescript",
+        "ts",
+        "arrow_function",
+        "template_string",
+        "variable_declarator",
+        "(visible: number) => visible",
+        "(hidden: number) => hidden",
+    ),
+]
+
+
+def _ignored_boundary_fixture(case):
+    language, extension, expression_type, ignored_type, parent_type, visible, hidden = (
+        case
+    )
+    fixture = (
+        Path(__file__).parent / "fixtures" / f"streaming_ignore_boundaries.{extension}"
+    ).resolve()
+    source = fixture.read_bytes()
+    root = get_parser(language).parse(source).root_node
+    assert not root.has_error
+    expressions = {}
+    pending = [root]
+    while pending:
+        node = pending.pop()
+        if node.type == expression_type and node.is_named:
+            text = source[node.start_byte : node.end_byte].decode("utf-8")
+            assert text not in expressions
+            expressions[text] = node
+        pending.extend(node.children)
+    assert set(expressions) == {visible, hidden}
+    for text, expected_ignored in ((visible, False), (hidden, True)):
+        ancestor = expressions[text].parent
+        ignored = False
+        while ancestor is not None:
+            ignored |= ancestor.type == ignored_type
+            ancestor = ancestor.parent
+        assert ignored == expected_ignored
+    parent = expressions[visible].parent
+    while parent is not None and parent.type != parent_type:
+        parent = parent.parent
+    assert parent is not None
+    return fixture, source, expressions[visible], expressions[hidden], parent
+
+
+@pytest.mark.parametrize(
+    "case", _IGNORE_BOUNDARY_CASES, ids=["python", "javascript", "typescript"]
+)
+@pytest.mark.parametrize("api", ["regular", "streaming"])
+@pytest.mark.parametrize("retrieval_metadata", [False, True])
+def test_configured_streaming_ignore_boundaries(case, api, retrieval_metadata):
+    language, _, expression_type, _, _, visible, _ = case
+    fixture, source, visible_node, hidden_node, parent_node = _ignored_boundary_fixture(
+        case
+    )
+    extract = chunk_file if api == "regular" else chunk_file_streaming
+    chunks = list(
+        extract(fixture, language, include_retrieval_metadata=retrieval_metadata)
+    )
+    expressions = [c for c in chunks if c.node_type == expression_type]
+    assert [(c.byte_start, c.byte_end) for c in expressions] == [
+        (visible_node.start_byte, visible_node.end_byte)
+    ]
+    assert not any(
+        (c.byte_start, c.byte_end) == (hidden_node.start_byte, hidden_node.end_byte)
+        for c in chunks
+    )
+    parent = next(
+        c
+        for c in chunks
+        if (c.byte_start, c.byte_end) == (parent_node.start_byte, parent_node.end_byte)
+    )
+    expression = expressions[0]
+    assert expression.content == visible
+    assert expression.parent_chunk_id == parent.node_id
+    assert expression.parent_route == [*parent.parent_route, expression_type]
+    assert expression.qualified_route[:-1] == parent.qualified_route
+    assert expression.chunk_id == expression.node_id
+    for chunk in chunks:
+        assert chunk.content == source[chunk.byte_start : chunk.byte_end].decode(
+            "utf-8"
+        )
+    enclosing = next(
+        c
+        for c in chunks
+        if c.node_type in {"function_definition", "function_declaration"}
+    )
+    assert case[-1] in enclosing.content
+    assert "ordinary" in enclosing.content
+    assert "comment" in enclosing.content
+
+
+def _ignore_boundary_tuples(chunks):
+    return [
+        (
+            c.node_type,
+            c.start_line,
+            c.end_line,
+            c.byte_start,
+            c.byte_end,
+            c.content,
+            c.node_id,
+            c.chunk_id,
+            c.parent_chunk_id,
+            tuple(c.parent_route),
+            tuple(c.qualified_route),
+        )
+        for c in chunks
+    ]
+
+
+@pytest.mark.parametrize(
+    "case", _IGNORE_BOUNDARY_CASES, ids=["python", "javascript", "typescript"]
+)
+@pytest.mark.parametrize("retrieval_metadata", [False, True])
+def test_ignored_boundary_same_path_api_tuples(case, retrieval_metadata):
+    fixture, _, _, _, _ = _ignored_boundary_fixture(case)
+    regular = chunk_file(
+        fixture, case[0], include_retrieval_metadata=retrieval_metadata
+    )
+    streaming = chunk_file_streaming(
+        fixture, case[0], include_retrieval_metadata=retrieval_metadata
+    )
+    assert regular
+    assert _ignore_boundary_tuples(regular) == _ignore_boundary_tuples(streaming)
+
+
+@pytest.mark.parametrize(
+    "case", _IGNORE_BOUNDARY_CASES, ids=["python", "javascript", "typescript"]
+)
+def test_vfs_streaming_ignored_boundary_defaults(case):
+    fixture, source, _, hidden_node, _ = _ignored_boundary_fixture(case)
+    vfs = InMemoryFileSystem()
+    vfs.add_file(str(fixture), source, is_text=False)
+    chunks = list(VFSChunker(vfs).chunk_file(str(fixture), case[0], streaming=True))
+    regular = chunk_file(fixture, case[0])
+    assert chunks and regular
+    assert not any(
+        (c.byte_start, c.byte_end) == (hidden_node.start_byte, hidden_node.end_byte)
+        for c in chunks
+    )
+    assert _ignore_boundary_tuples(chunks) == _ignore_boundary_tuples(regular)
 
 
 @pytest.fixture

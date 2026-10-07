@@ -112,3 +112,35 @@ and CR-only policy treesitter-chunker#471 remain separate. No consumer locks,
 admitted ledger/checkpoints, supplier/native-fill/IF, whole-phase or release
 acceptance. Manual evidence is not agent-harness#1271's governed operational
 amendment. All Unreleased changes remain reserved for 6.0.0; no tag.
+
+## Execution notes
+
+The unchanged baseline first fails 15 new streaming/API-parity/VFS cases with
+six regular controls passing. Real AST checks pass in all three languages. An
+initial Python fixture used a directly assigned/called lambda and triggered two
+lint rules; that raw failed log is preserved. Its final fixture instead retains
+the visible lambda in a tuple and interpolates the hidden lambda without calling
+it. No lint suppression or production workaround is added. Initial fixture-byte
+results are historical; final formatted fixtures receive fresh bound evidence.
+
+On final source/test/fixture bytes, accepted production and both named mutations
+each fail the intended 15 cases while six regular controls pass. Every exact
+restoration passes all 21 new cases (35 existing module cases deselected).
+Actual before/after snapshots cover twelve file API/metadata projections and
+three in-memory VFS projections at the same paths. For each baseline and mutant,
+regular tuples are unchanged; streaming/VFS remove exactly one hidden expression
+and retain every other declared content/line/span/ID/parent/context/route tuple.
+Ancestor chunks still include their entire source. This is retained per-API
+evidence, not a global metadata-parity or arbitrary grammar claim.
+
+The existing unnamed Ruby/Python guard, strict BAML and language-specific span
+transformations remain intact. Both predicates are threaded through recursion;
+the appended optional argument preserves the existing VFS positional call and
+keeps any supplied chunk predicate when resolving the missing ignore predicate.
+All 61 canonical manifest rows remain exact, plus this own executing row.
+
+Fresh focused/original six/refresh/full, exact-head Windows mutation/restoration/
+focus/standing, all required hosted checks, four substantive manual CODE R1
+opinions and the final supplemental Astra chair remain required. Their actual
+outcomes are recorded in immutable evidence and the acceptance comment rather
+than changing the reviewed candidate later. No type-baseline update is made.

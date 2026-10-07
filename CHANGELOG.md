@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ⚠️ BREAKING
 
+- Streaming and VFS extraction honor configured ignored-subtree boundaries,
+  excluding nested expressions inside Python strings and JavaScript/TypeScript
+  template strings while preserving visible chunks and ancestor source text
+  (treesitter-chunker#466). Regenerate affected streaming collections and indexes
+  for 6.0.0. Existing cache payloads remain subject to treesitter-chunker#358;
+  use `use_cache=False`. See
+  [streaming ignore migration](docs/chunk-identity.md#streaming-ignored-subtree-migration-for-600).
+
 - Regular and streaming Python extraction exclude erroneous keyword-only
   `lambda` chunks while retaining complete named expressions and their existing
   occurrence IDs (treesitter-chunker#446). Regenerate Python chunk collections
