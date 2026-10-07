@@ -1865,6 +1865,17 @@
             "plan_path": "plans/detailed-graph-identity-167.md"
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T03:34:44Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-graph-identity-167.md",
+            "reproduction": "/tmp/chunker-167-parent-selection-reproduction.json",
+            "run_id": "20261006-graph-identity-167",
+            "task_summary": "treesitter-chunker#167 and treesitter-chunker#445 identity/parent-alias repair"
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -1872,10 +1883,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-graph-identity-167/20261006-planning.md",
       "roadmap_ref": null,
       "slug": "graph-identity-167",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Detailed graph occurrence identity and legacy-parent migration contract for treesitter-chunker#167 under EC-EXPORT-1; design review required before execution",
       "type": "detailed",
-      "updated_at": "2026-10-07T03:05:51.830127+00:00"
+      "updated_at": "2026-10-07T03:34:44Z"
     }
   ],
   "schema_version": 1

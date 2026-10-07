@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ BREAKING
+
+- The four direct graph exporter modules retain distinct same-span chunks using
+  existing occurrence IDs instead of line-span IDs. Regenerate graph outputs and
+  rebuild ID-based joins. Referenced ambiguous parent aliases now raise before
+  edge insertion; unique legacy span aliases remain supported. See
+  [graph ID migration](docs/graphml_export.md#graph-id-migration-for-600).
+  These changes require 6.0.0; after merging this migration, all accumulated
+  Unreleased changes must wait for that major release rather than shipping in 5.x.
+
 - C++ `constexpr` hints require a keyword boundary, preserving feature-macro
   inference without treating identifier suffixes as standalone keywords.
 

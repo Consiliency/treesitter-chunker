@@ -31,7 +31,17 @@ Each format supports different schema types and compression options.
 
 GraphML is ideal for visualizing code structure. See `docs/graphml_export.md` for full details.
 
+For 6.0.0, the direct `chunker.export.graphml_exporter`,
+`graphml_yed_exporter`, `dot_exporter` and `neo4j_exporter` modules use existing
+chunk occurrence IDs instead of line-span graph IDs. Regenerate outputs and
+rebuild ID-based joins from emitted IDs; paths, byte positions, routes and content
+can rekey them. Ambiguous parent references are rejected before edge insertion.
+See [graph ID migration](graphml_export.md#graph-id-migration-for-600) for legacy
+alias rules and limitations. Package-level structured exporters and the database
+helper are separate APIs and are not migrated by this change.
+
 ```python
+from pathlib import Path
 from chunker.core import chunk_file
 from chunker.export.graphml_exporter import GraphMLExporter
 
@@ -39,7 +49,7 @@ chunks = chunk_file("example.py", "python")
 exporter = GraphMLExporter()
 exporter.add_chunks(chunks)
 exporter.extract_relationships(chunks)
-exporter.export("chunks.graphml")
+exporter.export(Path("chunks.graphml"))
 ```
 
 Open `chunks.graphml` in yEd/Gephi to explore the call/import graph.
