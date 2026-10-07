@@ -490,7 +490,7 @@ def test_neo4j_cypher_file_preserves_generated_newlines(
         exporter.add_relationship(*order, "CALLS", {"zz_multiline": value})
     generated = exporter.export_string(fmt="cypher")
     for chunk in order:
-        assert f"nodeId: '{chunk.node_id}'" in generated
+        assert generated.count(f"nodeId: '{chunk.node_id}'") == (2 if with_edges else 1)
         assert exporter.nodes[chunk.node_id].properties["zz_multiline"] == value
     assert generated.index(f"nodeId: '{order[0].node_id}'") < generated.index(
         f"nodeId: '{order[1].node_id}'"

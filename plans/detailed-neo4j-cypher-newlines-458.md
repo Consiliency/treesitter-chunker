@@ -137,3 +137,14 @@ acceptance. No coverage-percentage or timing gate is introduced.
   its corrected application is the only source delta. Original six/refresh/full,
   actual Windows/standing, exact hosted, all four CODE opinions and final Astra
   ruling remain mandatory independent gates.
+- All four CODE R1 opinions completed with AGREE and actual exit 0 before
+  reconciliation. Opus observed that generated endpoint presence could match
+  only node statements. The own test now requires each caller ID exactly twice
+  with an edge and once without, covering node and relationship statements as
+  promised. Production and all inherited tests remain unchanged.
+- R1 original six/locked refresh/full passed 4,425 tests with four skips and
+  actual seal `a2226d8365a626519355ad4d0f7874c981ddf68301c54de7916a2b273a389aa0`.
+  That result, actual Windows baseline/mutation/restorations and four raw
+  opinions are preserved but excluded from final R2 acceptance because the
+  own assertion changed. Fresh R2 Windows bindings, original run, hosted jobs,
+  four manual opinions and final Astra ruling are mandatory.
