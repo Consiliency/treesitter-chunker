@@ -37,7 +37,7 @@ next-major 6.0.0 release boundary, separately from node identity and XML handlin
    No XSD certification, graph-ID algorithm, type inference or property merging
    redesign. XML-invalid characters keep the accepted treesitter-chunker#168 rule.
 
-## Owned changes
+## Changes
 
 - `chunker/export/graphml_exporter.py`: change only the dedicated structural label
   declaration and data references to node_label/edge_label; keep property loops.
@@ -58,7 +58,7 @@ Preserve every accepted graph/platform selection. Additional serializer defects
 are separately filed before any repair. treesitter-chunker#444 DOT punctuation
 and treesitter-chunker#446 Python token selection remain outside this slice.
 
-## Dependencies and verification
+## Order
 
 Commit the plan before implementation. Wait for accepted graph identity and XML
 character PRs, integrate main preserving canonical manifest rows, then mark only
@@ -74,6 +74,8 @@ substantive rounds. Opus5.5 uses the tool-enabled TUI adapter, Gemini3.8Flash an
 Astra/Sol use compact pointers and final-response host capture where necessary.
 Heartbeat-only monitoring; failed delivery cannot count as approval. The requested
 manual Astra chair independently checks actual outputs and completed evidence.
+
+## Verification
 
 - `uv sync --locked --all-extras`
 - `uv run --locked --all-extras pytest tests/test_graphml_exporter.py tests/test_graphml_yed_export_contract.py tests/test_phase12_integration.py -q`
