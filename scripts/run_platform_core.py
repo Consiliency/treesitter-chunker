@@ -9,6 +9,7 @@ import sys
 
 
 COMMON_TESTS = [
+    "tests/test_cli_integration_advanced.py::TestSignalHandling::test_sigint_handling",
     "tests/test_benchmark_examples.py",
     "tests/test_parallel.py::TestWorkerPoolSizing::test_io_bound_sizing",
     "tests/test_plugin_system.py::test_replacing_warm_plugin_invokes_new_hook",

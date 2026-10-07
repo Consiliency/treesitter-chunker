@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- The POSIX CLI SIGINT quality check observes actual input readiness and drains
+  and reaps its child, avoiding startup guesses and early-completion skips.
+
 - Compatibility sample checks retain independent validation incompatibility
   when some samples parse successfully, preserving counts, errors and scores.
 

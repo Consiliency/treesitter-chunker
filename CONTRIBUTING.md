@@ -77,6 +77,11 @@ and named mutations.
 
 ### Platform checks
 
+The POSIX SIGINT contract waits until the actual CLI opens its FIFO input before
+signaling it, drains both output pipes and reaps the child on success or failure.
+Its readiness and shutdown bounds safeguard cleanup; they are not throughput
+requirements. Windows deliberately skips this POSIX-only contract.
+
 Reproduce a matrix failure with the narrow affected test before retrying CI.
 Use explicit UTF-8 file I/O, portable paths, and robust process readiness
 checks. Avoid assertions that depend on tight wall-clock limits.

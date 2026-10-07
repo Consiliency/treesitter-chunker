@@ -4,7 +4,9 @@ This module tests complex CLI scenarios including interactive mode,
 signal handling, complex command chains, and error recovery.
 """
 
+import errno
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -17,6 +19,7 @@ import pytest
 from typer.testing import CliRunner
 
 from cli.main import app
+from chunker import get_parser
 
 
 def parse_jsonl_output(output: str) -> list[dict[str, Any]]:
@@ -298,14 +301,20 @@ class TestSignalHandling:
     @pytest.mark.skipif(sys.platform == "win32", reason="POSIX signals only")
     def test_sigint_handling(tmp_path):
         """Test Ctrl+C handling."""
-        (tmp_path / "test.py").write_text("def test(): pass\n" * 1000)
+        fixture = (
+            Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+        )
+        source = fixture.read_bytes()
+        assert not get_parser("python").parse(source).root_node.has_error
+        input_path = tmp_path / "test.py"
+        os.mkfifo(input_path)
         process = subprocess.Popen(
             [
                 sys.executable,
                 "-m",
                 "cli.main",
                 "chunk",
-                str(tmp_path / "test.py"),
+                str(input_path),
                 "-l",
                 "python",
                 "--json",
@@ -314,16 +323,28 @@ class TestSignalHandling:
             stderr=subprocess.PIPE,
             text=True,
         )
-        time.sleep(0.05)
-        if process.poll() is not None:
-            pytest.skip("Process completed before signal could be sent")
-        process.send_signal(signal.SIGINT)
+        writer = None
         try:
-            process.wait(timeout=2)
-            assert process.returncode in {0, -2, 130, 1}
-        except subprocess.TimeoutExpired:
-            process.kill()
-            pytest.fail("Process did not handle SIGINT")
+            deadline = time.monotonic() + 30
+            while writer is None:
+                assert process.poll() is None, "CLI exited before opening input"
+                try:
+                    writer = os.open(input_path, os.O_WRONLY | os.O_NONBLOCK)
+                except OSError as error:
+                    if error.errno != errno.ENXIO:
+                        raise
+                    assert time.monotonic() < deadline, "CLI did not open input"
+                    time.sleep(0.01)
+            assert os.write(writer, source) == len(source)
+            process.send_signal(signal.SIGINT)
+            process.communicate(timeout=15)
+            assert process.returncode in {-signal.SIGINT, 130}
+        finally:
+            if writer is not None:
+                os.close(writer)
+            if process.poll() is None:
+                process.kill()
+            process.communicate(timeout=15)
 
     @staticmethod
     @pytest.mark.skipif(sys.platform == "win32", reason="POSIX signals only")
