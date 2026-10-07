@@ -412,6 +412,91 @@ def test_parent_aliases_resolve_unique_real_occurrence(
         }
 
 
+@pytest.mark.parametrize("prefix", ["", " ", "\t", "\u2003"])
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("output_kind", ["string", "file"])
+def test_neo4j_csv_retains_boundary_field_whitespace(
+    parsed_same_span, prefix, reverse, output_kind, tmp_path
+):
+    parent, child = parsed_same_span[:2]
+    parent.node_id = prefix + "caller-parent"
+    child.node_id = prefix + "caller-child"
+    value = " property trailing \t\u2003"
+    quoted = 'a,b"&<x>中文'
+    for chunk in (parent, child):
+        chunk.metadata.update({"zz_whitespace": value, "quoted": quoted})
+    order = [child, parent] if reverse else [parent, child]
+    exporter = Neo4jExporter()
+    exporter.add_chunks(order)
+    exporter.add_relationship(
+        *order, "CALLS", {"zz_whitespace": value, "quoted": quoted}
+    )
+    exporter.add_relationship(
+        *reversed(order), "RETURNS", {"zz_whitespace": value, "quoted": quoted}
+    )
+    if output_kind == "string":
+        nodes_text = exporter.export_string(fmt="csv_nodes")
+        edges_text = exporter.export_string(fmt="csv_relationships")
+    else:
+        exporter.export(tmp_path / "actual", fmt="csv")
+        with (tmp_path / "actual_nodes.csv").open(encoding="utf-8", newline="") as f:
+            nodes_text = f.read()
+        with (tmp_path / "actual_relationships.csv").open(
+            encoding="utf-8", newline=""
+        ) as f:
+            edges_text = f.read()
+        command = (tmp_path / "actual_import.sh").read_text(encoding="utf-8")
+        assert "--nodes=actual_nodes.csv" in command
+        assert "--relationships=actual_relationships.csv" in command
+    nodes_reader = csv.DictReader(io.StringIO(nodes_text, newline=""))
+    nodes = list(nodes_reader)
+    assert nodes_reader.fieldnames[:2] == ["nodeId:ID", ":LABEL"]
+    assert len(nodes) == len(exporter.nodes) == 2
+    assert {row["nodeId:ID"] for row in nodes} == set(exporter.nodes)
+    assert all(row["zz_whitespace"] == value for row in nodes)
+    assert all(row["quoted"] == quoted for row in nodes)
+    edges_reader = csv.DictReader(io.StringIO(edges_text, newline=""))
+    edges = list(edges_reader)
+    assert edges_reader.fieldnames[:3] == [":START_ID", ":END_ID", ":TYPE"]
+    assert len(edges) == len(exporter.edges) == 2
+    assert {(row[":START_ID"], row[":END_ID"], row[":TYPE"]) for row in edges} == {
+        (edge.source_id, edge.target_id, edge.relationship_type)
+        for edge in exporter.edges
+    }
+    assert all(row["zz_whitespace"] == value for row in edges)
+    assert all(row["quoted"] == quoted for row in edges)
+
+
+@pytest.mark.parametrize("include_nodes", [False, True])
+def test_neo4j_csv_empty_relationship_headers_and_files(
+    parsed_same_span, include_nodes, tmp_path
+):
+    exporter = Neo4jExporter()
+    chunks = parsed_same_span[:2] if include_nodes else []
+    exporter.add_chunks(chunks)
+    nodes_reader = csv.DictReader(
+        io.StringIO(exporter.export_string(fmt="csv_nodes"), newline="")
+    )
+    assert {row["nodeId:ID"] for row in nodes_reader} == {
+        chunk.node_id for chunk in chunks
+    }
+    assert nodes_reader.fieldnames[:2] == ["nodeId:ID", ":LABEL"]
+    edges_reader = csv.DictReader(
+        io.StringIO(exporter.export_string(fmt="csv_relationships"), newline="")
+    )
+    assert list(edges_reader) == []
+    assert edges_reader.fieldnames == [":START_ID", ":END_ID", ":TYPE"]
+    exporter.export(tmp_path / "empty_edges", fmt="csv")
+    with (tmp_path / "empty_edges_nodes.csv").open(encoding="utf-8", newline="") as f:
+        assert {row["nodeId:ID"] for row in csv.DictReader(f)} == {
+            chunk.node_id for chunk in chunks
+        }
+    assert not (tmp_path / "empty_edges_relationships.csv").exists()
+    command = (tmp_path / "empty_edges_import.sh").read_text(encoding="utf-8")
+    assert "--nodes=empty_edges_nodes.csv" in command
+    assert "--relationships=" not in command
+
+
 @pytest.mark.parametrize("field", ["parent_id", "parent_chunk_id"])
 @pytest.mark.parametrize("reverse", [False, True])
 def test_duplicate_chunk_alias_rejected_before_any_edges(

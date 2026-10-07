@@ -80,7 +80,9 @@ class Neo4jExporter(GraphExporterBase):
         data_io = StringIO()
         data_writer = csv.writer(data_io)
         data_writer.writerows(rows)
-        return header_io.getvalue().strip(), data_io.getvalue().strip()
+        return header_io.getvalue().removesuffix(
+            "\r\n"
+        ), data_io.getvalue().removesuffix("\r\n")
 
     def _generate_relationship_csv(self) -> tuple[str, str]:
         """Generate CSV content for relationships.
@@ -105,7 +107,9 @@ class Neo4jExporter(GraphExporterBase):
         data_io = StringIO()
         data_writer = csv.writer(data_io)
         data_writer.writerows(rows)
-        return header_io.getvalue().strip(), data_io.getvalue().strip()
+        return header_io.getvalue().removesuffix(
+            "\r\n"
+        ), data_io.getvalue().removesuffix("\r\n")
 
     def generate_cypher_statements(self, batch_size: int = 1000) -> list[str]:
         """Generate Cypher statements for creating the graph.
