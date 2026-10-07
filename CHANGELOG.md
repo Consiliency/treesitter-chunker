@@ -10,6 +10,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ standard hints use release chronology, so C++98 no longer outranks newer
   declared standards or feature-macro requirements.
 
+- The POSIX CLI SIGINT quality check observes actual fixture parsing readiness,
+  drains and reaps its child, avoiding startup guesses and early-completion skips.
+
+- Rust version information can retain an explicit Cargo `rust_version` beside
+  a source compiler hint, preserving legacy exports when the new field is omitted.
+
+- Python version detection prefers declared PEP 621 `requires-python` constraints
+  over broad project classifiers, preserving the constraint operators.
+
+- Go build-version hints compare major/minor numbers, selecting 1.10 over 1.9
+  across separately detected modern and legacy positive constraint lines.
+
+- Type-checking compares complete diagnostic messages and error codes, preventing
+  distinct new errors from being hidden by wrapped baseline headers.
+
+- Compatibility sample checks retain independent validation incompatibility
+  when some samples parse successfully, preserving counts, errors and scores.
+
+- Legacy benchmark cache examples use supported imports and explicit isolated
+  SQLite lookups/stores, report actual hits and preserve unrelated cache entries.
+
+- Compatibility checks reach the existing very-slow metadata classification
+  above five seconds, while preserving independent validation and sample
+  failures. Moderate timing thresholds retain their existing behavior.
+
+- Boundary IR's published schema allows null language/parser only for skipped
+  files. Its guides describe existing 2.0/2.1 versions, migration from 1.x, and
+  the further package 4.0.0 identity break.
+
+- Language-compatibility database upserts refresh live metadata and selection
+  order to match persisted records, including same-version replacements.
+
 - Cached parallel quality checks verify real persisted chunks and warm cache
   reuse without a load-sensitive one-second timing limit.
 

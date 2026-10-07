@@ -11,20 +11,20 @@ import shutil
 import statistics
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from chunker import (
     ASTCache,
-    chunk_directory_parallel,
     chunk_file,
-    chunk_file_with_token_limit,
-    chunk_files_parallel,
     get_parser,
     list_languages,
 )
 from chunker.fallback.intelligent_fallback import IntelligentFallbackChunker
+from chunker.chunker import chunk_file_with_token_limit
+from chunker.parallel import chunk_directory_parallel, chunk_files_parallel
 from chunker.strategies import (
     AdaptiveChunker,
     CompositeChunker,
@@ -39,9 +39,9 @@ class BenchmarkScenario:
 
     name: str
     description: str
-    setup: callable
-    benchmark: callable
-    teardown: callable | None = None
+    setup: Callable
+    benchmark: Callable
+    teardown: Callable | None = None
     iterations: int = 5
     warmup: int = 1
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -585,34 +585,37 @@ class Handler_{i}:
     def _benchmark_cache(cls, context: dict[str, Any]) -> dict[str, Any]:
         """Benchmark cache effectiveness."""
         test_file = context["test_file"]
-        cache = ASTCache()
-        results = {}
-        cache.invalidate_cache()
-        cold_times = []
-        for _ in range(5):
-            cache.invalidate_cache(test_file)
-            start = time.perf_counter()
-            chunk_file(test_file, "python", use_cache=True)
-            cold_times.append(time.perf_counter() - start)
-        warm_times = []
-        for _ in range(5):
-            start = time.perf_counter()
-            chunk_file(test_file, "python", use_cache=True)
-            warm_times.append(time.perf_counter() - start)
-        content = test_file.read_text()
-        test_file.write_text(content + "\n# Modified")
-        partial_times = []
-        for _ in range(5):
-            start = time.perf_counter()
-            chunk_file(test_file, "python", use_cache=True)
-            partial_times.append(time.perf_counter() - start)
-        results["cold_cache"] = {"mean_time": statistics.mean(cold_times)}
-        results["warm_cache"] = {
-            "mean_time": statistics.mean(warm_times),
-            "speedup": statistics.mean(cold_times) / statistics.mean(warm_times),
-        }
-        results["partial_invalidation"] = {"mean_time": statistics.mean(partial_times)}
-        return results
+        with tempfile.TemporaryDirectory(prefix="chunker-cache-benchmark-") as scratch:
+            cache = ASTCache(Path(context.get("cache_dir", Path(scratch) / "cache")))
+            results = {}
+            for phase in ("cold_cache", "warm_cache", "partial_invalidation"):
+                if phase == "partial_invalidation":
+                    content = test_file.read_text(encoding="utf-8")
+                    test_file.write_text(content + "\n# Modified", encoding="utf-8")
+                times = []
+                hits = 0
+                for _ in range(5):
+                    if phase == "cold_cache":
+                        cache.invalidate_cache(test_file)
+                    start = time.perf_counter()
+                    chunks = cache.get_cached_chunks(test_file, "python")
+                    if chunks is None:
+                        chunks = chunk_file(test_file, "python")
+                        cache.cache_chunks(test_file, "python", chunks)
+                    else:
+                        hits += 1
+                    times.append(time.perf_counter() - start)
+                results[phase] = {
+                    "mean_time": statistics.mean(times),
+                    "cache_hits": hits,
+                    "cache_misses": 5 - hits,
+                    "chunks": len(chunks),
+                }
+            results["warm_cache"]["speedup"] = (
+                results["cold_cache"]["mean_time"]
+                / results["warm_cache"]["mean_time"]
+            )
+            return results
 
     @classmethod
     def _setup_token_test_files(cls) -> dict[str, Any]:
