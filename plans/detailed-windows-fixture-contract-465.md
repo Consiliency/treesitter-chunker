@@ -98,3 +98,21 @@ amendment or supplier/native-fill/IF/release acceptance. Unreleased6.0.0 remains
   hosted, four completed substantive opinions and final chair qualify only this
   test repair. Production selection/decoding and protected pins/state unchanged.
 
+## Execution notes
+
+All four manual CODE R1 opinions completed with actual exit zero before changes.
+Opus PARTIALLY AGREED because a repository-wide UTF-8 assertion exceeded this
+two-test repair; Gemini, Astra and Sol agreed. CONTRIBUTING now specifically
+describes the Python fixture. The extra EOF blank reported by Astra/Sol is removed
+in the same documentation reconciliation. No test, production or manifest bytes
+change from R1. Julia fixture encoding remains outside this slice; an additional
+concrete reproduction is tracked separately if confirmed.
+
+R1 original six/locked refresh/full passed 4425 with four skips, and actual
+Windows baseline/mutations/restores/current focus and standing passed their stated
+contracts. These and raw partial/agreement opinions remain preserved and excluded
+from final R2 acceptance. A premature root freeze attempt rejected the partial
+opinion after copying generated coverage and writing an early spec snapshot; no
+frozen input map, chair or accepted proof was created. Original evidence/source
+unchanged. R2 requires fresh original/current Windows/hosted/four-seat gates and
+supplemental final chair at its own head; no opinion or failed gate is rewritten.

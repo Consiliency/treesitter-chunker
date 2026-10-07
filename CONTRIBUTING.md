@@ -95,7 +95,8 @@ requirements. Windows deliberately skips this POSIX-only contract.
 Reproduce a matrix failure with the narrow affected test before retrying CI.
 Use explicit UTF-8 file I/O, portable paths, and robust process readiness
 checks. Avoid assertions that depend on tight wall-clock limits.
-Unicode fixtures use explicit UTF-8. The streaming chmod-denial test exercises
+The Python Unicode extraction fixture writes explicit UTF-8. The streaming
+chmod-denial test exercises
 actual POSIX read denial and cleanup; Windows deliberately skips it because
 chmod does not provide a Windows ACL-denial contract.
 Cached parallel checks verify persisted fixture chunks and actual warm cache
