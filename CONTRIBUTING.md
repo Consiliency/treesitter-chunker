@@ -63,6 +63,12 @@ lane, and the Test Suite workflow confirms platform-core behavior on Linux,
 macOS, and Windows. The scheduled CI job and release validation run the full
 `tests/` and `spec_tests/` suite.
 
+The type gate compares complete messages and error codes, independent of
+source line numbers. For a diagnostic-format migration, measure and reconcile
+the baseline from unchanged accepted code before candidate edits. A new
+candidate's errors must be fixed or tracked separately; do not use `--update`
+to absorb them into the baseline. Ordinary baseline updates remove cleared debt.
+
 For broad behavior changes, run the platform-core and full tiers locally:
 
 ```bash

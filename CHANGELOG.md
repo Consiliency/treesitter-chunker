@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Type-checking compares complete diagnostic messages and error codes, preventing
+  distinct new errors from being hidden by wrapped baseline headers.
+
 - Compatibility checks reach the existing very-slow metadata classification
   above five seconds, while preserving independent validation and sample
   failures. Moderate timing thresholds retain their existing behavior.
