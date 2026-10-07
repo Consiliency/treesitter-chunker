@@ -62,8 +62,9 @@ three old node/endpoint values, and the graph guide teaches their old format.
   non-error parsing, distinct occurrence preservation, node IDs matching chunks,
   explicit CALLS endpoints and automatically extracted DEFINES edges reaching
   actual parents. Parse plain/yEd XML and verify every edge endpoint is declared.
-  Exercise all four base consumers' node/edge collections, DOT output and Neo4j
-  JSON output without a live database, network or mock exporter/parser.
+  Exercise all four base consumers' node/edge collections and DOT output.
+  Parse Neo4j's actual csv_nodes/csv_relationships output with csv.DictReader,
+  verifying emitted IDs and endpoints without a live database, network or mocks.
 - In that module, parse the same file again and reverse input order to prove
   stable node/endpoint sets. Re-adding the same occurrences does not multiply
   nodes. Exercise canonical parent_id, chunk_id aliases with distinct caller
