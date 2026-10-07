@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Grammar validation returns actionable missing-file and directory diagnostics
+  at every requested level before cache lookup or storage.
+  Exceptions before requested validation completes retain an invalid result
+  at that level.
+
 - Large-file quality checks verify complete parsed/exported functions before
   timing. The existing wall-time targets run through an explicit controlled
   performance command; the isolated RSS budget remains checked by default.
