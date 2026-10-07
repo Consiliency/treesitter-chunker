@@ -1960,6 +1960,33 @@
       "task_summary": "Plan treesitter-chunker#168 XML character rejection after accepted treesitter-chunker#443",
       "type": "detailed",
       "updated_at": "2026-10-07T07:22:17Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-07T08:36:05.084575+00:00",
+      "file": "plans/detailed-neo4j-csv-whitespace-448.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-neo4j-csv-whitespace-448/.dev-skills/handoffs/codex-plan-detailed/20261006-neo4j-csv-whitespace-448.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-07T08:36:05.084575+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-neo4j-csv-whitespace-448.md"
+          },
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-neo4j-csv-whitespace-448/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "neo4j-csv-whitespace-448",
+      "status": "committed",
+      "task_summary": "Bounded real-parser CSV field-whitespace preservation for treesitter-chunker#448; implementation waits for accepted treesitter-chunker#449",
+      "type": "detailed",
+      "updated_at": "2026-10-07T08:36:05.084575+00:00"
     }
   ],
   "schema_version": 1
