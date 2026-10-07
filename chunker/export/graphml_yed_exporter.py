@@ -158,6 +158,7 @@ class GraphMLyEdExporter(GraphMLExporter):
                 self._create_node_element(graph, node_id, node)
             for i, edge in enumerate(self.edges):
                 self._create_edge_element(graph, edge, i)
+            self._validate_xml_characters(root)
             if pretty_print:
                 rough_string = ET.tostring(root, encoding="unicode")
                 reparsed = minidom.parseString(rough_string)

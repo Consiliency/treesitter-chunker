@@ -118,7 +118,7 @@ before exact-head merge/issue closure and pruning clean merged worktrees.
 
 - [ ] Real parsed fixture chunks prove deliberate actionable rejection across
   plain/yEd, pretty/compact/delegated output for forbidden text and attributes;
-  both named actual mutations fail and exact restorations pass with bound hashes.
+  all three named actual mutations fail and exact restorations pass with bound hashes.
 - [ ] Actual exported legal Unicode/XML characters parse with retained IDs,
   endpoints and graphics. Rejected file export preserves existing output, creates
   no new file, and the same exporter recovers after invalid caller data is removed.
@@ -126,3 +126,15 @@ before exact-head merge/issue closure and pruning clean merged worktrees.
   jobs, four bounded code reviewers and Astra chair accept only character handling.
   treesitter-chunker#169 remains open; no whole EXPORT/IF, XSD, percentage, pin,
   consumer-lock, admitted ledger/checkpoint or automatic release claim.
+
+## Execution evidence pending acceptance
+
+Accepted treesitter-chunker#443 is integrated. Real service-fixture regressions
+against unchanged production source fail 317 tests and pass 57 controls; the
+implemented focused command passes 374. The three actual named mutations fail
+136 (plain final validation), 70 (yEd final validation), and 12 (invalid-name
+registration/recovery) respectively. Every exact restoration passes all 374;
+the source, both test modules and actual fixture hashes are bound in
+`/tmp/chunker-168-mutation-bindings.json`. These are local observations only:
+original full verification, Windows, hosted jobs, four code reviews and the
+manual Astra president remain mandatory before merge and issue closure.

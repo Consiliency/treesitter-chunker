@@ -7,7 +7,7 @@ The GraphML exporter converts code chunks and their relationships into GraphML f
 ## Features
 
 ### Core Features
-- **Valid GraphML 1.0 output** - Generates standards-compliant GraphML files
+- **GraphML XML output** - Generates XML documents with GraphML elements; schema validation is separate
 - **Full metadata support** - Exports all chunk properties as node/edge attributes
 - **Relationship preservation** - Maintains all code relationships (calls, imports, contains)
 - **XML safety** - Properly escapes special characters in code content
@@ -163,9 +163,10 @@ distinct serialized DOT IDs are verified for parser-generated hexadecimal IDs.
 Neo4j CSV's pre-existing whole-block whitespace stripping can change a caller ID
 with leading whitespace in its first row (treesitter-chunker#448). This identity
 migration does not repair that serializer or establish whitespace-ID CSV fidelity.
-XML-control and duplicate-key fixes remain treesitter-chunker#168 and
-treesitter-chunker#169. This migration establishes node/endpoint identity,
-not XML schema completeness.
+XML character rejection is described below (treesitter-chunker#168 and
+treesitter-chunker#451). Duplicate-key handling remains treesitter-chunker#169.
+This migration establishes node/endpoint identity; XML schema completeness is
+separate.
 
 ## Type Inference
 
@@ -182,6 +183,25 @@ All XML special characters in code content and metadata are properly escaped:
 - `<` → `&lt;`
 - `>` → `&gt;`
 - `"` → `&quot;` (in attributes)
+
+Plain and yEd export, including compact, pretty and `use_yed=False` output,
+reject characters forbidden by XML 1.0 with `ValueError` before serialization.
+The error identifies the Unicode code point and XML location without echoing
+the full caller value. This includes NUL, other forbidden C0 controls, unpaired
+surrogates, U+FFFE and U+FFFF. No caller characters are silently deleted.
+
+Legal Unicode, XML metacharacters, tab, newline and carriage return remain
+supported, subject to XML whitespace normalization. On Python 3.11/3.12, pretty
+output can additionally normalize whitespace inside caller IDs; that existing
+defect is tracked separately as treesitter-chunker#450. Use compact output when
+those IDs must retain their whitespace on those versions.
+
+Rejected file export leaves an existing file unchanged and creates no new file.
+Remove the invalid metadata value or name and retry on the same exporter;
+invalid new names are rejected before they enter its cached key registry.
+Existing valid custom key declarations remain intact. Character validation
+does not validate GraphML schema or repair duplicate label keys
+(treesitter-chunker#169).
 
 ## Compatibility
 

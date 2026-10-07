@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Plain and yEd GraphML reject XML 1.0-invalid characters before serialization
+  with code-point/location diagnostics. Failed file export preserves existing
+  output; removing invalid metadata names or values permits same-instance retry
+  without poisoning cached key declarations (treesitter-chunker#168 and
+  treesitter-chunker#451).
+
 - C++ nullptr, override, final, static_assert, concept and co_yield hints
   require complete keyword boundaries rather than matching identifier fragments.
 
