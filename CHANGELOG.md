@@ -15,7 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (treesitter-chunker#444). Regenerate DOT and update serialized-ID joins for
   6.0.0; raw graph/chunk IDs are unchanged. See
   [graph ID migration](docs/graphml_export.md#graph-id-migration-for-600).
-  Relationship-label quoting remains treesitter-chunker#473.
 
 - Streaming and VFS extraction in every language honor its configured
   ignored-subtree boundaries, excluding previously emitted descendant chunks
@@ -61,6 +60,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Unreleased changes must wait for that major release rather than shipping in 5.x.
 
 ### Fixed
+
+- Direct DOT relationship labels retain quotes, literal backslashes, Unicode,
+  tabs and carriage returns through actual Graphviz compilation; physical LF
+  produces centered label lines in string/file output (treesitter-chunker#473).
+  Caller backslash escapes now render literally; use physical LF for lines.
+  HTML entities remain interpreted by Graphviz (treesitter-chunker#478).
+  Node labels/tooltips remain separate work in treesitter-chunker#476.
 
 - The direct Neo4j Cypher exporter writes the exact generated UTF-8 payload on
   Windows and Linux, preserving embedded LF, CR and CRLF in caller IDs and

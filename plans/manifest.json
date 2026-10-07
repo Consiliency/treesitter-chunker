@@ -2395,6 +2395,42 @@
       "task_summary": "Preserve distinct caller DOT identities and directed compiled endpoints with real parser fixtures and a named punctuation-collapse mutation",
       "type": "detailed",
       "updated_at": "2026-10-07T14:56:41Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-07T15:51:20.468122+00:00",
+      "file": "plans/detailed-dot-relationship-labels-473.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-dot-relationship-labels-473/.dev-skills/handoffs/codex-plan-detailed/20261006-dot-relationship-labels-473.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-07T15:51:20.468122+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-dot-relationship-labels-473.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T15:53:24Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-dot-relationship-labels-473.md",
+            "run_id": "20261006-dot-relationship-labels-473"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-dot-relationship-labels-473/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "dot-relationship-labels-473",
+      "status": "executing",
+      "task_summary": "Preserve direct DOT relationship label text with actual parser/compiler contracts and two named mutations",
+      "type": "detailed",
+      "updated_at": "2026-10-07T15:53:24Z"
     }
   ],
   "schema_version": 1
