@@ -33,7 +33,10 @@ attribute whitespace remain treesitter-chunker#169 and treesitter-chunker#450.
 2. The error names the invalid Unicode code point and the XML location (tag plus
    text/tail or attribute name). Do not include the caller's full value in the
    diagnostic. Both compact and pretty export fail deliberately before producing
-   an unusable string. yEd enabled and disabled use the same contract.
+   an unusable string. yEd enabled and disabled use the same contract. Graph
+   attribute names are outside this value-character rule (treesitter-chunker#452);
+   metadata property names are validated as key attribute values. The package-level
+   structured exporter is separate from these two direct modules.
 3. Legal Unicode, ordinary XML metacharacters and allowed whitespace still yield
    parseable XML. Retain field values under normal XML whitespace normalization,
    node/edge identity and relationships, and yEd graphics. No stripping,
@@ -117,7 +120,7 @@ before exact-head merge/issue closure and pruning clean merged worktrees.
 ## Acceptance criteria
 
 - [ ] Real parsed fixture chunks prove deliberate actionable rejection across
-  plain/yEd, pretty/compact/delegated output for forbidden text and attributes;
+  plain/yEd, pretty/compact/delegated output for forbidden text and attribute values;
   all three named actual mutations fail and exact restorations pass with bound hashes.
 - [ ] Actual exported legal Unicode/XML characters parse with retained IDs,
   endpoints and graphics. Rejected file export preserves existing output, creates
@@ -138,3 +141,15 @@ the source, both test modules and actual fixture hashes are bound in
 `/tmp/chunker-168-mutation-bindings.json`. These are local observations only:
 original full verification, Windows, hosted jobs, four code reviews and the
 manual Astra president remain mandatory before merge and issue closure.
+
+All four CODE R1 seats completed at 258a1dea. Original six/locked refresh/full
+4351 passed/four existing skips, actual Windows 374 focused/204 standing/one
+existing skip and all exact-head hosted jobs passed. Three seats agreed; Opus
+required the guide/changelog to qualify text/tail/attribute-value validation and
+name the direct modules. The separately reproduced graph attribute-name defect
+is filed as treesitter-chunker#452. R2 changes only those docs and this record;
+all production/test/fixture bytes remain unchanged. Opus's raw manifest count
+59 to 60 is corrected by actual JSON comparison: 51 canonical rows are retained
+exactly, with this one executing row added for 52. R1 raw evidence and its failed
+premature freeze attempt remain archived as unaccepted; no R1 approval is inferred.
+Four bounded R2 confirmations and fresh exact-head gates are required.

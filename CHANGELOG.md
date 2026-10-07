@@ -19,11 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Plain and yEd GraphML reject XML 1.0-invalid characters before serialization
-  with code-point/location diagnostics. Failed file export preserves existing
+- The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter` modules
+  reject XML 1.0-invalid characters in element text, tail and attribute values
+  before serialization with code-point/location diagnostics. Metadata names are
+  checked as key attribute values; graph attribute names remain unvalidated
+  (treesitter-chunker#452). File export rejected by this check preserves existing
   output; removing invalid metadata names or values permits same-instance retry
   without poisoning cached key declarations (treesitter-chunker#168 and
-  treesitter-chunker#451).
+  treesitter-chunker#451). The package-level structured exporter is separate.
 
 - C++ nullptr, override, final, static_assert, concept and co_yield hints
   require complete keyword boundaries rather than matching identifier fragments.

@@ -184,8 +184,13 @@ All XML special characters in code content and metadata are properly escaped:
 - `>` → `&gt;`
 - `"` → `&quot;` (in attributes)
 
-Plain and yEd export, including compact, pretty and `use_yed=False` output,
-reject characters forbidden by XML 1.0 with `ValueError` before serialization.
+The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter` modules,
+including compact, pretty and `use_yed=False` output, reject XML 1.0-forbidden
+characters in element text, tail and attribute values with `ValueError` before
+serialization. Metadata property names are checked because they become key
+attribute values. Graph attribute names are not validated; malformed names can
+still produce unusable XML (treesitter-chunker#452). The package-level
+`chunker.export.GraphMLExporter` is a separate structured exporter.
 The error identifies the Unicode code point and XML location without echoing
 the full caller value. This includes NUL, other forbidden C0 controls, unpaired
 surrogates, U+FFFE and U+FFFF. No caller characters are silently deleted.
@@ -196,7 +201,8 @@ output can additionally normalize whitespace inside caller IDs; that existing
 defect is tracked separately as treesitter-chunker#450. Use compact output when
 those IDs must retain their whitespace on those versions.
 
-Rejected file export leaves an existing file unchanged and creates no new file.
+File export rejected by this character check leaves an existing file unchanged
+and creates no new file.
 Remove the invalid metadata value or name and retry on the same exporter;
 invalid new names are rejected before they enter its cached key registry.
 Existing valid custom key declarations remain intact. Character validation
