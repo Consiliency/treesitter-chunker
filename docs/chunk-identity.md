@@ -57,7 +57,9 @@ and exclude unnamed keyword leaves. Earlier versions also emitted keyword-only
 `lambda` records. Regenerate Python chunk collections and remove those records
 from downstream indexes when adopting 6.0.0 (treesitter-chunker#446). The identity
 algorithm and IDs of retained chunks for the same source and file path are
-unchanged. Existing ignored-subtree rules still apply.
+unchanged. Regular extraction keeps its existing ignored-subtree rules.
+Streaming traversal of ignored strings remains a separate gap tracked in
+treesitter-chunker#466; this selection repair does not change that policy.
 
 The two APIs preserve spans, contents, occurrence IDs, parents and routes for
 the same-path Python lambda fixture. This does not certify all languages or

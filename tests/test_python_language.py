@@ -271,7 +271,11 @@ class TestPythonLambdaExpressions:
     def test_simple_lambda(tmp_path):
         """Test standalone lambda expressions."""
         src = tmp_path / "lambda.py"
-        src.write_text("\nsquare = lambda x: x ** 2\nadd = lambda x, y: x + y\n")
+        src.write_text(
+            "\nsquare = lambda x: x ** 2\nadd = lambda x, y: x + y\n",
+            encoding="utf-8",
+            newline="",
+        )
         chunks = chunk_file(src, "python")
         lambda_chunks = [c for c in chunks if c.node_type == "lambda"]
         source = src.read_bytes()
@@ -292,6 +296,8 @@ def process_numbers(numbers):
     filtered = filter(lambda x: x > 10, squared)
     return list(filtered)
 """,
+            encoding="utf-8",
+            newline="",
         )
         chunks = chunk_file(src, "python")
         func_chunk = next(c for c in chunks if c.node_type == "function_definition")
@@ -325,6 +331,8 @@ def sort_data(data):
         )
     )
 """,
+            encoding="utf-8",
+            newline="",
         )
         chunks = chunk_file(src, "python")
         func_chunk = next(c for c in chunks if c.node_type == "function_definition")

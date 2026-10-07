@@ -12,8 +12,9 @@ Complete named lambda expressions remain chunks; unnamed keyword leaves never
 become Python chunks. Preserve named function/class selection, routes, parents,
 content, byte spans and retained chunk IDs. The output removes erroneous chunks
 and belongs with accumulated Unreleased changes reserved for 6.0.0.
-Existing ignored-subtree rules remain; this does not add previously ignored
-expressions or certify parity outside the declared fixture contracts.
+Regular extraction retains its ignored-subtree rules. Streaming traversal of
+ignored strings is separately tracked in treesitter-chunker#466; this slice
+does not repair that policy or certify parity outside its fixture contracts.
 
 ## Research summary
 
@@ -152,3 +153,41 @@ Original six/locked refresh/full suite, fresh exact-head Windows focus/standing,
 hosted checks, four substantive manual CODE reviews and final supplemental Astra
 chair remain required. Their completion is recorded in the immutable private
 packet and acceptance comment, rather than changing reviewed candidate bytes.
+
+### R1 hold and R2 reconciliation
+
+All four R1 opinions and the original runner completed before reconciliation.
+Opus and Astra returned PARTIALLY AGREE because the three strengthened lambda
+fixtures used platform-translated writes while asserting LF byte offsets;
+Gemini and Sol returned AGREE. The original six checks, locked refresh and full
+suite passed (4431 passed, four skipped), but the actual Windows focused run
+failed six cases and did not reach its standing preflight. Its driver returned
+one. The R1 head, raw opinions, passing original seal and failed Windows logs
+are preserved as excluded history, not acceptance for the new candidate.
+
+Accepted treesitter-chunker#467 / treesitter-chunker#465 and
+treesitter-chunker#469 / treesitter-chunker#464 / treesitter-chunker#470 resolve
+the inherited Windows Unicode/permission and raw newline/CLI oracle failures.
+Their accepted main was integrated by normal merge, retaining all 60 canonical
+manifest rows plus this own row, with no force, rebase, parser-pin or golden
+change. The raw decoder and its migration remain prerequisite behavior rather
+than a selector workaround. The three strengthened lambda fixtures now write
+explicit UTF-8 and LF; their source text and exact expression/span assertions
+are unchanged. Identity guidance explicitly separates the ignored-string
+streaming gap in treesitter-chunker#466.
+
+R2 requires fresh current-byte baseline and both named selector mutations with
+opposite-API controls, exact restorations and retained named tuple snapshots.
+The expanded focused group includes accepted raw-span contracts. Fresh original
+six/refresh/full, actual Windows mutation/restore/focus/standing, exact hosted
+checks, all four manual tools-enabled CODE R2 reviews and the supplemental Astra
+chair must complete before acceptance. R2 is the second of at most three
+complete substantive code rounds; no R1 result substitutes for a current gate.
+
+An initial R2 focused run overlapped local mutation preparation and is excluded
+as independent evidence; a fresh focused run after exact restoration passes
+563 tests. An initial private snapshot helper passed an unsupported constructor
+argument to StreamingChunker and failed; its finally block restored both source
+files exactly. The corrected public streaming API helper captures all four
+API/metadata projections successfully, retaining four named tuples and removing
+two keyword records each. Both setup histories are preserved separately.
