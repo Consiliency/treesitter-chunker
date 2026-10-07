@@ -20,7 +20,7 @@ that evaluator. Own evidence is allowlisted at /tmp/chunker-419-*.
 - chunker/languages/version_detection/go_detector.py: supplement the existing
   modern matches with every tag from a complete, unparenthesized conjunction
   consisting solely of positive go<major>.<minor> tags joined by &&. Anchor the
-  directive to a complete line and accept horizontal whitespace/CRLF. Feed all
+  directive to a complete column-zero line and accept horizontal whitespace/CRLF. Feed all
   captured pairs into the existing numeric maximum. Preserve single tags,
   existing modern-before-legacy and module precedence, and all fallback branches.
   Do not reinterpret OR, negation, parentheses, platform tags or legacy syntax.
@@ -66,7 +66,7 @@ consumer lock, broker, ledger or checkpoint edits; no percentage or IF claim.
 
 ## Acceptance criteria
 
-- [ ] Real parsed positive release-only conjunctions retain all tags and select
+- [ ] Real parsed column-zero positive release-only conjunctions retain all tags and select
   the numeric maximum regardless of order, proven by the focused module.
 - [ ] Existing single/separate-line numeric and modern/module precedence remain;
   last_tag_only fails earlier-maximum cases and exact restoration passes.

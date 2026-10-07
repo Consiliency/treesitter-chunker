@@ -7,8 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Go version hints retain every release tag in a complete positive release-only
-  `//go:build` conjunction, choosing the numeric maximum regardless of order.
+- Go version hints retain every release tag in a column-zero, unparenthesized
+  positive release-only `//go:build` conjunction, choosing the numeric maximum
+  regardless of order.
 
 - Python version detection prefers declared PEP 621 `requires-python` constraints
   over broad project classifiers, preserving the constraint operators.
