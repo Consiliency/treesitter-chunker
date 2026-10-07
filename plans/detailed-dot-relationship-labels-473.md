@@ -106,8 +106,6 @@ label/tooltip defect remains treesitter-chunker#476.
   exact hosted jobs, four complete CODE opinions, supplemental Astra decision
   and standalone archive qualify the repair before merge.
 
-## Limits
-
 ## Complete R1 reconciliation
 
 All four CODE R1 opinions and original/full/native Windows completed before
@@ -121,6 +119,8 @@ and document caller backslash migration. Production/test bytes remain unchanged.
 Regenerate Windows evidence with its identity bound to the actual Linux mutant
 digest, then require a fresh exact-head original, native Windows, hosted checks
 and complete CODE R2 under the existing three-round allowance.
+
+## Limits
 
 No arbitrary DOT attribute/label completeness, unsupported entity/NUL/surrogate or
 cross-renderer layout claim. Node labels/tooltips remain treesitter-chunker#476;
