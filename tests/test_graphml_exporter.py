@@ -474,6 +474,49 @@ def test_neo4j_csv_retains_boundary_field_whitespace(
 @pytest.mark.parametrize("line_break", ["\n", "\r", "\r\n"], ids=["lf", "cr", "crlf"])
 @pytest.mark.parametrize("reverse", [False, True], ids=["forward", "reverse"])
 @pytest.mark.parametrize("with_edges", [False, True], ids=["no-edges", "edges"])
+def test_neo4j_cypher_file_preserves_generated_newlines(
+    parsed_same_span, line_break, reverse, with_edges, tmp_path
+):
+    parent, child = parsed_same_span[:2]
+    parent.node_id = "caller" + line_break + "parent"
+    child.node_id = "caller" + line_break + "child"
+    value = "value" + line_break + "next中文😀"
+    for chunk in (parent, child):
+        chunk.metadata["zz_multiline"] = value
+    order = [child, parent] if reverse else [parent, child]
+    exporter = Neo4jExporter()
+    exporter.add_chunks(order)
+    if with_edges:
+        exporter.add_relationship(*order, "CALLS", {"zz_multiline": value})
+    generated = exporter.export_string(fmt="cypher")
+    for chunk in order:
+        assert generated.count(f"nodeId: '{chunk.node_id}'") == (2 if with_edges else 1)
+        assert exporter.nodes[chunk.node_id].properties["zz_multiline"] == value
+    assert generated.index(f"nodeId: '{order[0].node_id}'") < generated.index(
+        f"nodeId: '{order[1].node_id}'"
+    )
+    assert generated.count(f"zz_multiline: '{value}'") == (3 if with_edges else 2)
+    assert ("MATCH (a:CodeChunk" in generated) == with_edges
+    assert ("CREATE (a)-[:CALLS" in generated) == with_edges
+    assert list(exporter.nodes) == [chunk.node_id for chunk in order]
+    if with_edges:
+        edge = exporter.edges[0]
+        assert (edge.source_id, edge.target_id) == tuple(
+            chunk.node_id for chunk in order
+        )
+    else:
+        assert not exporter.edges
+    path = tmp_path / "actual.cypher"
+    exporter.export(path, fmt="cypher")
+    assert path.read_bytes() == generated.encode("utf-8")
+    with path.open(encoding="utf-8", newline="") as f:
+        assert f.read() == generated
+    assert list(tmp_path.iterdir()) == [path]
+
+
+@pytest.mark.parametrize("line_break", ["\n", "\r", "\r\n"], ids=["lf", "cr", "crlf"])
+@pytest.mark.parametrize("reverse", [False, True], ids=["forward", "reverse"])
+@pytest.mark.parametrize("with_edges", [False, True], ids=["no-edges", "edges"])
 def test_neo4j_csv_files_preserve_embedded_newlines(
     parsed_same_span, line_break, reverse, with_edges, tmp_path
 ):
