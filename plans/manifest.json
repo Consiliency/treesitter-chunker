@@ -1813,6 +1813,42 @@
       "task_summary": "Repair treesitter-chunker#419 positive Go conjunction extraction",
       "type": "detailed",
       "updated_at": "2026-10-07T01:21:51Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-07T01:25:57.547133+00:00",
+      "file": "plans/detailed-cpp-keyword-boundary-424.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-cpp-keyword-boundary-424/.dev-skills/handoffs/codex-plan-detailed/20261006-cpp-keyword-boundary-424.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-07T01:25:57.547133+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-cpp-keyword-boundary-424.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T02:13:58Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-cpp-keyword-boundary-424.md",
+            "run_id": "20261007-cpp-keyword-boundary-424"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-cpp-keyword-boundary-424/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "cpp-keyword-boundary-424",
+      "status": "executing",
+      "task_summary": "Plan treesitter-chunker#424 constexpr identifier boundary after chronology",
+      "type": "detailed",
+      "updated_at": "2026-10-07T02:13:58Z"
     }
   ],
   "schema_version": 1

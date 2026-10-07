@@ -210,7 +210,7 @@ class CppVersionDetector:
                 r"nullptr": "11",  # nullptr
                 r"override\b": "11",  # override specifier
                 r"final\b": "11",  # final specifier
-                r"constexpr\s+": "11",  # constexpr
+                r"\bconstexpr\s+": "11",  # constexpr
                 r"static_assert\s*\(": "11",  # static_assert
                 r"std::unique_ptr": "11",  # unique_ptr
                 r"std::shared_ptr": "11",  # shared_ptr
