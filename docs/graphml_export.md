@@ -7,7 +7,7 @@ The GraphML exporter converts code chunks and their relationships into GraphML f
 ## Features
 
 ### Core Features
-- **Valid GraphML 1.0 output** - Generates standards-compliant GraphML files
+- **GraphML XML output** - Generates XML documents with GraphML elements; schema validation is separate
 - **Full metadata support** - Exports all chunk properties as node/edge attributes
 - **Relationship preservation** - Maintains all code relationships (calls, imports, contains)
 - **XML safety** - Properly escapes special characters in code content
@@ -101,12 +101,13 @@ The exporter automatically generates GraphML key definitions for all unique attr
 ### Node Structure
 
 Each code chunk becomes a node with:
-- Unique ID based on file path and line numbers
+
+- Occurrence ID from `node_id`, then `chunk_id`, then the existing `generate_id()` fallback
 - Label showing the chunk type
 - All properties from the chunk metadata
 
 ```xml
-<node id="src/main.py:1:10">
+<node id="11ab83ccfc590ede648273b0f793478287d72165">
   <data key="n_label">function</data>
   <data key="n_file_path">src/main.py</data>
   <data key="n_start_line">1</data>
@@ -125,11 +126,47 @@ Relationships become directed edges with:
 - Additional properties from relationship metadata
 
 ```xml
-<edge id="e0" source="src/main.py:1:10" target="src/utils.py:5:15">
+<edge id="e0" source="11ab83ccfc590ede648273b0f793478287d72165" target="de01d945ef49728dd8a6e30c7455dc5cc246c22f">
   <data key="e_label">CALLS</data>
   <data key="e_line">3</data>
 </edge>
 ```
+
+### Graph ID migration for 6.0.0
+
+The next major release changes the legacy graph IDs from line spans to existing
+chunk occurrence IDs. Distinct chunks sharing a line span now remain distinct.
+This applies to the direct exporter modules `chunker.export.graphml_exporter`,
+`graphml_yed_exporter`, `dot_exporter` and `neo4j_exporter`. The package-level
+`chunker.export` structured exporters and the database helper are separate APIs.
+
+Regenerate graph outputs and rebuild indexes/joins from emitted IDs. Do not parse
+IDs as file/line strings. File paths, byte positions, routes and content changes
+can rekey an occurrence. The retained `file_path`, `start_line` and `end_line`
+properties can reconstruct a legacy span alias.
+
+Automatic parent resolution uses only the chunks supplied to that extraction
+call. `parent_chunk_id` looks up `chunk_id`; `metadata["parent_id"]` first looks
+up exact `node_id`/`chunk_id` aliases, then a unique legacy span alias. An exact
+unique match wins over span ambiguity. A referenced alias identifying different
+canonical nodes raises an actionable `ValueError` naming the field and alias
+before any edge is appended; prior edges stay unchanged. Repeated copies of one
+occurrence are harmless, unknown aliases are ignored, and unreferenced alias
+collisions do not reject extraction. Different unambiguous parents may produce
+independent CONTAINS and DEFINES relationships.
+
+Ordinary populated IDs agree with Unified conversion. If callers clear both
+fields, the graph fallback can generate an ID, but that generated value is not
+an exact parent alias and UnifiedGraphNode.from_chunk retains its empty fallback.
+DOT punctuation encoding for arbitrary caller IDs remains treesitter-chunker#444;
+distinct serialized DOT IDs are verified for parser-generated hexadecimal IDs.
+Neo4j CSV's pre-existing whole-block whitespace stripping can change a caller ID
+with leading whitespace in its first row (treesitter-chunker#448). This identity
+migration does not repair that serializer or establish whitespace-ID CSV fidelity.
+XML character rejection is described below (treesitter-chunker#168 and
+treesitter-chunker#451). Duplicate-key handling remains treesitter-chunker#169.
+This migration establishes node/endpoint identity; XML schema completeness is
+separate.
 
 ## Type Inference
 
@@ -146,6 +183,31 @@ All XML special characters in code content and metadata are properly escaped:
 - `<` → `&lt;`
 - `>` → `&gt;`
 - `"` → `&quot;` (in attributes)
+
+The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter` modules,
+including compact, pretty and `use_yed=False` output, reject XML 1.0-forbidden
+characters in element text, tail and attribute values with `ValueError` before
+serialization. Metadata property names are checked because they become key
+attribute values. Graph attribute names are not validated; malformed names can
+still produce unusable XML (treesitter-chunker#452). The package-level
+`chunker.export.GraphMLExporter` is a separate structured exporter.
+The error identifies the Unicode code point and XML location without echoing
+the full caller value. This includes NUL, other forbidden C0 controls, unpaired
+surrogates, U+FFFE and U+FFFF. No caller characters are silently deleted.
+
+Legal Unicode, XML metacharacters, tab, newline and carriage return remain
+supported, subject to XML whitespace normalization. On Python 3.11/3.12, pretty
+output can additionally normalize whitespace inside caller IDs; that existing
+defect is tracked separately as treesitter-chunker#450. Use compact output when
+those IDs must retain their whitespace on those versions.
+
+File export rejected by this character check leaves an existing file unchanged
+and creates no new file.
+Remove the invalid metadata value or name and retry on the same exporter;
+invalid new names are rejected before they enter its cached key registry.
+Existing valid custom key declarations remain intact. Character validation
+does not validate GraphML schema or repair duplicate label keys
+(treesitter-chunker#169).
 
 ## Compatibility
 

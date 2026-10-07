@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ BREAKING
+
+- The four direct graph exporter modules retain distinct same-span chunks using
+  existing occurrence IDs instead of line-span IDs. Regenerate graph outputs and
+  rebuild ID-based joins. Referenced ambiguous parent aliases now raise before
+  edge insertion; unique legacy span aliases remain supported. See
+  [graph ID migration](docs/graphml_export.md#graph-id-migration-for-600).
+  These changes require 6.0.0; after merging this migration, all accumulated
+  Unreleased changes must wait for that major release rather than shipping in 5.x.
+
+### Fixed
+
+- The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter` modules
+  reject XML 1.0-invalid characters in element text, tail and attribute values
+  before serialization with code-point/location diagnostics. Metadata names are
+  checked as key attribute values; graph attribute names remain unvalidated
+  (treesitter-chunker#452). File export rejected by this check preserves existing
+  output; removing invalid metadata names or values permits same-instance retry
+  without poisoning cached key declarations (treesitter-chunker#168 and
+  treesitter-chunker#451). The package-level structured exporter is separate.
+
 - C++ nullptr, override, final, static_assert, concept and co_yield hints
   require complete keyword boundaries rather than matching identifier fragments.
 
