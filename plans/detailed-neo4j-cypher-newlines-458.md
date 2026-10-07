@@ -117,3 +117,23 @@ acceptance. No coverage-percentage or timing gate is introduced.
 - [ ] Original six/refresh/full passing seal, actual Windows/standing, exact
   hosted, four substantive code agreements and final manual Astra ruling
   qualify this bounded repair; independent defects are separately filed.
+
+## Execution notes
+
+- Accepted treesitter-chunker#461 is integrated before source edits. All 57
+  canonical manifest rows remain exact plus the own executing 58th row.
+  Removing only the new test reconstructs accepted test bytes exactly, retaining
+  all 436 inherited controls, including Bash filename and LF/CSV transport cases.
+- Twelve real parsed exports cover LF/CR/CRLF, both insertion orders and
+  edge/no-edge graphs, literal generated IDs/properties, exact raw UTF-8 payload,
+  newline-preserving file reads, graph endpoints and output-path isolation.
+  This checks existing string transport and never executes or parses Cypher.
+- Linux candidate and actual unchanged accepted production both pass 448 focused
+  tests. Linux is a control; actual Windows unchanged baseline and named
+  `translate_cypher_file_newlines` mutation/restoration are mandatory before
+  acceptance. Source/tests remain frozen during these checks and reviews.
+- Local Ruff, Black and mypy gate pass with no baseline changes. An initial
+  malformed patch hunk was rejected atomically before any file changes or tests;
+  its corrected application is the only source delta. Original six/refresh/full,
+  actual Windows/standing, exact hosted, all four CODE opinions and final Astra
+  ruling remain mandatory independent gates.

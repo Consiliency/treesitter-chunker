@@ -95,7 +95,11 @@ relationship filename options are quoted as single literal Bash arguments,
 including spaces, apostrophes, semicolons, dollar expansion syntax, backticks
 and Unicode (treesitter-chunker#460). This uses POSIX shell quoting, not CMD or
 PowerShell syntax, and does not certify a live Neo4j import or server version.
-Direct Cypher file newline fidelity remains treesitter-chunker#458.
+Direct Cypher files retain the exact UTF-8 bytes of the generated string on
+Windows and Linux, including embedded LF, CR and CRLF in caller IDs and string
+properties (treesitter-chunker#458). Read with `newline=""` to preserve those
+line breaks. This is file transport fidelity, not Cypher syntax or live database
+compatibility certification.
 
 ## JSON Export
 
