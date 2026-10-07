@@ -301,10 +301,11 @@ def parsed_same_span():
         (("a b", "a_b"), None),
         (('a"b', "plain"), None),
         (("a\\b", "plain"), None),
+        (("a\\", "a"), {"tc_615c", "a"}),
         (("a\nb", "a\rb"), None),
         (("a\tb", "a\x00b"), None),
-        (("Σ", "σ"), None),
-        (("é", "e\u0301"), None),
+        (("Σ", "σ"), {"tc_cea3", "tc_cf83"}),
+        (("é", "e\u0301"), {"tc_c3a9", "tc_65cc81"}),
         (("a-b", "tc_612d62"), {"tc_612d62", "tc_74635f363132643632"}),
         (("00aF", "00Af"), {"00aF", "00Af"}),
     ],
@@ -316,10 +317,10 @@ def test_dot_caller_ids_preserve_compiled_graph(
     if dot is None:
         pytest.skip("Graphviz executable is required for compiled DOT contracts")
 
-    def compile_graph(payload):
+    def compile_graph(payload, path=None):
         result = subprocess.run(
-            [dot, "-Tjson"],
-            input=payload,
+            [dot, "-Tjson", *([str(path)] if path is not None else [])],
+            input=payload if path is None else None,
             encoding="utf-8",
             capture_output=True,
             timeout=30,
@@ -352,12 +353,12 @@ def test_dot_caller_ids_preserve_compiled_graph(
     assert [(chunk.chunk_id, chunk.content) for chunk in chunks] == original
     output = exporter.export_string(use_clusters=use_clusters)
     assert output == exporter.export_string(use_clusters=use_clusters)
-    if file_output:
-        path = tmp_path / "caller.dot"
+    path = tmp_path / "caller.dot" if file_output else None
+    if path is not None:
         exporter.export(path, use_clusters=use_clusters)
         output = path.read_text(encoding="utf-8")
         assert output == exporter.export_string(use_clusters=use_clusters)
-    graph = compile_graph(output)
+    graph = compile_graph(output, path)
     cluster_count = graph.get("_subgraph_cnt", 0)
     nodes = graph["objects"][cluster_count:]
     assert len(nodes) == 2

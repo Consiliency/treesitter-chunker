@@ -29,7 +29,10 @@ digests, Git head, actual dot -Tjson exits and compiled graph semantics.
   labels and cluster membership. Include punctuation pairs, quote/backslash,
   LF/CR/tab/NUL, Unicode, encoded-prefix alias and ordinary hexadecimal IDs.
   Exercise string/file output, flat/clustered graphs, repeat determinism and
-  ordinary parser-ID stability. Actual Graphviz JSON is the independent semantic
+  ordinary parser-ID stability. File cases give the actual exported path to
+  Graphviz. Literal Unicode encoded names establish the UTF-8 byte formula,
+  preserving normalization distinctions. A trailing backslash exercises the
+  old invalid quoted-ID boundary. Actual Graphviz JSON is the independent semantic
   oracle; the formatter under test is never the expected-ID oracle. Compiler
   absence may skip compiler cases on a host, never qualify compiler acceptance.
 - docs/graphml_export.md and CHANGELOG.md: explain nonhex serialized-ID migration
@@ -54,6 +57,10 @@ digests, Git head, actual dot -Tjson exits and compiled graph semantics.
    production bytes and require all focused cases to pass. Record source/test
    digests and actual process exits. This one mutation is one fault family;
    baseline and mutation runs are not two independent mutation kills.
+   A second named production mutation encode_dot_non_ascii_ids_as_code_points
+   substitutes code-point hexadecimal for UTF-8 byte hexadecimal; the literal
+   Unicode cases must fail despite retaining distinct nodes. Restore exact
+   source bytes and require passing contracts after each mutation.
 4. Fresh sealed original six checks, locked refresh and full tests/spec_tests;
    exact-head native Windows focused tests and standing preflight; exact-head
    hosted required checks. Record Windows compiler availability and actual
@@ -83,8 +90,9 @@ digests, Git head, actual dot -Tjson exits and compiled graph semantics.
 - [ ] Actual parsed nodes with distinct supported caller IDs survive Graphviz
   compilation as distinct nodes with correct edge direction, labels and cluster
   membership across string/file and flat/clustered output; ordinary hexadecimal
-  IDs and deterministic repeat output are preserved.
-- [ ] The named punctuation-collapse production mutation fails the new semantic
+  IDs, literal UTF-8 encoded names and deterministic repeat output are preserved.
+- [ ] Both named punctuation-collapse and code-point-encoding production
+  mutations fail their listed semantic/UTF-8 formula contracts,
   contracts, exact source restoration passes, and immutable hashes/actual exits
   bind this fault coverage without fabricated independent kills.
 - [ ] Fresh sealed original six/refresh/full, current native Windows/standing,
