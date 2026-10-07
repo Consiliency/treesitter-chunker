@@ -128,3 +128,32 @@ No coverage-percentage, performance or duration acceptance gate is added.
 - [ ] Original six/refresh/full seal, actual Windows/standing, required hosted,
   four substantive agreements and final manual Astra ruling qualify only this
   bounded repair; separate defects are filed rather than silently fixed.
+
+## Execution notes
+
+- Accepted treesitter-chunker#459 is integrated before implementation; all 56
+  canonical manifest rows remain exact, plus the own executing row. Removing
+  only the new test and its `shlex` import reconstructs accepted test bytes
+  exactly, retaining all 422 inherited controls.
+- Fourteen actual parsed export cases exercise seven basenames with/no edges.
+  Actual Linux Bash uses only the private fixture on PATH and compares NUL-
+  delimited UTF-8 argument bytes. The independent POSIX lexer checks the complete
+  continued command on both platforms. No real database command is reachable.
+- The formatted final baseline fails 10 new cases with 426 passing controls;
+  `unquote_node_import_filename` fails 10 with 426 controls and
+  `unquote_relationship_import_filename` fails five edge cases with 431 controls.
+  Every exact restoration passes all 436 focused tests with source, test,
+  fixture and supporting hashes bound in
+  `/tmp/chunker-460-final-mutation-bindings.json`.
+- The initial Black check requested formatting of two changed files. Initial
+  pre-format passing tests and mutation records are retained but excluded from
+  final formatted-source acceptance. Formatting was applied before the fresh
+  baseline and both mutations above; no baseline or accepted test was rewritten.
+- Plan metadata setup initially mixed canonical/home aliases, then used the
+  wrong post-append JSON key. The successful typed row was preserved, the actual
+  `plans` key and all canonical rows verified before supported publication.
+  The failed publisher attempt had no spec and published nothing; draft
+  treesitter-chunker#461 was then published successfully through the supported
+  helper. These were setup errors, not product defects or approval evidence.
+- Original six checks/locked refresh/full suite, exact Windows/standing, hosted
+  CI, four manual CODE opinions and the final Astra ruling remain mandatory.

@@ -2122,6 +2122,14 @@
             "run_id": "20261007-neo4j-import-arguments-460-plan"
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T10:18:21Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "run_id": "20261007-neo4j-import-arguments-460"
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -2129,10 +2137,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/neo4j-import-arguments-460/20261007-neo4j-import-arguments-460-plan.md",
       "roadmap_ref": null,
       "slug": "neo4j-import-arguments-460",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Preserve exact Bash import filename arguments for treesitter-chunker#460 after treesitter-chunker#459.",
       "type": "detailed",
-      "updated_at": "2026-10-07T10:15:52.153626+00:00"
+      "updated_at": "2026-10-07T10:18:21Z"
     }
   ],
   "schema_version": 1

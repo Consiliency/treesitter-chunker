@@ -1,6 +1,7 @@
 """Neo4j export implementation for code chunks."""
 
 import csv
+import shlex
 from io import StringIO
 from pathlib import Path
 from typing import Any
@@ -256,9 +257,13 @@ CREATE (a)-[:{edge.relationship_type}{prop_str}]->(b);"""
         cmd += "# Adjust paths and database name as needed\n\n"
         cmd += "neo4j-admin import \\\n"
         cmd += "  --database=neo4j \\\n"
-        cmd += f"  --nodes={nodes_path.name} \\\n"
+        nodes_arg = shlex.quote(f"--nodes={nodes_path.name}")
+        cmd += f"  {nodes_arg} \\\n"
         if relationships_path:
-            cmd += f"  --relationships={relationships_path.name} \\\n"
+            relationships_arg = shlex.quote(
+                f"--relationships={relationships_path.name}"
+            )
+            cmd += f"  {relationships_arg} \\\n"
         cmd += "  --skip-bad-relationships=true \\\n"
         cmd += "  --skip-duplicate-nodes=true\n"
         return cmd

@@ -90,10 +90,12 @@ with `newline=""` to preserve embedded line breaks. This direct CSV API is
 separate from the package-level structured export API and live database import.
 
 The generated `chunks_import.sh` helper retains LF shell syntax on Linux and
-Windows and is intended for Bash (treesitter-chunker#457). Its script transport
-and ordinary filename arguments do not certify a live Neo4j import. Filename
-quoting for spaces and shell punctuation remains treesitter-chunker#460; direct
-Cypher file newline fidelity remains treesitter-chunker#458.
+Windows and is intended for Bash (treesitter-chunker#457). Complete node and
+relationship filename options are quoted as single literal Bash arguments,
+including spaces, apostrophes, semicolons, dollar expansion syntax, backticks
+and Unicode (treesitter-chunker#460). This uses POSIX shell quoting, not CMD or
+PowerShell syntax, and does not certify a live Neo4j import or server version.
+Direct Cypher file newline fidelity remains treesitter-chunker#458.
 
 ## JSON Export
 
