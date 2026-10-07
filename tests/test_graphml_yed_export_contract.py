@@ -48,6 +48,55 @@ def test_yed_export_keeps_unique_nodes_edges_and_direction() -> None:
 
 
 @pytest.mark.parametrize("pretty", [False, True])
+@pytest.mark.parametrize("use_yed", [False, True])
+def test_yed_caller_labels_remain_distinct_from_structural_graphics(pretty, use_yed):
+    assert not get_parser("python").parse(FIXTURE.read_bytes()).root_node.has_error
+    chunks = chunk_file(FIXTURE, "python")
+    assert len(chunks) >= 2
+    exporter = GraphMLyEdExporter()
+    exporter.add_chunks(chunks[:2])
+    for chunk in chunks[:2]:
+        exporter.nodes[chunk.node_id].properties["label"] = "caller node 中文 &<>"
+    exporter.add_relationship(chunks[0], chunks[1], "CALLS", {"label": "caller edge"})
+    root = ET.fromstring(exporter.export_string(pretty_print=pretty, use_yed=use_yed))
+    keys = [key.get("id") for key in root.findall(f"{GRAPHML}key")]
+    assert len(keys) == len(set(keys))
+    graph = root.find(f"{GRAPHML}graph")
+    assert graph is not None
+    nodes = graph.findall(f"{GRAPHML}node")
+    assert {node.get("id") for node in nodes} == {chunk.node_id for chunk in chunks[:2]}
+    chunks_by_id = {chunk.node_id: chunk for chunk in chunks[:2]}
+    for node in nodes:
+        chunk = chunks_by_id[node.get("id")]
+        data = {item.get("key"): item.text for item in node.findall(f"{GRAPHML}data")}
+        assert data["node_label"] == chunk.node_type
+        assert data["n_label"] == "caller node 中文 &<>"
+        shape = node.find(f"{GRAPHML}data/{YED}ShapeNode")
+        if use_yed:
+            assert shape is not None
+            label = shape.find(f"{YED}NodeLabel")
+            assert label is not None and label.text is not None
+            assert label.text.startswith(chunk.node_type)
+        else:
+            assert shape is None
+    edge = graph.find(f"{GRAPHML}edge")
+    assert edge is not None
+    data = {item.get("key"): item.text for item in edge.findall(f"{GRAPHML}data")}
+    assert data["edge_label"] == "CALLS" and data["e_label"] == "caller edge"
+    graphics = edge.find(f"{GRAPHML}data/{YED}PolyLineEdge")
+    if use_yed:
+        assert graphics is not None
+        label = graphics.find(f"{YED}EdgeLabel")
+        assert label is not None and label.text == "CALLS"
+    else:
+        assert graphics is None
+    assert (edge.get("source"), edge.get("target")) == (
+        chunks[0].node_id,
+        chunks[1].node_id,
+    )
+
+
+@pytest.mark.parametrize("pretty", [False, True])
 def test_yed_graphics_are_validated_and_recover(pretty):
     assert not get_parser("python").parse(FIXTURE.read_bytes()).root_node.has_error
     chunks = chunk_file(FIXTURE, "python")

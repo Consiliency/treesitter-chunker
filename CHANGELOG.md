@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ⚠️ BREAKING
 
+- The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter` modules
+  use `node_label`/`edge_label` for structural labels. Caller `label` metadata
+  retains `n_label`/`e_label`, preserving distinct declarations and values.
+  Update key-ID consumers and regenerate outputs for 6.0.0; the package-level
+  structured exporter is separate. See
+  [label key migration](docs/graphml_export.md#structural-label-key-migration-for-600)
+  (treesitter-chunker#169).
+
 - The four direct graph exporter modules retain distinct same-span chunks using
   existing occurrence IDs instead of line-span IDs. Regenerate graph outputs and
   rebuild ID-based joins. Referenced ambiguous parent aliases now raise before

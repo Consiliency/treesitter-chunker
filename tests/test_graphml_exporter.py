@@ -79,8 +79,8 @@ class TestGraphMLExporter:
         )
         keys = root.findall(".//{http://graphml.graphdrawing.org/xmlns}key")
         key_ids = {key.get("id") for key in keys}
-        assert "n_label" in key_ids
-        assert "e_label" in key_ids
+        assert "node_label" in key_ids
+        assert "edge_label" in key_ids
         node_keys = [k for k in keys if k.get("for") == "node"]
         edge_keys = [k for k in keys if k.get("for") == "edge"]
         assert len(node_keys) > 0
@@ -100,7 +100,7 @@ class TestGraphMLExporter:
         assert node.get("id") == sample_chunk.node_id
         data_elements = node.findall(".//{http://graphml.graphdrawing.org/xmlns}data")
         data_dict = {d.get("key"): d.text for d in data_elements}
-        assert data_dict["n_label"] == "function"
+        assert data_dict["node_label"] == "function"
         assert data_dict["n_file_path"] == "test.py"
         assert data_dict["n_start_line"] == "1"
         assert data_dict["n_end_line"] == "5"
@@ -145,7 +145,7 @@ class TestGraphMLExporter:
         assert edge.get("target") == chunk2.node_id
         data_elements = edge.findall(".//{http://graphml.graphdrawing.org/xmlns}data")
         data_dict = {d.get("key"): d.text for d in data_elements}
-        assert data_dict["e_label"] == "CALLS"
+        assert data_dict["edge_label"] == "CALLS"
         assert data_dict["e_line"] == "3"
 
     @classmethod
@@ -657,3 +657,61 @@ def test_xml_validator_checks_tail_of_real_export(parsed_xml_graph):
     assert "private" not in str(error.value)
     graph.tail = "\t\n\r 中文😀"
     exporter._validate_xml_characters(root)
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_structural_and_caller_label_keys_are_disjoint(
+    parsed_xml_graph, pretty, reverse
+):
+    exporter, chunks, options = parsed_xml_graph
+    names = ["label", "node_label", "edge_label", "metadata_label"]
+    if reverse:
+        names.reverse()
+    node_values = {}
+    for index, chunk in enumerate(chunks):
+        values = {name: f'node-{index} {name} 中文 &<>"' for name in names}
+        exporter.nodes[chunk.node_id].properties.update(values)
+        node_values[chunk.node_id] = values
+    edge_values = {name: f'edge {name} 中文 &<>"' for name in names}
+    exporter.edges[0].properties.update(edge_values)
+    root = ET.fromstring(exporter.export_string(pretty_print=pretty, **options))
+    ns = "{http://graphml.graphdrawing.org/xmlns}"
+    keys = root.findall(f"{ns}key")
+    key_ids = [key.get("id") for key in keys]
+    assert len(key_ids) == len(set(key_ids))
+    declarations = {key.get("id"): key.attrib for key in keys}
+    assert declarations["node_label"]["for"] == "node"
+    assert declarations["edge_label"]["for"] == "edge"
+    for domain, prefix in [("node", "n_"), ("edge", "e_")]:
+        for name in names:
+            declaration = declarations[prefix + name]
+            assert declaration["for"] == domain
+            assert declaration["attr.name"] == name
+            assert declaration["attr.type"] == "string"
+    graph = root.find(f"{ns}graph")
+    assert graph is not None
+    nodes = graph.findall(f"{ns}node")
+    edges = graph.findall(f"{ns}edge")
+    assert {node.get("id") for node in nodes} == set(node_values)
+    assert len(edges) == 1
+    for domain, elements in [("node", nodes), ("edge", edges)]:
+        for element in elements:
+            data = element.findall(f"{ns}data")
+            data_keys = [item.get("key") for item in data]
+            assert len(data_keys) == len(set(data_keys))
+            assert all(declarations[key]["for"] == domain for key in data_keys)
+    chunks_by_id = {chunk.node_id: chunk for chunk in chunks}
+    for node in nodes:
+        chunk = chunks_by_id[node.get("id")]
+        data = {item.get("key"): item.text for item in node.findall(f"{ns}data")}
+        assert node.get("id") == chunk.node_id
+        assert data["node_label"] == chunk.node_type
+        assert {name: data["n_" + name] for name in names} == node_values[chunk.node_id]
+    edge = edges[0]
+    data = {item.get("key"): item.text for item in edge.findall(f"{ns}data")}
+    assert data["edge_label"] == "CALLS"
+    assert {name: data["e_" + name] for name in names} == edge_values
+    assert (edge.get("source"), edge.get("target")) == tuple(
+        chunk.node_id for chunk in chunks
+    )

@@ -91,7 +91,8 @@ exporter.extract_relationships(chunks)
 The exporter automatically generates GraphML key definitions for all unique attributes found in nodes and edges:
 
 ```xml
-<key id="n_label" for="node" attr.name="label" attr.type="string"/>
+<key id="node_label" for="node" attr.name="label" attr.type="string"/>
+<key id="edge_label" for="edge" attr.name="label" attr.type="string"/>
 <key id="n_file_path" for="node" attr.name="file_path" attr.type="string"/>
 <key id="n_start_line" for="node" attr.name="start_line" attr.type="int"/>
 <key id="n_chunk_type" for="node" attr.name="chunk_type" attr.type="string"/>
@@ -108,7 +109,7 @@ Each code chunk becomes a node with:
 
 ```xml
 <node id="11ab83ccfc590ede648273b0f793478287d72165">
-  <data key="n_label">function</data>
+  <data key="node_label">function</data>
   <data key="n_file_path">src/main.py</data>
   <data key="n_start_line">1</data>
   <data key="n_end_line">10</data>
@@ -127,10 +128,34 @@ Relationships become directed edges with:
 
 ```xml
 <edge id="e0" source="11ab83ccfc590ede648273b0f793478287d72165" target="de01d945ef49728dd8a6e30c7455dc5cc246c22f">
-  <data key="e_label">CALLS</data>
+  <data key="edge_label">CALLS</data>
   <data key="e_line">3</data>
 </edge>
 ```
+
+### Structural label key migration for 6.0.0
+
+The two direct GraphML modules use `node_label` for a chunk's structural type
+and `edge_label` for a relationship type. Caller metadata keeps `n_<name>` and
+`e_<name>` keys. In particular, caller metadata named `label` uses `n_label` or
+`e_label`; its original name, type and value remain separate from the structural
+label. Names such as `node_label`, `edge_label` and `metadata_label` are ordinary
+metadata and receive the same prefixes regardless of property insertion order.
+
+This is a BREAKING key-ID change reserved for 6.0.0. Regenerate graph output and
+update consumers that selected the old structural `n_label`/`e_label` keys to
+read `node_label`/`edge_label`. Select by key ID and domain when distinguishing
+structural labels from caller metadata: both still have `attr.name="label"`.
+Plain, yEd, compact, pretty and delegated output share this ID rule. The package-level
+structured exporter is a separate API; XSD validation is outside this repair
+(treesitter-chunker#169).
+
+NetworkX 3.6.1 imports fields by `attr.name`: plain/delegated import keeps one
+`label` value, and yEd graphics can overwrite caller labels. Its imported
+attributes therefore do not retain these fields independently. Use a reader
+that distinguishes key IDs when both values are needed; this interoperability
+gap remains treesitter-chunker#453. Raw key uniqueness does not certify every
+tool's imported attribute mapping.
 
 ### Graph ID migration for 6.0.0
 
@@ -164,7 +189,8 @@ Neo4j CSV's pre-existing whole-block whitespace stripping can change a caller ID
 with leading whitespace in its first row (treesitter-chunker#448). This identity
 migration does not repair that serializer or establish whitespace-ID CSV fidelity.
 XML character rejection is described below (treesitter-chunker#168 and
-treesitter-chunker#451). Duplicate-key handling remains treesitter-chunker#169.
+treesitter-chunker#451). Structural label-key separation is described above
+(treesitter-chunker#169).
 This migration establishes node/endpoint identity; XML schema completeness is
 separate.
 
@@ -206,12 +232,14 @@ and creates no new file.
 Remove the invalid metadata value or name and retry on the same exporter;
 invalid new names are rejected before they enter its cached key registry.
 Existing valid custom key declarations remain intact. Character validation
-does not validate GraphML schema or repair duplicate label keys
-(treesitter-chunker#169).
+does not validate GraphML schema. Structural/caller label-key separation is
+described above (treesitter-chunker#169).
 
 ## Compatibility
 
-The generated GraphML files are compatible with:
+GraphML can be opened by the following tools; attribute mapping depends on the
+reader. In particular, see the NetworkX label limitation above
+(treesitter-chunker#453):
 - yEd Graph Editor
 - Gephi
 - Cytoscape

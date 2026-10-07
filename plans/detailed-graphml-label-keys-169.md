@@ -37,6 +37,14 @@ next-major 6.0.0 release boundary, separately from node identity and XML handlin
    No XSD certification, graph-ID algorithm, type inference or property merging
    redesign. XML-invalid characters keep the accepted treesitter-chunker#168 rule.
 
+These are raw XML key/declaration/data contracts. Structural and caller labels
+retain attr.name="label" and are distinguished by ID/domain. Actual installed
+NetworkX 3.6.1 import maps by attr.name and additionally overlays yEd graphics;
+the separately reproduced interoperability gap is treesitter-chunker#453. This
+slice documents that limit without adding a consumer adapter or changing caller
+attribute names. Graph attribute-name validation and older-Python pretty
+whitespace remain treesitter-chunker#452 and treesitter-chunker#450.
+
 ## Changes
 
 - `chunker/export/graphml_exporter.py`: change only the dedicated structural label
@@ -92,6 +100,25 @@ hosted job, four substantive approvals and final Astra ruling remain independent
 acceptance gates. Archive raw evidence before exact-head merge, qualified issue
 comments/closure and safe pruning. No percentage or whole EXPORT/IF acceptance,
 release dispatch, consumer-lock, native/pin/schema/golden/broker/ledger edit.
+
+## Execution evidence pending acceptance
+
+Both prerequisites are accepted: treesitter-chunker#443 and treesitter-chunker#447.
+All 52 current-main manifest rows are retained exactly, with only this executing
+row added for 53. Real service-fixture plain/yEd/delegated contracts cover caller
+label, node_label, edge_label and metadata_label in both insertion orders and
+formats, checking declaration/data uniqueness, domains and retained values.
+Focused candidate tests pass 390; source changes are exactly four structural
+declaration/data references. Each actual collision mutation fails 18 cases,
+including both new raw-label contract modules; each exact restoration passes
+390 and binds source/tests/real fixtures plus the unchanged yEd source.
+The final formatted unchanged-source baseline remains 19 failed, 371 passed.
+Original full/platform/review gates remain pending. Initial test setup misplaced an old
+yEd control block; it was restored byte-for-byte before the final unchanged-source
+baseline (19 failed, 371 passed). The earlier log remains excluded as setup history.
+The first consumer probe incorrectly expected caller labels to win in yEd;
+installed-reader source showed its graphics overwrite. The corrected three-mode
+probe binds actual candidate source hashes and is filed as treesitter-chunker#453.
 
 ## Acceptance criteria
 
