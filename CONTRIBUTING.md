@@ -84,6 +84,14 @@ and named mutations.
 
 ### Platform checks
 
+The POSIX SIGINT contract observes the actual CLI's return of parsed regular-file
+fixture chunks, then signals it during a bounded Python pause installed by the
+test harness. It drains both output pipes and reaps the child on success or
+failure. This does not establish
+interruption during arbitrary native parsing or blocked input reads.
+Its readiness and shutdown bounds safeguard cleanup; they are not throughput
+requirements. Windows deliberately skips this POSIX-only contract.
+
 Reproduce a matrix failure with the narrow affected test before retrying CI.
 Use explicit UTF-8 file I/O, portable paths, and robust process readiness
 checks. Avoid assertions that depend on tight wall-clock limits.

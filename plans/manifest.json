@@ -1492,6 +1492,258 @@
     },
     {
       "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T22:20:07.813865+00:00",
+      "file": "plans/detailed-go-version-order-142.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-go-version-order-142/.dev-skills/handoffs/codex-plan-detailed/20261006-go-version-order-142.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T22:20:07.813865+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-go-version-order-142.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T22:20:07Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-go-version-order-142.md",
+            "run_id": "20261006-go-version-order-142"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-go-version-order-142/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "go-version-order-142",
+      "status": "executing",
+      "task_summary": "Repair treesitter-chunker#142 numeric Go build-version ordering",
+      "type": "detailed",
+      "updated_at": "2026-10-06T22:20:07Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T22:24:07.967653+00:00",
+      "file": "plans/detailed-python-project-requires-138.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-python-project-requires-138/.dev-skills/handoffs/codex-plan-detailed/20261006-python-project-requires-138.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T22:24:07.967653+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-python-project-requires-138.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T22:24:08Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-python-project-requires-138.md",
+            "run_id": "20261006-python-project-requires-138"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-python-project-requires-138/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "python-project-requires-138",
+      "status": "executing",
+      "task_summary": "Repair treesitter-chunker#138 PEP621 Python requirement preference",
+      "type": "detailed",
+      "updated_at": "2026-10-06T22:24:08Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T22:31:18.691742+00:00",
+      "file": "plans/detailed-rust-cargo-export-141.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-rust-cargo-export-141/.dev-skills/handoffs/codex-plan-detailed/20261006-rust-cargo-export-141.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T22:31:18.691742+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-rust-cargo-export-141.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T22:31:18Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-rust-cargo-export-141.md",
+            "run_id": "20261006-rust-cargo-export-141"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-rust-cargo-export-141/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "rust-cargo-export-141",
+      "status": "executing",
+      "task_summary": "Repair treesitter-chunker#141 Cargo requirement export",
+      "type": "detailed",
+      "updated_at": "2026-10-06T22:31:18Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-07T00:39:35.828456+00:00",
+      "file": "plans/detailed-cli-sigint-readiness-322.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-cli-sigint-readiness-322/.dev-skills/handoffs/codex-plan-detailed/20261006-cli-sigint-readiness-322.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-07T00:39:35.828456+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-cli-sigint-readiness-322.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T00:39:36Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-cli-sigint-readiness-322.md",
+            "run_id": "20261006-cli-sigint-readiness-322"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-cli-sigint-readiness-322/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "cli-sigint-readiness-322",
+      "status": "executing",
+      "task_summary": "Observe real regular-file parsing, bound the signal pause and drain/reap the CLI for treesitter-chunker#322",
+      "type": "detailed",
+      "updated_at": "2026-10-07T00:39:36Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T22:54:55.329270+00:00",
+      "file": "plans/detailed-cpp-standard-order-146.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-cpp-standard-order-146/.dev-skills/handoffs/codex-plan-detailed/20261006-cpp-standard-order-146.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T22:54:55.329270+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-cpp-standard-order-146.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T22:54:55Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-cpp-standard-order-146.md",
+            "run_id": "20261006-cpp-standard-order-146"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-cpp-standard-order-146/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "cpp-standard-order-146",
+      "status": "executing",
+      "task_summary": "Resolve treesitter-chunker#146 using existing C++ release chronology",
+      "type": "detailed",
+      "updated_at": "2026-10-06T22:54:55Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-06T23:24:11.045685+00:00",
+      "file": "plans/detailed-large-file-functional-gates-195.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-large-file-functional-gates-195/.dev-skills/handoffs/codex-plan-detailed/20261006-large-file-functional-gates-195.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-06T23:24:11.045685+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-large-file-functional-gates-195.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-06T23:24:11Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-large-file-functional-gates-195.md",
+            "run_id": "20261006-large-file-functional-gates-195"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-large-file-functional-gates-195/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "large-file-functional-gates-195",
+      "status": "executing",
+      "task_summary": "Resolve treesitter-chunker#195 with complete real export checks and explicit retained performance limits",
+      "type": "detailed",
+      "updated_at": "2026-10-06T23:24:11Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-07T00:32:20.217661+00:00",
+      "file": "plans/detailed-missing-grammar-diagnostic-429.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-missing-grammar-diagnostic-429/.dev-skills/handoffs/codex-plan-detailed/20261006-missing-grammar-diagnostic-429.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-07T00:32:20.217661+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-missing-grammar-diagnostic-429.md"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T00:32:20Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-missing-grammar-diagnostic-429.md",
+            "run_id": "20261006-missing-grammar-diagnostic-429"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-missing-grammar-diagnostic-429/20261006-planning.md",
+      "roadmap_ref": null,
+      "slug": "missing-grammar-diagnostic-429",
+      "status": "executing",
+      "task_summary": "Bounded actionable invalid-path validation repair for treesitter-chunker#429",
+      "type": "detailed",
+      "updated_at": "2026-10-07T00:32:20Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
       "created_at": "2026-10-07T00:52:25.263432+00:00",
       "file": "plans/detailed-mypy-message-normalization-431.md",
       "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-mypy-message-normalization-431/.dev-skills/handoffs/codex-plan-detailed/20261006-mypy-message-normalization-431.md",

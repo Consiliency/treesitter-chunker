@@ -17,6 +17,7 @@ import pytest
 from typer.testing import CliRunner
 
 from cli.main import app
+from chunker import get_parser
 
 
 def parse_jsonl_output(output: str) -> list[dict[str, Any]]:
@@ -298,14 +299,47 @@ class TestSignalHandling:
     @pytest.mark.skipif(sys.platform == "win32", reason="POSIX signals only")
     def test_sigint_handling(tmp_path):
         """Test Ctrl+C handling."""
-        (tmp_path / "test.py").write_text("def test(): pass\n" * 1000)
+        fixture = (
+            Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+        )
+        source = fixture.read_bytes()
+        assert not get_parser("python").parse(source).root_node.has_error
+        input_path = tmp_path / "test.py"
+        input_path.write_bytes(source)
+        ready_path = tmp_path / "parsed.json"
+        observer = """
+import json
+import runpy
+import sys
+import time
+from pathlib import Path
+
+ready = Path(sys.argv[1])
+sys.argv = ["cli.main", *sys.argv[2:]]
+
+def observe(frame, event, result):
+    if (event == "return" and frame.f_code.co_name == "process_file"
+            and frame.f_globals.get("__name__") == "__main__" and result):
+        sys.setprofile(None)
+        temporary = ready.with_suffix(".tmp")
+        temporary.write_text(json.dumps(result), encoding="utf-8")
+        temporary.replace(ready)
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            time.sleep(0.01)
+        raise SystemExit("Signal observer pause exceeded its cleanup deadline")
+
+sys.setprofile(observe)
+runpy.run_module("cli.main", run_name="__main__")
+"""
         process = subprocess.Popen(
             [
                 sys.executable,
-                "-m",
-                "cli.main",
+                "-c",
+                observer,
+                str(ready_path),
                 "chunk",
-                str(tmp_path / "test.py"),
+                str(input_path),
                 "-l",
                 "python",
                 "--json",
@@ -314,16 +348,25 @@ class TestSignalHandling:
             stderr=subprocess.PIPE,
             text=True,
         )
-        time.sleep(0.05)
-        if process.poll() is not None:
-            pytest.skip("Process completed before signal could be sent")
-        process.send_signal(signal.SIGINT)
         try:
-            process.wait(timeout=2)
-            assert process.returncode in {0, -2, 130, 1}
-        except subprocess.TimeoutExpired:
-            process.kill()
-            pytest.fail("Process did not handle SIGINT")
+            deadline = time.monotonic() + 30
+            while not ready_path.exists():
+                assert process.poll() is None, "CLI exited before parsing input"
+                assert time.monotonic() < deadline, "CLI did not finish parsing input"
+                time.sleep(0.01)
+            rows = json.loads(ready_path.read_text(encoding="utf-8"))
+            assert rows
+            assert all(row["file_path"] == str(input_path) for row in rows)
+            assert all(row["language"] == "python" for row in rows)
+            assert all(row["content"] in source.decode("utf-8") for row in rows)
+            assert any("def render_report(" in row["content"] for row in rows)
+            process.send_signal(signal.SIGINT)
+            stdout, stderr = process.communicate(timeout=15)
+            assert process.returncode in {-signal.SIGINT, 130}, (stdout, stderr)
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.communicate(timeout=15)
 
     @staticmethod
     @pytest.mark.skipif(sys.platform == "win32", reason="POSIX signals only")

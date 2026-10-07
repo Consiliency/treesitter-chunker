@@ -10,6 +10,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Type-checking preserves literal message values while normalizing only leading
   file locations, so colon-number and backslash changes cannot reuse old debt.
 
+- Grammar validation returns actionable missing-file and directory diagnostics
+  at every requested level before cache lookup or storage.
+  Exceptions before requested validation completes retain an invalid result
+  at that level.
+
+- Large-file quality checks verify complete parsed/exported functions before
+  timing. The existing wall-time targets run through an explicit controlled
+  performance command; the isolated RSS budget remains checked by default.
+
+- C++ standard hints use release chronology, so C++98 no longer outranks newer
+  declared standards or feature-macro requirements.
+
+- The POSIX CLI SIGINT quality check observes actual fixture parsing readiness,
+  drains and reaps its child, avoiding startup guesses and early-completion skips.
+
+- Rust version information can retain an explicit Cargo `rust_version` beside
+  a source compiler hint, preserving legacy exports when the new field is omitted.
+
+- Python version detection prefers declared PEP 621 `requires-python` constraints
+  over broad project classifiers, preserving the constraint operators.
+
+- Go build-version hints compare major/minor numbers, selecting 1.10 over 1.9
+  across separately detected modern and legacy positive constraint lines.
+
 - Type-checking compares complete diagnostic messages and error codes, preventing
   distinct new errors from being hidden by wrapped baseline headers.
 
