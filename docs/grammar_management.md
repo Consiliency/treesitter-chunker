@@ -421,6 +421,13 @@ project_root/
 
 ### Programmatic Access
 
+`GrammarValidator.validate_grammar` reports missing files and directories with
+the actionable `Grammar file does not exist` and `Grammar path is not a file`
+messages at every validation level. Those invalid results retain the requested
+level and are returned before cache lookup or storage. Regular-file validation
+and its cache behavior remain unchanged; this is not native admission or race
+protection.
+
 Compatibility breaking-change reports calculate a percentage slowdown only
 when the old average parse time is available and positive. A zero, missing or
 nonpositive baseline does not establish a percentage regression; independently

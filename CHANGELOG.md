@@ -10,6 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ `constexpr` hints require a keyword boundary, preserving feature-macro
   inference without treating identifier suffixes as standalone keywords.
 
+- Go version hints retain every release tag in a column-zero, unparenthesized
+  positive release-only `//go:build` conjunction, choosing the numeric maximum
+  regardless of order.
+
+- Type-checking preserves literal message values while normalizing only leading
+  file locations, so colon-number and backslash changes cannot reuse old debt.
+
+- Grammar validation returns actionable missing-file and directory diagnostics
+  at every requested level before cache lookup or storage.
+  Exceptions before requested validation completes retain an invalid result
+  at that level.
+
+- Large-file quality checks verify complete parsed/exported functions before
+  timing. The existing wall-time targets run through an explicit controlled
+  performance command; the isolated RSS budget remains checked by default.
+
 - C++ standard hints use release chronology, so C++98 no longer outranks newer
   declared standards or feature-macro requirements.
 

@@ -361,8 +361,8 @@ class IntegrationTester:
             )
             try:
                 missing.stat()
-            except FileNotFoundError as error:
-                expected = f"Validation error: {error}"
+            except FileNotFoundError:
+                expected = f"Grammar file does not exist: {missing}"
             else:
                 return False
             return not result.is_valid and result.errors == [expected]
