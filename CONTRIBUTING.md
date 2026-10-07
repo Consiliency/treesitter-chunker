@@ -66,8 +66,7 @@ macOS, and Windows. The scheduled CI job and release validation run the full
 The type gate compares complete messages and error codes, normalizing only
 leading file locations. Literal values, numeric colons and backslashes inside
 messages remain significant. For a diagnostic-format migration, measure and
-reconcile
-the baseline from unchanged accepted code before candidate edits. A new
+reconcile the baseline from unchanged accepted code before candidate edits. A new
 candidate's errors must be fixed or tracked separately; do not use `--update`
 to absorb them into the baseline. Ordinary baseline updates remove cleared debt.
 
