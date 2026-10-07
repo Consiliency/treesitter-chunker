@@ -27,10 +27,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The direct Neo4j import shell helper quotes complete node and relationship
+  filename options as literal Bash arguments, preserving spaces, apostrophes,
+  semicolons, dollar expansion syntax, backticks and Unicode
+  (treesitter-chunker#460). This does not certify native CMD/PowerShell syntax or
+  a live database import/server version.
+
 - The direct Neo4j import shell helper retains LF shebang and line-continuation
   syntax when exported on Windows or Linux, with unchanged names, flags and
-  supported executable mode (treesitter-chunker#457). Filename quoting remains
-  treesitter-chunker#460; direct Cypher newline fidelity remains
+  supported executable mode (treesitter-chunker#457). Filename quoting is handled
+  separately by treesitter-chunker#460; direct Cypher newline fidelity remains
   treesitter-chunker#458. This does not certify a live database import.
 
 - The direct Neo4j CSV exporter writes UTF-8 node and relationship payloads
