@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Grammar validation returns actionable missing-file and directory diagnostics
   at every requested level before cache lookup or storage.
+  Exceptions before requested validation completes retain an invalid result
+  at that level.
 
 - Python version detection prefers declared PEP 621 `requires-python` constraints
   over broad project classifiers, preserving the constraint operators.

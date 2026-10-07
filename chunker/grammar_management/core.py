@@ -173,10 +173,10 @@ class GrammarValidator:
 
         try:
             if not grammar_path.is_file():
-                result = self._validate_basic(grammar_path, language)
-                if not result.is_valid:
-                    result.level = level
-                    return result
+                basic_result = self._validate_basic(grammar_path, language)
+                if not basic_result.is_valid:
+                    basic_result.level = level
+                    return basic_result
 
             # Check cache first
             cache_key = self._get_cache_key(grammar_path, language, level)

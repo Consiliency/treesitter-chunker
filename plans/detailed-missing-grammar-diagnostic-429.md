@@ -45,7 +45,7 @@ Own execution evidence is allowlisted at /tmp/chunker-429-*.
   isolation contract using actual empty regular files, whose invalid results
   still exercise real persistent cache records. Assert actual empty-file
   rejection and the corresponding persisted entry instead of requiring
-directories to be cached under the intentionally changed contract.
+  directories to be cached under the intentionally changed contract.
 - docs/grammar_management.md: document invalid-path diagnostics and requested
   level preservation without claiming native admission or race protection.
 - CHANGELOG.md: record the user-visible diagnostic repair.

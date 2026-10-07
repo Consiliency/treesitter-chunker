@@ -48,6 +48,50 @@ def test_invalid_grammar_path_keeps_actionable_diagnostic(
         assert not (cache / "validation_cache.json").exists()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Loaded-file unlink requires POSIX")
+def test_appearing_grammar_stat_failure_keeps_requested_invalid_result(
+    tmp_path: Path,
+) -> None:
+    source = (FIXTURE_DIR / "service.py").read_bytes()
+    assert not get_pack_parser("python").parse(source).root_node.has_error
+    suffix = ".dylib" if sys.platform == "darwin" else ".so"
+    native = Path(cache_dir()) / f"libtree_sitter_python{suffix}"
+    assert native.is_file()
+    candidate = tmp_path / f"appearing{suffix}"
+    cache = tmp_path / "validation"
+    validator = GrammarValidator(cache_dir=cache)
+    events = []
+    previous = sys.getprofile()
+
+    def observe(frame, event, result):
+        if (
+            frame.f_code == GrammarValidator._validate_basic.__code__
+            and frame.f_locals.get("grammar_path") == candidate
+        ):
+            if event == "call":
+                shutil.copyfile(native, candidate)
+                events.append("appeared")
+            elif event == "return" and result.is_valid:
+                candidate.unlink()
+                events.append("removed")
+
+    try:
+        sys.setprofile(observe)
+        result = validator.validate_grammar(
+            candidate, "python", ValidationLevel.EXTENSIVE
+        )
+    finally:
+        sys.setprofile(previous)
+
+    assert events == ["appeared", "removed"]
+    assert not result.is_valid
+    assert result.level == ValidationLevel.EXTENSIVE
+    assert len(result.errors) == 1 and result.errors[0].startswith("Validation error:")
+    assert str(candidate) in result.errors[0]
+    assert result.performance_metrics == {}
+    assert not (cache / "validation_cache.json").exists()
+
+
 def test_parse_samples_accepts_python_fixtures(tmp_path: Path) -> None:
     sources = [
         (FIXTURE_DIR / name).read_text(encoding="utf-8")
