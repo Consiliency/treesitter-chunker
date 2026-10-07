@@ -63,9 +63,10 @@ lane, and the Test Suite workflow confirms platform-core behavior on Linux,
 macOS, and Windows. The scheduled CI job and release validation run the full
 `tests/` and `spec_tests/` suite.
 
-The type gate compares complete messages and error codes, independent of
-source line numbers. For a diagnostic-format migration, measure and reconcile
-the baseline from unchanged accepted code before candidate edits. A new
+The type gate compares complete messages and error codes, normalizing only
+leading file locations. Literal values, numeric colons and backslashes inside
+messages remain significant. For a diagnostic-format migration, measure and
+reconcile the baseline from unchanged accepted code before candidate edits. A new
 candidate's errors must be fixed or tracked separately; do not use `--update`
 to absorb them into the baseline. Ordinary baseline updates remove cleared debt.
 
@@ -82,6 +83,14 @@ under treesitter-chunker#69 are accepted by their stated behavior contracts
 and named mutations.
 
 ### Platform checks
+
+The POSIX SIGINT contract observes the actual CLI's return of parsed regular-file
+fixture chunks, then signals it during a bounded Python pause installed by the
+test harness. It drains both output pipes and reaps the child on success or
+failure. This does not establish
+interruption during arbitrary native parsing or blocked input reads.
+Its readiness and shutdown bounds safeguard cleanup; they are not throughput
+requirements. Windows deliberately skips this POSIX-only contract.
 
 Reproduce a matrix failure with the narrow affected test before retrying CI.
 Use explicit UTF-8 file I/O, portable paths, and robust process readiness

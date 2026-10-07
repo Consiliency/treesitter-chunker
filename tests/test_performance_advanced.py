@@ -7,6 +7,7 @@ identifies optimization opportunities.
 import gc
 import json
 import multiprocessing as mp
+import os
 import subprocess
 import sys
 import threading
@@ -218,12 +219,14 @@ class TestScalabilityLimits:
             content_lines.append(f"def func_{i}(): return {i}")
             if i % 100 == 0:
                 content_lines.append("")
-        huge_file.write_text("\n".join(content_lines))
+        huge_file.write_text("\n".join(content_lines), encoding="utf-8")
         probe = """
 import json, sys, time
+import coverage
 import psutil
 from chunker import chunk_file
 from chunker.export import JSONExporter, SchemaType
+cpu_before = psutil.cpu_percent(interval=0.1)
 start = time.perf_counter()
 chunks = chunk_file(sys.argv[1], language='python')
 chunk_time = time.perf_counter() - start
@@ -231,7 +234,9 @@ memory_mb = psutil.Process().memory_info().rss / 1024 / 1024
 start = time.perf_counter()
 JSONExporter(schema_type=SchemaType.FLAT).export(chunks, sys.argv[2])
 print(json.dumps({'chunks': len(chunks), 'chunk_time': chunk_time,
-                  'memory_mb': memory_mb, 'export_time': time.perf_counter() - start}))
+                  'memory_mb': memory_mb, 'export_time': time.perf_counter() - start,
+                  'cpu_percent_before': cpu_before,
+                  'coverage_active': coverage.Coverage.current() is not None}))
 """
         output = subprocess.check_output(
             [
@@ -245,10 +250,29 @@ print(json.dumps({'chunks': len(chunks), 'chunk_time': chunk_time,
             timeout=60,
         )
         measurement = json.loads(output)
-        assert measurement["chunks"] >= 5000
-        assert measurement["chunk_time"] < 10.0
+        print(json.dumps(measurement))
+        exported = json.loads(
+            (tmp_path / "huge_export.json").read_text(encoding="utf-8")
+        )
+        assert measurement["chunks"] == len(exported) == 5000
+        assert all(record["chunk_id"] for record in exported)
+        assert len({record["chunk_id"] for record in exported}) == 5000
+        assert all(record["node_type"] == "function_definition" for record in exported)
+        assert all(record["file_path"] == str(huge_file) for record in exported)
+        assert [record["content"] for record in exported] == [
+            f"def func_{i}(): return {i}" for i in range(5000)
+        ]
         assert measurement["memory_mb"] < 500
-        assert measurement["export_time"] < 5.0
+        if os.environ.get("CHUNKER_CONTROLLED_PERFORMANCE") == "1":
+            assert not measurement[
+                "coverage_active"
+            ], "Use --no-cov for controlled timing"
+            failures = [
+                f"{name} {measurement[name]:.3f}s must be below {limit}s"
+                for name, limit in [("chunk_time", 10.0), ("export_time", 5.0)]
+                if measurement[name] >= limit
+            ]
+            assert not failures, failures
 
     @staticmethod
     def test_deep_nesting_performance(tmp_path):
