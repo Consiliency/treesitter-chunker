@@ -207,11 +207,11 @@ class CppVersionDetector:
             # Check for C++11+ features
             feature_indicators = {
                 r"\bauto\s+\w+\s*=": "11",  # auto keyword
-                r"nullptr": "11",  # nullptr
-                r"override\b": "11",  # override specifier
-                r"final\b": "11",  # final specifier
+                r"\bnullptr\b": "11",  # nullptr
+                r"\boverride\b": "11",  # override specifier
+                r"\bfinal\b": "11",  # final specifier
                 r"\bconstexpr\s+": "11",  # constexpr
-                r"static_assert\s*\(": "11",  # static_assert
+                r"\bstatic_assert\s*\(": "11",  # static_assert
                 r"std::unique_ptr": "11",  # unique_ptr
                 r"std::shared_ptr": "11",  # shared_ptr
                 r"std::make_unique": "14",  # make_unique
@@ -219,10 +219,10 @@ class CppVersionDetector:
                 r"std::optional": "17",  # optional
                 r"std::variant": "17",  # variant
                 r"std::string_view": "17",  # string_view
-                r"concept\s+\w+\s*=": "20",  # concepts
+                r"\bconcept\s+\w+\s*=": "20",  # concepts
                 r"co_await": "20",  # coroutines
                 r"co_return": "20",  # coroutines
-                r"co_yield": "20",  # coroutines
+                r"\bco_yield\b": "20",  # coroutines
                 r"<=>": "20",  # spaceship operator
                 r"std::ranges::": "20",  # ranges
             }
