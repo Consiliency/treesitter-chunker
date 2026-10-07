@@ -90,12 +90,12 @@ class GraphMLExporter(GraphExporterBase):
             key.set("attr.name", attr_name)
             key.set("attr.type", attr_type)
         key = ET.SubElement(root, "key")
-        key.set("id", "n_label")
+        key.set("id", "node_label")
         key.set("for", "node")
         key.set("attr.name", "label")
         key.set("attr.type", "string")
         key = ET.SubElement(root, "key")
-        key.set("id", "e_label")
+        key.set("id", "edge_label")
         key.set("for", "edge")
         key.set("attr.name", "label")
         key.set("attr.type", "string")
@@ -110,7 +110,7 @@ class GraphMLExporter(GraphExporterBase):
         node_elem = ET.SubElement(graph, "node")
         node_elem.set("id", node_id)
         data = ET.SubElement(node_elem, "data")
-        data.set("key", "n_label")
+        data.set("key", "node_label")
         data.text = node.label
         for key, value in node.properties.items():
             if key in self.node_attrs:
@@ -130,7 +130,7 @@ class GraphMLExporter(GraphExporterBase):
         edge_elem.set("source", edge.source_id)
         edge_elem.set("target", edge.target_id)
         data = ET.SubElement(edge_elem, "data")
-        data.set("key", "e_label")
+        data.set("key", "edge_label")
         data.text = edge.relationship_type
         for key, value in edge.properties.items():
             if key in self.edge_attrs:
