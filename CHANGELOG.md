@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Compatibility sample checks retain independent validation incompatibility
+  when some samples parse successfully, preserving counts, errors and scores.
+
 - Legacy benchmark cache examples use supported imports and explicit isolated
   SQLite lookups/stores, report actual hits and preserve unrelated cache entries.
 

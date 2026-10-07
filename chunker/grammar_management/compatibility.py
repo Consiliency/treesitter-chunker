@@ -552,7 +552,8 @@ class CompatibilityChecker:
                     result.level = CompatibilityLevel.INCOMPATIBLE
                     result.score *= success_rate
                 elif success_rate < 0.8:
-                    result.level = CompatibilityLevel.LIMITED
+                    if result.level != CompatibilityLevel.INCOMPATIBLE:
+                        result.level = CompatibilityLevel.LIMITED
                     result.score *= success_rate
 
             return result

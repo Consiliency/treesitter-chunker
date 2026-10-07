@@ -217,6 +217,85 @@ def test_very_slow_metadata_retains_actual_parse_failures(tmp_path: Path) -> Non
     assert all(record["errors"] for record in result.test_results["sample_results"][1:])
 
 
+@pytest.mark.parametrize("validation_failure", [False, True])
+@pytest.mark.parametrize("parse_time", [0.0, 3.0, 6.0])
+@pytest.mark.parametrize(
+    ("successful", "total"), [(0, 2), (1, 3), (1, 2), (2, 3), (4, 5), (2, 2)]
+)
+def test_partial_samples_preserve_independent_validation_failure(
+    tmp_path: Path,
+    validation_failure: bool,
+    parse_time: float,
+    successful: int,
+    total: int,
+) -> None:
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_text(encoding="utf-8")
+    malformed = source + "\ndef broken(\n"
+    parser = get_parser("python")
+    assert parser.parse(source.encode()).root_node.named_child_count
+    assert not parser.parse(source.encode()).root_node.has_error
+    assert parser.parse(malformed.encode()).root_node.has_error
+    samples = [source] * successful + [malformed] * (total - successful)
+    manager = GrammarManager(
+        user_dir=tmp_path / "user",
+        package_dir=tmp_path / "package",
+        cache_dir=tmp_path / "cache",
+    )
+    validator = GrammarValidator(tmp_path / "validation")
+    validation = validator.validate_grammar(
+        tmp_path / "missing.so", "python", ValidationLevel.BASIC
+    )
+    assert not validation.is_valid and validation.errors
+    checker = CompatibilityChecker(manager, validator=validator)
+    result = checker._perform_detailed_compatibility_check(
+        CompatibilityResult("python", "pinned", None, CompatibilityLevel.UNKNOWN),
+        {
+            "validation": asdict(validation) if validation_failure else {},
+            "performance": {"parse_time": parse_time},
+        },
+        samples,
+    )
+    rate = successful / total
+    expected_level = (
+        CompatibilityLevel.INCOMPATIBLE
+        if validation_failure or rate < 0.5
+        else (
+            CompatibilityLevel.LIMITED
+            if rate < 0.8
+            else (
+                CompatibilityLevel.DEGRADED
+                if parse_time > 5.0
+                else CompatibilityLevel.COMPATIBLE
+            )
+        )
+    )
+    timing_multiplier = 0.5 if parse_time > 5.0 else 0.8 if parse_time > 2.0 else 1.0
+    expected_score = (
+        0.0 if validation_failure else timing_multiplier * (rate if rate < 0.8 else 1.0)
+    )
+    assert result.level == expected_level
+    assert result.score == pytest.approx(expected_score)
+    assert result.issues == (validation.errors if validation_failure else [])
+    assert result.warnings == (
+        [f"Slow parsing detected: {parse_time:.2f}s average"]
+        if 2.0 < parse_time <= 5.0
+        else []
+    )
+    assert result.test_results["successful_samples"] == successful
+    assert result.test_results["total_samples"] == total
+    assert result.test_results["success_rate"] == pytest.approx(rate)
+    records = result.test_results["sample_results"]
+    assert len(records) == total
+    assert all(
+        record["success"] and record["errors"] == [] for record in records[:successful]
+    )
+    assert all(
+        not record["success"] and record["errors"] for record in records[successful:]
+    )
+
+
 def test_error_pattern_analysis_counts_real_python_parse_failures(
     tmp_path: Path, monkeypatch
 ) -> None:
