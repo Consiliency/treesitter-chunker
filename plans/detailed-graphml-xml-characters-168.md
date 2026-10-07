@@ -37,7 +37,7 @@ slice deliberately rejects invalid characters rather than deleting user data.
    output file. Existing graph collections remain usable after a failed export;
    removing the caller's invalid property allows an actual subsequent export.
 
-## Changes and ownership
+## Changes
 
 - `chunker/export/graphml_exporter.py`: add one shared XML character validator
   over the constructed ElementTree and call it before both serialization paths.
@@ -63,7 +63,7 @@ preserve that selection and all other canonical rows. Key/label uniqueness remai
 separately treesitter-chunker#169. No XSD-validation, serializer-key, DOT, parsing,
 identity algorithm, native, Boundary IR golden or consumer-lock repair here.
 
-## Order and verification
+## Order
 
 Commit the plan before implementation. Wait for accepted treesitter-chunker#443,
 integrate its main with all canonical rows intact, then mark only this typed row
@@ -80,6 +80,8 @@ Opus5.5 uses the manual tool-enabled TUI adapter; Gemini3.8Flash, Astra and Sol
 use compact file pointers and actual final-response capture, heartbeat-only
 monitoring and no model/silence deadline. Failed delivery is preserved and cannot
 count as approval. The requested manual Astra chair checks completed evidence.
+
+## Verification
 
 - `uv sync --locked --all-extras`
 - `uv run --locked --all-extras pytest tests/test_graphml_exporter.py tests/test_graphml_yed_export_contract.py tests/test_phase12_integration.py -q`
