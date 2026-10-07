@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -234,7 +234,12 @@ class CppVersionDetector:
 
             if standards:
                 # Return the highest standard detected
-                max_standard = max(standards)
+                max_standard = max(
+                    standards,
+                    key=lambda standard: cast(
+                        "int", self.cpp_standard_map[standard]["year"]
+                    ),
+                )
                 logger.debug("Detected C++ standard: C++%s", max_standard)
                 return max_standard
 
@@ -295,11 +300,16 @@ class CppVersionDetector:
             for feature in features:
                 if feature in self.feature_test_map:
                     min_std = self.feature_test_map[feature]["min_std"]
-                    min_standards.append(min_std)
+                    min_standards.append(cast("str", min_std))
 
             if min_standards:
                 # Return the highest minimum standard
-                max_min_standard = max(min_standards)
+                max_min_standard = max(
+                    min_standards,
+                    key=lambda standard: cast(
+                        "int", self.cpp_standard_map[standard]["year"]
+                    ),
+                )
                 logger.debug("Mapped features to C++%s", max_min_standard)
                 return max_min_standard
 
