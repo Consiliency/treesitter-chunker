@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The POSIX CLI SIGINT quality check observes actual input readiness and drains
   and reaps its child, avoiding startup guesses and early-completion skips.
 
+- Go build-version hints compare major/minor numbers, selecting 1.10 over 1.9
+  across separately detected modern and legacy positive constraint lines.
+
+- Type-checking compares complete diagnostic messages and error codes, preventing
+  distinct new errors from being hidden by wrapped baseline headers.
+
 - Compatibility sample checks retain independent validation incompatibility
   when some samples parse successfully, preserving counts, errors and scores.
 
