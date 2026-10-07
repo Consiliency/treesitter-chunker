@@ -482,6 +482,115 @@ def test_dot_relationship_labels_preserve_compiled_text(
     assert rendered == (relationship.split("\n") if relationship else [])
 
 
+@pytest.mark.parametrize("use_clusters", [False, True])
+@pytest.mark.parametrize("file_output", [False, True])
+@pytest.mark.parametrize(
+    ("caller_text", "compiled_tooltip"),
+    [
+        ("LEFT\tRIGHT", "note: LEFT\tRIGHT"),
+        ("\tRIGHT", "note: \tRIGHT"),
+        ("LEFT\t", "note: LEFT\t"),
+        ("LEFT\t\tRIGHT", "note: LEFT\t\tRIGHT"),
+        ("\t", "note: \t"),
+        (r"LEFT\tRIGHT", r"note: LEFT\\tRIGHT"),
+        ('LEFT"\tRIGHT', 'note: LEFT"\tRIGHT'),
+        ("LEFT\\\tRIGHT", "note: LEFT\\\\\tRIGHT"),
+        ("Σé\tRIGHT", "note: Σé\tRIGHT"),
+        ("LEFT\nRIGHT", r"note: LEFT\nRIGHT"),
+        ("LEFT\rRIGHT", r"note: LEFT\rRIGHT"),
+        (r"LEFT\nRIGHT", r"note: LEFT\\nRIGHT"),
+    ],
+)
+def test_dot_label_tabs_preserve_compiled_text(
+    parsed_same_span, tmp_path, caller_text, compiled_tooltip, use_clusters, file_output
+):
+    dot = shutil.which("dot")
+    if dot is None:
+        pytest.skip("Graphviz executable is required for compiled DOT contracts")
+
+    chunks = [
+        chunk for chunk in parsed_same_span if chunk.node_type == "function_definition"
+    ]
+    assert len(chunks) == 2
+    assert [chunk.metadata["signature"]["name"] for chunk in chunks] == ["f", "g"]
+    ids = [chunk.node_id for chunk in chunks]
+    original = [(chunk.chunk_id, chunk.content) for chunk in chunks]
+    caller_path = "caller\tfile.py"
+    for chunk in chunks:
+        chunk.file_path = caller_path
+    chunks[0].metadata["name"] = caller_text
+    exporter = DotExporter()
+    exporter.add_chunks(chunks)
+    exporter.add_relationship(chunks[0], chunks[1], "CALLS", {"note": caller_text})
+    assert [(chunk.chunk_id, chunk.content) for chunk in chunks] == original
+    assert set(exporter.nodes) == set(ids)
+    output = exporter.export_string(use_clusters=use_clusters)
+    assert output == exporter.export_string(use_clusters=use_clusters)
+    path = tmp_path / "label-tabs.dot" if file_output else None
+    if path is not None:
+        exporter.export(path, use_clusters=use_clusters)
+        assert path.read_bytes().replace(b"\r\n", b"\n") == output.encode("utf-8")
+
+    def compile_graph(format_name):
+        result = subprocess.run(
+            [dot, "-T" + format_name, *([str(path)] if path is not None else [])],
+            input=output if path is None else None,
+            encoding="utf-8",
+            capture_output=True,
+            timeout=30,
+            check=True,
+        )
+        return result.stdout
+
+    graph = json.loads(compile_graph("json"))
+    cluster_count = graph.get("_subgraph_cnt", 0)
+    nodes = graph["objects"][cluster_count:]
+    assert len(nodes) == 2
+    assert {node["name"] for node in nodes} == set(ids)
+    node_ids = {node["name"]: node["_gvid"] for node in nodes}
+    assert len(graph["edges"]) == 1
+    edge = graph["edges"][0]
+    assert (edge["tail"], edge["head"]) == (node_ids[ids[0]], node_ids[ids[1]])
+    assert edge["label"] == "CALLS"
+    assert edge["color"] == "red"
+    assert edge["style"] == "dotted"
+    assert edge["tooltip"] == compiled_tooltip
+    assert cluster_count == int(use_clusters)
+    if use_clusters:
+        assert graph["objects"][0]["label"] == caller_path
+        assert set(graph["objects"][0]["nodes"]) == set(node_ids.values())
+
+    svg = ET.fromstring(compile_graph("svg"))
+    namespace = "{http://www.w3.org/2000/svg}"
+    groups = list(svg.iter(namespace + "g"))
+    svg_nodes = [element for element in groups if element.get("class") == "node"]
+    assert len(svg_nodes) == 2
+    node = next(
+        element
+        for element in svg_nodes
+        if element.find(namespace + "title").text == ids[0]
+    )
+    rendered = [element.text for element in node.iter(namespace + "text")]
+    caller_lines = caller_text.replace("\r", "\n").split("\n")
+    assert len(rendered) == len(caller_lines)
+    assert rendered[:-1] == caller_lines[:-1]
+    assert rendered[-1].startswith(caller_lines[-1] + " (function_definition)")
+    assert caller_path in rendered[-1]
+    svg_edges = [element for element in groups if element.get("class") == "edge"]
+    assert len(svg_edges) == 1
+    anchors = list(svg_edges[0].iter(namespace + "a"))
+    assert len(anchors) == 1
+    assert anchors[0].get("{http://www.w3.org/1999/xlink}title") == (
+        "note: " + caller_text.replace("\t", " ")
+    )
+    svg_clusters = [element for element in groups if element.get("class") == "cluster"]
+    assert len(svg_clusters) == int(use_clusters)
+    if use_clusters:
+        assert [
+            element.text for element in svg_clusters[0].iter(namespace + "text")
+        ] == [caller_path]
+
+
 @pytest.mark.parametrize(
     "exporter_type", [GraphMLExporter, GraphMLyEdExporter, DotExporter, Neo4jExporter]
 )
