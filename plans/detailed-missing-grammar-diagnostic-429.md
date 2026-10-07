@@ -22,12 +22,22 @@ Own execution evidence is allowlisted at /tmp/chunker-429-*.
   Preserve the caller's requested level on the returned invalid result. Return
   before reading or writing an invalid-path cache entry. Retain existing cache
   keys, freshness, validation dispatch and native behavior for regular files.
+  If basic validation instead succeeds because a file appeared, continue normal
+  dispatch rather than relabelling basic-only success as a higher-level result.
 - tests/test_public_grammar_validator.py: exercise actual missing paths and
   actual directories at all three validation levels through the public API.
   Parse the checked-in Python service fixture using the real installed parser
   as a control. Assert exact existing actionable path message, invalidity,
   requested level, empty metrics/metadata and no created validation cache.
   Existing actual regular-file parsing/cache replacement tests remain controls.
+- chunker/grammar_management/testing.py: update the existing missing-artifact
+  self-test oracle to the intentionally improved actionable diagnostic; retain
+  the actual missing-file stat precondition and invalidity assertion.
+- tests/test_grammar_compatibility_contract.py: retain the existing cache-root
+  isolation contract using actual empty regular files, whose invalid results
+  still exercise real persistent cache records. Assert actual empty-file
+  rejection and the corresponding persisted entry instead of requiring
+  directories to be cached under the intentionally changed contract.
 - docs/grammar_management.md: document invalid-path diagnostics and requested
   level preservation without claiming native admission or race protection.
 - CHANGELOG.md: record the user-visible diagnostic repair.
@@ -42,6 +52,10 @@ restores a real cache-key stat before the guard: missing-path tests must fail,
 and exact restoration must pass. Preserve raw logs and source/test hashes.
 Collect four manual tool-enabled reviews before editing their findings, with
 at most three substantive rounds. Integration retains canonical manifest rows.
+All four R1 reviews were collected. Opus identified the two existing consumer
+dependencies above; reproduce them, preserve the failed evidence and make this
+explicit bounded consumer amendment before their edits. It updates callers of
+the changed contract rather than silently adding an unrelated defect repair.
 
 ## Documentation impact
 
@@ -52,6 +66,7 @@ public API, cache format, source-loading policy or package pin is introduced.
 
 - uv sync --locked --all-extras
 - uv run --locked --all-extras pytest tests/test_public_grammar_validator.py -q
+- uv run --locked --all-extras pytest tests/test_public_grammar_validator.py tests/test_grammar_compatibility_contract.py tests/test_grammar_self_test_workflow.py -q
 - uv run --locked --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
 - uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/
 - uv run --locked --all-extras python scripts/mypy_gate.py
