@@ -2050,6 +2050,15 @@
             "run_id": "20261007-neo4j-csv-newlines-454"
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T09:27:37Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan": "plans/detailed-neo4j-csv-newlines-454.md",
+            "run_id": "20261007-neo4j-csv-newlines-454"
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -2057,10 +2066,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-neo4j-csv-newlines-454/20261007-neo4j-csv-newlines-454.md",
       "roadmap_ref": null,
       "slug": "neo4j-csv-newlines-454",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Preserve embedded LF/CR/CRLF in direct Neo4j CSV files on actual Windows and Linux for treesitter-chunker#454",
       "type": "detailed",
-      "updated_at": "2026-10-07T09:27:24.436098+00:00"
+      "updated_at": "2026-10-07T09:27:37Z"
     }
   ],
   "schema_version": 1

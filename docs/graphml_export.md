@@ -188,8 +188,10 @@ distinct serialized DOT IDs are verified for parser-generated hexadecimal IDs.
 The direct Neo4j CSV exporter preserves leading spaces, tabs and Unicode
 whitespace in caller IDs and trailing property whitespace, including boundary
 rows (treesitter-chunker#448). Preserve these values when joining endpoints.
-Its Windows file-writing policy still changes embedded CRLF fields; that
-separate issue remains treesitter-chunker#454.
+Its CSV files preserve embedded LF, CR and CRLF in caller IDs and string
+properties, matching generated CSV strings on Linux and Windows
+(treesitter-chunker#454). Read files with `newline=""` to retain these line
+breaks. This does not establish live Neo4j database import compatibility.
 XML character rejection is described below (treesitter-chunker#168 and
 treesitter-chunker#451). Structural label-key separation is described above
 (treesitter-chunker#169).

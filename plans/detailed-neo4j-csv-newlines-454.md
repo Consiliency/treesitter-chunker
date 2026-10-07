@@ -74,7 +74,9 @@ final generated record delimiter. Import shell and Cypher writes are separate.
 4. On actual Windows, run `translate_node_csv_newlines` (restore default newline
    translation only for node CSV) and `translate_relationship_csv_newlines`
    (only for relationship CSV). Each must fail the corresponding LF/CRLF field
-   contract while the CR/no-edge controls remain. Restore exact candidate bytes
+   contract. CR-only field values remain intact under translation, but the exact
+   payload-byte contract also catches translated record delimiters. Retain the
+   existing empty/no-edge controls. Restore exact candidate bytes
    after each and rerun the entire focused selection. Bind source/test/fixture
    and unchanged GraphML/yEd/base/selector hashes, all actual exits and logs.
    A Linux mutation that passes is not substitute Windows evidence.
