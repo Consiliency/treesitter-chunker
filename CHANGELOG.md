@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ⚠️ BREAKING
 
+- Regular and streaming Python extraction exclude erroneous keyword-only
+  `lambda` chunks while retaining complete named expressions and their existing
+  occurrence IDs (treesitter-chunker#446). Regenerate Python chunk collections
+  and downstream indexes for 6.0.0. Use `use_cache=False` with parallel extraction
+  until the separate cache identity repair in treesitter-chunker#358 is accepted.
+  See [Python selection migration](docs/chunk-identity.md#python-selection-migration-for-600).
+
 - Regular file parsing preserves valid UTF-8 CRLF source bytes instead of
   normalizing them to LF, correcting chunk content, byte spans and occurrence
   IDs (treesitter-chunker#464). Rechunk CRLF sources and rebuild ID-based joins

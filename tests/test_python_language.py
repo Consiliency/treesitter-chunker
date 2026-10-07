@@ -1,6 +1,12 @@
 """Comprehensive tests for Python-specific language features."""
 
+from pathlib import Path
+
+import pytest
+
 from chunker import chunk_file
+from chunker.parser import get_parser
+from chunker.streaming import chunk_file_streaming
 
 
 class TestPythonAsyncFunctions:
@@ -265,11 +271,19 @@ class TestPythonLambdaExpressions:
     def test_simple_lambda(tmp_path):
         """Test standalone lambda expressions."""
         src = tmp_path / "lambda.py"
-        src.write_text("\nsquare = lambda x: x ** 2\nadd = lambda x, y: x + y\n")
+        src.write_text(
+            "\nsquare = lambda x: x ** 2\nadd = lambda x, y: x + y\n",
+            encoding="utf-8",
+            newline="",
+        )
         chunks = chunk_file(src, "python")
-        assert len(chunks) == 4
         lambda_chunks = [c for c in chunks if c.node_type == "lambda"]
-        assert len(lambda_chunks) == 4
+        source = src.read_bytes()
+        expressions = [b"lambda x: x ** 2", b"lambda x, y: x + y"]
+        assert [(c.content, c.byte_start, c.byte_end) for c in lambda_chunks] == [
+            (text.decode(), source.index(text), source.index(text) + len(text))
+            for text in expressions
+        ]
 
     @staticmethod
     def test_lambda_in_function(tmp_path):
@@ -282,9 +296,10 @@ def process_numbers(numbers):
     filtered = filter(lambda x: x > 10, squared)
     return list(filtered)
 """,
+            encoding="utf-8",
+            newline="",
         )
         chunks = chunk_file(src, "python")
-        assert len(chunks) == 5
         func_chunk = next(c for c in chunks if c.node_type == "function_definition")
         assert "lambda x: x ** 2" in func_chunk.content
         lambda_chunks = [
@@ -292,7 +307,13 @@ def process_numbers(numbers):
             for c in chunks
             if c.node_type == "lambda" and c.parent_context == "function_definition"
         ]
-        assert len(lambda_chunks) == 2
+        source = src.read_bytes()
+        expressions = [b"lambda x: x ** 2", b"lambda x: x > 10"]
+        assert [(c.content, c.byte_start, c.byte_end) for c in lambda_chunks] == [
+            (text.decode(), source.index(text), source.index(text) + len(text))
+            for text in expressions
+        ]
+        assert [c for c in chunks if c.node_type == "lambda"] == lambda_chunks
 
     @staticmethod
     def test_complex_lambda(tmp_path):
@@ -310,15 +331,107 @@ def sort_data(data):
         )
     )
 """,
+            encoding="utf-8",
+            newline="",
         )
         chunks = chunk_file(src, "python")
-        assert len(chunks) == 3
         func_chunk = next(c for c in chunks if c.node_type == "function_definition")
         assert "lambda item:" in func_chunk.content
-        lambda_chunk = next(
-            c for c in chunks if c.node_type == "lambda" and "lambda item:" in c.content
+        (lambda_chunk,) = [c for c in chunks if c.node_type == "lambda"]
+        expression = (
+            b"lambda item: (\n"
+            b"            item['priority'] if 'priority' in item else 999,\n"
+            b"            item['name'].lower(),\n"
+            b"            -item['score']\n"
+            b"        )"
+        )
+        source = src.read_bytes()
+        assert lambda_chunk.content == expression.decode()
+        assert (lambda_chunk.byte_start, lambda_chunk.byte_end) == (
+            source.index(expression),
+            source.index(expression) + len(expression),
         )
         assert lambda_chunk.parent_context == "function_definition"
+
+
+@pytest.mark.parametrize("api", ["regular", "streaming"])
+@pytest.mark.parametrize("retrieval_metadata", [False, True])
+def test_python_lambda_selection_uses_named_ast_spans(api, retrieval_metadata):
+    fixture = (Path(__file__).parent / "fixtures" / "graph_same_span.py").resolve()
+    source = fixture.read_bytes()
+    root = get_parser("python").parse(source).root_node
+    assert not root.has_error
+    named_spans = set()
+    keyword_spans = set()
+    functions = {}
+    pending = [root]
+    while pending:
+        node = pending.pop()
+        if node.type == "lambda":
+            spans = named_spans if node.is_named else keyword_spans
+            spans.add((node.start_byte, node.end_byte))
+        if node.type == "function_definition":
+            name = node.child_by_field_name("name")
+            functions[source[name.start_byte : name.end_byte].decode()] = (
+                node.start_byte,
+                node.end_byte,
+            )
+        pending.extend(node.children)
+    assert len(named_spans) == len(keyword_spans) == 2
+    assert not named_spans & keyword_spans
+    assert set(functions) == {"f", "g"}
+
+    extract = chunk_file if api == "regular" else chunk_file_streaming
+    chunks = list(
+        extract(fixture, "python", include_retrieval_metadata=retrieval_metadata)
+    )
+    lambdas = [c for c in chunks if c.node_type == "lambda"]
+    assert [(c.byte_start, c.byte_end) for c in lambdas] == sorted(named_spans)
+    assert not {(c.byte_start, c.byte_end) for c in chunks} & keyword_spans
+    declarations = [c for c in chunks if c.node_type == "function_definition"]
+    assert {(c.byte_start, c.byte_end) for c in declarations} == set(functions.values())
+    assert len(declarations) == len(functions)
+    parent = next(
+        c for c in declarations if (c.byte_start, c.byte_end) == functions["f"]
+    )
+    assert len({c.node_id for c in lambdas}) == 2
+    assert len({(c.start_line, c.end_line) for c in lambdas}) == 1
+    for chunk in chunks:
+        assert chunk.content == source[chunk.byte_start : chunk.byte_end].decode()
+    for chunk in lambdas:
+        assert chunk.parent_chunk_id == parent.node_id
+        assert chunk.parent_context == "function_definition"
+        assert chunk.parent_route == [*parent.parent_route, "lambda"]
+        assert chunk.qualified_route == [
+            *parent.qualified_route,
+            f"lambda:anon@{chunk.start_line}",
+        ]
+
+
+@pytest.mark.parametrize("retrieval_metadata", [False, True])
+def test_python_lambda_api_identity_matches(retrieval_metadata):
+    fixture = (Path(__file__).parent / "fixtures" / "graph_same_span.py").resolve()
+    results = []
+    for extract in (chunk_file, chunk_file_streaming):
+        chunks = extract(
+            fixture, "python", include_retrieval_metadata=retrieval_metadata
+        )
+        results.append(
+            [
+                (
+                    c.node_type,
+                    c.byte_start,
+                    c.byte_end,
+                    c.content,
+                    c.node_id,
+                    c.parent_chunk_id,
+                    tuple(c.parent_route),
+                    tuple(c.qualified_route),
+                )
+                for c in chunks
+            ]
+        )
+    assert results[0] == results[1]
 
 
 class TestPythonComprehensions:
