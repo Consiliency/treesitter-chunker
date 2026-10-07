@@ -324,8 +324,10 @@ def observe(frame, event, result):
         temporary = ready.with_suffix(".tmp")
         temporary.write_text(json.dumps(result), encoding="utf-8")
         temporary.replace(ready)
-        while True:
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
             time.sleep(0.01)
+        raise SystemExit("Signal observer pause exceeded its cleanup deadline")
 
 sys.setprofile(observe)
 runpy.run_module("cli.main", run_name="__main__")
