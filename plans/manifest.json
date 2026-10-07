@@ -2073,6 +2073,42 @@
     },
     {
       "acceptance_criteria_count": 4,
+      "created_at": "2026-10-07T09:47:08.981337+00:00",
+      "file": "plans/detailed-neo4j-import-script-457.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/20261007-neo4j-import-script-457.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-07T09:47:08.981337+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "run_id": "20261007-neo4j-import-script-457"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T09:56:30Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan": "plans/detailed-neo4j-import-script-457.md",
+            "run_id": "20261007-neo4j-import-script-457"
+          },
+          "transition": "executing"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-neo4j-import-script-457/20261007-neo4j-import-script-457.md",
+      "roadmap_ref": null,
+      "slug": "neo4j-import-script-457",
+      "status": "executing",
+      "task_summary": "Preserve generated Neo4j import Bash script LF syntax for treesitter-chunker#457",
+      "type": "detailed",
+      "updated_at": "2026-10-07T09:56:30Z"
+    },
+    {
+      "acceptance_criteria_count": 4,
       "created_at": "2026-10-07T10:15:52.153626+00:00",
       "file": "plans/detailed-neo4j-import-arguments-460.md",
       "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/20261007-neo4j-import-arguments-460-plan.md",
