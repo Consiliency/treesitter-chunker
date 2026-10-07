@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Python version detection prefers declared PEP 621 `requires-python` constraints
+  over broad project classifiers, preserving the constraint operators.
+
 - Go build-version hints compare major/minor numbers, selecting 1.10 over 1.9
   across separately detected modern and legacy positive constraint lines.
 
