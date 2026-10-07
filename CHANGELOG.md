@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- C++ `constexpr` hints require a keyword boundary, preserving feature-macro
+  inference without treating identifier suffixes as standalone keywords.
+
 - C++ standard hints use release chronology, so C++98 no longer outranks newer
   declared standards or feature-macro requirements.
 
