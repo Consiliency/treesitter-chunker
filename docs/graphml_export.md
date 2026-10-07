@@ -185,9 +185,11 @@ fields, the graph fallback can generate an ID, but that generated value is not
 an exact parent alias and UnifiedGraphNode.from_chunk retains its empty fallback.
 DOT punctuation encoding for arbitrary caller IDs remains treesitter-chunker#444;
 distinct serialized DOT IDs are verified for parser-generated hexadecimal IDs.
-Neo4j CSV's pre-existing whole-block whitespace stripping can change a caller ID
-with leading whitespace in its first row (treesitter-chunker#448). This identity
-migration does not repair that serializer or establish whitespace-ID CSV fidelity.
+The direct Neo4j CSV exporter preserves leading spaces, tabs and Unicode
+whitespace in caller IDs and trailing property whitespace, including boundary
+rows (treesitter-chunker#448). Preserve these values when joining endpoints.
+Its Windows file-writing policy still changes embedded CRLF fields; that
+separate issue remains treesitter-chunker#454.
 XML character rejection is described below (treesitter-chunker#168 and
 treesitter-chunker#451). Structural label-key separation is described above
 (treesitter-chunker#169).

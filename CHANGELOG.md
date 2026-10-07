@@ -27,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The direct Neo4j CSV generators remove only the final generated record
+  delimiter, preserving leading caller-ID and trailing property whitespace in
+  strings and files (treesitter-chunker#448). Windows file output's embedded
+  CRLF translation remains separate (treesitter-chunker#454).
+
 - The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter` modules
   reject XML 1.0-invalid characters in element text, tail and attribute values
   before serialization with code-point/location diagnostics. Metadata names are

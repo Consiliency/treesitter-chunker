@@ -2013,6 +2013,16 @@
             "plan_path": "plans/detailed-neo4j-csv-whitespace-448.md"
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-07T09:01:43Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-neo4j-csv-whitespace-448.md",
+            "run_id": "20261007-neo4j-csv-whitespace-448",
+            "task_summary": "Implement treesitter-chunker#448 after accepted treesitter-chunker#449; preserve53canonicalrows and explicitly separate treesitter-chunker#454."
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -2020,10 +2030,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-neo4j-csv-whitespace-448/20261006-planning.md",
       "roadmap_ref": null,
       "slug": "neo4j-csv-whitespace-448",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Bounded real-parser CSV field-whitespace preservation for treesitter-chunker#448; implementation waits for accepted treesitter-chunker#449",
       "type": "detailed",
-      "updated_at": "2026-10-07T08:36:05.084575+00:00"
+      "updated_at": "2026-10-07T09:01:43Z"
     }
   ],
   "schema_version": 1

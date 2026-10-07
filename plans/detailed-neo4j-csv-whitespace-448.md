@@ -90,8 +90,9 @@ and graph controls; `tests/test_phase12_integration.py` supplies file controls.
    bind source, test and real fixture hashes and rerun the focused batch.
 5. Run original six checks, locked environment refresh, full tests/spec_tests,
    fresh Windows focused and unchanged standing platform selection, and all
-   required exact-head hosted jobs. Use a private workspace TMPDIR to avoid the
-   observed shared tmpfs quota failure. Preserve failed attempts separately;
+   required exact-head hosted jobs. Use a short private workspace TMPDIR to avoid
+   shared tmpfs quota failure and the AF_UNIX socket path-length limit; this
+   execution uses `/mnt/workspace/worktrees/viperjuice/t448`. Preserve failures;
    require a fresh actual runner seal without rewriting failed artifacts.
 6. Freeze the candidate for four independent manually launched tools-enabled
    Opus 5.5 TUI/Gemini 3.8 Flash/Astra/Sol code reviews, maximum three complete
@@ -131,3 +132,21 @@ No percentage, duration or performance acceptance gate is added.
 - [ ] The original six/locked-refresh/full tests/spec_tests run has a fresh valid
   passing seal; actual Windows, exact-head hosted jobs, all four substantive manual
   agreements and final manual Astra ruling support only this bounded repair.
+
+## Execution notes
+
+Accepted treesitter-chunker#449 integrated before implementation. All 53 current
+canonical manifest rows survive exactly, with this own executing row making 54.
+Production changes only the four boundary-stripping calls; Cypher, CSV writers,
+file-writing policy, accepted graph identity/XML/label source, selectors, fixtures,
+parser pins and goldens are unchanged. The formatted unchanged-production run
+fails all 16 new field-whitespace cases with 392 controls passing. The repaired
+focused batch passes 408. Actual node and relationship payload-stripping mutations
+each fail 16 cases across strings/files; each exact restoration passes 408 with
+source/test/fixture/unchanged support hashes. Empty and node-only controls pass.
+Lint, format and the existing type gate pass without absorbing baseline debt.
+
+Original six/locked refresh/full tests/spec_tests, fresh same-source Windows and
+hosted checks, four manual CODE R1 reviews and final manual Astra evidence ruling
+remain independent pending gates. No whole EXPORT/IF or release acceptance is
+claimed. Actual Windows CRLF field translation remains treesitter-chunker#454.
