@@ -74,9 +74,12 @@ lambda expressions still share lines, so the graph loss is independent.
    chunk_id-first helper is also separate. Neither is aligned here. Paths, byte
    positions, qualified routes and content changes can rekey occurrence IDs.
    Parser-generated hexadecimal IDs preserve distinct serialized DOT nodes;
-   arbitrary caller IDs are verified in base collections/XML/CSV, without
+   Caller-selected IDs containing punctuation and XML/CSV metacharacters are
+   verified in base collections/XML/CSV, without
    claiming DOT punctuation encoding is injective. That defect remains
-   treesitter-chunker#444. XML endpoint assertions concern declared ID membership,
+   treesitter-chunker#444. Neo4j's pre-existing whole-block whitespace stripping
+   remains treesitter-chunker#448; whitespace-ID CSV fidelity is excluded here.
+   XML endpoint assertions concern declared ID membership,
    not XML-control or schema completeness.
 
 ## Changes
@@ -98,6 +101,9 @@ lambda expressions still share lines, so the graph loss is independent.
   Exercise all four base consumers' node/edge collections and DOT output.
   Parse Neo4j's actual csv_nodes/csv_relationships output with csv.DictReader,
   verifying emitted IDs and endpoints without a live database, network or mocks.
+  Verify a caller-selected parent ID containing punctuation/quotes/comma/XML
+  metacharacters through plain/yEd XML and actual Neo4j CSV for each unique
+  node_id/chunk_id/span parent alias, preserving CONTAINS and DEFINES endpoints.
 - In that module, parse the same file again and reverse input order to prove
   stable node/endpoint sets. Re-adding the same occurrences does not multiply
   nodes. Exercise canonical parent_id, chunk_id aliases with distinct caller

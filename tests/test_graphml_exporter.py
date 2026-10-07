@@ -363,9 +363,14 @@ def test_real_same_span_occurrences_and_endpoints_survive(
 
 
 @pytest.mark.parametrize("alias_kind", ["node_id", "chunk_id", "span"])
-def test_parent_aliases_resolve_unique_real_occurrence(parsed_same_span, alias_kind):
+@pytest.mark.parametrize(
+    "exporter_type", [GraphMLExporter, GraphMLyEdExporter, Neo4jExporter]
+)
+def test_parent_aliases_resolve_unique_real_occurrence(
+    parsed_same_span, alias_kind, exporter_type
+):
     parent, child = parsed_same_span[:2]
-    parent.node_id = "caller-parent"
+    parent.node_id = 'caller-parent:/path?value="a,b"&other=<x>'
     child.parent_chunk_id = parent.chunk_id
     alias = (
         getattr(parent, alias_kind)
@@ -373,15 +378,38 @@ def test_parent_aliases_resolve_unique_real_occurrence(parsed_same_span, alias_k
         else f"{parent.file_path}:{parent.start_line}:{parent.end_line}"
     )
     child.metadata = {"parent_id": alias}
-    exporter = GraphMLExporter()
+    exporter = exporter_type()
     exporter.add_chunks([parent, child])
     exporter.extract_relationships([parent, child])
-    assert {
-        (e.source_id, e.target_id, e.relationship_type) for e in exporter.edges
-    } == {
+    ids = {parent.node_id, child.node_id}
+    expected_edges = {
         (parent.node_id, child.node_id, "CONTAINS"),
         (parent.node_id, child.node_id, "DEFINES"),
     }
+    assert set(exporter.nodes) == ids
+    assert {
+        (e.source_id, e.target_id, e.relationship_type) for e in exporter.edges
+    } == expected_edges
+    if exporter_type is Neo4jExporter:
+        nodes = list(
+            csv.DictReader(io.StringIO(exporter.export_string(fmt="csv_nodes")))
+        )
+        edges = list(
+            csv.DictReader(io.StringIO(exporter.export_string(fmt="csv_relationships")))
+        )
+        assert {row["nodeId:ID"] for row in nodes} == ids
+        assert {
+            (row[":START_ID"], row[":END_ID"], row[":TYPE"]) for row in edges
+        } == expected_edges
+    else:
+        root = ET.fromstring(exporter.export_string())
+        namespace = "{http://graphml.graphdrawing.org/xmlns}"
+        assert {node.get("id") for node in root.findall(f".//{namespace}node")} == ids
+        edges = root.findall(f".//{namespace}edge")
+        assert len(edges) == len(expected_edges)
+        assert {(edge.get("source"), edge.get("target")) for edge in edges} == {
+            (source, target) for source, target, _ in expected_edges
+        }
 
 
 @pytest.mark.parametrize("field", ["parent_id", "parent_chunk_id"])
