@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   These changes require 6.0.0; after merging this migration, all accumulated
   Unreleased changes must wait for that major release rather than shipping in 5.x.
 
+### Fixed
+
+- C++ nullptr, override, final, static_assert, concept and co_yield hints
+  require complete keyword boundaries rather than matching identifier fragments.
+
 - C++ `constexpr` hints require a keyword boundary, preserving feature-macro
   inference without treating identifier suffixes as standalone keywords.
 

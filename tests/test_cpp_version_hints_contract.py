@@ -169,3 +169,99 @@ def test_constexpr_keyword_hints_do_not_match_identifier_suffixes(
         ["__cpp_if_constexpr"] if feature else []
     )
     assert detector.get_primary_version(hints) == primary
+
+
+@pytest.mark.parametrize("declared", [False, True])
+@pytest.mark.parametrize(
+    "snippet",
+    [
+        "int is_final = 1;\n",
+        "int my_override = 1;\n",
+        "int my_nullptr = 1;\n",
+        "void my_static_assert(int value) {}\nvoid caller() { my_static_assert(1); }\n",
+        "int my_co_yield = 1;\n",
+        "using my_concept = int; my_concept value = 1;\n",
+        "int final_name = 1;\n",
+        "int override_name = 1;\n",
+        "int nullptr_name = 1;\n",
+        "void static_assert_name(int value) {}\nvoid caller() { static_assert_name(1); }\n",
+        "int co_yield_name = 1;\n",
+        "using concept_name = int; concept_name value = 1;\n",
+    ],
+    ids=[
+        "final-prefix",
+        "override-prefix",
+        "nullptr-prefix",
+        "static_assert-prefix",
+        "co_yield-prefix",
+        "concept-prefix",
+        "final-suffix",
+        "override-suffix",
+        "nullptr-suffix",
+        "static_assert-suffix",
+        "co_yield-suffix",
+        "concept-suffix",
+    ],
+)
+def test_sibling_keyword_fragments_do_not_manufacture_hints(
+    tmp_path: Path, snippet: str, declared: bool
+) -> None:
+    source = (
+        ("// C++98\n" if declared else "")
+        + snippet
+        + FIXTURE.read_text(encoding="utf-8")
+    )
+    source_path = tmp_path / "widget.cpp"
+    source_path.write_text(source, encoding="utf-8")
+    assert not get_parser("cpp").parse(source.encode("utf-8")).root_node.has_error
+    detector = CppVersionDetector()
+    hints = detector.detect_version(
+        source_path.read_text(encoding="utf-8"), source_path
+    )
+    expected = "98" if declared else None
+    assert detector.detect_cxx_standard(source) == expected
+    assert hints["cxx_standard"] == expected
+    assert detector.get_primary_version(hints) == ("C++98" if declared else None)
+
+
+@pytest.mark.parametrize("same_line", [False, True], ids=["newline", "same-line"])
+@pytest.mark.parametrize(
+    ("before", "after", "standard"),
+    [
+        ("int *value =", "nullptr;", "11"),
+        (
+            "struct Base { virtual void f(); }; struct Derived : Base { void f()",
+            "override; };",
+            "11",
+        ),
+        ("struct Value", "final {};", "11"),
+        ("int preface;", "static_assert(true);", "11"),
+        (
+            "template <typename T>",
+            "concept HasCount = requires(T value) { value.count; };",
+            "20",
+        ),
+        ("void values() {", "co_yield 1; }", "20"),
+    ],
+    ids=["nullptr", "override", "final", "static_assert", "concept", "co_yield"],
+)
+def test_genuine_sibling_keyword_hints_survive_both_placements(
+    tmp_path: Path, before: str, after: str, standard: str, same_line: bool
+) -> None:
+    source = (
+        before
+        + (" " if same_line else "\n")
+        + after
+        + "\n"
+        + FIXTURE.read_text(encoding="utf-8")
+    )
+    source_path = tmp_path / "widget.cpp"
+    source_path.write_text(source, encoding="utf-8")
+    assert not get_parser("cpp").parse(source.encode("utf-8")).root_node.has_error
+    detector = CppVersionDetector()
+    hints = detector.detect_version(
+        source_path.read_text(encoding="utf-8"), source_path
+    )
+    assert detector.detect_cxx_standard(source) == standard
+    assert hints["cxx_standard"] == standard
+    assert detector.get_primary_version(hints) == f"C++{standard}"
