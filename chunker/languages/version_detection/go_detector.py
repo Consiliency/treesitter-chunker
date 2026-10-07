@@ -101,6 +101,14 @@ class GoVersionDetector:
             # Check new style build constraints (//go:build)
             pattern = r"//go:build\s+.*go(\d+)\.(\d+)"
             matches = re.findall(pattern, content)
+            conjunctions = re.findall(
+                r"^//go:build[ \t]+(go\d+\.\d+(?:[ \t]*&&[ \t]*go\d+\.\d+)+)"
+                r"[ \t]*\r?$",
+                content,
+                re.MULTILINE,
+            )
+            for conjunction in conjunctions:
+                matches.extend(re.findall(r"go(\d+)\.(\d+)", conjunction))
             if matches:
                 # Get the highest version from constraints
                 versions = [f"{major}.{minor}" for major, minor in matches]
