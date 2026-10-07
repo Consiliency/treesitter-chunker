@@ -197,9 +197,11 @@ Bash (treesitter-chunker#457). Node and relationship filename options remain
 single literal Bash arguments for basenames containing spaces, apostrophes,
 semicolons, dollar expansion syntax, backticks and Unicode
 (treesitter-chunker#460). POSIX shell quoting is not CMD or PowerShell syntax.
-Direct Cypher file newline fidelity remains treesitter-chunker#458. Script
-transport and argument fidelity do not certify a live database import or server
-version.
+Direct Cypher files retain generated UTF-8 bytes on Windows and Linux, including
+embedded LF, CR and CRLF in caller IDs and string properties
+(treesitter-chunker#458). Read with `newline=""` to retain line breaks. File
+transport and argument fidelity do not certify Cypher syntax, a live database
+import or server version.
 XML character rejection is described below (treesitter-chunker#168 and
 treesitter-chunker#451). Structural label-key separation is described above
 (treesitter-chunker#169).

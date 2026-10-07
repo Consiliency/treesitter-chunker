@@ -242,7 +242,9 @@ CREATE (a)-[:{edge.relationship_type}{prop_str}]->(b);"""
             cmd_path.chmod(493)
         elif fmt == "cypher":
             statements = self.generate_cypher_statements(**options)
-            output_path.write_text("\n\n".join(statements), encoding="utf-8")
+            output_path.write_text(
+                "\n\n".join(statements), encoding="utf-8", newline=""
+            )
         else:
             raise ValueError(f"Unknown fmt: {fmt}")
 
