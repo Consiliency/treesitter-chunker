@@ -1,5 +1,6 @@
 """A crashed checker must never pass or erase the tracked type-debt baseline."""
 
+import os
 import subprocess
 import sys
 
@@ -61,7 +62,7 @@ def test_real_checker_distinguishes_wrapped_messages_and_ignores_line_shifts(
     fixture.write_text(code, encoding="utf-8")
     config = tmp_path / "mypy.ini"
     config.write_text(
-        "[mypy]\npretty = True\nshow_error_codes = True\nstrict = True\n",
+        "[mypy]\npretty = True\nshow_error_codes = False\nstrict = True\n",
         encoding="utf-8",
     )
     command = [
@@ -73,12 +74,18 @@ def test_real_checker_distinguishes_wrapped_messages_and_ignores_line_shifts(
         str(config),
         "--no-error-summary",
         "--no-color-output",
+        "--cache-dir",
+        str(tmp_path / "mypy-cache"),
     ]
     monkeypatch.setattr(mypy_gate, "MYPY_CMD", command)
     baseline = tmp_path / "baseline.txt"
     monkeypatch.setattr(mypy_gate, "BASELINE", baseline)
     pretty_existing = subprocess.run(
-        [*command, "--pretty"], capture_output=True, text=True, check=False
+        [*command, "--pretty"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "MYPY_FORCE_TERMINAL_WIDTH": "80"},
     )
     assert pretty_existing.returncode == 1 and not pretty_existing.stderr
     existing_header = next(
@@ -99,7 +106,11 @@ def test_real_checker_distinguishes_wrapped_messages_and_ignores_line_shifts(
         code.replace(f"value: {existing}", f"value: {annotation}"), encoding="utf-8"
     )
     pretty_new = subprocess.run(
-        [*command, "--pretty"], capture_output=True, text=True, check=False
+        [*command, "--pretty"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "MYPY_FORCE_TERMINAL_WIDTH": "80"},
     )
     assert pretty_new.returncode == 1 and not pretty_new.stderr
     new_header = next(
