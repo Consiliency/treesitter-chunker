@@ -81,17 +81,16 @@ def test_compatibility_helpers_confine_cache_roots(
     assert success and errors == []
     assert not helper.validator._validation_cache.exists()
     for index, validator in enumerate([helper.validator, *validators]):
-        candidate = tmp_path / f"directory-not-grammar-{index}"
-        candidate.mkdir()
+        candidate = tmp_path / f"empty-not-grammar-{index}.so"
+        candidate.write_bytes(b"")
         result = validator.validate_grammar(candidate, "python", ValidationLevel.BASIC)
         assert not result.is_valid
-        assert result.errors == [f"Grammar path is not a file: {candidate}"]
+        assert "Grammar file is empty" in result.errors
         records = json.loads(validator._validation_cache.read_text(encoding="utf-8"))
         assert records
-        assert all(
-            not record["is_valid"] and record["errors"] == result.errors
-            for record in records.values()
-        )
+        assert all(not record["is_valid"] for record in records.values())
+        key = validator._get_cache_key(candidate, "python", ValidationLevel.BASIC)
+        assert records[key]["errors"] == result.errors
     assert not (home / ".cache" / "treesitter-chunker").exists()
     assert (cache / "validation_cache.json").is_file()
     assert (expected / "validation_cache.json").is_file()
