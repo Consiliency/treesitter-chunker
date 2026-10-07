@@ -2,6 +2,9 @@
 
 import csv
 import io
+import os
+import shutil
+import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -754,6 +757,51 @@ def test_xml_legal_characters_and_relationships_round_trip(parsed_xml_graph, pre
         data = graph.find(f".//{ns}data[@key='{key}']")
         assert data is not None
         assert data.text == value.replace("\r", "\n")
+
+
+@pytest.mark.parametrize("with_edges", [False, True], ids=["no-edges", "edges"])
+def test_neo4j_import_script_preserves_lf(parsed_same_span, with_edges, tmp_path):
+    parent, child = parsed_same_span[:2]
+    exporter = Neo4jExporter()
+    exporter.add_chunks([parent, child])
+    if with_edges:
+        exporter.add_relationship(parent, child, "CALLS")
+    exporter.export(tmp_path / "chunks", fmt="csv")
+    nodes = tmp_path / "chunks_nodes.csv"
+    relationships = tmp_path / "chunks_relationships.csv"
+    script = tmp_path / "chunks_import.sh"
+    raw = script.read_bytes()
+    assert raw.startswith(b"#!/bin/bash\n")
+    assert b"\r" not in raw
+    assert raw.count(b"\\\n") == (5 if with_edges else 4)
+    assert raw == exporter._generate_import_command(
+        nodes, relationships if with_edges else None
+    ).encode("utf-8")
+    assert nodes.exists()
+    assert relationships.exists() == with_edges
+    expected = ["import", "--database=neo4j", "--nodes=chunks_nodes.csv"]
+    if with_edges:
+        expected.append("--relationships=chunks_relationships.csv")
+    expected.extend(["--skip-bad-relationships=true", "--skip-duplicate-nodes=true"])
+    for option in expected[1:]:
+        assert option.encode("utf-8") in raw
+    assert (b"--relationships=" in raw) == with_edges
+    if os.name == "posix":
+        assert script.stat().st_mode & 0o100
+        bash = shutil.which("bash")
+        if bash:
+            command = tmp_path / "neo4j-admin"
+            command.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n', encoding="utf-8")
+            command.chmod(0o700)
+            result = subprocess.run(
+                [bash, str(script)],
+                env={"PATH": str(tmp_path)},
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            assert result.returncode == 0, result.stderr
+            assert result.stdout.splitlines() == expected
 
 
 @pytest.mark.parametrize("pretty", [False, True])

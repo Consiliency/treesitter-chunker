@@ -237,7 +237,7 @@ CREATE (a)-[:{edge.relationship_type}{prop_str}]->(b);"""
                 rels_path if self.edges else None,
             )
             cmd_path = output_path.parent / f"{output_path.stem}_import.sh"
-            cmd_path.write_text(import_cmd, encoding="utf-8")
+            cmd_path.write_text(import_cmd, encoding="utf-8", newline="")
             cmd_path.chmod(493)
         elif fmt == "cypher":
             statements = self.generate_cypher_statements(**options)

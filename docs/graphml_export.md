@@ -192,6 +192,11 @@ Its CSV files preserve embedded LF, CR and CRLF in caller IDs and string
 properties, matching generated CSV strings on Linux and Windows
 (treesitter-chunker#454). Read files with `newline=""` to retain these line
 breaks. This does not establish live Neo4j database import compatibility.
+The generated Neo4j `.sh` helper preserves LF syntax on Windows and Linux for
+Bash (treesitter-chunker#457). Ordinary shell-safe basenames are covered;
+filename quoting remains treesitter-chunker#460, and direct Cypher file newline
+fidelity remains treesitter-chunker#458. Script transport is separate from a
+certified database import.
 XML character rejection is described below (treesitter-chunker#168 and
 treesitter-chunker#451). Structural label-key separation is described above
 (treesitter-chunker#169).
