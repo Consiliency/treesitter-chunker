@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Go version hints retain every release tag in a column-zero, unparenthesized
+  positive release-only `//go:build` conjunction, choosing the numeric maximum
+  regardless of order.
+
 - Type-checking preserves literal message values while normalizing only leading
   file locations, so colon-number and backslash changes cannot reuse old debt.
 
