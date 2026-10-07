@@ -4,9 +4,7 @@ This module tests complex CLI scenarios including interactive mode,
 signal handling, complex command chains, and error recovery.
 """
 
-import errno
 import json
-import os
 import signal
 import subprocess
 import sys
@@ -307,12 +305,37 @@ class TestSignalHandling:
         source = fixture.read_bytes()
         assert not get_parser("python").parse(source).root_node.has_error
         input_path = tmp_path / "test.py"
-        os.mkfifo(input_path)
+        input_path.write_bytes(source)
+        ready_path = tmp_path / "parsed.json"
+        observer = """
+import json
+import runpy
+import sys
+import time
+from pathlib import Path
+
+ready = Path(sys.argv[1])
+sys.argv = ["cli.main", *sys.argv[2:]]
+
+def observe(frame, event, result):
+    if (event == "return" and frame.f_code.co_name == "process_file"
+            and frame.f_globals.get("__name__") == "__main__" and result):
+        sys.setprofile(None)
+        temporary = ready.with_suffix(".tmp")
+        temporary.write_text(json.dumps(result), encoding="utf-8")
+        temporary.replace(ready)
+        while True:
+            time.sleep(0.01)
+
+sys.setprofile(observe)
+runpy.run_module("cli.main", run_name="__main__")
+"""
         process = subprocess.Popen(
             [
                 sys.executable,
-                "-m",
-                "cli.main",
+                "-c",
+                observer,
+                str(ready_path),
                 "chunk",
                 str(input_path),
                 "-l",
@@ -323,47 +346,22 @@ class TestSignalHandling:
             stderr=subprocess.PIPE,
             text=True,
         )
-        writer = None
         try:
             deadline = time.monotonic() + 30
-            while writer is None:
-                assert process.poll() is None, "CLI exited before opening input"
-                try:
-                    writer = os.open(input_path, os.O_WRONLY | os.O_NONBLOCK)
-                except OSError as error:
-                    if error.errno != errno.ENXIO:
-                        raise
-                    assert time.monotonic() < deadline, "CLI did not open input"
-                    time.sleep(0.01)
-            assert os.write(writer, source) == len(source)
+            while not ready_path.exists():
+                assert process.poll() is None, "CLI exited before parsing input"
+                assert time.monotonic() < deadline, "CLI did not finish parsing input"
+                time.sleep(0.01)
+            rows = json.loads(ready_path.read_text(encoding="utf-8"))
+            assert rows
+            assert all(row["file_path"] == str(input_path) for row in rows)
+            assert all(row["language"] == "python" for row in rows)
+            assert all(row["content"] in source.decode("utf-8") for row in rows)
+            assert any("def render_report(" in row["content"] for row in rows)
             process.send_signal(signal.SIGINT)
-            try:
-                stdout, stderr = process.communicate(timeout=15)
-            except subprocess.TimeoutExpired as error:
-                child_signals = "unavailable"
-                if sys.platform.startswith("linux"):
-                    try:
-                        status = Path(f"/proc/{process.pid}/status").read_text()
-                        child_signals = "; ".join(
-                            line
-                            for line in status.splitlines()
-                            if line.startswith(
-                                ("SigPnd:", "ShdPnd:", "SigBlk:", "SigIgn:", "SigCgt:")
-                            )
-                        )
-                    except OSError:
-                        pass
-                pytest.fail(
-                    f"Readied CLI did not exit after SIGINT; parent handler="
-                    f"{signal.getsignal(signal.SIGINT)!r}; parent mask="
-                    f"{signal.pthread_sigmask(signal.SIG_BLOCK, [])!r}; "
-                    f"child signals={child_signals}; stdout={error.stdout!r}; "
-                    f"stderr={error.stderr!r}"
-                )
+            stdout, stderr = process.communicate(timeout=15)
             assert process.returncode in {-signal.SIGINT, 130}, (stdout, stderr)
         finally:
-            if writer is not None:
-                os.close(writer)
             if process.poll() is None:
                 process.kill()
             process.communicate(timeout=15)

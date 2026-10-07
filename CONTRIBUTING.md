@@ -83,8 +83,10 @@ and named mutations.
 
 ### Platform checks
 
-The POSIX SIGINT contract waits until the actual CLI opens its FIFO input before
-signaling it, drains both output pipes and reaps the child on success or failure.
+The POSIX SIGINT contract observes the actual CLI's return of parsed regular-file
+fixture chunks, then signals it during a controlled Python pause. It drains both
+output pipes and reaps the child on success or failure. This does not establish
+interruption during arbitrary native parsing or blocked input reads.
 Its readiness and shutdown bounds safeguard cleanup; they are not throughput
 requirements. Windows deliberately skips this POSIX-only contract.
 

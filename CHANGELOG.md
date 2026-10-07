@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- The POSIX CLI SIGINT quality check observes actual input readiness and drains
+- The POSIX CLI SIGINT quality check observes actual fixture parsing readiness and drains
   and reaps its child, avoiding startup guesses and early-completion skips.
 
 - Go build-version hints compare major/minor numbers, selecting 1.10 over 1.9
