@@ -467,6 +467,70 @@ def test_neo4j_csv_retains_boundary_field_whitespace(
     assert all(row["quoted"] == quoted for row in edges)
 
 
+@pytest.mark.parametrize("line_break", ["\n", "\r", "\r\n"], ids=["lf", "cr", "crlf"])
+@pytest.mark.parametrize("reverse", [False, True], ids=["forward", "reverse"])
+@pytest.mark.parametrize("with_edges", [False, True], ids=["no-edges", "edges"])
+def test_neo4j_csv_files_preserve_embedded_newlines(
+    parsed_same_span, line_break, reverse, with_edges, tmp_path
+):
+    parent, child = parsed_same_span[:2]
+    parent.node_id = "caller" + line_break + "parent"
+    child.node_id = "caller" + line_break + "child"
+    value = "value" + line_break + 'next, "quoted"\t\u2003'
+    for chunk in (parent, child):
+        chunk.metadata["zz_multiline"] = value
+    order = [child, parent] if reverse else [parent, child]
+    exporter = Neo4jExporter()
+    exporter.add_chunks(order)
+    if with_edges:
+        exporter.add_relationship(*order, "CALLS", {"zz_multiline": value})
+        exporter.add_relationship(*reversed(order), "RETURNS", {"zz_multiline": value})
+    exporter.export(tmp_path / "multiline", fmt="csv")
+    node_ids = {"caller" + line_break + "parent", "caller" + line_break + "child"}
+    expected_edges = {
+        (order[0].node_id, order[1].node_id, "CALLS"),
+        (order[1].node_id, order[0].node_id, "RETURNS"),
+    }
+    for kind, suffix in [
+        ("csv_nodes", "nodes"),
+        ("csv_relationships", "relationships"),
+    ]:
+        generated = exporter.export_string(fmt=kind)
+        string_reader = csv.DictReader(io.StringIO(generated, newline=""))
+        string_rows = list(string_reader)
+        if suffix == "nodes":
+            assert string_reader.fieldnames == [
+                "nodeId:ID",
+                ":LABEL",
+                *sorted(
+                    {key for node in exporter.nodes.values() for key in node.properties}
+                ),
+            ]
+            assert len(string_rows) == 2
+            assert {row["nodeId:ID"] for row in string_rows} == node_ids
+        else:
+            assert string_reader.fieldnames == [":START_ID", ":END_ID", ":TYPE"] + (
+                ["zz_multiline"] if with_edges else []
+            )
+            assert len(string_rows) == (2 if with_edges else 0)
+            assert {
+                (row[":START_ID"], row[":END_ID"], row[":TYPE"]) for row in string_rows
+            } == (expected_edges if with_edges else set())
+        assert all(row["zz_multiline"] == value for row in string_rows)
+        path = tmp_path / f"multiline_{suffix}.csv"
+        if suffix == "relationships" and not with_edges:
+            assert not path.exists()
+            continue
+        with path.open(encoding="utf-8", newline="") as f:
+            file_reader = csv.DictReader(f)
+            assert list(file_reader) == string_rows
+            assert file_reader.fieldnames == string_reader.fieldnames
+        assert path.read_bytes() == generated.encode("utf-8")
+    command = (tmp_path / "multiline_import.sh").read_text(encoding="utf-8")
+    assert "--nodes=multiline_nodes.csv" in command
+    assert ("--relationships=multiline_relationships.csv" in command) == with_edges
+
+
 @pytest.mark.parametrize("include_nodes", [False, True])
 def test_neo4j_csv_empty_relationship_headers_and_files(
     parsed_same_span, include_nodes, tmp_path

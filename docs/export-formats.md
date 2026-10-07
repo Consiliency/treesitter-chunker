@@ -83,8 +83,10 @@ This creates `chunks_nodes.csv`, `chunks_relationships.csv` when edges exist,
 and `chunks_import.sh`. The CSV generators remove only their final generated
 record delimiter. Caller IDs and string properties retain leading/trailing
 spaces, tabs and Unicode whitespace; retain those values when joining endpoints
-(treesitter-chunker#448). CSV quoting handles commas and quotes. Embedded CRLF
-fields still change in Windows file output (treesitter-chunker#454); this is
+(treesitter-chunker#448). CSV quoting handles commas, quotes and embedded
+LF, CR and CRLF. CSV files retain the exact UTF-8 payload of the corresponding
+generated strings on Linux and Windows (treesitter-chunker#454). Read CSV files
+with `newline=""` to preserve embedded line breaks. This direct CSV API is
 separate from the package-level structured export API and live database import.
 
 ## JSON Export

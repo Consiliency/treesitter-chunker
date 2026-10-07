@@ -225,11 +225,13 @@ CREATE (a)-[:{edge.relationship_type}{prop_str}]->(b);"""
         if fmt == "csv":
             nodes_path = output_path.parent / f"{output_path.stem}_nodes.csv"
             headers, data = self._generate_node_csv()
-            nodes_path.write_text(headers + "\n" + data, encoding="utf-8")
+            nodes_path.write_text(headers + "\n" + data, encoding="utf-8", newline="")
             if self.edges:
                 rels_path = output_path.parent / f"{output_path.stem}_relationships.csv"
                 headers, data = self._generate_relationship_csv()
-                rels_path.write_text(headers + "\n" + data, encoding="utf-8")
+                rels_path.write_text(
+                    headers + "\n" + data, encoding="utf-8", newline=""
+                )
             import_cmd = self._generate_import_command(
                 nodes_path,
                 rels_path if self.edges else None,
