@@ -64,6 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Direct DOT relationship labels retain quotes, literal backslashes, Unicode,
   tabs and carriage returns through actual Graphviz compilation; physical LF
   produces centered label lines in string/file output (treesitter-chunker#473).
+  Caller backslash escapes now render literally; use physical LF for lines.
+  HTML entities remain interpreted by Graphviz (treesitter-chunker#478).
   Node labels/tooltips remain separate work in treesitter-chunker#476.
 
 - The direct Neo4j Cypher exporter writes the exact generated UTF-8 payload on

@@ -204,9 +204,13 @@ backslashes, Unicode, tabs and carriage returns in string and file output
 remain visible text; they do not substitute graph identities or create lines.
 Physical LF creates a centered line break. Physical CR remains in the compiled
 label value; renderer typography and control-character display are separate.
-HTML-looking labels remain plain text. This contract covers valid UTF-8 text
-without NUL, not arbitrary control bytes, invalid surrogates or arbitrary
-attribute values. Other node-label and tooltip escaping paths retain their
+HTML-looking tags remain plain text, but Graphviz interprets HTML character
+entities such as `&amp;` and `&#10;`; literal entity preservation remains
+treesitter-chunker#478. This contract covers the listed valid UTF-8 text cases
+without NUL or entity sequences, not arbitrary control bytes, invalid surrogates
+or arbitrary attribute values. Compiler qualification uses Graphviz 14.1.2 on
+Linux and 14.1.1 on Windows; other versions are not certified here.
+Other node-label and tooltip escaping paths retain their
 existing behavior, including the separate tab defect treesitter-chunker#476.
 
 The direct Neo4j CSV exporter preserves leading spaces, tabs and Unicode

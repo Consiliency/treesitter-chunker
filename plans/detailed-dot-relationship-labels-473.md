@@ -35,7 +35,7 @@ label/tooltip defect remains treesitter-chunker#476.
   Cover ordinary and empty labels, double quotes, mixed quote/backslash,
   trailing backslash, substitution-looking sequences, literal backslash-n/l/r/t,
   repeated backslashes, physical LF/CR/tab, Greek/accented/combining Unicode and
-  HTML-looking text. Compare rendered edge text to independent caller literals;
+  HTML-looking tags. Compare rendered edge text to independent caller literals;
   LF yields two centered lines, CR remains in Graphviz's compiled label value.
   JSON retains Graphviz's escape representation and is not a raw-text oracle for
   backslashes. Assert two original hex nodes, one directed edge, unchanged node
@@ -43,9 +43,12 @@ label/tooltip defect remains treesitter-chunker#476.
   ordinary tooltip. Compiler absence may skip, never qualify acceptance.
 - docs/graphml_export.md: document direct relationship labels as literal text,
   with physical LF line breaks and preserved tabs/CR. Scope is valid UTF-8 text
-  excluding NUL; arbitrary control bytes, invalid surrogates, renderer typography,
+  excluding NUL and HTML entity sequences; arbitrary control bytes, invalid surrogates, renderer typography,
   arbitrary attribute values and other label paths are not certified. Explain
-  why backslash sequences are literal and HTML-looking text remains plain text.
+  why backslash sequences are literal and HTML-looking tags remain plain text.
+  Graphviz interprets HTML entities; treesitter-chunker#478 independently tracks
+  literal preservation. Qualify compiler evidence to tested Graphviz 14.1.2 on
+  Linux and 14.1.1 on Windows, without a cross-version claim.
 - CHANGELOG.md: record the bounded repair under Fixed and remove obsolete
   treesitter-chunker#473 pending wording; reserve Unreleased for 6.0.0, no tag.
 - This plan and one typed manifest row: preserve all 64 existing canonical rows;
@@ -105,7 +108,21 @@ label/tooltip defect remains treesitter-chunker#476.
 
 ## Limits
 
-No arbitrary DOT attribute/label completeness, unsupported NUL/surrogate or
+## Complete R1 reconciliation
+
+All four CODE R1 opinions and original/full/native Windows completed before
+reconciliation. Gemini/Sol agreed; Opus/Astra identified an incorrectly named
+Windows mutation record, and Opus identified an unsupported HTML-entity text
+claim. Raw round, runner and mismatched Windows record are held verbatim.
+Actual SVG compilation confirms entity decoding; independently filed
+treesitter-chunker#478 remains outside this bounded quoting repair. Narrow
+docs to listed text cases without entity sequences and tested compiler versions,
+and document caller backslash migration. Production/test bytes remain unchanged.
+Regenerate Windows evidence with its identity bound to the actual Linux mutant
+digest, then require a fresh exact-head original, native Windows, hosted checks
+and complete CODE R2 under the existing three-round allowance.
+
+No arbitrary DOT attribute/label completeness, unsupported entity/NUL/surrogate or
 cross-renderer layout claim. Node labels/tooltips remain treesitter-chunker#476;
 GraphML treesitter-chunker#450, treesitter-chunker#452, treesitter-chunker#453,
 cache treesitter-chunker#358, CR-only source policy treesitter-chunker#471,
