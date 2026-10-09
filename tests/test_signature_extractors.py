@@ -9,6 +9,9 @@ regressions:
   read as arguments, and an omitted or truncated result list.
 * Rust (treesitter-chunker#367): an omitted ``&self`` receiver and an omitted
   ``-> return`` type.
+* C++ (treesitter-chunker#353): an in-class member declaration (a
+  ``field_declaration`` with a ``function_declarator``) left unsigned, and a
+  return type that absorbs ``virtual``/``static`` specifiers.
 """
 
 from __future__ import annotations
@@ -156,3 +159,84 @@ pub fn label(value: &str) -> String { value.to_string() }
     assert "receiver" not in signed["new"]["signature"]
     assert signed["label"]["signature_text"] == "label(value: &str) -> String"
     assert "receiver" not in signed["label"]["signature"]
+
+
+# --------------------------------------------------------------------------- #
+# C++ (treesitter-chunker#353)
+# --------------------------------------------------------------------------- #
+
+CPP_ISSUE_353 = """#include <string>
+
+class Gateway {
+ public:
+  std::string dispatch(const std::string& id);
+};
+"""
+
+
+def test_cpp_member_declaration_issue_353_repro():
+    metadata = _signed(CPP_ISSUE_353, "cpp")["dispatch"]
+    signature = metadata["signature"]
+    assert signature["parameters"] == ["const std::string& id"]
+    assert signature["return_type"] == "std::string"
+    assert signature["modifiers"] == []
+    assert "receiver" not in signature
+    assert (
+        metadata["signature_text"] == "dispatch(const std::string& id) -> std::string"
+    )
+
+
+def test_cpp_member_declaration_qualifiers():
+    code = """class Base {
+ public:
+  virtual std::string invoke(const std::string& id) = 0;
+  virtual int size() const override;
+  static Base* make(int n) noexcept;
+  const char* name() const;
+  bool operator==(const Base& other) const;
+};
+"""
+    signed = _signed(code, "cpp")
+    invoke = signed["invoke"]["signature"]
+    assert invoke["return_type"] == "std::string"
+    assert invoke["modifiers"] == ["virtual", "pure"]
+    size = signed["size"]["signature"]
+    assert size["return_type"] == "int"
+    assert size["modifiers"] == ["virtual", "const", "override"]
+    make = signed["make"]["signature"]
+    assert make["return_type"] == "Base*"
+    assert make["parameters"] == ["int n"]
+    assert make["modifiers"] == ["static", "noexcept"]
+    assert signed["name"]["signature"]["return_type"] == "const char*"
+    assert signed["name"]["signature"]["modifiers"] == ["const"]
+    assert signed["operator=="]["signature_text"] == (
+        "operator==(const Base& other) -> bool"
+    )
+
+
+def test_cpp_data_members_stay_unsigned():
+    code = """class Holder {
+ public:
+  std::string field;
+  int (*callback)(int);
+};
+"""
+    assert _signed(code, "cpp") == {}
+
+
+def test_c_function_pointer_field_stays_unsigned():
+    code = """struct Ops {
+    int (*cb)(int);
+    int count;
+};
+"""
+    assert _signed(code, "c") == {}
+
+
+def test_cpp_definitions_unchanged_by_member_declarations():
+    code = """std::string label(int value) {
+    return std::to_string(value);
+}
+"""
+    metadata = _signed(code, "cpp")["label"]
+    assert metadata["signature_text"] == "label(int value) -> std::string"

@@ -61,6 +61,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- C++ in-class member function declarations, such as
+  `std::string dispatch(const std::string& id);`, have signature metadata.
+  The return type is the declared type with any pointer or reference
+  declarator, and `virtual`, `static`, trailing `const`, `override`/`final`,
+  `noexcept` and a pure `= 0` are reported in `signature.modifiers`
+  (treesitter-chunker#353). Data members, including function-pointer fields,
+  stay unsigned.
+
 - Rust function and method signatures keep their `-> return` type, and a
   method's `self` parameter is also reported as `signature.receiver` while
   staying in `parameters`, for example `dispatch(&self, id: &str) -> String`
