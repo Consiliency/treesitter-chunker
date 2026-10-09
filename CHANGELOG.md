@@ -61,6 +61,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Rust function and method signatures keep their `-> return` type, and a
+  method's `self` parameter is also reported as `signature.receiver` while
+  staying in `parameters`, for example `dispatch(&self, id: &str) -> String`
+  (treesitter-chunker#367).
+
 - Go methods have signature metadata: the name is read from the method's
   `field_identifier`, the receiver list is reported separately as
   `signature.receiver` instead of as arguments, and Go functions and methods
