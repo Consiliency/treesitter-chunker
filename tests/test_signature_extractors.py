@@ -7,6 +7,8 @@ regressions:
 
 * Go (treesitter-chunker#352): identifier-only name lookup, the receiver list
   read as arguments, and an omitted or truncated result list.
+* Rust (treesitter-chunker#367): an omitted ``&self`` receiver and an omitted
+  ``-> return`` type.
 """
 
 from __future__ import annotations
@@ -106,3 +108,51 @@ func Nothing() {}
 def test_go_method_signature_in_boundary_ir(tmp_path):
     signatures = _boundary_signatures(tmp_path, "gateway.go", GO_ISSUE_352)
     assert signatures["Dispatch"] == "Dispatch(id string) -> (string, error)"
+
+
+# --------------------------------------------------------------------------- #
+# Rust (treesitter-chunker#367)
+# --------------------------------------------------------------------------- #
+
+RUST_ISSUE_367 = """struct Gateway;
+
+impl Gateway {
+    pub fn dispatch(&self, id: &str) -> String { String::new() }
+}
+"""
+
+
+def test_rust_impl_method_issue_367_repro():
+    metadata = _signed(RUST_ISSUE_367, "rust")["dispatch"]
+    signature = metadata["signature"]
+    # Fault: the receiver is omitted from the parameter list.
+    assert signature["parameters"] == ["&self", "id: &str"]
+    assert signature["receiver"] == "&self"
+    # Fault: the return type is omitted.
+    assert signature["return_type"] == "String"
+    assert signature["modifiers"] == ["pub"]
+    assert metadata["signature_text"] == "dispatch(&self, id: &str) -> String"
+
+
+def test_rust_receiver_forms_and_free_functions():
+    code = """struct S;
+
+impl S {
+    fn len(&self) -> usize { 0 }
+    fn push(&mut self, v: u32) {}
+    fn take(self) -> Result<(), std::io::Error> { Ok(()) }
+    fn new() -> Self { S }
+}
+
+pub fn label(value: &str) -> String { value.to_string() }
+"""
+    signed = _signed(code, "rust")
+    assert signed["len"]["signature_text"] == "len(&self) -> usize"
+    assert signed["push"]["signature"]["receiver"] == "&mut self"
+    assert signed["push"]["signature_text"] == "push(&mut self, v: u32)"
+    assert signed["take"]["signature"]["return_type"] == "Result<(), std::io::Error>"
+    assert signed["take"]["signature"]["receiver"] == "self"
+    assert signed["new"]["signature_text"] == "new() -> Self"
+    assert "receiver" not in signed["new"]["signature"]
+    assert signed["label"]["signature_text"] == "label(value: &str) -> String"
+    assert "receiver" not in signed["label"]["signature"]
