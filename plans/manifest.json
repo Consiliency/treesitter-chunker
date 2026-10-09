@@ -2467,6 +2467,33 @@
       "task_summary": "Bounded treesitter-chunker#476 real-parser Graphviz tab text contracts and named mutation",
       "type": "detailed",
       "updated_at": "2026-10-07T16:51:35Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-09T02:46:06.047729+00:00",
+      "file": "plans/detailed-graphml-pretty-whitespace-450.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-graphml-pretty-450/.dev-skills/handoffs/codex-plan-detailed/20261008-graphml-pretty-450.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-09T02:46:06.047729+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "plan_path": "plans/detailed-graphml-pretty-whitespace-450.md"
+          },
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-graphml-pretty-450/20261008-planning.md",
+      "roadmap_ref": null,
+      "slug": "graphml-pretty-whitespace-450",
+      "status": "committed",
+      "task_summary": "Bounded treesitter-chunker#450 pretty GraphML attribute whitespace and source-site mutations",
+      "type": "detailed",
+      "updated_at": "2026-10-09T02:46:06.047729+00:00"
     }
   ],
   "schema_version": 1
