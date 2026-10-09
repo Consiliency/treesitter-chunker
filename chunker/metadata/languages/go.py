@@ -20,27 +20,27 @@ class GoMetadataExtractor(BaseMetadataExtractor):
         if node.type not in {"function_declaration", "method_declaration"}:
             return None
 
-        name_node = self._find_child_by_type(node, "identifier")
+        name_node = node.child_by_field_name("name")
         if not name_node:
             return None
 
         name = self._get_node_text(name_node, source)
 
         parameters = []
-        params_node = self._find_child_by_type(node, "parameter_list")
+        params_node = node.child_by_field_name("parameters")
         if params_node:
             parameters = self._extract_parameters(params_node, source)
 
         return_type = None
         # Go can have multiple return types
-        result_node = self._find_child_by_type(node, "result")
+        result_node = node.child_by_field_name("result")
         if result_node:
-            return_type = self._get_node_text(result_node, source).strip("()")
+            return_type = self._get_node_text(result_node, source)
 
         modifiers = []
         # Check if it's a method (has receiver)
         if node.type == "method_declaration":
-            receiver_node = self._find_child_by_type(node, "parameter_list")
+            receiver_node = node.child_by_field_name("receiver")
             if receiver_node:
                 modifiers.append("method")
 

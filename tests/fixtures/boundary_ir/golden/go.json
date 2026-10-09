@@ -386,7 +386,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: go\nfile: beta.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: beta.go::helper\nsignature text: helper(value string)\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
+        "semantic_text": "language: go\nfile: beta.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: beta.go::helper\nsignature text: helper(value string) -> string\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
       },
       "node_id": "22964bd4e18f1f061ee862fc2387f4686bf7b5a0",
       "parent": null,
@@ -400,7 +400,7 @@
         "edge:a3898180bbd8cd3a"
       ],
       "semantic_path": "beta.go::helper",
-      "signature": "helper(value string)",
+      "signature": "helper(value string) -> string",
       "span": {
         "byte_end": 71,
         "byte_start": 21,
@@ -469,7 +469,7 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: go\nfile: format.go\nkind: function\nsymbol: Format\nqualified name: Format\nsemantic path: format.go::Format\nsignature text: Format(value string)\nexports: Format\ndependencies: strings, value\ncontent:\nfunc Format(value string) string {\n\treturn strings.TrimSpace(value)\n}"
+        "semantic_text": "language: go\nfile: format.go\nkind: function\nsymbol: Format\nqualified name: Format\nsemantic path: format.go::Format\nsignature text: Format(value string) -> string\nexports: Format\ndependencies: strings, value\ncontent:\nfunc Format(value string) string {\n\treturn strings.TrimSpace(value)\n}"
       },
       "node_id": "a811951b89c596317c2fab81c4278ef5be021e55",
       "parent": null,
@@ -485,7 +485,7 @@
         "edge:e1b76270e5745f55"
       ],
       "semantic_path": "format.go::Format",
-      "signature": "Format(value string)",
+      "signature": "Format(value string) -> string",
       "span": {
         "byte_end": 145,
         "byte_start": 76,
@@ -512,7 +512,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: go\nfile: alpha.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: alpha.go::helper\nsignature text: helper(value string)\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
+        "semantic_text": "language: go\nfile: alpha.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: alpha.go::helper\nsignature text: helper(value string) -> string\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
       },
       "node_id": "56168a7175d65a85aaaa9d42e017e4ef08f2b307",
       "parent": null,
@@ -526,7 +526,7 @@
         "edge:e9303e27e5900f9e"
       ],
       "semantic_path": "alpha.go::helper",
-      "signature": "helper(value string)",
+      "signature": "helper(value string) -> string",
       "span": {
         "byte_end": 71,
         "byte_start": 21,
@@ -558,7 +558,7 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: go\nfile: service.go\nkind: function\nsymbol: Render\nqualified name: Render\nsemantic path: service.go::Render\nsignature text: Render(value string)\nexports: Render\ndependencies: Format, Ghost, helper, value\ncontent:\nfunc Render(value string) string {\n\tcleaned := Format(value)\n\tduplicate := helper(cleaned)\n\treturn Ghost(duplicate)\n}"
+        "semantic_text": "language: go\nfile: service.go\nkind: function\nsymbol: Render\nqualified name: Render\nsemantic path: service.go::Render\nsignature text: Render(value string) -> string\nexports: Render\ndependencies: Format, Ghost, helper, value\ncontent:\nfunc Render(value string) string {\n\tcleaned := Format(value)\n\tduplicate := helper(cleaned)\n\treturn Ghost(duplicate)\n}"
       },
       "node_id": "4aa1a0d8a5534c8c5d44bdc3ef695d698e5f22d4",
       "parent": null,
@@ -578,7 +578,7 @@
         "edge:f1554145262a03fd"
       ],
       "semantic_path": "service.go::Render",
-      "signature": "Render(value string)",
+      "signature": "Render(value string) -> string",
       "span": {
         "byte_end": 138,
         "byte_start": 21,

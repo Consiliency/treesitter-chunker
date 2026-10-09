@@ -28,6 +28,22 @@ chunks = chunk_text(code, "python", extract_metadata=False)
 Chunk identity and extraction bookkeeping are separate from these optional
 fields. See [chunk identity](chunk-identity.md).
 
+## Go Signatures
+
+Go function and method signatures retain the declared name, argument declarations
+and complete result text. Parameters remain source-text strings in declaration
+order: grouped names such as `first, second string`, variadic arguments and
+function-typed arguments are preserved rather than expanded or type-resolved.
+Methods carry the `method` modifier; their receiver is excluded from the ordinary
+argument list and is not exposed as a separate signature field.
+
+An absent result is `None`; multiple or named results retain their parentheses.
+For example, `func (g *Gateway) Dispatch(id string) (string, error)` produces
+`Dispatch(id string) -> (string, error)` in opt-in `signature_text` and Boundary IR.
+Refresh stored Go signature and semantic-text metadata when adopting this repair
+(treesitter-chunker#352 and treesitter-chunker#483). It does not change the
+structural/occurrence identity algorithms or add Go interface-method signatures.
+
 ## Call Span Contract
 
 `call_spans` records have `name`, `start` and `end` keys, with optional
