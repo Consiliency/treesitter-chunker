@@ -1,7 +1,10 @@
 """Tests for metadata extraction functionality."""
 
 import pytest
+from pathlib import Path
 
+from chunker.boundary import extract_boundary_ir
+from chunker.core import chunk_file
 from chunker.core import chunk_text
 from chunker.metadata import MetadataExtractorFactory
 from chunker.metadata.languages import (
@@ -491,6 +494,83 @@ interface Calculator {
         assert signature.parameters[0]["type"] == "string"
         assert signature.parameters[1]["name"] == "age"
         assert signature.parameters[1]["type"] == "number"
+
+
+GO_SIGNATURE_FIXTURE = Path(__file__).parent / "fixtures" / "go_signatures.go"
+GO_SIGNATURE_CASES = [
+    ("Dispatch", ["id string"], "(string, error)", True),
+    ("Ping", [], None, True),
+    ("Join", ["first, second string"], "string", True),
+    ("Collect", ["ids ...string"], "[]string", True),
+    ("Probe", ["string", "int"], "(value string, err error)", True),
+    ("SingleNamed", [], "(value string)", True),
+    ("Value", ["value T"], "T", True),
+    ("Callback", ["cb func(string) error"], "func(string) error", True),
+    ("Greet", ["name string"], "string", False),
+    ("Zero", [], None, False),
+]
+
+
+class TestGoMetadataExtraction:
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("name", "parameters", "result", "is_method"), GO_SIGNATURE_CASES
+    )
+    @pytest.mark.parametrize("route", ["text", "file"])
+    def test_go_signatures(name, parameters, result, is_method, route):
+        code = GO_SIGNATURE_FIXTURE.read_text(encoding="utf-8")
+        assert not get_parser("go").parse(code.encode("utf-8")).root_node.has_error
+        if route == "text":
+            chunks = chunk_text(
+                code,
+                "go",
+                str(GO_SIGNATURE_FIXTURE),
+                include_retrieval_metadata=True,
+            )
+        else:
+            chunks = chunk_file(
+                GO_SIGNATURE_FIXTURE,
+                "go",
+                include_retrieval_metadata=True,
+            )
+        prefix = f") {name}(" if is_method else f"func {name}("
+        matches = [
+            c
+            for c in chunks
+            if prefix in c.content
+            and c.node_type
+            in {
+                "method_declaration",
+                "function_declaration",
+            }
+        ]
+        assert len(matches) == 1
+        chunk = matches[0]
+        assert chunk.metadata.get("signature") == {
+            "name": name,
+            "parameters": parameters,
+            "return_type": result,
+            "decorators": [],
+            "modifiers": ["method"] if is_method else [],
+        }
+        expected_text = f"{name}({', '.join(parameters)})"
+        if result is not None:
+            expected_text += f" -> {result}"
+        assert chunk.metadata["signature_text"] == expected_text
+        assert f"signature text: {expected_text}" in chunk.metadata["semantic_text"]
+
+    @staticmethod
+    def test_go_boundary_signatures():
+        ir = extract_boundary_ir(GO_SIGNATURE_FIXTURE, "go", fail_fast=True)
+        nodes = [n for n in ir["nodes"] if n["kind"] in {"method", "function"}]
+        assert len(nodes) == len(GO_SIGNATURE_CASES)
+        for name, parameters, result, _is_method in GO_SIGNATURE_CASES:
+            matches = [n for n in nodes if n["symbol"] == name]
+            assert len(matches) == 1
+            expected = f"{name}({', '.join(parameters)})"
+            if result is not None:
+                expected += f" -> {result}"
+            assert matches[0]["signature"] == expected
 
 
 class TestIntegrationWithChunker:

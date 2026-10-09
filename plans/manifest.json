@@ -2467,6 +2467,33 @@
       "task_summary": "Bounded treesitter-chunker#476 real-parser Graphviz tab text contracts and named mutation",
       "type": "detailed",
       "updated_at": "2026-10-07T16:51:35Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-09T22:15:18.390744+00:00",
+      "file": "plans/detailed-go-signatures-352.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-go-signatures-352/.dev-skills/handoffs/codex-plan-detailed/20261009-go-signatures-352.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-09T22:15:18.390744+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "inline_execution_context": true
+          },
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/656e829d044008e0/codex-go-signatures-352/20261009-go-signatures-352.md",
+      "roadmap_ref": null,
+      "slug": "go-signatures-352",
+      "status": "committed",
+      "task_summary": "Bounded Go signature repair treesitter-chunker#352 and treesitter-chunker#483",
+      "type": "detailed",
+      "updated_at": "2026-10-09T22:15:18.390744+00:00"
     }
   ],
   "schema_version": 1

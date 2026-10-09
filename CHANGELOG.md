@@ -61,6 +61,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Go methods expose their declared names and arguments rather than losing their
+  signatures or treating receivers as arguments; functions and methods retain
+  complete declared result text, including named/multiple results
+  (treesitter-chunker#352, treesitter-chunker#483). Refresh stored Go signature and
+  semantic-text metadata; parser pins and occurrence identity algorithms are
+  unchanged. See [Go signatures](docs/metadata-extraction.md#go-signatures).
+
 - Direct DOT node/cluster labels and compiled relationship tooltips retain
   physical tabs instead of turning them into literal `t` characters
   (treesitter-chunker#476). Parsed SVG tooltips normalize tabs to spaces.
