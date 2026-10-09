@@ -1,0 +1,108 @@
+"""Signature metadata for methods and member declarations across languages.
+
+Each case parses real source with the locked grammar and checks the public
+chunk metadata (``signature`` and the formatted ``signature_text``) plus, where
+noted, the Boundary IR ``signature`` field. The named faults guard specific
+regressions:
+
+* Go (treesitter-chunker#352): identifier-only name lookup, the receiver list
+  read as arguments, and an omitted or truncated result list.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+
+import chunker
+from chunker.core import chunk_text
+
+
+def _signed(code: str, language: str) -> dict[str, dict]:
+    """Map signature name -> chunk metadata for every signed chunk."""
+    chunks = chunk_text(
+        code,
+        language,
+        extract_metadata=True,
+        include_retrieval_metadata=True,
+    )
+    out: dict[str, dict] = {}
+    for chunk in chunks:
+        signature = chunk.metadata.get("signature")
+        if signature:
+            out[signature["name"]] = chunk.metadata
+    return out
+
+
+def _boundary_signatures(tmp_path: Path, filename: str, code: str) -> dict:
+    path = tmp_path / filename
+    path.write_text(code, encoding="utf-8")
+    ir = chunker.extract_boundary_ir(
+        str(tmp_path), canonical=True, include_timings=False
+    )
+    return {
+        node["qualified_name"]: node["signature"]
+        for node in ir["nodes"]
+        if node.get("signature")
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Go (treesitter-chunker#352)
+# --------------------------------------------------------------------------- #
+
+GO_ISSUE_352 = """package gateway
+
+type Gateway struct{}
+func (g *Gateway) Dispatch(id string) (string, error) { return "", nil }
+"""
+
+
+def test_go_method_signature_issue_352_repro():
+    signed = _signed(GO_ISSUE_352, "go")
+    metadata = signed["Dispatch"]
+    signature = metadata["signature"]
+    # Fault: identifier-only name lookup returned None for field_identifier.
+    assert signature["name"] == "Dispatch"
+    # Fault: the receiver list was read as the argument list.
+    assert signature["parameters"] == ["id string"]
+    assert signature["receiver"] == "g *Gateway"
+    assert "method" in signature["modifiers"]
+    # Fault: the result list was omitted (or had its parentheses stripped).
+    assert signature["return_type"] == "(string, error)"
+    assert metadata["signature_text"] == "Dispatch(id string) -> (string, error)"
+
+
+def test_go_method_value_receiver_single_result():
+    code = """package handler
+
+type Handler struct{ Name string }
+
+func (h Handler) Dispatch(toolId string) string {
+\treturn toolId
+}
+"""
+    metadata = _signed(code, "go")["Dispatch"]
+    assert metadata["signature"]["receiver"] == "h Handler"
+    assert metadata["signature_text"] == "Dispatch(toolId string) -> string"
+
+
+def test_go_function_signature_keeps_result_and_has_no_receiver():
+    code = """package handler
+
+func Label(value string) string { return value }
+func Pair(a, b int, s ...string) (n int, err error) { return 0, nil }
+func Nothing() {}
+"""
+    signed = _signed(code, "go")
+    assert signed["Label"]["signature_text"] == "Label(value string) -> string"
+    assert "receiver" not in signed["Label"]["signature"]
+    assert signed["Label"]["signature"]["modifiers"] == []
+    assert signed["Pair"]["signature"]["parameters"] == ["a, b int", "s ...string"]
+    assert signed["Pair"]["signature"]["return_type"] == "(n int, err error)"
+    assert signed["Nothing"]["signature_text"] == "Nothing()"
+
+
+def test_go_method_signature_in_boundary_ir(tmp_path):
+    signatures = _boundary_signatures(tmp_path, "gateway.go", GO_ISSUE_352)
+    assert signatures["Dispatch"] == "Dispatch(id string) -> (string, error)"
