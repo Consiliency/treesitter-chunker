@@ -83,7 +83,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: swift\nfile: Widget.swift\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: Widget.swift::run\ncontent:\nfunc run() -> Int {\n    return Widget().render()\n}"
+        "semantic_text": "language: swift\nfile: Widget.swift\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: Widget.swift::run\nsignature text: run() -> Int\ncontent:\nfunc run() -> Int {\n    return Widget().render()\n}"
       },
       "node_id": "7f63c1febda628cdde0c2d7a0b997a834745e612",
       "parent": null,
@@ -95,7 +95,7 @@
       "qualified_name": "run",
       "relationships": [],
       "semantic_path": "Widget.swift::run",
-      "signature": null,
+      "signature": "run() -> Int",
       "span": {
         "byte_end": 225,
         "byte_start": 175,
@@ -120,7 +120,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: swift\nfile: Widget.swift\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: Widget.swift::Widget.helper\ncontent:\nfunc helper(_ value: Int) -> Int {\n        return value + 1\n    }"
+        "semantic_text": "language: swift\nfile: Widget.swift\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: Widget.swift::Widget.helper\nsignature text: helper(_ value: Int) -> Int\ncontent:\nfunc helper(_ value: Int) -> Int {\n        return value + 1\n    }"
       },
       "node_id": "813c227fc2ae2abb5b9faf2a6bab345c9a2af652",
       "parent": "e4c75054d4ce9bbae37b9bd0c1c4a67e25c6d72b",
@@ -132,7 +132,7 @@
       "qualified_name": "Widget.helper",
       "relationships": [],
       "semantic_path": "Widget.swift::Widget.helper",
-      "signature": null,
+      "signature": "helper(_ value: Int) -> Int",
       "span": {
         "byte_end": 171,
         "byte_start": 106,
@@ -194,7 +194,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: swift\nfile: Widget.swift\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: Widget.swift::Widget.render\ncontent:\nfunc render() -> Int {\n        return helper(count)\n    }"
+        "semantic_text": "language: swift\nfile: Widget.swift\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: Widget.swift::Widget.render\nsignature text: render() -> Int\ncontent:\nfunc render() -> Int {\n        return helper(count)\n    }"
       },
       "node_id": "7710809d8820a01ddf511f8a4a9d746ab9e517b0",
       "parent": "e4c75054d4ce9bbae37b9bd0c1c4a67e25c6d72b",
@@ -206,7 +206,7 @@
       "qualified_name": "Widget.render",
       "relationships": [],
       "semantic_path": "Widget.swift::Widget.render",
-      "signature": null,
+      "signature": "render() -> Int",
       "span": {
         "byte_end": 100,
         "byte_start": 43,
