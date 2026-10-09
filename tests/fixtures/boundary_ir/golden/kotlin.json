@@ -46,7 +46,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: method\nsymbol: class_declaration\nqualified name: class_declaration\nsemantic path: Widget.kt::class_declaration\ncontent:\nfun render(): Int {\n        return helper(count)\n    }"
+        "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: method\nsymbol: render\nqualified name: render\nsemantic path: Widget.kt::render\nsignature text: render() -> Int\ncontent:\nfun render(): Int {\n        return helper(count)\n    }"
       },
       "node_id": "b48289f2ab3eefda09dad57524efdd41fad4a68f",
       "parent": "e9f6ac3cfcd55046c251b376c932b7cbe35f060f",
@@ -55,18 +55,18 @@
         "extractor": "chunk_file",
         "metadata": "retrieval"
       },
-      "qualified_name": "class_declaration",
+      "qualified_name": "render",
       "relationships": [],
-      "semantic_path": "Widget.kt::class_declaration",
-      "signature": null,
+      "semantic_path": "Widget.kt::render",
+      "signature": "render() -> Int",
       "span": {
         "byte_end": 102,
         "byte_start": 48,
         "end_line": 6,
         "start_line": 4
       },
-      "symbol": "class_declaration",
-      "symbol_id": "51e225fc38da234fc2fb3cc3331f92ac73cc75ed"
+      "symbol": "render",
+      "symbol_id": "4abe85157b48f6dbeca6bed7bb8ddd67ff09e358"
     },
     {
       "definition_id": "cc0a6e60f1c7360be23cdadf259175c7a60625a6",
@@ -83,7 +83,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: method\nsymbol: class_declaration\nqualified name: class_declaration\nsemantic path: Widget.kt::class_declaration\ncontent:\nfun helper(value: Int): Int {\n        return value + 1\n    }"
+        "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: method\nsymbol: helper\nqualified name: helper\nsemantic path: Widget.kt::helper\nsignature text: helper(value: Int) -> Int\ncontent:\nfun helper(value: Int): Int {\n        return value + 1\n    }"
       },
       "node_id": "d30f63ef3b0f1b5fa660e42a74ac148a40a113d2",
       "parent": "e9f6ac3cfcd55046c251b376c932b7cbe35f060f",
@@ -92,18 +92,18 @@
         "extractor": "chunk_file",
         "metadata": "retrieval"
       },
-      "qualified_name": "class_declaration",
+      "qualified_name": "helper",
       "relationships": [],
-      "semantic_path": "Widget.kt::class_declaration",
-      "signature": null,
+      "semantic_path": "Widget.kt::helper",
+      "signature": "helper(value: Int) -> Int",
       "span": {
         "byte_end": 168,
         "byte_start": 108,
         "end_line": 10,
         "start_line": 8
       },
-      "symbol": "class_declaration",
-      "symbol_id": "51e225fc38da234fc2fb3cc3331f92ac73cc75ed"
+      "symbol": "helper",
+      "symbol_id": "fb1b0a90a3854b49c0ad54f02573825de0a3de8a"
     },
     {
       "definition_id": "f16906df0adc4ed69aa8f61caff4bde67ad2e62e",
@@ -120,7 +120,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: function\nsemantic path: Widget.kt\ncontent:\nfun run(): Int {\n    return Widget(1).render()\n}"
+        "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: Widget.kt::run\nsignature text: run() -> Int\ncontent:\nfun run(): Int {\n    return Widget(1).render()\n}"
       },
       "node_id": "39b82a02da9c326f4b6a0929e89d134adbef20a7",
       "parent": null,
@@ -129,18 +129,18 @@
         "extractor": "chunk_file",
         "metadata": "retrieval"
       },
-      "qualified_name": null,
+      "qualified_name": "run",
       "relationships": [],
-      "semantic_path": "Widget.kt",
-      "signature": null,
+      "semantic_path": "Widget.kt::run",
+      "signature": "run() -> Int",
       "span": {
         "byte_end": 220,
         "byte_start": 172,
         "end_line": 15,
         "start_line": 13
       },
-      "symbol": null,
-      "symbol_id": null
+      "symbol": "run",
+      "symbol_id": "0d672d20cc9e9c350a1b1f5954058b78ade68238"
     },
     {
       "definition_id": "fa65b306cfa8a20c256934715ee62d31f0acef19",

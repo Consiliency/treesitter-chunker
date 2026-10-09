@@ -34,8 +34,9 @@ A `signature` record has `name`, `parameters`, `return_type`, `decorators` and
 `modifiers`. `parameters` lists what is declared inside the parameter list,
 in source order. A method whose grammar declares a receiver also carries
 `receiver`: the Go receiver list (`g *Gateway`), which is never repeated in
-`parameters`, or the Rust `self` parameter (`&self`), which stays in
-`parameters` because it is written there. The key is absent when there is no receiver. Retrieval metadata
+`parameters`; the Rust `self` parameter (`&self`), which stays in
+`parameters` because it is written there; a Kotlin extension receiver type;
+or a Ruby singleton-method object (`self`). The key is absent when there is no receiver. Retrieval metadata
 formats the record as `signature_text`, `name(parameters) -> return_type`,
 with the return type text kept whole, such as Go's `(string, error)`.
 
@@ -57,7 +58,10 @@ counts. See the [cookbook](cookbook.md#call-span-extraction-and-metadata-analysi
 
 The factory has specialized metadata extractors for Python, JavaScript,
 TypeScript/JSX/TSX, Rust, Go and C/C++; specialized complexity analyzers cover
-Python and JavaScript/TypeScript variants. Core call spans require a registered
+Python and JavaScript/TypeScript variants. Java, C#, Kotlin, Swift, PHP and
+Ruby have signature-only extractors: their method and function chunks carry
+`signature`, while docstrings, imports, exports, dependencies and call spans
+stay empty. Core call spans require a registered
 extractor; branches for other languages in the abstract base class do not
 register them automatically. Parser coverage and metadata completeness are
 different questions. Inspect the registrations:

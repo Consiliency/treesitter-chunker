@@ -61,6 +61,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Java, C#, Kotlin, Swift, PHP and Ruby methods and functions have signature
+  metadata (treesitter-chunker#354). Signature-only extractors cover Java
+  methods and constructors, C# methods, Kotlin functions, Swift functions and
+  protocol requirements, PHP methods and functions, and Ruby methods and
+  singleton methods. Parameters keep their declared text; annotations and
+  attributes are decorators; a Kotlin extension receiver or Ruby singleton
+  object is `signature.receiver`. These languages still extract no
+  docstrings, imports, exports, dependencies or call spans. Their Boundary IR
+  goldens gain `signature` and `semantic_text` signature lines. Kotlin methods
+  previously took the symbol `class_declaration`; they now take the
+  function's name, which also changes their `symbol_id`, `qualified_name` and
+  `semantic_path`. Boundary node ids are unchanged. Because these languages
+  now have a registered extractor, `chunk_text`/`chunk_file` metadata for
+  every chunk in them also carries `type` (the node type) and an empty
+  `dependencies` list.
+
 - C++ in-class member function declarations, such as
   `std::string dispatch(const std::string& id);`, have signature metadata.
   The return type is the declared type with any pointer or reference

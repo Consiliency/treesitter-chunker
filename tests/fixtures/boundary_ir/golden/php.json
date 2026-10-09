@@ -46,7 +46,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: php\nfile: widget.php\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: widget.php::Widget.helper\ncontent:\npublic function helper($value)\n    {\n        return $value + 1;\n    }"
+        "semantic_text": "language: php\nfile: widget.php\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: widget.php::Widget.helper\nsignature text: helper($value)\ncontent:\npublic function helper($value)\n    {\n        return $value + 1;\n    }"
       },
       "node_id": "7f0d7f519fab9f0dcb6b8fd7a6d39a5ef56e9072",
       "parent": "d30b2c8263189caae8dd5e7043520b38c044cc82",
@@ -58,7 +58,7 @@
       "qualified_name": "Widget.helper",
       "relationships": [],
       "semantic_path": "widget.php::Widget.helper",
-      "signature": null,
+      "signature": "helper($value)",
       "span": {
         "byte_end": 205,
         "byte_start": 136,
@@ -120,7 +120,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: php\nfile: widget.php\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: widget.php::run\ncontent:\nfunction run()\n{\n    $w = new Widget();\n    return $w->render();\n}"
+        "semantic_text": "language: php\nfile: widget.php\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: widget.php::run\nsignature text: run()\ncontent:\nfunction run()\n{\n    $w = new Widget();\n    return $w->render();\n}"
       },
       "node_id": "5d129c64fe75575da839413f05e87f88a686c297",
       "parent": null,
@@ -132,7 +132,7 @@
       "qualified_name": "run",
       "relationships": [],
       "semantic_path": "widget.php::run",
-      "signature": null,
+      "signature": "run()",
       "span": {
         "byte_end": 275,
         "byte_start": 209,
@@ -194,7 +194,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: php\nfile: widget.php\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: widget.php::Widget.render\ncontent:\npublic function render()\n    {\n        return $this->helper($this->count);\n    }"
+        "semantic_text": "language: php\nfile: widget.php\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: widget.php::Widget.render\nsignature text: render()\ncontent:\npublic function render()\n    {\n        return $this->helper($this->count);\n    }"
       },
       "node_id": "a45c18ef806b113e6aea6f4a7aa81144dfa14084",
       "parent": "d30b2c8263189caae8dd5e7043520b38c044cc82",
@@ -206,7 +206,7 @@
       "qualified_name": "Widget.render",
       "relationships": [],
       "semantic_path": "widget.php::Widget.render",
-      "signature": null,
+      "signature": "render()",
       "span": {
         "byte_end": 130,
         "byte_start": 50,

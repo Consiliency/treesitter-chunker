@@ -41,9 +41,8 @@ class SignatureInfo:
 class MetadataExtractor(ABC):
     """Extract rich metadata from AST nodes."""
 
-    @staticmethod
     @abstractmethod
-    def extract_signature(node: Node, source: bytes) -> SignatureInfo | None:
+    def extract_signature(self, node: Node, source: bytes) -> SignatureInfo | None:
         """
         Extract function/method signature information.
 
@@ -55,9 +54,8 @@ class MetadataExtractor(ABC):
             Signature information or None
         """
 
-    @staticmethod
     @abstractmethod
-    def extract_docstring(node: Node, source: bytes) -> str | None:
+    def extract_docstring(self, node: Node, source: bytes) -> str | None:
         """
         Extract docstring/comment from a node.
 
@@ -69,9 +67,8 @@ class MetadataExtractor(ABC):
             Docstring text or None
         """
 
-    @staticmethod
     @abstractmethod
-    def extract_imports(node: Node, source: bytes) -> list[str]:
+    def extract_imports(self, node: Node, source: bytes) -> list[str]:
         """
         Extract import statements used within a node.
 
@@ -83,9 +80,8 @@ class MetadataExtractor(ABC):
             List of import statements
         """
 
-    @staticmethod
     @abstractmethod
-    def extract_dependencies(node: Node, source: bytes) -> set[str]:
+    def extract_dependencies(self, node: Node, source: bytes) -> set[str]:
         """
         Extract symbols that this chunk depends on.
 
@@ -97,9 +93,8 @@ class MetadataExtractor(ABC):
             Set of dependency symbols
         """
 
-    @staticmethod
     @abstractmethod
-    def extract_exports(node: Node, source: bytes) -> set[str]:
+    def extract_exports(self, node: Node, source: bytes) -> set[str]:
         """
         Extract symbols that this chunk exports/defines.
 
@@ -111,9 +106,8 @@ class MetadataExtractor(ABC):
             Set of exported symbols
         """
 
-    @staticmethod
     @abstractmethod
-    def extract_calls(node: Node, source: bytes) -> list[dict[str, Any]]:
+    def extract_calls(self, node: Node, source: bytes) -> list[dict[str, Any]]:
         """
         Extract function calls with precise byte spans from a node.
 
