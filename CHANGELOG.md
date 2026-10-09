@@ -61,6 +61,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Go methods have signature metadata: the name is read from the method's
+  `field_identifier`, the receiver list is reported separately as
+  `signature.receiver` instead of as arguments, and Go functions and methods
+  keep their complete result text, such as `-> (string, error)`
+  (treesitter-chunker#352). Go functions previously emitted no return type, so
+  their Boundary IR `signature` and `semantic_text` gain `-> <result>`.
+
 - Direct DOT node/cluster labels and compiled relationship tooltips retain
   physical tabs instead of turning them into literal `t` characters
   (treesitter-chunker#476). Parsed SVG tooltips normalize tabs to spaces.

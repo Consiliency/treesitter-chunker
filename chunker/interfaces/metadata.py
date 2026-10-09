@@ -20,13 +20,22 @@ class ComplexityMetrics:
 
 @dataclass
 class SignatureInfo:
-    """Function/method signature information."""
+    """Function/method signature information.
+
+    ``parameters`` holds what is declared inside the callable's parameter list.
+    ``receiver`` holds a receiver the grammar declares for a method, such as a Go
+    ``(g *Gateway)`` receiver list, a Rust ``&self`` parameter, a Kotlin
+    extension receiver type or a Ruby singleton-method object. A receiver that
+    is written inside the parameter list (Rust ``&self``) stays in
+    ``parameters`` as well; one written outside it (Go) does not.
+    """
 
     name: str
     parameters: list[dict[str, Any]]
     return_type: str | None
     decorators: list[str]
     modifiers: list[str]
+    receiver: str | None = None
 
 
 class MetadataExtractor(ABC):

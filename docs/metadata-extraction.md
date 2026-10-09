@@ -28,6 +28,16 @@ chunks = chunk_text(code, "python", extract_metadata=False)
 Chunk identity and extraction bookkeeping are separate from these optional
 fields. See [chunk identity](chunk-identity.md).
 
+## Signature Metadata
+
+A `signature` record has `name`, `parameters`, `return_type`, `decorators` and
+`modifiers`. `parameters` lists what is declared inside the parameter list,
+in source order. A method whose grammar declares a receiver also carries
+`receiver`: the Go receiver list (`g *Gateway`), which is never repeated in
+`parameters`. The key is absent when there is no receiver. Retrieval metadata
+formats the record as `signature_text`, `name(parameters) -> return_type`,
+with the return type text kept whole, such as Go's `(string, error)`.
+
 ## Call Span Contract
 
 `call_spans` records have `name`, `start` and `end` keys, with optional
