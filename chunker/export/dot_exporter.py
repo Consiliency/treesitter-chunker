@@ -58,7 +58,6 @@ class DotExporter(GraphExporterBase):
         text = text.replace('"', '\\"')
         text = text.replace("\n", "\\n")
         text = text.replace("\r", "\\r")
-        text = text.replace("\t", "\\t")
         return text
 
     @staticmethod

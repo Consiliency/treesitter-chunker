@@ -210,8 +210,14 @@ treesitter-chunker#478. This contract covers the listed valid UTF-8 text cases
 without NUL or entity sequences, not arbitrary control bytes, invalid surrogates
 or arbitrary attribute values. Compiler qualification uses Graphviz 14.1.2 on
 Linux and 14.1.1 on Windows; other versions are not certified here.
-Other node-label and tooltip escaping paths retain their
-existing behavior, including the separate tab defect treesitter-chunker#476.
+Direct DOT node and cluster labels retain physical tabs, and relationship
+tooltips retain them in compiled Graphviz JSON (treesitter-chunker#476).
+Parsed SVG tooltips normalize physical tabs to spaces under XML attribute
+rules; they do not turn into literal `t` characters. Literal backslash-t remains
+text. This covers the listed valid UTF-8 text cases without NUL or entity
+sequences, using the same tested compiler versions above. Generated node-label
+formatting separators remain visible backslash-n text rather than line breaks
+(treesitter-chunker#479); this tab repair does not certify their layout.
 
 The direct Neo4j CSV exporter preserves leading spaces, tabs and Unicode
 whitespace in caller IDs and trailing property whitespace, including boundary
