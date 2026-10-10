@@ -72,7 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   goldens gain `signature` and `semantic_text` signature lines. Kotlin methods
   previously took the symbol `class_declaration`; they now take the
   function's name, which also changes their `symbol_id`, `qualified_name` and
-  `semantic_path`. Boundary node ids are unchanged. Because these languages
+  `semantic_path`. Top-level Kotlin functions such as `run` previously had no
+  symbol; they now take the function's name, with the same derived fields. Boundary node ids are unchanged. Because these languages
   now have a registered extractor, `chunk_text`/`chunk_file` metadata for
   every chunk in them also carries `type` (the node type) and an empty
   `dependencies` list.
@@ -83,7 +84,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   declarator, and `virtual`, `static`, trailing `const`, `override`/`final`,
   `noexcept` and a pure `= 0` are reported in `signature.modifiers`
   (treesitter-chunker#353). Data members, including function-pointer fields,
-  stay unsigned.
+  stay unsigned. C++ parameters with default arguments and a trailing `...`
+  are kept in `signature.parameters` for both declarations and definitions;
+  definitions previously dropped them.
 
 - Rust function and method signatures keep their `-> return` type, and a
   method's `self` parameter is also reported as `signature.receiver` while

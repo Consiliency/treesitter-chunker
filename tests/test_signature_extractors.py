@@ -491,3 +491,30 @@ def test_issue_354_boundary_ir_signatures(tmp_path, filename, code, expected):
     signatures = _boundary_signatures(tmp_path, filename, code)
     for qualified_name, text in expected.items():
         assert signatures[qualified_name] == text
+
+
+def test_cpp_member_declaration_keeps_default_and_variadic_params():
+    # Fault: optional_parameter_declaration and the C++ anonymous `...` token
+    # were dropped, giving a wrong-arity signature for newly signed members.
+    code = """class Net {
+ public:
+  void open(int port = 80, int retries = 3);
+  int log(const char* fmt, ...);
+};
+"""
+    signed = _signed(code, "cpp")
+    assert signed["open"]["signature"]["parameters"] == [
+        "int port = 80",
+        "int retries = 3",
+    ]
+    assert signed["log"]["signature"]["parameters"] == ["const char* fmt", "..."]
+
+
+def test_cpp_definition_keeps_default_and_variadic_params():
+    signed = _signed("void g(int a = 3, ...) {}\n", "cpp")
+    assert signed["g"]["signature"]["parameters"] == ["int a = 3", "..."]
+
+
+def test_c_variadic_params_unchanged():
+    signed = _signed("int p(const char* f, ...) { return 0; }\n", "c")
+    assert signed["p"]["signature"]["parameters"] == ["const char* f", "..."]
