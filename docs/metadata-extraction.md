@@ -66,6 +66,19 @@ Each chunk's metadata dictionary contains:
 }
 ```
 
+### Signature Receivers and Text
+
+`parameters` lists what is declared inside the parameter list, in source
+order. Some extractors record parameters as declared text rather than
+dictionaries. A method whose grammar declares a receiver also carries
+`receiver`: the Go receiver list (`g *Gateway`), which is never repeated in
+`parameters`; the Rust `self` parameter (`&self`), which stays in
+`parameters` because it is written there; a Kotlin extension receiver type;
+or a Ruby singleton-method object (`self`). The key is absent when there is no
+receiver. Retrieval metadata formats the record as `signature_text`,
+`name(parameters) -> return_type`, with the return type text kept whole, such
+as Go's `(string, error)`.
+
 ## Supported Languages
 
 Currently, metadata extraction is supported for:
@@ -74,6 +87,10 @@ Currently, metadata extraction is supported for:
 - **JavaScript**: Functions, arrow functions, async, generators, JSDoc
 - **TypeScript**: All JavaScript features plus interfaces, type annotations
 - **JSX/TSX**: Same as JavaScript/TypeScript
+- **Rust, Go, C and C++**: Signatures, docstrings, imports, dependencies and
+  calls
+- **Java, C#, Kotlin, Swift, PHP and Ruby**: Signatures only; docstrings,
+  imports, exports, dependencies and call spans stay empty
 
 ## Language-Specific Features
 

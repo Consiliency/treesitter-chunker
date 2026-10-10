@@ -1,6 +1,6 @@
 [project]
 name            = "treesitter-chunker"
-version = "5.2.0"
+version = "5.3.0"
 description     = "Semantic code chunker using Tree-sitter for intelligent code analysis"
 readme          = "README.md"
 requires-python = ">=3.11"
