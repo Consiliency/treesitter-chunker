@@ -72,6 +72,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the existing `tsx` chunk kinds `jsx_element` and `jsx_fragment`. `.ts` is
   unchanged, and `.jsx` was already parsed correctly by the `javascript`
   grammar. TypeScript signature and metadata extraction applies to `tsx`.
+  The API `/chunk/file` endpoint now auto-detects with the same canonical map
+  instead of its own copy, which still resolved `.tsx` to `typescript`.
+  Language selection follows the new label: `extract_boundary_ir(...,
+  language="typescript")` and other `collect_source_files` callers no longer
+  pick up `.tsx` files; pass `language="tsx"` for them, or omit `language`
+  to extract both.
 
 - Java, C#, Kotlin, Swift, PHP and Ruby methods and functions have signature
   metadata (treesitter-chunker#354). Signature-only extractors cover Java
