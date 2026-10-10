@@ -411,10 +411,18 @@ class CMetadataExtractor(BaseMetadataExtractor):
         """Extract parameter list from a parameter_list node."""
         parameters = []
         for child in params_node.children:
-            if child.type in {"parameter_declaration", "variadic_parameter"}:
+            if child.type in {
+                "parameter_declaration",
+                "optional_parameter_declaration",
+                "variadic_parameter",
+                "variadic_parameter_declaration",
+            }:
                 param_text = self._get_node_text(child, source)
-                if param_text and param_text not in {"(", ")", ","}:
+                if param_text:
                     parameters.append(param_text)
+            elif child.type == "...":
+                # C++ spells a C-style variadic as an anonymous `...` token.
+                parameters.append("...")
         return parameters
 
     def _extract_defined_symbols(self, node: Node, source: bytes) -> set[str]:
