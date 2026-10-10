@@ -18,6 +18,10 @@ class CMetadataExtractor(BaseMetadataExtractor):
 
     def extract_signature(self, node: Node, source: bytes) -> SignatureInfo | None:
         """Extract function signature information."""
+        if node.type == "field_declaration":
+            if not self.is_cpp:
+                return None
+            return self._extract_member_declaration_signature(node, source)
         if node.type not in {"function_definition", "function_declarator"}:
             return None
 
@@ -88,6 +92,112 @@ class CMetadataExtractor(BaseMetadataExtractor):
             return_type=return_type,
             decorators=[],
             modifiers=modifiers,
+        )
+
+    # Name nodes a member function declarator can carry. A parenthesized
+    # declarator (`int (*cb)(int);`) is a function-pointer data member.
+    _MEMBER_NAME_TYPES = frozenset(
+        {"field_identifier", "identifier", "operator_name", "destructor_name"},
+    )
+    _LEADING_MEMBER_MODIFIERS = frozenset(
+        {
+            "virtual",
+            "storage_class_specifier",
+            "explicit_function_specifier",
+            "inline",
+            "friend",
+        },
+    )
+    _TRAILING_MEMBER_MODIFIERS = frozenset(
+        {"type_qualifier", "virtual_specifier", "noexcept", "ref_qualifier"},
+    )
+
+    def _extract_member_declaration_signature(
+        self,
+        node: Node,
+        source: bytes,
+    ) -> SignatureInfo | None:
+        """Extract an in-class C++ member function declaration.
+
+        ``std::string dispatch(const std::string& id) const override;`` is a
+        ``field_declaration`` whose declarator is a ``function_declarator``,
+        possibly wrapped in pointer or reference declarators that belong to
+        the return type.
+        """
+        declarator = node.child_by_field_name("declarator")
+        return_suffix = ""
+        while declarator is not None and declarator.type in {
+            "pointer_declarator",
+            "reference_declarator",
+        }:
+            for child in declarator.children:
+                if not child.is_named and child.type in {"*", "&", "&&"}:
+                    return_suffix += child.type
+                    break
+            inner = declarator.child_by_field_name("declarator")
+            if inner is None:
+                inner = next(
+                    (
+                        child
+                        for child in declarator.named_children
+                        if child.type
+                        in {
+                            "function_declarator",
+                            "pointer_declarator",
+                            "reference_declarator",
+                        }
+                    ),
+                    None,
+                )
+            declarator = inner
+        if declarator is None or declarator.type != "function_declarator":
+            return None
+
+        name_node = declarator.child_by_field_name("declarator")
+        if name_node is None or name_node.type not in self._MEMBER_NAME_TYPES:
+            return None
+        name = self._get_node_text(name_node, source)
+
+        parameters = []
+        params_node = declarator.child_by_field_name("parameters")
+        if params_node:
+            parameters = self._extract_parameters(params_node, source)
+
+        return_type = None
+        type_node = node.child_by_field_name("type")
+        if type_node is not None:
+            parts = [
+                self._get_node_text(child, source)
+                for child in node.children
+                if child.type == "type_qualifier"
+                and child.end_byte <= type_node.start_byte
+            ]
+            parts.append(self._get_node_text(type_node, source))
+            return_type = " ".join(parts) + return_suffix
+
+        modifiers = [
+            self._get_node_text(child, source)
+            for child in node.children
+            if child.type in self._LEADING_MEMBER_MODIFIERS
+        ]
+        modifiers.extend(
+            self._get_node_text(child, source)
+            for child in declarator.children
+            if child.type in self._TRAILING_MEMBER_MODIFIERS
+        )
+        default_value = node.child_by_field_name("default_value")
+        if (
+            default_value is not None
+            and self._get_node_text(default_value, source) == "0"
+        ):
+            modifiers.append("pure")
+
+        return SignatureInfo(
+            name=name,
+            parameters=parameters,
+            return_type=return_type,
+            decorators=[],
+            modifiers=[modifier for modifier in modifiers if modifier],
         )
 
     def extract_docstring(self, node: Node, source: bytes) -> str | None:
@@ -301,10 +411,18 @@ class CMetadataExtractor(BaseMetadataExtractor):
         """Extract parameter list from a parameter_list node."""
         parameters = []
         for child in params_node.children:
-            if child.type in {"parameter_declaration", "variadic_parameter"}:
+            if child.type in {
+                "parameter_declaration",
+                "optional_parameter_declaration",
+                "variadic_parameter",
+                "variadic_parameter_declaration",
+            }:
                 param_text = self._get_node_text(child, source)
-                if param_text and param_text not in {"(", ")", ","}:
+                if param_text:
                     parameters.append(param_text)
+            elif child.type == "...":
+                # C++ spells a C-style variadic as an anonymous `...` token.
+                parameters.append("...")
         return parameters
 
     def _extract_defined_symbols(self, node: Node, source: bytes) -> set[str]:

@@ -200,7 +200,7 @@ class VFSChunker:
             ".js": "javascript",
             ".jsx": "javascript",
             ".ts": "typescript",
-            ".tsx": "typescript",
+            ".tsx": "tsx",
             ".c": "c",
             ".h": "c",
             ".cpp": "cpp",
