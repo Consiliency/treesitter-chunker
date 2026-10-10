@@ -294,10 +294,11 @@ def process_file(
 ) -> list[dict[str, Any]]:
     """Process a single file_path and return chunks."""
     # Auto-detect language if not specified. Use the ONE canonical
-    # extension→language map (ZeroConfigAPI.EXTENSION_MAP) shared by the API and
-    # exporters, rather than a divergent CLI-local copy — the old inline map
-    # mis-resolved `.ts` to "javascript" (it is "typescript") and covered only
-    # 10 extensions (IFACE: single shared detection map).
+    # extension→language map (ZeroConfigAPI.EXTENSION_MAP) shared with the API
+    # `/chunk/file` endpoint, Boundary IR extraction and the symbol graph,
+    # rather than a divergent CLI-local copy — the old inline map mis-resolved
+    # `.ts` to "javascript" (it is "typescript") and covered only 10 extensions
+    # (IFACE: single shared detection map).
     if not language:
         from chunker.auto import ZeroConfigAPI
 

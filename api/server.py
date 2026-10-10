@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 
 # Import the simplified chunker API
 from chunker import __version__, chunk_file, chunk_text, list_languages
+from chunker.auto import ZeroConfigAPI
 from chunker.graph.cut import graph_cut
 from chunker.graph.xref import build_xref
 from chunker._internal.path_confinement import resolve_within_root
@@ -49,6 +50,15 @@ def _api_root() -> Path:
     return Path(
         os.environ.get("TREE_SITTER_CHUNKER_API_ROOT", str(Path.cwd())),
     ).resolve()
+
+
+# Auto-detect extensions the canonical ZeroConfigAPI.EXTENSION_MAP does not
+# list. They are consulted only after it, so they cannot override it.
+_API_ONLY_EXTENSIONS: dict[str, str] = {
+    ".hs": "haskell",
+    ".elm": "elm",
+    ".dockerfile": "dockerfile",
+}
 
 
 def _resolve_api_path(path: str) -> Path:
@@ -360,48 +370,13 @@ async def chunk_file_endpoint(
     # Auto-detect language if not provided
     language = request.language
     if not language:
-        ext_map = {
-            ".py": "python",
-            ".js": "javascript",
-            ".ts": "typescript",
-            ".jsx": "javascript",
-            ".tsx": "typescript",
-            ".java": "java",
-            ".c": "c",
-            ".cpp": "cpp",
-            ".cc": "cpp",
-            ".h": "c",
-            ".hpp": "cpp",
-            ".rs": "rust",
-            ".go": "go",
-            ".rb": "ruby",
-            ".php": "php",
-            ".cs": "csharp",
-            ".swift": "swift",
-            ".kt": "kotlin",
-            ".scala": "scala",
-            ".r": "r",
-            ".jl": "julia",
-            ".lua": "lua",
-            ".dart": "dart",
-            ".hs": "haskell",
-            ".clj": "clojure",
-            ".ex": "elixir",
-            ".elm": "elm",
-            ".ml": "ocaml",
-            ".vim": "vim",
-            ".sh": "bash",
-            ".yaml": "yaml",
-            ".yml": "yaml",
-            ".json": "json",
-            ".xml": "xml",
-            ".html": "html",
-            ".css": "css",
-            ".sql": "sql",
-            ".dockerfile": "dockerfile",
-            ".Dockerfile": "dockerfile",
-        }
-        language = ext_map.get(file_path.suffix.lower())
+        # Use the canonical extension map shared with the CLI and Boundary IR
+        # so the API cannot drift from them (`.tsx` -> `tsx`). The API-only
+        # fallback holds extensions the canonical map does not list yet.
+        suffix = file_path.suffix.lower()
+        language = ZeroConfigAPI.EXTENSION_MAP.get(
+            suffix,
+        ) or _API_ONLY_EXTENSIONS.get(suffix)
 
         if not language:
             raise HTTPException(
