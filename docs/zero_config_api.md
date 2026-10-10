@@ -130,7 +130,8 @@ extensions = api.list_supported_extensions()
 # {
 #     "python": [".py"],
 #     "javascript": [".js", ".jsx"],
-#     "typescript": [".ts", ".tsx"],
+#     "typescript": [".ts"],
+#     "tsx": [".tsx"],
 #     ...
 # }
 ```

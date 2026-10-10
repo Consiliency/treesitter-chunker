@@ -82,7 +82,7 @@ class IntelligentFallbackChunker(FallbackChunker):
             ".js": "javascript",
             ".jsx": "javascript",
             ".ts": "typescript",
-            ".tsx": "typescript",
+            ".tsx": "tsx",
             ".java": "java",
             ".c": "c",
             ".cpp": "cpp",
