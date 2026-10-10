@@ -40,7 +40,7 @@ class ZeroConfigAPI(ZeroConfigContract):
         ".js": "javascript",
         ".jsx": "javascript",
         ".ts": "typescript",
-        ".tsx": "typescript",
+        ".tsx": "tsx",  # JSX needs the tsx grammar (typescript cannot parse it)
         ".java": "java",
         ".c": "c",
         ".h": "c",
