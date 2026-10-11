@@ -2592,6 +2592,45 @@
             "run_id": "20261011-dot-layout-479"
           },
           "transition": "executing"
+        },
+        {
+          "at": "2026-10-11T22:02:11Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "acceptance_criteria": {
+              "AC1": "passed",
+              "AC2": "passed",
+              "AC3": "passed"
+            },
+            "accepted_implementation_head": "933cc96f862337b85896ceedcca77e7ba29daaac",
+            "archive": {
+              "all_hashes_verified": true,
+              "members": 219,
+              "path": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/dot-layout-479/archives-r1/dot-layout-479-933cc96f-accepted.tar.gz",
+              "sha256": "3e237bb74b89b030a5f04d9192e2016a3d44b2b720ddf986d2ec647bdcc7ab5d"
+            },
+            "diagnostic": "Implementation accepted and archived at this head. Later lifecycle-only head requires fresh original gates, native positive evidence, hosted checks, isolated remaining CODE quartet and independent Astra before merge; original negative records remain source-bound without restamping.",
+            "dirty_paths": [],
+            "manual_reviews": {
+              "all_four_complete": true,
+              "code_rounds": 1,
+              "formal_qualification": false,
+              "independent_astra": "APPROVE",
+              "plan_rounds": 1,
+              "r1_fully_blind": false
+            },
+            "reflection": {
+              "handoff": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-dot-layout-479/.dev-skills/handoffs/codex-execute-detailed/20261011-dot-layout-479-r1.md",
+              "reflection": "/home/viperjuice/.codex/skills/codex-execute-detailed/reflections/0a06bfe95062/codex-dot-layout-479/20261011-execution-r1.md"
+            },
+            "verification": {
+              "full_suite": "5439 passed, 4 skipped",
+              "hosted_checks": 7,
+              "native_windows": "356 narrow; 1381 focus/1 platform skip; 204 standing/1 skip",
+              "original_artifact": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/dot-layout-479/takeover-20261011/original-runner/verification.json"
+            }
+          },
+          "transition": "completed"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -2599,10 +2638,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/0a06bfe95062/codex-dot-layout-479/20261011-dot-layout-479.md",
       "roadmap_ref": null,
       "slug": "dot-layout-479",
-      "status": "executing",
+      "status": "completed",
       "task_summary": "Render generated direct DOT node fields as actual label lines (treesitter-chunker#479)",
       "type": "detailed",
-      "updated_at": "2026-10-11T21:08:00Z"
+      "updated_at": "2026-10-11T22:02:11Z"
     }
   ],
   "schema_version": 1
