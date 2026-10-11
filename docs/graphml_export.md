@@ -262,11 +262,8 @@ The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter` modules,
 including compact, pretty and `use_yed=False` output, reject XML 1.0-forbidden
 characters in element text, tail and attribute values with `ValueError` before
 serialization. Metadata property names are checked because they become key
-attribute values. Graph attribute names are not validated; malformed names can
-still produce unusable XML (treesitter-chunker#452). Pretty export no longer
-rejects malformed graph attribute names before writing; use valid names until
-[treesitter-chunker#452](https://github.com/Consiliency/treesitter-chunker/issues/452)
-adds deliberate validation. The package-level
+attribute values. Graph attribute names have the separate validation contract
+below (treesitter-chunker#452). The package-level
 `chunker.export.GraphMLExporter` is a separate structured exporter.
 The error identifies the Unicode code point and XML location without echoing
 the full caller value. This includes NUL, other forbidden C0 controls, unpaired
@@ -295,6 +292,45 @@ invalid new names are rejected before they enter its cached key registry.
 Existing valid custom key declarations remain intact. Character validation
 does not validate GraphML schema. Structural/caller label-key separation is
 described above (treesitter-chunker#169).
+
+### Graph attribute names
+
+The two direct modules deliberately reject malformed graph attribute names and
+namespace bindings with `ValueError` before producing output, across pretty,
+compact, yEd and delegated modes (treesitter-chunker#452). Rejected file export
+leaves existing bytes intact and creates no absent file. Correct or remove the
+offending `graph_attrs` entry and retry on the same exporter; caller attributes
+and graph data are unchanged.
+
+Names must be strings. Supported forms are unqualified Unicode names, bound
+`prefix:local` names, namespace declarations (`xmlns` and `xmlns:prefix`), and
+ElementTree expanded `{URI}local` strings. Components must match XML NCName
+syntax and be accepted by the installed Python ElementTree parser. Some names
+allowed by [XML 1.0 Fifth Edition](https://www.w3.org/TR/xml/#NT-Name) remain
+unsupported by older Expat name tables. Empty names, leading digits, whitespace,
+markup delimiters, malformed qualified names and unbound prefixes are rejected.
+Expanded URIs must be nonempty, brace-free and contain only XML 1.0 characters.
+Non-string keys, including `ElementTree.QName` objects, now raise deliberate
+`ValueError`; pass `str(qname)` to use its expanded string form.
+
+The `xml` prefix is implicitly bound. `xsi` is bound on all routes; `y` is bound
+on the yEd route, and requires a caller declaration on plain/delegated routes.
+Custom declarations work in either insertion order. Illegal reserved bindings,
+duplicate expanded attributes and expanded names silently rebound by conflicting
+declarations are rejected. Generated prefix collisions cannot swap or mask the
+identity of an expanded caller attribute, even when caller values are equal.
+Expanded names in the `xsi` namespace can generate a duplicate root declaration
+and are rejected in that configuration; use `xsi:local` instead.
+
+Namespace declaration overrides retain their existing effect on descendants,
+including default-namespace overrides and `xmlns:y` changes to yEd graphics.
+Literal names using generated `ns<digits>` prefixes depend on the generated
+bindings; use your own declared prefixes for explicit namespace selection.
+These caller-controlled effects do not establish GraphML schema conformance.
+Validation uses a discarded attribute probe; the original output tree and its
+attribute values, including physical TAB/LF/CR, are preserved. Name diagnostics
+identify the name or namespace failure without printing caller attribute values
+or presenting probe positions as output locations.
 
 ## Compatibility
 

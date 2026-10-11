@@ -61,12 +61,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The two direct GraphML modules deliberately reject malformed graph attribute
+  names, invalid namespace bindings and silently rebound expanded names before
+  output, preserving existing files and allowing corrected same-instance retry
+  (treesitter-chunker#452). Parser-supported Unicode, qualified and expanded
+  string names retain their values. Non-string keys, including ElementTree.QName
+  objects, now raise ValueError; pass their expanded string form instead. See
+  [graph attribute names](docs/graphml_export.md#graph-attribute-names).
+
 - Pretty output from the two direct GraphML modules preserves physical TAB, LF
   and CR in caller IDs, directed endpoints and other attribute values on Python
   3.11/3.12, retaining the encoding-free XML declaration and existing pretty text
   newline normalization (treesitter-chunker#450). Indentation may differ.
-  Pretty export no longer rejects malformed graph attribute names before writing;
-  deliberate name validation remains treesitter-chunker#452.
+  Deliberate graph attribute name validation is described above
+  (treesitter-chunker#452).
   Compact Windows CRLF text transport and the separate package-level exporter
   remain tracked as treesitter-chunker#488 and treesitter-chunker#489.
 
@@ -173,8 +181,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter` modules
   reject XML 1.0-invalid characters in element text, tail and attribute values
   before serialization with code-point/location diagnostics. Metadata names are
-  checked as key attribute values; graph attribute names remain unvalidated
-  (treesitter-chunker#452). File export rejected by this check preserves existing
+  checked as key attribute values; graph attribute names are separately validated
+  (treesitter-chunker#452). File export rejected by these checks preserves existing
   output; removing invalid metadata names or values permits same-instance retry
   without poisoning cached key declarations (treesitter-chunker#168 and
   treesitter-chunker#451). The package-level structured exporter is separate.
