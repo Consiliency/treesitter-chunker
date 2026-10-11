@@ -61,6 +61,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Pretty output from the two direct GraphML modules preserves physical TAB, LF
+  and CR in caller IDs, directed endpoints and other attribute values on Python
+  3.11/3.12, retaining the encoding-free XML declaration and existing pretty text
+  newline normalization (treesitter-chunker#450). Indentation may differ.
+  Pretty export no longer rejects malformed graph attribute names before writing;
+  deliberate name validation remains treesitter-chunker#452.
+  Compact Windows CRLF text transport and the separate package-level exporter
+  remain tracked as treesitter-chunker#488 and treesitter-chunker#489.
+
 - `.tsx` files are parsed with the `tsx` grammar and labelled `tsx` in chunk
   and Boundary IR output, in the canonical extension map used by
   `extract_boundary_ir`, `chunk_file` auto-detection, the CLI, VFS chunking

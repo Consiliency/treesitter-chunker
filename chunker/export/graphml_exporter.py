@@ -3,7 +3,6 @@
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
-from xml.dom import minidom
 
 from .graph_exporter_base import GraphEdge, GraphExporterBase, GraphNode
 
@@ -166,9 +165,17 @@ class GraphMLExporter(GraphExporterBase):
             self._create_edge_element(graph, edge, i)
         self._validate_xml_characters(root)
         if pretty_print:
-            rough_string = ET.tostring(root, encoding="unicode")
-            reparsed = minidom.parseString(rough_string)
-            return reparsed.toprettyxml(indent="  ")
+            for element in root.iter():
+                if element.text is not None:
+                    element.text = element.text.replace("\r\n", "\n").replace(
+                        "\r", "\n"
+                    )
+            ET.indent(root, space="  ")
+            return (
+                '<?xml version="1.0" ?>\n'
+                + ET.tostring(root, encoding="unicode")
+                + "\n"
+            )
         return ET.tostring(root, encoding="unicode")
 
     def export(
