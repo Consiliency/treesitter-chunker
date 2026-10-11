@@ -83,7 +83,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Render\nqualified name: Widget.Render\nparent symbol: Widget\nsemantic path: Widget.cs::Widget.Render\ncontent:\npublic int Render()\n    {\n        return Helper(count);\n    }"
+        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Render\nqualified name: Widget.Render\nparent symbol: Widget\nsemantic path: Widget.cs::Widget.Render\nsignature text: Render() -> int\ncontent:\npublic int Render()\n    {\n        return Helper(count);\n    }"
       },
       "node_id": "5d2026d5819ad365daef241df3ea98a7bd82b85e",
       "parent": "f0c0945654efdc1158b297556bc004322f188d81",
@@ -95,7 +95,7 @@
       "qualified_name": "Widget.Render",
       "relationships": [],
       "semantic_path": "Widget.cs::Widget.Render",
-      "signature": null,
+      "signature": "Render() -> int",
       "span": {
         "byte_end": 259,
         "byte_start": 198,
@@ -157,7 +157,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "IRenderer",
-        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Render\nqualified name: IRenderer.Render\nparent symbol: IRenderer\nsemantic path: Widget.cs::IRenderer.Render\ncontent:\nint Render();"
+        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Render\nqualified name: IRenderer.Render\nparent symbol: IRenderer\nsemantic path: Widget.cs::IRenderer.Render\nsignature text: Render() -> int\ncontent:\nint Render();"
       },
       "node_id": "20c4fa8ece81805c074a1ae85cddf693643a63e4",
       "parent": "0ae53cfc2279138fa74e80c4cf876b813817d793",
@@ -169,7 +169,7 @@
       "qualified_name": "IRenderer.Render",
       "relationships": [],
       "semantic_path": "Widget.cs::IRenderer.Render",
-      "signature": null,
+      "signature": "Render() -> int",
       "span": {
         "byte_end": 62,
         "byte_start": 49,
@@ -194,7 +194,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Helper\nqualified name: Widget.Helper\nparent symbol: Widget\nsemantic path: Widget.cs::Widget.Helper\ncontent:\nprivate int Helper(int value)\n    {\n        return value + 1;\n    }"
+        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Helper\nqualified name: Widget.Helper\nparent symbol: Widget\nsemantic path: Widget.cs::Widget.Helper\nsignature text: Helper(int value) -> int\ncontent:\nprivate int Helper(int value)\n    {\n        return value + 1;\n    }"
       },
       "node_id": "e6b1edc48ff2c18fcb053596cb3fcb04321de58f",
       "parent": "f0c0945654efdc1158b297556bc004322f188d81",
@@ -206,7 +206,7 @@
       "qualified_name": "Widget.Helper",
       "relationships": [],
       "semantic_path": "Widget.cs::Widget.Helper",
-      "signature": null,
+      "signature": "Helper(int value) -> int",
       "span": {
         "byte_end": 332,
         "byte_start": 265,

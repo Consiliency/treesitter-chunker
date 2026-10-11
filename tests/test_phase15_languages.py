@@ -7,6 +7,7 @@ from tree_sitter import Node
 
 from chunker.metadata import MetadataExtractorFactory
 from chunker.metadata.extractor import BaseMetadataExtractor
+from chunker.metadata.languages.signature_only import SignatureOnlyMetadataExtractor
 from chunker.parser import get_parser
 
 
@@ -249,9 +250,11 @@ class TestPhase15Languages:
         excluded_calls: tuple[str, ...] = (),
     ):
         """Helper to test call extraction for a language."""
-        # Use base extractor for languages without specific extractors
+        # Use base extractor for languages without specific extractors. The
+        # signature-only extractors (treesitter-chunker#354) extract no calls,
+        # so their languages also exercise the base call branches.
         extractor = MetadataExtractorFactory.create_extractor(language)
-        if extractor is None:
+        if extractor is None or isinstance(extractor, SignatureOnlyMetadataExtractor):
             extractor = SimpleMetadataExtractor(language)
 
         parser = get_parser(language)

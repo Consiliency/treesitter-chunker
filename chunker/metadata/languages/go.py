@@ -16,33 +16,41 @@ class GoMetadataExtractor(BaseMetadataExtractor):
         super().__init__(language)
 
     def extract_signature(self, node: Node, source: bytes) -> SignatureInfo | None:
-        """Extract function/method signature information."""
+        """Extract function/method signature information.
+
+        A method's receiver list is reported as ``receiver`` and is never part
+        of ``parameters``; the result list keeps its complete source text, for
+        example ``string`` or ``(string, error)``.
+        """
         if node.type not in {"function_declaration", "method_declaration"}:
             return None
 
-        name_node = self._find_child_by_type(node, "identifier")
+        # Functions name with `identifier`, methods with `field_identifier`.
+        name_node = node.child_by_field_name("name")
         if not name_node:
             return None
 
         name = self._get_node_text(name_node, source)
 
         parameters = []
-        params_node = self._find_child_by_type(node, "parameter_list")
+        params_node = node.child_by_field_name("parameters")
         if params_node:
             parameters = self._extract_parameters(params_node, source)
 
         return_type = None
-        # Go can have multiple return types
-        result_node = self._find_child_by_type(node, "result")
+        result_node = node.child_by_field_name("result")
         if result_node:
-            return_type = self._get_node_text(result_node, source).strip("()")
+            return_type = self._get_node_text(result_node, source).strip() or None
 
         modifiers = []
-        # Check if it's a method (has receiver)
+        receiver = None
         if node.type == "method_declaration":
-            receiver_node = self._find_child_by_type(node, "parameter_list")
+            receiver_node = node.child_by_field_name("receiver")
             if receiver_node:
                 modifiers.append("method")
+                receiver = (
+                    ", ".join(self._extract_parameters(receiver_node, source)) or None
+                )
 
         return SignatureInfo(
             name=name,
@@ -50,6 +58,7 @@ class GoMetadataExtractor(BaseMetadataExtractor):
             return_type=return_type,
             decorators=[],
             modifiers=modifiers,
+            receiver=receiver,
         )
 
     def extract_docstring(self, node: Node, source: bytes) -> str | None:

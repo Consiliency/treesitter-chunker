@@ -120,7 +120,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: java\nfile: Widget.java\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: Widget.java::Widget.render\ncontent:\npublic int render() {\n        return helper(count);\n    }"
+        "semantic_text": "language: java\nfile: Widget.java\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: Widget.java::Widget.render\nsignature text: render() -> int\ncontent:\npublic int render() {\n        return helper(count);\n    }"
       },
       "node_id": "e9eeb9b6e79f27c2fc2596b042a704c54af37cbe",
       "parent": "1aa23c15fca0cf888ef4ffe667d9317be239216d",
@@ -132,7 +132,7 @@
       "qualified_name": "Widget.render",
       "relationships": [],
       "semantic_path": "Widget.java::Widget.render",
-      "signature": null,
+      "signature": "render() -> int",
       "span": {
         "byte_end": 187,
         "byte_start": 130,
@@ -157,7 +157,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: java\nfile: Widget.java\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: Widget.java::Widget.helper\ncontent:\nprivate int helper(int value) {\n        return value + 1;\n    }"
+        "semantic_text": "language: java\nfile: Widget.java\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: Widget.java::Widget.helper\nsignature text: helper(int value) -> int\ncontent:\nprivate int helper(int value) {\n        return value + 1;\n    }"
       },
       "node_id": "e5a98318969c7a2163f09bba3ac034786f00717b",
       "parent": "1aa23c15fca0cf888ef4ffe667d9317be239216d",
@@ -169,7 +169,7 @@
       "qualified_name": "Widget.helper",
       "relationships": [],
       "semantic_path": "Widget.java::Widget.helper",
-      "signature": null,
+      "signature": "helper(int value) -> int",
       "span": {
         "byte_end": 256,
         "byte_start": 193,
@@ -194,7 +194,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: java\nfile: Widget.java\nkind: constructor\nsymbol: Widget\nqualified name: Widget.Widget\nparent symbol: Widget\nsemantic path: Widget.java::Widget.Widget\ncontent:\npublic Widget(int count) {\n        this.count = count;\n    }"
+        "semantic_text": "language: java\nfile: Widget.java\nkind: constructor\nsymbol: Widget\nqualified name: Widget.Widget\nparent symbol: Widget\nsemantic path: Widget.java::Widget.Widget\nsignature text: Widget(int count)\ncontent:\npublic Widget(int count) {\n        this.count = count;\n    }"
       },
       "node_id": "07fc1cd9bbd3aec4738b6c19a415bb427b0365f0",
       "parent": "1aa23c15fca0cf888ef4ffe667d9317be239216d",
@@ -206,7 +206,7 @@
       "qualified_name": "Widget.Widget",
       "relationships": [],
       "semantic_path": "Widget.java::Widget.Widget",
-      "signature": null,
+      "signature": "Widget(int count)",
       "span": {
         "byte_end": 124,
         "byte_start": 64,

@@ -27,12 +27,18 @@ class RustMetadataExtractor(BaseMetadataExtractor):
         name = self._get_node_text(name_node, source)
 
         parameters = []
+        receiver = None
         params_node = self._find_child_by_type(node, "parameters")
         if params_node:
             parameters = self._extract_parameters(params_node, source)
+            # `&self` stays in `parameters` (it is written in the list) and is
+            # also reported as the method receiver.
+            self_node = self._find_child_by_type(params_node, "self_parameter")
+            if self_node:
+                receiver = self._get_node_text(self_node, source)
 
         return_type = None
-        return_type_node = self._find_child_by_type(node, "type")
+        return_type_node = node.child_by_field_name("return_type")
         if return_type_node:
             return_type = self._get_node_text(return_type_node, source)
 
@@ -66,6 +72,7 @@ class RustMetadataExtractor(BaseMetadataExtractor):
             return_type=return_type,
             decorators=[],
             modifiers=modifiers,
+            receiver=receiver,
         )
 
     def extract_docstring(self, node: Node, source: bytes) -> str | None:

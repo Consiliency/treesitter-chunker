@@ -7,12 +7,18 @@ from chunker.interfaces.metadata import ComplexityAnalyzer, MetadataExtractor
 from .languages import (
     CMetadataExtractor,
     CppMetadataExtractor,
+    CSharpMetadataExtractor,
     GoMetadataExtractor,
+    JavaMetadataExtractor,
     JavaScriptComplexityAnalyzer,
     JavaScriptMetadataExtractor,
+    KotlinMetadataExtractor,
+    PhpMetadataExtractor,
     PythonComplexityAnalyzer,
     PythonMetadataExtractor,
+    RubyMetadataExtractor,
     RustMetadataExtractor,
+    SwiftMetadataExtractor,
     TypeScriptComplexityAnalyzer,
     TypeScriptMetadataExtractor,
 )
@@ -32,6 +38,14 @@ class MetadataExtractorFactory:
         "go": GoMetadataExtractor,
         "c": CMetadataExtractor,
         "cpp": CppMetadataExtractor,
+        # Signature-only extractors (treesitter-chunker#354).
+        "java": JavaMetadataExtractor,
+        "csharp": CSharpMetadataExtractor,
+        "c_sharp": CSharpMetadataExtractor,
+        "kotlin": KotlinMetadataExtractor,
+        "swift": SwiftMetadataExtractor,
+        "php": PhpMetadataExtractor,
+        "ruby": RubyMetadataExtractor,
     }
 
     _analyzers: ClassVar[dict[str, type[ComplexityAnalyzer]]] = {

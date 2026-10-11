@@ -61,6 +61,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `.tsx` files are parsed with the `tsx` grammar and labelled `tsx` in chunk
+  and Boundary IR output, in the canonical extension map used by
+  `extract_boundary_ir`, `chunk_file` auto-detection, the CLI, VFS chunking
+  and the intelligent fallback. The `typescript` grammar cannot parse JSX, so
+  every `.tsx` file with JSX had syntax errors and could lose declarations,
+  such as a class after a JSX-valued arrow function. The label follows the
+  grammar, so a consumer that re-parses with `files[].language` gets a clean
+  parse; `RepoProcessor` already used `tsx`. `.tsx` output now also contains
+  the existing `tsx` chunk kinds `jsx_element` and `jsx_fragment`. `.ts` is
+  unchanged, and `.jsx` was already parsed correctly by the `javascript`
+  grammar. TypeScript signature and metadata extraction applies to `tsx`.
+  The API `/chunk/file` endpoint now auto-detects with the same canonical map
+  instead of its own copy, which still resolved `.tsx` to `typescript`.
+  Language selection follows the new label: `extract_boundary_ir(...,
+  language="typescript")` and other `collect_source_files` callers no longer
+  pick up `.tsx` files; pass `language="tsx"` for them, or omit `language`
+  to extract both.
+
+- Java, C#, Kotlin, Swift, PHP and Ruby methods and functions have signature
+  metadata (treesitter-chunker#354). Signature-only extractors cover Java
+  methods and constructors, C# methods, Kotlin functions, Swift functions and
+  protocol requirements, PHP methods and functions, and Ruby methods and
+  singleton methods. Parameters keep their declared text; annotations and
+  attributes are decorators; a Kotlin extension receiver or Ruby singleton
+  object is `signature.receiver`. These languages still extract no
+  docstrings, imports, exports, dependencies or call spans. Their Boundary IR
+  goldens gain `signature` and `semantic_text` signature lines. Kotlin methods
+  previously took the symbol `class_declaration`; they now take the
+  function's name, which also changes their `symbol_id`, `qualified_name` and
+  `semantic_path`. Top-level Kotlin functions such as `run` previously had no
+  symbol; they now take the function's name, with the same derived fields. Boundary node ids are unchanged. Because these languages
+  now have a registered extractor, `chunk_text`/`chunk_file` metadata for
+  every chunk in them also carries `type` (the node type) and an empty
+  `dependencies` list.
+
+- C++ in-class member function declarations, such as
+  `std::string dispatch(const std::string& id);`, have signature metadata.
+  The return type is the declared type with any pointer or reference
+  declarator, and `virtual`, `static`, trailing `const`, `override`/`final`,
+  `noexcept` and a pure `= 0` are reported in `signature.modifiers`
+  (treesitter-chunker#353). Data members, including function-pointer fields,
+  stay unsigned. C++ parameters with default arguments and a trailing `...`
+  are kept in `signature.parameters` for both declarations and definitions;
+  definitions previously dropped them.
+
+- Rust function and method signatures keep their `-> return` type, and a
+  method's `self` parameter is also reported as `signature.receiver` while
+  staying in `parameters`, for example `dispatch(&self, id: &str) -> String`
+  (treesitter-chunker#367).
+
+- Go methods have signature metadata: the name is read from the method's
+  `field_identifier`, the receiver list is reported separately as
+  `signature.receiver` instead of as arguments, and Go functions and methods
+  keep their complete result text, such as `-> (string, error)`
+  (treesitter-chunker#352). Go functions previously emitted no return type, so
+  their Boundary IR `signature` and `semantic_text` gain `-> <result>`.
+
 - Direct DOT node/cluster labels and compiled relationship tooltips retain
   physical tabs instead of turning them into literal `t` characters
   (treesitter-chunker#476). Parsed SVG tooltips normalize tabs to spaces.

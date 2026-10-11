@@ -788,6 +788,8 @@ def _walk(
                         "decorators": signature.decorators,
                         "modifiers": signature.modifiers,
                     }
+                    if signature.receiver is not None:
+                        metadata["signature"]["receiver"] = signature.receiver
                 # Extract docstring
                 docstring = extractor.extract_docstring(node, source)
                 if docstring:

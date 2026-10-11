@@ -46,7 +46,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: widget.rb::Widget.render\ncontent:\ndef render\n    helper(@count)\n  end"
+        "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: widget.rb::Widget.render\nsignature text: render()\ncontent:\ndef render\n    helper(@count)\n  end"
       },
       "node_id": "6161be3e7c4fc22053a9d5dbc063bea2f57fd6b7",
       "parent": "c0eb064312dcd232d3b39d41151fd86650dffde6",
@@ -58,7 +58,7 @@
       "qualified_name": "Widget.render",
       "relationships": [],
       "semantic_path": "widget.rb::Widget.render",
-      "signature": null,
+      "signature": "render()",
       "span": {
         "byte_end": 100,
         "byte_start": 65,
@@ -83,7 +83,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: widget.rb::Widget.helper\ncontent:\ndef helper(value)\n    value + 1\n  end"
+        "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: widget.rb::Widget.helper\nsignature text: helper(value)\ncontent:\ndef helper(value)\n    value + 1\n  end"
       },
       "node_id": "2defa7d72022ebe997466d66c30f87748221bc42",
       "parent": "c0eb064312dcd232d3b39d41151fd86650dffde6",
@@ -95,7 +95,7 @@
       "qualified_name": "Widget.helper",
       "relationships": [],
       "semantic_path": "widget.rb::Widget.helper",
-      "signature": null,
+      "signature": "helper(value)",
       "span": {
         "byte_end": 141,
         "byte_start": 104,
@@ -157,7 +157,7 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Widget",
-        "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: initialize\nqualified name: Widget.initialize\nparent symbol: Widget\nsemantic path: widget.rb::Widget.initialize\ncontent:\ndef initialize(count)\n    @count = count\n  end"
+        "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: initialize\nqualified name: Widget.initialize\nparent symbol: Widget\nsemantic path: widget.rb::Widget.initialize\nsignature text: initialize(count)\ncontent:\ndef initialize(count)\n    @count = count\n  end"
       },
       "node_id": "17ca2efba621bffeedc50bb05ee2072270d8f5a6",
       "parent": "c0eb064312dcd232d3b39d41151fd86650dffde6",
@@ -169,7 +169,7 @@
       "qualified_name": "Widget.initialize",
       "relationships": [],
       "semantic_path": "widget.rb::Widget.initialize",
-      "signature": null,
+      "signature": "initialize(count)",
       "span": {
         "byte_end": 61,
         "byte_start": 15,

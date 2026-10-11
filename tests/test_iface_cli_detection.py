@@ -13,7 +13,8 @@ from cli.main import process_file
 def test_ts_resolves_to_typescript_everywhere():
     # The canonical map is the single source of truth.
     assert ZeroConfigAPI.EXTENSION_MAP.get(".ts") == "typescript"
-    assert ZeroConfigAPI.EXTENSION_MAP.get(".tsx") == "typescript"
+    # .tsx uses the tsx grammar, which parses JSX (treesitter-chunker 5.3.0).
+    assert ZeroConfigAPI.EXTENSION_MAP.get(".tsx") == "tsx"
 
 
 def test_cli_process_ts_file_uses_typescript(tmp_path):
