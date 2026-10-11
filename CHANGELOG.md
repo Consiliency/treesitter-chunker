@@ -61,6 +61,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Generated direct DOT node-label fields render on separate centered lines
+  instead of visible backslash-n text (treesitter-chunker#479). This changes
+  serialized node label bytes while preserving caller literal backslash-n
+  versus physical LF, field order, node IDs and relationship endpoints.
+  Actual Graphviz JSON/SVG covers flat/clustered string/file output; arbitrary
+  controls, empty-line typography and other renderer versions are uncertified.
+
 - The two direct GraphML modules deliberately reject malformed graph attribute
   names, invalid namespace bindings and silently rebound expanded names before
   output, preserving existing files and allowing corrected same-instance retry
@@ -138,8 +145,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Direct DOT node/cluster labels and compiled relationship tooltips retain
   physical tabs instead of turning them into literal `t` characters
   (treesitter-chunker#476). Parsed SVG tooltips normalize tabs to spaces.
-  Generated node formatting remains treesitter-chunker#479; entity decoding
-  remains treesitter-chunker#478.
+  Entity decoding remains treesitter-chunker#478.
 
 - Direct DOT relationship labels retain quotes, literal backslashes, Unicode,
   tabs and carriage returns through actual Graphviz compilation; physical LF
@@ -147,7 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Caller backslash escapes now render literally; use physical LF for lines.
   HTML entities remain interpreted by Graphviz (treesitter-chunker#478).
   Node/cluster label and tooltip tabs are fixed separately
-  (treesitter-chunker#476); generated node formatting is treesitter-chunker#479.
+  (treesitter-chunker#476).
 
 - The direct Neo4j Cypher exporter writes the exact generated UTF-8 payload on
   Windows and Linux, preserving embedded LF, CR and CRLF in caller IDs and
