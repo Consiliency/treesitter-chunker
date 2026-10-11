@@ -158,6 +158,7 @@ class GraphMLyEdExporter(GraphMLExporter):
             for i, edge in enumerate(self.edges):
                 self._create_edge_element(graph, edge, i)
             self._validate_xml_characters(root)
+            self._validate_graph_attribute_names(root, graph)
             if pretty_print:
                 for element in root.iter():
                     if element.text is not None:

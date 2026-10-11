@@ -1,10 +1,23 @@
 """GraphML export implementation for code chunks."""
 
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
 from .graph_exporter_base import GraphEdge, GraphExporterBase, GraphNode
+
+_NCNAME_START = (
+    r"[A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D"
+    r"\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF"
+    r"\uF900-\uFDCF\uFDF0-\uFFFD\U00010000-\U000EFFFF]"
+)
+_NCNAME = re.compile(
+    _NCNAME_START
+    + "(?:"
+    + _NCNAME_START
+    + r"|[-.0-9\u00B7\u0300-\u036F\u203F-\u2040])*"
+)
 
 
 class GraphMLExporter(GraphExporterBase):
@@ -73,6 +86,51 @@ class GraphMLExporter(GraphExporterBase):
         if isinstance(value, float):
             return "double"
         return "string"
+
+    @classmethod
+    def _validate_graph_attribute_names(
+        cls, root: ET.Element, graph: ET.Element
+    ) -> None:
+        """Validate graph names and their expanded namespace identities."""
+        probe_attrs = {}
+        expanded = {}
+        for index, (name, value) in enumerate(graph.attrib.items()):
+            if not isinstance(name, str):
+                raise ValueError("Invalid graph attribute name: expected a string")
+            sentinel = f"graph-attribute-{index}"
+            if name.startswith("{"):
+                parts = name[1:].split("}")
+                if len(parts) != 2 or not parts[0] or "{" in parts[0]:
+                    raise ValueError(f"Invalid graph attribute expanded name: {name!r}")
+                uri, local = parts
+                cls._validate_xml_characters(
+                    ET.Element("graph", {"attribute namespace": uri})
+                )
+                components = [local]
+                expanded[name] = sentinel
+            else:
+                components = name.split(":")
+            if len(components) > 2 or not all(
+                _NCNAME.fullmatch(component) for component in components
+            ):
+                raise ValueError(f"Invalid graph attribute name: {name!r}")
+            probe_attrs[name] = (
+                value if name == "xmlns" or name.startswith("xmlns:") else sentinel
+            )
+        probe = ET.Element(root.tag, root.attrib)
+        ET.SubElement(probe, graph.tag, probe_attrs)
+        try:
+            decoded_graph = ET.fromstring(ET.tostring(probe, encoding="unicode"))[0]
+        except ET.ParseError as error:
+            reason = str(error).split(": line ", 1)[0]
+            raise ValueError(
+                f"Invalid graph attribute name or namespace: {reason}"
+            ) from error
+        for name, sentinel in expanded.items():
+            if decoded_graph.get(name) != sentinel:
+                raise ValueError(
+                    f"Invalid graph attribute namespace identity: {name!r}"
+                )
 
     def _create_key_elements(self, root: ET.Element) -> None:
         """Create key elements for all attributes."""
@@ -164,6 +222,7 @@ class GraphMLExporter(GraphExporterBase):
         for i, edge in enumerate(self.edges):
             self._create_edge_element(graph, edge, i)
         self._validate_xml_characters(root)
+        self._validate_graph_attribute_names(root, graph)
         if pretty_print:
             for element in root.iter():
                 if element.text is not None:

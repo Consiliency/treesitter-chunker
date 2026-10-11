@@ -1106,6 +1106,324 @@ def test_xml_legal_characters_and_relationships_round_trip(parsed_xml_graph, pre
         assert data.text == value.replace("\r", "\n")
 
 
+def assert_graph_attribute_names_rejected(parsed_xml_graph, attrs, pretty, tmp_path):
+    exporter, chunks, options = parsed_xml_graph
+    exporter.graph_attrs["caller"] = "legal\t\n\r中文"
+    original = dict(exporter.graph_attrs)
+    graph_attrs = exporter.graph_attrs
+    exporter.graph_attrs.update(attrs)
+    rejected_attrs = dict(exporter.graph_attrs)
+    nodes, edges = dict(exporter.nodes), list(exporter.edges)
+    properties = {key: dict(node.properties) for key, node in nodes.items()}
+    existing, absent = tmp_path / "existing.graphml", tmp_path / "absent.graphml"
+    sentinel = b"original output\x00\r\n"
+    existing.write_bytes(sentinel)
+    operations = [
+        lambda: exporter.export_string(pretty_print=pretty, **options),
+        lambda: exporter.export(existing, pretty_print=pretty, **options),
+        lambda: exporter.export(absent, pretty_print=pretty, **options),
+    ]
+    for operation in operations:
+        with pytest.raises(ValueError, match="graph.*attribute") as error:
+            operation()
+        assert type(error.value) is ValueError
+        assert existing.read_bytes() == sentinel
+        assert not absent.exists()
+        assert exporter.graph_attrs is graph_attrs
+        assert exporter.graph_attrs == rejected_attrs
+        assert exporter.nodes == nodes and exporter.edges == edges
+        assert {key: node.properties for key, node in nodes.items()} == properties
+    exporter.graph_attrs.clear()
+    exporter.graph_attrs.update(original)
+    root, _ = graphml_contract_output(exporter, options, pretty, True, tmp_path)
+    ns = "{http://graphml.graphdrawing.org/xmlns}"
+    graph = root.find(f"{ns}graph")
+    assert graph is not None and graph.attrib == original
+    assert {node.get("id") for node in graph.findall(f"{ns}node")} == {
+        chunk.node_id for chunk in chunks
+    }
+    edge = graph.find(f"{ns}edge")
+    assert (edge.get("source"), edge.get("target")) == tuple(
+        chunk.node_id for chunk in chunks
+    )
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "",
+        "bad attr",
+        " caller",
+        "caller ",
+        "\tcaller",
+        "caller\t",
+        "\ncaller",
+        "caller\n",
+        "\rcaller",
+        "caller\r",
+        "1caller",
+        "-caller",
+        ".caller",
+        "\u0301caller",
+        "caller\x00name",
+        "caller\x08name",
+        "caller<name",
+        "caller>name",
+        'caller"name',
+        "caller'name",
+        "caller/name",
+        "caller=name",
+        "caller&name",
+        "a:b:c",
+        ":caller",
+        "caller:",
+        "caller{",
+        "caller}",
+    ],
+)
+def test_graph_attribute_names_lexical_rejection(
+    parsed_xml_graph, tmp_path, pretty, name
+):
+    assert_graph_attribute_names_rejected(
+        parsed_xml_graph, {name: "legal"}, pretty, tmp_path
+    )
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+@pytest.mark.parametrize("name", ['a="1" b', 'x="1"></graph><graph y'])
+def test_graph_attribute_names_injection(parsed_xml_graph, tmp_path, pretty, name):
+    assert_graph_attribute_names_rejected(
+        parsed_xml_graph, {name: "legal"}, pretty, tmp_path
+    )
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+@pytest.mark.parametrize(
+    ("case_name", "attrs"),
+    [
+        ("unbound", {"unbound:foo": "legal"}),
+        ("reserved_xml", {"xmlns:xml": "urn:wrong"}),
+        ("reserved_xmlns", {"xmlns:xmlns": "urn:wrong"}),
+        ("reserved_uri", {"xmlns:p": "http://www.w3.org/XML/1998/namespace"}),
+        ("empty_binding", {"xmlns:p": "", "p:foo": "legal"}),
+        (
+            "duplicate",
+            {
+                "xmlns:p": "urn:A",
+                "xmlns:q": "urn:A",
+                "p:foo": "first",
+                "q:foo": "second",
+            },
+        ),
+        ("expanded_xsi", {"{http://www.w3.org/2001/XMLSchema-instance}foo": "legal"}),
+    ],
+    ids=lambda value: value if isinstance(value, str) else None,
+)
+def test_graph_attribute_names_namespace_rejection(
+    parsed_xml_graph, tmp_path, pretty, case_name, attrs
+):
+    assert_graph_attribute_names_rejected(parsed_xml_graph, attrs, pretty, tmp_path)
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+@pytest.mark.parametrize("equal_values", [False, True])
+@pytest.mark.parametrize("case_name", ["single", "swap", "mask"])
+def test_graph_attribute_names_expanded_identity(
+    parsed_xml_graph, tmp_path, pretty, equal_values, case_name
+):
+    attrs = {"{urn:A}foo": "first", "xmlns:ns0": "urn:B"}
+    if case_name == "swap":
+        attrs["{urn:B}foo"] = "first" if equal_values else "second"
+        attrs["xmlns:ns1"] = "urn:A"
+    elif case_name == "mask":
+        attrs["xmlns:p"] = "urn:A"
+        attrs["p:foo"] = "first" if equal_values else "second"
+    assert_graph_attribute_names_rejected(parsed_xml_graph, attrs, pretty, tmp_path)
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+@pytest.mark.parametrize(
+    "name",
+    [
+        None,
+        1,
+        b"caller",
+        ET.QName("urn:caller", "name"),
+        "caller\ud800",
+        "caller\uffff",
+        "{urn:\ud800}name",
+        "{urn:\x00}name",
+        "{urn:A",
+        "{}name",
+        "{urn:{A}}name",
+        "{urn:A}bad:name",
+    ],
+)
+def test_graph_attribute_names_diagnostics(parsed_xml_graph, tmp_path, pretty, name):
+    assert_graph_attribute_names_rejected(
+        parsed_xml_graph, {name: "legal"}, pretty, tmp_path
+    )
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+@pytest.mark.parametrize("file_output", [False, True])
+@pytest.mark.parametrize(
+    ("case_name", "attrs", "expected", "namespace"),
+    [
+        (
+            "unicode",
+            dict.fromkeys(
+                [
+                    "description",
+                    "_caller",
+                    "caller.name",
+                    "caller-name",
+                    "caller0",
+                    "étiquette",
+                    "Σ",
+                    "中文",
+                    "a\u0301",
+                ],
+                "\t\n\r中文",
+            ),
+            dict.fromkeys(
+                [
+                    "description",
+                    "_caller",
+                    "caller.name",
+                    "caller-name",
+                    "caller0",
+                    "étiquette",
+                    "Σ",
+                    "中文",
+                    "a\u0301",
+                ],
+                "\t\n\r中文",
+            ),
+            "http://graphml.graphdrawing.org/xmlns",
+        ),
+        (
+            "xml",
+            {"xml:lang": "\t\n\r中文"},
+            {"{http://www.w3.org/XML/1998/namespace}lang": "\t\n\r中文"},
+            "http://graphml.graphdrawing.org/xmlns",
+        ),
+        (
+            "xsi",
+            {"xsi:note": "\t\n\r中文"},
+            {"{http://www.w3.org/2001/XMLSchema-instance}note": "\t\n\r中文"},
+            "http://graphml.graphdrawing.org/xmlns",
+        ),
+        (
+            "declared",
+            {"xmlns:custom": "urn:caller", "custom:name": "\t\n\r中文"},
+            {"{urn:caller}name": "\t\n\r中文"},
+            "http://graphml.graphdrawing.org/xmlns",
+        ),
+        (
+            "declaration_last",
+            {"custom:name": "\t\n\r中文", "xmlns:custom": "urn:caller"},
+            {"{urn:caller}name": "\t\n\r中文"},
+            "http://graphml.graphdrawing.org/xmlns",
+        ),
+        (
+            "expanded",
+            {"{urn:caller}name": "\t\n\r中文"},
+            {"{urn:caller}name": "\t\n\r中文"},
+            "http://graphml.graphdrawing.org/xmlns",
+        ),
+        (
+            "generated_same",
+            {"xmlns:ns0": "urn:caller", "{urn:caller}name": "\t\n\r中文"},
+            {"{urn:caller}name": "\t\n\r中文"},
+            "http://graphml.graphdrawing.org/xmlns",
+        ),
+        (
+            "default_override",
+            {"xmlns": "urn:caller", "description": "\t\n\r中文"},
+            {"description": "\t\n\r中文"},
+            "urn:caller",
+        ),
+        (
+            "default_undeclared",
+            {"xmlns": "", "description": "\t\n\r中文"},
+            {"description": "\t\n\r中文"},
+            "",
+        ),
+    ],
+    ids=lambda value: value if isinstance(value, str) else None,
+)
+def test_graph_attribute_names_supported(
+    parsed_xml_graph,
+    tmp_path,
+    pretty,
+    file_output,
+    case_name,
+    attrs,
+    expected,
+    namespace,
+):
+    exporter, chunks, options = parsed_xml_graph
+    exporter.graph_attrs.update(attrs)
+    before = dict(exporter.graph_attrs)
+    root, _ = graphml_contract_output(exporter, options, pretty, file_output, tmp_path)
+    ns = f"{{{namespace}}}" if namespace else ""
+    graph = root.find(f"{ns}graph")
+    assert graph is not None
+    assert graph.attrib == {"edgedefault": "directed", "id": "CodeGraph", **expected}
+    assert {node.get("id") for node in graph.findall(f"{ns}node")} == {
+        chunk.node_id for chunk in chunks
+    }
+    edge = graph.find(f"{ns}edge")
+    assert (edge.get("source"), edge.get("target")) == tuple(
+        chunk.node_id for chunk in chunks
+    )
+    assert exporter.graph_attrs == before
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+def test_graph_attribute_names_yed_binding(parsed_xml_graph, tmp_path, pretty):
+    exporter, _, options = parsed_xml_graph
+    if isinstance(exporter, GraphMLyEdExporter) and options.get("use_yed", True):
+        exporter.graph_attrs["y:foo"] = "\t\n\r中文"
+        root, _ = graphml_contract_output(exporter, options, pretty, True, tmp_path)
+        graph = root.find("{http://graphml.graphdrawing.org/xmlns}graph")
+        assert graph.get("{http://www.yworks.com/xml/graphml}foo") == "\t\n\r中文"
+    else:
+        assert_graph_attribute_names_rejected(
+            parsed_xml_graph, {"y:foo": "legal"}, pretty, tmp_path
+        )
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+def test_graph_attribute_names_parser_version(parsed_xml_graph, tmp_path, pretty):
+    exporter, _, options = parsed_xml_graph
+    name = "\U00010000caller"
+    exporter.graph_attrs[name] = "legal"
+    try:
+        output = exporter.export_string(pretty_print=pretty, **options)
+    except ValueError as error:
+        assert (
+            type(error) is ValueError
+            and "graph" in str(error)
+            and "attribute" in str(error)
+        )
+        del exporter.graph_attrs[name]
+        assert_graph_attribute_names_rejected(
+            parsed_xml_graph, {name: "legal"}, pretty, tmp_path
+        )
+    else:
+        root = ET.fromstring(output)
+        graph = root.find("{http://graphml.graphdrawing.org/xmlns}graph")
+        assert graph.get(name) == "legal"
+        root, _ = graphml_contract_output(exporter, options, pretty, True, tmp_path)
+        assert (
+            root.find("{http://graphml.graphdrawing.org/xmlns}graph").get(name)
+            == "legal"
+        )
+
+
 @pytest.mark.parametrize("pretty", [False, True], ids=["compact", "pretty"])
 @pytest.mark.parametrize("file_output", [False, True], ids=["string", "file"])
 @pytest.mark.parametrize("separator", ["\t", "\n", "\r"], ids=["tab", "lf", "cr"])
