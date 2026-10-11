@@ -102,7 +102,7 @@ class DotExporter(GraphExporterBase):
                 label_parts.append(f"Complexity: {node.chunk.metadata['complexity']}")
             if "token_count" in node.chunk.metadata:
                 label_parts.append(f"Tokens: {node.chunk.metadata['token_count']}")
-        attrs["label"] = self._escape_label("\\n".join(label_parts))
+        attrs["label"] = self._escape_label("\n".join(label_parts))
         return attrs
 
     def _get_edge_attributes(self, edge: GraphEdge) -> dict[str, str]:

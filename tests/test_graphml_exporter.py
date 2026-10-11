@@ -1,5 +1,6 @@
 """Unit tests for GraphML exporter."""
 
+import copy
 import csv
 import io
 import json
@@ -570,12 +571,6 @@ def test_dot_label_tabs_preserve_compiled_text(
         for element in svg_nodes
         if element.find(namespace + "title").text == ids[0]
     )
-    rendered = [element.text for element in node.iter(namespace + "text")]
-    caller_lines = caller_text.replace("\r", "\n").split("\n")
-    assert len(rendered) == len(caller_lines)
-    assert rendered[:-1] == caller_lines[:-1]
-    assert rendered[-1].startswith(caller_lines[-1] + " (function_definition)")
-    assert caller_path in rendered[-1]
     svg_edges = [element for element in groups if element.get("class") == "edge"]
     assert len(svg_edges) == 1
     anchors = list(svg_edges[0].iter(namespace + "a"))
@@ -589,6 +584,297 @@ def test_dot_label_tabs_preserve_compiled_text(
         assert [
             element.text for element in svg_clusters[0].iter(namespace + "text")
         ] == [caller_path]
+
+    rendered = [element.text for element in node.iter(namespace + "text")]
+    caller_lines = caller_text.replace("\r", "\n").split("\n")
+    assert rendered == [
+        *caller_lines[:-1],
+        caller_lines[-1] + " (function_definition)",
+        "caller\tfile.py:1-2",
+        "Complexity: {'cyclomatic': 1, 'cognitive': 0, 'nesting_depth': 0, "
+        "'lines_of_code': 2, 'logical_lines': 2}",
+    ]
+
+
+@pytest.mark.parametrize("use_clusters", [False, True])
+@pytest.mark.parametrize("file_output", [False, True])
+@pytest.mark.parametrize("extras", ["parsed", "none", "zero", "both"])
+@pytest.mark.parametrize(
+    (
+        "name",
+        "kind",
+        "caller_path",
+        "first_lines",
+        "first_json",
+        "path_lines",
+        "path_json",
+    ),
+    [
+        (
+            None,
+            "function_definition",
+            "caller.py",
+            ["function_definition"],
+            "function_definition",
+            ["caller.py"],
+            "caller.py",
+        ),
+        (
+            "",
+            "function_definition",
+            "caller.py",
+            [" (function_definition)"],
+            " (function_definition)",
+            ["caller.py"],
+            "caller.py",
+        ),
+        (
+            "LEFT",
+            "function_definition",
+            "caller.py",
+            ["LEFT (function_definition)"],
+            "LEFT (function_definition)",
+            ["caller.py"],
+            "caller.py",
+        ),
+        (
+            "LEFT\nRIGHT",
+            "function_definition",
+            "caller.py",
+            ["LEFT", "RIGHT (function_definition)"],
+            r"LEFT\nRIGHT (function_definition)",
+            ["caller.py"],
+            "caller.py",
+        ),
+        (
+            r"LEFT\nRIGHT",
+            "function_definition",
+            "caller.py",
+            [r"LEFT\nRIGHT (function_definition)"],
+            r"LEFT\\nRIGHT (function_definition)",
+            ["caller.py"],
+            "caller.py",
+        ),
+        (
+            'LEFT"\\RIGHT',
+            "function_definition",
+            "caller.py",
+            ['LEFT"\\RIGHT (function_definition)'],
+            r'LEFT"\\RIGHT (function_definition)',
+            ["caller.py"],
+            "caller.py",
+        ),
+        (
+            "LEFT\\",
+            "function_definition",
+            "caller.py",
+            ["LEFT\\ (function_definition)"],
+            r"LEFT\\ (function_definition)",
+            ["caller.py"],
+            "caller.py",
+        ),
+        (
+            "Σé",
+            "function_definition",
+            "Σé.py",
+            ["Σé (function_definition)"],
+            "Σé (function_definition)",
+            ["Σé.py"],
+            "Σé.py",
+        ),
+        (
+            None,
+            "type\\",
+            r"C:\caller\file.py",
+            ["type\\"],
+            r"type\\",
+            [r"C:\caller\file.py"],
+            r"C:\\caller\\file.py",
+        ),
+        (
+            "LEFT",
+            "function_definition",
+            "LEFT\nRIGHT.py",
+            ["LEFT (function_definition)"],
+            "LEFT (function_definition)",
+            ["LEFT", "RIGHT.py"],
+            r"LEFT\nRIGHT.py",
+        ),
+        (
+            "LEFT",
+            "function_definition",
+            r"LEFT\nRIGHT.py",
+            ["LEFT (function_definition)"],
+            "LEFT (function_definition)",
+            [r"LEFT\nRIGHT.py"],
+            r"LEFT\\nRIGHT.py",
+        ),
+        (
+            None,
+            "function_definition",
+            "caller\\",
+            ["function_definition"],
+            "function_definition",
+            ["caller\\"],
+            r"caller\\",
+        ),
+    ],
+    ids=[
+        "absent",
+        "empty",
+        "ordinary",
+        "name-lf",
+        "name-literal-n",
+        "quote-slash",
+        "name-tail-slash",
+        "unicode",
+        "kind-tail-slash",
+        "path-lf",
+        "path-literal-n",
+        "path-tail-slash",
+    ],
+)
+def test_dot_generated_node_lines_preserve_compiled_graph(
+    parsed_same_span,
+    tmp_path,
+    name,
+    kind,
+    caller_path,
+    first_lines,
+    first_json,
+    path_lines,
+    path_json,
+    extras,
+    use_clusters,
+    file_output,
+):
+    dot = shutil.which("dot")
+    if dot is None:
+        pytest.skip("Graphviz executable is required for compiled DOT contracts")
+    chunks = [c for c in parsed_same_span if c.node_type == "function_definition"]
+    assert len(chunks) == 2
+    assert [c.metadata["signature"]["name"] for c in chunks] == ["f", "g"]
+    assert [(c.start_line, c.end_line) for c in chunks] == [(1, 2), (5, 6)]
+    ids = [c.node_id for c in chunks]
+    assert len(set(ids)) == 2
+    complexity = {
+        "cyclomatic": 1,
+        "cognitive": 0,
+        "nesting_depth": 0,
+        "lines_of_code": 2,
+        "logical_lines": 2,
+    }
+    complexity_line = (
+        "Complexity: {'cyclomatic': 1, 'cognitive': 0, 'nesting_depth': 0, "
+        "'lines_of_code': 2, 'logical_lines': 2}"
+    )
+    for chunk in chunks:
+        assert chunk.metadata["complexity"] == complexity
+        assert "name" not in chunk.metadata and "chunk_type" not in chunk.metadata
+        assert "token_count" not in chunk.metadata
+        chunk.file_path = caller_path
+        if extras != "parsed":
+            chunk.metadata.pop("complexity")
+        if extras == "zero":
+            chunk.metadata["token_count"] = 0
+        if extras == "both":
+            chunk.metadata.update(complexity=7, token_count=13)
+    chunks[0].node_type = kind
+    if name is not None:
+        chunks[0].metadata["name"] = name
+    metadata_lines = {
+        "parsed": [complexity_line],
+        "none": [],
+        "zero": ["Tokens: 0"],
+        "both": ["Complexity: 7", "Tokens: 13"],
+    }[extras]
+    caller_state = copy.deepcopy([vars(chunk) for chunk in chunks])
+    exporter = DotExporter()
+    exporter.add_chunks(chunks)
+    exporter.add_relationship(chunks[0], chunks[1], "CALLS", {"note": r"literal\n"})
+    node_state = copy.deepcopy(
+        {key: (node.label, node.properties) for key, node in exporter.nodes.items()}
+    )
+    edge_state = copy.deepcopy([vars(edge) for edge in exporter.edges])
+    output = exporter.export_string(use_clusters=use_clusters)
+    assert output == exporter.export_string(use_clusters=use_clusters)
+    path = tmp_path / "generated-lines.dot" if file_output else None
+    if path is not None:
+        exporter.export(path, use_clusters=use_clusters)
+        assert path.read_bytes().replace(b"\r\n", b"\n") == output.encode("utf-8")
+
+    def compile_graph(format_name):
+        result = subprocess.run(
+            [dot, "-T" + format_name, *([str(path)] if path is not None else [])],
+            input=output if path is None else None,
+            encoding="utf-8",
+            capture_output=True,
+            timeout=30,
+            check=True,
+        )
+        return result.stdout
+
+    graph = json.loads(compile_graph("json"))
+    count = graph.get("_subgraph_cnt", 0)
+    nodes = graph["objects"][count:]
+    assert len(nodes) == 2 and {node["name"] for node in nodes} == set(ids)
+    node_ids = {node["name"]: node["_gvid"] for node in nodes}
+    assert len(graph["edges"]) == 1
+    edge = graph["edges"][0]
+    assert (edge["tail"], edge["head"]) == (node_ids[ids[0]], node_ids[ids[1]])
+    assert edge["label"] == "CALLS" and edge["tooltip"] == r"note: literal\\n"
+    assert edge["color"] == "red" and edge["style"] == "dotted"
+    assert count == int(use_clusters)
+    if use_clusters:
+        assert graph["objects"][0]["label"] == path_json
+        assert set(graph["objects"][0]["nodes"]) == set(node_ids.values())
+    svg = ET.fromstring(compile_graph("svg"))
+    namespace = "{http://www.w3.org/2000/svg}"
+    groups = list(svg.iter(namespace + "g"))
+    svg_nodes = [g for g in groups if g.get("class") == "node"]
+    assert len(svg_nodes) == 2
+    by_id = {g.find(namespace + "title").text: g for g in svg_nodes}
+    assert set(by_id) == set(ids)
+    svg_edges = [g for g in groups if g.get("class") == "edge"]
+    assert len(svg_edges) == 1
+    assert svg_edges[0].find(namespace + "title").text == ids[0] + "->" + ids[1]
+    assert [t.text for t in svg_edges[0].iter(namespace + "text")] == ["CALLS"]
+    anchors = list(svg_edges[0].iter(namespace + "a"))
+    assert (
+        len(anchors) == 1
+        and anchors[0].get("{http://www.w3.org/1999/xlink}title") == r"note: literal\n"
+    )
+    clusters = [g for g in groups if g.get("class") == "cluster"]
+    assert len(clusters) == int(use_clusters)
+    if use_clusters:
+        assert [t.text for t in clusters[0].iter(namespace + "text")] == path_lines
+    assert [vars(chunk) for chunk in chunks] == caller_state
+    assert {
+        key: (node.label, node.properties) for key, node in exporter.nodes.items()
+    } == node_state
+    assert [vars(edge) for edge in exporter.edges] == edge_state
+    for index, node_id in enumerate(ids):
+        texts = list(by_id[node_id].iter(namespace + "text"))
+        assert all(t.get("text-anchor") == "middle" for t in texts)
+        span = "1-2" if index == 0 else "5-6"
+        expected = [
+            *(first_lines if index == 0 else ["function_definition"]),
+            *path_lines[:-1],
+            path_lines[-1] + ":" + span,
+            *metadata_lines,
+        ]
+        assert [t.text for t in texts] == expected
+        expected_json = r"\n".join(
+            [
+                first_json if index == 0 else "function_definition",
+                path_json + ":" + span,
+                *metadata_lines,
+            ]
+        )
+        assert (
+            next(node for node in nodes if node["name"] == node_id)["label"]
+            == expected_json
+        )
 
 
 @pytest.mark.parametrize(

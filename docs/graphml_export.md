@@ -215,9 +215,14 @@ tooltips retain them in compiled Graphviz JSON (treesitter-chunker#476).
 Parsed SVG tooltips normalize physical tabs to spaces under XML attribute
 rules; they do not turn into literal `t` characters. Literal backslash-t remains
 text. This covers the listed valid UTF-8 text cases without NUL or entity
-sequences, using the same tested compiler versions above. Generated node-label
-formatting separators remain visible backslash-n text rather than line breaks
-(treesitter-chunker#479); this tab repair does not certify their layout.
+sequences, using the same tested compiler versions above.
+Generated direct DOT node-label fields now render on separate centered lines
+(treesitter-chunker#479): name/type, file/span, complexity and token count when
+present. Their serialized label bytes change. Caller physical LF also produces
+line breaks; caller literal backslash-n remains visible text. Actual JSON/SVG
+checks cover string and file output with flat and clustered graphs, including
+quotes, backslashes and Unicode, on the compiler versions above. This does not
+certify empty-line typography, arbitrary controls or other renderer versions.
 
 The direct Neo4j CSV exporter preserves leading spaces, tabs and Unicode
 whitespace in caller IDs and trailing property whitespace, including boundary
