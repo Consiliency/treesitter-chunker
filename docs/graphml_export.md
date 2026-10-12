@@ -204,18 +204,18 @@ backslashes, Unicode, tabs and carriage returns in string and file output
 remain visible text; they do not substitute graph identities or create lines.
 Physical LF creates a centered line break. Physical CR remains in the compiled
 label value; renderer typography and control-character display are separate.
-HTML-looking tags remain plain text, but Graphviz interprets HTML character
-entities such as `&amp;` and `&#10;`; literal entity preservation remains
-treesitter-chunker#478. This contract covers the listed valid UTF-8 text cases
-without NUL or entity sequences, not arbitrary control bytes, invalid surrogates
+HTML-looking tags remain plain text. Literal entity-looking caller text is
+preserved as described below (treesitter-chunker#478).
+This contract covers the listed valid UTF-8 text cases
+without NUL, not arbitrary control bytes, invalid surrogates
 or arbitrary attribute values. Compiler qualification uses Graphviz 14.1.2 on
 Linux and 14.1.1 on Windows; other versions are not certified here.
 Direct DOT node and cluster labels retain physical tabs, and relationship
 tooltips retain them in compiled Graphviz JSON (treesitter-chunker#476).
 Parsed SVG tooltips normalize physical tabs to spaces under XML attribute
 rules; they do not turn into literal `t` characters. Literal backslash-t remains
-text. This covers the listed valid UTF-8 text cases without NUL or entity
-sequences, using the same tested compiler versions above.
+text. This covers the listed valid UTF-8 text cases without NUL,
+using the same tested compiler versions above.
 Generated direct DOT node-label fields now render on separate centered lines
 (treesitter-chunker#479): name/type, file/span, complexity and token count when
 present. Their serialized label bytes change. Caller physical LF also produces
@@ -223,6 +223,22 @@ line breaks; caller literal backslash-n remains visible text. Actual JSON/SVG
 checks cover string and file output with flat and clustered graphs, including
 quotes, backslashes and Unicode, on the compiler versions above. This does not
 certify empty-line typography, arbitrary controls or other renderer versions.
+
+Direct DOT labels and tooltips preserve literal entity-looking caller text
+(treesitter-chunker#478), including named, decimal, hexadecimal, nested and
+adjacent sequences. For example, caller `R&amp;D`, `A&#10;B` and `A&#92;nB`
+remain visible as those literal strings rather than decoded characters or
+line breaks. Actual SVG checks cover caller node name/type/path, cluster label,
+relationship label and tooltip key/value in flat/clustered string/file output
+where applicable, on the two compiler versions above. Serialized ampersands
+in these labels/tooltips now become protective `&amp;`; compiled JSON retains
+that protective encoding, so it differs from the visible SVG text. Consumers
+reading DOT text directly must account for these changed serialized bytes.
+Callers that relied on entity decoding must supply the actual desired
+characters, including physical LF for line breaks. Caller literal backslash-n
+remains text, and XML attribute rules still normalize tooltip tabs to spaces.
+This does not certify arbitrary complexity/token values, custom attributes,
+HTML-label APIs, arbitrary controls, invalid surrogates or other compiler versions.
 
 The direct Neo4j CSV exporter preserves leading spaces, tabs and Unicode
 whitespace in caller IDs and trailing property whitespace, including boundary

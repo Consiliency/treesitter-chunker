@@ -2658,6 +2658,17 @@
             "run_id": "20261012-dot-entities-478"
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-12T21:44:13Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "code_rounds_used": 0,
+            "design_acceptance": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/dot-entities-478/takeover-20261011/design-acceptance.json",
+            "plan_rounds_used": 2,
+            "reviewed_plan_head": "51782822a6d2e1ce24c6506a5a0ef2c8e632b8ea"
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -2665,10 +2676,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/6aec8c1de9b0/codex-dot-entities-478/20261012-dot-entities-478.md",
       "roadmap_ref": null,
       "slug": "dot-entities-478",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Preserve literal caller entities in direct DOT labels/tooltips (treesitter-chunker#478)",
       "type": "detailed",
-      "updated_at": "2026-10-12T19:20:45.172305+00:00"
+      "updated_at": "2026-10-12T21:44:13Z"
     }
   ],
   "schema_version": 1

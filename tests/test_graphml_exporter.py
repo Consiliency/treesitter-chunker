@@ -877,6 +877,343 @@ def test_dot_generated_node_lines_preserve_compiled_graph(
         )
 
 
+@pytest.fixture(
+    params=[
+        pytest.param(
+            ("R&amp;D", "R&amp;amp;D", ["R&amp;D"], "R&amp;D"),
+            id="entity-named-amp",
+        ),
+        pytest.param(
+            ("A&lt;B&gt;C", "A&amp;lt;B&amp;gt;C", ["A&lt;B&gt;C"], "A&lt;B&gt;C"),
+            id="entity-named-markup",
+        ),
+        pytest.param(
+            ("A&quot;B", "A&amp;quot;B", ["A&quot;B"], "A&quot;B"),
+            id="entity-named-quote",
+        ),
+        pytest.param(
+            ("A&#10;B", "A&amp;#10;B", ["A&#10;B"], "A&#10;B"),
+            id="entity-decimal-lf",
+        ),
+        pytest.param(
+            ("A&#x3a3;B", "A&amp;#x3a3;B", ["A&#x3a3;B"], "A&#x3a3;B"),
+            id="entity-hex-unicode",
+        ),
+        pytest.param(
+            ("A&#92;nB", "A&amp;#92;nB", ["A&#92;nB"], "A&#92;nB"),
+            id="entity-decimal-slash-n",
+        ),
+        *[
+            pytest.param(
+                (
+                    "A&#92;" + escape + "B",
+                    "A&amp;#92;" + escape + "B",
+                    ["A&#92;" + escape + "B"],
+                    "A&#92;" + escape + "B",
+                ),
+                id="entity-decimal-identity-" + escape,
+            )
+            for escape in ["N", "E", "T", "H", "G", "L"]
+        ],
+        pytest.param(
+            ("A&amp;amp;B", "A&amp;amp;amp;B", ["A&amp;amp;B"], "A&amp;amp;B"),
+            id="entity-nested",
+        ),
+        pytest.param(
+            ("A&amp;&#38;B", "A&amp;amp;&amp;#38;B", ["A&amp;&#38;B"], "A&amp;&#38;B"),
+            id="entity-adjacent",
+        ),
+        pytest.param(
+            ('A\\"&amp;Σ', r'A\\"&amp;amp;Σ', ['A\\"&amp;Σ'], 'A\\"&amp;Σ'),
+            id="entity-quote-slash-unicode",
+        ),
+        pytest.param(
+            ("A&amp;\nB", r"A&amp;amp;\nB", ["A&amp;", "B"], "A&amp;\nB"),
+            id="entity-physical-lf",
+        ),
+        pytest.param(
+            ("A&amp;\tB", "A&amp;amp;\tB", ["A&amp;\tB"], "A&amp; B"),
+            id="entity-physical-tab",
+        ),
+        pytest.param(("A&B", "A&amp;B", ["A&B"], "A&B"), id="ampcontrol-ordinary"),
+        pytest.param(
+            ("A&bogus;B", "A&amp;bogus;B", ["A&bogus;B"], "A&bogus;B"),
+            id="ampcontrol-unknown",
+        ),
+        pytest.param(
+            ("<b>CALLS</b>", "<b>CALLS</b>", ["<b>CALLS</b>"], "<b>CALLS</b>"),
+            id="plain-markup",
+        ),
+        pytest.param(("Σé", "Σé", ["Σé"], "Σé"), id="plain-unicode"),
+        pytest.param(('A\\"B', r'A\\"B', ['A\\"B'], 'A\\"B'), id="plain-quote-slash"),
+        pytest.param(("A\nB", r"A\nB", ["A", "B"], "A\nB"), id="plain-physical-lf"),
+        pytest.param(("A\tB", "A\tB", ["A\tB"], "A B"), id="plain-physical-tab"),
+        pytest.param((r"A\nB", r"A\\nB", [r"A\nB"], r"A\nB"), id="plain-literal-n"),
+        pytest.param(("A\\", "A\\\\", ["A\\"], "A\\"), id="plain-tail-slash"),
+    ]
+)
+def dot_literal_entity_case(request):
+    return request.param
+
+
+@pytest.fixture(
+    params=[
+        pytest.param(
+            (field, use_clusters, file_output),
+            id=field
+            + ("-clustered" if use_clusters else "-flat")
+            + ("-file" if file_output else "-string"),
+        )
+        for field in [
+            "node_name",
+            "node_type",
+            "node_path",
+            "cluster_label",
+            "edge_label",
+            "tooltip_key",
+            "tooltip_value",
+        ]
+        for use_clusters in [False, True]
+        for file_output in [False, True]
+        if field != "cluster_label" or use_clusters
+    ]
+)
+def dot_literal_entity_graph(
+    request, dot_literal_entity_case, parsed_same_span, tmp_path
+):
+    dot = shutil.which("dot")
+    if dot is None:
+        pytest.skip("Graphviz executable is required for compiled DOT contracts")
+    field, use_clusters, file_output = request.param
+    caller, protected_json, visible_lines, visible_tooltip = dot_literal_entity_case
+    chunks = [c for c in parsed_same_span if c.node_type == "function_definition"]
+    assert len(chunks) == 2
+    assert [c.metadata["signature"]["name"] for c in chunks] == ["f", "g"]
+    assert [(c.start_line, c.end_line) for c in chunks] == [(1, 2), (5, 6)]
+    ids = [c.node_id for c in chunks]
+    assert len(set(ids)) == 2
+    for chunk, name in zip(chunks, ["f", "g"], strict=True):
+        chunk.file_path = (
+            caller if field in ("node_path", "cluster_label") else "caller.py"
+        )
+        chunk.metadata.update(
+            name=name, chunk_type="function", complexity=7, token_count=0
+        )
+    if field == "node_name":
+        chunks[0].metadata["name"] = caller
+    if field == "node_type":
+        chunks[0].metadata["chunk_type"] = caller
+    relationship = caller if field == "edge_label" else "CALLS"
+    properties = {
+        caller if field == "tooltip_key" else "note": (
+            caller if field == "tooltip_value" else "plain"
+        ),
+        "other": 0,
+    }
+    exporter = DotExporter()
+    if field == "node_type":
+        exporter.set_node_style(
+            caller, shape="ellipse", fillcolor="lightblue", style="filled"
+        )
+    if field == "edge_label":
+        exporter.set_edge_style(caller, color="red", style="dotted")
+    exporter.add_chunks(chunks)
+    exporter.add_relationship(chunks[0], chunks[1], relationship, properties)
+
+    def state():
+        return [
+            [vars(chunk) for chunk in chunks],
+            {key: vars(node) for key, node in exporter.nodes.items()},
+            [vars(edge) for edge in exporter.edges],
+            exporter.graph_attrs,
+            exporter.node_attrs,
+            exporter.edge_attrs,
+            exporter.chunk_type_styles,
+            exporter.edge_type_styles,
+        ]
+
+    original = copy.deepcopy(state())
+    output = exporter.export_string(use_clusters=use_clusters)
+    assert output == exporter.export_string(use_clusters=use_clusters)
+    path = tmp_path / "literal-entities.dot" if file_output else None
+    if path is not None:
+        exporter.export(path, use_clusters=use_clusters)
+        first = path.read_bytes()
+        exporter.export(path, use_clusters=use_clusters)
+        assert path.read_bytes() == first
+        assert first.replace(b"\r\n", b"\n") == output.encode("utf-8")
+
+    def compile_graph(format_name):
+        result = subprocess.run(
+            [dot, "-T" + format_name, *([str(path)] if path is not None else [])],
+            input=output if path is None else None,
+            encoding="utf-8",
+            capture_output=True,
+            timeout=30,
+            check=True,
+        )
+        return result.stdout
+
+    graph = json.loads(compile_graph("json"))
+    count = graph.get("_subgraph_cnt", 0)
+    assert count == int(use_clusters)
+    nodes = graph["objects"][count:]
+    assert len(nodes) == 2 and {node["name"] for node in nodes} == set(ids)
+    by_name = {node["name"]: node for node in nodes}
+    assert all(
+        node["shape"] == "ellipse"
+        and node["fillcolor"] == "lightblue"
+        and node["style"] == "filled"
+        for node in nodes
+    )
+    assert len(graph["edges"]) == 1
+    edge = graph["edges"][0]
+    assert (edge["tail"], edge["head"]) == (
+        by_name[ids[0]]["_gvid"],
+        by_name[ids[1]]["_gvid"],
+    )
+    assert edge["tail"] != edge["head"]
+    assert edge["color"] == "red" and edge["style"] == "dotted"
+    if use_clusters:
+        cluster = graph["objects"][0]
+        assert set(cluster["nodes"]) == {node["_gvid"] for node in nodes}
+        assert cluster["style"] == "rounded,filled"
+        assert cluster["fillcolor"] == "lightgray" and cluster["color"] == "black"
+    assert graph["rankdir"] == "TB"
+
+    svg = ET.fromstring(compile_graph("svg"))
+    namespace = "{http://www.w3.org/2000/svg}"
+    groups = list(svg.iter(namespace + "g"))
+    svg_nodes = [g for g in groups if g.get("class") == "node"]
+    assert len(svg_nodes) == 2
+    svg_by_id = {g.find(namespace + "title").text: g for g in svg_nodes}
+    assert set(svg_by_id) == set(ids)
+    assert all(
+        t.get("text-anchor") == "middle"
+        for group in svg_nodes
+        for t in group.iter(namespace + "text")
+    )
+    svg_edges = [g for g in groups if g.get("class") == "edge"]
+    assert len(svg_edges) == 1
+    assert svg_edges[0].find(namespace + "title").text == ids[0] + "->" + ids[1]
+    anchors = list(svg_edges[0].iter(namespace + "a"))
+    assert len(anchors) == 1
+    svg_clusters = [g for g in groups if g.get("class") == "cluster"]
+    assert len(svg_clusters) == int(use_clusters)
+    assert state() == original
+    assert set(exporter.nodes) == set(ids)
+    assert exporter.get_subgraph_clusters() == {chunks[0].file_path: ids}
+    assert (exporter.edges[0].source_id, exporter.edges[0].target_id) == tuple(ids)
+
+    path_lines = (
+        visible_lines if field in ("node_path", "cluster_label") else ["caller.py"]
+    )
+    path_json = (
+        protected_json if field in ("node_path", "cluster_label") else "caller.py"
+    )
+    name_lines = visible_lines if field == "node_name" else ["f"]
+    type_lines = visible_lines if field == "node_type" else ["function"]
+    first_lines = ("\n".join(name_lines) + " (" + "\n".join(type_lines) + ")").split(
+        "\n"
+    )
+    first_json = (
+        (protected_json if field == "node_name" else "f")
+        + " ("
+        + (protected_json if field == "node_type" else "function")
+        + ")"
+    )
+    node_lines = [
+        [
+            *(first_lines if index == 0 else ["g (function)"]),
+            *path_lines[:-1],
+            path_lines[-1] + (":1-2" if index == 0 else ":5-6"),
+            "Complexity: 7",
+            "Tokens: 0",
+        ]
+        for index in [0, 1]
+    ]
+    node_json = [
+        r"\n".join(
+            [
+                first_json if index == 0 else "g (function)",
+                path_json + (":1-2" if index == 0 else ":5-6"),
+                "Complexity: 7",
+                "Tokens: 0",
+            ]
+        )
+        for index in [0, 1]
+    ]
+    visible = {
+        "node": [t.text for t in svg_by_id[ids[0]].iter(namespace + "text")],
+        "edge_label": [t.text for t in svg_edges[0].iter(namespace + "text")],
+        "tooltip": anchors[0].get("{http://www.w3.org/1999/xlink}title"),
+    }
+    expected_visible = {
+        "node": node_lines[0],
+        "edge_label": visible_lines if field == "edge_label" else ["CALLS"],
+        "tooltip": (
+            (visible_tooltip if field == "tooltip_key" else "note")
+            + ": "
+            + (visible_tooltip if field == "tooltip_value" else "plain")
+            + "; other: 0"
+        ),
+    }
+    compiled = {
+        "node": by_name[ids[0]]["label"],
+        "edge_label": edge["label"],
+        "tooltip": edge["tooltip"],
+    }
+    expected_compiled = {
+        "node": node_json[0],
+        "edge_label": protected_json if field == "edge_label" else "CALLS",
+        "tooltip": (
+            (protected_json if field == "tooltip_key" else "note")
+            + ": "
+            + (protected_json if field == "tooltip_value" else "plain")
+            + "; other: 0"
+        ),
+    }
+    if use_clusters:
+        visible["cluster_label"] = [
+            t.text for t in svg_clusters[0].iter(namespace + "text")
+        ]
+        expected_visible["cluster_label"] = path_lines
+        compiled["cluster_label"] = graph["objects"][0]["label"]
+        expected_compiled["cluster_label"] = path_json
+    target = (
+        "node"
+        if field.startswith("node_")
+        else "tooltip" if field.startswith("tooltip_") else field
+    )
+    return {
+        "target": target,
+        "visible": visible,
+        "expected_visible": expected_visible,
+        "compiled": compiled,
+        "expected_compiled": expected_compiled,
+        "second_visible": [t.text for t in svg_by_id[ids[1]].iter(namespace + "text")],
+        "expected_second_visible": node_lines[1],
+        "second_json": by_name[ids[1]]["label"],
+        "expected_second_json": node_json[1],
+    }
+
+
+def test_dot_literal_entities_visible(dot_literal_entity_graph):
+    result = dot_literal_entity_graph
+    target = result["target"]
+    assert result["visible"][target] == result["expected_visible"][target]
+    assert result["visible"] == result["expected_visible"]
+    assert result["second_visible"] == result["expected_second_visible"]
+
+
+def test_dot_literal_entities_json(dot_literal_entity_graph):
+    result = dot_literal_entity_graph
+    target = result["target"]
+    assert result["compiled"][target] == result["expected_compiled"][target]
+    assert result["compiled"] == result["expected_compiled"]
+    assert result["second_json"] == result["expected_second_json"]
+
+
 @pytest.mark.parametrize(
     "exporter_type", [GraphMLExporter, GraphMLyEdExporter, DotExporter, Neo4jExporter]
 )
