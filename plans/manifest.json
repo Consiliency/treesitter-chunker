@@ -2642,6 +2642,33 @@
       "task_summary": "Render generated direct DOT node fields as actual label lines (treesitter-chunker#479)",
       "type": "detailed",
       "updated_at": "2026-10-11T22:02:11Z"
+    },
+    {
+      "acceptance_criteria_count": 3,
+      "created_at": "2026-10-12T19:20:45.172305+00:00",
+      "file": "plans/detailed-dot-entities-478.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/20261012-dot-entities-478.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-12T19:20:45.172305+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "run_id": "20261012-dot-entities-478"
+          },
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/6aec8c1de9b0/codex-dot-entities-478/20261012-dot-entities-478.md",
+      "roadmap_ref": null,
+      "slug": "dot-entities-478",
+      "status": "committed",
+      "task_summary": "Preserve literal caller entities in direct DOT labels/tooltips (treesitter-chunker#478)",
+      "type": "detailed",
+      "updated_at": "2026-10-12T19:20:45.172305+00:00"
     }
   ],
   "schema_version": 1
