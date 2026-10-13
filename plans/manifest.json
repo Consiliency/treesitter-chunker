@@ -2669,6 +2669,49 @@
             "reviewed_plan_head": "51782822a6d2e1ce24c6506a5a0ef2c8e632b8ea"
           },
           "transition": "executing"
+        },
+        {
+          "at": "2026-10-13T03:21:21Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "acceptance_criteria": {
+              "AC1": "passed",
+              "AC2": "passed",
+              "AC3": "passed at accepted source; final-head merge gates follow"
+            },
+            "accepted_implementation_head": "1d2d6a8040450a516889f8334cbee50b46f57893",
+            "archive": {
+              "all_hashes_verified": true,
+              "members": 2112,
+              "path": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/dot-entities-478/archives-source-code2/dot-entities-478-1d2d6a80-accepted-code2.tar.gz",
+              "sha256": "85c660a1bd7cc9d60d7079ce133ca34bb37f14c738e0bc4fff41210ff735a9c4"
+            },
+            "diagnostic": "Source accepted/archived after CODE2. Lifecycle-only head needs fresh original/native/hosted gates, CODE3 and independent final Astra before merge; historical negatives remain source-bound without restamping.",
+            "dirty_paths": [],
+            "manual_reviews": {
+              "all_four_complete": true,
+              "code1_breach_preserved": true,
+              "code2_observed_scope_audited": true,
+              "code_rounds": 2,
+              "formal_qualification": false,
+              "independent_astra": "APPROVE",
+              "plan_rounds": 2
+            },
+            "reflection": {
+              "handoff": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-dot-entities-478/.dev-skills/handoffs/codex-execute-detailed/20261012-dot-entities-478-source-accepted-code2.md",
+              "reflection": "/home/viperjuice/.codex/skills/codex-execute-detailed/reflections/6aec8c1de9b0/codex-dot-entities-478/20261012-source-accepted-code2.md"
+            },
+            "verification": {
+              "faults": "936 baseline; shared792/edge144 disjoint per host; four named faults/four restorations total",
+              "hosted_checks": 7,
+              "linux_focused": "2734 passed",
+              "linux_full": "6791 passed, 4 skipped",
+              "native_windows": "1708 narrow; 2733 focused/1 skip; 204 standing/1 skip",
+              "original_artifact": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/dot-entities-478/takeover-20261011/original-attempt2/original-runner/verification.json",
+              "private_distro": "1708 candidate/356 base guards; reported2.43 informational compatibility"
+            }
+          },
+          "transition": "completed"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -2676,10 +2719,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/6aec8c1de9b0/codex-dot-entities-478/20261012-dot-entities-478.md",
       "roadmap_ref": null,
       "slug": "dot-entities-478",
-      "status": "executing",
+      "status": "completed",
       "task_summary": "Preserve literal caller entities in direct DOT labels/tooltips (treesitter-chunker#478)",
       "type": "detailed",
-      "updated_at": "2026-10-12T21:44:13Z"
+      "updated_at": "2026-10-13T03:21:21Z"
     }
   ],
   "schema_version": 1
