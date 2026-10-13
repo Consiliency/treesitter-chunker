@@ -61,6 +61,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Direct DOT labels and tooltips preserve literal caller entity-looking text
+  instead of decoding entities into characters or layout (treesitter-chunker#478).
+  Serialized label/tooltip ampersands now become protective `&amp;`; consumers
+  reading DOT text directly must account for the changed bytes. Callers relying
+  on entity decoding must pass actual characters, including physical LF for
+  line breaks. SVG proves visible text while compiled JSON retains protective
+  encoding across the scoped node/cluster/relationship/tooltip fields, preserving
+  IDs, styles, generated lines and caller escapes. Compiler qualification remains
+  Linux Graphviz 14.1.2 and Windows 14.1.1; custom attributes and HTML-label APIs
+  remain outside scope.
+
 - Generated direct DOT node-label fields render on separate centered lines
   instead of visible backslash-n text (treesitter-chunker#479). This changes
   serialized node label bytes while preserving caller literal backslash-n
@@ -145,13 +156,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Direct DOT node/cluster labels and compiled relationship tooltips retain
   physical tabs instead of turning them into literal `t` characters
   (treesitter-chunker#476). Parsed SVG tooltips normalize tabs to spaces.
-  Entity decoding remains treesitter-chunker#478.
+  Literal entity-looking text is preserved separately (treesitter-chunker#478).
 
 - Direct DOT relationship labels retain quotes, literal backslashes, Unicode,
   tabs and carriage returns through actual Graphviz compilation; physical LF
   produces centered label lines in string/file output (treesitter-chunker#473).
   Caller backslash escapes now render literally; use physical LF for lines.
-  HTML entities remain interpreted by Graphviz (treesitter-chunker#478).
+  Literal entity-looking text is preserved separately (treesitter-chunker#478).
   Node/cluster label and tooltip tabs are fixed separately
   (treesitter-chunker#476).
 

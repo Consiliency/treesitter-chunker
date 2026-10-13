@@ -54,6 +54,7 @@ class DotExporter(GraphExporterBase):
     @staticmethod
     def _escape_label(text: str) -> str:
         """Escape text for DOT labels."""
+        text = text.replace("&", "&amp;")
         text = text.replace("\\", "\\\\")
         text = text.replace('"', '\\"')
         text = text.replace("\n", "\\n")
@@ -111,7 +112,8 @@ class DotExporter(GraphExporterBase):
         if edge.relationship_type in self.edge_type_styles:
             attrs.update(self.edge_type_styles[edge.relationship_type])
         attrs["label"] = (
-            edge.relationship_type.replace("\\", "\\\\")
+            edge.relationship_type.replace("&", "&amp;")
+            .replace("\\", "\\\\")
             .replace('"', '\\"')
             .replace("\n", "\\n")
         )
