@@ -10,8 +10,16 @@ import subprocess
 import tarfile
 import tempfile
 import zipfile
+from configparser import ConfigParser
+from email.parser import Parser
 from pathlib import Path, PurePosixPath
 from typing import Any
+
+from packaging.requirements import Requirement
+from packaging.specifiers import SpecifierSet
+from packaging.tags import Tag, parse_tag
+from packaging.utils import canonicalize_name, parse_wheel_filename
+from packaging.version import Version
 
 from chunker.contracts.build_contract import BuildSystemContract
 
@@ -187,7 +195,6 @@ class BuildSystem(BuildSystemContract):
 
             # Build wheel manually using wheel package
             try:
-                from wheel.metadata import pkginfo_to_metadata
                 from wheel.wheelfile import WheelFile
 
                 # Create wheel filename
@@ -587,55 +594,196 @@ Summary: Tree-sitter based code chunking library""",
         """Verify wheel contents"""
         try:
             with zipfile.ZipFile(wheel_path, "r") as zf:
-                files = zf.namelist()
-
-                # Check for required components
-                has_package = any(
-                    "chunker/" in f or "treesitter_chunker/" in f for f in files
+                members = zf.namelist()
+                files = set(members)
+                if len(members) != len(files):
+                    report["errors"].append("Duplicate wheel members")
+                dist_info_dirs = {
+                    name.split("/", 1)[0]
+                    for name in files
+                    if name.split("/", 1)[0].endswith(".dist-info")
+                }
+                dist_info_dir = (
+                    next(iter(dist_info_dirs)) if len(dist_info_dirs) == 1 else ""
                 )
-                has_metadata = any("METADATA" in f for f in files)
-                has_wheel_info = any("WHEEL" in f for f in files)
+                data_dir = f"{dist_info_dir.removesuffix('.dist-info')}.data"
 
-                report["components"]["package"] = has_package
-                report["components"]["metadata"] = has_metadata
-                report["components"]["wheel_info"] = has_wheel_info
+                def installed_path(name: str) -> str:
+                    parts = PurePosixPath(name).parts
+                    if (
+                        len(parts) >= 3
+                        and parts[0] == data_dir
+                        and parts[1] in ("purelib", "platlib")
+                    ):
+                        return PurePosixPath(*parts[2:]).as_posix()
+                    return name
 
-                # Check for grammars
+                installed_files = {installed_path(name) for name in files}
+                source_root = Path(__file__).resolve().parents[2]
+                expected_modules = {
+                    path.relative_to(source_root).as_posix()
+                    for package in ("chunker", "cli")
+                    for path in (source_root / package).rglob("*.py")
+                }
+                expected_modules.update({"cli/__init__.py", "cli/main.py"})
+                missing_modules = sorted(expected_modules - installed_files)
+                has_package = bool(expected_modules) and not missing_modules
+                metadata_path = f"{dist_info_dir}/METADATA"
+                wheel_info_path = f"{dist_info_dir}/WHEEL"
+                record_path = f"{dist_info_dir}/RECORD"
+                entry_points_path = f"{dist_info_dir}/entry_points.txt"
+                has_metadata = bool(dist_info_dir) and metadata_path in files
+                has_wheel_info = bool(dist_info_dir) and wheel_info_path in files
+                has_record = bool(dist_info_dir) and record_path in files
+                same_dist_info = has_metadata and has_wheel_info and has_record
+                has_entry_points = bool(dist_info_dir) and entry_points_path in files
+                if has_entry_points:
+                    entry_points = ConfigParser(interpolation=None)
+                    entry_points.read_string(zf.read(entry_points_path).decode("utf-8"))
+                    has_entry_points = entry_points.has_section("console_scripts") and (
+                        dict(entry_points.items("console_scripts"))
+                        == {
+                            "treesitter-chunker": "cli.main:app",
+                            "tsc": "cli.main:app",
+                        }
+                    )
+                native_files = [
+                    f for f in files if f.endswith((".so", ".dll", ".dylib", ".pyd"))
+                ]
+                grammar_dir = PurePosixPath("chunker/data/grammars/build")
+                native_suffix = {
+                    "linux": ".so",
+                    "macos": ".dylib",
+                    "darwin": ".dylib",
+                    "windows": ".dll",
+                    "win32": ".dll",
+                }.get(platform.lower())
                 grammar_files = [
                     f
-                    for f in files
-                    if "grammars/" in f or ".so" in f or ".dll" in f or ".dylib" in f
+                    for f in native_files
+                    if PurePosixPath(installed_path(f)).parent == grammar_dir
+                    and native_suffix is not None
+                    and f.endswith(native_suffix)
                 ]
-                report["components"]["grammars"] = len(grammar_files) > 0
-                report["components"]["grammar_count"] = len(grammar_files)
-
-                # Check platform tag in WHEEL file
-                if has_wheel_info:
-                    wheel_info_file = next(f for f in files if "WHEEL" in f)
-                    wheel_content = zf.read(wheel_info_file).decode("utf-8")
-
-                    if platform in wheel_content.lower():
-                        report["components"]["platform_match"] = True
-                    else:
-                        report["components"]["platform_match"] = False
-                        report["errors"].append("Platform mismatch in wheel metadata")
-
-                # Determine if valid
-                report["valid"] = (
-                    has_package
-                    and has_metadata
-                    and has_wheel_info
-                    and len(grammar_files) > 0
+                components = report["components"]
+                components.update(
+                    package=has_package,
+                    missing_modules=missing_modules,
+                    metadata=has_metadata,
+                    wheel_info=has_wheel_info,
+                    record=has_record,
+                    entry_points=has_entry_points,
+                    grammars=bool(grammar_files),
+                    grammar_count=len(grammar_files),
+                    platform_match=False,
+                    grammar_pack_dependency=False,
+                    tree_sitter_runtime_dependency=False,
                 )
-
                 if not has_package:
                     report["missing"].append("package")
                 if not has_metadata:
                     report["missing"].append("metadata")
                 if not has_wheel_info:
                     report["missing"].append("wheel_info")
-                if len(grammar_files) == 0:
-                    report["missing"].append("grammars")
+                if not has_record:
+                    report["missing"].append("record")
+                if not has_entry_points:
+                    report["missing"].append("entry_points")
+                if not same_dist_info:
+                    report["errors"].append("Wheel metadata directories do not match")
+
+                if same_dist_info:
+                    metadata = Parser().parsestr(zf.read(metadata_path).decode("utf-8"))
+                    wheel_info = Parser().parsestr(
+                        zf.read(wheel_info_path).decode("utf-8")
+                    )
+                    wheel_name, wheel_version, _, filename_tags = parse_wheel_filename(
+                        wheel_path.name
+                    )
+                    metadata_name = metadata.get("Name")
+                    metadata_version = metadata.get("Version")
+                    dist_info_name = dist_info_dir.removesuffix(".dist-info")
+                    dist_name, _, dist_version = dist_info_name.rpartition("-")
+                    if (
+                        not metadata.get("Metadata-Version")
+                        or not metadata_name
+                        or not metadata_version
+                        or not dist_name
+                        or not dist_version
+                        or canonicalize_name(metadata_name) != wheel_name
+                        or canonicalize_name(dist_name) != wheel_name
+                        or Version(metadata_version) != wheel_version
+                        or Version(dist_version) != wheel_version
+                    ):
+                        report["errors"].append("Wheel distribution metadata mismatch")
+                    if wheel_info.get("Wheel-Version") != "1.0":
+                        report["errors"].append("Missing or unsupported Wheel-Version")
+                    metadata_tags: set[Tag] = set()
+                    for tag in wheel_info.get_all("Tag", []):
+                        metadata_tags.update(parse_tag(tag))
+                    universal = all(tag.platform == "any" for tag in filename_tags)
+                    if (
+                        any(tag.platform == "any" for tag in filename_tags)
+                        and native_files
+                    ):
+                        report["errors"].append("Universal wheel contains native files")
+                    platform_tokens = {
+                        "linux": ("linux", "manylinux", "musllinux"),
+                        "macos": ("macosx",),
+                        "darwin": ("macosx",),
+                        "windows": ("win",),
+                        "win32": ("win",),
+                    }.get(platform.lower(), (platform.lower(),))
+                    platform_match = filename_tags == metadata_tags and any(
+                        tag.platform == "any"
+                        or tag.platform.startswith(platform_tokens)
+                        for tag in filename_tags
+                    )
+                    platform_match = platform_match and wheel_info.get(
+                        "Root-Is-Purelib", ""
+                    ).lower() == ("true" if universal else "false")
+                    components["platform_match"] = platform_match
+                    if not platform_match:
+                        report["errors"].append("Platform mismatch in wheel metadata")
+
+                    requirements = [
+                        Requirement(value)
+                        for value in metadata.get_all("Requires-Dist", [])
+                    ]
+                    for component, name, pins in (
+                        (
+                            "grammar_pack_dependency",
+                            "tree-sitter-language-pack",
+                            ">=1.20,<1.21",
+                        ),
+                        (
+                            "tree_sitter_runtime_dependency",
+                            "tree-sitter",
+                            ">=0.26,<0.27",
+                        ),
+                    ):
+                        matches = [
+                            requirement
+                            for requirement in requirements
+                            if canonicalize_name(requirement.name) == name
+                        ]
+                        components[component] = len(matches) == 1 and all(
+                            not requirement.marker
+                            and not requirement.extras
+                            and requirement.specifier == SpecifierSet(pins)
+                            for requirement in matches
+                        )
+                    if not components["grammar_pack_dependency"]:
+                        report["missing"].append("grammar_pack_dependency")
+                    if not components["tree_sitter_runtime_dependency"]:
+                        report["missing"].append("tree_sitter_runtime_dependency")
+                    if not universal and not grammar_files:
+                        report["missing"].append("grammars")
+
+                corrupt_member = zf.testzip()
+                if corrupt_member:
+                    report["errors"].append(f"Corrupt wheel member: {corrupt_member}")
+                report["valid"] = not report["missing"] and not report["errors"]
 
         except Exception as e:
             report["errors"].append(f"Failed to read wheel: {e}")
