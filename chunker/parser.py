@@ -15,6 +15,7 @@ from .exceptions import (
     LanguageNotFoundError,
     ParserConfigError,
     ParserError,
+    ParserInitError,
 )
 from .grammar.manager import TreeSitterGrammarManager
 
@@ -127,6 +128,11 @@ def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
         normalized = alias_map.get(language, language)
         return _state.factory.get_parser(normalized, config)
     except LanguageNotFoundError:
+        if normalized in {"python", "javascript"}:
+            raise ParserInitError(
+                normalized,
+                f"Required tree-sitter-{normalized}==0.25.0 is unavailable; reinstall the declared grammar distribution.",
+            ) from None
         # Attempt on-demand grammar fetch/build for missing language
         try:
             # Load repository URL from config
@@ -194,6 +200,11 @@ def acquire_parser(language: str, config: ParserConfig | None = None) -> ParserL
     try:
         return _state.factory.acquire_parser(normalized, config)
     except LanguageNotFoundError:
+        if normalized in {"python", "javascript"}:
+            raise ParserInitError(
+                normalized,
+                f"Required tree-sitter-{normalized}==0.25.0 is unavailable; reinstall the declared grammar distribution.",
+            ) from None
         try:
             sources_path = (
                 Path(__file__).parent.parent / "config" / "grammar_sources.json"
@@ -253,7 +264,15 @@ def get_language_info(language: str) -> LanguageMetadata:
     _initialize()
     if _state.registry is None:
         raise ParserError("Language registry not initialized")
-    return _state.registry.get_metadata(language)
+    try:
+        return _state.registry.get_metadata(language)
+    except LanguageNotFoundError:
+        if language in {"python", "javascript"}:
+            raise ParserInitError(
+                language,
+                f"Required tree-sitter-{language}==0.25.0 is unavailable; reinstall the declared grammar distribution.",
+            ) from None
+        raise
 
 
 def return_parser(language: str, parser: Parser) -> None:

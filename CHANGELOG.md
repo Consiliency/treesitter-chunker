@@ -61,6 +61,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Default Python and JavaScript parsing uses the exact official 0.25.0 grammar
+  wheels instead of the language-pack 1.20 grammars that reject valid U+017F
+  and U+212A in broad Unicode classes (treesitter-chunker#492). Explicit custom
+  grammars retain priority after ABI validation. Boundary incremental keys now
+  bind the selected official version or custom-library SHA-256, so existing
+  Python/JavaScript cache records are re-extracted for the Unreleased 6.0.0
+  train. Source bytes, half-open UTF-8 spans, identity algorithms and IR schema
+  vocabulary are unchanged. The standalone pack grammars remain affected;
+  release and downstream corpus acceptance are separate pending gates.
+
 - Direct DOT labels and tooltips preserve literal caller entity-looking text
   instead of decoding entities into characters or layout (treesitter-chunker#478).
   Serialized label/tooltip ampersands now become protective `&amp;`; consumers

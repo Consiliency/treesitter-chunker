@@ -2,6 +2,7 @@
 
 import threading
 import time
+import types
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -11,6 +12,7 @@ from tree_sitter import Parser
 from chunker._internal.factory import LRUCache, ParserConfig, ParserFactory, ParserPool
 from chunker._internal.registry import LanguageRegistry
 from chunker.exceptions import LanguageNotFoundError, ParserConfigError, ParserInitError
+from tests.test_language_pack import _isolate_default_492
 
 
 class TestParserConfig:
@@ -241,6 +243,80 @@ class TestParserFactory:
             with pytest.raises(ParserInitError) as exc_info:
                 factory.get_parser("python")
             assert "Failed to get language" in str(exc_info.value)
+
+    @pytest.mark.parametrize("language", ["python", "javascript"])
+    def test_492_incompatible_custom_never_uses_pack(self, monkeypatch, language):
+        import tree_sitter_language_pack as pack
+
+        registry = Mock(spec=LanguageRegistry)
+        registry.has_language.return_value = True
+        registry.get_language.return_value = object()
+        monkeypatch.setattr(
+            pack,
+            "get_parser",
+            lambda *args, **kwargs: pytest.fail("pack parser used"),
+        )
+
+        with pytest.raises(ParserInitError, match=language):
+            ParserFactory(registry).get_parser(language)
+
+    @pytest.mark.parametrize("language", ["python", "javascript"])
+    @pytest.mark.parametrize(
+        "failure",
+        ["module", "native", "missing-capsule", "invalid-capsule", "abi"],
+    )
+    def test_492_required_grammar_failure_never_uses_pack_or_build(
+        self, monkeypatch, tmp_path, language, failure
+    ):
+        import tree_sitter
+        import tree_sitter_language_pack as pack
+
+        from chunker import parser as parser_module
+        from chunker._internal import language_pack
+
+        _isolate_default_492(monkeypatch, tmp_path)
+        real_module = language_pack.import_module(f"tree_sitter_{language}")
+        if failure == "module":
+            injected = ImportError("missing official module")
+        elif failure == "native":
+            injected = OSError("official native load failed")
+        elif failure == "missing-capsule":
+            injected = types.SimpleNamespace()
+        elif failure == "invalid-capsule":
+            injected = types.SimpleNamespace(language=object)
+        else:
+            injected = real_module
+            monkeypatch.setattr(
+                tree_sitter,
+                "Parser",
+                lambda language: (_ for _ in ()).throw(
+                    ValueError("official grammar ABI rejected")
+                ),
+            )
+        if isinstance(injected, Exception):
+            monkeypatch.setattr(
+                language_pack,
+                "import_module",
+                lambda name: (_ for _ in ()).throw(injected),
+            )
+        else:
+            monkeypatch.setattr(language_pack, "import_module", lambda name: injected)
+        monkeypatch.setattr(
+            pack,
+            "get_language",
+            lambda *args, **kwargs: pytest.fail("pack language used"),
+        )
+        monkeypatch.setattr(
+            pack,
+            "get_parser",
+            lambda *args, **kwargs: pytest.fail("pack parser used"),
+        )
+        manager = Mock(side_effect=AssertionError("automatic grammar build used"))
+        monkeypatch.setattr(parser_module, "TreeSitterGrammarManager", manager)
+
+        with pytest.raises(ParserInitError, match=f"tree-sitter-{language}==0.25.0"):
+            parser_module.get_parser(language)
+        manager.assert_not_called()
 
     def test_parser_config_application(self, registry):
         """Test that configuration is applied to parsers."""

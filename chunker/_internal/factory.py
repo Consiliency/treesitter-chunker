@@ -214,7 +214,7 @@ class ParserFactory:
             )
             return parser
         except ValueError as e:
-            if language == "baml":
+            if language in {"baml", "python", "javascript"}:
                 raise ParserInitError(language, str(e)) from e
             if "Incompatible Language version" in str(e):
                 # Try using tree-sitter-language-pack as a fallback
