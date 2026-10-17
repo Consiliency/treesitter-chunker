@@ -50,8 +50,11 @@ before building their key. Record a load-bound `grammar_source` capability:
 `custom:sha256:<digest>` for the actual combined/individual library bytes selected.
 Capture the custom digest at successful load/selection, not from a path guessed
 later; discovery compatibility probes must not overwrite selected provenance.
-Preserve that identity while a native image remains loaded; replacing native
-files in place is unsupported until fresh registry/process initialization.
+Preserve that identity while a native image remains loaded. Replacing a native
+library at the same path requires a fresh process; a new registry alone does not
+establish unloading. Alternatively use distinct immutable library paths and
+demonstrate which grammar is actually selected. Changed-custom-byte tests must
+use one of those boundaries and verify parsing behavior and the bound digest.
 Use `tree-sitter-<language>:source=<grammar_source>:pack=<version>:runtime=<version>`.
 This distinguishes official/custom switches and fresh loads of changed custom
 bytes, invalidates old Python/JS keys, and leaves other-language keys unchanged.
@@ -94,6 +97,14 @@ within a major; this repair adds no resolution/identity/schema vocabulary.
   custom selection wins, as specified above. Resolve metadata through the actual
   registry, including its cached selection. Do not alter other-language keys or
   IR output fields. No source rewriting or invented identity on load failure.
+  Provider resolution now occurs before cache lookup: catch its typed
+  `ParserInitError` at that boundary. With fail_fast=True propagate unchanged.
+  With fail_fast=False call the existing public nonincremental extractor with
+  identical path/language/canonical/created_at/resolution/timing/semantic options
+  and incremental=False. This reuses its existing structured per-file error and
+  continuation behavior without a fabricated key, stale successful payload or
+  cache mutation. Return that result for this call. Do not retry with a pack
+  grammar. This boundary precedes deletion/pruning/saving of cache records.
 - `tests/test_language_pack.py`, `tests/test_parser.py`: real Python/JS matrices
   for both characters across comments, identifiers, Python strings, JS strings,
   regex and JSX; ASCII/other-Unicode controls and independent Python `ast.parse`.
@@ -121,8 +132,20 @@ within a major; this repair adds no resolution/identity/schema vocabulary.
   language and changed identity when an official grammar version changes. Keep
   tool/schema/source/options fixed in seeded old-cache and M2 proofs. Also test
   persisted warm-cache transitions official-to-custom, custom-to-official and
-  fresh-registry loads of different custom library bytes, proving actual selected
-  parsers, re-extraction and stable reuse within each unchanged provider.
+  changed custom bytes using a fresh process for same-path replacement or
+  distinct immutable paths with demonstrated selection, proving actual selected
+  parsers, digests, re-extraction and subsequent warm reuse.
+  Add public cold/previously-warm cache tests for missing/native/capsule/ABI
+  provider failures: fail_fast=False produces existing structured diagnostics,
+  marks the affected file failed with no stale nodes, and still extracts an
+  unaffected Go file in the same mixed repository. Existing cache bytes remain
+  unchanged during the failure. fail_fast=True raises the initialization error.
+  Restoring the provider permits correct extraction and stable warm reuse.
+- `tests/test_boundary_cache_key.py`: update its old mocked Python identity to
+  the selected official source format with explicit official version/provider
+  metadata. Retain runtime/pack perturbation assertions and add official-version
+  and selected-source perturbations. Add an independently asserted unchanged
+  non-overridden-language key; do not merely mirror production string assembly.
 - `tests/boundary_ir_conformance.py`: extend the existing fail-closed grammar
   pin assertion with exact equality to0.25.0 for both official distributions;
   mirror their exact pyproject requirements, not a broader fabricated interval.
@@ -133,7 +156,7 @@ within a major; this repair adds no resolution/identity/schema vocabulary.
   custom-grammar scope, unchanged byte/source contracts and Python/JS cache
   re-extraction. State standalone pack grammars remain affected. Reserve this
   change for the existing Unreleased6.0.0 train; no release/tag/version changes.
-- `scripts/run_platform_core.py`: include all five Unicode/span/cache regression
+- `scripts/run_platform_core.py`: include all six Unicode/span/cache regression
   files in COMMON_TESTS plus the two new factory node IDs named above. The
   existing hosted Linux/macOS/Windows workflow invokes this command after local
   builds, so the isolated default-provider assertions run in every matrix job.
@@ -205,7 +228,7 @@ runner outputs/head/source/runtime bindings. Refresh dependencies after edits.
 
 ```sh
 uv sync --locked --all-extras --python 3.12
-uv run --locked --all-extras pytest tests/test_language_pack.py tests/test_parser.py tests/test_registry_fallback.py tests/test_core_span_consistency.py tests/test_boundary_ir_incremental_runtime.py -q
+uv run --locked --all-extras pytest tests/test_language_pack.py tests/test_parser.py tests/test_registry_fallback.py tests/test_core_span_consistency.py tests/test_boundary_ir_incremental_runtime.py tests/test_boundary_cache_key.py -q
 uv run --locked --all-extras pytest tests/test_factory.py -q
 uv run --locked --all-extras pytest tests/test_registry.py tests/test_boundary_ir_determinism.py tests/test_boundary_ir_golden_snapshots.py -q
 uv run --locked --all-extras python scripts/regenerate_boundary_goldens.py
@@ -217,12 +240,12 @@ uv run --locked --all-extras python scripts/mypy_gate.py
 uv run --locked --with toml --all-extras python scripts/run_ci_smoke.py
 uv run --locked --with toml --all-extras python scripts/run_platform_core.py --platform linux
 uv run --locked --with toml --all-extras python scripts/run_full_suite.py
-uv run --locked --all-extras --with mkdocs --with mkdocs-material --with mkdocstrings-python mkdocs build --strict --site-dir <private-temp-directory>
+uv run --locked --all-extras --with mkdocs --with mkdocs-material --with mkdocstrings-python mkdocs build --strict --site-dir "$(mktemp -d)"
 uv run --locked --all-extras python -m build
 ```
 
-Native Windows: exact candidate private snapshot, locked refresh, first targeted
-pytest command above and `uv run --locked --with toml --all-extras python
+Native Windows: exact candidate private snapshot, locked refresh, first two targeted
+pytest commands above and `uv run --locked --with toml --all-extras python
 scripts/run_windows_preflight.py`. Bind all tracked bytes and runtime/grammar
 versions; preserve shared Windows checkout and global native journals. Available
 fleet Linux/macOS checks and hosted matrix must cover the final head.
@@ -239,7 +262,10 @@ or PYTHONPATH pointing at checkout do not establish installed wheel behavior.
   M1 fail designated Unicode assertions with controls/exact restoration.
 - [ ] AC2: incremental tests prove actual old cache miss/reparse, corrected
   fresh/cold/warm parity, actual warm reuse and actual custom/official transitions;
-  M2 is detected with other key inputs held fixed. Existing grammar
+  M2 is detected with other key inputs held fixed. Provider-selection failure
+  preserves structured non-fail-fast continuation, explicit fail-fast raising,
+  cache integrity and recovery; custom replacement follows the native-image
+  lifetime boundary above. Existing grammar
   pin/determinism/golden gates and idempotence pass for all supported languages.
 - [ ] AC3: original runner/full/docs, isolated native/hosted and installed
   Python3.11/3.12/3.13/3.14 wheel-only artifact proofs pass with complete
