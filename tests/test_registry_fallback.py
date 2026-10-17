@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import sys
 import types
+import hashlib
+import shutil
 from pathlib import Path
 from unittest.mock import patch
 
@@ -103,6 +105,10 @@ class TestRegistryFallback:
     @pytest.mark.filterwarnings("error::DeprecationWarning")
     def test_local_construction_failure_falls_back_to_language_pack(self, tmp_path):
         """Test local construction failures do not poison language-pack fallback."""
+        import tree_sitter_python
+        from tree_sitter import Language
+
+        from chunker._internal import language_pack
         from chunker._internal.registry import LanguageMetadata, LanguageRegistry
 
         lib_path = tmp_path / f"languages{_LIB_EXT}"
@@ -118,13 +124,17 @@ class TestRegistryFallback:
                 "_try_load_from_individual_library",
                 side_effect=DeprecationWarning("deprecated local grammar"),
             ),
-            patch.object(registry, "_try_load_from_language_pack") as mock_pack,
+            patch.object(language_pack, "get_language_from_pack") as mock_pack,
         ):
-            pack_language = object()
+            pack_language = Language(tree_sitter_python.language())
             mock_pack.return_value = pack_language
             assert registry.get_language("python") is pack_language
 
         assert registry._languages["python"] == (pack_language, metadata)
+        assert registry._selected_sources["python"] == (
+            pack_language,
+            "official:tree-sitter-python@0.25.0",
+        )
 
     def test_registry_list_languages_includes_pack(self):
         """Test that list_languages includes languages from the pack."""
@@ -154,6 +164,93 @@ class TestRegistryFallback:
         # This should work regardless of local grammar availability
         lang = registry.get_language("python")
         assert lang is not None
+
+    @pytest.mark.parametrize("language", ["python", "javascript"])
+    @pytest.mark.parametrize(
+        "custom_source", ["individual", "languages", "my-languages"]
+    )
+    def test_492_real_custom_grammar_takes_priority(
+        self, monkeypatch, tmp_path, language, custom_source
+    ):
+        import tree_sitter_language_pack as pack
+        from tree_sitter import Parser
+
+        from chunker._internal.registry import LanguageRegistry
+
+        pack.get_language(language)
+        candidates = [
+            path
+            for path in Path(pack.cache_dir()).rglob(f"*tree_sitter_{language}*")
+            if path.is_file() and path.suffix.lower() in {".so", ".dylib", ".dll"}
+        ]
+        assert len(candidates) == 1
+        custom_name = language if custom_source == "individual" else custom_source
+        custom = tmp_path / f"{custom_name}{_LIB_EXT}"
+        shutil.copy2(candidates[0], custom)
+        expected_source = (
+            f"custom:sha256:{hashlib.sha256(custom.read_bytes()).hexdigest()}"
+        )
+
+        library_path = (
+            tmp_path / f"missing{_LIB_EXT}" if custom_source == "individual" else custom
+        )
+        registry = LanguageRegistry(library_path)
+        monkeypatch.setattr(
+            registry,
+            "_try_load_from_language_pack",
+            lambda name: pytest.fail(f"official provider used for {name}"),
+        )
+
+        selected = registry.get_language(language)
+        assert not Parser(selected).parse(b"x = 1").root_node.has_error
+        assert (
+            registry.get_metadata(language).capabilities["grammar_source"]
+            == expected_source
+        )
+
+    @pytest.mark.parametrize("language", ["python", "javascript"])
+    def test_492_invalid_individual_does_not_poison_valid_combined(
+        self, monkeypatch, tmp_path, language
+    ):
+        import tree_sitter_language_pack as pack
+        from tree_sitter import Parser
+
+        from chunker._internal.registry import LanguageRegistry
+
+        pack.get_language(language)
+        candidates = [
+            path
+            for path in Path(pack.cache_dir()).rglob(f"*tree_sitter_{language}*")
+            if path.is_file() and path.suffix.lower() in {".so", ".dylib", ".dll"}
+        ]
+        assert len(candidates) == 1
+        combined = tmp_path / f"languages{_LIB_EXT}"
+        individual = tmp_path / f"{language}{_LIB_EXT}"
+        shutil.copy2(candidates[0], combined)
+        shutil.copy2(candidates[0], individual)
+        expected_source = (
+            f"custom:sha256:{hashlib.sha256(combined.read_bytes()).hexdigest()}"
+        )
+
+        registry = LanguageRegistry(combined)
+        real_construct = registry._language_from_ctypes_symbol
+
+        def reject_individual(lib, symbol_name, library_path, language_name):
+            if library_path == individual and language_name == language:
+                raise ValueError("lower-priority individual construction rejected")
+            return real_construct(lib, symbol_name, library_path, language_name)
+
+        monkeypatch.setattr(registry, "_language_from_ctypes_symbol", reject_individual)
+        monkeypatch.setattr(
+            registry,
+            "_try_load_from_language_pack",
+            lambda name: pytest.fail(f"official provider used for {name}"),
+        )
+
+        selected = registry.get_language(language)
+        assert not Parser(selected).parse(b"x = 1").root_node.has_error
+        assert registry._selected_sources[language] == (selected, expected_source)
+        assert language not in registry._selection_errors
 
     def test_registry_fallback_preserves_language_not_found_error(self):
         """Test that LanguageNotFoundError is raised for invalid languages."""

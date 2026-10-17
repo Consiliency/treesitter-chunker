@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ctypes
+import hashlib
 import importlib.util
 import logging
 import os
@@ -65,6 +66,9 @@ class LanguageRegistry:
         self._library_path = library_path
         self._library: ctypes.CDLL | None = None
         self._languages: dict[str, tuple[Language | None, LanguageMetadata]] = {}
+        self._loaded_sources: dict[str, tuple[Language, str]] = {}
+        self._selected_sources: dict[str, tuple[Language, str]] = {}
+        self._selection_errors: dict[str, str] = {}
         self._discovered = False
         # Do not raise if the combined library is missing; discovery will fall back to
         # nm or per-language libraries and allow on-demand builds.
@@ -104,6 +108,26 @@ class LanguageRegistry:
                 List of (language_name, symbol_name) tuples
         """
         symbols = []
+
+        # A configured combined library is not named after any one language, so
+        # filename-derived discovery cannot reveal these required overrides.
+        # Inspect the loaded image for the two supported custom-wheel overrides
+        # without invoking either native symbol during discovery.
+        if self._library_path.is_file():
+            try:
+                combined_library = self._load_library()
+            except LibraryLoadError:
+                combined_library = None
+            if combined_library is not None:
+                for lang_name in ("python", "javascript"):
+                    symbol_name = f"tree_sitter_{lang_name}"
+                    if hasattr(combined_library, symbol_name):
+                        symbols.append((lang_name, symbol_name))
+                        logger.debug(
+                            "Found language symbol %s in configured combined library %s",
+                            symbol_name,
+                            self._library_path,
+                        )
 
         # PRIMARY SOURCE FOR DEV CHECKOUTS: sibling build directory next to the
         # configured combined library path (e.g. build/python.so, build/rust.so).
@@ -223,6 +247,13 @@ class LanguageRegistry:
                     )
                     return True
                 except Exception as e:
+                    language_name = symbol_name.removeprefix("tree_sitter_")
+                    if language_name in {"python", "javascript"} and isinstance(
+                        e, ValueError
+                    ):
+                        self._selection_errors[language_name] = (
+                            f"Selected custom grammar failed to load: {e}"
+                        )
                     logger.warning(
                         "Library %s has symbol %s but failed Language creation: %s",
                         library_path.name,
@@ -235,8 +266,8 @@ class LanguageRegistry:
             logger.debug("Failed to validate library %s: %s", library_path.name, e)
             return False
 
-    @staticmethod
     def _language_from_ctypes_symbol(
+        self,
         lib: ctypes.CDLL,
         symbol_name: str,
         library_path: Path,
@@ -259,7 +290,31 @@ class LanguageRegistry:
             b"tree_sitter.Language",
             None,
         )
-        return Language(capsule)
+        language = Language(capsule)
+        if language_name in {"python", "javascript"}:
+            selected = self._selected_sources.get(language_name)
+            if selected is not None and selected[0] == language:
+                source = selected[1]
+            else:
+                source = f"custom:sha256:{hashlib.sha256(library_path.read_bytes()).hexdigest()}"
+            self._loaded_sources[language_name] = (language, source)
+        return language
+
+    def _select_loaded_source(self, name: str, language: Language) -> None:
+        """Validate and bind provenance for the Python/JavaScript grammar in use."""
+        if name not in {"python", "javascript"}:
+            return
+        try:
+            Parser(language)
+        except (TypeError, ValueError) as exc:
+            raise ParserInitError(
+                name, f"Selected grammar is incompatible: {exc}"
+            ) from exc
+        loaded = self._loaded_sources.get(name)
+        if loaded is None or loaded[0] != language:
+            raise ParserInitError(name, "Selected grammar provenance is unavailable")
+        self._selected_sources[name] = loaded
+        self._selection_errors.pop(name, None)
 
     def discover_languages(self) -> dict[str, LanguageMetadata]:
         """Dynamically discover all available languages in the library.
@@ -320,12 +375,24 @@ class LanguageRegistry:
                             is_compatible = False
                             match = re.search(r"version (\d+)", str(e))
                             language_version = match.group(1) if match else "unknown"
-                    except (AttributeError, OSError, ValueError, DeprecationWarning):
+                    except (
+                        AttributeError,
+                        OSError,
+                        ValueError,
+                        DeprecationWarning,
+                    ) as exc:
                         # Combined library missing symbol; try individual per-language library
                         language = self._try_load_from_individual_library_safely(
                             lang_name
                         )
                         if language is None:
+                            if lang_name in {"python", "javascript"} and isinstance(
+                                exc, ValueError
+                            ):
+                                raise ParserInitError(
+                                    lang_name,
+                                    f"Selected custom grammar failed to load: {exc}",
+                                ) from exc
                             raise
                         has_scanner = True
                         is_compatible = True
@@ -344,6 +411,8 @@ class LanguageRegistry:
                 )
                 # Store placeholder when language is None; only metadata is used by some tests
                 self._languages[lang_name] = (language, metadata)
+                if lang_name in {"python", "javascript"} and language is not None:
+                    self._select_loaded_source(lang_name, language)
                 discovered[lang_name] = metadata
 
                 logger.debug(
@@ -353,6 +422,12 @@ class LanguageRegistry:
                 )
             except AttributeError as e:
                 logger.warning("Failed to load symbol '%s': %s", symbol_name, e)
+            except ParserInitError as e:
+                self._languages.pop(lang_name, None)
+                self._loaded_sources.pop(lang_name, None)
+                self._selected_sources.pop(lang_name, None)
+                self._selection_errors[lang_name] = e.reason
+                logger.error("Error loading language '%s': %s", lang_name, e)
             except (IndexError, KeyError, OSError) as e:
                 logger.error("Error loading language '%s': %s", lang_name, e)
         local_languages = list(discovered)
@@ -459,12 +534,20 @@ class LanguageRegistry:
                         ValueError,
                         DeprecationWarning,
                     ) as e:
+                        if name in {"python", "javascript"} and isinstance(
+                            e, ValueError
+                        ):
+                            self._selection_errors[name] = (
+                                f"Selected custom grammar failed to load: {e}"
+                            )
                         logger.debug(
                             "Failed loading '%s' from %s: %s",
                             name,
                             path_candidate,
                             e,
                         )
+        if name in self._selection_errors:
+            raise ParserInitError(name, self._selection_errors[name])
         return None
 
     def _try_load_from_individual_library_safely(self, name: str) -> Language | None:
@@ -481,7 +564,7 @@ class LanguageRegistry:
         Resolution order:
         1. Compiled grammar in package data directory
         2. Compiled grammar in user cache
-        3. tree-sitter-language-pack (if available)
+        3. Official Python/JavaScript wheels, then language pack (if available)
         4. Raise LanguageNotFoundError with guidance
 
         Args:
@@ -508,6 +591,8 @@ class LanguageRegistry:
                 raise ParserInitError("baml", f"companion load failed: {exc}") from exc
         if not self._discovered:
             self.discover_languages()
+        if name in self._selection_errors:
+            raise ParserInitError(name, self._selection_errors[name])
         if name not in self._languages:
             # Try to load from a per-language library as a fallback
             language = self._try_load_from_individual_library_safely(name)
@@ -517,6 +602,7 @@ class LanguageRegistry:
             if language is None:
                 available = self._get_all_available_languages()
                 raise LanguageNotFoundError(name, available)
+            self._select_loaded_source(name, language)
             return language
         language, metadata = self._languages[name]
         if language is None:
@@ -526,6 +612,7 @@ class LanguageRegistry:
                 # Try language pack as final fallback
                 language = self._try_load_from_language_pack(name)
             if language is not None:
+                self._select_loaded_source(name, language)
                 self._languages[name] = (language, metadata)
             else:
                 available = self._get_all_available_languages()
@@ -533,7 +620,7 @@ class LanguageRegistry:
         return language
 
     def _try_load_from_language_pack(self, name: str) -> Language | None:
-        """Attempt to load a language from tree-sitter-language-pack.
+        """Attempt the official Python/JS wheels or the language-pack fallback.
 
         This provides a fallback when no local compiled grammar is available.
         The language pack provides downloadable pre-compiled grammars for 371 languages.
@@ -549,7 +636,12 @@ class LanguageRegistry:
 
             language = get_language_from_pack(name)
             if language is not None:
-                logger.info("Loaded '%s' from tree-sitter-language-pack", name)
+                if name in {"python", "javascript"}:
+                    source = (
+                        f"official:tree-sitter-{name}@{version(f'tree-sitter-{name}')}"
+                    )
+                    self._loaded_sources[name] = (language, source)
+                logger.info("Loaded '%s' from packaged grammar provider", name)
             return language
         except ImportError:
             # language_pack module not available (shouldn't happen with our deps)
@@ -631,7 +723,22 @@ class LanguageRegistry:
             available = list(self._languages.keys())
             raise LanguageNotFoundError(name, available)
         _, metadata = self._languages[name]
-        if metadata.version == "unknown":
+        if name in {"python", "javascript"}:
+            language = self.get_language(name)
+            try:
+                Parser(language)
+            except (TypeError, ValueError) as exc:
+                raise ParserInitError(
+                    name, f"Selected grammar is incompatible: {exc}"
+                ) from exc
+            metadata.version = str(language.abi_version)
+            metadata.node_types_count = language.node_kind_count
+            metadata.capabilities.update(
+                compatible=True,
+                language_version=metadata.version,
+                grammar_source=self._selected_sources[name][1],
+            )
+        elif metadata.version == "unknown":
             language = self.get_language(name)
             # Assignment validates ABI compatibility without parsing any input.
             Parser(language)
@@ -655,6 +762,8 @@ class LanguageRegistry:
             return baml_companion_available()
         if not self._discovered:
             self.discover_languages()
+        if name in self._selection_errors:
+            return True
         if name in self._languages:
             language, _ = self._languages[name]
             if language is not None:

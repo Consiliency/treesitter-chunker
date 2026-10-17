@@ -10,12 +10,14 @@ cd treesitter-chunker
 uv sync --locked --all-extras
 ```
 
-The lock pairs Tree-sitter 0.26 with language-pack 1.20. Prefetch the languages
-needed by your work while online; the default parser path does not require
-local grammar compilation.
+The lock pairs Tree-sitter 0.26 with language-pack 1.20 and the official
+`tree-sitter-python==0.25.0` and `tree-sitter-javascript==0.25.0` wheels. Those
+official wheels are the default Python/JavaScript providers; the pack remains
+the fallback for other languages. Prefetch other languages needed by your work
+while online; the default parser path does not require local grammar compilation.
 
 ```bash
-uv run --locked python -c "import tree_sitter_language_pack as p; p.prefetch(['python', 'javascript', 'typescript'])"
+uv run --locked python -c "import tree_sitter_language_pack as p; p.prefetch(['typescript'])"
 ```
 
 Source grammar development needs a C compiler. See

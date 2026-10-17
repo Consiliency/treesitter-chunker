@@ -2723,6 +2723,64 @@
       "task_summary": "Preserve literal caller entities in direct DOT labels/tooltips (treesitter-chunker#478)",
       "type": "detailed",
       "updated_at": "2026-10-13T03:21:21Z"
+    },
+    {
+      "acceptance_criteria_count": 4,
+      "created_at": "2026-10-17T15:24:56.587819+00:00",
+      "file": "plans/detailed-unicode-grammar-492.md",
+      "handoff_ref": "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-unicode-parser-492/.dev-skills/handoffs/codex-execute-detailed/20261017-unicode492.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-17T15:24:56.587819+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "design_review": "pending",
+            "independent_of": "treesitter-chunker#495",
+            "run_id": "20261017-unicode492",
+            "source_base": "f3c15eaef59b149ad74d606a2c3bb87e1b447b59"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-17T15:56:45Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "code_rounds_used": 0,
+            "custom_abi_before_identity_required": true,
+            "design_acceptance": "/home/viperjuice/workspace/evidence/treesitter-chunker/unicode-parser-492/20261017/design-acceptance.json",
+            "plan_rounds_used": 3,
+            "reviewed_plan_head": "dead1d8e3436faeffee2f6b4cdd03771817a4a5c",
+            "run_id": "20261017-unicode492"
+          },
+          "transition": "executing"
+        },
+        {
+          "at": "2026-10-17T17:38:39Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "code_rounds_used": 0,
+            "custom_abi_before_identity_verified": true,
+            "plan_rounds_used": 3,
+            "release_hold": "6.0.0 release plus separate downstream acceptance",
+            "run_id": "20261017-unicode492",
+            "verification_artifact_path": "/home/viperjuice/workspace/evidence/treesitter-chunker/unicode-parser-492/20261017/verification-artifact.json",
+            "verification_artifact_sha256": "a90f60884fffcb337baa95918a603692564dc69a19eb4841a7d221da49f48802",
+            "verification_status": "local_native_and_artifact_qualification_passed; exact_head_code_review_and_hosted_ci_pending"
+          },
+          "transition": "completed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": null,
+      "roadmap_ref": null,
+      "slug": "unicode-grammar-492",
+      "status": "completed",
+      "task_summary": "Repair default Python/JavaScript Unicode grammar generation regression (treesitter-chunker#492)",
+      "type": "detailed",
+      "updated_at": "2026-10-17T17:38:39Z"
     }
   ],
   "schema_version": 1
