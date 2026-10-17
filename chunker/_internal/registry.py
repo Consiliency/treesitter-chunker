@@ -247,6 +247,13 @@ class LanguageRegistry:
                     )
                     return True
                 except Exception as e:
+                    language_name = symbol_name.removeprefix("tree_sitter_")
+                    if language_name in {"python", "javascript"} and isinstance(
+                        e, ValueError
+                    ):
+                        self._selection_errors[language_name] = (
+                            f"Selected custom grammar failed to load: {e}"
+                        )
                     logger.warning(
                         "Library %s has symbol %s but failed Language creation: %s",
                         library_path.name,
@@ -307,6 +314,7 @@ class LanguageRegistry:
         if loaded is None or loaded[0] != language:
             raise ParserInitError(name, "Selected grammar provenance is unavailable")
         self._selected_sources[name] = loaded
+        self._selection_errors.pop(name, None)
 
     def discover_languages(self) -> dict[str, LanguageMetadata]:
         """Dynamically discover all available languages in the library.
@@ -526,12 +534,20 @@ class LanguageRegistry:
                         ValueError,
                         DeprecationWarning,
                     ) as e:
+                        if name in {"python", "javascript"} and isinstance(
+                            e, ValueError
+                        ):
+                            self._selection_errors[name] = (
+                                f"Selected custom grammar failed to load: {e}"
+                            )
                         logger.debug(
                             "Failed loading '%s' from %s: %s",
                             name,
                             path_candidate,
                             e,
                         )
+        if name in self._selection_errors:
+            raise ParserInitError(name, self._selection_errors[name])
         return None
 
     def _try_load_from_individual_library_safely(self, name: str) -> Language | None:

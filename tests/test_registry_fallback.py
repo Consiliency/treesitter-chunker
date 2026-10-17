@@ -208,6 +208,50 @@ class TestRegistryFallback:
             == expected_source
         )
 
+    @pytest.mark.parametrize("language", ["python", "javascript"])
+    def test_492_invalid_individual_does_not_poison_valid_combined(
+        self, monkeypatch, tmp_path, language
+    ):
+        import tree_sitter_language_pack as pack
+        from tree_sitter import Parser
+
+        from chunker._internal.registry import LanguageRegistry
+
+        pack.get_language(language)
+        candidates = [
+            path
+            for path in Path(pack.cache_dir()).rglob(f"*tree_sitter_{language}*")
+            if path.is_file() and path.suffix.lower() in {".so", ".dylib", ".dll"}
+        ]
+        assert len(candidates) == 1
+        combined = tmp_path / f"languages{_LIB_EXT}"
+        individual = tmp_path / f"{language}{_LIB_EXT}"
+        shutil.copy2(candidates[0], combined)
+        shutil.copy2(candidates[0], individual)
+        expected_source = (
+            f"custom:sha256:{hashlib.sha256(combined.read_bytes()).hexdigest()}"
+        )
+
+        registry = LanguageRegistry(combined)
+        real_construct = registry._language_from_ctypes_symbol
+
+        def reject_individual(lib, symbol_name, library_path, language_name):
+            if library_path == individual and language_name == language:
+                raise ValueError("lower-priority individual construction rejected")
+            return real_construct(lib, symbol_name, library_path, language_name)
+
+        monkeypatch.setattr(registry, "_language_from_ctypes_symbol", reject_individual)
+        monkeypatch.setattr(
+            registry,
+            "_try_load_from_language_pack",
+            lambda name: pytest.fail(f"official provider used for {name}"),
+        )
+
+        selected = registry.get_language(language)
+        assert not Parser(selected).parse(b"x = 1").root_node.has_error
+        assert registry._selected_sources[language] == (selected, expected_source)
+        assert language not in registry._selection_errors
+
     def test_registry_fallback_preserves_language_not_found_error(self):
         """Test that LanguageNotFoundError is raised for invalid languages."""
         from chunker._internal.registry import LanguageRegistry

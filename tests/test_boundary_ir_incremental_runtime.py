@@ -637,8 +637,12 @@ def test_492_known_version_incompatible_custom_fails_before_cache_identity(
 
 @pytest.mark.parametrize("language", ["python", "javascript"])
 @pytest.mark.parametrize("previously_warm", [False, True], ids=("cold", "warm"))
-def test_492_null_combined_export_is_typed_and_preserves_mixed_cache(
-    tmp_path, monkeypatch, language, previously_warm
+@pytest.mark.parametrize(
+    "custom_source",
+    ["combined", "individual-discovery", "individual-lazy"],
+)
+def test_492_null_custom_export_is_typed_and_preserves_mixed_cache(
+    tmp_path, monkeypatch, language, previously_warm, custom_source
 ):
     from chunker import parser as parser_module
     from chunker._internal import language_pack
@@ -657,10 +661,14 @@ def test_492_null_combined_export_is_typed_and_preserves_mixed_cache(
     (tmp_path / "ok.go").write_text(
         "package main\nfunc ok() int { return 1 }\n", encoding="utf-8"
     )
-    combined = _copy_pack_library(tmp_path, language, "null-combined")
-    combined_path = combined.with_name(f"languages{_LIB_EXT}")
-    combined.rename(combined_path)
-    cache_dir = tmp_path.parent / f"{tmp_path.name}-null-combined-cache"
+    custom_path = _copy_pack_library(tmp_path, language, "null-custom")
+    if custom_source == "combined":
+        combined_path = custom_path.with_name(f"languages{_LIB_EXT}")
+        custom_path.rename(combined_path)
+        custom_path = combined_path
+    else:
+        combined_path = custom_path.with_name(f"missing{_LIB_EXT}")
+    cache_dir = tmp_path.parent / f"{tmp_path.name}-null-custom-cache"
     if previously_warm:
         with monkeypatch.context() as patch:
             _isolate_official_state(patch, tmp_path)
@@ -676,9 +684,13 @@ def test_492_null_combined_export_is_typed_and_preserves_mixed_cache(
         observed_exports = []
 
         def return_null(self, lib, symbol_name, library_path, language_name):
-            if library_path == combined_path and language_name == language:
+            if library_path == custom_path and language_name == language:
                 assert hasattr(lib, symbol_name)
                 observed_exports.append(symbol_name)
+                if custom_source == "individual-lazy" and len(observed_exports) == 1:
+                    return real_construct(
+                        self, lib, symbol_name, library_path, language_name
+                    )
                 raise ValueError(
                     f"{library_path} symbol {symbol_name} returned null for {language_name}"
                 )
@@ -714,7 +726,8 @@ def test_492_null_combined_export_is_typed_and_preserves_mixed_cache(
                 cache_dir=cache_dir,
                 fail_fast=True,
             )
-        assert observed_exports == [f"tree_sitter_{language}"]
+        expected_exports = 2 if custom_source == "individual-lazy" else 1
+        assert observed_exports == [f"tree_sitter_{language}"] * expected_exports
         assert language not in state.registry._selected_sources
 
     files = {item["path"]: item for item in failed["files"]}
