@@ -633,3 +633,110 @@ def test_492_known_version_incompatible_custom_fails_before_cache_identity(
     assert all(item["status"] == "parsed" for item in recovered["files"])
     assert dumps_boundary_ir(recovered) == dumps_boundary_ir(recovered_warm)
     assert _cache_bytes(cache_dir) == stable
+
+
+@pytest.mark.parametrize("language", ["python", "javascript"])
+@pytest.mark.parametrize("previously_warm", [False, True], ids=("cold", "warm"))
+def test_492_null_combined_export_is_typed_and_preserves_mixed_cache(
+    tmp_path, monkeypatch, language, previously_warm
+):
+    from chunker import parser as parser_module
+    from chunker._internal import language_pack
+    from chunker._internal.registry import LanguageRegistry
+
+    suffix = "py" if language == "python" else "js"
+    affected = tmp_path / f"bad.{suffix}"
+    affected.write_text(
+        (
+            "def bad():\n    return 1\n"
+            if language == "python"
+            else "function bad() { return 1; }\n"
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "ok.go").write_text(
+        "package main\nfunc ok() int { return 1 }\n", encoding="utf-8"
+    )
+    combined = _copy_pack_library(tmp_path, language, "null-combined")
+    combined_path = combined.with_name(f"languages{_LIB_EXT}")
+    combined.rename(combined_path)
+    cache_dir = tmp_path.parent / f"{tmp_path.name}-null-combined-cache"
+    if previously_warm:
+        with monkeypatch.context() as patch:
+            _isolate_official_state(patch, tmp_path)
+            seeded = extract_boundary_ir(
+                tmp_path, None, incremental=True, cache_dir=cache_dir
+            )
+            assert all(item["status"] == "parsed" for item in seeded["files"])
+    before = _cache_bytes(cache_dir)
+
+    with monkeypatch.context() as patch:
+        state = _set_parser_state(patch, combined_path)
+        real_construct = LanguageRegistry._language_from_ctypes_symbol
+        observed_exports = []
+
+        def return_null(self, lib, symbol_name, library_path, language_name):
+            if library_path == combined_path and language_name == language:
+                assert hasattr(lib, symbol_name)
+                observed_exports.append(symbol_name)
+                raise ValueError(
+                    f"{library_path} symbol {symbol_name} returned null for {language_name}"
+                )
+            return real_construct(self, lib, symbol_name, library_path, language_name)
+
+        patch.setattr(LanguageRegistry, "_language_from_ctypes_symbol", return_null)
+        real_provider = language_pack.get_language_from_pack
+
+        def forbid_provider(name):
+            if name == language:
+                pytest.fail(f"official or pack provider used for null custom {name}")
+            return real_provider(name)
+
+        patch.setattr(language_pack, "get_language_from_pack", forbid_provider)
+
+        def manager():
+            pytest.fail("automatic grammar build used")
+
+        patch.setattr(parser_module, "TreeSitterGrammarManager", manager)
+
+        failed = extract_boundary_ir(
+            tmp_path,
+            None,
+            incremental=True,
+            cache_dir=cache_dir,
+            fail_fast=False,
+        )
+        with pytest.raises(ParserInitError, match="returned null"):
+            extract_boundary_ir(
+                tmp_path,
+                None,
+                incremental=True,
+                cache_dir=cache_dir,
+                fail_fast=True,
+            )
+        assert observed_exports == [f"tree_sitter_{language}"]
+        assert language not in state.registry._selected_sources
+
+    files = {item["path"]: item for item in failed["files"]}
+    assert files[affected.name]["status"] == "error"
+    assert files["ok.go"]["status"] == "parsed"
+    assert not [node for node in failed["nodes"] if node["path"] == affected.name]
+    assert [node for node in failed["nodes"] if node["path"] == "ok.go"]
+    assert any(
+        item["code"] == "boundary.parse_error" and item["path"] == affected.name
+        for item in failed["diagnostics"]
+    )
+    assert _cache_bytes(cache_dir) == before
+
+    with monkeypatch.context() as patch:
+        _isolate_official_state(patch, tmp_path)
+        recovered = extract_boundary_ir(
+            tmp_path, None, incremental=True, cache_dir=cache_dir
+        )
+        stable = _cache_bytes(cache_dir)
+        recovered_warm = extract_boundary_ir(
+            tmp_path, None, incremental=True, cache_dir=cache_dir
+        )
+    assert all(item["status"] == "parsed" for item in recovered["files"])
+    assert dumps_boundary_ir(recovered) == dumps_boundary_ir(recovered_warm)
+    assert _cache_bytes(cache_dir) == stable

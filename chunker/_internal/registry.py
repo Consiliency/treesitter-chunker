@@ -367,12 +367,24 @@ class LanguageRegistry:
                             is_compatible = False
                             match = re.search(r"version (\d+)", str(e))
                             language_version = match.group(1) if match else "unknown"
-                    except (AttributeError, OSError, ValueError, DeprecationWarning):
+                    except (
+                        AttributeError,
+                        OSError,
+                        ValueError,
+                        DeprecationWarning,
+                    ) as exc:
                         # Combined library missing symbol; try individual per-language library
                         language = self._try_load_from_individual_library_safely(
                             lang_name
                         )
                         if language is None:
+                            if lang_name in {"python", "javascript"} and isinstance(
+                                exc, ValueError
+                            ):
+                                raise ParserInitError(
+                                    lang_name,
+                                    f"Selected custom grammar failed to load: {exc}",
+                                ) from exc
                             raise
                         has_scanner = True
                         is_compatible = True
