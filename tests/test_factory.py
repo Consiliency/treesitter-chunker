@@ -250,7 +250,9 @@ class TestParserFactory:
 
         registry = Mock(spec=LanguageRegistry)
         registry.has_language.return_value = True
-        registry.get_language.return_value = object()
+        registry.get_language.side_effect = ValueError(
+            "Incompatible Language version 14. Must be between 13 and 13"
+        )
         monkeypatch.setattr(
             pack,
             "get_parser",

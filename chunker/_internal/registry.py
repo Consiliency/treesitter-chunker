@@ -381,6 +381,11 @@ class LanguageRegistry:
                 )
             except AttributeError as e:
                 logger.warning("Failed to load symbol '%s': %s", symbol_name, e)
+            except ParserInitError as e:
+                self._languages.pop(lang_name, None)
+                self._loaded_sources.pop(lang_name, None)
+                self._selected_sources.pop(lang_name, None)
+                logger.error("Error loading language '%s': %s", lang_name, e)
             except (IndexError, KeyError, OSError) as e:
                 logger.error("Error loading language '%s': %s", lang_name, e)
         local_languages = list(discovered)
@@ -555,8 +560,8 @@ class LanguageRegistry:
                 # Try language pack as final fallback
                 language = self._try_load_from_language_pack(name)
             if language is not None:
-                self._languages[name] = (language, metadata)
                 self._select_loaded_source(name, language)
+                self._languages[name] = (language, metadata)
             else:
                 available = self._get_all_available_languages()
                 raise LanguageNotFoundError(name, available)

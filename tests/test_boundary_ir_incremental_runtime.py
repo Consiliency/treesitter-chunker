@@ -1,3 +1,4 @@
+import hashlib
 import inspect
 import json
 import shutil
@@ -344,7 +345,18 @@ def test_492_incremental_tracks_actual_official_and_custom_sources(
 
     custom_identities = []
     for custom in (first_custom, second_custom):
+        from chunker._internal import registry as registry_module
+
+        expected_digest = hashlib.sha256(custom.read_bytes()).hexdigest()
         with monkeypatch.context() as patch:
+            loaded_paths = []
+            real_cdll = registry_module.ctypes.CDLL
+
+            def record_cdll(path, *args, **kwargs):
+                loaded_paths.append(Path(path).resolve())
+                return real_cdll(path, *args, **kwargs)
+
+            patch.setattr(registry_module.ctypes, "CDLL", record_cdll)
             _set_parser_state(patch, custom.parent / f"languages{_LIB_EXT}")
             cold = extract_boundary_ir(
                 tmp_path, language, incremental=True, cache_dir=cache_dir
@@ -354,10 +366,16 @@ def test_492_incremental_tracks_actual_official_and_custom_sources(
             )
             selected = parser._state.registry.get_language(language)
             assert not Parser(selected).parse(b"x = 1").root_node.has_error
+            assert custom.resolve() in loaded_paths
+            selected_source = parser._state.registry._selected_sources[language]
+            assert selected_source == (
+                selected,
+                f"custom:sha256:{expected_digest}",
+            )
         assert dumps_boundary_ir(cold) == dumps_boundary_ir(warm)
-        custom_identities.append(
-            _cache_payload(cache_dir, source.name)["grammar_version"]
-        )
+        custom_identity = _cache_payload(cache_dir, source.name)["grammar_version"]
+        assert f":source=custom:sha256:{expected_digest}:" in custom_identity
+        custom_identities.append(custom_identity)
 
     assert len(recomputed) == 3
     assert official_identity != custom_identities[0]
@@ -488,7 +506,6 @@ def test_492_provider_failure_preserves_cache_and_mixed_file_continuation(
 def test_492_known_version_incompatible_custom_fails_before_cache_identity(
     tmp_path, monkeypatch, language, previously_warm
 ):
-    from chunker import core
     from chunker._internal import registry as registry_module
 
     suffix = "py" if language == "python" else "js"
@@ -517,27 +534,23 @@ def test_492_known_version_incompatible_custom_fails_before_cache_identity(
 
     with monkeypatch.context() as patch:
         state = _set_parser_state(patch, custom.parent / f"languages{_LIB_EXT}")
-        state.initialize()
-        metadata = state.registry.get_metadata(language)
-        assert metadata.version != "unknown"
-        assert metadata.capabilities["grammar_source"].startswith("custom:sha256:")
-        selected = state.registry.get_language(language)
-        real_get_parser = core.get_parser
+        real_registry_parser = registry_module.Parser
+        observed_versions = []
+
+        def reject_custom(grammar):
+            loaded = state.registry._loaded_sources.get(language)
+            if loaded is not None and loaded[0] == grammar:
+                entry = state.registry._languages.get(language)
+                assert entry is not None
+                observed_versions.append(entry[1].version)
+                raise ValueError("known-version custom ABI rejected")
+            return real_registry_parser(grammar)
+
         patch.setattr(
             registry_module,
             "Parser",
-            lambda grammar: (_ for _ in ()).throw(
-                ValueError("known-version custom ABI rejected")
-            ),
+            reject_custom,
         )
-
-        def reject_selected(name, *args, **kwargs):
-            if name == language:
-                raise ParserInitError(language, "known-version custom ABI rejected")
-            return real_get_parser(name, *args, **kwargs)
-
-        patch.setattr(core, "get_parser", reject_selected)
-        assert selected is state.registry.get_language(language)
         failed = extract_boundary_ir(
             tmp_path,
             None,
@@ -553,6 +566,8 @@ def test_492_known_version_incompatible_custom_fails_before_cache_identity(
                 cache_dir=cache_dir,
                 fail_fast=True,
             )
+        assert "14" in observed_versions
+        assert language not in state.registry._selected_sources
 
     files = {item["path"]: item for item in failed["files"]}
     assert files[affected.name]["status"] == "error"
