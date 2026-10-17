@@ -109,6 +109,26 @@ class LanguageRegistry:
         """
         symbols = []
 
+        # A configured combined library is not named after any one language, so
+        # filename-derived discovery cannot reveal these required overrides.
+        # Inspect the loaded image for the two supported custom-wheel overrides
+        # without invoking either native symbol during discovery.
+        if self._library_path.is_file():
+            try:
+                combined_library = self._load_library()
+            except LibraryLoadError:
+                combined_library = None
+            if combined_library is not None:
+                for lang_name in ("python", "javascript"):
+                    symbol_name = f"tree_sitter_{lang_name}"
+                    if hasattr(combined_library, symbol_name):
+                        symbols.append((lang_name, symbol_name))
+                        logger.debug(
+                            "Found language symbol %s in configured combined library %s",
+                            symbol_name,
+                            self._library_path,
+                        )
+
         # PRIMARY SOURCE FOR DEV CHECKOUTS: sibling build directory next to the
         # configured combined library path (e.g. build/python.so, build/rust.so).
         build_dir = self._library_path.parent

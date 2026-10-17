@@ -166,8 +166,11 @@ class TestRegistryFallback:
         assert lang is not None
 
     @pytest.mark.parametrize("language", ["python", "javascript"])
+    @pytest.mark.parametrize(
+        "custom_source", ["individual", "languages", "my-languages"]
+    )
     def test_492_real_custom_grammar_takes_priority(
-        self, monkeypatch, tmp_path, language
+        self, monkeypatch, tmp_path, language, custom_source
     ):
         import tree_sitter_language_pack as pack
         from tree_sitter import Parser
@@ -181,13 +184,17 @@ class TestRegistryFallback:
             if path.is_file() and path.suffix.lower() in {".so", ".dylib", ".dll"}
         ]
         assert len(candidates) == 1
-        custom = tmp_path / f"{language}{_LIB_EXT}"
+        custom_name = language if custom_source == "individual" else custom_source
+        custom = tmp_path / f"{custom_name}{_LIB_EXT}"
         shutil.copy2(candidates[0], custom)
         expected_source = (
             f"custom:sha256:{hashlib.sha256(custom.read_bytes()).hexdigest()}"
         )
 
-        registry = LanguageRegistry(tmp_path / f"languages{_LIB_EXT}")
+        library_path = (
+            tmp_path / f"missing{_LIB_EXT}" if custom_source == "individual" else custom
+        )
+        registry = LanguageRegistry(library_path)
         monkeypatch.setattr(
             registry,
             "_try_load_from_language_pack",

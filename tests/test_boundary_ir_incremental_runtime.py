@@ -507,6 +507,9 @@ def test_492_provider_failure_preserves_cache_and_mixed_file_continuation(
 def test_492_known_version_incompatible_custom_fails_before_cache_identity(
     tmp_path, monkeypatch, language, previously_warm, custom_source
 ):
+    from tree_sitter import Language
+
+    from chunker._internal import language_pack
     from chunker._internal import registry as registry_module
 
     suffix = "py" if language == "python" else "js"
@@ -537,6 +540,17 @@ def test_492_known_version_incompatible_custom_fails_before_cache_identity(
             assert all(item["status"] == "parsed" for item in seeded["files"])
     before = _cache_bytes(cache_dir)
 
+    official_module = language_pack.import_module(f"tree_sitter_{language}")
+    official_language = Language(official_module.language())
+    official_source = (
+        "\u017f = 1\n" if language == "python" else "const \u212a = 1;\n"
+    ).encode("utf-8")
+    assert (
+        not registry_module.Parser(official_language)
+        .parse(official_source)
+        .root_node.has_error
+    )
+
     with monkeypatch.context() as patch:
         state = _set_parser_state(
             patch,
@@ -546,23 +560,32 @@ def test_492_known_version_incompatible_custom_fails_before_cache_identity(
                 else custom.parent / f"languages{_LIB_EXT}"
             ),
         )
-        if custom_source == "combined":
-            patch.setattr(
-                registry_module.LanguageRegistry,
-                "_discover_symbols",
-                lambda self: [(language, f"tree_sitter_{language}")],
-            )
         real_registry_parser = registry_module.Parser
         observed_versions = []
+        rejected_custom = []
+
+        real_provider = language_pack.get_language_from_pack
+
+        def forbid_official_fallback(name):
+            if name == language:
+                pytest.fail(f"official provider used for rejected custom {name}")
+            return real_provider(name)
+
+        patch.setattr(language_pack, "get_language_from_pack", forbid_official_fallback)
 
         def reject_custom(grammar=None):
             if grammar is None:
                 return real_registry_parser()
             loaded = state.registry._loaded_sources.get(language)
-            if loaded is not None and loaded[0] == grammar:
+            if (
+                loaded is not None
+                and loaded[0] == grammar
+                and loaded[1].startswith("custom:sha256:")
+            ):
                 entry = state.registry._languages.get(language)
                 assert entry is not None
                 observed_versions.append(entry[1].version)
+                rejected_custom.append(grammar)
                 raise ValueError("known-version custom ABI rejected")
             return real_registry_parser(grammar)
 
@@ -587,6 +610,8 @@ def test_492_known_version_incompatible_custom_fails_before_cache_identity(
                 fail_fast=True,
             )
         assert "14" in observed_versions
+        assert rejected_custom
+        assert all(grammar != official_language for grammar in rejected_custom)
         assert language not in state.registry._selected_sources
 
     files = {item["path"]: item for item in failed["files"]}
