@@ -68,6 +68,7 @@ class LanguageRegistry:
         self._languages: dict[str, tuple[Language | None, LanguageMetadata]] = {}
         self._loaded_sources: dict[str, tuple[Language, str]] = {}
         self._selected_sources: dict[str, tuple[Language, str]] = {}
+        self._selection_errors: dict[str, str] = {}
         self._discovered = False
         # Do not raise if the combined library is missing; discovery will fall back to
         # nm or per-language libraries and allow on-demand builds.
@@ -385,6 +386,7 @@ class LanguageRegistry:
                 self._languages.pop(lang_name, None)
                 self._loaded_sources.pop(lang_name, None)
                 self._selected_sources.pop(lang_name, None)
+                self._selection_errors[lang_name] = e.reason
                 logger.error("Error loading language '%s': %s", lang_name, e)
             except (IndexError, KeyError, OSError) as e:
                 logger.error("Error loading language '%s': %s", lang_name, e)
@@ -541,6 +543,8 @@ class LanguageRegistry:
                 raise ParserInitError("baml", f"companion load failed: {exc}") from exc
         if not self._discovered:
             self.discover_languages()
+        if name in self._selection_errors:
+            raise ParserInitError(name, self._selection_errors[name])
         if name not in self._languages:
             # Try to load from a per-language library as a fallback
             language = self._try_load_from_individual_library_safely(name)
@@ -710,6 +714,8 @@ class LanguageRegistry:
             return baml_companion_available()
         if not self._discovered:
             self.discover_languages()
+        if name in self._selection_errors:
+            return True
         if name in self._languages:
             language, _ = self._languages[name]
             if language is not None:

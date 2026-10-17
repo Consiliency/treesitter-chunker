@@ -503,8 +503,9 @@ def test_492_provider_failure_preserves_cache_and_mixed_file_continuation(
 
 @pytest.mark.parametrize("language", ["python", "javascript"])
 @pytest.mark.parametrize("previously_warm", [False, True], ids=("cold", "warm"))
+@pytest.mark.parametrize("custom_source", ["individual", "combined"])
 def test_492_known_version_incompatible_custom_fails_before_cache_identity(
-    tmp_path, monkeypatch, language, previously_warm
+    tmp_path, monkeypatch, language, previously_warm, custom_source
 ):
     from chunker._internal import registry as registry_module
 
@@ -522,6 +523,10 @@ def test_492_known_version_incompatible_custom_fails_before_cache_identity(
         "package main\nfunc ok() int { return 1 }\n", encoding="utf-8"
     )
     custom = _copy_pack_library(tmp_path, language, "custom-incompatible")
+    if custom_source == "combined":
+        combined = custom.with_name(f"languages{_LIB_EXT}")
+        custom.rename(combined)
+        custom = combined
     cache_dir = tmp_path.parent / f"{tmp_path.name}-custom-abi-cache"
     if previously_warm:
         with monkeypatch.context() as patch:
@@ -533,11 +538,26 @@ def test_492_known_version_incompatible_custom_fails_before_cache_identity(
     before = _cache_bytes(cache_dir)
 
     with monkeypatch.context() as patch:
-        state = _set_parser_state(patch, custom.parent / f"languages{_LIB_EXT}")
+        state = _set_parser_state(
+            patch,
+            (
+                custom
+                if custom_source == "combined"
+                else custom.parent / f"languages{_LIB_EXT}"
+            ),
+        )
+        if custom_source == "combined":
+            patch.setattr(
+                registry_module.LanguageRegistry,
+                "_discover_symbols",
+                lambda self: [(language, f"tree_sitter_{language}")],
+            )
         real_registry_parser = registry_module.Parser
         observed_versions = []
 
-        def reject_custom(grammar):
+        def reject_custom(grammar=None):
+            if grammar is None:
+                return real_registry_parser()
             loaded = state.registry._loaded_sources.get(language)
             if loaded is not None and loaded[0] == grammar:
                 entry = state.registry._languages.get(language)
