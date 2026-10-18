@@ -7,11 +7,13 @@ automation:
 
 ## Task and status
 
-Draft coordination context only: PLAN0/CODE0; A's reviews do not approve B.
+Refreshed implementation plan: PLAN0/CODE0; A's reviews do not approve B.
 Depends on accepted/merged [plan A](detailed-source-anchors-496-20261017.md).
-Current research base is accepted `931f6e05208faf1b1ca94520584cb4c45bff51b1`,
-including merged treesitter-chunker#495/#497. Refresh against A's actual merge
-and check the selected 3.x train remains unreleased before B's own PLAN review.
+Current research base is clean merged Plan A head
+`36a4e8d3493abe0028535de9b269021f374ec397`, including accepted
+treesitter-chunker#495, treesitter-chunker#497, and treesitter-chunker#498.
+Read-only release metadata on 2026-10-18 still reports v5.3.0 as latest, so the
+selected package 6.0 / syntax IR 3.0 / semantic IR 3.1 train remains unreleased.
 The owner selected plan A's coordinated package 6.0.0 and IR 3.0/3.1 migration
 on 2026-10-16. Source refresh and independent design review remain required.
 No implementation choices below are delegated to an unstated future decision.
@@ -29,10 +31,10 @@ separate work. No whole-language completeness guarantee is inferred from tests.
 ## Research summary and source falsifiers
 
 Historical draft line references/private board paths below are provenance, not
-current line claims or reviewer permission. Daybreak Blue's current-source
-refresh report is sealed in A's packet as refresh-research.md, SHA-256
-f490b3339820e9d10be093e7c3815769417c5b08b0188d8f4134eb15c05f84f4. Use
-current symbols for implementation. Original 20261016 drafts remain untouched.
+current line claims or reviewer permission. Daybreak Blue's B refresh report is
+`refresh-research.md` in the private B evidence root and is sealed into each B
+review packet. Use current symbols at clean `36a4e8d3`. Original 20261016
+drafts and all A records remain untouched.
 
 - `chunker/core.py:815–821` already stores detailed `call_spans` but graph facts
   copy only `metadata.calls` strings (`symbol_graph.py:287–304`). Preserve the
@@ -77,8 +79,9 @@ Board analysis pointers and current spec commit/URLs are preserved in plan A.
 
 1. Add `call_facts` to the per-file facts and public assembled graph as the
    resolution-independent list. Each record carries `id`, `from`, `file`,
-   `reference`, and `location` (`byte_start`, `byte_end`, `start_line`, `end_line`),
-   plus callee byte bounds. `from` is A's canonical definition key. No target,
+   `type: "calls"`, `reference`, `location` (`byte_start`, `byte_end`,
+   `start_line`, `end_line`), `callee_byte_start`, `callee_byte_end`, and
+   `call_kind`. `from` is A's canonical definition key. No target,
    candidates or resolution state is stored in this raw record.
 2. `reference` is the exact UTF-8 decoded source slice for the callee expression,
    excluding argument parentheses, preserving qualification, internal spacing,
@@ -119,8 +122,10 @@ Board analysis pointers and current spec commit/URLs are preserved in plan A.
    calls only, with integer byte/line fields. Preserve non-call syntax and
    semantic-edge shapes and frozen top-level keys; do not rely on permissive
    additionalProperties as validation.
-7. Call fact ID and syntax call edge ID are the same deterministic hash of the
-   raw key above (including caller and type), prefixed `call:`. Resolved target
+7. Call fact ID and syntax call edge ID are the same deterministic reuse of the
+   project's SHA-1 stable-hash convention over canonical caller, canonical file,
+   full-call bounds, callee bounds, exact reference, and relationship type,
+   prefixed `call:`. Resolved target
    and candidates are deliberately excluded: adding unrelated files may change
    those annotations but must not churn the call-site ID. Non-call edge ID
    algorithm and imports/dependencies dedupe remain as treesitter-chunker#495 and A define them.
@@ -190,15 +195,22 @@ unreleased coordinated package 6.0.0 and IR 3.0/3.1 major train.
   unchanged non-call/semantic shapes. `tests/test_symbol_graph_cli_resolution.py`
   and `tests/integration/test_clustering_integration.py`: public call-site data,
   endpoint validity and documented increased per-call weighting.
-- `docs/interface-boundary-spec.md`, `CHANGELOG.md`: raw token/site contract,
+- `docs/interface-boundary-spec.md`, `docs/user-guide.md`, `CHANGELOG.md`: raw token/site contract,
   migration/re-indexing, increased counts/weights, heuristic-target limits.
 - `tests/fixtures/boundary_ir/golden/*.json`: only locked generator output.
-- This plan and parent-registered manifest lifecycle after treesitter-chunker#495; no changes to
+- `tests/test_boundary_ir_adapter.py`,
+  `tests/test_boundary_ir_incremental_contract.py`,
+  `tests/test_boundary_ir_semantic_contract.py`,
+  `tests/test_boundary_ir_semantic_enrichment.py`,
+  `tests/test_boundary_ir_semantic_determinism.py`, and
+  `tests/unit/clustering/test_engine.py`: call-only schema/shape distinction,
+  cache constants, semantic-shape preservation, and deliberate per-site weight.
+- This plan and its existing manifest row/lifecycle after treesitter-chunker#498; no changes to
   shared roadmap, native journals, pins, locks, release files or type baseline.
 
 ## Documentation impact
 
-The owned spec/changelog must describe raw references/sites, exact byte/line
+The owned spec/user-guide/changelog must describe raw references/sites, exact byte/line
 semantics, per-site count/weight increases, v3 migration and index rebuilds.
 Keep A's syntax 3.0/semantic 3.1 mode split and API 1.0. No release/version/pin
 or downstream edit. Preserve provider-aware keys and cache-preserving failure
@@ -251,16 +263,18 @@ version/payload; M-B7 restore largest/outer containing-owner selection.
 Each must fail the matching designated assertion. Restore exact
 candidate production bytes after every mutation and preserve genuine outputs.
 
-## Dependencies and verification
+## Dependencies and review gates
 
-Use A's owner freeze, source refresh, review coordination and private-worktree
-rules. B starts only after A lands; refresh both production and plan assumptions.
+Use A's owner freeze and B's refreshed private-worktree rules. A is merged at
+`36a4e8d3`; B's production and plan assumptions are refreshed at that exact head.
 Obtain the coordinated independent PLAN quartet and separate Astra approval
 before source edits; maximum three full rounds and heartbeat-only policy. No
 reviews were started here. Do not release intermediate incompatible IR under an
 already-published version. Standing owner authorization covers supported publication, owned metadata
 upkeep, normal merge and safe pruning after all gates; no downstream publication
 or release is authorized. It does not waive B's separate design/source reviews.
+
+## Verification
 
 Run the following narrow commands on the baseline/new tests, candidate and each
 designated mutation during implementation (not during planning):
@@ -299,6 +313,35 @@ Windows snapshots, available fleet checks and final-head hosted CI. Record
 wheel-result.json, native-result.json and hosted-checks.json, with exact source,
 artifact/runtime bindings and supported runner-stamped plan amendments; source
 suite/proxy receipts cannot substitute for these operational gates.
+
+All new private evidence is written only under
+`/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/`.
+Use the installed typed lifecycle API as
+`phase_loop_runtime.plan_manifest.update_lifecycle(repo=Path(<owned-worktree>),
+slug="raw-call-sites-496", transition="executing"|"completed", by="codex-execute-detailed",
+metadata=<B-only bindings>)`; snapshot and compare the manifest so all 73
+predecessor rows and every pre-existing lifecycle event remain equivalent.
+Create the canonical verification artifact with installed
+`phase_loop_runtime.verification_evidence.run_verification`, owned repo and B
+evidence `runner-verification` directory, Python 3.12, locked refresh
+`["uv","sync","--locked","--all-extras","--python","3.12"]`, ordinary argv
+commands, explicit `bash -lc` only for golden diff/cmp and temporary docs output,
+and the frontmatter suite argv. Validate it with
+`validate_verification_artifact`.
+
+Copy/adapt A's explicitly allowlisted operational helpers into B's root and bind
+their SHA-256 values before use. Invoke them exactly as:
+
+```text
+["python", "/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/verify-wheel.py", "--repo", "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-raw-call-sites-496", "--out", "/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/wheel", "--python", "3.11", "--python", "3.12", "--python", "3.13", "--python", "3.14"]
+["python", "/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/verify-native-windows.py", "--repo", "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-raw-call-sites-496", "--out", "/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/native-windows", "--driver", "/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/native-windows-driver.py"]
+```
+
+The wheel driver must exercise exact raw/site facts, repeated/self calls,
+v1/v2 misses and actual v3 reuse, both IR modes, old-schema rejection, official
+providers and installed CLI. The native driver must verify the exact tracked
+archive and run B's three narrow pytest commands plus the Windows preflight in a
+unique private snapshot while proving the shared Windows checkout unchanged.
 
 ## Acceptance criteria
 
