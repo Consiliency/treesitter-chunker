@@ -290,12 +290,12 @@ def _call_facts_for_chunks(
                 if owner["parent_context"] == "decorated_definition"
                 and observation["chunk_start"] <= owner["byte_start"]
                 and owner["byte_end"] <= observation["chunk_end"]
-                and not (
-                    owner["byte_start"] <= observation["call_start"]
-                    and observation["call_end"] <= owner["byte_end"]
-                )
             ]
             if decorated:
+                wrapper_owner = min(
+                    decorated,
+                    key=lambda item: (item["byte_start"], item["order"]),
+                )
                 site_key = (
                     display_file,
                     observation["call_start"],
@@ -304,9 +304,11 @@ def _call_facts_for_chunks(
                     observation["callee_end"],
                     observation["reference"],
                 )
-                decorated_owners[site_key] = min(
-                    decorated, key=lambda item: item["order"]
-                )
+                if not (
+                    wrapper_owner["byte_start"] <= observation["call_start"]
+                    and observation["call_end"] <= wrapper_owner["byte_end"]
+                ):
+                    decorated_owners[site_key] = wrapper_owner
 
     selected: dict[tuple[Any, ...], tuple[tuple[Any, ...], dict[str, Any]]] = {}
     for observation in observations:

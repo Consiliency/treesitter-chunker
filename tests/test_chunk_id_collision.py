@@ -215,8 +215,9 @@ def test_496_anchor_cross_file_identical_calls_keep_source_ownership_all_paths(
             assert edge["id"] in source_node["relationships"]
 
 
+@pytest.mark.parametrize("mode", ["strict", "permissive"])
 def test_496_anchor_duplicate_methods_keep_sources_and_canonical_candidates_all_paths(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, mode
 ):
     from chunker.boundary.adapter import extract_boundary_ir
     from chunker.boundary.cache import load_cache_index, load_cache_record
@@ -237,11 +238,15 @@ def test_496_anchor_duplicate_methods_keep_sources_and_canonical_candidates_all_
     (tmp_path / "a.py").write_text("def target():\n    return 1\n", encoding="utf-8")
     (tmp_path / "b.py").write_text("def target():\n    return 2\n", encoding="utf-8")
     isolated = extract_symbol_facts_for_file(source, tmp_path, "python")
-    full_graph = extract_symbol_graph(tmp_path, "python")
+    full_graph = extract_symbol_graph(tmp_path, "python", resolution_mode=mode)
     cache_dir = tmp_path / ".boundary-cache"
-    fresh = extract_boundary_ir(tmp_path, "python")
+    fresh = extract_boundary_ir(tmp_path, "python", resolution_mode=mode)
     cold = extract_boundary_ir(
-        tmp_path, "python", incremental=True, cache_dir=cache_dir
+        tmp_path,
+        "python",
+        resolution_mode=mode,
+        incremental=True,
+        cache_dir=cache_dir,
     )
     index = load_cache_index(cache_dir)
     record = load_cache_record(cache_dir, index.records[source.name])
@@ -257,7 +262,11 @@ def test_496_anchor_duplicate_methods_keep_sources_and_canonical_candidates_all_
         ),
     )
     warm = extract_boundary_ir(
-        tmp_path, "python", incremental=True, cache_dir=cache_dir
+        tmp_path,
+        "python",
+        resolution_mode=mode,
+        incremental=True,
+        cache_dir=cache_dir,
     )
     documents = (fresh, cold, warm)
 
@@ -271,6 +280,7 @@ def test_496_anchor_duplicate_methods_keep_sources_and_canonical_candidates_all_
         if relationship["type"] == "calls" and relationship["file"] == source.name
     ]
     assert len(isolated_facts) == 2
+    assert [fact["location"]["start_line"] for fact in isolated_facts] == [3, 6]
     assert isolated_facts == full_facts == record.symbol_facts["call_facts"]
     assert sorted(fact["id"] for fact in isolated_facts) == sorted(
         relationship["call_site_id"] for relationship in full_relationships

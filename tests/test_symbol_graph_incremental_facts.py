@@ -306,8 +306,9 @@ def test_496_anchor_unrelated_callee_does_not_change_caller_source(tmp_path: Pat
     assert second["symbol_lookup"][first_source]["file"] == "caller.py"
 
 
+@pytest.mark.parametrize("mode", ["strict", "permissive"])
 def test_496_anchor_nfd_path_uses_canonical_definition_identity(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch, mode: str
 ):
     from chunker.boundary.adapter import extract_boundary_ir
     from chunker.boundary.cache import load_cache_index, load_cache_record
@@ -319,7 +320,7 @@ def test_496_anchor_nfd_path_uses_canonical_definition_identity(
     )
 
     isolated = extract_symbol_facts_for_file(source, tmp_path, "python")
-    graph = extract_symbol_graph(tmp_path, "python")
+    graph = extract_symbol_graph(tmp_path, "python", resolution_mode=mode)
     symbol_id, symbol = next(iter(graph["symbol_lookup"].items()))
     relationship = next(
         item
@@ -336,6 +337,7 @@ def test_496_anchor_nfd_path_uses_canonical_definition_identity(
     assert fact["from"] == symbol_id
     assert fact["reference"] == "missing"
     assert fact["id"] == relationship["call_site_id"]
+    assert fact["location"]["start_line"] == fact["location"]["end_line"] == 2
     assert isolated["call_facts"] == graph["call_facts"]
     assert unicodedata.is_normalized("NFD", fact["file"])
     source_bytes = source.read_bytes()
@@ -345,9 +347,13 @@ def test_496_anchor_nfd_path_uses_canonical_definition_identity(
     )
 
     cache_dir = tmp_path / ".boundary-cache"
-    fresh = extract_boundary_ir(tmp_path, "python")
+    fresh = extract_boundary_ir(tmp_path, "python", resolution_mode=mode)
     cold = extract_boundary_ir(
-        tmp_path, "python", incremental=True, cache_dir=cache_dir
+        tmp_path,
+        "python",
+        resolution_mode=mode,
+        incremental=True,
+        cache_dir=cache_dir,
     )
     index = load_cache_index(cache_dir)
     record = load_cache_record(cache_dir, index.records[source.name])
@@ -361,7 +367,11 @@ def test_496_anchor_nfd_path_uses_canonical_definition_identity(
         lambda *args, **kwargs: pytest.fail("warm NFD facts must be reused"),
     )
     warm = extract_boundary_ir(
-        tmp_path, "python", incremental=True, cache_dir=cache_dir
+        tmp_path,
+        "python",
+        resolution_mode=mode,
+        incremental=True,
+        cache_dir=cache_dir,
     )
     for document in (fresh, cold, warm):
         edge = next(
@@ -430,11 +440,14 @@ def test_496_call_site_decorated_method_and_nested_function_use_inner_owner(
 ):
     source = tmp_path / "decorated.py"
     source.write_text(
+        "@class_decorate()\n"
         "class Service:\n"
         "    @decorate(factory())\n"
         "    def method(self):\n"
         "        return body()\n\n"
+        "@outer_decorate()\n"
         "def outer():\n"
+        "    before()\n"
         "    @decorate(factory())\n"
         "    def inner():\n"
         "        return nested()\n"
@@ -447,20 +460,33 @@ def test_496_call_site_decorated_method_and_nested_function_use_inner_owner(
         symbol["name"]: symbol_id
         for symbol_id, symbol in facts["symbol_lookup"].items()
     }
-    decorators = [
-        fact
-        for fact in facts["call_facts"]
-        if fact["reference"] in {"decorate", "factory"}
+    call_facts = facts["call_facts"]
+    assert [fact["reference"] for fact in call_facts] == [
+        "class_decorate",
+        "decorate",
+        "factory",
+        "body",
+        "outer_decorate",
+        "before",
+        "decorate",
+        "factory",
+        "nested",
+        "inner",
     ]
-
-    assert len(decorators) == 4
-    assert [fact["from"] for fact in decorators[:2]] == [symbols["method"]] * 2
-    assert [fact["from"] for fact in decorators[2:]] == [symbols["inner"]] * 2
-    assert all(
-        fact["from"] not in {symbols["Service"], symbols["outer"]}
-        for fact in decorators
-    )
-    assert len({fact["id"] for fact in decorators}) == 4
+    owners = [(fact["reference"], fact["from"]) for fact in call_facts]
+    assert owners == [
+        ("class_decorate", symbols["Service"]),
+        ("decorate", symbols["method"]),
+        ("factory", symbols["method"]),
+        ("body", symbols["method"]),
+        ("outer_decorate", symbols["outer"]),
+        ("before", symbols["outer"]),
+        ("decorate", symbols["inner"]),
+        ("factory", symbols["inner"]),
+        ("nested", symbols["inner"]),
+        ("inner", symbols["outer"]),
+    ]
+    assert len({fact["id"] for fact in call_facts}) == len(call_facts)
 
 
 def test_496_call_site_raw_facts_do_not_change_with_unrelated_target(
@@ -556,12 +582,21 @@ def test_496_call_site_js_repeated_raw_facts_ignore_unrelated_callees(
     target.write_text("export function stamp() { return 1; }\n", encoding="utf-8")
     target_facts = extract_symbol_facts_for_file(target, tmp_path, language)
     second = extract_symbol_facts_for_file(source, tmp_path, language)
-    full = assemble_symbol_graph([second, target_facts], total_files=2)
-    target.unlink()
+    resolved = assemble_symbol_graph([second, target_facts], total_files=2)
+    legacy = tmp_path / f"legacy.{extension}"
+    legacy.write_text("export function stamp() { return 2; }\n", encoding="utf-8")
+    legacy_facts = extract_symbol_facts_for_file(legacy, tmp_path, language)
+    ambiguous = assemble_symbol_graph(
+        [second, target_facts, legacy_facts], total_files=3
+    )
+    legacy.unlink()
     third = extract_symbol_facts_for_file(source, tmp_path, language)
-    removed = assemble_symbol_graph([third], total_files=1)
+    resolved_again = assemble_symbol_graph([third, target_facts], total_files=2)
+    target.unlink()
+    fourth = extract_symbol_facts_for_file(source, tmp_path, language)
+    removed = assemble_symbol_graph([fourth], total_files=1)
 
-    for observed in (second, third):
+    for observed in (second, third, fourth):
         assert first_projection == [
             (
                 fact["id"],
@@ -575,7 +610,7 @@ def test_496_call_site_js_repeated_raw_facts_ignore_unrelated_callees(
             for fact in observed["call_facts"]
         ]
     expected_ids = [fact["id"] for fact in first["call_facts"]]
-    for graph in (isolated, full, removed):
+    for graph in (isolated, resolved, ambiguous, resolved_again, removed):
         calls = [
             rel
             for rel in graph["relationships"]
@@ -591,8 +626,25 @@ def test_496_call_site_js_repeated_raw_facts_ignore_unrelated_callees(
         }
 
     assert call_resolutions(isolated) == {"unresolved"}
-    assert call_resolutions(full) == {"resolved"}
+    assert call_resolutions(resolved) == {"resolved"}
+    assert call_resolutions(ambiguous) == {"ambiguous"}
+    assert call_resolutions(resolved_again) == {"resolved"}
     assert call_resolutions(removed) == {"unresolved"}
+    resolved_target = next(iter(target_facts["symbol_lookup"]))
+    ambiguous_targets = {
+        resolved_target,
+        next(iter(legacy_facts["symbol_lookup"])),
+    }
+    assert all(
+        relationship["candidates"] == [resolved_target]
+        for relationship in resolved["relationships"]
+        if relationship["type"] == "calls" and relationship["file"] == source.name
+    )
+    assert all(
+        set(relationship["candidates"]) == ambiguous_targets
+        for relationship in ambiguous["relationships"]
+        if relationship["type"] == "calls" and relationship["file"] == source.name
+    )
 
 
 def test_496_call_site_typescript_nested_static_calls_keep_raw_sites(tmp_path: Path):
@@ -605,7 +657,7 @@ def test_496_call_site_typescript_nested_static_calls_keep_raw_sites(tmp_path: P
     facts = extract_symbol_facts_for_file(source, tmp_path, "typescript")
     owner = next(iter(facts["symbol_lookup"]))
     calls = facts["call_facts"]
-    graph = assemble_symbol_graph([facts], total_files=1)
+    isolated = assemble_symbol_graph([facts], total_files=1)
 
     assert [fact["reference"] for fact in calls] == ["JSON.stringify", "Date.now"]
     assert all(fact["from"] == owner for fact in calls)
@@ -615,11 +667,67 @@ def test_496_call_site_typescript_nested_static_calls_keep_raw_sites(tmp_path: P
             source_bytes[fact["callee_byte_start"] : fact["callee_byte_end"]].decode()
             == fact["reference"]
         )
-    assert [
-        relationship["call_site_id"]
-        for relationship in graph["relationships"]
-        if relationship["type"] == "calls"
-    ] == [fact["id"] for fact in calls]
+    target = tmp_path / "targets.ts"
+    target.write_text(
+        "export function stringify() { return ''; }\n"
+        "export function now() { return 1; }\n",
+        encoding="utf-8",
+    )
+    target_facts = extract_symbol_facts_for_file(target, tmp_path, "typescript")
+    resolved = assemble_symbol_graph([facts, target_facts], total_files=2)
+    legacy = tmp_path / "legacy.ts"
+    legacy.write_text(
+        "export function stringify() { return 'legacy'; }\n"
+        "export function now() { return 2; }\n",
+        encoding="utf-8",
+    )
+    legacy_facts = extract_symbol_facts_for_file(legacy, tmp_path, "typescript")
+    ambiguous = assemble_symbol_graph(
+        [facts, target_facts, legacy_facts], total_files=3
+    )
+    legacy.unlink()
+    after_legacy = extract_symbol_facts_for_file(source, tmp_path, "typescript")
+    resolved_again = assemble_symbol_graph([after_legacy, target_facts], total_files=2)
+    target.unlink()
+    after_targets = extract_symbol_facts_for_file(source, tmp_path, "typescript")
+    removed = assemble_symbol_graph([after_targets], total_files=1)
+
+    assert (
+        facts["call_facts"] == after_legacy["call_facts"] == after_targets["call_facts"]
+    )
+    expected_ids = [fact["id"] for fact in calls]
+    for graph in (isolated, resolved, ambiguous, resolved_again, removed):
+        graph_calls = [
+            relationship
+            for relationship in graph["relationships"]
+            if relationship["type"] == "calls" and relationship["file"] == source.name
+        ]
+        assert [
+            relationship["call_site_id"] for relationship in graph_calls
+        ] == expected_ids
+    resolved_annotations = {
+        relationship["reference"]: relationship["resolution"]
+        for relationship in resolved["relationships"]
+        if relationship["type"] == "calls" and relationship["file"] == source.name
+    }
+    assert resolved_annotations == {
+        "JSON.stringify": "resolved",
+        "Date.now": "ambiguous",
+    }
+    assert {
+        relationship["resolution"]
+        for relationship in ambiguous["relationships"]
+        if relationship["type"] == "calls" and relationship["file"] == source.name
+    } == {"ambiguous"}
+    removed_annotations = {
+        relationship["reference"]: relationship["resolution"]
+        for relationship in removed["relationships"]
+        if relationship["type"] == "calls" and relationship["file"] == source.name
+    }
+    assert removed_annotations == {
+        "JSON.stringify": "unresolved",
+        "Date.now": "resolved",
+    }
 
 
 def test_496_call_site_python_qualified_self_collisions_remain_facts(tmp_path: Path):
@@ -633,7 +741,8 @@ def test_496_call_site_python_qualified_self_collisions_remain_facts(tmp_path: P
         "    return recur()\n",
         encoding="utf-8",
     )
-    graph = extract_symbol_graph(source, "python")
+    facts = extract_symbol_facts_for_file(source, tmp_path, "python")
+    graph = assemble_symbol_graph([facts], total_files=1)
     calls = [rel for rel in graph["relationships"] if rel["type"] == "calls"]
 
     assert [fact["reference"] for fact in graph["call_facts"]] == [
@@ -648,3 +757,31 @@ def test_496_call_site_python_qualified_self_collisions_remain_facts(tmp_path: P
         "time.time",
         "recur",
     }
+
+    other = tmp_path / "other.py"
+    other.write_text(
+        "def now():\n    return 1\n\ndef time():\n    return 2\n",
+        encoding="utf-8",
+    )
+    other_facts = extract_symbol_facts_for_file(other, tmp_path, "python")
+    with_targets = extract_symbol_facts_for_file(source, tmp_path, "python")
+    ambiguous = assemble_symbol_graph([with_targets, other_facts], total_files=2)
+    other.unlink()
+    after_removal = extract_symbol_facts_for_file(source, tmp_path, "python")
+    restored = assemble_symbol_graph([after_removal], total_files=1)
+
+    assert (
+        facts["call_facts"] == with_targets["call_facts"] == after_removal["call_facts"]
+    )
+    expected_ids = [fact["id"] for fact in facts["call_facts"]]
+    for observed in (graph, ambiguous, restored):
+        assert [
+            relationship["call_site_id"]
+            for relationship in observed["relationships"]
+            if relationship["type"] == "calls" and relationship["file"] == source.name
+        ] == expected_ids
+    assert {
+        relationship["reference"]
+        for relationship in ambiguous["relationships"]
+        if relationship["type"] == "calls" and relationship["resolution"] == "ambiguous"
+    } == {"datetime.now", "time.time"}
