@@ -2,15 +2,17 @@
   "diagnostics": [],
   "edges": [
     {
+      "call_site_id": "call:696c0e8844d426d7324aec9186b1d588b282fec4",
       "candidates": [
         "514ea25c032c544bfcb5cec28f107cd30478a06a"
       ],
-      "id": "edge:c85504b1e934b821",
+      "file": "app/service.py",
+      "id": "call:696c0e8844d426d7324aec9186b1d588b282fec4",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 9,
-        "start_line": 9
+        "byte_end": 248,
+        "byte_start": 230,
+        "end_line": 12,
+        "start_line": 12
       },
       "metadata": {
         "file": "app/service.py",
@@ -133,16 +135,18 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:dd0b03d54667360f280b885d909cf32492cb0f9b",
       "candidates": [
         "64d77146b1952a48a00557eda87ad157160c62fd",
         "bcc5782f607322036ce36c5389e40ad8fc121e50"
       ],
-      "id": "edge:e486738be6b910eb",
+      "file": "app/service.py",
+      "id": "call:dd0b03d54667360f280b885d909cf32492cb0f9b",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 9,
-        "start_line": 9
+        "byte_end": 280,
+        "byte_start": 265,
+        "end_line": 13,
+        "start_line": 13
       },
       "metadata": {
         "file": "app/service.py",
@@ -189,13 +193,15 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:f086ae14ea017baa4b6b221a50fed7a8d7dc9bb3",
       "candidates": [],
-      "id": "edge:9e9767c502c37795",
+      "file": "app/service.py",
+      "id": "call:f086ae14ea017baa4b6b221a50fed7a8d7dc9bb3",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 9,
-        "start_line": 9
+        "byte_end": 355,
+        "byte_start": 332,
+        "end_line": 14,
+        "start_line": 14
       },
       "metadata": {
         "file": "app/service.py",
@@ -239,15 +245,17 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:fcb68d2d991010afc01f77c5240852aec0488827",
       "candidates": [
         "514ea25c032c544bfcb5cec28f107cd30478a06a"
       ],
-      "id": "edge:b74e98f096722241",
+      "file": "app/service.py",
+      "id": "call:fcb68d2d991010afc01f77c5240852aec0488827",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 5,
-        "start_line": 5
+        "byte_end": 131,
+        "byte_start": 113,
+        "end_line": 6,
+        "start_line": 6
       },
       "metadata": {
         "file": "app/service.py",
@@ -296,33 +304,6 @@
       "candidates": [
         "514ea25c032c544bfcb5cec28f107cd30478a06a"
       ],
-      "id": "edge:c79637284d27493d",
-      "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 4,
-        "start_line": 4
-      },
-      "metadata": {
-        "file": "app/service.py",
-        "is_internal": true
-      },
-      "provenance": {
-        "enforcement_grade": "strict",
-        "resolution_mode": "strict",
-        "resolver": "extract_symbol_graph",
-        "source": "syntax"
-      },
-      "reference": "format_name",
-      "resolution": "resolved",
-      "source": "4597ccd545a95379c4793630374d4c9ec080f210",
-      "target": "514ea25c032c544bfcb5cec28f107cd30478a06a",
-      "type": "calls"
-    },
-    {
-      "candidates": [
-        "514ea25c032c544bfcb5cec28f107cd30478a06a"
-      ],
       "id": "edge:1ae962a1d50bc8dd",
       "location": {
         "byte_end": null,
@@ -345,31 +326,6 @@
       "source": "4597ccd545a95379c4793630374d4c9ec080f210",
       "target": "514ea25c032c544bfcb5cec28f107cd30478a06a",
       "type": "dependencies"
-    },
-    {
-      "candidates": [],
-      "id": "edge:ec7887dd18fc0294",
-      "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 1,
-        "start_line": 1
-      },
-      "metadata": {
-        "file": "app/formatting.py",
-        "is_internal": false
-      },
-      "provenance": {
-        "enforcement_grade": "strict",
-        "resolution_mode": "strict",
-        "resolver": "extract_symbol_graph",
-        "source": "syntax"
-      },
-      "reference": "strip",
-      "resolution": "unresolved",
-      "source": "514ea25c032c544bfcb5cec28f107cd30478a06a",
-      "target": "strip",
-      "type": "calls"
     },
     {
       "candidates": [],
@@ -397,16 +353,18 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:37f53024a1bdfb3b1ee008c611391b0480b0f19c",
       "candidates": [],
-      "id": "edge:3f1d3f247d2d7e4d",
+      "file": "app/formatting.py",
+      "id": "call:37f53024a1bdfb3b1ee008c611391b0480b0f19c",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 1,
-        "start_line": 1
+        "byte_end": 60,
+        "byte_start": 47,
+        "end_line": 2,
+        "start_line": 2
       },
       "metadata": {
-        "file": "app/beta.py",
+        "file": "app/formatting.py",
         "is_internal": false
       },
       "provenance": {
@@ -415,10 +373,10 @@
         "resolver": "extract_symbol_graph",
         "source": "syntax"
       },
-      "reference": "upper",
+      "reference": "value.strip",
       "resolution": "unresolved",
-      "source": "64d77146b1952a48a00557eda87ad157160c62fd",
-      "target": "upper",
+      "source": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "target": "value.strip",
       "type": "calls"
     },
     {
@@ -447,16 +405,18 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:b479f6733548795969cdd1aabde2585888b9ba7d",
       "candidates": [],
-      "id": "edge:0aeddf939ef8fe99",
+      "file": "app/beta.py",
+      "id": "call:b479f6733548795969cdd1aabde2585888b9ba7d",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 1,
-        "start_line": 1
+        "byte_end": 55,
+        "byte_start": 42,
+        "end_line": 2,
+        "start_line": 2
       },
       "metadata": {
-        "file": "app/alpha.py",
+        "file": "app/beta.py",
         "is_internal": false
       },
       "provenance": {
@@ -465,10 +425,10 @@
         "resolver": "extract_symbol_graph",
         "source": "syntax"
       },
-      "reference": "lower",
+      "reference": "value.upper",
       "resolution": "unresolved",
-      "source": "bcc5782f607322036ce36c5389e40ad8fc121e50",
-      "target": "lower",
+      "source": "64d77146b1952a48a00557eda87ad157160c62fd",
+      "target": "value.upper",
       "type": "calls"
     },
     {
@@ -495,6 +455,33 @@
       "source": "bcc5782f607322036ce36c5389e40ad8fc121e50",
       "target": "lower",
       "type": "dependencies"
+    },
+    {
+      "call_site_id": "call:9c0f71a055bfb31053f83dda535c06eb65033b0c",
+      "candidates": [],
+      "file": "app/alpha.py",
+      "id": "call:9c0f71a055bfb31053f83dda535c06eb65033b0c",
+      "location": {
+        "byte_end": 55,
+        "byte_start": 42,
+        "end_line": 2,
+        "start_line": 2
+      },
+      "metadata": {
+        "file": "app/alpha.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "value.lower",
+      "resolution": "unresolved",
+      "source": "bcc5782f607322036ce36c5389e40ad8fc121e50",
+      "target": "value.lower",
+      "type": "calls"
     }
   ],
   "files": [
@@ -547,7 +534,7 @@
   "metrics": {
     "ambiguous_edges": 2,
     "diagnostics_total": 0,
-    "edges_total": 19,
+    "edges_total": 18,
     "failure_buckets": {},
     "files_failed": 0,
     "files_parsed": 5,
@@ -558,7 +545,7 @@
     "metadata_failures": 0,
     "nodes_total": 6,
     "parse_failures": 0,
-    "resolved_edges": 7,
+    "resolved_edges": 6,
     "serialization_failures": 0,
     "unresolved_edges": 10
   },
@@ -602,15 +589,15 @@
       },
       "qualified_name": "render_report",
       "relationships": [
+        "call:696c0e8844d426d7324aec9186b1d588b282fec4",
+        "call:dd0b03d54667360f280b885d909cf32492cb0f9b",
+        "call:f086ae14ea017baa4b6b221a50fed7a8d7dc9bb3",
         "edge:0444f45405c91a6a",
         "edge:61ca7cdb4d803711",
         "edge:8f5d77d8f49d8dc9",
         "edge:924e099328a9558f",
-        "edge:9e9767c502c37795",
         "edge:be494a8a4c5a3356",
-        "edge:c85504b1e934b821",
-        "edge:c939173996241d72",
-        "edge:e486738be6b910eb"
+        "edge:c939173996241d72"
       ],
       "semantic_path": "app/service.py::render_report",
       "signature": "render_report(value: str) -> str",
@@ -655,8 +642,8 @@
       },
       "qualified_name": "Renderer.render",
       "relationships": [
-        "edge:83e166bd1932e35e",
-        "edge:b74e98f096722241"
+        "call:fcb68d2d991010afc01f77c5240852aec0488827",
+        "edge:83e166bd1932e35e"
       ],
       "semantic_path": "app/service.py::Renderer.render",
       "signature": "render(self, value: str) -> str",
@@ -702,8 +689,7 @@
       },
       "qualified_name": "Renderer",
       "relationships": [
-        "edge:1ae962a1d50bc8dd",
-        "edge:c79637284d27493d"
+        "edge:1ae962a1d50bc8dd"
       ],
       "semantic_path": "app/service.py::Renderer",
       "signature": null,
@@ -747,8 +733,8 @@
       },
       "qualified_name": "format_name",
       "relationships": [
-        "edge:11c0685beb40588a",
-        "edge:ec7887dd18fc0294"
+        "call:37f53024a1bdfb3b1ee008c611391b0480b0f19c",
+        "edge:11c0685beb40588a"
       ],
       "semantic_path": "app/formatting.py::format_name",
       "signature": "format_name(value: str) -> str",
@@ -792,7 +778,7 @@
       },
       "qualified_name": "helper",
       "relationships": [
-        "edge:3f1d3f247d2d7e4d",
+        "call:b479f6733548795969cdd1aabde2585888b9ba7d",
         "edge:aa9ebb52708d20b8"
       ],
       "semantic_path": "app/beta.py::helper",
@@ -837,8 +823,8 @@
       },
       "qualified_name": "helper",
       "relationships": [
-        "edge:0612480fc79d07fd",
-        "edge:0aeddf939ef8fe99"
+        "call:9c0f71a055bfb31053f83dda535c06eb65033b0c",
+        "edge:0612480fc79d07fd"
       ],
       "semantic_path": "app/alpha.py::helper",
       "signature": "helper(value: str) -> str",

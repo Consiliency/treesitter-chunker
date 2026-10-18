@@ -2,8 +2,10 @@
 
 from typing import Any
 
+import pytest
 from tree_sitter import Node
 
+from chunker.metadata import MetadataExtractorFactory
 from chunker.metadata.extractor import BaseMetadataExtractor
 from chunker.parser import get_parser
 
@@ -230,3 +232,26 @@ class TestCallSpanAccuracy:
             assert call["start"] < call["end"]
             full_call = code[call["start"] : call["end"]]
             assert call["name"] in full_call
+
+
+@pytest.mark.parametrize(
+    ("language", "code", "expected"),
+    [
+        ("go", "package p\nfunc f() { (target)() }\n", "(target)"),
+        ("c", "void f() { (*target)(); }\n", "(*target)"),
+        ("cpp", "void f() { ((target))(); }\n", "((target))"),
+    ],
+)
+def test_496_call_site_parenthesized_callee_preserves_raw_slice(
+    language, code, expected
+):
+    source = code.encode()
+    root = get_parser(language).parse(source).root_node
+    extractor = MetadataExtractorFactory.create_extractor(language)
+    assert extractor is not None
+    calls = extractor.extract_calls(root, source)
+    call = next(item for item in calls if item["name"] == "target")
+
+    assert call["name"] == "target"
+    assert call["raw_reference"] == expected
+    assert source[call["callee_start"] : call["callee_end"]].decode() == expected

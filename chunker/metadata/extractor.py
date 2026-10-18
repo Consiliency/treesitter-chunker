@@ -452,6 +452,15 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         if func_name is None:
             func_name = self._get_node_text(func_node, source)
 
+        callee_node = func_node
+        while (
+            callee_node.parent is not None
+            and callee_node.parent != call_node
+            and call_node.start_byte <= callee_node.parent.start_byte
+            and callee_node.parent.end_byte <= call_node.end_byte
+        ):
+            callee_node = callee_node.parent
+
         return {
             "name": func_name,
             "start": call_node.start_byte,
@@ -460,6 +469,9 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
             "function_end": func_node.end_byte,
             "arguments_start": func_node.end_byte,
             "arguments_end": call_node.end_byte,
+            "raw_reference": self._get_node_text(callee_node, source),
+            "callee_start": callee_node.start_byte,
+            "callee_end": callee_node.end_byte,
         }
 
     def _extract_member_name(self, node: Node, source: bytes) -> str | None:

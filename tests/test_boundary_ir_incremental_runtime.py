@@ -123,7 +123,7 @@ def service():
     assert (cache_dir / "index.json").exists()
 
 
-def test_496_anchor_genuine_v1_cache_reparses_then_reuses_v2(
+def test_496_anchor_genuine_v1_cache_reparses_then_reuses_v3(
     tmp_path: Path, monkeypatch
 ):
     source = tmp_path / "app.py"
@@ -155,7 +155,7 @@ def test_496_anchor_genuine_v1_cache_reparses_then_reuses_v2(
     assert recomputed == ["app.py"]
     assert baseline_record.exists()
     migrated_index = load_cache_index(cache_dir)
-    assert migrated_index.records["app.py"].startswith("boundary:v2:")
+    assert migrated_index.records["app.py"].startswith("boundary:v3:")
     migrated_record = load_cache_record(cache_dir, migrated_index.records["app.py"])
     assert migrated_record is not None
     assert migrated_record.symbol_facts["symbol_lookup"]
@@ -167,6 +167,107 @@ def test_496_anchor_genuine_v1_cache_reparses_then_reuses_v2(
     assert recomputed == []
     assert dumps_boundary_ir(fresh) == dumps_boundary_ir(cold)
     assert dumps_boundary_ir(cold) == dumps_boundary_ir(warm)
+
+
+def test_496_same_schema_v2_cache_reparses_then_reuses_v3(tmp_path: Path, monkeypatch):
+    source = tmp_path / "app.py"
+    source.write_text("def run():\n    return sorted([])\n", encoding="utf-8")
+    cache_dir = tmp_path / ".boundary-cache"
+    fresh = extract_boundary_ir(tmp_path, "python")
+    extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir)
+    current_index = json.loads((cache_dir / "index.json").read_text(encoding="utf-8"))
+    current_key = current_index["records"][source.name]
+    current_path = cache_dir / _record_filename(current_key)
+    record = json.loads(current_path.read_text(encoding="utf-8"))
+    old_key = current_key.replace("boundary:v3:", "boundary:v2:")
+    record["cache_version"] = "2"
+    record["cache_key"] = old_key
+    old_path = cache_dir / _record_filename(old_key)
+    old_path.write_text(json.dumps(record), encoding="utf-8")
+    current_path.unlink()
+    current_index["cache_version"] = "2"
+    current_index["records"][source.name] = old_key
+    (cache_dir / "index.json").write_text(json.dumps(current_index), encoding="utf-8")
+    assert load_cache_index(cache_dir) == BoundaryCacheIndex()
+    assert load_cache_record(cache_dir, old_key) is None
+
+    from chunker.boundary import adapter
+
+    recomputed: list[str] = []
+    original = adapter._extract_file_cache_record
+
+    def spy(file_path, *args, **kwargs):
+        recomputed.append(file_path.name)
+        return original(file_path, *args, **kwargs)
+
+    monkeypatch.setattr(adapter, "_extract_file_cache_record", spy)
+    migrated = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir
+    )
+    assert recomputed == [source.name]
+    migrated_index = load_cache_index(cache_dir)
+    migrated_key = migrated_index.records[source.name]
+    assert migrated_key.startswith("boundary:v3:")
+    migrated_record = load_cache_record(cache_dir, migrated_key)
+    assert migrated_record is not None
+    assert migrated_record.symbol_facts["call_facts"]
+
+    recomputed.clear()
+    warm = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir
+    )
+    assert recomputed == []
+    assert dumps_boundary_ir(fresh) == dumps_boundary_ir(migrated)
+    assert dumps_boundary_ir(migrated) == dumps_boundary_ir(warm)
+
+
+@pytest.mark.parametrize("defect", ["missing", "location-type"])
+def test_496_malformed_v3_facts_reparse_then_reuse_repaired_record(
+    tmp_path: Path, monkeypatch, defect: str
+):
+    source = tmp_path / "app.py"
+    source.write_text("def run():\n    return sorted([])\n", encoding="utf-8")
+    cache_dir = tmp_path / ".boundary-cache"
+    fresh = extract_boundary_ir(tmp_path, "python")
+    extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir)
+    index = load_cache_index(cache_dir)
+    key = index.records[source.name]
+    record_path = cache_dir / _record_filename(key)
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    assert load_cache_record(cache_dir, key) is not None
+    if defect == "missing":
+        record["symbol_facts"].pop("call_facts")
+    else:
+        record["symbol_facts"]["call_facts"][0]["location"]["byte_start"] = "0"
+    record_path.write_text(json.dumps(record), encoding="utf-8")
+    assert load_cache_record(cache_dir, key) is None
+
+    from chunker.boundary import adapter
+
+    recomputed: list[str] = []
+    original = adapter._extract_file_cache_record
+
+    def spy(file_path, *args, **kwargs):
+        recomputed.append(file_path.name)
+        return original(file_path, *args, **kwargs)
+
+    monkeypatch.setattr(adapter, "_extract_file_cache_record", spy)
+    repaired = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir
+    )
+    assert recomputed == [source.name]
+    repaired_index = load_cache_index(cache_dir)
+    repaired_record = load_cache_record(cache_dir, repaired_index.records[source.name])
+    assert repaired_record is not None
+    assert repaired_record.symbol_facts["call_facts"]
+
+    recomputed.clear()
+    warm = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir
+    )
+    assert recomputed == []
+    assert dumps_boundary_ir(fresh) == dumps_boundary_ir(repaired)
+    assert dumps_boundary_ir(repaired) == dumps_boundary_ir(warm)
 
 
 def test_incremental_warm_run_recomputes_changed_file_and_neighbors(

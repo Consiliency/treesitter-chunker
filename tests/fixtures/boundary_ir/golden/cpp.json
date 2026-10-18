@@ -2,33 +2,6 @@
   "diagnostics": [],
   "edges": [
     {
-      "candidates": [
-        "17e4949dedb2a95eb65cfc35732d2ce4ab551f34"
-      ],
-      "id": "edge:d77c93aab97e1e51",
-      "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 3,
-        "start_line": 3
-      },
-      "metadata": {
-        "file": "widget.cpp",
-        "is_internal": true
-      },
-      "provenance": {
-        "enforcement_grade": "strict",
-        "resolution_mode": "strict",
-        "resolver": "extract_symbol_graph",
-        "source": "syntax"
-      },
-      "reference": "helper",
-      "resolution": "resolved",
-      "source": "0bee8bd50c52e2babf8fe455f2c38454362c557c",
-      "target": "17e4949dedb2a95eb65cfc35732d2ce4ab551f34",
-      "type": "calls"
-    },
-    {
       "candidates": [],
       "id": "edge:d7cce1ee2b05c009",
       "location": {
@@ -79,15 +52,17 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:8e9cbf5101a7197e576104a007d4ca6c9809bfca",
       "candidates": [
         "17e4949dedb2a95eb65cfc35732d2ce4ab551f34"
       ],
-      "id": "edge:e48da697bb9ba911",
+      "file": "widget.cpp",
+      "id": "call:8e9cbf5101a7197e576104a007d4ca6c9809bfca",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 7,
-        "start_line": 7
+        "byte_end": 115,
+        "byte_start": 107,
+        "end_line": 8,
+        "start_line": 8
       },
       "metadata": {
         "file": "widget.cpp",
@@ -133,15 +108,17 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:5cc35be6b442ec8fd9f1aca714534b38e745f041",
       "candidates": [
         "1940d8e41e814151475d62410e23a8d4dbd2e6f4"
       ],
-      "id": "edge:5f022e7ba38eb674",
+      "file": "widget.cpp",
+      "id": "call:5cc35be6b442ec8fd9f1aca714534b38e745f041",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 16,
-        "start_line": 16
+        "byte_end": 226,
+        "byte_start": 216,
+        "end_line": 18,
+        "start_line": 18
       },
       "metadata": {
         "file": "widget.cpp",
@@ -153,7 +130,7 @@
         "resolver": "extract_symbol_graph",
         "source": "syntax"
       },
-      "reference": "render",
+      "reference": "w.render",
       "resolution": "resolved",
       "source": "77ffc7c9aa54e26b250bccaec5b7fadb261f7443",
       "target": "1940d8e41e814151475d62410e23a8d4dbd2e6f4",
@@ -274,7 +251,7 @@
   "metrics": {
     "ambiguous_edges": 0,
     "diagnostics_total": 0,
-    "edges_total": 10,
+    "edges_total": 9,
     "failure_buckets": {},
     "files_failed": 0,
     "files_parsed": 1,
@@ -285,7 +262,7 @@
     "metadata_failures": 0,
     "nodes_total": 6,
     "parse_failures": 0,
-    "resolved_edges": 4,
+    "resolved_edges": 3,
     "serialization_failures": 0,
     "unresolved_edges": 6
   },
@@ -318,7 +295,6 @@
       },
       "qualified_name": "Widget",
       "relationships": [
-        "edge:d77c93aab97e1e51",
         "edge:d7cce1ee2b05c009"
       ],
       "semantic_path": "widget.cpp::Widget",
@@ -405,8 +381,8 @@
       },
       "qualified_name": "Widget.render",
       "relationships": [
-        "edge:83c07923e9c0620c",
-        "edge:e48da697bb9ba911"
+        "call:8e9cbf5101a7197e576104a007d4ca6c9809bfca",
+        "edge:83c07923e9c0620c"
       ],
       "semantic_path": "widget.cpp::Widget.render",
       "signature": "render() -> int",
@@ -449,8 +425,8 @@
       },
       "qualified_name": "run",
       "relationships": [
-        "edge:1bcd530da6dba7ca",
-        "edge:5f022e7ba38eb674"
+        "call:5cc35be6b442ec8fd9f1aca714534b38e745f041",
+        "edge:1bcd530da6dba7ca"
       ],
       "semantic_path": "widget.cpp::run",
       "signature": "run() -> int",

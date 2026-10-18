@@ -2,13 +2,15 @@
   "diagnostics": [],
   "edges": [
     {
+      "call_site_id": "call:4cebbb0b654e5cd109ab2696355cb75845ca7bab",
       "candidates": [],
-      "id": "edge:41c0fd3741b27592",
+      "file": "format.js",
+      "id": "call:4cebbb0b654e5cd109ab2696355cb75845ca7bab",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 1,
-        "start_line": 1
+        "byte_end": 57,
+        "byte_start": 45,
+        "end_line": 2,
+        "start_line": 2
       },
       "metadata": {
         "file": "format.js",
@@ -27,15 +29,17 @@
       "type": "calls"
     },
     {
+      "call_site_id": "call:72e7198a6bc097be8da6aed7337d46eb0c277b62",
       "candidates": [
         "3259abf65ed857b2e9f06afa3170021f6c71b61c"
       ],
-      "id": "edge:44451a6bd5fea4ae",
+      "file": "service.js",
+      "id": "call:72e7198a6bc097be8da6aed7337d46eb0c277b62",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 4,
-        "start_line": 4
+        "byte_end": 113,
+        "byte_start": 96,
+        "end_line": 5,
+        "start_line": 5
       },
       "metadata": {
         "file": "service.js",
@@ -81,13 +85,15 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:8076cfc9e6c68e36cd7eba62775f7c4bb8a827df",
       "candidates": [],
-      "id": "edge:c6a2c92931d5716b",
+      "file": "alpha.js",
+      "id": "call:8076cfc9e6c68e36cd7eba62775f7c4bb8a827df",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 1,
-        "start_line": 1
+        "byte_end": 60,
+        "byte_start": 41,
+        "end_line": 2,
+        "start_line": 2
       },
       "metadata": {
         "file": "alpha.js",
@@ -106,15 +112,17 @@
       "type": "calls"
     },
     {
+      "call_site_id": "call:dbd53a1af7d3554728ea844403af744093107b26",
       "candidates": [
         "3259abf65ed857b2e9f06afa3170021f6c71b61c"
       ],
-      "id": "edge:d0600e0b69c5ec35",
+      "file": "service.js",
+      "id": "call:dbd53a1af7d3554728ea844403af744093107b26",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 9,
-        "start_line": 9
+        "byte_end": 186,
+        "byte_start": 169,
+        "end_line": 10,
+        "start_line": 10
       },
       "metadata": {
         "file": "service.js",
@@ -160,16 +168,18 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:de7cb07fc0393b80a39facf7c8ae7c2aa8f1761c",
       "candidates": [
         "4efcc76af1457279a57d4a7d8c45e394821130e0",
         "b53e6ab203d0a33ed12306d63fe87288e3a66169"
       ],
-      "id": "edge:7e383198b83e96c0",
+      "file": "service.js",
+      "id": "call:de7cb07fc0393b80a39facf7c8ae7c2aa8f1761c",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 9,
-        "start_line": 9
+        "byte_end": 223,
+        "byte_start": 208,
+        "end_line": 11,
+        "start_line": 11
       },
       "metadata": {
         "file": "service.js",
@@ -216,13 +226,15 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:e9205b4216e59e797847d27a28db15e00d3cda02",
       "candidates": [],
-      "id": "edge:c403e117cda49fdd",
+      "file": "service.js",
+      "id": "call:e9205b4216e59e797847d27a28db15e00d3cda02",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 9,
-        "start_line": 9
+        "byte_end": 256,
+        "byte_start": 234,
+        "end_line": 12,
+        "start_line": 12
       },
       "metadata": {
         "file": "service.js",
@@ -269,33 +281,6 @@
       "candidates": [
         "3259abf65ed857b2e9f06afa3170021f6c71b61c"
       ],
-      "id": "edge:fa4ead388c6eca68",
-      "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 3,
-        "start_line": 3
-      },
-      "metadata": {
-        "file": "service.js",
-        "is_internal": true
-      },
-      "provenance": {
-        "enforcement_grade": "strict",
-        "resolution_mode": "strict",
-        "resolver": "extract_symbol_graph",
-        "source": "syntax"
-      },
-      "reference": "formatName",
-      "resolution": "resolved",
-      "source": "a31f7d0d98b9d472efd500c92d4b675b1b20348c",
-      "target": "3259abf65ed857b2e9f06afa3170021f6c71b61c",
-      "type": "calls"
-    },
-    {
-      "candidates": [
-        "3259abf65ed857b2e9f06afa3170021f6c71b61c"
-      ],
       "id": "edge:bb19cb90d4a5429e",
       "location": {
         "byte_end": null,
@@ -320,13 +305,15 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:276b038fa0ea8e648733463adf30c5e8e7b0e9ac",
       "candidates": [],
-      "id": "edge:557e4fe789d374ec",
+      "file": "beta.js",
+      "id": "call:276b038fa0ea8e648733463adf30c5e8e7b0e9ac",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 1,
-        "start_line": 1
+        "byte_end": 60,
+        "byte_start": 41,
+        "end_line": 2,
+        "start_line": 2
       },
       "metadata": {
         "file": "beta.js",
@@ -386,7 +373,7 @@
   "metrics": {
     "ambiguous_edges": 2,
     "diagnostics_total": 0,
-    "edges_total": 13,
+    "edges_total": 12,
     "failure_buckets": {},
     "files_failed": 0,
     "files_parsed": 4,
@@ -397,7 +384,7 @@
     "metadata_failures": 0,
     "nodes_total": 14,
     "parse_failures": 0,
-    "resolved_edges": 6,
+    "resolved_edges": 5,
     "serialization_failures": 0,
     "unresolved_edges": 5
   },
@@ -470,7 +457,7 @@
       },
       "qualified_name": "formatName",
       "relationships": [
-        "edge:41c0fd3741b27592"
+        "call:4cebbb0b654e5cd109ab2696355cb75845ca7bab"
       ],
       "semantic_path": "format.js::formatName",
       "signature": "formatName(value)",
@@ -552,7 +539,7 @@
       },
       "qualified_name": "Renderer.render",
       "relationships": [
-        "edge:44451a6bd5fea4ae",
+        "call:72e7198a6bc097be8da6aed7337d46eb0c277b62",
         "edge:dc5813871593964f"
       ],
       "semantic_path": "service.js::Renderer.render",
@@ -594,7 +581,7 @@
       },
       "qualified_name": "helper",
       "relationships": [
-        "edge:c6a2c92931d5716b"
+        "call:8076cfc9e6c68e36cd7eba62775f7c4bb8a827df"
       ],
       "semantic_path": "alpha.js::helper",
       "signature": "helper(value)",
@@ -639,11 +626,11 @@
       },
       "qualified_name": "run",
       "relationships": [
+        "call:dbd53a1af7d3554728ea844403af744093107b26",
+        "call:de7cb07fc0393b80a39facf7c8ae7c2aa8f1761c",
+        "call:e9205b4216e59e797847d27a28db15e00d3cda02",
         "edge:0ffc733657595560",
-        "edge:7e383198b83e96c0",
         "edge:973a3893a9b936df",
-        "edge:c403e117cda49fdd",
-        "edge:d0600e0b69c5ec35",
         "edge:e07f41af44ceea6f"
       ],
       "semantic_path": "service.js::run",
@@ -687,8 +674,7 @@
       },
       "qualified_name": "Renderer",
       "relationships": [
-        "edge:bb19cb90d4a5429e",
-        "edge:fa4ead388c6eca68"
+        "edge:bb19cb90d4a5429e"
       ],
       "semantic_path": "service.js::Renderer",
       "signature": null,
@@ -810,7 +796,7 @@
       },
       "qualified_name": "helper",
       "relationships": [
-        "edge:557e4fe789d374ec"
+        "call:276b038fa0ea8e648733463adf30c5e8e7b0e9ac"
       ],
       "semantic_path": "beta.js::helper",
       "signature": "helper(value)",

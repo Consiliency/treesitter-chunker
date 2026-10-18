@@ -66,6 +66,17 @@
         "end_line": { "$ref": "#/$defs/nullableInt" }
       }
     },
+    "callLocation": {
+      "type": "object",
+      "required": ["byte_start", "byte_end", "start_line", "end_line"],
+      "additionalProperties": false,
+      "properties": {
+        "byte_start": { "type": "integer", "minimum": 0 },
+        "byte_end": { "type": "integer", "minimum": 1 },
+        "start_line": { "type": "integer", "minimum": 1 },
+        "end_line": { "type": "integer", "minimum": 1 }
+      }
+    },
     "fileRecord": {
       "type": "object",
       "required": ["id", "path", "language", "status", "content_hash", "diagnostics"],
@@ -153,12 +164,38 @@
     "edge": {
       "type": "object",
       "required": ["id", "source", "target", "type", "resolution", "candidates", "provenance"],
+      "allOf": [
+        {
+          "if": {
+            "required": ["type", "provenance"],
+            "properties": {
+              "type": { "const": "calls" },
+              "provenance": {
+                "required": ["source"],
+                "properties": { "source": { "const": "syntax" } }
+              }
+            }
+          },
+          "then": {
+            "required": ["call_site_id", "reference", "location", "file"],
+            "properties": {
+              "id": { "pattern": "^call:[0-9a-f]{40}$" },
+              "call_site_id": { "pattern": "^call:[0-9a-f]{40}$" },
+              "reference": { "type": "string", "minLength": 1 },
+              "location": { "$ref": "#/$defs/callLocation" },
+              "file": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      ],
       "additionalProperties": true,
       "properties": {
         "id": { "type": "string" },
         "source": { "type": "string" },
         "target": { "type": "string" },
         "type": { "type": "string" },
+        "call_site_id": { "type": "string" },
+        "file": { "type": "string" },
         "reference": { "type": "string" },
         "resolution": {
           "type": "string",

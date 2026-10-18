@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   module-stem aliases. Colliding definitions retain stable `#N` occurrence
   suffixes counted across every extracted chunk before graph filtering. Syntax
   Boundary IR moves to 3.0, semantic Boundary IR to 3.1, and incremental cache
-  records to version 2 under `boundary:v2:`. Consumers must re-extract,
+  records to version 3 under `boundary:v3:`. Consumers must re-extract,
   re-index, and rebuild graph joins and caches (treesitter-chunker#496).
 
 - The direct DOT exporter encodes nonhex UTF-8 caller IDs in a distinct `tc_`
@@ -69,13 +69,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Symbol graph and Boundary IR preserve distinct normalized relationship
-  references that share a resolved target, while repeated identical references
-  remain deduplicated (partial repair for treesitter-chunker#487). Existing
-  surviving edge IDs remain stable; additional edges can change memberships,
-  counts and derived clustering/dependency aggregates. Regenerate affected
-  outputs for 6.0.0. Heuristic resolution, qualified self-call suppression and
-  file-anchor collisions remain separate work. See the
+- Symbol graph extraction now preserves one resolution-independent raw fact for
+  every recognized call site, including repeated and self-resolved calls. Raw
+  callee spelling, absolute half-open UTF-8 byte spans, actual line bounds and a
+  deterministic `call:` ID flow through syntax call relationships and Boundary
+  edges. This can increase call-edge counts and derived clustering weights;
+  consumers must rebuild caches and indexes for 6.0.0
+  (treesitter-chunker#496, treesitter-chunker#487).
+
+- Symbol graph and Boundary IR preserve distinct normalized import and dependency
+  references that share a resolved target. Calls now preserve every distinct
+  source site, including repeated and qualified self calls, with site-derived
+  IDs; additional call edges can change memberships, counts and derived
+  clustering/dependency aggregates. Regenerate affected outputs for 6.0.0.
+  Heuristic resolution remains unchanged. See the
   [resolution extension](docs/interface-boundary-spec.md#resolution-extension).
 
 - Default Python and JavaScript parsing uses the exact official 0.25.0 grammar

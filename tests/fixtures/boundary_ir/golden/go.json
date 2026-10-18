@@ -28,31 +28,6 @@
     },
     {
       "candidates": [],
-      "id": "edge:e1b76270e5745f55",
-      "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 9,
-        "start_line": 9
-      },
-      "metadata": {
-        "file": "format.go",
-        "is_internal": false
-      },
-      "provenance": {
-        "enforcement_grade": "strict",
-        "resolution_mode": "strict",
-        "resolver": "extract_symbol_graph",
-        "source": "syntax"
-      },
-      "reference": "TrimSpace",
-      "resolution": "unresolved",
-      "source": "199e85c706042829c21a18a19e95258fbdcdc137",
-      "target": "TrimSpace",
-      "type": "calls"
-    },
-    {
-      "candidates": [],
       "id": "edge:819eaa4415aa644d",
       "location": {
         "byte_end": null,
@@ -75,6 +50,33 @@
       "source": "199e85c706042829c21a18a19e95258fbdcdc137",
       "target": "strings",
       "type": "dependencies"
+    },
+    {
+      "call_site_id": "call:bf5026cc0bdfab0d1408c5b19fa9a1a119f2bd9c",
+      "candidates": [],
+      "file": "format.go",
+      "id": "call:bf5026cc0bdfab0d1408c5b19fa9a1a119f2bd9c",
+      "location": {
+        "byte_end": 143,
+        "byte_start": 119,
+        "end_line": 10,
+        "start_line": 10
+      },
+      "metadata": {
+        "file": "format.go",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "strings.TrimSpace",
+      "resolution": "unresolved",
+      "source": "199e85c706042829c21a18a19e95258fbdcdc137",
+      "target": "strings.TrimSpace",
+      "type": "calls"
     },
     {
       "candidates": [],
@@ -127,15 +129,17 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:53180fe4483f70698e9eb7502b919e3ad5564f50",
       "candidates": [
         "199e85c706042829c21a18a19e95258fbdcdc137"
       ],
-      "id": "edge:1374d58f964377d7",
+      "file": "service.go",
+      "id": "call:53180fe4483f70698e9eb7502b919e3ad5564f50",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 3,
-        "start_line": 3
+        "byte_end": 81,
+        "byte_start": 68,
+        "end_line": 4,
+        "start_line": 4
       },
       "metadata": {
         "file": "service.go",
@@ -181,13 +185,15 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:099fc3ccdb982f2bdf2763a455add61aafe9dd0b",
       "candidates": [],
-      "id": "edge:f1554145262a03fd",
+      "file": "service.go",
+      "id": "call:099fc3ccdb982f2bdf2763a455add61aafe9dd0b",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 3,
-        "start_line": 3
+        "byte_end": 136,
+        "byte_start": 120,
+        "end_line": 6,
+        "start_line": 6
       },
       "metadata": {
         "file": "service.go",
@@ -231,16 +237,18 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:1defdf6523640aa1e93b25d3a94eef35791196d7",
       "candidates": [
         "07b63845cb3ae30cb48d2813b9e26e7f382ed2df",
         "6c6d2514190884959b91c1b42fbf90c94e1ef83a"
       ],
-      "id": "edge:ca34e39a25cdfb46",
+      "file": "service.go",
+      "id": "call:1defdf6523640aa1e93b25d3a94eef35791196d7",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 3,
-        "start_line": 3
+        "byte_end": 111,
+        "byte_start": 96,
+        "end_line": 5,
+        "start_line": 5
       },
       "metadata": {
         "file": "service.go",
@@ -480,9 +488,9 @@
       },
       "qualified_name": "Format",
       "relationships": [
+        "call:bf5026cc0bdfab0d1408c5b19fa9a1a119f2bd9c",
         "edge:819eaa4415aa644d",
-        "edge:d3faacbf277b431b",
-        "edge:e1b76270e5745f55"
+        "edge:d3faacbf277b431b"
       ],
       "semantic_path": "format.go::Format",
       "signature": "Format(value string) -> string",
@@ -569,13 +577,13 @@
       },
       "qualified_name": "Render",
       "relationships": [
-        "edge:1374d58f964377d7",
+        "call:099fc3ccdb982f2bdf2763a455add61aafe9dd0b",
+        "call:1defdf6523640aa1e93b25d3a94eef35791196d7",
+        "call:53180fe4483f70698e9eb7502b919e3ad5564f50",
         "edge:218fdf144ed76960",
         "edge:35b1eae966d1e8c9",
         "edge:c8056ae4e03078f0",
-        "edge:ca34e39a25cdfb46",
-        "edge:f0a02391bb742db0",
-        "edge:f1554145262a03fd"
+        "edge:f0a02391bb742db0"
       ],
       "semantic_path": "service.go::Render",
       "signature": "Render(value string) -> string",

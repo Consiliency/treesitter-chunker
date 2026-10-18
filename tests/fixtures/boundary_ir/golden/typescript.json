@@ -52,13 +52,15 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:e934e127a2d32cf2e0b18e710e0ca8aca07d0f39",
       "candidates": [],
-      "id": "edge:24da3f3f0e92cb97",
+      "file": "beta.ts",
+      "id": "call:e934e127a2d32cf2e0b18e710e0ca8aca07d0f39",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 1,
-        "start_line": 1
+        "byte_end": 76,
+        "byte_start": 57,
+        "end_line": 2,
+        "start_line": 2
       },
       "metadata": {
         "file": "beta.ts",
@@ -102,13 +104,15 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:9ed4afedefe98dbbede7dec3608ece2ccd33236b",
       "candidates": [],
-      "id": "edge:83a1c049e249274f",
+      "file": "format.ts",
+      "id": "call:9ed4afedefe98dbbede7dec3608ece2ccd33236b",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 5,
-        "start_line": 5
+        "byte_end": 138,
+        "byte_start": 126,
+        "end_line": 6,
+        "start_line": 6
       },
       "metadata": {
         "file": "format.ts",
@@ -152,33 +156,6 @@
       "source": "5c480181dd47eb87dfa3b365d0a727d9a86005cc",
       "target": "2e1372fe03ebe0e96ca1ae4d2ee38bce8fd89b57",
       "type": "dependencies"
-    },
-    {
-      "candidates": [
-        "4076e180add4e87f607c3bbff92f58f255d1e04e"
-      ],
-      "id": "edge:6644f60a5e273567",
-      "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 4,
-        "start_line": 4
-      },
-      "metadata": {
-        "file": "service.ts",
-        "is_internal": true
-      },
-      "provenance": {
-        "enforcement_grade": "strict",
-        "resolution_mode": "strict",
-        "resolver": "extract_symbol_graph",
-        "source": "syntax"
-      },
-      "reference": "formatName",
-      "resolution": "resolved",
-      "source": "5c480181dd47eb87dfa3b365d0a727d9a86005cc",
-      "target": "4076e180add4e87f607c3bbff92f58f255d1e04e",
-      "type": "calls"
     },
     {
       "candidates": [
@@ -233,15 +210,17 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:c1e1384ec9e32bc3d2d60403a6807da08272436a",
       "candidates": [
         "4076e180add4e87f607c3bbff92f58f255d1e04e"
       ],
-      "id": "edge:e05b2e490a2ab53d",
+      "file": "service.ts",
+      "id": "call:c1e1384ec9e32bc3d2d60403a6807da08272436a",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 5,
-        "start_line": 5
+        "byte_end": 190,
+        "byte_start": 173,
+        "end_line": 6,
+        "start_line": 6
       },
       "metadata": {
         "file": "service.ts",
@@ -312,15 +291,17 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:bb1417cea611ade42ecfa515df3071eda38e150d",
       "candidates": [
         "4076e180add4e87f607c3bbff92f58f255d1e04e"
       ],
-      "id": "edge:33249c063428f22d",
+      "file": "service.ts",
+      "id": "call:bb1417cea611ade42ecfa515df3071eda38e150d",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 10,
-        "start_line": 10
+        "byte_end": 279,
+        "byte_start": 262,
+        "end_line": 11,
+        "start_line": 11
       },
       "metadata": {
         "file": "service.ts",
@@ -366,16 +347,18 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:fa984f8a7c7e84d8e9b89e60c1e7aec0edf7a3ac",
       "candidates": [
         "3b02c1eab34e78690b7ed444fc08463bf9d45142",
         "d30b3d9e8b2c68aacf780d9c285fd0ef61cadf6a"
       ],
-      "id": "edge:f69393eaeb31d904",
+      "file": "service.ts",
+      "id": "call:fa984f8a7c7e84d8e9b89e60c1e7aec0edf7a3ac",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 10,
-        "start_line": 10
+        "byte_end": 316,
+        "byte_start": 301,
+        "end_line": 12,
+        "start_line": 12
       },
       "metadata": {
         "file": "service.ts",
@@ -422,13 +405,15 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:c3d303f72ed8bb428ce1a0091a9327d255ea96ad",
       "candidates": [],
-      "id": "edge:2eef157c8c6fa33c",
+      "file": "service.ts",
+      "id": "call:c3d303f72ed8bb428ce1a0091a9327d255ea96ad",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 10,
-        "start_line": 10
+        "byte_end": 349,
+        "byte_start": 327,
+        "end_line": 13,
+        "start_line": 13
       },
       "metadata": {
         "file": "service.ts",
@@ -547,13 +532,15 @@
       "type": "dependencies"
     },
     {
+      "call_site_id": "call:f5aec3e7be1574d60a057c0c3b3f46fb52deb773",
       "candidates": [],
-      "id": "edge:fbd7256751a1592e",
+      "file": "alpha.ts",
+      "id": "call:f5aec3e7be1574d60a057c0c3b3f46fb52deb773",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 1,
-        "start_line": 1
+        "byte_end": 76,
+        "byte_start": 57,
+        "end_line": 2,
+        "start_line": 2
       },
       "metadata": {
         "file": "alpha.ts",
@@ -613,7 +600,7 @@
   "metrics": {
     "ambiguous_edges": 2,
     "diagnostics_total": 0,
-    "edges_total": 22,
+    "edges_total": 21,
     "failure_buckets": {},
     "files_failed": 0,
     "files_parsed": 4,
@@ -624,7 +611,7 @@
     "metadata_failures": 0,
     "nodes_total": 18,
     "parse_failures": 0,
-    "resolved_edges": 7,
+    "resolved_edges": 6,
     "serialization_failures": 0,
     "unresolved_edges": 13
   },
@@ -785,7 +772,7 @@
       },
       "qualified_name": "helper",
       "relationships": [
-        "edge:24da3f3f0e92cb97",
+        "call:e934e127a2d32cf2e0b18e710e0ca8aca07d0f39",
         "edge:405e6a506b2ed3b5"
       ],
       "semantic_path": "beta.ts::helper",
@@ -870,7 +857,7 @@
       },
       "qualified_name": "formatName",
       "relationships": [
-        "edge:83a1c049e249274f",
+        "call:9ed4afedefe98dbbede7dec3608ece2ccd33236b",
         "edge:87ab3daa177569e4"
       ],
       "semantic_path": "format.ts::formatName",
@@ -917,8 +904,7 @@
       "relationships": [
         "edge:05af752ab4af9945",
         "edge:14b7e5e8b499c4da",
-        "edge:1fb97e4a31ce4359",
-        "edge:6644f60a5e273567"
+        "edge:1fb97e4a31ce4359"
       ],
       "semantic_path": "service.ts::Renderer",
       "signature": null,
@@ -962,9 +948,9 @@
       },
       "qualified_name": "Renderer.render",
       "relationships": [
+        "call:c1e1384ec9e32bc3d2d60403a6807da08272436a",
         "edge:15131903ff0efb4c",
-        "edge:3f2d65f324966438",
-        "edge:e05b2e490a2ab53d"
+        "edge:3f2d65f324966438"
       ],
       "semantic_path": "service.ts::Renderer.render",
       "signature": "render(value: string) -> string",
@@ -1051,12 +1037,12 @@
       },
       "qualified_name": "run",
       "relationships": [
+        "call:bb1417cea611ade42ecfa515df3071eda38e150d",
+        "call:c3d303f72ed8bb428ce1a0091a9327d255ea96ad",
+        "call:fa984f8a7c7e84d8e9b89e60c1e7aec0edf7a3ac",
         "edge:24b9e041a42b85ff",
-        "edge:2eef157c8c6fa33c",
-        "edge:33249c063428f22d",
         "edge:7e35599621fb9a97",
         "edge:a6435a928f9fb5e2",
-        "edge:f69393eaeb31d904",
         "edge:fa49b2d630eb244a"
       ],
       "semantic_path": "service.ts::run",
@@ -1262,8 +1248,8 @@
       },
       "qualified_name": "helper",
       "relationships": [
-        "edge:af460caf7d857ac3",
-        "edge:fbd7256751a1592e"
+        "call:f5aec3e7be1574d60a057c0c3b3f46fb52deb773",
+        "edge:af460caf7d857ac3"
       ],
       "semantic_path": "alpha.ts::helper",
       "signature": "helper(value: string) -> string",

@@ -135,26 +135,28 @@ def test_distinct_call_references_share_target_without_collapsing(
 
     assert [
         rel["reference"] for rel in calls
-    ] == references, "distinct normalized references were collapsed"
+    ] == raw_calls, "distinct call sites were collapsed"
     assert result["errors"] == []
     assert result["metadata"]["total_functions"] == 2
     assert (
-        result["metadata"]["total_relationships"] == len(result["relationships"]) == 6
+        result["metadata"]["total_relationships"] == len(result["relationships"]) == 7
     )
     for rel in calls:
-        assert rel == {
-            "from": caller_id,
-            "to": target_id,
-            "type": "calls",
-            "line": 2,
-            "file": source.name,
-            "is_internal": True,
-            "reference": rel["reference"],
-            "resolution": "resolved",
-            "candidates": [target_id],
-            "resolution_mode": mode,
-            "provenance": {"resolver": "extract_symbol_graph", "source": "syntax"},
+        assert rel["from"] == caller_id
+        assert rel["to"] == target_id
+        assert rel["type"] == "calls"
+        assert rel["line"] == 2
+        assert rel["file"] == source.name
+        assert rel["is_internal"] is True
+        assert rel["resolution"] == "resolved"
+        assert rel["candidates"] == [target_id]
+        assert rel["resolution_mode"] == mode
+        assert rel["provenance"] == {
+            "resolver": "extract_symbol_graph",
+            "source": "syntax",
         }
+        assert rel["call_site_id"].startswith("call:")
+        assert rel["location"]["byte_start"] < rel["location"]["byte_end"]
 
 
 @pytest.mark.parametrize(
@@ -187,7 +189,7 @@ def test_normalized_reference_duplicates_and_relationship_types(
         if record["context"]["id"] == caller_id
     )
     assert caller["calls"] == ["target"]
-    for relationship_type in ("imports", "dependencies", "calls"):
+    for relationship_type in ("imports", "dependencies"):
         caller[relationship_type] = [
             "target",
             " target ",
@@ -202,9 +204,9 @@ def test_normalized_reference_duplicates_and_relationship_types(
 
     assert pairs == [
         (relationship_type, reference)
-        for relationship_type in ("imports", "dependencies", "calls")
+        for relationship_type in ("imports", "dependencies")
         for reference in ("target", "ns.target", "other.target")
-    ], "distinct normalized references were collapsed"
-    assert result["metadata"]["total_relationships"] == 9
+    ] + [("calls", "target")], "distinct normalized references were collapsed"
+    assert result["metadata"]["total_relationships"] == 7
     assert all(rel["from"] == caller_id for rel in result["relationships"])
     assert all(rel["to"] == target_id for rel in result["relationships"])

@@ -132,18 +132,10 @@ class RustMetadataExtractor(BaseMetadataExtractor):
                             )
                             if identifiers:
                                 macro_name = identifiers[-1]
-                                call_info = {
-                                    "name": macro_name,
-                                    "start": n.start_byte,
-                                    "end": n.end_byte,
-                                    "function_start": n.start_byte,
-                                    "function_end": n.start_byte
-                                    + len(macro_name.encode()),
-                                    "arguments_start": n.start_byte
-                                    + len(macro_name.encode())
-                                    + 1,
-                                    "arguments_end": n.end_byte,
-                                }
+                                call_info = self._create_call_info(
+                                    n, child, source, macro_name
+                                )
+                                call_info["type"] = "macro"
                                 calls.append(call_info)
                         elif child.type == "identifier":
                             macro_node = child
@@ -152,6 +144,7 @@ class RustMetadataExtractor(BaseMetadataExtractor):
                 if macro_node:
                     call_info = self._create_call_info(n, macro_node, source)
                     if call_info:
+                        call_info["type"] = "macro"
                         calls.append(call_info)
 
         self._walk_tree(node, collect_calls)

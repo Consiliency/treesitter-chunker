@@ -248,12 +248,24 @@ def _edge_record(
         candidates = [target] if resolution == "resolved" and target else []
     relationship_type = str(relationship.get("type") or "reference")
     line = relationship.get("line")
-    location = {
-        "byte_end": None,
-        "byte_start": None,
-        "end_line": line if isinstance(line, int) else None,
-        "start_line": line if isinstance(line, int) else None,
-    }
+    call_site_id = relationship.get("call_site_id")
+    is_call_site = relationship_type == "calls" and isinstance(call_site_id, str)
+    raw_location = relationship.get("location") if is_call_site else None
+    location = (
+        {
+            "byte_end": raw_location.get("byte_end"),
+            "byte_start": raw_location.get("byte_start"),
+            "end_line": raw_location.get("end_line"),
+            "start_line": raw_location.get("start_line"),
+        }
+        if isinstance(raw_location, dict)
+        else {
+            "byte_end": None,
+            "byte_start": None,
+            "end_line": line if isinstance(line, int) else None,
+            "start_line": line if isinstance(line, int) else None,
+        }
+    )
     relationship_file = relationship.get("file")
     if relationship_file is not None:
         relationship_file = normalize_boundary_path(str(relationship_file))
@@ -261,15 +273,19 @@ def _edge_record(
         if relationship_file != source_path:
             return None
     edge_id = (
-        "edge:"
-        + _stable_hash(
-            source,
-            target,
-            relationship_type,
-            reference,
-            line,
-            relationship_file or "",
-        )[:16]
+        str(call_site_id)
+        if is_call_site
+        else (
+            "edge:"
+            + _stable_hash(
+                source,
+                target,
+                relationship_type,
+                reference,
+                line,
+                relationship_file or "",
+            )[:16]
+        )
     )
     provenance = {
         "resolver": "extract_symbol_graph",
@@ -278,7 +294,7 @@ def _edge_record(
     }
     if resolution_mode == "strict":
         provenance["enforcement_grade"] = "strict"
-    return {
+    record: dict[str, Any] = {
         "id": edge_id,
         "source": source,
         "target": target,
@@ -293,6 +309,10 @@ def _edge_record(
             "is_internal": is_internal,
         },
     }
+    if is_call_site:
+        record["call_site_id"] = call_site_id
+        record["file"] = relationship_file
+    return record
 
 
 def _diagnostic(
@@ -640,12 +660,15 @@ def _dependency_summary(
 ) -> dict[str, Any]:
     references: set[str] = set()
     for chunk_record in symbol_facts.get("chunk_records", []):
-        for key in ("imports", "dependencies", "calls"):
+        for key in ("imports", "dependencies"):
             for value in chunk_record.get(key, []):
                 if isinstance(value, dict):
                     references.update(str(item) for item in value.values() if item)
                 elif value:
                     references.add(str(value))
+    for call_fact in symbol_facts.get("call_facts", []):
+        if isinstance(call_fact, dict) and isinstance(call_fact.get("reference"), str):
+            references.add(call_fact["reference"])
     exports: set[str] = set()
     for node in node_records:
         for key in ("symbol", "qualified_name"):

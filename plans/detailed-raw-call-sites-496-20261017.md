@@ -7,14 +7,28 @@ automation:
 
 ## Task and status
 
-Draft coordination context only: PLAN0/CODE0; A's reviews do not approve B.
+Refreshed implementation plan: PLAN2/CODE0; A's reviews do not approve B.
 Depends on accepted/merged [plan A](detailed-source-anchors-496-20261017.md).
-Current research base is accepted `931f6e05208faf1b1ca94520584cb4c45bff51b1`,
-including merged treesitter-chunker#495/#497. Refresh against A's actual merge
-and check the selected 3.x train remains unreleased before B's own PLAN review.
+Current research base is clean merged Plan A head
+`36a4e8d3493abe0028535de9b269021f374ec397`, including accepted
+treesitter-chunker#495, treesitter-chunker#497, and treesitter-chunker#498.
+Read-only release metadata on 2026-10-18 still reports v5.3.0 as latest, so the
+selected package 6.0 / syntax IR 3.0 / semantic IR 3.1 train remains unreleased.
 The owner selected plan A's coordinated package 6.0.0 and IR 3.0/3.1 migration
 on 2026-10-16. Source refresh and independent design review remain required.
 No implementation choices below are delegated to an unstated future decision.
+Native PLAN1 completed at exact clean head
+`d0ae7b412a3689b263e0f539c3f62ccbe7257690`: Gemini agreed; both Sol seats and
+Astra required the parenthesized-callee, decorated-wrapper ownership, exact
+kind/ID encoding, independently isolated cache-fence, and schema/golden-order
+corrections incorporated below. The raw empty Gemini extraction and exact
+nested-response recovery are both preserved; this remains one complete round.
+Native PLAN2 completed at exact clean head
+`eacf80db5879570647752b077230da73f80135d4`: Gemini and Astra agreed; both Sol
+seats required explicit tracked fixed-vector/kind/equality assertions and the
+remaining NFD/duplicate-method raw-fact controls. Those bounded test-plan
+corrections are incorporated below. Run the final allowed PLAN3 quartet and
+separate Astra design president before production edits.
 
 This is a second bounded behavior contract: syntax call facts exist before
 resolution; their caller, raw token and call-site location depend only on the
@@ -29,10 +43,10 @@ separate work. No whole-language completeness guarantee is inferred from tests.
 ## Research summary and source falsifiers
 
 Historical draft line references/private board paths below are provenance, not
-current line claims or reviewer permission. Daybreak Blue's current-source
-refresh report is sealed in A's packet as refresh-research.md, SHA-256
-f490b3339820e9d10be093e7c3815769417c5b08b0188d8f4134eb15c05f84f4. Use
-current symbols for implementation. Original 20261016 drafts remain untouched.
+current line claims or reviewer permission. Daybreak Blue's B refresh report is
+`refresh-research.md` in the private B evidence root and is sealed into each B
+review packet. Use current symbols at clean `36a4e8d3`. Original 20261016
+drafts and all A records remain untouched.
 
 - `chunker/core.py:815–821` already stores detailed `call_spans` but graph facts
   copy only `metadata.calls` strings (`symbol_graph.py:287–304`). Preserve the
@@ -77,8 +91,14 @@ Board analysis pointers and current spec commit/URLs are preserved in plan A.
 
 1. Add `call_facts` to the per-file facts and public assembled graph as the
    resolution-independent list. Each record carries `id`, `from`, `file`,
-   `reference`, and `location` (`byte_start`, `byte_end`, `start_line`, `end_line`),
-   plus callee byte bounds. `from` is A's canonical definition key. No target,
+   `type: "calls"`, `reference`, `location` (`byte_start`, `byte_end`,
+   `start_line`, `end_line`), `callee_byte_start`, `callee_byte_end`, and
+   `call_kind`. `from` is A's canonical definition key. `call_kind` is the
+   producer's existing nonempty `type` value when present (`function`, `method`,
+   `super`, `constructor`, or `tagged_template`); shared-helper records default
+   to `call`, and the repaired scoped Rust record uses `macro`. Duplicate
+   observations use the selected owner's value, then source-order occurrence
+   order for an otherwise exact tie. No target,
    candidates or resolution state is stored in this raw record.
 2. `reference` is the exact UTF-8 decoded source slice for the callee expression,
    excluding argument parentheses, preserving qualification, internal spacing,
@@ -91,6 +111,12 @@ Board analysis pointers and current spec commit/URLs are preserved in plan A.
    use the full macro path (without the invocation `!`). Call kind remains
    metadata. Existing `metadata.calls` and `call_spans[].name` keep their legacy
    compatibility values; new raw fields carry the stronger contract.
+   A record exists only when the current producer returns call metadata; call
+   nodes currently dropped by a producer (including unsupported dynamic JS
+   callees) remain out of scope. For already-emitted parenthesized Go and C/C++
+   calls, the shared helper walks the supplied callee node's ancestors to the
+   direct child of the call node, preserving the complete grouped expression
+   without adding syntax recognition or language-specific production edits.
 3. Use absolute-in-file UTF-8 byte offsets with half-open ranges for full call
    expression and callee. Derive actual 1-based line bounds from file bytes;
    `end_line` is the line of the final included byte. Do not use chunk-relative
@@ -108,7 +134,12 @@ Board analysis pointers and current spec commit/URLs are preserved in plan A.
    containing callable chunk; otherwise its smallest containing symbol chunk.
    Resolve a tie by the source-order occurrence key from A. This preserves calls
    in methods/nested functions once, assigned to their innermost extracted
-   definition. Do not manufacture module nodes for unsupported top-level calls.
+   definition. A Python `decorated_definition` wrapper is a transparent
+   ownership container: a decorator call outside the inner definition span is
+   assigned to the first contained retained definition whose `parent_context`
+   is `decorated_definition`, in source occurrence order, and remains exactly
+   once after ordinary site dedupe. Do not manufacture module nodes for
+   unsupported top-level calls.
    The contract covers recognized calls in extracted definitions; grammar
    completeness/top-level synthetic ownership are outside both plans.
 6. Emit one `calls` relationship and Boundary edge per raw fact. Carry its
@@ -119,8 +150,14 @@ Board analysis pointers and current spec commit/URLs are preserved in plan A.
    calls only, with integer byte/line fields. Preserve non-call syntax and
    semantic-edge shapes and frozen top-level keys; do not rely on permissive
    additionalProperties as validation.
-7. Call fact ID and syntax call edge ID are the same deterministic hash of the
-   raw key above (including caller and type), prefixed `call:`. Resolved target
+7. Call fact ID and syntax call edge ID are the same deterministic reuse of the
+   project's SHA-1 stable-hash convention. The exact seed is the UTF-8 encoding
+   of `"|".join(str(value) for value in (caller, file, call_byte_start,
+   call_byte_end, callee_byte_start, callee_byte_end, reference, "calls"))`;
+   retain the full lowercase 40-hex digest and prefix `call:`. For the fixed
+   vector `caller-id|src/app.py|10|18|10|16|target|calls`, the ID is
+   `call:db4aa2584c80ce295d03d6b5c1ce7f1b6dea99a2`. Fact `id`, relationship
+   `call_site_id`, and syntax call edge `id` are identical. Resolved target
    and candidates are deliberately excluded: adding unrelated files may change
    those annotations but must not churn the call-site ID. Non-call edge ID
    algorithm and imports/dependencies dedupe remain as treesitter-chunker#495 and A define them.
@@ -154,9 +191,10 @@ unreleased coordinated package 6.0.0 and IR 3.0/3.1 major train.
 ## Changes (modify existing files unless stated)
 
 - `chunker/metadata/extractor.py`: `_create_call_info` and existing recognized
-  call collection — raw callee text/bounds, keeping legacy name fields. Dynamic
-  recognized callee expressions remain raw facts even when naming cannot resolve
-  them; do not broaden language/grammar syntax beyond recognized call nodes.
+  call collection — raw callee text/bounds, keeping legacy name fields; recover
+  the direct callee-expression ancestor for already-recognized parenthesized
+  Go/C/C++ paths. Producer-dropped dynamic syntax stays out of scope; do not
+  broaden language/grammar recognition.
 - `chunker/metadata/languages/javascript.py`: shared JS/TS raw fields for normal,
   constructor and tagged-template records already recognized from real nodes.
 - `chunker/metadata/languages/rust.py`: repair the manual macro raw path/bounds
@@ -174,11 +212,15 @@ unreleased coordinated package 6.0.0 and IR 3.0/3.1 major train.
   fields/meaning and selected migration policy; no new top-level vocabulary.
 - `tests/test_phase15_base_extractor.py`, `tests/test_phase15_languages.py`,
   `tests/test_phase2_extractors.py`: real parser token/span/legacy-name
-  compatibility checks, including base helper users and Rust macro paths.
+  compatibility checks, including base helper users, Go `(fn)()`, C/C++
+  `(*ptr)()`/nested grouping, decorator calls and Rust macro paths.
 - `tests/test_symbol_graph_incremental_facts.py`,
-  `tests/test_symbol_graph_resolution.py`, `tests/test_boundary_ir_resolution_modes.py`:
+  `tests/test_symbol_graph_resolution.py`, `tests/test_chunk_id_collision.py`,
+  `tests/test_boundary_ir_resolution_modes.py`:
   raw locality/site multiplicity, self calls, exact source/target/membership and
-  IDs under unrelated-file changes, both strict/permissive modes.
+  IDs under unrelated-file changes, both strict/permissive modes, NFD file
+  spelling, and duplicate same-name method sites across isolated/full and
+  fresh/cold/warm assembly.
 - `tests/test_boundary_ir_incremental_runtime.py`,
   `tests/test_boundary_ir_incremental_cache.py`,
   `tests/test_boundary_ir_incremental_impact.py`: v2/v1 misses, actual v3 payload
@@ -190,15 +232,22 @@ unreleased coordinated package 6.0.0 and IR 3.0/3.1 major train.
   unchanged non-call/semantic shapes. `tests/test_symbol_graph_cli_resolution.py`
   and `tests/integration/test_clustering_integration.py`: public call-site data,
   endpoint validity and documented increased per-call weighting.
-- `docs/interface-boundary-spec.md`, `CHANGELOG.md`: raw token/site contract,
+- `docs/interface-boundary-spec.md`, `docs/user-guide.md`, `CHANGELOG.md`: raw token/site contract,
   migration/re-indexing, increased counts/weights, heuristic-target limits.
 - `tests/fixtures/boundary_ir/golden/*.json`: only locked generator output.
-- This plan and parent-registered manifest lifecycle after treesitter-chunker#495; no changes to
+- `tests/test_boundary_ir_adapter.py`,
+  `tests/test_boundary_ir_incremental_contract.py`,
+  `tests/test_boundary_ir_semantic_contract.py`,
+  `tests/test_boundary_ir_semantic_enrichment.py`,
+  `tests/test_boundary_ir_semantic_determinism.py`, and
+  `tests/unit/clustering/test_engine.py`: call-only schema/shape distinction,
+  cache constants, semantic-shape preservation, and deliberate per-site weight.
+- This plan and its existing manifest row/lifecycle after treesitter-chunker#498; no changes to
   shared roadmap, native journals, pins, locks, release files or type baseline.
 
 ## Documentation impact
 
-The owned spec/changelog must describe raw references/sites, exact byte/line
+The owned spec/user-guide/changelog must describe raw references/sites, exact byte/line
 semantics, per-site count/weight increases, v3 migration and index rebuilds.
 Keep A's syntax 3.0/semantic 3.1 mode split and API 1.0. No release/version/pin
 or downstream edit. Preserve provider-aware keys and cache-preserving failure
@@ -225,6 +274,13 @@ Use `test_496_call_site_` names in the listed existing test modules:
   nested function/method inside class, decorator duplicate traversal; exact once
   ownership for each distinct span/token. Compare independent byte slicing,
   not production identity helpers as the sole expected oracle.
+- Independently assert the frozen ID vector
+  `call:db4aa2584c80ce295d03d6b5c1ce7f1b6dea99a2`, the `call:` plus 40-lowercase-
+  hex representation, and exact equality of raw fact `id`, graph relationship
+  `call_site_id`, and syntax edge `id`. Real base, JS constructor/tag/super and
+  Rust macro records assert their specified `call_kind` values in the metadata
+  extractor narrow command; M-B4/M-B5 must fail the appropriate identity
+  assertion rather than only a derived graph count.
 - Python `obj.sub.now()`, JS/TS `obj . now()`, existing constructors/tags,
   UTF-8 prefix and CRLF. Only already-recognized expression forms are promised. Exact raw
   callee source slices/full-call byte ranges and line oracle must match parser
@@ -234,8 +290,20 @@ Use `test_496_call_site_` names in the listed existing test modules:
   every currently supported metadata extractor's real fixture raw record spans
   are usable and tokens slice its source; do not infer universal call coverage
   from a nonempty Boundary golden.
-- Seed actual persisted baseline v2/v1 cache records before source edits; both
-  miss/reparse. New v3 records must contain raw facts and actually reuse them
+- Port A's NFD-path and duplicate same-name method/overload fixtures into B raw
+  assertions. For each, assert exact canonical `file`, distinct canonical
+  `from`, independently sliced spans/references, distinct per-site IDs, and
+  fact/relationship/edge ID equality under isolated facts with a fixed logical
+  root, full assembly, incremental cold and actual warm reuse. Do not change
+  Unicode normalization, identity hashes or overload resolution.
+- Before production edits, preserve genuine accepted-A v2 record/index bytes
+  and hashes under the private B `baseline-cache-v2/` evidence directory. In
+  tracked tests construct otherwise-valid same-schema 3.0 cases that isolate:
+  v1 index version, v2 index version, v1/v2 record versions, v1/v2 key prefixes,
+  missing v3 `call_facts`, and malformed v3 fact fields/types. Hold every other
+  gate valid in each negative case, assert miss/reparse, and bind M-B6 to these
+  assertions so a prefix or schema mismatch cannot mask weakened payload
+  validation. New v3 records must contain raw facts and actually reuse them
   warm. Add/remove only an unrelated callee file and prove caller bytes/facts
   unchanged while annotations can vary. Fresh/cold/warm canonical parity must
   hold; compare semantic runs separately against equivalent options.
@@ -251,10 +319,10 @@ version/payload; M-B7 restore largest/outer containing-owner selection.
 Each must fail the matching designated assertion. Restore exact
 candidate production bytes after every mutation and preserve genuine outputs.
 
-## Dependencies and verification
+## Dependencies and review gates
 
-Use A's owner freeze, source refresh, review coordination and private-worktree
-rules. B starts only after A lands; refresh both production and plan assumptions.
+Use A's owner freeze and B's refreshed private-worktree rules. A is merged at
+`36a4e8d3`; B's production and plan assumptions are refreshed at that exact head.
 Obtain the coordinated independent PLAN quartet and separate Astra approval
 before source edits; maximum three full rounds and heartbeat-only policy. No
 reviews were started here. Do not release intermediate incompatible IR under an
@@ -262,19 +330,21 @@ already-published version. Standing owner authorization covers supported publica
 upkeep, normal merge and safe pruning after all gates; no downstream publication
 or release is authorized. It does not waive B's separate design/source reviews.
 
+## Verification
+
 Run the following narrow commands on the baseline/new tests, candidate and each
 designated mutation during implementation (not during planning):
 
 ```bash
 uv sync --locked --all-extras --python 3.12
-uv run --locked --all-extras pytest tests/test_phase15_base_extractor.py tests/test_phase15_languages.py tests/test_phase2_extractors.py tests/test_symbol_graph_incremental_facts.py tests/test_symbol_graph_resolution.py -q
-uv run --locked --all-extras pytest tests/test_boundary_ir_resolution_modes.py tests/test_boundary_ir_incremental_runtime.py tests/test_boundary_ir_incremental_cache.py tests/test_boundary_ir_incremental_impact.py tests/test_boundary_cache_key.py tests/test_boundary_ir_schema.py tests/test_boundary_ir_required_fields.py tests/test_boundary_ir_contract.py -q
+uv run --locked --all-extras pytest tests/test_phase15_base_extractor.py tests/test_phase15_languages.py tests/test_phase2_extractors.py tests/test_symbol_graph_incremental_facts.py tests/test_symbol_graph_resolution.py tests/test_chunk_id_collision.py -q
+uv run --locked --all-extras pytest tests/test_boundary_ir_resolution_modes.py tests/test_boundary_ir_incremental_runtime.py tests/test_boundary_ir_incremental_cache.py tests/test_boundary_ir_incremental_impact.py tests/test_boundary_ir_incremental_contract.py tests/test_boundary_cache_key.py tests/test_boundary_ir_required_fields.py tests/test_boundary_ir_contract.py tests/test_boundary_ir_schema.py -k 'not golden_snapshot_matches_schema' -q
 uv run --locked --all-extras pytest tests/test_symbol_graph_cli_resolution.py tests/integration/test_clustering_integration.py -q
 ```
 
-Then run every common broad verification command listed explicitly in A:
-semantic tests, locked golden regeneration twice with binary-diff `cmp`, golden
-and determinism tests, Ruff, Black, the unchanged mypy gate, smoke, Linux
+Then regenerate locked goldens twice and compare the binary diffs before the
+complete `tests/test_boundary_ir_schema.py` module, followed by semantic tests,
+golden/determinism tests, Ruff, Black, the unchanged mypy gate, smoke, Linux
 platform-core, original full `tests/` + `spec_tests/`, strict MkDocs build, actual
 isolated native Windows snapshot (B narrow commands plus Windows preflight),
 available fleet preflights and final-head hosted matrix. Generated golden
@@ -292,6 +362,49 @@ call-site locality witness. Upstream tests do not certify downstream absence rul
 
 ## Operational evidence
 
+### Authorized Plan B test-remediation cycle 1
+
+The owner authorized one bounded test/evidence remediation cycle after the
+original PLAN3/CODE3 exhaustion and independent Astra HOLD.  The original
+rounds, opinions, findings, and HOLD remain preserved.  This cycle may change
+only `tests/test_boundary_ir_resolution_modes.py`,
+`tests/test_symbol_graph_incremental_facts.py`,
+`tests/test_chunk_id_collision.py`, this plan amendment, and this plan's own
+manifest row through the supported typed lifecycle API.  Production, schemas,
+goldens, package metadata, parser pins and locks remain frozen.  The repair must
+make M-B5 fail first at direct syntax-edge/raw-site identity, add independent
+expected full-call bytes and complete byte/start-line/end-line oracles, and
+exercise the accepted JS/TS/Python strict/permissive and TypeScript method
+locality dimensions while keeping raw facts/IDs separate from resolution
+annotations.
+
+Private reads for this cycle are limited to the owned tracked checkout, its
+plan/environment, relevant installed skill/runtime code, this B evidence root
+and the exact prior-A pointers already allowlisted by `brief-B.md`:
+`refresh-research.md`, `archives/final-closeout-A.json`,
+`archives/final-handoff-A.md`,
+`test-remediation-cycle1/parent-acceptance-audit.json`,
+`test-remediation-cycle1/production-equivalence.json`, top-level
+`test-remediation-cycle1/*.py`, `implementation-A/verify-wheel.py`,
+`implementation-A/verify-native-windows.py`,
+`implementation-A/native-windows-driver.py`, and `review-seat.py`.  Do not
+traverse other private, broker, raw-history, credential, or unrelated evidence
+sources.  New private output is restricted to
+`/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/test-remediation-cycle1/`;
+all prior B evidence remains immutable.  Skill-owned handoff and reflection
+destinations remain allowed.
+
+The fresh cycle starts at CODE0/3 and requires complete native quartets with
+Sol 1 and Sol 2 (`gpt-6-sol`), Gemini 3.8 Flash, and Astra, followed by a
+separate independent native Astra president.  All four terminal opinions must
+complete before reconciliation; native subscription CLIs, independent clean
+exact-head clones, read-only tool-enabled review, heartbeat-only operation, and
+no model/silence timeout are mandatory.  A subsequent round receives the
+original contract, every prior finding and response, and unresolved objections.
+Final acceptance requires four `AGREE` opinions plus separate Astra `APPROVE`
+on the exact verified head.  Parent retains publication, PR/CI/archive, merge,
+comments, and pruning.
+
 Repeat A's clean installed-wheel Python 3.11–3.14 gate on B's exact candidate,
 including raw/site fact shapes, self/repeated calls, v2/v1 misses and v3 warm
 reuse, both modes and real official Unicode extraction. Use private native
@@ -299,6 +412,180 @@ Windows snapshots, available fleet checks and final-head hosted CI. Record
 wheel-result.json, native-result.json and hosted-checks.json, with exact source,
 artifact/runtime bindings and supported runner-stamped plan amendments; source
 suite/proxy receipts cannot substitute for these operational gates.
+
+All new private evidence is written only under
+`/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/`.
+Use the installed typed lifecycle API as
+`phase_loop_runtime.plan_manifest.update_lifecycle(repo=Path(<owned-worktree>),
+slug="raw-call-sites-496", transition="executing"|"completed", by="codex-execute-detailed",
+metadata=<B-only bindings>)`; snapshot and compare the manifest so all 73
+predecessor rows and every pre-existing lifecycle event remain equivalent.
+Create the canonical verification artifact with installed
+`phase_loop_runtime.verification_evidence.run_verification`, owned repo and B
+evidence `runner-verification` directory, Python 3.12, locked refresh
+`["uv","sync","--locked","--all-extras","--python","3.12"]`, ordinary argv
+commands, explicit `bash -lc` only for golden diff/cmp and temporary docs output,
+and the frontmatter suite argv. Validate it with
+`validate_verification_artifact`.
+
+Copy/adapt A's explicitly allowlisted operational helpers into B's root and bind
+their SHA-256 values before use. Invoke them exactly as:
+
+```text
+["python", "/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/verify-wheel.py", "--repo", "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-raw-call-sites-496", "--out", "/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/wheel", "--python", "3.11", "--python", "3.12", "--python", "3.13", "--python", "3.14"]
+["python", "/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/verify-native-windows.py", "--repo", "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-raw-call-sites-496", "--out", "/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/native-windows", "--driver", "/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/native-windows-driver.py"]
+```
+
+The wheel driver must exercise exact raw/site facts, repeated/self calls,
+v1/v2 misses and actual v3 reuse, both IR modes, old-schema rejection, official
+providers and installed CLI. The native driver must verify the exact tracked
+archive and run B's three narrow pytest commands plus the Windows preflight in a
+unique private snapshot while proving the shared Windows checkout unchanged.
+
+### Hosted byte-buffer repair in cycle 1 CODE3
+
+The hosted review of treesitter-chunker#499 reproduced a production defect at
+accepted local head `b5c6e249c0f643e16c6a4c16313b09234ce04518`: core parses a
+replacement-decoded UTF-8 buffer for malformed input, while per-file call-fact
+extraction reread the original undecodable bytes and applied parser offsets to
+that different buffer. The authorized repair extends this cycle's ownership
+only to `chunker/symbol_graph.py::extract_symbol_facts_for_file`, the existing
+`tests/test_symbol_graph_incremental_facts.py`, this specification's parser-
+buffer note, and this plan amendment. The manifest remains byte-identical with
+its existing lifecycle warning; all original findings, opinions, HOLDs, prior
+APPROVE, artifacts, and `b5c6e249` acceptance remain historical evidence.
+
+The correction reconstructs the same replacement-decoded UTF-8 buffer that
+core parsed before slicing call sites. Malformed-input byte coordinates
+therefore address that parsed buffer. Valid UTF-8 bytes and line endings remain
+unchanged. The regression covers Python and JavaScript ASCII, EOF, and non-
+ASCII callees; strict and permissive resolution; both `fail_fast` values;
+independent callee/full-call byte and line oracles; per-file/full-graph parity;
+and fresh, cold, and warm Boundary extraction with a warm-reparse failure spy.
+The existing valid UTF-8/CRLF oracle remains the preservation control.
+
+New repair evidence is restricted to
+`test-remediation-cycle1/hosted-buffer-repair/`. Its copied and adapted private
+operational helpers are exactly
+`hosted-buffer-repair/operational/verify-wheel.py`,
+`hosted-buffer-repair/operational/verify-native-windows.py`, and
+`hosted-buffer-repair/operational/native-windows-driver.py`. Verification must
+retain the failing `b5c6e249` regression, the restored targeted mutation, narrow
+tests followed by every applicable genuine locked gate, Python 3.11–3.14 wheel
+probes with malformed-call retention/location assertions, and isolated native
+Windows coverage including the updated tracked regression. The final exact
+head then consumes cycle 1 CODE3/3 with native Sol 1, Sol 2, Gemini 3.8 Flash,
+and Astra opinions completed before reconciliation, followed by a separate
+independent Astra president. No fourth CODE round is available.
+
+### Authorized line-index remediation cycle 2
+
+The owner authorized a new bounded `B/line-index-remediation-cycle2` at
+CODE0/3 after the post-cycle1 performance HOLD on exact clean head
+`9d16aaf626e05eabe881339d53b234856ee5e1f0`. This is neither CODE4 nor a reset
+of the exhausted original B PLAN3/CODE3 or cycle1 CODE3 counters. All earlier
+HOLDs, approvals, opinions, archives, and broker records remain immutable. Up
+to three fresh complete CODE quartets are available, followed by a separate
+independent Astra president; final acceptance requires four `AGREE` opinions
+and a separate `APPROVE` on the exact verified head.
+
+This cycle owns only `chunker/symbol_graph.py`,
+`tests/test_symbol_graph_incremental_facts.py`, and this bounded plan
+amendment. Production work is limited to precomputing newline-byte offsets once
+per `_call_facts_for_chunks` call and using `bisect_left` in `_line_bounds` for
+the existing counts before `start` and `max(start, end - 1)`. Output fields,
+identities, parser-buffer reconstruction, cache/schema/version behavior, and
+all other algorithms remain unchanged. The tracked tests add real-parser
+Python/JavaScript UTF-8 LF/CRLF minified and many-line cases, exact byte/line
+oracles and per-site IDs, a deterministic prefix-work budget, exactly-one
+newline-index-scan accounting scoped to the tested buffer, and explicit nested
+multiline outer/inner calls. This bounds only the line component to
+O(N + C log(L+2)) time and O(L) memory; it makes no whole-extractor complexity
+claim. No public documentation changes are required because observable output
+semantics are unchanged (`doc_delta_decision=no_doc_delta`).
+
+New private reads are restricted to the previously authorized B root and exact
+earlier-A pointers. New writes are restricted to
+`/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/line-index-remediation-cycle2/`
+plus skill-resolved handoff/reflection destinations. Copy and adapt only the
+cycle1 hosted-buffer helper files into cycle2 `run-final-verification.py`,
+`operational/verify-wheel.py`, `operational/verify-native-windows.py`,
+`operational/native-windows-driver.py`, and the existing native review-seat,
+launch, and audit helpers. Installed environments and caches are excluded from
+review packets. `plans/manifest.json` remains read-only: its existing failed
+row has no supported failed-to-executing transition, so retain a lifecycle
+warning and prove all 74 rows/history and its byte digest unchanged.
+
+Before the production repair, the formatted new regression must fail the
+deterministic scan budget on `9d16aaf6`. After repair it must pass. Two required
+source-valid falsifiers then restore the old prefix scans and rebuild the
+newline index per fact respectively; each must fail its matching budget before
+the exact production bytes are restored and the targeted tests pass. Retain
+stdout, stderr, exit codes, tracked hashes, and restoration bindings. Run the
+narrow tests first, then the canonical locked refresh and applicable original
+17 commands, genuine full suite, unchanged/idempotent locked goldens, strict
+docs, Python 3.11-3.14 installed-wheel probes containing the new line-work and
+multiline checks, and isolated native Windows execution of the updated tracked
+regression. Renew exact clean-head verification bindings before native review.
+
+Native review uses two Sol (`gpt-6-sol`), Gemini 3.8 Flash, and Astra through
+native subscription CLIs in read-only, tools-enabled, independent clean clones
+with sealed packets. All four valid terminal opinions complete before
+reconciliation. Accepted objections are repaired and fully reverified before a
+successor round, within the three-round cap. Heartbeat-only operation applies;
+there is no model or silence deadline, no fourth round, and no counter reset.
+The parent retains every publication, PR metadata, hosted review/CI, archive,
+merge, issue, release, downstream, and pruning action.
+
+### Hosted owner-index repair in cycle 2 CODE3
+
+Fresh hosted review of exact accepted head
+`e4830ff87b05ebd39d1f14034cfaf034aa0f8314` reported
+treesitter-chunker#499 finding `4308554191`: `_call_facts_for_chunks` scans the
+complete owner list for every observation, and its decorated-wrapper fallback
+contains a second per-observation owner scan.  The owner authorized use of the
+one remaining `B/line-index-remediation-cycle2` round as CODE3/3 without a
+counter reset.  Original PLAN3/CODE3, cycle1 CODE3, cycle2 CODE1/CODE2, every
+prior HOLD/approval/opinion, and all earlier evidence remain immutable.  No
+CODE4 is available.
+
+This repair owns only `chunker/symbol_graph.py`,
+`tests/test_symbol_graph_incremental_facts.py`, and this bounded plan
+amendment.  New operational evidence is restricted to
+`/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/line-index-remediation-cycle2/hosted-owner-index-code3/`.
+`plans/manifest.json` remains read-only with its 74 rows, byte digest, history,
+and existing failed-transition warning preserved.  Parent retains publication,
+PR metadata/readiness, hosted review and CI, review-thread resolution, archive,
+merge, issues, release, downstream, and pruning actions.
+
+Production may only index existing owner intervals/source order so ordinary
+flat files avoid O(observations * owners) containment work.  The exact owner
+contract remains function-kind precedence, then smallest containing byte span,
+then original order.  Decorated-wrapper fallback remains earliest contained
+retained definition by byte start/order and must not hide another full-owner
+scan.  Nested scopes, equal starts, wrapper calls, classes/methods, overlapping
+observation chunks, tie/boundary behavior, raw identities/locations, modes, and
+cache reuse remain unchanged.  Complexity claims must state overlap/decorator
+depth factors and must not claim a whole-extractor bound.
+
+Before source implementation, add real-parser Python and JavaScript flat-file
+regressions with many separate one-call definitions.  Assert exact caller IDs,
+call IDs/counts/locations, and a deterministic owner-interval work budget that
+fails on this exact head.  Retain concrete nested/decorated/class/method owner
+oracles.  After formatting, restore the old all-owner scan and require the
+budget to fail, then apply a plausible broken index that changes ownership or
+tie selection and require a concrete ownership oracle to fail; syntax/import
+failures do not count.  Restore exact candidate bytes and rerun green tests.
+
+Run every applicable canonical locked gate, unchanged/idempotent goldens,
+strict docs, the genuine full suite, isolated native Windows, and installed
+wheels on Python 3.11 through 3.14 with this repair included.  Then launch
+exactly one native CODE3 quartet (Sol 1, Sol 2, Gemini 3.8 Flash, Astra) with
+complete successor evidence, followed by a separate native Astra president.
+All four `AGREE` verdicts plus separate `APPROVE` are required.  Heartbeat-only
+operation applies.  Source changes after accepted review are forbidden without
+new owner authority.  Observable output is unchanged, so
+`doc_delta_decision=no_doc_delta`.
 
 ## Acceptance criteria
 
