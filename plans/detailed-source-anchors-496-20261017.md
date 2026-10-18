@@ -13,8 +13,10 @@ identity and edge ownership; plan B fixes raw per-call-site facts, including the
 remaining self-call and Python qualification failures in treesitter-chunker#487.
 The owner selected the version-policy freeze below on 2026-10-16. These plans
 still require source refresh and independent design review before implementation.
-They are not accepted review evidence. A receives PLAN1 first; B is interface
-context only and remains PLAN0 until A merges and B is refreshed. Each bounded
+They are not implementation evidence. A's complete native PLAN1 quartet found
+bounded plan corrections; those are reconciled below and require a fresh PLAN2
+quartet plus separate Astra president approval before implementation. B is
+interface context only and remains PLAN0 until A merges and B is refreshed. Each bounded
 plan has its own maximum three complete PLAN rounds and three CODE rounds.
 
 Implementation base: accepted main `931f6e05208faf1b1ca94520584cb4c45bff51b1`,
@@ -154,12 +156,18 @@ rows below after source refresh and independent design acceptance.
    and display path; extracting an arbitrarily relocated file is not equivalent.
 3. Unique definition key = canonical `definition_id`; for repeated same-file
    definition IDs apply the existing stable occurrence ordinal in source order
-   (`base`, `base#1`, ...). No global file-order ordinal. Absent a definition ID,
-   use the canonical `node_id`. Boundary node ID precedence/values are unchanged.
-   Populate direct node-ID indexes, including disambiguated `node.id`, before
-   aliases. Resolve edge sources through exact canonical identity only, with
-   same-file ownership; name aliases may not repair a missing source. Preserve
-   both overload sources without claiming signature-aware target resolution.
+   (`base`, `base#1`, ...). Count occurrences across the complete ordered
+   `chunk_file` result before the graph's `SYMBOL_KINDS` filter so a retained
+   graph definition receives exactly the same suffix as its corresponding
+   Boundary node even when a filtered Boundary chunk shares the base ID. No
+   global file-order ordinal. Absent a definition ID, use the canonical
+   `node_id`. Boundary node ID precedence/values are unchanged. Build exact
+   direct node-ID indexes, including every disambiguated `node.id`, in a complete
+   first pass before adding any name/module aliases in a second pass; an alias
+   may never steal a later node's exact ID. Resolve edge sources through a
+   separate exact canonical-ID map only, with same-file ownership; name aliases
+   may not repair a missing source. Preserve both overload sources without
+   claiming signature-aware target resolution.
 4. Candidate lookup remains heuristic, with unique/resolved, multiple/ambiguous,
    zero/unresolved. Different formerly collided definitions now contribute
    distinct candidates. Resolved endpoints must exist; ambiguous candidates are
@@ -192,7 +200,9 @@ rows below after source refresh and independent design acceptance.
 - `chunker/boundary/cache.py`: retain existing mismatch-as-miss behavior; modify
   only if tests show index/record checks need the selected version contract.
 - `chunker/boundary/boundary_ir.schema.json`, `chunker/boundary/__init__.py`:
-  selected schema/version descriptions and schema enum/identifier; no API names added.
+  selected schema/version descriptions and schema enum/identifier; declare the
+  existing optional `identity.disambiguated_from` string emitted for duplicate
+  definitions; no API names added.
 - `tests/test_symbol_graph.py`, `tests/test_symbol_graph_resolution.py`,
   `tests/test_symbol_graph_incremental_facts.py`, `tests/test_chunk_id_collision.py`:
   real anchor, duplicate-definition,
@@ -211,6 +221,9 @@ rows below after source refresh and independent design acceptance.
   `tests/test_boundary_ir_cli.py`, `tests/test_boundary_ir_cli_incremental.py`,
   `tests/test_boundary_ir_cli_observability.py`, `tests/boundary_ir_conformance.py`:
   selected schema expectations and unchanged API/supported-language/pin contract.
+- `tests/test_boundary_ir_semantic_enrichment.py`: migrate the cache-record
+  filename lookup from v1 to v2 while retaining the resolver-fingerprint
+  assertions.
 - `docs/interface-boundary-spec.md`, `docs/user-guide.md`,
   `docs/interface-boundary-roadmap.md`, `CHANGELOG.md`: identity/cache migration,
   precise remaining limits, re-extraction/re-indexing and selected version policy.
@@ -223,7 +236,8 @@ rows below after source refresh and independent design acceptance.
 ## Documentation impact
 
 Update all three docs' current-version statements to syntax 3.0/semantic 3.1,
-and public module IR descriptions. Public Python API stays 1.0. Append changelog
+the schema-validated minimal JSON example, and public module IR descriptions.
+Public Python API stays 1.0. Append changelog
 under Unreleased 6.0 without rewriting accepted treesitter-chunker#495/#497 entries.
 New schema validator rejects 2.x; no dual emitter or legacy shim. Consumers must
 adopt pins and rebuild indexes separately. Package version mirrors, pyproject,
@@ -259,26 +273,41 @@ prefixed `test_496_anchor_`:
 - Seed a v1 persisted record/index from the real baseline; candidate rejects it
   and reparses. Then prove v2 cache reuse by spying on extraction/payload load,
   persisted facts and memberships, beyond merely equal output.
+- Validate a real duplicate-definition document, including the emitted
+  `identity.disambiguated_from`, against the 3.x schema in fresh, incremental
+  cold, and incremental warm output.
+- In addition to the genuine v1 baseline cache, seed index and record payloads
+  whose `schema_version` already equals the candidate 3.0 value but whose cache
+  version/key prefix remain v1. Their rejection isolates the cache-format fence
+  so M-A3 cannot pass merely because the schema version changed.
 
 On accepted 931f6e05, require designated source-ownership/edge-count
 assertions to fail before editing production. Mutate only (M-A1) canonical keys
-back to module keys, (M-A2) exact source lookup back to alias first-wins, and
+back to module keys, (M-A2) replace the separate exact source map with the
+first-wins alias map in a fixture whose second duplicate definition owns a
+distinct call, requiring the resulting wrong-file/first-sibling source to fail
+the same-file ownership assertion, and
 (M-A3) cache version/prefix back to v1, plus (M-A4) clustering module/label
 derivation back to ID parsing. Each must fail its designated assertion;
 record original source hashes and restore exact candidate bytes after each.
 Do not insist already-fixed treesitter-chunker#495 token tests fail again.
 
-## Dependencies, review and verification gates
+## Dependencies and review gates
 
 1. Source refresh is complete at merged treesitter-chunker#495/#497, 931f6e05.
    Use the fresh owned worktree, never the retained older draft checkout. Freeze
    successor plans for exact-head review. No production edits before design
    acceptance. A precedes B; B receives its own refresh and design acceptance.
-2. Parent coordinates manual PLAN quartet (two independent Sol seats, Gemini
-   3.8 Flash, Astra), together reconciliation, then separate independent Astra
-   design approval. Maximum three full rounds; heartbeat only, no model/silence
-   deadlines. Do not consume execution review capacity without coordination.
-   These manual reviews establish no formal Harness/native/IF qualification.
+2. Native PLAN1 completed at exact clean head
+   `0f668ae314e9a1e0b0087557b12d585e6475441c`: Sol1, Sol2, and Astra required
+   the bounded corrections now incorporated here; Gemini agreed. The preserved
+   PLAN1 audit/opinions and reconciliation are under the exact private evidence
+   paths named below. Run one complete peer-blind PLAN2 quartet (two independent
+   Sol seats, Gemini 3.8 Flash, Astra) on the amended exact clean head, collect
+   all four before reconciliation, then obtain separate independent Astra
+   president approval. Maximum three full rounds; heartbeat only, no
+   model/silence deadlines. These manual reviews establish no formal
+   Harness/native/IF qualification.
 3. Implementation owns its new worktree only. No shared Windows checkout, native
    journal, held Go/CLEANUP/S27 state, parser pins or type baseline changes.
 4. Standing owner authorization covers implementation, supported publication,
@@ -290,16 +319,59 @@ Do not insist already-fixed treesitter-chunker#495 token tests fail again.
    runtime/parser versions and cache payload evidence. No copied or synthetic
    verification receipts. Plan B repeats the common gates on its final head.
 
+## Verification
+
+The only private evidence readable during implementation is the accepted A
+design record at
+`/home/viperjuice/workspace/evidence/treesitter-chunker/call-identity-496/20261017-after-495/plan-A-acceptance.json`
+and the paths it explicitly hashes for PLAN2 reconciliation/president approval.
+All new implementation, baseline, mutation, native, wheel, and runner evidence
+must be written beneath the exact allowlisted root
+`/home/viperjuice/workspace/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/`.
+Do not read any other historical evidence, linked absolute path, review clone,
+credential file, or sibling evidence directory.
+
+Before source edits, call the installed typed lifecycle API exactly as
+`phase_loop_runtime.plan_manifest.update_lifecycle(repo=Path(<owned-worktree>),
+slug="source-anchors-496", transition="executing",
+by="codex-execute-detailed", metadata=<run/plan/design-acceptance bindings>)`.
+At successful closeout call the same API with `transition="completed"` and
+verification/reflection/dirty-path metadata. Snapshot `plans/manifest.json`
+before each call and prove only the A row changed; the 72 predecessor rows and
+the B row, including every lifecycle event, must remain byte-equivalent.
+
+Create the genuine runner artifact with the installed
+`phase_loop_runtime.verification_evidence.run_verification`: use the owned
+worktree as `repo`,
+`implementation-A/runner-verification` as `run_dir`, the commands below as
+`commands`, the frontmatter command split into argv as `suite_command`,
+`python_pin="3.12"`, `phase_alias="source-anchors-496"`, no timeout, and
+`env_refresh={"triggered": true, "manifests": ["pyproject.toml", "uv.lock"],
+"install_argv": ["uv", "sync", "--locked", "--all-extras", "--python", "3.12"]}`.
+Pass each ordinary command as an argv list; pass only the three diff/cmp and
+temporary-doc-site shell expressions as `['bash', '-lc', <exact command>]` so
+redirection and `mktemp` are executed deliberately rather than treated as argv.
+Validate the resulting `verification.json` with
+`validate_verification_artifact`; preserve its sibling `verification.log`,
+their SHA-256 values, exact source HEAD, and the validator result. The runner
+commands must include the wheel and isolated native-Windows verification
+drivers so those operational results are sealed subprocess outcomes rather
+than narrative/proxy receipts.
+
+Regenerate locked goldens twice and prove identical binary diffs before running
+the complete schema-test module, because that module validates committed
+goldens and the 3.x validator rejects their current 2.x bytes.
+
 ```bash
 uv sync --locked --all-extras --python 3.12
 uv run --locked --all-extras pytest tests/test_symbol_graph.py tests/test_symbol_graph_resolution.py tests/test_symbol_graph_incremental_facts.py tests/test_chunk_id_collision.py tests/test_boundary_ir_identity.py tests/test_boundary_ir_resolution_modes.py tests/test_boundary_ir_incremental_runtime.py tests/test_boundary_ir_incremental_cache.py tests/test_boundary_ir_incremental_contract.py tests/test_boundary_cache_key.py -q
 uv run --locked --all-extras pytest tests/test_symbol_graph_cli_resolution.py tests/unit/clustering/test_engine.py tests/unit/clustering/test_hierarchy.py tests/integration/test_clustering_integration.py -q
+uv run --locked --all-extras python scripts/regenerate_boundary_goldens.py
+git diff --binary -- tests/fixtures/boundary_ir/golden > "$IMPLEMENTATION_EVIDENCE/goldens-first.diff"
+uv run --locked --all-extras python scripts/regenerate_boundary_goldens.py
+git diff --binary -- tests/fixtures/boundary_ir/golden > "$IMPLEMENTATION_EVIDENCE/goldens-second.diff"
+cmp "$IMPLEMENTATION_EVIDENCE/goldens-first.diff" "$IMPLEMENTATION_EVIDENCE/goldens-second.diff"
 uv run --locked --all-extras pytest tests/test_boundary_ir_schema.py tests/test_boundary_ir_contract.py tests/test_boundary_ir_semantic_contract.py tests/test_boundary_ir_adapter.py tests/test_boundary_ir_cli.py tests/test_boundary_ir_cli_incremental.py tests/test_boundary_ir_cli_observability.py tests/test_boundary_ir_semantic_enrichment.py tests/test_boundary_ir_semantic_determinism.py -q
-uv run --locked --all-extras python scripts/regenerate_boundary_goldens.py
-git diff --binary -- tests/fixtures/boundary_ir/golden > "$PLANNING_EVIDENCE/goldens-first.diff"
-uv run --locked --all-extras python scripts/regenerate_boundary_goldens.py
-git diff --binary -- tests/fixtures/boundary_ir/golden > "$PLANNING_EVIDENCE/goldens-second.diff"
-cmp "$PLANNING_EVIDENCE/goldens-first.diff" "$PLANNING_EVIDENCE/goldens-second.diff"
 uv run --locked --all-extras pytest tests/test_boundary_ir_golden_snapshots.py tests/test_boundary_ir_determinism.py -q
 uv run --locked --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
 uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/
@@ -310,8 +382,9 @@ uv run --locked --with toml --all-extras python scripts/run_full_suite.py
 uv run --locked --all-extras --with mkdocs --with mkdocs-material --with mkdocstrings-python mkdocs build --strict --site-dir "$(mktemp -d)"
 ```
 
-`PLANNING_EVIDENCE` must be set to a unique private implementation evidence
-directory before the two diff writes. The runner's effective
+`IMPLEMENTATION_EVIDENCE` must be set exactly to
+`/home/viperjuice/workspace/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A`
+before the two diff writes. The runner's effective
 `automation.suite_command` is the original full `tests/` + `spec_tests/` suite
 above; narrow passes cannot substitute for it.
 
