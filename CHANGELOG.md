@@ -61,6 +61,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Symbol graph and Boundary IR preserve distinct normalized relationship
+  references that share a resolved target, while repeated identical references
+  remain deduplicated (partial repair for treesitter-chunker#487). Existing
+  surviving edge IDs remain stable; additional edges can change memberships,
+  counts and derived clustering/dependency aggregates. Regenerate affected
+  outputs for 6.0.0. Heuristic resolution, qualified self-call suppression and
+  file-anchor collisions remain separate work. See the
+  [resolution extension](docs/interface-boundary-spec.md#resolution-extension).
+
 - Default Python and JavaScript parsing uses the exact official 0.25.0 grammar
   wheels instead of the language-pack 1.20 grammars that reject valid U+017F
   and U+212A in broad Unicode classes (treesitter-chunker#492). Explicit custom

@@ -179,6 +179,28 @@ Relationship-resolution status values (`resolved`, `ambiguous`,
 `unresolved`) and strict/permissive mode semantics are downstream of the Phase 0
 baseline. They extend the frozen top-level schema rather than redefining it.
 
+Symbol graph relationships are deduplicated by source, target, relationship
+type and normalized reference. Distinct references such as `target`,
+`ns.target` and `other.target` each survive when the existing heuristic resolver
+assigns them the same target; repeated identical normalized references still
+produce one relationship. This applies to imports, dependencies and calls.
+Resolution remains heuristic, and locations identify the containing chunk's
+starting line rather than individual call sites. Complete call-site coverage,
+qualified self-call suppression and colliding module anchors remain separate
+work under treesitter-chunker#487.
+
+Boundary IR edge identity already includes the reference. Existing surviving
+edges keep their IDs for unchanged inputs, while newly retained references add
+edges, node memberships and counts. Per-relationship clustering weights and
+module dependency counts can also change. Regenerate affected graph/IR outputs
+and their derived aggregates for 6.0.0; endpoint identity alone does not identify
+a call token.
+
+Incremental caches store raw per-file symbol facts and reassemble relationships
+on each run. Compatible existing records therefore receive the corrected
+deduplication when used by the current assembler. Ordinary cache-key checks,
+including `tool_version`, still govern reuse.
+
 ### Observability extension
 
 Deterministic metrics keys, fixed `run.timings` keys, structured diagnostics,

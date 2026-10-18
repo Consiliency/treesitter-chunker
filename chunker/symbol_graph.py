@@ -350,7 +350,7 @@ def assemble_symbol_graph(
 
     by_qualified, by_name = _build_resolution_indexes(symbol_lookup)
     relationships: list[dict[str, Any]] = []
-    seen_relationships: set[tuple[str, str, str]] = set()
+    seen_relationships: set[tuple[str, str, str, str]] = set()
 
     for chunk_record in chunk_records:
         relationship_context = chunk_record["context"]
@@ -373,7 +373,7 @@ def assemble_symbol_graph(
                 to_id = candidates[0] if resolution == "resolved" else reference
                 if to_id == from_id:
                     continue
-                dedupe_key = (from_id, to_id, relationship_type)
+                dedupe_key = (from_id, to_id, relationship_type, reference)
                 if dedupe_key in seen_relationships:
                     continue
                 seen_relationships.add(dedupe_key)
