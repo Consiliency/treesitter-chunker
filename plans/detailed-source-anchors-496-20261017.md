@@ -14,8 +14,10 @@ remaining self-call and Python qualification failures in treesitter-chunker#487.
 The owner selected the version-policy freeze below on 2026-10-16. These plans
 still require source refresh and independent design review before implementation.
 They are not implementation evidence. A's complete native PLAN1 quartet found
-bounded plan corrections; those are reconciled below and require a fresh PLAN2
-quartet plus separate Astra president approval before implementation. B is
+bounded plan corrections; PLAN2 confirmed most repairs and found two remaining
+handoff/falsifier corrections, now reconciled below. A requires the final
+allowed PLAN3 quartet plus separate Astra president approval before
+implementation. B is
 interface context only and remains PLAN0 until A merges and B is refreshed. Each bounded
 plan has its own maximum three complete PLAN rounds and three CODE rounds.
 
@@ -190,7 +192,7 @@ rows below after source refresh and independent design acceptance.
   indexes/assembly — canonical per-definition keys and retained records.
 - `chunker/boundary/adapter.py`: `_node_symbol_indexes`, `_edge_record`, both
   assembly paths — exact source/target mapping and preserved membership.
-- `chunker/clustering/engine.py`: `_build_module_dependencies` — derive endpoint
+- `chunker/clustering/engine.py`: `ClusteringEngine._compute_module_dependencies` — derive endpoint
   module from symbol metadata, falling back to symbol file when module is absent,
   instead of splitting opaque IDs. Keep filters, endpoint checks and weights.
 - `chunker/clustering/hierarchy.py`: `_infer_label` — prefer symbol module then
@@ -283,14 +285,20 @@ prefixed `test_496_anchor_`:
 
 On accepted 931f6e05, require designated source-ownership/edge-count
 assertions to fail before editing production. Mutate only (M-A1) canonical keys
-back to module keys, (M-A2) replace the separate exact source map with the
-first-wins alias map in a fixture whose second duplicate definition owns a
-distinct call, requiring the resulting wrong-file/first-sibling source to fail
-the same-file ownership assertion, and
+back to module keys, (M-A2) bypass the second occurrence's disambiguated exact
+ID and deliberately resolve its source through the shared undisambiguated
+definition/name alias to the first sibling, and
 (M-A3) cache version/prefix back to v1, plus (M-A4) clustering module/label
 derivation back to ID parsing. Each must fail its designated assertion;
 record original source hashes and restore exact candidate bytes after each.
 Do not insist already-fixed treesitter-chunker#495 token tests fail again.
+M-A2's designated same-file fixture selects the second definition independently
+by source span, asserts its distinct call edge has exactly that second node ID,
+and asserts relationship membership only on that second node in fresh,
+incremental cold, and incremental warm output. A separate cross-file control
+supplies a missing canonical source whose name matches another file's alias and
+proves aliases cannot repair it; the ordinary same-file path assertion remains
+the cross-file guard, not the sibling-identity witness.
 
 ## Dependencies and review gates
 
@@ -302,10 +310,14 @@ Do not insist already-fixed treesitter-chunker#495 token tests fail again.
    `0f668ae314e9a1e0b0087557b12d585e6475441c`: Sol1, Sol2, and Astra required
    the bounded corrections now incorporated here; Gemini agreed. The preserved
    PLAN1 audit/opinions and reconciliation are under the exact private evidence
-   paths named below. Run one complete peer-blind PLAN2 quartet (two independent
-   Sol seats, Gemini 3.8 Flash, Astra) on the amended exact clean head, collect
-   all four before reconciliation, then obtain separate independent Astra
-   president approval. Maximum three full rounds; heartbeat only, no
+   paths named below. PLAN2 completed at exact clean head
+   `63815daae47224450bf3ac1e1e90145535f9bbfe`: Gemini agreed; Sol1, Sol2, and
+   Astra required the precise M-A2 witness, concrete operational driver argv,
+   the actual clustering method name, and packet-readable runtime API excerpts.
+   These corrections are now incorporated. Run the final allowed complete
+   peer-blind PLAN3 quartet (two independent Sol seats, Gemini 3.8 Flash,
+   Astra), collect all four before reconciliation, then obtain separate
+   independent Astra president approval. Maximum three full rounds; heartbeat only, no
    model/silence deadlines. These manual reviews establish no formal
    Harness/native/IF qualification.
 3. Implementation owns its new worktree only. No shared Windows checkout, native
@@ -324,7 +336,7 @@ Do not insist already-fixed treesitter-chunker#495 token tests fail again.
 The only private evidence readable during implementation is the accepted A
 design record at
 `/home/viperjuice/workspace/evidence/treesitter-chunker/call-identity-496/20261017-after-495/plan-A-acceptance.json`
-and the paths it explicitly hashes for PLAN2 reconciliation/president approval.
+and the paths it explicitly hashes for PLAN3 reconciliation/president approval.
 All new implementation, baseline, mutation, native, wheel, and runner evidence
 must be written beneath the exact allowlisted root
 `/home/viperjuice/workspace/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/`.
@@ -357,6 +369,41 @@ their SHA-256 values, exact source HEAD, and the validator result. The runner
 commands must include the wheel and isolated native-Windows verification
 drivers so those operational results are sealed subprocess outcomes rather
 than narrative/proxy receipts.
+
+Before invoking `run_verification`, create exactly these private drivers with
+`apply_patch`, review their bytes, and record their SHA-256 values in
+`implementation-A/driver-bindings.json`:
+
+- `implementation-A/verify-wheel.py` accepts `--repo`, `--out`, and repeated
+  `--python` arguments. It builds/hashes the exact-head wheel, creates fresh
+  external Python 3.11-3.14 environments with locked/hash-checked dependencies,
+  installs only the wheel as project source, checks import origins/providers,
+  Unicode extraction, canonical ownership, both 3.x modes and 2.x rejection,
+  v1 miss/v2 warm reuse, CLI JSON/export, and writes `wheel-result.json`.
+- `implementation-A/verify-native-windows.py` accepts `--repo`, `--out`, and
+  `--driver`. It archives the exact clean tracked HEAD with per-file hashes,
+  creates a unique private Windows directory without touching the shared
+  checkout, copies the archive/config/driver, invokes Python 3.12 there, copies
+  all raw logs/results back, and fails unless bindings and the shared checkout
+  are unchanged.
+- `implementation-A/native-windows-driver.py` validates the archive and tracked
+  hashes, runs locked sync, the three targeted pytest commands and
+  `scripts/run_windows_preflight.py`, records runtime/provider metadata, and
+  writes `native-result.json` with every command/log hash.
+
+Append these exact argv commands to `run_verification.commands` after the local
+docs/golden/narrow gates and before its full-suite `suite_command`:
+
+```text
+["python", "/home/viperjuice/workspace/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/verify-wheel.py", "--repo", "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-source-anchors-496", "--out", "/home/viperjuice/workspace/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/wheel", "--python", "3.11", "--python", "3.12", "--python", "3.13", "--python", "3.14"]
+["python", "/home/viperjuice/workspace/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/verify-native-windows.py", "--repo", "/mnt/workspace/worktrees/viperjuice/treesitter-chunker-source-anchors-496", "--out", "/home/viperjuice/workspace/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/native-windows", "--driver", "/home/viperjuice/workspace/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/native-windows-driver.py"]
+```
+
+The frozen PLAN3 packet carries `runtime-api-excerpts.md`, bound to installed
+phase-loop runtime 0.7.26 and the source-file hashes recorded there, so reviewers
+can independently verify the exact `run_verification`,
+`validate_verification_artifact`, and `update_lifecycle` signatures without
+reading outside their packet.
 
 Regenerate locked goldens twice and prove identical binary diffs before running
 the complete schema-test module, because that module validates committed
