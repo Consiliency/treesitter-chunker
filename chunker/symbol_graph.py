@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from bisect import bisect_left
 from collections import defaultdict
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -227,10 +228,10 @@ def _call_site_id(
     return "call:" + hashlib.sha1(seed.encode("utf-8")).hexdigest()
 
 
-def _line_bounds(source: bytes, start: int, end: int) -> tuple[int, int]:
-    start_line = source.count(b"\n", 0, start) + 1
+def _line_bounds(newline_offsets: list[int], start: int, end: int) -> tuple[int, int]:
+    start_line = bisect_left(newline_offsets, start) + 1
     final_byte = max(start, end - 1)
-    end_line = source.count(b"\n", 0, final_byte) + 1
+    end_line = bisect_left(newline_offsets, final_byte) + 1
     return start_line, end_line
 
 
@@ -355,6 +356,7 @@ def _call_facts_for_chunks(
         if current is None or rank < current[0]:
             selected[key] = (rank, {**observation, "owner": owner})
 
+    newline_offsets = [match.start() for match in re.finditer(b"\n", source)]
     call_facts = []
     for _, observation in sorted(
         selected.values(),
@@ -367,7 +369,7 @@ def _call_facts_for_chunks(
     ):
         owner = observation["owner"]
         start_line, end_line = _line_bounds(
-            source, observation["call_start"], observation["call_end"]
+            newline_offsets, observation["call_start"], observation["call_end"]
         )
         fact_id = _call_site_id(
             owner["id"],

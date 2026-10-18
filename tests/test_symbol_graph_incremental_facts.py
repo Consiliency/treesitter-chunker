@@ -987,3 +987,142 @@ def test_496_call_sites_use_the_replacement_decoded_parser_buffer(
         assert edge["reference"] == callee
         assert edge["location"] == expected_location
         assert edge["file"] == edge["metadata"]["file"] == source.name
+
+
+@pytest.mark.parametrize("language", ["python", "javascript"])
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n"], ids=["lf", "crlf"])
+@pytest.mark.parametrize("many_lines", [False, True], ids=["minified", "many-lines"])
+def test_496_call_site_line_lookup_avoids_repeated_prefix_scans(
+    tmp_path: Path,
+    monkeypatch,
+    language: str,
+    newline: bytes,
+    many_lines: bool,
+):
+    from chunker import symbol_graph as graph_module
+
+    count = 256
+    if language == "python":
+        source = tmp_path / "caller.py"
+        prefix = b"# caf\xc3\xa9" + newline + b"def caller():" + newline
+        indentation = b"    "
+        suffix = b""
+    else:
+        source = tmp_path / "caller.js"
+        prefix = b"// caf\xc3\xa9" + newline + b"function caller() {" + newline
+        indentation = b"  "
+        suffix = b"}" + newline
+    if many_lines:
+        body = (indentation + b"f();" + newline) * count
+    else:
+        body = indentation + b"f();" * count + newline
+    raw = prefix + body + suffix
+    source.write_bytes(raw)
+    measured = {
+        "prefix_count_and_slice_bytes": 0,
+        "buffers": 0,
+        "newline_index_scans": 0,
+        "newline_index_scan_bytes": 0,
+    }
+
+    class BudgetBytes(bytes):
+        def count(self, sub, start=0, end=None):
+            stop = len(self) if end is None else end
+            measured["prefix_count_and_slice_bytes"] += stop - start
+            return super().count(sub, start, stop)
+
+        def __getitem__(self, key):
+            if isinstance(key, slice):
+                measured["prefix_count_and_slice_bytes"] += len(
+                    range(*key.indices(len(self)))
+                )
+            return super().__getitem__(key)
+
+    original = graph_module._call_facts_for_chunks
+    original_finditer = graph_module.re.finditer
+
+    def instrument_index(pattern, buffer, *args, **kwargs):
+        if pattern == b"\n" and isinstance(buffer, BudgetBytes):
+            measured["newline_index_scans"] += 1
+            measured["newline_index_scan_bytes"] += len(buffer)
+        return original_finditer(pattern, buffer, *args, **kwargs)
+
+    def instrument(chunks, owners, buffer, display_file):
+        measured["buffers"] += 1
+        return original(chunks, owners, BudgetBytes(buffer), display_file)
+
+    monkeypatch.setattr(graph_module, "_call_facts_for_chunks", instrument)
+    monkeypatch.setattr(graph_module.re, "finditer", instrument_index)
+    facts = extract_symbol_facts_for_file(source, tmp_path, language)
+    calls = facts["call_facts"]
+    assert len(calls) == count
+    assert len({fact["id"] for fact in calls}) == count
+    for index, fact in enumerate(calls):
+        stride = len(indentation) + 4 + len(newline) if many_lines else 4
+        start = len(prefix) + len(indentation) + index * stride
+        expected_line = 3 + index if many_lines else 3
+        assert fact["reference"] == "f"
+        assert raw[fact["callee_byte_start"] : fact["callee_byte_end"]] == b"f"
+        assert (
+            raw[fact["location"]["byte_start"] : fact["location"]["byte_end"]] == b"f()"
+        )
+        assert fact["location"] == {
+            "byte_start": start,
+            "byte_end": start + 3,
+            "start_line": expected_line,
+            "end_line": expected_line,
+        }
+    assert measured["buffers"] == 1
+    assert measured["prefix_count_and_slice_bytes"] <= 2 * len(raw)
+    assert measured["newline_index_scans"] == 1
+    assert measured["newline_index_scan_bytes"] == len(raw)
+
+
+@pytest.mark.parametrize("language", ["python", "javascript"])
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n"], ids=["lf", "crlf"])
+def test_496_line_index_preserves_nested_multiline_call_spans(
+    tmp_path: Path,
+    language: str,
+    newline: bytes,
+):
+    if language == "python":
+        source = tmp_path / "caller.py"
+        prefix = b"# caf\xc3\xa9" + newline + b"def caller():" + newline + b"    "
+        suffix = newline
+    else:
+        source = tmp_path / "caller.js"
+        prefix = (
+            b"// caf\xc3\xa9" + newline + b"function caller() {" + newline + b"    "
+        )
+        suffix = b";" + newline + b"}" + newline
+    inner = b"g('caf\xc3\xa9')"
+    outer = b"f(" + newline + b"        " + inner + newline + b"    )"
+    raw = prefix + outer + suffix
+    source.write_bytes(raw)
+    facts = extract_symbol_facts_for_file(source, tmp_path, language)
+    calls = facts["call_facts"]
+    assert len(calls) == 2
+    for fact, reference, expected_call, start_line, end_line in zip(
+        calls,
+        ("f", "g"),
+        (outer, inner),
+        (3, 4),
+        (5, 4),
+        strict=True,
+    ):
+        start = raw.index(expected_call)
+        assert fact["reference"] == reference
+        assert (
+            raw[fact["callee_byte_start"] : fact["callee_byte_end"]]
+            == reference.encode()
+        )
+        assert (
+            raw[fact["location"]["byte_start"] : fact["location"]["byte_end"]]
+            == expected_call
+        )
+        assert fact["location"] == {
+            "byte_start": start,
+            "byte_end": start + len(expected_call),
+            "start_line": start_line,
+            "end_line": end_line,
+        }

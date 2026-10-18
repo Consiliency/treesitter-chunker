@@ -478,6 +478,65 @@ head then consumes cycle 1 CODE3/3 with native Sol 1, Sol 2, Gemini 3.8 Flash,
 and Astra opinions completed before reconciliation, followed by a separate
 independent Astra president. No fourth CODE round is available.
 
+### Authorized line-index remediation cycle 2
+
+The owner authorized a new bounded `B/line-index-remediation-cycle2` at
+CODE0/3 after the post-cycle1 performance HOLD on exact clean head
+`9d16aaf626e05eabe881339d53b234856ee5e1f0`. This is neither CODE4 nor a reset
+of the exhausted original B PLAN3/CODE3 or cycle1 CODE3 counters. All earlier
+HOLDs, approvals, opinions, archives, and broker records remain immutable. Up
+to three fresh complete CODE quartets are available, followed by a separate
+independent Astra president; final acceptance requires four `AGREE` opinions
+and a separate `APPROVE` on the exact verified head.
+
+This cycle owns only `chunker/symbol_graph.py`,
+`tests/test_symbol_graph_incremental_facts.py`, and this bounded plan
+amendment. Production work is limited to precomputing newline-byte offsets once
+per `_call_facts_for_chunks` call and using `bisect_left` in `_line_bounds` for
+the existing counts before `start` and `max(start, end - 1)`. Output fields,
+identities, parser-buffer reconstruction, cache/schema/version behavior, and
+all other algorithms remain unchanged. The tracked tests add real-parser
+Python/JavaScript UTF-8 LF/CRLF minified and many-line cases, exact byte/line
+oracles and per-site IDs, a deterministic prefix-work budget, exactly-one
+newline-index-scan accounting scoped to the tested buffer, and explicit nested
+multiline outer/inner calls. This bounds only the line component to
+O(N + C log(L+2)) time and O(L) memory; it makes no whole-extractor complexity
+claim. No public documentation changes are required because observable output
+semantics are unchanged (`doc_delta_decision=no_doc_delta`).
+
+New private reads are restricted to the previously authorized B root and exact
+earlier-A pointers. New writes are restricted to
+`/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/line-index-remediation-cycle2/`
+plus skill-resolved handoff/reflection destinations. Copy and adapt only the
+cycle1 hosted-buffer helper files into cycle2 `run-final-verification.py`,
+`operational/verify-wheel.py`, `operational/verify-native-windows.py`,
+`operational/native-windows-driver.py`, and the existing native review-seat,
+launch, and audit helpers. Installed environments and caches are excluded from
+review packets. `plans/manifest.json` remains read-only: its existing failed
+row has no supported failed-to-executing transition, so retain a lifecycle
+warning and prove all 74 rows/history and its byte digest unchanged.
+
+Before the production repair, the formatted new regression must fail the
+deterministic scan budget on `9d16aaf6`. After repair it must pass. Two required
+source-valid falsifiers then restore the old prefix scans and rebuild the
+newline index per fact respectively; each must fail its matching budget before
+the exact production bytes are restored and the targeted tests pass. Retain
+stdout, stderr, exit codes, tracked hashes, and restoration bindings. Run the
+narrow tests first, then the canonical locked refresh and applicable original
+17 commands, genuine full suite, unchanged/idempotent locked goldens, strict
+docs, Python 3.11-3.14 installed-wheel probes containing the new line-work and
+multiline checks, and isolated native Windows execution of the updated tracked
+regression. Renew exact clean-head verification bindings before native review.
+
+Native review uses two Sol (`gpt-6-sol`), Gemini 3.8 Flash, and Astra through
+native subscription CLIs in read-only, tools-enabled, independent clean clones
+with sealed packets. All four valid terminal opinions complete before
+reconciliation. Accepted objections are repaired and fully reverified before a
+successor round, within the three-round cap. Heartbeat-only operation applies;
+there is no model or silence deadline, no fourth round, and no counter reset.
+The parent retains every publication, PR metadata, hosted review/CI, archive,
+merge, issue, release, downstream, and pruning action.
+
 ## Acceptance criteria
 
 - [ ] B1: first narrow pytest command proves raw token/source-byte spans,
