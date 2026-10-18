@@ -13,6 +13,8 @@ from typing import Any
 from chunker.auto import ZeroConfigAPI
 from chunker._internal.registry import baml_companion_available
 from chunker.core import chunk_file
+from chunker.exceptions import ParserInitError
+from chunker.parser import get_language_info
 from chunker.symbol_graph import (
     assemble_symbol_graph,
     collect_source_files,
@@ -344,8 +346,12 @@ def _failure_buckets(diagnostics: list[dict[str, Any]]) -> dict[str, int]:
 def _grammar_version(language: str | None) -> str | None:
     if not language:
         return None
+    source = ""
+    if language in {"python", "javascript"}:
+        source = f"source={get_language_info(language).capabilities['grammar_source']}:"
     return (
         f"tree-sitter-{language}:"
+        f"{source}"
         f"pack={_distribution_version('tree-sitter-language-pack')}:"
         f"runtime={_distribution_version('tree-sitter')}"
     )
@@ -1325,15 +1331,31 @@ def _extract_boundary_ir_incremental(
         display_path = normalize_boundary_path(_display_path(file_path, root))
         detected_language = _detect_language(file_path, language)
         content_hash = _content_hash(file_path)
-        payload = _cache_key_payload(
-            display_path=display_path,
-            content_hash=content_hash,
-            language=detected_language,
-            resolution_mode=resolution_mode,
-            fail_fast=fail_fast,
-            semantic_resolvers=semantic_resolvers,
-            semantic_min_confidence=semantic_min_confidence,
-        )
+        try:
+            payload = _cache_key_payload(
+                display_path=display_path,
+                content_hash=content_hash,
+                language=detected_language,
+                resolution_mode=resolution_mode,
+                fail_fast=fail_fast,
+                semantic_resolvers=semantic_resolvers,
+                semantic_min_confidence=semantic_min_confidence,
+            )
+        except ParserInitError:
+            if fail_fast:
+                raise
+            return extract_boundary_ir(
+                root,
+                language,
+                canonical=canonical,
+                created_at=created_at,
+                resolution_mode=resolution_mode,
+                fail_fast=False,
+                include_timings=include_timings,
+                incremental=False,
+                semantic_resolvers=semantic_resolvers,
+                semantic_min_confidence=semantic_min_confidence,
+            )
         cache_key = _build_boundary_cache_key(payload)
         current_payloads[display_path] = payload
         current_keys[display_path] = cache_key

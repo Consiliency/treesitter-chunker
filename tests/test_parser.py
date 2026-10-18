@@ -18,6 +18,32 @@ from chunker import (
 )
 from chunker._internal.registry import LanguageMetadata
 from chunker.exceptions import ParserConfigError
+from tests.test_language_pack import (
+    _UNICODE_492_CASES,
+    _assert_unicode_492_tree,
+    _isolate_default_492,
+)
+
+
+@pytest.mark.parametrize(
+    ("language", "source", "case"),
+    _UNICODE_492_CASES,
+    ids=[item[2] for item in _UNICODE_492_CASES],
+)
+@pytest.mark.parametrize("leased", [False, True])
+def test_492_public_unicode_grammar(
+    monkeypatch, tmp_path, language, source, case, leased
+):
+    from chunker.parser import acquire_parser
+
+    _isolate_default_492(monkeypatch, tmp_path)
+    if leased:
+        with acquire_parser(language) as parser:
+            _assert_unicode_492_tree(parser.parse(source.encode("utf-8")), source)
+    else:
+        _assert_unicode_492_tree(
+            get_parser(language).parse(source.encode("utf-8")), source
+        )
 
 
 class TestParserAPI:

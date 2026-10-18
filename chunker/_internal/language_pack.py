@@ -8,13 +8,14 @@ use, without requiring local grammar compilation.
 Resolution order in LanguageRegistry:
 1. Compiled grammar in package data directory
 2. Compiled grammar in user cache
-3. tree-sitter-language-pack (this module)
+3. Official Python/JavaScript grammar wheels, then language pack (this module)
 4. Raise LanguageNotFoundError with guidance
 """
 
 from __future__ import annotations
 
 import logging
+from importlib import import_module
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -89,7 +90,7 @@ def is_language_pack_available() -> bool:
 
 
 def get_language_from_pack(name: str) -> Language | None:
-    """Get a language from the tree-sitter-language-pack.
+    """Get an official Python/JavaScript grammar or a language-pack fallback.
 
     Args:
         name: Language name (e.g., "python", "typescript")
@@ -97,6 +98,24 @@ def get_language_from_pack(name: str) -> Language | None:
     Returns:
         tree_sitter.Language object if found, None otherwise
     """
+    if name in {"python", "javascript"}:
+        from tree_sitter import Language, Parser
+
+        from chunker.exceptions import ParserInitError
+
+        distribution = f"tree-sitter-{name}"
+        try:
+            module = import_module(f"tree_sitter_{name}")
+            language = Language(module.language())
+            Parser(language)
+            return language
+        except (ImportError, OSError, AttributeError, TypeError, ValueError) as exc:
+            raise ParserInitError(
+                name,
+                f"Required {distribution}==0.25.0 could not be loaded: {exc}. "
+                "Reinstall the declared grammar distribution; the language-pack "
+                "grammar is not a compatible recovery path.",
+            ) from exc
     if not is_language_pack_available():
         return None
     if name in UNSAFE_PACK_LANGUAGES:

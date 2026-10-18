@@ -214,9 +214,20 @@ recompute behavior are downstream additive contracts. They do not change the
 syntax-only `2.0` baseline or the canonical JSON rules.
 
 Each cache key includes the installed `tree-sitter-language-pack` and
-`tree-sitter` runtime versions. A grammar-pack or runtime change therefore
+`tree-sitter` runtime versions. Python and JavaScript keys additionally bind the
+actual selected grammar source: either the exact official distribution/version
+or the SHA-256 digest of the successfully loaded custom library. A grammar-pack,
+runtime, official grammar, or selected custom-library change therefore
 invalidates persisted per-file records instead of combining stale records with
-new extraction output.
+new extraction output. Existing Python/JavaScript records without that source
+identity are re-extracted. This changes cache eligibility only: source bytes,
+half-open UTF-8 spans, node identities, schema vocabulary and canonical output
+rules are unchanged.
+
+If Python/JavaScript provider selection fails before key construction,
+`fail_fast=true` raises the typed initialization error. Non-fail-fast extraction
+returns the normal per-file structured diagnostics, continues unaffected files,
+and does not use or mutate an incremental cache under an invented identity.
 
 ### Parity extension
 

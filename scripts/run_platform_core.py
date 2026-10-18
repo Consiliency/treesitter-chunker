@@ -58,6 +58,13 @@ COMMON_TESTS = [
     "tests/test_exceptions.py",
     "tests/test_fallback_chunking.py",
     "tests/test_registry_fallback.py",
+    "tests/test_language_pack.py",
+    "tests/test_parser.py",
+    "tests/test_core_span_consistency.py",
+    "tests/test_boundary_ir_incremental_runtime.py",
+    "tests/test_boundary_cache_key.py",
+    "tests/test_factory.py::TestParserFactory::test_492_incompatible_custom_never_uses_pack",
+    "tests/test_factory.py::TestParserFactory::test_492_required_grammar_failure_never_uses_pack_or_build",
 ]
 
 WINDOWS_EXTRA_TESTS = [

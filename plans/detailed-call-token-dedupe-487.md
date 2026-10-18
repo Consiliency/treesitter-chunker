@@ -57,7 +57,8 @@ Resolution extension); no vocabulary is introduced.
 - `CHANGELOG.md` — add the bounded consumer fix under Unreleased/Fixed, which
   remains reserved for 6.0.0. No release/tag/version change.
 - `plans/detailed-call-token-dedupe-487.md` — this plan and reviewed amendments.
-- `plans/manifest.json` — supported API append/update of owned row71 only;
+- `plans/manifest.json` — supported API append/update of the owned
+  `call-token-dedupe-487` record only (originally row71);
   preserve every predecessor row/event. Complete the owned row before final
   head review, with subsequent head gates and review required before merge.
 
@@ -79,6 +80,25 @@ quartet and separate final Astra audit before merge. Separate maximum three
 complete rounds per PLAN/CODE; heartbeat only, no model or silence deadline.
 Small prompts and exact-head clones/evidence packets; no peer opinions in seats.
 Manual reviews establish no formal Harness/supplier/native/IF qualification.
+
+Continuation after treesitter-chunker#497: integrate accepted main
+`ce38dc167c4bff7b2a75fae9f1b5f2d4052072c8` without rewriting branch history.
+Preserve all 70 common predecessor manifest records and both independently
+appended plan records byte-for-byte, including their original lifecycle events.
+The accepted Unicode record stays in its main position; the owned call-token
+record follows it as row72. This is a conflict-resolution ordering change, not
+a new lifecycle event. Retain both changelog entries and the automatically
+merged contract text. No production behavior is added beyond the bounded fix.
+Rerun the original local/full, docs, native and hosted gates at the integrated
+head. PLAN used one round; CODE used one round, with two rounds remaining.
+The parent may perform verified metadata-only upkeep of this session-owned PR
+under its existing publishing/repair authority; the runtime metadata gap does
+not permit altering admitted inputs or broker state. Keep draft until all gates
+and final acceptance pass. Private execution evidence is allowlisted under
+`/home/viperjuice/workspace/evidence/treesitter-chunker/call-token-dedupe-487/20261013/`,
+its canonical `/mnt/workspace/users/viperjuice/evidence/` alias, the owned
+checkout's `.dev-skills/verification/`, and resolved skill handoff/reflection
+paths. Preserve prior failed and successful artifacts unchanged.
 
 ## Verification
 
@@ -119,7 +139,7 @@ Manual reviews establish no formal Harness/supplier/native/IF qualification.
   Existing determinism/goldens/schema/semantic tests pass; original locked
   checks/full, docs and native Windows checks pass with exact source bindings.
 - AC3: Four complete opinions plus independent Astra acceptance, supported
-  owned row71 lifecycle/publication, exact-head hosted checks and verified
+   owned plan-record lifecycle/publication, exact-head hosted checks and verified
   standalone archive precede authorized merge. All 70 predecessor rows,
   protected work, pins/goldens/type baseline and broker state stay preserved;
   treesitter-chunker#487 stays open for the remaining defects.

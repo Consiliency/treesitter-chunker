@@ -49,6 +49,10 @@ GOLDEN_TOOL_VERSION = "<tool-version>"
 # the Boundary IR contract, so an unintended drift must fail closed.
 PINNED_TREE_SITTER = (("0.26", "0.27"), "tree_sitter")
 PINNED_LANGUAGE_PACK = (resolve_pack_pin(), "tree-sitter-language-pack")
+PINNED_OFFICIAL_GRAMMARS = (
+    ("tree-sitter-python", "0.25.0"),
+    ("tree-sitter-javascript", "0.25.0"),
+)
 
 FILE_KEYS = (
     "id",
@@ -193,6 +197,14 @@ def assert_grammar_runtime_pins() -> None:
             "versions silently breaks Boundary IR extraction. Re-pin in "
             "pyproject.toml deliberately and regenerate goldens, or roll back "
             "the bump -- do not weaken this assertion."
+        )
+    for dist, expected in PINNED_OFFICIAL_GRAMMARS:
+        installed = metadata.version(dist)
+        assert installed == expected, (
+            f"{dist}=={installed} does not match the exact {expected} grammar pin. "
+            "The official Python/JavaScript grammar wheels are part of the "
+            "Boundary IR parser identity; update the dependency and cache contract "
+            "together rather than weakening this assertion."
         )
 
 

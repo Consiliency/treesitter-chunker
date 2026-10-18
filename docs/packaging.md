@@ -61,6 +61,16 @@ for published versions.
 
 ## Parser artifact integrity and offline custody
 
+The main package requires the exact official
+`tree-sitter-python==0.25.0` and `tree-sitter-javascript==0.25.0` distributions
+for default Python and JavaScript parsing. Their `cp310-abi3` wheels cover the
+supported CPython 3.11–3.14 matrix on Linux glibc/musl x86_64 and aarch64,
+macOS x86_64/arm64, and Windows x86_64/arm64. These installed wheel grammars
+take precedence over `tree-sitter-language-pack` for the two languages because
+the standalone pack 1.20 grammars remain affected by treesitter-chunker#492.
+Explicit compiled custom grammars still take priority and remain under the
+caller's artifact and ABI custody.
+
 The Python lock authenticates the selected package distributions, not every
 first-use native parser download. In language-pack 1.20.0's
 [download implementation](https://github.com/xberg-io/tree-sitter-language-pack/blob/v1.20.0/crates/ts-pack-core/src/download.rs),
@@ -69,9 +79,10 @@ manifest. That manifest is fetched separately from the versioned upstream releas
 (or a configured mirror); its digest is not pinned in this repository's lock.
 Package version pinning therefore does not independently freeze those remote bytes.
 
-For reproducible/offline installations, retain the tested platform's manifest,
-bundle and extracted grammar hashes alongside the wheel hash, prefetch required
-languages while online, and validate the prepared cache with networking disabled.
+For reproducible/offline installations, retain the tested platform's official
+Python/JavaScript grammar wheel hashes and the pack manifest, bundle and
+extracted grammar hashes alongside the Chunker wheel hash. Prefetch required
+pack languages while online and validate the prepared cache with networking disabled.
 Do not treat a cache directory from a different OS/architecture as interchangeable.
 The accepted binary Linux path uses glibc 2.34 or newer. musl and older-glibc
 source-build/runtime paths have not been accepted for the current parser stack.
