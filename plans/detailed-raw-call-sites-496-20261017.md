@@ -442,6 +442,42 @@ providers and installed CLI. The native driver must verify the exact tracked
 archive and run B's three narrow pytest commands plus the Windows preflight in a
 unique private snapshot while proving the shared Windows checkout unchanged.
 
+### Hosted byte-buffer repair in cycle 1 CODE3
+
+The hosted review of treesitter-chunker#499 reproduced a production defect at
+accepted local head `b5c6e249c0f643e16c6a4c16313b09234ce04518`: core parses a
+replacement-decoded UTF-8 buffer for malformed input, while per-file call-fact
+extraction reread the original undecodable bytes and applied parser offsets to
+that different buffer. The authorized repair extends this cycle's ownership
+only to `chunker/symbol_graph.py::extract_symbol_facts_for_file`, the existing
+`tests/test_symbol_graph_incremental_facts.py`, this specification's parser-
+buffer note, and this plan amendment. The manifest remains byte-identical with
+its existing lifecycle warning; all original findings, opinions, HOLDs, prior
+APPROVE, artifacts, and `b5c6e249` acceptance remain historical evidence.
+
+The correction reconstructs the same replacement-decoded UTF-8 buffer that
+core parsed before slicing call sites. Malformed-input byte coordinates
+therefore address that parsed buffer. Valid UTF-8 bytes and line endings remain
+unchanged. The regression covers Python and JavaScript ASCII, EOF, and non-
+ASCII callees; strict and permissive resolution; both `fail_fast` values;
+independent callee/full-call byte and line oracles; per-file/full-graph parity;
+and fresh, cold, and warm Boundary extraction with a warm-reparse failure spy.
+The existing valid UTF-8/CRLF oracle remains the preservation control.
+
+New repair evidence is restricted to
+`test-remediation-cycle1/hosted-buffer-repair/`. Its copied and adapted private
+operational helpers are exactly
+`hosted-buffer-repair/operational/verify-wheel.py`,
+`hosted-buffer-repair/operational/verify-native-windows.py`, and
+`hosted-buffer-repair/operational/native-windows-driver.py`. Verification must
+retain the failing `b5c6e249` regression, the restored targeted mutation, narrow
+tests followed by every applicable genuine locked gate, Python 3.11–3.14 wheel
+probes with malformed-call retention/location assertions, and isolated native
+Windows coverage including the updated tracked regression. The final exact
+head then consumes cycle 1 CODE3/3 with native Sol 1, Sol 2, Gemini 3.8 Flash,
+and Astra opinions completed before reconciliation, followed by a separate
+independent Astra president. No fourth CODE round is available.
+
 ## Acceptance criteria
 
 - [ ] B1: first narrow pytest command proves raw token/source-byte spans,

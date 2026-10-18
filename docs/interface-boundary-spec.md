@@ -188,6 +188,12 @@ deterministic full-SHA-1 `call:` ID. Identical calls at different sites and call
 whose heuristic target is their own source both survive. The resolved target and
 candidate set annotate a fact but do not participate in its identity.
 
+Byte offsets and exact slices refer to the UTF-8 buffer parsed by core
+extraction. For valid UTF-8 input this is the original file buffer, with line
+endings preserved. If malformed UTF-8 triggers core replacement decoding, the
+offsets and slices refer to the replacement-decoded UTF-8 buffer; they must not
+be applied to the original undecodable bytes.
+
 Each syntax `calls` Boundary edge reuses the raw fact ID as both `id` and
 `call_site_id`, preserves the exact reference and location, and carries the
 canonical source path in both top-level `file` and `metadata.file`. These fields

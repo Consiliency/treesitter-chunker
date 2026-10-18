@@ -885,3 +885,105 @@ def test_496_call_site_python_qualified_self_collisions_remain_facts(
         for relationship in ambiguous["relationships"]
         if relationship["type"] == "calls" and relationship["resolution"] == "ambiguous"
     } == {"datetime.now", "time.time"}
+
+
+@pytest.mark.parametrize("mode", ["strict", "permissive"])
+@pytest.mark.parametrize("fail_fast", [False, True])
+@pytest.mark.parametrize("language", ["python", "javascript"])
+@pytest.mark.parametrize(
+    ("callee", "padding"),
+    [("target", "\n" * 16), ("target", ""), ("你好", "\n" * 16)],
+    ids=["wrong-reference", "end-of-file", "unicode-reference"],
+)
+def test_496_call_sites_use_the_replacement_decoded_parser_buffer(
+    tmp_path: Path,
+    monkeypatch,
+    mode: str,
+    fail_fast: bool,
+    language: str,
+    callee: str,
+    padding: str,
+):
+    from chunker.boundary import adapter, extract_boundary_ir
+
+    if language == "python":
+        source = tmp_path / "caller.py"
+        definition = f"def caller():\n    {callee}()\n{padding}".encode("utf-8")
+        raw_prefix = b"# \xff\n"
+        parsed_prefix = b"# \xef\xbf\xbd\n"
+    else:
+        source = tmp_path / "caller.js"
+        definition = f"function caller() {{\n    {callee}();\n}}\n{padding}".encode(
+            "utf-8"
+        )
+        raw_prefix = b"// \xff\n"
+        parsed_prefix = b"// \xef\xbf\xbd\n"
+    source.write_bytes(raw_prefix + definition)
+    expected_buffer = parsed_prefix + definition
+    expected_callee = callee.encode("utf-8")
+    expected_call = expected_callee + b"()"
+    start = expected_buffer.index(expected_call)
+    expected_location = {
+        "byte_start": start,
+        "byte_end": start + len(expected_call),
+        "start_line": 3,
+        "end_line": 3,
+    }
+
+    isolated = extract_symbol_facts_for_file(
+        source, tmp_path, language, fail_fast=fail_fast
+    )
+    assert isolated["errors"] == []
+    assert len(isolated["call_facts"]) == 1
+    fact = isolated["call_facts"][0]
+    assert fact["reference"] == callee
+    assert fact["location"] == expected_location
+    assert (
+        expected_buffer[fact["location"]["byte_start"] : fact["location"]["byte_end"]]
+        == expected_call
+    )
+    assert (
+        expected_buffer[fact["callee_byte_start"] : fact["callee_byte_end"]]
+        == expected_callee
+    )
+
+    graph = extract_symbol_graph(
+        tmp_path, language, resolution_mode=mode, fail_fast=fail_fast
+    )
+    assert graph["call_facts"] == isolated["call_facts"]
+
+    cache_dir = tmp_path / ".boundary-cache"
+    fresh = extract_boundary_ir(
+        tmp_path, language, resolution_mode=mode, fail_fast=fail_fast
+    )
+    cold = extract_boundary_ir(
+        tmp_path,
+        language,
+        resolution_mode=mode,
+        fail_fast=fail_fast,
+        incremental=True,
+        cache_dir=cache_dir,
+    )
+    monkeypatch.setattr(
+        adapter,
+        "_extract_file_cache_record",
+        lambda *args, **kwargs: pytest.fail(
+            "warm replacement-decoded call facts must be reused"
+        ),
+    )
+    warm = extract_boundary_ir(
+        tmp_path,
+        language,
+        resolution_mode=mode,
+        fail_fast=fail_fast,
+        incremental=True,
+        cache_dir=cache_dir,
+    )
+    for document in (fresh, cold, warm):
+        edges = [edge for edge in document["edges"] if edge["type"] == "calls"]
+        assert len(edges) == 1
+        edge = edges[0]
+        assert edge["id"] == edge["call_site_id"] == fact["id"]
+        assert edge["reference"] == callee
+        assert edge["location"] == expected_location
+        assert edge["file"] == edge["metadata"]["file"] == source.name

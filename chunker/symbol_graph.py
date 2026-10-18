@@ -438,7 +438,7 @@ def extract_symbol_facts_for_file(
         facts["errors"].append(f"Error extracting symbols from {file_path}: {exc}")
         return facts
 
-    source = file_path.read_bytes()
+    source = file_path.read_bytes().decode("utf-8", errors="replace").encode("utf-8")
     symbol_lookup: dict[str, dict[str, Any]] = {}
     fact_import_strings: list[str] = []
     imports_output: list[dict[str, Any]] = []
