@@ -7,7 +7,7 @@ automation:
 
 ## Task and status
 
-Refreshed implementation plan: PLAN1/CODE0; A's reviews do not approve B.
+Refreshed implementation plan: PLAN2/CODE0; A's reviews do not approve B.
 Depends on accepted/merged [plan A](detailed-source-anchors-496-20261017.md).
 Current research base is clean merged Plan A head
 `36a4e8d3493abe0028535de9b269021f374ec397`, including accepted
@@ -23,6 +23,12 @@ Astra required the parenthesized-callee, decorated-wrapper ownership, exact
 kind/ID encoding, independently isolated cache-fence, and schema/golden-order
 corrections incorporated below. The raw empty Gemini extraction and exact
 nested-response recovery are both preserved; this remains one complete round.
+Native PLAN2 completed at exact clean head
+`eacf80db5879570647752b077230da73f80135d4`: Gemini and Astra agreed; both Sol
+seats required explicit tracked fixed-vector/kind/equality assertions and the
+remaining NFD/duplicate-method raw-fact controls. Those bounded test-plan
+corrections are incorporated below. Run the final allowed PLAN3 quartet and
+separate Astra design president before production edits.
 
 This is a second bounded behavior contract: syntax call facts exist before
 resolution; their caller, raw token and call-site location depend only on the
@@ -209,9 +215,12 @@ unreleased coordinated package 6.0.0 and IR 3.0/3.1 major train.
   compatibility checks, including base helper users, Go `(fn)()`, C/C++
   `(*ptr)()`/nested grouping, decorator calls and Rust macro paths.
 - `tests/test_symbol_graph_incremental_facts.py`,
-  `tests/test_symbol_graph_resolution.py`, `tests/test_boundary_ir_resolution_modes.py`:
+  `tests/test_symbol_graph_resolution.py`, `tests/test_chunk_id_collision.py`,
+  `tests/test_boundary_ir_resolution_modes.py`:
   raw locality/site multiplicity, self calls, exact source/target/membership and
-  IDs under unrelated-file changes, both strict/permissive modes.
+  IDs under unrelated-file changes, both strict/permissive modes, NFD file
+  spelling, and duplicate same-name method sites across isolated/full and
+  fresh/cold/warm assembly.
 - `tests/test_boundary_ir_incremental_runtime.py`,
   `tests/test_boundary_ir_incremental_cache.py`,
   `tests/test_boundary_ir_incremental_impact.py`: v2/v1 misses, actual v3 payload
@@ -265,6 +274,13 @@ Use `test_496_call_site_` names in the listed existing test modules:
   nested function/method inside class, decorator duplicate traversal; exact once
   ownership for each distinct span/token. Compare independent byte slicing,
   not production identity helpers as the sole expected oracle.
+- Independently assert the frozen ID vector
+  `call:db4aa2584c80ce295d03d6b5c1ce7f1b6dea99a2`, the `call:` plus 40-lowercase-
+  hex representation, and exact equality of raw fact `id`, graph relationship
+  `call_site_id`, and syntax edge `id`. Real base, JS constructor/tag/super and
+  Rust macro records assert their specified `call_kind` values in the metadata
+  extractor narrow command; M-B4/M-B5 must fail the appropriate identity
+  assertion rather than only a derived graph count.
 - Python `obj.sub.now()`, JS/TS `obj . now()`, existing constructors/tags,
   UTF-8 prefix and CRLF. Only already-recognized expression forms are promised. Exact raw
   callee source slices/full-call byte ranges and line oracle must match parser
@@ -274,6 +290,12 @@ Use `test_496_call_site_` names in the listed existing test modules:
   every currently supported metadata extractor's real fixture raw record spans
   are usable and tokens slice its source; do not infer universal call coverage
   from a nonempty Boundary golden.
+- Port A's NFD-path and duplicate same-name method/overload fixtures into B raw
+  assertions. For each, assert exact canonical `file`, distinct canonical
+  `from`, independently sliced spans/references, distinct per-site IDs, and
+  fact/relationship/edge ID equality under isolated facts with a fixed logical
+  root, full assembly, incremental cold and actual warm reuse. Do not change
+  Unicode normalization, identity hashes or overload resolution.
 - Before production edits, preserve genuine accepted-A v2 record/index bytes
   and hashes under the private B `baseline-cache-v2/` evidence directory. In
   tracked tests construct otherwise-valid same-schema 3.0 cases that isolate:
@@ -315,7 +337,7 @@ designated mutation during implementation (not during planning):
 
 ```bash
 uv sync --locked --all-extras --python 3.12
-uv run --locked --all-extras pytest tests/test_phase15_base_extractor.py tests/test_phase15_languages.py tests/test_phase2_extractors.py tests/test_symbol_graph_incremental_facts.py tests/test_symbol_graph_resolution.py -q
+uv run --locked --all-extras pytest tests/test_phase15_base_extractor.py tests/test_phase15_languages.py tests/test_phase2_extractors.py tests/test_symbol_graph_incremental_facts.py tests/test_symbol_graph_resolution.py tests/test_chunk_id_collision.py -q
 uv run --locked --all-extras pytest tests/test_boundary_ir_resolution_modes.py tests/test_boundary_ir_incremental_runtime.py tests/test_boundary_ir_incremental_cache.py tests/test_boundary_ir_incremental_impact.py tests/test_boundary_ir_incremental_contract.py tests/test_boundary_cache_key.py tests/test_boundary_ir_required_fields.py tests/test_boundary_ir_contract.py tests/test_boundary_ir_schema.py -k 'not golden_snapshot_matches_schema' -q
 uv run --locked --all-extras pytest tests/test_symbol_graph_cli_resolution.py tests/integration/test_clustering_integration.py -q
 ```
