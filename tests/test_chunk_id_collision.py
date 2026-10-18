@@ -213,6 +213,64 @@ def test_496_anchor_cross_file_identical_calls_keep_source_ownership_all_paths(
             assert edge["id"] in source_node["relationships"]
 
 
+def test_496_anchor_duplicate_methods_keep_sources_and_canonical_candidates_all_paths(
+    tmp_path,
+):
+    from chunker.boundary.adapter import extract_boundary_ir
+
+    (tmp_path / "methods.py").write_text(
+        "class Service:\n"
+        "    def run(self):\n"
+        "        return target()\n\n"
+        "    def run(self):\n"
+        "        return target()\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "a.py").write_text("def target():\n    return 1\n", encoding="utf-8")
+    (tmp_path / "b.py").write_text("def target():\n    return 2\n", encoding="utf-8")
+    cache_dir = tmp_path / ".boundary-cache"
+    documents = (
+        extract_boundary_ir(tmp_path, "python"),
+        extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir),
+        extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir),
+    )
+
+    for document in documents:
+        nodes = {node["id"]: node for node in document["nodes"]}
+        methods = sorted(
+            (
+                node
+                for node in document["nodes"]
+                if node["qualified_name"] == "Service.run"
+            ),
+            key=lambda node: node["span"]["start_line"],
+        )
+        targets = {
+            node["id"] for node in document["nodes"] if node["symbol"] == "target"
+        }
+        assert len(methods) == 2
+        assert len(targets) == 2
+        method_ids = {method["id"] for method in methods}
+        calls = [
+            edge
+            for edge in document["edges"]
+            if edge["type"] == "calls"
+            and edge["reference"] == "target"
+            and edge["source"] in method_ids
+        ]
+        assert len(calls) == 2
+        assert {edge["source"] for edge in calls} == method_ids
+        for edge in calls:
+            assert edge["resolution"] == "ambiguous"
+            assert set(edge["candidates"]) == targets
+            assert edge["metadata"]["file"] == "methods.py"
+            assert edge["id"] in nodes[edge["source"]]["relationships"]
+            other = method_ids - {edge["source"]}
+            assert all(
+                edge["id"] not in nodes[node_id]["relationships"] for node_id in other
+            )
+
+
 def test_496_anchor_exact_node_ids_precede_name_aliases():
     from chunker.boundary.adapter import _node_symbol_indexes
 

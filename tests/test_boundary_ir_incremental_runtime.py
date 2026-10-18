@@ -129,50 +129,15 @@ def test_496_anchor_genuine_v1_cache_reparses_then_reuses_v2(
     source = tmp_path / "app.py"
     source.write_text("def run():\n    return sorted([])\n", encoding="utf-8")
     cache_dir = tmp_path / ".boundary-cache"
-    extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir)
-    current_index = load_cache_index(cache_dir)
-    current_key = current_index.records["app.py"]
-    current_record = load_cache_record(cache_dir, current_key)
-    assert current_record is not None
-
-    baseline_payload = dict(current_record.key_payload)
-    baseline_payload["schema_version"] = "2.0"
-    encoded = json.dumps(
-        baseline_payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ).encode("utf-8")
-    baseline_key = "boundary:v1:" + hashlib.sha256(encoded).hexdigest()
-    baseline_record = current_record.to_json()
-    baseline_record.update(
-        {
-            "cache_key": baseline_key,
-            "cache_version": "1",
-            "key_payload": baseline_payload,
-            "schema_version": "2.0",
-        }
-    )
-    (cache_dir / _record_filename(baseline_key)).write_text(
-        json.dumps(baseline_record, sort_keys=True, indent=2, ensure_ascii=False)
-        + "\n",
-        encoding="utf-8",
-    )
-    (cache_dir / "index.json").write_text(
-        json.dumps(
-            {
-                "cache_version": "1",
-                "content_hashes": {"app.py": current_record.content_hash},
-                "records": {"app.py": baseline_key},
-                "schema_version": "2.0",
-            },
-            sort_keys=True,
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    (cache_dir / _record_filename(current_key)).unlink()
+    baseline_cache = Path(__file__).parent / "fixtures" / "boundary_cache" / "v1_python"
+    shutil.copytree(baseline_cache, cache_dir)
+    raw_index = json.loads((cache_dir / "index.json").read_text(encoding="utf-8"))
+    assert raw_index["cache_version"] == "1"
+    assert raw_index["schema_version"] == "2.0"
+    baseline_key = raw_index["records"]["app.py"]
+    baseline_record = cache_dir / _record_filename(baseline_key)
+    assert baseline_record.exists()
+    fresh = extract_boundary_ir(tmp_path, "python")
 
     from chunker.boundary import adapter
 
@@ -188,7 +153,7 @@ def test_496_anchor_genuine_v1_cache_reparses_then_reuses_v2(
         tmp_path, "python", incremental=True, cache_dir=cache_dir
     )
     assert recomputed == ["app.py"]
-    assert (cache_dir / _record_filename(baseline_key)).exists()
+    assert baseline_record.exists()
     migrated_index = load_cache_index(cache_dir)
     assert migrated_index.records["app.py"].startswith("boundary:v2:")
     migrated_record = load_cache_record(cache_dir, migrated_index.records["app.py"])
@@ -200,6 +165,7 @@ def test_496_anchor_genuine_v1_cache_reparses_then_reuses_v2(
         tmp_path, "python", incremental=True, cache_dir=cache_dir
     )
     assert recomputed == []
+    assert dumps_boundary_ir(fresh) == dumps_boundary_ir(cold)
     assert dumps_boundary_ir(cold) == dumps_boundary_ir(warm)
 
 

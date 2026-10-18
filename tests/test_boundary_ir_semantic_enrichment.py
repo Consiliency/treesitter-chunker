@@ -190,3 +190,21 @@ def test_incremental_semantic_cache_key_payload_includes_resolver_fingerprint(
     assert dumps_boundary_ir(syntax_ir) != dumps_boundary_ir(semantic_ir)
     assert semantic_payloads
     assert semantic_payloads[0]["semantic_resolvers"][0]["resolver_id"] == "tests.fake"
+
+
+def test_496_anchor_semantic_fresh_cold_warm_outputs_are_identical(tmp_path: Path):
+    _write_repo(tmp_path)
+    cache_dir = tmp_path / ".boundary-cache"
+    options = {"semantic_resolvers": (_FakeResolver(),), "canonical": True}
+
+    fresh = extract_boundary_ir(tmp_path, "python", **options)
+    cold = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir, **options
+    )
+    warm = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir, **options
+    )
+
+    assert fresh["schema_version"] == BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION
+    assert dumps_boundary_ir(fresh) == dumps_boundary_ir(cold)
+    assert dumps_boundary_ir(cold) == dumps_boundary_ir(warm)

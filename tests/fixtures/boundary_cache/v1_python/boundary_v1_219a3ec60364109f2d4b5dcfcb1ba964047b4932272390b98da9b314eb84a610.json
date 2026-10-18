@@ -1,0 +1,121 @@
+{
+  "cache_key": "boundary:v1:219a3ec60364109f2d4b5dcfcb1ba964047b4932272390b98da9b314eb84a610",
+  "cache_version": "1",
+  "content_hash": "sha1:704d2658fb1002227eacb68b727e11d1c3fbf713",
+  "dependency_summary": {
+    "exports": [
+      "run"
+    ],
+    "module": "app",
+    "references": [
+      "sorted"
+    ],
+    "relationship_endpoints": []
+  },
+  "diagnostics": [],
+  "file_record": {
+    "content_hash": "sha1:704d2658fb1002227eacb68b727e11d1c3fbf713",
+    "diagnostics": [],
+    "id": "067d26106d0031d707c8f417f490e0a582eb748e",
+    "language": "python",
+    "parser": "tree-sitter-python",
+    "path": "app.py",
+    "status": "parsed"
+  },
+  "key_payload": {
+    "content_hash": "sha1:704d2658fb1002227eacb68b727e11d1c3fbf713",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "app.py",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "2.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "5.2.0"
+  },
+  "node_records": [
+    {
+      "definition_id": "df90c6236dffc03a6c5d72a2aa49b8e2966e05da",
+      "file_id": "067d26106d0031d707c8f417f490e0a582eb748e",
+      "id": "df90c6236dffc03a6c5d72a2aa49b8e2966e05da",
+      "identity": {
+        "source": "definition_id",
+        "value": "df90c6236dffc03a6c5d72a2aa49b8e2966e05da"
+      },
+      "kind": "function",
+      "language": "python",
+      "metadata": {
+        "dependencies": [],
+        "exports": [
+          "run"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: python\nfile: app.py\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: app.py::run\nsignature text: run()\nexports: run\ncontent:\ndef run():\n    return sorted([])"
+      },
+      "node_id": "f1d18361d3605e499c38bc57a29baa12f4c8639e",
+      "parent": null,
+      "path": "app.py",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "run",
+      "relationships": [],
+      "semantic_path": "app.py::run",
+      "signature": "run()",
+      "span": {
+        "byte_end": 32,
+        "byte_start": 0,
+        "end_line": 2,
+        "start_line": 1
+      },
+      "symbol": "run",
+      "symbol_id": "088d06111ec5130dd58be3ce26ffcb24c8642cc4"
+    }
+  ],
+  "path": "app.py",
+  "schema_version": "2.0",
+  "symbol_facts": {
+    "chunk_records": [
+      {
+        "calls": [
+          "sorted"
+        ],
+        "context": {
+          "file": "app.py",
+          "id": "app:run",
+          "line": 1
+        },
+        "dependencies": [],
+        "imports": []
+      }
+    ],
+    "display_file": "app.py",
+    "errors": [],
+    "import_strings": [],
+    "imports": [],
+    "language": "python",
+    "module": "app",
+    "path": "app.py",
+    "symbol_lookup": {
+      "app:run": {
+        "end_line": 2,
+        "file": "app.py",
+        "kind": "function",
+        "language": "python",
+        "line": 1,
+        "module": "app",
+        "name": "run",
+        "parent_class": "",
+        "qualified_name": "run",
+        "semantic_path": "/mnt/workspace/users/viperjuice/tmp/treesitter-chunker-496-base-ehj8ghjj/fixture/app.py::run",
+        "signature": "run()"
+      }
+    }
+  }
+}

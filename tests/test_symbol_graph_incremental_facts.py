@@ -203,6 +203,14 @@ def test_496_anchor_dotted_directory_and_file_definitions_survive(tmp_path: Path
     graph = extract_symbol_graph(tmp_path, "typescript")
 
     _assert_496_sources_match_files(graph, "send")
+    assert {
+        (relationship["reference"], relationship["file"])
+        for relationship in graph["relationships"]
+        if relationship["type"] == "calls"
+    } == {
+        ("nestedCall", "src/api/client.ts"),
+        ("dottedCall", "src/api.client.ts"),
+    }
 
 
 def test_496_anchor_nfd_module_and_package_paths_are_preserved(tmp_path: Path):
