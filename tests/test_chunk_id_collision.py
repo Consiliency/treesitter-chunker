@@ -1,3 +1,5 @@
+import pytest
+
 from chunker.core import chunk_text
 from chunker.types import CodeChunk
 
@@ -214,11 +216,17 @@ def test_496_anchor_cross_file_identical_calls_keep_source_ownership_all_paths(
 
 
 def test_496_anchor_duplicate_methods_keep_sources_and_canonical_candidates_all_paths(
-    tmp_path,
+    tmp_path, monkeypatch
 ):
     from chunker.boundary.adapter import extract_boundary_ir
+    from chunker.boundary.cache import load_cache_index, load_cache_record
+    from chunker.symbol_graph import (
+        extract_symbol_facts_for_file,
+        extract_symbol_graph,
+    )
 
-    (tmp_path / "methods.py").write_text(
+    source = tmp_path / "methods.py"
+    source.write_text(
         "class Service:\n"
         "    def run(self):\n"
         "        return target()\n\n"
@@ -228,12 +236,52 @@ def test_496_anchor_duplicate_methods_keep_sources_and_canonical_candidates_all_
     )
     (tmp_path / "a.py").write_text("def target():\n    return 1\n", encoding="utf-8")
     (tmp_path / "b.py").write_text("def target():\n    return 2\n", encoding="utf-8")
+    isolated = extract_symbol_facts_for_file(source, tmp_path, "python")
+    full_graph = extract_symbol_graph(tmp_path, "python")
     cache_dir = tmp_path / ".boundary-cache"
-    documents = (
-        extract_boundary_ir(tmp_path, "python"),
-        extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir),
-        extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir),
+    fresh = extract_boundary_ir(tmp_path, "python")
+    cold = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir
     )
+    index = load_cache_index(cache_dir)
+    record = load_cache_record(cache_dir, index.records[source.name])
+    assert record is not None
+
+    from chunker.boundary import adapter
+
+    monkeypatch.setattr(
+        adapter,
+        "_extract_file_cache_record",
+        lambda *args, **kwargs: pytest.fail(
+            "warm duplicate-method facts must be reused"
+        ),
+    )
+    warm = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir
+    )
+    documents = (fresh, cold, warm)
+
+    isolated_facts = isolated["call_facts"]
+    full_facts = [
+        fact for fact in full_graph["call_facts"] if fact["file"] == source.name
+    ]
+    full_relationships = [
+        relationship
+        for relationship in full_graph["relationships"]
+        if relationship["type"] == "calls" and relationship["file"] == source.name
+    ]
+    assert len(isolated_facts) == 2
+    assert isolated_facts == full_facts == record.symbol_facts["call_facts"]
+    assert sorted(fact["id"] for fact in isolated_facts) == sorted(
+        relationship["call_site_id"] for relationship in full_relationships
+    )
+    source_bytes = source.read_bytes()
+    for fact in isolated_facts:
+        assert (
+            source_bytes[fact["callee_byte_start"] : fact["callee_byte_end"]].decode()
+            == fact["reference"]
+            == "target"
+        )
 
     for document in documents:
         nodes = {node["id"]: node for node in document["nodes"]}
@@ -259,6 +307,9 @@ def test_496_anchor_duplicate_methods_keep_sources_and_canonical_candidates_all_
             and edge["source"] in method_ids
         ]
         assert len(calls) == 2
+        assert sorted(edge["id"] for edge in calls) == sorted(
+            fact["id"] for fact in isolated_facts
+        )
         assert {edge["source"] for edge in calls} == method_ids
         assert len({edge["id"] for edge in calls}) == 2
         for edge in calls:

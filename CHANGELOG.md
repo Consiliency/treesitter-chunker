@@ -77,13 +77,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   consumers must rebuild caches and indexes for 6.0.0
   (treesitter-chunker#496, treesitter-chunker#487).
 
-- Symbol graph and Boundary IR preserve distinct normalized relationship
-  references that share a resolved target, while repeated identical references
-  remain deduplicated (partial repair for treesitter-chunker#487). Existing
-  surviving edge IDs remain stable; additional edges can change memberships,
-  counts and derived clustering/dependency aggregates. Regenerate affected
-  outputs for 6.0.0. Heuristic resolution, qualified self-call suppression and
-  file-anchor collisions remain separate work. See the
+- Symbol graph and Boundary IR preserve distinct normalized import and dependency
+  references that share a resolved target. Calls now preserve every distinct
+  source site, including repeated and qualified self calls, with site-derived
+  IDs; additional call edges can change memberships, counts and derived
+  clustering/dependency aggregates. Regenerate affected outputs for 6.0.0.
+  Heuristic resolution remains unchanged. See the
   [resolution extension](docs/interface-boundary-spec.md#resolution-extension).
 
 - Default Python and JavaScript parsing uses the exact official 0.25.0 grammar

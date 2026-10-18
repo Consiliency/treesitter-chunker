@@ -306,14 +306,20 @@ def test_496_anchor_unrelated_callee_does_not_change_caller_source(tmp_path: Pat
     assert second["symbol_lookup"][first_source]["file"] == "caller.py"
 
 
-def test_496_anchor_nfd_path_uses_canonical_definition_identity(tmp_path: Path):
+def test_496_anchor_nfd_path_uses_canonical_definition_identity(
+    tmp_path: Path, monkeypatch
+):
+    from chunker.boundary.adapter import extract_boundary_ir
+    from chunker.boundary.cache import load_cache_index, load_cache_record
+
     source = tmp_path / "cafe\u0301.py"
     source.write_text(
         "def serve():\n    return missing()\n",
         encoding="utf-8",
     )
 
-    graph = extract_symbol_graph(source, "python")
+    isolated = extract_symbol_facts_for_file(source, tmp_path, "python")
+    graph = extract_symbol_graph(tmp_path, "python")
     symbol_id, symbol = next(iter(graph["symbol_lookup"].items()))
     relationship = next(
         item
@@ -330,6 +336,42 @@ def test_496_anchor_nfd_path_uses_canonical_definition_identity(tmp_path: Path):
     assert fact["from"] == symbol_id
     assert fact["reference"] == "missing"
     assert fact["id"] == relationship["call_site_id"]
+    assert isolated["call_facts"] == graph["call_facts"]
+    assert unicodedata.is_normalized("NFD", fact["file"])
+    source_bytes = source.read_bytes()
+    assert (
+        source_bytes[fact["callee_byte_start"] : fact["callee_byte_end"]].decode()
+        == fact["reference"]
+    )
+
+    cache_dir = tmp_path / ".boundary-cache"
+    fresh = extract_boundary_ir(tmp_path, "python")
+    cold = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir
+    )
+    index = load_cache_index(cache_dir)
+    record = load_cache_record(cache_dir, index.records[source.name])
+    assert record is not None
+
+    from chunker.boundary import adapter
+
+    monkeypatch.setattr(
+        adapter,
+        "_extract_file_cache_record",
+        lambda *args, **kwargs: pytest.fail("warm NFD facts must be reused"),
+    )
+    warm = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir
+    )
+    for document in (fresh, cold, warm):
+        edge = next(
+            edge
+            for edge in document["edges"]
+            if edge["type"] == "calls" and edge["file"] == source.name
+        )
+        assert edge["id"] == edge["call_site_id"] == fact["id"]
+        assert edge["location"] == fact["location"]
+    assert record.symbol_facts["call_facts"] == [fact]
 
 
 def test_496_call_site_fixed_id_vector():
@@ -381,6 +423,44 @@ def test_496_call_site_raw_facts_preserve_self_repetition_and_decorator_owner(
         )
         assert source_bytes[location["byte_start"] : location["byte_end"]]
         assert fact["type"] == "calls"
+
+
+def test_496_call_site_decorated_method_and_nested_function_use_inner_owner(
+    tmp_path: Path,
+):
+    source = tmp_path / "decorated.py"
+    source.write_text(
+        "class Service:\n"
+        "    @decorate(factory())\n"
+        "    def method(self):\n"
+        "        return body()\n\n"
+        "def outer():\n"
+        "    @decorate(factory())\n"
+        "    def inner():\n"
+        "        return nested()\n"
+        "    return inner()\n",
+        encoding="utf-8",
+    )
+
+    facts = extract_symbol_facts_for_file(source, tmp_path, "python")
+    symbols = {
+        symbol["name"]: symbol_id
+        for symbol_id, symbol in facts["symbol_lookup"].items()
+    }
+    decorators = [
+        fact
+        for fact in facts["call_facts"]
+        if fact["reference"] in {"decorate", "factory"}
+    ]
+
+    assert len(decorators) == 4
+    assert [fact["from"] for fact in decorators[:2]] == [symbols["method"]] * 2
+    assert [fact["from"] for fact in decorators[2:]] == [symbols["inner"]] * 2
+    assert all(
+        fact["from"] not in {symbols["Service"], symbols["outer"]}
+        for fact in decorators
+    )
+    assert len({fact["id"] for fact in decorators}) == 4
 
 
 def test_496_call_site_raw_facts_do_not_change_with_unrelated_target(
@@ -471,29 +551,75 @@ def test_496_call_site_js_repeated_raw_facts_ignore_unrelated_callees(
         "stamp",
     ]
 
-    target = tmp_path / f"legacy.{extension}"
+    isolated = assemble_symbol_graph([first], total_files=1)
+    target = tmp_path / f"clock.{extension}"
     target.write_text("export function stamp() { return 1; }\n", encoding="utf-8")
     target_facts = extract_symbol_facts_for_file(target, tmp_path, language)
     second = extract_symbol_facts_for_file(source, tmp_path, language)
     full = assemble_symbol_graph([second, target_facts], total_files=2)
+    target.unlink()
+    third = extract_symbol_facts_for_file(source, tmp_path, language)
+    removed = assemble_symbol_graph([third], total_files=1)
 
-    assert first_projection == [
-        (
-            fact["id"],
-            fact["from"],
-            fact["file"],
-            fact["reference"],
-            fact["location"],
-            fact["callee_byte_start"],
-            fact["callee_byte_end"],
+    for observed in (second, third):
+        assert first_projection == [
+            (
+                fact["id"],
+                fact["from"],
+                fact["file"],
+                fact["reference"],
+                fact["location"],
+                fact["callee_byte_start"],
+                fact["callee_byte_end"],
+            )
+            for fact in observed["call_facts"]
+        ]
+    expected_ids = [fact["id"] for fact in first["call_facts"]]
+    for graph in (isolated, full, removed):
+        calls = [
+            rel
+            for rel in graph["relationships"]
+            if rel["type"] == "calls" and rel["file"] == source.name
+        ]
+        assert [rel["call_site_id"] for rel in calls] == expected_ids
+
+    def call_resolutions(graph):
+        return {
+            relationship["resolution"]
+            for relationship in graph["relationships"]
+            if relationship["type"] == "calls" and relationship["file"] == source.name
+        }
+
+    assert call_resolutions(isolated) == {"unresolved"}
+    assert call_resolutions(full) == {"resolved"}
+    assert call_resolutions(removed) == {"unresolved"}
+
+
+def test_496_call_site_typescript_nested_static_calls_keep_raw_sites(tmp_path: Path):
+    source = tmp_path / "now.ts"
+    source.write_text(
+        "export function now() {\n  return JSON.stringify(Date.now());\n}\n",
+        encoding="utf-8",
+    )
+
+    facts = extract_symbol_facts_for_file(source, tmp_path, "typescript")
+    owner = next(iter(facts["symbol_lookup"]))
+    calls = facts["call_facts"]
+    graph = assemble_symbol_graph([facts], total_files=1)
+
+    assert [fact["reference"] for fact in calls] == ["JSON.stringify", "Date.now"]
+    assert all(fact["from"] == owner for fact in calls)
+    source_bytes = source.read_bytes()
+    for fact in calls:
+        assert (
+            source_bytes[fact["callee_byte_start"] : fact["callee_byte_end"]].decode()
+            == fact["reference"]
         )
-        for fact in second["call_facts"]
-    ]
     assert [
-        rel["call_site_id"]
-        for rel in full["relationships"]
-        if rel["type"] == "calls" and rel["file"] == source.name
-    ] == [fact["id"] for fact in second["call_facts"]]
+        relationship["call_site_id"]
+        for relationship in graph["relationships"]
+        if relationship["type"] == "calls"
+    ] == [fact["id"] for fact in calls]
 
 
 def test_496_call_site_python_qualified_self_collisions_remain_facts(tmp_path: Path):

@@ -281,15 +281,53 @@ def _call_facts_for_chunks(
                 }
             )
 
+    decorated_owners: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for observation in observations:
+        if observation["node_type"] == "decorated_definition":
+            decorated = [
+                owner
+                for owner in owners
+                if owner["parent_context"] == "decorated_definition"
+                and observation["chunk_start"] <= owner["byte_start"]
+                and owner["byte_end"] <= observation["chunk_end"]
+                and not (
+                    owner["byte_start"] <= observation["call_start"]
+                    and observation["call_end"] <= owner["byte_end"]
+                )
+            ]
+            if decorated:
+                site_key = (
+                    display_file,
+                    observation["call_start"],
+                    observation["call_end"],
+                    observation["callee_start"],
+                    observation["callee_end"],
+                    observation["reference"],
+                )
+                decorated_owners[site_key] = min(
+                    decorated, key=lambda item: item["order"]
+                )
+
     selected: dict[tuple[Any, ...], tuple[tuple[Any, ...], dict[str, Any]]] = {}
     for observation in observations:
+        site_key = (
+            display_file,
+            observation["call_start"],
+            observation["call_end"],
+            observation["callee_start"],
+            observation["callee_end"],
+            observation["reference"],
+        )
+        owner = decorated_owners.get(site_key)
         containing = [
             owner
             for owner in owners
             if owner["byte_start"] <= observation["call_start"]
             and observation["call_end"] <= owner["byte_end"]
         ]
-        if containing:
+        if owner is not None:
+            pass
+        elif containing:
             owner = min(
                 containing,
                 key=lambda item: (
@@ -298,17 +336,6 @@ def _call_facts_for_chunks(
                     item["order"],
                 ),
             )
-        elif observation["node_type"] == "decorated_definition":
-            decorated = [
-                owner
-                for owner in owners
-                if owner["parent_context"] == "decorated_definition"
-                and observation["chunk_start"] <= owner["byte_start"]
-                and owner["byte_end"] <= observation["chunk_end"]
-            ]
-            if not decorated:
-                continue
-            owner = min(decorated, key=lambda item: item["order"])
         else:
             continue
 

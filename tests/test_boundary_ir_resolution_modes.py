@@ -97,9 +97,9 @@ def test_distinct_call_references_survive_fresh_cold_and_warm_boundary_ir(
     source = tmp_path / f"service.{extension}"
     source.write_text(
         "export function target() { return 1; }\n"
-        "export function caller() { "
+        "export function caller() {\n  "
         + " ".join(f"{reference}();" for reference in raw_calls)
-        + " }\n",
+        + "\n}\n",
         encoding="utf-8",
     )
     cache_dir = tmp_path / "cache"
@@ -166,7 +166,7 @@ def test_distinct_call_references_survive_fresh_cold_and_warm_boundary_ir(
         assert edge["id"] == edge["call_site_id"]
         assert edge["file"] == source.name
         assert edge["location"]["byte_start"] < edge["location"]["byte_end"]
-        assert edge["location"]["start_line"] == edge["location"]["end_line"] == 2
+        assert edge["location"]["start_line"] == edge["location"]["end_line"] == 3
         assert edge["provenance"]["resolution_mode"] == mode
         if mode == "strict":
             assert edge["provenance"]["enforcement_grade"] == "strict"

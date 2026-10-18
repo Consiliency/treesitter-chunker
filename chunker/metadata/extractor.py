@@ -365,25 +365,6 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         source: bytes,
     ) -> dict | None:
         """Extract call information from a call node."""
-        if func_node.type == "parenthesized_expression" and func_node.named_children:
-            return self._extract_call_info(
-                call_node, func_node.named_children[0], source
-            )
-        if func_node.type == "pointer_expression":
-            identifiers = []
-            self._collect_identifiers_recursive(func_node, identifiers, source)
-            if identifiers:
-                identifier = next(
-                    (
-                        child
-                        for child in func_node.named_children
-                        if child.type == "identifier"
-                    ),
-                    func_node,
-                )
-                return self._create_call_info(
-                    call_node, identifier, source, identifiers[-1]
-                )
         if func_node.type in {"identifier", "simple_identifier", "name", "variable"}:
             # Simple function call: func()
             return self._create_call_info(call_node, func_node, source)

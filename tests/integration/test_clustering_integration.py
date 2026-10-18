@@ -124,6 +124,43 @@ def log(message: str) -> None:
         parsed = json.loads(json_str)
         assert parsed["hierarchy"]["level"] == "container"
 
+    def test_repeated_call_sites_contribute_individual_graph_weight(
+        self, tmp_path: Path
+    ):
+        from chunker.clustering import ClusteringEngine
+        from chunker.symbol_graph import extract_symbol_graph
+
+        source = tmp_path / "calls.py"
+        source.write_text(
+            "def target():\n    return 1\n\n"
+            "def caller():\n    target(); return target()\n",
+            encoding="utf-8",
+        )
+        extraction = extract_symbol_graph(tmp_path, "python")
+        calls = [
+            relationship
+            for relationship in extraction["relationships"]
+            if relationship["type"] == "calls" and relationship["reference"] == "target"
+        ]
+        assert len(calls) == 2
+        assert len({relationship["call_site_id"] for relationship in calls}) == 2
+
+        caller_id = next(
+            symbol_id
+            for symbol_id, symbol in extraction["symbol_lookup"].items()
+            if symbol["name"] == "caller"
+        )
+        target_id = next(
+            symbol_id
+            for symbol_id, symbol in extraction["symbol_lookup"].items()
+            if symbol["name"] == "target"
+        )
+        graph = ClusteringEngine()._build_graph(
+            extraction["symbol_lookup"], extraction["relationships"]
+        )
+
+        assert graph[caller_id][target_id]["weight"] == pytest.approx(2.0)
+
     def test_resolution_affects_clusters(self, sample_project: Path):
         """Test that resolution parameter affects cluster count."""
         from chunker.clustering import ClusteringEngine

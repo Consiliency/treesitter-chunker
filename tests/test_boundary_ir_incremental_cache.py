@@ -17,6 +17,7 @@ from chunker.boundary.types import (
     BOUNDARY_CACHE_VERSION,
     BOUNDARY_IR_SCHEMA_VERSION,
 )
+from chunker.symbol_graph import _call_site_id
 
 
 def _payload(**overrides):
@@ -128,6 +129,25 @@ def test_496_anchor_same_schema_v1_cache_is_a_miss(tmp_path: Path):
     assert load_cache_index(tmp_path) == BoundaryCacheIndex()
 
 
+def test_496_anchor_same_schema_v2_index_is_a_miss(tmp_path: Path):
+    cache_key = build_boundary_cache_key(
+        _payload(schema_version=BOUNDARY_IR_SCHEMA_VERSION)
+    )
+    (tmp_path / "index.json").write_text(
+        json.dumps(
+            {
+                "cache_version": "2",
+                "schema_version": BOUNDARY_IR_SCHEMA_VERSION,
+                "records": {"app.py": cache_key},
+                "content_hashes": {"app.py": "sha1:abc"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert load_cache_index(tmp_path) == BoundaryCacheIndex()
+
+
 def test_496_call_site_cache_contract_uses_v3():
     assert BOUNDARY_CACHE_VERSION == "3"
     assert BOUNDARY_CACHE_KEY_PREFIX == "boundary:v3:"
@@ -160,41 +180,48 @@ def test_496_call_site_old_key_prefixes_are_cache_misses(
     assert load_cache_record(tmp_path, cache_key) is None
 
 
+def _valid_call_fact() -> dict:
+    return {
+        "id": _call_site_id("caller", "app.py", 0, 8, 0, 6, "target"),
+        "from": "caller",
+        "file": "app.py",
+        "type": "calls",
+        "reference": "target",
+        "location": {
+            "byte_start": 0,
+            "byte_end": 8,
+            "start_line": 1,
+            "end_line": 1,
+        },
+        "callee_byte_start": 0,
+        "callee_byte_end": 6,
+        "call_kind": "call",
+    }
+
+
 @pytest.mark.parametrize(
-    "call_facts",
-    [
-        None,
-        {},
-        [{"id": "call:bad"}],
-        [
-            {
-                "id": "call:" + "0" * 40,
-                "from": "caller",
-                "file": "app.py",
-                "type": "calls",
-                "reference": "target",
-                "location": {
-                    "byte_start": "0",
-                    "byte_end": 8,
-                    "start_line": 1,
-                    "end_line": 1,
-                },
-                "callee_byte_start": 0,
-                "callee_byte_end": 6,
-                "call_kind": "call",
-            }
-        ],
-    ],
+    "defect",
+    ["missing", "not-list", "incomplete", "invalid-id", "invalid-location-type"],
 )
 def test_496_call_site_malformed_v3_call_facts_are_cache_misses(
-    tmp_path: Path, call_facts
+    tmp_path: Path, defect: str
 ):
     cache_key = build_boundary_cache_key(_payload())
     record = _record(cache_key).to_json()
-    if call_facts is None:
+    if defect == "missing":
         record["symbol_facts"].pop("call_facts")
     else:
-        record["symbol_facts"]["call_facts"] = call_facts
+        fact = _valid_call_fact()
+        if defect == "not-list":
+            record["symbol_facts"]["call_facts"] = {}
+        elif defect == "incomplete":
+            record["symbol_facts"]["call_facts"] = [{"id": fact["id"]}]
+        else:
+            if defect == "invalid-id":
+                fact["id"] = "call:" + "0" * 40
+            elif defect == "invalid-location-type":
+                fact["location"]["byte_start"] = "0"
+            record["symbol_facts"]["call_facts"] = [fact]
     (tmp_path / cache_key.replace(":", "_")).with_suffix(".json").write_text(
         json.dumps(record), encoding="utf-8"
     )

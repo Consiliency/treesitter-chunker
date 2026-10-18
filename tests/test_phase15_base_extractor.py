@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from tree_sitter import Node
 
+from chunker.metadata import MetadataExtractorFactory
 from chunker.metadata.extractor import BaseMetadataExtractor
 from chunker.parser import get_parser
 
@@ -246,8 +247,11 @@ def test_496_call_site_parenthesized_callee_preserves_raw_slice(
 ):
     source = code.encode()
     root = get_parser(language).parse(source).root_node
-    calls = SimpleMetadataExtractor(language).extract_calls(root, source)
+    extractor = MetadataExtractorFactory.create_extractor(language)
+    assert extractor is not None
+    calls = extractor.extract_calls(root, source)
     call = next(item for item in calls if item["name"] == "target")
 
+    assert call["name"] == "target"
     assert call["raw_reference"] == expected
     assert source[call["callee_start"] : call["callee_end"]].decode() == expected
