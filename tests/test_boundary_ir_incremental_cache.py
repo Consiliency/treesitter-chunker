@@ -97,8 +97,9 @@ def test_malformed_cache_records_are_misses(tmp_path: Path):
 
 
 def test_496_anchor_same_schema_v1_cache_is_a_miss(tmp_path: Path):
-    cache_key = build_boundary_cache_key(_payload())
+    cache_key = "boundary:v1:" + "0" * 64
     record = _record(cache_key).to_json()
+    record["key_payload"]["schema_version"] = BOUNDARY_IR_SCHEMA_VERSION
     record["cache_version"] = "1"
     record["schema_version"] = BOUNDARY_IR_SCHEMA_VERSION
     (tmp_path / cache_key.replace(":", "_")).with_suffix(".json").write_text(
