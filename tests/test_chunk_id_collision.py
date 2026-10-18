@@ -286,7 +286,22 @@ def test_496_anchor_duplicate_methods_keep_sources_and_canonical_candidates_all_
         relationship["call_site_id"] for relationship in full_relationships
     )
     source_bytes = source.read_bytes()
-    for fact in isolated_facts:
+    for fact, expected_start, expected_line in zip(
+        isolated_facts,
+        (source_bytes.index(b"target()"), source_bytes.rindex(b"target()")),
+        (3, 6),
+        strict=True,
+    ):
+        assert (
+            source_bytes[fact["location"]["byte_start"] : fact["location"]["byte_end"]]
+            == b"target()"
+        )
+        assert fact["location"] == {
+            "byte_start": expected_start,
+            "byte_end": expected_start + len(b"target()"),
+            "start_line": expected_line,
+            "end_line": expected_line,
+        }
         assert (
             source_bytes[fact["callee_byte_start"] : fact["callee_byte_end"]].decode()
             == fact["reference"]

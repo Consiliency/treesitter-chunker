@@ -191,10 +191,13 @@ def test_496_call_site_edge_reuses_raw_id_location_and_file_all_paths(tmp_path: 
     assert dumps_boundary_ir(documents[1]) == dumps_boundary_ir(documents[2])
     for document in documents:
         calls = [edge for edge in document["edges"] if edge["type"] == "calls"]
+        for edge in calls:
+            assert (
+                edge["id"] == edge["call_site_id"]
+            ), "syntax call identity must equal its raw site identity"
         assert len(calls) == 2
         assert len({edge["id"] for edge in calls}) == 2
         for edge in calls:
-            assert edge["id"] == edge["call_site_id"]
             assert edge["location"]["byte_start"] is not None
             assert edge["location"]["byte_end"] is not None
             assert edge["file"] == edge["metadata"]["file"] == source.name

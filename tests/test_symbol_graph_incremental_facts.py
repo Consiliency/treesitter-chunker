@@ -341,6 +341,18 @@ def test_496_anchor_nfd_path_uses_canonical_definition_identity(
     assert isolated["call_facts"] == graph["call_facts"]
     assert unicodedata.is_normalized("NFD", fact["file"])
     source_bytes = source.read_bytes()
+    expected_call = b"missing()"
+    expected_start = source_bytes.index(expected_call)
+    assert (
+        source_bytes[fact["location"]["byte_start"] : fact["location"]["byte_end"]]
+        == expected_call
+    )
+    assert fact["location"] == {
+        "byte_start": expected_start,
+        "byte_end": expected_start + len(expected_call),
+        "start_line": 2,
+        "end_line": 2,
+    }
     assert (
         source_bytes[fact["callee_byte_start"] : fact["callee_byte_end"]].decode()
         == fact["reference"]
@@ -550,8 +562,9 @@ def test_496_call_site_utf8_crlf_uses_absolute_byte_and_line_oracles(tmp_path: P
 @pytest.mark.parametrize(
     ("language", "extension"), [("javascript", "js"), ("typescript", "ts")]
 )
+@pytest.mark.parametrize("mode", ["strict", "permissive"])
 def test_496_call_site_js_repeated_raw_facts_ignore_unrelated_callees(
-    tmp_path: Path, language: str, extension: str
+    tmp_path: Path, language: str, extension: str, mode: str
 ):
     source = tmp_path / f"caller.{extension}"
     source.write_text(
@@ -577,24 +590,48 @@ def test_496_call_site_js_repeated_raw_facts_ignore_unrelated_callees(
         "stamp",
     ]
 
-    isolated = assemble_symbol_graph([first], total_files=1)
+    source_bytes = source.read_bytes()
+    cursor = 0
+    for fact, expected_call in zip(
+        first["call_facts"],
+        (b"clock.stamp()", b"stamp()", b"stamp()"),
+        strict=True,
+    ):
+        start = source_bytes.index(expected_call, cursor)
+        end = start + len(expected_call)
+        cursor = end
+        assert (
+            source_bytes[fact["location"]["byte_start"] : fact["location"]["byte_end"]]
+            == expected_call
+        )
+        assert fact["location"] == {
+            "byte_start": start,
+            "byte_end": end,
+            "start_line": 1,
+            "end_line": 1,
+        }
+    isolated = assemble_symbol_graph([first], total_files=1, resolution_mode=mode)
     target = tmp_path / f"clock.{extension}"
     target.write_text("export function stamp() { return 1; }\n", encoding="utf-8")
     target_facts = extract_symbol_facts_for_file(target, tmp_path, language)
     second = extract_symbol_facts_for_file(source, tmp_path, language)
-    resolved = assemble_symbol_graph([second, target_facts], total_files=2)
+    resolved = assemble_symbol_graph(
+        [second, target_facts], total_files=2, resolution_mode=mode
+    )
     legacy = tmp_path / f"legacy.{extension}"
     legacy.write_text("export function stamp() { return 2; }\n", encoding="utf-8")
     legacy_facts = extract_symbol_facts_for_file(legacy, tmp_path, language)
     ambiguous = assemble_symbol_graph(
-        [second, target_facts, legacy_facts], total_files=3
+        [second, target_facts, legacy_facts], total_files=3, resolution_mode=mode
     )
     legacy.unlink()
     third = extract_symbol_facts_for_file(source, tmp_path, language)
-    resolved_again = assemble_symbol_graph([third, target_facts], total_files=2)
+    resolved_again = assemble_symbol_graph(
+        [third, target_facts], total_files=2, resolution_mode=mode
+    )
     target.unlink()
     fourth = extract_symbol_facts_for_file(source, tmp_path, language)
-    removed = assemble_symbol_graph([fourth], total_files=1)
+    removed = assemble_symbol_graph([fourth], total_files=1, resolution_mode=mode)
 
     for observed in (second, third, fourth):
         assert first_projection == [
@@ -647,22 +684,49 @@ def test_496_call_site_js_repeated_raw_facts_ignore_unrelated_callees(
     )
 
 
-def test_496_call_site_typescript_nested_static_calls_keep_raw_sites(tmp_path: Path):
+@pytest.mark.parametrize("mode", ["strict", "permissive"])
+@pytest.mark.parametrize("owner_kind", ["function", "method"])
+def test_496_call_site_typescript_nested_static_calls_keep_raw_sites(
+    tmp_path: Path, mode: str, owner_kind: str
+):
     source = tmp_path / "now.ts"
     source.write_text(
-        "export function now() {\n  return JSON.stringify(Date.now());\n}\n",
+        (
+            "export function now() {\n  return JSON.stringify(Date.now());\n}\n"
+            if owner_kind == "function"
+            else "export class Clock {\n  now() {\n    return JSON.stringify(Date.now());\n  }\n}\n"
+        ),
         encoding="utf-8",
     )
 
     facts = extract_symbol_facts_for_file(source, tmp_path, "typescript")
-    owner = next(iter(facts["symbol_lookup"]))
+    owner = next(
+        symbol_id
+        for symbol_id, symbol in facts["symbol_lookup"].items()
+        if symbol["name"] == "now"
+    )
     calls = facts["call_facts"]
-    isolated = assemble_symbol_graph([facts], total_files=1)
+    isolated = assemble_symbol_graph([facts], total_files=1, resolution_mode=mode)
 
     assert [fact["reference"] for fact in calls] == ["JSON.stringify", "Date.now"]
     assert all(fact["from"] == owner for fact in calls)
     source_bytes = source.read_bytes()
-    for fact in calls:
+    expected_line = 2 if owner_kind == "function" else 3
+    for fact, expected_call in zip(
+        calls, (b"JSON.stringify(Date.now())", b"Date.now()"), strict=True
+    ):
+        start = source_bytes.index(expected_call)
+        end = start + len(expected_call)
+        assert (
+            source_bytes[fact["location"]["byte_start"] : fact["location"]["byte_end"]]
+            == expected_call
+        )
+        assert fact["location"] == {
+            "byte_start": start,
+            "byte_end": end,
+            "start_line": expected_line,
+            "end_line": expected_line,
+        }
         assert (
             source_bytes[fact["callee_byte_start"] : fact["callee_byte_end"]].decode()
             == fact["reference"]
@@ -674,7 +738,9 @@ def test_496_call_site_typescript_nested_static_calls_keep_raw_sites(tmp_path: P
         encoding="utf-8",
     )
     target_facts = extract_symbol_facts_for_file(target, tmp_path, "typescript")
-    resolved = assemble_symbol_graph([facts, target_facts], total_files=2)
+    resolved = assemble_symbol_graph(
+        [facts, target_facts], total_files=2, resolution_mode=mode
+    )
     legacy = tmp_path / "legacy.ts"
     legacy.write_text(
         "export function stringify() { return 'legacy'; }\n"
@@ -683,14 +749,18 @@ def test_496_call_site_typescript_nested_static_calls_keep_raw_sites(tmp_path: P
     )
     legacy_facts = extract_symbol_facts_for_file(legacy, tmp_path, "typescript")
     ambiguous = assemble_symbol_graph(
-        [facts, target_facts, legacy_facts], total_files=3
+        [facts, target_facts, legacy_facts], total_files=3, resolution_mode=mode
     )
     legacy.unlink()
     after_legacy = extract_symbol_facts_for_file(source, tmp_path, "typescript")
-    resolved_again = assemble_symbol_graph([after_legacy, target_facts], total_files=2)
+    resolved_again = assemble_symbol_graph(
+        [after_legacy, target_facts], total_files=2, resolution_mode=mode
+    )
     target.unlink()
     after_targets = extract_symbol_facts_for_file(source, tmp_path, "typescript")
-    removed = assemble_symbol_graph([after_targets], total_files=1)
+    removed = assemble_symbol_graph(
+        [after_targets], total_files=1, resolution_mode=mode
+    )
 
     assert (
         facts["call_facts"] == after_legacy["call_facts"] == after_targets["call_facts"]
@@ -712,7 +782,7 @@ def test_496_call_site_typescript_nested_static_calls_keep_raw_sites(tmp_path: P
     }
     assert resolved_annotations == {
         "JSON.stringify": "resolved",
-        "Date.now": "ambiguous",
+        "Date.now": "ambiguous" if owner_kind == "function" else "resolved",
     }
     assert {
         relationship["resolution"]
@@ -730,7 +800,10 @@ def test_496_call_site_typescript_nested_static_calls_keep_raw_sites(tmp_path: P
     }
 
 
-def test_496_call_site_python_qualified_self_collisions_remain_facts(tmp_path: Path):
+@pytest.mark.parametrize("mode", ["strict", "permissive"])
+def test_496_call_site_python_qualified_self_collisions_remain_facts(
+    tmp_path: Path, mode: str
+):
     source = tmp_path / "self_calls.py"
     source.write_text(
         "def now():\n"
@@ -742,7 +815,7 @@ def test_496_call_site_python_qualified_self_collisions_remain_facts(tmp_path: P
         encoding="utf-8",
     )
     facts = extract_symbol_facts_for_file(source, tmp_path, "python")
-    graph = assemble_symbol_graph([facts], total_files=1)
+    graph = assemble_symbol_graph([facts], total_files=1, resolution_mode=mode)
     calls = [rel for rel in graph["relationships"] if rel["type"] == "calls"]
 
     assert [fact["reference"] for fact in graph["call_facts"]] == [
@@ -758,6 +831,29 @@ def test_496_call_site_python_qualified_self_collisions_remain_facts(tmp_path: P
         "recur",
     }
 
+    source_bytes = source.read_bytes()
+    expected_calls = (
+        b"str(datetime.now())",
+        b"datetime.now()",
+        b"time.time()",
+        b"recur()",
+    )
+    for fact, expected_call, expected_line in zip(
+        facts["call_facts"], expected_calls, (2, 2, 5, 8), strict=True
+    ):
+        start = source_bytes.rindex(expected_call)
+        end = start + len(expected_call)
+        assert (
+            source_bytes[fact["location"]["byte_start"] : fact["location"]["byte_end"]]
+            == expected_call
+        )
+        assert fact["location"] == {
+            "byte_start": start,
+            "byte_end": end,
+            "start_line": expected_line,
+            "end_line": expected_line,
+        }
+
     other = tmp_path / "other.py"
     other.write_text(
         "def now():\n    return 1\n\ndef time():\n    return 2\n",
@@ -765,10 +861,14 @@ def test_496_call_site_python_qualified_self_collisions_remain_facts(tmp_path: P
     )
     other_facts = extract_symbol_facts_for_file(other, tmp_path, "python")
     with_targets = extract_symbol_facts_for_file(source, tmp_path, "python")
-    ambiguous = assemble_symbol_graph([with_targets, other_facts], total_files=2)
+    ambiguous = assemble_symbol_graph(
+        [with_targets, other_facts], total_files=2, resolution_mode=mode
+    )
     other.unlink()
     after_removal = extract_symbol_facts_for_file(source, tmp_path, "python")
-    restored = assemble_symbol_graph([after_removal], total_files=1)
+    restored = assemble_symbol_graph(
+        [after_removal], total_files=1, resolution_mode=mode
+    )
 
     assert (
         facts["call_facts"] == with_targets["call_facts"] == after_removal["call_facts"]

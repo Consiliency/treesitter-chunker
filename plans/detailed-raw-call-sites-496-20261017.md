@@ -362,6 +362,49 @@ call-site locality witness. Upstream tests do not certify downstream absence rul
 
 ## Operational evidence
 
+### Authorized Plan B test-remediation cycle 1
+
+The owner authorized one bounded test/evidence remediation cycle after the
+original PLAN3/CODE3 exhaustion and independent Astra HOLD.  The original
+rounds, opinions, findings, and HOLD remain preserved.  This cycle may change
+only `tests/test_boundary_ir_resolution_modes.py`,
+`tests/test_symbol_graph_incremental_facts.py`,
+`tests/test_chunk_id_collision.py`, this plan amendment, and this plan's own
+manifest row through the supported typed lifecycle API.  Production, schemas,
+goldens, package metadata, parser pins and locks remain frozen.  The repair must
+make M-B5 fail first at direct syntax-edge/raw-site identity, add independent
+expected full-call bytes and complete byte/start-line/end-line oracles, and
+exercise the accepted JS/TS/Python strict/permissive and TypeScript method
+locality dimensions while keeping raw facts/IDs separate from resolution
+annotations.
+
+Private reads for this cycle are limited to the owned tracked checkout, its
+plan/environment, relevant installed skill/runtime code, this B evidence root
+and the exact prior-A pointers already allowlisted by `brief-B.md`:
+`refresh-research.md`, `archives/final-closeout-A.json`,
+`archives/final-handoff-A.md`,
+`test-remediation-cycle1/parent-acceptance-audit.json`,
+`test-remediation-cycle1/production-equivalence.json`, top-level
+`test-remediation-cycle1/*.py`, `implementation-A/verify-wheel.py`,
+`implementation-A/verify-native-windows.py`,
+`implementation-A/native-windows-driver.py`, and `review-seat.py`.  Do not
+traverse other private, broker, raw-history, credential, or unrelated evidence
+sources.  New private output is restricted to
+`/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/test-remediation-cycle1/`;
+all prior B evidence remains immutable.  Skill-owned handoff and reflection
+destinations remain allowed.
+
+The fresh cycle starts at CODE0/3 and requires complete native quartets with
+Sol 1 and Sol 2 (`gpt-6-sol`), Gemini 3.8 Flash, and Astra, followed by a
+separate independent native Astra president.  All four terminal opinions must
+complete before reconciliation; native subscription CLIs, independent clean
+exact-head clones, read-only tool-enabled review, heartbeat-only operation, and
+no model/silence timeout are mandatory.  A subsequent round receives the
+original contract, every prior finding and response, and unresolved objections.
+Final acceptance requires four `AGREE` opinions plus separate Astra `APPROVE`
+on the exact verified head.  Parent retains publication, PR/CI/archive, merge,
+comments, and pruning.
+
 Repeat A's clean installed-wheel Python 3.11–3.14 gate on B's exact candidate,
 including raw/site fact shapes, self/repeated calls, v2/v1 misses and v3 warm
 reuse, both modes and real official Unicode extraction. Use private native
