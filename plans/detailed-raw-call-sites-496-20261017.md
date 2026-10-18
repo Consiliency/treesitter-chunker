@@ -537,6 +537,56 @@ there is no model or silence deadline, no fourth round, and no counter reset.
 The parent retains every publication, PR metadata, hosted review/CI, archive,
 merge, issue, release, downstream, and pruning action.
 
+### Hosted owner-index repair in cycle 2 CODE3
+
+Fresh hosted review of exact accepted head
+`e4830ff87b05ebd39d1f14034cfaf034aa0f8314` reported
+treesitter-chunker#499 finding `4308554191`: `_call_facts_for_chunks` scans the
+complete owner list for every observation, and its decorated-wrapper fallback
+contains a second per-observation owner scan.  The owner authorized use of the
+one remaining `B/line-index-remediation-cycle2` round as CODE3/3 without a
+counter reset.  Original PLAN3/CODE3, cycle1 CODE3, cycle2 CODE1/CODE2, every
+prior HOLD/approval/opinion, and all earlier evidence remain immutable.  No
+CODE4 is available.
+
+This repair owns only `chunker/symbol_graph.py`,
+`tests/test_symbol_graph_incremental_facts.py`, and this bounded plan
+amendment.  New operational evidence is restricted to
+`/home/viperjuice/workspace/evidence/treesitter-chunker/raw-call-sites-496/20261018-after-498/line-index-remediation-cycle2/hosted-owner-index-code3/`.
+`plans/manifest.json` remains read-only with its 74 rows, byte digest, history,
+and existing failed-transition warning preserved.  Parent retains publication,
+PR metadata/readiness, hosted review and CI, review-thread resolution, archive,
+merge, issues, release, downstream, and pruning actions.
+
+Production may only index existing owner intervals/source order so ordinary
+flat files avoid O(observations * owners) containment work.  The exact owner
+contract remains function-kind precedence, then smallest containing byte span,
+then original order.  Decorated-wrapper fallback remains earliest contained
+retained definition by byte start/order and must not hide another full-owner
+scan.  Nested scopes, equal starts, wrapper calls, classes/methods, overlapping
+observation chunks, tie/boundary behavior, raw identities/locations, modes, and
+cache reuse remain unchanged.  Complexity claims must state overlap/decorator
+depth factors and must not claim a whole-extractor bound.
+
+Before source implementation, add real-parser Python and JavaScript flat-file
+regressions with many separate one-call definitions.  Assert exact caller IDs,
+call IDs/counts/locations, and a deterministic owner-interval work budget that
+fails on this exact head.  Retain concrete nested/decorated/class/method owner
+oracles.  After formatting, restore the old all-owner scan and require the
+budget to fail, then apply a plausible broken index that changes ownership or
+tie selection and require a concrete ownership oracle to fail; syntax/import
+failures do not count.  Restore exact candidate bytes and rerun green tests.
+
+Run every applicable canonical locked gate, unchanged/idempotent goldens,
+strict docs, the genuine full suite, isolated native Windows, and installed
+wheels on Python 3.11 through 3.14 with this repair included.  Then launch
+exactly one native CODE3 quartet (Sol 1, Sol 2, Gemini 3.8 Flash, Astra) with
+complete successor evidence, followed by a separate native Astra president.
+All four `AGREE` verdicts plus separate `APPROVE` are required.  Heartbeat-only
+operation applies.  Source changes after accepted review are forbidden without
+new owner authority.  Observable output is unchanged, so
+`doc_delta_decision=no_doc_delta`.
+
 ## Acceptance criteria
 
 - [ ] B1: first narrow pytest command proves raw token/source-byte spans,

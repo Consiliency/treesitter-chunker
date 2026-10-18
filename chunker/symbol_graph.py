@@ -7,6 +7,7 @@ import re
 from bisect import bisect_left
 from collections import defaultdict
 from fnmatch import fnmatchcase
+from heapq import heappop, heappush
 from pathlib import Path
 from typing import Any
 
@@ -282,21 +283,33 @@ def _call_facts_for_chunks(
                 }
             )
 
+    decorated_owner_index = sorted(
+        (
+            owner
+            for owner in owners
+            if owner["parent_context"] == "decorated_definition"
+        ),
+        key=lambda item: (item["byte_start"], item["order"]),
+    )
+    decorated_owner_starts = [owner["byte_start"] for owner in decorated_owner_index]
     decorated_owners: dict[tuple[Any, ...], dict[str, Any]] = {}
     for observation in observations:
         if observation["node_type"] == "decorated_definition":
-            decorated = [
-                owner
-                for owner in owners
-                if owner["parent_context"] == "decorated_definition"
-                and observation["chunk_start"] <= owner["byte_start"]
-                and owner["byte_end"] <= observation["chunk_end"]
-            ]
-            if decorated:
-                wrapper_owner = min(
-                    decorated,
-                    key=lambda item: (item["byte_start"], item["order"]),
-                )
+            decorated_index = bisect_left(
+                decorated_owner_starts, observation["chunk_start"]
+            )
+            wrapper_owner = None
+            while (
+                decorated_index < len(decorated_owner_index)
+                and decorated_owner_index[decorated_index]["byte_start"]
+                <= observation["chunk_end"]
+            ):
+                candidate = decorated_owner_index[decorated_index]
+                if candidate["byte_end"] <= observation["chunk_end"]:
+                    wrapper_owner = candidate
+                    break
+                decorated_index += 1
+            if wrapper_owner is not None:
                 site_key = (
                     display_file,
                     observation["call_start"],
@@ -311,6 +324,50 @@ def _call_facts_for_chunks(
                 ):
                     decorated_owners[site_key] = wrapper_owner
 
+    owners_by_start = sorted(
+        owners, key=lambda item: (item["byte_start"], item["order"])
+    )
+    owner_heap: list[tuple[tuple[int, int, int], int, dict[str, Any]]] = []
+    owner_index = 0
+    observation_owners: dict[int, dict[str, Any]] = {}
+    for observation in sorted(
+        observations,
+        key=lambda item: (
+            item["call_start"],
+            item["call_end"],
+            item["callee_start"],
+            item["callee_end"],
+            item["reference"],
+            item["order"],
+        ),
+    ):
+        while (
+            owner_index < len(owners_by_start)
+            and owners_by_start[owner_index]["byte_start"] <= observation["call_start"]
+        ):
+            candidate = owners_by_start[owner_index]
+            owner_rank = (
+                0 if candidate["kind"] in FUNCTION_KINDS else 1,
+                candidate["byte_end"] - candidate["byte_start"],
+                candidate["order"],
+            )
+            heappush(owner_heap, (owner_rank, candidate["order"], candidate))
+            owner_index += 1
+
+        deferred = []
+        while owner_heap:
+            candidate = owner_heap[0][2]
+            if candidate["byte_end"] < observation["call_start"]:
+                heappop(owner_heap)
+                continue
+            if candidate["byte_end"] < observation["call_end"]:
+                deferred.append(heappop(owner_heap))
+                continue
+            observation_owners[id(observation)] = candidate
+            break
+        for entry in deferred:
+            heappush(owner_heap, entry)
+
     selected: dict[tuple[Any, ...], tuple[tuple[Any, ...], dict[str, Any]]] = {}
     for observation in observations:
         site_key = (
@@ -322,23 +379,10 @@ def _call_facts_for_chunks(
             observation["reference"],
         )
         owner = decorated_owners.get(site_key)
-        containing = [
-            owner
-            for owner in owners
-            if owner["byte_start"] <= observation["call_start"]
-            and observation["call_end"] <= owner["byte_end"]
-        ]
         if owner is not None:
             pass
-        elif containing:
-            owner = min(
-                containing,
-                key=lambda item: (
-                    0 if item["kind"] in FUNCTION_KINDS else 1,
-                    item["byte_end"] - item["byte_start"],
-                    item["order"],
-                ),
-            )
+        elif id(observation) in observation_owners:
+            owner = observation_owners[id(observation)]
         else:
             continue
 
@@ -351,10 +395,10 @@ def _call_facts_for_chunks(
             observation["callee_end"],
             observation["reference"],
         )
-        rank = (owner["order"], observation["order"])
+        selection_rank = (owner["order"], observation["order"])
         current = selected.get(key)
-        if current is None or rank < current[0]:
-            selected[key] = (rank, {**observation, "owner": owner})
+        if current is None or selection_rank < current[0]:
+            selected[key] = (selection_rank, {**observation, "owner": owner})
 
     newline_offsets = [match.start() for match in re.finditer(b"\n", source)]
     call_facts = []

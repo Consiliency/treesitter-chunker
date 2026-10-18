@@ -1,3 +1,4 @@
+import hashlib
 import unicodedata
 from pathlib import Path
 
@@ -532,6 +533,97 @@ def test_496_call_site_nested_call_uses_smallest_callable_owner(tmp_path: Path):
     owners = {fact["reference"]: fact["from"] for fact in facts["call_facts"]}
 
     assert owners == {"target": symbols["inner"], "inner": symbols["outer"]}
+
+
+def test_496_owner_lookup_preserves_kind_span_order_and_boundaries():
+    from chunker.symbol_graph import _call_facts_for_chunks
+
+    source = b"outer(inner())"
+    chunk = CodeChunk(
+        language="python",
+        file_path="owners.py",
+        node_type="function_definition",
+        start_line=1,
+        end_line=1,
+        byte_start=0,
+        byte_end=len(source),
+        parent_context="",
+        content=source.decode(),
+        node_id="owner-index-oracle",
+        metadata={
+            "call_spans": [
+                {
+                    "start": 0,
+                    "end": len(source),
+                    "callee_start": 0,
+                    "callee_end": 5,
+                    "type": "call",
+                },
+                {
+                    "start": 6,
+                    "end": len(source) - 1,
+                    "callee_start": 6,
+                    "callee_end": 11,
+                    "type": "call",
+                },
+            ]
+        },
+    )
+    owners = [
+        {
+            "id": "class-owner",
+            "kind": "class",
+            "byte_start": 0,
+            "byte_end": len(source),
+            "order": 0,
+            "parent_context": "",
+        },
+        {
+            "id": "function-owner",
+            "kind": "function",
+            "byte_start": 0,
+            "byte_end": len(source),
+            "order": 1,
+            "parent_context": "",
+        },
+        {
+            "id": "inner-first",
+            "kind": "function",
+            "byte_start": 6,
+            "byte_end": len(source) - 1,
+            "order": 2,
+            "parent_context": "function_definition",
+        },
+        {
+            "id": "inner-second",
+            "kind": "function",
+            "byte_start": 6,
+            "byte_end": len(source) - 1,
+            "order": 3,
+            "parent_context": "function_definition",
+        },
+    ]
+
+    facts = _call_facts_for_chunks([chunk], owners, source, "owners.py")
+
+    assert [(fact["reference"], fact["from"]) for fact in facts] == [
+        ("outer", "function-owner"),
+        ("inner", "inner-first"),
+    ]
+    assert [fact["location"] for fact in facts] == [
+        {
+            "byte_start": 0,
+            "byte_end": len(source),
+            "start_line": 1,
+            "end_line": 1,
+        },
+        {
+            "byte_start": 6,
+            "byte_end": len(source) - 1,
+            "start_line": 1,
+            "end_line": 1,
+        },
+    ]
 
 
 def test_496_call_site_utf8_crlf_uses_absolute_byte_and_line_oracles(tmp_path: Path):
@@ -1126,3 +1218,116 @@ def test_496_line_index_preserves_nested_multiline_call_spans(
             "start_line": start_line,
             "end_line": end_line,
         }
+
+
+@pytest.mark.parametrize("language", ["python", "javascript"])
+def test_496_owner_lookup_indexes_flat_definitions(
+    tmp_path: Path,
+    monkeypatch,
+    language: str,
+):
+    from chunker import symbol_graph as graph_module
+
+    count = 128
+    if language == "python":
+        source = tmp_path / "owners.py"
+        definitions = [
+            f"def owner_{index:03d}():\n    return target_{index:03d}()\n"
+            for index in range(count)
+        ]
+        expected_lines = [2 * index + 2 for index in range(count)]
+    else:
+        source = tmp_path / "owners.js"
+        definitions = [
+            f"function owner_{index:03d}() {{ return target_{index:03d}(); }}\n"
+            for index in range(count)
+        ]
+        expected_lines = [index + 1 for index in range(count)]
+    raw = "".join(definitions).encode("utf-8")
+    source.write_bytes(raw)
+    measured = {"interval_reads": 0, "owners": 0}
+
+    class BudgetOwner(dict):
+        def __getitem__(self, key):
+            if key in {"byte_start", "byte_end"}:
+                measured["interval_reads"] += 1
+            return super().__getitem__(key)
+
+    original = graph_module._call_facts_for_chunks
+
+    def instrument(chunks, owners, buffer, display_file):
+        measured["owners"] = len(owners)
+        return original(
+            chunks,
+            [BudgetOwner(owner) for owner in owners],
+            buffer,
+            display_file,
+        )
+
+    monkeypatch.setattr(graph_module, "_call_facts_for_chunks", instrument)
+    facts = extract_symbol_facts_for_file(source, tmp_path, language)
+    calls = facts["call_facts"]
+    symbols = {
+        symbol["name"]: symbol_id
+        for symbol_id, symbol in facts["symbol_lookup"].items()
+    }
+
+    assert measured["owners"] == count
+    assert len(calls) == count
+    cursor = 0
+    expected_ids = []
+    for index, (fact, expected_line) in enumerate(
+        zip(calls, expected_lines, strict=True)
+    ):
+        owner_name = f"owner_{index:03d}"
+        reference = f"target_{index:03d}"
+        expected_call = f"{reference}()".encode()
+        call_start = raw.index(expected_call, cursor)
+        call_end = call_start + len(expected_call)
+        callee_end = call_start + len(reference)
+        cursor = call_end
+        owner_id = symbols[owner_name]
+        seed = "|".join(
+            str(value)
+            for value in (
+                owner_id,
+                source.name,
+                call_start,
+                call_end,
+                call_start,
+                callee_end,
+                reference,
+                "calls",
+            )
+        )
+        expected_id = "call:" + hashlib.sha1(seed.encode("utf-8")).hexdigest()
+        expected_ids.append(expected_id)
+        assert fact == {
+            "id": expected_id,
+            "from": owner_id,
+            "file": source.name,
+            "type": "calls",
+            "reference": reference,
+            "location": {
+                "byte_start": call_start,
+                "byte_end": call_end,
+                "start_line": expected_line,
+                "end_line": expected_line,
+            },
+            "callee_byte_start": call_start,
+            "callee_byte_end": callee_end,
+            "call_kind": "function" if language == "javascript" else "call",
+        }
+
+    for mode in ("strict", "permissive"):
+        graph = assemble_symbol_graph([facts], total_files=1, resolution_mode=mode)
+        relationships = [
+            relationship
+            for relationship in graph["relationships"]
+            if relationship["type"] == "calls"
+        ]
+        assert graph["call_facts"] == calls
+        assert [relationship["call_site_id"] for relationship in relationships] == (
+            expected_ids
+        )
+    assert measured["interval_reads"] <= 16 * (measured["owners"] + len(calls))
