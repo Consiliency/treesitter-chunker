@@ -2841,6 +2841,66 @@
       "task_summary": "Preserve distinct relationship reference tokens (treesitter-chunker#487)",
       "type": "detailed",
       "updated_at": "2026-10-16T15:42:19Z"
+    },
+    {
+      "acceptance_criteria_count": 4,
+      "created_at": "2026-10-18T01:00:08.671799+00:00",
+      "file": "plans/detailed-source-anchors-496-20261017.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/496-after495-plan-refresh-20261017.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-18T01:00:08.671799+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "code_rounds_used": 0,
+            "design_accepted": false,
+            "plan_rounds_used": 0,
+            "source_base": "931f6e05208faf1b1ca94520584cb4c45bff51b1"
+          },
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/2687c4c1808d6019/codex-source-anchors-496/496-after495-plan-refresh-20261017.md",
+      "roadmap_ref": null,
+      "slug": "source-anchors-496",
+      "status": "committed",
+      "task_summary": "Canonical definition anchors and exact source ownership; PLAN review pending",
+      "type": "detailed",
+      "updated_at": "2026-10-18T01:00:08.671799+00:00"
+    },
+    {
+      "acceptance_criteria_count": 4,
+      "created_at": "2026-10-18T01:00:08.671799+00:00",
+      "file": "plans/detailed-raw-call-sites-496-20261017.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/496-after495-plan-refresh-20261017.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-18T01:00:08.671799+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "code_rounds_used": 0,
+            "design_accepted": false,
+            "plan_rounds_used": 0,
+            "source_base": "931f6e05208faf1b1ca94520584cb4c45bff51b1"
+          },
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/2687c4c1808d6019/codex-source-anchors-496/496-after495-plan-refresh-20261017.md",
+      "roadmap_ref": null,
+      "slug": "raw-call-sites-496",
+      "status": "committed",
+      "task_summary": "Draft dependent raw call-site contract; PLAN0 context only until A merge",
+      "type": "detailed",
+      "updated_at": "2026-10-18T01:00:08.671799+00:00"
     }
   ],
   "schema_version": 1
