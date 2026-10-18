@@ -7,7 +7,7 @@ automation:
 
 ## Task and status
 
-Refreshed implementation plan: PLAN0/CODE0; A's reviews do not approve B.
+Refreshed implementation plan: PLAN1/CODE0; A's reviews do not approve B.
 Depends on accepted/merged [plan A](detailed-source-anchors-496-20261017.md).
 Current research base is clean merged Plan A head
 `36a4e8d3493abe0028535de9b269021f374ec397`, including accepted
@@ -17,6 +17,12 @@ selected package 6.0 / syntax IR 3.0 / semantic IR 3.1 train remains unreleased.
 The owner selected plan A's coordinated package 6.0.0 and IR 3.0/3.1 migration
 on 2026-10-16. Source refresh and independent design review remain required.
 No implementation choices below are delegated to an unstated future decision.
+Native PLAN1 completed at exact clean head
+`d0ae7b412a3689b263e0f539c3f62ccbe7257690`: Gemini agreed; both Sol seats and
+Astra required the parenthesized-callee, decorated-wrapper ownership, exact
+kind/ID encoding, independently isolated cache-fence, and schema/golden-order
+corrections incorporated below. The raw empty Gemini extraction and exact
+nested-response recovery are both preserved; this remains one complete round.
 
 This is a second bounded behavior contract: syntax call facts exist before
 resolution; their caller, raw token and call-site location depend only on the
@@ -81,7 +87,12 @@ Board analysis pointers and current spec commit/URLs are preserved in plan A.
    resolution-independent list. Each record carries `id`, `from`, `file`,
    `type: "calls"`, `reference`, `location` (`byte_start`, `byte_end`,
    `start_line`, `end_line`), `callee_byte_start`, `callee_byte_end`, and
-   `call_kind`. `from` is A's canonical definition key. No target,
+   `call_kind`. `from` is A's canonical definition key. `call_kind` is the
+   producer's existing nonempty `type` value when present (`function`, `method`,
+   `super`, `constructor`, or `tagged_template`); shared-helper records default
+   to `call`, and the repaired scoped Rust record uses `macro`. Duplicate
+   observations use the selected owner's value, then source-order occurrence
+   order for an otherwise exact tie. No target,
    candidates or resolution state is stored in this raw record.
 2. `reference` is the exact UTF-8 decoded source slice for the callee expression,
    excluding argument parentheses, preserving qualification, internal spacing,
@@ -94,6 +105,12 @@ Board analysis pointers and current spec commit/URLs are preserved in plan A.
    use the full macro path (without the invocation `!`). Call kind remains
    metadata. Existing `metadata.calls` and `call_spans[].name` keep their legacy
    compatibility values; new raw fields carry the stronger contract.
+   A record exists only when the current producer returns call metadata; call
+   nodes currently dropped by a producer (including unsupported dynamic JS
+   callees) remain out of scope. For already-emitted parenthesized Go and C/C++
+   calls, the shared helper walks the supplied callee node's ancestors to the
+   direct child of the call node, preserving the complete grouped expression
+   without adding syntax recognition or language-specific production edits.
 3. Use absolute-in-file UTF-8 byte offsets with half-open ranges for full call
    expression and callee. Derive actual 1-based line bounds from file bytes;
    `end_line` is the line of the final included byte. Do not use chunk-relative
@@ -111,7 +128,12 @@ Board analysis pointers and current spec commit/URLs are preserved in plan A.
    containing callable chunk; otherwise its smallest containing symbol chunk.
    Resolve a tie by the source-order occurrence key from A. This preserves calls
    in methods/nested functions once, assigned to their innermost extracted
-   definition. Do not manufacture module nodes for unsupported top-level calls.
+   definition. A Python `decorated_definition` wrapper is a transparent
+   ownership container: a decorator call outside the inner definition span is
+   assigned to the first contained retained definition whose `parent_context`
+   is `decorated_definition`, in source occurrence order, and remains exactly
+   once after ordinary site dedupe. Do not manufacture module nodes for
+   unsupported top-level calls.
    The contract covers recognized calls in extracted definitions; grammar
    completeness/top-level synthetic ownership are outside both plans.
 6. Emit one `calls` relationship and Boundary edge per raw fact. Carry its
@@ -123,9 +145,13 @@ Board analysis pointers and current spec commit/URLs are preserved in plan A.
    semantic-edge shapes and frozen top-level keys; do not rely on permissive
    additionalProperties as validation.
 7. Call fact ID and syntax call edge ID are the same deterministic reuse of the
-   project's SHA-1 stable-hash convention over canonical caller, canonical file,
-   full-call bounds, callee bounds, exact reference, and relationship type,
-   prefixed `call:`. Resolved target
+   project's SHA-1 stable-hash convention. The exact seed is the UTF-8 encoding
+   of `"|".join(str(value) for value in (caller, file, call_byte_start,
+   call_byte_end, callee_byte_start, callee_byte_end, reference, "calls"))`;
+   retain the full lowercase 40-hex digest and prefix `call:`. For the fixed
+   vector `caller-id|src/app.py|10|18|10|16|target|calls`, the ID is
+   `call:db4aa2584c80ce295d03d6b5c1ce7f1b6dea99a2`. Fact `id`, relationship
+   `call_site_id`, and syntax call edge `id` are identical. Resolved target
    and candidates are deliberately excluded: adding unrelated files may change
    those annotations but must not churn the call-site ID. Non-call edge ID
    algorithm and imports/dependencies dedupe remain as treesitter-chunker#495 and A define them.
@@ -159,9 +185,10 @@ unreleased coordinated package 6.0.0 and IR 3.0/3.1 major train.
 ## Changes (modify existing files unless stated)
 
 - `chunker/metadata/extractor.py`: `_create_call_info` and existing recognized
-  call collection — raw callee text/bounds, keeping legacy name fields. Dynamic
-  recognized callee expressions remain raw facts even when naming cannot resolve
-  them; do not broaden language/grammar syntax beyond recognized call nodes.
+  call collection — raw callee text/bounds, keeping legacy name fields; recover
+  the direct callee-expression ancestor for already-recognized parenthesized
+  Go/C/C++ paths. Producer-dropped dynamic syntax stays out of scope; do not
+  broaden language/grammar recognition.
 - `chunker/metadata/languages/javascript.py`: shared JS/TS raw fields for normal,
   constructor and tagged-template records already recognized from real nodes.
 - `chunker/metadata/languages/rust.py`: repair the manual macro raw path/bounds
@@ -179,7 +206,8 @@ unreleased coordinated package 6.0.0 and IR 3.0/3.1 major train.
   fields/meaning and selected migration policy; no new top-level vocabulary.
 - `tests/test_phase15_base_extractor.py`, `tests/test_phase15_languages.py`,
   `tests/test_phase2_extractors.py`: real parser token/span/legacy-name
-  compatibility checks, including base helper users and Rust macro paths.
+  compatibility checks, including base helper users, Go `(fn)()`, C/C++
+  `(*ptr)()`/nested grouping, decorator calls and Rust macro paths.
 - `tests/test_symbol_graph_incremental_facts.py`,
   `tests/test_symbol_graph_resolution.py`, `tests/test_boundary_ir_resolution_modes.py`:
   raw locality/site multiplicity, self calls, exact source/target/membership and
@@ -246,8 +274,14 @@ Use `test_496_call_site_` names in the listed existing test modules:
   every currently supported metadata extractor's real fixture raw record spans
   are usable and tokens slice its source; do not infer universal call coverage
   from a nonempty Boundary golden.
-- Seed actual persisted baseline v2/v1 cache records before source edits; both
-  miss/reparse. New v3 records must contain raw facts and actually reuse them
+- Before production edits, preserve genuine accepted-A v2 record/index bytes
+  and hashes under the private B `baseline-cache-v2/` evidence directory. In
+  tracked tests construct otherwise-valid same-schema 3.0 cases that isolate:
+  v1 index version, v2 index version, v1/v2 record versions, v1/v2 key prefixes,
+  missing v3 `call_facts`, and malformed v3 fact fields/types. Hold every other
+  gate valid in each negative case, assert miss/reparse, and bind M-B6 to these
+  assertions so a prefix or schema mismatch cannot mask weakened payload
+  validation. New v3 records must contain raw facts and actually reuse them
   warm. Add/remove only an unrelated callee file and prove caller bytes/facts
   unchanged while annotations can vary. Fresh/cold/warm canonical parity must
   hold; compare semantic runs separately against equivalent options.
@@ -282,13 +316,13 @@ designated mutation during implementation (not during planning):
 ```bash
 uv sync --locked --all-extras --python 3.12
 uv run --locked --all-extras pytest tests/test_phase15_base_extractor.py tests/test_phase15_languages.py tests/test_phase2_extractors.py tests/test_symbol_graph_incremental_facts.py tests/test_symbol_graph_resolution.py -q
-uv run --locked --all-extras pytest tests/test_boundary_ir_resolution_modes.py tests/test_boundary_ir_incremental_runtime.py tests/test_boundary_ir_incremental_cache.py tests/test_boundary_ir_incremental_impact.py tests/test_boundary_cache_key.py tests/test_boundary_ir_schema.py tests/test_boundary_ir_required_fields.py tests/test_boundary_ir_contract.py -q
+uv run --locked --all-extras pytest tests/test_boundary_ir_resolution_modes.py tests/test_boundary_ir_incremental_runtime.py tests/test_boundary_ir_incremental_cache.py tests/test_boundary_ir_incremental_impact.py tests/test_boundary_ir_incremental_contract.py tests/test_boundary_cache_key.py tests/test_boundary_ir_required_fields.py tests/test_boundary_ir_contract.py tests/test_boundary_ir_schema.py -k 'not golden_snapshot_matches_schema' -q
 uv run --locked --all-extras pytest tests/test_symbol_graph_cli_resolution.py tests/integration/test_clustering_integration.py -q
 ```
 
-Then run every common broad verification command listed explicitly in A:
-semantic tests, locked golden regeneration twice with binary-diff `cmp`, golden
-and determinism tests, Ruff, Black, the unchanged mypy gate, smoke, Linux
+Then regenerate locked goldens twice and compare the binary diffs before the
+complete `tests/test_boundary_ir_schema.py` module, followed by semantic tests,
+golden/determinism tests, Ruff, Black, the unchanged mypy gate, smoke, Linux
 platform-core, original full `tests/` + `spec_tests/`, strict MkDocs build, actual
 isolated native Windows snapshot (B narrow commands plus Windows preflight),
 available fleet preflights and final-head hosted matrix. Generated golden
