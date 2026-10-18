@@ -1,3 +1,4 @@
+import unicodedata
 from pathlib import Path
 
 from chunker.types import CodeChunk
@@ -20,9 +21,11 @@ def _assert_496_sources_match_files(graph: dict, symbol_name: str) -> None:
     assert all(
         symbol["definition_id"] in symbol_id for symbol_id, symbol in symbols.items()
     )
+    assert graph["relationships"]
     for relationship in graph["relationships"]:
-        if relationship["from"] in symbols:
-            assert symbols[relationship["from"]]["file"] == relationship["file"]
+        assert relationship["from"] in graph["symbol_lookup"]
+        source = graph["symbol_lookup"][relationship["from"]]
+        assert source["file"] == relationship["file"]
 
 
 def test_symbol_facts_include_reusable_file_fields(tmp_path: Path):
@@ -132,6 +135,61 @@ def test_496_anchor_typescript_and_tsx_definitions_survive(tmp_path: Path):
     } == {("g", "x.ts"), ("k", "x.tsx")}
 
 
+def test_496_anchor_identical_python_calls_survive_reversed_fact_order(
+    tmp_path: Path,
+):
+    package = tmp_path / "pkg"
+    package.mkdir()
+    source = "def run():\n    return sorted([])\n"
+    (tmp_path / "pkg.py").write_text(source, encoding="utf-8")
+    (package / "__init__.py").write_text(source, encoding="utf-8")
+    paths = [tmp_path / "pkg.py", package / "__init__.py"]
+    facts = [extract_symbol_facts_for_file(path, tmp_path, "python") for path in paths]
+
+    graphs = (
+        assemble_symbol_graph(facts, total_files=2),
+        assemble_symbol_graph(list(reversed(facts)), total_files=2),
+    )
+
+    for graph in graphs:
+        _assert_496_sources_match_files(graph, "run")
+        calls = {
+            (relationship["from"], relationship["reference"], relationship["file"])
+            for relationship in graph["relationships"]
+            if relationship["type"] == "calls"
+        }
+        assert len(calls) == 2
+        assert {(reference, file) for _, reference, file in calls} == {
+            ("sorted", "pkg.py"),
+            ("sorted", "pkg/__init__.py"),
+        }
+    assert graphs[0]["symbol_lookup"] == graphs[1]["symbol_lookup"]
+    assert {
+        (item["from"], item["to"], item["type"], item["reference"], item["file"])
+        for item in graphs[0]["relationships"]
+    } == {
+        (item["from"], item["to"], item["type"], item["reference"], item["file"])
+        for item in graphs[1]["relationships"]
+    }
+
+
+def test_496_anchor_identical_typescript_and_tsx_calls_survive(tmp_path: Path):
+    source = "export function f() { return shared(); }\n"
+    (tmp_path / "x.ts").write_text(source, encoding="utf-8")
+    (tmp_path / "x.tsx").write_text(source, encoding="utf-8")
+
+    graph = extract_symbol_graph(tmp_path)
+
+    _assert_496_sources_match_files(graph, "f")
+    calls = [
+        relationship
+        for relationship in graph["relationships"]
+        if relationship["type"] == "calls" and relationship["reference"] == "shared"
+    ]
+    assert len(calls) == 2
+    assert {relationship["file"] for relationship in calls} == {"x.ts", "x.tsx"}
+
+
 def test_496_anchor_dotted_directory_and_file_definitions_survive(tmp_path: Path):
     nested = tmp_path / "src" / "api"
     nested.mkdir(parents=True)
@@ -145,6 +203,26 @@ def test_496_anchor_dotted_directory_and_file_definitions_survive(tmp_path: Path
     graph = extract_symbol_graph(tmp_path, "typescript")
 
     _assert_496_sources_match_files(graph, "send")
+
+
+def test_496_anchor_nfd_module_and_package_paths_are_preserved(tmp_path: Path):
+    module = unicodedata.normalize("NFD", "café")
+    package = tmp_path / module
+    package.mkdir()
+    source = "def serve():\n    return sorted([])\n"
+    (tmp_path / f"{module}.py").write_text(source, encoding="utf-8")
+    (package / "__init__.py").write_text(source, encoding="utf-8")
+
+    graph = extract_symbol_graph(tmp_path, "python")
+
+    _assert_496_sources_match_files(graph, "serve")
+    expected_paths = {f"{module}.py", f"{module}/__init__.py"}
+    assert {
+        relationship["file"]
+        for relationship in graph["relationships"]
+        if relationship["type"] == "calls"
+    } == expected_paths
+    assert all(unicodedata.is_normalized("NFD", path) for path in expected_paths)
 
 
 def test_496_anchor_occurrence_counts_chunks_before_graph_filter(

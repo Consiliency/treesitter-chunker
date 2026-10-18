@@ -189,11 +189,13 @@ starting line rather than individual call sites. Complete call-site coverage and
 qualified self-call suppression remain separate work under treesitter-chunker#487.
 
 Boundary IR edge identity already includes the reference. Existing surviving
-edges keep their IDs for unchanged inputs, while newly retained references add
-edges, node memberships and counts. Per-relationship clustering weights and
-module dependency counts can also change. Regenerate affected graph/IR outputs
-and their derived aggregates for 6.0.0; endpoint identity alone does not identify
-a call token.
+edges keep their IDs for unchanged inputs when source ownership and target
+resolution are also unchanged. The treesitter-chunker#496 identity repair can
+change an existing edge ID when it corrects either endpoint; newly retained
+references also add edges, node memberships and counts. Per-relationship
+clustering weights and module dependency counts can change. Regenerate affected
+graph/IR outputs and their derived aggregates for 6.0.0; endpoint identity alone
+does not identify a call token.
 
 Incremental caches store raw per-file symbol facts and reassemble relationships
 on each run. Compatible existing records therefore receive the corrected

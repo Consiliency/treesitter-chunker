@@ -178,6 +178,41 @@ def test_496_anchor_duplicate_sources_keep_exact_relationship_membership(tmp_pat
         assert beta_edge["id"] not in same_nodes[0]["relationships"]
 
 
+def test_496_anchor_cross_file_identical_calls_keep_source_ownership_all_paths(
+    tmp_path,
+):
+    from chunker.boundary.adapter import extract_boundary_ir
+
+    package = tmp_path / "pkg"
+    package.mkdir()
+    source = "def run():\n    return sorted([])\n"
+    (tmp_path / "pkg.py").write_text(source, encoding="utf-8")
+    (package / "__init__.py").write_text(source, encoding="utf-8")
+    cache_dir = tmp_path / ".boundary-cache"
+    documents = (
+        extract_boundary_ir(tmp_path, "python"),
+        extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir),
+        extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir),
+    )
+
+    for document in documents:
+        nodes = {node["id"]: node for node in document["nodes"]}
+        calls = [
+            edge
+            for edge in document["edges"]
+            if edge["type"] == "calls" and edge["reference"] == "sorted"
+        ]
+        assert len(calls) == 2
+        assert {edge["metadata"]["file"] for edge in calls} == {
+            "pkg.py",
+            "pkg/__init__.py",
+        }
+        for edge in calls:
+            source_node = nodes[edge["source"]]
+            assert source_node["path"] == edge["metadata"]["file"]
+            assert edge["id"] in source_node["relationships"]
+
+
 def test_496_anchor_exact_node_ids_precede_name_aliases():
     from chunker.boundary.adapter import _node_symbol_indexes
 

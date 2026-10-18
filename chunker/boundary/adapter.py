@@ -878,10 +878,6 @@ def _assemble_boundary_ir(
     symbol_indexes = _node_symbol_indexes(node_records)
     nodes_by_id = {str(node["id"]): node for node in node_records}
     edge_records: list[dict[str, Any]] = []
-    # Disambiguate colliding node ids (same-name overloads) BEFORE indexing +
-    # edge resolution so no chunk is dropped and edges resolve to the right node.
-    _dedupe_node_identities(node_records)
-    symbol_indexes = _node_symbol_indexes(node_records)
 
     seen_edges: set[str] = set()
     relationships_by_source: dict[str, list[str]] = {}
