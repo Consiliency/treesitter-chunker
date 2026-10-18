@@ -23,11 +23,11 @@ BoundaryIR: TypeAlias = dict[str, Any]
 BoundaryRecord: TypeAlias = dict[str, Any]
 SemanticEdgeSource: TypeAlias = Literal["semantic"]
 
-BOUNDARY_IR_SCHEMA_VERSION = "2.0"
-BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION = "2.1"
+BOUNDARY_IR_SCHEMA_VERSION = "3.0"
+BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION = "3.1"
 SEMANTIC_RESOLVER_API_VERSION = "1.0"
-BOUNDARY_CACHE_VERSION = "1"
-BOUNDARY_CACHE_KEY_PREFIX = "boundary:v1:"
+BOUNDARY_CACHE_VERSION = "2"
+BOUNDARY_CACHE_KEY_PREFIX = "boundary:v2:"
 BOUNDARY_CACHE_KEY_FIELDS = (
     "path",
     "content_hash",

@@ -104,20 +104,15 @@ def _module_name(file_path: Path, root: Path) -> str:
 
 
 def _display_file(file_path: Path, root: Path) -> str:
+    from .boundary.impact import normalize_boundary_path
+
     try:
-        return str(file_path.relative_to(root if root.is_dir() else root.parent))
+        display_file = str(
+            file_path.relative_to(root if root.is_dir() else root.parent)
+        )
     except ValueError:
-        return str(file_path)
-
-
-def _symbol_id(
-    module_name: str, qualified_name: str | None, symbol: str | None, fallback: str
-) -> str:
-    if module_name and qualified_name:
-        return f"{module_name}:{qualified_name}"
-    if module_name and symbol:
-        return f"{module_name}:{symbol}"
-    return fallback
+        display_file = str(file_path)
+    return normalize_boundary_path(display_file)
 
 
 def _normalize_reference(value: object) -> str | None:
@@ -236,6 +231,7 @@ def extract_symbol_facts_for_file(
             detected_language,
             extract_metadata=True,
             include_retrieval_metadata=True,
+            identity_path=display_file,
         )
     except Exception as exc:  # pragma: no cover - defensive around parser failures
         if fail_fast:
@@ -247,8 +243,15 @@ def extract_symbol_facts_for_file(
     fact_import_strings: list[str] = []
     imports_output: list[dict[str, Any]] = []
     chunk_records: list[dict[str, Any]] = []
+    identity_occurrences: defaultdict[str, int] = defaultdict(int)
     for chunk in chunks:
         metadata = chunk.metadata or {}
+        identity_base = str(chunk.definition_id or chunk.node_id)
+        occurrence = identity_occurrences[identity_base]
+        identity_occurrences[identity_base] += 1
+        symbol_id = (
+            identity_base if occurrence == 0 else f"{identity_base}#{occurrence}"
+        )
         fact_import_strings.extend(
             str(value) for value in metadata.get("imports", []) if str(value)
         )
@@ -257,12 +260,6 @@ def extract_symbol_facts_for_file(
         if not symbol or not kind or kind not in SYMBOL_KINDS:
             continue
         qualified_name = metadata.get("qualified_name")
-        symbol_id = _symbol_id(
-            module_name,
-            str(qualified_name) if qualified_name else None,
-            str(symbol),
-            chunk.definition_id or chunk.node_id,
-        )
         symbol_record = {
             "name": str(symbol),
             "kind": str(kind),
@@ -275,6 +272,8 @@ def extract_symbol_facts_for_file(
             "signature": metadata.get("signature_text"),
             "semantic_path": metadata.get("semantic_path"),
             "language": detected_language,
+            "definition_id": chunk.definition_id or None,
+            "node_id": chunk.node_id or None,
         }
         symbol_lookup[symbol_id] = symbol_record
         import_strings = [

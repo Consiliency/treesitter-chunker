@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ⚠️ BREAKING
 
+- Symbol graph keys, relationship endpoints/candidates, and Boundary IR syntax
+  ownership now use canonical definition-derived occurrence IDs instead of
+  module-stem aliases. Colliding definitions retain stable `#N` occurrence
+  suffixes counted across every extracted chunk before graph filtering. Syntax
+  Boundary IR moves to 3.0, semantic Boundary IR to 3.1, and incremental cache
+  records to version 2 under `boundary:v2:`. Consumers must re-extract,
+  re-index, and rebuild graph joins and caches (treesitter-chunker#496).
+
 - The direct DOT exporter encodes nonhex UTF-8 caller IDs in a distinct `tc_`
   namespace, preventing punctuation collisions and invalid quoted IDs while
   preserving hexadecimal IDs, labels and directed endpoints

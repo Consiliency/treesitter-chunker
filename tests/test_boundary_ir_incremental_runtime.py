@@ -11,6 +11,7 @@ import pytest
 from chunker.boundary import dumps_boundary_ir, extract_boundary_ir
 from chunker.boundary.cache import (
     BoundaryCacheIndex,
+    _record_filename,
     build_boundary_cache_key,
     load_cache_index,
     load_cache_record,
@@ -120,6 +121,52 @@ def service():
 
     assert dumps_boundary_ir(cold) == dumps_boundary_ir(warm)
     assert (cache_dir / "index.json").exists()
+
+
+def test_496_anchor_genuine_v1_cache_reparses_then_reuses_v2(
+    tmp_path: Path, monkeypatch
+):
+    source = tmp_path / "app.py"
+    source.write_text("def run():\n    return sorted([])\n", encoding="utf-8")
+    cache_dir = tmp_path / ".boundary-cache"
+    baseline_cache = Path(__file__).parent / "fixtures" / "boundary_cache" / "v1_python"
+    shutil.copytree(baseline_cache, cache_dir)
+    raw_index = json.loads((cache_dir / "index.json").read_text(encoding="utf-8"))
+    assert raw_index["cache_version"] == "1"
+    assert raw_index["schema_version"] == "2.0"
+    baseline_key = raw_index["records"]["app.py"]
+    baseline_record = cache_dir / _record_filename(baseline_key)
+    assert baseline_record.exists()
+    fresh = extract_boundary_ir(tmp_path, "python")
+
+    from chunker.boundary import adapter
+
+    recomputed: list[str] = []
+    original = adapter._extract_file_cache_record
+
+    def spy(file_path, *args, **kwargs):
+        recomputed.append(file_path.name)
+        return original(file_path, *args, **kwargs)
+
+    monkeypatch.setattr(adapter, "_extract_file_cache_record", spy)
+    cold = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir
+    )
+    assert recomputed == ["app.py"]
+    assert baseline_record.exists()
+    migrated_index = load_cache_index(cache_dir)
+    assert migrated_index.records["app.py"].startswith("boundary:v2:")
+    migrated_record = load_cache_record(cache_dir, migrated_index.records["app.py"])
+    assert migrated_record is not None
+    assert migrated_record.symbol_facts["symbol_lookup"]
+
+    recomputed.clear()
+    warm = extract_boundary_ir(
+        tmp_path, "python", incremental=True, cache_dir=cache_dir
+    )
+    assert recomputed == []
+    assert dumps_boundary_ir(fresh) == dumps_boundary_ir(cold)
+    assert dumps_boundary_ir(cold) == dumps_boundary_ir(warm)
 
 
 def test_incremental_warm_run_recomputes_changed_file_and_neighbors(

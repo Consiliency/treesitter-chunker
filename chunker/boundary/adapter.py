@@ -217,12 +217,16 @@ def _add_symbol_indexes(
 def _edge_record(
     relationship: dict[str, Any],
     symbol_indexes: dict[str, str],
+    nodes_by_id: dict[str, dict[str, Any]],
     resolution_mode: ResolutionMode,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     source_ref = str(relationship.get("from") or "")
     reference = str(relationship.get("reference") or relationship.get("to") or "")
     target_ref = str(relationship.get("to") or reference)
-    source = symbol_indexes.get(source_ref, source_ref)
+    source_node = nodes_by_id.get(source_ref)
+    if source_node is None:
+        return None
+    source = source_ref
     is_internal = bool(relationship.get("is_internal"))
     resolution = str(relationship.get("resolution") or "")
     if resolution not in {"resolved", "ambiguous", "unresolved"}:
@@ -253,6 +257,9 @@ def _edge_record(
     relationship_file = relationship.get("file")
     if relationship_file is not None:
         relationship_file = normalize_boundary_path(str(relationship_file))
+        source_path = normalize_boundary_path(str(source_node.get("path") or ""))
+        if relationship_file != source_path:
+            return None
     edge_id = (
         "edge:"
         + _stable_hash(
@@ -794,7 +801,7 @@ def _dedupe_node_identities(node_records: list[dict[str, Any]]) -> None:
 
 
 def _node_symbol_indexes(node_records: list[dict[str, Any]]) -> dict[str, str]:
-    indexes: dict[str, str] = {}
+    indexes = {str(node["id"]): str(node["id"]) for node in node_records}
     for node in node_records:
         node_id = str(node["id"])
         for key in (
@@ -869,17 +876,16 @@ def _assemble_boundary_ir(
     )
     _dedupe_node_identities(node_records)
     symbol_indexes = _node_symbol_indexes(node_records)
+    nodes_by_id = {str(node["id"]): node for node in node_records}
     edge_records: list[dict[str, Any]] = []
-    # Disambiguate colliding node ids (same-name overloads) BEFORE indexing +
-    # edge resolution so no chunk is dropped and edges resolve to the right node.
-    _dedupe_node_identities(node_records)
-    symbol_indexes = _node_symbol_indexes(node_records)
 
     seen_edges: set[str] = set()
     relationships_by_source: dict[str, list[str]] = {}
     started_at = time.perf_counter()
     for relationship in graph.get("relationships", []):
-        edge = _edge_record(relationship, symbol_indexes, resolution_mode)
+        edge = _edge_record(relationship, symbol_indexes, nodes_by_id, resolution_mode)
+        if edge is None:
+            continue
         if edge["id"] in seen_edges:
             continue
         seen_edges.add(edge["id"])
@@ -1165,12 +1171,15 @@ def extract_boundary_ir(
     # edges resolve to real nodes (IDENTITY panel: cold path skipped this).
     _dedupe_node_identities(node_records)
     symbol_indexes = _node_symbol_indexes(node_records)
+    nodes_by_id = {str(node["id"]): node for node in node_records}
 
     seen_edges: set[str] = set()
     relationships_by_source: dict[str, list[str]] = {}
     started_at = time.perf_counter()
     for relationship in graph.get("relationships", []):
-        edge = _edge_record(relationship, symbol_indexes, resolution_mode)
+        edge = _edge_record(relationship, symbol_indexes, nodes_by_id, resolution_mode)
+        if edge is None:
+            continue
         if edge["id"] in seen_edges:
             continue
         seen_edges.add(edge["id"])

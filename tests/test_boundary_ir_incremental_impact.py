@@ -6,7 +6,7 @@ def _record(path: str, *, exports=(), references=(), endpoints=()):
     return BoundaryCacheRecord(
         path=path,
         content_hash=f"sha1:{path}",
-        cache_key=f"boundary:v1:{path}",
+        cache_key=f"boundary:v2:{path}",
         key_payload={},
         file_record={"path": path},
         node_records=[],

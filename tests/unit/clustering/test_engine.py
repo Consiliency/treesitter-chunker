@@ -1024,3 +1024,48 @@ class TestModuleDependencies:
 
         # Should still include the relationship since both symbols exist
         assert len(result["module_dependencies"]) == 1
+
+    def test_496_anchor_module_dependencies_use_symbol_metadata(self):
+        from chunker.clustering.engine import ClusteringEngine
+
+        engine = ClusteringEngine()
+        symbols = {
+            "sha256:first:opaque": {
+                "name": "first",
+                "kind": "function",
+                "module": "package.first",
+                "file": "package/first.py",
+            },
+            "sha256:second:opaque": {
+                "name": "second",
+                "kind": "function",
+                "module": "package.second",
+                "file": "package/second.py",
+            },
+        }
+
+        result = engine.cluster(
+            symbols,
+            [
+                {
+                    "from": "sha256:first:opaque",
+                    "to": "sha256:second:opaque",
+                    "type": "calls",
+                }
+            ],
+        )
+
+        assert result["module_dependencies"] == [
+            {
+                "from_module": "package.first",
+                "to_module": "package.second",
+                "count": 1,
+                "examples": [
+                    {
+                        "from": "sha256:first:opaque",
+                        "to": "sha256:second:opaque",
+                        "type": "calls",
+                    }
+                ],
+            }
+        ]

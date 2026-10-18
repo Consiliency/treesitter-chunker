@@ -2841,6 +2841,103 @@
       "task_summary": "Preserve distinct relationship reference tokens (treesitter-chunker#487)",
       "type": "detailed",
       "updated_at": "2026-10-16T15:42:19Z"
+    },
+    {
+      "acceptance_criteria_count": 4,
+      "created_at": "2026-10-18T01:00:08.671799+00:00",
+      "file": "plans/detailed-source-anchors-496-20261017.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/496-after495-plan-refresh-20261017.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-18T01:00:08.671799+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "code_rounds_used": 0,
+            "design_accepted": false,
+            "plan_rounds_used": 0,
+            "source_base": "931f6e05208faf1b1ca94520584cb4c45bff51b1"
+          },
+          "transition": "committed"
+        },
+        {
+          "at": "2026-10-18T01:44:44Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "B_code_rounds_complete": 0,
+            "B_plan_rounds_complete": 0,
+            "code_rounds_complete": 0,
+            "design_acceptance": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/call-identity-496/20261017-after-495/plan-A-acceptance.json",
+            "design_acceptance_sha256": "ee6d8886f744d12849265455aa540b5fe914d2f5a2d1251abc9b2ba74c685d14",
+            "design_head": "4fdf27425c90eb402f646d2fbe62d3664e028af8",
+            "plan": "plans/detailed-source-anchors-496-20261017.md",
+            "plan_rounds_complete": 3,
+            "plan_sha256": "f2b8e9752ec667ee5a8677493506e1af69370740f28e141ef78c99dab7222743",
+            "run_id": "source-anchors-496-20261018"
+          },
+          "transition": "executing"
+        },
+        {
+          "at": "2026-10-18T02:12:09Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "B_code_rounds_complete": 0,
+            "B_plan_rounds_complete": 0,
+            "code_rounds_complete": 0,
+            "implementation_head": "dae0ed49ec8d82fba273fb048d18165c13f232bf",
+            "plan_rounds_complete": 3,
+            "preliminary_native_windows_result": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/native-windows/native-windows-result.json",
+            "preliminary_native_windows_sha256": "b30015c13b9b93004647ac81ea896289044069445f6da65e1e1e5b648c673d7b",
+            "preliminary_wheel_result": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/wheel/wheel-result.json",
+            "preliminary_wheel_sha256": "e2021d2e5c5fb0ffec942371822186706547e8131730634baa0f142fd71431d7",
+            "reflection": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/reflection-A.md",
+            "run_id": "source-anchors-496-20261018",
+            "verification_artifact": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/runner-verification/verification.json",
+            "verification_log": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/call-identity-496/20261017-after-495/implementation-A/runner-verification/verification.log"
+          },
+          "transition": "completed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/2687c4c1808d6019/codex-source-anchors-496/496-after495-plan-refresh-20261017.md",
+      "roadmap_ref": null,
+      "slug": "source-anchors-496",
+      "status": "completed",
+      "task_summary": "Canonical definition anchors and exact source ownership; PLAN review pending",
+      "type": "detailed",
+      "updated_at": "2026-10-18T02:12:09Z"
+    },
+    {
+      "acceptance_criteria_count": 4,
+      "created_at": "2026-10-18T01:00:08.671799+00:00",
+      "file": "plans/detailed-raw-call-sites-496-20261017.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/496-after495-plan-refresh-20261017.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-18T01:00:08.671799+00:00",
+          "by": "codex-plan-detailed",
+          "metadata": {
+            "code_rounds_used": 0,
+            "design_accepted": false,
+            "plan_rounds_used": 0,
+            "source_base": "931f6e05208faf1b1ca94520584cb4c45bff51b1"
+          },
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/2687c4c1808d6019/codex-source-anchors-496/496-after495-plan-refresh-20261017.md",
+      "roadmap_ref": null,
+      "slug": "raw-call-sites-496",
+      "status": "committed",
+      "task_summary": "Draft dependent raw call-site contract; PLAN0 context only until A merge",
+      "type": "detailed",
+      "updated_at": "2026-10-18T01:00:08.671799+00:00"
     }
   ],
   "schema_version": 1

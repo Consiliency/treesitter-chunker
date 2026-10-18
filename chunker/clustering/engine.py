@@ -470,8 +470,16 @@ class ClusteringEngine:
             if from_id not in self._symbols or to_id not in self._symbols:
                 continue
 
-            from_mod = from_id.split(":")[0]
-            to_mod = to_id.split(":")[0]
+            from_symbol = self._symbols[from_id]
+            to_symbol = self._symbols[to_id]
+            from_mod = str(
+                from_symbol.get("module")
+                or from_symbol.get("file")
+                or from_id.split(":")[0]
+            )
+            to_mod = str(
+                to_symbol.get("module") or to_symbol.get("file") or to_id.split(":")[0]
+            )
             if from_mod == to_mod:
                 continue
 

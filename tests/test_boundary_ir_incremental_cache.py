@@ -10,6 +10,7 @@ from chunker.boundary.cache import (
     save_cache_index,
     save_cache_record,
 )
+from chunker.boundary.types import BOUNDARY_IR_SCHEMA_VERSION
 
 
 def _payload(**overrides):
@@ -48,7 +49,7 @@ def test_cache_key_is_stable_and_changes_for_included_fields():
     reordered = build_boundary_cache_key(dict(reversed(list(_payload().items()))))
 
     assert first == reordered
-    assert first.startswith("boundary:v1:")
+    assert first.startswith("boundary:v2:")
     assert first != build_boundary_cache_key(_payload(content_hash="sha1:def"))
 
 
@@ -88,6 +89,32 @@ def test_malformed_cache_records_are_misses(tmp_path: Path):
     cache_key = build_boundary_cache_key(_payload())
     (tmp_path / cache_key.replace(":", "_")).with_suffix(".json").write_text(
         "{not json",
+        encoding="utf-8",
+    )
+
+    assert load_cache_record(tmp_path, cache_key) is None
+    assert load_cache_index(tmp_path) == BoundaryCacheIndex()
+
+
+def test_496_anchor_same_schema_v1_cache_is_a_miss(tmp_path: Path):
+    cache_key = "boundary:v1:" + "0" * 64
+    record = _record(cache_key).to_json()
+    record["key_payload"]["schema_version"] = BOUNDARY_IR_SCHEMA_VERSION
+    record["cache_version"] = "1"
+    record["schema_version"] = BOUNDARY_IR_SCHEMA_VERSION
+    (tmp_path / cache_key.replace(":", "_")).with_suffix(".json").write_text(
+        json.dumps(record),
+        encoding="utf-8",
+    )
+    (tmp_path / "index.json").write_text(
+        json.dumps(
+            {
+                "cache_version": "1",
+                "schema_version": BOUNDARY_IR_SCHEMA_VERSION,
+                "records": {"app.py": cache_key},
+                "content_hashes": {"app.py": "sha1:abc"},
+            }
+        ),
         encoding="utf-8",
     )
 

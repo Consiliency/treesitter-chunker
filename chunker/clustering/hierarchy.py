@@ -370,20 +370,15 @@ class HierarchyBuilder:
         if not symbol_ids:
             return None
 
-        # Extract module names from symbol IDs (format: "module:ClassName" or "module:func")
+        # Prefer symbol metadata; opaque canonical IDs do not encode modules.
         modules = []
         for sid in symbol_ids:
-            if ":" in sid:
-                module = sid.split(":")[0]
-                modules.append(module)
-            else:
-                # Fallback: try to get from symbol metadata
-                sym = self.symbols.get(sid, {})
-                if "module" in sym:
-                    modules.append(sym["module"])
-                elif "file" in sym:
-                    # Use file path as fallback
-                    modules.append(sym["file"])
+            sym = self.symbols.get(sid, {})
+            module = sym.get("module") or sym.get("file")
+            if module:
+                modules.append(str(module))
+            elif ":" in sid:
+                modules.append(sid.split(":")[0])
 
         if not modules:
             return None

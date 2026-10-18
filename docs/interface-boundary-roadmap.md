@@ -104,8 +104,8 @@ This roadmap focuses only on boundary parsing and IR generation.
 
 3. **Compatibility guarantees** _(implemented for syntax-only baseline and enriched output)_
    - Version IR schema and publish migration notes.
-   - Preserve the current syntax-only `schema_version == "2.0"` and use additive
-     semantic schema `2.1` only when resolvers are supplied. Follow the
+   - Preserve the current syntax-only `schema_version == "3.0"` and use additive
+     semantic schema `3.1` only when resolvers are supplied. Follow the
      [specification's migration requirements](interface-boundary-spec.md)
      for older schema and package identity versions.
 

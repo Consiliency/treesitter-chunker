@@ -1020,3 +1020,26 @@ class TestHierarchyBuilderIntegration:
         assert root.id in all_ids
         # HierarchyBuilder adds "component_" prefix to cluster IDs
         assert "component_comp_0" in all_ids
+
+
+def test_496_anchor_label_prefers_metadata_for_opaque_ids():
+    builder = HierarchyBuilder(
+        coarse_clusters={},
+        fine_clusters={},
+        symbols={
+            "sha256:first:opaque": {
+                "module": "package.first",
+                "file": "package/first.py",
+            },
+            "sha256:second:opaque": {
+                "module": "package.second",
+                "file": "package/second.py",
+            },
+        },
+        metrics_calculator=None,
+    )
+
+    assert (
+        builder._infer_label(["sha256:first:opaque", "sha256:second:opaque"])
+        == "package"
+    )

@@ -110,10 +110,20 @@ def test_distinct_call_references_share_target_without_collapsing(
         encoding="utf-8",
     )
     facts = extract_symbol_facts_for_file(source, source, language, fail_fast=True)
+    caller_id = next(
+        symbol_id
+        for symbol_id, symbol in facts["symbol_lookup"].items()
+        if symbol["name"] == "caller"
+    )
+    target_id = next(
+        symbol_id
+        for symbol_id, symbol in facts["symbol_lookup"].items()
+        if symbol["name"] == "target"
+    )
     caller = next(
         record
         for record in facts["chunk_records"]
-        if record["context"]["id"] == "service:caller"
+        if record["context"]["id"] == caller_id
     )
     assert facts["errors"] == []
     assert caller["calls"] == raw_calls
@@ -133,15 +143,15 @@ def test_distinct_call_references_share_target_without_collapsing(
     )
     for rel in calls:
         assert rel == {
-            "from": "service:caller",
-            "to": "service:target",
+            "from": caller_id,
+            "to": target_id,
             "type": "calls",
             "line": 2,
             "file": source.name,
             "is_internal": True,
             "reference": rel["reference"],
             "resolution": "resolved",
-            "candidates": ["service:target"],
+            "candidates": [target_id],
             "resolution_mode": mode,
             "provenance": {"resolver": "extract_symbol_graph", "source": "syntax"},
         }
@@ -161,10 +171,20 @@ def test_normalized_reference_duplicates_and_relationship_types(
         encoding="utf-8",
     )
     facts = extract_symbol_facts_for_file(source, source, language, fail_fast=True)
+    caller_id = next(
+        symbol_id
+        for symbol_id, symbol in facts["symbol_lookup"].items()
+        if symbol["name"] == "caller"
+    )
+    target_id = next(
+        symbol_id
+        for symbol_id, symbol in facts["symbol_lookup"].items()
+        if symbol["name"] == "target"
+    )
     caller = next(
         record
         for record in facts["chunk_records"]
-        if record["context"]["id"] == "service:caller"
+        if record["context"]["id"] == caller_id
     )
     assert caller["calls"] == ["target"]
     for relationship_type in ("imports", "dependencies", "calls"):
@@ -186,5 +206,5 @@ def test_normalized_reference_duplicates_and_relationship_types(
         for reference in ("target", "ns.target", "other.target")
     ], "distinct normalized references were collapsed"
     assert result["metadata"]["total_relationships"] == 9
-    assert all(rel["from"] == "service:caller" for rel in result["relationships"])
-    assert all(rel["to"] == "service:target" for rel in result["relationships"])
+    assert all(rel["from"] == caller_id for rel in result["relationships"])
+    assert all(rel["to"] == target_id for rel in result["relationships"])

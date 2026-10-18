@@ -1,14 +1,11 @@
 # Interface Boundary Specification
 
 This document is the canonical implementation-facing Boundary IR contract for
-`treesitter-chunker`. Current syntax-only output uses `schema_version == "2.0"`,
-and opt-in semantic output uses `"2.1"`. The original Phase 0 (`SCHEMA`) contract
-used `1.0`; the canonical identity change in chunker 3.0.0 introduced the existing
-2.x boundary, as recorded in the [3.0.0 release commit](https://github.com/Consiliency/treesitter-chunker/commit/455867ad31161060085f4c9af08d549cd75f9230).
-Consumers of 1.x documents must re-extract and re-index. Chunker 4.0.0 introduced
-a further breaking chunk-identity and Boundary IR byte-output change. Consumers
-upgrading from earlier package versions must re-extract and re-index for that
-break too, even when their documents already use IR 2.0/2.1.
+`treesitter-chunker`. Current syntax-only output uses `schema_version == "3.0"`,
+and opt-in semantic output uses `"3.1"`. The 3.x boundary makes canonical
+definition-derived occurrence IDs authoritative across symbol graphs and
+Boundary IR relationship ownership. Consumers of earlier documents must
+re-extract, re-index, and rebuild ID-based joins and incremental caches.
 
 The repository already implements additional Boundary IR capabilities beyond the
 original Phase 0 boundary. Those later contracts remain documented here only as
@@ -44,9 +41,9 @@ Those concerns live in downstream phases or in external orchestrators.
 
 ## Phase 0 Baseline
 
-The current syntax-only Boundary IR schema version is `2.0`. Its live constant
+The current syntax-only Boundary IR schema version is `3.0`. Its live constant
 is `BOUNDARY_IR_SCHEMA_VERSION` in `chunker.boundary.types`. The original Phase 0
-key and identity vocabulary remains applicable across the 2.x migration.
+key and identity vocabulary remains applicable across the 3.x migration.
 
 The Phase 0 top-level Boundary IR object keys are frozen as:
 
@@ -83,6 +80,11 @@ The selected source must be recorded in `node.identity.source` as
 
 When `definition_id` is available, `node.id` uses it. When it is absent and
 `module + qualified_name` is available, `node.id` uses that composed value.
+When multiple chunks select the same base identity, their occurrence IDs are
+the base followed by stable `#1`, `#2`, and later suffixes in extraction order.
+Occurrences are counted across all extracted chunks before symbol-graph kind
+filtering. Exact occurrence IDs are indexed before qualified-name and symbol
+aliases, so aliases cannot steal exact graph or Boundary edge ownership.
 When neither structural identity is available, `node.id` falls back to
 `node_id`.
 
@@ -148,12 +150,10 @@ via `_canonicalize_value`.
 ## Compatibility
 
 The top-level `schema_version` field is required. Syntax-only output must use
-`"2.0"`; explicit semantic enrichment uses `"2.1"`. The current published JSON
-Schema rejects 1.x documents. The existing major-version migration changed
-canonical IDs and bytes; consumers must re-extract and re-index old documents.
-IR 2.0/2.1 existed before package 4.0.0, whose further identity/byte break is
-documented in CHANGELOG.md. Checking the IR version alone does not establish
-that persisted pre-4.0.0 chunk identities are compatible with current output.
+`"3.0"`; explicit semantic enrichment uses `"3.1"`. The current published JSON
+Schema rejects earlier documents. This major-version migration changes graph
+keys, relationship endpoints and canonical bytes; consumers must re-extract and
+re-index old documents.
 
 Compatibility policy is frozen as:
 
@@ -185,16 +185,17 @@ type and normalized reference. Distinct references such as `target`,
 assigns them the same target; repeated identical normalized references still
 produce one relationship. This applies to imports, dependencies and calls.
 Resolution remains heuristic, and locations identify the containing chunk's
-starting line rather than individual call sites. Complete call-site coverage,
-qualified self-call suppression and colliding module anchors remain separate
-work under treesitter-chunker#487.
+starting line rather than individual call sites. Complete call-site coverage and
+qualified self-call suppression remain separate work under treesitter-chunker#487.
 
 Boundary IR edge identity already includes the reference. Existing surviving
-edges keep their IDs for unchanged inputs, while newly retained references add
-edges, node memberships and counts. Per-relationship clustering weights and
-module dependency counts can also change. Regenerate affected graph/IR outputs
-and their derived aggregates for 6.0.0; endpoint identity alone does not identify
-a call token.
+edges keep their IDs for unchanged inputs when source ownership and target
+resolution are also unchanged. The treesitter-chunker#496 identity repair can
+change an existing edge ID when it corrects either endpoint; newly retained
+references also add edges, node memberships and counts. Per-relationship
+clustering weights and module dependency counts can change. Regenerate affected
+graph/IR outputs and their derived aggregates for 6.0.0; endpoint identity alone
+does not identify a call token.
 
 Incremental caches store raw per-file symbol facts and reassemble relationships
 on each run. Compatible existing records therefore receive the corrected
@@ -210,8 +211,9 @@ on top of the Phase 0 baseline.
 ### Incremental extension
 
 Incremental cache keys, warm-run invalidation rules, and impacted-neighbor
-recompute behavior are downstream additive contracts. They do not change the
-syntax-only `2.0` baseline or the canonical JSON rules.
+recompute behavior are downstream contracts. IR 3.x records use cache version
+`2` and the `boundary:v2:` key namespace. Cache version 1 records are misses,
+including records whose stored schema otherwise matches, and are re-extracted.
 
 Each cache key includes the installed `tree-sitter-language-pack` and
 `tree-sitter` runtime versions. Python and JavaScript keys additionally bind the
@@ -241,9 +243,9 @@ agreement cannot silently redefine the contract.
 
 Optional semantic resolvers are a downstream additive extension. When callers
 explicitly supply semantic resolvers, enriched output may use the additive
-semantic schema version `2.1`
+semantic schema version `3.1`
 (`BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION`). Semantic enrichment remains opt-in and
-must not redefine or replace the syntax-only `2.0` baseline.
+must not redefine or replace the syntax-only `3.0` baseline.
 
 ## Minimal Baseline Example
 
@@ -252,7 +254,7 @@ This schema-valid output comes from a Python file containing only
 and run paths are shown as `empty.py`; the tool version is illustrative.
 
 ```json
-{"diagnostics":[],"edges":[],"files":[{"content_hash":"sha1:7eb4e49617b13df62d2b7cc8f24b036e2493c7b3","diagnostics":[],"id":"62a603819930ab104a88fbe7f15a28da7ab28e86","language":"python","parser":"tree-sitter-python","path":"empty.py","status":"parsed"}],"metrics":{"ambiguous_edges":0,"diagnostics_total":0,"edges_total":0,"failure_buckets":{},"files_failed":0,"files_parsed":1,"files_processed":1,"files_skipped":0,"files_total":1,"graph_failures":0,"metadata_failures":0,"nodes_total":0,"parse_failures":0,"resolved_edges":0,"serialization_failures":0,"unresolved_edges":0},"nodes":[],"run":{"canonical":true,"created_at":null,"options":{"fail_fast":false,"include_retrieval_metadata":true,"include_timings":false,"language":"python","resolution_mode":"strict"},"root":"empty.py","timings":{"graph_assembly_ms":null,"metadata_normalization_ms":null,"parse_ms":null,"resolution_ms":null,"serialization_ms":null,"total_ms":null},"tool":"treesitter-chunker","tool_version":"5.2.0"},"schema_version":"2.0","source":{"kind":"file","path":"empty.py"}}
+{"diagnostics":[],"edges":[],"files":[{"content_hash":"sha1:7eb4e49617b13df62d2b7cc8f24b036e2493c7b3","diagnostics":[],"id":"62a603819930ab104a88fbe7f15a28da7ab28e86","language":"python","parser":"tree-sitter-python","path":"empty.py","status":"parsed"}],"metrics":{"ambiguous_edges":0,"diagnostics_total":0,"edges_total":0,"failure_buckets":{},"files_failed":0,"files_parsed":1,"files_processed":1,"files_skipped":0,"files_total":1,"graph_failures":0,"metadata_failures":0,"nodes_total":0,"parse_failures":0,"resolved_edges":0,"serialization_failures":0,"unresolved_edges":0},"nodes":[],"run":{"canonical":true,"created_at":null,"options":{"fail_fast":false,"include_retrieval_metadata":true,"include_timings":false,"language":"python","resolution_mode":"strict"},"root":"empty.py","timings":{"graph_assembly_ms":null,"metadata_normalization_ms":null,"parse_ms":null,"resolution_ms":null,"serialization_ms":null,"total_ms":null},"tool":"treesitter-chunker","tool_version":"5.2.0"},"schema_version":"3.0","source":{"kind":"file","path":"empty.py"}}
 ```
 
 ## Historical Phase 0 SCHEMA Contract Checklist

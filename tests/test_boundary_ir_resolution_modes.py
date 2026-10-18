@@ -118,10 +118,13 @@ def test_distinct_call_references_survive_fresh_cold_and_warm_boundary_ir(
     index = load_cache_index(cache_dir)
     record = load_cache_record(cache_dir, index.records[source.name])
     assert record is not None
+    caller_id = next(
+        node["id"] for node in record.node_records if node["symbol"] == "caller"
+    )
     caller_facts = next(
         chunk
         for chunk in record.symbol_facts["chunk_records"]
-        if chunk["context"]["id"] == "service:caller"
+        if chunk["context"]["id"] == caller_id
     )
     assert caller_facts["calls"] == raw_calls
 
