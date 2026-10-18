@@ -147,3 +147,91 @@ def test_boundary_edges_resolve_to_nodes_all_paths(tmp_path):
         assert (
             not outside
         ), f"{label}: {len(outside)}/{len(edges)} edge sources outside node set"
+
+
+def test_496_anchor_duplicate_sources_keep_exact_relationship_membership(tmp_path):
+    from chunker.boundary.adapter import extract_boundary_ir
+
+    source = tmp_path / "dupes.py"
+    source.write_text(
+        "def same():\n    return alpha()\n\ndef same():\n    return beta()\n",
+        encoding="utf-8",
+    )
+    cache_dir = tmp_path / ".boundary-cache"
+    documents = (
+        extract_boundary_ir(tmp_path, "python"),
+        extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir),
+        extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir),
+    )
+
+    for document in documents:
+        same_nodes = sorted(
+            (node for node in document["nodes"] if node["symbol"] == "same"),
+            key=lambda node: node["span"]["start_line"],
+        )
+        assert len(same_nodes) == 2
+        beta_edge = next(
+            edge for edge in document["edges"] if edge["reference"] == "beta"
+        )
+        assert beta_edge["source"] == same_nodes[1]["id"]
+        assert beta_edge["id"] in same_nodes[1]["relationships"]
+        assert beta_edge["id"] not in same_nodes[0]["relationships"]
+
+
+def test_496_anchor_exact_node_ids_precede_name_aliases():
+    from chunker.boundary.adapter import _node_symbol_indexes
+
+    indexes = _node_symbol_indexes(
+        [
+            {
+                "id": "first-id",
+                "definition_id": "first-definition",
+                "node_id": "first-node",
+                "symbol_id": None,
+                "qualified_name": "later-exact-id",
+                "symbol": "first",
+                "path": "first.py",
+            },
+            {
+                "id": "later-exact-id",
+                "definition_id": "later-definition",
+                "node_id": "later-node",
+                "symbol_id": None,
+                "qualified_name": "second",
+                "symbol": "second",
+                "path": "second.py",
+            },
+        ]
+    )
+
+    assert indexes["later-exact-id"] == "later-exact-id"
+
+
+def test_496_anchor_alias_cannot_repair_a_missing_exact_source():
+    from chunker.boundary.adapter import _edge_record
+
+    relationship = {
+        "from": "missing-exact-id",
+        "to": "target-id",
+        "type": "calls",
+        "reference": "target",
+        "file": "missing.py",
+    }
+    symbol_indexes = {
+        "missing-exact-id": "other-file-id",
+        "target-id": "target-id",
+    }
+    nodes_by_id = {
+        "other-file-id": {"id": "other-file-id", "path": "other.py"},
+        "target-id": {"id": "target-id", "path": "target.py"},
+    }
+
+    assert (
+        _edge_record(
+            relationship,
+            symbol_indexes,
+            nodes_by_id,
+            "strict",
+        )
+        is None
+    )

@@ -2860,6 +2860,23 @@
             "source_base": "931f6e05208faf1b1ca94520584cb4c45bff51b1"
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-18T01:44:44Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "B_code_rounds_complete": 0,
+            "B_plan_rounds_complete": 0,
+            "code_rounds_complete": 0,
+            "design_acceptance": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/call-identity-496/20261017-after-495/plan-A-acceptance.json",
+            "design_acceptance_sha256": "ee6d8886f744d12849265455aa540b5fe914d2f5a2d1251abc9b2ba74c685d14",
+            "design_head": "4fdf27425c90eb402f646d2fbe62d3664e028af8",
+            "plan": "plans/detailed-source-anchors-496-20261017.md",
+            "plan_rounds_complete": 3,
+            "plan_sha256": "f2b8e9752ec667ee5a8677493506e1af69370740f28e141ef78c99dab7222743",
+            "run_id": "source-anchors-496-20261018"
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -2867,10 +2884,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/2687c4c1808d6019/codex-source-anchors-496/496-after495-plan-refresh-20261017.md",
       "roadmap_ref": null,
       "slug": "source-anchors-496",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Canonical definition anchors and exact source ownership; PLAN review pending",
       "type": "detailed",
-      "updated_at": "2026-10-18T01:00:08.671799+00:00"
+      "updated_at": "2026-10-18T01:44:44Z"
     },
     {
       "acceptance_criteria_count": 4,

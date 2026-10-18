@@ -131,8 +131,8 @@ def test_actual_syntax_and_semantic_versions_match_schema() -> None:
         fixture_path("python"), "python", canonical=True, semantic_resolvers=()
     )
     assert syntax["nodes"] and semantic["nodes"]
-    assert syntax["schema_version"] == "2.0"
-    assert semantic["schema_version"] == "2.1"
+    assert syntax["schema_version"] == "3.0"
+    assert semantic["schema_version"] == "3.1"
     _validator().validate(syntax)
     _validator().validate(semantic)
 
@@ -144,3 +144,31 @@ def test_guide_baseline_example_matches_published_schema() -> None:
     match = re.search(r"## Minimal Baseline Example.*?```json\n(.*?)\n```", guide, re.S)
     assert match is not None
     _validator().validate(json.loads(match.group(1)))
+
+
+def test_496_anchor_duplicate_identity_validates_fresh_cold_and_warm(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "dupes.py"
+    source.write_text(
+        "def same():\n    return 1\n\ndef same():\n    return 2\n",
+        encoding="utf-8",
+    )
+    cache_dir = tmp_path / ".boundary-cache"
+    documents = (
+        extract_boundary_ir(tmp_path, "python"),
+        extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir),
+        extract_boundary_ir(tmp_path, "python", incremental=True, cache_dir=cache_dir),
+    )
+
+    for document in documents:
+        _validator().validate(document)
+        duplicate_nodes = [
+            node for node in document["nodes"] if node["symbol"] == "same"
+        ]
+        assert len(duplicate_nodes) == 2
+        assert "disambiguated_from" not in duplicate_nodes[0]["identity"]
+        assert (
+            duplicate_nodes[1]["identity"]["disambiguated_from"]
+            == duplicate_nodes[0]["id"]
+        )
