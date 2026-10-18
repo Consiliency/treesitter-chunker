@@ -179,28 +179,28 @@ Relationship-resolution status values (`resolved`, `ambiguous`,
 `unresolved`) and strict/permissive mode semantics are downstream of the Phase 0
 baseline. They extend the frozen top-level schema rather than redefining it.
 
-Symbol graph relationships are deduplicated by source, target, relationship
-type and normalized reference. Distinct references such as `target`,
-`ns.target` and `other.target` each survive when the existing heuristic resolver
-assigns them the same target; repeated identical normalized references still
-produce one relationship. This applies to imports, dependencies and calls.
-Resolution remains heuristic, and locations identify the containing chunk's
-starting line rather than individual call sites. Complete call-site coverage and
-qualified self-call suppression remain separate work under treesitter-chunker#487.
+Imports and dependencies remain deduplicated by source, target, relationship
+type and normalized reference. Calls instead preserve every recognized syntax
+site. The public symbol graph exposes resolution-independent `call_facts`; each
+fact contains its canonical caller and file, exact callee source slice, full-call
+and callee half-open UTF-8 byte spans, actual 1-based line bounds, call kind and
+deterministic full-SHA-1 `call:` ID. Identical calls at different sites and calls
+whose heuristic target is their own source both survive. The resolved target and
+candidate set annotate a fact but do not participate in its identity.
 
-Boundary IR edge identity already includes the reference. Existing surviving
-edges keep their IDs for unchanged inputs when source ownership and target
-resolution are also unchanged. The treesitter-chunker#496 identity repair can
-change an existing edge ID when it corrects either endpoint; newly retained
-references also add edges, node memberships and counts. Per-relationship
-clustering weights and module dependency counts can change. Regenerate affected
-graph/IR outputs and their derived aggregates for 6.0.0; endpoint identity alone
-does not identify a call token.
+Each syntax `calls` Boundary edge reuses the raw fact ID as both `id` and
+`call_site_id`, preserves the exact reference and location, and carries the
+canonical source path in both top-level `file` and `metadata.file`. These fields
+are required only for syntax call edges; non-call syntax edges and semantic call
+edges keep their existing shapes. Resolution remains heuristic and does not
+establish language-level binding. Parser forms that an extractor does not
+recognize are not manufactured as facts.
 
-Incremental caches store raw per-file symbol facts and reassemble relationships
-on each run. Compatible existing records therefore receive the corrected
-deduplication when used by the current assembler. Ordinary cache-key checks,
-including `tool_version`, still govern reuse.
+Per-site calls can increase edge counts, node memberships, clustering weights
+and dependency aggregates. Regenerate affected graph/IR outputs and their
+derived aggregates for 6.0.0. Incremental caches persist the raw facts and
+reassemble resolution annotations on each run, so adding an unrelated callee
+definition can change resolution without changing call-site IDs.
 
 ### Observability extension
 
@@ -212,8 +212,10 @@ on top of the Phase 0 baseline.
 
 Incremental cache keys, warm-run invalidation rules, and impacted-neighbor
 recompute behavior are downstream contracts. IR 3.x records use cache version
-`2` and the `boundary:v2:` key namespace. Cache version 1 records are misses,
-including records whose stored schema otherwise matches, and are re-extracted.
+`3` and the `boundary:v3:` key namespace. Cache version 1 and 2 records are
+misses, including records whose stored schema otherwise matches, because they
+cannot supply the required per-site raw call facts. Missing or malformed
+`call_facts` in a version 3 record also causes a safe miss and re-extraction.
 
 Each cache key includes the installed `tree-sitter-language-pack` and
 `tree-sitter` runtime versions. Python and JavaScript keys additionally bind the

@@ -123,7 +123,7 @@ def service():
     assert (cache_dir / "index.json").exists()
 
 
-def test_496_anchor_genuine_v1_cache_reparses_then_reuses_v2(
+def test_496_anchor_genuine_v1_cache_reparses_then_reuses_v3(
     tmp_path: Path, monkeypatch
 ):
     source = tmp_path / "app.py"
@@ -155,7 +155,7 @@ def test_496_anchor_genuine_v1_cache_reparses_then_reuses_v2(
     assert recomputed == ["app.py"]
     assert baseline_record.exists()
     migrated_index = load_cache_index(cache_dir)
-    assert migrated_index.records["app.py"].startswith("boundary:v2:")
+    assert migrated_index.records["app.py"].startswith("boundary:v3:")
     migrated_record = load_cache_record(cache_dir, migrated_index.records["app.py"])
     assert migrated_record is not None
     assert migrated_record.symbol_facts["symbol_lookup"]

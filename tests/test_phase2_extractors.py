@@ -186,6 +186,37 @@ function test() {
         assert "obj.method" in calls or "method" in calls
         assert "new MyClass" in calls or "MyClass" in calls
 
+    def test_496_call_site_javascript_raw_kinds_and_legacy_names(self):
+        code = "function f() { obj . method(); new Foo.Bar(); super(); tag`x`; }"
+        chunks = chunk_text(code, "javascript")
+        spans = chunks[0].metadata["call_spans"]
+
+        observed = {
+            (span["raw_reference"], span["type"], span["name"]) for span in spans
+        }
+        assert ("obj . method", "method", "obj.method") in observed
+        assert ("Foo.Bar", "constructor", "new Foo.Bar") in observed
+        assert ("super", "super", "super") in observed
+        assert ("tag", "tagged_template", "tag") in observed
+        for span in spans:
+            assert (
+                code.encode()[span["callee_start"] : span["callee_end"]].decode()
+                == span["raw_reference"]
+            )
+
+    def test_496_call_site_rust_scoped_macro_preserves_full_path(self):
+        code = "fn f() { tracing::debug!(); }"
+        chunks = chunk_text(code, "rust")
+        span = chunks[0].metadata["call_spans"][0]
+
+        assert span["name"] == "debug"
+        assert span["raw_reference"] == "tracing::debug"
+        assert span["type"] == "macro"
+        assert (
+            code.encode()[span["callee_start"] : span["callee_end"]].decode()
+            == "tracing::debug"
+        )
+
 
 class TestCallSpanAccuracy:
     """Test accuracy of call span extraction across languages."""

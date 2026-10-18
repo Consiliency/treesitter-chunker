@@ -95,6 +95,7 @@ EDGE_KEYS = (
     "provenance",
     "metadata",
 )
+SYNTAX_CALL_EDGE_KEYS = EDGE_KEYS + ("call_site_id", "file")
 DIAGNOSTIC_KEYS = (
     "id",
     "severity",
@@ -241,7 +242,12 @@ def assert_required_fields(ir: dict[str, Any]) -> None:
         _assert_keys(node["span"], SPAN_KEYS, "node span")
 
     for edge in ir["edges"]:
-        _assert_keys(edge, EDGE_KEYS, "edge")
+        keys = (
+            SYNTAX_CALL_EDGE_KEYS
+            if edge["type"] == "calls" and edge["provenance"].get("source") == "syntax"
+            else EDGE_KEYS
+        )
+        _assert_keys(edge, keys, "edge")
         _assert_keys(edge["location"], LOCATION_KEYS, "edge location")
 
     for diagnostic in ir["diagnostics"]:

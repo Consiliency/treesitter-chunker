@@ -16,6 +16,67 @@ from .types import (
 )
 
 
+def _valid_call_fact(fact: object) -> bool:
+    if not isinstance(fact, dict):
+        return False
+    required_strings = ("id", "from", "file", "type", "reference", "call_kind")
+    if not all(
+        isinstance(fact.get(key), str) and bool(fact[key]) for key in required_strings
+    ):
+        return False
+    if fact["type"] != "calls":
+        return False
+    call_id = str(fact["id"])
+    if not (
+        call_id.startswith("call:")
+        and len(call_id) == 45
+        and all(char in "0123456789abcdef" for char in call_id[5:])
+    ):
+        return False
+    location = fact.get("location")
+    if not isinstance(location, dict) or not all(
+        type(location.get(key)) is int
+        for key in ("byte_start", "byte_end", "start_line", "end_line")
+    ):
+        return False
+    if not all(
+        type(fact.get(key)) is int for key in ("callee_byte_start", "callee_byte_end")
+    ):
+        return False
+    if not (
+        0 <= location["byte_start"] < location["byte_end"]
+        and location["byte_start"]
+        <= fact["callee_byte_start"]
+        < fact["callee_byte_end"]
+        <= location["byte_end"]
+        and 1 <= location["start_line"] <= location["end_line"]
+    ):
+        return False
+    seed = "|".join(
+        str(value)
+        for value in (
+            fact["from"],
+            fact["file"],
+            location["byte_start"],
+            location["byte_end"],
+            fact["callee_byte_start"],
+            fact["callee_byte_end"],
+            fact["reference"],
+            "calls",
+        )
+    )
+    return call_id == "call:" + hashlib.sha1(seed.encode("utf-8")).hexdigest()
+
+
+def _valid_symbol_facts(symbol_facts: object) -> bool:
+    if not isinstance(symbol_facts, dict):
+        return False
+    call_facts = symbol_facts.get("call_facts")
+    return isinstance(call_facts, list) and all(
+        _valid_call_fact(fact) for fact in call_facts
+    )
+
+
 def build_boundary_cache_key(payload: dict[str, Any]) -> str:
     """Build a deterministic Boundary IR cache key from frozen fields."""
     key_payload = {field: payload.get(field) for field in BOUNDARY_CACHE_KEY_FIELDS}
@@ -69,6 +130,12 @@ class BoundaryCacheRecord:
         if data.get("schema_version") != BOUNDARY_IR_SCHEMA_VERSION:
             msg = "Boundary cache record schema mismatch"
             raise ValueError(msg)
+        cache_key = data.get("cache_key")
+        if not isinstance(cache_key, str) or not cache_key.startswith(
+            BOUNDARY_CACHE_KEY_PREFIX
+        ):
+            msg = "Boundary cache record key prefix mismatch"
+            raise ValueError(msg)
         required = (
             "path",
             "content_hash",
@@ -84,10 +151,13 @@ class BoundaryCacheRecord:
         if missing:
             msg = f"Boundary cache record missing fields: {', '.join(missing)}"
             raise ValueError(msg)
+        if not _valid_symbol_facts(data["symbol_facts"]):
+            msg = "Boundary cache record has malformed call facts"
+            raise ValueError(msg)
         return cls(
             path=str(data["path"]),
             content_hash=str(data["content_hash"]),
-            cache_key=str(data["cache_key"]),
+            cache_key=cache_key,
             key_payload=dict(data["key_payload"]),
             file_record=dict(data["file_record"]),
             node_records=list(data["node_records"]),

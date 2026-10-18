@@ -149,11 +149,11 @@ def test_distinct_call_references_survive_fresh_cold_and_warm_boundary_ir(
     )
     calls = [edge for edge in warm["edges"] if edge["type"] == "calls"]
     assert sorted(edge["reference"] for edge in calls) == sorted(
-        references
-    ), "distinct normalized references were collapsed"
-    assert len({edge["id"] for edge in calls}) == 3
+        raw_calls
+    ), "distinct call sites were collapsed"
+    assert len({edge["id"] for edge in calls}) == 4
     assert warm["diagnostics"] == []
-    assert warm["metrics"]["edges_total"] == len(warm["edges"]) == 6
+    assert warm["metrics"]["edges_total"] == len(warm["edges"]) == 7
     caller = next(node for node in warm["nodes"] if node["symbol"] == "caller")
     target = next(node for node in warm["nodes"] if node["symbol"] == "target")
     assert caller["relationships"] == sorted(edge["id"] for edge in warm["edges"])
@@ -163,14 +163,46 @@ def test_distinct_call_references_survive_fresh_cold_and_warm_boundary_ir(
         assert edge["candidates"] == [target["id"]]
         assert edge["resolution"] == "resolved"
         assert edge["metadata"] == {"file": source.name, "is_internal": True}
-        assert edge["location"] == {
-            "byte_start": None,
-            "byte_end": None,
-            "start_line": 2,
-            "end_line": 2,
-        }
+        assert edge["id"] == edge["call_site_id"]
+        assert edge["file"] == source.name
+        assert edge["location"]["byte_start"] < edge["location"]["byte_end"]
+        assert edge["location"]["start_line"] == edge["location"]["end_line"] == 2
         assert edge["provenance"]["resolution_mode"] == mode
         if mode == "strict":
             assert edge["provenance"]["enforcement_grade"] == "strict"
         else:
             assert "enforcement_grade" not in edge["provenance"]
+
+
+def test_496_call_site_edge_reuses_raw_id_location_and_file_all_paths(tmp_path: Path):
+    source = tmp_path / "service.py"
+    source.write_text(
+        "def recur():\n    recur(); recur()\n",
+        encoding="utf-8",
+    )
+    cache_dir = tmp_path / "cache"
+    documents = (
+        extract_boundary_ir(source, "python"),
+        extract_boundary_ir(source, "python", incremental=True, cache_dir=cache_dir),
+        extract_boundary_ir(source, "python", incremental=True, cache_dir=cache_dir),
+    )
+
+    assert dumps_boundary_ir(documents[0]) == dumps_boundary_ir(documents[1])
+    assert dumps_boundary_ir(documents[1]) == dumps_boundary_ir(documents[2])
+    for document in documents:
+        calls = [edge for edge in document["edges"] if edge["type"] == "calls"]
+        assert len(calls) == 2
+        assert len({edge["id"] for edge in calls}) == 2
+        for edge in calls:
+            assert edge["id"] == edge["call_site_id"]
+            assert edge["location"]["byte_start"] is not None
+            assert edge["location"]["byte_end"] is not None
+            assert edge["file"] == edge["metadata"]["file"] == source.name
+            assert edge["reference"] == "recur"
+
+    index = load_cache_index(cache_dir)
+    record = load_cache_record(cache_dir, index.records[source.name])
+    assert record is not None
+    assert sorted(fact["id"] for fact in record.symbol_facts["call_facts"]) == sorted(
+        edge["id"] for edge in documents[2]["edges"] if edge["type"] == "calls"
+    )

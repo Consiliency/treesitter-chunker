@@ -2,15 +2,17 @@
   "diagnostics": [],
   "edges": [
     {
+      "call_site_id": "call:f61253f918359065ed086f5e97a0200cdba0ef1d",
       "candidates": [
         "a87ce3a17ba52279eb8da7e44ac3a6252bace7fc"
       ],
-      "id": "edge:06133e76e4713a45",
+      "file": "widget.c",
+      "id": "call:f61253f918359065ed086f5e97a0200cdba0ef1d",
       "location": {
-        "byte_end": null,
-        "byte_start": null,
-        "end_line": 9,
-        "start_line": 9
+        "byte_end": 142,
+        "byte_start": 126,
+        "end_line": 10,
+        "start_line": 10
       },
       "metadata": {
         "file": "widget.c",
@@ -204,7 +206,7 @@
       },
       "qualified_name": "render",
       "relationships": [
-        "edge:06133e76e4713a45",
+        "call:f61253f918359065ed086f5e97a0200cdba0ef1d",
         "edge:5aa50e8852e2469d",
         "edge:ee0031636684cd7c"
       ],

@@ -1,8 +1,11 @@
 import unicodedata
 from pathlib import Path
 
+import pytest
+
 from chunker.types import CodeChunk
 from chunker.symbol_graph import (
+    _call_site_id,
     assemble_symbol_graph,
     collect_source_files,
     extract_symbol_facts_for_file,
@@ -114,7 +117,7 @@ def test_496_anchor_module_and_package_definitions_survive(tmp_path: Path):
         for relationship in graph["relationships"]
         if relationship["type"] == "calls"
     }
-    assert call_files == {("sorted", "pkg.py"), ("time", "pkg/__init__.py")}
+    assert call_files == {("sorted", "pkg.py"), ("time.time", "pkg/__init__.py")}
 
 
 def test_496_anchor_typescript_and_tsx_definitions_survive(tmp_path: Path):
@@ -313,10 +316,209 @@ def test_496_anchor_nfd_path_uses_canonical_definition_identity(tmp_path: Path):
     graph = extract_symbol_graph(source, "python")
     symbol_id, symbol = next(iter(graph["symbol_lookup"].items()))
     relationship = next(
-        item for item in graph["relationships"] if item["reference"] == "missing"
+        item
+        for item in graph["relationships"]
+        if item["type"] == "calls" and item["reference"] == "missing"
     )
 
     assert symbol["file"] == source.name
     assert symbol_id == symbol["definition_id"]
     assert relationship["from"] == symbol_id
     assert relationship["file"] == source.name
+    fact = graph["call_facts"][0]
+    assert fact["file"] == source.name
+    assert fact["from"] == symbol_id
+    assert fact["reference"] == "missing"
+    assert fact["id"] == relationship["call_site_id"]
+
+
+def test_496_call_site_fixed_id_vector():
+    assert (
+        _call_site_id("caller-id", "src/app.py", 10, 18, 10, 16, "target")
+        == "call:db4aa2584c80ce295d03d6b5c1ce7f1b6dea99a2"
+    )
+
+
+def test_496_call_site_raw_facts_preserve_self_repetition_and_decorator_owner(
+    tmp_path: Path,
+):
+    source = tmp_path / "service.py"
+    source.write_text(
+        "@decorate(factory())\n"
+        "def recur():\n"
+        "    obj.sub.now(); recur(); recur()\n",
+        encoding="utf-8",
+    )
+
+    facts = extract_symbol_facts_for_file(source, tmp_path, "python")
+    graph = assemble_symbol_graph([facts], total_files=1)
+    caller_id = next(iter(facts["symbol_lookup"]))
+    call_facts = facts["call_facts"]
+
+    assert [fact["reference"] for fact in call_facts] == [
+        "decorate",
+        "factory",
+        "obj.sub.now",
+        "recur",
+        "recur",
+    ]
+    assert all(fact["from"] == caller_id for fact in call_facts)
+    assert len({fact["id"] for fact in call_facts}) == 5
+    assert all(
+        fact["id"].startswith("call:") and len(fact["id"]) == 45 for fact in call_facts
+    )
+    assert [
+        rel["call_site_id"] for rel in graph["relationships"] if rel["type"] == "calls"
+    ] == [fact["id"] for fact in call_facts]
+    assert graph["call_facts"] == call_facts
+
+    source_bytes = source.read_bytes()
+    for fact in call_facts:
+        location = fact["location"]
+        assert (
+            source_bytes[fact["callee_byte_start"] : fact["callee_byte_end"]].decode()
+            == fact["reference"]
+        )
+        assert source_bytes[location["byte_start"] : location["byte_end"]]
+        assert fact["type"] == "calls"
+
+
+def test_496_call_site_raw_facts_do_not_change_with_unrelated_target(
+    tmp_path: Path,
+):
+    source = tmp_path / "caller.py"
+    source.write_text("def caller():\n    return target()\n", encoding="utf-8")
+    first = extract_symbol_facts_for_file(source, tmp_path, "python")["call_facts"]
+    (tmp_path / "target.py").write_text(
+        "def target():\n    return 1\n", encoding="utf-8"
+    )
+    second = extract_symbol_facts_for_file(source, tmp_path, "python")["call_facts"]
+
+    assert first == second
+
+
+def test_496_call_site_nested_call_uses_smallest_callable_owner(tmp_path: Path):
+    source = tmp_path / "nested.py"
+    source.write_text(
+        "def outer():\n"
+        "    def inner():\n"
+        "        return target()\n"
+        "    return inner()\n",
+        encoding="utf-8",
+    )
+    facts = extract_symbol_facts_for_file(source, tmp_path, "python")
+    symbols = {
+        symbol["name"]: symbol_id
+        for symbol_id, symbol in facts["symbol_lookup"].items()
+    }
+    owners = {fact["reference"]: fact["from"] for fact in facts["call_facts"]}
+
+    assert owners == {"target": symbols["inner"], "inner": symbols["outer"]}
+
+
+def test_496_call_site_utf8_crlf_uses_absolute_byte_and_line_oracles(tmp_path: Path):
+    source = tmp_path / "unicode.py"
+    source_bytes = 'def caller():\r\n    label = "café"; obj . now()\r\n'.encode(
+        "utf-8"
+    )
+    source.write_bytes(source_bytes)
+
+    fact = extract_symbol_facts_for_file(source, tmp_path, "python")["call_facts"][0]
+
+    assert fact["reference"] == "obj . now"
+    assert (
+        source_bytes[fact["callee_byte_start"] : fact["callee_byte_end"]].decode(
+            "utf-8"
+        )
+        == "obj . now"
+    )
+    assert (
+        source_bytes[
+            fact["location"]["byte_start"] : fact["location"]["byte_end"]
+        ].decode("utf-8")
+        == "obj . now()"
+    )
+    assert fact["location"]["start_line"] == fact["location"]["end_line"] == 2
+
+
+@pytest.mark.parametrize(
+    ("language", "extension"), [("javascript", "js"), ("typescript", "ts")]
+)
+def test_496_call_site_js_repeated_raw_facts_ignore_unrelated_callees(
+    tmp_path: Path, language: str, extension: str
+):
+    source = tmp_path / f"caller.{extension}"
+    source.write_text(
+        "export function caller() { clock.stamp(); stamp(); stamp(); }\n",
+        encoding="utf-8",
+    )
+    first = extract_symbol_facts_for_file(source, tmp_path, language)
+    first_projection = [
+        (
+            fact["id"],
+            fact["from"],
+            fact["file"],
+            fact["reference"],
+            fact["location"],
+            fact["callee_byte_start"],
+            fact["callee_byte_end"],
+        )
+        for fact in first["call_facts"]
+    ]
+    assert [fact["reference"] for fact in first["call_facts"]] == [
+        "clock.stamp",
+        "stamp",
+        "stamp",
+    ]
+
+    target = tmp_path / f"legacy.{extension}"
+    target.write_text("export function stamp() { return 1; }\n", encoding="utf-8")
+    target_facts = extract_symbol_facts_for_file(target, tmp_path, language)
+    second = extract_symbol_facts_for_file(source, tmp_path, language)
+    full = assemble_symbol_graph([second, target_facts], total_files=2)
+
+    assert first_projection == [
+        (
+            fact["id"],
+            fact["from"],
+            fact["file"],
+            fact["reference"],
+            fact["location"],
+            fact["callee_byte_start"],
+            fact["callee_byte_end"],
+        )
+        for fact in second["call_facts"]
+    ]
+    assert [
+        rel["call_site_id"]
+        for rel in full["relationships"]
+        if rel["type"] == "calls" and rel["file"] == source.name
+    ] == [fact["id"] for fact in second["call_facts"]]
+
+
+def test_496_call_site_python_qualified_self_collisions_remain_facts(tmp_path: Path):
+    source = tmp_path / "self_calls.py"
+    source.write_text(
+        "def now():\n"
+        "    return str(datetime.now())\n\n"
+        "def time():\n"
+        "    return time.time()\n\n"
+        "def recur():\n"
+        "    return recur()\n",
+        encoding="utf-8",
+    )
+    graph = extract_symbol_graph(source, "python")
+    calls = [rel for rel in graph["relationships"] if rel["type"] == "calls"]
+
+    assert [fact["reference"] for fact in graph["call_facts"]] == [
+        "str",
+        "datetime.now",
+        "time.time",
+        "recur",
+    ]
+    assert len(calls) == 4
+    assert {rel["reference"] for rel in calls if rel["to"] == rel["from"]} == {
+        "datetime.now",
+        "time.time",
+        "recur",
+    }

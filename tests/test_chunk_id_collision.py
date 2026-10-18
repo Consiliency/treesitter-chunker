@@ -260,10 +260,14 @@ def test_496_anchor_duplicate_methods_keep_sources_and_canonical_candidates_all_
         ]
         assert len(calls) == 2
         assert {edge["source"] for edge in calls} == method_ids
+        assert len({edge["id"] for edge in calls}) == 2
         for edge in calls:
             assert edge["resolution"] == "ambiguous"
             assert set(edge["candidates"]) == targets
             assert edge["metadata"]["file"] == "methods.py"
+            assert edge["id"] == edge["call_site_id"]
+            assert edge["file"] == "methods.py"
+            assert edge["location"]["byte_start"] < edge["location"]["byte_end"]
             assert edge["id"] in nodes[edge["source"]]["relationships"]
             other = method_ids - {edge["source"]}
             assert all(

@@ -10,8 +10,8 @@ from chunker.boundary.types import (
 
 
 def test_boundary_cache_constants_freeze_key_contract():
-    assert BOUNDARY_CACHE_VERSION == "2"
-    assert BOUNDARY_CACHE_KEY_PREFIX == "boundary:v2:"
+    assert BOUNDARY_CACHE_VERSION == "3"
+    assert BOUNDARY_CACHE_KEY_PREFIX == "boundary:v3:"
     assert BOUNDARY_CACHE_KEY_FIELDS == (
         "path",
         "content_hash",

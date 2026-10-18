@@ -171,8 +171,12 @@ observed_ir = extract_boundary_ir(
 ```
 
 Syntax-only Boundary IR uses `schema_version == "3.0"`; optional semantic
-resolvers select `"3.1"`. Boundary cache records use cache version 2 and the
-`boundary:v2:` key namespace. See the [Boundary IR specification](interface-boundary-spec.md)
+resolvers select `"3.1"`. Syntax call edges preserve every recognized call site
+with an exact source reference, byte/line location and stable `call_site_id`;
+their top-level `file` matches `metadata.file`. Repeated and self-resolved calls
+therefore remain visible and may increase derived counts and clustering weights.
+Boundary cache records use cache version 3 and the `boundary:v3:` key namespace;
+older records must be rebuilt. See the [Boundary IR specification](interface-boundary-spec.md)
 for schema and package identity migration requirements. The top-level `chunker.extract_boundary_ir`
 export matches `chunker.boundary.extract_boundary_ir`, and
 `treesitter-chunker boundary <path> --lang <language>` writes canonical JSON to

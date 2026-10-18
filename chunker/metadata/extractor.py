@@ -365,6 +365,25 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         source: bytes,
     ) -> dict | None:
         """Extract call information from a call node."""
+        if func_node.type == "parenthesized_expression" and func_node.named_children:
+            return self._extract_call_info(
+                call_node, func_node.named_children[0], source
+            )
+        if func_node.type == "pointer_expression":
+            identifiers = []
+            self._collect_identifiers_recursive(func_node, identifiers, source)
+            if identifiers:
+                identifier = next(
+                    (
+                        child
+                        for child in func_node.named_children
+                        if child.type == "identifier"
+                    ),
+                    func_node,
+                )
+                return self._create_call_info(
+                    call_node, identifier, source, identifiers[-1]
+                )
         if func_node.type in {"identifier", "simple_identifier", "name", "variable"}:
             # Simple function call: func()
             return self._create_call_info(call_node, func_node, source)
@@ -452,6 +471,15 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         if func_name is None:
             func_name = self._get_node_text(func_node, source)
 
+        callee_node = func_node
+        while (
+            callee_node.parent is not None
+            and callee_node.parent != call_node
+            and call_node.start_byte <= callee_node.parent.start_byte
+            and callee_node.parent.end_byte <= call_node.end_byte
+        ):
+            callee_node = callee_node.parent
+
         return {
             "name": func_name,
             "start": call_node.start_byte,
@@ -460,6 +488,9 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
             "function_end": func_node.end_byte,
             "arguments_start": func_node.end_byte,
             "arguments_end": call_node.end_byte,
+            "raw_reference": self._get_node_text(callee_node, source),
+            "callee_start": callee_node.start_byte,
+            "callee_end": callee_node.end_byte,
         }
 
     def _extract_member_name(self, node: Node, source: bytes) -> str | None:

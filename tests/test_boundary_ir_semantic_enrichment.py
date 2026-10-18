@@ -179,7 +179,7 @@ def test_incremental_semantic_cache_key_payload_includes_resolver_fingerprint(
     )
     records = [
         json.loads(path.read_text(encoding="utf-8"))
-        for path in cache_dir.glob("boundary_v2_*.json")
+        for path in cache_dir.glob("boundary_v3_*.json")
     ]
     semantic_payloads = [
         record["key_payload"]

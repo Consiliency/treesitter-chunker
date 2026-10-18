@@ -137,6 +137,34 @@ def test_actual_syntax_and_semantic_versions_match_schema() -> None:
     _validator().validate(semantic)
 
 
+@pytest.mark.parametrize("field", ["call_site_id", "reference", "location", "file"])
+def test_496_call_site_schema_requires_syntax_call_fields(
+    tmp_path: Path, field: str
+) -> None:
+    source = tmp_path / "app.py"
+    source.write_text("def f():\n    return target()\n", encoding="utf-8")
+    invalid = extract_boundary_ir(source, "python")
+    call = next(edge for edge in invalid["edges"] if edge["type"] == "calls")
+    call.pop(field)
+
+    errors = list(_validator().iter_errors(invalid))
+    assert any(list(error.path) == ["edges", 0] for error in errors)
+
+
+def test_496_call_site_schema_does_not_require_syntax_fields_on_semantic_calls(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "app.py"
+    source.write_text("def f():\n    return target()\n", encoding="utf-8")
+    document = extract_boundary_ir(source, "python")
+    call = next(edge for edge in document["edges"] if edge["type"] == "calls")
+    call["provenance"]["source"] = "semantic"
+    for field in ("call_site_id", "file"):
+        call.pop(field)
+
+    _validator().validate(document)
+
+
 def test_guide_baseline_example_matches_published_schema() -> None:
     guide = (SCHEMA_PATH.parents[2] / "docs/interface-boundary-spec.md").read_text(
         encoding="utf-8"

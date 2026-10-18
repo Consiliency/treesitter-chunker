@@ -472,6 +472,9 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
                             "start": node.start_byte,
                             "end": node.end_byte,
                             "type": "constructor",
+                            "raw_reference": self._get_node_text(constructor, source),
+                            "callee_start": constructor.start_byte,
+                            "callee_end": constructor.end_byte,
                         },
                     )
 
@@ -487,6 +490,9 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
                             "start": node.start_byte,
                             "end": node.end_byte,
                             "type": "tagged_template",
+                            "raw_reference": self._get_node_text(tag_node, source),
+                            "callee_start": tag_node.start_byte,
+                            "callee_end": tag_node.end_byte,
                         },
                     )
 
@@ -517,6 +523,9 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
             name = "super"
             call_type = "super"
 
+        if any(child.type == "template_string" for child in call_node.children[1:]):
+            call_type = "tagged_template"
+
         if not name:
             return None
 
@@ -525,6 +534,9 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
             "start": call_node.start_byte,
             "end": call_node.end_byte,
             "type": call_type,
+            "raw_reference": self._get_node_text(func_node, source),
+            "callee_start": func_node.start_byte,
+            "callee_end": func_node.end_byte,
         }
 
     def _extract_member_name(self, member_node: Node, source: bytes) -> str | None:

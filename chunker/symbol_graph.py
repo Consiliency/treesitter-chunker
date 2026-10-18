@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections import defaultdict
 from fnmatch import fnmatchcase
@@ -201,6 +202,174 @@ def _import_record(import_text: str, line: int) -> dict[str, Any]:
     }
 
 
+def _call_site_id(
+    caller: str,
+    file_name: str,
+    call_byte_start: int,
+    call_byte_end: int,
+    callee_byte_start: int,
+    callee_byte_end: int,
+    reference: str,
+) -> str:
+    seed = "|".join(
+        str(value)
+        for value in (
+            caller,
+            file_name,
+            call_byte_start,
+            call_byte_end,
+            callee_byte_start,
+            callee_byte_end,
+            reference,
+            "calls",
+        )
+    )
+    return "call:" + hashlib.sha1(seed.encode("utf-8")).hexdigest()
+
+
+def _line_bounds(source: bytes, start: int, end: int) -> tuple[int, int]:
+    start_line = source.count(b"\n", 0, start) + 1
+    final_byte = max(start, end - 1)
+    end_line = source.count(b"\n", 0, final_byte) + 1
+    return start_line, end_line
+
+
+def _call_facts_for_chunks(
+    chunks: list[Any],
+    owners: list[dict[str, Any]],
+    source: bytes,
+    display_file: str,
+) -> list[dict[str, Any]]:
+    observations: list[dict[str, Any]] = []
+    for order, chunk in enumerate(chunks):
+        metadata = chunk.metadata or {}
+        spans = metadata.get("call_spans", [])
+        if not isinstance(spans, list):
+            continue
+        for span in spans:
+            if not isinstance(span, dict):
+                continue
+            call_start = span.get("start")
+            call_end = span.get("end")
+            callee_start = span.get("callee_start")
+            callee_end = span.get("callee_end")
+            if not (
+                isinstance(call_start, int)
+                and isinstance(call_end, int)
+                and isinstance(callee_start, int)
+                and isinstance(callee_end, int)
+            ):
+                continue
+            if not (
+                0 <= call_start < call_end <= len(source)
+                and call_start <= callee_start < callee_end <= call_end
+            ):
+                continue
+            reference = source[callee_start:callee_end].decode("utf-8")
+            observations.append(
+                {
+                    "call_start": call_start,
+                    "call_end": call_end,
+                    "callee_start": callee_start,
+                    "callee_end": callee_end,
+                    "reference": reference,
+                    "call_kind": str(span.get("type") or "call"),
+                    "order": order,
+                    "chunk_start": chunk.byte_start,
+                    "chunk_end": chunk.byte_end,
+                    "node_type": chunk.node_type,
+                }
+            )
+
+    selected: dict[tuple[Any, ...], tuple[tuple[Any, ...], dict[str, Any]]] = {}
+    for observation in observations:
+        containing = [
+            owner
+            for owner in owners
+            if owner["byte_start"] <= observation["call_start"]
+            and observation["call_end"] <= owner["byte_end"]
+        ]
+        if containing:
+            owner = min(
+                containing,
+                key=lambda item: (
+                    0 if item["kind"] in FUNCTION_KINDS else 1,
+                    item["byte_end"] - item["byte_start"],
+                    item["order"],
+                ),
+            )
+        elif observation["node_type"] == "decorated_definition":
+            decorated = [
+                owner
+                for owner in owners
+                if owner["parent_context"] == "decorated_definition"
+                and observation["chunk_start"] <= owner["byte_start"]
+                and owner["byte_end"] <= observation["chunk_end"]
+            ]
+            if not decorated:
+                continue
+            owner = min(decorated, key=lambda item: item["order"])
+        else:
+            continue
+
+        key = (
+            owner["id"],
+            display_file,
+            observation["call_start"],
+            observation["call_end"],
+            observation["callee_start"],
+            observation["callee_end"],
+            observation["reference"],
+        )
+        rank = (owner["order"], observation["order"])
+        current = selected.get(key)
+        if current is None or rank < current[0]:
+            selected[key] = (rank, {**observation, "owner": owner})
+
+    call_facts = []
+    for _, observation in sorted(
+        selected.values(),
+        key=lambda item: (
+            item[1]["call_start"],
+            item[1]["call_end"],
+            item[1]["callee_start"],
+            item[0],
+        ),
+    ):
+        owner = observation["owner"]
+        start_line, end_line = _line_bounds(
+            source, observation["call_start"], observation["call_end"]
+        )
+        fact_id = _call_site_id(
+            owner["id"],
+            display_file,
+            observation["call_start"],
+            observation["call_end"],
+            observation["callee_start"],
+            observation["callee_end"],
+            observation["reference"],
+        )
+        call_facts.append(
+            {
+                "id": fact_id,
+                "from": owner["id"],
+                "file": display_file,
+                "type": "calls",
+                "reference": observation["reference"],
+                "location": {
+                    "byte_start": observation["call_start"],
+                    "byte_end": observation["call_end"],
+                    "start_line": start_line,
+                    "end_line": end_line,
+                },
+                "callee_byte_start": observation["callee_start"],
+                "callee_byte_end": observation["callee_end"],
+                "call_kind": observation["call_kind"],
+            }
+        )
+    return call_facts
+
+
 def extract_symbol_facts_for_file(
     file_path: Path,
     root: Path,
@@ -221,6 +390,7 @@ def extract_symbol_facts_for_file(
         "import_strings": [],
         "imports": [],
         "chunk_records": [],
+        "call_facts": [],
         "errors": [],
     }
     if not detected_language:
@@ -239,12 +409,14 @@ def extract_symbol_facts_for_file(
         facts["errors"].append(f"Error extracting symbols from {file_path}: {exc}")
         return facts
 
+    source = file_path.read_bytes()
     symbol_lookup: dict[str, dict[str, Any]] = {}
     fact_import_strings: list[str] = []
     imports_output: list[dict[str, Any]] = []
     chunk_records: list[dict[str, Any]] = []
+    owners: list[dict[str, Any]] = []
     identity_occurrences: defaultdict[str, int] = defaultdict(int)
-    for chunk in chunks:
+    for order, chunk in enumerate(chunks):
         metadata = chunk.metadata or {}
         identity_base = str(chunk.definition_id or chunk.node_id)
         occurrence = identity_occurrences[identity_base]
@@ -276,6 +448,16 @@ def extract_symbol_facts_for_file(
             "node_id": chunk.node_id or None,
         }
         symbol_lookup[symbol_id] = symbol_record
+        owners.append(
+            {
+                "id": symbol_id,
+                "kind": str(kind),
+                "byte_start": chunk.byte_start,
+                "byte_end": chunk.byte_end,
+                "order": order,
+                "parent_context": chunk.parent_context,
+            }
+        )
         import_strings = [
             str(value) for value in metadata.get("imports", []) if str(value)
         ]
@@ -307,6 +489,7 @@ def extract_symbol_facts_for_file(
     facts["import_strings"] = sorted(dict.fromkeys(fact_import_strings))
     facts["imports"] = imports_output
     facts["chunk_records"] = chunk_records
+    facts["call_facts"] = _call_facts_for_chunks(chunks, owners, source, display_file)
     return facts
 
 
@@ -325,6 +508,7 @@ def assemble_symbol_graph(
         return {
             "symbols": {"classes": [], "functions": [], "imports": []},
             "relationships": [],
+            "call_facts": [],
             "metadata": {
                 "files_processed": 0,
                 "total_classes": 0,
@@ -340,11 +524,13 @@ def assemble_symbol_graph(
     symbol_lookup: dict[str, dict[str, Any]] = {}
     imports_output: list[dict[str, Any]] = []
     chunk_records: list[dict[str, Any]] = []
+    call_facts: list[dict[str, Any]] = []
     errors: list[str] = []
     for file_facts in facts:
         symbol_lookup.update(file_facts.get("symbol_lookup", {}))
         imports_output.extend(file_facts.get("imports", []))
         chunk_records.extend(file_facts.get("chunk_records", []))
+        call_facts.extend(file_facts.get("call_facts", []))
         errors.extend(str(error) for error in file_facts.get("errors", []))
 
     by_qualified, by_name = _build_resolution_indexes(symbol_lookup)
@@ -359,7 +545,6 @@ def assemble_symbol_graph(
         for relationship_type, values in (
             ("imports", chunk_record.get("imports", [])),
             ("dependencies", chunk_record.get("dependencies", [])),
-            ("calls", chunk_record.get("calls", [])),
         ):
             for value in values:
                 reference = _normalize_reference(value)
@@ -395,6 +580,50 @@ def assemble_symbol_graph(
                     }
                 )
 
+    call_facts = sorted(
+        call_facts,
+        key=lambda fact: (
+            str(fact.get("file") or ""),
+            int(fact.get("location", {}).get("byte_start", 0)),
+            int(fact.get("location", {}).get("byte_end", 0)),
+            str(fact.get("id") or ""),
+        ),
+    )
+    seen_call_sites: set[str] = set()
+    for fact in call_facts:
+        call_site_id = str(fact["id"])
+        if call_site_id in seen_call_sites:
+            continue
+        seen_call_sites.add(call_site_id)
+        from_id = str(fact["from"])
+        reference = str(fact["reference"])
+        candidates = _resolve_reference_candidates(reference, by_qualified, by_name)
+        resolution = _resolution_status(candidates)
+        to_id = candidates[0] if resolution == "resolved" else reference
+        relationships.append(
+            {
+                "from": from_id,
+                "to": to_id,
+                "type": "calls",
+                "line": fact["location"]["start_line"],
+                "file": fact["file"],
+                "is_internal": resolution == "resolved",
+                "reference": reference,
+                "resolution": resolution,
+                "candidates": candidates,
+                "resolution_mode": resolution_mode,
+                "provenance": {
+                    "resolver": "extract_symbol_graph",
+                    "source": "syntax",
+                },
+                "call_site_id": call_site_id,
+                "location": fact["location"],
+                "callee_byte_start": fact["callee_byte_start"],
+                "callee_byte_end": fact["callee_byte_end"],
+                "call_kind": fact["call_kind"],
+            }
+        )
+
     class_symbols = [
         symbol for symbol in symbol_lookup.values() if symbol["kind"] in CLASS_KINDS
     ]
@@ -417,6 +646,7 @@ def assemble_symbol_graph(
             "imports": imports_output,
         },
         "relationships": relationships,
+        "call_facts": call_facts,
         "metadata": metadata,
         "symbol_lookup": symbol_lookup,
         "errors": errors,
@@ -439,6 +669,7 @@ def extract_symbol_graph(
         return {
             "symbols": {"classes": [], "functions": [], "imports": []},
             "relationships": [],
+            "call_facts": [],
             "metadata": {
                 "files_processed": 0,
                 "total_classes": 0,
