@@ -77,8 +77,7 @@ treesitter-chunker#358; use `use_cache=False` for that extraction path.
   rebuild ID-based joins. Referenced ambiguous parent aliases now raise before
   edge insertion; unique legacy span aliases remain supported. See
   [graph ID migration](docs/graphml_export.md#graph-id-migration-for-600).
-  These changes require 6.0.0; after merging this migration, all accumulated
-  Unreleased changes must wait for that major release rather than shipping in 5.x.
+  These breaking migrations are included in 6.0.0 and were not shipped in 5.x.
 
 ### Fixed
 
@@ -103,7 +102,7 @@ treesitter-chunker#358; use `use_cache=False` for that extraction path.
   and U+212A in broad Unicode classes (treesitter-chunker#492). Explicit custom
   grammars retain priority after ABI validation. Boundary incremental keys now
   bind the selected official version or custom-library SHA-256, so existing
-  Python/JavaScript cache records are re-extracted for the Unreleased 6.0.0
+  Python/JavaScript cache records are re-extracted for the 6.0.0
   train. Source bytes, half-open UTF-8 spans, identity algorithms and IR schema
   vocabulary are unchanged. The standalone pack grammars remain affected;
   release and downstream corpus acceptance are separate pending gates.

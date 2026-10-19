@@ -27,18 +27,18 @@ before offline BAML parsing, which then needs no network or compiler.
   dependencies and exercised outside the source checkout. Distribution checksums
   are retained with the artifacts and verified before publication.
 
-### Native package status for v5
+### Native package status
 
 The owner approved **PyPI-only v5 distribution on 2026-09-11**. Debian, RPM and
-Homebrew distribution is suspended. `.github/workflows/packages.yml` has no tag
+Homebrew distribution remains suspended for 6.0.0. `.github/workflows/packages.yml` has no tag
 trigger, build, artifact upload or release job. Manual dispatch fails with an
 explicit suspension notice. The recipes under `packaging/` are retained for
-future repair, but are not supported v5 installation methods. This decision does
+future repair, but are not supported installation methods. This decision does
 not disable local source builds or local grammar compilation.
 
 ### Native distribution rebuild backlog
 
-Re-enablement is deferred beyond this v5 PyPI scope. Close all of the following
+Re-enablement remains deferred beyond this PyPI release scope. Close all of the following
 before restoring native release triggers or advertising native installation:
 
 - **Debian:** reconcile all runtime dependencies and supported Python/parser
@@ -124,7 +124,7 @@ See `docs/development/RELEASE_CHECKLIST.md` for the maintainer checklist.
 Local package building is still useful for validation and troubleshooting.
 
 ```bash
-TARGET_VERSION=5.2.0  # Use the version in pyproject.toml
+TARGET_VERSION=6.0.0  # Use the version in pyproject.toml
 OUTDIR="dist/phase9-release-check-${TARGET_VERSION}"
 uv run --with toml --all-extras python -m build --outdir "$OUTDIR"
 uv run --with toml --all-extras python -m twine check "$OUTDIR"/*
