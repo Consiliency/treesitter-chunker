@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [6.0.0]
+
+This major release includes the 5.3.0 maintenance fixes
+and the accumulated changes below. Some fixes listed below were already shipped
+on the 5.x maintenance branch; the breaking migrations are new in 6.0.0.
+
+Re-extract source files and rebuild graph indexes, ID-based joins and caches
+when upgrading. Syntax Boundary IR is 3.0, semantic Boundary IR is 3.1, and
+incremental records use cache v3. Review the
+[chunk identity migrations](docs/chunk-identity.md),
+[graph ID migrations](docs/graphml_export.md#graph-id-migration-for-600), and
+[Boundary IR contract](docs/interface-boundary-spec.md) before adoption.
+The separate parallel-cache identity issue remains tracked by
+treesitter-chunker#358; use `use_cache=False` for that extraction path.
 
 ### ⚠️ BREAKING
 
@@ -64,8 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rebuild ID-based joins. Referenced ambiguous parent aliases now raise before
   edge insertion; unique legacy span aliases remain supported. See
   [graph ID migration](docs/graphml_export.md#graph-id-migration-for-600).
-  These changes require 6.0.0; after merging this migration, all accumulated
-  Unreleased changes must wait for that major release rather than shipping in 5.x.
+  These breaking migrations are included in 6.0.0 and were not shipped in 5.x.
 
 ### Fixed
 
@@ -90,7 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and U+212A in broad Unicode classes (treesitter-chunker#492). Explicit custom
   grammars retain priority after ABI validation. Boundary incremental keys now
   bind the selected official version or custom-library SHA-256, so existing
-  Python/JavaScript cache records are re-extracted for the Unreleased 6.0.0
+  Python/JavaScript cache records are re-extracted for the 6.0.0
   train. Source bytes, half-open UTF-8 spans, identity algorithms and IR schema
   vocabulary are unchanged. The standalone pack grammars remain affected;
   release and downstream corpus acceptance are separate pending gates.
@@ -376,6 +388,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   timestamps. A version that cannot be extracted is reported as `unknown`.
 - Numeric compatibility rules reject versions they cannot compare instead of
   treating them as equal to the requested version.
+
+## [5.3.0] - 2026-10-10
+
+Published from the 5.x maintenance branch:
+[release and complete notes](https://github.com/Consiliency/treesitter-chunker/releases/tag/v5.3.0).
+It delivered Go/Rust/C++ and six-language signature fixes, `.tsx` grammar
+selection, and canonical API file-language detection. Those fixes are retained
+in 6.0.0; the graph, identity and extraction migrations reserved for 6.0.0
+were not included in 5.3.0.
 
 ## [5.2.0] — Grammar management and context correctness
 
