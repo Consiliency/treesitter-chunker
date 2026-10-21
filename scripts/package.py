@@ -10,8 +10,6 @@ This script automates the entire packaging process including:
 
 import argparse
 import hashlib
-import os
-import platform
 import shutil
 import subprocess
 import sys
@@ -91,34 +89,6 @@ class PackageAutomation:
             cwd=self.project_dir,
             check=True,
         )
-        if shutil.which("cibuildwheel"):
-            self._build_platform_wheels()
-
-    def _build_platform_wheels(self):
-        """Build platform-specific wheels using cibuildwheel."""
-        print("\nBuilding platform-specific wheels...")
-        system = platform.system().lower()
-        if system == "linux":
-            subprocess.run(
-                ["cibuildwheel", "--platform", "linux"],
-                check=False,
-                cwd=self.project_dir,
-                env={**os.environ, "CIBW_OUTPUT_DIR": str(self.dist_dir)},
-            )
-        elif system == "darwin":
-            subprocess.run(
-                ["cibuildwheel", "--platform", "macos"],
-                check=False,
-                cwd=self.project_dir,
-                env={**os.environ, "CIBW_OUTPUT_DIR": str(self.dist_dir)},
-            )
-        elif system == "windows":
-            subprocess.run(
-                ["cibuildwheel", "--platform", "windows"],
-                check=False,
-                cwd=self.project_dir,
-                env={**os.environ, "CIBW_OUTPUT_DIR": str(self.dist_dir)},
-            )
 
     def _generate_checksums(self):
         """Generate checksums for all artifacts."""
