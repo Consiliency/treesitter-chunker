@@ -105,6 +105,47 @@ source-build/runtime paths have not been accepted for the current parser stack.
 - Release tags must use the form `vX.Y.Z`
 - `release.yml` fails if the tag and package version differ
 - `release.yml` also fails if that version already exists on PyPI
+- Update the reviewed wheel payload inventory/version in `chunker/build/builder.py`
+  and its source-parity tests when changing the release version or required files.
+
+## Public wheel structural verification
+
+`chunker.build.BuildSystem.verify_build` and `BuildSystemImpl.verify_build` check
+the current unreleased `treesitter-chunker` 6.0.0 source profile: Python >=3.12,
+the paired Tree-sitter runtime/language-pack ranges, and the exact official
+Python/JavaScript grammar dependencies. The embedded required-minimum inventory
+contains 330 Python modules/resources, including `py.typed` and the Boundary IR
+schema. It is independent of candidate contents and the installed filesystem.
+Unknown versions or other profiles are outside this verifier's supported payload
+contract. In particular, published 6.0.0 retains >=3.11 metadata and is not
+retroactively accepted by this source-profile verifier. Rejection on that basis
+does not establish that an older published artifact is corrupt.
+
+The verifier requires one top-level metadata directory, direct METADATA, WHEEL,
+RECORD and entry-point files, consistent distribution identity and expanded tags,
+and the exact commands `treesitter-chunker` and `tsc`, both targeting
+`cli.main:app`. It checks ZIP CRCs; RECORD presence is structural, not digest
+authentication. Required payload may be relocated once under the matching
+distribution's `.data/purelib` or `.data/platlib`. Duplicate members, noncanonical
+file paths and multiple members mapping to one installation destination fail,
+even with equal bytes. This is a lexical destination check, not an exhaustive
+installer or host-filesystem audit.
+
+Universal wheels need no bundled grammar and reject native filenames anywhere
+in the archive, including case variants and versioned shared-library suffixes.
+Native wheel compatibility checks require a platform-matching grammar directly
+under normalized `chunker/data/grammars/build`. No candidate is installed or
+native-loaded by verification. Filename classification cannot detect disguised
+native bytes. A structurally valid result establishes neither provenance, ABI
+compatibility, native admission safety nor `NativeProbeResult.supported`.
+
+Reports retain existing keys and add `components.missing_payload`, the exact
+missing paths, with `missing_modules` as its Python-only subset. Any missing
+payload sets `package=false`; errors or missing requirements make `valid=false`.
+A trusted verifier installation supplies the completeness policy; a maliciously
+replaced verifier or an installation missing the verifier itself is outside this
+contract. Future source/version changes require explicit inventory and parity
+test maintenance; the inventory digest describes path names, not trusted bytes.
 
 ## Standard Release Flow
 

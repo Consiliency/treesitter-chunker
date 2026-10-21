@@ -65,6 +65,7 @@ COMMON_TESTS = [
     "tests/test_boundary_cache_key.py",
     "tests/test_factory.py::TestParserFactory::test_492_incompatible_custom_never_uses_pack",
     "tests/test_factory.py::TestParserFactory::test_492_required_grammar_failure_never_uses_pack_or_build",
+    "tests/test_supported_wheel_verification.py",
 ]
 
 WINDOWS_EXTRA_TESTS = [

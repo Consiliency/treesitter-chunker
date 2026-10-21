@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Repair public wheel structural verification with an independent source-profile
+  payload inventory, unique installation destinations, exact console commands,
+  parser metadata validation and universal native-filename rejection
+  (treesitter-chunker#155, treesitter-chunker#174, treesitter-chunker#175,
+  treesitter-chunker#176, treesitter-chunker#182, treesitter-chunker#183,
+  treesitter-chunker#184, treesitter-chunker#185). Structural validity does not
+  establish native safety or provenance; see the packaging guide for profile limits.
+
 ### Breaking
 
 - Require Python 3.12 or newer for the next main and BAML companion releases

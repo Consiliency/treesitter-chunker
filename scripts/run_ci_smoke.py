@@ -66,6 +66,7 @@ CI_SMOKE_TESTS = [
     # includes an OS-subprocess probe that is killed and reaped at its deadline.
     # See .github/workflows/ci.yml for the exact pack install and prefetch.
     "tests/test_language_smoke.py",
+    "tests/test_supported_wheel_verification.py",
 ]
 
 
