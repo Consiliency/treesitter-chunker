@@ -2,7 +2,7 @@
 # Provides a minimal container image
 
 # Stage 1: Builder
-FROM python:3.12-alpine as builder
+FROM python:3.12-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
