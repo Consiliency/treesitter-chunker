@@ -2,6 +2,11 @@
 
 This document is the source of truth for packaging and PyPI publishing.
 
+Development and the next release require Python >=3.12. CI uses 3.12, with
+installed-wheel checks on both 3.12 and 3.14. Already published 6.0.0 keeps its
+original >=3.11 metadata. Moving the full development environment to 3.14 needs
+separate validation of its native development dependencies.
+
 ## Current Release Model
 
 The optional BAML grammar is a separate native distribution at
@@ -11,21 +16,28 @@ The optional BAML grammar is a separate native distribution at
 `baml-grammar-v*` tag. It publishes `cp311-abi3` wheels for Linux glibc
 x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64, tested on Python
 3.11–3.13, plus an sdist. Other platforms require a compiler for the sdist.
+The companion source now requires >=3.12 and builds `cp312-abi3` wheels. Its
+workflow tests each native target during the 3.12 build and installs the wheel
+outside checkout on 3.14. These source changes need a separate future companion
+version and release; they do not replace published 0.1.0 or change the main
+package's existing optional dependency pin.
 The main `treesitter-chunker` wheel stays `py3-none-any`; the BAML native
 artifact is installed only by the `baml` extra. Both packages must be installed
 before offline BAML parsing, which then needs no network or compiler.
 
 - `main` CI validates code, docs, and tests only; it does not publish to PyPI
 - `.github/workflows/release.yml` is the only workflow that publishes to PyPI
-- `.github/workflows/build-wheels.yml` builds wheel artifacts but does not publish them
+- `.github/workflows/build-wheels.yml` is a manual-only wheel artifact helper;
+  obsolete duplicate tag builds were removed, so release tags build once
 - Production publishing uses GitHub trusted publishing
 - A release tag must match the version in `pyproject.toml`
 - The PyPI release workflow requires the full `tests/` and `spec_tests/` tier,
-  lint, formatting and the baseline type gate on Python 3.11, 3.12 and 3.13.
+  lint, formatting and the baseline type gate on Python 3.12.
   A failing or timed-out validation job blocks its build and publication jobs.
 - The built wheel is installed in a fresh environment using hashed, locked runtime
   dependencies and exercised outside the source checkout. Distribution checksums
-  are retained with the artifacts and verified before publication.
+  are retained with the artifacts and verified before publication. Installed-wheel
+  verification runs on both Python 3.12 and 3.14.
 
 ### Native package status
 
@@ -64,7 +76,7 @@ for published versions.
 The main package requires the exact official
 `tree-sitter-python==0.25.0` and `tree-sitter-javascript==0.25.0` distributions
 for default Python and JavaScript parsing. Their `cp310-abi3` wheels cover the
-supported CPython 3.11–3.14 matrix on Linux glibc/musl x86_64 and aarch64,
+supported CPython 3.12–3.14 range on Linux glibc/musl x86_64 and aarch64,
 macOS x86_64/arm64, and Windows x86_64/arm64. These installed wheel grammars
 take precedence over `tree-sitter-language-pack` for the two languages because
 the standalone pack 1.20 grammars remain affected by treesitter-chunker#492.

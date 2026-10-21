@@ -1,7 +1,7 @@
 # Tree-sitter Chunker
 
 [![PyPI](https://img.shields.io/pypi/v/treesitter-chunker.svg)](https://pypi.org/project/treesitter-chunker/)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Test Suite](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml/badge.svg)](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/Consiliency/treesitter-chunker/branch/main/graph/badge.svg)](https://codecov.io/gh/Consiliency/treesitter-chunker)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -12,7 +12,10 @@ Chunker returns source content, line and byte spans, and context metadata.
 
 ## Install
 
-Requires Python 3.11 or newer. The main package is a universal Python wheel.
+Development and the next release require Python 3.12 or newer. CI uses 3.12,
+with installed-wheel compatibility checks on 3.14 as well.
+Published 6.0.0 retains Python 3.11 support.
+The main package is a universal Python wheel.
 
 ```bash
 pip install treesitter-chunker

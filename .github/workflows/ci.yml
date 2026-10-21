@@ -13,6 +13,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: '3.12'
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
@@ -21,7 +23,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install Graphviz executable
         run: |
@@ -40,24 +42,12 @@ jobs:
             grammars-${{ runner.os }}-
 
       - name: Install uv
-        run: pip install uv
+        run: python -m pip install uv==0.12.11
 
       - name: Install dependencies
         run: |
-          # toml, httpx, and jsonschema are declared in the [dev] extra, so the
-          # single editable install below covers them -- no ad-hoc pip installs.
-          #
-          # Pin the parser stack to the versions used by the committed coverage
-          # oracle. `uv pip install` does not consult uv.lock, so both versions
-          # are repeated here to prevent CI from floating independently.
-          # Pack 1.20 downloads its parser bundle on first use; the prefetch step
-          # below moves that network boundary ahead of the parallel smoke tests.
-          uv pip install --system -e ".[dev,api,viz,templates,advanced]" \
-            "tree-sitter==0.26.0" \
-            "tree-sitter-language-pack==1.20.0"
-          # Fail loudly (not silently green) if the install resolved a different
-          # pack than the gate's oracle was baked against.
-          python - <<'PY'
+          uv sync --locked --all-extras
+          uv run --locked --all-extras python - <<'PY'
           import importlib.metadata as m
           expected = {"tree-sitter": "0.26.0", "tree-sitter-language-pack": "1.20.0"}
           installed = {name: m.version(name) for name in expected}
@@ -67,18 +57,18 @@ jobs:
 
       - name: Prefetch language pack
         run: |
-          python - <<'PY'
+          uv run --locked --all-extras python - <<'PY'
           from typing import get_args
           from tree_sitter_language_pack import SupportedLanguage, prefetch
           prefetch(list(get_args(SupportedLanguage)))
           PY
 
       - name: Fetch grammars
-        run: python scripts/fetch_grammars.py
+        run: uv run --locked --all-extras python scripts/fetch_grammars.py
         continue-on-error: true  # Don't fail CI if grammar fetch fails
 
       - name: Build grammars
-        run: python scripts/build_lib.py
+        run: uv run --locked --all-extras python scripts/build_lib.py
         continue-on-error: true  # Grammar build is optional for linting
 
       - name: Ruff
@@ -86,10 +76,10 @@ jobs:
           # Run ruff on production code and tests only (exclude archive, logs, etc.)
           # Use the uv-locked ruff (0.12.5) so CI matches the lockfile + local;
           # avoids unpinned-ruff drift flagging pre-existing issues on every push.
-          uv run --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
+          uv run --locked --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
 
       - name: Black
-        run: uv run --all-extras black --check chunker/ cli/ tests/ scripts/
+        run: uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/
 
       # Note: isort check removed - ruff handles import sorting (I001)
 
@@ -97,13 +87,13 @@ jobs:
       - name: Mypy
         shell: bash
         run: |
-          uv run --all-extras python scripts/mypy_gate.py
+          uv run --locked --all-extras python scripts/mypy_gate.py
 
       - name: Pytest
         run: |
           if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
-            uv run --with toml --all-extras python scripts/run_full_suite.py
+            uv run --locked --all-extras python scripts/run_full_suite.py
           else
-            uv run --with toml --all-extras python scripts/run_ci_smoke.py
+            uv run --locked --all-extras python scripts/run_ci_smoke.py
           fi
         timeout-minutes: 60

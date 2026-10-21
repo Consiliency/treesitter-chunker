@@ -13,20 +13,19 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.platform }}
+    env:
+      UV_PYTHON: '3.12'
     strategy:
       fail-fast: false
       matrix:
         include:
-          - python-version: '3.11'
-            platform: ubuntu-latest
-            platform-family: linux
           - python-version: '3.12'
             platform: ubuntu-latest
             platform-family: linux
-          - python-version: '3.11'
+          - python-version: '3.12'
             platform: blacksmith-4vcpu-windows-2025
             platform-family: windows
-          - python-version: '3.11'
+          - python-version: '3.12'
             platform: macos-latest
             platform-family: macos
 
@@ -44,49 +43,28 @@ jobs:
         path: |
           ~/.cache/pip
           ~/.cache/uv
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
+        key: ${{ runner.os }}-py312-${{ hashFiles('uv.lock') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
+          ${{ runner.os }}-py312-
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install uv
-        uv pip install --system -e ".[dev,api,viz,templates,advanced,baml]" "tree-sitter==0.26.0" "tree-sitter-language-pack==1.20.0"
-        uv pip install --system toml httpx  # Required by tests
+        python -m pip install uv==0.12.11
+        uv sync --locked --all-extras
 
     - name: Fetch grammars
-      run: python scripts/fetch_grammars.py
+      run: uv run --locked --all-extras python scripts/fetch_grammars.py
 
     - name: Build grammars
-      run: python scripts/build_lib.py
-
-    - name: Run linting
-      run: |
-        # Use the uv-locked ruff/black so CI matches the lockfile + local
-        # and avoids unpinned-tool version drift flagging pre-existing issues.
-        uv run --all-extras ruff check chunker/ tests/
-        uv run --all-extras black --check chunker/ tests/
-
-    - name: Run type checking
-      # The baseline-relative mypy gate runs on Linux only: the baseline
-      # (docs/development/mypy-baseline.txt) is generated on Linux, and mypy
-      # re-derives PLATFORM-SPECIFIC errors on Windows/macOS (e.g. the Unix-only
-      # `resource` module in performance_framework.py) that a Linux baseline can
-      # never contain — so a per-OS run would flag those as spurious "new"
-      # errors. Type-checking the code once on Linux is sufficient and correct.
-      if: matrix.platform-family == 'linux'
-      shell: bash
-      run: |
-        uv run --all-extras python scripts/mypy_gate.py
+      run: uv run --locked --all-extras python scripts/build_lib.py
 
     - name: Run platform core tests
       run: |
-        python scripts/run_platform_core.py --platform ${{ matrix.platform-family }}
+        uv run --locked --all-extras python scripts/run_platform_core.py --platform ${{ matrix.platform-family }}
 
 
     - name: Upload coverage
-      if: matrix.platform-family == 'linux' && matrix.python-version == '3.11'
+      if: matrix.platform-family == 'linux'
       uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
       with:
         files: ./coverage.xml

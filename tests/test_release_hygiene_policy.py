@@ -160,11 +160,7 @@ def test_publication_requires_full_validation_and_verified_artifacts():
     jobs = yaml.safe_load((ROOT / ".github/workflows/release.yml").read_text())["jobs"]
     validation = jobs["release-validation"]
     assert not validation.get("continue-on-error", False)
-    assert validation["strategy"]["matrix"]["python-version"] == [
-        "3.11",
-        "3.12",
-        "3.13",
-    ]
+    assert validation["strategy"]["matrix"]["python-version"] == ["3.12"]
     assert any(
         "scripts/run_full_suite.py" in step.get("run", "")
         for step in validation["steps"]

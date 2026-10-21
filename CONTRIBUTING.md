@@ -2,7 +2,8 @@
 
 ## Setup
 
-Use Python 3.11 or newer and the project environment:
+Use Python 3.12 and the project environment for development and CI. Keep source
+syntax compatible with 3.12; release wheel checks also cover 3.14:
 
 ```bash
 git clone https://github.com/Consiliency/treesitter-chunker.git
@@ -64,6 +65,10 @@ require clearing all existing type debt. Pull-request CI runs the fast smoke
 lane, and the Test Suite workflow confirms platform-core behavior on Linux,
 macOS, and Windows. The scheduled CI job and release validation run the full
 `tests/` and `spec_tests/` suite.
+
+CI runs lint and the type gate once on Linux 3.12. Platform-core jobs use 3.12
+on Linux, macOS and Windows. The scheduled full tier and release full validation
+also use 3.12; release wheels are installed and checked on 3.12 and 3.14.
 
 The type gate compares complete messages and error codes, normalizing only
 leading file locations. Literal values, numeric colons and backslashes inside
