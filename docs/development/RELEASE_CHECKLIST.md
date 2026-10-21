@@ -56,8 +56,9 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 - the top `CHANGELOG.md` heading matches `TARGET_VERSION`
 - version does not already exist on PyPI
 - build and package checks succeed
-- the release workflow's Python 3.11/3.12/3.13 validation matrix succeeds
+- the release workflow's Python 3.12 full validation succeeds
 - the wheel installs from hashed locked requirements outside the source checkout
+  on Python 3.12 and 3.14
 - uploaded distribution checksums are present and verified before publication
 - the main package remains PyPI-only in 6.0.0: native package tag/build/upload paths are absent and
   manual native dispatch fails with the suspension notice; re-enablement requires

@@ -2,7 +2,7 @@
 # Provides a minimal container image
 
 # Stage 1: Builder
-FROM python:3.11-alpine as builder
+FROM python:3.12-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -32,7 +32,7 @@ RUN python scripts/fetch_grammars.py && \
 RUN python -m build --wheel --outdir /dist
 
 # Stage 2: Runtime
-FROM python:3.11-alpine
+FROM python:3.12-alpine
 
 # Install runtime dependencies
 RUN apk add --no-cache \

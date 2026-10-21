@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Breaking
+
+- Require Python 3.12 or newer for the next main and BAML companion releases
+  (treesitter-chunker#493). Published 6.0.0 and companion 0.1.0 keep their original
+  metadata. CI uses Python 3.12 with installed-wheel checks on 3.12 and 3.14,
+  retaining the existing platform coverage. Remove duplicate
+  lint/type work, obsolete 3.11/3.13 jobs and duplicate main tag artifact builds.
+  The companion source moves to `cp312-abi3`; its new release remains separate.
+
 ## [6.0.0]
 
 This major release includes the 5.3.0 maintenance fixes

@@ -29,6 +29,12 @@ platforms use the source distribution until a wheel is tested there. Run
 `python scripts/check_baml_grammar.py` to verify vendored hashes offline;
 explicit regeneration requires the pinned `tree-sitter-cli` executable.
 
+That wheel description applies to published 0.1.0. The next companion source
+requires Python >=3.12 and builds `cp312-abi3` wheels for the same five native
+targets. The workflow tests each wheel during its 3.12 build and installs it
+outside checkout on 3.14. These changes need a separate new companion version
+and release; the main package still pins published 0.1.0.
+
 ## Feasibility evidence
 
 At the pinned mirror commit, the unmodified grammar rejected the BAML 0.20.1
