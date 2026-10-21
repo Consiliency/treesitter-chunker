@@ -7,13 +7,14 @@ import io
 import json
 import os
 import stat
+import struct
 import subprocess
 import sys
 import sysconfig
 import tomllib
 from email.parser import Parser
 from pathlib import Path
-from zipfile import ZipFile
+from zipfile import ZipFile, ZipInfo
 
 import pytest
 from packaging.requirements import Requirement
@@ -126,7 +127,9 @@ def _mutate_wheel_with_valid_record(
     rows = []
     with ZipFile(target, "w") as changed:
         for name, data in members:
-            changed.writestr(name, data)
+            member = ZipInfo(name)
+            member.filename = name
+            changed.writestr(member, data)
             digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(
                 b"="
             )
@@ -146,7 +149,7 @@ def _metadata_paths(wheel):
             if n.endswith(".dist-info/METADATA")
         )
         return prefix, {
-            name: archive.read(f"{prefix}/{name}")
+            name: archive.read(f"{prefix}/{name}").replace(b"\r\n", b"\n")
             for name in ("METADATA", "WHEEL", "entry_points.txt")
         }
 
@@ -160,6 +163,24 @@ def _check(wheel, *, platform="linux", valid=True, missing=None, error=None):
         if error:
             assert any(error in item for item in report["errors"]), report
     return report
+
+
+@pytest.fixture(params=[b"\n", b"\r\n"], ids=["lf", "crlf"])
+def header_wheel(artifacts, tmp_path, request):
+    source = artifacts["wheel"]
+    prefix, contents = _metadata_paths(source)
+    headers = {
+        f"{prefix}/{name}": content.replace(b"\n", request.param)
+        for name, content in contents.items()
+    }
+    control = _mutate_wheel_with_valid_record(
+        source, tmp_path / "header-control" / source.name, replace=headers
+    )
+    with ZipFile(control) as archive:
+        for name, expected in headers.items():
+            assert archive.read(name) == expected
+    _check(control)
+    return control
 
 
 def _install(wheel, target):
@@ -513,11 +534,38 @@ def test_universal_native_name_variants_rejected(
     ],
 )
 def test_noncanonical_paths_rejected(artifacts, tmp_path, name):
+    _check(artifacts["wheel"])
     wheel = _mutate_wheel_with_valid_record(
         artifacts["wheel"],
         tmp_path / artifacts["wheel"].name,
         add=[(name, b"fixture")],
     )
+    data = wheel.read_bytes()
+    end = data.rfind(b"PK\x05\x06")
+    assert end >= 0
+    count = struct.unpack_from("<H", data, end + 10)[0]
+    cursor = struct.unpack_from("<I", data, end + 16)[0]
+    names = []
+    for _ in range(count):
+        assert data[cursor : cursor + 4] == b"PK\x01\x02"
+        length, extra, comment = struct.unpack_from("<HHH", data, cursor + 28)
+        raw_name = data[cursor + 46 : cursor + 46 + length]
+        offset = struct.unpack_from("<I", data, cursor + 42)[0]
+        assert data[offset : offset + 4] == b"PK\x03\x04"
+        local_length = struct.unpack_from("<H", data, offset + 26)[0]
+        assert data[offset + 30 : offset + 30 + local_length] == raw_name
+        names.append(raw_name)
+        cursor += 46 + length + extra + comment
+    assert name.encode("utf-8") in names
+    with ZipFile(wheel) as archive:
+        member = next(info for info in archive.infolist() if info.orig_filename == name)
+        assert archive.read(member) == b"fixture"
+        record = next(n for n in archive.namelist() if n.endswith(".dist-info/RECORD"))
+        rows = list(csv.reader(io.StringIO(archive.read(record).decode("utf-8"))))
+        digest = base64.urlsafe_b64encode(hashlib.sha256(b"fixture").digest()).rstrip(
+            b"="
+        )
+        assert [name, "sha256=" + digest.decode("ascii"), "7"] in rows
     _check(wheel, valid=False, error=f"Noncanonical wheel member: {name}")
 
 
@@ -589,15 +637,17 @@ def test_duplicate_members_rejected(artifacts, tmp_path):
 @pytest.mark.parametrize(
     "mutation", ["missing", "duplicate", "conditional", "extra", "url", "loose"]
 )
-def test_parser_dependency_mutations(artifacts, tmp_path, name, mutation):
-    source = artifacts["wheel"]
+def test_parser_dependency_mutations(header_wheel, tmp_path, name, mutation):
+    source = header_wheel
     prefix, contents = _metadata_paths(source)
     text = contents["METADATA"].decode()
     line = next(
         line
         for line in text.splitlines(keepends=True)
         if line.startswith("Requires-Dist: ")
-        and canonicalize_name(Requirement(line.removeprefix("Requires-Dist: ")).name)
+        and canonicalize_name(
+            Requirement(line.removeprefix("Requires-Dist: ").strip()).name
+        )
         == name
     )
     replacements = {
@@ -608,12 +658,12 @@ def test_parser_dependency_mutations(artifacts, tmp_path, name, mutation):
         "url": f"Requires-Dist: {name} @ https://example.invalid/parser.whl\n",
         "loose": f"Requires-Dist: {name}>=0\n",
     }
+    changed = text.replace(line, replacements[mutation])
+    assert changed != text
     wheel = _mutate_wheel_with_valid_record(
         source,
         tmp_path / source.name,
-        replace={
-            f"{prefix}/METADATA": text.replace(line, replacements[mutation]).encode()
-        },
+        replace={f"{prefix}/METADATA": changed.encode()},
     )
     _check(wheel, valid=False, missing=PARSER_PINS[name][0])
 
@@ -668,8 +718,8 @@ def test_required_metadata_is_direct(artifacts, tmp_path, member, component, nes
         "wheel-version",
     ],
 )
-def test_metadata_and_parser_contract_mutations(artifacts, tmp_path, case):
-    source = artifacts["wheel"]
+def test_metadata_and_parser_contract_mutations(header_wheel, tmp_path, case):
+    source = header_wheel
     prefix, contents = _metadata_paths(source)
     metadata, wheel_info = contents["METADATA"], contents["WHEEL"]
     move, add, filename = {}, [], source.name
@@ -718,6 +768,12 @@ def test_metadata_and_parser_contract_mutations(artifacts, tmp_path, case):
     elif case == "wheel-version":
         wheel_info = wheel_info.replace(b"Wheel-Version: 1.0", b"Wheel-Version: 2.0")
         error = "Missing or unsupported Wheel-Version"
+    assert (
+        metadata != contents["METADATA"]
+        or wheel_info != contents["WHEEL"]
+        or move
+        or add
+    )
     wheel = _mutate_wheel_with_valid_record(
         source,
         tmp_path / filename,

@@ -933,14 +933,15 @@ Summary: Tree-sitter based code chunking library""",
         """Verify wheel contents"""
         try:
             with zipfile.ZipFile(wheel_path, "r") as zf:
-                members = [member.filename for member in zf.infolist()]
+                members = [member.orig_filename for member in zf.infolist()]
                 if len(members) != len(set(members)):
                     report["errors"].append("Duplicate wheel members")
                 files = []
                 for member in zf.infolist():
                     if member.is_dir():
                         continue
-                    name = member.filename
+                    # Windows normalizes separators in filename, but not orig_filename.
+                    name = member.orig_filename
                     if stat.S_IFMT(member.external_attr >> 16) not in (0, stat.S_IFREG):
                         report["errors"].append(f"Nonregular wheel member: {name}")
                         continue
