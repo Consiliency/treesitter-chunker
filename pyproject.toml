@@ -466,35 +466,3 @@ ignore_missing_imports = true
 [tool.bandit]
 exclude_dirs = ["tests", "venv", ".venv", "build", "dist", "grammars"]
 skips = ["B101", "B601", "B602", "B603", "B607"]
-
-[tool.cibuildwheel]
-# Build for multiple platforms
-build = ["cp311-*", "cp312-*", "cp313-*"]
-skip = ["*-musllinux_i686", "*-win32", "pp*"]
-test-command = "python -m pytest {project}/tests/test_parser.py::TestParserAPI::test_get_parser_basic"
-test-extras = ["dev"]
-test-skip = ["*-macosx_arm64", "*-macosx_universal2:arm64"]
-
-# Platform-specific build settings
-[tool.cibuildwheel.linux]
-archs = ["x86_64", "aarch64"]
-before-all = [
-    "yum install -y tree-sitter || apt-get update && apt-get install -y tree-sitter || true"
-]
-manylinux-x86_64-image = "manylinux2014"
-manylinux-aarch64-image = "manylinux2014"
-
-[tool.cibuildwheel.macos]
-archs = ["x86_64", "arm64", "universal2"]
-before-all = [
-    "brew install tree-sitter || true"
-]
-
-[tool.cibuildwheel.windows]
-archs = ["AMD64"]
-before-build = [
-    "pip install delvewheel"
-]
-repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
-
-# Test configuration

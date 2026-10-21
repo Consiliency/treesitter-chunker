@@ -138,16 +138,15 @@ Local package building is still useful for validation and troubleshooting.
 ```bash
 TARGET_VERSION=6.0.0  # Use the version in pyproject.toml
 OUTDIR="dist/phase9-release-check-${TARGET_VERSION}"
-uv run --with toml --all-extras python -m build --outdir "$OUTDIR"
-uv run --with toml --all-extras python -m twine check "$OUTDIR"/*
+uv run --locked --all-extras --python 3.12 python -m build --outdir "$OUTDIR"
+uv run --locked --all-extras --python 3.12 python -m twine check "$OUTDIR"/*
 ```
 
-Optional wheel helper:
-
-```bash
-python scripts/build_wheels.py --platform auto
-```
-
+The main package uses the standard build command above for its universal
+`py3-none-any` wheel and sdist. The old `scripts/build_wheels.py` helper and
+root platform-specific cibuildwheel recipes are retired; `scripts/package.py`
+also builds its wheel through `python -m build` without optional platform builds.
+The native BAML companion keeps its separate build configuration and workflow.
 These local commands do not publish to PyPI.
 
 ## What Publishes to PyPI
@@ -164,8 +163,8 @@ The repository no longer has a second token-based publish path in `build-wheels.
 
 - Tag/version mismatch: update `pyproject.toml` or retag before rerunning
 - Version already on PyPI: bump the version; do not reuse an existing release number
-- Build failure: reproduce locally with `uv run --with toml --all-extras python -m build` and `uv run --with toml --all-extras python -m twine check`
-- Wheel issues: use `python scripts/build_wheels.py --platform auto` for local diagnosis
+- Build failure: reproduce with the locked local build and twine commands above
+- Wheel issues: rerun the locked local `python -m build` command above and inspect its output
 
 ## Related Docs
 

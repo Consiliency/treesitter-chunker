@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lint/type work, obsolete 3.11/3.13 jobs and duplicate main tag artifact builds.
   The companion source moves to `cp312-abi3`; its new release remains separate.
 
+### Changed
+
+- Retire the optional `scripts/build_wheels.py` helper and root platform-wheel
+  recipes with obsolete Python targets (treesitter-chunker#503). Use
+  `python -m build` for the main universal wheel and sdist; `scripts/package.py`
+  no longer attempts additional cibuildwheel builds. Native BAML stays separate.
+
 ## [6.0.0]
 
 This major release includes the 5.3.0 maintenance fixes
