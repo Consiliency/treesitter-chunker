@@ -129,6 +129,9 @@ def _mutate_wheel_with_valid_record(
         for name, data in members:
             member = ZipInfo(name)
             member.filename = name
+            member.external_attr = (
+                (stat.S_IFDIR | 0o755) if name.endswith("/") else (stat.S_IFREG | 0o600)
+            ) << 16
             changed.writestr(member, data)
             digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(
                 b"="
@@ -139,6 +142,45 @@ def _mutate_wheel_with_valid_record(
         csv.writer(text, lineterminator="\n").writerows(rows)
         changed.writestr(record, text.getvalue())
     return target
+
+
+def _raw_member_oracle(wheel, name, payload):
+    data = wheel.read_bytes()
+    end = data.rfind(b"PK\x05\x06")
+    assert end >= 0
+    count = struct.unpack_from("<H", data, end + 10)[0]
+    cursor = struct.unpack_from("<I", data, end + 16)[0]
+    names = []
+    for _ in range(count):
+        assert data[cursor : cursor + 4] == b"PK\x01\x02"
+        length, extra, comment = struct.unpack_from("<HHH", data, cursor + 28)
+        raw_name = data[cursor + 46 : cursor + 46 + length]
+        offset = struct.unpack_from("<I", data, cursor + 42)[0]
+        assert data[offset : offset + 4] == b"PK\x03\x04"
+        local_length = struct.unpack_from("<H", data, offset + 26)[0]
+        assert data[offset + 30 : offset + 30 + local_length] == raw_name
+        names.append(raw_name)
+        cursor += 46 + length + extra + comment
+    assert name.encode("utf-8") in names
+    with ZipFile(wheel) as archive:
+        member = next(info for info in archive.infolist() if info.orig_filename == name)
+        assert archive.read(member) == payload
+        assert archive.testzip() is None
+        record = next(n for n in archive.namelist() if n.endswith(".dist-info/RECORD"))
+        rows = list(csv.reader(io.StringIO(archive.read(record).decode("utf-8"))))
+        digest = base64.urlsafe_b64encode(hashlib.sha256(payload).digest()).rstrip(b"=")
+        row = [name, "sha256=" + digest.decode("ascii"), str(len(payload))]
+        assert row in rows
+        return {
+            "raw_central_and_local_name_hex": name.encode("utf-8").hex(),
+            "filename": member.filename,
+            "orig_filename": member.orig_filename,
+            "is_dir": member.is_dir(),
+            "unix_file_type": stat.S_IFMT(member.external_attr >> 16),
+            "dos_directory_bit": bool(member.external_attr & 0x10),
+            "record_row": row,
+            "crc_valid": True,
+        }
 
 
 def _metadata_paths(wheel):
@@ -540,33 +582,200 @@ def test_noncanonical_paths_rejected(artifacts, tmp_path, name):
         tmp_path / artifacts["wheel"].name,
         add=[(name, b"fixture")],
     )
-    data = wheel.read_bytes()
-    end = data.rfind(b"PK\x05\x06")
-    assert end >= 0
-    count = struct.unpack_from("<H", data, end + 10)[0]
-    cursor = struct.unpack_from("<I", data, end + 16)[0]
-    names = []
-    for _ in range(count):
-        assert data[cursor : cursor + 4] == b"PK\x01\x02"
-        length, extra, comment = struct.unpack_from("<HHH", data, cursor + 28)
-        raw_name = data[cursor + 46 : cursor + 46 + length]
-        offset = struct.unpack_from("<I", data, cursor + 42)[0]
-        assert data[offset : offset + 4] == b"PK\x03\x04"
-        local_length = struct.unpack_from("<H", data, offset + 26)[0]
-        assert data[offset + 30 : offset + 30 + local_length] == raw_name
-        names.append(raw_name)
-        cursor += 46 + length + extra + comment
-    assert name.encode("utf-8") in names
-    with ZipFile(wheel) as archive:
-        member = next(info for info in archive.infolist() if info.orig_filename == name)
-        assert archive.read(member) == b"fixture"
-        record = next(n for n in archive.namelist() if n.endswith(".dist-info/RECORD"))
-        rows = list(csv.reader(io.StringIO(archive.read(record).decode("utf-8"))))
-        digest = base64.urlsafe_b64encode(hashlib.sha256(b"fixture").digest()).rstrip(
-            b"="
-        )
-        assert [name, "sha256=" + digest.decode("ascii"), "7"] in rows
+    _raw_member_oracle(wheel, name, b"fixture")
     _check(wheel, valid=False, error=f"Noncanonical wheel member: {name}")
+
+
+@pytest.mark.parametrize("api", [BuildSystem, BuildSystemImpl], ids=["public", "impl"])
+@pytest.mark.parametrize(
+    ("name", "valid"),
+    [
+        pytest.param("extra/", True, id="canonical"),
+        pytest.param("extra/nested/", True, id="canonical-nested"),
+        pytest.param("extra\\", False, id="terminal-backslash"),
+        pytest.param("extra\\/", False, id="backslash-directory"),
+        pytest.param("extra//", False, id="empty-segment-directory"),
+        pytest.param("extra/../", False, id="parent-directory"),
+        pytest.param("/extra/", False, id="absolute-directory"),
+        pytest.param("C:/extra/", False, id="drive-directory"),
+    ],
+)
+def test_raw_directory_policy(artifacts, tmp_path, api, name, valid):
+    source = artifacts["wheel"]
+    control = _mutate_wheel_with_valid_record(
+        source, tmp_path / "control" / source.name, add=[("legitimate/", b"")]
+    )
+    _check(control)
+    control_oracle = _raw_member_oracle(control, "legitimate/", b"")
+    assert control_oracle["is_dir"]
+    assert control_oracle["unix_file_type"] == stat.S_IFDIR
+    payload = b"" if name.endswith("/") else b"fixture"
+    wheel = _mutate_wheel_with_valid_record(
+        source, tmp_path / "candidate" / source.name, add=[(name, payload)]
+    )
+    oracle = _raw_member_oracle(wheel, name, payload)
+    if name == "extra\\":
+        assert oracle["unix_file_type"] == stat.S_IFREG
+        assert not oracle["dos_directory_bit"]
+        assert not oracle["orig_filename"].endswith("/")
+    actual, report = api().verify_build(
+        wheel, "windows" if sys.platform == "win32" else "linux"
+    )
+    (tmp_path / "raw-directory-observation.json").write_text(
+        json.dumps(
+            {
+                "api": api.__name__,
+                "control": control_oracle,
+                "candidate": oracle,
+                "actual": actual,
+                "report": report,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    assert actual is valid and report["valid"] is valid, report
+    if not valid:
+        assert f"Noncanonical wheel member: {name}" in report["errors"], report
+
+
+@pytest.mark.parametrize("api", [BuildSystem, BuildSystemImpl], ids=["public", "impl"])
+@pytest.mark.parametrize("order", ["same", "valid-first", "invalid-first"])
+@pytest.mark.parametrize(
+    ("member", "field", "conflicting", "error"),
+    [
+        ("METADATA", "Name", "wrong-project", "Wheel distribution metadata mismatch"),
+        ("METADATA", "Version", "99.0", "Wheel distribution metadata mismatch"),
+        ("METADATA", "Metadata-Version", "0", "Wheel distribution metadata mismatch"),
+        ("METADATA", "Requires-Python", ">=3.11", "Unsupported source Requires-Python"),
+        ("WHEEL", "Wheel-Version", "2.0", "Missing or unsupported Wheel-Version"),
+        ("WHEEL", "Root-Is-Purelib", "false", "Platform mismatch"),
+    ],
+)
+def test_singleton_header_duplicates(
+    header_wheel, tmp_path, api, order, member, field, conflicting, error
+):
+    prefix, contents = _metadata_paths(header_wheel)
+    text = contents[member].decode("utf-8")
+    line = next(
+        line for line in text.splitlines(keepends=True) if line.startswith(field + ": ")
+    )
+    assert sum(line.startswith(field + ": ") for line in text.splitlines()) == 1
+    duplicate = line if order == "same" else f"{field}: {conflicting}\n"
+    replacement = duplicate + line if order == "invalid-first" else line + duplicate
+    changed = text.replace(line, replacement).encode("utf-8")
+    wheel = _mutate_wheel_with_valid_record(
+        header_wheel,
+        tmp_path / "duplicate" / header_wheel.name,
+        replace={f"{prefix}/{member}": changed},
+    )
+    _raw_member_oracle(wheel, f"{prefix}/{member}", changed)
+    with ZipFile(wheel) as archive:
+        parsed = Parser().parsestr(archive.read(f"{prefix}/{member}").decode("utf-8"))
+        assert len(parsed.get_all(field)) == 2
+    actual, report = api().verify_build(wheel, "linux")
+    (tmp_path / "singleton-observation.json").write_text(
+        json.dumps(
+            {
+                "api": api.__name__,
+                "field": field,
+                "values": parsed.get_all(field),
+                "actual": actual,
+                "report": report,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    assert actual is False and report["valid"] is False, report
+    assert any(error in item for item in report["errors"]), report
+
+
+@pytest.mark.parametrize("api", [BuildSystem, BuildSystemImpl], ids=["public", "impl"])
+@pytest.mark.parametrize(
+    ("platform", "tag", "valid"),
+    [
+        ("windows", "win32", True),
+        ("windows", "win_amd64", True),
+        ("win32", "win_arm64", True),
+        ("windows", "win_arm32", True),
+        ("windows", "win_ia64", True),
+        ("linux", "linux_x86_64", True),
+        ("linux", "linux_aarch64", True),
+        ("linux", "manylinux1_x86_64", True),
+        ("linux", "manylinux2010_i686", True),
+        ("linux", "manylinux2014_s390x", True),
+        ("linux", "manylinux_2_17_x86_64.manylinux2014_x86_64", True),
+        ("linux", "musllinux_1_2_aarch64", True),
+        ("macos", "macosx_10_9_x86_64", True),
+        ("darwin", "macosx_11_0_arm64", True),
+        ("macos", "macosx_10_9_universal2", True),
+        ("macos", "macosx_10_6_intel", True),
+        ("macos", "macosx_10_6_fat64", True),
+        ("macos", "macosx_10_6_universal", True),
+        ("windows", "winbogus", False),
+        ("windows", "win", False),
+        ("windows", "win_", False),
+        ("windows", "win_amd64junk", False),
+        ("windows", "win_amd64.winbogus", False),
+        ("linux", "linuxbogus", False),
+        ("linux", "linux_", False),
+        ("linux", "manylinuxgarbage_x86_64", False),
+        ("linux", "manylinux2015_x86_64", False),
+        ("linux", "manylinux_2_x86_64", False),
+        ("linux", "manylinux_2_17", False),
+        ("linux", "musllinuxbogus", False),
+        ("linux", "musllinux_1_aarch64", False),
+        ("macos", "macosxbogus", False),
+        ("macos", "macosx_11_arm64", False),
+        ("macos", "macosx_11_0", False),
+    ],
+)
+def test_native_platform_tag_forms(artifacts, tmp_path, api, platform, tag, valid):
+    source = artifacts["wheel"]
+    _check(source, platform=platform)
+    prefix, contents = _metadata_paths(source)
+    info = (
+        contents["WHEEL"]
+        .replace(b"Root-Is-Purelib: true", b"Root-Is-Purelib: false")
+        .replace(b"Tag: py3-none-any", f"Tag: cp312-abi3-{tag}".encode("ascii"))
+    )
+    suffix = {
+        "linux": "so",
+        "macos": "dylib",
+        "darwin": "dylib",
+        "windows": "dll",
+        "win32": "dll",
+    }[platform]
+    wheel = _mutate_wheel_with_valid_record(
+        source,
+        tmp_path / source.name.replace("py3-none-any", f"cp312-abi3-{tag}"),
+        replace={f"{prefix}/WHEEL": info},
+        add=[
+            (
+                f"chunker/data/grammars/build/structural_fixture.{suffix}",
+                b"name-only structural fixture",
+            )
+        ],
+    )
+    _raw_member_oracle(wheel, f"{prefix}/WHEEL", info)
+    actual, report = api().verify_build(wheel, platform)
+    (tmp_path / "platform-tag-observation.json").write_text(
+        json.dumps(
+            {
+                "api": api.__name__,
+                "tag": tag,
+                "platform": platform,
+                "actual": actual,
+                "report": report,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    assert actual is valid and report["valid"] is valid, report
+    if not valid:
+        assert "Platform mismatch in wheel metadata" in report["errors"], report
 
 
 @pytest.mark.parametrize("scheme", ["scripts", "data", "headers", "library"])

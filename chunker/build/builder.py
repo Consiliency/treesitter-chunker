@@ -938,22 +938,21 @@ Summary: Tree-sitter based code chunking library""",
                     report["errors"].append("Duplicate wheel members")
                 files = []
                 for member in zf.infolist():
-                    if member.is_dir():
-                        continue
                     # Windows normalizes separators in filename, but not orig_filename.
                     name = member.orig_filename
-                    if stat.S_IFMT(member.external_attr >> 16) not in (0, stat.S_IFREG):
-                        report["errors"].append(f"Nonregular wheel member: {name}")
-                        continue
+                    path_parts = name.removesuffix("/").split("/")
                     if (
                         name.startswith("/")
-                        or any(
-                            re.match(r"^[A-Za-z]:", part) for part in name.split("/")
-                        )
+                        or any(re.match(r"^[A-Za-z]:", part) for part in path_parts)
                         or "\\" in name
-                        or any(part in ("", ".", "..") for part in name.split("/"))
+                        or any(part in ("", ".", "..") for part in path_parts)
                     ):
                         report["errors"].append(f"Noncanonical wheel member: {name}")
+                        continue
+                    if member.is_dir():
+                        continue
+                    if stat.S_IFMT(member.external_attr >> 16) not in (0, stat.S_IFREG):
+                        report["errors"].append(f"Nonregular wheel member: {name}")
                         continue
                     files.append(name)
                 dist_info_dirs = {
@@ -1090,7 +1089,11 @@ Summary: Tree-sitter based code chunking library""",
                     dist_info_name = dist_info_dir.removesuffix(".dist-info")
                     dist_name, _, dist_version = dist_info_name.rpartition("-")
                     if (
-                        not metadata.get("Metadata-Version")
+                        any(
+                            len(metadata.get_all(field, [])) != 1
+                            for field in ("Metadata-Version", "Name", "Version")
+                        )
+                        or not metadata.get("Metadata-Version")
                         or not metadata_name
                         or not metadata_version
                         or not dist_name
@@ -1116,7 +1119,10 @@ Summary: Tree-sitter based code chunking library""",
                     )
                     if not components["python_requirement"]:
                         report["errors"].append("Unsupported source Requires-Python")
-                    if wheel_info.get("Wheel-Version") != "1.0":
+                    if (
+                        len(wheel_info.get_all("Wheel-Version", [])) != 1
+                        or wheel_info.get("Wheel-Version") != "1.0"
+                    ):
                         report["errors"].append("Missing or unsupported Wheel-Version")
                     metadata_tags: set[Tag] = set()
                     for tag in wheel_info.get_all("Tag", []):
@@ -1130,21 +1136,44 @@ Summary: Tree-sitter based code chunking library""",
                         and native_files
                     ):
                         report["errors"].append("Universal wheel contains native files")
-                    platform_tokens = {
-                        "linux": ("linux", "manylinux", "musllinux"),
-                        "macos": ("macosx",),
-                        "darwin": ("macosx",),
-                        "windows": ("win",),
-                        "win32": ("win",),
-                    }.get(platform.lower(), (platform.lower(),))
-                    platform_match = filename_tags == metadata_tags and any(
-                        tag.platform == "any"
-                        or tag.platform.startswith(platform_tokens)
-                        for tag in filename_tags
+                    platform_patterns = {
+                        "linux": (
+                            r"(?:linux|manylinux(?:1|2010|2014)|manylinux_[0-9]+_[0-9]+|musllinux_[0-9]+_[0-9]+)"
+                            r"_[a-z0-9]+(?:_[a-z0-9]+)*"
+                        ),
+                        "macos": r"macosx_[0-9]+_[0-9]+_[a-z0-9]+(?:_[a-z0-9]+)*",
+                        "windows": r"win(?:32|_(?:amd64|arm32|arm64|ia64))",
+                    }
+                    platform_family = {"darwin": "macos", "win32": "windows"}.get(
+                        platform.lower(), platform.lower()
                     )
-                    platform_match = platform_match and wheel_info.get(
-                        "Root-Is-Purelib", ""
-                    ).lower() == ("true" if universal else "false")
+                    platform_pattern = platform_patterns.get(
+                        platform_family, re.escape(platform_family) + ".*"
+                    )
+                    platform_match = (
+                        filename_tags == metadata_tags
+                        and all(
+                            not tag.platform.startswith(
+                                ("linux", "manylinux", "musllinux", "macosx", "win")
+                            )
+                            or any(
+                                re.fullmatch(pattern, tag.platform)
+                                for pattern in platform_patterns.values()
+                            )
+                            for tag in filename_tags
+                        )
+                        and any(
+                            tag.platform == "any"
+                            or re.fullmatch(platform_pattern, tag.platform)
+                            for tag in filename_tags
+                        )
+                    )
+                    platform_match = (
+                        platform_match
+                        and len(wheel_info.get_all("Root-Is-Purelib", [])) == 1
+                        and wheel_info.get("Root-Is-Purelib", "").lower()
+                        == ("true" if universal else "false")
+                    )
                     components["platform_match"] = platform_match
                     if not platform_match:
                         report["errors"].append("Platform mismatch in wheel metadata")
