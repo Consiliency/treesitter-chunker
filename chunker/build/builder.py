@@ -945,11 +945,17 @@ Summary: Tree-sitter based code chunking library""",
                         name.startswith("/")
                         or any(re.match(r"^[A-Za-z]:", part) for part in path_parts)
                         or "\\" in name
+                        or "\x00" in name
                         or any(part in ("", ".", "..") for part in path_parts)
                     ):
                         report["errors"].append(f"Noncanonical wheel member: {name}")
                         continue
                     if member.is_dir():
+                        if stat.S_IFMT(member.external_attr >> 16) not in (
+                            0,
+                            stat.S_IFDIR,
+                        ):
+                            report["errors"].append(f"Nonregular wheel member: {name}")
                         continue
                     if stat.S_IFMT(member.external_attr >> 16) not in (0, stat.S_IFREG):
                         report["errors"].append(f"Nonregular wheel member: {name}")

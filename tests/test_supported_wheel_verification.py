@@ -1,6 +1,7 @@
 """Real artifacts and independent omission oracles for the public wheel verifier."""
 
 import base64
+import binascii
 import csv
 import hashlib
 import io
@@ -14,7 +15,7 @@ import sysconfig
 import tomllib
 from email.parser import Parser
 from pathlib import Path
-from zipfile import ZipFile, ZipInfo
+from zipfile import BadZipFile, ZipFile, ZipInfo
 
 import pytest
 from packaging.requirements import Requirement
@@ -105,10 +106,16 @@ def _mutate_wheel_with_valid_record(
     replace=None,
     add=(),
     move=None,
+    external_attrs=None,
+    create_systems=None,
+    local_names=None,
 ):
     """Change controlled fixture members and independently regenerate RECORD."""
     replace = replace or {}
     move = move or {}
+    external_attrs = external_attrs or {}
+    create_systems = create_systems or {}
+    local_names = local_names or {}
     target.parent.mkdir(parents=True, exist_ok=True)
     with ZipFile(source) as original:
         record = next(n for n in original.namelist() if n.endswith(".dist-info/RECORD"))
@@ -128,11 +135,19 @@ def _mutate_wheel_with_valid_record(
     with ZipFile(target, "w") as changed:
         for name, data in members:
             member = ZipInfo(name)
-            member.filename = name
-            member.external_attr = (
-                (stat.S_IFDIR | 0o755) if name.endswith("/") else (stat.S_IFREG | 0o600)
-            ) << 16
+            member.filename = local_names.get(name, name)
+            member.external_attr = external_attrs.get(
+                name,
+                (
+                    (stat.S_IFDIR | 0o755)
+                    if name.endswith("/")
+                    else (stat.S_IFREG | 0o600)
+                )
+                << 16,
+            )
+            member.create_system = create_systems.get(name, member.create_system)
             changed.writestr(member, data)
+            member.filename = name
             digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(
                 b"="
             )
@@ -144,35 +159,70 @@ def _mutate_wheel_with_valid_record(
     return target
 
 
-def _raw_member_oracle(wheel, name, payload):
+def _raw_member_oracle(wheel, name, payload, *, local_name=None):
     data = wheel.read_bytes()
     end = data.rfind(b"PK\x05\x06")
     assert end >= 0
     count = struct.unpack_from("<H", data, end + 10)[0]
     cursor = struct.unpack_from("<I", data, end + 16)[0]
     names = []
+    observed = {}
     for _ in range(count):
         assert data[cursor : cursor + 4] == b"PK\x01\x02"
         length, extra, comment = struct.unpack_from("<HHH", data, cursor + 28)
         raw_name = data[cursor + 46 : cursor + 46 + length]
         offset = struct.unpack_from("<I", data, cursor + 42)[0]
         assert data[offset : offset + 4] == b"PK\x03\x04"
-        local_length = struct.unpack_from("<H", data, offset + 26)[0]
-        assert data[offset + 30 : offset + 30 + local_length] == raw_name
+        local_length, local_extra = struct.unpack_from("<HH", data, offset + 26)
+        raw_local = data[offset + 30 : offset + 30 + local_length]
+        expected_local = local_name if raw_name == name.encode("utf-8") else None
+        assert raw_local == (
+            expected_local.encode("utf-8") if expected_local is not None else raw_name
+        )
+        if raw_name == name.encode("utf-8"):
+            crc, size, unpacked = struct.unpack_from("<III", data, cursor + 16)
+            assert struct.unpack_from("<H", data, cursor + 10)[0] == 0
+            assert struct.unpack_from("<H", data, offset + 8)[0] == 0
+            assert struct.unpack_from("<III", data, offset + 14) == (
+                crc,
+                size,
+                unpacked,
+            )
+            start = offset + 30 + local_length + local_extra
+            assert data[start : start + size] == payload
+            assert size == unpacked == len(payload)
+            assert crc == binascii.crc32(payload)
+            observed = {
+                "raw_central_name_hex": raw_name.hex(),
+                "raw_local_name_hex": raw_local.hex(),
+                "header_names_match": raw_local == raw_name,
+                "raw_external_attr": struct.unpack_from("<I", data, cursor + 38)[0],
+                "raw_create_system": data[cursor + 5],
+                "crc_valid": True,
+            }
         names.append(raw_name)
         cursor += 46 + length + extra + comment
     assert name.encode("utf-8") in names
     with ZipFile(wheel) as archive:
         member = next(info for info in archive.infolist() if info.orig_filename == name)
-        assert archive.read(member) == payload
-        assert archive.testzip() is None
+        assert member.external_attr == observed["raw_external_attr"]
+        assert member.create_system == observed["raw_create_system"]
+        if local_name is None or local_name == name:
+            assert archive.read(member) == payload
+            assert archive.testzip() is None
+        else:
+            with pytest.raises(
+                BadZipFile, match="File name in directory .* and header .* differ"
+            ):
+                archive.read(member)
+            assert archive.testzip() == member.filename
         record = next(n for n in archive.namelist() if n.endswith(".dist-info/RECORD"))
         rows = list(csv.reader(io.StringIO(archive.read(record).decode("utf-8"))))
         digest = base64.urlsafe_b64encode(hashlib.sha256(payload).digest()).rstrip(b"=")
         row = [name, "sha256=" + digest.decode("ascii"), str(len(payload))]
         assert row in rows
         return {
-            "raw_central_and_local_name_hex": name.encode("utf-8").hex(),
+            **observed,
             "filename": member.filename,
             "orig_filename": member.orig_filename,
             "is_dir": member.is_dir(),
@@ -640,6 +690,99 @@ def test_raw_directory_policy(artifacts, tmp_path, api, name, valid):
 
 
 @pytest.mark.parametrize("api", [BuildSystem, BuildSystemImpl], ids=["public", "impl"])
+@pytest.mark.parametrize(
+    ("external_attr", "create_system", "valid"),
+    [
+        ((stat.S_IFDIR | 0o755) << 16, 3, True),
+        (0o755 << 16, 3, True),
+        (0x10, 0, True),
+        ((stat.S_IFLNK | 0o777) << 16, 3, False),
+        ((stat.S_IFREG | 0o600) << 16, 3, False),
+    ],
+    ids=[
+        "unix-directory",
+        "unspecified-type",
+        "windows-directory",
+        "symlink",
+        "regular",
+    ],
+)
+def test_directory_mode_contract(
+    artifacts, tmp_path, api, external_attr, create_system, valid
+):
+    source = artifacts["wheel"]
+    _check(source)
+    name = "extra/"
+    wheel = _mutate_wheel_with_valid_record(
+        source,
+        tmp_path / "directory-mode" / source.name,
+        add=[(name, b"")],
+        external_attrs={name: external_attr},
+        create_systems={name: create_system},
+    )
+    oracle = _raw_member_oracle(wheel, name, b"")
+    assert oracle["raw_external_attr"] == external_attr
+    assert oracle["raw_create_system"] == create_system
+    assert oracle["is_dir"] and oracle["header_names_match"]
+    actual, report = api().verify_build(wheel, "linux")
+    (tmp_path / "directory-mode-observation.json").write_text(
+        json.dumps(
+            {"api": api.__name__, "oracle": oracle, "actual": actual, "report": report},
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    assert actual is valid and report["valid"] is valid, report
+    if not valid:
+        assert f"Nonregular wheel member: {name}" in report["errors"], report
+
+
+@pytest.mark.parametrize("api", [BuildSystem, BuildSystemImpl], ids=["public", "impl"])
+@pytest.mark.parametrize(
+    ("name", "local_name", "error"),
+    [
+        ("extra-hidden", None, None),
+        ("extra\x00hidden", None, "Noncanonical wheel member: extra\x00hidden"),
+        ("extra\x00hidden", "extra", "Corrupt wheel member: extra"),
+        (
+            "extra\x00/../hidden",
+            "extra",
+            "Noncanonical wheel member: extra\x00/../hidden",
+        ),
+    ],
+    ids=["ordinary", "matching-nul", "unequal-nul", "reported-unequal-traversal"],
+)
+def test_nul_member_contract(artifacts, tmp_path, api, name, local_name, error):
+    source = artifacts["wheel"]
+    _check(source)
+    payload = b"controlled inert payload\n"
+    wheel = _mutate_wheel_with_valid_record(
+        source,
+        tmp_path / "nul-name" / source.name,
+        add=[(name, payload)],
+        local_names={name: local_name} if local_name is not None else None,
+    )
+    oracle = _raw_member_oracle(wheel, name, payload, local_name=local_name)
+    assert oracle["orig_filename"] == name
+    assert oracle["header_names_match"] is (local_name is None)
+    actual, report = api().verify_build(wheel, "linux")
+    (tmp_path / "nul-member-observation.json").write_text(
+        json.dumps(
+            {"api": api.__name__, "oracle": oracle, "actual": actual, "report": report},
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    assert actual is (error is None) and report["valid"] is (error is None), report
+    if error:
+        assert error in report["errors"], report
+    if local_name is not None:
+        assert any(
+            item.startswith("Corrupt wheel member:") for item in report["errors"]
+        ), report
+
+
+@pytest.mark.parametrize("api", [BuildSystem, BuildSystemImpl], ids=["public", "impl"])
 @pytest.mark.parametrize("order", ["same", "valid-first", "invalid-first"])
 @pytest.mark.parametrize(
     ("member", "field", "conflicting", "error"),
@@ -655,15 +798,23 @@ def test_raw_directory_policy(artifacts, tmp_path, api, name, valid):
 def test_singleton_header_duplicates(
     header_wheel, tmp_path, api, order, member, field, conflicting, error
 ):
-    prefix, contents = _metadata_paths(header_wheel)
-    text = contents[member].decode("utf-8")
+    prefix, _ = _metadata_paths(header_wheel)
+    with ZipFile(header_wheel) as archive:
+        raw = archive.read(f"{prefix}/{member}")
+    text = raw.decode("utf-8")
+    newline = "\r\n" if b"\r\n" in raw else "\n"
     line = next(
         line for line in text.splitlines(keepends=True) if line.startswith(field + ": ")
     )
     assert sum(line.startswith(field + ": ") for line in text.splitlines()) == 1
-    duplicate = line if order == "same" else f"{field}: {conflicting}\n"
+    duplicate = line if order == "same" else f"{field}: {conflicting}{newline}"
     replacement = duplicate + line if order == "invalid-first" else line + duplicate
     changed = text.replace(line, replacement).encode("utf-8")
+    if newline == "\r\n":
+        assert b"\r" not in changed.replace(b"\r\n", b"")
+        assert b"\n" not in changed.replace(b"\r\n", b"")
+    else:
+        assert b"\r" not in changed
     wheel = _mutate_wheel_with_valid_record(
         header_wheel,
         tmp_path / "duplicate" / header_wheel.name,
@@ -680,6 +831,8 @@ def test_singleton_header_duplicates(
                 "api": api.__name__,
                 "field": field,
                 "values": parsed.get_all(field),
+                "newline_hex": newline.encode("utf-8").hex(),
+                "payload_sha256": hashlib.sha256(changed).hexdigest(),
                 "actual": actual,
                 "report": report,
             },
