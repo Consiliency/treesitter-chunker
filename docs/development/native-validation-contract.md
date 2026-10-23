@@ -11,7 +11,14 @@ Under the owner's manual acceptance amendment, formal IF-0-SAFELOAD-1 is deferre
 and unproduced. Harness is not a current product prerequisite, and no formal
 approval is claimed. Original design and historical HOLDs remain. Neither this
 document nor design approval establishes a repaired or accepted implementation.
-treesitter-chunker#508 remains independently unexplained.
+treesitter-chunker#508 and treesitter-chunker#509 remain independently
+unexplained. The owner's 2026-10-23 amendment permits acceptance despite those
+two missing cause explanations only if all four CODE seats and separate
+independent Astra explicitly approve the documented residual risks and required
+CI passes. Any HOLD still blocks landing. Original failed runs, diagnostic
+limitations and open issues remain; no other provenance, containment or
+correctness requirement changes. See the owner-approved amendment in
+`plans/phase-plan-v3-SAFELOAD.md`.
 
 ## Scope and trust
 

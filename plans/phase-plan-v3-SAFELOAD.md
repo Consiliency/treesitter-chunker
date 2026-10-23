@@ -41,6 +41,32 @@ preserve the frozen roadmap and historical evidence with their original labels.
 It does not accept the implementation or waive treesitter-chunker#389's worker
 proof, treesitter-chunker#508's unexplained failure, or any other product finding.
 
+## Owner-approved residual-risk assessment amendment — 2026-10-23
+
+The owner explicitly permits assessment of the documented observations in
+treesitter-chunker#508 and treesitter-chunker#509 with their causes unresolved.
+This narrowly supersedes the explanation-before-landing requirement for those
+two observations; it does not classify either failure as fixed or close either
+issue. Their original failed runs, subsequent diagnostic limits and the
+diagnostic plugin's nested-wrapper qualification remain review inputs.
+
+Acceptance requires all four CODE seats and the separate independent Astra
+president/final to explicitly approve the documented residual risks and current
+candidate behavior, followed by passing required CI. Any HOLD blocks landing.
+The roster remains two Sol seats, Regenesis Sonnet 5.5 and Astra; CODE 0/3 and
+final 0/1 remain unused before the first launch. All earlier exhausted rounds
+and HOLDs remain historical.
+
+Provenance, acknowledgment, actual-worker status, confirmed termination before
+cleanup, uncertainty retention, immutable snapshots and cache protections remain
+mandatory. The controlled treesitter-chunker#389 evidence and single survivor
+mutation interpretation still require independent assessment. This amendment
+grants no deadline increase, denied-operation retry, policy bypass, source/test
+assertion change, or acceptance of any later unexplained failure. Formal Harness
+evidence remains deferred and unproduced. The explicit owner decision and its
+accepted proposal are retained in the private
+`native-owner-risk-assessment-amendment-r1/` packet.
+
 ## Approved successor execution amendment — 2026-10-22
 
 Fresh integration on `t3/integrate-native-after506` uses accepted main
@@ -76,11 +102,13 @@ nonblocking corrections are applied here only: CPython lines 445–460 and
 
 ## Review-candidate amendment — 2026-10-23
 
-The integrated implementation is a review candidate: one local implementation
-commit on `t3/integrate-native-after506` whose parent is accepted main
-`b3c43b6c006e944fe01d05e6f59b1e521bb7b4f3`. Its commit and tree binding live in
-the private packet `pr-recovery-20261021/native-review-freeze-r1/`, not in this
-plan. Production code, the fixture, the lock and parser pins are unchanged from
+The integrated implementation was frozen in local commit `6f9f838f` on
+`t3/integrate-native-after506`, whose parent is accepted main
+`b3c43b6c006e944fe01d05e6f59b1e521bb7b4f3`. A documentation-only owner-amendment
+commit follows it; the CODE packet binds the actual reviewed tip and tree.
+The original freeze binding remains in
+`pr-recovery-20261021/native-review-freeze-r1/`. Production code, the fixture,
+the lock and parser pins are unchanged from
 the executed frozen tree `64668248b23d2e9ed55780ee5dfce1fe450a07d1`, which
 remains historical execution identity.
 

@@ -10,6 +10,24 @@ acceptance and all product verification remain required. `IF-0-SAFELOAD-1` is
 deferred future automation and remains unproduced; agent-harness#1271 does not
 gate this repair and no formal approval is claimed.
 
+## Owner-approved assessment of unresolved failures
+
+The owner permits final assessment with the documented causes of
+treesitter-chunker#508 and treesitter-chunker#509 still unresolved. Both issues
+and their original failures remain open review inputs. The six subsequent
+43-test prefixes passed without recurrence, but their diagnostic plugin nested
+wrappers across test boundaries; journal rows are not distinct production-call
+counts, and identical scheduling is not claimed. Those passes do not erase the
+failed Windows 3.13 suite or explain either issue.
+
+All four CODE reviewers and separate independent Astra acceptance must explicitly
+approve these residual risks and candidate behavior; any HOLD blocks landing.
+Required CI and all provenance/containment criteria remain mandatory. The narrow
+exception applies only to the two recorded observations, not future unexplained
+failures, changed assertions, operation retries or policy bypasses. See the
+owner-approved amendment in `plans/phase-plan-v3-SAFELOAD.md` and the private
+`native-owner-risk-assessment-amendment-r1/` decision packet.
+
 ## Design authority and preserved limits
 
 The independent corrected-design recheck approves the bounded design only:
@@ -34,12 +52,12 @@ below, awaiting independent assessment; it is not accepted. Native CODE 0/3,
 final 0/1 and the product correctness holds are unchanged. The separate Windows
 manager admission failure in treesitter-chunker#508 remains unexplained.
 
-The review candidate is one local implementation commit on
-`t3/integrate-native-after506` whose parent is that accepted main. Its commit,
-tree and parent identities are recorded in the private packet
-`pr-recovery-20261021/native-review-freeze-r1/`, not in this file. Exact-commit
-Linux receipts belong to that packet; platform and review evidence for the commit
-are parent-owned.
+The implementation freeze is local commit `6f9f838f` on
+`t3/integrate-native-after506`, whose parent is that accepted main. Its identities
+remain in `pr-recovery-20261021/native-review-freeze-r1/`. The reviewed tip adds
+only the documentation recording the owner amendment; its exact commit/tree and
+unchanged production/test/lock bindings belong to the CODE packet. Existing
+execution receipts retain their actual original commit/tree labels.
 
 The earlier assigned branch was fast-forwarded from old parent `b9be38a3` to
 accepted base `8547f7b7afd90f7e86cf396e52c0b00a70c86dfb` before source edits.
