@@ -32,9 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   legacy health checks. Probe private verified snapshots in a gated child,
   require actual-worker completion, and inspect only the admitted bytes.
   Reject unavailable status and retain unsafe roots after uncertain startup or
-  shutdown (treesitter-chunker#389). A failed close of an unvalidated Windows
-  worker handle no longer replaces the original cancellation or validation
-  error. A Windows sharing denial while opening the ready record is polled
+  shutdown (treesitter-chunker#389). Failed disposal of an unvalidated Windows
+  worker handle or an opened ready-record stream no longer replaces the
+  original cancellation, read, or validation error. A Windows sharing denial
+  while opening the ready record is polled
   within the existing shared deadline; denial while reading or closing an
   opened record, and every non-Windows denial, remains an error. Persistent
   open denial retains the uncertain root and keeps the public `child_failed`

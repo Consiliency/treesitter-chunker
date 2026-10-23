@@ -78,6 +78,12 @@ close exceptions remain errors; non-Windows denial and cancellation retain
 their original propagation. Record validation, worker identity, start gating,
 native admission and all other lifecycle behavior remain unchanged.
 
+Ready-stream disposal follows the existing first-exception contract rather than
+expanding the denied-open policy: after a read failure the stream is closed once
+without replacing the original exception or traceback, while a close failure
+after a successful read propagates normally. Direct and real public-probe
+controls must cover disposal by both an `OSError` and a second cancellation.
+
 Persistent denial consumes the existing shared execution deadline internally,
 but the frozen failure precedence maps incomplete startup and unsafe cleanup to
 public `child_failed`. The uncertain root is retained, with no digest or start

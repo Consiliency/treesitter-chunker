@@ -241,8 +241,17 @@ def _read_ready(directory: Path, nonce: str) -> dict[str, Any] | None:
         if sys.platform != "win32":
             raise
         return None  # type: ignore[unreachable]
-    with stream:
+    try:
         data = stream.read(_READY_LIMIT + 1)
+    except BaseException:
+        try:
+            stream.close()
+        except BaseException:
+            # The read failure is already propagating; disposal cannot replace it.
+            pass
+        raise
+    else:
+        stream.close()
     if len(data) > _READY_LIMIT:
         raise ValueError("oversized worker registration")
     pairs = json.loads(data, object_pairs_hook=list)

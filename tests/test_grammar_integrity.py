@@ -469,9 +469,12 @@ def test_ready_open_polling_does_not_swallow_other_exceptions(
                 raise fault
             return b"{}"
 
-        def __exit__(self, *_args):
+        def close(self):
             if stage == "close_permission":
                 raise fault
+
+        def __exit__(self, *_args):
+            self.close()
             return False
 
     def controlled_open(*_args, **_kwargs):
@@ -490,6 +493,126 @@ def test_ready_open_polling_does_not_swallow_other_exceptions(
         assert raised.value is fault
     finally:
         integrity.sys = original_sys
+
+
+_READY_CLOSE_FAILURES = pytest.mark.parametrize(
+    "close_error",
+    [OSError("ready close failure"), KeyboardInterrupt("second cancellation")],
+    ids=["close_oserror", "close_interrupt"],
+)
+
+
+def _cancelling_ready_stream(stream, events, original, close_error):
+    """Support old context disposal and repaired explicit close with one proxy."""
+
+    class Stream:
+        def __enter__(self):
+            return self
+
+        def read(self, _limit):
+            events.append("read")
+            raise original
+
+        def close(self):
+            events.append("close")
+            if stream is not None:
+                stream.close()
+            raise close_error
+
+        def __exit__(self, *_args):
+            self.close()
+            return False
+
+    return Stream()
+
+
+@_READY_CLOSE_FAILURES
+def test_ready_read_cancellation_survives_stream_disposal_failure(
+    tmp_path, monkeypatch, close_error
+):
+    import traceback
+    from chunker.grammar import integrity
+
+    events = []
+    original = KeyboardInterrupt("original ready read cancellation")
+    monkeypatch.setattr(
+        Path,
+        "open",
+        lambda *_args, **_kwargs: _cancelling_ready_stream(
+            None, events, original, close_error
+        ),
+    )
+
+    try:
+        integrity._read_ready(tmp_path, "nonce")
+    except BaseException as error:  # noqa: BLE001 - exact identity is the contract
+        caught = error
+    else:
+        pytest.fail("ready read cancellation unexpectedly returned")
+
+    assert caught is original, f"original cancellation replaced by {caught!r}"
+    assert traceback.extract_tb(caught.__traceback__)[-1].name == "read"
+    assert events == ["read", "close"], "stream must be disposed exactly once"
+
+
+@_READY_CLOSE_FAILURES
+def test_native_probe_ready_read_cancellation_survives_disposal_failure(
+    tmp_path, monkeypatch, close_error
+):
+    import traceback
+    from chunker.grammar import integrity
+
+    library, marker, provenance, sample = _compile_ready_gate_probe(
+        tmp_path, monkeypatch
+    )
+    original_open = Path.open
+    original_read = integrity._read_child
+    events, registrations, roots, states = [], [], [], []
+    original = KeyboardInterrupt("original ready read cancellation")
+
+    def controlled_open(path, mode="r", *args, **kwargs):
+        stream = original_open(path, mode, *args, **kwargs)
+        if path.name == integrity._READY_NAME and mode == "rb":
+            return _cancelling_ready_stream(stream, events, original, close_error)
+        return stream
+
+    def reject_register(*args):
+        registrations.append(args)
+        pytest.fail("cancelled ready read reached worker registration")
+
+    def read(command, cwd, timeout, **kwargs):
+        roots.append(cwd)
+        states.append(kwargs["lifecycle"])
+        return original_read(command, cwd, timeout, **kwargs)
+
+    monkeypatch.setattr(Path, "open", controlled_open)
+    monkeypatch.setattr(integrity, "_register_worker", reject_register)
+    monkeypatch.setattr(integrity, "_read_child", read)
+    try:
+        try:
+            result = integrity.probe_native_grammar(
+                library,
+                "baml",
+                provenance=provenance,
+                sample=sample,
+            )
+        except BaseException as error:  # noqa: BLE001 - exact identity is the contract
+            caught = error
+        else:
+            pytest.fail(f"ready read cancellation became public result {result!r}")
+
+        assert caught is original, f"original cancellation replaced by {caught!r}"
+        assert traceback.extract_tb(caught.__traceback__)[-1].name == "read"
+        assert events == ["read", "close"], "stream must be disposed exactly once"
+        assert not registrations and not marker.exists()
+        state = states[0]
+        assert state.launch_attempted and state.worker is None
+        assert state.worker_handle is None and not state.discovery_complete
+        assert not state.cleanup_safe and roots[0].exists()
+    finally:
+        for root in roots:
+            if root.exists():
+                integrity.shutil.rmtree(root)
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Win32 exclusive sharing")

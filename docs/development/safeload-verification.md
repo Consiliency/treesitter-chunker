@@ -203,13 +203,17 @@ published after an initial denial. They assert no native entry, start grant,
 accepted digest or safe-cleanup claim before full registration.
 
 Boundary controls preserve the exact exception object for stream-read,
-stream-close, non-Windows open and cancellation failures. A Windows-only
-exclusive-sharing case uses an actual file handle and is skipped on this Linux
-host; it is future platform evidence, not a current Windows pass. Persistent
-denial records an internal timeout but remains public `child_failed` because
-startup is incomplete and cleanup is unsafe. These local results neither repair
-nor reclassify the earlier Windows core and diagnostic failures, and do not
-provide platform acceptance.
+stream-close, non-Windows open and cancellation failures. Direct and connected
+controls additionally combine one original read cancellation with a failing
+stream disposal, requiring the original object and traceback, one close attempt,
+no registration or native entry, incomplete discovery and retained uncertainty.
+The Windows-only exclusive-sharing case passed with an actual file handle on
+exact commit `9d030920`; that remains historical impact evidence after this
+source change, and the changed head requires fresh parent-owned Windows
+verification. Persistent denial records an internal timeout but remains public
+`child_failed` because startup is incomplete and cleanup is unsafe. These local
+results neither repair nor reclassify the earlier Windows core and diagnostic
+failures, and do not provide platform acceptance.
 
 ## Criterion interpretation for independent review
 
