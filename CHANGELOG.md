@@ -28,6 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Require independently approved artifact pins for local grammar analysis and
+  legacy health checks. Probe private verified snapshots in a gated child,
+  require actual-worker completion, and inspect only the admitted bytes.
+  Reject unavailable status and retain unsafe roots after uncertain startup or
+  shutdown (treesitter-chunker#389). Promote already locked psutil 7.0.0 to a
+  runtime dependency. Install/update warnings report failed native admission;
+  changed revisions still write in place and the legacy CLI still exits zero
+  on warnings. Registry, central validator and other loaders remain separate
+  work under treesitter-chunker#362.
+
 - Retire the optional `scripts/build_wheels.py` helper and root platform-wheel
   recipes with obsolete Python targets (treesitter-chunker#503). Use
   `python -m build` for the main universal wheel and sdist; `scripts/package.py`

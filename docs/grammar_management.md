@@ -40,6 +40,54 @@ compilation metadata. File modification time cannot supply that date or earn
 a compilation-date bonus in the compatibility score. Explicit dates supplied
 when constructing a `GrammarCompatibility` record remain supported.
 
+### Local native admission
+
+`GrammarAnalyzer`, the legacy `SmartGrammarManager` and `UserGrammarTools`
+accept a keyword-only `trusted_artifacts` mapping. Keys are requested language
+names; each value has a `sha256` pin from an independently approved build or
+application configuration. Constructors copy the records. Unpinned discovered
+libraries are unsupported; hashing an unknown download does not approve it.
+
+```python
+from pathlib import Path
+from chunker._internal.grammar_management import SmartGrammarManager
+
+# approved_pins is application-owned configuration from independently reviewed builds.
+manager = SmartGrammarManager(Path("build"), Path("grammars"),
+                              trusted_artifacts=approved_pins)
+health = manager.diagnose_grammar_issues("baml")
+print(health.status, health.validation_reason, health.artifact_sha256)
+```
+
+Admission verifies a private snapshot, gates native loading until the controller
+retains the actual worker identity, and requires successful load/parse completion
+and actual worker exit. Metadata inspection uses that snapshot; source replacement
+and cached language names cannot bypass content/provenance revalidation. Unknown
+versions and absent release/compilation dates retain their existing meanings.
+psutil is a runtime dependency; its locked version remains 7.0.0.
+
+Startup uncertainty or unconfirmed shutdown returns `child_failed` without an
+accepted digest and logs the retained private root and known process identities.
+The root has no automatic reclamation. An unknown startup worker may still live;
+retention is an operational containment failure, never proof of worker death.
+Unavailable actual-worker exit status also rejects support. Normal confirmed
+termination permits cleanup, including after native timeout or output overflow.
+These bounded process controls are not a security sandbox for explicitly trusted
+hostile native code or arbitrary process escape.
+
+Analyzer failures return `None`; capabilities and exports carry
+`validation_reason`, and exports put rejected discoveries in
+`validation_failures`. Legacy health maps missing to `missing`, load/parse/empty
+failures to `corrupted`, other admission failures to `incompatible`, and only
+successful admission to `healthy`. Install/update return `warning` with the cause
+on rejection, including unchanged revisions. Changed revisions still write in
+place before validation; warnings promise neither staging nor rollback. The
+legacy CLI still exits zero on these warnings.
+
+Registry discovery, the central validator, dependency inspection, other loaders,
+installer publication and replacement remain treesitter-chunker#362 work. This
+change does not establish repository-wide native admission coverage.
+
 ### 🧠 Smart Error Handling
 - **Automatic diagnosis** of grammar issues
 - **Context-aware recommendations** based on error type

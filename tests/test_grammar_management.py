@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -14,6 +15,7 @@ from chunker._internal.grammar_management import (
     SmartGrammarManager,
 )
 from chunker._internal.user_grammar_tools import UserGrammarTools
+from chunker.grammar.integrity import NativeProbeResult
 
 
 def test_real_grammar_mtimes_do_not_invent_compilation_dates(tmp_path):
@@ -170,35 +172,51 @@ class TestSmartGrammarManager:
         assert len(health.issues) > 0
         assert "empty" in health.issues[0] or "0 bytes" in health.issues[0]
 
-    @patch("ctypes.CDLL")
-    def test_diagnose_grammar_healthy(self, mock_cdll, manager, temp_dirs):
+    def test_diagnose_grammar_healthy(self, manager, temp_dirs, tmp_path):
         """Test diagnosing a healthy grammar."""
         build_dir, _ = temp_dirs
 
-        # Create a mock .so file with some content (not empty)
-        so_file = build_dir / "healthy_lang.so"
-        so_file.write_bytes(b"mock_so_content")
+        from tests.test_compiled_grammar_analysis_contract import (
+            FIXTURE,
+            SOURCE,
+            _compile_probe_fixture,
+            trusted_artifacts,
+        )
 
-        # Mock the CDLL and symbol
-        mock_lib = Mock()
-        mock_lib.tree_sitter_healthy_lang = Mock()
-        mock_cdll.return_value = mock_lib
+        library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
+        so_file = build_dir / "baml.so"
+        so_file.write_bytes(library.read_bytes())
+        subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                "-c",
+                "import sys; from pathlib import Path; "
+                "sys.path.insert(0, sys.argv[1]); "
+                "from chunker.grammar_management.core import load_compiled_grammar; "
+                "root = load_compiled_grammar(Path(sys.argv[2]), 'baml')"
+                ".parse(Path(sys.argv[3]).read_bytes()).root_node; "
+                "assert root.type == 'source_file' and not root.has_error",
+                str(Path(__file__).resolve().parents[1]),
+                str(so_file),
+                str(FIXTURE),
+            ],
+            check=True,
+            capture_output=True,
+            timeout=20,
+        )
+        manager.trusted_artifacts = trusted_artifacts(so_file)
+        health = manager.diagnose_grammar_issues("baml")
 
-        # Mock Language creation
-        with patch(
-            "chunker._internal.grammar_management.Language",
-            create=True,
-        ) as mock_language:
-            mock_language.return_value = Mock()
+        assert health.language == "baml"
+        assert health.status == "healthy"
+        assert health.validation_reason == "ok"
+        assert health.file_size == len(library.read_bytes())
+        assert health.artifact_sha256 == manager.trusted_artifacts["baml"]["sha256"]
+        assert len(health.recommendations) > 0
 
-            health = manager.diagnose_grammar_issues("healthy_lang")
-
-            assert health.language == "healthy_lang"
-            assert health.status == "healthy"
-            assert len(health.recommendations) > 0
-
-    @patch("ctypes.CDLL")
-    def test_diagnose_grammar_incompatible(self, mock_cdll, manager, temp_dirs):
+    @patch("chunker._internal.grammar_management.probe_native_grammar")
+    def test_diagnose_grammar_incompatible(self, mock_probe, manager, temp_dirs):
         """Test diagnosing an incompatible grammar."""
         build_dir, _ = temp_dirs
 
@@ -206,15 +224,14 @@ class TestSmartGrammarManager:
         so_file = build_dir / "incompatible_lang.so"
         so_file.write_bytes(b"mock_so_content")
 
-        # Mock CDLL to fail during loading (this triggers incompatible status)
-        mock_cdll.side_effect = Exception("Incompatible architecture")
+        mock_probe.return_value = NativeProbeResult(False, "untrusted", None)
 
         health = manager.diagnose_grammar_issues("incompatible_lang")
 
         assert health.language == "incompatible_lang"
         assert health.status == "incompatible"
         assert len(health.issues) > 0
-        assert "Incompatible architecture" in health.issues[0]
+        assert "untrusted" in health.issues[0]
 
     def test_get_grammar_compatibility(self, manager):
         """Test getting grammar compatibility information."""
@@ -473,9 +490,10 @@ class TestUserGrammarTools:
 
         result = tools.update_grammar("test_lang")
 
-        assert result["status"] == "success"
+        assert result["status"] == "warning"
         assert len(result["steps_completed"]) > 0
         assert len(result["errors"]) == 0
+        assert "native admission" in result["warnings"][-1]
 
     @patch("subprocess.run")
     def test_update_grammar_already_up_to_date(self, mock_run, tools, temp_dirs):
@@ -499,8 +517,9 @@ class TestUserGrammarTools:
 
         result = tools.update_grammar("test_lang")
 
-        assert result["status"] == "success"
+        assert result["status"] == "warning"
         assert "already up to date" in result["warnings"][0]
+        assert "native admission" in result["warnings"][-1]
 
     def test_list_installed_grammars(self, tools, temp_dirs):
         """Test listing installed grammars."""
