@@ -1300,7 +1300,8 @@ def test_native_handle_acquisition_precedes_start(tmp_path, monkeypatch):
         def close(self):
             events.append("close")
 
-    monkeypatch.setattr(integrity, "sys", SimpleNamespace(platform="win32"))
+    windows = SimpleNamespace(platform="win32", exception=sys.exception)
+    monkeypatch.setattr(integrity, "sys", windows)
     monkeypatch.setattr(integrity, "_WindowsProcess", Candidate)
     record = {
         "pid": worker.pid,
@@ -1338,6 +1339,150 @@ def test_native_handle_acquisition_precedes_start(tmp_path, monkeypatch):
         worker.kill()
         worker.wait(timeout=10)
         worker.stdin.close()
+
+
+def _failing_close_candidate(pid, events, original, close_error):
+    """Unarmed Windows handle: validation is cancelled, then disposal also fails."""
+
+    class Candidate:
+        def __init__(self, candidate_pid):
+            assert candidate_pid == pid
+            events.append("open")
+
+        def creation(self):
+            events.append("creation")
+            raise original
+
+        def exited(self):
+            events.append("wait")
+            pytest.fail("cancelled validation must not reach the exit check")
+
+        def terminate(self):
+            events.append("terminate")
+            pytest.fail("unarmed candidate cannot be signaled")
+
+        def close(self):
+            events.append("close")
+            raise close_error
+
+    return Candidate
+
+
+_CLOSE_FAILURES = pytest.mark.parametrize(
+    "close_error",
+    [OSError("unarmed close failure"), KeyboardInterrupt("second cancellation")],
+    ids=["close_oserror", "close_interrupt"],
+)
+
+
+@_CLOSE_FAILURES
+def test_native_unarmed_close_failure_preserves_original_cancellation(
+    monkeypatch, close_error
+):
+    import traceback
+    import psutil
+    from types import SimpleNamespace
+    from chunker.grammar import integrity
+
+    worker = subprocess.Popen(
+        [sys._base_executable, "-I", "-c", "import time; time.sleep(60)"],
+        stdin=subprocess.PIPE,
+    )
+    identity = psutil.Process(worker.pid)
+    events = []
+    original = KeyboardInterrupt("original validation cancellation")
+    candidate = _failing_close_candidate(worker.pid, events, original, close_error)
+    windows = SimpleNamespace(platform="win32", exception=sys.exception)
+    monkeypatch.setattr(integrity, "sys", windows)
+    monkeypatch.setattr(integrity, "_WindowsProcess", candidate)
+    record = {
+        "pid": worker.pid,
+        "ppid": identity.ppid(),
+        "windows_creation_filetime": "0123456789abcdef",
+    }
+    state = integrity._ProbeLifecycle(
+        launch_attempted=True, launcher=worker, known={worker.pid: identity}
+    )
+    try:
+        try:
+            integrity._register_worker(state, record)
+        except BaseException as error:  # noqa: BLE001 - identity is the contract
+            caught = error
+        else:
+            pytest.fail("cancelled registration unexpectedly succeeded")
+        assert caught is original, f"original cancellation replaced by {caught!r}"
+        frames = traceback.extract_tb(caught.__traceback__)
+        assert frames[-1].name == "creation", "original traceback not preserved"
+        assert events == ["open", "creation", "close"], "one close, no signal"
+        assert state.worker is None and state.worker_handle is None
+        assert not state.discovery_complete and worker.poll() is None
+    finally:
+        worker.kill()
+        worker.wait(timeout=10)
+        worker.stdin.close()
+
+
+@_CLOSE_FAILURES
+def test_native_probe_unarmed_close_failure_keeps_cancellation_and_root(
+    tmp_path, monkeypatch, close_error
+):
+    import traceback
+    from types import SimpleNamespace
+    from chunker.grammar import integrity
+
+    # Startup-only pinned bytes: the start byte is never granted, so no native
+    # entry is possible. The real _read_child, bootstrap, worker and pipes run on
+    # the actual OS; only registration sees the Windows handle adapter.
+    library = tmp_path / "startup-only.so"
+    library.write_bytes(b"reviewed startup-only fixture; native entry never granted")
+    events, states = [], []
+    original = KeyboardInterrupt("original validation cancellation")
+    windows = SimpleNamespace(platform="win32", exception=sys.exception)
+    real_register = integrity._register_worker
+
+    def register(state, record):
+        states.append(state)
+        candidate = _failing_close_candidate(
+            record["pid"], events, original, close_error
+        )
+        real_sys, real_process = integrity.sys, integrity._WindowsProcess
+        integrity.sys, integrity._WindowsProcess = windows, candidate
+        try:
+            return real_register(state, record)
+        finally:
+            integrity.sys, integrity._WindowsProcess = real_sys, real_process
+
+    monkeypatch.setattr(integrity, "_register_worker", register)
+    try:
+        try:
+            integrity.probe_native_grammar(
+                library, "baml", provenance=trusted_artifacts(library)["baml"]
+            )
+        except BaseException as error:  # noqa: BLE001 - identity is the contract
+            caught = error
+        else:
+            pytest.fail("cancellation was converted into a public probe result")
+        assert caught is original, f"original cancellation replaced by {caught!r}"
+        frames = traceback.extract_tb(caught.__traceback__)
+        assert frames[-1].name == "creation", "original traceback not preserved"
+        assert events == ["open", "creation", "close"], "one close, no signal"
+        assert len(states) == 1
+        state = states[0]
+        root = Path(state.launcher.args[5]).parent
+        assert state.launch_attempted and state.worker is None
+        assert state.worker_handle is None and not state.discovery_complete
+        assert not state.cleanup_safe and state.launcher.poll() is not None
+        assert root.exists() and (root / integrity._READY_NAME).exists()
+    finally:
+        for state in states:
+            if state.launcher is None:
+                continue
+            if state.launcher.poll() is None:
+                state.launcher.kill()
+                state.launcher.wait(timeout=10)
+            retained = Path(state.launcher.args[5]).parent
+            if retained.exists():
+                shutil.rmtree(retained)
 
 
 def test_analyzer_inspects_admitted_snapshot_after_original_replacement(

@@ -343,7 +343,13 @@ def _register_worker(lifecycle: _ProbeLifecycle, record: dict[str, Any]) -> None
         lifecycle.discovery_complete = True
     finally:
         if candidate is not None:
-            candidate.close()  # Never signal an unarmed candidate handle.
+            pending_error = sys.exception()
+            try:
+                candidate.close()  # Never signal an unarmed candidate handle.
+            except BaseException:
+                # Preserve the first cancellation/validation error if one is propagating.
+                if pending_error is None:
+                    raise
 
 
 def _worker_exited(lifecycle: _ProbeLifecycle) -> bool:
