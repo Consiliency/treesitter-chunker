@@ -207,6 +207,23 @@ For uncertainty report a bounded application diagnostic with retained absolute r
 
 The process launched is the current trusted `sys.executable -I`, shell=False, fixed approved package bootstrap, private cwd. Preserve current import isolation and no new environment configuration. Before loading, parsing, opening the snapshot in native code, or importing the native loader, the actual interpreter writes one closed/atomically replaced ready record (≤4 KiB) at `.native-probe-worker.json` and blocks reading exactly one start byte. EOF or a byte other than `b"\x01"` exits without native admission. Parent closes the writer after its one grant, and never grants after abort/timeout/cancellation is latched.
 
+On Windows only, `PermissionError` from opening that ready-record path for
+binary reading is a pending observation, like a record that is not present yet.
+The parent returns to its ordinary polling path under the same execution
+deadline; this adds no inner retry, sleep, deadline, or relaunch. The exception
+scope ends as soon as the stream is opened: read and close failures still take
+the existing error/containment path. Non-Windows open denials and cancellation
+also retain their existing propagation. Strict record validation and all
+identity checks remain unchanged, and no start byte, native entry, digest, or
+inspection can precede a fully read and validated registration.
+
+If the Windows open denial persists, `_read_child` reaches its existing shared
+deadline with `timed_out=True` and a timeout trigger. The frozen safety-first
+precedence still maps incomplete startup and unsafe cleanup to public
+`child_failed`, not `timeout`: no digest or start grant is produced, and the
+uncertain root is retained. This distinction is part of the narrow
+owner-approved ready-open repair and does not change other failure mappings.
+
 **New private schema replacing the proposed v1 registration, for fresh acceptance:**
 
 ```json

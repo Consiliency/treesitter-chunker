@@ -204,6 +204,335 @@ def test_native_probe_rejects_untrusted_candidates_before_loading(tmp_path):
     )
 
 
+def _compile_ready_gate_probe(tmp_path, monkeypatch):
+    """Real grammar whose library entry leaves a marker after the start grant."""
+    from tests.test_compiled_grammar_analysis_contract import (
+        FIXTURE,
+        SOURCE,
+        _compile_probe_fixture,
+        trusted_artifacts,
+    )
+
+    marker = tmp_path / "native-entered"
+    monkeypatch.setenv("CHUNKER_TEST_NATIVE_SENTINEL", str(marker))
+    source = tmp_path / "entry-marker.c"
+    source.write_text(
+        """
+#include <stdio.h>
+#include <stdlib.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
+static void mark_entry(void) {
+    const char *path = getenv("CHUNKER_TEST_NATIVE_SENTINEL");
+    FILE *marker = path ? fopen(path, "wb") : NULL;
+    if (marker) { fputs("entered", marker); fclose(marker); }
+}
+#ifdef _WIN32
+BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
+    (void)instance; (void)reserved;
+    if (reason == DLL_PROCESS_ATTACH) mark_entry();
+    return TRUE;
+}
+#else
+__attribute__((constructor)) static void enter_library(void) { mark_entry(); }
+#endif
+""",
+        encoding="utf-8",
+    )
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c", source])
+    return library, marker, trusted_artifacts(library)["baml"], FIXTURE.read_bytes()
+
+
+def test_native_windows_ready_open_denial_recovers_before_start(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from chunker.grammar import integrity
+
+    library, marker, provenance, sample = _compile_ready_gate_probe(
+        tmp_path, monkeypatch
+    )
+    original_open = Path.open
+    original_read = integrity._read_child
+    original_ready = integrity._read_ready
+    original_register = integrity._register_worker
+    open_observations, registrations, roots, states = [], [], [], []
+    denial = PermissionError(13, "ready record temporarily denied")
+
+    def controlled_open(path, mode="r", *args, **kwargs):
+        if path.name == integrity._READY_NAME and mode == "rb":
+            open_observations.append(marker.exists())
+            if len(open_observations) == 1:
+                raise denial
+        return original_open(path, mode, *args, **kwargs)
+
+    def ready(directory, nonce):
+        if len(open_observations) == 0:
+            original_sys = integrity.sys
+            integrity.sys = SimpleNamespace(platform="win32")
+            try:
+                return original_ready(directory, nonce)
+            finally:
+                integrity.sys = original_sys
+        return original_ready(directory, nonce)
+
+    def register(state, record):
+        assert len(open_observations) >= 2 and not any(open_observations)
+        assert not marker.exists(), "native entry preceded validated registration"
+        registrations.append(record["pid"])
+        return original_register(state, record)
+
+    def read(command, cwd, timeout, **kwargs):
+        roots.append(cwd)
+        states.append(kwargs["lifecycle"])
+        return original_read(command, cwd, timeout, **kwargs)
+
+    monkeypatch.setattr(Path, "open", controlled_open)
+    monkeypatch.setattr(integrity, "_read_ready", ready)
+    monkeypatch.setattr(integrity, "_register_worker", register)
+    monkeypatch.setattr(integrity, "_read_child", read)
+    try:
+        result = integrity.probe_native_grammar(
+            library,
+            "baml",
+            provenance=provenance,
+            sample=sample,
+        )
+        assert result.supported and result.reason == "ok"
+        assert result.artifact_sha256 == provenance["sha256"]
+        assert len(registrations) == 1 and marker.read_text() == "entered"
+        assert states[0].cleanup_safe and not roots[0].exists()
+    finally:
+        for root in roots:
+            if root.exists():
+                integrity.shutil.rmtree(root)
+
+
+def test_native_windows_ready_open_denial_uses_shared_deadline(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from chunker.grammar import integrity
+
+    library, marker, provenance, sample = _compile_ready_gate_probe(
+        tmp_path, monkeypatch
+    )
+    original_open = Path.open
+    original_read = integrity._read_child
+    original_ready = integrity._read_ready
+    open_attempts, roots, states, child_results = [], [], [], []
+
+    def denied_open(path, mode="r", *args, **kwargs):
+        if path.name == integrity._READY_NAME and mode == "rb":
+            open_attempts.append(marker.exists())
+            raise PermissionError(13, "ready record remains denied")
+        return original_open(path, mode, *args, **kwargs)
+
+    def ready(directory, nonce):
+        original_sys = integrity.sys
+        integrity.sys = SimpleNamespace(platform="win32")
+        try:
+            return original_ready(directory, nonce)
+        finally:
+            integrity.sys = original_sys
+
+    def read(command, cwd, timeout, **kwargs):
+        roots.append(cwd)
+        states.append(kwargs["lifecycle"])
+        child_results.append(original_read(command, cwd, timeout, **kwargs))
+        return child_results[-1]
+
+    monkeypatch.setattr(Path, "open", denied_open)
+    monkeypatch.setattr(integrity, "_read_ready", ready)
+    monkeypatch.setattr(integrity, "_read_child", read)
+    try:
+        result = integrity.probe_native_grammar(
+            library,
+            "baml",
+            provenance=provenance,
+            sample=sample,
+            timeout=0.2,
+        )
+        assert result.reason == "child_failed" and result.artifact_sha256 is None
+        assert child_results, "ready-open denial did not reach the shared deadline"
+        assert child_results[0][3] and not child_results[0][4]
+        assert open_attempts and not any(open_attempts)
+        assert not marker.exists(), "persistent denial granted native entry"
+        state = states[0]
+        assert state.trigger == "timeout" and state.aborted
+        assert state.worker is None and state.worker_handle is None
+        assert not state.discovery_complete and not state.cleanup_safe
+        assert roots[0].exists(), "startup uncertainty must retain the root"
+    finally:
+        for root in roots:
+            if root.exists():
+                integrity.shutil.rmtree(root)
+
+
+@pytest.mark.parametrize("fault", ["nonce", "pid", "creation"])
+def test_native_windows_ready_open_recovery_keeps_invalid_record_rejected(
+    tmp_path, monkeypatch, fault
+):
+    from types import SimpleNamespace
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"startup-only pinned bytes")
+    original_open = Path.open
+    original_read = integrity._read_child
+    original_ready = integrity._read_ready
+    open_attempts, registrations, roots, states = [], [], [], []
+
+    def controlled_open(path, mode="r", *args, **kwargs):
+        if path.name == integrity._READY_NAME and mode == "rb":
+            open_attempts.append(True)
+            if len(open_attempts) == 1:
+                raise PermissionError(13, "first ready open denied")
+        return original_open(path, mode, *args, **kwargs)
+
+    def ready(directory, nonce):
+        if len(open_attempts) == 0:
+            original_sys = integrity.sys
+            integrity.sys = SimpleNamespace(platform="win32")
+            try:
+                return original_ready(directory, nonce)
+            finally:
+                integrity.sys = original_sys
+        return original_ready(directory, nonce)
+
+    def reject_register(*args):
+        registrations.append(args)
+        pytest.fail("invalid registration reached identity acquisition")
+
+    def read(command, cwd, timeout, **kwargs):
+        roots.append(cwd)
+        states.append(kwargs["lifecycle"])
+        record = {
+            "schema": integrity._WORKER_SCHEMA,
+            "nonce": kwargs["worker_nonce"],
+            "pid": 1,
+            "ppid": 1,
+            "windows_creation_filetime": None,
+        }
+        if fault == "nonce":
+            record["nonce"] = "wrong"
+        elif fault == "pid":
+            record["pid"] = 0
+        else:
+            record["windows_creation_filetime"] = "invalid"
+        (cwd / integrity._READY_NAME).write_text(json.dumps(record), encoding="utf-8")
+        return original_read(
+            [sys.executable, "-I", "-c", "import time; time.sleep(60)"],
+            cwd,
+            timeout,
+            **kwargs,
+        )
+
+    monkeypatch.setattr(Path, "open", controlled_open)
+    monkeypatch.setattr(integrity, "_read_ready", ready)
+    monkeypatch.setattr(integrity, "_register_worker", reject_register)
+    monkeypatch.setattr(integrity, "_read_child", read)
+    try:
+        result = integrity.probe_native_grammar(
+            candidate,
+            "baml",
+            provenance={"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()},
+        )
+        assert result.reason == "child_failed" and result.artifact_sha256 is None
+        assert len(open_attempts) == 2 and not registrations
+        assert states[0].worker is None and states[0].worker_handle is None
+        assert not states[0].cleanup_safe and roots[0].exists()
+    finally:
+        for root in roots:
+            if root.exists():
+                integrity.shutil.rmtree(root)
+
+
+@pytest.mark.parametrize(
+    "stage", ["read_permission", "close_permission", "nonwindows_open", "cancel"]
+)
+def test_ready_open_polling_does_not_swallow_other_exceptions(
+    tmp_path, monkeypatch, stage
+):
+    from types import SimpleNamespace
+    from chunker.grammar import integrity
+
+    fault = (
+        KeyboardInterrupt("ready open cancelled")
+        if stage == "cancel"
+        else PermissionError(13, "outside approved ready open")
+    )
+
+    class Stream:
+        def __enter__(self):
+            return self
+
+        def read(self, _limit):
+            if stage == "read_permission":
+                raise fault
+            return b"{}"
+
+        def __exit__(self, *_args):
+            if stage == "close_permission":
+                raise fault
+            return False
+
+    def controlled_open(*_args, **_kwargs):
+        if stage in {"nonwindows_open", "cancel"}:
+            raise fault
+        return Stream()
+
+    monkeypatch.setattr(Path, "open", controlled_open)
+    original_sys = integrity.sys
+    integrity.sys = SimpleNamespace(
+        platform="linux" if stage == "nonwindows_open" else "win32"
+    )
+    try:
+        with pytest.raises(type(fault)) as raised:
+            integrity._read_ready(tmp_path, "nonce")
+        assert raised.value is fault
+    finally:
+        integrity.sys = original_sys
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Win32 exclusive sharing")
+def test_native_windows_actual_exclusive_ready_open_is_pending(tmp_path):
+    import ctypes
+    import os
+    from ctypes import wintypes
+    from chunker.grammar import integrity
+
+    nonce = "actual-sharing-control"
+    ready = tmp_path / integrity._READY_NAME
+    record = {
+        "schema": integrity._WORKER_SCHEMA,
+        "nonce": nonce,
+        "pid": os.getpid(),
+        "ppid": os.getppid(),
+        "windows_creation_filetime": "0000000000000001",
+    }
+    ready.write_text(json.dumps(record), encoding="utf-8")
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create = kernel32.CreateFileW
+    create.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    create.restype = wintypes.HANDLE
+    close = kernel32.CloseHandle
+    close.argtypes = [wintypes.HANDLE]
+    close.restype = wintypes.BOOL
+    handle = create(str(ready), 0x80000000, 0, None, 3, 0x80, None)
+    assert handle and handle != wintypes.HANDLE(-1).value
+    try:
+        assert integrity._read_ready(tmp_path, nonce) is None
+    finally:
+        assert close(handle)
+    assert integrity._read_ready(tmp_path, nonce) == record
+
+
 @pytest.mark.parametrize(
     "fault",
     [

@@ -67,6 +67,27 @@ evidence remains deferred and unproduced. The explicit owner decision and its
 accepted proposal are retained in the private
 `native-owner-risk-assessment-amendment-r1/` packet.
 
+## Owner-approved Windows ready-open polling repair — 2026-10-23
+
+The owner separately approved one narrow implementation for a newly observed
+Windows ready-record **open** denial. Only `PermissionError` raised by opening
+`.native-probe-worker.json` for binary reading on Windows is treated as pending
+and returned to the existing parent poll. It receives no internal retry loop,
+new sleep, deadline extension or relaunch. Once open succeeds, stream read and
+close exceptions remain errors; non-Windows denial and cancellation retain
+their original propagation. Record validation, worker identity, start gating,
+native admission and all other lifecycle behavior remain unchanged.
+
+Persistent denial consumes the existing shared execution deadline internally,
+but the frozen failure precedence maps incomplete startup and unsafe cleanup to
+public `child_failed`. The uncertain root is retained, with no digest or start
+grant. This actual mapping corrects a prediction in the accepted proposal; it
+does not add implementation authority or reorder public reasons. The immutable
+owner decision, proposal and parent clarification are retained in
+`native-ready-read-repair-proposal-r1/`. This amendment does not change the
+historical treesitter-chunker#508/#509 residual-risk amendment, accept code,
+waive platform verification, or spend a review round.
+
 ## Approved successor execution amendment — 2026-10-22
 
 Fresh integration on `t3/integrate-native-after506` uses accepted main

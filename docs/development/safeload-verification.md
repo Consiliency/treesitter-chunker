@@ -190,6 +190,27 @@ These remain unknown and untouched:
 Historical counters are 12 helper compiles and 19 fixture compiles. Original
 timeout baselines number 12: 11 failed and 1 passed.
 
+## Windows ready-record open repair controls — 2026-10-23
+
+The owner-approved narrow repair treats only a Windows `PermissionError` from
+opening `.native-probe-worker.json` for binary reading as pending under the
+existing parent deadline. Local controls first failed against the unchanged
+`9446dee9` behavior (5 failed, 4 passed, 1 skipped), then passed with the scoped
+repair (9 passed, 1 skipped). The connected public-probe cases cover transient
+denial followed by a valid record, persistent denial through the shared
+deadline, and malformed, wrong-nonce, invalid-PID and invalid-FILETIME records
+published after an initial denial. They assert no native entry, start grant,
+accepted digest or safe-cleanup claim before full registration.
+
+Boundary controls preserve the exact exception object for stream-read,
+stream-close, non-Windows open and cancellation failures. A Windows-only
+exclusive-sharing case uses an actual file handle and is skipped on this Linux
+host; it is future platform evidence, not a current Windows pass. Persistent
+denial records an internal timeout but remains public `child_failed` because
+startup is incomplete and cleanup is unsafe. These local results neither repair
+nor reclassify the earlier Windows core and diagnostic failures, and do not
+provide platform acceptance.
+
 ## Criterion interpretation for independent review
 
 Frozen treesitter-chunker#389 acceptance (the plan's deterministic verification

@@ -34,7 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Reject unavailable status and retain unsafe roots after uncertain startup or
   shutdown (treesitter-chunker#389). A failed close of an unvalidated Windows
   worker handle no longer replaces the original cancellation or validation
-  error. Promote already locked psutil 7.0.0 to a
+  error. A Windows sharing denial while opening the ready record is polled
+  within the existing shared deadline; denial while reading or closing an
+  opened record, and every non-Windows denial, remains an error. Persistent
+  open denial retains the uncertain root and keeps the public `child_failed`
+  result. Promote already locked psutil 7.0.0 to a
   runtime dependency. Install/update warnings report failed native admission;
   changed revisions still write in place and the legacy CLI still exits zero
   on warnings. Registry, central validator and other loaders remain separate

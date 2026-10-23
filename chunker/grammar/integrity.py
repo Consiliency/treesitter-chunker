@@ -234,10 +234,15 @@ def _worker_ready(directory: Path, nonce: str) -> None:
 
 def _read_ready(directory: Path, nonce: str) -> dict[str, Any] | None:
     try:
-        with (directory / _READY_NAME).open("rb") as stream:
-            data = stream.read(_READY_LIMIT + 1)
+        stream = (directory / _READY_NAME).open("rb")
     except FileNotFoundError:
         return None
+    except PermissionError:
+        if sys.platform != "win32":
+            raise
+        return None  # type: ignore[unreachable]
+    with stream:
+        data = stream.read(_READY_LIMIT + 1)
     if len(data) > _READY_LIMIT:
         raise ValueError("oversized worker registration")
     pairs = json.loads(data, object_pairs_hook=list)
