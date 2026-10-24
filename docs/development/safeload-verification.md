@@ -215,6 +215,22 @@ verification. Persistent denial records an internal timeout but remains public
 results neither repair nor reclassify the earlier Windows core and diagnostic
 failures, and do not provide platform acceptance.
 
+## Snapshot I/O cancellation repair controls — 2026-10-23
+
+The owner-authorized exception after CODE3 is limited to parent-owned snapshot
+I/O disposal in `verify_artifact` and `probe_native_grammar`. Connected controls
+combine read, write, flush, fsync, acquisition and final-hash/source-descriptor
+failures with an `OSError` or a distinct cancellation during disposal. They
+require the original operation object and traceback, one disposal attempt per
+owned resource, continued disposal of independent resources, no pre-verification
+native launch or inspection, and permitted removal of the prelaunch root.
+Successful-operation controls retain ordinary close failures, and a handled
+caller exception cannot be mistaken for an active snapshot-operation failure.
+This repair changes no ready-open polling, worker lifecycle, deadline, status,
+start-gate, digest-admission or public-reason precedence. Fresh platform
+verification and the exceptional CODE4 remain parent-owned; prior review holds
+and historical treesitter-chunker#508/#509 unknown causes are unchanged.
+
 ## Criterion interpretation for independent review
 
 Frozen treesitter-chunker#389 acceptance (the plan's deterministic verification

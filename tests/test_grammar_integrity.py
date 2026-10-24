@@ -28,6 +28,133 @@ def test_verify_artifact_rejects_checksum_mismatch(tmp_path):
         verify_artifact(artifact, {"sha256": "0" * 64})
 
 
+class _SnapshotFaultStream:
+    """Real stream proxy supporting old context and repaired explicit disposal."""
+
+    def __init__(
+        self,
+        stream,
+        events,
+        role,
+        *,
+        operation=None,
+        operation_error=None,
+        close_error=None,
+    ):
+        self.stream = stream
+        self.events = events
+        self.role = role
+        self.operation = operation
+        self.operation_error = operation_error
+        self.close_error = close_error
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        self.close()
+        return False
+
+    def read(self, size=-1):
+        self.events.append(f"{self.role}.read")
+        if self.operation == "read":
+            raise self.operation_error
+        return self.stream.read(size)
+
+    def write(self, data):
+        self.events.append(f"{self.role}.write")
+        if self.operation == "write":
+            raise self.operation_error
+        return self.stream.write(data)
+
+    def flush(self):
+        self.events.append(f"{self.role}.flush")
+        if self.operation == "flush":
+            raise self.operation_error
+        return self.stream.flush()
+
+    def fileno(self):
+        return self.stream.fileno()
+
+    def close(self):
+        self.events.append(f"{self.role}.close")
+        self.stream.close()
+        if self.close_error is not None:
+            raise self.close_error
+
+
+_SNAPSHOT_CLOSE_FAILURES = pytest.mark.parametrize(
+    "close_error",
+    [OSError("snapshot close failure"), KeyboardInterrupt("second cancellation")],
+    ids=["close_oserror", "close_interrupt"],
+)
+
+
+@_SNAPSHOT_CLOSE_FAILURES
+def test_verify_reader_preserves_read_cancellation_during_disposal(
+    tmp_path, monkeypatch, close_error
+):
+    import traceback
+
+    artifact = tmp_path / "artifact.bin"
+    artifact.write_bytes(b"reviewed bytes")
+    original = KeyboardInterrupt("original verification read cancellation")
+    events = []
+    real_open = Path.open
+
+    def controlled_open(path, mode="r", *args, **kwargs):
+        stream = real_open(path, mode, *args, **kwargs)
+        if path == artifact and mode == "rb":
+            return _SnapshotFaultStream(
+                stream,
+                events,
+                "verify",
+                operation="read",
+                operation_error=original,
+                close_error=close_error,
+            )
+        return stream
+
+    monkeypatch.setattr(Path, "open", controlled_open)
+    try:
+        verify_artifact(
+            artifact, {"sha256": hashlib.sha256(b"reviewed bytes").hexdigest()}
+        )
+    except BaseException as error:  # noqa: BLE001 - exact identity is the contract
+        caught = error
+    else:
+        pytest.fail("verification cancellation unexpectedly returned")
+    assert caught is original
+    assert traceback.extract_tb(caught.__traceback__)[-1].name == "read"
+    assert events == ["verify.read", "verify.close"]
+
+
+def test_verify_reader_successful_body_propagates_close_failure(tmp_path, monkeypatch):
+    artifact = tmp_path / "artifact.bin"
+    payload = b"reviewed bytes"
+    artifact.write_bytes(payload)
+    close_error = OSError("verification close failure")
+    events = []
+    real_open = Path.open
+
+    def controlled_open(path, mode="r", *args, **kwargs):
+        stream = real_open(path, mode, *args, **kwargs)
+        if path == artifact and mode == "rb":
+            return _SnapshotFaultStream(
+                stream, events, "verify", close_error=close_error
+            )
+        return stream
+
+    monkeypatch.setattr(Path, "open", controlled_open)
+    with pytest.raises(OSError) as raised:
+        try:
+            raise LookupError("handled caller exception")
+        except LookupError:
+            verify_artifact(artifact, {"sha256": hashlib.sha256(payload).hexdigest()})
+    assert raised.value is close_error
+    assert events == ["verify.read", "verify.read", "verify.close"]
+
+
 def test_download_refuses_bare_master_default(tmp_path):
     with pytest.raises(ValueError, match="immutable commit"):
         GrammarDownloadManager(cache_dir=tmp_path).download_grammar("python")
@@ -654,6 +781,400 @@ def test_native_windows_actual_exclusive_ready_open_is_pending(tmp_path):
     finally:
         assert close(handle)
     assert integrity._read_ready(tmp_path, nonce) == record
+
+
+@pytest.mark.parametrize("operation", ["read", "write", "flush", "fsync"])
+@_SNAPSHOT_CLOSE_FAILURES
+def test_native_snapshot_copy_preserves_operation_cancellation_during_disposal(
+    tmp_path, monkeypatch, operation, close_error
+):
+    import traceback
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"pinned snapshot copy fixture")
+    provenance = {"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()}
+    original = KeyboardInterrupt(f"original snapshot {operation} cancellation")
+    events, roots, streams = [], [], []
+    real_fdopen = integrity.os.fdopen
+    real_fsync = integrity.os.fsync
+    real_mkdtemp = integrity.tempfile.mkdtemp
+
+    def controlled_fdopen(fd, mode, *args, **kwargs):
+        stream = real_fdopen(fd, mode, *args, **kwargs)
+        role = "source" if mode == "rb" else "destination"
+        proxy = _SnapshotFaultStream(
+            stream,
+            events,
+            role,
+            operation=operation,
+            operation_error=original,
+            close_error=close_error if role == "destination" else None,
+        )
+        streams.append(proxy)
+        return proxy
+
+    def controlled_fsync(fd):
+        events.append("destination.fsync")
+        if operation == "fsync":
+            raise original
+        return real_fsync(fd)
+
+    def controlled_mkdtemp(*args, **kwargs):
+        root = Path(real_mkdtemp(*args, **kwargs))
+        roots.append(root)
+        return str(root)
+
+    monkeypatch.setattr(integrity.os, "fdopen", controlled_fdopen)
+    monkeypatch.setattr(integrity.os, "fsync", controlled_fsync)
+    monkeypatch.setattr(integrity.tempfile, "mkdtemp", controlled_mkdtemp)
+    monkeypatch.setattr(
+        integrity,
+        "_read_child",
+        lambda *_args, **_kwargs: pytest.fail("snapshot fault reached native launch"),
+    )
+    try:
+        try:
+            result = integrity.probe_native_grammar(
+                candidate,
+                "baml",
+                provenance=provenance,
+                inspect_artifact=lambda _: pytest.fail(
+                    "snapshot fault reached inspection"
+                ),
+            )
+        except BaseException as error:  # noqa: BLE001 - exact identity is the contract
+            caught = error
+        else:
+            pytest.fail(f"snapshot cancellation became public result {result!r}")
+        assert caught is original
+        expected_frame = "controlled_fsync" if operation == "fsync" else operation
+        assert traceback.extract_tb(caught.__traceback__)[-1].name == expected_frame
+        assert events.count("destination.close") == 1
+        assert events.count("source.close") == 1
+        assert all(proxy.stream.closed for proxy in streams)
+        assert roots and not roots[0].exists(), "prelaunch root must be removed"
+    finally:
+        for root in roots:
+            if root.exists():
+                integrity.shutil.rmtree(root)
+
+
+@pytest.mark.parametrize("stage", ["dup", "destination_fdopen"])
+def test_native_snapshot_copy_acquisition_failure_closes_owned_descriptors(
+    tmp_path, monkeypatch, stage
+):
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"pinned snapshot acquisition fixture")
+    provenance = {"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()}
+    original = KeyboardInterrupt(f"original {stage} cancellation")
+    snapshot_descriptors, closed = [], []
+    real_close = integrity.os.close
+    real_dup = integrity.os.dup
+    real_fdopen = integrity.os.fdopen
+    real_mkstemp = integrity.tempfile.mkstemp
+
+    def controlled_mkstemp(*args, **kwargs):
+        descriptor, name = real_mkstemp(*args, **kwargs)
+        snapshot_descriptors.append(descriptor)
+        return descriptor, name
+
+    def controlled_dup(descriptor):
+        if stage == "dup":
+            raise original
+        return real_dup(descriptor)
+
+    def controlled_fdopen(descriptor, mode, *args, **kwargs):
+        if stage == "destination_fdopen" and mode == "wb":
+            raise original
+        return real_fdopen(descriptor, mode, *args, **kwargs)
+
+    def controlled_close(descriptor):
+        if descriptor in snapshot_descriptors and descriptor not in closed:
+            closed.append(descriptor)
+        return real_close(descriptor)
+
+    monkeypatch.setattr(integrity.tempfile, "mkstemp", controlled_mkstemp)
+    monkeypatch.setattr(integrity.os, "dup", controlled_dup)
+    monkeypatch.setattr(integrity.os, "fdopen", controlled_fdopen)
+    monkeypatch.setattr(integrity.os, "close", controlled_close)
+    try:
+        with pytest.raises(KeyboardInterrupt) as raised:
+            integrity.probe_native_grammar(candidate, "baml", provenance=provenance)
+        assert raised.value is original
+        assert closed == snapshot_descriptors, "raw snapshot descriptor leaked"
+    finally:
+        for descriptor in snapshot_descriptors:
+            if descriptor not in closed:
+                real_close(descriptor)
+
+
+@_SNAPSHOT_CLOSE_FAILURES
+def test_native_snapshot_copy_success_propagates_first_disposal_failure(
+    tmp_path, monkeypatch, close_error
+):
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"pinned successful snapshot copy fixture")
+    provenance = {"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()}
+    events = []
+    real_fdopen = integrity.os.fdopen
+
+    def controlled_fdopen(fd, mode, *args, **kwargs):
+        stream = real_fdopen(fd, mode, *args, **kwargs)
+        return _SnapshotFaultStream(
+            stream,
+            events,
+            "source" if mode == "rb" else "destination",
+            close_error=close_error if mode == "wb" else None,
+        )
+
+    monkeypatch.setattr(integrity.os, "fdopen", controlled_fdopen)
+    monkeypatch.setattr(
+        integrity,
+        "_read_child",
+        lambda *_args, **_kwargs: pytest.fail("close failure reached native launch"),
+    )
+    if isinstance(close_error, OSError):
+        result = integrity.probe_native_grammar(
+            candidate, "baml", provenance=provenance
+        )
+        assert result.reason == "child_failed" and result.artifact_sha256 is None
+    else:
+        with pytest.raises(KeyboardInterrupt) as raised:
+            integrity.probe_native_grammar(candidate, "baml", provenance=provenance)
+        assert raised.value is close_error
+    assert events.count("destination.close") == 1
+    assert events.count("source.close") == 1
+
+
+def test_native_snapshot_copy_preserves_ordinary_operation_error_over_close(
+    tmp_path, monkeypatch
+):
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"pinned ordinary copy failure fixture")
+    provenance = {"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()}
+    operation_error = OSError("original snapshot flush failure")
+    close_error = KeyboardInterrupt("later snapshot close cancellation")
+    events = []
+    real_fdopen = integrity.os.fdopen
+
+    def controlled_fdopen(fd, mode, *args, **kwargs):
+        stream = real_fdopen(fd, mode, *args, **kwargs)
+        return _SnapshotFaultStream(
+            stream,
+            events,
+            "source" if mode == "rb" else "destination",
+            operation="flush" if mode == "wb" else None,
+            operation_error=operation_error,
+            close_error=close_error if mode == "wb" else None,
+        )
+
+    monkeypatch.setattr(integrity.os, "fdopen", controlled_fdopen)
+    try:
+        result = integrity.probe_native_grammar(
+            candidate, "baml", provenance=provenance
+        )
+    except BaseException as error:  # noqa: BLE001 - reject replacement explicitly
+        replacement = error
+        result = None
+    else:
+        replacement = None
+    assert replacement is None, f"operation error replaced by {replacement!r}"
+    assert result is not None
+    assert result.reason == "child_failed" and result.artifact_sha256 is None
+    assert events.count("destination.close") == 1
+    assert events.count("source.close") == 1
+
+
+@pytest.mark.parametrize(
+    "cleanup_error",
+    [OSError("snapshot root cleanup failure"), KeyboardInterrupt("cleanup cancelled")],
+    ids=["cleanup_oserror", "cleanup_interrupt"],
+)
+def test_native_snapshot_cleanup_ignores_callers_handled_exception(
+    tmp_path, monkeypatch, cleanup_error
+):
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"pinned cleanup ownership fixture")
+    roots = []
+    real_mkdtemp = integrity.tempfile.mkdtemp
+    real_rmtree = integrity.shutil.rmtree
+
+    def controlled_mkdtemp(*args, **kwargs):
+        root = Path(real_mkdtemp(*args, **kwargs))
+        roots.append(root)
+        return str(root)
+
+    def controlled_rmtree(_root):
+        raise cleanup_error
+
+    monkeypatch.setattr(integrity.tempfile, "mkdtemp", controlled_mkdtemp)
+    monkeypatch.setattr(integrity.shutil, "rmtree", controlled_rmtree)
+    try:
+        try:
+            raise LookupError("handled caller exception")
+        except LookupError:
+            if isinstance(cleanup_error, OSError):
+                result = integrity.probe_native_grammar(
+                    candidate, "baml", provenance={"sha256": "0" * 64}
+                )
+                assert result.reason == "child_failed"
+            else:
+                with pytest.raises(KeyboardInterrupt) as raised:
+                    integrity.probe_native_grammar(
+                        candidate, "baml", provenance={"sha256": "0" * 64}
+                    )
+                assert raised.value is cleanup_error
+        assert roots and roots[0].exists(), "injected cleanup cannot remove the root"
+    finally:
+        for root in roots:
+            if root.exists():
+                real_rmtree(root)
+
+
+@_SNAPSHOT_CLOSE_FAILURES
+def test_native_final_source_disposal_preserves_acquisition_cancellation(
+    tmp_path, monkeypatch, close_error
+):
+    import traceback
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"pinned source descriptor fixture")
+    provenance = {"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()}
+    original = KeyboardInterrupt("original snapshot acquisition cancellation")
+    events, opened, roots = [], [], []
+    real_open = integrity.os.open
+    real_close = integrity.os.close
+    real_mkdtemp = integrity.tempfile.mkdtemp
+
+    def controlled_open(*args, **kwargs):
+        descriptor = real_open(*args, **kwargs)
+        opened.append(descriptor)
+        return descriptor
+
+    def controlled_close(descriptor):
+        if opened and descriptor == opened[0]:
+            events.append("source_fd.close")
+            real_close(descriptor)
+            raise close_error
+        return real_close(descriptor)
+
+    def controlled_mkdtemp(*args, **kwargs):
+        root = Path(real_mkdtemp(*args, **kwargs))
+        roots.append(root)
+        return str(root)
+
+    def acquire_snapshot(*_args, **_kwargs):
+        raise original
+
+    monkeypatch.setattr(integrity.os, "open", controlled_open)
+    monkeypatch.setattr(integrity.os, "close", controlled_close)
+    monkeypatch.setattr(integrity.tempfile, "mkdtemp", controlled_mkdtemp)
+    monkeypatch.setattr(integrity.tempfile, "mkstemp", acquire_snapshot)
+    try:
+        try:
+            integrity.probe_native_grammar(candidate, "baml", provenance=provenance)
+        except BaseException as error:  # noqa: BLE001 - exact identity is the contract
+            caught = error
+        else:
+            pytest.fail("snapshot acquisition cancellation unexpectedly returned")
+        assert caught is original
+        assert traceback.extract_tb(caught.__traceback__)[-1].name == "acquire_snapshot"
+        assert events == ["source_fd.close"]
+        assert roots and not roots[0].exists(), "prelaunch root must be removed"
+    finally:
+        for root in roots:
+            if root.exists():
+                integrity.shutil.rmtree(root)
+
+
+@_SNAPSHOT_CLOSE_FAILURES
+def test_native_final_snapshot_hash_preserves_read_cancellation_during_disposal(
+    tmp_path, monkeypatch, close_error
+):
+    import traceback
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"pinned final hash fixture")
+    digest = hashlib.sha256(candidate.read_bytes()).hexdigest()
+    original = KeyboardInterrupt("original final snapshot hash cancellation")
+    events, roots = [], []
+    snapshot_opens = 0
+    real_open = Path.open
+    real_mkdtemp = integrity.tempfile.mkdtemp
+
+    def controlled_open(path, mode="r", *args, **kwargs):
+        nonlocal snapshot_opens
+        stream = real_open(path, mode, *args, **kwargs)
+        if path.parent in roots and mode == "rb":
+            snapshot_opens += 1
+            if snapshot_opens == 2:
+                return _SnapshotFaultStream(
+                    stream,
+                    events,
+                    "final_hash",
+                    operation="read",
+                    operation_error=original,
+                    close_error=close_error,
+                )
+        return stream
+
+    def controlled_mkdtemp(*args, **kwargs):
+        root = Path(real_mkdtemp(*args, **kwargs))
+        roots.append(root)
+        return str(root)
+
+    def acknowledge(command, _cwd, _timeout, **kwargs):
+        lifecycle = kwargs["lifecycle"]
+        lifecycle.discovery_complete = True
+        lifecycle.cleanup_safe = True
+        lifecycle.worker_status = 0
+        reply = {
+            "schema": integrity._ACK_SCHEMA,
+            "nonce": command[9],
+            "language": command[6],
+            "sha256": command[7],
+            "loader_returned": True,
+            "parse_returned": True,
+        }
+        return 0, json.dumps(reply).encode(), b"", False, False
+
+    monkeypatch.setattr(Path, "open", controlled_open)
+    monkeypatch.setattr(integrity.tempfile, "mkdtemp", controlled_mkdtemp)
+    monkeypatch.setattr(integrity, "_read_child", acknowledge)
+    try:
+        try:
+            result = integrity.probe_native_grammar(
+                candidate,
+                "baml",
+                provenance={"sha256": digest},
+                inspect_artifact=lambda _: pytest.fail(
+                    "final hash cancellation reached inspection"
+                ),
+            )
+        except BaseException as error:  # noqa: BLE001 - exact identity is the contract
+            caught = error
+        else:
+            pytest.fail(f"final hash cancellation became public result {result!r}")
+        assert caught is original
+        assert traceback.extract_tb(caught.__traceback__)[-1].name == "read"
+        assert events == ["final_hash.read", "final_hash.close"]
+        assert snapshot_opens == 2
+        assert roots and not roots[0].exists()
+    finally:
+        for root in roots:
+            if root.exists():
+                integrity.shutil.rmtree(root)
 
 
 @pytest.mark.parametrize(

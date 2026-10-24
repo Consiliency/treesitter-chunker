@@ -44,6 +44,35 @@ _DIAGNOSTIC_LIMIT = 64 * 1024
 _ACK_LIMIT = 16 * 1024
 
 
+def _run_with_owned_cleanup(
+    operation: Callable[[], Any], cleanup: Callable[[], Any]
+) -> Any:
+    """Run one operation and dispose its resource without replacing its error."""
+    try:
+        result = operation()
+    except BaseException:
+        try:
+            cleanup()
+        except BaseException:
+            pass
+        raise
+    cleanup()
+    return result
+
+
+def _file_sha256(path: Path) -> str:
+    """Hash one file while preserving a read failure over disposal failures."""
+    digest = hashlib.sha256()
+    artifact = path.open("rb")
+
+    def read_artifact() -> None:
+        for block in iter(lambda: artifact.read(1024 * 1024), b""):
+            digest.update(block)
+
+    _run_with_owned_cleanup(read_artifact, artifact.close)
+    return digest.hexdigest()
+
+
 def verify_artifact(path: Path, provenance: Mapping[str, Any]) -> None:
     """Verify ``path`` against its repo-owned SHA-256 provenance entry."""
     expected = provenance.get("sha256")
@@ -52,11 +81,7 @@ def verify_artifact(path: Path, provenance: Mapping[str, Any]) -> None:
     if not path.is_file():
         raise ArtifactIntegrityError(f"Artifact does not exist: {path}")
 
-    digest = hashlib.sha256()
-    with path.open("rb") as artifact:
-        for block in iter(lambda: artifact.read(1024 * 1024), b""):
-            digest.update(block)
-    if not hmac.compare_digest(digest.hexdigest(), expected.lower()):
+    if not hmac.compare_digest(_file_sha256(path), expected.lower()):
         raise ArtifactIntegrityError(
             "Artifact checksum does not match trusted provenance"
         )
@@ -677,27 +702,64 @@ def probe_native_grammar(
 
         snapshot_dir = Path(tempfile.mkdtemp(prefix="chunker-native-probe-"))
         lifecycle = _ProbeLifecycle()
+        snapshot_operation_failed = False
         try:
-            snapshot_fd, snapshot_name = tempfile.mkstemp(
+            opened_snapshot_fd, snapshot_name = tempfile.mkstemp(
                 suffix=candidate.suffix,
                 dir=snapshot_dir,
             )
+            snapshot_fd: int | None = opened_snapshot_fd
             snapshot = Path(snapshot_name)
-            with (
-                os.fdopen(os.dup(source_fd), "rb") as source,
-                os.fdopen(snapshot_fd, "wb") as destination,
-            ):
-                remaining_bytes = source_stat.st_size
-                while remaining_bytes:
-                    block = source.read(min(1024 * 1024, remaining_bytes))
-                    if not block:
-                        break
-                    destination.write(block)
-                    remaining_bytes -= len(block)
-                destination.flush()
-                os.fsync(destination.fileno())
-            os.close(source_fd)
-            source_fd = None
+
+            duplicate_fd: int | None = None
+
+            def close_snapshot_fd() -> None:
+                nonlocal snapshot_fd
+                if snapshot_fd is not None:
+                    descriptor, snapshot_fd = snapshot_fd, None
+                    os.close(descriptor)
+
+            def close_duplicate_fd() -> None:
+                nonlocal duplicate_fd
+                if duplicate_fd is not None:
+                    descriptor, duplicate_fd = duplicate_fd, None
+                    os.close(descriptor)
+
+            def copy_source() -> None:
+                nonlocal duplicate_fd, snapshot_fd
+                assert source_fd is not None
+                duplicate_fd = os.dup(source_fd)
+                source = os.fdopen(duplicate_fd, "rb")
+                duplicate_fd = None
+
+                def copy_destination() -> None:
+                    nonlocal snapshot_fd
+                    assert snapshot_fd is not None
+                    destination = os.fdopen(snapshot_fd, "wb")
+                    snapshot_fd = None
+
+                    def copy_snapshot() -> None:
+                        remaining_bytes = source_stat.st_size
+                        while remaining_bytes:
+                            block = source.read(min(1024 * 1024, remaining_bytes))
+                            if not block:
+                                break
+                            destination.write(block)
+                            remaining_bytes -= len(block)
+                        destination.flush()
+                        os.fsync(destination.fileno())
+
+                    _run_with_owned_cleanup(copy_snapshot, destination.close)
+
+                _run_with_owned_cleanup(copy_destination, source.close)
+
+            _run_with_owned_cleanup(
+                lambda: _run_with_owned_cleanup(copy_source, close_snapshot_fd),
+                close_duplicate_fd,
+            )
+            assert source_fd is not None
+            descriptor, source_fd = source_fd, None
+            os.close(descriptor)
             try:
                 verify_artifact(snapshot, provenance)
             except ArtifactIntegrityError:
@@ -792,9 +854,7 @@ def probe_native_grammar(
                 or acknowledgment.get("parse_returned") is not True
             ):
                 return _failure("ack_invalid")
-            if not hmac.compare_digest(
-                hashlib.sha256(snapshot.read_bytes()).hexdigest(), digest
-            ):
+            if not hmac.compare_digest(_file_sha256(snapshot), digest):
                 return _failure("integrity_mismatch")
             try:
                 if inspect_artifact is not None:
@@ -802,13 +862,15 @@ def probe_native_grammar(
             except Exception:
                 return _failure("inspect_failed")
             return NativeProbeResult(True, "ok", digest)
+        except BaseException:
+            snapshot_operation_failed = True
+            raise
         finally:
-            pending_error = sys.exception()
             if not lifecycle.launch_attempted or lifecycle.cleanup_safe:
                 try:
                     shutil.rmtree(snapshot_dir)
                 except BaseException:
-                    if pending_error is None:
+                    if not snapshot_operation_failed:
                         raise
             else:
                 diagnostic = (
@@ -823,15 +885,24 @@ def probe_native_grammar(
                     try:
                         print(diagnostic, file=sys.stderr, flush=True)
                     except BaseException:
-                        if pending_error is None:
+                        if not snapshot_operation_failed:
                             raise
-                    if pending_error is None and not isinstance(
+                    if not snapshot_operation_failed and not isinstance(
                         diagnostic_error, Exception
                     ):
                         raise
 
-    except OSError:
-        return _failure("child_failed")
+    except BaseException as error:
+        if source_fd is not None:
+            descriptor, source_fd = source_fd, None
+            try:
+                os.close(descriptor)
+            except BaseException:
+                pass
+        if isinstance(error, OSError):
+            return _failure("child_failed")
+        raise
     finally:
         if source_fd is not None:
-            os.close(source_fd)
+            descriptor, source_fd = source_fd, None
+            os.close(descriptor)

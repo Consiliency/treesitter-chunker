@@ -94,6 +94,21 @@ owner decision, proposal and parent clarification are retained in
 historical treesitter-chunker#508/#509 residual-risk amendment, accept code,
 waive platform verification, or spend a review round.
 
+## Owner-authorized snapshot I/O cancellation repair — 2026-10-23
+
+After CODE3, the owner authorized one bounded exception for parent-owned
+snapshot I/O disposal only. Verification and final-hash readers, copy source
+and destination streams, acquisition descriptors, and the original source
+descriptor preserve the first operation exception object and traceback while
+attempting each independently owned disposal once. A successful operation does
+not suppress a later close failure, and an enclosing caller's handled exception
+is not an active snapshot-operation failure. Prelaunch removal remains allowed.
+No retry, deadline, lifecycle/status field, start order, public result mapping,
+ready-open rule, process query or security policy changes. Connected RED/GREEN
+and one private unprotected-disposal reversal triplet precede the frozen local
+commit. That commit still requires fresh platform verification and the single
+owner-exceptional CODE4; it does not clear CODE3 or create acceptance.
+
 ## Approved successor execution amendment — 2026-10-22
 
 Fresh integration on `t3/integrate-native-after506` uses accepted main

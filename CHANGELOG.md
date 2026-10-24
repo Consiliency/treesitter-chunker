@@ -34,8 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Reject unavailable status and retain unsafe roots after uncertain startup or
   shutdown (treesitter-chunker#389). Failed disposal of an unvalidated Windows
   worker handle or an opened ready-record stream no longer replaces the
-  original cancellation, read, or validation error. A Windows sharing denial
-  while opening the ready record is polled
+  original cancellation, read, or validation error. Snapshot copying,
+  verification, final hashing and source-descriptor cleanup likewise preserve
+  the first operation exception while attempting every independently owned
+  disposal once; a cleanup failure still propagates when the operation
+  succeeded. A Windows sharing denial while opening the ready record is polled
   within the existing shared deadline; denial while reading or closing an
   opened record, and every non-Windows denial, remains an error. Persistent
   open denial retains the uncertain root and keeps the public `child_failed`

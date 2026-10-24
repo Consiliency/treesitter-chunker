@@ -61,6 +61,14 @@ open regular file to an exclusively created private temporary snapshot with its
 native suffix, verify the completed snapshot with existing `verify_artifact`,
 close its writer and load only that absolute snapshot. Candidate replacement,
 including same-size/same-mtime changes, cannot substitute the loaded bytes.
+Each parent-owned snapshot stream or descriptor is disposed exactly once.
+When copy, flush, fsync, verification, or final hash reading fails, later
+disposal failures cannot replace that first exception object or its operation
+traceback, and disposal of the remaining independently owned resources is
+still attempted. If the operation succeeds, its ordinary disposal failure is
+not suppressed and follows the existing public failure mapping. Acquisition
+failures retain and dispose every descriptor whose ownership was not
+successfully transferred.
 
 The optional parent-side `inspect_artifact(snapshot_path)` callback runs only
 after successful child completion, while the same verified private snapshot
