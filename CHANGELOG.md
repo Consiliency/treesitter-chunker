@@ -28,6 +28,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Require independently approved artifact pins for local grammar analysis and
+  legacy health checks. Probe private verified snapshots in a gated child,
+  require actual-worker completion, and inspect only the admitted bytes.
+  Reject unavailable status and retain unsafe roots after uncertain startup or
+  shutdown (treesitter-chunker#389). Failed disposal of an unvalidated Windows
+  worker handle or an opened ready-record stream no longer replaces the
+  original cancellation, read, or validation error. Snapshot copying,
+  verification, final hashing and source-descriptor cleanup likewise preserve
+  the first operation exception while attempting every independently owned
+  disposal once; a cleanup failure still propagates when the operation
+  succeeded. A Windows sharing denial while opening the ready record is polled
+  within the existing shared deadline; denial while reading or closing an
+  opened record, and every non-Windows denial, remains an error. Persistent
+  open denial retains the uncertain root and keeps the public `child_failed`
+  result. Promote already locked psutil 7.0.0 to a
+  runtime dependency. Install/update warnings report failed native admission;
+  changed revisions still write in place and the legacy CLI still exits zero
+  on warnings. Registry, central validator and other loaders remain separate
+  work under treesitter-chunker#362.
+
 - Retire the optional `scripts/build_wheels.py` helper and root platform-wheel
   recipes with obsolete Python targets (treesitter-chunker#503). Use
   `python -m build` for the main universal wheel and sdist; `scripts/package.py`

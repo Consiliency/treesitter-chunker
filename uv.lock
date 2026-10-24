@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 
 [[package]]
@@ -1933,6 +1933,7 @@ dependencies = [
     { name = "networkx" },
     { name = "packaging" },
     { name = "pathspec" },
+    { name = "psutil" },
     { name = "pyarrow" },
     { name = "pygments" },
     { name = "python-dateutil" },
@@ -1968,7 +1969,6 @@ all = [
     { name = "mypy" },
     { name = "numpy" },
     { name = "pre-commit" },
-    { name = "psutil" },
     { name = "pydantic" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -2002,7 +2002,6 @@ dev = [
     { name = "jsonschema" },
     { name = "mypy" },
     { name = "pre-commit" },
-    { name = "psutil" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-timeout" },
@@ -2059,7 +2058,7 @@ requires-dist = [
     { name = "packaging", specifier = ">=25.0" },
     { name = "pathspec", specifier = ">=0.11.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
-    { name = "psutil", marker = "extra == 'dev'", specifier = ">=5.9.0" },
+    { name = "psutil", specifier = ">=5.9.0" },
     { name = "pyarrow", specifier = ">=22.0.0" },
     { name = "pydantic", marker = "extra == 'api'", specifier = ">=2.0.0" },
     { name = "pygments", specifier = ">=2.15.0" },

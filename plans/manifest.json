@@ -524,6 +524,27 @@
             "roadmap_sha256": "b2fd4eb685a2362137e6a2da5783e0eb2d760cf9dcfc0c90fcc62a8352b82f14"
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-22T00:39:41Z",
+          "by": "native-implementation-r1",
+          "metadata": {
+            "base": "8547f7b7afd90f7e86cf396e52c0b00a70c86dfb",
+            "formal_IF": "HELD",
+            "scope": "approved corrected design only"
+          },
+          "transition": "executing"
+        },
+        {
+          "at": "2026-10-22T02:23:50.962050+00:00",
+          "by": "native-integration-after506-r1",
+          "metadata": {
+            "base": "b3c43b6c006e944fe01d05e6f59b1e521bb7b4f3",
+            "formal_IF": "HELD",
+            "scope": "frozen SL-1/SL-2 integration after treesitter-chunker#506",
+            "windows_survivor": "UNPROVEN"
+          },
+          "transition": "executing"
         }
       ],
       "manual_amendment": {
@@ -542,10 +563,10 @@
       },
       "roadmap_sha256": "997648400ec040bfa6fbf1581c4f28ef1f82c7b786e133ea6771edea15780544",
       "slug": "v3-SAFELOAD",
-      "status": "committed",
+      "status": "executing",
       "task_summary": null,
       "type": "phase",
-      "updated_at": "2026-10-06T09:51:08.528889+00:00",
+      "updated_at": "2026-10-22T00:39:41Z",
       "historical_detailed_fields": {
         "acceptance_criteria_count": 2,
         "correction_issue": "treesitter-chunker#382",

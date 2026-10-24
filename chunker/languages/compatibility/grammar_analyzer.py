@@ -6,8 +6,11 @@ import platform
 import re
 import subprocess
 from datetime import datetime
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+
+from chunker.grammar.integrity import probe_native_grammar
 
 from .schema import CompatibilityLevel, GrammarVersion, LanguageVersion
 
@@ -17,14 +20,25 @@ logger = logging.getLogger(__name__)
 class GrammarAnalyzer:
     """Analyzes compiled grammar files to extract version and capability information."""
 
-    def __init__(self, grammars_dir: Path):
+    def __init__(
+        self,
+        grammars_dir: Path,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, Any]] | None = None,
+    ):
         """Initialize the grammar analyzer.
 
         Args:
             grammars_dir: Path to directory containing compiled grammar .so files
         """
         self.grammars_dir = Path(grammars_dir)
+        self.trusted_artifacts = {
+            language: dict(provenance)
+            for language, provenance in (trusted_artifacts or {}).items()
+            if isinstance(provenance, Mapping)
+        }
         self.grammar_cache: dict[str, GrammarVersion] = {}
+        self._capabilities: dict[str, dict[str, Any]] = {}
         self.supported_languages = self._discover_supported_languages()
         self.metadata_extractor = GrammarMetadataExtractor()
         self.feature_detector = FeatureDetector()
@@ -68,55 +82,71 @@ class GrammarAnalyzer:
         Returns:
             GrammarVersion object or None if analysis fails
         """
-        try:
-            # Check cache first
-            if language in self.grammar_cache:
-                return self.grammar_cache[language]
+        grammar_path = (self.grammars_dir / f"{language}.so").absolute()
+        captured: dict[str, Any] = {}
 
-            grammar_path = self.grammars_dir / f"{language}.so"
-            if not grammar_path.exists():
-                logger.warning(f"Grammar file not found: {grammar_path}")
-                return None
+        def inspect(snapshot: Path) -> None:
+            captured["version"] = self.extract_grammar_version(snapshot) or "unknown"
+            captured["symbols"] = self.analyze_grammar_symbols(snapshot)
+            captured["file_size"] = snapshot.stat().st_size
 
-            # Extract version
-            version = self.extract_grammar_version(grammar_path)
-            if not version:
-                version = "unknown"
-                logger.warning(
-                    f"Could not extract version for {language}: {version}",
-                )
-
-            # Analyze symbols
-            symbols = self.analyze_grammar_symbols(grammar_path)
-
-            # Detect features
-            features = self.detect_supported_features(language, symbols)
-
-            # Determine language version support
-            min_version, max_version = self.determine_language_version_support(
-                language,
-                version,
+        result = probe_native_grammar(
+            grammar_path,
+            language,
+            provenance=self.trusted_artifacts.get(language),
+            inspect_artifact=inspect,
+        )
+        base_capabilities = {
+            "language": language,
+            "supported": result.supported,
+            "version": None,
+            "features": [],
+            "min_language_version": None,
+            "max_language_version": None,
+            "symbols_count": 0,
+            "file_size": 0,
+            "validation_reason": result.reason,
+            "artifact_sha256": result.artifact_sha256,
+        }
+        if not result.supported:
+            self.grammar_cache.pop(language, None)
+            self._capabilities[language] = base_capabilities
+            logger.warning(
+                "Grammar admission failed for %s: %s", language, result.reason
             )
-
-            # Create GrammarVersion object
-            grammar_version = GrammarVersion(
-                language=language,
-                version=version,
-                grammar_file=str(grammar_path),
-                supported_features=features,
-                min_language_version=min_version,
-                max_language_version=max_version,
-            )
-
-            # Cache the result
-            self.grammar_cache[language] = grammar_version
-            logger.info(f"Analyzed grammar for {language}: version {version}")
-
-            return grammar_version
-
-        except Exception as e:
-            logger.error(f"Error analyzing grammar for {language}: {e}")
             return None
+
+        version = captured["version"]
+        symbols = captured["symbols"]
+        features = self.detect_supported_features(language, symbols)
+        min_version, max_version = self.determine_language_version_support(
+            language, version
+        )
+        grammar_version = GrammarVersion(
+            language=language,
+            version=version,
+            grammar_file=str(grammar_path),
+            supported_features=features,
+            min_language_version=min_version,
+            max_language_version=max_version,
+        )
+        base_capabilities.update(
+            {
+                "version": version,
+                "features": features,
+                "min_language_version": min_version,
+                "max_language_version": max_version,
+                "symbols_count": sum(
+                    len(value) if isinstance(value, list) else 0
+                    for value in symbols.values()
+                ),
+                "file_size": captured["file_size"],
+            }
+        )
+        self.grammar_cache[language] = grammar_version
+        self._capabilities[language] = base_capabilities
+        logger.info("Analyzed grammar for %s: version %s", language, version)
+        return grammar_version
 
     def extract_grammar_version(self, so_file_path: Path) -> str | None:
         """Extract version information from a compiled grammar .so file.
@@ -305,46 +335,9 @@ class GrammarAnalyzer:
         Returns:
             Dict with grammar capabilities
         """
-        capabilities = {
-            "language": language,
-            "supported": False,
-            "version": None,
-            "features": [],
-            "min_language_version": None,
-            "max_language_version": None,
-            "symbols_count": 0,
-            "file_size": 0,
-        }
-
-        try:
-            grammar_version = self.analyze_grammar_file(language)
-            if grammar_version:
-                capabilities["supported"] = True
-                capabilities["version"] = grammar_version.version
-                capabilities["features"] = grammar_version.supported_features
-                capabilities["min_language_version"] = (
-                    grammar_version.min_language_version
-                )
-                capabilities["max_language_version"] = (
-                    grammar_version.max_language_version
-                )
-
-                # Add file info
-                grammar_path = Path(grammar_version.grammar_file)
-                if grammar_path.exists():
-                    capabilities["file_size"] = grammar_path.stat().st_size
-
-                    # Count symbols
-                    symbols = self.analyze_grammar_symbols(grammar_path)
-                    capabilities["symbols_count"] = sum(
-                        len(v) if isinstance(v, list) else 0 for v in symbols.values()
-                    )
-
-            logger.debug(f"Got capabilities for {language}: {capabilities}")
-
-        except Exception as e:
-            logger.error(f"Error getting capabilities for {language}: {e}")
-
+        self.analyze_grammar_file(language)
+        capabilities = self._capabilities[language].copy()
+        logger.debug("Got capabilities for %s: %s", language, capabilities)
         return capabilities
 
     def validate_grammar_compatibility(
@@ -390,6 +383,8 @@ class GrammarAnalyzer:
             report = []
             report.append(f"Grammar Analysis Report: {language}")
             report.append("=" * 50)
+            report.append(f"Validation reason: {capabilities['validation_reason']}")
+            report.append(f"Artifact SHA-256: {capabilities['artifact_sha256']}")
 
             if capabilities["supported"]:
                 report.append("Status: Supported")
@@ -409,7 +404,7 @@ class GrammarAnalyzer:
                         report.append(f"  - {feature}")
             else:
                 report.append("Status: Not Supported")
-                report.append("Grammar file not found or could not be analyzed")
+                report.append("Grammar did not pass native admission")
 
             return "\n".join(report)
 
@@ -426,28 +421,36 @@ class GrammarAnalyzer:
         try:
             output_path = Path(output_path)
 
-            # Analyze all grammars
-            all_grammars = self.analyze_all_grammars()
-
-            # Convert to exportable format
             export_data = {
                 "metadata": {
                     "generated_at": datetime.now().isoformat(),
                     "grammars_dir": str(self.grammars_dir),
-                    "total_languages": len(all_grammars),
+                    "total_languages": 0,
                 },
                 "grammars": {},
+                "validation_failures": {},
             }
 
-            for language, grammar_version in all_grammars.items():
+            for language in self.supported_languages:
+                grammar_version = self.analyze_grammar_file(language)
+                capabilities = self._capabilities[language].copy()
+                if grammar_version is None:
+                    export_data["validation_failures"][language] = {
+                        "file": str((self.grammars_dir / f"{language}.so").absolute()),
+                        "capabilities": capabilities,
+                        "supported": False,
+                        "validation_reason": capabilities["validation_reason"],
+                    }
+                    continue
                 export_data["grammars"][language] = {
                     "version": grammar_version.version,
                     "file": grammar_version.grammar_file,
                     "features": grammar_version.supported_features,
                     "min_language_version": grammar_version.min_language_version,
                     "max_language_version": grammar_version.max_language_version,
-                    "capabilities": self.get_grammar_capabilities(language),
+                    "capabilities": capabilities,
                 }
+            export_data["metadata"]["total_languages"] = len(export_data["grammars"])
 
             # Write to file
             with open(output_path, "w") as f:
