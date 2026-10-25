@@ -2,9 +2,23 @@
 
 > Maintainer/internal documentation. This page is intentionally omitted from public navigation.
 
-Status: proposed design for treesitter-chunker#165, treesitter-chunker#151 and
-treesitter-chunker#164. Independent design review precedes implementation.
-Neither this document nor design approval establishes a repaired implementation.
+Status: corrected design independently APPROVED for the bounded successor to
+treesitter-chunker#372 / treesitter-chunker#159, including treesitter-chunker#389.
+The implementation is a review candidate. Its controlled Windows diagnostic
+evidence is recorded in `safeload-verification.md` for independent evaluation.
+Implementation review, platform verification and final acceptance remain pending.
+Under the owner's manual acceptance amendment, formal IF-0-SAFELOAD-1 is deferred
+and unproduced. Harness is not a current product prerequisite, and no formal
+approval is claimed. Original design and historical HOLDs remain. Neither this
+document nor design approval establishes a repaired or accepted implementation.
+treesitter-chunker#508 and treesitter-chunker#509 remain independently
+unexplained. The owner's 2026-10-23 amendment permits acceptance despite those
+two missing cause explanations only if all four CODE seats and separate
+independent Astra explicitly approve the documented residual risks and required
+CI passes. Any HOLD still blocks landing. Original failed runs, diagnostic
+limitations and open issues remain; no other provenance, containment or
+correctness requirement changes. See the owner-approved amendment in
+`plans/phase-plan-v3-SAFELOAD.md`.
 
 ## Scope and trust
 
@@ -47,6 +61,14 @@ open regular file to an exclusively created private temporary snapshot with its
 native suffix, verify the completed snapshot with existing `verify_artifact`,
 close its writer and load only that absolute snapshot. Candidate replacement,
 including same-size/same-mtime changes, cannot substitute the loaded bytes.
+Each parent-owned snapshot stream or descriptor is disposed exactly once.
+When copy, flush, fsync, verification, or final hash reading fails, later
+disposal failures cannot replace that first exception object or its operation
+traceback, and disposal of the remaining independently owned resources is
+still attempted. If the operation succeeds, its ordinary disposal failure is
+not suppressed and follows the existing public failure mapping. Acquisition
+failures retain and dispose every descriptor whose ownership was not
+successfully transferred.
 
 The optional parent-side `inspect_artifact(snapshot_path)` callback runs only
 after successful child completion, while the same verified private snapshot
@@ -59,7 +81,7 @@ probe completion and metadata extraction must still report the admitted bytes.
 The callback is trusted synchronous application code: it may inspect but must
 not mutate or native-load the snapshot. Commit its captured metadata only after
 `ok`; a raising callback returns `supported=False`, `reason="inspect_failed"`
-and no accepted digest, with cleanup in `finally`. Recheck snapshot identity
+and no accepted digest, with conditional cleanup in the owner’s `finally`. Recheck snapshot identity
 before inspection. Artifact version/date fields never derive from source or
 snapshot timestamps: missing version is `unknown` and release_date is None
 without authentic release metadata. The separately reviewed precursor
@@ -86,10 +108,10 @@ Constructor `exit(0)` or `_exit(0)` therefore cannot establish support. Capture
 at most 64 KiB per stdout/stderr diagnostic stream and a 16 KiB acknowledgment;
 output overflow fails closed without unbounded buffering. Distinct child load
 and parse failure records carry the stable reason but never count as completion.
-On deadline terminate, allow at most one second of grace, then force termination
-and reap the child before removing the snapshot. Never map the candidate in the
-parent. Snapshot lifetime extends
-through child reaping, including Windows file-handle release.
+On deadline use the bounded shared worker/launcher shutdown below. Never map
+the candidate in the parent. Snapshot lifetime extends through confirmed worker
+and launcher termination, including Windows file-handle release. Uncertain
+startup retains the root; it cannot establish containment qualification.
 
 Isolation protects the parent against native crashes and premature exits. It is
 not a security sandbox for explicitly approved malicious native code, its
@@ -163,3 +185,138 @@ platform verification. Discovery integration and immutable publication in
 GRAMMARS receive their own review and acceptance.
 Also kill `accept_partial_inspection`, `inherit_candidate_import_path` and
 `unchanged_update_skips_validation`, with restored passes and path controls.
+
+
+## Corrected lifecycle contract
+
+This approved transcription supersedes conflicting lifecycle wording above.
+Design SHA-256: `f1aab68cdbf5579b1688170e33c2984ee47baee1609d4f5cf136e102b1a99983`;
+independent opinion: `9e24ca41b579a446ec44ef3929c25ad6c81be4519549e960fadc960871ad80b5`.
+Only new transcriptions correct the CPython reference to 445–460 and use
+“unarmed candidate handles”; frozen review bytes remain unchanged.
+
+## Minimal private interfaces and snapshot ownership
+
+Keep public `probe_native_grammar(path, language, *, provenance, sample=b"", timeout=10.0, inspect_artifact=None)` and frozen `NativeProbeResult(supported, reason, artifact_sha256)` unchanged. Keep reasons `ok`, `missing`, `empty`, `untrusted`, `integrity_mismatch`, `load_failed`, `parse_failed`, `timeout`, `child_failed`, `ack_missing`, `ack_invalid`, `inspect_failed`. Only `ok` carries a digest. Keep `native_probe.v1` exactly:
+
+```json
+{"schema":"native_probe.v1","nonce":"per-request","language":"requested","sha256":"snapshot","loader_returned":true,"parse_returned":true}
+```
+
+Keep `_read_child(command, cwd, timeout)` returning `(launcher_returncode, stdout, stderr, timed_out, overflow)` for raw pipe tests. Add keyword-only `worker_nonce=None, lifecycle=None`. Native admission **always** supplies both; missing native lifecycle is an internal error that cannot yield support. The private lifecycle record lives in `integrity.py`; no general process framework or public type is added. It contains launch intent, discovery state, retained launcher/worker identities, Windows handle where applicable, actual-worker status (integer or unavailable), completion/forced-stop flags, `cleanup_safe=False`, and a bounded containment-failure diagnostic. The tuple's first value is never redefined as worker status.
+
+The snapshot owner creates this record before the launch operation and retains it even if `_read_child` raises before returning. Before any process creation attempt set launch intent and discovery uncertain. A thrown Popen constructor does not imply that no process ever existed: conservatively retain the root if the OS/constructor outcome is ambiguous. Before launch intent, a provenance/copy/verification failure has no process and can safely remove the root.
+
+Replace TemporaryDirectory with mkdtemp and an explicit owner `try/finally`. There is no finalizer, weakref, atexit removal, or deferred cleanup queue for uncertain roots. On every owner exit inspect lifecycle state: remove only if no launch was attempted or `cleanup_safe` has been affirmatively established. A failure in bookkeeping must leave it false. No worker removes the root. Do not wrap Popen in a context manager whose exit can wait without the remaining bound. Close pipes and handles explicitly after bounded stop/wait; handle closure is not proof of termination.
+
+For uncertainty report a bounded application diagnostic with retained absolute root and known `(pid, creation identity)` metadata, and original trigger (timeout/overflow/cancel/read error). It contains no accepted digest or captured unbounded native output. The public ordinary result is `NativeProbeResult(False, "child_failed", None)`; cancellation/KeyboardInterrupt propagates with its original traceback after cleanup/retention. Do not introduce a new public reason or automatically delete a retained root later. A parent diagnostic must remain available even if a diagnostic-file write fails; safety never depends on writing that file.
+
+## Ready gate and the supported launch topology
+
+The process launched is the current trusted `sys.executable -I`, shell=False, fixed approved package bootstrap, private cwd. Preserve current import isolation and no new environment configuration. Before loading, parsing, opening the snapshot in native code, or importing the native loader, the actual interpreter writes one closed/atomically replaced ready record (≤4 KiB) at `.native-probe-worker.json` and blocks reading exactly one start byte. EOF or a byte other than `b"\x01"` exits without native admission. Parent closes the writer after its one grant, and never grants after abort/timeout/cancellation is latched.
+
+On Windows only, `PermissionError` from opening that ready-record path for
+binary reading is a pending observation, like a record that is not present yet.
+The parent returns to its ordinary polling path under the same execution
+deadline; this adds no inner retry, sleep, deadline, or relaunch. The exception
+scope ends as soon as the stream is opened: read and close failures still take
+the existing error/containment path. If reading fails, the stream is closed once
+without replacing the original read exception, its identity, or its traceback;
+if reading succeeds, a close failure propagates. Non-Windows open denials and
+cancellation also retain their existing propagation. Strict record validation
+and all identity checks remain unchanged, and no start byte, native entry,
+digest, or inspection can precede a fully read and validated registration.
+
+If the Windows open denial persists, `_read_child` reaches its existing shared
+deadline with `timed_out=True` and a timeout trigger. The frozen safety-first
+precedence still maps incomplete startup and unsafe cleanup to public
+`child_failed`, not `timeout`: no digest or start grant is produced, and the
+uncertain root is retained. This distinction follows the frozen safety-first
+precedence and was recorded by the parent implementation clarification; the
+owner-approved repair itself remains limited to Windows ready-record open
+polling and does not change other failure mappings.
+
+**New private schema replacing the proposed v1 registration, for fresh acceptance:**
+
+```json
+{"schema":"native_probe.worker.v2","nonce":"per-request","pid":1234,"ppid":1200,"windows_creation_filetime":"0123456789abcdef"}
+```
+
+The exact key set is fixed; `pid` and `ppid` are positive integers with booleans rejected; nonce/schema are exact strings. `windows_creation_filetime` is exactly 16 lower-case hex digits on Windows, null on POSIX. The Windows worker obtains it from `GetProcessTimes(GetCurrentProcess())` on its own process object, not a timestamp or status file supplied by native code. This is a pre-entry identity record, never a report of successful exit. Strict duplicate-key/size/type/nonce validation precedes use. An invalid record is not a source of kill targets.
+
+Startup completeness is conditional on the trusted, fixed interpreter topology already inside the admission trust boundary: POSIX directly execs the actual interpreter in the Popen child; Windows is either that direct interpreter or a genuine trusted CPython venv redirector creating **one** interpreter child. No caller-supplied arbitrary launcher, nested generic wrapper or process-creating bootstrap is supported as a success route. The approved bootstrap creates no children before the gate. CPython v3.13.15 `PC/venvlauncher.c:445–460` creates one interpreter, waits and queries its status; it does not provide an atomic process-tree snapshot, and its job assignment is not used as this plan's proof. Source evidence: [official CPython source](https://github.com/python/cpython/blob/v3.13.15/PC/venvlauncher.c#L445-L460). The actual executable/runtime must be recorded in platform evidence; matching a filename or a Python version alone does not validate a custom wrapper.
+
+To enter `registered` the controller must, while start remains withheld and the original launcher is observed live, establish:
+
+1. A strictly valid ready record from the trusted bootstrap in the exclusive private root.
+2. POSIX: worker PID equals the direct Popen child PID. Windows: worker is either direct launcher or its independently observed **direct** interpreter child; compare recorded ppid with OS-observed ancestry, and retained psutil creation identities with the live original launcher. Do not trust record ppid alone. Final launcher `poll()` must still observe the original Popen child live after ancestry validation.
+3. Windows: a handle to the exact recorded worker incarnation has been acquired/validated as below. POSIX: retain the direct Popen object as the sole wait-status owner and a psutil identity for liveness/descendant observation.
+4. No abort/cancellation, discovery access error, unexpected topology/descendant, or timeout has occurred. Snapshot/control state is still intact.
+
+Only then mark startup discovery complete and grant start. If launcher loss, abort, invalid record or an identity acquisition error occurs earlier, latch uncertainty; late registration does not retroactively clear it. An empty retained set, EOF, launcher zero, a later empty scan, or an apparently successful unlink never clears it. A registered worker remains independently retained after later launcher loss. If the topology is unexpected, reject/retain rather than silently treating a recursively found nonchild as status-capable.
+
+This explicitly closes the ordinary missed-startup-worker case by conservative retention, not by claiming discovery is atomic. Native admission is still not a sandbox for deliberately trusted hostile code or private-directory compromise. Observed extra descendants are retained, stopped where identities are validated, and cause rejection. Lost ancestry/access/creation uncertainty around them prevents cleanup. No claim of complete containment of arbitrary invisible process escape is made. If a reviewer considers arbitrary post-start process creation part of the required support contract, this design needs a separately reviewed creation-atomic containment mechanism; recursive psutil polling cannot supply it. Do not broaden that claim during implementation.
+
+## Actual-worker status: supported APIs and acquisition ordering
+
+### Windows, including the real venv redirector
+
+Use stdlib ctypes with declared Windows ABI argument/return types and `use_last_error=True`; this is a substantive OS-specific mechanism addition. Do not use psutil internals, Popen `_handle`, or third-party private process handles.
+
+While the real worker is at the pre-start gate, call public `OpenProcess` once with `SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_TERMINATE`, `bInheritHandle=False`. Hold this candidate handle locally, unarmed. Read its creation FILETIME through `GetProcessTimes` and compare the exact 64-bit value with the ready record; validate ancestry independently as above. On any mismatch/query error/access denial/missing process, close this unarmed handle **without signaling it**, reject, and retain uncertainty. After all checks, transfer ownership to the lifecycle record and only then allow start. Cancellation between open and transfer closes the unarmed handle and preserves uncertain-root policy. Cancellation after transfer uses that same validated handle.
+
+If the worker dies/reuses its PID before open, failure or differing FILETIME rejects. If it dies after successful open, the held handle remains attached to that process object through exit; it is never replaced by a later PID query. This prevents a PID-reuse status/termination substitution without assuming the worker can never exit while gated. There is no post-ack handle-acquisition window.
+
+Poll `WaitForSingleObject(handle, 0)` alongside bounded output draining; waits use finite remaining-time slices, never INFINITE. Only `WAIT_OBJECT_0` establishes this worker's exit. `WAIT_TIMEOUT` is still live, `WAIT_FAILED`/unexpected codes are unavailable evidence. **After** signaled termination, `GetExitCodeProcess` on this exact handle supplies a DWORD: only integer zero can support success. Failure, missing status, nonzero values (including 259), and exception exit codes reject. A successful API call returning a plausible code while the process is unsignaled is not terminal status. Forced termination is recorded separately and can never count as normal success, regardless of a queried code.
+
+Cancellation terminates the validated worker using `TerminateProcess(handle, nonzero_code)` and waits on that handle. The call alone is asynchronous evidence and cannot set cleanup_safe. Close exactly once after wait/status bookkeeping (or bounded failure/retention); do not close while a wait is pending. Reap the direct launcher separately with finite `Popen.wait()` remaining time; launcher zero is an additional condition, never a replacement for worker zero. Later launcher loss cannot erase the retained worker handle/status. Windows psutil remains useful for discovery and identity checks; its `wait()` result is not the actual-worker success authority here.
+
+Public API evidence: [OpenProcess](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocess) documents requested access, inheritance, failure and handle ownership; [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes) documents creation FILETIME; [WaitForSingleObject](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject) documents finite waits and result codes. [GetExitCodeProcess](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getexitcodeprocess) provides actual termination status. [TerminateProcess](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminateprocess) requires a subsequent wait to confirm asynchronous termination. [Process termination semantics](https://learn.microsoft.com/en-us/windows/win32/procthread/terminating-a-process) preserve an object while another process holds its handle and warn that children are not automatically terminated. Read 2026-10-21; these are source/API evidence, not Windows execution evidence.
+
+### POSIX
+
+For the supported direct interpreter, the retained `subprocess.Popen` object refers to the actual worker child. It alone polls/waits/reaps that child; use its finite `wait(timeout=remaining)` status. No second psutil or os.waitpid consumer races to reap it. On POSIX a negative status is a signal failure; only known integer zero supports success. This is identity-bound direct-child OS status, not status forwarded by a launcher or a file. See [public Python Popen status/wait contract](https://docs.python.org/3.12/library/subprocess.html#subprocess.Popen.wait).
+
+An injected POSIX launcher with a different actual worker PID is unsupported for success: psutil may confirm its death but cannot establish a nonchild's successful status. Mark actual status unavailable and reject even if launcher zero and valid ack are present. This intentional fail-closed behavior must be tested; there is no proposed cross-platform supervisor/status-relay protocol. Preserve known identities for bounded cleanup, and retain the root if startup discovery never completed or descendant quiescence is uncertain. A future requirement for successful indirect POSIX workers needs a separately reviewed direct-parent status relay; it is not silently included here.
+
+### What the installed psutil source actually establishes
+
+Read-only local installed source is `.venv/lib/python3.12/site-packages/psutil/` version **7.0.0** (`__init__.py:210`). `Process.wait` (`__init__.py:1328–1354`) documents nonchild POSIX status unavailability. `_psposix.py:62–145` uses waitpid, and returns None after polling nonchildren. `_pswindows.py:867–909` can return None after a process is already gone or a wait failure fallback. It reacquires status by PID inside the extension rather than exposing a public retained-handle ownership API. `children` (`__init__.py:939–1008`) explicitly documents lost descendant ancestry; enumeration is not atomic. `wait_procs` can report gone without a zero exit code. None of these APIs justify converting death or None to success.
+
+**Dependency delta:** no upgrade from already locked psutil **7.0.0**, no new third-party dependency, no pywin32. Retain original proposed promotion of `psutil>=5.9.0` from dev to runtime with lock metadata regenerated by the supported tool, preserving resolution and parser/provider pins. Windows handle work uses Python's ctypes and public OS APIs, so it requires code/contract acceptance, not a dependency bump. It expressly supersedes the first proposal's psutil-only containment/status implication. Do not assume a newer psutil version would remove the lifecycle proof obligation.
+
+## Lifecycle table and bounded cancellation
+
+`uncertain` is a proof state, not a statement that a live worker definitely exists. `cleanup_safe` requires complete startup discovery, independently confirmed termination of the worker/launcher and every retained in-scope descendant, and no unresolved discovery/lifecycle error. Quiescence and exit success are separate facts: known abnormal exit can permit cleanup while prohibiting support.
+
+| State / event | Retained identities and discovery proof | Snapshot owner action | Outcome / next transition |
+| --- | --- | --- | --- |
+| Before any launch intent | No process; source/snapshot owner only | Explicit cleanup permitted on failure | Existing trust/integrity reason, no digest |
+| Popen construction entered; setup interrupted or raises | Uncertain, even if no Popen object returned | Retain root; bounded stop only for safely acquired identities | child_failed or propagate original cancellation |
+| Launched, waiting for ready | Launcher plus any independently observed identities; startup uncertain | No native start, no inspection/removal | Continue only within original deadline |
+| Cancel/timeout/EOF/launcher loss before registration | Sticky uncertain, including empty retained set | Close start writer, bounded stop/wait known targets, retain root even if they die | child_failed with original trigger in diagnostics; cancellation propagates |
+| Invalid record / unrelated PID / identity mismatch | Do not arm record PID or unverified handle; startup uncertain | Reject; stop independently known targets; retain | child_failed; unrelated interpreter untouched |
+| Valid live ready gate + supported topology + acquired worker status identity | Startup complete; worker retained independently of launcher | Start only if no abort latched; keep root | Work and bounded drains under same deadline |
+| Registered worker native timeout / overflow / read failure / cancellation | Complete startup; actual worker/launcher known | Shared stop/wait path; cleanup only if all required deaths confirmed, otherwise retain | timeout / ack_invalid / child_failed as applicable; propagate original cancel |
+| Launcher exits after worker registration | Retained worker handle/direct child remains; no ancestry rediscovery needed for that worker | Wait/stop worker under original bounds | Nonzero/unavailable launcher/worker status rejects; zero launcher alone insufficient |
+| Unexpected descendant / ancestry lost / access failure | Retain identities, mark relevant discovery uncertain; never infer completeness from remaining scans | Bounded stop safe targets, retain root | child_failed; no digest even if known workers subsequently die |
+| Natural worker and launcher exit, status known, all required deaths confirmed | Quiescent; each worker status bound to its identity | Inspection only after complete success predicate, then explicit cleanup | ack failure/nonzero rejects; ok requires all checks below |
+| Worker dead but actual status unavailable | Death may be confirmed independently; no successful-status proof | Cleanup only if separate quiescence proof is complete; otherwise retain | child_failed, never ok |
+| Stop/kill attempted; confirmation deadline expires or second cancellation interrupts cleanup | cleanup_safe remains false; uncertainty preserved | Close resources without another unbounded wait; retain root | child_failed or original cancellation; no finalizer |
+
+Use one monotonic execution deadline computed before launch intent; registration, startup, native work, pipe draining and natural exit share it. Closing one/both pipes cannot cancel the deadline. When stopping, latch abort, close start permission first, collect safely observed descendants before signaling, stop registered worker/descendants before launcher, and use **one shared ≤1 s grace** then **one shared ≤5 s hard-stop confirmation**. Each wait receives only the remaining shared time; there is no five seconds per process, no fresh native deadline after registration, and no unbounded Popen.wait in finally. Windows terminate has no graceful SIGTERM distinction; an immediate forced stop may consume less than the grace bound. Keep polling output bounded while needed and close readers on failure; never block on pipe EOF from an unknown process.
+
+For pre-ready cancellation the discovery/termination boundary itself is uncertain. Do not promote a before-kill snapshot of children into an exhaustive set; kill/wait known targets only and retain regardless of whether the launcher subsequently reports zero. C3 deliberately leaves the newly created unknown worker alive temporarily to prove that public failure/retention does not falsely attest its death. Test cleanup later owns the fixture; production has no background reaper guarantee for unknown PIDs.
+
+All exits, including OSError/setup/read errors and BaseException, enter the same bounded containment path and then owner finally. Preserve the first cancellation/read exception; cleanup diagnostics cannot replace its traceback or make cleanup_safe true. If another interruption prevents confirmation, immediately leave the record unsafe and propagate with retention. The design does not promise immunity to parent process kill or machine failure. Python documents that initial OS process creation cannot always be interrupted or bounded by the subprocess timeout; the stated bound applies once control returns from those OS calls. Do not claim a strict end-to-end wall-clock SLA or a bounded trusted inspection callback.
+
+## Success predicate and frozen failure precedence
+
+Support requires **all**: validated registration/start; complete supported discovery; natural actual-worker exit with identity-bound integer zero; launcher reaped with integer zero; no forced termination or remaining in-scope worker; bounded output with exactly the unchanged matching ack; snapshot hash still matching the independent pin; trusted snapshot-only inspection returned successfully. Then and only then publish digest/metadata and remove the root. A pre-exit worker status JSON, a valid ack, EOF, worker absence, launcher zero, psutil None or successful deletion cannot substitute for any conjunct.
+
+Precedence when there is no propagating caller exception:
+
+1. Incomplete discovery/unconfirmed quiescence/setup or identity/status evidence failure => child_failed, no digest, retain if cleanup is unsafe. This overrides timeout/overflow; retain the initiating cause in bounded diagnostics.
+2. With confirmed containment, execution timeout => timeout; stdout/stderr overflow => ack_invalid. If both are observed, preserve the first latched cause rather than resetting deadlines during cleanup.
+3. With normal completed containment and no earlier fault, abnormal/nonzero success-record worker exit or nonzero launcher => child_failed. A request-matching failure envelope for load_failed/parse_failed with the expected ordinary worker failure exit remains that stable failure reason; it never admits. Missing/unavailable actual status always child_failed.
+4. Then apply existing ack_missing/ack_invalid validation, snapshot integrity_mismatch, inspect_failed, and finally ok rules. Existing malformed ack tests remain meaningful and cannot bypass lifecycle evidence by monkeypatching tuple status.

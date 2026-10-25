@@ -28,6 +28,7 @@ INTERNAL_DOCS = {
     "development/RELEASE_CHECKLIST.md",
     "development/backlog-inventory-20261006.md",
     "development/native-validation-contract.md",
+    "development/safeload-verification.md",
 }
 UNTRACKED_INTERNAL_DOCS = {
     "development/xfail-inventory.md",

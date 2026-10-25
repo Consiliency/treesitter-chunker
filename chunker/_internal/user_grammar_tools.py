@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from .grammar_management import SmartGrammarManager
@@ -15,7 +16,13 @@ logger = logging.getLogger(__name__)
 class UserGrammarTools:
     """User-friendly tools for grammar management."""
 
-    def __init__(self, build_dir: Path, grammars_dir: Path):
+    def __init__(
+        self,
+        build_dir: Path,
+        grammars_dir: Path,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, Any]] | None = None,
+    ):
         """Initialize user grammar tools.
 
         Args:
@@ -24,7 +31,11 @@ class UserGrammarTools:
         """
         self.build_dir = Path(build_dir)
         self.grammars_dir = Path(grammars_dir)
-        self.manager = SmartGrammarManager(build_dir, grammars_dir)
+        self.manager = SmartGrammarManager(
+            build_dir,
+            grammars_dir,
+            trusted_artifacts=trusted_artifacts,
+        )
 
     def install_grammar(
         self,
@@ -164,7 +175,7 @@ class UserGrammarTools:
             else:
                 result["status"] = "warning"
                 result["warnings"].append(
-                    f"Grammar installed but has issues: {health.status}",
+                    f"Grammar installed but native admission failed: {health.validation_reason}",
                 )
 
         except Exception as e:
@@ -279,7 +290,14 @@ class UserGrammarTools:
 
                 if current == latest:
                     result["warnings"].append("Grammar is already up to date")
-                    result["status"] = "success"
+                    health = self.manager.diagnose_grammar_issues(language)
+                    if health.status == "healthy":
+                        result["status"] = "success"
+                    else:
+                        result["status"] = "warning"
+                        result["warnings"].append(
+                            f"Existing grammar failed native admission: {health.validation_reason}",
+                        )
                     return result
 
                 # Checkout latest
@@ -337,7 +355,14 @@ class UserGrammarTools:
                 result["errors"].append("No .so files found after regeneration")
                 return result
 
-            result["status"] = "success"
+            health = self.manager.diagnose_grammar_issues(language)
+            if health.status == "healthy":
+                result["status"] = "success"
+            else:
+                result["status"] = "warning"
+                result["warnings"].append(
+                    f"Updated grammar failed native admission: {health.validation_reason}",
+                )
 
         except Exception as e:
             result["status"] = "error"
@@ -373,7 +398,9 @@ class UserGrammarTools:
                 "recommendations": health.recommendations,
                 "compatibility_score": compatibility.compatibility_score,
                 "compilation_date": compatibility.compilation_date,
-                "file_size": so_file.stat().st_size if so_file.exists() else 0,
+                "file_size": health.file_size,
+                "validation_reason": health.validation_reason,
+                "artifact_sha256": health.artifact_sha256,
             }
 
             result["grammars"][language] = grammar_info
@@ -403,14 +430,17 @@ class UserGrammarTools:
         }
 
         # Get health status
-        result["health"] = self.manager.diagnose_grammar_issues(language)
+        health = self.manager.diagnose_grammar_issues(language)
+        result["health"] = health
 
         # Get compatibility info
         result["compatibility"] = self.manager.get_grammar_compatibility(language)
 
         # Get recovery plan if needed
-        if result["health"].status != "healthy":
-            result["recovery_plan"] = self.manager.generate_recovery_plan(language)
+        if health.status != "healthy":
+            result["recovery_plan"] = self.manager.generate_recovery_plan(
+                language, health=health
+            )
 
         # Get source repository info
         source_dir = self.grammars_dir / f"tree-sitter-{language}"
