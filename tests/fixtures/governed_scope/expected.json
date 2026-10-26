@@ -1,0 +1,7 @@
+{
+  "owned": {"included": ["app.py", "lib/helper.py"], "opaque": [], "exclusions": []},
+  "boundaries": {"included": ["app.py", "vendor_tools/owned.py"], "opaque": [{"path":"nested","reason":"nested_repository"},{"path":"vendor","reason":"vendored"}], "exclusions": []},
+  "case_collision": {"reason":"scope_path","blocked_receipt":true,"stage":false},
+  "metadata_revision": {"reason":"scope_metadata","blocked_receipt":false,"stage":false},
+  "request_path_and_metadata": {"reason":"scope_path","blocked_receipt":false,"stage":false}
+}
