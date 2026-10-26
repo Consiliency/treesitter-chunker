@@ -189,6 +189,27 @@ def _resolution_status(candidates: list[str]) -> ResolutionStatus:
     return "unresolved"
 
 
+def _resolve_call_reference_candidates(
+    reference: str,
+    by_qualified: dict[str, set[str]],
+    by_name: dict[str, set[str]],
+) -> list[str]:
+    """Do not infer a callee from tokens inside arbitrary source expressions.
+
+    Call references are verbatim source slices, unlike normalized import names.
+    Only simple identifier/member-chain syntax uses the existing permissive
+    resolver. Comments, computed members and other complex expressions remain
+    unresolved raw observations; their incidental identifiers are not callees.
+    This is a conservative syntax guard, not scope-aware name resolution.
+    """
+    if not re.fullmatch(
+        r"[A-Za-z_][A-Za-z0-9_]*(?:\s*(?:\?\.|\.|::)\s*[A-Za-z_][A-Za-z0-9_]*)*",
+        reference.strip(),
+    ):
+        return []
+    return _resolve_reference_candidates(reference, by_qualified, by_name)
+
+
 def _import_record(import_text: str, line: int) -> dict[str, Any]:
     names = [
         candidate
@@ -672,7 +693,9 @@ def assemble_symbol_graph(
         seen_call_sites.add(call_site_id)
         from_id = str(fact["from"])
         reference = str(fact["reference"])
-        candidates = _resolve_reference_candidates(reference, by_qualified, by_name)
+        candidates = _resolve_call_reference_candidates(
+            reference, by_qualified, by_name
+        )
         resolution = _resolution_status(candidates)
         to_id = candidates[0] if resolution == "resolved" else reference
         relationships.append(
