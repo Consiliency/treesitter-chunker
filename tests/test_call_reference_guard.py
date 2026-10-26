@@ -200,6 +200,88 @@ class CallReferenceGuard(unittest.TestCase):
             calls(new)[0], "client /* audit */ .messages.create", path.read_bytes()
         )
 
+    def test_c_and_cpp_pointer_members_keep_simple_resolution(self):
+        cases = (
+            (
+                "c",
+                "ops->helper",
+                "ops /* helper */ ->run",
+                "/* café ☕ */\nvoid helper(void) {}\nvoid caller(void) {\n"
+                "ops->helper(); helper(); ops /* helper */ ->run();\n}\n",
+            ),
+            (
+                "cpp",
+                "this->helper",
+                "p /* helper */ ->run",
+                "/* café ☕ */\nclass Worker { public:\nvoid helper() {}\n"
+                "void caller() {\nthis->helper(); helper(); "
+                "p /* helper */ ->run();\n}\n};\n",
+            ),
+        )
+        for language, pointer, commented, text in cases:
+            with self.subTest(language=language):
+                path = self.file(text, language)
+                source = text.encode("utf-8")
+                for mode in ("strict", "permissive"):
+                    graph = candidate.extract_symbol_graph(
+                        path, language, resolution_mode=mode, fail_fast=True
+                    )
+                    simple = calls(graph, "helper")
+                    indirect = calls(graph, pointer)
+                    self.assertEqual(len(simple), 1)
+                    self.assertEqual(len(indirect), 1)
+                    self.assertEqual(simple[0]["resolution"], "resolved")
+                    row = indirect[0]
+                    self.assertEqual(row["resolution"], "resolved")
+                    self.assertEqual(row["to"], simple[0]["to"])
+                    self.assertEqual(row["from"], simple[0]["from"])
+                    self.assertEqual(
+                        graph["symbol_lookup"][row["to"]]["name"], "helper"
+                    )
+                    start = source.index(pointer.encode("utf-8"))
+                    self.assertEqual(row["callee_byte_start"], start)
+                    self.assertEqual(row["callee_byte_end"], start + len(pointer))
+                    self.assertEqual(row["line"], source[:start].count(b"\n") + 1)
+                    self.assertEqual(
+                        source[start : start + len(pointer)].decode(), pointer
+                    )
+                    unresolved = calls(graph, commented)
+                    self.assertEqual(len(unresolved), 1)
+                    self.assert_unresolved_raw(unresolved[0], commented, source)
+                self.assertEqual(path.read_bytes(), source)
+
+    def test_scope_and_multiline_simple_chains_keep_resolution(self):
+        for language, extension, reference, text in (
+            (
+                "cpp",
+                "cpp",
+                "external::audit",
+                "void audit() {}\nvoid caller() { external::audit(); }\n",
+            ),
+            (
+                "javascript",
+                "js",
+                "ns\n .audit",
+                "export function audit() {}\nexport function caller() { ns\n .audit(); }\n",
+            ),
+        ):
+            with self.subTest(language=language):
+                path = self.file(text, extension)
+                source = text.encode("utf-8")
+                for mode in ("strict", "permissive"):
+                    graph = candidate.extract_symbol_graph(
+                        path, language, resolution_mode=mode, fail_fast=True
+                    )
+                    rows = calls(graph, reference)
+                    self.assertEqual(len(rows), 1)
+                    row = rows[0]
+                    self.assertEqual(row["resolution"], "resolved")
+                    self.assertEqual(graph["symbol_lookup"][row["to"]]["name"], "audit")
+                    start = source.index(reference.encode("utf-8"))
+                    self.assertEqual(row["callee_byte_start"], start)
+                    self.assertEqual(row["callee_byte_end"], start + len(reference))
+                    self.assertEqual(row["line"], source[:start].count(b"\n") + 1)
+
     def test_utf8_repeated_sites_preserve_independent_spans_and_owner(self):
         reference = "client /* café audit ☕ */ .messages.create"
         text = (

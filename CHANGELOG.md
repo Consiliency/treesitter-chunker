@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from comments, computed members or expressions to local definitions. Preserve
   call-site tokens, UTF-8 spans, owners and repeated/self calls, along with the
   existing import/dependency resolver and bounded simple-qualified heuristic
+  (including C/C++ `->`). Names outside the letter/underscore identifier subset,
+  such as JavaScript `$`/Unicode names and parenthesized callees, remain unresolved
   (producer repair for Consiliency/jev-assembler#45). Affected graph/IR annotations
   and digests need source-matched consumer recapture; no release or adoption is implied.
 

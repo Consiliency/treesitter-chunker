@@ -203,7 +203,7 @@ def _resolve_call_reference_candidates(
     This is a conservative syntax guard, not scope-aware name resolution.
     """
     if not re.fullmatch(
-        r"[A-Za-z_][A-Za-z0-9_]*(?:\s*(?:\?\.|\.|::)\s*[A-Za-z_][A-Za-z0-9_]*)*",
+        r"[A-Za-z_][A-Za-z0-9_]*(?:\s*(?:\?\.|\.|::|->)\s*[A-Za-z_][A-Za-z0-9_]*)*",
         reference.strip(),
     ):
         return []
