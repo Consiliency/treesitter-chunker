@@ -8,6 +8,7 @@ import sys
 
 
 CI_SMOKE_TESTS = [
+    "tests/test_governed_scope.py",
     "tests/test_auto.py",
     "tests/test_chunking.py",
     "tests/test_cli.py",

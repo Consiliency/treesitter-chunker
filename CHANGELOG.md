@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add an experimental stdlib snapshot selector for opt-in governed extraction. Excluded repositories, dependencies and symlinks remain opaque. Published parser APIs and Boundary IR bytes are unchanged.
+- Keep unexpected selector failures on setup exit 2; test actual canonical bytes and receipt digests for Unicode and escaped paths.
+
 ### Fixed
 
 - Repair public wheel structural verification with an independent source-profile
