@@ -25,7 +25,7 @@ class CallReferenceGuard(unittest.TestCase):
 
     def file(self, text, extension="js"):
         path = self.root / ("audit." + extension)
-        path.write_text(text, encoding="utf-8")
+        path.write_bytes(text.encode("utf-8"))
         return path
 
     def assert_unresolved_raw(self, row, reference, source):
