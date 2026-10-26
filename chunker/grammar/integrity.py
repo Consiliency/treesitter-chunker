@@ -258,7 +258,14 @@ class _ProbeLifecycle:
     def record_exception(self, error: BaseException, operation: str) -> None:
         if self.exception is None:
             try:
-                self.exception = {"operation": operation, **_exception_metadata(error)}
+                self.exception = {
+                    "operation": operation,
+                    "type": None,
+                    "errno": None,
+                    "winerror": None,
+                    "frames": [],
+                }
+                self.exception.update(_exception_metadata(error))
             except BaseException:
                 # Observing a propagating failure must not replace it.
                 pass

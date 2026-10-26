@@ -1735,6 +1735,72 @@ def test_native_denial_observation_does_not_swallow_cancellation(tmp_path, monke
     assert not state.start_attempted and not state.discovery_complete
 
 
+@pytest.mark.parametrize("primary_type", [KeyboardInterrupt, PermissionError])
+@pytest.mark.parametrize("observer_type", [OSError, KeyboardInterrupt])
+def test_native_failed_observation_keeps_first_error_through_cleanup_failure(
+    tmp_path, monkeypatch, caplog, primary_type, observer_type
+):
+    import traceback
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"no native execution")
+    primary = primary_type("original launch failure")
+    cleanup = OSError("secondary stop failure")
+    original_observer = integrity._exception_metadata
+    roots, states, observed = [], [], []
+
+    def launch(_command, *, cwd, **_kwargs):
+        roots.append(cwd)
+        raise primary
+
+    def observe(error):
+        observed.append(error)
+        if len(observed) == 1:
+            assert error is primary
+            raise observer_type("first observation unavailable")
+        return original_observer(error)
+
+    def stop(state):
+        states.append(state)
+        raise cleanup
+
+    monkeypatch.setattr(integrity.subprocess, "Popen", launch)
+    monkeypatch.setattr(integrity, "_exception_metadata", observe)
+    monkeypatch.setattr(integrity, "_stop_child", stop)
+    caplog.set_level("DEBUG", logger=integrity.__name__)
+    try:
+        arguments = {
+            "provenance": {"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()}
+        }
+        if primary_type is KeyboardInterrupt:
+            with pytest.raises(KeyboardInterrupt) as caught:
+                integrity.probe_native_grammar(candidate, "test", **arguments)
+            assert caught.value is primary
+            assert traceback.extract_tb(primary.__traceback__)[-1].name == "launch"
+        else:
+            result = integrity.probe_native_grammar(candidate, "test", **arguments)
+            assert result == integrity.NativeProbeResult(False, "child_failed", None)
+        observations = [
+            record.native_probe_diagnostic
+            for record in caplog.records
+            if hasattr(record, "native_probe_diagnostic")
+        ]
+        assert len(observations) == 1
+        assert observations[0]["exception"]["operation"] == "launch"
+        assert observations[0]["exception"].get("type") in {
+            None,
+            primary_type.__name__,
+        }
+        assert len(states) == 1 and not states[0].cleanup_safe
+        assert states[0].worker is None and not states[0].start_attempted
+        assert roots[0].exists(), "uncertainty must retain the root"
+    finally:
+        # Popen was replaced before creating a process; these roots are fixture-owned.
+        for root in roots:
+            integrity.shutil.rmtree(root)
+
+
 def test_native_failure_diagnostics_bound_traceback_without_reading_source():
     from chunker.grammar import integrity
 

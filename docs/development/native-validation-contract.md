@@ -215,7 +215,7 @@ For uncertainty report a bounded application diagnostic with retained absolute r
 
 Enabling DEBUG for `chunker.grammar.integrity` attaches a structured
 `native_probe_diagnostic` dictionary to each rejection or propagating-exception
-log record, with the same bounded JSON in the log message for plain formatters.
+log record, with the same JSON in the log message for plain formatters.
 Its diagnostic schema is `native_probe.diagnostic.v1`; this is not
 the worker acknowledgment schema. Successful probes emit no such record.
 The public result fields, reasons and `native_probe.v1` acknowledgment remain
@@ -227,6 +227,20 @@ launcher/worker identities and statuses, startup-write attempts/completion,
 and the final cleanup proof state. It performs no extra process-status query.
 It omits exception messages, filenames, source samples and native output.
 Completing the start write is not evidence of native entry or successful parsing.
+
+The first exception reserves its operation before metadata observation. If that
+observation fails, its class/error-code fields remain null and its frames empty;
+a secondary cleanup exception cannot take its place. Some inherited status and
+cleanup handlers consume exceptions into internal failure state, so a rejection
+can also have no exception metadata. `cleanup_safe` reports the worker-lifetime
+proof before snapshot removal, not proof that filesystem removal succeeded.
+
+Observation visits at most 64 traceback links and retains the last six visited
+locations, with class/function names limited to 64 characters. A deeper origin
+need not be included. Field/frame counts and names are bounded, but no universal
+serialized-byte cap is promised for arbitrary integer attributes supplied by
+trusted application callbacks; normal OS error-code metadata is the intended
+case.
 
 The private ready reader optionally receives its caller-owned lifecycle solely
 to count Windows OPEN denials and retain the first denial's bounded metadata.
