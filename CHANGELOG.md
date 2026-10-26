@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a private, input-only governed GROUP adapter over the existing clustering
+  engine, with pinned profiles, canonical proposal identities and complete native
+  fact accounting. Groups remain proposals and grant no architectural authority.
 - Add an experimental stdlib snapshot selector for opt-in governed extraction. Excluded repositories, dependencies and symlinks remain opaque. Published parser APIs and Boundary IR bytes are unchanged.
 - Keep unexpected selector failures on setup exit 2; test actual canonical bytes and receipt digests for Unicode and escaped paths.
 

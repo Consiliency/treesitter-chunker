@@ -1,0 +1,270 @@
+{
+  "declared": [
+    [
+      "a1",
+      "a2",
+      "a3",
+      "a4"
+    ],
+    [
+      "b1",
+      "b2"
+    ],
+    [
+      "u"
+    ]
+  ],
+  "dependency_components": [
+    [
+      "a1",
+      "a2"
+    ],
+    [
+      "a3",
+      "a4"
+    ],
+    [
+      "b1",
+      "b2"
+    ],
+    [
+      "u"
+    ]
+  ],
+  "weighted_edges": [
+    {
+      "from": "a1",
+      "to": "a2",
+      "weight": 2.0
+    },
+    {
+      "from": "a3",
+      "to": "a4",
+      "weight": 1.0
+    },
+    {
+      "from": "b1",
+      "to": "b2",
+      "weight": 1.0
+    }
+  ],
+  "omitted": {
+    "ambiguous": 1,
+    "cross_hard_boundary": 12,
+    "external": 1,
+    "missing_endpoint": 1,
+    "self_loop": 1,
+    "unresolved": 1,
+    "unsupported_kind": 1
+  },
+  "approval": "proposal_only",
+  "normalization_vector": {
+    "schema": "plan.normalization-vector.v1",
+    "scope": "Serialization-only literal; fake identities cannot authorize product execution. Implementation substitutes bound producer inputs for actual CLI positive.",
+    "canonical": {
+      "schema": "chunker.group.request.v1",
+      "source_binding": {
+        "repo_id": "fixture",
+        "source_revision": "captured-vector",
+        "declaration_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "selection_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "metadata_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "included_inventory_digest": "3333333333333333333333333333333333333333333333333333333333333333",
+        "driver_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+        "graph_digest": "cb1f14067570ff92a8bbc419d3bbb16f9fe1ae3b4f9f0e55b5b2e723abdbfc60",
+        "coverage_records": [
+          {
+            "path": "a.ts",
+            "status": "processed_no_symbols",
+            "diagnostic_refs": []
+          },
+          {
+            "path": "b.ts",
+            "status": "processed_no_symbols",
+            "diagnostic_refs": []
+          }
+        ],
+        "coverage_digest": "ae99b7b3c6cff66b0b7962cfeed7716896600d1b8e667b9172f01de628f1730e",
+        "native_identity_profile": {
+          "producer": "fixture",
+          "version": "1",
+          "symbol_id_algorithm": "opaque",
+          "graph_encoding": "group-json-v1",
+          "relocation_comparability": true
+        }
+      },
+      "graph": {
+        "symbol_lookup": {},
+        "relationships": [],
+        "call_facts": [],
+        "errors": [],
+        "metadata": {}
+      },
+      "producer": {
+        "source_commit": "5555555555555555555555555555555555555555",
+        "distribution_label": "fixture-only",
+        "source_files": [
+          {
+            "path": "a.py",
+            "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+          },
+          {
+            "path": "b.py",
+            "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        ],
+        "lock_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+        "dependencies": [
+          {
+            "name": "a",
+            "version": "1",
+            "artifact_sha256": null
+          },
+          {
+            "name": "b",
+            "version": "1",
+            "artifact_sha256": null
+          }
+        ],
+        "python_version": "3.12",
+        "unicode_version": "15.0.0",
+        "platform_profile": "fixture"
+      },
+      "settings": {
+        "seed": 42,
+        "weights": {
+          "import_weight": 1.0,
+          "call_weight": 0.7,
+          "inherit_weight": 0.8,
+          "type_ref_weight": 0.5,
+          "same_file_bonus": 0.3
+        },
+        "coarse_resolution": 0.5,
+        "fine_resolution": 1.5,
+        "detect_infrastructure": true,
+        "infrastructure_threshold": 0.95,
+        "limits": {
+          "max_symbols": 2000,
+          "max_relationships": 20000,
+          "max_input_bytes": 16777216,
+          "max_output_bytes": 16777216
+        }
+      },
+      "policy": {
+        "mode": "declared_boundaries",
+        "revision": "fixture-1",
+        "intended_boundary_revision": "fixture-1",
+        "correspondence_digest": "8888888888888888888888888888888888888888888888888888888888888888",
+        "membership": [],
+        "unassigned_ids": [],
+        "override_refs": []
+      }
+    },
+    "reversed": {
+      "schema": "chunker.group.request.v1",
+      "source_binding": {
+        "repo_id": "fixture",
+        "source_revision": "captured-vector",
+        "declaration_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "selection_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "metadata_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "included_inventory_digest": "3333333333333333333333333333333333333333333333333333333333333333",
+        "driver_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+        "graph_digest": "cb1f14067570ff92a8bbc419d3bbb16f9fe1ae3b4f9f0e55b5b2e723abdbfc60",
+        "coverage_records": [
+          {
+            "path": "b.ts",
+            "status": "processed_no_symbols",
+            "diagnostic_refs": []
+          },
+          {
+            "path": "a.ts",
+            "status": "processed_no_symbols",
+            "diagnostic_refs": []
+          }
+        ],
+        "coverage_digest": "ae99b7b3c6cff66b0b7962cfeed7716896600d1b8e667b9172f01de628f1730e",
+        "native_identity_profile": {
+          "producer": "fixture",
+          "version": "1",
+          "symbol_id_algorithm": "opaque",
+          "graph_encoding": "group-json-v1",
+          "relocation_comparability": true
+        }
+      },
+      "graph": {
+        "symbol_lookup": {},
+        "relationships": [],
+        "call_facts": [],
+        "errors": [],
+        "metadata": {}
+      },
+      "producer": {
+        "source_commit": "5555555555555555555555555555555555555555",
+        "distribution_label": "fixture-only",
+        "source_files": [
+          {
+            "path": "b.py",
+            "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+          },
+          {
+            "path": "a.py",
+            "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        ],
+        "lock_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+        "dependencies": [
+          {
+            "name": "b",
+            "version": "1",
+            "artifact_sha256": null
+          },
+          {
+            "name": "a",
+            "version": "1",
+            "artifact_sha256": null
+          }
+        ],
+        "python_version": "3.12",
+        "unicode_version": "15.0.0",
+        "platform_profile": "fixture"
+      },
+      "settings": {
+        "seed": 42,
+        "weights": {
+          "import_weight": 1.0,
+          "call_weight": 0.7,
+          "inherit_weight": 0.8,
+          "type_ref_weight": 0.5,
+          "same_file_bonus": 0.3
+        },
+        "coarse_resolution": 0.5,
+        "fine_resolution": 1.5,
+        "detect_infrastructure": true,
+        "infrastructure_threshold": 0.95,
+        "limits": {
+          "max_symbols": 2000,
+          "max_relationships": 20000,
+          "max_input_bytes": 16777216,
+          "max_output_bytes": 16777216
+        }
+      },
+      "policy": {
+        "mode": "declared_boundaries",
+        "revision": "fixture-1",
+        "intended_boundary_revision": "fixture-1",
+        "correspondence_digest": "8888888888888888888888888888888888888888888888888888888888888888",
+        "membership": [],
+        "unassigned_ids": [],
+        "override_refs": []
+      }
+    },
+    "expected": {
+      "request_digest": "ce079aa0b68fecef012e4a8c392bc1fc017592c7a8c2cf8fca8ea098723a5450",
+      "profile_digest": "3b3807fb9179aad1501df8ca3276d16b25d80624c1818aada23e1736b861206a",
+      "canonical_request_utf8": "{\"graph\":{\"call_facts\":[],\"errors\":[],\"metadata\":{},\"relationships\":[],\"symbol_lookup\":{}},\"policy\":{\"correspondence_digest\":\"8888888888888888888888888888888888888888888888888888888888888888\",\"intended_boundary_revision\":\"fixture-1\",\"membership\":[],\"mode\":\"declared_boundaries\",\"override_refs\":[],\"revision\":\"fixture-1\",\"unassigned_ids\":[]},\"producer\":{\"dependencies\":[{\"artifact_sha256\":null,\"name\":\"a\",\"version\":\"1\"},{\"artifact_sha256\":null,\"name\":\"b\",\"version\":\"1\"}],\"distribution_label\":\"fixture-only\",\"lock_sha256\":\"7777777777777777777777777777777777777777777777777777777777777777\",\"platform_profile\":\"fixture\",\"python_version\":\"3.12\",\"source_commit\":\"5555555555555555555555555555555555555555\",\"source_files\":[{\"path\":\"a.py\",\"sha256\":\"6666666666666666666666666666666666666666666666666666666666666666\"},{\"path\":\"b.py\",\"sha256\":\"6666666666666666666666666666666666666666666666666666666666666666\"}],\"unicode_version\":\"15.0.0\"},\"schema\":\"chunker.group.request.v1\",\"settings\":{\"coarse_resolution\":0.5,\"detect_infrastructure\":true,\"fine_resolution\":1.5,\"infrastructure_threshold\":0.95,\"limits\":{\"max_input_bytes\":16777216,\"max_output_bytes\":16777216,\"max_relationships\":20000,\"max_symbols\":2000},\"seed\":42,\"weights\":{\"call_weight\":0.7,\"import_weight\":1.0,\"inherit_weight\":0.8,\"same_file_bonus\":0.3,\"type_ref_weight\":0.5}},\"source_binding\":{\"coverage_digest\":\"ae99b7b3c6cff66b0b7962cfeed7716896600d1b8e667b9172f01de628f1730e\",\"coverage_records\":[{\"diagnostic_refs\":[],\"path\":\"a.ts\",\"status\":\"processed_no_symbols\"},{\"diagnostic_refs\":[],\"path\":\"b.ts\",\"status\":\"processed_no_symbols\"}],\"declaration_digest\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"driver_sha256\":\"4444444444444444444444444444444444444444444444444444444444444444\",\"graph_digest\":\"cb1f14067570ff92a8bbc419d3bbb16f9fe1ae3b4f9f0e55b5b2e723abdbfc60\",\"included_inventory_digest\":\"3333333333333333333333333333333333333333333333333333333333333333\",\"metadata_digest\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"native_identity_profile\":{\"graph_encoding\":\"group-json-v1\",\"producer\":\"fixture\",\"relocation_comparability\":true,\"symbol_id_algorithm\":\"opaque\",\"version\":\"1\"},\"repo_id\":\"fixture\",\"selection_digest\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"source_revision\":\"captured-vector\"}}",
+      "semantic_proposals_equal": true
+    },
+    "execution": "PLANNED_UNRUN"
+  }
+}
