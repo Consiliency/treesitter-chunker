@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Add opt-in, bounded failure diagnostics for native grammar admission, retaining
+  the original operation/error codes, startup state and cleanup outcome without
+  logging source content or changing admission, retry or deadline behavior
+  (treesitter-chunker#508, treesitter-chunker#509).
+
 - Require independently approved artifact pins for local grammar analysis and
   legacy health checks. Probe private verified snapshots in a gated child,
   require actual-worker completion, and inspect only the admitted bytes.

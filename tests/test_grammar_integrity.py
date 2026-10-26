@@ -371,10 +371,13 @@ __attribute__((constructor)) static void enter_library(void) { mark_entry(); }
     return library, marker, trusted_artifacts(library)["baml"], FIXTURE.read_bytes()
 
 
-def test_native_windows_ready_open_denial_recovers_before_start(tmp_path, monkeypatch):
+def test_native_windows_ready_open_denial_recovers_before_start(
+    tmp_path, monkeypatch, caplog
+):
     from types import SimpleNamespace
     from chunker.grammar import integrity
 
+    caplog.set_level("DEBUG", logger=integrity.__name__)
     library, marker, provenance, sample = _compile_ready_gate_probe(
         tmp_path, monkeypatch
     )
@@ -392,15 +395,15 @@ def test_native_windows_ready_open_denial_recovers_before_start(tmp_path, monkey
                 raise denial
         return original_open(path, mode, *args, **kwargs)
 
-    def ready(directory, nonce):
+    def ready(directory, nonce, **kwargs):
         if len(open_observations) == 0:
             original_sys = integrity.sys
             integrity.sys = SimpleNamespace(platform="win32")
             try:
-                return original_ready(directory, nonce)
+                return original_ready(directory, nonce, **kwargs)
             finally:
                 integrity.sys = original_sys
-        return original_ready(directory, nonce)
+        return original_ready(directory, nonce, **kwargs)
 
     def register(state, record):
         assert len(open_observations) >= 2 and not any(open_observations)
@@ -428,16 +431,25 @@ def test_native_windows_ready_open_denial_recovers_before_start(tmp_path, monkey
         assert result.artifact_sha256 == provenance["sha256"]
         assert len(registrations) == 1 and marker.read_text() == "entered"
         assert states[0].cleanup_safe and not roots[0].exists()
+        assert states[0].ready_open_denials == 1
+        assert states[0].first_ready_open_denial["errno"] == 13
+        assert states[0].start_attempted and states[0].start_completed
+        assert not any(
+            hasattr(record, "native_probe_diagnostic") for record in caplog.records
+        ), "a recovered denial must not turn a successful probe into a failure record"
     finally:
         for root in roots:
             if root.exists():
                 integrity.shutil.rmtree(root)
 
 
-def test_native_windows_ready_open_denial_uses_shared_deadline(tmp_path, monkeypatch):
+def test_native_windows_ready_open_denial_uses_shared_deadline(
+    tmp_path, monkeypatch, caplog
+):
     from types import SimpleNamespace
     from chunker.grammar import integrity
 
+    caplog.set_level("DEBUG", logger=integrity.__name__)
     library, marker, provenance, sample = _compile_ready_gate_probe(
         tmp_path, monkeypatch
     )
@@ -452,11 +464,11 @@ def test_native_windows_ready_open_denial_uses_shared_deadline(tmp_path, monkeyp
             raise PermissionError(13, "ready record remains denied")
         return original_open(path, mode, *args, **kwargs)
 
-    def ready(directory, nonce):
+    def ready(directory, nonce, **kwargs):
         original_sys = integrity.sys
         integrity.sys = SimpleNamespace(platform="win32")
         try:
-            return original_ready(directory, nonce)
+            return original_ready(directory, nonce, **kwargs)
         finally:
             integrity.sys = original_sys
 
@@ -487,6 +499,19 @@ def test_native_windows_ready_open_denial_uses_shared_deadline(tmp_path, monkeyp
         assert state.worker is None and state.worker_handle is None
         assert not state.discovery_complete and not state.cleanup_safe
         assert roots[0].exists(), "startup uncertainty must retain the root"
+        observations = [
+            record.native_probe_diagnostic
+            for record in caplog.records
+            if hasattr(record, "native_probe_diagnostic")
+        ]
+        assert len(observations) == 1
+        observation = observations[0]
+        assert observation["reason"] == "child_failed"
+        assert observation["trigger"] == "timeout"
+        assert observation["ready_open_denials"] == len(open_attempts)
+        assert observation["first_ready_open_denial"]["errno"] == 13
+        assert not observation["start_attempted"] and not observation["start_completed"]
+        assert not observation["cleanup_safe"]
     finally:
         for root in roots:
             if root.exists():
@@ -514,15 +539,15 @@ def test_native_windows_ready_open_recovery_keeps_invalid_record_rejected(
                 raise PermissionError(13, "first ready open denied")
         return original_open(path, mode, *args, **kwargs)
 
-    def ready(directory, nonce):
+    def ready(directory, nonce, **kwargs):
         if len(open_attempts) == 0:
             original_sys = integrity.sys
             integrity.sys = SimpleNamespace(platform="win32")
             try:
-                return original_ready(directory, nonce)
+                return original_ready(directory, nonce, **kwargs)
             finally:
                 integrity.sys = original_sys
-        return original_ready(directory, nonce)
+        return original_ready(directory, nonce, **kwargs)
 
     def reject_register(*args):
         registrations.append(args)
@@ -684,7 +709,7 @@ def test_ready_read_cancellation_survives_stream_disposal_failure(
 
 @_READY_CLOSE_FAILURES
 def test_native_probe_ready_read_cancellation_survives_disposal_failure(
-    tmp_path, monkeypatch, close_error
+    tmp_path, monkeypatch, close_error, caplog
 ):
     import traceback
     from chunker.grammar import integrity
@@ -696,6 +721,7 @@ def test_native_probe_ready_read_cancellation_survives_disposal_failure(
     original_read = integrity._read_child
     events, registrations, roots, states = [], [], [], []
     original = KeyboardInterrupt("original ready read cancellation")
+    caplog.set_level("DEBUG", logger=integrity.__name__)
 
     def controlled_open(path, mode="r", *args, **kwargs):
         stream = original_open(path, mode, *args, **kwargs)
@@ -730,6 +756,16 @@ def test_native_probe_ready_read_cancellation_survives_disposal_failure(
 
         assert caught is original, f"original cancellation replaced by {caught!r}"
         assert traceback.extract_tb(caught.__traceback__)[-1].name == "read"
+        observations = [
+            record.native_probe_diagnostic
+            for record in caplog.records
+            if hasattr(record, "native_probe_diagnostic")
+        ]
+        assert len(observations) == 1
+        assert observations[0]["reason"] is None
+        assert observations[0]["exception"]["type"] == "KeyboardInterrupt"
+        assert observations[0]["exception"]["operation"] == "ready_read"
+        assert observations[0]["exception"]["frames"][-1]["function"] == "read"
         assert events == ["read", "close"], "stream must be disposed exactly once"
         assert not registrations and not marker.exists()
         state = states[0]
@@ -1411,12 +1447,12 @@ def test_native_lifecycle_faults_retain_unsafe_root(tmp_path, monkeypatch, stage
             command, cwd, 0.1 if stage == "wait" else timeout, **kwargs
         )
 
-    def ready(*args):
+    def ready(*args, **kwargs):
         if stage in {"cancel", "second_interrupt", "read"}:
             raise injected
         if stage == "access":
             raise PermissionError("registration access denied")
-        return real_ready(*args)
+        return real_ready(*args, **kwargs)
 
     def stop(state):
         if stage == "wait":
@@ -1536,3 +1572,248 @@ def test_native_retention_diagnostic_failure_preserves_cancellation(
         for root in roots:
             if root.exists():
                 integrity.shutil.rmtree(root)
+
+
+def test_native_rejection_diagnostic_preserves_launch_error_without_private_data(
+    tmp_path, monkeypatch, caplog
+):
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "private-grammar.so"
+    candidate.write_bytes(b"private grammar contents")
+    error = PermissionError(13, "private error message", "/private/secret-path")
+    error.winerror = 32
+    roots = []
+
+    def launch(_command, *, cwd, **_kwargs):
+        roots.append(cwd)
+        raise error
+
+    monkeypatch.setattr(integrity.subprocess, "Popen", launch)
+    caplog.set_level("DEBUG", logger=integrity.__name__)
+    try:
+        result = integrity.probe_native_grammar(
+            candidate,
+            "test",
+            provenance={"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()},
+            sample=b"private source sample",
+        )
+        assert result == integrity.NativeProbeResult(False, "child_failed", None)
+        observations = [
+            record.native_probe_diagnostic
+            for record in caplog.records
+            if hasattr(record, "native_probe_diagnostic")
+        ]
+        assert (
+            len(observations) == 1
+        ), "the original rejection needs one structured record"
+        observation = observations[0]
+        assert observation["schema"] == "native_probe.diagnostic.v1"
+        assert observation["phase"] == "native_worker"
+        assert observation["exception"]["operation"] == "launch"
+        assert observation["exception"]["type"] == "PermissionError"
+        assert observation["exception"]["errno"] == 13
+        assert observation["exception"]["winerror"] == 32
+        assert observation["exception"]["frames"][-1]["function"] == "launch"
+        assert observation["launch_attempted"] and not observation["cleanup_safe"]
+        assert (
+            observation["worker_pid"] is None and observation["worker_status"] is None
+        )
+        assert not observation["start_attempted"] and not observation["start_completed"]
+        assert roots[0].exists(), "diagnostics cannot authorize uncertain cleanup"
+        serialized = json.dumps(observation)
+        assert len(serialized) < 4096
+        assert "private" not in serialized and "secret-path" not in serialized
+        record = next(
+            record
+            for record in caplog.records
+            if hasattr(record, "native_probe_diagnostic")
+        )
+        assert json.loads(record.getMessage().split(": ", 1)[1]) == observation
+    finally:
+        # The replaced Popen never created a process; only this fixture owns the root.
+        for root in roots:
+            integrity.shutil.rmtree(root)
+
+
+@pytest.mark.parametrize("sink_error", [OSError, KeyboardInterrupt])
+def test_native_failure_diagnostic_sink_preserves_original_cancellation(
+    tmp_path, monkeypatch, sink_error
+):
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"no native execution")
+    original = KeyboardInterrupt("original launch cancellation")
+    roots = []
+
+    def launch(_command, *, cwd, **_kwargs):
+        roots.append(cwd)
+        raise original
+
+    class FailingLogger:
+        def isEnabledFor(self, _level):  # noqa: N802 - logging.Logger interface
+            return True
+
+        def debug(self, *_args, **_kwargs):
+            raise sink_error("failure observer failed")
+
+        def error(self, *_args, **_kwargs):
+            pass
+
+    try:
+        with monkeypatch.context() as context:
+            context.setattr(integrity.subprocess, "Popen", launch)
+            context.setattr(
+                integrity.logging, "getLogger", lambda _name: FailingLogger()
+            )
+            with pytest.raises(KeyboardInterrupt) as caught:
+                integrity.probe_native_grammar(
+                    candidate,
+                    "test",
+                    provenance={
+                        "sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()
+                    },
+                )
+            assert caught.value is original
+        assert roots[0].exists()
+    finally:
+        for root in roots:
+            integrity.shutil.rmtree(root)
+
+
+@pytest.mark.parametrize("sink_error", [OSError, KeyboardInterrupt])
+def test_native_failure_diagnostic_sink_keeps_rejection_and_new_cancellation(
+    monkeypatch, sink_error
+):
+    from chunker.grammar import integrity
+
+    error = sink_error("diagnostic sink failure")
+
+    class FailingLogger:
+        def isEnabledFor(self, _level):  # noqa: N802 - logging.Logger interface
+            return True
+
+        def debug(self, *_args, **_kwargs):
+            raise error
+
+    with monkeypatch.context() as context:
+        context.setattr(integrity.logging, "getLogger", lambda _name: FailingLogger())
+        if sink_error is KeyboardInterrupt:
+            with pytest.raises(KeyboardInterrupt) as caught:
+                integrity.probe_native_grammar(
+                    Path("relative.so"), "test", provenance=None
+                )
+            assert caught.value is error
+        else:
+            result = integrity.probe_native_grammar(
+                Path("relative.so"), "test", provenance=None
+            )
+            assert result == integrity.NativeProbeResult(False, "untrusted", None)
+
+
+def test_native_denial_observation_does_not_swallow_cancellation(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from chunker.grammar import integrity
+
+    cancellation = KeyboardInterrupt("cancel while observing recovered denial")
+    state = integrity._ProbeLifecycle()
+
+    def denied(*_args, **_kwargs):
+        raise PermissionError(13, "ready open denied")
+
+    def cancelled(_error):
+        raise cancellation
+
+    monkeypatch.setattr(integrity, "sys", SimpleNamespace(platform="win32"))
+    monkeypatch.setattr(Path, "open", denied)
+    monkeypatch.setattr(integrity, "_exception_metadata", cancelled)
+    with pytest.raises(KeyboardInterrupt) as caught:
+        integrity._read_ready(tmp_path, "nonce", lifecycle=state)
+    assert caught.value is cancellation
+    assert state.ready_open_denials == 1
+    assert not state.start_attempted and not state.discovery_complete
+
+
+@pytest.mark.parametrize("primary_type", [KeyboardInterrupt, PermissionError])
+@pytest.mark.parametrize("observer_type", [OSError, KeyboardInterrupt])
+def test_native_failed_observation_keeps_first_error_through_cleanup_failure(
+    tmp_path, monkeypatch, caplog, primary_type, observer_type
+):
+    import traceback
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"no native execution")
+    primary = primary_type("original launch failure")
+    cleanup = OSError("secondary stop failure")
+    original_observer = integrity._exception_metadata
+    roots, states, observed = [], [], []
+
+    def launch(_command, *, cwd, **_kwargs):
+        roots.append(cwd)
+        raise primary
+
+    def observe(error):
+        observed.append(error)
+        if len(observed) == 1:
+            assert error is primary
+            raise observer_type("first observation unavailable")
+        return original_observer(error)
+
+    def stop(state):
+        states.append(state)
+        raise cleanup
+
+    monkeypatch.setattr(integrity.subprocess, "Popen", launch)
+    monkeypatch.setattr(integrity, "_exception_metadata", observe)
+    monkeypatch.setattr(integrity, "_stop_child", stop)
+    caplog.set_level("DEBUG", logger=integrity.__name__)
+    try:
+        arguments = {
+            "provenance": {"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()}
+        }
+        if primary_type is KeyboardInterrupt:
+            with pytest.raises(KeyboardInterrupt) as caught:
+                integrity.probe_native_grammar(candidate, "test", **arguments)
+            assert caught.value is primary
+            assert traceback.extract_tb(primary.__traceback__)[-1].name == "launch"
+        else:
+            result = integrity.probe_native_grammar(candidate, "test", **arguments)
+            assert result == integrity.NativeProbeResult(False, "child_failed", None)
+        observations = [
+            record.native_probe_diagnostic
+            for record in caplog.records
+            if hasattr(record, "native_probe_diagnostic")
+        ]
+        assert len(observations) == 1
+        assert observations[0]["exception"]["operation"] == "launch"
+        assert observations[0]["exception"].get("type") in {
+            None,
+            primary_type.__name__,
+        }
+        assert len(states) == 1 and not states[0].cleanup_safe
+        assert states[0].worker is None and not states[0].start_attempted
+        assert roots[0].exists(), "uncertainty must retain the root"
+    finally:
+        # Popen was replaced before creating a process; these roots are fixture-owned.
+        for root in roots:
+            integrity.shutil.rmtree(root)
+
+
+def test_native_failure_diagnostics_bound_traceback_without_reading_source():
+    from chunker.grammar import integrity
+
+    def recurse(depth):
+        if depth:
+            return recurse(depth - 1)
+        raise PermissionError(13, "private error text", "/private/filename")
+
+    try:
+        recurse(20)
+    except PermissionError as error:
+        diagnostic = integrity._exception_metadata(error)
+    assert diagnostic["errno"] == 13 and diagnostic["winerror"] is None
+    assert len(diagnostic["frames"]) == 6
+    assert all(frame["function"] == "recurse" for frame in diagnostic["frames"])
+    assert "private" not in json.dumps(diagnostic)

@@ -44,6 +44,27 @@ _DIAGNOSTIC_LIMIT = 64 * 1024
 _ACK_LIMIT = 16 * 1024
 
 
+def _exception_metadata(error: BaseException) -> dict[str, Any]:
+    frames = []
+    trace = error.__traceback__
+    for _ in range(64):
+        if trace is None:
+            break
+        frames.append(
+            {"function": trace.tb_frame.f_code.co_name[:64], "line": trace.tb_lineno}
+        )
+        frames = frames[-6:]
+        trace = trace.tb_next
+    return {
+        "type": type(error).__name__[:64],
+        "errno": value if type(value := getattr(error, "errno", None)) is int else None,
+        "winerror": (
+            value if type(value := getattr(error, "winerror", None)) is int else None
+        ),
+        "frames": frames,
+    }
+
+
 def _run_with_owned_cleanup(
     operation: Callable[[], Any], cleanup: Callable[[], Any]
 ) -> Any:
@@ -225,6 +246,29 @@ class _ProbeLifecycle:
     known: dict[int, psutil.Process] = field(default_factory=dict)
     error: str = ""
     trigger: str = ""
+    operation: str = "launch"
+    exception: dict[str, Any] | None = None
+    ready_open_denials: int = 0
+    first_ready_open_denial: dict[str, Any] | None = None
+    start_attempted: bool = False
+    start_completed: bool = False
+    launcher_created_at: float | None = None
+    worker_created_at: float | None = None
+
+    def record_exception(self, error: BaseException, operation: str) -> None:
+        if self.exception is None:
+            try:
+                self.exception = {
+                    "operation": operation,
+                    "type": None,
+                    "errno": None,
+                    "winerror": None,
+                    "frames": [],
+                }
+                self.exception.update(_exception_metadata(error))
+            except BaseException:
+                # Observing a propagating failure must not replace it.
+                pass
 
     def fail(self, cause: str, *, uncertain: bool = True) -> None:
         self.error = self.error or cause[:256]
@@ -257,15 +301,24 @@ def _worker_ready(directory: Path, nonce: str) -> None:
         raise SystemExit(1)
 
 
-def _read_ready(directory: Path, nonce: str) -> dict[str, Any] | None:
+def _read_ready(
+    directory: Path, nonce: str, *, lifecycle: _ProbeLifecycle | None = None
+) -> dict[str, Any] | None:
     try:
         stream = (directory / _READY_NAME).open("rb")
     except FileNotFoundError:
         return None
-    except PermissionError:
+    except PermissionError as error:
         if sys.platform != "win32":
             raise
-        return None  # type: ignore[unreachable]
+        if lifecycle is not None:  # type: ignore[unreachable]
+            lifecycle.ready_open_denials += 1
+            if lifecycle.first_ready_open_denial is None:
+                try:
+                    lifecycle.first_ready_open_denial = _exception_metadata(error)
+                except Exception:
+                    pass
+        return None
     try:
         data = stream.read(_READY_LIMIT + 1)
     except BaseException:
@@ -353,7 +406,7 @@ def _register_worker(lifecycle: _ProbeLifecycle, record: dict[str, Any]) -> None
     if not _alive(launcher_identity):
         raise ValueError("launcher identity lost")
     worker = psutil.Process(record["pid"])
-    worker.create_time()
+    worker_created_at = worker.create_time()
     if not _alive(worker) or worker.ppid() != record["ppid"]:
         raise ValueError("worker ancestry mismatch")
     if worker.pid == launcher.pid:
@@ -380,6 +433,7 @@ def _register_worker(lifecycle: _ProbeLifecycle, record: dict[str, Any]) -> None
         lifecycle.known[worker.pid] = worker
         lifecycle.worker_handle, candidate = candidate, None
         lifecycle.discovery_complete = True
+        lifecycle.worker_created_at = worker_created_at
     finally:
         if candidate is not None:
             pending_error = sys.exception()
@@ -520,13 +574,14 @@ def _read_child(
         )
         state.launcher = process
         identity = psutil.Process(process.pid)
-        identity.create_time()
+        state.launcher_created_at = identity.create_time()
         state.known[process.pid] = identity
         if worker_nonce is None:
             state.worker = identity
             state.discovery_complete = True
         assert process.stdout is not None and process.stderr is not None
         pipes = {"stdout": process.stdout, "stderr": process.stderr}
+        state.operation = "pipe_setup"
         if sys.platform == "win32":
             import ctypes
             import msvcrt
@@ -551,15 +606,19 @@ def _read_child(
                 state.trigger = "timeout"
                 state.aborted = True
                 break
+            state.operation = "discover"
             _discover(state)
             if state.aborted:
                 break
             if worker_nonce is not None and state.worker is None:
+                state.operation = "launcher_poll_before_ready"
                 if process.poll() is not None:
                     state.fail("launcher lost before ready")
                     break
-                record = _read_ready(cwd, worker_nonce)
+                state.operation = "ready_read"
+                record = _read_ready(cwd, worker_nonce, lifecycle=state)
                 if record is not None:
+                    state.operation = "register_worker"
                     _register_worker(state, record)
                     if state.aborted or time.monotonic() >= deadline:
                         state.aborted = True
@@ -567,12 +626,18 @@ def _read_child(
                         timed_out = True
                         break
                     assert process.stdin is not None
+                    state.operation = "start_write"
+                    state.start_attempted = True
                     process.stdin.write(b"\x01")
+                    state.operation = "start_flush"
                     process.stdin.flush()
+                    state.start_completed = True
+                    state.operation = "start_close"
                     process.stdin.close()
             read_any = False
             for name, pipe in list(pipes.items()):
                 if sys.platform == "win32":
+                    state.operation = name + "_peek"
                     available = wintypes.DWORD()
                     if not peek(
                         msvcrt.get_osfhandle(pipe.fileno()),
@@ -593,6 +658,7 @@ def _read_child(
                 else:
                     size = 8192
                 try:
+                    state.operation = name + "_read"
                     data = os.read(pipe.fileno(), size)
                 except BlockingIOError:
                     continue
@@ -608,13 +674,16 @@ def _read_child(
                 streams[name].extend(data)
             if state.aborted:
                 break
+            state.operation = "worker_status"
             worker_done = _worker_exited(state)
+            state.operation = "launcher_poll"
             if process.poll() is not None and worker_done and not pipes:
                 break
             if not read_any:
                 time.sleep(min(0.01, max(0, deadline - time.monotonic())))
     except BaseException as error:
         primary_error = error
+        state.record_exception(error, state.operation)
         state.fail(type(error).__name__)
         state.trigger = state.trigger or type(error).__name__
         raise
@@ -622,6 +691,7 @@ def _read_child(
         try:
             _stop_child(state)
         except BaseException as error:
+            state.record_exception(error, "stop_child")
             state.fail("cleanup: " + type(error).__name__)
             # Preserve the first cancellation/read error if one is already propagating.
             if primary_error is None:
@@ -641,6 +711,7 @@ def _read_child(
                     if resource is not None:
                         resource.close()
                 except BaseException as error:
+                    state.record_exception(error, "resource_close")
                     state.fail("close: " + type(error).__name__)
                     close_error = close_error or error
             if close_error is not None and primary_error is None:
@@ -654,7 +725,63 @@ def _read_child(
     )
 
 
-def _failure(reason: str) -> NativeProbeResult:
+def _log_probe_failure(
+    reason: str | None,
+    *,
+    phase: str,
+    lifecycle: _ProbeLifecycle | None,
+    error: BaseException | None = None,
+) -> None:
+    try:
+        logger = logging.getLogger(__name__)
+        if not logger.isEnabledFor(logging.DEBUG):
+            return
+        diagnostic: dict[str, Any] = {
+            "schema": "native_probe.diagnostic.v1",
+            "reason": reason,
+            "phase": phase,
+            "exception": _exception_metadata(error) if error is not None else None,
+        }
+        if lifecycle is not None:
+            diagnostic.update(
+                operation=lifecycle.operation,
+                exception=lifecycle.exception or diagnostic["exception"],
+                ready_open_denials=lifecycle.ready_open_denials,
+                first_ready_open_denial=lifecycle.first_ready_open_denial,
+                start_attempted=lifecycle.start_attempted,
+                start_completed=lifecycle.start_completed,
+                launch_attempted=lifecycle.launch_attempted,
+                discovery_complete=lifecycle.discovery_complete,
+                cleanup_safe=lifecycle.cleanup_safe,
+                forced=lifecycle.forced,
+                trigger=lifecycle.trigger,
+                launcher_pid=lifecycle.launcher.pid if lifecycle.launcher else None,
+                launcher_status=(
+                    lifecycle.launcher.returncode if lifecycle.launcher else None
+                ),
+                launcher_created_at=lifecycle.launcher_created_at,
+                worker_pid=lifecycle.worker.pid if lifecycle.worker else None,
+                worker_status=lifecycle.worker_status,
+                worker_created_at=lifecycle.worker_created_at,
+            )
+        logger.debug(
+            "Native probe failure: %s",
+            json.dumps(diagnostic, sort_keys=True),
+            extra={"native_probe_diagnostic": diagnostic},
+        )
+    except BaseException as diagnostic_error:
+        if error is None and not isinstance(diagnostic_error, Exception):
+            raise
+
+
+def _failure(
+    reason: str,
+    *,
+    phase: str = "validate",
+    lifecycle: _ProbeLifecycle | None = None,
+    error: BaseException | None = None,
+) -> NativeProbeResult:
+    _log_probe_failure(reason, phase=phase, lifecycle=lifecycle, error=error)
     return NativeProbeResult(False, reason, None)
 
 
@@ -672,34 +799,43 @@ def probe_native_grammar(
     ``inspect_artifact`` is trusted application code. It runs only after the
     isolated child succeeds and must not mutate or load the supplied snapshot.
     """
+    phase = "validate"
+    lifecycle: _ProbeLifecycle | None = None
+
+    def reject(reason: str, error: BaseException | None = None) -> NativeProbeResult:
+        return _failure(reason, phase=phase, lifecycle=lifecycle, error=error)
+
     candidate = Path(path)
     if not candidate.is_absolute():
-        return _failure("untrusted")
+        return reject("untrusted")
     if not isinstance(language, str) or not language:
-        return _failure("load_failed")
+        return reject("load_failed")
     if not math.isfinite(timeout) or timeout <= 0:
-        return _failure("timeout")
+        return reject("timeout")
 
+    phase = "source_open"
     source_fd: int | None
     try:
         source_fd = os.open(candidate, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
     except FileNotFoundError:
-        return _failure("missing")
-    except OSError:
-        return _failure("child_failed")
+        return reject("missing")
+    except OSError as error:
+        return reject("child_failed", error)
 
     try:
+        phase = "source_validation"
         source_stat = os.fstat(source_fd)
         if not stat.S_ISREG(source_stat.st_mode):
-            return _failure("untrusted")
+            return reject("untrusted")
         if source_stat.st_size == 0:
-            return _failure("empty")
+            return reject("empty")
         if not isinstance(provenance, Mapping):
-            return _failure("untrusted")
+            return reject("untrusted")
         expected = provenance.get("sha256")
         if not isinstance(expected, str) or not _SHA256.fullmatch(expected):
-            return _failure("untrusted")
+            return reject("untrusted")
 
+        phase = "snapshot_copy"
         snapshot_dir = Path(tempfile.mkdtemp(prefix="chunker-native-probe-"))
         lifecycle = _ProbeLifecycle()
         snapshot_operation_failed = False
@@ -760,10 +896,11 @@ def probe_native_grammar(
             assert source_fd is not None
             descriptor, source_fd = source_fd, None
             os.close(descriptor)
+            phase = "snapshot_verify"
             try:
                 verify_artifact(snapshot, provenance)
-            except ArtifactIntegrityError:
-                return _failure("integrity_mismatch")
+            except ArtifactIntegrityError as error:
+                return reject("integrity_mismatch", error)
 
             digest = expected.lower()
             nonce = uuid.uuid4().hex
@@ -785,6 +922,7 @@ def probe_native_grammar(
                 base64.b64encode(sample).decode("ascii"),
                 nonce,
             ]
+            phase = "native_worker"
             try:
                 returncode, stdout, _stderr, timed_out, overflow = _read_child(
                     command,
@@ -793,33 +931,34 @@ def probe_native_grammar(
                     worker_nonce=nonce,
                     lifecycle=lifecycle,
                 )
-            except (OSError, ValueError, RecursionError, psutil.Error):
-                return _failure("child_failed")
+            except (OSError, ValueError, RecursionError, psutil.Error) as error:
+                return reject("child_failed", error)
+            phase = "acknowledgment"
             if (
                 not lifecycle.cleanup_safe
                 or lifecycle.error
                 or lifecycle.worker_status is None
             ):
-                return _failure("child_failed")
+                return reject("child_failed")
             if timed_out:
-                return _failure("timeout")
+                return reject("timeout")
             if overflow:
-                return _failure("ack_invalid")
+                return reject("ack_invalid")
             if lifecycle.forced:
-                return _failure("child_failed")
+                return reject("child_failed")
             try:
                 pairs = json.loads(stdout.decode("utf-8"), object_pairs_hook=list)
             except (ValueError, RecursionError):
                 if returncode != 0 or lifecycle.worker_status != 0:
-                    return _failure("child_failed")
-                return _failure("ack_missing" if not stdout else "ack_invalid")
+                    return reject("child_failed")
+                return reject("ack_missing" if not stdout else "ack_invalid")
             if not isinstance(pairs, list) or not all(
                 isinstance(pair, tuple) and len(pair) == 2 for pair in pairs
             ):
-                return _failure("ack_invalid")
+                return reject("ack_invalid")
             acknowledgment = dict(pairs)
             if len(acknowledgment) != len(pairs):
-                return _failure("ack_invalid")
+                return reject("ack_invalid")
             common = {
                 "schema": _ACK_SCHEMA,
                 "nonce": nonce,
@@ -841,8 +980,8 @@ def probe_native_grammar(
                         "parse_failed",
                     }
                 ):
-                    return _failure(failure)
-                return _failure("child_failed")
+                    return reject(failure)
+                return reject("child_failed")
             expected_acknowledgment = {
                 **common,
                 "loader_returned": True,
@@ -853,14 +992,16 @@ def probe_native_grammar(
                 or acknowledgment.get("loader_returned") is not True
                 or acknowledgment.get("parse_returned") is not True
             ):
-                return _failure("ack_invalid")
+                return reject("ack_invalid")
+            phase = "snapshot_final_hash"
             if not hmac.compare_digest(_file_sha256(snapshot), digest):
-                return _failure("integrity_mismatch")
+                return reject("integrity_mismatch")
+            phase = "inspection"
             try:
                 if inspect_artifact is not None:
                     inspect_artifact(snapshot)
-            except Exception:
-                return _failure("inspect_failed")
+            except Exception as error:
+                return reject("inspect_failed", error)
             return NativeProbeResult(True, "ok", digest)
         except BaseException:
             snapshot_operation_failed = True
@@ -900,7 +1041,8 @@ def probe_native_grammar(
             except BaseException:
                 pass
         if isinstance(error, OSError):
-            return _failure("child_failed")
+            return reject("child_failed", error)
+        _log_probe_failure(None, phase=phase, lifecycle=lifecycle, error=error)
         raise
     finally:
         if source_fd is not None:

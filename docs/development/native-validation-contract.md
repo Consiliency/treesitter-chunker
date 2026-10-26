@@ -211,6 +211,47 @@ Replace TemporaryDirectory with mkdtemp and an explicit owner `try/finally`. The
 
 For uncertainty report a bounded application diagnostic with retained absolute root and known `(pid, creation identity)` metadata, and original trigger (timeout/overflow/cancel/read error). It contains no accepted digest or captured unbounded native output. The public ordinary result is `NativeProbeResult(False, "child_failed", None)`; cancellation/KeyboardInterrupt propagates with its original traceback after cleanup/retention. Do not introduce a new public reason or automatically delete a retained root later. A parent diagnostic must remain available even if a diagnostic-file write fails; safety never depends on writing that file.
 
+### Opt-in failure observation
+
+Enabling DEBUG for `chunker.grammar.integrity` attaches a structured
+`native_probe_diagnostic` dictionary to each rejection or propagating-exception
+log record, with the same JSON in the log message for plain formatters.
+Its diagnostic schema is `native_probe.diagnostic.v1`; this is not
+the worker acknowledgment schema. Successful probes emit no such record.
+The public result fields, reasons and `native_probe.v1` acknowledgment remain
+unchanged.
+
+The record contains the probe phase, last monitored operation, first exception
+class/errno/winerror and at most six function/line locations, the recorded
+launcher/worker identities and statuses, startup-write attempts/completion,
+and the final cleanup proof state. It performs no extra process-status query.
+It omits exception messages, filenames, source samples and native output.
+Completing the start write is not evidence of native entry or successful parsing.
+
+The first exception reserves its operation before metadata observation. If that
+observation fails, its class/error-code fields remain null and its frames empty;
+a secondary cleanup exception cannot take its place. Some inherited status and
+cleanup handlers consume exceptions into internal failure state, so a rejection
+can also have no exception metadata. `cleanup_safe` reports the worker-lifetime
+proof before snapshot removal, not proof that filesystem removal succeeded.
+
+Observation visits at most 64 traceback links and retains the last six visited
+locations, with class/function names limited to 64 characters. A deeper origin
+need not be included. Field/frame counts and names are bounded, but no universal
+serialized-byte cap is promised for arbitrary integer attributes supplied by
+trusted application callbacks; normal OS error-code metadata is the intended
+case.
+
+The private ready reader optionally receives its caller-owned lifecycle solely
+to count Windows OPEN denials and retain the first denial's bounded metadata.
+It does not mark those recovered denials as lifecycle errors, extend deadlines
+or emit per-poll logs. A later rejection can therefore report a persistent
+sharing denial even when the original public result remains `child_failed`.
+Ordinary observer failures cannot replace the result; an original propagating
+exception remains primary, and a new cancellation with no earlier exception
+still propagates. These records support future investigations; they cannot
+recover the missing original causes in treesitter-chunker#508/#509.
+
 ## Ready gate and the supported launch topology
 
 The process launched is the current trusted `sys.executable -I`, shell=False, fixed approved package bootstrap, private cwd. Preserve current import isolation and no new environment configuration. Before loading, parsing, opening the snapshot in native code, or importing the native loader, the actual interpreter writes one closed/atomically replaced ready record (≤4 KiB) at `.native-probe-worker.json` and blocks reading exactly one start byte. EOF or a byte other than `b"\x01"` exits without native admission. Parent closes the writer after its one grant, and never grants after abort/timeout/cancellation is latched.
