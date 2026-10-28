@@ -22,7 +22,12 @@ EXPECTED = json.loads((FIXTURES / "expected.json").read_text())
 ANCHOR = os.environ.get(
     "GROUP_TEST_SOURCE_COMMIT", "fe49736e89c436bff4de49992b68528f370ac598"
 )
-pytestmark = pytest.mark.timeout(120)
+pytestmark = [
+    pytest.mark.timeout(120),
+    pytest.mark.skipif(
+        sys.platform != "linux", reason="governed GROUP has a Linux validation tier"
+    ),
+]
 
 
 def require(condition, name):
@@ -613,6 +618,105 @@ def test_frozen_fake_vector_is_serialization_only():
             and pins["profile"] == vector["expected"]["profile_digest"],
             "GROUP_NORMALIZATION_VECTOR",
         )
+
+
+def test_recipe_wire_paths_are_posix():
+    from pathlib import PurePosixPath, PureWindowsPath
+
+    product = runpy.run_path(str(DRIVER))
+    for flavor, root in (
+        (PureWindowsPath, "C:/checkout"),
+        (PurePosixPath, "/checkout"),
+    ):
+        path = flavor(root) / "chunker" / "clustering" / "engine.py"
+        wire = RECIPE["wire_path"](path, flavor(root))
+        require(
+            wire == "chunker/clustering/engine.py" and product["relative"](wire),
+            "GROUP_WIRE_PATH",
+        )
+    require(
+        not product["relative"]("chunker\\clustering\\engine.py"),
+        "GROUP_WIRE_PATH_REFUSES_NATIVE",
+    )
+
+
+def test_recipe_producer_uses_wire_path(monkeypatch):
+    from pathlib import PureWindowsPath
+    import types
+
+    produce = RECIPE["producer"]
+    scope = produce.__globals__
+    base = PureWindowsPath("C:/checkout")
+    content = {
+        base / "tools" / "governed_group.py": b"adapter control bytes",
+        base / "chunker" / "fixture.py": b"chunker control bytes",
+        base / "uv.lock": b"lock control bytes",
+    }
+
+    class Leaf:
+        # Windows-flavored stand-in for only the operations the producer uses.
+        def __init__(self, pure):
+            self.pure = pure
+
+        def __truediv__(self, name):
+            return Leaf(self.pure / name)
+
+        def __lt__(self, other):
+            return self.pure < other.pure
+
+        def rglob(self, pattern):
+            require(
+                self.pure == base / "chunker" and pattern == "*.py",
+                "GROUP_PRODUCER_SHIM",
+            )
+            return iter([Leaf(base / "chunker" / "fixture.py")])
+
+        def read_bytes(self):
+            return content[self.pure]
+
+        def relative_to(self, other):
+            return self.pure.relative_to(other.pure)
+
+    def windows_root(value):
+        require(value == "C:/checkout", "GROUP_PRODUCER_SHIM")
+        return Leaf(base)
+
+    helper = scope["wire_path"]
+    calls = []
+
+    def spy(path, root):
+        calls.append((path.pure, root.pure))
+        return helper(path, root)
+
+    monkeypatch.setitem(scope, "Path", windows_root)
+    monkeypatch.setitem(scope, "wire_path", spy)
+    monkeypatch.setitem(
+        scope, "metadata", types.SimpleNamespace(distributions=lambda: iter(()))
+    )
+    produced = produce("C:/checkout", ANCHOR)
+    product = runpy.run_path(str(DRIVER))
+    require(
+        produced["source_files"]
+        == [
+            {
+                "path": "tools/governed_group.py",
+                "sha256": hashlib.sha256(b"adapter control bytes").hexdigest(),
+            },
+            {
+                "path": "chunker/fixture.py",
+                "sha256": hashlib.sha256(b"chunker control bytes").hexdigest(),
+            },
+        ]
+        and all(product["relative"](row["path"]) for row in produced["source_files"])
+        and calls
+        == [
+            (base / "tools" / "governed_group.py", base),
+            (base / "chunker" / "fixture.py", base),
+        ]
+        and produced["lock_sha256"] == hashlib.sha256(b"lock control bytes").hexdigest()
+        and produced["dependencies"] == [],
+        "GROUP_PRODUCER_WIRE_PATH",
+    )
 
 
 def test_site_disabled_dependencies_are_setup_nonpass(tmp_path):
