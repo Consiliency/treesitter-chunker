@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Document that the private GROUP adapter's 16 MiB output budget is aggregate, not
+  per file, with two separate limits: the encoded worker result is at most 16 MiB,
+  and the byte sum of the five published files is at most 16 MiB. Exceeding either
+  refuses `group_compute` without a proposal. `request.json` counts in that sum, so
+  the separate 16 MiB request transport cap is not usable request capacity. Limits
+  and adapter bytes are unchanged (treesitter-chunker#514).
+
 - `python -m chunker.cli grammar info` and `grammar diagnose` now exit 1 when the
   requested grammar is missing, corrupted or incompatible, keeping the printed
   diagnosis (treesitter-chunker#156). The CLI supplies no provenance pins yet, so

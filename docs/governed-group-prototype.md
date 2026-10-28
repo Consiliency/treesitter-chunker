@@ -59,7 +59,18 @@ settings. Integers outside signed 64-bit, nonfinite/over-1e100 magnitudes, lone
 surrogates, duplicate JSON keys, excessive JSON depth and malformed fields refuse.
 Weights are nonnegative, resolutions positive, threshold in [0,1], seed in
 [0,2147483647]. Caps are exactly 2,000 symbols, 20,000 total relationship/call/error
-records and 16 MiB input/output; caps cannot be raised by a request. No truncation.
+records, a 16 MiB request transport and a 16 MiB output budget; caps cannot be raised
+by a request. No truncation. The output budget is aggregate, with two separate
+limits: the encoded worker result is at most 16 MiB, and the byte sum of all five
+published files (`request.json`, `raw_graph.json`, `raw_engine.json`,
+`operational.json`, `proposal.json`) is at most 16 MiB. Exceeding either refuses
+`group_compute`, which retains only `diagnostic.json` and no proposal. Complete facts
+repeat across the retained request, raw graph and proposal, and `request.json` counts
+in the sum beside a similarly sized `raw_graph.json`, so the 16 MiB transport cap is
+not usable request capacity: an admitted request well below 16 MiB can still refuse.
+One recorded genuine replay's 4.48 MB request produced a 15.59 MB aggregate; that is
+retained arithmetic, not an admissible-input threshold. Callers measure headroom from
+the artifact byte counts in `operational.json` plus that file's own size.
 
 ## Normalization and identities
 
