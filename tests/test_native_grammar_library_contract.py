@@ -330,15 +330,13 @@ def test_enumeration_counts_languages_once_and_keeps_unrelated_untrusted(
     require(tools.manager.trusted_artifacts == pins, "no self-pin")
 
 
-def test_enumeration_counts_actual_linux_languages(tmp_path):
-    if ACTUAL_SUFFIX != ".so":
-        pytest.skip("unsimulated .so-only enumeration applies where native is .so")
+def test_enumeration_counts_legacy_so_languages(tmp_path):
     build, sources = _workspace(tmp_path)
     (build / "baml.so").write_bytes(b"baml bytes")
     (build / "helper.so").write_bytes(b"helper bytes")
     listed = UserGrammarTools(build, sources).list_installed_grammars()
-    require(listed["total_grammars"] == 2, f"linux count {listed!r}")
-    require(set(listed["grammars"]) == {"baml", "helper"}, "linux rows")
+    require(listed["total_grammars"] == 2, f"legacy count {listed!r}")
+    require(set(listed["grammars"]) == {"baml", "helper"}, "legacy rows")
 
 
 INVALID_ENUMERATED = ["..so", ".so", "a:b.so", "a\\b.so"]
@@ -397,7 +395,11 @@ def test_remove_deletes_only_requested_language_pair(tmp_path, monkeypatch):
             f"{name} step",
         )
     for name in kept:
-        require((build / name).read_bytes() == name.encode(), f"REMOVE_KEPT {name}")
+        require(
+            os.path.lexists(build / name)
+            and (build / name).read_bytes() == name.encode(),
+            f"REMOVE_KEPT {name}",
+        )
     require(
         result["steps_completed"].count("Removed compiled grammar library") == 1,
         "generic step once",

@@ -107,11 +107,12 @@ approved bytes admit under either name. Files whose name is not the requested
 language plus one of these suffixes are never selected, removed or adopted for
 it; a lone `helper.dll` or `parser.so` is not guessed to be the grammar.
 
-Language names must be a single portable filename component: nonempty, not `.`
-or `..`, and free of NUL, `/`, `\` and `:`. Explicit requests with other names
-raise `ValueError` from the manager, return an error result from install,
-update and remove, and make the CLI exit 1 before any path is used. Library
-entries whose derived name fails this check are omitted from `grammar list`,
+Language names use a single-component check: nonempty, not `.` or `..`, and
+free of NUL, `/`, `\` and `:`. Manager lookups that construct grammar paths
+raise `ValueError` for invalid names. Install, update and remove return an
+error result before grammar-specific filesystem operations. Their CLI commands
+exit 1 for these errors; declining removal confirmation exits 0 without running
+removal. Library entries whose derived name fails this check are omitted from `grammar list`,
 `grammar validate` and `validate_all_grammars()` without being probed, counted
 or changed.
 
