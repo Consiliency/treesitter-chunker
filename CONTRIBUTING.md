@@ -54,9 +54,10 @@ their existing plan or issue records.
 Run the narrow affected tests first, then the local CI checks:
 
 ```bash
-uv run --locked --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
-uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/
+uv run --locked --all-extras ruff check chunker/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site
+uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py
 uv run --locked --all-extras python scripts/mypy_gate.py
+uv run --locked --all-extras mypy --follow-imports=silent --allow-untyped-defs --allow-incomplete-defs --allow-untyped-calls --check-untyped-defs --no-pretty --no-error-summary --show-error-codes tools/sync_governed_test_transport.py
 uv run --locked --with toml --all-extras python scripts/run_ci_smoke.py
 ```
 
@@ -65,6 +66,14 @@ require clearing all existing type debt. Pull-request CI runs the fast smoke
 lane, and the Test Suite workflow confirms platform-core behavior on Linux,
 macOS, and Windows. The scheduled CI job and release validation run the full
 `tests/` and `spec_tests/` suite.
+
+The explicitly listed governed tools use a separate zero-error body-type check
+without annotation requirements; excluded paths and strict-annotation debt are
+tracked separately, never in the baseline. Ruff and Black cover all three listed
+governed tools. The body-type check covers only
+`tools/sync_governed_test_transport.py`; `tools/governed_group.py` and
+`tools/governed_scope.py` are excluded because of existing body-type findings
+tracked under treesitter-chunker#514.
 
 CI runs lint and the type gate once on Linux 3.12. Platform-core jobs use 3.12
 on Linux, macOS and Windows. The scheduled full tier and release full validation
