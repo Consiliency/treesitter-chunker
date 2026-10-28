@@ -27,6 +27,11 @@ def hashed(label, value):
     ).hexdigest()
 
 
+def wire_path(path, root):
+    """Request paths are POSIX-relative on every host."""
+    return path.relative_to(root).as_posix()
+
+
 def normalized(request):
     result = copy.deepcopy(request)
     for key in ("relationships", "call_facts", "errors"):
@@ -80,7 +85,7 @@ def producer(root, commit):
         "distribution_label": "unpublished-source-overlay; not a new 6.0.0 release",
         "source_files": [
             {
-                "path": str(path.relative_to(root)),
+                "path": wire_path(path, root),
                 "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
             }
             for path in sources

@@ -139,7 +139,10 @@ its own child on failure. This is engineering supervision of trusted native
 dependencies, not a hostile-execution sandbox or strict OS-enforced memory cap.
 Controllers serialize GROUP invocations; tests share a lock even under xdist.
 Qualify only measured Python/OS/dependency profiles; seed alone does not establish
-cross-version/OS reproducibility. Root-dependent native identities remain explicitly
+cross-version/OS reproducibility. GROUP tests and qualification use the scope
+driver's Linux validation tier. Request wire paths are POSIX-relative on every host.
+macOS and Windows GROUP execution is unqualified, and ordinary platform-core results
+do not exercise it. Root-dependent native identities remain explicitly
 non-comparable instead of being scrubbed.
 
 Run the locked scope/group/clustering focused suite normally and with optimized
