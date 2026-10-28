@@ -816,3 +816,24 @@ def test_nonempty_normalization_arrays(tmp_path):
         verify_proposal(current, proposal)
         results.append((output / "proposal.json").read_bytes())
     require(results[0] == results[1], "GROUP_ALL_N_ARRAYS")
+
+
+def test_output_cap_is_aggregate_of_published_artifacts(tmp_path):
+    request = make_request()
+    padding = "x" * 9_000_000
+    request["graph"]["metadata"]["budget_padding"] = padding
+    request["source_binding"]["graph_digest"] = RECIPE["hashed"](
+        "graph", RECIPE["normalized_graph"](request["graph"])
+    )
+    raw = RECIPE["canonical"](request)
+    # The padding is retained verbatim in request.json and raw_graph.json: each file
+    # is under the cap, while their sum alone exceeds it.
+    require(len(raw) <= 16777216 < 2 * len(padding), "GROUP_AGGREGATE_PRECONDITION")
+    cp, output = launch(tmp_path, request, raw=raw)
+    rejected(cp, output, "group_compute")
+    require(
+        sorted(p.name for p in output.iterdir()) == ["diagnostic.json"]
+        and json.loads((output / "diagnostic.json").read_bytes())
+        == {"reason": "group_compute"},
+        "GROUP_AGGREGATE_OUTPUT_BUDGET",
+    )
