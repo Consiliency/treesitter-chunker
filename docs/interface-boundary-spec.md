@@ -202,6 +202,21 @@ edges keep their existing shapes. Resolution remains heuristic and does not
 establish language-level binding. Parser forms that an extractor does not
 recognize are not manufactured as facts.
 
+Call-target lookup accepts only complete `[A-Za-z_][A-Za-z0-9_]*` identifier/member
+chains (including whitespace-separated `.`, `?.`, `::` and `->` members) for the existing
+simple-qualified heuristic. Comments, computed members, strings and other complex
+callee expressions remain raw, unresolved observations; incidental identifiers
+inside them do not bind local definitions. This guard does not strip or rewrite
+the reference, remove call sites, or change import/dependency resolution. The
+simple-qualified fallback still does not establish semantic language binding.
+Names outside this subset, including JavaScript `$` names, Unicode identifiers
+and parenthesized callees, stay unresolved even if the old resolver could match
+their whole spelling. This is a conservative resolution limit, not invalid syntax.
+Previously emitted graph/IR resolution annotations and derived digests can change;
+consumers must qualify the corrected source profile and recapture affected outputs
+rather than reinterpret historical captures. Unrecognized forms, including the
+outer call in Python `getattr(obj, 'audit')()`, remain a separate emission limit.
+
 Per-site calls can increase edge counts, node memberships, clustering weights
 and dependency aggregates. Regenerate affected graph/IR outputs and their
 derived aggregates for 6.0.0. Incremental caches persist the raw facts and
