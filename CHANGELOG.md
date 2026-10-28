@@ -17,6 +17,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Legacy grammar tools (`SmartGrammarManager`, `UserGrammarTools` and the
+  `grammar` CLI) now diagnose, list, validate and remove `.dylib`/`.dll`
+  libraries, preferring `<language><native>` whenever that entry exists and
+  falling back to `<language>.so` only when it is absent; a failing native
+  library is never rescued by the legacy file (treesitter-chunker#160).
+  Selection grants no trust: pins are still required. Consumer notes: list
+  totals count languages rather than files; previously omitted native files
+  now appear and, without pins, are nonhealthy, so `grammar validate` can change
+  from exit 0 to exit 1; language names must be one portable filename component;
+  removal reports partial progress without rollback; and install/changed update
+  refuse before copying a `.so` that an existing native library would shadow.
+  Native-suffix installation and the treesitter-chunker#362 pin and
+  treesitter-chunker#363 rollback work remain open.
+
 - Document that the private GROUP adapter's 16 MiB output budget is aggregate, not
   per file, with two separate limits: the encoded worker result is at most 16 MiB,
   and the byte sum of the five published files is at most 16 MiB. Exceeding either

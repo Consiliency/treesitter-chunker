@@ -7,7 +7,7 @@ import subprocess
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
-from .grammar_management import SmartGrammarManager
+from .grammar_management import SmartGrammarManager, _require_language_component
 from ..grammar.source_validation import validate_grammar_source
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class UserGrammarTools:
         """Initialize user grammar tools.
 
         Args:
-            build_dir: Directory containing compiled .so files
+            build_dir: Directory containing compiled grammar libraries
             grammars_dir: Directory containing grammar source repositories
         """
         self.build_dir = Path(build_dir)
@@ -36,6 +36,20 @@ class UserGrammarTools:
             grammars_dir,
             trusted_artifacts=trusted_artifacts,
         )
+
+    def _refuse_shadowed_legacy_copy(
+        self, language: str, result: dict[str, Any]
+    ) -> bool:
+        """Record an error if a native entry would shadow a new legacy ``.so``."""
+        native, legacy = self.manager._library_candidates(language)
+        if native == legacy or not os.path.lexists(native):
+            return False
+        result["errors"].append(
+            f"Refusing to copy {legacy.name}: existing native library {native} "
+            "would take priority over it; no grammar library was copied",
+        )
+        result["status"] = "error"
+        return True
 
     def install_grammar(
         self,
@@ -62,6 +76,7 @@ class UserGrammarTools:
         }
 
         try:
+            _require_language_component(language)
             repo_url = validate_grammar_source(repo_url)
             if branch.startswith("-"):
                 raise ValueError("Grammar branch must not start with '-'")
@@ -156,6 +171,8 @@ class UserGrammarTools:
             # Step 4: Copy .so file to build directory
             so_files = list(target_dir.glob("*.so"))
             if so_files:
+                if self._refuse_shadowed_legacy_copy(language, result):
+                    return result
                 for so_file in so_files:
                     target_so = self.build_dir / f"{language}.so"
                     shutil.copy2(so_file, target_so)
@@ -202,12 +219,20 @@ class UserGrammarTools:
         }
 
         try:
-            # Remove .so file
-            so_file = self.build_dir / f"{language}.so"
-            if so_file.exists():
-                so_file.unlink()
-                result["steps_completed"].append("Removed compiled grammar library")
-            else:
+            # Remove the requested language's native and legacy .so libraries
+            removed_library = False
+            for library in dict.fromkeys(self.manager._library_candidates(language)):
+                if os.path.lexists(library):
+                    library.unlink()
+                    if not removed_library:
+                        result["steps_completed"].append(
+                            "Removed compiled grammar library"
+                        )
+                        removed_library = True
+                    result["steps_completed"].append(
+                        f"Removed compiled grammar library: {library.name}",
+                    )
+            if not removed_library:
                 result["warnings"].append("No compiled grammar library found")
 
             # Remove source directory
@@ -244,6 +269,7 @@ class UserGrammarTools:
         }
 
         try:
+            _require_language_component(language)
             source_dir = self.grammars_dir / f"tree-sitter-{language}"
             if not source_dir.exists():
                 result["errors"].append(f"Grammar source not found: {source_dir}")
@@ -347,6 +373,8 @@ class UserGrammarTools:
             # Copy new .so file
             so_files = list(source_dir.glob("*.so"))
             if so_files:
+                if self._refuse_shadowed_legacy_copy(language, result):
+                    return result
                 for so_file in so_files:
                     target_so = self.build_dir / f"{language}.so"
                     shutil.copy2(so_file, target_so)
@@ -383,12 +411,10 @@ class UserGrammarTools:
             "grammars": {},
         }
 
-        # Get all .so files
-        so_files = list(self.build_dir.glob("*.so"))
-        result["total_grammars"] = len(so_files)
+        languages = self.manager._library_languages()
+        result["total_grammars"] = len(languages)
 
-        for so_file in so_files:
-            language = so_file.stem
+        for language in languages:
             health = self.manager.diagnose_grammar_issues(language)
             compatibility = self.manager.get_grammar_compatibility(language)
 
