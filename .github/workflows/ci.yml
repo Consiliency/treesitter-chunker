@@ -76,10 +76,10 @@ jobs:
           # Run ruff on production code and tests only (exclude archive, logs, etc.)
           # Use the uv-locked ruff (0.12.5) so CI matches the lockfile + local;
           # avoids unpinned-ruff drift flagging pre-existing issues on every push.
-          uv run --locked --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
+          uv run --locked --all-extras ruff check chunker/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site
 
       - name: Black
-        run: uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/
+        run: uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py
 
       # Note: isort check removed - ruff handles import sorting (I001)
 
@@ -88,6 +88,11 @@ jobs:
         shell: bash
         run: |
           uv run --locked --all-extras python scripts/mypy_gate.py
+
+      - name: Governed tools type check
+        shell: bash
+        run: |
+          uv run --locked --all-extras mypy --follow-imports=silent --allow-untyped-defs --allow-incomplete-defs --allow-untyped-calls --check-untyped-defs --no-pretty --no-error-summary --show-error-codes tools/sync_governed_test_transport.py
 
       - name: Pytest
         run: |
