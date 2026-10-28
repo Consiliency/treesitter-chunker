@@ -159,7 +159,8 @@ def cmd_grammar_info(args: argparse.Namespace) -> int:
         args: Command line arguments
 
     Returns:
-        Exit code
+        0 when the requested grammar's diagnosed status is exactly ``healthy``;
+        1 otherwise or on error.
     """
     try:
         tools = get_grammar_tools()
@@ -220,7 +221,7 @@ def cmd_grammar_info(args: argparse.Namespace) -> int:
             for i, step in enumerate(plan["recovery_steps"], 1):
                 print(f"      {i}. {step}")
 
-        return 0
+        return 0 if health.status == "healthy" else 1
 
     except Exception as e:
         print(f"❌ Error getting grammar info: {e}", file=sys.stderr)
@@ -378,7 +379,7 @@ def cmd_diagnose_grammar(args: argparse.Namespace) -> int:
         args: Command line arguments
 
     Returns:
-        Exit code
+        The ``grammar info`` exit status.
     """
     try:
         print(f"🔍 Diagnosing grammar for {args.language}...")

@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `python -m chunker.cli grammar info` and `grammar diagnose` now exit 1 when the
+  requested grammar is missing, corrupted or incompatible, keeping the printed
+  diagnosis (treesitter-chunker#156). The CLI supplies no provenance pins yet, so
+  real grammars exit 1 until treesitter-chunker#362 integration; callers using
+  these commands as success probes must handle a nonzero status.
+
 - Keep complex raw callees unresolved instead of binding incidental identifiers
   from comments, computed members or expressions to local definitions. Preserve
   call-site tokens, UTF-8 spans, owners and repeated/self calls, along with the

@@ -82,7 +82,11 @@ failures to `corrupted`, other admission failures to `incompatible`, and only
 successful admission to `healthy`. Install/update return `warning` with the cause
 on rejection, including unchanged revisions. Changed revisions still write in
 place before validation; warnings promise neither staging nor rollback. The
-legacy CLI still exits zero on these warnings.
+legacy CLI still exits zero on these warnings. `grammar info` and
+`grammar diagnose` exit 1 unless the requested grammar is admitted as healthy.
+The CLI does not yet accept application pins (treesitter-chunker#362), so real
+grammars cannot be healthy: the preserved report may be missing, corrupted or
+incompatible, and these commands exit 1.
 
 Registry discovery, the central validator, dependency inspection, other loaders,
 installer publication and replacement remain treesitter-chunker#362 work. This
@@ -191,6 +195,9 @@ Lists all installed grammars with their health status.
 ### `grammar info <language>`
 Provides detailed information about a specific grammar.
 
+**Exit status:** 0 only when the printed status is `healthy`; 1 for any other
+status or an error. The report is printed either way.
+
 **Output:**
 ```
 📊 Grammar Information: python
@@ -289,6 +296,9 @@ Are you sure you want to remove python? (y/N): y
 
 ### `grammar diagnose <language>`
 Diagnoses issues with a specific grammar.
+
+**Exit status:** the same as `grammar info`: 0 only when the printed status is
+`healthy`; 1 for any other status or an error.
 
 **Example:**
 ```bash
