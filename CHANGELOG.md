@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add an opt-in `governed_scope.v2` committed-boundary policy to the private governed
+  scope driver (treesitter-chunker#512): boundary classification binds to trusted
+  commit/tree/gitlink metadata, and uncommitted `.git` markers refuse unless a
+  declaration transition ratifies them. File content is not committed-bound.
+  `governed_scope.v1` behavior is unchanged.
 - Add a private, input-only governed GROUP adapter over the existing clustering
   engine, with pinned profiles, canonical proposal identities and complete native
   fact accounting. Groups remain proposals and grant no architectural authority.
