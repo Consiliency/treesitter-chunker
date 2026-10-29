@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the separate 16 MiB request transport cap is not usable request capacity. Limits
   and adapter bytes are unchanged (treesitter-chunker#514).
 
+- Keep unexpected private GROUP parent failures, such as malformed installed
+  distribution metadata or denied child-memory sampling, on setup exit 2 instead of
+  a traceback with exit 1 (treesitter-chunker#514).
+
 - `python -m chunker.cli grammar info` and `grammar diagnose` now exit 1 when the
   requested grammar is missing, corrupted or incompatible, keeping the printed
   diagnosis (treesitter-chunker#156). The CLI supplies no provenance pins yet, so

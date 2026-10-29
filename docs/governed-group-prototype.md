@@ -140,9 +140,12 @@ Neither raw file hashes nor operational data are injected into semantic identity
 Refusal order: transport size; schema/types/domains; independent identities/source;
 membership then coverage; record/profile budgets; installed dependency/import
 binding; computation/output. Named refusals exit 1. Dependency mismatch/unavailability
-is `group_dependency`, exit 2, never an empty successful group. Argument/setup errors
-exit 2. Validation failure creates no output. Computation failure retains a diagnostic
-without a ready proposal. Existing output is never overwritten.
+is `group_dependency`, exit 2, never an empty successful group. Argument errors, setup
+failures and any other unexpected parent exception exit 2; non-argument setup failures
+write `{"reason":"group_setup","type":<exception class>}` to stderr and never publish
+`proposal.json`. Interrupts and interpreter exits propagate unchanged. Validation
+failure creates no output. Computation failure retains a diagnostic without a ready
+proposal. Existing output is never overwritten.
 
 One owned native compute child runs at a time per invocation. The parent applies a
 120-second watchdog, samples RSS with a 1 GiB stop threshold, and reaps/terminates
