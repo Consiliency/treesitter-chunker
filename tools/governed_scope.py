@@ -247,7 +247,7 @@ def schema_v2(request):
         text(row["path"])
         hex_id(row["object_id"], length)
     claimed = [r["prefix"] for r in d["rules"] + d["generated_inclusions"]]
-    seen = []
+    seen: list[str] = []
     for row in d["boundary_transitions"]:
         fields(row, "prefix decision_ref kind")
         text(row["prefix"])
