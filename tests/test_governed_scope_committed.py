@@ -361,16 +361,14 @@ def trace_violations(text, forbidden, markers=(), outside=()):
 
 def test_trace_oracle_unit_vectors():
     m = "/r/pkg"
-    ok = "\n".join(
-        [
-            '7 newfstatat(3</r>, "pkg", {st_mode=S_IFDIR}, AT_SYMLINK_NOFOLLOW) = 0',
-            '7 openat(3</r>, "pkg", O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY)'
-            " = 4</r/pkg>",
-            '7 newfstatat(4</r/pkg>, ".git", {st_mode=S_IFREG}, AT_SYMLINK_NOFOLLOW)'
-            " = 0",
-            "7 close(4</r/pkg>) = 0",
-            '7 write(2</dev/pts/0>, "pkg tok512x /r/pkg/.git", 23) = 23',
-        ]
+    ok = (
+        '7 newfstatat(3</r>, "pkg", {st_mode=S_IFDIR}, AT_SYMLINK_NOFOLLOW) = 0\n'
+        '7 openat(3</r>, "pkg", O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY)'
+        " = 4</r/pkg>\n"
+        '7 newfstatat(4</r/pkg>, ".git", {st_mode=S_IFREG}, AT_SYMLINK_NOFOLLOW)'
+        " = 0\n"
+        "7 close(4</r/pkg>) = 0\n"
+        '7 write(2</dev/pts/0>, "pkg tok512x /r/pkg/.git", 23) = 23'
     )
     require(trace_violations(ok, (), (m,)) == [], "ORACLE_PERMITS_METADATA")
     bad = {
@@ -733,7 +731,7 @@ def _schema_case(case, d, m):
     elif case == "uppercase":
         m["commit"] = m["commit"].upper()
     elif case == "wrong_length":
-        m["tree"] = m["tree"] + "0"
+        m["tree"] += "0"
     elif case == "md5":
         m["object_format"] = "md5"
     elif case == "unhashable_format":
