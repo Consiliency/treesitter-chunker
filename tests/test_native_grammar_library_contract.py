@@ -450,8 +450,9 @@ def test_remove_partial_failure_is_reported(tmp_path, monkeypatch, failing):
     result = tools.remove_grammar("baml")
     steps = result["steps_completed"]
     require(result["status"] == "error", f"partial status {result!r}")
+    denial = PermissionError(13, "fixture denied unlink", str(blocked))
     require(
-        any(str(blocked) in error for error in result["errors"]),
+        result["errors"] == [f"Failed to remove grammar: {denial}"],
         f"error names failed path {result['errors']!r}",
     )
     require((source / "grammar.js").is_file(), "source preserved")
@@ -511,7 +512,6 @@ def test_language_component_refuses_before_side_effects(tmp_path, language):
     for path, data in outside.items():
         path.parent.mkdir(exist_ok=True)
         path.write_bytes(data)
-    (sources / "tree-sitter-.." / "outside").mkdir(parents=True)
     calls = []
 
     def blocked(name):
