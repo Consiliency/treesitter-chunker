@@ -2,7 +2,9 @@
 """Experimental stdlib-only governed snapshot driver; not a public parser API.
 
 Run with -I -S. This enforces declared scope on quiescent snapshots, not a hostile
-concurrent filesystem or an authenticated ownership assertion.
+concurrent filesystem or an authenticated ownership assertion. Opt-in
+governed_scope.v2 requests bind boundary classification to supplied committed
+metadata (committed_boundary.v1); file content remains unbound.
 """
 from __future__ import annotations
 
@@ -43,6 +45,9 @@ OPAQUE = {
 BUILD = {"build", "dist", "out", "coverage"}
 VCS = {".git", ".gitmodules", ".hg", ".svn"}
 REASONS = {"vendored", "dependency", "build_output", "tool_state", "unclassified"}
+V2 = "governed_scope.v2"
+POLICY_V2 = "committed_boundary.v1"
+HEX_LEN = {"sha1": 40, "sha256": 64}
 
 
 class ScopeRefused(ValueError):  # noqa: N818 -- private contract names this exception
@@ -116,9 +121,24 @@ def load(path):
         raise ScopeRefused("scope_schema") from exc
 
 
+def hex_id(value, length):
+    if (
+        not isinstance(value, str)
+        or len(value) != length
+        or any(c not in "0123456789abcdef" for c in value)
+    ):
+        raise ScopeRefused("scope_schema")
+
+
 def schema(request):
     fields(request, "declaration source_root root_metadata expected_driver_sha256")
     d = request["declaration"]
+    # Type-only guard before version dispatch: fields() below also closes the v1
+    # key set, so it cannot run first for a v2 declaration.
+    if not isinstance(d, dict):
+        raise ScopeRefused("scope_schema")
+    if d.get("version") == V2:
+        return schema_v2(request)
     fields(
         d,
         "version repo_id source_revision ownership_assertion rules generated_inclusions limits",
@@ -183,6 +203,64 @@ def schema(request):
     return d, m
 
 
+def schema_v2(request):
+    d = request["declaration"]
+    fields(
+        d,
+        "version policy_version repo_id source_revision ownership_assertion rules"
+        " generated_inclusions boundary_transitions limits",
+    )
+    if d["policy_version"] != POLICY_V2:
+        raise ScopeRefused("scope_schema")
+    # Shared fields reuse the unchanged v1 validation through a v1-shaped view
+    # that aliases the same rule rows; v1 metadata in the view is synthetic.
+    view = dict(d, version="governed_scope.v1")
+    del view["policy_version"], view["boundary_transitions"]
+    schema(
+        {
+            "declaration": view,
+            "source_root": request["source_root"],
+            "root_metadata": {
+                "submodule_paths": [],
+                "source_revision": d["source_revision"],
+            },
+            "expected_driver_sha256": request["expected_driver_sha256"],
+        }
+    )
+    m = request["root_metadata"]
+    fields(m, "version object_format commit tree gitlinks gitmodules_blob")
+    if m["version"] != "scope_root_metadata.v2" or not (
+        isinstance(m["object_format"], str) and m["object_format"] in HEX_LEN
+    ):
+        raise ScopeRefused("scope_schema")
+    length = HEX_LEN[m["object_format"]]
+    for value in (d["source_revision"], m["commit"], m["tree"]):
+        hex_id(value, length)
+    if m["gitmodules_blob"] is not None:
+        hex_id(m["gitmodules_blob"], length)
+    if not isinstance(m["gitlinks"], list) or not isinstance(
+        d["boundary_transitions"], list
+    ):
+        raise ScopeRefused("scope_schema")
+    for row in m["gitlinks"]:
+        fields(row, "path object_id")
+        text(row["path"])
+        hex_id(row["object_id"], length)
+    claimed = [r["prefix"] for r in d["rules"] + d["generated_inclusions"]]
+    seen = []
+    for row in d["boundary_transitions"]:
+        fields(row, "prefix decision_ref kind")
+        text(row["prefix"])
+        text(row["decision_ref"])
+        if row["kind"] != "nested_repository" or any(
+            below(row["prefix"], other) or below(other, row["prefix"])
+            for other in seen + claimed
+        ):
+            raise ScopeRefused("scope_schema")
+        seen.append(row["prefix"])
+    return d, m
+
+
 def check_paths(d, m):
     groups = [
         [r["prefix"] for r in d["rules"]],
@@ -201,6 +279,17 @@ def check_paths(d, m):
     m["submodule_paths"].sort()
 
 
+def check_paths_v2(d, m):
+    check_paths(d, {"submodule_paths": [g["path"] for g in m["gitlinks"]]})
+    prefixes = [t["prefix"] for t in d["boundary_transitions"]]
+    if any(not valid_path(p) for p in prefixes) or len(
+        {p.casefold() for p in prefixes}
+    ) != len(prefixes):
+        raise ScopeRefused("scope_path")
+    m["gitlinks"].sort(key=lambda g: g["path"])
+    d["boundary_transitions"].sort(key=lambda t: t["prefix"])
+
+
 def signature(s):
     return (
         s.st_dev,
@@ -213,10 +302,10 @@ def signature(s):
     )
 
 
-def metadata(root_fd, d, m):
-    if d["source_revision"] != m["source_revision"]:
-        raise ScopeRefused("scope_metadata")
+def gitmodules(root_fd):
+    """Return root .gitmodules bytes (None when absent) and its submodule paths."""
     paths = []
+    body = None
     try:
         st = os.stat(".gitmodules", dir_fd=root_fd, follow_symlinks=False)
     except FileNotFoundError:
@@ -247,8 +336,34 @@ def metadata(root_fd, d, m):
                 paths.append(path)
         except (ValueError, KeyError, configparser.Error, UnicodeError) as exc:
             raise ScopeRefused("scope_metadata", ".gitmodules") from exc
+    return body, paths
+
+
+def metadata(root_fd, d, m):
+    if d["source_revision"] != m["source_revision"]:
+        raise ScopeRefused("scope_metadata")
+    _, paths = gitmodules(root_fd)
     if len(set(paths)) != len(paths) or sorted(paths) != m["submodule_paths"]:
         raise ScopeRefused("scope_metadata", ".gitmodules")
+
+
+def metadata_v2(root_fd, d, m):
+    if d["source_revision"] != m["commit"]:
+        raise ScopeRefused("scope_metadata")
+    body, paths = gitmodules(root_fd)
+    blob = None
+    if body is not None:
+        blob = hashlib.new(
+            m["object_format"], b"blob %d\0" % len(body) + body
+        ).hexdigest()
+    if blob != m["gitmodules_blob"]:
+        raise ScopeRefused("scope_metadata", ".gitmodules")
+    gitlinks = [g["path"] for g in m["gitlinks"]]
+    if len(set(paths)) != len(paths) or sorted(paths) != gitlinks:
+        raise ScopeRefused("scope_metadata", ".gitmodules")
+    for row in d["boundary_transitions"]:
+        if any(below(row["prefix"], g) or below(g, row["prefix"]) for g in gitlinks):
+            raise ScopeRefused("scope_metadata", row["prefix"])
 
 
 def classify_rule(path, d, is_dir):
@@ -278,6 +393,7 @@ def classify_rule(path, d, is_dir):
 
 def prepare(request, output):
     d, m = schema(request)
+    v2 = d["version"] == V2
     driver_sha = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     if driver_sha != request["expected_driver_sha256"]:
         raise ScopeRefused("scope_driver_identity")
@@ -303,10 +419,10 @@ def prepare(request, output):
         or os.listdir not in os.supports_fd
     ):
         raise ScopeRefused("scope_platform_unsupported")
-    check_paths(d, m)
+    (check_paths_v2 if v2 else check_paths)(d, m)
     root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
-        metadata(root_fd, d, m)
+        (metadata_v2 if v2 else metadata)(root_fd, d, m)
         selected, opaque, excluded, errors, folded = [], [], [], [], {}
 
         def boundary(path, reason, link=None):
@@ -328,7 +444,11 @@ def prepare(request, output):
                 }
             )
 
-        submodules = set(m["submodule_paths"])
+        submodules = (
+            {g["path"] for g in m["gitlinks"]} if v2 else set(m["submodule_paths"])
+        )
+        transitions = {t["prefix"] for t in d["boundary_transitions"]} if v2 else set()
+        used = set()
 
         def walk(fd, prefix=""):
             for name in sorted(
@@ -394,7 +514,76 @@ def prepare(request, output):
                 else:
                     selected.append((path, st))
 
-        walk(root_fd)
+        def walk_v2(fd, prefix=""):
+            # committed_boundary.v1: rule before marker; a marker is never opened,
+            # read or descended into, and only include directories are stat'ed.
+            for name in sorted(
+                os.listdir(fd)  # noqa: PTH208 -- directory-fd no-follow traversal
+            ):
+                path = prefix + name
+                try:
+                    path.encode("utf-8")
+                except UnicodeError:
+                    errors.append(("scope_path", ""))
+                    continue
+                if not valid_path(path):
+                    errors.append(("scope_path", path))
+                    continue
+                old = folded.setdefault(path.casefold(), path)
+                if old != path:
+                    errors.append(("scope_path", min(old, path)))
+                    continue
+                st = os.stat(name, dir_fd=fd, follow_symlinks=False)
+                if name in VCS:
+                    excluded.append({"path": path, "reason": "vcs_metadata"})
+                    continue
+                if path in submodules:
+                    boundary(path, "submodule")
+                    continue
+                if stat.S_ISLNK(st.st_mode):
+                    boundary(path, "symlink", os.readlink(name, dir_fd=fd))
+                    continue
+                if stat.S_ISDIR(st.st_mode):
+                    kind, reason = classify_rule(path, d, True)
+                    if kind == "include":
+                        child_fd = os.open(
+                            name,
+                            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                            dir_fd=fd,
+                        )
+                        try:
+                            try:
+                                os.stat(".git", dir_fd=child_fd, follow_symlinks=False)
+                                marker = True
+                            except FileNotFoundError:
+                                marker = False
+                            if not marker:
+                                walk_v2(child_fd, path + "/")
+                            elif path in transitions:
+                                used.add(path)
+                                boundary(path, "nested_repository")
+                            else:
+                                errors.append(("scope_boundary_uncommitted", path))
+                        finally:
+                            os.close(child_fd)
+                        continue
+                elif not stat.S_ISREG(st.st_mode):
+                    errors.append(("scope_special_file", path))
+                    continue
+                else:
+                    kind, reason = classify_rule(path, d, False)
+                if kind == "opaque":
+                    boundary(path, reason)
+                elif kind == "exclude":
+                    excluded.append({"path": path, "reason": reason})
+                elif kind == "error":
+                    errors.append((reason, path))
+                elif st.st_nlink != 1:
+                    errors.append(("scope_hardlink", path))
+                else:
+                    selected.append((path, st))
+
+        (walk_v2 if v2 else walk)(root_fd)
         for path in sorted(submodules):
             if not any(
                 row["path"] == path or below(path, row["path"])
@@ -404,6 +593,8 @@ def prepare(request, output):
         for row in d["rules"]:
             if row["disposition"] == "unknown":
                 errors.append(("scope_ownership_unknown", row["prefix"]))
+        for prefix in sorted(transitions - used):
+            errors.append(("scope_boundary_transition", prefix))
         selected.sort(key=lambda pair: pair[0])
         opaque.sort(key=lambda row: (row["path"], row["reason"]))
         excluded.sort(key=lambda row: (row["path"], row["reason"]))
@@ -421,6 +612,8 @@ def prepare(request, output):
             "status": "ready",
             "blockers": [],
         }
+        if v2:
+            selection.update(version="scope_selection.v2", policy_version=POLICY_V2)
 
         def write_receipts(reason=None):
             if reason:
@@ -435,6 +628,8 @@ def prepare(request, output):
                 "status": selection["status"],
                 "refusal_reasons": selection["blockers"],
             }
+            if v2:
+                receipt["version"] = "scope_receipt.v2"
             (out / "selection-receipt.json").write_bytes(canonical(receipt))
             (out / "operational.json").write_bytes(
                 canonical(
@@ -456,6 +651,8 @@ def prepare(request, output):
                     for i, v in enumerate(
                         (
                             "scope_path",
+                            "scope_boundary_uncommitted",
+                            "scope_boundary_transition",
                             "scope_ownership_unknown",
                             "scope_special_file",
                             "scope_hardlink",
