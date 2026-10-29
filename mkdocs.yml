@@ -41,6 +41,9 @@ nav:
     - Packaging: packaging.md
     - Chunk Identity: chunk-identity.md
     - Parser Concurrency: performance-guide/parser-concurrency.md
+    - Private Governed Prototypes:
+      - Source Snapshot: governed-scope-prototype.md
+      - GROUP Proposals: governed-group-prototype.md
 not_in_nav: |
   /development/DEPLOYMENT.md
   /development/RELEASE_CHECKLIST.md
