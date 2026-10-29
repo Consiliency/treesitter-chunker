@@ -48,7 +48,7 @@ def make_request(**kwargs):
     return RECIPE["request"](ROOT, ANCHOR, **kwargs)
 
 
-def launch(tmp, request, *, expected=None, seed="1", raw=None):
+def launch(tmp, request, *, expected=None, seed="1", raw=None, prelude=None):
     tmp.mkdir(parents=True, exist_ok=True)
     path = tmp / "request.json"
     path.write_bytes(raw if raw is not None else RECIPE["canonical"](request))
@@ -63,8 +63,12 @@ def launch(tmp, request, *, expected=None, seed="1", raw=None):
         argv += ["--expected-" + argument + "-sha256", pins[key]]
     # This trusted test bootstrap also binds private mutation snapshots. The
     # product CLI accepts no import-root input and performs its own file joins.
+    # A prelude is trusted test-only code run before the driver, never product
+    # input; without one the command bytes are unchanged.
     bootstrap = (
-        "import sys,runpy; sys.path.insert(0,"
+        "import sys,runpy; "
+        + ("" if prelude is None else "exec(" + repr(prelude) + "); ")
+        + "sys.path.insert(0,"
         + repr(str(ROOT))
         + "); sys.argv=sys.argv[1:]; runpy.run_path(sys.argv[0],run_name='__main__')"
     )
@@ -837,3 +841,98 @@ def test_output_cap_is_aggregate_of_published_artifacts(tmp_path):
         == {"reason": "group_compute"},
         "GROUP_AGGREGATE_OUTPUT_BUDGET",
     )
+
+
+def setup_refusal(code, out, err, output, kind):
+    lines = err.splitlines()
+    try:
+        first = json.loads(lines[0]) if lines else None
+    except ValueError:
+        first = None
+    require(
+        code == 2
+        and first == {"reason": "group_setup", "type": kind}
+        and b"Traceback (most recent call last):" not in lines
+        and not out,
+        "GROUP_SETUP_EXIT:" + json.dumps({"exit": code, "stderr_lines": len(lines)}),
+    )
+    require(not output.exists(), "GROUP_SETUP_NO_OUTPUT")
+
+
+def run_main(monkeypatch, capsysbinary, tmp_path, request):
+    path = tmp_path / "request.json"
+    path.write_bytes(RECIPE["canonical"](request))
+    pins = RECIPE["pins"](request)
+    output = tmp_path / "output"
+    argv = [str(DRIVER), "--request", str(path), "--output", str(output)]
+    for key in ("request", "source-binding", "profile"):
+        argv += ["--expected-" + key + "-sha256", pins[key]]
+    monkeypatch.setattr(sys, "argv", argv)
+    product = runpy.run_path(str(DRIVER))
+    code = product["main"]()
+    return code, capsysbinary.readouterr(), output
+
+
+def test_unexpected_parent_setup_error_exits_two(monkeypatch, capsysbinary, tmp_path):
+    import importlib.metadata
+
+    # The recipe enumerates installed distributions, so build it before patching.
+    request = make_request()
+    real = importlib.metadata.distributions
+
+    class Nameless:
+        metadata = {"Name": None}
+        version = "0"
+
+    monkeypatch.setattr(
+        importlib.metadata, "distributions", lambda: [*real(), Nameless()]
+    )
+    code, captured, output = run_main(monkeypatch, capsysbinary, tmp_path, request)
+    setup_refusal(code, captured.out, captured.err, output, "TypeError")
+
+
+def test_supervision_access_denied_is_setup_and_child_dead_at_exit(tmp_path):
+    import psutil
+
+    marker = tmp_path / "child.pid"
+    prelude = (
+        "import pathlib, psutil\n"
+        "def denied(pid):\n"
+        "    pathlib.Path(" + repr(str(marker)) + ").write_text(str(pid))\n"
+        "    raise psutil.AccessDenied(pid)\n"
+        "psutil.Process = denied\n"
+    )
+    cp, output = launch(tmp_path, make_request(), prelude=prelude)
+    setup_refusal(cp.returncode, cp.stdout, cp.stderr, output, "AccessDenied")
+    require(marker.exists(), "GROUP_SETUP_CHILD_REAPED")
+    # Dead after interpreter exit. Multiprocessing's exit-time join would also reap
+    # this non-daemon child, so this does not isolate run_worker's own cleanup.
+    require(not psutil.pid_exists(int(marker.read_text())), "GROUP_SETUP_CHILD_REAPED")
+
+
+@pytest.mark.parametrize(
+    "interrupt",
+    [KeyboardInterrupt, SystemExit],
+    ids=["KeyboardInterrupt", "SystemExit"],
+)
+def test_cancellation_is_not_setup(monkeypatch, capsysbinary, interrupt):
+    product = runpy.run_path(str(DRIVER))
+    signal = interrupt("control")
+
+    def cancelled(args):
+        raise signal
+
+    monkeypatch.setitem(product["main"].__globals__, "execute", cancelled)
+    argv = [str(DRIVER), "--request", "unused", "--output", "unused"]
+    for key in ("request", "source-binding", "profile"):
+        argv += ["--expected-" + key + "-sha256", "unused"]
+    monkeypatch.setattr(sys, "argv", argv)
+    try:
+        code = product["main"]()
+    except interrupt as caught:
+        require(caught is signal, "GROUP_CANCELLATION_PROPAGATES")
+    else:
+        raise AssertionError(
+            "GROUP_CANCELLATION_PROPAGATES:" + json.dumps({"returned": code})
+        )
+    require(capsysbinary.readouterr().err == b"", "GROUP_CANCELLATION_PROPAGATES")

@@ -832,7 +832,7 @@ def main():
     except GroupError as error:
         sys.stderr.buffer.write(encoded({"reason": error.reason}) + b"\n")
         return error.exit_code
-    except (OSError, ValueError, ImportError) as error:
+    except Exception as error:
         sys.stderr.buffer.write(
             encoded({"reason": "group_setup", "type": type(error).__name__}) + b"\n"
         )
