@@ -92,6 +92,53 @@ Registry discovery, the central validator, dependency inspection, other loaders,
 installer publication and replacement remain treesitter-chunker#362 work. This
 change does not establish repository-wide native admission coverage.
 
+#### Native library selection in the legacy tools
+
+`SmartGrammarManager` and `UserGrammarTools` look for the requested language's
+platform library: `<language>.dylib` on macOS, `<language>.dll` on Windows and
+`<language>.so` elsewhere. The legacy `<language>.so` remains a fallback on
+every platform, used only when no native entry with that name exists. Selection
+is by directory entry, not health: an existing native entry is selected even if
+it is empty, corrupt, a directory or a dangling symbolic link, and a failing
+native library is never replaced by the legacy result. When both exist,
+diagnosis notes that the legacy file is ignored. Selection confers no trust;
+admission still requires the caller's pin for the language, and identical
+approved bytes admit under either name. Files whose name is not the requested
+language plus one of these suffixes are never selected, removed or adopted for
+it; a lone `helper.dll` or `parser.so` is not guessed to be the grammar.
+
+Language names use a single-component check: nonempty, not `.` or `..`, and
+free of NUL, `/`, `\` and `:`. Manager lookups that construct grammar paths
+raise `ValueError` for invalid names. Install, update and remove return an
+error result before grammar-specific filesystem operations. Their CLI commands
+exit 1 for these errors; declining removal confirmation exits 0 without running
+removal. Library entries whose derived name fails this check are omitted from `grammar list`,
+`grammar validate` and `validate_all_grammars()` without being probed, counted
+or changed.
+
+`list_installed_grammars()["total_grammars"]` counts languages, not files, so
+`baml.dll` plus `baml.so` is one grammar. Native files that were previously
+omitted on macOS and Windows now appear; because the CLI supplies no pins until
+treesitter-chunker#362, they are reported `untrusted` and `grammar validate`
+can change from exit 0 to exit 1. Recovery plans name the selected or expected
+`<language><suffix>` path instead of a `cp *.so` instruction.
+
+`remove_grammar()` unlinks only `<language><native>` and then `<language>.so`,
+each if the entry exists (including a dangling symbolic link), and then removes
+the source directory. Each successful unlink is recorded as it happens. Removal
+is not transactional: if a later unlink fails, the result is `error`, already
+removed files stay removed, the source directory is kept and the remaining
+legacy `.so` may become the selected library.
+
+Before copying a repository's `.so` files, install and changed-revision update
+refuse with an `error` result, without copying or diagnosing, when an existing
+native entry would take priority over the new `<language>.so`. Source
+preparation already done (clone, checkout, npm, generate) is not rolled back,
+and a later unchanged-revision update reports the installed native library's
+health; recovering from such a state is separately governed
+(treesitter-chunker#363). These tools still copy only `.so` names; native-suffix
+installation and staged publication are not provided here.
+
 ### 🧠 Smart Error Handling
 - **Automatic diagnosis** of grammar issues
 - **Context-aware recommendations** based on error type
@@ -452,8 +499,10 @@ project_root/
 ```
 
 > **Platform-native extensions:** Compiled grammar libraries use the extension appropriate for
-> the current platform — `.so` on Linux, `.dylib` on macOS, and `.dll` on Windows. The grammar
-> scanner automatically detects the correct extension. Examples in this guide show `.so` for brevity.
+> the current platform — `.so` on Linux, `.dylib` on macOS, and `.dll` on Windows. Both the
+> registry scanner and the legacy grammar tools choose that extension; the legacy tools also
+> accept `<language>.so` when no native library is present. Examples in this guide show `.so`
+> for brevity.
 
 ## Best Practices
 

@@ -1,7 +1,9 @@
 """Smart grammar management with user guidance and error handling."""
 
 import logging
+import os
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from collections.abc import Mapping
 from pathlib import Path
@@ -11,6 +13,34 @@ from chunker.grammar.integrity import probe_native_grammar
 
 
 logger = logging.getLogger(__name__)
+
+_INVALID_COMPONENT_CHARACTERS = ("/", "\\", ":", "\0")
+
+
+def _platform_library_suffix(platform: str | None = None) -> str:
+    """Return the native grammar library suffix for ``platform``."""
+    return {"darwin": ".dylib", "win32": ".dll"}.get(
+        sys.platform if platform is None else platform, ".so"
+    )
+
+
+def _require_language_component(language: object) -> str:
+    """Return ``language`` if it is one portable filename component.
+
+    Raises:
+        ValueError: For empty or non-string names, ``.``/``..``, and names
+            containing NUL, ``/``, ``\\`` or ``:``.
+    """
+    if not isinstance(language, str) or not language:
+        raise ValueError("Grammar language must be a nonempty string")
+    if language in {".", ".."} or any(
+        character in language for character in _INVALID_COMPONENT_CHARACTERS
+    ):
+        raise ValueError(
+            "Grammar language must be a single portable filename component: "
+            f"{language!r}"
+        )
+    return language
 
 
 @dataclass
@@ -52,7 +82,7 @@ class SmartGrammarManager:
         """Initialize the smart grammar manager.
 
         Args:
-            build_dir: Directory containing compiled .so files
+            build_dir: Directory containing compiled grammar libraries
             grammars_dir: Directory containing grammar source repositories
         """
         self.build_dir = Path(build_dir)
@@ -64,6 +94,37 @@ class SmartGrammarManager:
         }
         self.health_cache: dict[str, GrammarHealth] = {}
         self.compatibility_cache: dict[str, GrammarCompatibility] = {}
+        self.library_suffix = _platform_library_suffix()
+
+    def _library_candidates(self, language: str) -> tuple[Path, Path]:
+        """Return the native and legacy ``.so`` paths for ``language``."""
+        _require_language_component(language)
+        return (
+            self.build_dir / f"{language}{self.library_suffix}",
+            self.build_dir / f"{language}.so",
+        )
+
+    def _library_path(self, language: str) -> Path:
+        """Select the native entry if present, else legacy ``.so``, else native."""
+        native, legacy = self._library_candidates(language)
+        if os.path.lexists(native):
+            return native
+        if os.path.lexists(legacy):
+            return legacy
+        return native
+
+    def _library_languages(self) -> list[str]:
+        """Return sorted language names of native and legacy library entries."""
+        languages = set()
+        for suffix in dict.fromkeys((self.library_suffix, ".so")):
+            for entry in self.build_dir.glob(f"*{suffix}"):
+                language = entry.name[: -len(suffix)]
+                try:
+                    _require_language_component(language)
+                except ValueError:
+                    continue
+                languages.add(language)
+        return sorted(languages)
 
     def diagnose_grammar_issues(self, language: str) -> GrammarHealth:
         """Diagnose issues with a specific grammar.
@@ -74,9 +135,11 @@ class SmartGrammarManager:
         Returns:
             GrammarHealth object with detailed diagnosis
         """
+        native, legacy = self._library_candidates(language)
         health = GrammarHealth(language=language, status="unknown")
 
-        so_file = (self.build_dir / f"{language}.so").absolute()
+        selected = self._library_path(language)
+        so_file = selected.absolute()
         snapshot_metadata = {}
 
         def inspect(snapshot: Path) -> None:
@@ -124,6 +187,10 @@ class SmartGrammarManager:
                         "Try recompiling on current system",
                     ],
                 )
+        if native != legacy and selected == native and os.path.lexists(legacy):
+            health.recommendations.append(
+                f"Legacy library {legacy} is ignored because native {native} takes priority",
+            )
 
         # Check source repository
         source_dir = self.grammars_dir / f"tree-sitter-{language}"
@@ -222,6 +289,7 @@ class SmartGrammarManager:
         Returns:
             Recovery plan with specific steps
         """
+        library = self._library_path(language)
         if health is None:
             health = self.diagnose_grammar_issues(language)
         plan: dict[str, Any] = {
@@ -241,18 +309,18 @@ class SmartGrammarManager:
                 f"Navigate to grammar directory: cd grammars/tree-sitter-{language}",
                 "Install dependencies: npm install (if package.json exists)",
                 "Generate grammar: tree-sitter generate",
-                "Copy .so file to build directory: cp *.so ../../chunker/data/grammars/build/",
+                f"Copy the compiled {language}{self.library_suffix} library to {library}",
             ]
             plan["estimated_time"] = "5-15 minutes"
             plan["difficulty"] = "easy"
 
         elif health.status == "corrupted":
             plan["recovery_steps"] = [
-                f"Remove corrupted .so file: rm chunker/data/grammars/build/{language}.so",
+                f"Remove the corrupted library file: {library}",
                 f"Clean grammar source: cd grammars/tree-sitter-{language} && git clean -fd",
                 "Pull latest changes: git pull origin main",
                 "Recompile grammar: tree-sitter generate",
-                "Copy new .so file to build directory",
+                f"Copy the new {language}{self.library_suffix} library to {library.parent}",
             ]
             plan["estimated_time"] = "3-10 minutes"
             plan["difficulty"] = "easy"
@@ -282,11 +350,7 @@ class SmartGrammarManager:
         """
         all_health = {}
 
-        # Get all .so files in build directory
-        so_files = list(self.build_dir.glob("*.so"))
-
-        for so_file in so_files:
-            language = so_file.stem
+        for language in self._library_languages():
             all_health[language] = self.diagnose_grammar_issues(language)
 
         return all_health
