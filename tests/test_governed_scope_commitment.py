@@ -343,6 +343,7 @@ class FakePopen:
 
     def __init__(self, argv, **kwargs):
         self.argv, self.kwargs, self.pid, self.returncode = argv, kwargs, -1, None
+        self.wait_timeouts = []
         out_r, out_w = os.pipe()
         err_r, err_w = os.pipe()
         os.write(out_w, FakePopen.payload)
@@ -353,6 +354,7 @@ class FakePopen:
         FakePopen.created.append(self)
 
     def wait(self, timeout=None):
+        self.wait_timeouts.append(timeout)
         self.returncode = 0
         return 0
 
@@ -1466,9 +1468,10 @@ def test_second_command_select_and_wait_allowance(tmp_path):
     store = fake_store(tmp_path)
     now = [1000.0]
     runner = module.Runner(str(store), clock=lambda: now[0])
+    runner.slice = 50.0  # local: the remaining budget, not the slice, bounds the wait
     log = []
     runner.selector = lambda: ScriptedSelector(log=log)
-    with PatchedPopen(module):
+    with PatchedPopen(module) as created:
         runner.git("rev-parse", "--show-object-format")
         now[0] += 25.0
         log.clear()
@@ -1480,7 +1483,7 @@ def test_second_command_select_and_wait_allowance(tmp_path):
         "T2_SECOND_COMMAND_SELECT_ALLOWANCE",
     )
     require(
-        runner.waits == [("reap", min(runner.slice, 35.0))],
+        runner.waits == [("reap", 35.0)] and created[1].wait_timeouts == [35.0],
         "T2_SECOND_COMMAND_WAIT_ALLOWANCE",
     )
 
