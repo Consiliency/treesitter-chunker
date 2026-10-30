@@ -275,6 +275,7 @@ class FakeRunner:
 
     def __init__(self, *, tree_answer=None, root=b"", recursive=b"", fail_config=None):
         self.calls, self.uncertain = [], False
+        self.gitdir = "fake.git"  # same attribute check_config reads from Runner
         self.tree_answer, self.root, self.recursive, self.fail_config = (
             tree_answer,
             root,
@@ -580,7 +581,7 @@ def check_first_error(m, tmp):
         raise original
 
     def failing_killer(pid, sig):
-        raise OSError(1, "cleanup failure")
+        raise OSError("cleanup failure")
 
     runner = m.Runner(str(store), read=interrupted)
     runner.killer = failing_killer
