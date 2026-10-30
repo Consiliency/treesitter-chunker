@@ -54,3 +54,13 @@ files are not bound to committed blobs; consumers needing committed content stag
 clean committed snapshot. The driver hash changed once for this policy; consumer
 copies and pins change only by owner-approved refresh. The no-read tests require
 `strace` on Linux.
+
+## Reference commitment producer
+
+A trusted controller, never a candidate or the driver, runs `python -I -S tools/governed_scope_commitment.py commit --git-dir <absolute bare store> --commit <full id> --expected-tree <full id> --output <absolute absent path>`
+with an independently identified, controller-owned bare store and independently expected ids. It reads Git objects only: never a working tree,
+gitdir pointer, hook, replace ref, lazy fetch or network. Before traversal it refuses alternates, http-alternates, include/includeIf, core.worktree,
+worktreeConfig and alternateRefsCommand. It writes exact `scope_root_metadata.v2` JSON by exclusive create (mode 0600) and prints a canonical receipt with the
+metadata digest and producer SHA-256. Refusals exit 1 with `scope_diagnostic.v1` and leave existing output untouched; other setup failures exit 2, and unconfirmed Git cleanup or unprovable failed-write cleanup exits 2 `scope_setup:CleanupUncertain`, never success; a failed write removes only its own identity-proven new file.
+It is a private opt-in tool with no consumer adoption; it binds boundary metadata only, not file content, and is no hostile-repository sandbox; an equivalent producer must be byte-equal on these vectors.
+Ctrl-C limit: the producer does not own SIGINT, so a perfectly timed SIGINT can lose the first error and cut cleanup short; treat any nonzero exit as failure.
