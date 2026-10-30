@@ -11,6 +11,7 @@ CI_SMOKE_TESTS = [
     "tests/test_governed_group.py",
     "tests/test_governed_scope.py",
     "tests/test_governed_scope_committed.py",
+    "tests/test_governed_scope_commitment.py",
     "tests/test_auto.py",
     "tests/test_chunking.py",
     "tests/test_cli.py",

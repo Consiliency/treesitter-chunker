@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a trusted-controller reference producer of `scope_root_metadata.v2`
+  (`tools/governed_scope_commitment.py`, treesitter-chunker#512) that reads only an
+  independently identified bare Git store, never a working tree, with bounded Git I/O.
 - Add an opt-in `governed_scope.v2` committed-boundary policy to the private governed
   scope driver (treesitter-chunker#512): boundary classification binds to trusted
   commit/tree/gitlink metadata, and uncommitted `.git` markers refuse unless a
