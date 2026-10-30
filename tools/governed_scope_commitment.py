@@ -113,6 +113,7 @@ class Runner:
         self.slice = WAIT_SLICE_SECONDS
         self.signals = (signal.SIGTERM, signal.SIGKILL)
         self.closer = close_pipe
+        self.selector = selectors.DefaultSelector
         self.group_probe = os.killpg
         self.killer = os.killpg
         self.sleep = time.sleep
@@ -169,9 +170,15 @@ class Runner:
         return code, out
 
     def collect(self, proc):
-        """Read stdout and stderr together; never request more than remaining+1."""
+        """Read stdout and stderr together; never request more than remaining+1.
+
+        The first collection error is kept through selector teardown (S1); a later
+        teardown error is recorded, and propagates only when nothing failed before it.
+        """
         chunks, total = [], 0
-        with selectors.DefaultSelector() as sel:
+        first = None
+        sel = self.selector()
+        try:
             sel.register(proc.stdout, selectors.EVENT_READ, "stdout")
             sel.register(proc.stderr, selectors.EVENT_READ, "stderr")
             while sel.get_map():
@@ -190,6 +197,16 @@ class Runner:
                         raise ScopeRefused("scope_commitment")
                     if key.data == "stdout":
                         chunks.append(data)
+        except BaseException as exc:  # noqa: BLE001 -- re-raised after teardown
+            first = exc
+        try:
+            sel.close()
+        except BaseException as later:  # noqa: BLE001 -- recorded; first error kept
+            if first is None:
+                raise
+            self.cleanup_errors.append(type(later).__name__)
+        if first is not None:
+            raise first
         return b"".join(chunks)
 
     def reap(self, proc):

@@ -9,11 +9,14 @@ mutation triplets reuse the same guarantee checkers on fresh module copies.
 from __future__ import annotations
 
 import ast
+import builtins
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
+import selectors
 import stat
 import subprocess
 import sys
@@ -175,15 +178,46 @@ def canonical(value):
     ).encode("utf-8")
 
 
-def produce(
-    tmp, store, commit, tree, *, output=None, optimize=False, env=None, cwd=None
-):
-    """Healthy public run with one finite timeout and owner cleanup.
+class PublicCleanupUncertain(AssertionError):  # noqa: N818
+    """A public run ended unsuccessfully; producer-created Git sessions are unknown."""
 
-    On timeout the direct child is killed and reaped within a bound; Git sessions the
-    producer may have started are then unknown, so the outcome is reported as cleanup
-    uncertainty (a failure), never as a clean teardown.
+
+def owner_cleanup(proc, first):
+    """Finite best-effort teardown of the direct child after any unsuccessful exit.
+
+    One kill and one bounded reap; their failures are recorded. Git sessions the
+    producer may have started cannot be confirmed, so the result is always cleanup
+    uncertainty carrying the initiating error, never a clean teardown.
     """
+    errors = []
+    try:
+        proc.kill()
+    except BaseException as exc:  # noqa: BLE001 -- recorded; initiating error kept
+        errors.append(exc)
+    try:
+        proc.communicate(timeout=5)
+    except BaseException as exc:  # noqa: BLE001 -- recorded; initiating error kept
+        errors.append(exc)
+    failure = PublicCleanupUncertain(
+        f"PUBLIC_OWNER_CLEANUP_UNCERTAIN: {type(first).__name__}; Git sessions unknown"
+    )
+    failure.first, failure.cleanup_errors = first, errors
+    return failure
+
+
+def produce(
+    tmp,
+    store,
+    commit,
+    tree,
+    *,
+    output=None,
+    optimize=False,
+    env=None,
+    cwd=None,
+    popen=subprocess.Popen,
+):
+    """Healthy public run with one finite timeout and unconditional owner cleanup."""
     out = output or (tmp / "metadata.json")
     flags = ["-I", "-S"] + (["-O"] if optimize else [])
     argv = [
@@ -200,7 +234,7 @@ def produce(
         "--output",
         str(out),
     ]
-    proc = subprocess.Popen(
+    proc = popen(
         argv,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -209,15 +243,8 @@ def produce(
     )
     try:
         stdout, stderr = proc.communicate(timeout=60)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        try:
-            proc.communicate(timeout=5)
-        except subprocess.TimeoutExpired:
-            pass
-        raise AssertionError(
-            "PUBLIC_OWNER_CLEANUP_UNCERTAIN: producer timed out; Git sessions unknown"
-        )
+    except BaseException as exc:  # noqa: BLE001 -- every unsuccessful exit is cleaned
+        raise owner_cleanup(proc, exc) from exc
     return subprocess.CompletedProcess(argv, proc.returncode, stdout, stderr), out
 
 
@@ -273,8 +300,10 @@ def fake_store(tmp):
 class FakeRunner:
     """Scripted Git plumbing answers; records every command."""
 
-    def __init__(self, *, tree_answer=None, root=b"", recursive=b"", fail_config=None):
-        self.calls, self.uncertain = [], False
+    def __init__(
+        self, *, tree_answer=None, root=b"", recursive=b"", fail_config=None, config=b""
+    ):
+        self.calls, self.uncertain, self.config = [], False, config
         self.gitdir = "fake.git"  # same attribute check_config reads from Runner
         self.tree_answer, self.root, self.recursive, self.fail_config = (
             tree_answer,
@@ -289,7 +318,7 @@ class FakeRunner:
             if self.fail_config is not None:
                 self.uncertain = True
                 raise self.fail_config
-            return 0, b""
+            return 0, self.config
         if args == ("rev-parse", "--is-bare-repository"):
             return 0, b"true\n"
         if args == ("rev-parse", "--show-object-format"):
@@ -360,6 +389,38 @@ class FakeProc:
             self.returncode = 0
             return 0
         raise subprocess.TimeoutExpired("fake", timeout)
+
+
+class ScriptedSelector:
+    """Selector stand-in: every registered pipe is ready; select may advance a fake
+    clock; close may fail. Records select timeouts and close attempts."""
+
+    def __init__(self, *, clock=None, advance=0.0, close_error=None, log=None):
+        self.clock, self.advance, self.close_error = clock, advance, close_error
+        self.log = log if log is not None else []
+        self.keys = {}
+
+    def register(self, fileobj, events, data=None):
+        key = selectors.SelectorKey(fileobj, fileobj.fileno(), events, data)
+        self.keys[fileobj] = key
+        return key
+
+    def unregister(self, fileobj):
+        return self.keys.pop(fileobj)
+
+    def get_map(self):
+        return self.keys
+
+    def select(self, timeout=None):
+        self.log.append(("select", timeout))
+        if self.clock is not None:
+            self.clock[0] += self.advance
+        return [(key, selectors.EVENT_READ) for key in list(self.keys.values())]
+
+    def close(self):
+        self.log.append(("close", None))
+        if self.close_error is not None:
+            raise self.close_error
 
 
 class PipeProc:
@@ -1260,6 +1321,352 @@ def test_q5_failure_branches(tmp_path, branch):
             isinstance(exc.__cause__, OSError) and os.path.lexists(target),
             "Q5_UNPROVEN_LEFT_" + branch,
         )
+
+
+# --- S1 / T1 / T2 direct controls ---------------------------------------------------------------
+
+
+def gone(pid, sig):
+    raise ProcessLookupError(3, "no such group")
+
+
+@pytest.mark.parametrize("case", ["read_then_close_error", "close_error_only"])
+def test_selector_teardown_keeps_first_error(tmp_path, case):
+    module = load_producer()
+    store = fake_store(tmp_path)
+    original = RuntimeError("first read failure")
+
+    def interrupted(fd, n):
+        raise original
+
+    read = interrupted if case == "read_then_close_error" else os.read
+    runner = module.Runner(str(store), read=read)
+    selector = ScriptedSelector(close_error=OSError("selector close failed"))
+    runner.selector = lambda: selector
+    kills, closes = [], []
+    runner.killer = lambda pid, sig: kills.append(sig)
+    runner.group_probe = gone
+
+    def closer(pipe):
+        closes.append(pipe)
+        pipe.close()
+
+    runner.closer = closer
+    caught = None
+    with PatchedPopen(module, payload=b"x") as created:
+        try:
+            runner.git("rev-parse", "--show-object-format")
+        except BaseException as exc:  # noqa: BLE001 -- classified below
+            caught = exc
+    frames = (
+        [f.name for f in traceback.extract_tb(caught.__traceback__)]
+        if caught is not None
+        else []
+    )
+    if case == "read_then_close_error":
+        require(
+            caught is original and "interrupted" in frames and "collect" in frames,
+            "S1_FIRST_ERROR_IDENTITY_AND_TRACEBACK",
+        )
+        require(runner.cleanup_errors == ["OSError"], "S1_TEARDOWN_ERROR_RECORDED")
+    else:
+        require(caught is selector.close_error, "S1_TEARDOWN_ONLY_PROPAGATES")
+        require(runner.cleanup_errors == [], "S1_TEARDOWN_NOT_DOUBLE_RECORDED")
+    require(selector.log.count(("close", None)) == 1, "S1_SELECTOR_CLOSED_ONCE")
+    require(
+        kills == [module.signal.SIGTERM]
+        and not runner.uncertain
+        and all(step <= runner.cleanup_seconds for _, step in runner.waits),
+        "S1_BOUNDED_RUNNER_CLEANUP",
+    )
+    require(
+        closes == [created[0].stdout, created[0].stderr],
+        "S1_ONE_CLOSE_PER_OWNED_PIPE",
+    )
+
+
+class PublicFakePopen:
+    """Popen stand-in for the public helper: scripted communicate and kill, no process."""
+
+    def __init__(self, script, kill_error=None):
+        self.script, self.kill_error, self.calls = list(script), kill_error, []
+        self.returncode = 0
+
+    def __call__(self, argv, **kwargs):
+        self.argv = argv
+        return self
+
+    def communicate(self, timeout=None):
+        self.calls.append(("communicate", timeout))
+        step = self.script.pop(0)
+        if isinstance(step, BaseException):
+            raise step
+        return step
+
+    def kill(self):
+        self.calls.append(("kill", None))
+        if self.kill_error is not None:
+            raise self.kill_error
+
+
+PUBLIC_FAILURES = {
+    "communicate_oserror": (OSError("pipe read failed"), None, None, []),
+    "timeout_kill_fails": (
+        subprocess.TimeoutExpired("producer", 60),
+        OSError("kill failed"),
+        None,
+        ["OSError"],
+    ),
+    "oserror_reap_times_out": (
+        OSError("pipe read failed"),
+        None,
+        subprocess.TimeoutExpired("producer", 5),
+        ["TimeoutExpired"],
+    ),
+}
+
+
+@pytest.mark.parametrize("case", list(PUBLIC_FAILURES))
+def test_public_helper_owner_cleanup(tmp_path, case):
+    first, kill_error, reap, names = PUBLIC_FAILURES[case]
+    fake = PublicFakePopen([first, reap or (b"", b"")], kill_error=kill_error)
+    caught = None
+    try:
+        produce(tmp_path, tmp_path / "store.git", C1, T1, popen=fake)
+    except PublicCleanupUncertain as exc:
+        caught = exc
+    require(caught is not None, "T1_UNSUCCESSFUL_EXIT_IS_FAILURE")
+    frames = [f.name for f in traceback.extract_tb(first.__traceback__)]
+    require(
+        caught.first is first and caught.__cause__ is first and "communicate" in frames,
+        "T1_INITIATING_ERROR_RETAINED",
+    )
+    require(
+        fake.calls == [("communicate", 60), ("kill", None), ("communicate", 5)],
+        "T1_ONE_KILL_ONE_BOUNDED_REAP",
+    )
+    require(
+        [type(e).__name__ for e in caught.cleanup_errors] == names
+        and "Git sessions unknown" in str(caught),
+        "T1_DESCENDANTS_UNCERTAIN",
+    )
+
+
+def test_public_helper_success_has_no_cleanup(tmp_path):
+    fake = PublicFakePopen([(b"receipt\n", b"")])
+    cp, _ = produce(tmp_path, tmp_path / "store.git", C1, T1, popen=fake)
+    require(
+        cp.stdout == b"receipt\n" and fake.calls == [("communicate", 60)],
+        "T1_SUCCESS_NO_KILL",
+    )
+
+
+def test_second_command_select_and_wait_allowance(tmp_path):
+    module = load_producer()
+    store = fake_store(tmp_path)
+    now = [1000.0]
+    runner = module.Runner(str(store), clock=lambda: now[0])
+    log = []
+    runner.selector = lambda: ScriptedSelector(log=log)
+    with PatchedPopen(module):
+        runner.git("rev-parse", "--show-object-format")
+        now[0] += 25.0
+        log.clear()
+        runner.waits.clear()
+        runner.git("rev-parse", "--show-object-format")
+    selects = [timeout for kind, timeout in log if kind == "select"]
+    require(
+        selects and all(timeout == 35.0 for timeout in selects),
+        "T2_SECOND_COMMAND_SELECT_ALLOWANCE",
+    )
+    require(
+        runner.waits == [("reap", min(runner.slice, 35.0))],
+        "T2_SECOND_COMMAND_WAIT_ALLOWANCE",
+    )
+
+
+def test_late_selector_wake_rejected(tmp_path):
+    module = load_producer()
+    store = fake_store(tmp_path)
+    now = [1000.0]
+    runner = module.Runner(str(store), clock=lambda: now[0])
+    runner.killer = lambda pid, sig: None
+    runner.group_probe = gone
+    log = []
+    caught = None
+    with PatchedPopen(module):
+        runner.git("rev-parse", "--show-object-format")
+        now[0] += 25.0
+        runner.selector = lambda: ScriptedSelector(clock=now, advance=40.0, log=log)
+        reads_before = len(runner.reads)
+        try:
+            runner.git("rev-parse", "--show-object-format")
+        except TimeoutError as exc:
+            caught = exc
+    require(caught is not None, "T2_LATE_WAKE_REJECTED")
+    require(
+        log == [("select", 35.0), ("close", None)]
+        and len(runner.reads) == reads_before,
+        "T2_LATE_WAKE_NO_READ",
+    )
+
+
+class ForbiddenAccess:
+    """Python-side open of a forbidden path fails visibly; lstat is left allowed."""
+
+    def __init__(self, monkeypatch, forbidden):
+        self.forbidden = {os.path.abspath(p) for p in forbidden}  # noqa: PTH100
+        self.attempts = []
+        real_open, real_os_open = builtins.open, os.open
+
+        def guarded_open(file, *args, **kwargs):
+            self.check(file)
+            return real_open(file, *args, **kwargs)
+
+        def guarded_os_open(path, *args, **kwargs):
+            self.check(path)
+            return real_os_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "open", guarded_open)
+        monkeypatch.setattr(io, "open", guarded_open)
+        monkeypatch.setattr(os, "open", guarded_os_open)
+
+    def check(self, path):
+        if isinstance(path, int):
+            return
+        name = os.path.abspath(os.fspath(path))  # noqa: PTH100
+        if name in self.forbidden:
+            self.attempts.append(name)
+            raise PermissionError("FORBIDDEN_Q1_Q2_ACCESS:" + name)
+
+
+@pytest.mark.parametrize("case", ["alternates", "http_alternates", "include"])
+def test_q1_q2_forbidden_open_guard(tmp_path, monkeypatch, case):
+    module = load_producer()
+    store = fake_store(tmp_path)
+    target = tmp_path / "forbidden-target"
+    target.write_text("x\n", encoding="utf-8")
+    if case == "include":
+        runner = FakeRunner(config=b"include.path\n" + str(target).encode() + b"\0")
+        forbidden = [store / "config", target]
+    else:
+        (store / FILESYSTEM_ONLY[case]).parent.mkdir(parents=True, exist_ok=True)
+        (store / FILESYSTEM_ONLY[case]).write_text(str(target) + "\n", encoding="utf-8")
+        runner = FakeRunner()
+        forbidden = [store / FILESYSTEM_ONLY[case], target]
+    runner.gitdir = str(store)
+    guard = ForbiddenAccess(monkeypatch, forbidden)
+    for path in forbidden:
+        try:
+            path.read_bytes()
+            require(False, "T2_GUARD_LIVE")
+        except PermissionError:
+            pass
+    require(len(guard.attempts) == 2 and os.path.lexists(forbidden[0]), "T2_GUARD_LIVE")
+    guard.attempts.clear()
+    try:
+        module.produce(str(store), C1, T1, runner)
+        require(False, "T2_Q1_Q2_REFUSED")
+    except module.ScopeRefused as exc:
+        require(exc.reason == "scope_commitment", "T2_Q1_Q2_REFUSED")
+    require(guard.attempts == [], "T2_NO_FORBIDDEN_PYTHON_OPEN")
+    if case == "include":
+        config = os.path.join(str(store), "config")  # noqa: PTH118
+        require(
+            runner.calls
+            == [("config", "--file", config, "--no-includes", "--null", "--list")],
+            "T2_EXACT_CONFIG_COMMAND",
+        )
+    else:
+        require(runner.calls == [], "T2_Q1_BEFORE_ANY_GIT")
+
+
+def test_output_create_race_at_open(tmp_path, monkeypatch):
+    module = load_producer()
+    store = fake_store(tmp_path)
+    out = tmp_path / "m.json"
+    order, seen = [], {}
+    real_open, real_absent = os.open, module.absent_output
+
+    def absent(value):
+        order.append("absent_output")
+        return real_absent(value)
+
+    def racing_open(path, flags, mode=0o777, *args, **kwargs):
+        if os.fspath(path) == str(out) and not seen:
+            order.append("race")
+            fd = real_open(str(out), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            os.write(fd, b"caller-bytes")
+            os.fchmod(fd, 0o640)
+            info = os.fstat(fd)
+            os.close(fd)
+            seen.update(identity=(info.st_dev, info.st_ino), flags=flags)
+        return real_open(path, flags, mode, *args, **kwargs)
+
+    monkeypatch.setattr(module, "absent_output", absent)
+    monkeypatch.setattr(os, "open", racing_open)
+    args = type(
+        "Args",
+        (),
+        {"git_dir": str(store), "commit": C1, "expected_tree": T1, "output": str(out)},
+    )()
+    code, stdout, _, error = module.run(args, FakeRunner())
+    monkeypatch.undo()
+    info = os.lstat(out)
+    require(
+        order == ["absent_output", "race"] and seen["flags"] & os.O_EXCL,
+        "T2_RACE_AT_EXCLUSIVE_OPEN",
+    )
+    require(
+        code == 1
+        and stdout == b""
+        and isinstance(error, module.ScopeRefused)
+        and error.reason == "scope_root",
+        "T2_RACE_REFUSED",
+    )
+    require(
+        (info.st_dev, info.st_ino) == seen["identity"]
+        and out.read_bytes() == b"caller-bytes"
+        and stat.S_IMODE(info.st_mode) == 0o640,
+        "T2_RACE_CALLER_FILE_PRESERVED",
+    )
+
+
+def test_q5_lstat_failure_after_partial_write(tmp_path):
+    module = load_producer()
+    target = tmp_path / "out.json"
+    original = OSError(28, "No space left on device")
+    written = []
+
+    def partial_then_fail(fd, view):
+        if not written:
+            written.append(os.write(fd, bytes(view[:4])))
+            return written[0]
+        raise original
+
+    def failing_lstat(path):
+        raise PermissionError("lstat denied")
+
+    caught = None
+    try:
+        module.write_exclusive(
+            target, b"0123456789", write=partial_then_fail, lstat=failing_lstat
+        )
+    except module.CleanupUncertain as exc:
+        caught = exc
+    require(
+        caught is not None
+        and caught.__cause__ is original
+        and caught.producer_cleanup_errors == ["PermissionError"],
+        "T2_Q5_LSTAT_UNCERTAIN_CHAINED",
+    )
+    info = os.lstat(target)
+    require(
+        written == [4]
+        and target.read_bytes() == b"0123"
+        and stat.S_IMODE(info.st_mode) == 0o600,
+        "T2_Q5_LSTAT_OUTPUT_RETAINED",
+    )
 
 
 def test_no_fetch_installed_git(tmp_path):
