@@ -117,13 +117,16 @@ class PythonContextExtractor(BaseContextExtractor):
                     return True
                 if child.type == "=":
                     break
+        if parent.type in {"default_parameter", "typed_default_parameter"}:
+            return parent.child_by_field_name("name") == identifier_node
         if parent.type in {
             "parameters",
-            "default_parameter",
+            "lambda_parameters",
             "typed_parameter",
-            "typed_default_parameter",
             "identifier",
         }:
+            return True
+        if PythonContextExtractor._is_binding_target(identifier_node):
             return True
         return bool(
             parent.type in {"aliased_import", "dotted_name"}
@@ -131,12 +134,28 @@ class PythonContextExtractor(BaseContextExtractor):
             and parent.parent.type in {"import_statement", "import_from_statement"},
         )
 
-        # Import aliases
-        return bool(
-            parent.type in {"aliased_import", "dotted_name"}
-            and parent.parent
-            and parent.parent.type in {"import_statement", "import_from_statement"},
-        )
+    @staticmethod
+    def _is_binding_target(identifier_node: Node) -> bool:
+        """Check if an identifier is a loop, ``with`` or ``except`` target.
+
+        Targets may be nested in tuple and list patterns, for example
+        ``for left, (right, extra) in pairs`` or ``with f() as (a, b)``.
+        """
+        target = identifier_node
+        while target.parent is not None and target.parent.type in {
+            "pattern_list",
+            "tuple_pattern",
+            "list_pattern",
+            "tuple",
+            "list",
+        }:
+            target = target.parent
+        container = target.parent
+        if container is None:
+            return False
+        if container.type in {"for_statement", "for_in_clause"}:
+            return container.child_by_field_name("left") == target
+        return container.type == "as_pattern_target"
 
     def _find_definition(
         self,

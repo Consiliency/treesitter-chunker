@@ -14,6 +14,7 @@ from chunker.parser import get_parser
 from tests.reference_oracle import reference_case
 
 ISSUE_274 = "treesitter-chunker#274"
+ISSUE_294 = "treesitter-chunker#294"
 
 
 def _point(node) -> tuple[int, int] | None:
@@ -54,3 +55,29 @@ def test_274_issue_reproduction_finds_service_declarations() -> None:
     assert report is not None and report.type == "function_definition"
     assert resolver.find_symbol_definition("cleaned", root, root) is None
     assert resolver.find_symbol_definition("render", root, root) is None
+
+
+def test_294_binding_targets_are_not_references_and_uses_are() -> None:
+    case = reference_case("python", "binding_targets")
+    assert not case.root.has_error
+    extracted = {
+        (name, tuple(node.start_point))
+        for name, node in ContextFactory.create_context_extractor(
+            "python"
+        )._find_references_in_node(case.root, case.source)
+    }
+    mismatches = []
+    for entry in case.entries("occurrences", ISSUE_294):
+        node = case.occurrence(entry)
+        point = tuple(node.start_point)
+        resolved = {
+            tuple(reference.start_point)
+            for reference in ContextFactory.create_symbol_resolver(
+                "python"
+            ).find_symbol_references(entry["name"], case.root)
+        }
+        expected = entry["role"] == "use"
+        observed = (point in resolved, (entry["name"], point) in extracted)
+        if observed != (expected, expected):
+            mismatches.append((entry["name"], point, entry["role"], observed))
+    assert mismatches == []
