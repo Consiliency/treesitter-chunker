@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: ADMITPIN
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: 09472437414337fc5af836dc30b740b0b513ab8b2f670b3a1823f35eee122cf4
+roadmap_sha256: 7eef20626abc2b9d2ca169f95d0105c822ca7ea056bf870c05d2838265a6b38f
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_release_hygiene_policy.py -q"
 ---
@@ -22,8 +22,9 @@ The plan starts from main `7440971a` (roadmap merge, treesitter-chunker#533).
 Status since the roadmap snapshot: treesitter-chunker#534 and
 treesitter-chunker#535 are merged; treesitter-chunker#435 and
 treesitter-chunker#389 are closed. None of these change this phase.
-treesitter-chunker#537 (OWNERDEC records) is open, and nothing here depends on
-it.
+treesitter-chunker#537 (OWNERDEC records) merged as `2c4bca75`. Its
+D1–D5 decisions do not touch this phase: D1's prewarm route concerns the
+language-pack download, not the on-demand build retired here.
 
 The raw material already exists. `probe_native_grammar` and `NativeProbeResult`
 in `chunker/grammar/integrity.py` are the accepted admission primitive
@@ -118,9 +119,10 @@ Roadmap update in this PR: IF-0-ADMITPIN-1, Phase 1 and Phase 8 in
 `specs/phase-plans-v4.md` now carry the three maintainer decisions. The ADMIT
 scope widening is accepted. Phase 8 gains EC-ADMIT-6 to EC-ADMIT-8 and
 SL-reg ownership of `chunker/parser.py`, and the Execution Notes gain
-single-writer entries for `chunker/parser.py` and `compatibility.py`. The
-open treesitter-chunker#537 also edits the roadmap, so whichever merges second
-rebases.
+single-writer entries for `chunker/parser.py` and `compatibility.py`. This
+branch merged `origin/main` at `2c4bca75` (treesitter-chunker#537), keeping
+both sets of roadmap edits, and `roadmap_sha256` above is the merged
+roadmap's hash.
 
 ## Lane Index & Dependencies
 
