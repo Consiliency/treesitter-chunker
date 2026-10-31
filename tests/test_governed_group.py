@@ -1064,6 +1064,35 @@ def test_receipt_failure_after_publication_exits_three(tmp_path):
     published(request, output)
 
 
+def test_receipt_into_full_nonblocking_pipe_exits_three(tmp_path, monkeypatch):
+    # A full non-blocking sink makes buffered writes return None without
+    # raising; the receipt must still count as undelivered.
+    monkeypatch.setenv("PYTHONUNBUFFERED", "1")
+    request = make_request()
+    read_end, write_end = os.pipe()
+    try:
+        os.set_blocking(write_end, False)
+        try:
+            while True:
+                os.write(write_end, b"x" * 65536)
+        except BlockingIOError:
+            pass
+        cp, output = launch(
+            tmp_path, request, sinks={"stdout": write_end, "stderr": subprocess.PIPE}
+        )
+    finally:
+        os.close(read_end)
+        os.close(write_end)
+    require(
+        cp.returncode == 3 and cp.stderr == b'{"reason":"group_report"}\n',
+        "GROUP_REPORT_NONBLOCKING_EXIT:"
+        + json.dumps(
+            {"exit": cp.returncode, "stderr": cp.stderr.decode(errors="replace")}
+        ),
+    )
+    published(request, output)
+
+
 def test_receipt_and_diagnostic_failure_still_exits_three(tmp_path):
     request = make_request()
     with open("/dev/full", "wb") as full:

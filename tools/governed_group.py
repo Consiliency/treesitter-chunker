@@ -826,8 +826,24 @@ def execute(args):
 def report(stream, value):
     """Write one receipt/diagnostic line; return False instead of raising."""
     try:
-        stream.buffer.write(encoded(value) + b"\n")
-        stream.buffer.flush()
+        # Write straight to the descriptor and require every byte: a buffered
+        # write can return None (non-blocking sink) or short without raising.
+        stream.flush()
+        data = memoryview(encoded(value) + b"\n")
+        try:
+            descriptor = stream.fileno()
+        except (AttributeError, OSError, ValueError):
+            # In-memory streams (e.g. captured test output) have no descriptor.
+            written = stream.buffer.write(data)
+            stream.buffer.flush()
+            if written != len(data):
+                raise OSError("short report write")
+            return True
+        while data:
+            written = os.write(descriptor, data)
+            if not written:
+                raise OSError("short report write")
+            data = data[written:]
         return True
     except Exception:
         # Drain undeliverable buffered bytes so exit-time flushing cannot fail late.
