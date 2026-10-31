@@ -157,8 +157,10 @@ proposal. Existing output is never overwritten.
 
 One owned native compute child runs at a time per invocation. The parent applies a
 120-second watchdog, samples RSS with a 1 GiB stop threshold, and reaps/terminates
-its own child on failure. This is engineering supervision of trusted native
-dependencies, not a hostile-execution sandbox or strict OS-enforced memory cap.
+its own child on failure. After the child's receipt arrives, the parent waits for
+the child to exit only within the time left on that same watchdog; a child that is
+still alive or exits nonzero is a `group_compute` refusal. This is engineering
+supervision of trusted native dependencies, not a hostile-execution sandbox or strict OS-enforced memory cap.
 Controllers serialize GROUP invocations; tests share a lock even under xdist.
 Waiting for that test lock has its own bounded wait. The per-test pytest timeout
 covers only the active GROUP computation, so queued xdist workers or concurrent
