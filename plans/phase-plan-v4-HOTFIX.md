@@ -243,12 +243,12 @@ Named mutations (each fails its focused test and passes once restored):
    configuration fingerprint, treat a grammar without provenance as
    identified, or skip removing superseded rows: the configuration-change,
    Go-bypass and row-cleanup tests fail (treesitter-chunker#541 review fixes).
-6. `M162-inplace` — replace `staged.replace(destination)` with
-   `shutil.copy2(staged, destination)` and keep `published = True`, so the
-   staged file is still removed: the loaded-update child exits with SIGSEGV
-   (-11), and the new-inode and symlink cases fail (3 failed). Dropping
-   `published = True` as well also leaves the staged file and fails a fourth
-   test.
+6. `M162-inplace` — replace `staged.replace(destination)` and
+   `published = True` with `shutil.copy2(staged, destination)`, so the staged
+   file is still removed. The loaded-update child exits with SIGSEGV (-11),
+   and the new-inode, symlink and POSIX replace-failure cases fail (4 of 9
+   fail). Keeping `published = True` also leaves the staged file behind, and
+   5 of 9 fail.
 
 ## Acceptance Criteria
 
