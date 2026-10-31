@@ -1,6 +1,7 @@
 """Repository processor implementation with Git awareness."""
 
 import json
+import logging
 import os
 import threading
 import time
@@ -21,6 +22,8 @@ from chunker.interfaces.repo import FileChunkResult, GitAwareProcessor, RepoChun
 from chunker.interfaces.repo import RepoProcessor as RepoProcessorInterface
 
 from .chunker_adapter import Chunker
+
+logger = logging.getLogger(__name__)
 
 
 class RepoProcessor(RepoProcessorInterface):
@@ -556,9 +559,20 @@ class RepoProcessor(RepoProcessorInterface):
 
     @staticmethod
     def read_ignore_patterns(file_path: Path) -> list[str]:
-        """Read ignore patterns from a file."""
-        patterns = []
+        """Read ignore patterns from a file.
+
+        Missing files yield no patterns. A non-regular ignore file (for example
+        a FIFO named ``.gitignore``) is skipped with a warning instead of being
+        opened, because opening a FIFO blocks (treesitter-chunker#435).
+        """
+        patterns: list[str] = []
         try:
+            if not file_path.is_file():
+                if file_path.exists():
+                    logger.warning(
+                        "Skipping ignore file %s: not a regular file", file_path
+                    )
+                return patterns
             with file_path.open("r", encoding="utf-8") as f:
                 for line in f:
                     stripped_line = line.strip()
@@ -702,6 +716,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         # Load patterns from .gitignore file
         gitignore_path = Path(repo_path) / ".gitignore"
         if gitignore_path.exists():
+            # read_ignore_patterns skips non-regular files without opening them.
             patterns.extend(RepoProcessor.read_ignore_patterns(gitignore_path))
 
         # Load patterns from global excludes file
@@ -808,6 +823,24 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                         "gitwildmatch",
                         gitignore_patterns,
                     )
+                    gitignore_path = Path(repo_path) / ".gitignore"
+                    if gitignore_path.exists() and not gitignore_path.is_file():
+                        # git opens .gitignore itself and blocks on a FIFO, so
+                        # the git-backed filter below would hang. Apply only
+                        # the patterns read here (treesitter-chunker#435).
+                        logger.warning(
+                            "Skipping git ignore checks for %s: %s is not a "
+                            "regular file",
+                            repo_path,
+                            gitignore_path,
+                        )
+                        return [
+                            f
+                            for f in files
+                            if not gitignore_spec.match_file(
+                                f.relative_to(resolved_root).as_posix()
+                            )
+                        ]
                     return self._filter_tracked_files(
                         repo,
                         resolved_root,

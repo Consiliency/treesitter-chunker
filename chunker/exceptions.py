@@ -453,13 +453,20 @@ class NonRegularFileError(ChunkerError):
     """
 
     def __init__(self, path: str | Path, kind: str):
-        message = (
-            f"{path} is not a regular file ({kind}); pipes, devices, sockets "
-            "and directories are not supported, save the input to a file first"
-        )
+        if kind == "directory":
+            hint = "To chunk a directory, pass it to the batch command instead."
+        else:
+            hint = "Save the input to a regular file first."
+        message = f"{path} is not a regular file ({kind}). {hint}"
         super().__init__(message)
         self.path = str(path)
         self.kind = kind
+
+    def __reduce__(self) -> tuple[type[NonRegularFileError], tuple[str, str]]:
+        # The default Exception pickling calls ``cls(*self.args)``, which only
+        # holds the message. Rebuild from (path, kind) so the error survives a
+        # process pool round trip (chunk_files_parallel).
+        return (type(self), (self.path, self.kind))
 
 
 __all__ = [

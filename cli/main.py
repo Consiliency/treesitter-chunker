@@ -717,7 +717,11 @@ def batch(
         # Read file_path paths from stdin
         for line in sys.stdin:
             path = Path(line.strip())
-            if not path.exists() or path.is_dir():
+            if (
+                not path.exists()
+                or path.is_dir()
+                or not should_include_file(path, include_patterns, exclude_patterns)
+            ):
                 continue
             input_error = _non_regular_input_error(path)
             if input_error:
@@ -725,7 +729,7 @@ def batch(
                 # than skip silently or block opening it (treesitter-chunker#435).
                 _print_input_error(input_error)
                 rejected_inputs = True
-            elif should_include_file(path, include_patterns, exclude_patterns):
+            else:
                 files_to_process.append(path)
     # Process provided paths
     elif not paths and pattern:
@@ -765,10 +769,13 @@ def batch(
                             exclude_patterns,
                         )
                     )
-            elif path.exists():
+            elif path.exists() and should_include_file(
+                path, include_patterns, exclude_patterns
+            ):
                 # FIFOs, devices and sockets named explicitly are rejected
-                # without being opened (treesitter-chunker#435). Directory
-                # walks above only collect regular files (Path.is_file()).
+                # without being opened, unless --include/--exclude filter them
+                # out (treesitter-chunker#435). Directory walks above only
+                # collect regular files (Path.is_file()).
                 _print_input_error(
                     _non_regular_input_error(path) or f"{path} is not a regular file"
                 )
