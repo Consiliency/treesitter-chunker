@@ -23,9 +23,11 @@ assert not tree.root_node.has_error
 ```
 
 The source distribution needs a C compiler at installation time. The wheel
-workflow builds `cp311-abi3` wheels for Linux glibc x86_64/aarch64, macOS
-x86_64/arm64, and Windows x86_64 and tests them on Python 3.11–3.13. Other
-platforms use the source distribution until a wheel is tested there. Run
+workflow builds `cp312-abi3` wheels for Linux glibc x86_64/aarch64, macOS
+x86_64/arm64, and Windows x86_64, tests each one during the Python 3.12 build,
+and installs and tests it outside the checkout on Python 3.14. Published 0.1.0
+predates this and ships `cp311-abi3` wheels. Other platforms use the source
+distribution until a wheel is tested there. Run
 `python scripts/check_baml_grammar.py` to verify vendored hashes offline;
 explicit regeneration requires the pinned `tree-sitter-cli` executable.
 
