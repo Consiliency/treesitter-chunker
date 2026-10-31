@@ -5,7 +5,7 @@ class TreesitterChunker < Formula
   sha256 "PLACEHOLDER_SHA256"
   license "MIT"
 
-  depends_on "python@3.9"
+  depends_on "python@3.12"
   depends_on "tree-sitter"
 
   resource "tree-sitter" do

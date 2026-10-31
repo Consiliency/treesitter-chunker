@@ -22,20 +22,20 @@ build:
 
 requirements:
   build:
-    - python >=3.10
+    - python >=3.12
     - pip
     - setuptools >=61.0
     - wheel
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
   host:
-    - python >=3.10
+    - python >=3.12
     - pip
     - setuptools >=61.0
     - wheel
     - tree-sitter
   run:
-    - python >=3.10
+    - python >=3.12
     - tree-sitter
     - rich
     - typer

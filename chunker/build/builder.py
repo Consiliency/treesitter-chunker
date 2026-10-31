@@ -28,6 +28,8 @@ from .platform import PlatformSupport
 
 
 _WHEEL_PAYLOAD_VERSION = "6.0.0"
+# Shared by both wheel-building paths; keep in step with pyproject requires-python.
+_WHEEL_REQUIRES_PYTHON = ">=3.12"
 _REQUIRED_WHEEL_PAYLOAD = frozenset(
     {
         "chunker/__init__.py",
@@ -572,7 +574,7 @@ License: MIT
 Platform: {platform}
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
-Requires-Python: >=3.8
+Requires-Python: {_WHEEL_REQUIRES_PYTHON}
 """
                     whl.writestr(f"{metadata_dir}/METADATA", metadata)
 
@@ -613,10 +615,12 @@ Tag: {python_version}-none-{platform_tag}""",
 
                     zf.writestr(
                         f"{metadata_dir}/METADATA",
-                        """Metadata-Version: 2.1
+                        f"""Metadata-Version: 2.1
 Name: treesitter-chunker
 Version: 0.1.0
-Summary: Tree-sitter based code chunking library""",
+Summary: Tree-sitter based code chunking library
+Requires-Python: {_WHEEL_REQUIRES_PYTHON}
+""",
                     )
 
                     zf.writestr(f"{metadata_dir}/top_level.txt", "treesitter_chunker")
