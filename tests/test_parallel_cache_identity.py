@@ -328,7 +328,9 @@ def test_unfingerprintable_configuration_bypasses_cache(
     assert cache.get_cache_stats()["total_files"] == 0
 
 
-def test_grammar_without_identity_is_never_served_from_cache(tmp_path, isolated_home):
+def test_grammar_without_identity_is_never_served_from_cache(tmp_path):
+    # The language pack resolves its grammar cache from the real home, so this
+    # test confines only the chunk cache (cache_dir) to tmp_path.
     path = tmp_path / "src" / "service.go"
     path.parent.mkdir()
     shutil.copyfile(GO_FIXTURE, path)
