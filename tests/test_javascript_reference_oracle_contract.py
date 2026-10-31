@@ -11,6 +11,7 @@ from chunker.context.factory import ContextFactory
 from tests.reference_oracle import reference_case
 
 ISSUE_289 = "treesitter-chunker#289"
+ISSUE_293 = "treesitter-chunker#293"
 
 
 def test_289_generator_context_keeps_signature_and_omits_body() -> None:
@@ -47,3 +48,29 @@ def test_289_consumer_dependencies_summarize_every_generator() -> None:
         content = by_line[line]
         assert all(text in content for text in entry["includes"]), content
         assert not any(text in content for text in entry["excludes"]), content
+
+
+def test_293_binding_identifiers_are_not_references_and_uses_are() -> None:
+    case = reference_case("javascript", "binding_identifiers")
+    assert not case.root.has_error
+    extracted = {
+        (name, tuple(node.start_point))
+        for name, node in ContextFactory.create_context_extractor(
+            "javascript"
+        )._find_references_in_node(case.root, case.source)
+    }
+    mismatches = []
+    for entry in case.entries("occurrences", ISSUE_293):
+        node = case.occurrence(entry)
+        point = tuple(node.start_point)
+        resolved = {
+            tuple(reference.start_point)
+            for reference in ContextFactory.create_symbol_resolver(
+                "javascript"
+            ).find_symbol_references(entry["name"], case.root)
+        }
+        expected = entry["role"] == "use"
+        observed = (point in resolved, (entry["name"], point) in extracted)
+        if observed != (expected, expected):
+            mismatches.append((entry["name"], point, entry["role"], observed))
+    assert mismatches == []
