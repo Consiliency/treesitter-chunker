@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Consiliency/treesitter-chunker/tests/fixtures/references/oracle.schema.json",
+  "title": "treesitter-chunker reference oracle v1 (IF-0-REFS-1)",
+  "description": "Expected definitions, binding targets, expression uses and scopes for one real-parser reference fixture. Positions are tree-sitter start points: 0-based row and 0-based byte column. Every expectation names the issue whose contract it belongs to.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "language", "fixture", "issues", "scopes"],
+  "properties": {
+    "schema": {"const": "treesitter-chunker.reference-oracle.v1"},
+    "language": {"enum": ["python", "javascript"]},
+    "fixture": {
+      "description": "Fixture file name in the same directory as the oracle.",
+      "type": "string",
+      "pattern": "^[a-z0-9_]+\\.(py|js)$"
+    },
+    "issues": {
+      "description": "Issues whose contracts this fixture carries.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/issue"}
+    },
+    "scopes": {
+      "description": "Named scope anchors. The id 'root' is the parse root and must be present.",
+      "type": "object",
+      "required": ["root"],
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_.]*$"},
+      "additionalProperties": {"$ref": "#/$defs/node_anchor"}
+    },
+    "definitions": {
+      "description": "Definition lookup from a scope: either the defining node is found, or no definition is visible.",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["issue", "name", "scope", "expect", "node_type", "row", "column"],
+            "properties": {
+              "issue": {"$ref": "#/$defs/issue"},
+              "name": {"$ref": "#/$defs/name"},
+              "scope": {"$ref": "#/$defs/scope_id"},
+              "expect": {"const": "found"},
+              "node_type": {"$ref": "#/$defs/node_type"},
+              "row": {"$ref": "#/$defs/position"},
+              "column": {"$ref": "#/$defs/position"}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["issue", "name", "scope", "expect"],
+            "properties": {
+              "issue": {"$ref": "#/$defs/issue"},
+              "name": {"$ref": "#/$defs/name"},
+              "scope": {"$ref": "#/$defs/scope_id"},
+              "expect": {"const": "absent"}
+            }
+          }
+        ]
+      }
+    },
+    "occurrences": {
+      "description": "Name occurrences classified as binding targets (never reported as references) or expression uses (always reported). 'scope' is where a binding binds or where a use is evaluated; it must contain the occurrence.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["issue", "name", "row", "column", "role", "scope"],
+        "properties": {
+          "issue": {"$ref": "#/$defs/issue"},
+          "name": {"$ref": "#/$defs/name"},
+          "row": {"$ref": "#/$defs/position"},
+          "column": {"$ref": "#/$defs/position"},
+          "role": {"enum": ["binding", "use"]},
+          "scope": {"$ref": "#/$defs/scope_id"},
+          "node_type": {
+            "description": "Leaf node type of the occurrence; defaults to 'identifier'.",
+            "$ref": "#/$defs/node_type"
+          }
+        }
+      }
+    },
+    "visible": {
+      "description": "Names that are and are not visible from a scope.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["issue", "scope", "includes", "excludes"],
+        "properties": {
+          "issue": {"$ref": "#/$defs/issue"},
+          "scope": {"$ref": "#/$defs/scope_id"},
+          "includes": {"$ref": "#/$defs/names"},
+          "excludes": {"$ref": "#/$defs/names"}
+        },
+        "anyOf": [
+          {"properties": {"includes": {"minItems": 1}}},
+          {"properties": {"excludes": {"minItems": 1}}}
+        ]
+      }
+    },
+    "enclosing": {
+      "description": "The scope in which an expression node is evaluated.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["issue", "node_type", "row", "column", "scope", "not_scope"],
+        "properties": {
+          "issue": {"$ref": "#/$defs/issue"},
+          "node_type": {"$ref": "#/$defs/node_type"},
+          "row": {"$ref": "#/$defs/position"},
+          "column": {"$ref": "#/$defs/position"},
+          "scope": {"$ref": "#/$defs/scope_id"},
+          "not_scope": {
+            "description": "A syntactically enclosing scope that must not be reported.",
+            "$ref": "#/$defs/scope_id"
+          }
+        }
+      }
+    },
+    "dependency_context": {
+      "description": "Dependency context produced for a definition: the found node and text that must and must not appear in its summary.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["issue", "name", "scope", "node_type", "row", "column", "includes", "excludes"],
+        "properties": {
+          "issue": {"$ref": "#/$defs/issue"},
+          "name": {"$ref": "#/$defs/name"},
+          "scope": {"$ref": "#/$defs/scope_id"},
+          "node_type": {"$ref": "#/$defs/node_type"},
+          "row": {"$ref": "#/$defs/position"},
+          "column": {"$ref": "#/$defs/position"},
+          "includes": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "excludes": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "issue": {"type": "string", "pattern": "^treesitter-chunker#[0-9]+$"},
+    "name": {"type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*$"},
+    "names": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/name"}},
+    "scope_id": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_.]*$"},
+    "node_type": {"type": "string", "pattern": "^[a-z_]+$"},
+    "position": {"type": "integer", "minimum": 0},
+    "node_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node_type", "row", "column"],
+      "properties": {
+        "node_type": {"$ref": "#/$defs/node_type"},
+        "row": {"$ref": "#/$defs/position"},
+        "column": {"$ref": "#/$defs/position"}
+      }
+    }
+  }
+}
