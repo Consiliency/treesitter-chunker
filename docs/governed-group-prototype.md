@@ -159,7 +159,8 @@ One owned native compute child runs at a time per invocation. The parent applies
 120-second watchdog, samples RSS with a 1 GiB stop threshold, and reaps/terminates
 its own child on failure. After the child's receipt arrives, the parent waits for
 the child to exit only within the time left on that same watchdog; a child that is
-still alive or exits nonzero is a `group_compute` refusal. This is engineering
+still alive or exits nonzero is a `group_compute` refusal. RSS is sampled only
+while waiting for the receipt, not during this post-receipt exit wait. This is engineering
 supervision of trusted native dependencies, not a hostile-execution sandbox or
 strict OS-enforced memory cap.
 Controllers serialize GROUP invocations; tests share a lock even under xdist.
