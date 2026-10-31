@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: TXNSPEC
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: c75f8e2d3a32c5ebc97c05047a78eb2d0e04acd00466d2c9ce3372e7fc4d707b
+roadmap_sha256: a96ef9073df2cd1bd860b1a151d75abc0a7edde7f242d8a2d7613c3fb38726c9
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_release_hygiene_policy.py -q"
 ---

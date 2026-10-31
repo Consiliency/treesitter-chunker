@@ -504,7 +504,7 @@ deletes the previous metadata while logging that it restored, and
 
 The installer gets pins through ADMIT SL-core's constructor change,
 `GrammarInstaller(cache_dir=None, build_timeout=300, max_retries=3, *,
-trusted_artifacts=None)`, which treesitter-chunker#538 fixes in
+trusted_artifacts=None)`, which treesitter-chunker#538 (merged) fixes in
 `docs/development/native-validation-contract.md`. Forwarding follows
 `GrammarManager` → `GrammarRegistry` → `GrammarInstaller`. Every installer
 publication through `publish_native_grammar` therefore merges only after that
