@@ -827,7 +827,8 @@ def report(stream, value):
     """Write one receipt/diagnostic line; return False instead of raising.
 
     CLI-only: on failure this redirects the stream's process-wide descriptor
-    to the null device so exit-time flushing cannot fail late.
+    to the null device so exit-time flushing cannot fail late. The stream's
+    fileno() and buffer must name the same destination; the descriptor wins.
     """
     try:
         # Write straight to the descriptor and require every byte: a buffered
