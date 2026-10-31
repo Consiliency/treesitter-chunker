@@ -1103,15 +1103,29 @@ def test_receipt_and_diagnostic_failure_still_exits_three(tmp_path):
 
 def test_diagnostic_failure_keeps_refusal_exit(tmp_path):
     request = make_request()
+    # stderr is unwritable, so an escaping exception would be invisible; a
+    # trusted excepthook marker records any traceback instead.
+    marker = tmp_path / "traceback.marker"
+    hook = (
+        "import sys, pathlib\n"
+        "def _hook(*args):\n"
+        "    pathlib.Path(" + repr(str(marker)) + ").write_text('x')\n"
+        "sys.excepthook = _hook\n"
+    )
     with open("/dev/full", "wb") as full:
         cp, output = launch(
-            tmp_path / "refusal", request, raw=b'{"x":NaN}', sinks={"stderr": full}
+            tmp_path / "refusal",
+            request,
+            raw=b'{"x":NaN}',
+            prelude=hook,
+            sinks={"stderr": full},
         )
         require(
             cp.returncode == 1 and cp.stdout == b"" and not output.exists(),
             "GROUP_REFUSAL_REPORT_EXIT:" + str(cp.returncode),
         )
-        prelude = (
+        require(not marker.exists(), "GROUP_REFUSAL_REPORT_NO_TRACEBACK")
+        prelude = hook + (
             "import psutil\n"
             "def denied(pid):\n"
             "    raise psutil.AccessDenied(pid)\n"
@@ -1124,3 +1138,4 @@ def test_diagnostic_failure_keeps_refusal_exit(tmp_path):
             cp.returncode == 2 and cp.stdout == b"" and not output.exists(),
             "GROUP_SETUP_REPORT_EXIT:" + str(cp.returncode),
         )
+        require(not marker.exists(), "GROUP_SETUP_REPORT_NO_TRACEBACK")

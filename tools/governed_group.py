@@ -824,7 +824,11 @@ def execute(args):
 
 
 def report(stream, value):
-    """Write one receipt/diagnostic line; return False instead of raising."""
+    """Write one receipt/diagnostic line; return False instead of raising.
+
+    CLI-only: on failure this redirects the stream's process-wide descriptor
+    to the null device so exit-time flushing cannot fail late.
+    """
     try:
         # Write straight to the descriptor and require every byte: a buffered
         # write can return None (non-blocking sink) or short without raising.
