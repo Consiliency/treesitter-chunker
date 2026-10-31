@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: TXNSPEC
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: 44ce0acdaaed7e71fcf3df350331985f3ecf6c3af26a074c117961dd49d8cc6a
+roadmap_sha256: a28a7aa83f7f2c4754dedf4ed0455d61b3bfb79865c1aae64afab6d13bc41a38
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_release_hygiene_policy.py -q"
 ---
@@ -61,8 +61,11 @@ draft's admission-free identity restore was therefore replaced. Restore now
 calls the function unchanged, with the caller's pin for the previous revision,
 and fails closed without one. The installer commit order makes artifact
 publication the last fallible step, so ordinary failed updates never need the
-artifact republished. treesitter-chunker#539 is still a draft. A change to its
-signature triggers a re-review of the restore section.
+artifact republished. The signature was re-checked unchanged at
+treesitter-chunker#539 head `cf1de762`. The contract does not depend on how
+the staged temporary file is named; a pending treesitter-chunker#539 change
+gives it a suffix that is not `*.so`. A change to the signature triggers a
+re-review of the restore section.
 
 ## Interface Freeze Gates
 

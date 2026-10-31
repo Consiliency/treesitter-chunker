@@ -399,7 +399,8 @@ process. EC-TXN-3 shows this on a real Windows run.
 
 **Cited signature.** IF-0-HOTFIX-1 as published in the treesitter-chunker#162
 PR (treesitter-chunker#539) body under the heading `IF-0-HOTFIX-1 signature`,
-at head `7710fb7c699db33c244c95bf7d24d8730b91ea5b`:
+first at head `7710fb7c699db33c244c95bf7d24d8730b91ea5b`. It was re-checked
+unchanged at head `cf1de762020769878f10dd7fdb5e50278016c434`:
 
 ```python
 # chunker/_internal/user_grammar_tools.py
@@ -425,6 +426,16 @@ The function has these steps:
    `destination` unchanged.
 
 Cache invalidation is the caller's job.
+
+**Staged-file naming is IF-0-HOTFIX-1's choice.** This contract depends on
+the staged file only through the guarantees above: it is a sibling of
+`destination`, it is never left at the published name, and it is removed on
+failure. Nothing here depends on its name, prefix or suffix. That includes
+whether a suffix keeps it out of grammar discovery's `*.so` scans.
+
+The staged file lives in `grammars/`, which the pruner never enters. A staged
+file that a crash leaves behind is outside every primitive here. Primitive
+3's rollback copies live in `.txn/rollback/` and never use that naming.
 
 This contract uses that function unchanged for both forward publication and
 artifact restoration. It defines no second native publish path, and it does

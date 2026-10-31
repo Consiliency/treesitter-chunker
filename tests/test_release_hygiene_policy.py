@@ -31,6 +31,7 @@ INTERNAL_DOCS = {
     "development/DEPLOYMENT.md",
     "development/RELEASE_CHECKLIST.md",
     "development/backlog-inventory-20261006.md",
+    "development/backlog-decisions-v4.md",
     "development/cache-transaction-contract.md",
     "development/native-validation-contract.md",
     "development/safeload-verification.md",
