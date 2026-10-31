@@ -54,8 +54,8 @@ python -c "import tree_sitter_language_pack as p; p.prefetch(['python', 'javascr
 The publicly exported `ASTCache` stores **chunk lists in SQLite**, rather than
 live Tree-sitter AST objects. `chunk_file()` does not consult this cache
 automatically. The parallel APIs enable caching by default (`use_cache=True`)
-at `~/.cache/treesitter-chunker/ast_cache.db`. Their helpers do not accept a
-custom cache directory. Use `use_cache=False` unless you manage invalidation.
+at `~/.cache/treesitter-chunker/ast_cache.db`; pass `cache_dir=` to use a
+private directory instead, or `use_cache=False` to disable caching.
 
 ```python
 from pathlib import Path
@@ -74,13 +74,29 @@ cache.invalidate_cache(path)
 
 Statistics contain `total_files`, `total_size_bytes` and `cache_db_size`; there
 are no hit-rate counters, `max_size` constructor argument, TTL or LRU eviction.
-Cache validation checks the file's hash and modification time. This cache does
-not key entries by grammar/runtime version or extraction options; invalidate
-it when those change, including when switching core/streaming extraction.
-The private-directory example above applies to explicit `ASTCache` use; it
-does not redirect the parallel helpers' shared default cache.
-The extraction-mode/pin cache gap is tracked in
-[treesitter-chunker#358](https://github.com/Consiliency/treesitter-chunker/issues/358).
+Cache validation checks the file's hash and modification time. Each entry is
+also keyed by an extraction identity
+([treesitter-chunker#358](https://github.com/Consiliency/treesitter-chunker/issues/358)):
+
+- the extraction mode, passed as `extraction="core"` (the default, for
+  `chunk_file()`) or `extraction="streaming"` (for `chunk_file_streaming()`);
+- the installed `treesitter-chunker`, `tree-sitter` and
+  `tree-sitter-language-pack` versions;
+- the selected grammar's ABI version, node-kind count, symbol name and
+  provenance, such as `official:tree-sitter-python@0.25.0`.
+
+An entry from another mode or pairing is never returned. Core and streaming
+entries for one file coexist. The identity does not cover other chunking
+inputs: changes to language configuration or plugins made at runtime, and a
+rebuilt custom grammar whose ABI, node-kind count and provenance are unchanged.
+Invalidate the cache or use a separate `cache_dir` when those change.
+
+**Upgrading from cache version 2.0.** Version 3.0 stores entries in a new
+`chunk_cache` table. Entries written by earlier releases stay in the legacy
+`file_cache` table of the same `ast_cache.db`; they are never read, so the
+first run after upgrading re-extracts each file. Older releases that share the
+file keep using their own table. Once no older release uses the directory,
+delete `ast_cache.db` to reclaim the legacy space.
 
 The legacy `benchmarks.comprehensive_suite` cache scenario and
 `benchmarks.example_benchmark.demo_cached_chunking` use explicit SQLite

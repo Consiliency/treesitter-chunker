@@ -62,7 +62,7 @@ def test_comprehensive_cache_observes_actual_population_and_preserves_other_inpu
     assert reopened.get_cache_stats()["total_files"] == 2
     with closing(sqlite3.connect(reopened.db_path)) as connection:
         assert connection.execute(
-            "SELECT file_hash FROM file_cache WHERE file_path = ?", (str(path),)
+            "SELECT file_hash FROM chunk_cache WHERE file_path = ?", (str(path),)
         ).fetchone() == (hashlib.sha256(path.read_bytes()).hexdigest(),)
     assert not (home / ".cache" / "treesitter-chunker").exists()
 

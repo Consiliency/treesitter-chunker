@@ -30,7 +30,14 @@ class ParallelChunker:
         use_cache: bool = True,
         use_streaming: bool = False,
         timeout_seconds: float | None = None,
+        cache_dir: str | Path | None = None,
     ):
+        """Configure a process-pool chunker.
+
+        With ``use_cache=True``, chunk lists are stored in ``ast_cache.db`` under
+        ``cache_dir``, or ``~/.cache/treesitter-chunker`` when it is ``None``.
+        Entries are kept apart by extraction mode and runtime/grammar pairing.
+        """
         self.language = language
         self.num_workers = num_workers or mp.cpu_count()
         if sys.platform == "win32":
@@ -38,7 +45,11 @@ class ParallelChunker:
             self.num_workers = min(self.num_workers, 61)
         self.use_cache = use_cache
         self.use_streaming = use_streaming
-        self.cache = ASTCache() if use_cache else None
+        self.cache = (
+            ASTCache(Path(cache_dir) if cache_dir is not None else None)
+            if use_cache
+            else None
+        )
         # Optional wall-clock budget for collecting all results. When set, a
         # hung worker cannot exceed it without being cancelled and recorded as a
         # timeout. Default None = UNBOUNDED: a legitimate large file must not be
@@ -48,10 +59,13 @@ class ParallelChunker:
 
     def _process_single_file(self, file_path: Path) -> tuple[Path, list[CodeChunk]]:
         """Process a single file, using cache if available."""
+        extraction = "streaming" if self.use_streaming else "core"
         # Check cache first
         if self.cache:
             try:
-                cached_chunks = self.cache.get_cached_chunks(file_path, self.language)
+                cached_chunks = self.cache.get_cached_chunks(
+                    file_path, self.language, extraction=extraction
+                )
             except sqlite3.OperationalError as exc:
                 if exc.sqlite_errorcode not in (
                     sqlite3.SQLITE_BUSY,
@@ -72,7 +86,9 @@ class ParallelChunker:
         # Cache results
         if self.cache and chunks:
             try:
-                self.cache.cache_chunks(file_path, self.language, chunks)
+                self.cache.cache_chunks(
+                    file_path, self.language, chunks, extraction=extraction
+                )
             except sqlite3.OperationalError as exc:
                 if exc.sqlite_errorcode not in (
                     sqlite3.SQLITE_BUSY,
@@ -217,9 +233,12 @@ def chunk_files_parallel(
     num_workers: int | None = None,
     use_cache: bool = True,
     use_streaming: bool = False,
+    cache_dir: str | Path | None = None,
 ) -> dict[Path, list[CodeChunk]]:
     """Convenience function to process multiple files in parallel."""
-    chunker = ParallelChunker(language, num_workers, use_cache, use_streaming)
+    chunker = ParallelChunker(
+        language, num_workers, use_cache, use_streaming, cache_dir=cache_dir
+    )
     paths = [Path(p) for p in file_paths]
     return chunker.chunk_files_parallel(paths)
 
@@ -231,7 +250,10 @@ def chunk_directory_parallel(
     num_workers: int | None = None,
     use_cache: bool = True,
     use_streaming: bool = False,
+    cache_dir: str | Path | None = None,
 ) -> dict[Path, list[CodeChunk]]:
     """Convenience function to process a directory in parallel."""
-    chunker = ParallelChunker(language, num_workers, use_cache, use_streaming)
+    chunker = ParallelChunker(
+        language, num_workers, use_cache, use_streaming, cache_dir=cache_dir
+    )
     return chunker.chunk_directory_parallel(Path(directory), extensions)

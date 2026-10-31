@@ -1,5 +1,6 @@
 """Comprehensive tests for the ASTCache caching system."""
 
+import hashlib
 import shutil
 import sqlite3
 import tempfile
@@ -13,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from chunker import chunk_file
-from chunker._internal.cache import ASTCache
+from chunker._internal.cache import CACHE_VERSION, ASTCache, chunk_cache_identity
 from chunker._internal.file_utils import get_file_metadata
 from chunker.types import CodeChunk
 
@@ -175,12 +176,13 @@ class TestCacheBasics:
             assert (temp_cache_dir / "ast_cache.db").exists()
             with sqlite3.connect(cache.db_path) as conn:
                 cursor = conn.execute(
-                    "SELECT sql FROM sqlite_master WHERE type='table' AND name='file_cache'",
+                    "SELECT sql FROM sqlite_master WHERE type='table' AND name='chunk_cache'",
                 )
                 schema = cursor.fetchone()[0]
                 assert "file_path" in schema
                 assert "file_hash" in schema
                 assert "chunks_data" in schema
+                assert "extraction_identity" in schema
         finally:
             # Ensure cache object is deleted to release any handles
             del cache
@@ -392,13 +394,22 @@ class TestCacheCorruptionRecovery:
             lock.execute("BEGIN IMMEDIATE")
             with pytest.raises(sqlite3.OperationalError, match="locked"):
                 ASTCache(cache_dir=temp_cache_dir)
-            columns = {row[1] for row in lock.execute("PRAGMA table_info(file_cache)")}
-            assert "data_checksum" not in columns
+            tables = {
+                row[0]
+                for row in lock.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
+            assert tables == {"file_cache"}
 
         cache = ASTCache(cache_dir=temp_cache_dir)
         chunks = chunk_file(temp_python_file, "python")
         cache.cache_chunks(temp_python_file, "python", chunks)
         assert cache.get_cached_chunks(temp_python_file, "python") is not None
+        with closing(sqlite3.connect(db_path)) as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(file_cache)")}
+        # Legacy tables are left for older releases; they are never migrated.
+        assert "data_checksum" not in columns
 
     @staticmethod
     def test_locked_database_is_not_replaced(cache, temp_python_file):
@@ -443,17 +454,21 @@ class TestCacheCorruptionRecovery:
         with cache._get_connection() as conn:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO file_cache
-                (file_path, file_hash, file_size, mtime, language, chunks_data)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO chunk_cache
+                (file_path, language, extraction_identity, file_hash, file_size,
+                 mtime, chunks_data, data_checksum, cache_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     str(temp_python_file),
+                    "python",
+                    chunk_cache_identity("python"),
                     metadata.hash,
                     metadata.size,
                     metadata.mtime,
-                    "python",
                     b"corrupted pickle data",
+                    hashlib.sha256(b"corrupted pickle data").hexdigest(),
+                    CACHE_VERSION,
                 ),
             )
         result = cache.get_cached_chunks(temp_python_file, "python")
@@ -538,7 +553,7 @@ class TestCacheEviction:
         with cache._get_connection() as conn:
             conn.execute(
                 """
-                UPDATE file_cache
+                UPDATE chunk_cache
                 SET created_at = datetime('now', '-7 days')
                 WHERE file_path = ?
             """,
@@ -548,7 +563,7 @@ class TestCacheEviction:
         with cache._get_connection() as conn:
             conn.execute(
                 """
-                DELETE FROM file_cache
+                DELETE FROM chunk_cache
                 WHERE created_at < datetime('now', '-1 day')
             """,
             )

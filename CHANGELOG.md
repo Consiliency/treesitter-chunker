@@ -25,6 +25,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The SQLite chunk cache (`ASTCache`, used by default by `ParallelChunker`,
+  `chunk_files_parallel` and `chunk_directory_parallel`) no longer returns core
+  chunks for a streaming request or the reverse, and no longer reuses entries
+  across runtime/grammar upgrades (treesitter-chunker#358). Entries are keyed
+  by an extraction identity: the mode (`extraction="core"` or `"streaming"` on
+  `get_cached_chunks`/`cache_chunks`), the chunker, Tree-sitter and
+  language-pack versions, and the grammar's ABI, node-kind count, symbol and
+  provenance. The parallel helpers accept `cache_dir=` to keep the cache in a
+  private directory. `CACHE_VERSION` is now `3.0`, and entries move to a new
+  `chunk_cache` table: entries from earlier releases are ignored, so each file
+  is re-extracted once after upgrading. Delete `ast_cache.db` to reclaim their
+  space once no older release shares it.
 - `chunk`, `batch`, `boundary`, the `debug` commands, `chunk_file` and
   `ZeroConfigAPI.auto_chunk_file` now reject FIFOs, character and block devices,
   sockets and (for single-file inputs) directories with an `os.stat` check before
