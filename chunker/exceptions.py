@@ -442,6 +442,33 @@ class ConfigurationError(ChunkerError):
         self.path = path
 
 
+class NonRegularFileError(ChunkerError):
+    """Raised when a source path is not a regular file.
+
+    FIFOs, character and block devices, sockets and directories are rejected
+    before they are opened: opening a FIFO for reading blocks, and a blocking
+    read on a held-open pipe cannot reliably be interrupted by SIGINT
+    (treesitter-chunker#435). Symlinks are followed, so a link to a regular
+    file is accepted.
+    """
+
+    def __init__(self, path: str | Path, kind: str):
+        if kind == "directory":
+            hint = "To chunk a directory, pass it to the batch command instead."
+        else:
+            hint = "Save the input to a regular file first."
+        message = f"{path} is not a regular file ({kind}). {hint}"
+        super().__init__(message)
+        self.path = str(path)
+        self.kind = kind
+
+    def __reduce__(self) -> tuple[type[NonRegularFileError], tuple[str, str]]:
+        # The default Exception pickling calls ``cls(*self.args)``, which only
+        # holds the message. Rebuild from (path, kind) so the error survives a
+        # process pool round trip (chunk_files_parallel).
+        return (type(self), (self.path, self.kind))
+
+
 __all__ = [
     "ChunkerError",
     "ConfigurationError",
@@ -451,6 +478,7 @@ __all__ = [
     "LibraryError",
     "LibraryLoadError",
     "LibraryNotFoundError",
+    "NonRegularFileError",
     "ParserConfigError",
     "ParserError",
     "ParserInitError",

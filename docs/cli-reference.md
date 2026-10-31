@@ -29,6 +29,15 @@ treesitter-chunker chunk example.py -l python
 treesitter-chunker chunk example.py -l python --json > chunks.json
 ```
 
+Source paths must be regular files; symlinks to regular files work. `chunk`,
+`batch`, `boundary` and the `debug` commands reject FIFOs, devices and sockets
+without opening them, print `<path> is not a regular file (...)` and exit 1.
+`chunk` and the `debug` commands also reject a directory; `batch` and `boundary`
+walk directories and skip non-regular entries. `batch` applies `--include` and
+`--exclude` first, so an excluded path is never reported.
+To chunk piped input, use `chunk --stdin --lang <language>` or save it to a
+file first.
+
 ### Batch process a directory
 
 ```bash

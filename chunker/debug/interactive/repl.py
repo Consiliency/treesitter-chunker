@@ -10,7 +10,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 
+from chunker.core import ensure_regular_file
 from chunker.debug.visualization.ast_visualizer import ASTVisualizer
+from chunker.exceptions import NonRegularFileError
 from chunker.parser import list_languages
 
 from .chunk_debugger import ChunkDebugger
@@ -197,6 +199,9 @@ Available commands:
             return
 
         try:
+            # Never open FIFOs or devices: the read would block
+            # (treesitter-chunker#435).
+            ensure_regular_file(file_path)
             with Path(file_path).open(encoding="utf-8") as f:
                 self.current_code = f.read()
             self.current_file = file_path
@@ -218,8 +223,8 @@ Available commands:
             self.console.print(f"[green]Loaded: {file_path}[/green]")
             self.console.print(f"Size: {len(self.current_code)} bytes")
 
-        except (FileNotFoundError, IndexError, KeyError) as e:
-            self.console.print(f"[red]Failed to load file: {e}[/red]")
+        except (FileNotFoundError, IndexError, KeyError, NonRegularFileError) as e:
+            self.console.print(f"Failed to load file: {e}", style="red", markup=False)
 
     def _set_code(self, code: str) -> None:
         """Set code directly."""

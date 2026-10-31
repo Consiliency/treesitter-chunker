@@ -25,6 +25,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `chunk`, `batch`, `boundary`, the `debug` commands, `chunk_file` and
+  `ZeroConfigAPI.auto_chunk_file` now reject FIFOs, character and block devices,
+  sockets and (for single-file inputs) directories with an `os.stat` check before
+  opening the path (treesitter-chunker#435). The CLI prints
+  `<path> is not a regular file (...)` and exits 1; `chunk_file` raises
+  `NonRegularFileError`, which pickles, so `chunk_files_parallel` reports it per
+  file. Opening a FIFO used to block, sometimes past SIGINT. Directory walks,
+  including the repository processor's depth-first walk, watch deltas and
+  ignore files, skip non-regular entries. `batch` applies `--include`/`--exclude`
+  before reporting a rejected path. Symlinks to regular files and `chunk --stdin`
+  are unchanged.
 - The private governed GROUP adapter no longer prints a traceback or exits 1 or 120
   when stdout or stderr fails (treesitter-chunker#522). After `proposal.json` is
   published, a receipt that cannot be written now exits 3 (`group_report`, best
