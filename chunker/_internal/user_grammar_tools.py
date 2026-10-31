@@ -70,7 +70,7 @@ def publish_native_grammar(
             timeout=timeout,
         )
         if result.supported:
-            os.replace(staged, destination)
+            staged.replace(destination)  # os.replace: swaps the entry atomically
             published = True
         return result
     finally:

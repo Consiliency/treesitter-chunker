@@ -79,18 +79,41 @@ Analyzer failures return `None`; capabilities and exports carry
 `validation_reason`, and exports put rejected discoveries in
 `validation_failures`. Legacy health maps missing to `missing`, load/parse/empty
 failures to `corrupted`, other admission failures to `incompatible`, and only
-successful admission to `healthy`. Install/update return `warning` with the cause
-on rejection, including unchanged revisions. Changed revisions still write in
-place before validation; warnings promise neither staging nor rollback. The
-legacy CLI still exits zero on these warnings. `grammar info` and
-`grammar diagnose` exit 1 unless the requested grammar is admitted as healthy.
-The CLI does not yet accept application pins (treesitter-chunker#362), so real
-grammars cannot be healthy: the preserved report may be missing, corrupted or
-incompatible, and these commands exit 1.
+successful admission to `healthy`. An unchanged revision on update returns
+`warning` with the cause when the installed library is rejected.
+`grammar info` and `grammar diagnose` exit 1 unless the requested grammar is
+admitted as healthy. The CLI does not yet accept application pins
+(treesitter-chunker#362), so real grammars cannot be healthy: the preserved
+report may be missing, corrupted or incompatible, and these commands exit 1.
 
-Registry discovery, the central validator, dependency inspection, other loaders,
-installer publication and replacement remain treesitter-chunker#362 work. This
-change does not establish repository-wide native admission coverage.
+#### Staged publication in the legacy tools
+
+`UserGrammarTools.install_grammar` and `update_grammar` publish a generated
+library with `publish_native_grammar` (in `chunker._internal.user_grammar_tools`,
+treesitter-chunker#162):
+
+1. The library is copied into a new temporary file in the build directory.
+2. The temporary file is admitted with the caller's pin for the language.
+3. Only an admitted file is moved over `<language>.so` with `os.replace`.
+
+The installed file is never opened for writing or truncated, and a symbolic
+link at the destination is replaced rather than followed. A process that has
+the old library loaded keeps running on it. Loading the same path again in that
+process still returns the old library; a new process loads the new one. If
+admission fails, the temporary file is removed, the installed library is left
+unchanged, and install/update return `error` with the rejection reason.
+Windows refuses to replace a library that a running process has loaded, so
+there the update returns `error` and the installed library is left unchanged.
+Close the processes using it and retry.
+
+Without a pin, a generated library is never published. Because the legacy CLI
+does not accept pins yet, `grammar install` and `grammar update` exit 1 for a
+new or changed library until treesitter-chunker#362 adds a pin source.
+Rollback after a failed update is treesitter-chunker#363 work.
+
+Registry discovery, the central validator, dependency inspection, other loaders
+and the central installer remain treesitter-chunker#362 work. This change does
+not establish repository-wide native admission coverage.
 
 #### Native library selection in the legacy tools
 

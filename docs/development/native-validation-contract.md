@@ -23,9 +23,13 @@ correctness requirement changes. See the owner-approved amendment in
 ## Scope and trust
 
 GrammarAnalyzer, SmartGrammarManager and UserGrammarTools use one shared
-admission and isolated probe in `chunker.grammar.integrity`. Registry discovery,
-central GrammarValidator, CLI validation and installer publication remain
-explicitly outside this first implementation; GRAMMARS integrates those paths.
+admission and isolated probe in `chunker.grammar.integrity`. UserGrammarTools
+publishes install/update libraries through `publish_native_grammar`
+(IF-0-HOTFIX-1, treesitter-chunker#162): a same-directory temporary file is
+admitted with the caller's pin, then moved over the destination with
+`os.replace`. Registry discovery, central GrammarValidator, CLI validation and
+the central installer remain explicitly outside this first implementation;
+GRAMMARS integrates those paths.
 The low-level compiled loader remains a caller-trusted primitive. Existing
 ambient discovery paths are not presumed safe merely because they predate this
 contract.
