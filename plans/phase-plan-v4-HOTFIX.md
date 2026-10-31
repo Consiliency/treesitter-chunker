@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: HOTFIX
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: 44ce0acdaaed7e71fcf3df350331985f3ecf6c3af26a074c117961dd49d8cc6a
+roadmap_sha256: a28a7aa83f7f2c4754dedf4ed0455d61b3bfb79865c1aae64afab6d13bc41a38
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_parallel_cache_identity.py tests/test_cache.py tests/test_user_grammar_publication.py tests/test_grammar_management.py tests/test_compiled_grammar_analysis_contract.py -q"
 ---
@@ -11,7 +11,7 @@ automation:
 
 ## Context
 
-Phase 2 of `specs/phase-plans-v4.md` (roadmap hash above, main `7440971a`)
+Phase 2 of `specs/phase-plans-v4.md` (roadmap hash above, refreshed at main `1253081a`; planned from `7440971a`, Phase 2 text unchanged)
 lands two repairs that need no new shared design, plus a dependent coverage
 slice:
 
