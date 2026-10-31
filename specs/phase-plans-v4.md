@@ -119,7 +119,7 @@ Roots (all start immediately, run in parallel subject to the 3-phase cap):
   CIFAST    (treesitter-chunker#517, treesitter-chunker#207, treesitter-chunker#143, treesitter-chunker#507 source, treesitter-chunker#481) ──┬──► PY314 (treesitter-chunker#502, type debt) ──┤
                                                     │      [treesitter-chunker#534 merged ✓]       ▼
                                                     └──► SETTINGS [owner: D5]   RECORDS (treesitter-chunker#361, treesitter-chunker#69 refresh)
-  OWNERDEC  [owner: D1–D4] ──┐
+  OWNERDEC  [owner: D1–D4 ✓] ──┐
                              ├──► FOLLOWUP (treesitter-chunker#357, treesitter-chunker#453, treesitter-chunker#471, treesitter-chunker#516 per decision)
   GRAPHML ···················┘    [GRAPHML gates lane SL-gml (treesitter-chunker#453) only]
 

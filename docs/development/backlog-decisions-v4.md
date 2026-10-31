@@ -63,8 +63,8 @@ another write is required (CIFAST lane SL-perm). In the owner's words: "After
 that PR merges, the maintainer authorizes switching the repository's default
 workflow permissions to read-only via the GitHub API."
 
-The owner's comment does not say who makes the API call. That is settled
+The owner's comment does not say who makes the API call. That is to be settled
 with the owner under SETTINGS (EC-SETTINGS-3): no phase agent changes the
 repository setting, and SETTINGS verifies the result read-only.
 
-Consumer: CIFAST SL-perm (source audit), then SETTINGS (the owner's action).
+Consumer: CIFAST SL-perm (source audit), then SETTINGS (EC-SETTINGS-1 to EC-SETTINGS-3).
