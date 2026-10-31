@@ -225,6 +225,12 @@ class PythonSymbolResolver(BaseSymbolResolver):
     @staticmethod
     def _is_definition_node(node: Node) -> bool:
         """Check if a node defines a symbol."""
+        if (
+            node.type == "identifier"
+            and node.parent is not None
+            and node.parent.type == "parameters"
+        ):
+            return True
         return node.type in {
             "function_definition",
             "class_definition",
@@ -243,24 +249,24 @@ class PythonSymbolResolver(BaseSymbolResolver):
     @staticmethod
     def _get_defined_name(node: Node) -> str | None:
         """Get the name being defined by a definition node."""
-        if node.type in {"function_definition", "class_definition"}:
-            for child in node.children:
-                if child.type == "identifier":
-                    return None
-        elif node.type == "assignment":
-            for child in node.children:
-                if child.type == "identifier":
-                    return None
-                if child.type == "=":
-                    break
-        elif node.type in {
-            "typed_parameter",
-            "default_parameter",
-            "typed_default_parameter",
-        }:
-            for child in node.children:
-                if child.type == "identifier":
-                    return None
+        if node.type == "identifier":
+            if node.parent is None or node.parent.type != "parameters":
+                return None
+            return node.text.decode("utf-8") if node.text else None
+        return PythonScopeAnalyzer._get_defined_name(node)
+
+    def _get_parent_scope(self, node: Node) -> Node | None:
+        """Ascend to the next scope whose names are visible from ``node``.
+
+        A class body's names are not visible from the functions, lambdas,
+        comprehensions or classes nested in it, so lookup skips class scopes
+        while ascending. The class's own name is defined in its parent scope.
+        """
+        current = node.parent
+        while current:
+            if self._creates_new_scope(current) and current.type != "class_definition":
+                return current
+            current = current.parent
         return None
 
     @staticmethod

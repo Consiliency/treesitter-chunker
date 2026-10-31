@@ -1,0 +1,56 @@
+"""Python definition, reference and scope lookup against the shared oracles.
+
+Each test consumes one issue's fixture contract from
+``tests/fixtures/references/python`` (IF-0-REFS-1) and parses it with the real
+pinned parser.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from chunker.context.factory import ContextFactory
+from chunker.parser import get_parser
+from tests.reference_oracle import reference_case
+
+ISSUE_274 = "treesitter-chunker#274"
+
+
+def _point(node) -> tuple[int, int] | None:
+    return None if node is None else tuple(node.start_point)
+
+
+def test_274_module_and_nested_definitions_match_oracle() -> None:
+    case = reference_case("python", "module_definitions")
+    assert not case.root.has_error
+    mismatches = []
+    for entry in case.entries("definitions", ISSUE_274):
+        resolver = ContextFactory.create_symbol_resolver("python")
+        found = resolver.find_symbol_definition(
+            entry["name"], case.scope(entry["scope"]), case.root
+        )
+        expected = case.node(entry) if entry["expect"] == "found" else None
+        if found != expected:
+            mismatches.append(
+                (
+                    entry["name"],
+                    entry["scope"],
+                    entry["expect"],
+                    found.type if found else None,
+                    _point(found),
+                )
+            )
+    assert mismatches == []
+
+
+def test_274_issue_reproduction_finds_service_declarations() -> None:
+    fixture = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+    root = get_parser("python").parse(fixture.read_bytes()).root_node
+    assert not root.has_error
+    resolver = ContextFactory.create_symbol_resolver("python")
+    renderer = resolver.find_symbol_definition("Renderer", root, root)
+    report = resolver.find_symbol_definition("render_report", root, root)
+    assert renderer is not None and renderer.type == "class_definition"
+    assert report is not None and report.type == "function_definition"
+    assert resolver.find_symbol_definition("cleaned", root, root) is None
+    assert resolver.find_symbol_definition("render", root, root) is None
