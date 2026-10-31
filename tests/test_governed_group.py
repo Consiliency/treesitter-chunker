@@ -30,6 +30,10 @@ ANCHOR = os.environ.get(
 # (treesitter-chunker#514 N3).
 GROUP_COMPUTE_TIMEOUT = 120
 GROUP_LOCK_WAIT = 900
+# Once one lock wait times out in this process, later GROUP tests fail at once
+# instead of each waiting another GROUP_LOCK_WAIT, so persistent contention
+# costs at most one full wait per worker.
+_LOCK_EXHAUSTED = []
 pytestmark = [
     pytest.mark.timeout(GROUP_COMPUTE_TIMEOUT, func_only=True),
     pytest.mark.skipif(
@@ -49,10 +53,16 @@ def _one_group_process():
     # most one GROUP test computes at a time. The wait is bounded here, outside
     # the per-test computation timeout, and fails as a lock wait, not a GROUP
     # timeout.
+    if _LOCK_EXHAUSTED:
+        pytest.fail(
+            "GROUP serialization lock wait already exhausted in this process",
+            pytrace=False,
+        )
     lock = FileLock(str(Path(tempfile.gettempdir()) / "chunker-group-tests.lock"))
     try:
         lock.acquire(timeout=GROUP_LOCK_WAIT)
     except Timeout:
+        _LOCK_EXHAUSTED.append(True)
         pytest.fail(
             f"GROUP serialization lock not acquired within {GROUP_LOCK_WAIT}s",
             pytrace=False,
