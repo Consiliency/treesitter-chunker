@@ -110,9 +110,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Align the remaining Python version declarations with the 3.12 floor from
   treesitter-chunker#493: the release-process spec, getting-started, user guide,
-  deployment, performance-core and VS Code docs, the conda recipe, both Homebrew
-  formulas, the macOS build script (which now rejects older interpreters) and the
-  fallback wheel builder's `Requires-Python` metadata. Published 6.0.0 still
+  deployment, performance-core and VS Code docs, the conda recipe, all three
+  Homebrew formulas (the stale `packaging/homebrew` formula is bumped rather than
+  retired), the macOS build script (which now rejects older interpreters) and
+  `Requires-Python` metadata on both wheel-builder paths. The BAML companion docs
+  now describe its `cp312-abi3` wheels tested on Python 3.12 and 3.14, and
+  release-hygiene tests derive the floor from `requires-python` and check these
+  declarations, CI interpreters and docs against it. Published 6.0.0 still
   supports 3.11. A `.python-version` pin of 3.12 stops a plain
   `uv sync --locked --all-extras` from selecting 3.14 and failing to build `cffi`;
   3.14 development support remains tracked by treesitter-chunker#502.

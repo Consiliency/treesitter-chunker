@@ -96,8 +96,10 @@ treesitter-chunker chunk example.baml --json
 
 The extra pins `treesitter-chunker-baml-grammar==0.1.0`. It uses BoundaryML's
 official grammar with a temporary overlay for BAML 0.20.1 backtick prompts.
-Native wheels cover Linux glibc x86_64/aarch64, macOS x86_64/arm64, and Windows
-x86_64, with tests on Python 3.11–3.13. Source installs require a C compiler.
+Published 0.1.0 has `cp311-abi3` wheels for Linux glibc x86_64/aarch64, macOS
+x86_64/arm64, and Windows x86_64. The companion source now builds `cp312-abi3`
+wheels and tests them on Python 3.12 and 3.14 for a future release. Source
+installs require a C compiler.
 
 Without the extra, main CLI BAML inputs give installation guidance and status 1;
 implicit ZeroConfigAPI file chunking falls back to text, and automatic symbol
