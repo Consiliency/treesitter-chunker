@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: TXNSPEC
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: a28a7aa83f7f2c4754dedf4ed0455d61b3bfb79865c1aae64afab6d13bc41a38
+roadmap_sha256: c75f8e2d3a32c5ebc97c05047a78eb2d0e04acd00466d2c9ce3372e7fc4d707b
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_release_hygiene_policy.py -q"
 ---
@@ -31,7 +31,9 @@ scope rather than repairing that general design. It drops:
 - `config.py` and CLI-fallback participation;
 - automatic crash recovery.
 
-It also keeps the transaction lock out of subprocess lifetimes.
+The transaction lock is never held across `git` or build subprocesses. The
+only subprocess allowed under it is the IF-0-HOTFIX-1 probe child, during one
+installation commit section.
 
 Current construction sites, read only at main `7440971a`:
 
@@ -58,8 +60,9 @@ head `7710fb7c699db33c244c95bf7d24d8730b91ea5b`. It is
 timeout) -> NativeProbeResult` in `chunker/_internal/user_grammar_tools.py`.
 Admission cannot be separated from replacement in that function. The first
 draft's admission-free identity restore was therefore replaced. Restore now
-calls the function unchanged, with the caller's pin for the previous revision,
-and fails closed without one. The installer commit order makes artifact
+calls the function unchanged, with the pin record the caller holds, and fails
+closed without the previous revision's pin. It decides the artifact first and
+the metadata as part of the pair. The installer commit order makes artifact
 publication the last fallible step, so ordinary failed updates never need the
 artifact republished. The signature was re-checked unchanged at
 treesitter-chunker#539 head `cf1de762`. The contract does not depend on how
@@ -103,6 +106,8 @@ SL-1 — Transaction contract
   - `plans/phase-plan-v4-TXNSPEC.md`
   - `mkdocs.yml` (`not_in_nav` line only)
   - `tests/test_release_hygiene_policy.py` (`INTERNAL_DOCS` entry only)
+  - `specs/phase-plans-v4.md` (TXN scope-notes lane bullets and the Execution
+    Notes `core.py` region line only; decisions D-a and D-b)
 - **Interfaces provided**: `IF-0-TXNSPEC-1`
 - **Interfaces consumed**:
   - `IF-0-HOTFIX-1` (published signature; interface-availability gate)
@@ -135,10 +140,9 @@ SL-1 — Transaction contract
   only output is one contract PR. Implementation fans out in TXN as SL-cache
   (treesitter-chunker#370 → treesitter-chunker#323) and SL-rollback
   (treesitter-chunker#363).
-- The contract asks the TXN plan to assign `GrammarInstaller._download_grammar`,
-  `_build_grammar` and `_cleanup_cache` (the writer side of
-  treesitter-chunker#323) to the treesitter-chunker#323 PR. SL-rollback then
-  rebases.
+- The roadmap's TXN lane bullets and `core.py` region line are amended in this
+  PR (decision D-b). `phase-loop validate-roadmap --roadmap
+  specs/phase-plans-v4.md` passes.
 - Do not touch `chunker/_internal/cache.py`, `chunker/boundary/cache.py`, any
   `core.py` code or parser pins.
 - The implementer does not run reviews or merge. The parent runs the
@@ -147,6 +151,48 @@ SL-1 — Transaction contract
   `blocker_class=product_decision_missing` and decision S-TXN.
 - Host resource caps apply: one heavy run at a time, at least 6 GiB available
   in `free -g`, `pytest -n` of at most 4, and scratch under `$TMPDIR`.
+
+## Review record
+
+**Round 1 (VB-4).** Both reviewers requested changes:
+
+- Codex, comment 6550203704, at `adbcc6d2`;
+- Claude, comment 6550280893, at `2da79ba4`.
+
+The `2da79ba4` merge commit also edited the contract and plan; it is treated
+as a content change.
+
+The revision addresses every blocking and non-blocking item:
+
+- one installation commit section, with the probe child as the only
+  subprocess under the lock;
+- a pair-wise restore, artifact first;
+- `artifact_sha256` in the metadata and in the rollback manifest;
+- defined two-rename publication failures and honest crash states, with an
+  operator procedure;
+- owned process groups and job objects;
+- nested-root refusal on every retirement path;
+- input routing through the last consumer;
+- the new metadata, removal and subprocess signatures, plus the manifest;
+- deterministic barrier points and the `git`-shim rule;
+- the corrected non-participant rows;
+- lock fork, crash and callback semantics;
+- garbage claiming;
+- construction behavior and the validation-key note.
+
+**Roadmap runner decisions (2026-10-31, within the roadmap):**
+
+- **D-a.** Installer publications through `publish_native_grammar` merge only
+  after ADMIT SL-core's `GrammarInstaller(trusted_artifacts=)` change
+  (treesitter-chunker#538). The installer passes treesitter-chunker#538's
+  one-field record built from `trusted_artifacts.get(language)`. The
+  caller/fixture-only option is dropped.
+- **D-b.** Moving `_download_grammar`, `_build_grammar`, `_cleanup_cache` and
+  `remove_grammar` between TXN lanes is intra-phase. The roadmap's TXN lane
+  bullets and the Execution Notes `core.py` region line are amended here.
+- **D-c.** No change to `config.py`. Instead, helper-created `.txn`
+  directories hold a marker file from creation, and the
+  `cleanup_empty_directories` overlap and its consequences are documented.
 
 ## Execution Policy
 
@@ -160,12 +206,15 @@ uv run --locked --all-extras ruff check chunker/ cli/ tests/ tools/governed_grou
 uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py
 uv run --locked --all-extras python scripts/mypy_gate.py
 uv run --locked --all-extras mypy --follow-imports=silent --allow-untyped-defs --allow-incomplete-defs --allow-untyped-calls --check-untyped-defs --no-pretty --no-error-summary --show-error-codes tools/sync_governed_test_transport.py
-uv run --locked --with toml --all-extras python scripts/run_ci_smoke.py
+uv run --locked --with toml --all-extras python -c "import sys, pytest; sys.path.insert(0, 'scripts'); from run_ci_smoke import CI_SMOKE_TESTS; sys.exit(pytest.main(['-n', '4', '--timeout=60', '-q', *CI_SMOKE_TESTS]))"
+phase-loop validate-roadmap --roadmap specs/phase-plans-v4.md
 uv run --locked --all-extras --with mkdocs --with mkdocs-material --with mkdocstrings-python mkdocs build --strict --site-dir "$(mktemp -d)"
 ```
 
-There is no runtime behavior change, so platform-core, full-suite and Windows
-preflight runs are not required. Hosted CI must be green at the exact head.
+The smoke selection runs at `-n 4`, because `scripts/run_ci_smoke.py`
+hard-codes `-n auto` and that exceeds the host cap. There is no runtime
+behavior change, so platform-core, full-suite and Windows preflight runs are
+not required. Hosted CI must be green at the exact head.
 
 ## Acceptance Criteria
 
@@ -177,10 +226,12 @@ preflight runs are not required. Hosted CI must be green at the exact head.
 
   Proven by review of `docs/development/cache-transaction-contract.md`.
 - [ ] EC-TXNSPEC-2 — Each consumer has its named barrier test and mutation:
-  - two-writer and writer/pruner tests (treesitter-chunker#370);
-  - the outside-symlink sentinel (treesitter-chunker#370);
-  - writer/pruner and link-boundary tests (treesitter-chunker#323);
-  - the failed-update restore (treesitter-chunker#363).
+  - two-writer and writer/pruner tests, and the outside-symlink sentinel
+    (treesitter-chunker#370);
+  - writer/pruner, link-boundary, descendant, owned-input, republication-failure
+    and nested-root tests (treesitter-chunker#323);
+  - the failed-update pair restore, the direct `restore` branches, and the
+    serialization and crash tests (treesitter-chunker#363).
 - [ ] EC-TXNSPEC-3 — Two independent reviewers approve within three rounds,
   after the restore section cites the published IF-0-HOTFIX-1 signature.
   Otherwise S-TXN applies.
