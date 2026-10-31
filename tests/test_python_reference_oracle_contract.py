@@ -15,6 +15,7 @@ from tests.reference_oracle import reference_case
 
 ISSUE_274 = "treesitter-chunker#274"
 ISSUE_294 = "treesitter-chunker#294"
+ISSUE_278 = "treesitter-chunker#278"
 
 
 def _point(node) -> tuple[int, int] | None:
@@ -80,4 +81,35 @@ def test_294_binding_targets_are_not_references_and_uses_are() -> None:
         observed = (point in resolved, (entry["name"], point) in extracted)
         if observed != (expected, expected):
             mismatches.append((entry["name"], point, entry["role"], observed))
+    assert mismatches == []
+
+
+def test_278_walrus_and_default_scopes_match_oracle() -> None:
+    case = reference_case("python", "assignment_expression_scope")
+    assert not case.root.has_error
+    mismatches = []
+    for entry in case.entries("visible", ISSUE_278):
+        visible = ContextFactory.create_scope_analyzer("python").get_visible_symbols(
+            case.scope(entry["scope"]), case.root
+        )
+        missing = sorted(set(entry["includes"]) - visible)
+        leaked = sorted(set(entry["excludes"]) & visible)
+        if missing or leaked:
+            mismatches.append((entry["scope"], "missing", missing, "leaked", leaked))
+    for entry in case.entries("enclosing", ISSUE_278):
+        enclosing = ContextFactory.create_scope_analyzer("python").get_enclosing_scope(
+            case.node(entry)
+        )
+        if enclosing != case.scope(entry["scope"]):
+            mismatches.append(
+                (
+                    entry["node_type"],
+                    (entry["row"], entry["column"]),
+                    "expected",
+                    entry["scope"],
+                    "got",
+                    enclosing.type if enclosing else None,
+                    _point(enclosing),
+                )
+            )
     assert mismatches == []

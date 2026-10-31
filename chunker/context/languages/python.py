@@ -8,6 +8,17 @@ from chunker.context.scope_analyzer import BaseScopeAnalyzer
 from chunker.context.symbol_resolver import BaseSymbolResolver
 from chunker.interfaces.context import ContextItem, ContextType
 
+_COMPREHENSION_SCOPES = frozenset(
+    {
+        "list_comprehension",
+        "set_comprehension",
+        "dictionary_comprehension",
+        "generator_expression",
+    }
+)
+_FUNCTION_SCOPES = frozenset({"function_definition", "lambda"})
+_DEFAULT_PARAMETERS = frozenset({"default_parameter", "typed_default_parameter"})
+
 
 class PythonContextExtractor(BaseContextExtractor):
     """Python-specific context extraction."""
@@ -309,6 +320,37 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
         """Initialize Python scope analyzer."""
         super().__init__("python")
 
+    # The interface declares this method static; BaseScopeAnalyzer already
+    # overrides it as an instance method and carries the same baseline mypy
+    # signature (chunker/context/scope_analyzer.py).
+    def get_enclosing_scope(self, node: Node) -> Node | None:  # type: ignore[override]
+        """Return the scope in which ``node`` is evaluated.
+
+        Parameter default values are evaluated in the scope that contains the
+        function or lambda, so the owning function is skipped for nodes inside
+        a default value.
+        """
+        if node in self._scope_cache:
+            return self._scope_cache[node]
+        skipped = None
+        child = node
+        current = node.parent
+        while current:
+            if (
+                current.type in _DEFAULT_PARAMETERS
+                and current.child_by_field_name("value") == child
+                and current.parent is not None
+            ):
+                skipped = current.parent.parent
+            if self._is_scope_node(current) and current != skipped:
+                break
+            child = current
+            current = current.parent
+        if len(self._scope_cache) >= 256:
+            self._scope_cache.pop(next(iter(self._scope_cache)))
+        self._scope_cache[node] = current
+        return current
+
     def get_visible_symbols(self, scope_node: Node, ast: Node) -> set[str]:
         """Collect lexical names without inheriting a method's class namespace."""
         visible = set()
@@ -467,9 +509,45 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                 for child in node.named_children:
                     collect_case_bindings(child)
 
+        def collect_parameter_defaults(function: Node) -> None:
+            parameters = function.child_by_field_name("parameters")
+            for parameter in parameters.named_children if parameters else ():
+                value = parameter.child_by_field_name("value")
+                if parameter.type in _DEFAULT_PARAMETERS and value:
+                    collect_assignment_expressions(value)
+
+        def collect_assignment_expressions(node: Node) -> None:
+            """Collect walrus targets that bind in the scope being collected.
+
+            Comprehensions do not own assignment-expression targets, and
+            parameter defaults are evaluated in the enclosing scope.
+            """
+            if node.type == "named_expression":
+                target = node.child_by_field_name("name")
+                if target and target.text:
+                    names.add(target.text.decode("utf-8"))
+            if node.type in _FUNCTION_SCOPES:
+                collect_parameter_defaults(node)
+                return
+            if node.type == "class_definition":
+                return
+            for child in node.children:
+                collect_assignment_expressions(child)
+
+        owns_assignment_expressions = scope_node.type not in _COMPREHENSION_SCOPES
+
         def collect_imports(node: Node, depth: int = 0) -> None:
             if depth > 0 and self._is_scope_node(node):
+                if owns_assignment_expressions:
+                    if node.type in _COMPREHENSION_SCOPES:
+                        collect_assignment_expressions(node)
+                    elif node.type in _FUNCTION_SCOPES:
+                        collect_parameter_defaults(node)
                 return
+            if node.type == "named_expression" and owns_assignment_expressions:
+                target = node.child_by_field_name("name")
+                if target and target.text:
+                    names.add(target.text.decode("utf-8"))
             if self._is_import_node(node):
                 names.update(self._extract_imported_names(node))
             if node.type in {
