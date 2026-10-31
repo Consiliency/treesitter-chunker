@@ -4,13 +4,78 @@ import logging
 import os
 import shutil
 import subprocess
+import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from .grammar_management import SmartGrammarManager, _require_language_component
+from ..grammar.integrity import NativeProbeResult, probe_native_grammar
 from ..grammar.source_validation import validate_grammar_source
 
 logger = logging.getLogger(__name__)
+
+
+def publish_native_grammar(
+    source: Path,
+    destination: Path,
+    language: str,
+    *,
+    provenance: Mapping[str, Any] | None,
+    sample: bytes = b"",
+    timeout: float = 10.0,
+) -> NativeProbeResult:
+    """Publish a compiled grammar without overwriting the existing library file.
+
+    The bytes of ``source`` are copied to a new sibling temporary file in
+    ``destination``'s directory and admitted there with
+    :func:`~chunker.grammar.integrity.probe_native_grammar` (``provenance``,
+    ``sample`` and ``timeout`` are passed through). Only an admitted file is
+    moved over ``destination`` with :func:`os.replace`, so the old directory
+    entry, or the symlink itself, is swapped and no existing file is opened for
+    writing or truncated. A process that has the old library loaded keeps its
+    mapping; later loads by a new process read the new file.
+
+    Returns:
+        The admission result. ``destination`` changed only if
+        ``result.supported`` is true; otherwise the staged file is removed and
+        ``destination`` is untouched.
+
+    Raises:
+        OSError: If staging or replacement fails (for example, Windows refuses
+            to replace a library that a process has loaded). The staged file is
+            removed and ``destination`` is untouched.
+    """
+    destination = Path(destination).absolute()
+    descriptor, staged_name = tempfile.mkstemp(
+        prefix=f".{destination.stem}-",
+        suffix=f".staged{destination.suffix}",
+        dir=destination.parent,
+    )
+    staged = Path(staged_name)
+    published = False
+    try:
+        with (
+            os.fdopen(descriptor, "wb") as staged_file,
+            Path(source).open("rb") as source_file,
+        ):
+            shutil.copyfileobj(source_file, staged_file)
+            staged_file.flush()
+            os.fsync(staged_file.fileno())
+        shutil.copymode(source, staged)
+        result = probe_native_grammar(
+            staged,
+            language,
+            provenance=provenance,
+            sample=sample,
+            timeout=timeout,
+        )
+        if result.supported:
+            os.replace(staged, destination)
+            published = True
+        return result
+    finally:
+        if not published:
+            staged.unlink(missing_ok=True)
 
 
 class UserGrammarTools:
@@ -36,6 +101,42 @@ class UserGrammarTools:
             grammars_dir,
             trusted_artifacts=trusted_artifacts,
         )
+
+    def _publish_library(
+        self, language: str, library: Path, result: dict[str, Any]
+    ) -> bool:
+        """Publish ``library`` as ``<language>.so`` via staged admission.
+
+        Records an error and returns ``False`` if admission or replacement
+        fails; the installed library is then unchanged.
+        """
+        target = self.build_dir / f"{language}.so"
+        try:
+            probe = publish_native_grammar(
+                library,
+                target,
+                language,
+                provenance=self.manager.trusted_artifacts.get(language),
+            )
+        except OSError as error:
+            result["errors"].append(
+                f"Could not publish {library.name} to {target}: {error}; on "
+                "Windows a loaded library cannot be replaced. The installed "
+                "library is unchanged",
+            )
+            result["status"] = "error"
+            return False
+        finally:
+            self.manager.health_cache.pop(language, None)
+            self.manager.compatibility_cache.pop(language, None)
+        if not probe.supported:
+            result["errors"].append(
+                f"Native admission failed for {library.name}: {probe.reason}; "
+                "the installed library is unchanged",
+            )
+            result["status"] = "error"
+            return False
+        return True
 
     def _refuse_shadowed_legacy_copy(
         self, language: str, result: dict[str, Any]
@@ -174,8 +275,8 @@ class UserGrammarTools:
                 if self._refuse_shadowed_legacy_copy(language, result):
                     return result
                 for so_file in so_files:
-                    target_so = self.build_dir / f"{language}.so"
-                    shutil.copy2(so_file, target_so)
+                    if not self._publish_library(language, so_file, result):
+                        return result
                     result["steps_completed"].append(
                         f"Copied {so_file.name} to build directory",
                     )
@@ -376,8 +477,8 @@ class UserGrammarTools:
                 if self._refuse_shadowed_legacy_copy(language, result):
                     return result
                 for so_file in so_files:
-                    target_so = self.build_dir / f"{language}.so"
-                    shutil.copy2(so_file, target_so)
+                    if not self._publish_library(language, so_file, result):
+                        return result
                     result["steps_completed"].append("Updated compiled grammar library")
             else:
                 result["errors"].append("No .so files found after regeneration")
