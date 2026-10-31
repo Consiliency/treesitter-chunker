@@ -66,9 +66,9 @@ signature triggers a re-review of the restore section.
 
 ## Interface Freeze Gates
 
-- [ ] IF-0-TXNSPEC-1 — `docs/development/cache-transaction-contract.md` plus
-  signature-only stubs in `chunker/grammar_management/_transactions.py`. It
-  covers:
+- [ ] IF-0-TXNSPEC-1 — `docs/development/cache-transaction-contract.md`,
+  including the frozen signatures of the future
+  `chunker/grammar_management/_transactions.py`. It covers:
   - the locked fresh-read/merge/atomic-replace JSON update with no-follow
     containment;
   - staged publication with a deletion-time stale re-check and
@@ -83,21 +83,20 @@ signature triggers a re-review of the restore section.
 
 ## Lane Index & Dependencies
 
-SL-1 — Transaction contract and signature stubs
+SL-1 — Transaction contract
   Depends on: (none); interface-availability gate on IF-0-HOTFIX-1 publication
   Blocks: TXN
   Parallel-safe: no
 
 ## Lanes
 
-### SL-1 — Transaction contract and signature stubs
+### SL-1 — Transaction contract
 
-- **Scope**: Write the contract, the stubs and this plan in one draft PR.
+- **Scope**: Write the contract and this plan in one draft PR.
   Reconcile the restore section with the published IF-0-HOTFIX-1 signature
   before the PR is marked ready.
 - **Owned files**:
   - `docs/development/cache-transaction-contract.md`
-  - `chunker/grammar_management/_transactions.py`
   - `plans/phase-plan-v4-TXNSPEC.md`
   - `mkdocs.yml` (`not_in_nav` line only)
   - `tests/test_release_hygiene_policy.py` (`INTERNAL_DOCS` entry only)
@@ -114,8 +113,10 @@ SL-1 — Transaction contract and signature stubs
     gap-disposition table.
   - doc: For each consumer, name the deterministic barrier test and the
     mutation it must kill (EC-TXNSPEC-2).
-  - impl: Add signature-only stubs that import only the standard library and
-    raise `NotImplementedError`. No production module imports them.
+  - doc: Freeze the helper signatures as text. No stub module is added: a new
+    package file would change the pinned wheel payload inventory
+    (`tests/test_supported_wheel_verification.py`). TXN SL-cache creates the
+    module and updates that inventory.
   - reconcile: Find the treesitter-chunker#162 PR
     (`gh pr list --search "162 in:title,body" --state open`) and compare its
     `IF-0-HOTFIX-1 signature` with the restore section. Cite the signature by
@@ -146,7 +147,7 @@ SL-1 — Transaction contract and signature stubs
 
 ## Execution Policy
 
-- SL-1: work-unit=`lane_execute`, reason=`interface-only contract and stubs`
+- SL-1: work-unit=`lane_execute`, reason=`interface-only contract`
 
 ## Verification
 
@@ -171,8 +172,7 @@ preflight runs are not required. Hosted CI must be green at the exact head.
   - the single-host scope and supported platforms;
   - a seven-row `addressed`/`scoped out` table with rationale.
 
-  Proven by review of `docs/development/cache-transaction-contract.md` and the
-  stub module importing cleanly under the mypy gate.
+  Proven by review of `docs/development/cache-transaction-contract.md`.
 - [ ] EC-TXNSPEC-2 — Each consumer has its named barrier test and mutation:
   - two-writer and writer/pruner tests (treesitter-chunker#370);
   - the outside-symlink sentinel (treesitter-chunker#370);

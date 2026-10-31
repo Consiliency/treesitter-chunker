@@ -4,9 +4,10 @@
 
 Status: **proposed interface freeze IF-0-TXNSPEC-1** (roadmap
 `specs/phase-plans-v4.md`, Phase 3 TXNSPEC). It has not been accepted yet.
-This document and the signature-only stubs in
-`chunker/grammar_management/_transactions.py` change no runtime behavior. No
-consumer is migrated here. Phase TXN implements the contract for
+This document changes no runtime behavior, and no consumer is migrated here.
+The helper module `chunker/grammar_management/_transactions.py` does not exist
+yet. Its signatures are frozen in [Signatures](#signatures), and TXN lane
+SL-cache creates the module in its first PR. Phase TXN implements the contract for
 treesitter-chunker#370, treesitter-chunker#323 and treesitter-chunker#363.
 It succeeds the rejected treesitter-chunker#364 CLEANUP design. Wherever the
 two differ, this document takes precedence. The successor deliberately makes
@@ -515,8 +516,11 @@ such case.
 ## Signatures
 
 These are the public signatures of `chunker/grammar_management/_transactions.py`.
-The stubs in this PR contain signatures and docstrings only. The module
-imports only the standard library at module level. It imports the integrity and
+They are frozen here as text only. This PR adds no stub module, because a new
+package file would change the pinned wheel payload inventory in
+`tests/test_supported_wheel_verification.py`. TXN SL-cache creates the module
+and updates that inventory in the same PR. The module imports only the
+standard library at module level. It imports the integrity and
 IF-0-HOTFIX-1 helpers lazily inside `restore`. That way, `cli.py` fallback code
 could use it later without importing core.
 
