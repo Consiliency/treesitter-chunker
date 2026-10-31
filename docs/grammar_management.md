@@ -92,7 +92,8 @@ report may be missing, corrupted or incompatible, and these commands exit 1.
 library with `publish_native_grammar` (in `chunker._internal.user_grammar_tools`,
 treesitter-chunker#162):
 
-1. The library is copied into a new temporary file in the build directory.
+1. The library is copied into a new temporary file in the build directory,
+   named `.<language>.so-<random>.staged`.
 2. The temporary file is admitted with the caller's pin for the language.
 3. Only an admitted file is moved over `<language>.so` with `os.replace`.
 
@@ -102,14 +103,36 @@ the old library loaded keeps running on it. Loading the same path again in that
 process still returns the old library; a new process loads the new one. If
 admission fails, the temporary file is removed, the installed library is left
 unchanged, and install/update return `error` with the rejection reason.
+
+The temporary name never ends in `.so`, `.dylib` or `.dll`, so grammar
+listing and registry discovery never see it. If a crash or power loss leaves a
+`.*.staged` file in the build directory, it is safe to delete.
+
 Windows refuses to replace a library that a running process has loaded, so
 there the update returns `error` and the installed library is left unchanged.
-Close the processes using it and retry.
+Retrying `update_grammar` does not help: the failed attempt has already checked
+out the new revision, so the next update reports it as up to date and publishes
+nothing. Close the processes using the library, then run `install_grammar`
+again for the same repository, with an approved pin for the new library.
+Automatic recovery and rollback are treesitter-chunker#363 work.
 
-Without a pin, a generated library is never published. Because the legacy CLI
-does not accept pins yet, `grammar install` and `grammar update` exit 1 for a
-new or changed library until treesitter-chunker#362 adds a pin source.
-Rollback after a failed update is treesitter-chunker#363 work.
+**Interim limitation until treesitter-chunker#362 (ADMIT).** Without a pin, a
+generated library is never published. The error says so, and that the grammar
+CLI cannot supply pins until treesitter-chunker#362. Until then:
+
+- `grammar install` and `grammar update` (and unpinned `UserGrammarTools`
+  callers) fail with `error` and exit 1 for a new or changed library.
+- On Linux, an unpinned install no longer makes the grammar discoverable for
+  chunking. Before, the copied `<language>.so` in the build directory was loaded
+  by registry discovery. On macOS and Windows, discovery looks for
+  `.dylib`/`.dll`, so the copied `.so` was not used there before either.
+- Embedding callers can publish today by passing `trusted_artifacts` with the
+  approved SHA-256 for each language.
+
+Official and package-supplied grammars are unaffected. They are loaded without
+going through this publication path and need no pin: the official
+`tree-sitter-python`/`tree-sitter-javascript` wheels, language-pack grammars
+and the BAML companion.
 
 Registry discovery, the central validator, dependency inspection, other loaders
 and the central installer remain treesitter-chunker#362 work. This change does

@@ -16,7 +16,12 @@ from pathlib import Path
 
 import pytest
 
-from chunker._internal.user_grammar_tools import publish_native_grammar
+import chunker._internal.user_grammar_tools as tools_module
+from chunker._internal.user_grammar_tools import (
+    STAGED_SUFFIX,
+    UserGrammarTools,
+    publish_native_grammar,
+)
 from tests.test_compiled_grammar_analysis_contract import (
     FIXTURE,
     SOURCE,
@@ -215,6 +220,7 @@ def test_update_replaces_loaded_grammar_without_crash(tmp_path, revisions):
         # Windows refuses to replace a loaded library; nothing is overwritten.
         assert report["update"]["status"] == "error"
         assert "Could not publish baml.so" in report["update"]["errors"][-1]
+        assert "Windows cannot replace a library" in report["update"]["errors"][-1]
         assert report["installed_sha256"] == _digest(rev_a)
         assert _fresh_load(installed) == {"version": [0, 1, 0], "ok": True}
         return
@@ -243,8 +249,9 @@ def test_unadmitted_update_leaves_installed_library(tmp_path, revisions):
 
     assert report["update"]["status"] == "error"
     assert report["update"]["errors"] == [
-        "Native admission failed for baml.so: integrity_mismatch; "
-        "the installed library is unchanged"
+        "Native admission failed for baml.so: integrity_mismatch (the library "
+        "does not match its approved SHA-256 pin); the installed library is "
+        "unchanged."
     ]
     assert report["same_inode"] is True
     assert report["installed_sha256"] == _digest(rev_a)
@@ -272,3 +279,85 @@ def test_publication_replaces_symlink_without_writing_its_target(tmp_path, revis
     assert _digest(destination) == _digest(rev_b)
     assert _digest(outside) == _digest(rev_a)
     assert sorted(entry.name for entry in build_dir.iterdir()) == ["baml.so"]
+
+
+def test_staged_file_is_never_named_like_a_library(tmp_path, revisions, monkeypatch):
+    rev_a, _ = revisions
+    build_dir = tmp_path / "build"
+    build_dir.mkdir()
+    seen = []
+    real_probe = tools_module.probe_native_grammar
+
+    def observe(path, *args, **kwargs):
+        # Spy only: record what a concurrent scan would see, then admit for real.
+        seen.append((path.name, sorted(entry.name for entry in build_dir.iterdir())))
+        return real_probe(path, *args, **kwargs)
+
+    monkeypatch.setattr(tools_module, "probe_native_grammar", observe)
+    result = publish_native_grammar(
+        rev_a, build_dir / "baml.so", "baml", provenance={"sha256": _digest(rev_a)}
+    )
+
+    assert result.supported, result
+    [(staged_name, entries)] = seen
+    assert staged_name.startswith(".baml.so-")
+    assert staged_name.endswith(STAGED_SUFFIX)
+    assert entries == [staged_name]
+    assert not any(staged_name.endswith(suffix) for suffix in (".so", ".dylib", ".dll"))
+
+
+def test_crash_leftover_is_not_listed_as_a_grammar(tmp_path, revisions):
+    rev_a, _ = revisions
+    build_dir, grammars_dir = tmp_path / "build", tmp_path / "grammars"
+    build_dir.mkdir()
+    grammars_dir.mkdir()
+    (build_dir / f".baml.so-k3j2{STAGED_SUFFIX}").write_bytes(rev_a.read_bytes())
+    tools = UserGrammarTools(
+        build_dir, grammars_dir, trusted_artifacts={"baml": {"sha256": _digest(rev_a)}}
+    )
+
+    assert tools.list_installed_grammars()["grammars"] == {}
+
+
+def _tools_with_cached_state(tmp_path, pin):
+    build_dir, grammars_dir = tmp_path / "build", tmp_path / "grammars"
+    build_dir.mkdir()
+    grammars_dir.mkdir()
+    tools = UserGrammarTools(build_dir, grammars_dir, trusted_artifacts=pin)
+    tools.manager.health_cache["baml"] = object()
+    tools.manager.compatibility_cache["baml"] = object()
+    return tools
+
+
+@pytest.mark.parametrize("outcome", ["published", "rejected"])
+def test_publication_drops_cached_grammar_state(tmp_path, revisions, outcome):
+    rev_a, _ = revisions
+    pin = {"sha256": _digest(rev_a) if outcome == "published" else "0" * 64}
+    tools = _tools_with_cached_state(tmp_path, {"baml": pin})
+    result = {"errors": [], "status": "unknown"}
+
+    assert tools._publish_library("baml", rev_a, result) is (outcome == "published")
+    assert "baml" not in tools.manager.health_cache
+    assert "baml" not in tools.manager.compatibility_cache
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX replacement failure")
+def test_failed_replacement_reports_error_and_keeps_destination(tmp_path, revisions):
+    rev_a, _ = revisions
+    tools = _tools_with_cached_state(tmp_path, {"baml": {"sha256": _digest(rev_a)}})
+    # A nonempty directory at the destination makes os.replace fail after
+    # the staged library was admitted.
+    blocker = tools.build_dir / "baml.so"
+    blocker.mkdir()
+    (blocker / "keep.txt").write_text("kept", encoding="utf-8")
+    result = {"errors": [], "status": "unknown"}
+
+    assert tools._publish_library("baml", rev_a, result) is False
+    assert result["status"] == "error"
+    [message] = result["errors"]
+    assert message.startswith(f"Could not publish {rev_a.name} to {blocker}: ")
+    assert message.endswith("The installed library is unchanged.")
+    assert "Windows" not in message
+    assert (blocker / "keep.txt").read_text(encoding="utf-8") == "kept"
+    assert sorted(entry.name for entry in tools.build_dir.iterdir()) == ["baml.so"]
+    assert "baml" not in tools.manager.health_cache

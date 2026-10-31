@@ -24,7 +24,7 @@ slice:
   `update_grammar` used `shutil.copy2` to overwrite `<language>.so` in place.
   That truncated a file a process could still have mapped, so the process
   could crash with SIGSEGV.
-- treesitter-chunker#69 slice 17: the `cli/grammar_commands.py` command
+- treesitter-chunker#69 slice 17: the `chunker/cli/grammar_commands.py` command
   contract, which waited only on treesitter-chunker#162.
 
 Status inputs at planning time: treesitter-chunker#534 and
@@ -47,8 +47,10 @@ Module `chunker/_internal/user_grammar_tools.py`:
 `publish_native_grammar(source: Path, destination: Path, language: str, *, provenance: Mapping[str, Any] | None, sample: bytes = b"", timeout: float = 10.0) -> NativeProbeResult`
 
 1. Copy `source`'s bytes into a new sibling temporary file in
-   `destination.parent` (`mkstemp`, prefix `.<stem>-`, suffix
-   `.staged<suffix>`). Fsync it and copy `source`'s mode bits.
+   `destination.parent` (`mkstemp`, prefix `.<destination name>-`, suffix
+   `.staged`). Fsync it and copy `source`'s mode bits. The staged name never
+   ends in a library suffix, so `*.so`/`*.dylib`/`*.dll` scans never list or
+   load it; a crash leftover is safe to delete.
 2. Admit the staged file with `probe_native_grammar`, passing the caller's
    single-language `provenance` record, `sample` and `timeout`. No other pin
    source is consulted, and there is no trust-all switch.
@@ -58,29 +60,39 @@ Module `chunker/_internal/user_grammar_tools.py`:
 4. Return the `NativeProbeResult`. On rejection, the staged file is removed
    and `destination` is left unchanged.
 5. `OSError` from staging or replacement propagates after the staged file is
-   removed. Windows raises here when a process has the destination loaded.
+   removed. Windows raises here (`PermissionError`) when a process has the
+   destination loaded.
 6. Callers invalidate their caches. `UserGrammarTools` drops the manager's
    `health_cache` and `compatibility_cache` entries for the language after
-   every publication attempt.
+   every publication attempt. This is defensive: today no lookup reads
+   `health_cache`, and compatibility does not depend on the artifact. A
+   white-box test asserts the entries are dropped.
 
 A process that already loaded the old library keeps its mapping. Loading the
 same path again in that process returns the existing handle; a new process
-(including the admission probe child) loads the new file.
+loads the new file. The admission probe loads its own private snapshot of the
+staged file.
 
 Cache identity (SL-1, internal to `chunker/_internal/cache.py`, not a phase
-gate): `chunk_cache_identity(language, extraction="core") -> str` returns a
-SHA-256 over these fields:
+gate): `chunk_cache_identity(language, extraction="core") -> str | None`
+returns a SHA-256 over these fields:
 
 - `CACHE_VERSION`;
 - the extraction mode (`core` or `streaming`; anything else raises `ValueError`);
 - the `treesitter-chunker`, `tree-sitter` and `tree-sitter-language-pack`
   distribution versions;
 - the grammar ABI, node-kind count, symbol name and `grammar_source`
-  provenance from `get_language_info`.
+  provenance from `get_language_info`;
+- a fingerprint of the effective language configuration and metadata
+  extractor/analyzer classes.
 
+It returns `None` (bypass: no reads, no writes) when the grammar has no
+provenance (today every language except Python and JavaScript; see
+treesitter-chunker#543) or the configuration cannot be fingerprinted.
 `ASTCache.get_cached_chunks` and `cache_chunks` take keyword-only
 `extraction="core"`. Entries live in a new `chunk_cache` table whose primary key
-is `(file_path, language, extraction_identity)`. `CACHE_VERSION` is `3.0`. The
+is `(file_path, language, extraction_identity)`, with an `extraction` column;
+a write removes superseded identities for the same path, language and mode. `CACHE_VERSION` is `3.0`. The
 legacy `file_cache` table is never read, migrated or modified.
 `ParallelChunker`, `chunk_files_parallel` and `chunk_directory_parallel` accept
 `cache_dir=`.
@@ -143,8 +155,7 @@ SL-17 — treesitter-chunker#69 slice 17 grammar command contract
   `tests/test_user_grammar_publication.py`, the install/update cases in
   `tests/test_grammar_management.py` and
   `tests/test_compiled_grammar_analysis_contract.py`,
-  `docs/grammar_management.md`,
-  `docs/development/native-validation-contract.md`, `CHANGELOG.md`, the SL-2
+  `docs/grammar_management.md`, `CHANGELOG.md`, the SL-2
   entry in `scripts/run_platform_core.py`, and this plan.
 - **Tasks**:
   - test: Compile two real BAML revisions from
@@ -164,7 +175,8 @@ SL-17 — treesitter-chunker#69 slice 17 grammar command contract
   - docs: Record the consumer impact. Unadmitted libraries, including unpinned
     ones, are no longer copied, so the legacy `grammar install`/`update` exit 1
     for new or changed libraries until treesitter-chunker#362 adds a CLI pin
-    source.
+    source. On Linux an unpinned install no longer makes the grammar
+    discoverable for chunking.
 
 ### SL-17 — treesitter-chunker#69 slice 17
 
@@ -172,8 +184,9 @@ SL-17 — treesitter-chunker#69 slice 17 grammar command contract
   `plans/detailed-coverage-contract-slices-20261001.md`: "a local installed
   grammar is listed/validated and a missing grammar produces a nonzero command
   result", with mutation **return success for failed grammar validation**.
-- **Disposition**: re-placed after ADMIT; not executed in HOTFIX (see
-  Execution Notes).
+- **Disposition**: re-placed into ADMITFIX, after ADMIT supplies pins
+  (IF-0-ADMITPIN-1/IF-0-ADMIT-1); not executed in HOTFIX (see Execution
+  Notes).
 
 ## Execution Notes
 
@@ -188,8 +201,16 @@ SL-17 — treesitter-chunker#69 slice 17 grammar command contract
   contract therefore needs a healthy production result, which only the ADMIT
   production pin source (IF-0-ADMITPIN-1/IF-0-ADMIT-1) can supply. Patching
   `get_grammar_tools` or asserting the failure instead would weaken the
-  contract. Slice 17 is re-placed to run after ADMIT; RECORDS reports this
-  outcome.
+  contract. Slice 17 (treesitter-chunker#69) is re-placed into ADMITFIX,
+  which runs after ADMIT supplies pins and consumes IF-0-ADMIT-1; RECORDS
+  reports this outcome.
+- **Maintainer decision (2026-10-31, relayed by the roadmap runner):** merge
+  treesitter-chunker#539 and accept the interim gap. Until
+  treesitter-chunker#362 (ADMIT) supplies a pin source, unpinned
+  install/update fail with `error` (CLI exit 1), and on Linux an unpinned
+  library is no longer discoverable for chunking. `CHANGELOG.md` and
+  `docs/grammar_management.md` state this. Official and package-supplied
+  grammars are unaffected.
 - Host caps: one heavy run at a time per agent, at least 6 GiB available
   before a heavy run, `pytest -n` at most 4, and scratch under `$TMPDIR` that
   is removed in `finally`. `scripts/run_ci_smoke.py` hard-codes `-n auto`, so
@@ -204,8 +225,10 @@ SL-17 — treesitter-chunker#69 slice 17 grammar command contract
 - The CONTRIBUTING.md local validation block (Ruff, Black, mypy gate,
   governed body-type check, and the CI smoke selection at `-n 4`).
 - treesitter-chunker#162: the standing Windows preflight run on the PR head,
-  plus hosted Linux/macOS/Windows platform-core, which now enrolls both new
-  test files.
+  plus hosted Linux/macOS/Windows platform-core. Each PR enrolls its own new
+  test file: treesitter-chunker#539 adds
+  `tests/test_user_grammar_publication.py`, and treesitter-chunker#541 adds
+  `tests/test_parallel_cache_identity.py`.
 
 Named mutations (each fails its focused test and passes once restored):
 
@@ -216,18 +239,25 @@ Named mutations (each fails its focused test and passes once restored):
 3. `M358-grammar` — drop grammar provenance: the other-provenance case fails.
 4. `M358-cachedir` — ignore `cache_dir` (`ASTCache()`): confinement and reuse
    tests fail.
-5. `M162-inplace` — restore `shutil.copy2(staged, destination)` in place of
-   `os.replace`: the loaded-update child exits with SIGSEGV (-11), and the
-   new-inode and symlink cases fail.
+5. `M358-config`, `M358-unidentified` and `M358-stale-rows` — drop the
+   configuration fingerprint, treat a grammar without provenance as
+   identified, or skip removing superseded rows: the configuration-change,
+   Go-bypass and row-cleanup tests fail (treesitter-chunker#541 review fixes).
+6. `M162-inplace` — replace `staged.replace(destination)` with
+   `shutil.copy2(staged, destination)` and keep `published = True`, so the
+   staged file is still removed: the loaded-update child exits with SIGSEGV
+   (-11), and the new-inode and symlink cases fail (3 failed). Dropping
+   `published = True` as well also leaves the staged file and fails a fourth
+   test.
 
 ## Acceptance Criteria
 
 - [ ] EC-HOTFIX-1 — treesitter-chunker#358, by
-  `tests/test_parallel_cache_identity.py`; falsified by mutations 1–4.
+  `tests/test_parallel_cache_identity.py`; falsified by mutations 1–5.
 - [ ] EC-HOTFIX-2 — treesitter-chunker#162, by
   `tests/test_user_grammar_publication.py`; falsified by `M162-inplace`.
-- [ ] EC-HOTFIX-3 — slice 17 re-placed after ADMIT with the reason recorded
-  above, rather than weakened.
+- [ ] EC-HOTFIX-3 — slice 17 re-placed into ADMITFIX (after ADMIT supplies
+  pins) with the reason recorded above, rather than weakened.
 - [ ] EC-HOTFIX-4 — VB-1 to VB-4 for each PR. treesitter-chunker#162 has the
   Windows preflight and hosted macOS/Windows evidence.
 

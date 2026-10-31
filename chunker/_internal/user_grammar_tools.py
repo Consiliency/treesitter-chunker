@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from collections.abc import Mapping
 from pathlib import Path
@@ -13,6 +14,19 @@ from ..grammar.integrity import NativeProbeResult, probe_native_grammar
 from ..grammar.source_validation import validate_grammar_source
 
 logger = logging.getLogger(__name__)
+
+#: Suffix of staged publication files. It never ends in a library suffix, so
+#: ``*.so``/``*.dylib``/``*.dll`` scans never list or load a staged file.
+STAGED_SUFFIX = ".staged"
+
+_ADMISSION_EXPLANATIONS = {
+    "untrusted": "the library is not trusted by an approved SHA-256 pin",
+    "integrity_mismatch": "the library does not match its approved SHA-256 pin",
+    "empty": "the library is empty",
+    "load_failed": "the library could not be loaded",
+    "parse_failed": "the library loaded but could not parse",
+    "timeout": "the admission probe timed out",
+}
 
 
 def publish_native_grammar(
@@ -33,7 +47,12 @@ def publish_native_grammar(
     moved over ``destination`` with :func:`os.replace`, so the old directory
     entry, or the symlink itself, is swapped and no existing file is opened for
     writing or truncated. A process that has the old library loaded keeps its
-    mapping; later loads by a new process read the new file.
+    mapping; later loads by a new process read the new file. The probe itself
+    loads a private snapshot of the staged file.
+
+    The staged file is named ``.<destination name>-<random>.staged``. It never
+    ends in a library suffix, so grammar scans never list or load it. A file of
+    that name left by a crash is safe to delete.
 
     Returns:
         The admission result. ``destination`` changed only if
@@ -47,8 +66,8 @@ def publish_native_grammar(
     """
     destination = Path(destination).absolute()
     descriptor, staged_name = tempfile.mkstemp(
-        prefix=f".{destination.stem}-",
-        suffix=f".staged{destination.suffix}",
+        prefix=f".{destination.name}-",
+        suffix=STAGED_SUFFIX,
         dir=destination.parent,
     )
     staged = Path(staged_name)
@@ -108,21 +127,28 @@ class UserGrammarTools:
         """Publish ``library`` as ``<language>.so`` via staged admission.
 
         Records an error and returns ``False`` if admission or replacement
-        fails; the installed library is then unchanged.
+        fails; the installed library is then unchanged. The manager's cached
+        health and compatibility for ``language`` are dropped either way.
         """
         target = self.build_dir / f"{language}.so"
+        provenance = self.manager.trusted_artifacts.get(language)
         try:
             probe = publish_native_grammar(
                 library,
                 target,
                 language,
-                provenance=self.manager.trusted_artifacts.get(language),
+                provenance=provenance,
             )
         except OSError as error:
+            hint = ""
+            if sys.platform == "win32" and isinstance(error, PermissionError):
+                hint = (
+                    " Windows cannot replace a library that a running process "
+                    "has loaded; close those processes, then reinstall."
+                )
             result["errors"].append(
-                f"Could not publish {library.name} to {target}: {error}; on "
-                "Windows a loaded library cannot be replaced. The installed "
-                "library is unchanged",
+                f"Could not publish {library.name} to {target}: {error}. The "
+                f"installed library is unchanged.{hint}",
             )
             result["status"] = "error"
             return False
@@ -130,10 +156,20 @@ class UserGrammarTools:
             self.manager.health_cache.pop(language, None)
             self.manager.compatibility_cache.pop(language, None)
         if not probe.supported:
-            result["errors"].append(
-                f"Native admission failed for {library.name}: {probe.reason}; "
-                "the installed library is unchanged",
+            explanation = _ADMISSION_EXPLANATIONS.get(
+                probe.reason, "the native admission probe rejected it"
             )
+            message = (
+                f"Native admission failed for {library.name}: {probe.reason} "
+                f"({explanation}); the installed library is unchanged."
+            )
+            if provenance is None:
+                message += (
+                    f" No approved pin was supplied for {language}: pass "
+                    "trusted_artifacts to UserGrammarTools. The grammar CLI "
+                    "cannot supply pins until treesitter-chunker#362."
+                )
+            result["errors"].append(message)
             result["status"] = "error"
             return False
         return True

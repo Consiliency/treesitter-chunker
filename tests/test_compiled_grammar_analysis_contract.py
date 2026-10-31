@@ -527,11 +527,21 @@ def test_real_repository_install_reports_failed_native_admission(
     assert "Cloned repository" in result["steps_completed"]
     assert "Copied baml.so to build directory" not in result["steps_completed"]
     assert list(build.iterdir()) == []
-    reason = "untrusted" if pin_state == "missing" else "integrity_mismatch"
-    assert result["errors"] == [
-        f"Native admission failed for baml.so: {reason}; "
-        "the installed library is unchanged"
-    ]
+    if pin_state == "missing":
+        expected = (
+            "Native admission failed for baml.so: untrusted (the library is not "
+            "trusted by an approved SHA-256 pin); the installed library is "
+            "unchanged. No approved pin was supplied for baml: pass "
+            "trusted_artifacts to UserGrammarTools. The grammar CLI cannot "
+            "supply pins until treesitter-chunker#362."
+        )
+    else:
+        expected = (
+            "Native admission failed for baml.so: integrity_mismatch (the "
+            "library does not match its approved SHA-256 pin); the installed "
+            "library is unchanged."
+        )
+    assert result["errors"] == [expected]
     assert result["warnings"] == []
 
 

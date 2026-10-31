@@ -383,8 +383,11 @@ class TestUserGrammarTools:
         assert result["status"] == "error"
         assert result["steps_completed"] == ["Cloned repository", "Generated grammar"]
         assert result["errors"] == [
-            "Native admission failed for test_lang.so: untrusted; "
-            "the installed library is unchanged"
+            "Native admission failed for test_lang.so: untrusted (the library is "
+            "not trusted by an approved SHA-256 pin); the installed library is "
+            "unchanged. No approved pin was supplied for test_lang: pass "
+            "trusted_artifacts to UserGrammarTools. The grammar CLI cannot "
+            "supply pins until treesitter-chunker#362."
         ]
         assert list(tools.build_dir.iterdir()) == []
 
@@ -497,8 +500,10 @@ class TestUserGrammarTools:
         assert result["status"] == "error"
         assert "Updated to latest version" in result["steps_completed"]
         assert result["errors"] == [
-            "Native admission failed for test_lang.so: empty; "
-            "the installed library is unchanged"
+            "Native admission failed for test_lang.so: empty (the library is "
+            "empty); the installed library is unchanged. No approved pin was "
+            "supplied for test_lang: pass trusted_artifacts to UserGrammarTools. "
+            "The grammar CLI cannot supply pins until treesitter-chunker#362."
         ]
         assert installed.read_bytes() == b"previous library"
         assert sorted(path.name for path in build_dir.iterdir()) == ["test_lang.so"]
