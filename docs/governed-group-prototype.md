@@ -107,6 +107,14 @@ Strong crossing edges cannot merge boundaries. Empty/single/disconnected inputs
 remain explicit, never proof of source absence. Returned memberships must cover
 their parent exactly, without duplicates, invented members or broken nesting.
 
+A declared boundary with an empty member list is admitted and retained in
+`policy.membership`, but it produces no group: no group reason cites it in either
+mode. The neutral unassigned bucket is different. It is always computed and
+reported, even when `unassigned_ids` is empty. It appears as an explicit empty
+root group with a null boundary ID (`heuristic_level` is `unassigned` in declared
+mode and the engine's `container` in dependency-assisted mode). Neither case is
+evidence that source is absent.
+
 Every original relationship remains in `proposal.relationships`.
 `omitted_graph_facts` entries have `{relationship_index,reason,fact}`; the index
 addresses that complete normalized relationship array. Reasons are `unresolved`,
@@ -152,6 +160,9 @@ One owned native compute child runs at a time per invocation. The parent applies
 its own child on failure. This is engineering supervision of trusted native
 dependencies, not a hostile-execution sandbox or strict OS-enforced memory cap.
 Controllers serialize GROUP invocations; tests share a lock even under xdist.
+Waiting for that test lock has its own bounded wait. The per-test pytest timeout
+covers only the active GROUP computation, so queued xdist workers or concurrent
+sessions cannot use up the computation budget while they wait.
 Qualify only measured Python/OS/dependency profiles; seed alone does not establish
 cross-version/OS reproducibility. GROUP tests and qualification use the scope
 driver's Linux validation tier. Request wire paths are POSIX-relative on every host.

@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 
-from filelock import FileLock
+from filelock import FileLock, Timeout
 import pytest
 
 
@@ -22,8 +22,20 @@ EXPECTED = json.loads((FIXTURES / "expected.json").read_text())
 ANCHOR = os.environ.get(
     "GROUP_TEST_SOURCE_COMMIT", "fe49736e89c436bff4de49992b68528f370ac598"
 )
+# GROUP_COMPUTE_TIMEOUT bounds each test's active GROUP work only
+# (func_only=True). Waiting for the shared serialization lock happens in
+# fixture setup and has its own, separately reported bound: GROUP_LOCK_WAIT.
+# Under xdist, or several concurrent sessions sharing TMPDIR, queued tests
+# previously spent the whole computation budget waiting for the lock
+# (treesitter-chunker#514 N3).
+GROUP_COMPUTE_TIMEOUT = 120
+GROUP_LOCK_WAIT = 900
+# Once one lock wait times out in this process, later GROUP tests fail at once
+# instead of each waiting another GROUP_LOCK_WAIT, so persistent contention
+# costs at most one full wait per worker.
+_LOCK_EXHAUSTED = []
 pytestmark = [
-    pytest.mark.timeout(120),
+    pytest.mark.timeout(GROUP_COMPUTE_TIMEOUT, func_only=True),
     pytest.mark.skipif(
         sys.platform != "linux", reason="governed GROUP has a Linux validation tier"
     ),
@@ -37,11 +49,28 @@ def require(condition, name):
 
 @pytest.fixture(autouse=True)
 def _one_group_process():
-    # Smoke uses xdist. Its workers share this task-owned TMPDIR lock.
-    with FileLock(
-        str(Path(tempfile.gettempdir()) / "chunker-group-tests.lock"), timeout=120
-    ):
+    # Smoke uses xdist. Its workers share this task-owned TMPDIR lock, so at
+    # most one GROUP test computes at a time. The wait is bounded here, outside
+    # the per-test computation timeout, and fails as a lock wait, not a GROUP
+    # timeout.
+    if _LOCK_EXHAUSTED:
+        pytest.fail(
+            "GROUP serialization lock wait already exhausted in this process",
+            pytrace=False,
+        )
+    lock = FileLock(str(Path(tempfile.gettempdir()) / "chunker-group-tests.lock"))
+    try:
+        lock.acquire(timeout=GROUP_LOCK_WAIT)
+    except Timeout:
+        _LOCK_EXHAUSTED.append(True)
+        pytest.fail(
+            f"GROUP serialization lock not acquired within {GROUP_LOCK_WAIT}s",
+            pytrace=False,
+        )
+    try:
         yield
+    finally:
+        lock.release()
 
 
 def make_request(**kwargs):
@@ -426,6 +455,41 @@ def test_empty_single_and_no_edge(tmp_path, count):
             == set(graph["symbol_lookup"]),
             "GROUP_EMPTY_PARTITION",
         )
+
+
+@pytest.mark.parametrize("mode", ["declared_boundaries", "dependency_assisted"])
+def test_empty_declared_boundary_and_explicit_empty_neutral_bucket(tmp_path, mode):
+    # treesitter-chunker#514 N8: a declared boundary with no members is retained
+    # policy evidence but yields no group, whereas the neutral unassigned bucket
+    # is always reported, even when it is empty.
+    request = make_request(mode=mode)
+    leftover = request["policy"]["unassigned_ids"]
+    require(leftover == ["u"], "GROUP_EMPTY_FIXTURE")
+    request["policy"]["membership"] += [
+        {"boundary_id": "E", "members": []},
+        {"boundary_id": "U", "members": leftover},
+    ]
+    request["policy"]["unassigned_ids"] = []
+    cp, output = launch(tmp_path, request)
+    proposal = accepted(cp, output)
+    verify_proposal(request, proposal)
+    require(
+        {"boundary_id": "E", "members": []} in proposal["policy"]["membership"],
+        "GROUP_EMPTY_BOUNDARY_RETAINED",
+    )
+    cited = {r["boundary_id"] for g in proposal["groups"] for r in g["reasons"]}
+    require(cited == {"A", "B", "U", None}, "GROUP_EMPTY_BOUNDARY_NO_GROUP")
+    neutral = [
+        g
+        for g in proposal["groups"]
+        if [r["boundary_id"] for r in g["reasons"]] == [None]
+    ]
+    level = "unassigned" if mode == "declared_boundaries" else "container"
+    require(
+        [(g["members"], g["heuristic_level"], g["parent_id"]) for g in neutral]
+        == [([], level, None)],
+        "GROUP_EMPTY_NEUTRAL_EXPLICIT",
+    )
 
 
 def native_request(tmp):
