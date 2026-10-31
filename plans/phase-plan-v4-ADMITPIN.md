@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: ADMITPIN
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: 44ce0acdaaed7e71fcf3df350331985f3ecf6c3af26a074c117961dd49d8cc6a
+roadmap_sha256: 09472437414337fc5af836dc30b740b0b513ab8b2f670b3a1823f35eee122cf4
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_release_hygiene_policy.py -q"
 ---
@@ -57,7 +57,9 @@ Facts from the inventory survey at `7440971a`:
 
 ## Interface Freeze Gates
 
-- [ ] IF-0-ADMITPIN-1 — Pin mapping, the one CLI pin source, the in-process
+- [ ] IF-0-ADMITPIN-1 — Pin mapping, the two pin sources (CLI option and
+  user-config pin file) and their precedence, the package-supplier boundary
+  for our own wheels, the in-process
   pattern for using an admitted grammar, and the verdict-reuse key, as written
   in the "Production pin source and native-load inventory (ADMITPIN)" section
   of `docs/development/native-validation-contract.md`.
@@ -66,30 +68,59 @@ Facts from the inventory survey at `7440971a`:
 
 Decisions this plan makes, which are open to challenge in review:
 
-1. **Pin source name.** The CLI option `--trusted-artifacts PATH`, accepted
-   by both grammar command groups before the subcommand. The file schema is
-   `chunker.trusted_artifacts.v1`. No configuration file under the cache
-   directory is read. Build, download and cleanup commands write there, so a
-   pin file in that directory would be a manifest written beside the
-   artifacts it approves, which the existing contract says confers no trust.
-   The cost is that the `chunker.parser` parse path gets no ambient pin
-   source. It falls back to the official wheels, the language-pack and the
-   BAML companion. The caller-migration notes state this.
-2. **No-pin outcome.** The caller reports `untrusted` without calling the
-   probe, as IF-0-ADMITPIN-1 requires. ADMIT also aligns the existing
-   SAFELOAD consumers, so an unpinned language with no library reports
-   `untrusted` rather than `missing`.
+1. **Pin sources (maintainer decision, 2026-10-31).** There are two sources:
+   - the CLI option `--trusted-artifacts PATH`;
+   - the user-config pin file `trusted-artifacts.json`, under
+     `%APPDATA%` on Windows, `~/Library/Application Support` on macOS, and
+     `$XDG_CONFIG_HOME` or `~/.config` elsewhere, always in a
+     `treesitter-chunker` directory. The parse path reads it, and so do grammar
+     commands run without the option.
+
+   Both use the `chunker.trusted_artifacts.v1` schema. Exactly one source is
+   active: constructor argument, then option, then config file, then none,
+   never merged. A defective config file fails closed: the parse path raises
+   `TrustedArtifactsError`, and a grammar command exits 2. Nothing is read from
+   the cache directory, because build, download and cleanup commands write
+   there.
+2. **No-pin outcome.** A candidate that does not exist reports `missing`,
+   using an `lstat` check that neither opens nor loads it. An existing
+   candidate with no pin reports `untrusted`, and the probe is never called.
 3. **Using a grammar in-process after admission.** Make a private copy,
    verify it, probe it, then load only that copy. This reuses
-   `verify_artifact` and the probe; it adds no second trust protocol.
-4. **treesitter-chunker#400.** Retire. The class has no working consumer.
+   `verify_artifact` and the probe; it adds no second trust protocol. Each
+   language is admitted on its own pin, even inside a combined library.
+   Copies use the `chunker-admitted-` prefix. POSIX removes them at exit;
+   copies left behind on Windows are a documented residual risk.
+4. **Verdict reuse.** A positive admission is reused only inside the process
+   that ran the fresh probe, under a key that binds the pin and the content
+   to the validator schema, the chunker and tree-sitter versions, the Python
+   ABI, the platform and the probe profile. Persisted results never count as
+   admission on their own.
+5. **`grammar build` with no pin.** Skip the load and exit 0 with
+   `built, not admitted`. With a pin, probe and exit 1 on failure.
+6. **Package-supplied grammars (maintainer decision, 2026-10-31).** Native
+   files of our own installed distribution directly under
+   `chunker/data/grammars/build/` that match their RECORD `sha256` are trusted
+   like P1/P2. A mismatch is `integrity_mismatch`, with no pin rescue. A file
+   without a RECORD entry is an ordinary local candidate.
+7. **On-demand fetch-and-build retired in ADMIT (maintainer decision,
+   2026-10-31),** recorded as inventory row F1.
+8. **treesitter-chunker#400.** Retire. The class has no working consumer.
    Repairing it would duplicate `GrammarValidator`.
-5. **Legacy sites.** Retire V1, D1, T1, T2 and A1. Integrate M1 with the
+9. **Legacy sites.** Retire V1, D1, T1, T2 and A1. Integrate M1 with the
    probe only, adding the keyword-only `trusted_artifacts` argument to legacy
    `chunker.grammar_manager.GrammarManager`.
-6. **Out of scope.** The language-pack, the official Python/JavaScript wheels
+10. **Out of scope.** The language-pack, the official Python/JavaScript wheels
    and the BAML companion `Language(...)` constructions are package-supplier
    loads, outside this contract.
+
+Roadmap update in this PR: IF-0-ADMITPIN-1, Phase 1 and Phase 8 in
+`specs/phase-plans-v4.md` now carry the three maintainer decisions. The ADMIT
+scope widening is accepted. Phase 8 gains EC-ADMIT-6 to EC-ADMIT-8 and
+SL-reg ownership of `chunker/parser.py`, and the Execution Notes gain
+single-writer entries for `chunker/parser.py` and `compatibility.py`. The
+open treesitter-chunker#537 also edits the roadmap, so whichever merges second
+rebases.
 
 ## Lane Index & Dependencies
 
@@ -108,7 +139,9 @@ The implementation fans out in ADMIT.
 - **Scope**: Extend the native validation contract with IF-0-ADMITPIN-1 and
   IF-0-ADMITPIN-2. No product code changes.
 - **Owned files**: `docs/development/native-validation-contract.md`,
-  `plans/phase-plan-v4-ADMITPIN.md`
+  `plans/phase-plan-v4-ADMITPIN.md`, `specs/phase-plans-v4.md` (only the
+  IF-0-ADMITPIN-1, Phase 1, Phase 8 and Execution Notes text that the
+  maintainer decisions change)
 - **Read only**: `chunker/grammar/integrity.py`, every inventoried site
 - **Interfaces provided**: IF-0-ADMITPIN-1, IF-0-ADMITPIN-2
 - **Interfaces consumed**: `probe_native_grammar`, `NativeProbeResult`,
@@ -130,11 +163,18 @@ The implementation fans out in ADMIT.
 
 ## Notes for the ADMIT plan
 
-- The roadmap's ADMIT lanes do not cover `chunker/cli/grammar_commands.py`,
-  `chunker/_internal/grammar_management.py` or
-  `chunker/grammar_management/compatibility.py`. The contract proposes SL-core
-  for all three, because SL-core owns the CLI pin path for EC-ADMIT-1. It also
-  assigns the `_test_compiled_grammar` load (`cli.py:1945`) to SL-core and the
+- The roadmap's ADMIT lanes do not cover `chunker/cli/grammar_commands.py`
+  or `chunker/_internal/grammar_management.py`. The contract proposes SL-core
+  for both, because SL-core owns the CLI pin path for EC-ADMIT-1.
+- `chunker/grammar_management/compatibility.py` is shared with SMALLFIX SL-sel
+  (treesitter-chunker#133 → treesitter-chunker#134 → treesitter-chunker#344).
+  ADMIT SL-core edits only the two `GrammarValidator(...)` constructor lines
+  (148 and 770). PRs on that file merge one at a time, and the ADMIT plan adds
+  the file to the cross-phase single-writer list.
+- In `grammar_analyzer.py`, the SL-ins region is `GrammarAnalyzer.__init__`,
+  `GrammarAnalyzer.analyze_grammar_file` and `extract_from_dependencies`.
+  That is disjoint from CIFAST SL-deadline's `analyze_grammar_symbols`.
+- The contract also assigns the `_test_compiled_grammar` load (`cli.py:1945`) to SL-core and the
   `examples/manage_grammars.py` update to SL-legacy.
 - `GrammarInstaller` gains the keyword-only argument. The roadmap gives the
   GrammarInstaller region of core.py to TXN SL-rollback, so this one-line
@@ -163,7 +203,7 @@ grep -oE '`chunker/[^` ]+:[0-9]+`' docs/development/native-validation-contract.m
 comm -23 "$scratch/grep.txt" "$scratch/table.txt"   # must print nothing
 
 # No product code changes
-git diff --name-only origin/main...HEAD   # only the two owned files
+git diff --name-only origin/main...HEAD   # only the three owned files
 
 # CONTRIBUTING.md validation block (VB-3)
 uv run --locked --all-extras ruff check chunker/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site
@@ -191,8 +231,18 @@ is no defect to reproduce and no regression test.
 
 ## Review record
 
-Pending. The parent records each reviewer, the reviewed head SHA and the
-verdict here, or in the PR, before merge.
+- **Round 1, head `e33c153f`:** Claude REQUEST_CHANGES and Codex
+  REQUEST_CHANGES (PR comments on treesitter-chunker#538). The two blocking
+  findings were verdict reuse without an execution-context boundary, and R3
+  allowing a combined-library pin bypass. Both are addressed in round 2,
+  together with Claude findings 2–11. Finding 7 follows the recommendation
+  to exit 0 when the build is not admitted.
+- **Maintainer decisions relayed by the roadmap runner, 2026-10-31:**
+  user-config pin file (M1), retire the on-demand fetch-and-build (M2), and
+  RECORD-verified package-supplied wheel grammars (M3). These replace the
+  earlier open-owner note.
+- **Round 2:** pending. The parent records each reviewer, the reviewed head
+  SHA and the verdict here, or in the PR, before merge.
 
 ## Spec Closeout Plan
 
