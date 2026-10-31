@@ -84,9 +84,14 @@ also keyed by an extraction identity
   `tree-sitter-language-pack` versions;
 - the selected grammar's ABI version, node-kind count, symbol name and
   provenance, such as `official:tree-sitter-python@0.25.0`;
-- a fingerprint of the effective language configuration (its class, chunk and
-  ignore types and rules, including changes made at runtime) and the metadata
-  extractor and analyzer classes.
+- a fingerprint of the effective language configuration and the metadata
+  extractor and analyzer classes. Configuration *state* is fingerprinted by
+  value, including state changed at runtime: chunk and ignore types, rules and
+  their metadata. Classes and functions are identified only by name.
+
+A runtime patch to chunker code is not detected, for example replacing a
+method or property on a configuration class or patching a `chunker` helper.
+Call `invalidate_cache()` after one.
 
 Some languages have no reliable identity, and for them the cache is bypassed
 entirely: nothing is read or written, and every request is extracted.
@@ -96,8 +101,9 @@ entirely: nothing is read or written, and every request is extracted.
   [treesitter-chunker#543](https://github.com/Consiliency/treesitter-chunker/issues/543)
   records one.
 - **Unfingerprintable configuration.** This covers a configuration or extractor
-  class defined outside the `chunker` package, or configuration state without a
-  stable value, such as a function.
+  class defined outside the `chunker` package, and configuration state without
+  a stable value: a function, an object whose attributes cannot be read, state
+  that refers back to itself, or nesting too deep to fingerprint.
 
 Core and streaming entries for one file coexist. Writing an entry removes the
 same file's entries for that language and mode under any older identity.

@@ -86,27 +86,39 @@ def _code_identity(cls: type) -> str:
     return f"{module}:{cls.__qualname__}"
 
 
-def _stable_state(value: object) -> object:
-    """Return a JSON-stable form of configuration state, or raise."""
+def _stable_state(value: object, active: frozenset[int] = frozenset()) -> object:
+    """Return a JSON-stable form of configuration state, or raise.
+
+    ``active`` holds the ids of the containers and objects on the current
+    traversal path. State that refers back to one of them (a cycle), or an
+    object whose attributes cannot be read with ``vars()``, has no identity.
+    """
     from chunker.languages.base import LanguageConfig
 
     if value is None or isinstance(value, bool | int | float | str):
         return value
+    if id(value) in active:
+        raise _UnidentifiableError("cyclic configuration state")
+    inner = active | {id(value)}
     if isinstance(value, set | frozenset):
-        items = [_stable_state(item) for item in value]
+        items = [_stable_state(item, inner) for item in value]
         return {"set": sorted(items, key=lambda item: json.dumps(item, sort_keys=True))}
     if isinstance(value, list | tuple):
-        return [_stable_state(item) for item in value]
+        return [_stable_state(item, inner) for item in value]
     if isinstance(value, dict):
         if not all(isinstance(key, str) for key in value):
             raise _UnidentifiableError("non-string mapping key")
-        return {key: _stable_state(item) for key, item in value.items()}
+        return {key: _stable_state(item, inner) for key, item in value.items()}
     if isinstance(value, LanguageConfig) or (
         is_dataclass(value) and not isinstance(value, type)
     ):
+        try:
+            attributes = vars(value)
+        except TypeError as error:
+            raise _UnidentifiableError(type(value).__qualname__) from error
         return {
             "class": _code_identity(type(value)),
-            "state": _stable_state(vars(value)),
+            "state": _stable_state(attributes, inner),
         }
     raise _UnidentifiableError(type(value).__qualname__)
 
@@ -144,8 +156,10 @@ def chunk_cache_identity(language: str, extraction: str = "core") -> str | None:
     Returns ``None`` when there is no reliable identity: the selected grammar
     has no recorded provenance (the registry records it only for Python and
     JavaScript), or the configuration includes code outside the chunker
-    package or state without a stable value. Callers must then bypass the
-    cache.
+    package or state without a stable value (functions, objects ``vars()``
+    cannot read, cyclic or too deeply nested state). Callers must then bypass
+    the cache. Classes and functions are identified by name only, so runtime
+    patches to chunker code do not change the identity.
 
     Raises:
         ValueError: If ``extraction`` is not one of :data:`EXTRACTION_MODES`.
@@ -165,7 +179,7 @@ def chunk_cache_identity(language: str, extraction: str = "core") -> str | None:
         return None
     try:
         configuration = _configuration_fingerprint(language)
-    except _UnidentifiableError as reason:
+    except (_UnidentifiableError, RecursionError) as reason:
         logger.debug(
             "No chunk-cache identity for %s configuration: %s", language, reason
         )
@@ -242,6 +256,10 @@ class ASTCache:
 
     def _create_schema(self) -> None:
         with self._get_connection() as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(chunk_cache)")}
+            if columns and "extraction" not in columns:
+                # Only an unreleased development build created this layout.
+                conn.execute("DROP TABLE chunk_cache")
             conn.execute(_TABLE_SQL)
             conn.execute(_INDEX_SQL)
 

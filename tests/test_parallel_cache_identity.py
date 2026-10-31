@@ -10,12 +10,13 @@ directory must confine writes.
 
 from __future__ import annotations
 
+import logging
 import multiprocessing as mp
 import pickle
 import shutil
 import sqlite3
 from contextlib import closing
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,7 @@ from chunker._internal.cache import ASTCache, chunk_cache_identity
 from chunker._internal.file_utils import get_file_metadata
 from chunker.core import chunk_file
 from chunker.languages import language_config_registry
+from chunker.languages.base import ChunkRule
 from chunker.metadata import MetadataExtractorFactory
 from chunker.parallel import ParallelChunker, chunk_files_parallel
 
@@ -354,3 +356,74 @@ def test_grammar_without_identity_is_never_served_from_cache(tmp_path):
     assert cache.get_cache_stats()["total_files"] == 0
     # A grammar that cannot be loaded is also bypassed rather than raising.
     assert cache.cache_chunks(path, "no_such_language", fresh) is False
+
+
+@dataclass(slots=True)
+class _SlottedState:
+    """Rule metadata whose attributes ``vars()`` cannot read."""
+
+    value: int = 1
+
+
+def _nested(depth: int) -> list:
+    value: list = []
+    for _ in range(depth):
+        value = [value]
+    return value
+
+
+@pytest.mark.parametrize("state", ["cycle", "slotted", "deep"])
+def test_unreadable_configuration_state_bypasses_cache_without_crashing(
+    tmp_path, source_file, caplog, state
+):
+    config = language_config_registry.get("python")
+    # The rule's node type never occurs, so chunk output is unchanged.
+    rule = ChunkRule(node_types={"no_such_node_type"})
+    if state == "cycle":
+        rule.metadata["owner"] = config
+    elif state == "slotted":
+        rule.metadata["state"] = _SlottedState()
+    else:
+        rule.metadata["state"] = _nested(5000)
+    uncached = [asdict(chunk) for chunk in chunk_file(source_file, "python")]
+    config.add_chunk_rule(rule)
+    try:
+        with caplog.at_level(logging.DEBUG, logger="chunker._internal.cache"):
+            assert chunk_cache_identity("python") is None
+        if state == "cycle":
+            assert "cyclic configuration state" in caplog.text
+        cache_dir = tmp_path / "cache"
+        chunker = ParallelChunker("python", num_workers=1, cache_dir=cache_dir)
+        for _ in range(2):
+            _, served = chunker._process_single_file(source_file)
+            assert [asdict(chunk) for chunk in served] == uncached
+        cache = ASTCache(cache_dir=cache_dir)
+        assert cache.get_cached_chunks(source_file, "python") is None
+        assert cache.get_cache_stats()["total_files"] == 0
+    finally:
+        config._chunk_rules.remove(rule)
+    assert chunk_cache_identity("python") is not None
+
+
+def test_pre_release_table_layout_is_recreated(tmp_path, source_file):
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    with closing(sqlite3.connect(cache_dir / "ast_cache.db")) as conn:
+        # The chunk_cache layout of an unreleased build, without `extraction`.
+        conn.execute(
+            """CREATE TABLE chunk_cache (
+                file_path TEXT NOT NULL, language TEXT NOT NULL,
+                extraction_identity TEXT NOT NULL, file_hash TEXT NOT NULL,
+                file_size INTEGER NOT NULL, mtime REAL NOT NULL,
+                chunks_data BLOB NOT NULL, data_checksum TEXT NOT NULL,
+                cache_version TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (file_path, language, extraction_identity)
+            )"""
+        )
+        conn.commit()
+
+    expected = _extract(source_file, "core", use_cache=False)
+    assert _extract(source_file, "core", cache_dir=cache_dir) == expected
+    assert _extract(source_file, "core", cache_dir=cache_dir) == expected
+    assert ASTCache(cache_dir=cache_dir).get_cache_stats()["total_files"] == 1
