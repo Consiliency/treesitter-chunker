@@ -21,8 +21,8 @@ Raw material to reuse: `probe_native_grammar` and `docs/development/native-valid
 
 ## Assumptions (fail-loud if wrong)
 
-1. treesitter-chunker#534 (open, receiving review fixes) aligns the remaining Python version declarations with the 3.12 floor. It touches `.github/workflows/release.yml` (`UV_PYTHON` on the verify-installed-wheel job), `specs/active/release-process-spec.md`, `chunker/build/builder.py` (`Requires-Python` in both the wheel and ZIP fallback paths), a new `.python-version` that pins 3.12, the conda/Homebrew formulas, READMEs/docs and `tests/test_release_hygiene_policy.py`. PY314 does not start until treesitter-chunker#534 has merged. If treesitter-chunker#534 changes scope or is abandoned, PY314 must be re-planned.
-2. treesitter-chunker#435 is an open bug, not a pin change: it reproduces on Python 3.12 and 3.14, where a blocking `read()` in the `chunker/core.py` file-read path (around line 1276) on a FIFO ignores SIGINT. The owner has chosen the fix (reject non-regular inputs, meaning FIFOs, devices, sockets and directories, with a clear error), and a separate in-flight PR is implementing it in the CLI/core read path. No phase depends on it, but `chunker/core.py` edits rebase on it (see Execution Notes).
+1. treesitter-chunker#534 (merged 2026-10-31 as `afff90a6`) aligns the remaining Python version declarations with the 3.12 floor. It touches `.github/workflows/release.yml` (`UV_PYTHON` on the verify-installed-wheel job), `specs/active/release-process-spec.md`, `chunker/build/builder.py` (`Requires-Python` in both the wheel and ZIP fallback paths), a new `.python-version` that pins 3.12, the conda/Homebrew formulas, READMEs/docs and `tests/test_release_hygiene_policy.py`. PY314's precondition (treesitter-chunker#534 merged) is therefore met.
+2. treesitter-chunker#435 is an open bug, not a pin change: it reproduces on Python 3.12 and 3.14, where a blocking `read()` in the `chunker/core.py` file-read path (around line 1276) on a FIFO ignores SIGINT. The owner chose the fix (reject non-regular inputs, meaning FIFOs, devices, sockets and directories, with a clear error). treesitter-chunker#535 implemented it and merged on 2026-10-31 (`d3d6b20e`), closing treesitter-chunker#435. No phase depends on it; the first step of the `chunker/core.py` single-writer chain is done (see Execution Notes).
 3. The pinned stack stays Tree-sitter 0.26 with language-pack 1.20. No phase changes parser pins or hand-edits Boundary IR goldens.
 4. `probe_native_grammar(path, language, *, provenance, sample, timeout, inspect_artifact)` and its `NativeProbeResult` remain the accepted admission primitive. If treesitter-chunker#508 or treesitter-chunker#509 recurs and shows a defect in it, ADMIT is paused and re-planned.
 5. The transaction protocol can be scoped to a single host (in-process and cross-process writers in one cache root) and still satisfy treesitter-chunker#370, treesitter-chunker#323 and treesitter-chunker#363. If independent review rejects that scope, TXN does not run (see stop condition S-TXN).
@@ -33,7 +33,7 @@ Raw material to reuse: `probe_native_grammar` and `docs/development/native-valid
 
 ## Non-Goals
 
-- Held or in-flight items (see **Held / In Flight**): treesitter-chunker#508, treesitter-chunker#509, treesitter-chunker#389, treesitter-chunker#435 (fix in flight), treesitter-chunker#534 (in flight), and the GROUP adapter on Windows/macOS.
+- Held or in-flight items (see **Held / In Flight**): treesitter-chunker#508, treesitter-chunker#509, and the GROUP adapter on Windows/macOS.
 - Any Python version floor change beyond what treesitter-chunker#534 lands. PY314 moves validation to 3.14 but keeps a 3.12 minimum and does not publish a package.
 - Package publication, release dispatch, consumer lock updates, and repository-settings changes made by an agent. Settings changes are the owner's, via SETTINGS.
 - A general cache framework. TXNSPEC covers only the three named consumers. The AST cache and `chunker/boundary/cache.py` stay outside it.
@@ -74,9 +74,9 @@ These are excluded from every phase. Re-triage them if their state changes.
 |---|---|---|---|
 | treesitter-chunker#508 | Hold | Windows manager admission rejection in an unmerged candidate; on hold until it recurs | If it recurs during ADMIT's Windows checks, pause ADMIT (Assumption 4) |
 | treesitter-chunker#509 | Hold | Pre-constructor Windows probe `PermissionError` on 3.13; on hold until it recurs | Same as treesitter-chunker#508 |
-| treesitter-chunker#389 | In flight | A Windows rerun to prove the fix is being arranged | ADMIT and ADMITFIX must not change `_read_child` launcher reaping in `chunker/grammar/integrity.py` |
-| treesitter-chunker#435 | In flight (fix PR) | Open bug: a blocking FIFO `read()` in `chunker/core.py` ignores SIGINT on 3.12 and 3.14. The owner chose the fix (reject non-regular inputs with a clear error); a separate PR is implementing it in the CLI/core read path | Not a precondition for any phase. `chunker/core.py` is single-writer: the treesitter-chunker#435 PR merges first, then FOLLOWUP SL-cr rebases (Execution Notes) |
-| treesitter-chunker#534 | In flight (open, review fixes) | Aligns the remaining Python version declarations with the 3.12 floor: `release.yml` `UV_PYTHON`, `specs/active/release-process-spec.md`, `chunker/build/builder.py` `Requires-Python` (wheel and ZIP fallback), a new `.python-version` pinning 3.12, conda/Homebrew formulas, READMEs/docs, `tests/test_release_hygiene_policy.py` | PY314 hard precondition. CIFAST lanes that touch `release.yml` or `chunker/build/builder.py` rebase on it and never edit Python-version fields |
+| treesitter-chunker#389 | Closed (not reproducible), 2026-10-31 | No longer held | ADMIT and ADMITFIX still leave `_read_child` launcher reaping in `chunker/grammar/integrity.py` unchanged; it is outside their scope |
+| treesitter-chunker#435 | Closed (fixed by treesitter-chunker#535, merged `d3d6b20e`) | No longer held: non-regular inputs (FIFOs, devices, sockets, directories) are rejected with a clear error | `chunker/core.py` single-writer chain: step 1 (treesitter-chunker#535) is done; FOLLOWUP SL-cr builds on current main |
+| treesitter-chunker#534 | Merged 2026-10-31 (`afff90a6`) | No longer held: the 3.12 floor declarations and `.python-version` pin are on main | PY314 precondition met. CIFAST lanes that touch `release.yml` or `chunker/build/builder.py` build on current main and never edit Python-version fields |
 | GROUP adapter on Windows/macOS | Deferred | Waiting for a consumer to need it | None |
 
 ## Unplaced
@@ -88,6 +88,8 @@ These are excluded from every phase. Re-triage them if their state changes.
 ---
 
 ## Owner Decision Points
+
+**Status (2026-10-31):** The owner answered D1–D5 in issue comments, and `docs/development/backlog-decisions-v4.md` records each answer with its comment URL. OWNERDEC is resolved: D1 = (c) both (a verified prewarm route plus a configurable download deadline with an actionable error); D2 = (b) a namespaced caller-label key, with `label` kept structural; D3 = (a) CR→LF for parsing with an exact raw byte-offset map; D4 = (a) implement, with goldens regenerated by tooling in the same PR. D5 = audit first: CIFAST SL-perm lands the least-privilege `permissions:` audit, then the owner flips the repository default. No agent changes the setting. S-TXN is still conditional.
 
 | ID | Item | Decision needed | Gate phase | Consumer |
 |---|---|---|---|---|
@@ -115,7 +117,7 @@ Roots (all start immediately, run in parallel subject to the 3-phase cap):
   GRAPHML   (treesitter-chunker#489 | treesitter-chunker#488) ──────────────┬──────────────────────────────────────────┤
   SMALLFIX  (treesitter-chunker#133, treesitter-chunker#134, treesitter-chunker#344 | treesitter-chunker#170 | treesitter-chunker#437 → treesitter-chunker#438) ──────────────────────────────┤
   CIFAST    (treesitter-chunker#517, treesitter-chunker#207, treesitter-chunker#143, treesitter-chunker#507 source, treesitter-chunker#481) ──┬──► PY314 (treesitter-chunker#502, type debt) ──┤
-                                                    │      [needs treesitter-chunker#534 merged]     ▼
+                                                    │      [treesitter-chunker#534 merged ✓]       ▼
                                                     └──► SETTINGS [owner: D5]   RECORDS (treesitter-chunker#361, treesitter-chunker#69 refresh)
   OWNERDEC  [owner: D1–D4] ──┐
                              ├──► FOLLOWUP (treesitter-chunker#357, treesitter-chunker#453, treesitter-chunker#471, treesitter-chunker#516 per decision)
@@ -130,7 +132,7 @@ Roots (all start immediately, run in parallel subject to the 3-phase cap):
 
 Edges: ADMITPIN→ADMIT; ADMIT→ADMITFIX; TXNSPEC→TXN; HOTFIX→TXN; CIFAST→PY314; CIFAST→SETTINGS; OWNERDEC→FOLLOWUP; GRAPHML→FOLLOWUP (lane SL-gml only; see FOLLOWUP scope notes); ADMITFIX→RECORDS; TXN→RECORDS; REFS→RECORDS; GRAPHML→RECORDS; SMALLFIX→RECORDS; PY314→RECORDS.
 
-Non-DAG gates: PY314 also needs treesitter-chunker#534 merged (external). TXNSPEC's review submission needs the IF-0-HOTFIX-1 signature to be published (an interface-availability gate, not a phase edge; see TXNSPEC).
+Non-DAG gates: PY314 also needs treesitter-chunker#534 merged (external; met 2026-10-31). TXNSPEC's review submission needs the IF-0-HOTFIX-1 signature to be published (an interface-availability gate, not a phase edge; see TXNSPEC).
 
 ---
 
@@ -183,7 +185,7 @@ Freeze where production callers and the CLI get approved native pins, and classi
 - Preamble / interface-only phase — single lane justified. The output is one reviewed contract-doc PR. Implementation fans out in ADMIT.
 - Start from `probe_native_grammar` and the existing `trusted_artifacts` text in the contract doc. Extend that contract; do not write a parallel one.
 - The doc is single-writer for `docs/development/native-validation-contract.md` until ADMIT starts.
-- Do not touch `_read_child` or launcher reaping (treesitter-chunker#389 is in flight).
+- Do not touch `_read_child` or launcher reaping (out of scope; treesitter-chunker#389 closed as not reproducible).
 
 **Non-goals**
 - Implementing any integration. Changing the probe. Pack-managed artifact trust, which is a separate supplier boundary.
@@ -506,7 +508,7 @@ Route every native discovery, validation and health path through `probe_native_g
 - SL-core publishes the IF-0-ADMIT-1 accessor signature on day 1.
 - `_validate_compiled_grammar` is split so EC-ADMIT-2 can close in this phase. SL-core replaces its direct `ctypes.CDLL` with `probe_native_grammar` (a pinned admission, failing closed without a pin) and adds the bypass mutation, while keeping today's command output and exit codes as they are. The observable `validate` behaviour (verifying the requested language and giving an actionable cause, treesitter-chunker#128) stays with ADMITFIX SL-cli in its own PR.
 - `grammar_analyzer.py` is shared with CIFAST SL-deadline (disjoint functions) and merges one at a time. `core.py` follows the cross-phase merge order in Execution Notes.
-- Do not change `chunker/grammar/integrity.py` lifecycle code (treesitter-chunker#389).
+- Do not change `chunker/grammar/integrity.py` lifecycle code (out of scope; treesitter-chunker#389 closed as not reproducible).
 - Document caller migration for changed health/exit codes in the changelog.
 
 **Non-goals**
@@ -760,7 +762,7 @@ Implement or record the owner-chosen dispositions for first-use download (treesi
 - Decompose into four lanes, each starting with its own decision record:
   - **SL-dl** owns the language-pack acquisition wrapper in `chunker/_internal/registry.py` or `chunker/_internal/factory.py`, and the docs.
   - **SL-gml** owns `chunker/export/graphml_exporter.py` and the yEd exporter (after GRAPHML).
-  - **SL-cr** owns the decode/parse path for CR-only input in `chunker/core.py` and the streaming entry. It rebases on the treesitter-chunker#435 fix PR, which edits the same `chunker/core.py` read path.
+  - **SL-cr** owns the decode/parse path for CR-only input in `chunker/core.py` and the streaming entry. It builds on the treesitter-chunker#435 fix (treesitter-chunker#535, merged), which edited the same `chunker/core.py` read path.
   - **SL-call** owns Python call emission in `chunker/metadata/languages/python.py` (`extract_calls`), `chunker/metadata/extractor.py` and `chunker/symbol_graph.py`, plus golden regeneration.
 - Only SL-gml depends on GRAPHML (it edits the same exporter files as GRAPHML SL-direct). SL-dl, SL-cr and SL-call start as soon as their OWNERDEC record exists and are not held for GRAPHML.
 - Lanes are disjoint, with one exception: SL-dl's `registry.py` was edited in ADMIT. If ADMIT has not merged, SL-dl uses `factory.py` only, or waits.
@@ -862,10 +864,10 @@ Bring the records trackers up to date after the automated phases: refresh the tr
 - **Concurrently plannable:** all eight roots (ADMITPIN, HOTFIX, TXNSPEC, REFS, GRAPHML, CIFAST, SMALLFIX, OWNERDEC). PY314 and SETTINGS run concurrently after CIFAST. ADMIT and TXN have no DAG path between them and may run concurrently, subject to the core.py merge order.
 - **Execution:** `/claude-execute-phase <alias>` after each plan is approved. At most three phases execute at once (resource caps).
 - **Loop stop points:**
-  - **OWNERDEC** (`product_decision_missing`, D1–D4);
+  - **OWNERDEC** (`product_decision_missing`, D1–D4) — resolved 2026-10-31: the owner recorded D1–D4 on the issues, and `docs/development/backlog-decisions-v4.md` records them;
   - **SETTINGS** (`admin_approval`, D5);
   - **TXNSPEC** if its design fails three rounds (`product_decision_missing`, S-TXN);
-  - **PY314** if treesitter-chunker#534 has not merged (an external precondition, reported blocked);
+  - **PY314** if treesitter-chunker#534 has not merged (an external precondition; met 2026-10-31);
   - **ADMIT** if treesitter-chunker#508 or treesitter-chunker#509 recurs (pause and re-plan).
 - **Critical path (automated):** ADMITPIN → ADMIT → ADMITFIX → RECORDS. treesitter-chunker#362 is the only L item and drives it. **Risk path:** TXNSPEC → TXN → RECORDS; it becomes critical if TXNSPEC needs all three rounds, because TXN is two serial M items (treesitter-chunker#370 → treesitter-chunker#323) alongside treesitter-chunker#363. **Human path:** OWNERDEC → FOLLOWUP, bounded by owner response time, and kept off the automated critical path.
 - **Cross-phase single-writer files:**
@@ -879,7 +881,7 @@ Bring the records trackers up to date after the automated phases: refresh the tr
   - `.python-version` — created by treesitter-chunker#534 (3.12 pin); afterwards owned by PY314 SL-env only.
   - `specs/active/release-process-spec.md` — treesitter-chunker#534 → PY314 SL-env.
   - `CONTRIBUTING.md` — CIFAST SL-lint → CIFAST SL-scratch → PY314.
-  - `chunker/core.py` — the treesitter-chunker#435 fix PR (reject non-regular inputs) → FOLLOWUP SL-cr (CR-only decode/parse).
+  - `chunker/core.py` — the treesitter-chunker#435 fix (treesitter-chunker#535, merged `d3d6b20e`; done) → FOLLOWUP SL-cr (CR-only decode/parse).
   - Boundary IR goldens — any phase regenerating them does so on the locked stack, one PR at a time.
 - **Tier mapping:**
   - Tier 1: HOTFIX, ADMITPIN/ADMIT, TXNSPEC/TXN, plus GRAPHML SL-pkg and REFS SL-py/SL-js.
