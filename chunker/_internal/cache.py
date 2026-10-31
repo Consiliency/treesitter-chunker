@@ -42,14 +42,17 @@ from .file_utils import get_file_metadata
 logger = logging.getLogger(__name__)
 
 # Cache version for compatibility checking. 3.0 moved entries to the
-# ``chunk_cache`` table keyed by extraction identity (treesitter-chunker#358).
+# ``chunk_cache_v3`` table keyed by extraction identity (treesitter-chunker#358).
+# Earlier layouts (``file_cache``, and ``chunk_cache`` from unreleased
+# development builds) are never read, changed or dropped, so concurrent
+# openers never race over a migration; they only run CREATE ... IF NOT EXISTS.
 CACHE_VERSION = "3.0"
 
 #: Extraction modes whose chunk output the cache keeps apart.
 EXTRACTION_MODES = frozenset({"core", "streaming"})
 
 _TABLE_SQL = """
-    CREATE TABLE IF NOT EXISTS chunk_cache (
+    CREATE TABLE IF NOT EXISTS chunk_cache_v3 (
         file_path TEXT NOT NULL,
         language TEXT NOT NULL,
         extraction TEXT NOT NULL,
@@ -64,7 +67,9 @@ _TABLE_SQL = """
         PRIMARY KEY (file_path, language, extraction_identity)
     )
 """
-_INDEX_SQL = "CREATE INDEX IF NOT EXISTS idx_chunk_cache_hash ON chunk_cache(file_hash)"
+_INDEX_SQL = (
+    "CREATE INDEX IF NOT EXISTS idx_chunk_cache_v3_hash ON chunk_cache_v3(file_hash)"
+)
 
 
 def _distribution_version(distribution: str) -> str | None:
@@ -242,7 +247,8 @@ class ASTCache:
     """SQLite-based cache for extracted chunks with file hashing.
 
     Entries written before cache version 3.0 live in the legacy ``file_cache``
-    table. They are never read or modified; delete ``ast_cache.db`` to reclaim
+    table, and unreleased development builds used a ``chunk_cache`` table.
+    Neither is read, modified or dropped; delete ``ast_cache.db`` to reclaim
     their space once no older chunker release shares the directory.
     """
 
@@ -256,10 +262,6 @@ class ASTCache:
 
     def _create_schema(self) -> None:
         with self._get_connection() as conn:
-            columns = {row[1] for row in conn.execute("PRAGMA table_info(chunk_cache)")}
-            if columns and "extraction" not in columns:
-                # Only an unreleased development build created this layout.
-                conn.execute("DROP TABLE chunk_cache")
             conn.execute(_TABLE_SQL)
             conn.execute(_INDEX_SQL)
 
@@ -317,7 +319,7 @@ class ASTCache:
             result = conn.execute(
                 """
                 SELECT file_hash, mtime, chunks_data, data_checksum, cache_version
-                FROM chunk_cache
+                FROM chunk_cache_v3
                 WHERE file_path = ? AND language = ? AND extraction_identity = ?
             """,
                 (str(path), language, identity),
@@ -391,7 +393,7 @@ class ASTCache:
         with self._get_connection() as conn:
             conn.execute(
                 """
-                DELETE FROM chunk_cache
+                DELETE FROM chunk_cache_v3
                 WHERE file_path = ? AND language = ? AND extraction = ?
                 AND extraction_identity <> ?
             """,
@@ -399,7 +401,7 @@ class ASTCache:
             )
             conn.execute(
                 """
-                INSERT OR REPLACE INTO chunk_cache
+                INSERT OR REPLACE INTO chunk_cache_v3
                 (file_path, language, extraction, extraction_identity, file_hash,
                  file_size, mtime, chunks_data, data_checksum, cache_version)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -423,7 +425,7 @@ class ASTCache:
         with self._get_connection() as conn:
             conn.execute(
                 """
-                DELETE FROM chunk_cache
+                DELETE FROM chunk_cache_v3
                 WHERE file_path = ? AND language = ? AND extraction_identity = ?
             """,
                 (str(path), language, identity),
@@ -434,17 +436,19 @@ class ASTCache:
         with self._get_connection() as conn:
             if path:
                 conn.execute(
-                    "DELETE FROM chunk_cache WHERE file_path = ?", (str(path),)
+                    "DELETE FROM chunk_cache_v3 WHERE file_path = ?", (str(path),)
                 )
             else:
-                conn.execute("DELETE FROM chunk_cache")
+                conn.execute("DELETE FROM chunk_cache_v3")
 
     def get_cache_stats(self) -> dict:
         """Get cache statistics."""
         with self._get_connection() as conn:
-            total_files = conn.execute("SELECT COUNT(*) FROM chunk_cache").fetchone()[0]
+            total_files = conn.execute(
+                "SELECT COUNT(*) FROM chunk_cache_v3"
+            ).fetchone()[0]
             total_size = (
-                conn.execute("SELECT SUM(file_size) FROM chunk_cache").fetchone()[0]
+                conn.execute("SELECT SUM(file_size) FROM chunk_cache_v3").fetchone()[0]
                 or 0
             )
 

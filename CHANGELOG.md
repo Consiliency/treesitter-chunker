@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stale chunks. `cache_chunks` now returns whether it stored the entry. The
   parallel helpers accept `cache_dir=` to keep the cache in a private
   directory. `CACHE_VERSION` is now `3.0`, and entries move to a new
-  `chunk_cache` table: entries from earlier releases are ignored, so each file
+  `chunk_cache_v3` table: entries from earlier releases are ignored, so each file
   is re-extracted once after upgrading. Delete `ast_cache.db` to reclaim their
   space once no older release shares it.
 - `UserGrammarTools.install_grammar` and `update_grammar` no longer overwrite

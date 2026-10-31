@@ -176,7 +176,7 @@ class TestCacheBasics:
             assert (temp_cache_dir / "ast_cache.db").exists()
             with sqlite3.connect(cache.db_path) as conn:
                 cursor = conn.execute(
-                    "SELECT sql FROM sqlite_master WHERE type='table' AND name='chunk_cache'",
+                    "SELECT sql FROM sqlite_master WHERE type='table' AND name='chunk_cache_v3'",
                 )
                 schema = cursor.fetchone()[0]
                 assert "file_path" in schema
@@ -454,7 +454,7 @@ class TestCacheCorruptionRecovery:
         with cache._get_connection() as conn:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO chunk_cache
+                INSERT OR REPLACE INTO chunk_cache_v3
                 (file_path, language, extraction, extraction_identity, file_hash,
                  file_size, mtime, chunks_data, data_checksum, cache_version)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -554,7 +554,7 @@ class TestCacheEviction:
         with cache._get_connection() as conn:
             conn.execute(
                 """
-                UPDATE chunk_cache
+                UPDATE chunk_cache_v3
                 SET created_at = datetime('now', '-7 days')
                 WHERE file_path = ?
             """,
@@ -564,7 +564,7 @@ class TestCacheEviction:
         with cache._get_connection() as conn:
             conn.execute(
                 """
-                DELETE FROM chunk_cache
+                DELETE FROM chunk_cache_v3
                 WHERE created_at < datetime('now', '-1 day')
             """,
             )

@@ -202,7 +202,7 @@ def test_caller_cache_dir_confines_writes(tmp_path, isolated_home, source_file):
     assert list(isolated_home.rglob("*")) == []
     with closing(sqlite3.connect(cache_dir / "ast_cache.db")) as conn:
         rows = conn.execute(
-            "SELECT file_path, COUNT(DISTINCT extraction_identity) FROM chunk_cache "
+            "SELECT file_path, COUNT(DISTINCT extraction_identity) FROM chunk_cache_v3 "
             "GROUP BY file_path"
         ).fetchall()
     assert rows == [(str(source_file), 2)]
@@ -405,25 +405,112 @@ def test_unreadable_configuration_state_bypasses_cache_without_crashing(
     assert chunk_cache_identity("python") is not None
 
 
-def test_pre_release_table_layout_is_recreated(tmp_path, source_file):
-    cache_dir = tmp_path / "cache"
-    cache_dir.mkdir()
+_PRE_RELEASE_TABLE_SQL = """CREATE TABLE chunk_cache (
+    file_path TEXT NOT NULL, language TEXT NOT NULL,
+    extraction_identity TEXT NOT NULL, file_hash TEXT NOT NULL,
+    file_size INTEGER NOT NULL, mtime REAL NOT NULL,
+    chunks_data BLOB NOT NULL, data_checksum TEXT NOT NULL,
+    cache_version TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (file_path, language, extraction_identity)
+)"""
+
+
+def _seed_pre_release_table(cache_dir: Path) -> None:
+    """Write the chunk_cache layout of an unreleased build, with one row."""
+    cache_dir.mkdir(parents=True, exist_ok=True)
     with closing(sqlite3.connect(cache_dir / "ast_cache.db")) as conn:
-        # The chunk_cache layout of an unreleased build, without `extraction`.
+        conn.execute(_PRE_RELEASE_TABLE_SQL)
+        conn.execute("CREATE INDEX idx_chunk_cache_hash ON chunk_cache(file_hash)")
         conn.execute(
-            """CREATE TABLE chunk_cache (
-                file_path TEXT NOT NULL, language TEXT NOT NULL,
-                extraction_identity TEXT NOT NULL, file_hash TEXT NOT NULL,
-                file_size INTEGER NOT NULL, mtime REAL NOT NULL,
-                chunks_data BLOB NOT NULL, data_checksum TEXT NOT NULL,
-                cache_version TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (file_path, language, extraction_identity)
-            )"""
+            "INSERT INTO chunk_cache VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
+            "CURRENT_TIMESTAMP)",
+            ("old.py", "python", "0" * 64, "0" * 64, 1, 0.0, b"x", "0" * 64, "3.0"),
         )
         conn.commit()
+
+
+def _pre_release_rows(cache_dir: Path) -> int:
+    with closing(sqlite3.connect(cache_dir / "ast_cache.db")) as conn:
+        return conn.execute("SELECT COUNT(*) FROM chunk_cache").fetchone()[0]
+
+
+def test_pre_release_table_is_ignored_and_left_intact(tmp_path, source_file):
+    cache_dir = tmp_path / "cache"
+    _seed_pre_release_table(cache_dir)
 
     expected = _extract(source_file, "core", use_cache=False)
     assert _extract(source_file, "core", cache_dir=cache_dir) == expected
     assert _extract(source_file, "core", cache_dir=cache_dir) == expected
     assert ASTCache(cache_dir=cache_dir).get_cache_stats()["total_files"] == 1
+    assert _pre_release_rows(cache_dir) == 1
+
+
+def _concurrent_cache_user(cache_dir, source, barrier, results, rounds):
+    """Open, write and re-read the shared cache in a separate process."""
+    from chunker._internal.cache import ASTCache as ChildCache
+    from chunker.core import chunk_file as child_chunk_file
+
+    path = Path(source)
+    expected = [asdict(chunk) for chunk in child_chunk_file(path, "python")]
+    report = {"source": source, "stored": False, "served": 0, "errors": []}
+    barrier.wait(timeout=120)
+    try:
+        report["stored"] = ChildCache(cache_dir=Path(cache_dir)).cache_chunks(
+            path, "python", child_chunk_file(path, "python")
+        )
+        for _ in range(rounds):
+            # Each round opens the database again, racing other openers.
+            served = ChildCache(cache_dir=Path(cache_dir)).get_cached_chunks(
+                path, "python"
+            )
+            if served is not None and [asdict(c) for c in served] == expected:
+                report["served"] += 1
+    except Exception as error:  # reported to the parent, which asserts on it
+        report["errors"].append(repr(error))
+    results.put(report)
+
+
+def test_concurrent_processes_share_the_cache_without_losing_entries(tmp_path):
+    workers, rounds = 4, 15
+    cache_dir = tmp_path / "cache"
+    _seed_pre_release_table(cache_dir)
+    sources = []
+    for index in range(workers):
+        path = tmp_path / f"src{index}" / "service.py"
+        path.parent.mkdir()
+        shutil.copyfile(FIXTURE, path)
+        sources.append(str(path))
+
+    context = mp.get_context("spawn")
+    barrier = context.Barrier(workers)
+    results = context.Queue()
+    processes = [
+        context.Process(
+            target=_concurrent_cache_user,
+            args=(str(cache_dir), source, barrier, results, rounds),
+        )
+        for source in sources
+    ]
+    for process in processes:
+        process.start()
+    try:
+        reports = [results.get(timeout=300) for _ in processes]
+    finally:
+        for process in processes:
+            process.join(timeout=60)
+            if process.is_alive():
+                process.terminate()
+                process.join()
+    assert [process.exitcode for process in processes] == [0] * workers
+
+    for report in reports:
+        assert report["errors"] == [], report
+        assert report["stored"] is True, report
+        assert report["served"] == rounds, report
+    # A later open (here, in this process) must not discard what they wrote.
+    cache = ASTCache(cache_dir=cache_dir)
+    assert cache.get_cache_stats()["total_files"] == workers
+    for source in sources:
+        assert cache.get_cached_chunks(Path(source), "python") is not None
+    assert _pre_release_rows(cache_dir) == 1

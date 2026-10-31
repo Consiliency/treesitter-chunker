@@ -90,10 +90,13 @@ It returns `None` (bypass: no reads, no writes) when the grammar has no
 provenance (today every language except Python and JavaScript; see
 treesitter-chunker#543) or the configuration cannot be fingerprinted.
 `ASTCache.get_cached_chunks` and `cache_chunks` take keyword-only
-`extraction="core"`. Entries live in a new `chunk_cache` table whose primary key
-is `(file_path, language, extraction_identity)`, with an `extraction` column;
-a write removes superseded identities for the same path, language and mode. `CACHE_VERSION` is `3.0`. The
-legacy `file_cache` table is never read, migrated or modified.
+`extraction="core"`. Entries live in a new `chunk_cache_v3` table whose
+primary key is `(file_path, language, extraction_identity)`, with an
+`extraction` column; a write removes superseded identities for the same path,
+language and mode. `CACHE_VERSION` is `3.0`. The legacy `file_cache` table and
+the `chunk_cache` table of unreleased builds are never read, migrated, modified
+or dropped, so concurrent openers only run `CREATE ... IF NOT EXISTS`
+(treesitter-chunker#541's successor).
 `ParallelChunker`, `chunk_files_parallel` and `chunk_directory_parallel` accept
 `cache_dir=`.
 

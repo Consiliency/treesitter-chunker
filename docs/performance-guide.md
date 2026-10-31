@@ -115,7 +115,7 @@ code changed. Call `invalidate_cache()` or use a separate `cache_dir` when
 running unreleased changes.
 
 **Upgrading from cache version 2.0.** Version 3.0 stores entries in a new
-`chunk_cache` table. Entries written by earlier releases stay in the legacy
+`chunk_cache_v3` table. Entries written by earlier releases stay in the legacy
 `file_cache` table of the same `ast_cache.db`; they are never read, so the
 first run after upgrading re-extracts each file. Older releases that share the
 file keep using their own table. Once no older release uses the directory,
