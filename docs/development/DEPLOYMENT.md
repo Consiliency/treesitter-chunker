@@ -4,7 +4,7 @@
 
 ## Supported Installation
 
-Use Python 3.11 or newer. The main wheel is pure Python; native parser and
+Use Python 3.12 or newer (published 6.0.0 also supports 3.11). The main wheel is pure Python; native parser and
 other runtime dependencies must also have compatible wheels. The pinned
 parser wheels require **glibc 2.34 or newer on Linux**; Ubuntu 18.04 is not a
 supported target for that stack. Verify the target architecture and Python

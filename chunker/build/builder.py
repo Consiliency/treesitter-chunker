@@ -572,7 +572,7 @@ License: MIT
 Platform: {platform}
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
-Requires-Python: >=3.8
+Requires-Python: >=3.12
 """
                     whl.writestr(f"{metadata_dir}/METADATA", metadata)
 

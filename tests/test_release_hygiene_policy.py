@@ -1,6 +1,7 @@
 """Release hygiene policy checks for warnings and tracked skip markers."""
 
 import re
+import tomllib
 from pathlib import Path
 
 import yaml
@@ -154,6 +155,19 @@ def test_internal_phase7_docs_keep_maintainer_notices():
         joined = "\n".join(lines)
         assert "Maintainer/internal documentation." in joined
         assert "intentionally omitted from" in joined
+
+
+def test_python_floor_declarations_agree():
+    """Project, tool, interpreter-pin and CI declarations share the 3.12 floor."""
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert pyproject["project"]["requires-python"] == ">=3.12"
+    assert pyproject["tool"]["ruff"]["target-version"] == "py312"
+    assert pyproject["tool"]["black"]["target-version"] == ["py312"]
+    assert pyproject["tool"]["mypy"]["python_version"] == "3.12"
+    assert (ROOT / ".python-version").read_text(encoding="utf-8").strip() == "3.12"
+    jobs = yaml.safe_load((ROOT / ".github/workflows/release.yml").read_text())["jobs"]
+    wheel_check = jobs["verify-installed-wheel"]
+    assert wheel_check["env"]["UV_PYTHON"] == "${{ matrix.python-version }}"
 
 
 def test_publication_requires_full_validation_and_verified_artifacts():

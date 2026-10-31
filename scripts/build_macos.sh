@@ -19,12 +19,16 @@ fi
 # Check Python
 if ! command -v python3 &> /dev/null; then
     echo "Error: Python 3 not found"
-    echo "Please install Python 3.10 or higher"
+    echo "Please install Python 3.12 or higher"
     exit 1
 fi
 
 PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 echo "Using Python $PYTHON_VERSION"
+if ! python3 -c 'import sys; sys.exit(sys.version_info < (3, 12))'; then
+    echo "Error: Python 3.12 or higher is required"
+    exit 1
+fi
 
 # Create virtual environment
 echo "Creating virtual environment..."

@@ -14,7 +14,8 @@
 - Release tags must use the form `vX.Y.Z`
 - The tag version must exactly match `pyproject.toml`
 - The release workflow must fail before publish if that version already exists on PyPI
-- Build and publication depend on full source validation across Python 3.11–3.13
+- Build and publication depend on full source validation on Python 3.12, the
+  supported floor (`requires-python = ">=3.12"`)
 - The built wheel must pass a fresh installation with hashed locked runtime requirements
 - CPython 3.12 and 3.14 release acceptance downloads only wheels for the complete
   locked runtime closure, installs those wheels with hashes, and checks the installed

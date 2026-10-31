@@ -108,6 +108,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Align the remaining Python version declarations with the 3.12 floor from
+  treesitter-chunker#493: the release-process spec, getting-started, user guide,
+  deployment, performance-core and VS Code docs, the conda recipe, both Homebrew
+  formulas, the macOS build script (which now rejects older interpreters) and the
+  fallback wheel builder's `Requires-Python` metadata. Published 6.0.0 still
+  supports 3.11.
 - Add opt-in, bounded failure diagnostics for native grammar admission, retaining
   the original operation/error codes, startup state and cleanup outcome without
   logging source content or changing admission, retry or deadline behavior

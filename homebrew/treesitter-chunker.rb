@@ -8,7 +8,7 @@ class TreesitterChunker < Formula
   license "MIT"
   head "https://github.com/Consiliency/treesitter-chunker.git", branch: "main"
 
-  depends_on "python@3.11"
+  depends_on "python@3.12"
   depends_on "tree-sitter"
   depends_on "cmake" => :build
   depends_on "pkg-config" => :build
@@ -58,8 +58,8 @@ class TreesitterChunker < Formula
     virtualenv_install_with_resources
 
     # Build grammars after installation
-    system libexec/"bin/python", "-c", "import subprocess; subprocess.run(['python', 'scripts/fetch_grammars.py'], cwd='#{libexec}/lib/python3.11/site-packages')"
-    system libexec/"bin/python", "-c", "import subprocess; subprocess.run(['python', 'scripts/build_lib.py'], cwd='#{libexec}/lib/python3.11/site-packages')"
+    system libexec/"bin/python", "-c", "import subprocess; subprocess.run(['python', 'scripts/fetch_grammars.py'], cwd='#{libexec}/lib/python3.12/site-packages')"
+    system libexec/"bin/python", "-c", "import subprocess; subprocess.run(['python', 'scripts/build_lib.py'], cwd='#{libexec}/lib/python3.12/site-packages')"
 
     # Create command shortcuts
     bin.install_symlink libexec/"bin/treesitter-chunker"
