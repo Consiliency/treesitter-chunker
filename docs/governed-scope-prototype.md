@@ -18,6 +18,14 @@ are diagnostics only. Classification and copy refusals retain blocked receipts;
 partial stages are never parsed. Existing output is never overwritten. Canonical
 scope JSON uses the specified Python JSON preimage, not the Spec canon profile.
 
+Directory traversal recurses once per directory level. Scope depth therefore has
+no declared limit of its own; the interpreter recursion limit sets it. With
+CPython's default limit (1000), trees about 1000 directories deep fail before
+selection. The driver exits 2 with `scope_setup:RecursionError` on stderr and
+publishes no selection. It does not truncate the tree or return a partial stage.
+Deeply nested request JSON follows the same limit. Treat this as a documented
+operational bound, not a scope rule or refusal reason.
+
 This is a quiescent-snapshot contract, not protection against a hostile concurrent
 filesystem writer. Unsupported no-follow platforms refuse. Legacy extraction
 remains unchanged and is not claimed to enforce this scope. Run the dedicated
