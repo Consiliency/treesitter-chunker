@@ -511,24 +511,65 @@ is; they never make anything trusted, so this is not a trust switch.
   two grammar command groups, when `--trusted-artifacts` is absent.
   Constructors never read it: `trusted_artifacts=None` on a constructor means
   no pins. A change to the file takes effect in the next process.
-- **Never the cache.** The file must not be inside the treesitter-chunker
-  cache root (`~/.cache/treesitter-chunker`, or the `--cache-dir` in effect) or
-  inside the package grammar directory `chunker/data/grammars/build`. These
-  are checked after symbolic links are resolved. If the file is inside either,
-  it is treated as malformed. The tool never creates, updates or deletes it.
+- **Pin-holding components stay off the parse path.** Every component in the
+  IF-0-ADMITPIN-1 constructor list, whatever its `trusted_artifacts` value,
+  never resolves grammars through `chunker.parser`'s module state
+  (`get_parser`, `acquire_parser`, or anything else that reads the config
+  file). Otherwise a narrower option file, an explicit empty mapping, or a
+  defective config file could be bypassed or leak into a command run with a
+  valid option. Today the `grammar_path=None` branch of
+  `GrammarValidator.test_parse_samples` (`core.py:257-263`, reached from
+  `compatibility.py:1061` and from other `compatibility.py` calls whose
+  `grammar_path` may be `None`) calls `chunker.parser.get_parser`. ADMIT
+  changes that branch to do one of two things:
+  - resolve through a `LanguageRegistry` built from the validator's own
+    mapping, where package-supplied grammars (our wheels, P1, P2, R5) still
+    apply;
+  - or report `untrusted` for a language that would need a pin.
+
+  The named mutation `parse_samples_via_global_parser` (EC-ADMIT-6) restores
+  the `get_parser` call, and a test with `GrammarValidator(trusted_artifacts={})`
+  plus a config file that pins the language must then fail.
+- **Never a `ChunkerConfig` file.** `ChunkerConfig` files are never pin sources,
+  and ADMIT does not merge them with the pin file. That covers `chunker.config.*`
+  found by the upward search from the current directory and
+  `~/.chunker/config.*`. The upward search reads files the repository being
+  chunked controls.
+- **Never a tool-written directory.** The file must not be inside any of
+  these directories, checked after symbolic links are resolved:
+  - the treesitter-chunker cache root (`~/.cache/treesitter-chunker`, or the
+    `--cache-dir` in effect);
+  - the package grammar directory `chunker/data/grammars/build`;
+  - `CHUNKER_GRAMMAR_BUILD_DIR` when it is set;
+  - the configured combined library's directory (`Path(library_path).parent`,
+    the R2/R4 scan directory).
+
+  A file inside any of them is treated as defective. The tool never creates,
+  updates or deletes the pin file.
 - **A missing file** is not an error; it supplies no pins.
 - **A present file that is defective fails closed.** That covers a file that
   is malformed, unreadable, not a regular file after symbolic links are
-  resolved, larger than the limit, or inside a forbidden directory. Nothing in
-  it is used, and the defect is reported where the file is read:
-  - In `chunker.parser`, initialization raises
-    `chunker.exceptions.TrustedArtifactsError` (a new `ChunkerError` subclass
-    that ADMIT adds), naming the file and the defect, before any discovery or
-    load. The error is not downgraded to "no pins", because quietly falling
-    back to a different supplier's grammar would change chunk output without
-    notice.
-  - In a grammar command run without the option, it is a usage error with
-    exit status 2.
+  resolved, larger than the limit, or inside a forbidden directory.
+  (Maintainer clarification, 2026-10-31: fail closed means a defective pin file
+  grants no local trust. It does not stop parsing altogether.)
+  - Nothing in the file is used; entries are never partially applied, and a
+    defective file can never cause anything to be trusted.
+  - The shared reader raises `chunker.exceptions.TrustedArtifactsError` (a new
+    `ChunkerError` subclass that ADMIT adds), with the file path and the
+    defect. Each entrypoint handles it as follows.
+  - **`chunker.parser`** catches it at initialization and continues with no
+    pins. It logs one warning per process naming the file and the defect.
+    Package-supplied grammars keep working: our own wheel's RECORD-verified
+    files, the official tree-sitter wheels (P1), the language-pack (P2) and
+    the BAML companion (R5). Every grammar that would need a pin is reported
+    untrusted. When such a language cannot be resolved, the error it raises
+    (`LanguageNotFoundError`, or `ParserInitError` for a rejected local
+    candidate) names the pin file and its defect, so the cause is actionable.
+    Parser initialization does not fail for every language.
+  - **A grammar command run without the option** treats it as a usage error:
+    exit status 2, naming the file and the defect, before discovery, any probe
+    or any native load. Those commands exist to report on pinned grammars, so
+    continuing would misreport them.
 - **Test isolation.** ADMIT's tests set `HOME`, `USERPROFILE`, `APPDATA` and
   `XDG_CONFIG_HOME` to private temporary directories, so a developer's real
   pin file never affects a test.
@@ -567,6 +608,10 @@ wins, and sources are **never merged**:
 2. `--trusted-artifacts PATH` on a grammar command;
 3. the user-config pin file;
 4. no pins.
+
+The active source is fixed where the component is built. The rule above that
+pin-holding components stay off the parse path keeps a second source from
+being reached later through `chunker.parser`.
 
 The rule is conservative. The active pin set is always exactly one mapping the
 operator can name and inspect. A second source can never widen an approval
@@ -618,15 +663,22 @@ language-pack (P1, P2), with no user pin. The boundary is exact:
 
 1. **The distribution.** It is the one returned by
    `importlib.metadata.distribution("treesitter-chunker")`, and only if its
-   `locate_file("chunker/__init__.py")` resolves to the same file as the
-   imported `chunker.__file__`. A different or shadowing distribution
+   `locate_file("chunker/__init__.py")` is the same file as the imported
+   `chunker.__file__` (compared resolved, or with `os.path.samefile`). A different or shadowing distribution
    supplies nothing.
 2. **Which files count.** A candidate counts only when all of these hold:
    - It is a regular file, not a symbolic link.
-   - Its resolved path equals `locate_file(entry)` for one entry in that
-     distribution's `RECORD`.
-   - The entry's path is directly under `chunker/data/grammars/build/` and
-     ends in `.so`, `.dylib` or `.dll`. That covers the combined
+   - It is the same file as `locate_file(entry)` for one entry in that
+     distribution's `RECORD`. Both paths are compared after `Path.resolve()`,
+     or with `os.path.samefile`, never as text. `locate_file()` returns an
+     unresolved path, so a symbolic link in the site-packages path (a venv
+     `lib64`, or `/var` → `/private/var` on macOS) or a difference in case on
+     a case-insensitive file system does not demote our own files.
+   - The entry is a relative POSIX path. It is not absolute, has no drive or
+     root, no backslash and no empty, `.` or `..` component, and its parent is
+     exactly `chunker/data/grammars/build`. Any other entry is ignored, so a
+     textual prefix match can never be spoofed.
+   - The entry ends in `.so`, `.dylib` or `.dll`. That covers the combined
      `languages<ext>` that `chunker.parser` prefers, and the per-language
      libraries.
 
@@ -676,6 +728,7 @@ sha256(canonical JSON of {
   "level": <validation level value, or "probe">,
   "probe_schema": "native_probe.v1",
   "probe_profile": "default-v1",
+  "inspector": <stable identifier of the inspect_artifact callback, or "none">,
   "validator_schema": <integer constant that ADMIT bumps whenever validation semantics change>,
   "chunker": <installed treesitter-chunker distribution version>,
   "tree_sitter": <installed tree-sitter distribution version>,
@@ -688,10 +741,18 @@ sha256(canonical JSON of {
 
 Canonical JSON means sorted keys, no insignificant whitespace and UTF-8. The
 probe profile `default-v1` means `probe_native_grammar` called with
-`sample=b""` and `timeout=10.0`, plus any `inspect_artifact` metadata, which is
-stored together with the verdict under the same key. A probe with a different
-sample or deadline is never answered from the cache, and its result is not
-stored.
+`sample=b""` and `timeout=10.0`. A probe with a different sample or deadline is
+never answered from the cache, and its result is not stored.
+
+`inspector` is a stable identifier for the `inspect_artifact` callback; `none`
+means no callback. ADMIT fixes one constant per inspecting site, for example
+`grammar_analyzer.v1` for `GrammarAnalyzer` and
+`smart_grammar_manager.v1` for `SmartGrammarManager`. Captured metadata is
+stored with the verdict under that key. A request with an inspector is answered
+only by an entry stored by the same inspector, so a probe-only `ok` from the
+registry or validator never answers `GrammarAnalyzer` with missing or foreign
+metadata. An entry stored with metadata answers a probe-only request only
+through its own key, which never matches `none`.
 
 1. **Lookup order.** First check that the candidate exists, as in rule 3; if
    it does not, report `missing` with no reuse. Next resolve the pin as in
@@ -735,6 +796,8 @@ under it:
 - `reuse_verdict_across_environment`: a key that differs only in an
   environment field (`python`, `abi`, `platform`, `machine`, `chunker`,
   `tree_sitter` or `validator_schema`) misses.
+- `reuse_verdict_across_inspector`: a request with one inspector is not
+  answered by an entry stored without metadata or by another inspector.
 - `reuse_verdict_across_probe_profile`: a non-default sample or deadline is
   not answered from the cache.
 
@@ -777,7 +840,7 @@ does not cover.
 |---|---|---|---|---|---|
 | N1 | `chunker/grammar_management/core.py:129` `load_compiled_grammar` (`ctypes.CDLL`); its capsule `Language(` at `chunker/grammar_management/core.py:138` | the path it is given | caller-trusted primitive. Allowed callers pass the probe child's verified snapshot (I1) or an admitted private copy | SL-core | open |
 | N2 | `chunker/grammar_management/core.py:229` `GrammarValidator.check_abi_compatibility` → N1 | discovered/validated candidate | integrated (probe only; no in-process load) | SL-core | open |
-| N3 | `chunker/grammar_management/core.py:260` `GrammarValidator.test_parse_samples(grammar_path=...)` → N1 | local candidate, parsed in-process | integrated (in-process pattern) | SL-core | open |
+| N3 | `chunker/grammar_management/core.py:260` `GrammarValidator.test_parse_samples(grammar_path=...)` → N1 | local candidate, parsed in-process | integrated (in-process pattern). The `grammar_path=None` branch (`core.py:262`, today `chunker.parser.get_parser`) stops using `chunker.parser`. It resolves through a `LanguageRegistry` built from the validator's own pins, or reports `untrusted` ("Pin-holding components stay off the parse path"; mutation `parse_samples_via_global_parser`) | SL-core | open |
 | N4 | `chunker/grammar_management/cli.py:1552` `build_grammar` post-build load check | fresh build output | integrated. With no pin, it skips the load and exits 0 with `built, not admitted: add a pin via --trusted-artifacts`. With a pin, it probes the output and exits 1 on any result other than `ok`. The build itself is unchanged | SL-core | open |
 | N5 | `chunker/grammar_management/cli.py:2272` `_validate_compiled_grammar` | installed candidate | integrated, keeping today's output and exit codes; the treesitter-chunker#128 behaviour stays with ADMITFIX | SL-core | open |
 | N6 | `chunker/grammar_management/cli.py:1945` `_test_compiled_grammar` (grammar test command) → N1 | local candidate, parsed in-process | integrated (in-process pattern) | SL-core | open |
@@ -820,17 +883,26 @@ row and disposition.
 
 File ownership notes for the ADMIT plan:
 
-- ADMIT's lane list does not cover `chunker/cli/grammar_commands.py` (the
-  argparse option) or `chunker/_internal/grammar_management.py` (the rule-3
-  lookup in `SmartGrammarManager`). The ADMIT plan should assign both to
-  SL-core, which owns the CLI pin path for EC-ADMIT-1.
+- SL-core owns several more files, as the roadmap's Phase 8 scope notes now
+  say:
+  - the shared pin-file reader, a new module `chunker/_internal/trusted_artifacts.py`,
+    which handles per-OS path resolution, the forbidden-directory check, the
+    `chunker.trusted_artifacts.v1` parser and `TrustedArtifactsError`;
+  - `chunker/exceptions.py`, for `TrustedArtifactsError`;
+  - `chunker/cli/grammar_commands.py`, the argparse option and the config
+    fallback;
+  - `chunker/_internal/grammar_management.py`, the rule-3 lookup in
+    `SmartGrammarManager`.
+
+  SL-core publishes the reader's signatures on day 1, alongside IF-0-ADMIT-1,
+  and SL-reg consumes them for `chunker/parser.py` instead of writing its own.
 - `chunker/grammar_management/compatibility.py` is already owned by SMALLFIX
   SL-sel (the treesitter-chunker#133 → treesitter-chunker#134 →
   treesitter-chunker#344 chain), so it is shared. ADMIT SL-core's edit is
   limited to the two `GrammarValidator(...)` constructor lines (148 and 770)
   that build validators without pins. ADMIT and SMALLFIX PRs on that file
-  merge one at a time, and the ADMIT plan should add the file to the
-  roadmap's cross-phase single-writer list.
+  merge one at a time; the roadmap's cross-phase single-writer list records
+  this.
 - In `chunker/languages/compatibility/grammar_analyzer.py`, SL-ins's region is
   `GrammarAnalyzer.__init__` and `GrammarAnalyzer.analyze_grammar_file` (the
   rule-3 lookup) plus `GrammarMetadataExtractor.extract_from_dependencies`
@@ -858,7 +930,9 @@ These changes take effect when ADMIT lands, and ADMIT records them in
   pins them, or when they are package-supplied files of our own wheel. All
   other local libraries are ignored, and resolution continues to the official
   wheels, the language-pack and the BAML companion. A defective config file
-  stops parser initialization with `TrustedArtifactsError`.
+  grants no local trust. Package-supplied grammars keep working, and one
+  warning names the file and its defect. Errors for languages that would
+  have needed a pin repeat that cause.
 - **`treesitter-chunker setup grammars`** (`cli/setup_command.py`) still builds
   into `~/.cache/treesitter-chunker/build`. Parsing uses that output only after
   the operator pins it in the user-config file.

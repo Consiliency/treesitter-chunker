@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: ADMITPIN
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: 7eef20626abc2b9d2ca169f95d0105c822ca7ea056bf870c05d2838265a6b38f
+roadmap_sha256: 0a15424c6230b812b095dd9668ecf62bd0457aebdc927533ccde04e6e20cae14
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_release_hygiene_policy.py -q"
 ---
@@ -79,10 +79,15 @@ Decisions this plan makes, which are open to challenge in review:
 
    Both use the `chunker.trusted_artifacts.v1` schema. Exactly one source is
    active: constructor argument, then option, then config file, then none,
-   never merged. A defective config file fails closed: the parse path raises
-   `TrustedArtifactsError`, and a grammar command exits 2. Nothing is read from
-   the cache directory, because build, download and cleanup commands write
-   there.
+   never merged. A defective config file fails closed, which the maintainer's
+   2026-10-31 clarification defines as granting no local trust:
+   - the parse path keeps package-supplied grammars, reports every grammar
+     that needs a pin as untrusted, and warns with the file and the defect;
+   - a grammar command run without the option exits 2.
+
+   Components that hold pins never resolve grammars through `chunker.parser`.
+   `ChunkerConfig` files are never pin sources. Nothing is read from the cache
+   directory or any other tool-written directory.
 2. **No-pin outcome.** A candidate that does not exist reports `missing`,
    using an `lstat` check that neither opens nor loads it. An existing
    candidate with no pin reports `untrusted`, and the probe is never called.
@@ -121,7 +126,7 @@ scope widening is accepted. Phase 8 gains EC-ADMIT-6 to EC-ADMIT-8 and
 SL-reg ownership of `chunker/parser.py`, and the Execution Notes gain
 single-writer entries for `chunker/parser.py` and `compatibility.py`. This
 branch merged `origin/main` at `2c4bca75` (treesitter-chunker#537), keeping
-both sets of roadmap edits, and `roadmap_sha256` above is the merged
+both sets of roadmap edits, and `roadmap_sha256` above is the current
 roadmap's hash.
 
 ## Lane Index & Dependencies
@@ -165,17 +170,25 @@ The implementation fans out in ADMIT.
 
 ## Notes for the ADMIT plan
 
-- The roadmap's ADMIT lanes do not cover `chunker/cli/grammar_commands.py`
-  or `chunker/_internal/grammar_management.py`. The contract proposes SL-core
-  for both, because SL-core owns the CLI pin path for EC-ADMIT-1.
+- The roadmap's Phase 8 now gives SL-core these files:
+  - the shared pin-file reader `chunker/_internal/trusted_artifacts.py`;
+  - `chunker/exceptions.py`;
+  - `chunker/cli/grammar_commands.py`;
+  - `chunker/_internal/grammar_management.py`;
+  - the `test_parse_samples` change that keeps pin-holding components off
+    `chunker.parser`.
+
+  SL-core publishes the reader's signatures on day 1, and SL-reg consumes the
+  reader for `chunker/parser.py`.
 - `chunker/grammar_management/compatibility.py` is shared with SMALLFIX SL-sel
   (treesitter-chunker#133 → treesitter-chunker#134 → treesitter-chunker#344).
   ADMIT SL-core edits only the two `GrammarValidator(...)` constructor lines
-  (148 and 770). PRs on that file merge one at a time, and the ADMIT plan adds
-  the file to the cross-phase single-writer list.
+  (148 and 770). PRs on that file merge one at a time; the roadmap's
+  cross-phase single-writer list records this.
 - In `grammar_analyzer.py`, the SL-ins region is `GrammarAnalyzer.__init__`,
   `GrammarAnalyzer.analyze_grammar_file` and `extract_from_dependencies`.
-  That is disjoint from CIFAST SL-deadline's `analyze_grammar_symbols`.
+  That is disjoint from CIFAST SL-deadline's `analyze_grammar_symbols`, and
+  the roadmap's SL-ins line and Execution Notes now say the same.
 - The contract also assigns the `_test_compiled_grammar` load (`cli.py:1945`) to SL-core and the
   `examples/manage_grammars.py` update to SL-legacy.
 - `GrammarInstaller` gains the keyword-only argument. The roadmap gives the
@@ -243,8 +256,21 @@ is no defect to reproduce and no regression test.
   user-config pin file (M1), retire the on-demand fetch-and-build (M2), and
   RECORD-verified package-supplied wheel grammars (M3). These replace the
   earlier open-owner note.
-- **Round 2:** pending. The parent records each reviewer, the reviewed head
-  SHA and the verdict here, or in the PR, before merge.
+- **Round 2, head `6621aed2`:** Codex APPROVED with no findings; Claude
+  REQUEST_CHANGES. The blocking finding was that the one-active-source rule
+  could be bypassed, because `GrammarValidator.test_parse_samples` reached
+  `chunker.parser` and its config file. Claude also raised non-blocking items
+  2–6: the inspector in the verdict key, RECORD path precision, ADMIT lane
+  ownership, the EC order, and `ChunkerConfig` plus the forbidden pin-file
+  directories. All are addressed in round 3.
+- **Maintainer clarification, 2026-10-31 (relayed by the roadmap runner):**
+  M1 "fail closed" means a defective pin file grants no local trust.
+  Package-supplied grammars keep working, pin-needing grammars are reported
+  untrusted with an actionable message, and grammar commands exit 2. Parser
+  initialization no longer raises for every language.
+- **Round 3 (final allowed round):** pending. The parent records each
+  reviewer, the reviewed head SHA and the verdict here, or in the PR, before
+  merge.
 
 ## Spec Closeout Plan
 
