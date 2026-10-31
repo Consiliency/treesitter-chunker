@@ -668,7 +668,10 @@ def run_worker(value):
                 continue
             require(peak <= 1073741824, "group_compute")
         payload = receive.recv()
-        process.join(1)
+        # The receipt precedes interpreter teardown, which can exceed a fixed 1s
+        # on a loaded host (treesitter-chunker#514 N2). Wait out the remaining
+        # total deadline only; a child still alive after it is refused below.
+        process.join(max(0.0, deadline - time.monotonic()))
         require(not process.is_alive() and process.exitcode == 0, "group_compute")
         failed = False
         return payload, {

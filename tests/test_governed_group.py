@@ -955,6 +955,31 @@ def test_unexpected_parent_setup_error_exits_two(monkeypatch, capsysbinary, tmp_
     setup_refusal(code, captured.out, captured.err, output, "TypeError")
 
 
+def test_slow_worker_exit_after_receipt_is_accepted(tmp_path):
+    # treesitter-chunker#514 N2: the spawned worker's interpreter teardown runs
+    # after its receipt is sent. Delay that teardown past the former fixed 1s
+    # join, as a loaded host can, via atexit in the spawned child only.
+    marker = tmp_path / "child.exited"
+    prelude = (
+        "import multiprocessing.spawn as s\n"
+        "_line = s.get_command_line\n"
+        "def slowed(**kwds):\n"
+        "    line = _line(**kwds)\n"
+        "    at = line.index('-c') + 1\n"
+        "    line[at] = ('import atexit, pathlib, time; '\n"
+        "        'atexit.register(pathlib.Path(' + repr("
+        + repr(str(marker))
+        + ") + ').touch); '\n"
+        "        'atexit.register(time.sleep, 1.5); ' + line[at])\n"
+        "    return line\n"
+        "s.get_command_line = slowed\n"
+    )
+    request = make_request(mode="dependency_assisted")
+    cp, output = launch(tmp_path, request, prelude=prelude)
+    verify_proposal(request, accepted(cp, output))
+    require(marker.exists(), "GROUP_SLOW_EXIT_INJECTED")
+
+
 def test_supervision_access_denied_is_setup_and_child_dead_at_exit(tmp_path):
     import psutil
 
