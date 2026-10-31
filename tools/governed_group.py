@@ -10,6 +10,7 @@ from importlib import machinery, metadata
 import json
 import math
 import multiprocessing
+import os
 from pathlib import Path
 import platform
 import re
@@ -822,6 +823,22 @@ def execute(args):
     return proposal["proposal_digest"]
 
 
+def report(stream, value):
+    """Write one receipt/diagnostic line; return False instead of raising."""
+    try:
+        stream.buffer.write(encoded(value) + b"\n")
+        stream.buffer.flush()
+        return True
+    except Exception:
+        # Drain undeliverable buffered bytes so exit-time flushing cannot fail late.
+        try:
+            with open(os.devnull, "wb") as sink:
+                os.dup2(sink.fileno(), stream.fileno())
+        except Exception:
+            pass
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--request", required=True)
@@ -833,15 +850,16 @@ def main():
     try:
         result = execute(args)
     except GroupError as error:
-        sys.stderr.buffer.write(encoded({"reason": error.reason}) + b"\n")
+        report(sys.stderr, {"reason": error.reason})
         return error.exit_code
     except Exception as error:
-        sys.stderr.buffer.write(
-            encoded({"reason": "group_setup", "type": type(error).__name__}) + b"\n"
-        )
+        report(sys.stderr, {"reason": "group_setup", "type": type(error).__name__})
         return 2
-    sys.stdout.buffer.write(encoded({"proposal_digest": result}) + b"\n")
-    return 0
+    # proposal.json is already published; a reporting failure cannot unpublish it.
+    if report(sys.stdout, {"proposal_digest": result}):
+        return 0
+    report(sys.stderr, {"reason": "group_report"})
+    return 3
 
 
 if __name__ == "__main__":

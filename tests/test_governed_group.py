@@ -77,7 +77,9 @@ def make_request(**kwargs):
     return RECIPE["request"](ROOT, ANCHOR, **kwargs)
 
 
-def launch(tmp, request, *, expected=None, seed="1", raw=None, prelude=None):
+def launch(
+    tmp, request, *, expected=None, seed="1", raw=None, prelude=None, sinks=None
+):
     tmp.mkdir(parents=True, exist_ok=True)
     path = tmp / "request.json"
     path.write_bytes(raw if raw is not None else RECIPE["canonical"](request))
@@ -107,9 +109,11 @@ def launch(tmp, request, *, expected=None, seed="1", raw=None, prelude=None):
     command += ["-c", bootstrap, *argv]
     env = dict(os.environ, PYTHONHASHSEED=seed)
     env.pop("PYTHONPATH", None)
-    cp = subprocess.run(command, capture_output=True, timeout=130, env=env)
-    (tmp / "stdout.log").write_bytes(cp.stdout)
-    (tmp / "stderr.log").write_bytes(cp.stderr)
+    # Optional sinks replace captured pipes, e.g. /dev/full for reporting failures.
+    streams = {"stdout": subprocess.PIPE, "stderr": subprocess.PIPE, **(sinks or {})}
+    cp = subprocess.run(command, timeout=130, env=env, **streams)
+    (tmp / "stdout.log").write_bytes(cp.stdout or b"")
+    (tmp / "stderr.log").write_bytes(cp.stderr or b"")
     (tmp / "command.json").write_text(json.dumps(command))
     return cp, output
 
@@ -1025,3 +1029,69 @@ def test_cancellation_is_not_setup(monkeypatch, capsysbinary, interrupt):
             "GROUP_CANCELLATION_PROPAGATES:" + json.dumps({"returned": code})
         )
     require(capsysbinary.readouterr().err == b"", "GROUP_CANCELLATION_PROPAGATES")
+
+
+def published(request, output):
+    require(
+        sorted(p.name for p in output.iterdir())
+        == sorted(
+            [
+                "operational.json",
+                "proposal.json",
+                "raw_engine.json",
+                "raw_graph.json",
+                "request.json",
+            ]
+        ),
+        "GROUP_REPORT_PROPOSAL_RETAINED",
+    )
+    proposal = json.loads((output / "proposal.json").read_bytes())
+    verify_proposal(request, proposal)
+    return proposal
+
+
+def test_receipt_failure_after_publication_exits_three(tmp_path):
+    request = make_request()
+    with open("/dev/full", "wb") as full:
+        cp, output = launch(tmp_path, request, sinks={"stdout": full})
+    require(
+        cp.returncode == 3 and cp.stderr == b'{"reason":"group_report"}\n',
+        "GROUP_REPORT_EXIT:"
+        + json.dumps(
+            {"exit": cp.returncode, "stderr": cp.stderr.decode(errors="replace")}
+        ),
+    )
+    published(request, output)
+
+
+def test_receipt_and_diagnostic_failure_still_exits_three(tmp_path):
+    request = make_request()
+    with open("/dev/full", "wb") as full:
+        cp, output = launch(tmp_path, request, sinks={"stdout": full, "stderr": full})
+    require(cp.returncode == 3, "GROUP_REPORT_EXIT:" + str(cp.returncode))
+    published(request, output)
+
+
+def test_diagnostic_failure_keeps_refusal_exit(tmp_path):
+    request = make_request()
+    with open("/dev/full", "wb") as full:
+        cp, output = launch(
+            tmp_path / "refusal", request, raw=b'{"x":NaN}', sinks={"stderr": full}
+        )
+        require(
+            cp.returncode == 1 and cp.stdout == b"" and not output.exists(),
+            "GROUP_REFUSAL_REPORT_EXIT:" + str(cp.returncode),
+        )
+        prelude = (
+            "import psutil\n"
+            "def denied(pid):\n"
+            "    raise psutil.AccessDenied(pid)\n"
+            "psutil.Process = denied\n"
+        )
+        cp, output = launch(
+            tmp_path / "setup", request, prelude=prelude, sinks={"stderr": full}
+        )
+        require(
+            cp.returncode == 2 and cp.stdout == b"" and not output.exists(),
+            "GROUP_SETUP_REPORT_EXIT:" + str(cp.returncode),
+        )

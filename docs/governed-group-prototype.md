@@ -145,15 +145,36 @@ The proposal is published last via a completed pending file. Reversed transport
 arrays can change raw file hashes while semantic proposal bytes remain equal.
 Neither raw file hashes nor operational data are injected into semantic identity.
 
-Refusal order: transport size; schema/types/domains; independent identities/source;
-membership then coverage; record/profile budgets; installed dependency/import
-binding; computation/output. Named refusals exit 1. Dependency mismatch/unavailability
-is `group_dependency`, exit 2, never an empty successful group. Argument errors, setup
-failures and any other unexpected parent exception exit 2; non-argument setup failures
-write `{"reason":"group_setup","type":<exception class>}` to stderr and never publish
-`proposal.json`. Interrupts and interpreter exits propagate unchanged. Validation
-failure creates no output. Computation failure retains a diagnostic without a ready
-proposal. Existing output is never overwritten.
+Refusal order: output location (absolute, existing parent, absent, not a symlink,
+outside the producer checkout), checked before the request is read and refused as
+`group_schema`; transport size; schema/types/domains; independent
+identities/source; membership then coverage; record/profile budgets; installed
+dependency/import binding; computation/output. Named refusals exit 1. Dependency
+mismatch/unavailability is `group_dependency`, exit 2, never an empty successful
+group. The protected boundary is the whole request execution, from the output check
+through publication: any other ordinary exception inside it, including an
+unreadable request, is a setup failure that exits 2, writes
+`{"reason":"group_setup","type":<exception class>}` to stderr and never publishes
+`proposal.json`. Argument parsing precedes that boundary; argument errors exit 2
+with the standard usage message. Interrupts and interpreter exits propagate
+unchanged. Validation failure creates no output. Computation failure retains a
+diagnostic without a ready proposal. Existing output is never overwritten.
+
+Diagnostics are reason-only. Stderr carries one J line with `reason` (plus `type`
+for `group_setup`), and a computation refusal's `diagnostic.json` is exactly
+`{"reason":"group_compute"}`. No diagnostic names offending IDs, paths or values;
+where the governing contract mentions sorted offending IDs or paths, this adapter
+does not emit them. Callers locate offenders in their own request, so refusal
+reporting adds no reads and copies no request content.
+
+Reporting happens after the boundary. Success prints `{"proposal_digest":...}` to
+stdout and exits 0. If that receipt cannot be written and flushed, `proposal.json`
+remains published, nothing is rolled back or reclassified, and the CLI exits 3,
+best-effort writing `{"reason":"group_report"}` to stderr, without a traceback.
+Exit 3 means only that the receipt was not delivered; verify the published
+proposal directly. If a refusal or setup diagnostic cannot be written to stderr,
+the exit code stays 1 or 2 and no traceback is printed. Undeliverable bytes are
+drained to the null device so exit-time flushing cannot fail later.
 
 One owned native compute child runs at a time per invocation. The parent applies a
 120-second watchdog, samples RSS with a 1 GiB stop threshold, and reaps/terminates

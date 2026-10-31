@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The private governed GROUP adapter no longer prints a traceback or exits 1 or 120
+  when stdout or stderr fails (treesitter-chunker#522). After `proposal.json` is
+  published, a receipt that cannot be written now exits 3 (`group_report`, best
+  effort on stderr). The proposal stays published and nothing is rolled back.
+  A refusal or setup diagnostic that cannot be written keeps exit 1 or 2. The docs
+  now say diagnostics are reason-only, with no offending IDs or paths, and list the
+  output-location `group_schema` check first in the refusal order
+  (treesitter-chunker#514 N5). Adapter source bytes changed, so request and profile
+  identities computed from them change too; consumer owners requalify.
 - Legacy grammar tools (`SmartGrammarManager`, `UserGrammarTools` and the
   `grammar` CLI) now diagnose, list, validate and remove `.dylib`/`.dll`
   libraries, preferring `<language><native>` whenever that entry exists and
