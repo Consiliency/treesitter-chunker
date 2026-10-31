@@ -113,7 +113,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deployment, performance-core and VS Code docs, the conda recipe, both Homebrew
   formulas, the macOS build script (which now rejects older interpreters) and the
   fallback wheel builder's `Requires-Python` metadata. Published 6.0.0 still
-  supports 3.11.
+  supports 3.11. A `.python-version` pin of 3.12 stops a plain
+  `uv sync --locked --all-extras` from selecting 3.14 and failing to build `cffi`;
+  3.14 development support remains tracked by treesitter-chunker#502.
 - Add opt-in, bounded failure diagnostics for native grammar admission, retaining
   the original operation/error codes, startup state and cleanup outcome without
   logging source content or changing admission, retry or deadline behavior
