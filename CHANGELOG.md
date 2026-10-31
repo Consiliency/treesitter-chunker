@@ -32,8 +32,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A refusal or setup diagnostic that cannot be written keeps exit 1 or 2. The docs
   now say diagnostics are reason-only, with no offending IDs or paths, and list the
   output-location `group_schema` check first in the refusal order
-  (treesitter-chunker#514 N5). Adapter source bytes changed, so request and profile
-  identities computed from them change too; consumer owners requalify.
+  (treesitter-chunker#514 N5). A receipt counts as delivered only when every byte
+  reaches stdout, so a full non-blocking pipe also exits 3.
+- The private governed GROUP adapter now gives its worker the time left on the
+  existing 120-second deadline to exit after sending its receipt, instead of a fixed
+  1 second that produced false `group_compute` refusals under CPU load
+  (treesitter-chunker#514 N2). There are no retries and the deadline is not extended.
+- GROUP adapter identity after treesitter-chunker#530 and treesitter-chunker#531 is
+  `tools/governed_group.py` SHA-256
+  `a44f1d2cd98fa235e176460c3851f56997b71d619ba20ce01796921695110eeb`. Request,
+  profile and proposal identities computed from the adapter change with it, and
+  requests pinned to an earlier adapter refuse with `group_identity`; consumer
+  owners requalify and repin.
+- GROUP tests bound the wait for their shared serialization lock separately from
+  the per-test computation timeout, and fail the remaining GROUP tests immediately
+  after one lock-wait timeout (treesitter-chunker#514 N3). `filelock` is now a
+  declared `dev` dependency, and the docs record the scope depth bounds and the
+  empty-boundary and neutral-bucket behavior (treesitter-chunker#514 N8).
 - Legacy grammar tools (`SmartGrammarManager`, `UserGrammarTools` and the
   `grammar` CLI) now diagnose, list, validate and remove `.dylib`/`.dll`
   libraries, preferring `<language><native>` whenever that entry exists and
