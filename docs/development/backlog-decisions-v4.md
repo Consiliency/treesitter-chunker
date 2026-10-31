@@ -1,5 +1,7 @@
 # Backlog Decisions — Roadmap v4
 
+> Maintainer/internal documentation. This page is intentionally omitted from public navigation.
+
 Owner decisions for the decision points in `specs/phase-plans-v4.md`
 (roadmap treesitter-chunker#533). Each record repeats the owner's choice as
 posted in the linked issue comment. No decision here was inferred by an agent.
