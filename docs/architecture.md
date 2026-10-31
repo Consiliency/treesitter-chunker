@@ -106,7 +106,10 @@ flowchart TD
 
 The parser cache and SQLite chunk cache store different objects. `ASTCache`
 stores extracted chunks, not native ASTs. Entries are keyed by extraction mode
-(core or streaming) and the runtime/grammar pairing. Boundary incremental
+(core or streaming), the runtime/grammar pairing and the effective language
+configuration. Languages without a reliable grammar or configuration identity
+bypass the cache; today that is every language except Python and JavaScript.
+Boundary incremental
 caching has its own contract. See [performance](performance-guide.md) and
 [Boundary IR](interface-boundary-spec.md).
 

@@ -396,7 +396,10 @@ print(cache.get_cache_stats())
 `get_cached_chunks()` and `cache_chunks()` take a keyword-only
 `extraction="core"` (chunks from `chunk_file()`) or `extraction="streaming"`
 (chunks from `chunk_file_streaming()`). An entry is returned only for the same
-mode and runtime/grammar pairing; see [performance](performance-guide.md#ast-caching).
+mode, runtime/grammar pairing and language configuration. Without a reliable
+identity, `get_cached_chunks()` returns `None` and `cache_chunks()` stores
+nothing and returns `False`; today that applies to every language except
+Python and JavaScript. See [performance](performance-guide.md#ast-caching).
 `get_cache_stats()` returns `total_files` (stored entries), `total_size_bytes`
 and `cache_db_size`. `invalidate_cache(path)` removes a file's entries for every
 mode; `invalidate_cache()` removes all entries.

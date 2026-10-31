@@ -2,12 +2,15 @@
 
 Real parsers and process workers extract a checked-in fixture. Each cached
 result must equal uncached extraction for the requested mode, whichever mode
-warmed the cache first. Entries from a different runtime/grammar pairing must
-not be returned, and a caller-supplied cache directory must confine writes.
+warmed the cache first. Entries from a different runtime/grammar pairing or
+language configuration must not be returned, a grammar or configuration
+without a reliable identity must bypass the cache, and a caller-supplied cache
+directory must confine writes.
 """
 
 from __future__ import annotations
 
+import multiprocessing as mp
 import pickle
 import shutil
 import sqlite3
@@ -21,12 +24,18 @@ import chunker._internal.cache as cache_module
 import chunker.parser as parser_module
 from chunker._internal.cache import ASTCache, chunk_cache_identity
 from chunker._internal.file_utils import get_file_metadata
+from chunker.core import chunk_file
+from chunker.languages import language_config_registry
+from chunker.metadata import MetadataExtractorFactory
 from chunker.parallel import ParallelChunker, chunk_files_parallel
 
 pytestmark = pytest.mark.integration
 
 FIXTURE = (
     Path(__file__).resolve().parent / "fixtures/boundary_ir/repos/python/app/service.py"
+)
+GO_FIXTURE = (
+    Path(__file__).resolve().parent / "fixtures/boundary_ir/repos/go/service.go"
 )
 MODES = {"core": False, "streaming": True}
 
@@ -245,3 +254,101 @@ def test_unknown_extraction_mode_is_rejected(tmp_path):
     cache = ASTCache(cache_dir=tmp_path / "cache")
     with pytest.raises(ValueError, match="Unknown extraction mode"):
         cache.cache_chunks(tmp_path / "missing.py", "python", [], extraction="fast")
+
+
+@pytest.fixture
+def python_ignores_functions():
+    """Ignore Python function definitions in the shared registry, then restore."""
+    config = language_config_registry.get("python")
+    assert "function_definition" not in config.ignore_types
+
+    def apply():
+        config.add_ignore_type("function_definition")
+
+    try:
+        yield apply
+    finally:
+        config._ignore_types.discard("function_definition")
+
+
+def test_changed_language_configuration_is_not_served_stale_chunks(
+    tmp_path, source_file, python_ignores_functions
+):
+    cache = ASTCache(cache_dir=tmp_path / "cache")
+    warm = chunk_file(source_file, "python")
+    assert cache.cache_chunks(source_file, "python", warm)
+
+    python_ignores_functions()
+    fresh = chunk_file(source_file, "python")
+    assert len(fresh) < len(warm)
+    assert cache.get_cached_chunks(source_file, "python") is None
+    assert cache.cache_chunks(source_file, "python", fresh)
+    stored = cache.get_cached_chunks(source_file, "python")
+    assert [asdict(chunk) for chunk in stored] == [asdict(chunk) for chunk in fresh]
+    # The write replaced this file's core entry under the superseded identity.
+    assert cache.get_cache_stats()["total_files"] == 1
+
+
+@pytest.mark.skipif(
+    mp.get_start_method() != "fork",
+    reason="workers see a parent registry change only when forked",
+)
+def test_parallel_workers_key_on_changed_configuration(
+    tmp_path, source_file, python_ignores_functions
+):
+    cache_dir = tmp_path / "cache"
+    warmed = _extract(source_file, "core", cache_dir=cache_dir)
+    python_ignores_functions()
+    fresh = _extract(source_file, "core", use_cache=False)
+    assert len(fresh) < len(warmed)
+    assert _extract(source_file, "core", cache_dir=cache_dir) == fresh
+
+
+class _OutsideExtractor(MetadataExtractorFactory._extractors["python"]):
+    """An extractor class defined outside the chunker package."""
+
+
+@pytest.mark.parametrize("unidentified", ["function_state", "outside_extractor"])
+def test_unfingerprintable_configuration_bypasses_cache(
+    tmp_path, source_file, monkeypatch, unidentified
+):
+    if unidentified == "function_state":
+        config = language_config_registry.get("python")
+        monkeypatch.setattr(config, "_custom_hook", lambda node: False, raising=False)
+    else:
+        monkeypatch.setitem(
+            MetadataExtractorFactory._extractors, "python", _OutsideExtractor
+        )
+    assert chunk_cache_identity("python") is None
+
+    cache = ASTCache(cache_dir=tmp_path / "cache")
+    chunks = chunk_file(source_file, "python")
+    assert cache.cache_chunks(source_file, "python", chunks) is False
+    assert cache.get_cached_chunks(source_file, "python") is None
+    assert cache.get_cache_stats()["total_files"] == 0
+
+
+def test_grammar_without_identity_is_never_served_from_cache(tmp_path, isolated_home):
+    path = tmp_path / "src" / "service.go"
+    path.parent.mkdir()
+    shutil.copyfile(GO_FIXTURE, path)
+    # The registry records no provenance for Go, so it has no identity.
+    assert chunk_cache_identity("go") is None
+
+    fresh = ParallelChunker("go", num_workers=1, use_cache=False).chunk_files_parallel(
+        [path]
+    )[path]
+    assert fresh
+    cache_dir = tmp_path / "cache"
+    cache = ASTCache(cache_dir=cache_dir)
+    stale = [replace(chunk, content="stale") for chunk in fresh]
+    assert cache.cache_chunks(path, "go", stale) is False
+    for _ in range(2):
+        served = ParallelChunker(
+            "go", num_workers=1, cache_dir=cache_dir
+        ).chunk_files_parallel([path])[path]
+        assert [asdict(chunk) for chunk in served] == [asdict(chunk) for chunk in fresh]
+    assert cache.get_cached_chunks(path, "go") is None
+    assert cache.get_cache_stats()["total_files"] == 0
+    # A grammar that cannot be loaded is also bypassed rather than raising.
+    assert cache.cache_chunks(path, "no_such_language", fresh) is False

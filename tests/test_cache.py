@@ -455,13 +455,14 @@ class TestCacheCorruptionRecovery:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO chunk_cache
-                (file_path, language, extraction_identity, file_hash, file_size,
-                 mtime, chunks_data, data_checksum, cache_version)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (file_path, language, extraction, extraction_identity, file_hash,
+                 file_size, mtime, chunks_data, data_checksum, cache_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     str(temp_python_file),
                     "python",
+                    "core",
                     chunk_cache_identity("python"),
                     metadata.hash,
                     metadata.size,

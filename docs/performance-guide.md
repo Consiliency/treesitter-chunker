@@ -83,13 +83,30 @@ also keyed by an extraction identity
 - the installed `treesitter-chunker`, `tree-sitter` and
   `tree-sitter-language-pack` versions;
 - the selected grammar's ABI version, node-kind count, symbol name and
-  provenance, such as `official:tree-sitter-python@0.25.0`.
+  provenance, such as `official:tree-sitter-python@0.25.0`;
+- a fingerprint of the effective language configuration (its class, chunk and
+  ignore types and rules, including changes made at runtime) and the metadata
+  extractor and analyzer classes.
 
-An entry from another mode or pairing is never returned. Core and streaming
-entries for one file coexist. The identity does not cover other chunking
-inputs: changes to language configuration or plugins made at runtime, and a
-rebuilt custom grammar whose ABI, node-kind count and provenance are unchanged.
-Invalidate the cache or use a separate `cache_dir` when those change.
+Some languages have no reliable identity, and for them the cache is bypassed
+entirely: nothing is read or written, and every request is extracted.
+
+- **No grammar provenance.** Today the registry records provenance only for
+  Python and JavaScript, so every other language is bypassed until
+  [treesitter-chunker#543](https://github.com/Consiliency/treesitter-chunker/issues/543)
+  records one.
+- **Unfingerprintable configuration.** This covers a configuration or extractor
+  class defined outside the `chunker` package, or configuration state without a
+  stable value, such as a function.
+
+Core and streaming entries for one file coexist. Writing an entry removes the
+same file's entries for that language and mode under any older identity.
+Entries for files that are never written again stay until `invalidate_cache()`.
+
+The chunker version is part of the identity, so a development build whose
+version did not change keeps serving entries written before its extraction
+code changed. Call `invalidate_cache()` or use a separate `cache_dir` when
+running unreleased changes.
 
 **Upgrading from cache version 2.0.** Version 3.0 stores entries in a new
 `chunk_cache` table. Entries written by earlier releases stay in the legacy

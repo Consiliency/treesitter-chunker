@@ -8,9 +8,12 @@ Classes:
 
 Each entry is keyed by file path, language and an extraction identity: the
 extraction mode (``"core"`` or ``"streaming"``), the chunker, Tree-sitter and
-language-pack versions, and the loaded grammar's ABI, node count, symbol and
-provenance. An entry written for another mode or runtime/grammar pairing is
-never returned.
+language-pack versions, the loaded grammar's ABI, node count, symbol and
+provenance, and a fingerprint of the effective language configuration and
+metadata extractors. When the grammar has no recorded provenance (today, every
+language except Python and JavaScript) or the configuration cannot be
+fingerprinted, there is no identity and the cache is bypassed: nothing is read
+or written for that language.
 
 Example:
     cache = ASTCache(Path("~/.cache/chunker"))
@@ -28,7 +31,7 @@ import logging
 import pickle
 import sqlite3
 from contextlib import contextmanager
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
@@ -49,6 +52,7 @@ _TABLE_SQL = """
     CREATE TABLE IF NOT EXISTS chunk_cache (
         file_path TEXT NOT NULL,
         language TEXT NOT NULL,
+        extraction TEXT NOT NULL,
         extraction_identity TEXT NOT NULL,
         file_hash TEXT NOT NULL,
         file_size INTEGER NOT NULL,
@@ -70,14 +74,78 @@ def _distribution_version(distribution: str) -> str | None:
         return None
 
 
-def chunk_cache_identity(language: str, extraction: str = "core") -> str:
+class _UnidentifiableError(Exception):
+    """Raised while fingerprinting state that has no reliable identity."""
+
+
+def _code_identity(cls: type) -> str:
+    """Name chunker-owned code; code outside the package is not identified."""
+    module = getattr(cls, "__module__", "") or ""
+    if module != "chunker" and not module.startswith("chunker."):
+        raise _UnidentifiableError(f"{module}.{cls.__qualname__}")
+    return f"{module}:{cls.__qualname__}"
+
+
+def _stable_state(value: object) -> object:
+    """Return a JSON-stable form of configuration state, or raise."""
+    from chunker.languages.base import LanguageConfig
+
+    if value is None or isinstance(value, bool | int | float | str):
+        return value
+    if isinstance(value, set | frozenset):
+        items = [_stable_state(item) for item in value]
+        return {"set": sorted(items, key=lambda item: json.dumps(item, sort_keys=True))}
+    if isinstance(value, list | tuple):
+        return [_stable_state(item) for item in value]
+    if isinstance(value, dict):
+        if not all(isinstance(key, str) for key in value):
+            raise _UnidentifiableError("non-string mapping key")
+        return {key: _stable_state(item) for key, item in value.items()}
+    if isinstance(value, LanguageConfig) or (
+        is_dataclass(value) and not isinstance(value, type)
+    ):
+        return {
+            "class": _code_identity(type(value)),
+            "state": _stable_state(vars(value)),
+        }
+    raise _UnidentifiableError(type(value).__qualname__)
+
+
+def _configuration_fingerprint(language: str) -> object:
+    """Fingerprint the language configuration and extractors chunking consults.
+
+    Raises:
+        _UnidentifiableError: If any of them is code outside the chunker package or
+            holds state (for example a function) without a stable value.
+    """
+    from chunker.languages import language_config_registry
+    from chunker.metadata import MetadataExtractorFactory
+
+    config = language_config_registry.get(language)
+    extractor = MetadataExtractorFactory._extractors.get(language.lower())
+    analyzer = MetadataExtractorFactory._analyzers.get(language.lower())
+    return {
+        "language_config": None if config is None else _stable_state(config),
+        "extractor": None if extractor is None else _code_identity(extractor),
+        "analyzer": None if analyzer is None else _code_identity(analyzer),
+    }
+
+
+def chunk_cache_identity(language: str, extraction: str = "core") -> str | None:
     """Return the cache identity for ``language`` chunks extracted in ``extraction`` mode.
 
     The identity is a SHA-256 over the cache version, the extraction mode, the
-    installed chunker, Tree-sitter and language-pack versions, and the selected
+    installed chunker, Tree-sitter and language-pack versions, the selected
     grammar's ABI version, node-kind count, symbol name and provenance (for
-    example ``official:tree-sitter-python@0.25.0``). Loading the grammar to
-    read this metadata is the same load extraction performs.
+    example ``official:tree-sitter-python@0.25.0``), and a fingerprint of the
+    effective language configuration and metadata extractor classes. Loading
+    the grammar to read this metadata is the same load extraction performs.
+
+    Returns ``None`` when there is no reliable identity: the selected grammar
+    has no recorded provenance (the registry records it only for Python and
+    JavaScript), or the configuration includes code outside the chunker
+    package or state without a stable value. Callers must then bypass the
+    cache.
 
     Raises:
         ValueError: If ``extraction`` is not one of :data:`EXTRACTION_MODES`.
@@ -92,6 +160,16 @@ def chunk_cache_identity(language: str, extraction: str = "core") -> str:
     from chunker.parser import get_language_info
 
     metadata = get_language_info(language)
+    source = metadata.capabilities.get("grammar_source")
+    if not isinstance(source, str) or not source:
+        return None
+    try:
+        configuration = _configuration_fingerprint(language)
+    except _UnidentifiableError as reason:
+        logger.debug(
+            "No chunk-cache identity for %s configuration: %s", language, reason
+        )
+        return None
     payload = {
         "cache_version": CACHE_VERSION,
         "extraction": extraction,
@@ -103,11 +181,22 @@ def chunk_cache_identity(language: str, extraction: str = "core") -> str:
             "abi": metadata.version,
             "node_kinds": metadata.node_types_count,
             "symbol": metadata.symbol_name,
-            "source": metadata.capabilities.get("grammar_source"),
+            "source": source,
         },
+        "configuration": configuration,
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _identity_or_none(language: str, extraction: str) -> str | None:
+    """Return the identity, or ``None`` if the grammar cannot be identified."""
+    from chunker.exceptions import ChunkerError
+
+    try:
+        return chunk_cache_identity(language, extraction)
+    except ChunkerError:
+        return None
 
 
 def _compute_checksum(data: bytes) -> str:
@@ -193,19 +282,17 @@ class ASTCache:
         ``extraction`` names the mode that produced the chunks (``"core"`` for
         :func:`chunker.chunk_file`, ``"streaming"`` for
         :func:`chunker.streaming.chunk_file_streaming`). Entries from another
-        mode or runtime/grammar pairing are not returned. A grammar that cannot
-        be loaded is a cache miss, so extraction reports the load error.
+        mode or identity are not returned. Without an identity (see
+        :func:`chunk_cache_identity`), or when the grammar cannot be loaded,
+        nothing is read and this returns ``None``, so the caller extracts.
         Includes integrity verification via checksum validation.
         """
+        identity = _identity_or_none(language, extraction)
+        if identity is None:
+            return None
         try:
             metadata = get_file_metadata(path)
         except OSError:
-            return None
-        from chunker.exceptions import ChunkerError
-
-        try:
-            identity = chunk_cache_identity(language, extraction)
-        except ChunkerError:
             return None
 
         with self._get_connection() as conn:
@@ -263,9 +350,17 @@ class ASTCache:
         chunks: list[CodeChunk],
         *,
         extraction: str = "core",
-    ):
-        """Cache chunks produced by ``extraction`` mode with an integrity checksum."""
-        identity = chunk_cache_identity(language, extraction)
+    ) -> bool:
+        """Cache chunks produced by ``extraction`` mode with an integrity checksum.
+
+        Returns ``False`` without writing when there is no identity (see
+        :func:`chunk_cache_identity`) or the grammar cannot be loaded. A write
+        also removes this file's entries for the same language and mode under
+        any older identity.
+        """
+        identity = _identity_or_none(language, extraction)
+        if identity is None:
+            return False
         metadata = get_file_metadata(path)
 
         # Serialize chunks
@@ -278,14 +373,23 @@ class ASTCache:
         with self._get_connection() as conn:
             conn.execute(
                 """
+                DELETE FROM chunk_cache
+                WHERE file_path = ? AND language = ? AND extraction = ?
+                AND extraction_identity <> ?
+            """,
+                (str(path), language, extraction, identity),
+            )
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO chunk_cache
-                (file_path, language, extraction_identity, file_hash, file_size,
-                 mtime, chunks_data, data_checksum, cache_version)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (file_path, language, extraction, extraction_identity, file_hash,
+                 file_size, mtime, chunks_data, data_checksum, cache_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     str(path),
                     language,
+                    extraction,
                     identity,
                     metadata.hash,
                     metadata.size,
@@ -295,6 +399,7 @@ class ASTCache:
                     CACHE_VERSION,
                 ),
             )
+        return True
 
     def _delete_entry(self, path: Path, language: str, identity: str) -> None:
         with self._get_connection() as conn:
