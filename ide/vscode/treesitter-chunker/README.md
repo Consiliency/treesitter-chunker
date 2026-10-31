@@ -21,7 +21,7 @@ Semantic code chunking extension for Visual Studio Code using Tree-sitter for in
 
 ## Requirements
 
-- Python 3.10 or higher
+- Python 3.12 or higher
 - treesitter-chunker package installed: `pip install treesitter-chunker`
 
 ## Extension Settings

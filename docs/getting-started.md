@@ -13,7 +13,7 @@ Tree-sitter Chunker intelligently splits source code into semantic chunks like f
 
 ## Prerequisites
 
-- Python 3.11 or higher
+- Python 3.12 or higher (published 6.0.0 also supports 3.11)
 - Basic command line familiarity
 - Network access for first-use parser downloads, or a cache prefetched while online
 - A C compiler only when building custom grammars or installing a BAML source distribution
