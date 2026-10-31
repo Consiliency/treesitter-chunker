@@ -13,7 +13,7 @@ for reference only; SETTINGS consumes it.
 | D2 | treesitter-chunker#453 | (b) namespaced caller key | [issuecomment-6549421303](https://github.com/Consiliency/treesitter-chunker/issues/453#issuecomment-6549421303) (ViperJuice) | 2026-10-31 |
 | D3 | treesitter-chunker#471 | (a) CR→LF with byte-offset map | [issuecomment-6549421467](https://github.com/Consiliency/treesitter-chunker/issues/471#issuecomment-6549421467) (ViperJuice) | 2026-10-31 |
 | D4 | treesitter-chunker#516 | (a) implement | [issuecomment-6549421600](https://github.com/Consiliency/treesitter-chunker/issues/516#issuecomment-6549421600) (ViperJuice) | 2026-10-31 |
-| D5 | treesitter-chunker#507 | Audit first, then the owner flips the setting | [issuecomment-6549421775](https://github.com/Consiliency/treesitter-chunker/issues/507#issuecomment-6549421775) (ViperJuice) | 2026-10-31 |
+| D5 | treesitter-chunker#507 | Audit first, then switch the default to read-only via the GitHub API once the audit PR merges | [issuecomment-6549421775](https://github.com/Consiliency/treesitter-chunker/issues/507#issuecomment-6549421775) (ViperJuice) | 2026-10-31 |
 
 ## D1 — First-use download policy (treesitter-chunker#357) — IF-0-OWNERDEC-1
 
@@ -59,8 +59,14 @@ Consumer: FOLLOWUP lane SL-call.
 
 Decision: audit first, then flip. Add explicit least-privilege `permissions:`
 to every workflow and job, granting write scopes only where publishing or
-another write is required (CIFAST lane SL-perm). After that PR merges, the
-owner switches the repository default to read-only. Agents do not change the
-repository setting.
+another write is required (CIFAST lane SL-perm). In the owner's words: "After
+that PR merges, the maintainer authorizes switching the repository's default
+workflow permissions to read-only via the GitHub API."
+
+Execution note (not part of the owner's decision): in the 2026-10-31 roadmap
+run, the parent session that commissioned the run performs the switch after
+the SL-perm PR merges. The phase runner and its delegates do not change the
+setting themselves. SETTINGS then verifies the result read-only, per its exit
+criteria.
 
 Consumer: CIFAST SL-perm (source audit), then SETTINGS (the owner's action).
