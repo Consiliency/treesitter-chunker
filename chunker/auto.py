@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from .chunker import chunk_file_with_token_limit, chunk_text_with_token_limit
 from ._internal.registry import baml_companion_available
 from .contracts.auto_contract import AutoChunkResult, ZeroConfigContract
-from .core import chunk_file, chunk_text
+from .core import chunk_file, chunk_text, ensure_regular_file
 from .exceptions import (
     BamlExtraRequiredError,
     ChunkerError,
@@ -175,6 +175,9 @@ class ZeroConfigAPI(ZeroConfigContract):
         file_path = Path(file_path)
         if not file_path.exists():
             raise ValueError(f"File not found: {file_path}")
+        # Shebang detection and the fallback chunker open the file; reject
+        # FIFOs and devices first (treesitter-chunker#435).
+        ensure_regular_file(file_path)
         if not language:
             detected = self.detect_language(file_path)
             if not detected:

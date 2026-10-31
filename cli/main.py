@@ -18,6 +18,8 @@ from rich.table import Table
 # Ensure language configs are loaded
 from chunker import chunk_file, chunk_text
 from chunker.boundary import dumps_boundary_ir, extract_boundary_ir
+from chunker.core import ensure_regular_file
+from chunker.exceptions import NonRegularFileError
 from chunker.export import write_boundary_ir
 from chunker.parser import list_languages
 
@@ -143,6 +145,13 @@ def boundary(
     ),
 ):
     """Generate canonical Boundary IR for a file or repository."""
+    if not path.is_dir():
+        # Repositories are directories; any other input must be a regular
+        # file. Never open FIFOs or devices (treesitter-chunker#435).
+        input_error = _non_regular_input_error(path)
+        if input_error:
+            _print_input_error(input_error)
+            raise typer.Exit(1)
     ir = extract_boundary_ir(
         path,
         language,
@@ -248,6 +257,30 @@ def load_config(
                     )
 
     return config
+
+
+def _non_regular_input_error(path: Path) -> str | None:
+    """Return an error message if ``path`` is not a regular file.
+
+    Checks with ``os.stat`` only, never opening the path: opening a FIFO for
+    reading blocks, and the read cannot reliably be interrupted by SIGINT
+    (treesitter-chunker#435). Symlinks to regular files are accepted.
+    """
+    try:
+        ensure_regular_file(path)
+    except NonRegularFileError as exc:
+        return str(exc)
+    return None
+
+
+def _print_input_error(message: str) -> None:
+    stderr_console.print(
+        f"Error: {message}",
+        style="red",
+        markup=False,
+        highlight=False,
+        soft_wrap=True,
+    )
 
 
 def get_files_from_patterns(
@@ -471,34 +504,44 @@ def chunk(
             )
             sys.exit(1)
 
-        # Load config
-        # Load config relative to the file being processed
-        cfg = load_config(config, for_path=file_path)
-
-        # Parse chunk types
-        types_list = None
-        if chunk_types:
-            types_list = [t.strip() for t in chunk_types.split(",")]
-        elif "chunk_types" in cfg:
-            types_list = cfg["chunk_types"]
-
-        # Get size limits from config if not specified
-        if min_size is None and "min_chunk_size" in cfg:
-            min_size = cfg["min_chunk_size"]
-        if max_size is None and "max_chunk_size" in cfg:
-            max_size = cfg["max_chunk_size"]
-
-        try:
-            results = process_file(file_path, language, types_list, min_size, max_size)
-        except Exception as e:
-            stderr_console.print(
-                f"Error processing {file_path}: {e}",
-                style="red",
-                markup=False,
-                highlight=False,
-                soft_wrap=True,
-            )
+        # Reject FIFOs, devices, sockets and directories before anything
+        # opens the path (treesitter-chunker#435). Like other failures, this
+        # still emits structured stdout and exits 1.
+        input_error = _non_regular_input_error(file_path)
+        if input_error:
+            _print_input_error(input_error)
             failed = True
+        else:
+            # Load config
+            # Load config relative to the file being processed
+            cfg = load_config(config, for_path=file_path)
+
+            # Parse chunk types
+            types_list = None
+            if chunk_types:
+                types_list = [t.strip() for t in chunk_types.split(",")]
+            elif "chunk_types" in cfg:
+                types_list = cfg["chunk_types"]
+
+            # Get size limits from config if not specified
+            if min_size is None and "min_chunk_size" in cfg:
+                min_size = cfg["min_chunk_size"]
+            if max_size is None and "max_chunk_size" in cfg:
+                max_size = cfg["max_chunk_size"]
+
+            try:
+                results = process_file(
+                    file_path, language, types_list, min_size, max_size
+                )
+            except Exception as e:
+                stderr_console.print(
+                    f"Error processing {file_path}: {e}",
+                    style="red",
+                    markup=False,
+                    highlight=False,
+                    soft_wrap=True,
+                )
+                failed = True
 
     # Handle output format
     if json_out or output_format == "json":
@@ -668,16 +711,21 @@ def batch(
 
     # Collect files to process
     files_to_process = []
+    rejected_inputs = False
 
     if from_stdin:
         # Read file_path paths from stdin
         for line in sys.stdin:
             path = Path(line.strip())
-            if (
-                path.exists()
-                and path.is_file()
-                and should_include_file(path, include_patterns, exclude_patterns)
-            ):
+            if not path.exists() or path.is_dir():
+                continue
+            input_error = _non_regular_input_error(path)
+            if input_error:
+                # Named explicitly but unreadable as a file: report it rather
+                # than skip silently or block opening it (treesitter-chunker#435).
+                _print_input_error(input_error)
+                rejected_inputs = True
+            elif should_include_file(path, include_patterns, exclude_patterns):
                 files_to_process.append(path)
     # Process provided paths
     elif not paths and pattern:
@@ -690,12 +738,9 @@ def batch(
     elif paths:
         # Process provided paths
         for path in paths:
-            if path.is_file() and should_include_file(
-                path,
-                include_patterns,
-                exclude_patterns,
-            ):
-                files_to_process.append(path)
+            if path.is_file():
+                if should_include_file(path, include_patterns, exclude_patterns):
+                    files_to_process.append(path)
             elif path.is_dir():
                 # Process directory
                 if recursive:
@@ -720,6 +765,14 @@ def batch(
                             exclude_patterns,
                         )
                     )
+            elif path.exists():
+                # FIFOs, devices and sockets named explicitly are rejected
+                # without being opened (treesitter-chunker#435). Directory
+                # walks above only collect regular files (Path.is_file()).
+                _print_input_error(
+                    _non_regular_input_error(path) or f"{path} is not a regular file"
+                )
+                rejected_inputs = True
     else:
         stderr_console.print(
             "[red]Error: No files specified. Use paths, --pattern, or --stdin[/red]",
@@ -731,7 +784,7 @@ def batch(
 
     # Process files
     all_results = []
-    failed = False
+    failed = rejected_inputs
 
     def process_with_progress(file_path: Path):
         return process_file(file_path, language, types_list, min_size, max_size)

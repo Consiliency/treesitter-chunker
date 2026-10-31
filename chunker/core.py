@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import stat
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -15,6 +16,7 @@ __all__ = [
 ]
 
 # Imported lazily below to avoid circular import with multi_language
+from .exceptions import NonRegularFileError
 from .metadata import MetadataExtractorFactory
 from .parser import get_parser
 from .types import (
@@ -1241,6 +1243,34 @@ def chunk_text(
     return chunks
 
 
+def _non_regular_kind(mode: int) -> str:
+    if stat.S_ISDIR(mode):
+        return "directory"
+    if stat.S_ISFIFO(mode):
+        return "FIFO/named pipe"
+    if stat.S_ISCHR(mode):
+        return "character device"
+    if stat.S_ISBLK(mode):
+        return "block device"
+    if stat.S_ISSOCK(mode):
+        return "socket"
+    return "special file"
+
+
+def ensure_regular_file(path: str | Path) -> None:
+    """Reject ``path`` unless it resolves to a regular file, without opening it.
+
+    Uses ``Path.stat`` (``os.stat``, which follows symlinks), so symlinks to regular files are
+    accepted. Missing paths raise ``FileNotFoundError`` as an open would.
+
+    Raises:
+        NonRegularFileError: if the path is a FIFO, device, socket or directory.
+    """
+    mode = Path(path).stat().st_mode
+    if not stat.S_ISREG(mode):
+        raise NonRegularFileError(path, _non_regular_kind(mode))
+
+
 def chunk_file(
     path: str | Path,
     language: str,
@@ -1264,7 +1294,15 @@ def chunk_file(
 
     Returns:
         List of CodeChunk objects with optional metadata
+
+    Raises:
+        NonRegularFileError: if ``path`` is not a regular file (for example a
+            FIFO, device, socket or directory). Checked without opening it.
     """
+    # Reject FIFOs, devices, sockets and directories before opening: opening a
+    # FIFO blocks, and the blocking read cannot reliably be interrupted
+    # (treesitter-chunker#435).
+    ensure_regular_file(path)
     # Read file contents with robust decoding
     p = Path(path)
     identity = identity_path if identity_path is not None else str(path)

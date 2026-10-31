@@ -442,6 +442,26 @@ class ConfigurationError(ChunkerError):
         self.path = path
 
 
+class NonRegularFileError(ChunkerError):
+    """Raised when a source path is not a regular file.
+
+    FIFOs, character and block devices, sockets and directories are rejected
+    before they are opened: opening a FIFO for reading blocks, and a blocking
+    read on a held-open pipe cannot reliably be interrupted by SIGINT
+    (treesitter-chunker#435). Symlinks are followed, so a link to a regular
+    file is accepted.
+    """
+
+    def __init__(self, path: str | Path, kind: str):
+        message = (
+            f"{path} is not a regular file ({kind}); pipes, devices, sockets "
+            "and directories are not supported, save the input to a file first"
+        )
+        super().__init__(message)
+        self.path = str(path)
+        self.kind = kind
+
+
 __all__ = [
     "ChunkerError",
     "ConfigurationError",
@@ -451,6 +471,7 @@ __all__ = [
     "LibraryError",
     "LibraryLoadError",
     "LibraryNotFoundError",
+    "NonRegularFileError",
     "ParserConfigError",
     "ParserError",
     "ParserInitError",

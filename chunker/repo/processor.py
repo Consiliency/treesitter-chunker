@@ -480,7 +480,10 @@ class RepoProcessor(RepoProcessorInterface):
             # Process files
             for filename in filenames:
                 file_path = root_path / filename
-                if self._should_include_file(
+                # os.walk lists FIFOs, devices and sockets as files; only
+                # regular files (or symlinks to them) are safe to open
+                # (treesitter-chunker#435).
+                if file_path.is_file() and self._should_include_file(
                     file_path,
                     repo_path,
                     exclude_spec,
@@ -1003,7 +1006,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             path = repo_root / rel
             ext = path.suffix.lower()
             language = self._language_extensions.get(ext)
-            if not language or not path.exists():
+            # is_file() also skips FIFOs and devices, which would block on
+            # open (treesitter-chunker#435).
+            if not language or not path.is_file():
                 continue
             try:
                 content = (
