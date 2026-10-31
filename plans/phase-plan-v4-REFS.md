@@ -101,12 +101,15 @@ Decisions this plan makes, which are open to challenge in review:
    walrus targets reported as references) and treesitter-chunker#545
    (JavaScript `rest_pattern`, object-pattern `pair_pattern` values and
    `catch` parameters reported as references).
-6. **CI selection.** The new contract tests, like the existing
-   `tests/unit/context` and scope contract tests, are not in the PR smoke
-   selection (`scripts/run_ci_smoke.py`). They run in the scheduled full
-   tier. VB-2 evidence is recorded locally in each PR. Adding them to the
-   smoke list is a CI selection change outside REFS ownership; it is raised
-   with the parent rather than made here.
+6. **CI selection (parent decision, 2026-10-31).** Hosted PR CI must run
+   the new REFS tests. Following HOTFIX, each PR enrolls its own tests in the
+   platform-core batch (`scripts/run_platform_core.py`, run by `test.yml` on
+   Linux, macOS and Windows): SL-fix enrolls
+   `tests/test_reference_fixture_oracle.py`, SL-py
+   `tests/test_python_reference_oracle_contract.py` and SL-js
+   `tests/test_javascript_reference_oracle_contract.py`. These are
+   acknowledged out-of-lane registration edits, placed at separate anchors so
+   the two language PRs do not conflict.
 
 ## Lane Index & Dependencies
 
@@ -131,7 +134,8 @@ SL-js — JavaScript generator context and binding repairs
 
 - **Scope**: Publish IF-0-REFS-1 and this plan. No product code changes.
 - **Owned files**: `tests/fixtures/references/**`, `tests/reference_oracle.py`,
-  `tests/test_reference_fixture_oracle.py`, `plans/phase-plan-v4-REFS.md`
+  `tests/test_reference_fixture_oracle.py`, `plans/phase-plan-v4-REFS.md`;
+  one registration line in `scripts/run_platform_core.py` (decision 6)
 - **Interfaces provided**: IF-0-REFS-1
 - **Tasks**:
   - Write one fixture and oracle per issue, with positive and negative
@@ -142,7 +146,8 @@ SL-js — JavaScript generator context and binding repairs
 ### SL-py — Python (one PR; commits treesitter-chunker#274 → treesitter-chunker#294 → treesitter-chunker#278)
 
 - **Owned files**: `chunker/context/languages/python.py`,
-  `tests/test_python_reference_oracle_contract.py`
+  `tests/test_python_reference_oracle_contract.py`; one registration line in
+  `scripts/run_platform_core.py` (decision 6)
 - **Interfaces consumed**: IF-0-REFS-1
 - **Tasks and named mutations**:
   - treesitter-chunker#274: `PythonSymbolResolver._get_defined_name` returns
@@ -169,7 +174,8 @@ SL-js — JavaScript generator context and binding repairs
 ### SL-js — JavaScript (one PR; commits treesitter-chunker#289 → treesitter-chunker#293)
 
 - **Owned files**: `chunker/context/languages/javascript.py`,
-  `tests/test_javascript_reference_oracle_contract.py`
+  `tests/test_javascript_reference_oracle_contract.py`; one registration line
+  in `scripts/run_platform_core.py` (decision 6)
 - **Interfaces consumed**: IF-0-REFS-1
 - **Tasks and named mutations**:
   - treesitter-chunker#289: add `generator_function_declaration` and
