@@ -7,7 +7,8 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from chunker.core import chunk_file
+from chunker.core import chunk_file, ensure_regular_file
+from chunker.exceptions import NonRegularFileError
 
 # Import debug modules conditionally to handle missing graphviz
 try:
@@ -83,6 +84,28 @@ except ImportError as e:
 
 app = typer.Typer(help="Debug and visualization tools for Tree-sitter chunker")
 console = Console()
+stderr_console = Console(stderr=True)
+
+
+def _require_regular_file(file_path: Path | None) -> None:
+    """Exit 1 unless ``file_path`` is a regular file, without opening it.
+
+    Opening a FIFO for reading blocks, and the read cannot reliably be
+    interrupted (treesitter-chunker#435). Call this before any source read.
+    """
+    if file_path is None:
+        return
+    try:
+        ensure_regular_file(file_path)
+    except NonRegularFileError as exc:
+        stderr_console.print(
+            f"Error: {exc}",
+            style="red",
+            markup=False,
+            highlight=False,
+            soft_wrap=True,
+        )
+        raise typer.Exit(1) from exc
 
 
 @app.command()
@@ -101,6 +124,7 @@ def repl(
     ),
 ):
     """Start interactive debugging REPL."""
+    _require_regular_file(file_path)
     if not HAS_DEBUG_MODULES:
         console.print(
             "[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]"
@@ -165,6 +189,7 @@ def ast(
     ),
 ):
     """Visualize AST for a source file_path."""
+    _require_regular_file(file_path)
     if not HAS_DEBUG_MODULES:
         console.print(
             "[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]"
@@ -271,6 +296,7 @@ def query(
     ),
 ):
     """Debug a Tree-sitter query."""
+    _require_regular_file(file_path)
     # Get source code
     if file_path:
         with Path(file_path).open(encoding="utf-8") as f:
@@ -343,6 +369,7 @@ def chunks(
     ),
 ):
     """Analyze and debug chunking decisions."""
+    _require_regular_file(file_path)
     if not HAS_DEBUG_MODULES:
         console.print(
             "[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]"
@@ -407,6 +434,7 @@ def explore(
     language: str = typer.Option(..., "--lang", "-l", help="Programming language"),
 ):
     """Interactively explore AST nodes."""
+    _require_regular_file(file_path)
     if not HAS_DEBUG_MODULES:
         console.print(
             "[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]"
@@ -452,6 +480,7 @@ def validate(
     ),
 ):
     """Validate parsing and identify errors."""
+    _require_regular_file(file_path)
     if not HAS_DEBUG_MODULES:
         console.print(
             "[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]"
