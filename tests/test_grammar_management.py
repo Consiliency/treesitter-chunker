@@ -355,8 +355,8 @@ class TestUserGrammarTools:
         assert tools.manager is not None
 
     @patch("subprocess.run")
-    def test_install_grammar_success(self, mock_run, tools):
-        """Test successful grammar installation."""
+    def test_install_grammar_rejects_unadmitted_library(self, mock_run, tools):
+        """An unpinned generated library is not published (treesitter-chunker#162)."""
 
         # Mock successful git clone and tree-sitter generate
         def mock_run_side_effect(*args, **kwargs):
@@ -375,18 +375,21 @@ class TestUserGrammarTools:
 
         mock_run.side_effect = mock_run_side_effect
 
-        # Mock the manager's diagnose_grammar_issues to return healthy status
-        with patch.object(tools.manager, "diagnose_grammar_issues") as mock_diagnose:
-            mock_diagnose.return_value = Mock(status="healthy")
+        result = tools.install_grammar(
+            "test_lang",
+            "https://github.com/test/repo.git",
+        )
 
-            result = tools.install_grammar(
-                "test_lang",
-                "https://github.com/test/repo.git",
-            )
-
-            assert result["status"] == "success"
-            assert len(result["steps_completed"]) > 0
-            assert len(result["errors"]) == 0
+        assert result["status"] == "error"
+        assert result["steps_completed"] == ["Cloned repository", "Generated grammar"]
+        assert result["errors"] == [
+            "Native admission failed for test_lang.so: untrusted (the library is "
+            "not trusted by an approved SHA-256 pin); the installed library is "
+            "unchanged. No approved pin was supplied for test_lang: pass "
+            "trusted_artifacts to UserGrammarTools. The grammar CLI cannot "
+            "supply pins until treesitter-chunker#362."
+        ]
+        assert list(tools.build_dir.iterdir()) == []
 
     @patch("subprocess.run")
     def test_install_grammar_git_failure(self, mock_run, tools):
@@ -461,8 +464,10 @@ class TestUserGrammarTools:
         assert "No compiled grammar library found" in result["warnings"][0]
 
     @patch("subprocess.run")
-    def test_update_grammar_success(self, mock_run, tools, temp_dirs):
-        """Test successful grammar update."""
+    def test_update_grammar_rejects_unadmitted_library(
+        self, mock_run, tools, temp_dirs
+    ):
+        """A failed admission leaves the installed library unchanged."""
         build_dir, _ = temp_dirs
 
         # Create mock source directory
@@ -487,13 +492,21 @@ class TestUserGrammarTools:
 
         # Create mock .so file after generation
         (source_dir / "test_lang.so").touch()
+        installed = build_dir / "test_lang.so"
+        installed.write_bytes(b"previous library")
 
         result = tools.update_grammar("test_lang")
 
-        assert result["status"] == "warning"
-        assert len(result["steps_completed"]) > 0
-        assert len(result["errors"]) == 0
-        assert "native admission" in result["warnings"][-1]
+        assert result["status"] == "error"
+        assert "Updated to latest version" in result["steps_completed"]
+        assert result["errors"] == [
+            "Native admission failed for test_lang.so: empty (the library is "
+            "empty); the installed library is unchanged. No approved pin was "
+            "supplied for test_lang: pass trusted_artifacts to UserGrammarTools. "
+            "The grammar CLI cannot supply pins until treesitter-chunker#362."
+        ]
+        assert installed.read_bytes() == b"previous library"
+        assert sorted(path.name for path in build_dir.iterdir()) == ["test_lang.so"]
 
     @patch("subprocess.run")
     def test_update_grammar_already_up_to_date(self, mock_run, tools, temp_dirs):

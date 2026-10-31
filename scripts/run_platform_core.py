@@ -47,6 +47,7 @@ COMMON_TESTS = [
     "tests/test_compatibility_schema_version_boundaries.py",
     "tests/test_compiled_grammar_analysis_contract.py",
     "tests/test_native_grammar_library_contract.py",
+    "tests/test_user_grammar_publication.py",
     "tests/test_git_aware_linked_worktree.py",
     "tests/test_git_aware_contract.py",
     "tests/test_python_version_hints_contract.py",
