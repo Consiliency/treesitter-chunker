@@ -8,6 +8,8 @@ on:
 
 jobs:
   build-wheels:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
