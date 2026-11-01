@@ -25,6 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `CompatibilityChecker.check_compatibility` no longer reports a local
+  grammar as `DEGRADED` (score 0.7) only because the validator has no built-in
+  samples for its language (treesitter-chunker#133). That warning is still
+  reported, but it is now an evidence gap, not a performance finding.
+  Caller-supplied `code_samples` parsed with the candidate decide the level, so
+  a fully successful sample set gives `COMPATIBLE`. With no samples at all,
+  nothing was parsed, and the level is `UNKNOWN` (score 0.3). Other validation
+  warnings still give `DEGRADED`.
 - Compact files from the direct `chunker.export.graphml_exporter` and
   `graphml_yed_exporter` modules no longer double CRLF caller text leaves on
   Windows (treesitter-chunker#488). `export(path, pretty_print=False)` now
