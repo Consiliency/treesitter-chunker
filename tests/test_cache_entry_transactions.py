@@ -42,8 +42,8 @@ from tests.txn_barrier import (
 OLD = time.time() - 60 * 86400
 URL = "https://github.com/example/tree-sitter-baml"
 POSIX_SHIM = pytest.mark.skipif(
-    sys.platform == "win32" or shutil.which("gcc") is None,
-    reason="the git shim is a POSIX script and the installer builds with gcc",
+    sys.platform == "win32" or shutil.which("make") is None,
+    reason="the git shim is a POSIX script and the fixture builds with make",
 )
 
 SHIM = r"""#!{python}
@@ -100,11 +100,13 @@ sys.exit(0)
 """
 
 INSTALL = r"""
+import json
 import logging
 from pathlib import Path
 from chunker.grammar_management.core import GrammarInstaller
 
 cache, build_timeout = Path(ARGS[0]), float(ARGS[1])
+pins = json.loads(ARGS[2])
 messages = []
 
 
@@ -115,7 +117,9 @@ class Collect(logging.Handler):
 
 logging.getLogger().addHandler(Collect(level=logging.WARNING))
 logging.getLogger().setLevel(logging.WARNING)
-installer = GrammarInstaller(cache_dir=cache, build_timeout=build_timeout)
+installer = GrammarInstaller(
+    cache_dir=cache, build_timeout=build_timeout, trusted_artifacts=pins
+)
 emit("ready")
 wait()
 ok, error, _info = installer.install_grammar("baml", "https://github.com/example/tree-sitter-baml")
@@ -147,18 +151,44 @@ def _age(tree: Path, when: float = OLD) -> None:
     os.utime(tree, (when, when))
 
 
+def _library(minor: int, scratch: Path) -> Path:
+    """Compile BAML with the given minor version once per test scratch area."""
+    work = scratch / f"library-{minor}"
+    if not work.is_dir():
+        work.mkdir(parents=True)
+        text = (SOURCE / "parser.c").read_text(encoding="utf-8")
+        assert text.count(".minor_version = 1,") == 1
+        source = work / "parser.c"
+        source.write_text(
+            text.replace(".minor_version = 1,", f".minor_version = {minor},"),
+            encoding="utf-8",
+        )
+        _compile_probe_fixture(work, [source])
+    (library,) = (p for p in work.iterdir() if p.name.startswith("probe."))
+    return library
+
+
 def _repo(base: Path, *, minor: int = 1, fifo: bool = False) -> Path:
-    """A fixture grammar repository whose files and directories are all old."""
-    (base / "src" / "tree_sitter").mkdir(parents=True)
-    text = (SOURCE / "parser.c").read_text(encoding="utf-8")
-    assert text.count(".minor_version = 1,") == 1
-    text = text.replace(".minor_version = 1,", f".minor_version = {minor},")
+    """A fixture grammar repository whose files and directories are all old.
+
+    The repository has no ``src/``, so the real ``make`` fallback builds it by
+    taking a prebuilt library the caller can pin. (A ``gcc`` build is not
+    byte-reproducible on macOS: the dylib records its output path.) With
+    ``fifo``, ``src/parser.c`` includes a FIFO so the real compiler blocks.
+    """
+    base.mkdir(parents=True)
+    (base / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+    shutil.copy2(_library(minor, base.parent), base / "libbaml.so")
     if fifo:
-        text = '#include "hang.h"\n' + text
-    (base / "src" / "parser.c").write_text(text, encoding="utf-8")
-    shutil.copy2(
-        SOURCE / "tree_sitter" / "parser.h", base / "src" / "tree_sitter" / "parser.h"
-    )
+        (base / "src" / "tree_sitter").mkdir(parents=True)
+        text = (SOURCE / "parser.c").read_text(encoding="utf-8")
+        (base / "src" / "parser.c").write_text(
+            '#include "hang.h"\n' + text, encoding="utf-8"
+        )
+        shutil.copy2(
+            SOURCE / "tree_sitter" / "parser.h",
+            base / "src" / "tree_sitter" / "parser.h",
+        )
     _age(base)
     return base
 
@@ -173,6 +203,11 @@ def shim(tmp_path: Path) -> Path:
     return directory
 
 
+def _pins(repo: Path, scratch: Path) -> dict[str, dict[str, str]]:
+    """Pin the prebuilt library that ``make`` installs from ``repo``."""
+    return {"baml": {"sha256": sha256((repo / "libbaml.so").read_bytes()).hexdigest()}}
+
+
 def _env(shim: Path, repo: Path, **extra: str) -> dict[str, str]:
     return {
         **os.environ,
@@ -183,7 +218,9 @@ def _env(shim: Path, repo: Path, **extra: str) -> dict[str, str]:
 
 
 def _installer(cache: Path, env: dict[str, str], *, timeout: float = 120.0, pauses=()):
-    return Child(INSTALL, [cache, timeout], pauses=pauses, env=env)
+    repo = Path(env["TXN_GIT_FIXTURE"])
+    pins = _pins(repo, cache.parent) if repo.is_dir() else {}
+    return Child(INSTALL, [cache, timeout, json.dumps(pins)], pauses=pauses, env=env)
 
 
 def _install(cache: Path, env: dict[str, str], **kwargs) -> dict:
@@ -270,7 +307,7 @@ def test_cleanup_racing_install_keeps_republished_entry(tmp_path, shim):
         stats = pruner.finish()["stats"]
 
     assert _tree(published) == before
-    assert (published / "src" / "parser.c").is_file()
+    assert (published / "Makefile").is_file()
     assert (cache / "builds" / "baml" / "libbaml.so").is_file()
     assert not (cache / "downloads" / "tree-sitter-old").exists()
     assert stats["files_removed"] == 1
@@ -421,9 +458,6 @@ def test_build_timeout_fails_without_fallback_or_publication(tmp_path, shim):
     """
     cache = tmp_path / "cache"
     repo = _repo(tmp_path / "repo", fifo=True)
-    (repo / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-    prebuilt = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
-    shutil.copy2(prebuilt, repo / "libbaml.so")
     done = _install(cache, _env(shim, repo, TXN_GIT_FIFO="src/hang.h"), timeout=3)
     assert not done["success"]
     assert "Build aborted: GCC build timed out" in done["error"]
@@ -473,7 +507,7 @@ def test_parent_death_leaves_staging_unpublished_and_retained(tmp_path, shim):
             pruner.release()
             pruner.finish()
         assert (staged / "grandchild.txt").is_file()
-        assert (staged / "src" / "parser.c").is_file()
+        assert (staged / "Makefile").is_file()
     finally:
         _kill_pidfile(pidfile)
 
@@ -535,7 +569,7 @@ def test_windows_job_kills_grandchild_when_parent_dies(tmp_path):
 
 @POSIX_SHIM
 def test_installer_uses_its_own_staged_inputs(tmp_path, shim):
-    """Installer A pauses after its build; B installs, then its entries go.
+    """Installer A pauses at its commit section; B installs, then its entries go.
 
     A resumes and installs its own revision from its staging; a fresh process
     parses A's revision. Mutation ``consume_published_input`` (install from
@@ -548,12 +582,16 @@ def test_installer_uses_its_own_staged_inputs(tmp_path, shim):
         a = _installer(
             cache,
             _env(shim, repo_a),
-            pauses=[pause_at("run.after_group_empty", program="gcc")],
+            pauses=[
+                pause_at(
+                    "lock.before_acquire", primitive="cache_lock", section="commit"
+                )
+            ],
         )
         children.append(a)
         a.expect("ready")
         a.release()
-        a.expect("run.after_group_empty", program="gcc")
+        a.expect("lock.before_acquire", primitive="cache_lock", section="commit")
         (staged_a,) = (cache / "builds" / ".txn-staging").glob("*/baml/libbaml.so")
         staged_digest = sha256(staged_a.read_bytes()).hexdigest()
 
@@ -624,7 +662,7 @@ def test_crash_after_retire_leaves_absent_entry_that_recovers(tmp_path, shim):
     assert (cache / "downloads" / ".txn-staging" / operation).is_dir()
 
     assert _install(cache, env)["success"]
-    assert (published / "src" / "parser.c").is_file()
+    assert (published / "Makefile").is_file()
 
 
 @POSIX_SHIM
@@ -753,7 +791,7 @@ sys.path.insert(0, sys.argv[1])
 from chunker.grammar_management import _transactions as t
 from chunker.grammar_management.core import GrammarInstaller, GrammarManager
 
-root, scratch = Path(sys.argv[2]), Path(sys.argv[3])
+root, scratch, pins = Path(sys.argv[2]), Path(sys.argv[3]), json.loads(sys.argv[4])
 outcomes = {}
 warnings = []
 
@@ -791,7 +829,9 @@ try:
     (old / "lib.so").write_bytes(b"e" * 9)
     os.utime(old / "lib.so", (1, 1))
     os.utime(old, (1, 1))
-    installer = GrammarInstaller(cache_dir=root, build_timeout=120)
+    installer = GrammarInstaller(
+        cache_dir=root, build_timeout=120, trusted_artifacts=pins
+    )
     url = "https://github.com/example/tree-sitter-baml"
     outcomes["install"] = installer.install_grammar("baml", url)[:2]
     outcomes["clean_after_install"] = control_folders_clean()
@@ -837,7 +877,8 @@ def test_split_mount_namespaces_install_republish_prune_and_remove(tmp_path, shi
     root.mkdir()
     repo = _repo(tmp_path / "repo")
     env = _env(shim, repo)
-    result = run_mounting(CROSS_DEVICE, [root, tmp_path], env=env)
+    pins = json.dumps(_pins(repo, tmp_path))
+    result = run_mounting(CROSS_DEVICE, [root, tmp_path, pins], env=env)
     assert result.returncode == 0, result.stderr[-3000:]
     outcomes = json.loads(result.stdout.strip().splitlines()[-1])
     assert outcomes == {

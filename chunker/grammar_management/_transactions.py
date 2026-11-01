@@ -11,6 +11,7 @@ Only the standard library is imported at module level.
 from __future__ import annotations
 
 import errno
+import hashlib
 import json
 import logging
 import os
@@ -1822,3 +1823,561 @@ def discard_staging(
     with _STAGING_GUARD:
         _UNPUBLISHABLE.discard(key)
     return PruneResult(0, tally.bytes_freed, (), _unique(tally.errors))
+
+
+# --- Primitive 3: installation commit and rollback ----------------------------
+
+GRAMMARS_DIR: Final = "grammars"
+_ROLLBACK_SCHEMA: Final = "cache_rollback.v1"
+
+
+@dataclass(frozen=True)
+class RollbackPoint:
+    root: Path
+    operation_id: str
+    language: str
+    path: Path  # .txn/rollback/<operation-id>/
+    artifact: Path  # destination chosen by priority
+    metadata: Path  # grammars/<language>_install_info.json
+    previous_artifact_sha256: str | None
+    previous_metadata_sha256: str | None
+    intended_artifact_sha256: str
+    intended_metadata_sha256: str
+
+
+@dataclass(frozen=True)
+class RestoreResult:
+    restored: bool
+    artifact_restored: bool
+    metadata_restored: bool
+    superseded: bool
+    errors: tuple[str, ...]
+    warnings: tuple[str, ...]
+
+
+def _metadata_name(language: str) -> str:
+    _check_language(language)
+    return f"{language}_install_info.json"
+
+
+def _canonical_metadata_bytes(document: Mapping[str, Any]) -> bytes:
+    """The canonical serialization of an installation metadata document."""
+    text = json.dumps(dict(document), indent=2, sort_keys=True, ensure_ascii=False)
+    return (text + "\n").encode("utf-8")
+
+
+def _grammar_parts(root: Path, path: Path) -> tuple[str, ...]:
+    """Root-relative parts of a path that must lie under ``grammars/``."""
+    absolute = _absolute(root)
+    candidate = Path(os.path.abspath(os.fspath(path)))  # noqa: PTH100
+    try:
+        parts = candidate.relative_to(absolute).parts
+    except ValueError:
+        raise ContainmentError(
+            f"{path} is not under {absolute / GRAMMARS_DIR}"
+        ) from None
+    if len(parts) not in (2, 3) or parts[0] != GRAMMARS_DIR:
+        raise ContainmentError(f"{path} is not under {absolute / GRAMMARS_DIR}")
+    for part in parts[1:]:
+        _check_component(part, "Grammar path component")
+    return parts
+
+
+def _grammar_dir(rootdir: _Dir, subdirs: Sequence[str], *, create: bool) -> _Dir | None:
+    """Open ``grammars/`` (and a priority subdirectory) as real directories."""
+    current = _dup(rootdir)
+    for name in (GRAMMARS_DIR, *subdirs):
+        try:
+            st = current.lstat(name)
+            if st is None:
+                if not create:
+                    return None
+                with suppress(FileExistsError):
+                    current.mkdir(name, 0o755)
+            elif _is_link(st) or not stat.S_ISDIR(st.st_mode):
+                raise ContainmentError(f"{current.path / name} is not a real directory")
+            following = current.child(name)
+        finally:
+            current.close()
+        current = following
+    return current
+
+
+def _digest(directory: _Dir | None, name: str) -> str | None:
+    """SHA-256 of a regular file opened without following links."""
+    if directory is None:
+        return None
+    try:
+        fd = directory.open_file(name, os.O_RDONLY | _NONBLOCK | _BINARY)
+    except FileNotFoundError:
+        return None
+    digest = hashlib.sha256()
+    with os.fdopen(fd, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _copy_into(source: _Dir, name: str, target: _Dir, target_name: str) -> str | None:
+    """Copy a regular file (no-follow) to a new ``O_EXCL`` file; return its digest."""
+    try:
+        read_fd = source.open_file(name, os.O_RDONLY | _NONBLOCK | _BINARY)
+    except FileNotFoundError:
+        return None
+    digest = hashlib.sha256()
+    write_fd = target.open_file(
+        target_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | _BINARY, 0o600
+    )
+    with os.fdopen(read_fd, "rb") as reader, os.fdopen(write_fd, "wb") as writer:
+        for chunk in iter(lambda: reader.read(1 << 20), b""):
+            digest.update(chunk)
+            writer.write(chunk)
+        writer.flush()
+        os.fsync(writer.fileno())
+    return digest.hexdigest()
+
+
+def _write_new(directory: _Dir, name: str, data: bytes) -> None:
+    fd = directory.open_file(
+        name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | _BINARY, 0o600
+    )
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def _read_bytes(directory: _Dir, name: str) -> bytes | None:
+    try:
+        fd = directory.open_file(name, os.O_RDONLY | _NONBLOCK | _BINARY)
+    except FileNotFoundError:
+        return None
+    with os.fdopen(fd, "rb") as handle:
+        return handle.read()
+
+
+def read_installation_metadata(
+    root: Path, language: str, *, timeout: float = DEFAULT_LOCK_TIMEOUT
+) -> dict[str, Any] | None:
+    """Read ``grammars/<language>_install_info.json`` no-follow under the lock.
+
+    Returns ``None`` if it is absent. A malformed document or a link raises
+    :class:`CacheTransactionError`; the caller decides how to report it.
+    """
+    name = _metadata_name(language)
+    ctx = _LockContext(
+        "read_installation_metadata", _absolute(root), _new_operation_id()
+    )
+    with _locked(root, timeout, ctx) as rootdir:
+        grammars = _grammar_dir(rootdir, (), create=False)
+        if grammars is None:
+            return None
+        with grammars:
+            data, path = _read_document(grammars, name)
+    if data is None:
+        return None
+    return _decode_records(data, path)
+
+
+def publish_installation_metadata(
+    root: Path,
+    language: str,
+    document: Mapping[str, Any],
+    *,
+    timeout: float = DEFAULT_LOCK_TIMEOUT,
+) -> str:
+    """Replace the metadata with canonical bytes; return their SHA-256."""
+    name = _metadata_name(language)
+    data = _canonical_metadata_bytes(document)
+    ctx = _LockContext(
+        "publish_installation_metadata", _absolute(root), _new_operation_id()
+    )
+    with _locked(root, timeout, ctx) as rootdir:
+        grammars = _grammar_dir(rootdir, (), create=True)
+        assert grammars is not None
+        with grammars:
+            _replace_bytes(
+                grammars,
+                name,
+                data,
+                ctx,
+                before_replace=None,
+                after_replace="metadata.after_replace",
+            )
+    return hashlib.sha256(data).hexdigest()
+
+
+def _retained_points(rootdir: _Dir, language: str) -> list[str]:
+    found: list[str] = []
+    try:
+        area = _open_dirs(rootdir, CONTROL_DIR_NAME, "rollback")
+    except (OSError, CacheTransactionError):
+        return found
+    with area:
+        for name in _list(area):
+            if name == MARKER_NAME:
+                continue
+            try:
+                with area.child(name) as point:
+                    data = _read_bytes(point, ROLLBACK_MANIFEST_NAME)
+                if data and json.loads(data).get("language") == language:
+                    found.append(str(area.path / name / ROLLBACK_MANIFEST_NAME))
+            except (OSError, CacheTransactionError, ValueError):
+                continue
+    return found
+
+
+def create_rollback_point(
+    root: Path,
+    *,
+    language: str,
+    artifact: Path,
+    metadata_document: Mapping[str, Any],
+    artifact_sha256: str,
+    timeout: float = DEFAULT_LOCK_TIMEOUT,
+) -> RollbackPoint:
+    """Capture restorable copies of the current artifact and metadata.
+
+    Writes ``artifact.prev``, ``metadata.prev.json`` (when present) and
+    ``metadata.next.json`` into ``.txn/rollback/<operation-id>/``, then the
+    manifest last. Before capture, a recorded ``artifact_sha256`` that differs
+    from the current artifact is reported, naming any retained rollback point
+    for the language.
+    """
+    metadata_name = _metadata_name(language)
+    parts = _grammar_parts(root, artifact)
+    absolute = _absolute(root)
+    operation_id = _new_operation_id()
+    ctx = _LockContext("create_rollback_point", absolute, operation_id)
+    intended = _canonical_metadata_bytes(metadata_document)
+    with _locked(root, timeout, ctx) as rootdir:
+        grammars = _grammar_dir(rootdir, (), create=True)
+        assert grammars is not None
+        with grammars:
+            destination_dir = _grammar_dir(rootdir, parts[1:-1], create=True)
+            assert destination_dir is not None
+            with destination_dir:
+                current_artifact = _digest(destination_dir, parts[-1])
+                current = _read_bytes(grammars, metadata_name)
+                if current is not None:
+                    with suppress(ValueError, AttributeError):
+                        recorded = json.loads(current).get("artifact_sha256")
+                        if recorded and recorded != current_artifact:
+                            logger.warning(
+                                "Installed metadata for %s names artifact %s, but %s "
+                                "has %s. Retained rollback points: %s",
+                                language,
+                                recorded,
+                                artifact,
+                                current_artifact,
+                                _retained_points(rootdir, language) or "none",
+                            )
+                with (
+                    _open_dirs(rootdir, CONTROL_DIR_NAME, "rollback") as area,
+                    _control_dir(area, operation_id) as point,
+                ):
+                    previous_artifact = _copy_into(
+                        destination_dir, parts[-1], point, "artifact.prev"
+                    )
+                    previous_metadata = _copy_into(
+                        grammars, metadata_name, point, "metadata.prev.json"
+                    )
+                    _write_new(point, "metadata.next.json", intended)
+                    intended_metadata = hashlib.sha256(intended).hexdigest()
+                    manifest = {
+                        "schema": _ROLLBACK_SCHEMA,
+                        "operation_id": operation_id,
+                        "language": language,
+                        "created_ns": time.time_ns(),
+                        "artifact": {
+                            "path": "/".join(parts),
+                            "previous_sha256": previous_artifact,
+                            "previous_copy": (
+                                "artifact.prev" if previous_artifact else None
+                            ),
+                            "intended_sha256": artifact_sha256,
+                        },
+                        "metadata": {
+                            "path": f"{GRAMMARS_DIR}/{metadata_name}",
+                            "previous_sha256": previous_metadata,
+                            "previous_copy": (
+                                "metadata.prev.json" if previous_metadata else None
+                            ),
+                            "intended_sha256": intended_metadata,
+                            "intended_copy": "metadata.next.json",
+                        },
+                    }
+                    _replace_bytes(
+                        point,
+                        ROLLBACK_MANIFEST_NAME,
+                        (
+                            json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+                        ).encode(),
+                        ctx,
+                        before_replace=None,
+                    )
+                    point.fsync()
+        ctx.seam("rollback.after_capture")
+    return RollbackPoint(
+        root=Path(root),
+        operation_id=operation_id,
+        language=language,
+        path=absolute / CONTROL_DIR_NAME / "rollback" / operation_id,
+        artifact=absolute.joinpath(*parts),
+        metadata=absolute / GRAMMARS_DIR / metadata_name,
+        previous_artifact_sha256=previous_artifact,
+        previous_metadata_sha256=previous_metadata,
+        intended_artifact_sha256=artifact_sha256,
+        intended_metadata_sha256=intended_metadata,
+    )
+
+
+def _restore_metadata(
+    rootdir: _Dir,
+    point_dir: _Dir,
+    point: RollbackPoint,
+    ctx: _LockContext,
+) -> None:
+    """Return the metadata to ``Mp``: verified byte replace, or retirement."""
+    name = point.metadata.name
+    grammars = _grammar_dir(rootdir, (), create=True)
+    assert grammars is not None
+    with grammars:
+        if point.previous_metadata_sha256 is None:
+            if grammars.lstat(name) is not None:
+                _retire(grammars, name, ctx.operation_id)
+            return
+        data = _read_bytes(point_dir, "metadata.prev.json")
+        if data is None or hashlib.sha256(data).hexdigest() != (
+            point.previous_metadata_sha256
+        ):
+            raise CacheTransactionError(
+                f"Rollback copy {point.path / 'metadata.prev.json'} does not match "
+                "its recorded digest; metadata left unchanged"
+            )
+        _replace_bytes(grammars, name, data, ctx, before_replace=None)
+
+
+def _observe(rootdir: _Dir, point: RollbackPoint) -> tuple[str | None, str | None]:
+    parts = _grammar_parts(point.root, point.artifact)
+    artifact_dir = _grammar_dir(rootdir, parts[1:-1], create=False)
+    grammars = _grammar_dir(rootdir, (), create=False)
+    try:
+        return _digest(artifact_dir, parts[-1]), _digest(grammars, point.metadata.name)
+    finally:
+        for directory in (artifact_dir, grammars):
+            if directory is not None:
+                directory.close()
+
+
+def restore(
+    point: RollbackPoint,
+    *,
+    provenance: Mapping[str, Any] | None,
+    invalidate: Callable[[Path], None],
+    timeout: float = DEFAULT_LOCK_TIMEOUT,
+) -> RestoreResult:
+    """Return the artifact and metadata, as a pair, to the rollback state.
+
+    Decides artifact first. The artifact is republished only through
+    IF-0-HOTFIX-1 ``publish_native_grammar`` with the caller's ``provenance``;
+    the metadata is restored only once the artifact is at its previous digest.
+    A pair changed by a non-participant is ``superseded`` and left untouched.
+    A verified restore removes the rollback point; otherwise it is retained.
+    """
+    from chunker._internal.user_grammar_tools import publish_native_grammar
+
+    ctx = _LockContext("restore", _absolute(point.root), point.operation_id)
+    errors: list[str] = []
+    warnings: list[str] = []
+    ap, mp = point.previous_artifact_sha256, point.previous_metadata_sha256
+    ai, mi = point.intended_artifact_sha256, point.intended_metadata_sha256
+    artifact_restored = metadata_restored = superseded = False
+
+    def run_invalidate() -> None:
+        try:
+            invalidate(point.artifact)
+        except Exception as error:
+            logger.warning("Cache invalidation failed after restore: %s", error)
+            warnings.append(f"Cache invalidation failed: {error}")
+
+    with _locked(point.root, timeout, ctx) as rootdir:
+        point_dir = _open_dirs(
+            rootdir, CONTROL_DIR_NAME, "rollback", point.operation_id
+        )
+        with point_dir:
+            ac, mc = _observe(rootdir, point)
+            if (ac, mc) == (ap, mp):
+                artifact_restored = metadata_restored = True
+            elif ac == ap and mc == mi:
+                artifact_restored = True
+                try:
+                    _restore_metadata(rootdir, point_dir, point, ctx)
+                    metadata_restored = True
+                except (OSError, CacheTransactionError) as error:
+                    errors.append(str(error))
+            elif ac == ai and ac != ap and mc == mi:
+                parts = _grammar_parts(point.root, point.artifact)
+                if ap is None:
+                    with _grammar_dir(rootdir, parts[1:-1], create=True) as directory:  # type: ignore[union-attr]
+                        _retire(directory, parts[-1], ctx.operation_id)
+                    artifact_restored = True
+                    run_invalidate()
+                elif _digest(point_dir, "artifact.prev") != ap:
+                    errors.append(
+                        f"Rollback copy {point.path / 'artifact.prev'} does not match "
+                        "its recorded digest; nothing was changed"
+                    )
+                else:
+                    ctx.seam("restore.before_artifact")
+                    # Observe again: a non-participant may have changed the pair.
+                    if _observe(rootdir, point) != (ac, mc):
+                        superseded = True
+                    else:
+                        try:
+                            result = publish_native_grammar(
+                                point_dir.path / "artifact.prev",
+                                point.artifact,
+                                point.language,
+                                provenance=provenance,
+                            )
+                        except OSError as error:
+                            errors.append(f"Artifact was not restored: {error}")
+                        else:
+                            if result.supported:
+                                run_invalidate()
+                            else:
+                                errors.append(
+                                    "Artifact was not restored: the previous artifact "
+                                    f"was not admitted ({result.reason})"
+                                )
+                        artifact_restored = _observe(rootdir, point)[0] == ap
+                if artifact_restored and not superseded:
+                    ctx.seam("restore.before_metadata")
+                    try:
+                        _restore_metadata(rootdir, point_dir, point, ctx)
+                        metadata_restored = True
+                    except (OSError, CacheTransactionError) as error:
+                        errors.append(str(error))
+            else:
+                superseded = True
+        if superseded:
+            errors.append(
+                "The installation was changed by a non-participant; neither file "
+                f"was touched. Rollback point retained: {point.path}"
+            )
+        restored = artifact_restored and metadata_restored and not superseded
+        if restored:
+            _retire_rollback_point(rootdir, point.operation_id)
+        elif not superseded:
+            errors.append(f"Rollback point retained: {point.path}")
+    tally = _Tally()
+    if restored:
+        _delete_retired(
+            point.root, (CONTROL_DIR_NAME, "retired"), point.operation_id, tally
+        )
+    # Files retired by this restore stay beside their directory until deleted.
+    parts = _grammar_parts(point.root, point.artifact)
+    for directory in {(GRAMMARS_DIR,), tuple(parts[:-1])}:
+        _delete_retired(
+            point.root, (*directory, _RETIRED_DIR), point.operation_id, tally
+        )
+    warnings.extend(tally.errors)
+    return RestoreResult(
+        restored=restored,
+        artifact_restored=artifact_restored,
+        metadata_restored=metadata_restored,
+        superseded=superseded,
+        errors=tuple(errors),
+        warnings=tuple(warnings),
+    )
+
+
+def _retire_rollback_point(rootdir: _Dir, operation_id: str) -> None:
+    """Move ``.txn/rollback/<op>`` to ``.txn/retired/<op>/rollback`` (within ``.txn``)."""
+    with (
+        _open_dirs(rootdir, CONTROL_DIR_NAME) as control,
+        _open_dirs(control, "rollback") as area,
+        _control_dir(control, "retired") as retired,
+        _control_dir(retired, operation_id) as target,
+    ):
+        area.replace_into(operation_id, target, "rollback")
+
+
+def discard_rollback_point(
+    point: RollbackPoint, *, timeout: float = DEFAULT_LOCK_TIMEOUT
+) -> None:
+    """Remove a rollback point after a successful commit."""
+    ctx = _LockContext(
+        "discard_rollback_point", _absolute(point.root), point.operation_id
+    )
+    with _locked(point.root, timeout, ctx) as rootdir:
+        with _open_dirs(rootdir, CONTROL_DIR_NAME, "rollback") as area:
+            if area.lstat(point.operation_id) is None:
+                return
+        _retire_rollback_point(rootdir, point.operation_id)
+    tally = _Tally()
+    _delete_retired(
+        point.root, (CONTROL_DIR_NAME, "retired"), point.operation_id, tally
+    )
+    if tally.errors:
+        raise CacheTransactionError("; ".join(tally.errors))
+
+
+def remove_installation(
+    root: Path, language: str, *, timeout: float = DEFAULT_LOCK_TIMEOUT
+) -> PruneResult:
+    """Retire the installed artifact, then its metadata, in one lock section."""
+    name = _metadata_name(language)
+    operation_id = _new_operation_id()
+    ctx = _LockContext("remove_installation", _absolute(root), operation_id)
+    removed = 0
+    with _locked(root, timeout, ctx) as rootdir:
+        grammars = _grammar_dir(rootdir, (), create=False)
+        if grammars is None:
+            return PruneResult(0, 0, (), ())
+        with grammars:
+            data, path = _read_document(grammars, name)
+            if data is None:
+                return PruneResult(0, 0, (), ())
+            document = _decode_records(data, path)
+            install_path = document.get("install_path")
+            if not isinstance(install_path, str):
+                raise ContainmentError(f"{path} records no install_path")
+            parts = _grammar_parts(root, Path(install_path))
+            artifact_dir = _grammar_dir(rootdir, parts[1:-1], create=False)
+            if artifact_dir is not None:
+                with artifact_dir:
+                    if artifact_dir.lstat(parts[-1]) is not None:
+                        _retire(artifact_dir, parts[-1], operation_id)
+                        removed = 1
+            # Each file is retired beside itself (amendment A1).
+            _retire(grammars, name, operation_id)
+    tally = _Tally()
+    for directory in {(GRAMMARS_DIR,), tuple(parts[:-1])}:
+        _delete_retired(root, (*directory, _RETIRED_DIR), operation_id, tally)
+    return PruneResult(removed, tally.bytes_freed, (), _unique(tally.errors))
+
+
+@contextmanager
+def _commit_section(
+    root: Path, *, timeout: float = DEFAULT_LOCK_TIMEOUT
+) -> Iterator[str]:
+    """``cache_lock`` for one installation commit (seam context ``section``)."""
+    operation_id = _new_operation_id()
+    ctx = _LockContext("cache_lock", _absolute(root), operation_id, section="commit")
+    with _locked(root, timeout, ctx):
+        yield operation_id
+
+
+def _commit_seam(root: Path, operation_id: str, point: str) -> None:
+    """Private pause point inside an installation commit (N1, treesitter-chunker#540)."""
+    _seam(
+        point,
+        {
+            "primitive": "cache_lock",
+            "root": str(_absolute(root)),
+            "operation_id": operation_id,
+            "section": "commit",
+        },
+    )

@@ -634,6 +634,16 @@ stay inside the directory they belong to (hidden `.txn-staging/` and `.txn-retir
 folders, which listings and cleanup ignore), so `downloads/`, `builds/` or
 `grammars/` may each be a separate filesystem, such as a container volume.
 
+`GrammarInstaller.install_grammar` installs only languages with an approved pin,
+`GrammarInstaller(..., trusted_artifacts={"lang": {"sha256": "<64 hex>"}})`. It
+commits under the lock: it captures copies of the current library and
+`<lang>_install_info.json` in `.txn/rollback/<id>/`, writes the new metadata (now
+including `artifact_sha256`), then replaces the library through the staged,
+admitted publication used by the user-grammar tools. A failed update restores the
+previous library and metadata together and reports whether the restore completed;
+if it could not, the message names the retained rollback directory, whose
+`rollback.json` describes how to finish by hand.
+
 The separate Python `GrammarManager.remove_grammar(language, clean_cache=False)`
 option retains that language's download and build cache while removing its
 installed library and installation metadata. The default `True` cleans both

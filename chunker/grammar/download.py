@@ -383,6 +383,8 @@ class GrammarDownloadManager(GrammarDownloadContract):
         grammar_dirs = []
         so_files = []
         for item in self._cache_dir.iterdir():
+            if item.name.startswith(".txn"):
+                continue  # the core cache transaction's control folders
             if item.is_dir() and "-" in item.name:
                 grammar_dirs.append(item)
             elif item.suffix == ".so":
