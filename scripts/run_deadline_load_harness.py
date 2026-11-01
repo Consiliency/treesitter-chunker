@@ -9,7 +9,9 @@ analyzer and smoke probes, and places only the processes they start (``nm``
 and the parse child) on that CPU at low priority. Two controls, an unknown
 language and a non-ELF file, show that real failures keep their own
 classification under the same load. The probing interpreter
-itself stays unloaded, so each deadline is measured accurately. Outcomes are
+itself stays unloaded. Placement uses ``preexec_fn``, which starves a child
+mostly before ``exec`` (outside the deadline clock), so ``nm`` expiries here
+are load-dependent rather than reliable (treesitter-chunker#592). Outcomes are
 printed as JSON.
 
 A control run without contention comes first. The harness is a heavy run:
@@ -41,6 +43,9 @@ from chunker.languages.compatibility.grammar_analyzer import GrammarAnalyzer
 from tests import language_smoke
 
 # Only the processes the probes start contend for the loaded CPU.
+# Caveat (treesitter-chunker#592): preexec_fn placement starves the child
+# mostly before exec, before subprocess.run's deadline clock starts, so the
+# nm results here do not reliably reproduce in-deadline starvation.
 if cpu >= 0:
     import subprocess
 
