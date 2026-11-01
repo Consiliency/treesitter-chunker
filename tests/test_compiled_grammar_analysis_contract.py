@@ -1034,6 +1034,100 @@ class _NativeObserver:
             self.handle = None
 
 
+_CLEANUP_DRIVER = """import json, os, sys, time
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from chunker.grammar import integrity
+library, cleanup, release, returned, return_observed = map(Path, sys.argv[2:7])
+original = integrity.shutil.rmtree
+observed = {}
+def publish(path, record):
+    pending = path.with_name(path.name + ".tmp")
+    pending.write_text(json.dumps(record), encoding="utf-8")
+    pending.replace(path)
+def wait(path):
+    deadline = time.monotonic() + 45
+    while not path.exists():
+        if time.monotonic() > deadline: raise RuntimeError("driver did not release " + path.name)
+        time.sleep(0.01)
+published = Path(os.environ["CHUNKER_TEST_OPEN_PUBLISHED"])
+def remove(path, *args, **kwargs):
+    publish(cleanup, {"root": str(path), "launcher_reaped": observed["state"].launcher.returncode is not None})
+    # Only a worker that published native entry has state for the test to observe
+    # before cleanup. Without entry (for example a policy denial) report at once.
+    if published.exists():
+        wait(release)
+    return original(path, *args, **kwargs)
+original_read = integrity._read_child
+def read(*args, **kwargs):
+    observed["state"] = kwargs["lifecycle"]
+    return original_read(*args, **kwargs)
+integrity._read_child = read
+integrity.shutil.rmtree = remove
+result = integrity.probe_native_grammar(library, "baml", provenance={"sha256": sys.argv[7]})
+if result.reason == "policy_blocked":
+    print(json.dumps({"schema": "native_test.policy_result.v1", "reason": result.reason}), flush=True)
+    raise SystemExit(77)
+s = observed["state"]
+record = {"reason": result.reason, "digest": result.artifact_sha256, "launcher": s.launcher.pid, "worker": s.worker.pid if s.worker else None, "launcher_reaped": s.launcher.returncode is not None}
+publish(returned, record)
+wait(return_observed)
+print(json.dumps(record), flush=True)
+"""
+
+
+def test_cleanup_driver_reports_probe_without_native_entry_unreleased(tmp_path):
+    """A probe that never entered native code is not held at the cleanup barrier.
+
+    Only an entered worker has state for the test to observe before cleanup. A
+    probe that ends without entry, such as an application-control denial, must
+    report its result (exit 77 for a denial) rather than wait for a release the
+    test grants only after native entry.
+    """
+    library = tmp_path / "invalid.dll"
+    library.write_bytes(b"reviewed bytes that are not a native library")
+    names = ("cleanup", "release", "returned", "return-observed")
+    cleanup, release, returned, return_observed = (tmp_path / n for n in names)
+    driver = tmp_path / "driver.py"
+    driver.write_text(_CLEANUP_DRIVER, encoding="utf-8")
+    environment = dict(os.environ)
+    environment["CHUNKER_TEST_OPEN_PUBLISHED"] = str(tmp_path / "opened-published")
+    controller = subprocess.Popen(
+        [
+            sys.executable,
+            "-I",
+            str(driver),
+            str(ROOT),
+            str(library),
+            str(cleanup),
+            str(release),
+            str(returned),
+            str(return_observed),
+            sha256(library.read_bytes()).hexdigest(),
+        ],
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        _wait_for_file(returned, controller)
+        assert not release.exists(), "the test granted no release"
+        assert json.loads(cleanup.read_text(encoding="utf-8"))["launcher_reaped"]
+        record = json.loads(returned.read_text(encoding="utf-8"))
+        assert record["reason"] == "load_failed" and record["digest"] is None
+        return_observed.touch()
+        stdout, stderr = controller.communicate(timeout=45)
+        assert controller.returncode == 0, stderr
+        assert json.loads(stdout) == record
+    finally:
+        release.touch()
+        return_observed.touch()
+        if controller.poll() is None:
+            controller.kill()
+            controller.communicate(timeout=10)
+
+
 @pytest.mark.parametrize("fault", ["timeout", "stdout_overflow", "stderr_overflow"])
 def test_native_probe_worker_exits_before_snapshot_cleanup(tmp_path, fault):
     import time
@@ -1121,46 +1215,7 @@ __attribute__((constructor)) static void start(void) { enter(); }
     ]
     published = tmp_path / "opened-published"
     driver = tmp_path / "driver.py"
-    driver.write_text(
-        """
-import json, sys, time
-from pathlib import Path
-sys.path.insert(0, sys.argv[1])
-from chunker.grammar import integrity
-library, cleanup, release, returned, return_observed = map(Path, sys.argv[2:7])
-original = integrity.shutil.rmtree
-observed = {}
-def publish(path, record):
-    pending = path.with_name(path.name + ".tmp")
-    pending.write_text(json.dumps(record), encoding="utf-8")
-    pending.replace(path)
-def wait(path):
-    deadline = time.monotonic() + 45
-    while not path.exists():
-        if time.monotonic() > deadline: raise RuntimeError("driver did not release " + path.name)
-        time.sleep(0.01)
-def remove(path, *args, **kwargs):
-    publish(cleanup, {"root": str(path), "launcher_reaped": observed["state"].launcher.returncode is not None})
-    wait(release)
-    return original(path, *args, **kwargs)
-original_read = integrity._read_child
-def read(*args, **kwargs):
-    observed["state"] = kwargs["lifecycle"]
-    return original_read(*args, **kwargs)
-integrity._read_child = read
-integrity.shutil.rmtree = remove
-result = integrity.probe_native_grammar(library, "baml", provenance={"sha256": sys.argv[7]})
-if result.reason == "policy_blocked":
-    print(json.dumps({"schema": "native_test.policy_result.v1", "reason": result.reason}), flush=True)
-    raise SystemExit(77)
-s = observed["state"]
-record = {"reason": result.reason, "digest": result.artifact_sha256, "launcher": s.launcher.pid, "worker": s.worker.pid if s.worker else None, "launcher_reaped": s.launcher.returncode is not None}
-publish(returned, record)
-wait(return_observed)
-print(json.dumps(record), flush=True)
-""",
-        encoding="utf-8",
-    )
+    driver.write_text(_CLEANUP_DRIVER, encoding="utf-8")
     environment = dict(os.environ)
     environment.update(
         {
