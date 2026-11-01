@@ -256,6 +256,7 @@ def admit_native_candidate(
     sample: bytes = _DEFAULT_SAMPLE,
     timeout: float = _DEFAULT_TIMEOUT,
     probe: Callable[..., NativeProbeResult] | None = None,
+    reusable: Callable[[Any], bool] | None = None,
 ) -> tuple[NativeProbeResult, Any]:
     """Admit ``path`` for ``language`` under ``trusted_artifacts[language]``.
 
@@ -269,7 +270,11 @@ def admit_native_candidate(
     ``inspect_artifact`` runs on the probe's admitted snapshot; its return
     value is the returned metadata, and it is stored with the verdict under
     ``inspector``. A probe with a non-default ``sample`` or ``timeout`` is
-    never answered from, or stored in, the verdict store.
+    never answered from, or stored in, the verdict store. When ``reusable`` is
+    given, an ``ok`` result is stored only if ``reusable(metadata)`` is true:
+    an inspector whose metadata is transient (for example a timed-out tool
+    run) keeps its result for this call without storing it, and no other
+    inspector's verdict for the same bytes is affected.
 
     Returns:
         ``(result, metadata)``; ``metadata`` is ``None`` unless the result is
@@ -326,6 +331,7 @@ def admit_native_candidate(
         and content is not None
         and result.artifact_sha256 is not None
         and hmac.compare_digest(result.artifact_sha256, content)
+        and (reusable is None or reusable(metadata))
     ):
         store_verdict(key, language=language, content_sha256=content, metadata=metadata)
     return result, metadata

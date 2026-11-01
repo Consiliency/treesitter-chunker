@@ -134,11 +134,49 @@ def test_transient_symbol_analysis_is_not_reused(
     tmp_path, baml_bytes, probes, monkeypatch
 ):
     """An nm deadline expiry is reported for that call only; the next call
-    re-inspects instead of reusing an empty symbol table (treesitter-chunker#207)."""
+    re-inspects instead of reusing an empty symbol table (treesitter-chunker#207).
+
+    The transient result is never stored, so the other sites' verdicts for the
+    same bytes are untouched: the manager does not probe again and the loader
+    keeps its one admitted copy (contract: at most one copy per pair)."""
     import subprocess
+
+    from chunker._internal import grammar_management as manager_module
+    from chunker._internal import native_admission
+    from chunker.grammar import integrity
 
     directory = _grammars(tmp_path, baml_bytes)
     pins = {"baml": {"sha256": sha256(baml_bytes).hexdigest()}}
+    other_probes: list[str] = []
+
+    def counting(site, real):
+        def probe(*args, **kwargs):
+            other_probes.append(site)
+            return real(*args, **kwargs)
+
+        return probe
+
+    monkeypatch.setattr(
+        manager_module,
+        "probe_native_grammar",
+        counting("manager", manager_module.probe_native_grammar),
+    )
+    monkeypatch.setattr(
+        integrity,
+        "probe_native_grammar",
+        counting("loader", integrity.probe_native_grammar),
+    )
+    manager = SmartGrammarManager(
+        directory, tmp_path / "sources", trusted_artifacts=pins
+    )
+    require(manager.diagnose_grammar_issues("baml").status == "healthy", "manager")
+    loaded, copy = native_admission.admitted_private_copy(
+        directory / "baml.so", "baml", pins
+    )
+    require(loaded.supported and copy is not None, f"loader {loaded}")
+    require(other_probes == ["manager", "loader"], f"{other_probes}")
+    roots = set(native_admission._copy_roots)
+
     real_run = subprocess.run
 
     def nm_times_out(args, *rest, **kwargs):
@@ -153,7 +191,16 @@ def test_transient_symbol_analysis_is_not_reused(
         patched.setattr(grammar_analyzer.subprocess, "run", nm_times_out)
         first = analyzer.analyze_grammar_file("baml")
     require(first is not None, "the expired analysis is still returned")
-    require(len(probes) == 1, f"one probe {probes}")
+    require(len(probes) == 1, f"one analyzer probe {probes}")
+
+    # The other sites still reuse their own verdicts.
+    require(manager.diagnose_grammar_issues("baml").status == "healthy", "manager")
+    again, same_copy = native_admission.admitted_private_copy(
+        directory / "baml.so", "baml", pins
+    )
+    require(again.supported and same_copy == copy, f"same copy {same_copy} {copy}")
+    require(other_probes == ["manager", "loader"], f"no re-probe {other_probes}")
+    require(set(native_admission._copy_roots) == roots, "no second copy")
 
     second = analyzer.analyze_grammar_file("baml")
     require(second is not None, "re-inspected")
