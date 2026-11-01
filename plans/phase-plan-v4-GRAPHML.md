@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: GRAPHML
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: 0a15424c6230b812b095dd9668ecf62bd0457aebdc927533ccde04e6e20cae14
+roadmap_sha256: a96ef9073df2cd1bd860b1a151d75abc0a7edde7f242d8a2d7613c3fb38726c9
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_package_graphml_whitespace.py tests/test_graphml_exporter.py tests/test_graphml_yed_export_contract.py -q -n 4"
 ---
@@ -11,8 +11,9 @@ automation:
 
 ## Context
 
-Phase 5 of `specs/phase-plans-v4.md` (roadmap hash above, planned from main
-`60a5518f`) repairs two independent GraphML exporter defects:
+Phase 5 of `specs/phase-plans-v4.md` (roadmap hash above, refreshed at main `2d5e406b`;
+planned from `60a5518f`, Phase 5 text unchanged) repairs two independent GraphML
+exporter defects:
 
 - treesitter-chunker#489 (Tier 1): the package-level
   `chunker.export.GraphMLExporter` (`chunker/export/formats/graph.py`)
