@@ -284,9 +284,12 @@ def test_test_skip_preserves_protocol_failures(fault):
         stdout = b"not JSON"
     if fault == "duplicate":
         stdout = stdout[:-1] + b',"failure":"policy_blocked"}'
-    skip_policy_reply(
-        (1, stdout, b"", fault == "timeout", False), command, state, "nonce"
-    )
+    try:
+        skip_policy_reply(
+            (1, stdout, b"", fault == "timeout", False), command, state, "nonce"
+        )
+    except pytest.skip.Exception as skipped:
+        pytest.fail(f"{fault} must stay a test failure, not a policy skip: {skipped}")
 
 
 INJECTED = "GetExitCodeProcess unavailable"
