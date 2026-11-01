@@ -245,8 +245,8 @@ class GraphMLExporter(GraphExporterBase):
     ) -> None:
         """Export the graph to a GraphML file.
 
-        The file decodes to the same text as ``export_string()`` with the same
-        options. Compact files hold exactly the UTF-8 bytes of the compact
+        The file parses to the same XML text values as ``export_string()``
+        with the same options. Compact files hold exactly the UTF-8 bytes of the compact
         string, so a caller CR, LF or CRLF leaf is not translated into extra
         line breaks on Windows (treesitter-chunker#488). Pretty text leaves
         are already LF-normalized, so pretty files keep native newlines.

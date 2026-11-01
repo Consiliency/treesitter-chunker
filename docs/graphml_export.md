@@ -301,11 +301,11 @@ empty-element layout may differ from earlier output.
 Pretty text leaves retain XML newline normalization: CRLF and lone CR become LF;
 space-TAB-space leaves stay intact. Caller inputs are unchanged.
 
-File output decodes to the same text as `export_string()` with the same options,
-on every platform and for the plain, yEd and `use_yed=False` delegated routes
+File output parses to the same XML text values as `export_string()` with the
+same options, on every platform and for the plain, yEd and `use_yed=False` delegated routes
 (treesitter-chunker#488). Compact files contain exactly the UTF-8 bytes of the
 compact string, with no newline translation, so a caller CR, LF or CRLF text
-leaf decodes the same way from the file as from the string: an XML reader
+leaf parses to the same value from the file as from the string: an XML reader
 reports LF for each of them. Earlier releases translated LF to CRLF in compact
 Windows files, which turned a CRLF leaf into two decoded LF characters.
 Pretty files keep native newline translation; their text leaves are already
