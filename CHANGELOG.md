@@ -218,7 +218,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unpinned local grammar is no longer valid. `test_parse_samples` without a path
   uses the validator's own registry, never `chunker.parser`. `grammar build` no
   longer loads unpinned output (`built, not admitted`, exit 0) and probes pinned
-  output. The validation cache is keyed by content, pin and environment, reused
+  output; `grammar validate --fix` reports a rebuilt grammar valid only when it
+  then passes admission. The validation cache is keyed by content, pin and environment, reused
   only after an admission in the same process, and failed results are not
   stored. `GrammarManager.get_admitted_health()` (IF-0-ADMIT-1) is the admitted
   health accessor. The grammar self-tests no longer reload the original library

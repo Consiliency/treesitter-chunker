@@ -2343,9 +2343,26 @@ if __name__ == "__main__":
                     click.echo(f"    🔧 Attempting to rebuild {language}...")
                     build_result = self.build_grammar(language, force=True)
                     if build_result == 0:
-                        result["fixes_applied"].append("Grammar rebuilt successfully")
-                        result["valid"] = True
-                        result["status"] = "fixed"
+                        # A 0 return can mean "built, not admitted": report the
+                        # grammar valid only if the reported path now admits.
+                        from chunker._internal.native_admission import (
+                            admit_native_candidate,
+                        )
+
+                        readmission, _ = admit_native_candidate(
+                            grammar_path.absolute(), language, self.trusted_artifacts
+                        )
+                        if readmission.supported:
+                            result["fixes_applied"].append(
+                                "Grammar rebuilt successfully"
+                            )
+                            result["valid"] = True
+                            result["status"] = "fixed"
+                        else:
+                            result["fixes_applied"].append(
+                                "Grammar rebuilt, not admitted: "
+                                f"{readmission.reason}"
+                            )
                     else:
                         result["fixes_applied"].append("Grammar rebuild failed")
                 except Exception as fix_error:

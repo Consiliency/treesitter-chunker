@@ -40,7 +40,7 @@ from typing import Any
 
 from tree_sitter import Language, Parser
 
-from chunker._internal.trusted_artifacts import copy_trusted_artifacts, pin_provenance
+from chunker._internal.trusted_artifacts import copy_trusted_artifacts
 from chunker.exceptions import ChunkerError
 from chunker.grammar.source_validation import validate_grammar_source
 
@@ -215,7 +215,12 @@ class GrammarValidator:
             # A cached result is returned only under the frozen verdict key and
             # only when this process already holds a fresh ok admission under
             # it; a persisted entry alone is never an admission receipt.
-            cache_key = self._verdict_cache_key(grammar_path, language, level)
+            # The shared trust rule (RECORD check, then the pin) runs before
+            # any cache reuse, so a cached result can never rescue a RECORD
+            # mismatch or an untrusted candidate.
+            cache_key, cache_digest = self._verdict_cache_key(
+                grammar_path, language, level
+            )
             if cache_key is not None and cache_key in self._cache:
                 cached_result = self._cache[cache_key]
                 # The 24-hour expiry may only shorten reuse.
@@ -234,8 +239,8 @@ class GrammarValidator:
                 result = self._validate_extensive(grammar_path, language)
 
             # Only valid results under a pinned, matching digest are stored.
-            if cache_key is not None and result.is_valid:
-                self._record_fresh_admission(cache_key, grammar_path, language)
+            if cache_key is not None and cache_digest is not None and result.is_valid:
+                self._record_fresh_admission(cache_key, cache_digest, language)
                 self._cache_validation_result(cache_key, result)
 
             return result
@@ -364,24 +369,37 @@ class GrammarValidator:
 
     def _verdict_cache_key(
         self, grammar_path: Path, language: str, level: ValidationLevel
-    ) -> str | None:
-        """Return the frozen verdict key for a pinned, matching candidate."""
-        from chunker._internal.native_admission import hash_regular_file, verdict_key
+    ) -> tuple[str | None, str | None]:
+        """Return ``(key, digest)`` for an admissible, matching candidate.
 
-        record = pin_provenance(self._trusted_artifacts, language)
+        The record comes from the shared trust rule
+        (``native_admission.admission_record``): a RECORD-verified package file
+        uses its RECORD digest, a RECORD mismatch or a missing pin yields no
+        key, and only then is the pin used. The key stays path-independent.
+        """
+        from chunker._internal.native_admission import (
+            admission_record,
+            hash_regular_file,
+            verdict_key,
+        )
+
+        record, _rejection = admission_record(
+            grammar_path.absolute(), language, self._trusted_artifacts
+        )
         if record is None:
-            return None
+            return None, None
         pin = record["sha256"].lower()
         content = hash_regular_file(grammar_path)
         if content is None or content != pin:
-            return None
-        return verdict_key(
+            return None, None
+        key = verdict_key(
             language=language,
             pin_sha256=pin,
             content_sha256=content,
             level=level.value,
             inspector="none",
         )
+        return key, content
 
     @staticmethod
     def _holds_fresh_admission(cache_key: str) -> bool:
@@ -389,14 +407,12 @@ class GrammarValidator:
 
         return has_verdict(cache_key)
 
-    def _record_fresh_admission(
-        self, cache_key: str, grammar_path: Path, language: str
-    ) -> None:
-        from chunker._internal.native_admission import hash_regular_file, store_verdict
+    @staticmethod
+    def _record_fresh_admission(cache_key: str, digest: str, language: str) -> None:
+        """Index the verdict under the digest the key was computed from."""
+        from chunker._internal.native_admission import store_verdict
 
-        content = hash_regular_file(grammar_path)
-        if content is not None:
-            store_verdict(cache_key, language=language, content_sha256=content)
+        store_verdict(cache_key, language=language, content_sha256=digest)
 
     def _validate_basic(self, grammar_path: Path, language: str) -> ValidationResult:
         """Perform basic validation (file existence and basic checks)."""
@@ -1701,7 +1717,18 @@ class GrammarManager:
         issues = (
             [] if result.supported else [f"Native admission failed: {result.reason}"]
         )
-        if result.reason in {"untrusted", "integrity_mismatch"}:
+        from chunker._internal.package_supplier import MISMATCH, package_supplied_digest
+
+        if (
+            result.reason == "integrity_mismatch"
+            and package_supplied_digest(path)[0] == MISMATCH
+        ):
+            # No pin can override a RECORD mismatch (one trust rule).
+            issues.append(
+                f"The installed package grammar {path} differs from the "
+                "treesitter-chunker package RECORD; reinstall the package"
+            )
+        elif result.reason in {"untrusted", "integrity_mismatch"}:
             issues.append(
                 f"Supply an approved SHA-256 pin for {language} via "
                 "--trusted-artifacts or the user-config pin file"

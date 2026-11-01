@@ -395,9 +395,11 @@ def _installed(cache: Path, data: bytes) -> Path:
     return library
 
 
-def test_click_group_option_and_config_fallback(isolated, tmp_path, fixture_bytes):
+def test_click_group_option_and_config_fallback(
+    isolated, tmp_path, fixture_bytes, loads
+):
     cache = tmp_path / "cache"
-    _installed(cache, fixture_bytes)
+    installed = _installed(cache, fixture_bytes)
     pins = tmp_path / "pins.json"
     pins.write_text(_document({LANGUAGE: _pin(fixture_bytes)}), encoding="utf-8")
     sample = tmp_path / "sample.baml"
@@ -409,6 +411,12 @@ def test_click_group_option_and_config_fallback(isolated, tmp_path, fixture_byte
 
     with_option = _click(cache, "test", LANGUAGE, str(sample), pins=pins)
     require(with_option.exit_code == 0, with_option.output)
+    # N6: the test command loads only the admitted private copy.
+    require(loads and installed not in loads, f"installed path never mapped {loads}")
+    require(
+        all(path.parent.name.startswith("chunker-admitted-") for path in loads),
+        f"admitted copies only {loads}",
+    )
     require("Grammar test successful" in with_option.output, with_option.output)
 
     config = user_config_pin_path()
@@ -615,5 +623,157 @@ def test_admitted_health_honours_record_verified_package_grammars(
             mismatch["validation_reason"] == "integrity_mismatch",
             f"no pin rescues a RECORD mismatch {mismatch}",
         )
+        advice = " ".join(mismatch["issues"])
+        require("reinstall the package" in advice, f"reinstall advice {advice}")
+        require("--trusted-artifacts" not in advice, f"no pin advice {advice}")
     finally:
         package_supplier._package_grammar_records.cache_clear()
+
+
+# --- round-1 review of SL-core-2 ----------------------------------------------------
+
+
+def _fake_package_grammar(
+    tmp_path: Path, monkeypatch, name: str, data: bytes, record_bytes: bytes
+) -> Path:
+    import base64
+    from importlib.metadata import PathDistribution
+
+    from chunker._internal import package_supplier
+
+    site = tmp_path / "site"
+    package = site / "chunker"
+    build = package / "data" / "grammars" / "build"
+    build.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (build / name).write_bytes(data)
+    dist_info = site / "treesitter_chunker-6.0.0.dist-info"
+    dist_info.mkdir()
+    (dist_info / "METADATA").write_text(
+        "Metadata-Version: 2.1\nName: treesitter-chunker\nVersion: 6.0.0\n",
+        encoding="utf-8",
+    )
+    encoded = base64.urlsafe_b64encode(sha256(record_bytes).digest()).rstrip(b"=")
+    (dist_info / "RECORD").write_text(
+        f"chunker/__init__.py,,\nchunker/data/grammars/build/{name},"
+        f"sha256={encoded.decode()},{len(record_bytes)}\n",
+        encoding="utf-8",
+    )
+    distribution = PathDistribution(dist_info)
+    monkeypatch.setattr(package_supplier, "_package_distribution", lambda: distribution)
+    monkeypatch.setattr(
+        package_supplier, "_package_init_file", lambda: package / "__init__.py"
+    )
+    package_supplier._package_grammar_records.cache_clear()
+    return build / name
+
+
+def test_cached_validation_never_rescues_a_record_mismatch(
+    isolated, tmp_path, fixture_bytes, monkeypatch
+):
+    """The trust rule runs before cache reuse (cross-path, identical bytes)."""
+    from chunker._internal import package_supplier
+
+    pins = {LANGUAGE: _pin(fixture_bytes)}
+    validator = GrammarValidator(tmp_path / "cache", trusted_artifacts=pins)
+    local = _candidate(tmp_path, fixture_bytes)
+    require(
+        validator.validate_grammar(local, LANGUAGE, ValidationLevel.BASIC).is_valid,
+        "primed through an ordinary pinned local file",
+    )
+    try:
+        shipped = _fake_package_grammar(
+            tmp_path,
+            monkeypatch,
+            f"lib{LANGUAGE}.so",
+            fixture_bytes,
+            record_bytes=fixture_bytes + b"what RECORD expects",
+        )
+        result = validator.validate_grammar(shipped, LANGUAGE, ValidationLevel.BASIC)
+        require(not result.is_valid, f"RECORD mismatch rejected {result}")
+        require(
+            any("integrity_mismatch" in error for error in result.errors),
+            f"{result.errors}",
+        )
+    finally:
+        package_supplier._package_grammar_records.cache_clear()
+
+
+def test_pinned_failing_artifact_is_never_cached(isolated, tmp_path, probes):
+    data = b"corrupt data"
+    candidate = _candidate(tmp_path, data)
+    cache = tmp_path / "cache"
+    validator = GrammarValidator(cache, trusted_artifacts={LANGUAGE: _pin(data)})
+    key, digest = validator._verdict_cache_key(
+        candidate, LANGUAGE, ValidationLevel.BASIC
+    )
+    require(key is not None and digest == _pin(data)["sha256"], "a key exists")
+    for _ in range(2):
+        result = validator.validate_grammar(candidate, LANGUAGE, ValidationLevel.BASIC)
+        require(not result.is_valid, f"{result.errors}")
+        require(
+            any("load_failed" in error for error in result.errors), f"{result.errors}"
+        )
+    require(not native_admission.has_verdict(key), "no admission recorded")
+    require(not (cache / "validation_cache.json").exists(), "nothing stored")
+    require(len(probes) == 2, f"the second call probes again {probes}")
+    manager = GrammarManager(
+        candidate.parent,
+        tmp_path / "package",
+        tmp_path / "cache2",
+        trusted_artifacts={LANGUAGE: _pin(data)},
+    )
+    health = manager.get_admitted_health(LANGUAGE)
+    require(
+        (health["status"], health["validation_reason"]) == ("corrupted", "load_failed"),
+        f"{health}",
+    )
+
+
+@pytest.mark.parametrize(
+    ("reason", "status"),
+    [
+        ("ok", "healthy"),
+        ("missing", "missing"),
+        ("empty", "corrupted"),
+        ("load_failed", "corrupted"),
+        ("parse_failed", "corrupted"),
+        ("untrusted", "incompatible"),
+        ("integrity_mismatch", "incompatible"),
+        ("timeout", "incompatible"),
+        ("child_failed", "incompatible"),
+        ("ack_missing", "incompatible"),
+        ("ack_invalid", "incompatible"),
+        ("inspect_failed", "incompatible"),
+    ],
+)
+def test_legacy_health_status_maps_every_reason(reason, status):
+    from chunker.grammar_management.core import legacy_health_status
+
+    require(legacy_health_status(reason) == status, f"{reason} -> {status}")
+
+
+def test_validate_fix_never_reports_an_unadmitted_rebuild_valid(
+    isolated, tmp_path, fixture_bytes, monkeypatch, probes, capsys
+):
+    cache = tmp_path / "cache"
+    library = _installed(cache, fixture_bytes)
+    (cache / "grammars" / "user" / LANGUAGE).mkdir(parents=True)
+    tool = ComprehensiveGrammarCLI(cache)
+    target = tool.build_dir / f"tree_sitter_{LANGUAGE}.so"
+
+    def run_command(command, cwd=None, timeout=30):
+        if command[0] == "python":
+            target.write_bytes(fixture_bytes)
+        return 0, "", ""
+
+    monkeypatch.setattr(tool, "_run_command", run_command)
+    result = tool._validate_compiled_grammar(LANGUAGE, library, fix=True)
+    capsys.readouterr()
+    require(result["valid"] is False, f"not valid {result}")
+    require(result["status"] != "fixed", f"not fixed {result}")
+    require(
+        result["fixes_applied"] == ["Grammar rebuilt, not admitted: untrusted"],
+        f"{result}",
+    )
+    require(probes == [], "nothing probed without a pin")
