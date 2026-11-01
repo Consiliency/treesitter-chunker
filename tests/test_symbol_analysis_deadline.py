@@ -28,6 +28,12 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "packages/baml-grammar/src"
 SYMBOL_LISTS = ("functions", "constants", "data", "undefined")
 DEFAULT_DEADLINE_SECONDS = 5.0
+# The CI smoke runs under ``--timeout=60``. A confirmed expiry costs up to 50 s
+# (the 5 s default run plus the 45 s confirmation), and the module-scoped
+# ``cc`` build of the BAML grammar counts toward whichever test requests it
+# first, so the confirming tests get a larger budget. A real hang still trips
+# it (treesitter-chunker#592).
+RECHECK_TIMEOUT = pytest.mark.timeout(150)
 
 pytestmark = pytest.mark.skipif(
     sys.platform != "linux", reason="Analyzer inspects ELF .so symbols with nm"
@@ -108,10 +114,8 @@ def _assert_expired(symbols: dict, deadline: float) -> None:
     assert _counts(symbols) == 0
 
 
-def test_completed_analysis_reports_symbols(baml_library: Path) -> None:
-    first, confirmed = _analyze_with_confirmation(
-        _analyzer(baml_library.parent), baml_library
-    )
+def _check_completed(analyzer: GrammarAnalyzer, library: Path) -> None:
+    first, confirmed = _analyze_with_confirmation(analyzer, library)
 
     if confirmed is None:
         _assert_complete(first, DEFAULT_DEADLINE_SECONDS)
@@ -122,6 +126,44 @@ def test_completed_analysis_reports_symbols(baml_library: Path) -> None:
         _assert_complete(confirmed, LOAD_TOLERANT_DEADLINE_SECONDS)
 
 
+@RECHECK_TIMEOUT
+def test_completed_analysis_reports_symbols(baml_library: Path) -> None:
+    _check_completed(_analyzer(baml_library.parent), baml_library)
+
+
+@RECHECK_TIMEOUT
+def test_completed_check_accepts_a_confirmed_default_expiry(
+    baml_library: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Run the loaded-host branch on every CI run.
+
+    The first analysis reports exactly what the analyzer reports when its
+    default five-second run expires; the confirmation is the real ``nm``.
+    """
+    analyzer = _analyzer(baml_library.parent)
+    real = analyzer.analyze_grammar_symbols
+    calls: list[dict] = []
+
+    def first_call_expires(path: Path, **kwargs) -> dict:
+        calls.append(kwargs)
+        if len(calls) == 1:
+            return {
+                **{name: [] for name in SYMBOL_LISTS},
+                "analysis": {
+                    "status": "deadline_expired",
+                    "deadline_seconds": DEFAULT_DEADLINE_SECONDS,
+                    "detail": "nm exceeded the 5-second deadline",
+                },
+            }
+        return real(path, **kwargs)
+
+    monkeypatch.setattr(analyzer, "analyze_grammar_symbols", first_call_expires)
+    with pytest.warns(UserWarning, match="treesitter-chunker#592"):
+        _check_completed(analyzer, baml_library)
+    assert calls == [{}, {"timeout": LOAD_TOLERANT_DEADLINE_SECONDS}]
+
+
+@RECHECK_TIMEOUT
 def test_expired_analysis_is_confirmed_under_the_tolerant_bound(
     baml_library: Path,
 ) -> None:
