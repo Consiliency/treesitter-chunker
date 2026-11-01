@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 from .core import (
     _build_retrieval_metadata,
     _extract_definition_name,
+    _lone_cr_parse_copy,
     resolve_chunk_predicates,
 )
 from .exceptions import ParsingError
@@ -232,7 +233,13 @@ class StreamingChunker:
         ):
             if self.language == "baml":
                 mmap_data[:].decode("utf-8")
-            tree = self.parser.parse(mmap_data)
+            # CR-only Python parses a CR->LF copy with identical offsets; the
+            # walk still slices the raw mapped bytes (treesitter-chunker#471).
+            parse_copy = _lone_cr_parse_copy(mmap_data, self.language)
+            if parse_copy is None:
+                tree = self.parser.parse(mmap_data)
+            else:
+                tree = self.parser.parse(parse_copy)
             root = tree.root_node
             config = language_config_registry.get(self.language)
             if config and config.strict_parse and root.has_error:
