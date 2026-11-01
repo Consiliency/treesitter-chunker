@@ -10,6 +10,17 @@ import pytest
 from scripts import mypy_gate
 
 
+def _accept_current_errors(baseline):
+    """Seed a fixture baseline with the checker's current signatures.
+
+    ``--update`` never adds signatures (treesitter-chunker#587), so a fresh
+    baseline is written explicitly, the way a reviewed baseline is committed.
+    """
+    signatures = sorted({mypy_gate._signature(line) for line in mypy_gate._run_mypy()})
+    assert signatures
+    baseline.write_text("\n".join(signatures) + "\n", encoding="utf-8")
+
+
 @pytest.mark.parametrize(
     ("returncode", "stdout", "stderr"),
     [
@@ -96,7 +107,7 @@ def test_real_checker_distinguishes_wrapped_messages_and_ignores_line_shifts(
     errors = mypy_gate._run_mypy()
     assert len(errors) == 1
     assert existing in errors[0] and errors[0].endswith("[assignment]")
-    assert mypy_gate.main(["--update"]) == 0
+    _accept_current_errors(baseline)
     accepted = baseline.read_bytes()
     assert mypy_gate.main([]) == 0
     fixture.write_text("\n\n\n" + code, encoding="utf-8")
@@ -122,6 +133,8 @@ def test_real_checker_distinguishes_wrapped_messages_and_ignores_line_shifts(
     assert mypy_gate._signature(existing_header) == mypy_gate._signature(new_header)
     assert mypy_gate.main([]) == 1
     assert annotation in capsys.readouterr().err
+    assert baseline.read_bytes() == accepted
+    assert mypy_gate.main(["--update"]) == 1
     assert baseline.read_bytes() == accepted
 
 
@@ -159,7 +172,7 @@ def test_real_checker_keeps_literal_values_in_diagnostic_messages(
         f"value: Literal[{json.dumps(accepted_literal)}] = 'wrong'\n"
     )
     fixture.write_text(code, encoding="utf-8")
-    assert mypy_gate.main(["--update"]) == 0
+    _accept_current_errors(baseline)
     accepted = baseline.read_bytes()
     assert mypy_gate.main([]) == 0
     fixture.write_text("\n\n\n" + code, encoding="utf-8")
@@ -173,6 +186,8 @@ def test_real_checker_keeps_literal_values_in_diagnostic_messages(
     assert len(errors) == 1 and errors[0].endswith("[assignment]")
     assert mypy_gate.main([]) == 1
     assert baseline.read_bytes() == accepted
+    assert mypy_gate.main(["--update"]) == 1
+    assert baseline.read_bytes() == accepted
     signature = mypy_gate._signature(errors[0])
     location, separator, message = errors[0].partition(": error:")
     assert separator
@@ -185,3 +200,19 @@ def test_real_checker_keeps_literal_values_in_diagnostic_messages(
         path.replace("/", "\\") + ":999:42" + separator + message,
     ):
         assert mypy_gate._signature(variant) == signature
+
+
+@pytest.mark.parametrize("argv", [[], ["--update"]])
+def test_missing_baseline_fails_before_mypy_without_creating_one(
+    monkeypatch, tmp_path, capsys, argv
+):
+    baseline = tmp_path / "missing" / "baseline.txt"
+    monkeypatch.setattr(mypy_gate, "BASELINE", baseline)
+
+    def must_not_run():
+        raise AssertionError("mypy ran before the baseline check")
+
+    monkeypatch.setattr(mypy_gate, "_run_mypy", must_not_run)
+    assert mypy_gate.main(argv) == 2
+    assert not baseline.exists()
+    assert "baseline not found" in capsys.readouterr().err
