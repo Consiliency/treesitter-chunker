@@ -339,9 +339,12 @@ def test_status_fault_skip_preserves_protocol_failures(fault):
         record = json.loads(reply[1])
         record["failure"] = "load_failed"
         reply = (1, json.dumps(record).encode(), b"", False, False)
-    skip_policy_reply_under_status_fault(
-        reply, command, state, "nonce", observed.get(fault, [1]), INJECTED
-    )
+    try:
+        skip_policy_reply_under_status_fault(
+            reply, command, state, "nonce", observed.get(fault, [1]), INJECTED
+        )
+    except pytest.skip.Exception as skipped:
+        pytest.fail(f"{fault} must stay a test failure, not a policy skip: {skipped}")
 
 
 def test_isolated_worker_policy_failure_uses_real_protocol(tmp_path, monkeypatch):
