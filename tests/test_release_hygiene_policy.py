@@ -490,64 +490,91 @@ def test_floor_interpreter_appears_only_in_floor_checks():
 
 # Plain-text interpreter scan (maintainer decision, 2026-11-01): flag broadly,
 # exempt narrowly. Every line of every workflow file (.yml and .yaml) is
-# scanned as text, including comments, echo output and heredoc bodies, with no
-# shell parsing. Lines are attributed to jobs from the parsed YAML node
-# positions. Outside a FLOOR_ALLOWED job (or, for a family-scoped entry,
-# outside that family's literal matrix include entry), any mention of
-# switching the Python version fails. The only exemption is a canonical 3.14
-# setting at the start of a line (`python-version:` or `UV_PYTHON:` set to 3.14,
-# a literal list of only 3.14, or `${{ matrix.python-version }}` over a literal
-# matrix whose non-3.14 values are all allowed floor entries). The rest of
-# that line, comments included, is still scanned.
+# scanned as text, comments, echo output and heredoc bodies included, with no
+# shell parsing. For matching, quotes and backslashes are removed from the line
+# first, so `-"p"`, `--pyth''on`, `"UV_PY""THON"` and `\-p` are seen as their
+# plain spellings. This is a text scan: it catches plain spellings and these
+# common quoting tricks, not arbitrary shell obfuscation, which review has to
+# catch. Lines are attributed to jobs from the parsed YAML node positions.
+#
+# Exempt: whole jobs whose FLOOR_ALLOWED family is None. For a family-scoped
+# entry, only the floor `python-version` line of that family's single literal
+# matrix include entry, when it holds nothing else, after its runner is checked
+# against the family. Accepted without a hit: a canonical 3.14 setting at the
+# start of a line (`python-version:`/`UV_PYTHON:` set to 3.14, a literal list of
+# only 3.14, or `${{ matrix.python-version }}` over a literal matrix whose
+# non-3.14 values are allowed floor entries); the rest of that line is still
+# scanned. Named exclusions: `pytest -p no:`, `mkdir -p`, `tar -cpf`, the cache
+# key shape `}}-py${{ matrix.python-version }}`, and `setup-python@`.
 _TEXT_RULES = (
     ("--python", re.compile(r"--python")),
     ("python3.N", re.compile(r"python3\.\d+")),
     ("Python3NN path", re.compile(r"[Pp]ython3\d\d\b")),
-    ("python@3", re.compile(r"(?<![\w-])python@\d")),
+    ("python@N", re.compile(r"(?<!setup-)python@\d")),
+    ("pypy@/graalpy@", re.compile(r"(?:pypy|graalpy)@\d")),
     ("py -3.N", re.compile(r"\bpy(?:\.exe)?[ \t]+-(?:V:)?\d")),
     ("uv python pin|install|find", re.compile(r"\bpython[ \t]+(?:pin|install|find)\b")),
     ("PYENV_VERSION", re.compile(r"PYENV_VERSION")),
     ("UV_PYTHON", re.compile(r"(?i)uv_python")),
     ("python-version", re.compile(r"(?<![.\w-])python-version")),
+    ("write .python-version", re.compile(r">\s*\S*\.python-version")),
 )
-# A short-option cluster containing p (-p, -qp, -p3.12, "-p"), starting after
-# a line start, whitespace, a quote, '=' or '('.
-_SHORT_P = re.compile(r"""(?:(?<=^)|(?<=[\s"'=(]))-([A-Za-z]*p[A-Za-z]*)""")
+# A short-option cluster containing p: a single '-' not preceded by a letter,
+# digit or '-', then letters including p (-p, -qp, -cpf, ${X}-p, {,-p}).
+_SHORT_P = re.compile(r"(?<![A-Za-z0-9-])-([A-Za-z]*p[A-Za-z]*)")
+_CACHE_KEY = "}}-py${{ matrix.python-version }}"
 _CANONICAL_SETTING = re.compile(
     r"""^\s*(?:-\s+)?(?P<key>python-version|UV_PYTHON):[ \t]*"""
     r"""(?P<value>'3\.14'|"3\.14"|3\.14(?![\w.])|\[\s*['"]?3\.14['"]?\s*\]|"""
     r"""\$\{\{\s*matrix\.python-version\s*\}\})"""
 )
+_FAMILY_RUNNERS = {
+    "linux": re.compile(r"^ubuntu-"),
+    "macos": re.compile(r"^macos-"),
+    "windows": re.compile(r"windows"),
+}
+_UV_COMMAND = re.compile(
+    r"(^|[\s;&|(])uvx?\s+(run|sync|pip|export|build|tool|venv|lock)\b"
+)
 _TEXT_FIX = (
     "Each line above mentions switching the Python version outside the 3.12 floor "
-    "jobs. To fix it, either (a) reword the text (comments and echo output count) "
-    "so it no longer names --python, -p, UV_PYTHON, PYENV_VERSION, python3.N, "
-    "python@3, Python3NN, py -3.N, uv python pin|install|find or a non-3.14 "
-    "python-version, or (b) if the job is a deliberate 3.12 floor check, add "
-    "(workflow, job, platform family or None) to FLOOR_ALLOWED in "
-    "tests/test_release_hygiene_policy.py with a reason."
+    "jobs. To fix it, either (a) reword the text (comments and echo output count; "
+    "quotes and backslashes are ignored when matching) so it no longer names "
+    "--python, a -p option, UV_PYTHON, PYENV_VERSION, python3.N, python@N, "
+    "pypy@/graalpy@, Python3NN, py -3.N, uv python pin|install|find, a "
+    ".python-version write or a non-3.14 python-version, and give every uv job an "
+    "explicit interpreter (setup-python or UV_PYTHON), or (b) if the job is a "
+    "deliberate 3.12 floor check, add (workflow, job, platform family or None) to "
+    "FLOOR_ALLOWED in tests/test_release_hygiene_policy.py with a reason."
 )
 
 
-def _short_p_excluded(line: str, match: re.Match) -> bool:
-    """The three named exclusions: pytest -p no:, mkdir -p, tar -cpf."""
-    cluster, before, after = match.group(1), line[: match.start()], line[match.end() :]
-    command = re.split(r"[;&|]", before)[-1]
+def _normalize(line: str) -> str:
+    """Remove quotes and backslashes so quoting tricks show plain spellings."""
+    return line.replace("'", "").replace('"', "").replace("\\", "")
+
+
+def _short_p_excluded(text: str, match: re.Match) -> bool:
+    """Each named exclusion covers only its own adjacent token."""
+    cluster, before, after = match.group(1), text[: match.start()], text[match.end() :]
+    if cluster == "p" and re.search(r"\bmkdir[ \t]+$", before):
+        return True
+    if cluster == "cpf" and re.search(r"\btar[ \t]+$", before):
+        return True
     if (
         cluster == "p"
         and re.match(r"[ =]?no:", after)
-        and re.search(r"\bpytest\b", command)
+        and re.search(r"\bpytest\b", before)
     ):
         return True
-    if cluster == "p" and re.search(r"\bmkdir\b", command):
-        return True
-    return cluster == "cpf" and bool(re.search(r"\btar\b", command))
+    return cluster == "py" and text[max(0, match.start() - 2) :].startswith(_CACHE_KEY)
 
 
-def _scan_text(line: str) -> list[str]:
-    hits = [name for name, pattern in _TEXT_RULES if pattern.search(line)]
+def _scan_text(text: str) -> list[str]:
+    text = _normalize(text)
+    hits = [name for name, pattern in _TEXT_RULES if pattern.search(text)]
     hits += [
-        "-p" for match in _SHORT_P.finditer(line) if not _short_p_excluded(line, match)
+        "-p" for match in _SHORT_P.finditer(text) if not _short_p_excluded(text, match)
     ]
     return hits
 
@@ -575,50 +602,117 @@ def _literal_matrix_versions(job: dict) -> list[tuple[str, str | None]] | None:
     return pairs
 
 
-def _job_spans(
-    text: str,
-) -> tuple[dict[str, tuple[int, int]], dict[str, list[tuple[int, int, str]]]]:
-    """Line spans (0-based, end exclusive) of each job and its matrix include
-    entries, from the composed YAML nodes."""
-
-    def span(start, end) -> tuple[int, int]:
-        return start.line, end.line + (1 if end.column else 0)
-
+def _job_spans(text: str) -> dict[str, tuple[int, int]]:
+    """Line span (0-based, end exclusive) of each job from the composed YAML.
+    A span stops before the next job's key line."""
     root = yaml.compose(text)
-    jobs: dict[str, tuple[int, int]] = {}
-    includes: dict[str, list[tuple[int, int, str]]] = {}
+    spans: dict[str, tuple[int, int]] = {}
     if root is None:
-        return jobs, includes
+        return spans
     for key, value in root.value:
         if key.value != "jobs" or not isinstance(value, yaml.MappingNode):
             continue
-        for job_key, job_node in value.value:
-            jobs[job_key.value] = span(job_key.start_mark, job_node.end_mark)
-            entries = []
-            node = job_node
-            for part in ("strategy", "matrix", "include"):
-                found = (
-                    [v for k, v in node.value if k.value == part]
-                    if isinstance(node, yaml.MappingNode)
-                    else []
-                )
-                node = found[0] if found else None
-                if node is None:
-                    break
-            if isinstance(node, yaml.SequenceNode):
+        pairs = value.value
+        for position, (job_key, job_node) in enumerate(pairs):
+            end_mark = job_node.end_mark
+            end = end_mark.line + (1 if end_mark.column else 0)
+            if position + 1 < len(pairs):
+                end = min(end, pairs[position + 1][0].start_mark.line)
+            spans[job_key.value] = (
+                job_key.start_mark.line,
+                max(end, job_key.start_mark.line + 1),
+            )
+    return spans
+
+
+def _floor_entry_lines(text: str, workflow: str) -> tuple[set[int], list[str]]:
+    """Exempt line indexes for family-scoped floor entries, plus problems.
+
+    For each family-scoped FLOOR_ALLOWED entry: exactly one literal include
+    entry with that platform-family, its platform matching the family, the
+    job's runs-on being ${{ matrix.platform }}, and only that entry's own
+    floor python-version line exempt, when the line holds nothing else."""
+    floor = _floor_text()
+    jobs = (yaml.safe_load(text) or {}).get("jobs") or {}
+    root = yaml.compose(text)
+    lines = text.splitlines()
+    exempt: set[int] = set()
+    problems: list[str] = []
+    for allowed_workflow, job_name, family in FLOOR_ALLOWED:
+        if allowed_workflow != workflow or family is None:
+            continue
+        job = jobs.get(job_name) or {}
+        include = ((job.get("strategy") or {}).get("matrix") or {}).get("include")
+        entries = [
+            item
+            for item in (include if isinstance(include, list) else [])
+            if isinstance(item, dict) and item.get("platform-family") == family
+        ]
+        if len(entries) != 1:
+            problems.append(
+                f"{workflow}: [{job_name}] needs exactly one literal include entry with "
+                f"platform-family {family}, found {len(entries)}"
+            )
+            continue
+        platform = str(entries[0].get("platform", ""))
+        if not _FAMILY_RUNNERS[family].search(platform):
+            problems.append(
+                f"{workflow}: [{job_name}] platform-family {family} entry runs on {platform!r}"
+            )
+            continue
+        if str(job.get("runs-on")) != "${{ matrix.platform }}":
+            problems.append(
+                f"{workflow}: [{job_name}] runs-on must be ${{{{ matrix.platform }}}}"
+            )
+            continue
+        for key, value in root.value:
+            if key.value != "jobs":
+                continue
+            for job_key, job_node in value.value:
+                if job_key.value != job_name:
+                    continue
+                node = job_node
+                for part in ("strategy", "matrix", "include"):
+                    node = next((v for k, v in node.value if k.value == part), None)
                 for item in node.value:
-                    if isinstance(item, yaml.MappingNode):
-                        family = [
-                            v.value
-                            for k, v in item.value
-                            if k.value == "platform-family"
-                        ]
-                        if family:
-                            entries.append(
-                                (*span(item.start_mark, item.end_mark), family[0])
-                            )
-            includes[job_key.value] = entries
-    return jobs, includes
+                    fields = {k.value: v for k, v in item.value}
+                    if (
+                        "platform-family" in fields
+                        and fields["platform-family"].value == family
+                    ):
+                        version = fields.get("python-version")
+                        if version is None or version.value != floor:
+                            continue
+                        index = version.start_mark.line
+                        pattern = rf"""\s*(?:-\s+)?python-version:\s*(['"]?){re.escape(floor)}\1\s*"""
+                        if re.fullmatch(pattern, lines[index]):
+                            exempt.add(index)
+    return exempt, problems
+
+
+def _uv_interpreter_problems(workflow: str, text: str) -> list[str]:
+    """Every job that runs uv names its interpreter (setup-python or UV_PYTHON)."""
+    doc = yaml.safe_load(text) or {}
+    problems = []
+    for name, job in (doc.get("jobs") or {}).items():
+        steps = job.get("steps") or []
+        runs_uv = any(
+            _UV_COMMAND.search(str(step.get("run", "")))
+            or str(step.get("uses", "")).startswith("astral-sh/setup-uv")
+            for step in steps
+        )
+        if not runs_uv:
+            continue
+        has_env = any(
+            "UV_PYTHON" in (env or {})
+            for env in [doc.get("env"), job.get("env"), *[s.get("env") for s in steps]]
+        )
+        if not (_setup_python_versions(job) or has_env):
+            problems.append(
+                f"{workflow}: [{name}] runs uv without setup-python or UV_PYTHON, so it "
+                "would fall back to .python-version (3.12)"
+            )
+    return problems
 
 
 def _yaml_anchor_lines(text: str) -> list[int]:
@@ -646,25 +740,25 @@ def _text_offenders(texts: dict[str, str] | None = None) -> list[str]:
             offenders.append(
                 f"{workflow}:{number} YAML anchor/alias: {lines[number - 1].strip()}"
             )
+        if _yaml_anchor_lines(text):
+            continue
         parsed_jobs = (yaml.safe_load(text) or {}).get("jobs") or {}
-        spans, includes = _job_spans(text)
+        spans = _job_spans(text)
         if set(spans) != set(parsed_jobs):
             offenders.append(
                 f"{workflow}: job names from the text {sorted(spans)} differ from "
                 f"the parsed jobs {sorted(parsed_jobs)}"
             )
+        offenders += _uv_interpreter_problems(workflow, text)
+        exempt_lines, problems = _floor_entry_lines(text, workflow)
+        offenders += problems
         owner: list[str | None] = [None] * len(lines)
-        exempt = [False] * len(lines)
+        exempt = [index in exempt_lines for index in range(len(lines))]
         for job, (start, end) in spans.items():
             for index in range(start, min(end, len(lines))):
                 owner[index] = job
-            if (workflow, job, None) in FLOOR_ALLOWED:
-                for index in range(start, min(end, len(lines))):
+                if (workflow, job, None) in FLOOR_ALLOWED:
                     exempt[index] = True
-            for entry_start, entry_end, family in includes.get(job, []):
-                if (workflow, job, family) in FLOOR_ALLOWED:
-                    for index in range(entry_start, min(entry_end, len(lines))):
-                        exempt[index] = True
         for index, line in enumerate(lines):
             if exempt[index]:
                 continue
@@ -702,12 +796,15 @@ def test_workflow_text_mentions_no_interpreter_switch_outside_floor_jobs():
 
 
 def test_text_job_attribution_matches_parsed_jobs():
-    """Every parsed job, quoted keys included, owns a non-empty span of lines."""
+    """Every parsed job, quoted keys included, owns a non-empty span of lines,
+    and no span reaches the next job's key line."""
     for workflow, text in _workflow_texts().items():
-        spans, _includes = _job_spans(text)
+        spans = _job_spans(text)
         parsed = (yaml.safe_load(text) or {}).get("jobs") or {}
         assert set(spans) == set(parsed), workflow
-        assert all(end > start for start, end in spans.values()), workflow
+        ordered = sorted(spans.values())
+        assert all(end > start for start, end in ordered), workflow
+        assert all(a[1] <= b[0] for a, b in zip(ordered, ordered[1:])), workflow
 
 
 def test_workflows_use_no_yaml_anchors_or_aliases():
@@ -849,6 +946,82 @@ TEXT_MUTATIONS = {
         "      - name: Build and smoke-test cp312-abi3 wheel on Python 3.12\n",
         None,  # anchor in wheel, alias in test-wheel, see _apply
     ),
+    # round 2: quoting/boundary tricks (matched after removing quotes and \\)
+    "M502-text-backslash-p": _insert_ci("          uv run \\-p 3.12 python -V\n"),
+    "M502-text-ifs-p": _insert_ci("          uv run${IFS}-p 3.12 python -V\n"),
+    "M502-text-var-boundary-p": _insert_ci(
+        "          uv run ${NOPE}-p 3.12 python -V\n"
+    ),
+    "M502-text-brace-p": _insert_ci("          uv run {,-p} 3.12 python -V\n"),
+    "M502-text-quoted-p-letter": _insert_ci('          uv run -"p" 3.12 python -V\n'),
+    "M502-text-split-python": _insert_ci(
+        "          uv run --pyth''on 3.12 python -V\n"
+    ),
+    "M502-text-split-uv-python": _insert_ci(
+        '          echo "UV_PY""THON=3.12" >> "$GITHUB_ENV"\n'
+    ),
+    # round 2: named exclusions cover only their own token
+    "M502-text-mkdir-substitution": _insert_ci(
+        '          mkdir -p "$(uv run -p 3.12 python -V)"\n'
+    ),
+    "M502-text-mkdir-backticks": _insert_ci(
+        "          mkdir -p `uv run -p 3.12 python -V`\n"
+    ),
+    "M502-text-tar-substitution": _insert_ci(
+        "          tar -cpf out.tar $(uv run -p 3.12 python -V)\n"
+    ),
+    "M502-text-pytest-substitution": _insert_ci(
+        '          uv run pytest -p no:cacheprovider "$(uv run -p 3.12 python -V)"\n'
+    ),
+    # round 2: python@ forms
+    "M502-text-uvx-cpython-at": _insert_ci("          uvx cpython@3.12 -V\n"),
+    "M502-text-pypy-at": _insert_ci("          uvx pypy@3.11 -V\n"),
+    "M502-text-graalpy-at": _insert_ci("          uvx graalpy@3.11 -V\n"),
+    # round 2: the floor matrix entry, from parsed values
+    "M502-text-windows-line-comment": (
+        "test.yml",
+        "          - python-version: '3.14'\n            platform: blacksmith-4vcpu-windows-2025\n",
+        "          - python-version: '3.14'  # uv run -p 3.12 python -V\n"
+        "            platform: blacksmith-4vcpu-windows-2025\n",
+    ),
+    "M502-text-linux-line-comment": (
+        "test.yml",
+        "          - python-version: '3.12'\n",
+        "          - python-version: '3.12'  # uv run -p 3.12 python -V\n",
+    ),
+    "M502-text-flow-include": (
+        "test.yml",
+        "        include:\n",
+        None,  # flow-style include with a selector, see _apply
+    ),
+    "M502-text-linux-on-macos": (
+        "test.yml",
+        "            platform: ubuntu-latest\n",
+        "            platform: macos-latest\n",
+    ),
+    "M502-text-second-linux-entry": (
+        "test.yml",
+        "          - python-version: '3.14'\n            platform: blacksmith-4vcpu-windows-2025\n",
+        "          - python-version: '3.12'\n            platform: blacksmith-4vcpu-windows-2025\n"
+        "            platform-family: linux\n"
+        "          - python-version: '3.14'\n            platform: blacksmith-4vcpu-windows-2025\n",
+    ),
+    "M502-text-runs-on-not-matrix": (
+        "test.yml",
+        "    runs-on: ${{ matrix.platform }}\n",
+        "    runs-on: macos-latest\n",
+    ),
+    # round 2: uv without an explicit interpreter, and .python-version writes
+    "M502-text-uv-job-without-interpreter": (
+        "docs.yml",
+        "jobs:\n",
+        "jobs:\n  lint:\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n"
+        "    steps:\n    - uses: astral-sh/setup-uv@v5\n"
+        "    - run: uv run --locked --all-extras pytest -q\n",
+    ),
+    "M502-text-write-python-version": _insert_ci(
+        "          echo 3.12 > .python-version\n"
+    ),
 }
 
 
@@ -860,6 +1033,20 @@ def _apply(mutation: str, texts: dict[str, str]) -> str:
         texts[workflow] = text.rstrip("\n") + (
             '\n\n  "full-on-floor":\n    runs-on: windows-latest\n    steps:\n'
             "    - run: uv run --python 3.12 python scripts/run_full_suite.py\n"
+        )
+    elif mutation == "M502-text-flow-include":
+        start = text.index("        include:\n")
+        end = text.index("\n\n", start)
+        texts[workflow] = (
+            text[:start]
+            + (
+                "        include: [{python-version: '3.12', platform: ubuntu-latest, "
+                "platform-family: linux, selector: ''}, {python-version: '3.14', platform: "
+                "blacksmith-4vcpu-windows-2025, platform-family: windows, selector: -p 3.12}, "
+                "{python-version: '3.14', platform: macos-latest, platform-family: macos, "
+                "selector: ''}]"
+            )
+            + text[end:]
         )
     elif mutation == "M502-text-yaml-anchor":
         text = text.replace(
@@ -925,6 +1112,8 @@ TEXT_NON_SELECTORS = {
     "pytest-p-no": "          uv run --locked pytest -p no:cacheprovider -q\n",
     "mkdir-p": "          mkdir -p dist/wheelhouse\n",
     "tar-cpf": "          tar -cpf out.tar dist\n",
+    "cache-key": "          echo ${{ runner.os }}-py${{ matrix.python-version }}-x\n",
+    "setup-python-at": "          echo actions/setup-python@3f1e\n",
 }
 
 

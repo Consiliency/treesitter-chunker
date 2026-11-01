@@ -99,14 +99,41 @@ scheduled full tier and release full validation also run on 3.14. The 3.12
 minimum keeps only two main-package checks: the Linux platform-core job (macOS
 and Windows run 3.14) and the release installed-wheel check (3.12 and 3.14).
 Separately, the BAML companion workflow's `source` and `wheel` jobs run on 3.12,
-the companion's own minimum. No interpreter is chosen by event. Outside
-those jobs (and, for platform-core, outside its Linux matrix entry), workflow
-text in `.yml` and `.yaml` files, comments and `echo` output included, must not
-mention switching the Python version. That means `--python`, any `-p` (except
-`pytest -p no:`, `mkdir -p` and `tar -cpf`), `UV_PYTHON`, `PYENV_VERSION`,
-`python3.N`, `python@3`, `Python3NN`, `py -3.N`, `uv python pin|install|find`,
-or any `python-version`/`UV_PYTHON` other than a canonical 3.14 setting.
-YAML anchors and aliases are not allowed in workflows.
+the companion's own minimum. No interpreter is chosen by event, and every job
+that runs `uv` names its interpreter (setup-python or `UV_PYTHON`), so none
+falls back to `.python-version`.
+
+Workflow text (`.yml` and `.yaml`, comments and `echo` output included) is
+checked by a plain-text scan. Quotes and backslashes are removed before
+matching, so `-"p"`, `--pyth''on` and `\-p` count as their plain spellings.
+Outside the floor jobs, these fail:
+
+- `--python`;
+- a `-p` option: a single `-` not preceded by a letter, digit or `-`, then
+  letters including `p` (`-p`, `-qp`, `${X}-p`);
+- `UV_PYTHON` in any case, and `PYENV_VERSION`;
+- `python3.N`, `Python3NN` paths, and `python@N` or `pypy@`/`graalpy@` (but
+  not `setup-python@`);
+- `py -3.N`, `py -V:3.N` and `py.exe`;
+- `uv python pin|install|find`;
+- writes to `.python-version`;
+- any `python-version` mention.
+
+A canonical 3.14 setting at the start of a line is allowed: `python-version:`
+or `UV_PYTHON:` set to 3.14, a literal list of only 3.14, or
+`${{ matrix.python-version }}` over a literal matrix. The rest of that line is
+still scanned. The named exclusions each cover only their own token:
+`pytest -p no:`, `mkdir -p`, `tar -cpf`, the `test.yml` cache key
+`}}-py${{ matrix.python-version }}`, and `setup-python@`.
+
+The Linux platform-core floor is narrower than a whole job. It covers exactly
+one literal include entry whose platform matches `linux`, in a job that runs on
+`${{ matrix.platform }}`, and only that entry's own `python-version` line, when
+the line holds nothing else.
+
+YAML anchors and aliases are not allowed in workflows. This is a text scan: it
+catches plain spellings and these common quoting tricks, not arbitrary shell
+obfuscation, which review has to catch.
 `tests/test_release_hygiene_policy.py` checks this layout
 (treesitter-chunker#502).
 
