@@ -54,12 +54,18 @@ their existing plan or issue records.
 Run the narrow affected tests first, then the local CI checks:
 
 ```bash
-uv run --locked --all-extras ruff check chunker/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site
+uv run --locked --all-extras ruff check chunker/ chunker/build/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site
 uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py
 uv run --locked --all-extras python scripts/mypy_gate.py
 uv run --locked --all-extras mypy --follow-imports=silent --allow-untyped-defs --allow-incomplete-defs --allow-untyped-calls --check-untyped-defs --no-pretty --no-error-summary --show-error-codes tools/sync_governed_test_transport.py
 uv run --locked --with toml --all-extras python scripts/run_ci_smoke.py
 ```
+
+The Ruff command names `chunker/build/` explicitly. Ruff's recursive discovery
+honors the `build/` ignore and exclude entries meant for generated output, which
+also match that tracked source package. `ci.yml`, `release.yml` and this block
+use the same lint and format path lists; `tests/test_lint_path_policy.py`
+checks that they match.
 
 The mypy gate blocks new errors against the committed baseline; it does not
 require clearing all existing type debt. Pull-request CI runs the fast smoke
@@ -97,6 +103,22 @@ Use representative full-suite coverage to find behavior gaps; do not use
 unsupported coverage claims or a blanket 95% requirement. Coverage slices
 under treesitter-chunker#69 are accepted by their stated behavior contracts
 and named mutations.
+
+### Verification scratch
+
+Put verification and review scratch, such as disposable checkouts, virtual
+environments and generated outputs, under the inherited disk `TMPDIR`. Create
+it with `tempfile.TemporaryDirectory`, `tempfile.mkdtemp` or `mktemp -d`, never
+a literal `/tmp` path, and remove disposable trees in `finally` or an `EXIT`
+trap. pytest's `tmp_path` already follows `TMPDIR`. On shared hosts the system
+temporary directory can be RAM-backed, and scratch left there exhausts memory.
+Fallbacks such as `${TMPDIR:-/tmp}` count as a literal `/tmp` path.
+
+`tests/test_scratch_root_policy.py` rejects literal `/tmp` and `/dev/shm`
+roots in tracked Python, shell, PowerShell and JavaScript/TypeScript scripts,
+tools and tests. It matches literal spellings only. It does not scan
+`archive/`, which keeps historical helpers unchanged as evidence, or the
+product package `chunker/`.
 
 ### Platform checks
 
