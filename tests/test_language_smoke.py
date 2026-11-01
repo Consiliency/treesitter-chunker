@@ -22,6 +22,7 @@ import json
 import os
 import subprocess
 import sys
+import warnings
 from pathlib import Path
 
 import pytest
@@ -126,10 +127,16 @@ def test_confirm_load_retries_only_a_deadline_expiry(
     assert status == FAILS_TO_LOAD
 
     monkeypatch.setattr(language_smoke, "LOAD_DEADLINE_SECONDS", 0.001)
-    assert confirm_load("python") == (LOADS, None)
+    with pytest.warns(
+        language_smoke.LoadDeadlineRescued,
+        match=r"python: first probe failed \(parse exceeded the 0\.001-second",
+    ):
+        assert confirm_load("python") == (LOADS, None)
 
     monkeypatch.setattr(language_smoke, "LOAD_TOLERANT_DEADLINE_SECONDS", 0.002)
-    status, error = confirm_load("python")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", language_smoke.LoadDeadlineRescued)
+        status, error = confirm_load("python")
     assert status == DEADLINE_EXPIRED
     assert error == (
         "parse exceeded the 0.001-second hard-kill deadline; confirmation: "

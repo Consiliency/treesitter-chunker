@@ -6,7 +6,9 @@ treesitter-chunker#207 (``nm`` symbol analysis) and treesitter-chunker#143
 host load the deadline can expire for a healthy grammar. This harness makes
 that happen on purpose: it pins busy-loop processes to one CPU, runs the real
 analyzer and smoke probes, and places only the processes they start (``nm``
-and the parse child) on that CPU at low priority. The probing interpreter
+and the parse child) on that CPU at low priority. Two controls, an unknown
+language and a non-ELF file, show that real failures keep their own
+classification under the same load. The probing interpreter
 itself stays unloaded, so each deadline is measured accurately. Outcomes are
 printed as JSON.
 
@@ -52,13 +54,24 @@ if cpu >= 0:
             super().__init__(*args, **kwargs)
 
     subprocess.Popen = _PlacedPopen
-symbols = GrammarAnalyzer(Path(library).parent).analyze_grammar_symbols(Path(library))
-report = {
-    "nm": {
+analyzer = GrammarAnalyzer(Path(library).parent)
+
+
+def nm_outcome(path):
+    symbols = analyzer.analyze_grammar_symbols(Path(path))
+    return {
         "analysis": symbols.get("analysis", "<not reported>"),
         "symbol_count": sum(len(v) for v in symbols.values() if isinstance(v, list)),
-    },
+    }
+
+
+# Healthy targets show the deadline outcome; the controls show that a real
+# failure keeps its own classification under the same load.
+report = {
+    "nm": nm_outcome(library),
+    "nm_non_elf": nm_outcome(Path(library).parent / "not-elf.so"),
     "load_python": list(language_smoke.load_language("python")),
+    "load_unknown": list(language_smoke.load_language("not_a_pack_language")),
 }
 print(json.dumps(report))
 """
@@ -82,6 +95,7 @@ def _compile(directory: Path) -> Path:
         capture_output=True,
         timeout=300,
     )
+    (directory / "not-elf.so").write_bytes(b"not an ELF object\n")
     return library
 
 
@@ -103,7 +117,7 @@ def main() -> int:
         print("The load harness needs Linux CPU affinity.", file=sys.stderr)
         return 2
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--hogs", type=int, default=32, help="busy processes")
+    parser.add_argument("--hogs", type=int, default=64, help="busy processes")
     parser.add_argument("--nice", type=int, default=19, help="probe niceness")
     parser.add_argument(
         "--cpu",
