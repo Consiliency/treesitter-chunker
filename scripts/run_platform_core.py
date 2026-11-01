@@ -60,6 +60,7 @@ COMMON_TESTS = [
     "tests/test_javascript_reference_oracle_contract.py",
     "tests/test_graphml_exporter.py",
     "tests/test_graphml_yed_export_contract.py",
+    "tests/test_package_graphml_whitespace.py",
     "tests/test_sqlite_export_contract.py",
     "tests/test_platform_support_contract.py",
     "tests/test_exceptions.py",

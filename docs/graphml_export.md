@@ -313,8 +313,8 @@ LF-normalized, so their decoded text and bytes are unchanged. Compact Windows
 files whose caller text contains LF now hold LF where they held CRLF; no
 decoded value other than the former doubled break changes, and caller values
 are not normalized. The separate
-package-level `chunker.export.GraphMLExporter` still has the Python 3.11/3.12
-attribute-whitespace defect (treesitter-chunker#489).
+package-level `chunker.export.GraphMLExporter` has its own contract, described
+under [Package-level structured exporter](#package-level-structured-exporter).
 
 File export rejected by this character check leaves an existing file unchanged
 and creates no new file.
@@ -362,6 +362,43 @@ Validation uses a discarded attribute probe; the original output tree and its
 attribute values, including physical TAB/LF/CR, are preserved. Name diagnostics
 identify the name or namespace failure without printing caller attribute values
 or presenting probe positions as output locations.
+
+## Package-level structured exporter
+
+`chunker.export.GraphMLExporter` (also `chunker.export.formats.GraphMLExporter`)
+is a different API from the direct `chunker.export.graphml_exporter` and
+`graphml_yed_exporter` modules described above. The package exporter takes
+chunk and `ChunkRelationship` lists in a single
+`export(chunks, relationships, output, metadata=None)` call, writes to a path
+or a text stream, uses each chunk's `chunk_id` as its node ID, and declares
+`d<n>` keys for the attributes chosen with `set_node_attributes` and
+`set_edge_attributes`. The direct modules build a graph model with
+`add_chunks`/`add_relationship`, write with `export_string()` or
+`export(path)`, and own the key-ID, XML-character, graph-name and newline
+contracts above. A contract stated for one API does not apply to the other.
+
+The package exporter preserves physical TAB, LF and CR in caller chunk IDs and
+relationship endpoints on Python 3.12 and later (treesitter-chunker#489).
+Distinct IDs stay distinct and each edge keeps its direction when text-stream
+or UTF-8 file output is read back with ElementTree, and when the file is
+imported with NetworkX 3.6.1. Earlier releases reparsed the output with
+`xml.dom.minidom`, which on Python 3.11/3.12 wrote these characters back
+literally, so XML attribute normalization turned them into spaces and could
+merge distinct IDs. Regenerate GraphML written by those releases if your chunk
+IDs contain TAB, LF or CR.
+
+The output keeps its `<?xml version="1.0" ?>` declaration without an encoding
+label, the metadata comment, its key declarations and data values, and a
+trailing newline. Indentation is unchanged, but empty-element layout (` />`)
+and text escaping (a `"` in text is no longer written as `&quot;`) may differ
+from earlier output. Text leaves and the metadata comment keep
+XML newline normalization: CRLF and lone CR become LF, and other whitespace is
+unchanged. Caller chunks are not modified. Path output is UTF-8 with native
+newline translation, and a text stream receives the same text. Output that
+would not be well-formed XML, such as a NUL, U+FFFE or a lone surrogate in a
+caller value, still raises `xml.parsers.expat.ExpatError` or
+`UnicodeEncodeError` before anything is written; no file is created. This
+exporter does not validate GraphML schema.
 
 ## Compatibility
 
