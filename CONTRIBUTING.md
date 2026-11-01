@@ -2,9 +2,10 @@
 
 ## Setup
 
-Develop on Python 3.12, the supported floor, in the project environment. CI
-validates on 3.14 as well, so check changes on both. Keep source syntax
-compatible with 3.12. `.python-version` pins 3.12, so a plain sync uses it:
+Python 3.14 is the main version: CI and release validation run on it. Python
+3.12 stays the supported minimum until the next major release (7.0) drops it
+(treesitter-chunker#599). Keep source syntax compatible with 3.12 and check
+changes on both. `.python-version` pins 3.12, so a plain sync uses it:
 
 ```bash
 git clone https://github.com/Consiliency/treesitter-chunker.git
@@ -93,12 +94,11 @@ governed tools. The body-type check covers only
 `tools/governed_scope.py` are excluded because of existing body-type findings
 tracked under treesitter-chunker#514.
 
-For pushes and pull requests, CI runs lint, the type gate and the smoke tier
-once, on Linux 3.14. The same CI job runs the scheduled full tier on the 3.12
-floor, and release full validation runs on 3.14, so the full suite covers both
-interpreters without an extra job. Platform-core runs one job per OS: Linux on
-3.12, macOS and Windows on 3.14. Release wheels are installed and checked on
-3.12 and 3.14. `tests/test_release_hygiene_policy.py` checks this layout
+CI runs lint, the type gate and the smoke tier once, on Linux 3.14. The
+scheduled full tier and release full validation also run on 3.14. The 3.12
+minimum keeps only two checks: the Linux platform-core job (macOS and Windows
+run 3.14) and the release installed-wheel check (3.12 and 3.14). No interpreter
+is chosen by event. `tests/test_release_hygiene_policy.py` checks this layout
 (treesitter-chunker#502).
 
 The type gate compares complete messages and error codes, normalizing only

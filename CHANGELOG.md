@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add an experimental stdlib snapshot selector for opt-in governed extraction. Excluded repositories, dependencies and symlinks remain opaque. Published parser APIs and Boundary IR bytes are unchanged.
 - Keep unexpected selector failures on setup exit 2; test actual canonical bytes and receipt digests for Unicode and escaped paths.
 
+### Deprecated
+
+- Python 3.12 support is deprecated and ends at the next major release (7.0).
+  Python 3.14 is the main supported version. `requires-python` stays `>=3.12`
+  until then. The drop waits until downstream consumers run on 3.14
+  (treesitter-chunker#599).
+
 ### Fixed
 
 - Compact files from the direct `chunker.export.graphml_exporter` and
@@ -249,11 +256,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `httptools` 0.7.1, `line-profiler` 5.0.1, `markupsafe` 3.0.3, `pydantic`
   2.12.0 with `pydantic-core` 2.41.1 (and the `typing-inspection` 0.4.2 it
   requires), `uvloop` 0.22.1 and `watchfiles` 1.1.1. Parser and runtime pins
-  are unchanged. Push and pull-request CI (lint, type and smoke checks) and
-  release validation now run on 3.14. The scheduled full tier, Linux
-  platform-core and release wheel checks keep covering the 3.12 floor, with no
-  extra CI jobs. `requires-python` stays `>=3.12`, and `.python-version` keeps
-  3.12 as the default development interpreter.
+  are unchanged. Python 3.14 is now the main version: CI (lint, type and smoke
+  checks), the scheduled full tier, release validation and the distribution
+  build run on it. The 3.12 minimum keeps only Linux platform-core and the
+  release installed-wheel check, with no extra CI jobs. `requires-python` stays
+  `>=3.12`, and `.python-version` keeps 3.12 as the default development
+  interpreter.
 - On Python 3.14, Linux starts multiprocessing workers with `forkserver` by
   default. Scripts that call `chunk_files_parallel`, `chunk_directory_parallel`
   or `ParallelChunker` need the `if __name__ == "__main__":` guard there, as on

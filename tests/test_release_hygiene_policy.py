@@ -387,35 +387,105 @@ def test_docs_do_not_advertise_python_below_floor():
     assert not offenders, "\n".join(offenders)
 
 
-# treesitter-chunker#502: pushes, pull requests and release validation run on
-# the primary interpreter. The scheduled full tier stays on the floor
-# (maintainer decision, 2026-11-01). The floor also keeps a platform-core job,
-# with no version-by-OS matrix and no extra jobs.
+# treesitter-chunker#502, maintainer decision (2026-11-01): 3.14 is the main
+# version for every CI and release run, including the scheduled full tier. The
+# 3.12 minimum (requires-python, .python-version) keeps only Linux platform-core
+# and the release installed-wheel check until 7.0 drops it
+# (treesitter-chunker#599).
 PRIMARY_PYTHON = "3.14"
+
+# Where the floor interpreter may appear: (workflow, job, platform family or
+# None) -> reason.
+FLOOR_ALLOWED = {
+    ("test.yml", "test", "linux"): "focused minimum: Linux platform-core",
+    ("release.yml", "verify-installed-wheel", None): "installed-wheel floor check",
+    # The BAML companion is a separate package whose cp312-abi3 wheels are built
+    # on the oldest interpreter they support; its build interpreter sets its ABI
+    # floor and is not a main-package validation interpreter.
+    ("baml-grammar-wheels.yml", "source", None): "BAML companion cp312-abi3 build",
+    ("baml-grammar-wheels.yml", "wheel", None): "BAML companion cp312-abi3 build",
+}
 
 
 def _workflow(name: str) -> dict:
     return yaml.safe_load((ROOT / ".github/workflows" / name).read_text("utf-8"))
 
 
-def test_validation_runs_on_primary_python_and_keeps_floor_coverage():
-    """3.14 for PRs and releases, 3.12 for the scheduled full tier, no new jobs."""
+def _interpreter_fields(workflow_env: dict, job: dict) -> list[str]:
+    """Every setup-python version and UV_PYTHON value that applies to a job."""
+    values = _setup_python_versions(job)
+    for env in (workflow_env, job.get("env") or {}):
+        if "UV_PYTHON" in env:
+            values.append(str(env["UV_PYTHON"]))
+    for step in job.get("steps") or []:
+        if "UV_PYTHON" in (step.get("env") or {}):
+            values.append(str(step["env"]["UV_PYTHON"]))
+    return values
+
+
+def _floor_uses() -> set[tuple[str, str, str | None]]:
+    floor = _floor_text()
+    uses = set()
+    for workflow, name, workflow_env, job in _workflow_jobs():
+        for value in _interpreter_fields(workflow_env, job):
+            if floor not in _resolve(job, value):
+                continue
+            include = ((job.get("strategy") or {}).get("matrix") or {}).get("include")
+            if (
+                value == "${{ matrix.python-version }}"
+                and include
+                and all("platform-family" in item for item in include)
+            ):
+                uses |= {
+                    (workflow, name, item["platform-family"])
+                    for item in include
+                    if str(item.get("python-version")) == floor
+                }
+            else:
+                uses.add((workflow, name, None))
+    return uses
+
+
+def test_no_workflow_selects_its_interpreter_by_event():
+    """No event-conditional interpreter, such as 3.12-when-scheduled."""
+    offenders = [
+        (workflow, name, value)
+        for workflow, name, workflow_env, job in _workflow_jobs()
+        for value in _interpreter_fields(workflow_env, job)
+        if "github.event_name" in value or _event_choice(value)
+    ]
+    assert offenders == []
+
+
+def test_floor_interpreter_appears_only_in_floor_checks():
+    """3.12 runs only Linux platform-core and the installed-wheel check."""
+    assert _floor_uses() == set(FLOOR_ALLOWED)
+
+
+def test_primary_python_runs_ci_full_tier_and_release():
+    """CI (smoke and scheduled full tier) and release run on 3.14; no new jobs."""
     floor = _floor_text()
     assert floor != PRIMARY_PYTHON
 
     ci = _workflow("ci.yml")["jobs"]
     assert list(ci) == ["test"]
     job = ci["test"]
-    # One job: the schedule selects the floor, every other event the primary.
-    interpreter = job["env"]["UV_PYTHON"]
-    assert _event_choice(interpreter) == ("schedule", floor, PRIMARY_PYTHON)
-    assert _setup_python_versions(job) == [interpreter]
-    # The scheduled run is the full tier; other events run the smoke tier.
+    assert str(job["env"]["UV_PYTHON"]) == PRIMARY_PYTHON
+    assert _setup_python_versions(job) == [PRIMARY_PYTHON]
+    # The same job runs the full tier when scheduled and the smoke tier otherwise.
     pytest_step = next(s for s in job["steps"] if s.get("name") == "Pytest")
     full_branch, smoke_branch = pytest_step["run"].split("else", 1)
     assert '"$GITHUB_EVENT_NAME" = "schedule"' in full_branch
     assert "scripts/run_full_suite.py" in full_branch
     assert "scripts/run_ci_smoke.py" in smoke_branch
+
+    release = _workflow("release.yml")["jobs"]
+    assert release["release-validation"]["strategy"]["matrix"]["python-version"] == [
+        PRIMARY_PYTHON
+    ]
+    build = release["build-distributions"]
+    assert str(build["env"]["UV_PYTHON"]) == PRIMARY_PYTHON
+    assert _setup_python_versions(build) == [PRIMARY_PYTHON]
 
     platform = _workflow("test.yml")["jobs"]
     assert list(platform) == ["test"]
@@ -432,8 +502,7 @@ def test_validation_runs_on_primary_python_and_keeps_floor_coverage():
     ]
     assert platform["test"]["env"]["UV_PYTHON"] == "${{ matrix.python-version }}"
 
-    # The lint and type checks run once per run, in the ci.yml job (3.14, or
-    # 3.12 when scheduled).
+    # The lint and type checks run once per CI run, in the ci.yml job on 3.14.
     gate = "scripts/mypy_gate.py"
     runs = [
         (workflow, name)

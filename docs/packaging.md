@@ -2,10 +2,13 @@
 
 This document is the source of truth for packaging and PyPI publishing.
 
-Development and the next release require Python >=3.12. CI uses 3.12, with
-installed-wheel checks on both 3.12 and 3.14. Already published 6.0.0 keeps its
-original >=3.11 metadata. Moving the full development environment to 3.14 needs
-separate validation of its native development dependencies.
+Development and the next release require Python >=3.12. Python 3.14 is the main
+version: CI, the scheduled full tier and release validation run on it, and the
+locked development environment installs from wheels on it
+(treesitter-chunker#502). The 3.12 minimum keeps Linux platform-core and
+installed-wheel checks until the next major release (7.0) drops it
+(treesitter-chunker#599). Already published 6.0.0 keeps its original >=3.11
+metadata.
 
 ## Current Release Model
 

@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-validation
     env:
-      UV_PYTHON: '3.12'
+      UV_PYTHON: '3.14'
     permissions:
       contents: read
     outputs:
@@ -150,7 +150,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
       with:
-        python-version: '3.12'
+        python-version: '3.14'
 
     - name: Install build dependencies
       run: |
