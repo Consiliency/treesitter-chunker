@@ -10,6 +10,10 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("native_probe_lifetimes")
+
+from tests.native_probe_lifetime import remove_retained_probe_root
+
 from chunker.grammar_management.core import load_compiled_grammar
 from chunker.languages.compatibility.grammar_analyzer import GrammarAnalyzer
 from chunker.languages.compatibility.schema import (
@@ -294,7 +298,14 @@ def test_probe_rejects_altered_real_child_acknowledgment(
 
     def alter(*args, **kwargs):
         rc, stdout, stderr, timed_out, overflow = original(*args, **kwargs)
-        assert rc == 0 and not timed_out and not overflow
+        assert rc == 0 and not timed_out and not overflow, (
+            rc,
+            stdout,
+            stderr,
+            timed_out,
+            overflow,
+            kwargs["lifecycle"],
+        )
         calls.append(json.loads(stdout))
         if fault == "duplicate":
             stdout = stdout.rstrip()[:-1] + b', "loader_returned": true}'
@@ -930,6 +941,10 @@ static void enter(void) {
     if (!marker) abort();
     fprintf(marker, "%ld\n%s\n", (long)PID, path);
     if (fclose(marker) || rename(pending, marker_path)) abort();
+    /* Destination visibility alone does not acknowledge publication completion.
+       Signal separately after every marker operation has returned. */
+    FILE *published = fopen(getenv("CHUNKER_TEST_OPEN_PUBLISHED"), "wb");
+    if (!published || fputc('1', published) == EOF || fclose(published)) abort();
     const char *trigger = getenv("CHUNKER_TEST_OPEN_TRIGGER");
     for (;;) {
         FILE *release = fopen(trigger, "rb");
@@ -968,6 +983,7 @@ __attribute__((constructor)) static void start(void) { enter(); }
             "return-observed",
         )
     ]
+    published = tmp_path / "opened-published"
     driver = tmp_path / "driver.py"
     driver.write_text(
         """
@@ -1010,6 +1026,7 @@ print(json.dumps(record), flush=True)
     environment.update(
         {
             "CHUNKER_TEST_OPEN_MARKER": str(marker),
+            "CHUNKER_TEST_OPEN_PUBLISHED": str(published),
             "CHUNKER_TEST_OPEN_TRIGGER": str(trigger),
             "CHUNKER_TEST_OPEN_DESCRIPTOR": str(
                 {"timeout": 0, "stdout_overflow": 1, "stderr_overflow": 2}[fault]
@@ -1037,7 +1054,7 @@ print(json.dumps(record), flush=True)
     observer = None
     snapshot = None
     try:
-        _wait_for_file(marker, controller)
+        _wait_for_file(published, controller)
         lines = marker.read_text(encoding="utf-8").splitlines()
         pid, snapshot = int(lines[0]), Path(lines[1])
         assert snapshot != library and snapshot.parent.name.startswith(
@@ -1146,7 +1163,7 @@ print(json.dumps(record), flush=True)
             controller.kill()
         controller.communicate(timeout=10)
         if snapshot is not None and snapshot.parent.exists():
-            shutil.rmtree(snapshot.parent)
+            remove_retained_probe_root(snapshot.parent)
 
 
 @pytest.mark.parametrize("status", ["zero", "abnormal", "unavailable"])
@@ -1164,7 +1181,7 @@ def test_native_actual_worker_status_required_after_real_ack(
             command = list(command)
             command[3] = command[3].replace(
                 "raise SystemExit(_native_probe_child(*sys.argv[2:]))",
-                "import os; result = _native_probe_child(*sys.argv[2:]); sys.stdout.flush(); os._exit(7)",
+                "import os; result = _native_probe_child(*sys.argv[2:]); sys.stdout.flush(); os._exit(7 if result == 0 else result)",
             )
         result = original_read(command, cwd, timeout, **kwargs)
         state = kwargs["lifecycle"]
@@ -1213,7 +1230,7 @@ def test_native_valid_ack_abnormal_worker_launcher_zero(tmp_path, monkeypatch):
     states, replies, roots = [], [], []
     launcher = tmp_path / "fault_launcher.py"
     launcher.write_text(
-        "import subprocess,sys; child=subprocess.Popen([sys._base_executable,*sys.argv[1:]], stdin=sys.stdin.buffer, stdout=sys.stdout.buffer, stderr=sys.stderr.buffer); child.wait(); raise SystemExit(0)",
+        "import subprocess,sys; child=subprocess.Popen([sys._base_executable,*sys.argv[1:]], stdin=sys.stdin.buffer, stdout=sys.stdout.buffer, stderr=sys.stderr.buffer); status=child.wait(); raise SystemExit(0 if status == 7 else status)",
         encoding="utf-8",
     )
 
@@ -1230,7 +1247,7 @@ def test_native_valid_ack_abnormal_worker_launcher_zero(tmp_path, monkeypatch):
             + command[3]
         ).replace(
             "raise SystemExit(_native_probe_child(*sys.argv[2:]))",
-            "import os; result=_native_probe_child(*sys.argv[2:]); sys.stdout.flush(); os._exit(7)",
+            "import os; result=_native_probe_child(*sys.argv[2:]); sys.stdout.flush(); os._exit(7 if result == 0 else result)",
         )
         states.append(kwargs["lifecycle"])
         roots.append(cwd)
@@ -1258,7 +1275,8 @@ def test_native_valid_ack_abnormal_worker_launcher_zero(tmp_path, monkeypatch):
                         "actual_worker_status_control": True,
                         "worker_status": states[0].worker_status,
                         "launcher_status": replies[0][0],
-                        "ack": json.loads(replies[0][1]),
+                        "ack_bytes": repr(replies[0][1]),
+                        "stderr": repr(replies[0][2]),
                         "result": result.reason,
                     }
                 ),
@@ -1277,7 +1295,7 @@ def test_native_valid_ack_abnormal_worker_launcher_zero(tmp_path, monkeypatch):
     finally:
         for root in roots:
             if root.exists():
-                shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 def test_native_handle_acquisition_precedes_start(tmp_path, monkeypatch):
@@ -1495,7 +1513,7 @@ def test_native_probe_unarmed_close_failure_keeps_cancellation_and_root(
                 state.launcher.wait(timeout=10)
             retained = Path(state.launcher.args[5]).parent
             if retained.exists():
-                shutil.rmtree(retained)
+                remove_retained_probe_root(retained)
 
 
 def test_analyzer_inspects_admitted_snapshot_after_original_replacement(
@@ -1578,7 +1596,7 @@ def test_native_registered_read_fault_retains_root_and_original_exception(
     finally:
         for root in roots:
             if root.exists():
-                shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 @pytest.mark.skipif(
@@ -1645,7 +1663,7 @@ def test_native_windows_handle_failure_after_real_ack_rejects(
     finally:
         for root in roots:
             if root.exists():
-                shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 def test_native_child_rechecks_snapshot_digest_before_constructor(
@@ -1737,4 +1755,4 @@ def test_native_inspection_cancellation_survives_owner_cleanup_error(
     finally:
         for snapshot in snapshots:
             if snapshot.parent.exists():
-                shutil.rmtree(snapshot.parent)
+                remove_retained_probe_root(snapshot.parent)

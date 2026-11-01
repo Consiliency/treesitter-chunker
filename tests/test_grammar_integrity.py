@@ -11,6 +11,10 @@ from urllib.error import URLError
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("native_probe_lifetimes")
+
+from tests.native_probe_lifetime import remove_retained_probe_root
+
 from chunker.grammar.download import GrammarDownloadManager
 from chunker.grammar.integrity import (
     ArtifactIntegrityError,
@@ -371,8 +375,9 @@ __attribute__((constructor)) static void enter_library(void) { mark_entry(); }
     return library, marker, trusted_artifacts(library)["baml"], FIXTURE.read_bytes()
 
 
+@pytest.mark.parametrize("denial_count", [1, 2])
 def test_native_windows_ready_open_denial_recovers_before_start(
-    tmp_path, monkeypatch, caplog
+    tmp_path, monkeypatch, caplog, denial_count
 ):
     from types import SimpleNamespace
     from chunker.grammar import integrity
@@ -386,17 +391,23 @@ def test_native_windows_ready_open_denial_recovers_before_start(
     original_ready = integrity._read_ready
     original_register = integrity._register_worker
     open_observations, registrations, roots, states = [], [], [], []
+    open_denials = []
     denial = PermissionError(13, "ready record temporarily denied")
 
     def controlled_open(path, mode="r", *args, **kwargs):
         if path.name == integrity._READY_NAME and mode == "rb":
             open_observations.append(marker.exists())
-            if len(open_observations) == 1:
-                raise denial
+            try:
+                if len(open_observations) <= denial_count:
+                    raise denial
+                return original_open(path, mode, *args, **kwargs)
+            except PermissionError as error:
+                open_denials.append(error)
+                raise
         return original_open(path, mode, *args, **kwargs)
 
     def ready(directory, nonce, **kwargs):
-        if len(open_observations) == 0:
+        if len(open_observations) < denial_count:
             original_sys = integrity.sys
             integrity.sys = SimpleNamespace(platform="win32")
             try:
@@ -406,7 +417,7 @@ def test_native_windows_ready_open_denial_recovers_before_start(
         return original_ready(directory, nonce, **kwargs)
 
     def register(state, record):
-        assert len(open_observations) >= 2 and not any(open_observations)
+        assert len(open_observations) > denial_count and not any(open_observations)
         assert not marker.exists(), "native entry preceded validated registration"
         registrations.append(record["pid"])
         return original_register(state, record)
@@ -431,7 +442,10 @@ def test_native_windows_ready_open_denial_recovers_before_start(
         assert result.artifact_sha256 == provenance["sha256"]
         assert len(registrations) == 1 and marker.read_text() == "entered"
         assert states[0].cleanup_safe and not roots[0].exists()
-        assert states[0].ready_open_denials == 1
+        # Windows may also deny a real OPEN after our injected denials. Check
+        # accounting against every observed denial, not a scheduling assumption.
+        assert len(open_denials) >= denial_count
+        assert states[0].ready_open_denials == len(open_denials)
         assert states[0].first_ready_open_denial["errno"] == 13
         assert states[0].start_attempted and states[0].start_completed
         assert not any(
@@ -440,7 +454,7 @@ def test_native_windows_ready_open_denial_recovers_before_start(
     finally:
         for root in roots:
             if root.exists():
-                integrity.shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 def test_native_windows_ready_open_denial_uses_shared_deadline(
@@ -515,7 +529,7 @@ def test_native_windows_ready_open_denial_uses_shared_deadline(
     finally:
         for root in roots:
             if root.exists():
-                integrity.shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 @pytest.mark.parametrize("fault", ["nonce", "pid", "creation"])
@@ -571,7 +585,7 @@ def test_native_windows_ready_open_recovery_keeps_invalid_record_rejected(
             record["windows_creation_filetime"] = "invalid"
         (cwd / integrity._READY_NAME).write_text(json.dumps(record), encoding="utf-8")
         return original_read(
-            [sys.executable, "-I", "-c", "import time; time.sleep(60)"],
+            [sys._base_executable, "-I", "-c", "import time; time.sleep(60)"],
             cwd,
             timeout,
             **kwargs,
@@ -591,10 +605,11 @@ def test_native_windows_ready_open_recovery_keeps_invalid_record_rejected(
         assert len(open_attempts) == 2 and not registrations
         assert states[0].worker is None and states[0].worker_handle is None
         assert not states[0].cleanup_safe and roots[0].exists()
+        assert set(states[0].known) == {states[0].launcher.pid}
     finally:
         for root in roots:
             if root.exists():
-                integrity.shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 @pytest.mark.parametrize(
@@ -775,7 +790,7 @@ def test_native_probe_ready_read_cancellation_survives_disposal_failure(
     finally:
         for root in roots:
             if root.exists():
-                integrity.shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Win32 exclusive sharing")
@@ -893,7 +908,7 @@ def test_native_snapshot_copy_preserves_operation_cancellation_during_disposal(
     finally:
         for root in roots:
             if root.exists():
-                integrity.shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 @pytest.mark.parametrize("stage", ["dup", "destination_fdopen"])
@@ -1073,7 +1088,7 @@ def test_native_snapshot_cleanup_ignores_callers_handled_exception(
     finally:
         for root in roots:
             if root.exists():
-                real_rmtree(root)
+                remove_retained_probe_root(root, remover=real_rmtree)
 
 
 @_SNAPSHOT_CLOSE_FAILURES
@@ -1130,7 +1145,7 @@ def test_native_final_source_disposal_preserves_acquisition_cancellation(
     finally:
         for root in roots:
             if root.exists():
-                integrity.shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 @_SNAPSHOT_CLOSE_FAILURES
@@ -1210,7 +1225,7 @@ def test_native_final_snapshot_hash_preserves_read_cancellation_during_disposal(
     finally:
         for root in roots:
             if root.exists():
-                integrity.shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 @pytest.mark.parametrize(
@@ -1236,8 +1251,11 @@ def test_native_invalid_registration_never_targets_unrelated_pid(
     import psutil
     from chunker.grammar import integrity
 
+    # These stdlib-only sleepers must each be one fixture-owned OS process.
+    # A venv redirector can spawn an undiscovered child after the final scan;
+    # production correctly retains that uncertainty, so deleting its cwd races.
     sentinel = subprocess.Popen(
-        [sys.executable, "-I", "-c", "import time; time.sleep(60)"]
+        [sys._base_executable, "-I", "-c", "import time; time.sleep(60)"]
     )
     targets = []
     real_terminate, real_kill = psutil.Process.terminate, psutil.Process.kill
@@ -1251,11 +1269,12 @@ def test_native_invalid_registration_never_targets_unrelated_pid(
     )
     candidate = tmp_path / "candidate.so"
     candidate.write_bytes(b"deliberately pinned protocol fixture")
-    roots = []
+    roots, states = [], []
     original = integrity._read_child
 
     def invalid(command, cwd, timeout, **kwargs):
         roots.append(cwd)
+        states.append(kwargs["lifecycle"])
         nonce = kwargs["worker_nonce"]
         record = {
             "schema": "native_probe.worker.v2",
@@ -1285,7 +1304,7 @@ def test_native_invalid_registration_never_targets_unrelated_pid(
             payload = " " * 4097 + payload
         (cwd / integrity._READY_NAME).write_text(payload, encoding="utf-8")
         return original(
-            [sys.executable, "-I", "-c", "import time; time.sleep(60)"],
+            [sys._base_executable, "-I", "-c", "import time; time.sleep(60)"],
             cwd,
             timeout,
             **kwargs,
@@ -1301,12 +1320,15 @@ def test_native_invalid_registration_never_targets_unrelated_pid(
         assert result.reason == "child_failed" and result.artifact_sha256 is None
         assert roots[0].exists() and sentinel.poll() is None
         assert sentinel.pid not in targets
+        assert states[0].launcher.poll() is not None
+        assert set(states[0].known) == {states[0].launcher.pid}
     finally:
-        sentinel.kill()
+        if sentinel.poll() is None:
+            sentinel.kill()
         sentinel.wait(timeout=10)
         for root in roots:
             if root.exists():
-                integrity.shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 @pytest.mark.parametrize("event", ["cancel", "launcher_loss", "creation_boundary"])
@@ -1406,7 +1428,7 @@ def test_native_pre_ready_uncertainty_retains_snapshot(tmp_path, monkeypatch, ev
             observer.close()
         for root in roots:
             if root.exists():
-                integrity.shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 @pytest.mark.parametrize(
@@ -1437,7 +1459,7 @@ def test_native_lifecycle_faults_retain_unsafe_root(tmp_path, monkeypatch, stage
         if stage == "constructor":
             raise OSError("ambiguous creation failure")
         return real_popen(
-            [sys.executable, "-I", "-c", "import time; time.sleep(60)"], **kwargs
+            [sys._base_executable, "-I", "-c", "import time; time.sleep(60)"], **kwargs
         )
 
     def read(command, cwd, timeout, **kwargs):
@@ -1502,33 +1524,23 @@ def test_native_lifecycle_faults_retain_unsafe_root(tmp_path, monkeypatch, stage
             )
             assert result.reason == "child_failed" and result.artifact_sha256 is None
         assert states[0].launch_attempted and not states[0].cleanup_safe
+        if states[0].launcher is not None:
+            assert set(states[0].known) == {states[0].launcher.pid}
         assert roots[0].exists()
         gc.collect()
         assert roots[0].exists()
     finally:
-        import psutil
-
         process = states[0].launcher
-        if process is not None:
-            # Emergency cleanup follows every assertion and supplies none of its values.
-            children = [p for pid, p in states[0].known.items() if pid != process.pid]
-            if process.poll() is None:
-                for child in psutil.Process(process.pid).children(recursive=True):
-                    if child not in children:
-                        children.append(child)
-            for child in children:
-                try:
-                    child.kill()
-                except psutil.NoSuchProcess:
-                    pass
+        if stage in {"wait", "second_interrupt"} and process is not None:
+            # These controls deliberately replace product stop with an exception.
+            # Release their stdlib sleeper only after the original assertions;
+            # every real product-stop path must exit without a fixture signal.
             if process.poll() is None:
                 process.kill()
-            process.wait(timeout=10)
-            _, alive = psutil.wait_procs(children, timeout=10)
-            assert not alive, "emergency fixture children remain alive"
+        # The retained Popen handle must confirm exit even after a fixture signal.
         for root in roots:
             if root.exists():
-                integrity.shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 @pytest.mark.parametrize("diagnostic_error", [OSError, KeyboardInterrupt])
@@ -1571,7 +1583,7 @@ def test_native_retention_diagnostic_failure_preserves_cancellation(
     finally:
         for root in roots:
             if root.exists():
-                integrity.shutil.rmtree(root)
+                remove_retained_probe_root(root)
 
 
 def test_native_rejection_diagnostic_preserves_launch_error_without_private_data(
@@ -1633,7 +1645,7 @@ def test_native_rejection_diagnostic_preserves_launch_error_without_private_data
     finally:
         # The replaced Popen never created a process; only this fixture owns the root.
         for root in roots:
-            integrity.shutil.rmtree(root)
+            remove_retained_probe_root(root)
 
 
 @pytest.mark.parametrize("sink_error", [OSError, KeyboardInterrupt])
@@ -1679,7 +1691,7 @@ def test_native_failure_diagnostic_sink_preserves_original_cancellation(
         assert roots[0].exists()
     finally:
         for root in roots:
-            integrity.shutil.rmtree(root)
+            remove_retained_probe_root(root)
 
 
 @pytest.mark.parametrize("sink_error", [OSError, KeyboardInterrupt])
@@ -1798,7 +1810,7 @@ def test_native_failed_observation_keeps_first_error_through_cleanup_failure(
     finally:
         # Popen was replaced before creating a process; these roots are fixture-owned.
         for root in roots:
-            integrity.shutil.rmtree(root)
+            remove_retained_probe_root(root)
 
 
 def test_native_failure_diagnostics_bound_traceback_without_reading_source():
