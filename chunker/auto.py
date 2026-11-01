@@ -164,8 +164,10 @@ class ZeroConfigAPI(ZeroConfigContract):
         """Return whether the registry provides a parser for ``language``."""
         try:
             parser = self.registry.get_parser(language)
-        except (LanguageNotFoundError, ValueError):
+        except (LanguageNotFoundError, ParserError, ValueError):
             # LanguageNotFoundError: no installed, admitted source.
+            # ParserError: for example ParserInitError from a pinned grammar
+            # that fails to load; availability stays a yes/no answer.
             # ValueError: registries that report "not available" this way
             # (the contract stub), or an incompatible grammar.
             return False
@@ -358,7 +360,10 @@ class ZeroConfigAPI(ZeroConfigContract):
         token_limit: int | None = None,
         include_retrieval_metadata: bool = False,
     ) -> AutoChunkResult:
-        """Chunk text content with automatic setup.
+        """Chunk text with installed, admitted grammars or text fallback.
+
+        Nothing is downloaded or built: the text is parsed with a grammar an
+        installed, admitted source provides, or chunked by the text fallback.
 
         Args:
             text: Text content to chunk
@@ -509,13 +514,13 @@ class ZeroConfigAPI(ZeroConfigContract):
         return LanguageChunker(language)
 
     def preload_languages(self, languages: list[str]) -> dict[str, bool]:
-        """Preload multiple language grammars.
+        """Report which languages are available (nothing is installed).
 
         Args:
             languages: List of languages to preload
 
         Returns:
-            Dict of language -> success status
+            Dict of language -> availability (True only when admitted)
         """
         results = {}
         for language in languages:

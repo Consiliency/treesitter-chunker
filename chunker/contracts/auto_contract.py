@@ -60,9 +60,9 @@ class ZeroConfigContract(ABC):
             - File exists and is readable
 
         Postconditions:
-            - File chunked using best available method
-            - Grammar downloaded if needed
-            - Falls back to text chunking if needed
+            - File chunked with an installed, admitted grammar when available
+            - Nothing is downloaded or built
+            - Falls back to text chunking otherwise
         """
 
     @staticmethod
@@ -89,7 +89,7 @@ class ZeroConfigContract(ABC):
         language: str,
         token_limit: int | None = None,
     ) -> AutoChunkResult:
-        """Chunk text content with automatic setup
+        """Chunk text with installed, admitted grammars or text fallback
 
         Args:
             text: Text content to chunk
@@ -104,8 +104,9 @@ class ZeroConfigContract(ABC):
             - Language is specified
 
         Postconditions:
-            - Grammar downloaded if needed
-            - Text chunked appropriately
+            - Nothing is downloaded or built
+            - Text chunked with an installed, admitted grammar, or by the text
+              fallback otherwise
         """
 
     @staticmethod
@@ -148,15 +149,15 @@ class ZeroConfigContract(ABC):
     @staticmethod
     @abstractmethod
     def preload_languages(languages: list[str]) -> dict[str, bool]:
-        """Preload multiple language grammars
+        """Report which languages are available (nothing is installed)
 
         Args:
             languages: List of languages to preload
 
         Returns:
-            Dict of language -> success status
+            Dict of language -> availability (True only when admitted)
 
         Postconditions:
-            - All requested grammars downloaded
-            - Ready for offline use
+            - Nothing is downloaded, built or installed
+            - True only for languages an installed, admitted source provides
         """

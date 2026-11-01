@@ -9,7 +9,7 @@ import pytest
 
 from chunker.auto import ZeroConfigAPI
 from chunker.contracts.auto_contract import AutoChunkResult
-from chunker.exceptions import ChunkerError
+from chunker.exceptions import ChunkerError, ParserInitError
 from chunker.fallback import FallbackWarning
 from chunker.types import CodeChunk
 
@@ -109,6 +109,24 @@ class TestZeroConfigAPI:
         install.assert_not_called()
         update.assert_not_called()
         assert api.registry.is_language_installed("rust") is False
+
+    def test_failing_pinned_grammar_is_unavailable_not_an_error(self, api):
+        """A grammar whose parser fails to initialize (for example a pinned
+        library that fails to load) reports unavailable; preloading continues
+        with the remaining languages."""
+        real = api.registry.get_parser
+
+        def get_parser(language, auto_download=None):
+            if language == "go":
+                raise ParserInitError("go", "pinned grammar failed to load")
+            return real(language)
+
+        with patch.object(api.registry, "get_parser", side_effect=get_parser):
+            assert api.ensure_language("go") is False
+            assert api.preload_languages(["go", "python"]) == {
+                "go": False,
+                "python": True,
+            }
 
     def test_ensure_language_not_available(self, api):
         """Test ensuring a language that's not available."""
