@@ -223,7 +223,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `integrity_mismatch`, which no pin overrides (one trust rule with parsing).
   `UserGrammarTools` no longer stages or probes a library it has no pin for.
   It also refuses to publish over a grammar file listed in the installed
-  package's RECORD.
+  package's RECORD (checked before any clone in install and update); a local
+  link elsewhere that aliases a shipped grammar can still be replaced.
 - Align the remaining Python version declarations with the 3.12 floor from
   treesitter-chunker#493: the release-process spec, getting-started, user guide,
   deployment, performance-core and VS Code docs, the conda recipe, all three
