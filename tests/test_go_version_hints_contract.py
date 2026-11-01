@@ -131,6 +131,10 @@ def test_go_mod_version_precedes_source_build_constraint(tmp_path: Path) -> None
         ("go1.10,go1.9,linux", "1.10"),
         ("linux,go1.10,cgo,go1.9", "1.10"),
         ("go2.0,go1.99", "2.0"),
+        # Go tags allow Unicode letters and decimal digits, "_" and ".".
+        ("go1.10,café,go1.9", "1.10"),
+        ("go1.9,café,go1.10", "1.10"),
+        ("tag\u0663,go1.10,ünï_1.x,go1.9", "1.10"),
     ],
 )
 @pytest.mark.parametrize("comment", ["// +build", "//+build"])
