@@ -299,10 +299,20 @@ declaration without an encoding label and its trailing newline. Indentation and
 empty-element layout may differ from earlier output.
 
 Pretty text leaves retain XML newline normalization: CRLF and lone CR become LF;
-space-TAB-space leaves stay intact. Caller inputs are unchanged. UTF-8 files
-retain native newline translation. Compact Windows files can still turn CRLF
-caller text into two decoded LF characters (treesitter-chunker#488); this differs
-from compact string output and is outside the attribute repair. The separate
+space-TAB-space leaves stay intact. Caller inputs are unchanged.
+
+File output decodes to the same text as `export_string()` with the same options,
+on every platform and for the plain, yEd and `use_yed=False` delegated routes
+(treesitter-chunker#488). Compact files contain exactly the UTF-8 bytes of the
+compact string, with no newline translation, so a caller CR, LF or CRLF text
+leaf decodes the same way from the file as from the string: an XML reader
+reports LF for each of them. Earlier releases translated LF to CRLF in compact
+Windows files, which turned a CRLF leaf into two decoded LF characters.
+Pretty files keep native newline translation; their text leaves are already
+LF-normalized, so their decoded text and bytes are unchanged. Compact Windows
+files whose caller text contains LF now hold LF where they held CRLF; no
+decoded value other than the former doubled break changes, and caller values
+are not normalized. The separate
 package-level `chunker.export.GraphMLExporter` still has the Python 3.11/3.12
 attribute-whitespace defect (treesitter-chunker#489).
 

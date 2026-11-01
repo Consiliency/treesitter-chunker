@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Compact files from the direct `chunker.export.graphml_exporter` and
+  `graphml_yed_exporter` modules no longer double CRLF caller text leaves on
+  Windows (treesitter-chunker#488). `export(path, pretty_print=False)` now
+  writes exactly the UTF-8 bytes of `export_string(pretty_print=False)`
+  without newline translation, so file and string output decode to the same
+  text on every platform, including the `use_yed=False` route. On Windows,
+  compact files whose caller text contains LF now hold LF instead of CRLF.
+  Pretty files are unchanged. See
+  [the newline policy](docs/graphml_export.md#special-character-handling).
 - `UserGrammarTools.install_grammar` and `update_grammar` no longer overwrite
   the installed grammar library in place, which could crash a process that had
   it loaded (treesitter-chunker#162). A new `publish_native_grammar` copies the
