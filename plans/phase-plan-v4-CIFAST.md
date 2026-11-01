@@ -118,7 +118,7 @@ SL-scratch — disk scratch rule and literal `/tmp` check (treesitter-chunker#48
 ### SL-deadline — treesitter-chunker#207 then treesitter-chunker#143
 
 - **Scope**: truthful cause reporting for the two five-second deadlines. The
-  production deadline stays five seconds. One PR with one commit per issue.
+  production deadline stays five seconds. One PR.
 - **Owned files**: `chunker/languages/compatibility/grammar_analyzer.py`
   (`GrammarAnalyzer.analyze_grammar_symbols` only), `tests/language_smoke.py`,
   `tests/test_language_smoke.py`, the BAML capabilities case in
@@ -155,12 +155,13 @@ SL-scratch — disk scratch rule and literal `/tmp` check (treesitter-chunker#48
     `fails_to_load`. The per-language load test uses `confirm_load` and still
     asserts `loads`. The COBOL test asserts `deadline_expired`, so a real hang
     is never re-labelled as starvation.
-  - harness: `scripts/run_deadline_load_harness.py` (Linux) pins N busy
-    processes and a niced probe child to one CPU, then runs the real `nm`
-    analysis and the Python load probe. It prints the outcomes as JSON. On
-    unchanged main it shows the false `fails_to_load` and the silent empty
-    symbol lists. With the fix it shows `deadline_expired`. It is a heavy run
-    under the host caps.
+  - harness: `scripts/run_deadline_load_harness.py` (Linux) pins 32 busy
+    processes to one CPU and runs the real `nm` analysis and the Python load
+    probe. Only the processes those probes start are placed on that CPU at
+    niceness 19, so the probing interpreter measures each deadline accurately.
+    It prints the outcomes as JSON. On unchanged main it shows the false
+    `fails_to_load` and the silent empty symbol lists. With the fix it shows
+    `deadline_expired`. It is a heavy run under the host caps.
 - **Load-tolerant bound**: 45 seconds, applied only after a recorded expiry and
   only in tests and the coverage sweep, below the CI smoke's 60-second pytest
   timeout. A real hang, a load error or a missing symbol table still fails. A
@@ -196,7 +197,8 @@ SL-scratch — disk scratch rule and literal `/tmp` check (treesitter-chunker#48
   matches get the smallest compatible change; the rest are recorded as
   inapplicable or deferred with reasons. No blanket upgrade, no parser or
   runtime pin change, and no `pyproject.toml` floor change.
-- **Owned files**: the three manifests and `CHANGELOG.md`.
+- **Owned files**: the three manifests. None of them ships to package
+  consumers, so no CHANGELOG entry is needed.
 - **Tasks**: deduplicate advisory aliases. Classify each package as base
   runtime, extra, dev/CI or template, and record installed versions. Upgrade
   only listed packages with `uv lock --upgrade-package <name>==<fixed>`, and
