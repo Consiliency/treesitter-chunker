@@ -187,16 +187,21 @@ Those shared lines are resolved by the PR that merges second, by merging
   `1.5` against ES bounds) rejected, never silently accepted; Python numeric
   bounds unchanged.
 - **Named mutation** `M170-zero`: restore `return 0` on a comparison failure;
-  the out-of-range and uncomparable cases fail.
+  the uncomparable, selection (`ESNext` selected) and numeric-control cases
+  fail. The unchanged code also fails the in-order ES bounds case, because it
+  had no ES ordering at all.
 
 ### SL-go — Go build-constraint minimums (treesitter-chunker#437 → treesitter-chunker#438)
 
 - **Owned files**: `chunker/languages/version_detection/go_detector.py`,
-  `tests/test_go_version_hints_contract.py`, `CHANGELOG.md`, and for
-  treesitter-chunker#438 a short section in `docs/` describing the hint.
+  `tests/test_go_version_hints_contract.py`, `CHANGELOG.md`. No user doc
+  covers version detection, so the treesitter-chunker#438 contract is in the
+  `analyze_build_constraints` docstring and the CHANGELOG.
 - **Order**: treesitter-chunker#437 first (narrow legacy repair), then
   treesitter-chunker#438 replaces the regex extraction with the bounded
   minimum computation below, keeping every earlier contract test green.
+  Because both rewrite the same function, the treesitter-chunker#438 branch
+  starts from the treesitter-chunker#437 head and merges after it.
 
 #### treesitter-chunker#437 — Legacy comma conjunction
 
@@ -259,10 +264,11 @@ branch-on-a-variable (small, bounded inputs).
 | `go1.21 && !go1.18` (unsatisfiable) | `None` | `unknown` |
 | malformed (`go1.18 &&`, unbalanced parens, `!!x` in legacy, bad characters) | `None` | `unknown` |
 | no constraint line | `None` | `absent` |
-| too large (over 1,000 tokens or 32 distinct free tags) | `None` | `unknown` |
+| too large (over 1,000 tokens, nesting over 100, over 32 distinct free tags, or over 10,000 search steps) | `None` | `unknown` |
 
 `detect_from_build_constraints` keeps its `str | None` signature and returns
-the minimum. `detect_version` adds `build_constraints_status`
+the minimum. The new `analyze_build_constraints(content)` returns
+`{"minimum", "status", "reason"}`. `detect_version` adds `build_constraints_status`
 (`absent`/`minimum`/`unconstrained`/`unknown`). An unknown never becomes a
 version string, so `get_primary_version` precedence (go.mod > build
 constraints > runtime > features) is unchanged: an unknown or unconstrained
