@@ -79,6 +79,7 @@ def test_compatibility_helpers_confine_cache_roots(
     )
     assert success and errors == []
     assert not helper.validator._validation_cache.exists()
+    written: dict[Path, dict[str, list[str]]] = {}
     for index, validator in enumerate([helper.validator, *validators]):
         candidate = tmp_path / f"empty-not-grammar-{index}.so"
         candidate.write_bytes(b"")
