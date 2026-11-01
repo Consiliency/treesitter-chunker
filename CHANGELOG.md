@@ -32,7 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reparsing through `xml.dom.minidom`. The declaration, metadata comment, keys,
   data values and text-leaf newline normalization (CRLF and lone CR become LF)
   are unchanged, and malformed caller values still raise before anything is
-  written; indentation may differ. Regenerate affected GraphML files. See
+  written. Indentation is unchanged; empty-element layout (` />`) and text
+  escaping (`"` instead of `&quot;`) may differ. Regenerate affected GraphML
+  files. See
   [the package exporter notes](docs/graphml_export.md#package-level-structured-exporter).
 - The SQLite chunk cache (`ASTCache`, used by default by `ParallelChunker`,
   `chunk_files_parallel` and `chunk_directory_parallel`) no longer returns core

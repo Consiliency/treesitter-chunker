@@ -379,7 +379,9 @@ IDs contain TAB, LF or CR.
 
 The output keeps its `<?xml version="1.0" ?>` declaration without an encoding
 label, the metadata comment, its key declarations and data values, and a
-trailing newline; indentation may differ from earlier output. Text leaves keep
+trailing newline. Indentation is unchanged, but empty-element layout (` />`)
+and text escaping (a `"` in text is no longer written as `&quot;`) may differ
+from earlier output. Text leaves and the metadata comment keep
 XML newline normalization: CRLF and lone CR become LF, and other whitespace is
 unchanged. Caller chunks are not modified. Path output is UTF-8 with native
 newline translation, and a text stream receives the same text. Output that
