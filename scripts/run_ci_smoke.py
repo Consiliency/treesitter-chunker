@@ -78,7 +78,13 @@ CI_SMOKE_TESTS = [
     # See .github/workflows/ci.yml for the exact pack install and prefetch.
     "tests/test_language_smoke.py",
     "tests/test_supported_wheel_verification.py",
+    "tests/test_symbol_analysis_deadline.py",
     "tests/test_lint_path_policy.py",
+    "tests/test_workflow_permissions_policy.py",
+    # Workflow and release policy assertions; previously full-tier only.
+    "tests/test_release_hygiene_policy.py",
+    "tests/test_scratch_root_policy.py",
+    "tests/test_fork_terminal_scratch.py",
 ]
 
 
