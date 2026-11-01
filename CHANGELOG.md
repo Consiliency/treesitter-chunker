@@ -28,7 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SmartSelector` no longer gives every local artifact of a language the
   version and metadata of that language's single install record
   (treesitter-chunker#134). The record now describes only the artifact at its
-  `install_path`. Other USER or PACKAGE artifacts report version `unknown`
+  `install_path`, matched by file identity: the same file, or the same resolved
+  location when the recorded path is missing. A corrupt recorded path matches
+  nothing. Other USER or PACKAGE artifacts report version `unknown`
   with no metadata, so their performance, reliability and feature scores
   reflect what is known about them. Conflict resolution now groups candidates
   only when they share a known version, and `unknown` artifacts are no longer

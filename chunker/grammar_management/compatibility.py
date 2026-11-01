@@ -1598,13 +1598,21 @@ class SmartSelector:
 
     @staticmethod
     def _is_same_artifact(grammar_path: Path, install_path: Path) -> bool:
-        """Whether an install record's path names this discovered artifact."""
+        """Whether an install record's path names this discovered artifact.
+
+        Same file first; if the record's path is missing, the same resolved
+        location. A corrupt path (e.g. an embedded NUL) names no artifact.
+        """
         try:
             return grammar_path.samefile(install_path)
-        except OSError:
+        except (OSError, ValueError):
+            pass
+        try:
             return grammar_path.resolve(strict=False) == Path(install_path).resolve(
                 strict=False
             )
+        except (OSError, ValueError):
+            return False
 
     def _score_candidate(
         self,

@@ -4,8 +4,11 @@ The installer keeps one record per language and the record names the artifact
 it describes (``install_path``). Selection must attribute that version and
 metadata to that artifact only, and group candidates only when they share a
 known version. Named mutations: ``M134-shared-record`` (give every artifact
-the language's record, the old behavior) and ``M134-group-unknown`` (group
-``unknown`` versions together).
+the language's record, the old behavior), ``M134-group-unknown`` (group
+``unknown`` versions together), ``M134-plain-equality`` (compare the paths
+with ``==``), ``M134-fallback-false`` (no resolved-path fallback for a missing
+record path) and ``M134-valueerror-escapes`` (a corrupt record path hides every
+candidate).
 """
 
 from __future__ import annotations
@@ -179,3 +182,42 @@ def test_selection_returns_a_real_attributed_artifact(artifacts) -> None:
     assert selected.grammar_path == user_library
     assert selected.version == "0.2.0"
     assert selected.performance_score == 1.0
+
+
+@pytest.mark.parametrize(
+    "spelling",
+    ["dot-dot", "symlinked-dir", "missing-segment"],
+)
+def test_record_path_spellings_name_the_same_artifact(
+    artifacts, tmp_path, spelling
+) -> None:
+    """The record attaches by file identity, not by path text."""
+    manager, selector, user_library, package_library = artifacts
+    user_dir = user_library.parent
+    if spelling == "dot-dot":
+        recorded = user_dir / ".." / user_dir.name / user_library.name
+    elif spelling == "symlinked-dir":
+        link = tmp_path / "linked-user"
+        link.symlink_to(user_dir, target_is_directory=True)
+        recorded = link / user_library.name
+    else:
+        # The record's path does not exist as written ("gone" is missing),
+        # so only the resolved-location fallback can match it.
+        recorded = user_dir / "gone" / ".." / user_library.name
+        assert not recorded.exists()
+    assert recorded != user_library
+    _record(manager, recorded, "0.2.0", 0.05)
+    candidates = _by_priority(selector)
+    assert candidates[GrammarPriority.USER].version == "0.2.0"
+    assert candidates[GrammarPriority.PACKAGE].version == "unknown"
+
+
+def test_corrupt_record_path_attaches_to_no_candidate(artifacts) -> None:
+    manager, selector, user_library, package_library = artifacts
+    _record(manager, Path(str(user_library) + "\x00corrupt"), "0.2.0", 0.05)
+    candidates = _by_priority(selector)
+    assert {c.grammar_path for c in candidates.values()} == {
+        user_library,
+        package_library,
+    }
+    assert all(c.version == "unknown" for c in candidates.values())
