@@ -22,6 +22,7 @@ CI_SMOKE_TESTS = [
     "tests/test_grammar_self_test_workflow.py",
     "tests/test_core_grammar_cache_cleanup.py",
     "tests/test_validation_cache_transactions.py",
+    "tests/test_cache_entry_transactions.py",
     "tests/test_call_reference_guard.py",
     "tests/test_grammar_installer_language_safety.py",
     "tests/test_public_grammar_registry.py",
@@ -78,6 +79,7 @@ CI_SMOKE_TESTS = [
     # See .github/workflows/ci.yml for the exact pack install and prefetch.
     "tests/test_language_smoke.py",
     "tests/test_supported_wheel_verification.py",
+    "tests/test_symbol_analysis_deadline.py",
     "tests/test_lint_path_policy.py",
 ]
 

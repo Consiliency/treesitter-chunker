@@ -65,6 +65,10 @@ cache, scratch = Path(ARGS[0]), Path(ARGS[1])
 manager = GrammarManager(
     user_dir=scratch / "user", package_dir=scratch / "package", cache_dir=cache
 )
+# No download or build entries: the first lock cleanup_cache takes is the
+# validation-record prune, which this test interleaves with a writer.
+(cache / "downloads").rmdir()
+(cache / "builds").rmdir()
 emit("ready")
 wait()
 emit("done", stats=manager.cleanup_cache(older_than_days=30))
@@ -370,14 +374,14 @@ def test_control_directories_keep_markers_against_empty_directory_sweep(tmp_path
     root.mkdir()
     _transactions.open_cache_root(root)
     control = root / _transactions.CONTROL_DIR_NAME
-    (control / "staging" / _transactions.MARKER_NAME).unlink()
+    (control / "retired" / _transactions.MARKER_NAME).unlink()
     _transactions.open_cache_root(root)  # a missing marker is created again
     config = UserConfig(tmp_path / "config.json")
     config.set("directories.base_dir", str(root))
     DirectoryManager(config).cleanup_empty_directories()
     for directory in (
         control,
-        *(control / name for name in ("staging", "retired", "rollback")),
+        *(control / name for name in ("retired", "rollback")),
     ):
         assert (directory / _transactions.MARKER_NAME).is_file()
 
@@ -551,9 +555,9 @@ print(json.dumps({"stored": key in records, "reloaded": key in GrammarValidator(
 def test_split_mount_root_keeps_validation_records(tmp_path, revisions):
     """A separate filesystem at ``grammars/`` does not stop Primitive 1.
 
-    Amendment A1 applies the same-device check only where a rename crosses
-    from ``.txn/`` to a namespace; the record update replaces a file in the
-    root directory, which main supports on split-mount roots.
+    The record update replaces a file in the root directory, which works on
+    split-mount roots (contract "Filesystems"; amendment A1 keeps every other
+    rename inside its own namespace too).
     """
     cache = tmp_path / "cache"
     cache.mkdir()
