@@ -5,8 +5,9 @@ Covers the ADMITPIN contract as implemented by ADMIT SL-core-1: the
 ``--trusted-artifacts`` option of the argparse ``grammar`` group, the
 precedence rule, rule 3 (one-field records, no probe without a pin) and the
 in-process verdict-reuse key. Native checks use a real BAML grammar compiled
-from ``packages/baml-grammar/src``. Every test isolates ``HOME``,
-``USERPROFILE``, ``APPDATA`` and ``XDG_CONFIG_HOME``.
+from ``packages/baml-grammar/src``. Pin-file locations are isolated from the
+developer's home: in-process tests redirect ``Path.home()`` and set ``APPDATA``
+and ``XDG_CONFIG_HOME`` (see ``config_home``).
 """
 
 from __future__ import annotations
