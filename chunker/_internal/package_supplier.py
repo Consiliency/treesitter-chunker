@@ -18,6 +18,7 @@ This module imports nothing from ``chunker.grammar`` and loads no native code.
 from __future__ import annotations
 
 import base64
+import csv
 import functools
 import hashlib
 import hmac
@@ -95,23 +96,25 @@ def _package_grammar_records() -> tuple[tuple[Path, str | None], ...]:
         located_init = distribution.locate_file("chunker/__init__.py")
         if not same_file(Path(str(located_init)), _package_init_file()):
             return ()
-        files = distribution.files
+        # Parse RECORD itself: Distribution.files drops entries whose files no
+        # longer exist (Python 3.12+), and a deleted shipped grammar must still
+        # be recognised as a RECORD entry.
+        record_text = distribution.read_text("RECORD")
     except (OSError, ValueError):
         return ()
-    if not files:
+    if not record_text:
         return ()
     records = []
-    for entry in files:
-        raw = str(entry)
+    for row in csv.reader(record_text.splitlines()):
+        if not row:
+            continue
+        raw = row[0]
         if not _valid_package_grammar_entry(raw):
             continue
-        file_hash = entry.hash
-        expected = (
-            file_hash.value
-            if file_hash is not None and file_hash.mode == "sha256"
-            else None
-        )
-        records.append((Path(str(distribution.locate_file(entry))), expected))
+        hash_field = row[1] if len(row) > 1 else ""
+        algorithm, _, value = hash_field.partition("=")
+        expected = value if algorithm == "sha256" and value else None
+        records.append((Path(str(distribution.locate_file(raw))), expected))
     return tuple(records)
 
 
@@ -158,13 +161,20 @@ def package_supplied_digest(candidate: Path) -> tuple[str, str | None]:
 
 
 def is_record_entry(path: Path) -> bool:
-    """Whether ``path`` is one of our distribution's package grammar files.
+    """Whether the directory entry ``path`` is one of our RECORD grammar entries.
 
-    True for any valid RECORD entry under ``chunker/data/grammars/build``,
-    whatever its hash, when ``path`` exists. Used to refuse replacing a shipped
+    The comparison is by directory entry: the same file name (case-normalized)
+    in the same directory (compared with ``same_file``), never by the inode the
+    entry points to. So a local symlink or hard link elsewhere that aliases a
+    shipped grammar is not a RECORD entry, while the shipped entry itself still
+    counts after its file has been deleted. Used to refuse replacing a shipped
     grammar in place: the replacement would differ from RECORD and stay
     ``integrity_mismatch`` permanently.
     """
-    if not os.path.lexists(path):
-        return False
-    return any(same_file(path, located) for located, _ in _package_grammar_records())
+    path = Path(path)
+    name = os.path.normcase(path.name)
+    return any(
+        os.path.normcase(located.name) == name
+        and same_file(path.parent, located.parent)
+        for located, _ in _package_grammar_records()
+    )

@@ -1222,3 +1222,98 @@ def test_publication_refuses_to_replace_a_shipped_grammar(
     require((build / "baml.so").read_bytes() == GRAMMAR_BYTES, "shipped file untouched")
     require(calls == [], "nothing staged or probed")
     require(sorted(p.name for p in build.iterdir()) == ["baml.so"], "no staged file")
+
+
+# --- round-3 items: directory-entry comparison, deleted shipped file, early refusal ---
+
+
+@pytest.mark.parametrize("alias", ["symlink", "hardlink"])
+def test_publication_replaces_a_local_alias_of_a_shipped_grammar(
+    config_home, tmp_path, monkeypatch, baml_library, clear_package_records, alias
+):
+    """A local link elsewhere is not the shipped RECORD entry."""
+    shipped_build = _wheel_rows(
+        tmp_path,
+        monkeypatch,
+        {GOOD_ENTRY: GRAMMAR_BYTES},
+        [_row(GOOD_ENTRY, GRAMMAR_BYTES)],
+    )
+    local_build = tmp_path / "local-build"
+    local_build.mkdir()
+    link = local_build / "baml.so"
+    try:
+        if alias == "symlink":
+            link.symlink_to(shipped_build / "baml.so")
+        else:
+            os.link(shipped_build / "baml.so", link)
+    except (OSError, NotImplementedError) as error:
+        pytest.skip(f"{alias} unavailable here: {error}")
+    rebuilt = tmp_path / "rebuilt.so"
+    rebuilt.write_bytes(baml_library.read_bytes())
+    tools = UserGrammarTools(
+        local_build,
+        tmp_path / "sources",
+        trusted_artifacts={"baml": _pin_of(baml_library.read_bytes())},
+    )
+    result = {"errors": [], "status": "running"}
+    require(tools._publish_library("baml", rebuilt, result), f"published {result}")
+    require(not link.is_symlink(), "the alias entry was replaced")
+    require(link.read_bytes() == baml_library.read_bytes(), "new bytes published")
+    require(
+        (shipped_build / "baml.so").read_bytes() == GRAMMAR_BYTES,
+        "the shipped grammar is untouched",
+    )
+
+
+def test_publication_refuses_even_after_the_shipped_file_was_deleted(
+    config_home, tmp_path, monkeypatch, baml_library, clear_package_records
+):
+    build = _wheel_rows(
+        tmp_path,
+        monkeypatch,
+        {GOOD_ENTRY: GRAMMAR_BYTES},
+        [_row(GOOD_ENTRY, GRAMMAR_BYTES)],
+    )
+    (build / "baml.so").unlink()
+    rebuilt = tmp_path / "rebuilt.so"
+    rebuilt.write_bytes(baml_library.read_bytes())
+    tools = UserGrammarTools(
+        build,
+        tmp_path / "sources",
+        trusted_artifacts={"baml": _pin_of(baml_library.read_bytes())},
+    )
+    result = {"errors": [], "status": "running"}
+    require(tools._publish_library("baml", rebuilt, result) is False, "refused")
+    require("cannot be replaced in place" in result["errors"][0], f"{result}")
+    require(list(build.iterdir()) == [], "nothing published or staged")
+
+
+@pytest.mark.parametrize("operation", ["install", "update"])
+def test_install_and_update_refuse_a_shipped_target_before_cloning(
+    config_home, tmp_path, monkeypatch, clear_package_records, operation
+):
+    from chunker._internal import user_grammar_tools
+
+    build = _wheel_rows(
+        tmp_path,
+        monkeypatch,
+        {GOOD_ENTRY: GRAMMAR_BYTES},
+        [_row(GOOD_ENTRY, GRAMMAR_BYTES)],
+    )
+    sources = tmp_path / "sources"
+    (sources / "tree-sitter-baml").mkdir(parents=True)
+
+    def refuse(*args, **kwargs):
+        raise AssertionError(f"tool run before the refusal: {args}")
+
+    monkeypatch.setattr(user_grammar_tools.subprocess, "run", refuse)
+    tools = UserGrammarTools(build, sources)
+    if operation == "install":
+        result = tools.install_grammar(
+            "baml", "https://github.com/example/tree-sitter-baml"
+        )
+    else:
+        result = tools.update_grammar("baml")
+    require(result["status"] == "error", f"{result}")
+    require("cannot be replaced in place" in result["errors"][0], f"{result}")
+    require(result["steps_completed"] == [], "no clone, fetch or build")
