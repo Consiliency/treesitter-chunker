@@ -18,6 +18,7 @@ _COMPREHENSION_SCOPES = frozenset(
 )
 _FUNCTION_SCOPES = frozenset({"function_definition", "lambda"})
 _DEFAULT_PARAMETERS = frozenset({"default_parameter", "typed_default_parameter"})
+_PARAMETER_LISTS = frozenset({"parameters", "lambda_parameters"})
 
 
 class PythonContextExtractor(BaseContextExtractor):
@@ -258,7 +259,7 @@ class PythonSymbolResolver(BaseSymbolResolver):
         if (
             node.type == "identifier"
             and node.parent is not None
-            and node.parent.type == "parameters"
+            and node.parent.type in _PARAMETER_LISTS
         ):
             return True
         return node.type in {
@@ -280,10 +281,45 @@ class PythonSymbolResolver(BaseSymbolResolver):
     def _get_defined_name(node: Node) -> str | None:
         """Get the name being defined by a definition node."""
         if node.type == "identifier":
-            if node.parent is None or node.parent.type != "parameters":
+            if node.parent is None or node.parent.type not in _PARAMETER_LISTS:
                 return None
             return node.text.decode("utf-8") if node.text else None
         return PythonScopeAnalyzer._get_defined_name(node)
+
+    def _search_scope_for_definition(
+        self,
+        symbol_name: str,
+        scope_node: Node,
+    ) -> Node | None:
+        """Search a scope's own bindings, never the scope's own name.
+
+        ``def f`` and ``class C`` bind their names in the containing scope,
+        so a lookup that starts inside them finds parameters and locals
+        first, and finds the name itself only while ascending. A method's or
+        nested class's own name is therefore not visible from inside it.
+        """
+
+        def search_node(node: Node) -> Node | None:
+            if (
+                node != scope_node
+                and self._is_definition_node(node)
+                and self._get_defined_name(node) == symbol_name
+            ):
+                return node
+            for child in node.children:
+                if self._creates_new_scope(child) and child != scope_node:
+                    if (
+                        self._is_definition_node(child)
+                        and self._get_defined_name(child) == symbol_name
+                    ):
+                        return child
+                    continue
+                result = search_node(child)
+                if result:
+                    return result
+            return None
+
+        return search_node(scope_node)
 
     def _get_parent_scope(self, node: Node) -> Node | None:
         """Ascend to the next scope whose names are visible from ``node``.
