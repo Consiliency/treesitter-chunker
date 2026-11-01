@@ -220,16 +220,20 @@ In Python, the outer call of a callable-return expression is its own syntax
 `calls` fact (treesitter-chunker#516). This covers `getattr(obj, 'audit')()`,
 `f()()` (one fact per call level) and a parenthesized inner call such as
 `(f())()`. Its `reference` is the raw callee: the inner call expression's
-exact source bytes, with any parentheses or comments. `callee_byte_start` and
-`callee_byte_end` span that expression, and `location` spans the whole outer
-call. It has its own `call:` site ID, owner and lines. The fact is always
+exact source bytes, with any parentheses or comments. `location` spans the
+whole outer call. In the symbol-graph output (`calls` relationships and
+`call_facts`), `callee_byte_start` and `callee_byte_end` span the callee
+expression; Boundary IR `calls` edges carry `location` but not the callee byte
+fields. It has its own `call:` site ID, owner and lines. The fact is always
 unresolved: the guard above gives it no candidates, so it never binds a local
 definition through an incidental name. The inner call's fact is unchanged,
 including its ID. Consumers must recapture graph/IR outputs and the derived
 counts, memberships, aggregates and digests, because one `calls` edge is added
-per outer site. Other complex callees are not emitted as outer sites: subscript
-callees (`h['a']()`), parenthesized names (`(f)()`), and the JavaScript
-equivalents (treesitter-chunker#602).
+per outer site. Other complex callees are not emitted as outer sites, for
+example subscript callees (`h['a']()`), parenthesized names (`(f)()`),
+parenthesized `await` or conditional expressions (`(await f())()`,
+`(a() if c else b())()`), and the JavaScript equivalents
+(treesitter-chunker#602).
 
 Per-site calls can increase edge counts, node memberships, clustering weights
 and dependency aggregates. Regenerate affected graph/IR outputs and their

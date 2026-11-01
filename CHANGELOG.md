@@ -37,8 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `call_facts`, and Boundary IR `calls` edges gain one entry per outer site,
   so recapture graph/IR outputs and their derived counts and digests. The
   Python Boundary IR fixture now includes such a call, and its golden is
-  regenerated. Subscript callees (`h['a']()`), parenthesized names and
-  JavaScript are unchanged (treesitter-chunker#602). See
+  regenerated. Other complex callees, such as subscripts (`h['a']()`) and
+  parenthesized names, are unchanged, as is JavaScript
+  (treesitter-chunker#602). See
   [the Boundary IR specification](docs/interface-boundary-spec.md).
 - CR-only Python source now parses and reports correct lines through
   `chunk_file`, `chunk_text`, `chunk_file_streaming` and VFS streaming
