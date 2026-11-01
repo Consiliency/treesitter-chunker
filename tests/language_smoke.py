@@ -49,6 +49,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
+from chunker._internal.language_pack import UNSAFE_PACK_LANGUAGES
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SAMPLES_ROOT = Path("tests/fixtures/language_smoke/samples")
 GOLDEN_REPOS_ROOT = Path("tests/fixtures/boundary_ir/repos")
@@ -56,6 +58,16 @@ GOLDEN_REPOS_ROOT = Path("tests/fixtures/boundary_ir/repos")
 # Load classifications.
 LOADS = "loads"
 FAILS_TO_LOAD = "fails_to_load"
+# The probe outlived its wall deadline. That alone does not show the grammar
+# cannot load: CPU starvation under host load looks the same as a native loop
+# (treesitter-chunker#143). It is never reported as ``fails_to_load``.
+DEADLINE_EXPIRED = "deadline_expired"
+
+# The probe's hard-kill deadline, unchanged from the original smoke gate.
+LOAD_DEADLINE_SECONDS = 5
+# Applied only to confirm a recorded expiry, never as the first deadline. It
+# stays below the CI smoke's 60-second per-test timeout.
+LOAD_TOLERANT_DEADLINE_SECONDS = 45
 
 # Extraction classifications.
 RICH = "rich"
@@ -134,12 +146,15 @@ def pack_languages() -> tuple[str, ...]:
     return tuple(sorted(typing.get_args(SupportedLanguage)))
 
 
-def load_language(name: str) -> tuple[str, str | None]:
+def load_language(
+    name: str, *, deadline: float = LOAD_DEADLINE_SECONDS
+) -> tuple[str, str | None]:
     """Load and parse in a child process with an enforceable wall deadline.
 
-    Returns ``(LOADS, None)`` on success or ``(FAILS_TO_LOAD, error)`` with the
-    captured error string. The OS process boundary contains native parser loops
-    that Python signal handlers cannot interrupt.
+    Returns ``(LOADS, None)`` on success, ``(FAILS_TO_LOAD, error)`` with the
+    captured error string when the child fails, or ``(DEADLINE_EXPIRED,
+    message)`` when it is killed at ``deadline``. The OS process boundary
+    contains native parser loops that Python signal handlers cannot interrupt.
     """
     probe = """
 import sys
@@ -155,14 +170,34 @@ assert tree.root_node is not None
             capture_output=True,
             check=False,
             text=True,
-            timeout=5,
+            timeout=deadline,
         )
     except subprocess.TimeoutExpired:
-        return FAILS_TO_LOAD, "parse exceeded the 5-second hard-kill deadline"
+        return (
+            DEADLINE_EXPIRED,
+            f"parse exceeded the {deadline:g}-second hard-kill deadline",
+        )
     if result.returncode != 0:
         error = result.stderr.strip() or result.stdout.strip()
         return FAILS_TO_LOAD, error
     return LOADS, None
+
+
+def confirm_load(name: str) -> tuple[str, str | None]:
+    """Probe ``name``, confirming a deadline expiry once under load tolerance.
+
+    A first probe that loads or fails is returned unchanged. A first probe that
+    expires is repeated once with ``LOAD_TOLERANT_DEADLINE_SECONDS``; its result
+    is returned, and an error names both deadlines. A grammar that never
+    finishes still ends as ``DEADLINE_EXPIRED``.
+    """
+    status, error = load_language(name, deadline=LOAD_DEADLINE_SECONDS)
+    if status != DEADLINE_EXPIRED:
+        return status, error
+    status, retry_error = load_language(name, deadline=LOAD_TOLERANT_DEADLINE_SECONDS)
+    if status == LOADS:
+        return status, None
+    return status, f"{error}; confirmation: {retry_error}"
 
 
 def _extraction_source(language: str) -> Path:
@@ -225,6 +260,17 @@ def compute_coverage() -> dict[str, Any]:
 
     for name in pack:
         load_status, load_error = load_results[name]
+        if load_status == DEADLINE_EXPIRED and name not in UNSAFE_PACK_LANGUAGES:
+            # Confirm serially, outside the 16-probe pool, so starvation is not
+            # recorded as a load failure (treesitter-chunker#143).
+            load_status, load_error = load_language(
+                name, deadline=LOAD_TOLERANT_DEADLINE_SECONDS
+            )
+        if load_status == DEADLINE_EXPIRED:
+            # The coverage record states availability. A probe that never
+            # finished is a load failure; its error names the deadline. Unsafe
+            # pack grammars loop natively and are not re-probed.
+            load_status = FAILS_TO_LOAD
         record: dict[str, Any] = {"load": load_status}
         if load_error is not None:
             record["load_error"] = load_error
