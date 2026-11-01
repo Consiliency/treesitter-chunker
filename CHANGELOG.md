@@ -227,6 +227,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LanguageNotFoundError` instead of cloning and compiling a grammar into
   `grammars/` and `build/` under the current directory. Build deliberately with
   the grammar commands and pin the result.
+- **Behaviour change (treesitter-chunker#362, maintainer decision 2026-11-01):**
+  the automatic download-and-build in `UniversalLanguageRegistry.get_parser` and
+  the zero-config API (`ZeroConfigAPI`) is retired too.
+  - `get_parser` raises `LanguageNotFoundError` with the cause and guidance: build
+    the grammar with the grammar commands, then pin it in `trusted-artifacts.json`
+    or with `--trusted-artifacts`. The error lists installed languages only, so
+    no discovery request is made.
+  - `ensure_language` and `preload_languages` report availability and never
+    install or update anything.
+  - `get_chunker_for_language` no longer installs a missing grammar.
+    `AutoChunkResult.grammar_downloaded` is always `False`.
+  - The `auto_download` argument of `get_parser` and `get_chunker_for_language`
+    is still accepted but has no effect, and passing it emits a
+    `DeprecationWarning`. The registry and zero-config contracts and stubs
+    follow suit.
+  - The explicit `install_language`/`update_language` methods are unchanged.
 - **Behaviour change (treesitter-chunker#362):** every `grammar` subcommand now
   resolves its pin source first. A missing or defective `--trusted-artifacts`
   file, or a present but defective user-config pin file, exits 2 naming the

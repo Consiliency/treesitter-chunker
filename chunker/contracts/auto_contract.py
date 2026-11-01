@@ -36,8 +36,7 @@ class ZeroConfigContract(ABC):
             - Language name is valid
 
         Postconditions:
-            - Language grammar installed if needed
-            - Parser available for language
+            - Nothing is downloaded, built or updated
         """
 
     @staticmethod
@@ -126,13 +125,14 @@ class ZeroConfigContract(ABC):
     @abstractmethod
     def get_chunker_for_language(
         language: str,
-        auto_download: bool = True,
+        auto_download: bool | None = None,
     ) -> Any:
         """Get a chunker instance for a specific language
 
         Args:
             language: Language name
-            auto_download: Download grammar if needed
+            auto_download: Deprecated and ignored; passing it warns.
+                Grammars are never downloaded or built automatically.
 
         Returns:
             Configured chunker instance
@@ -142,7 +142,7 @@ class ZeroConfigContract(ABC):
 
         Postconditions:
             - Chunker ready to use
-            - Grammar downloaded if auto_download=True
+            - Nothing is downloaded or built
         """
 
     @staticmethod

@@ -61,11 +61,8 @@ class MockRegistry:
             return True, f"Updated {language} to latest version"
         return False, f"Language {language} not installed"
 
-    def get_parser(self, language: str, auto_download: bool = True):
+    def get_parser(self, language: str, auto_download: bool | None = None):
         if language in self.installed_languages:
-            return MagicMock()
-        if auto_download and language in self.available_languages:
-            self.install_language(language)
             return MagicMock()
         return None
 
@@ -99,25 +96,29 @@ class TestZeroConfigAPI:
         assert api.ensure_language("python") is True
         assert api.registry.is_language_installed("python") is True
 
-    def test_ensure_language_not_installed_but_available(self, api):
-        """Test ensuring a language that needs to be installed."""
+    def test_ensure_language_never_installs(self, api):
+        """A known but uninstalled language stays unavailable: nothing is
+        downloaded or built (M2 of treesitter-chunker#362, extended by the
+        2026-11-01 maintainer decision)."""
+        with (
+            patch.object(api.registry, "install_language") as install,
+            patch.object(api.registry, "update_language") as update,
+        ):
+            assert api.ensure_language("rust") is False
+        install.assert_not_called()
+        update.assert_not_called()
         assert api.registry.is_language_installed("rust") is False
-        assert api.ensure_language("rust") is True
-        assert api.registry.is_language_installed("rust") is True
 
     def test_ensure_language_not_available(self, api):
         """Test ensuring a language that's not available."""
         assert api.ensure_language("not-a-language") is False
 
     def test_ensure_language_with_version(self, api):
-        """Test ensuring a specific version of a language."""
+        """A version mismatch is reported, never updated in place."""
         assert api.ensure_language("python", "0.20.0") is True
-        with patch.object(
-            api.registry,
-            "update_language",
-            return_value=(True, "Updated"),
-        ):
-            assert api.ensure_language("python", "0.21.0") is True
+        with patch.object(api.registry, "update_language") as update:
+            assert api.ensure_language("python", "0.21.0") is False
+        update.assert_not_called()
 
     def test_detect_language_by_extension(self, api):
         """Test language detection by file extension."""
@@ -285,20 +286,32 @@ class TestZeroConfigAPI:
 
     def test_get_chunker_for_language(self, api):
         """Test getting a chunker for a specific language."""
-        chunker = api.get_chunker_for_language("python", auto_download=False)
+        chunker = api.get_chunker_for_language("python")
         assert hasattr(chunker, "chunk_file")
         assert hasattr(chunker, "chunk_text")
-        chunker = api.get_chunker_for_language("rust", auto_download=True)
-        assert api.registry.is_language_installed("rust")
         with pytest.raises(ChunkerError):
-            api.get_chunker_for_language("not-a-language", auto_download=True)
+            api.get_chunker_for_language("rust")
+        assert not api.registry.is_language_installed("rust")
+
+    @pytest.mark.parametrize("flag", [True, False])
+    def test_get_chunker_auto_download_is_inert(self, api, flag):
+        """``auto_download`` is accepted but deprecated and has no effect."""
+        with patch.object(api.registry, "install_language") as install:
+            with pytest.warns(DeprecationWarning, match="no effect"):
+                chunker = api.get_chunker_for_language("python", auto_download=flag)
+            assert hasattr(chunker, "chunk_text")
+            with (
+                pytest.warns(DeprecationWarning, match="no effect"),
+                pytest.raises(ChunkerError),
+            ):
+                api.get_chunker_for_language("rust", auto_download=flag)
+        install.assert_not_called()
+        assert not api.registry.is_language_installed("rust")
 
     def test_preload_languages(self, api):
-        """Test preloading multiple languages."""
-        languages = ["rust", "java", "not-a-language"]
-        results = api.preload_languages(languages)
-        assert results["rust"] is True
-        assert results["java"] is True
-        assert results["not-a-language"] is False
-        assert api.registry.is_language_installed("rust")
-        assert api.registry.is_language_installed("java")
+        """Preloading reports availability and installs nothing."""
+        with patch.object(api.registry, "install_language") as install:
+            results = api.preload_languages(["python", "rust", "not-a-language"])
+        assert results == {"python": True, "rust": False, "not-a-language": False}
+        install.assert_not_called()
+        assert not api.registry.is_language_installed("rust")
