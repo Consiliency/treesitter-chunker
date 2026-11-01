@@ -687,6 +687,15 @@ class GrammarInstaller:
                         )
                         return False, error_msg, None
 
+                    # Resolve the commit before installing: an aborted owned
+                    # run fails the operation before anything is installed.
+                    try:
+                        source_commit = self._get_commit_hash(
+                            download_path, staging=staging
+                        )
+                    except _StagedRunAbortedError as e:
+                        return False, f"Commit lookup aborted: {e}", None
+
                     # Install grammar
                     install_success, final_path, install_error = (
                         self._install_grammar_file(
@@ -705,9 +714,7 @@ class GrammarInstaller:
                         install_date=time.time(),
                         install_path=final_path,
                         source_url=repository_url,
-                        source_commit=self._get_commit_hash(
-                            download_path, staging=staging
-                        ),
+                        source_commit=source_commit,
                         priority=priority,
                         metadata={
                             "validation": validation_result.metadata,
@@ -744,7 +751,7 @@ class GrammarInstaller:
             ("builds", language),
         )
         for namespace, name in entries:
-            if not os.path.lexists(staging.path / namespace / name):
+            if not os.path.lexists(staging.path(namespace) / name):
                 continue
             try:
                 _transactions.publish_entry(staging, namespace, name)
@@ -758,7 +765,9 @@ class GrammarInstaller:
         try:
             result = _transactions.discard_staging(staging)
         except Exception as e:
-            logger.warning(f"Could not discard staging {staging.path}: {e}")
+            logger.warning(
+                f"Could not discard staging {staging.path('downloads')}: {e}"
+            )
             return
         for error in result.errors:
             logger.warning(f"Staging not fully removed: {error}")
@@ -849,7 +858,7 @@ class GrammarInstaller:
             return False, None, "Invalid grammar version"
         if staging is None:
             return False, None, "Downloads need an operation staging area"
-        downloads = staging.path / "downloads"
+        downloads = staging.path("downloads")
         download_dir = downloads / f"tree-sitter-{language}"
 
         try:
@@ -889,7 +898,7 @@ class GrammarInstaller:
         """Build grammar from staged source into the same staging."""
         if staging is None:
             return False, None, "Builds need an operation staging area"
-        build_dir = staging.path / "builds" / language
+        build_dir = staging.path("builds") / language
         build_dir.mkdir(exist_ok=True)
 
         output_path = build_dir / f"lib{language}.so"
@@ -1094,8 +1103,9 @@ class GrammarInstaller:
             return
 
         try:
-            # Remove any partially installed files
-            self._cleanup_cache(language)
+            # A failed operation's inputs are in its own staging; the published
+            # download/build entries belong to other installs and are kept
+            # (runner decision on the treesitter-chunker#564 round-1 panel).
             self._remove_installation_info(language)
 
             # Restore existing installation if there was one
@@ -1114,7 +1124,12 @@ class GrammarInstaller:
         *,
         staging: _transactions.StagingArea | None = None,
     ) -> str | None:
-        """Get the commit hash of a staged repository."""
+        """Get the commit hash of a staged repository.
+
+        A nonzero ``git rev-parse`` means "unknown" and returns ``None``. A
+        timed-out or unconfirmed run raises ``_StagedRunAbortedError``: the
+        staging is unpublishable and the operation must fail.
+        """
         if staging is None:
             return None
         try:
@@ -1122,16 +1137,16 @@ class GrammarInstaller:
                 staging,
                 ["git", "rev-parse", "HEAD"],
                 cwd=repo_path,
-                timeout=30,
+                timeout=min(30, self._build_timeout),
                 what="Git rev-parse",
             )
-
-            if result.returncode == 0:
-                return result.stdout.strip()
-            return None
-
+        except _StagedRunAbortedError:
+            raise
         except Exception:
             return None
+        if result.returncode == 0:
+            return result.stdout.strip()
+        return None
 
     def _save_installation_info(self, language: str, info: InstallationInfo):
         """Save installation metadata."""

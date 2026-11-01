@@ -18,6 +18,7 @@ import stat
 import subprocess
 import sys
 import time
+from hashlib import sha256
 from pathlib import Path
 
 import psutil
@@ -76,9 +77,21 @@ if args[:1] == ["clone"]:
         os.replace(pidfile + ".tmp", pidfile)
         while not os.path.exists(os.path.join(destination, "grandchild.txt")):
             time.sleep(0.01)  # readiness: the grandchild is writing
+    if os.environ.get("TXN_GIT_SLEEP"):
+        time.sleep(3600)  # the leader keeps running
     sys.exit(0)
 if args[:2] == ["rev-parse", "HEAD"]:
-    print("a" * 40)
+    fault = os.environ.get("TXN_GIT_REVPARSE")
+    if fault == "timeout":
+        time.sleep(3600)
+    if fault == "escape":
+        escapee = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(120)"],
+            start_new_session=True,  # leaves the group, keeps stdout open
+        )
+        with open(os.environ["TXN_GIT_PIDFILE"], "w", encoding="utf-8") as handle:
+            handle.write(str(escapee.pid))
+    print("a" * 40, flush=True)
 sys.exit(0)
 """
 
@@ -288,17 +301,17 @@ def test_prune_counts_expired_cutoff_and_denied_entries_truthfully(tmp_path):
     try:
         result = _transactions.prune_entries(root, "builds", cutoff=cutoff)
     finally:
-        for directory in (root / ".txn" / "retired").rglob("locked"):
+        for directory in (root / "builds" / ".txn-retired").rglob("locked"):
             directory.chmod(0o700)
     assert result.entries_removed == 1
     assert result.bytes_freed == 17  # held.bin was not unlinked, so not counted
     assert len(result.errors) >= 1 and any("held.bin" in e for e in result.errors)
-    leftovers = list((root / ".txn" / "retired").rglob("held.bin"))
+    leftovers = list((root / "builds" / ".txn-retired").rglob("held.bin"))
     assert [p.read_bytes() for p in leftovers] == [b"h" * 19]
     # A later prune claims the garbage and counts it then, once.
     again = _transactions.prune_entries(root, "builds", cutoff=cutoff)
     assert (again.entries_removed, again.bytes_freed, again.errors) == (0, 19, ())
-    assert not list((root / ".txn" / "retired").rglob("held.bin"))
+    assert not list((root / "builds" / ".txn-retired").rglob("held.bin"))
 
 
 # --- link boundaries -----------------------------------------------------------
@@ -440,7 +453,7 @@ def test_parent_death_leaves_staging_unpublished_and_retained(tmp_path, shim):
         orphan = int(pidfile.read_text(encoding="utf-8"))
         assert not _gone(orphan)
         (staged,) = list(
-            (cache / ".txn" / "staging").glob("*/downloads/tree-sitter-baml")
+            (cache / "downloads" / ".txn-staging").glob("*/tree-sitter-baml")
         )
 
         assert _install(cache, _env(shim, repo))["success"]
@@ -478,7 +491,7 @@ staging = _transactions.create_staging(root)
 emit("ready")
 wait()
 _transactions.run_in_staging(
-    staging, [sys.executable, "-c", ARGS[2], pidfile], cwd=staging.path, timeout=60
+    staging, [sys.executable, "-c", ARGS[2], pidfile], cwd=staging.path("builds"), timeout=60
 )
 emit("done")
 """
@@ -535,6 +548,8 @@ def test_installer_uses_its_own_staged_inputs(tmp_path, shim):
         a.expect("ready")
         a.release()
         a.expect("run.after_group_empty", program="gcc")
+        (staged_a,) = (cache / "builds" / ".txn-staging").glob("*/baml/libbaml.so")
+        staged_digest = sha256(staged_a.read_bytes()).hexdigest()
 
         assert _install(cache, _env(shim, repo_b))["success"]
         assert (cache / "builds" / "baml" / "libbaml.so").is_file()
@@ -543,6 +558,8 @@ def test_installer_uses_its_own_staged_inputs(tmp_path, shim):
                 _transactions.remove_entry(cache, namespace, name).entries_removed == 1
             )
 
+        # A's own staged artifact is untouched by B and by the removal.
+        assert sha256(staged_a.read_bytes()).hexdigest() == staged_digest
         a.release()
         done = a.finish()
     assert done["success"], done
@@ -588,16 +605,17 @@ def test_crash_after_retire_leaves_absent_entry_that_recovers(tmp_path, shim):
     finally:
         child.close()
     assert not os.path.lexists(published)
-    garbage = cache / ".txn" / "retired" / operation / "downloads" / "tree-sitter-baml"
+    garbage = cache / "downloads" / ".txn-retired" / operation / "tree-sitter-baml"
     assert (garbage / "generation.txt").read_text(encoding="utf-8") == "old"
     assert (
-        cache / ".txn" / "staging" / operation / "downloads" / "tree-sitter-baml"
+        cache / "downloads" / ".txn-staging" / operation / "tree-sitter-baml"
     ).is_dir()
 
     result = _transactions.prune_entries(cache, "downloads", cutoff=OLD)
     assert result.errors == ()
-    assert not (cache / ".txn" / "retired" / operation).exists()
-    assert (cache / ".txn" / "staging" / operation).is_dir()  # staging is retained
+    assert not (cache / "downloads" / ".txn-retired" / operation).exists()
+    # staging is retained
+    assert (cache / "downloads" / ".txn-staging" / operation).is_dir()
 
     assert _install(cache, env)["success"]
     assert (published / "src" / "parser.c").is_file()
@@ -627,10 +645,9 @@ def test_failed_promotion_restores_previous_entry_and_install_succeeds(tmp_path,
         event = child.expect("publish.after_retire", namespace="downloads")
         staged = (
             cache
-            / ".txn"
-            / "staging"
-            / event["operation_id"]
             / "downloads"
+            / ".txn-staging"
+            / event["operation_id"]
             / "tree-sitter-baml"
         )
         shutil.rmtree(staged)  # a non-participant removes the staged entry
@@ -665,10 +682,10 @@ def test_entry_holding_an_inner_root_is_never_retired(tmp_path):
     with pytest.raises(_transactions.NestedRootError):
         _transactions.remove_entry(outer, "downloads", "x")
     staging = _transactions.create_staging(outer)
-    (staging.path / "downloads" / "x").mkdir()
+    (staging.path("downloads") / "x").mkdir()
     with pytest.raises(_transactions.NestedRootError):
         _transactions.publish_entry(staging, "downloads", "x")
-    assert (staging.path / "downloads" / "x").is_dir()
+    assert (staging.path("downloads") / "x").is_dir()
     assert (inner / _transactions.LOCK_FILE_NAME).is_file()
     assert (inner / "data.bin").read_bytes() == b"d" * 41
 
@@ -709,80 +726,284 @@ def test_root_moved_during_initialization_fails_post_check(tmp_path):
 
 
 def test_discarded_staging_is_retired_then_deleted(tmp_path):
-    """Claude N6: discard retires staging into ``.txn/retired`` first."""
+    """Claude N6: discard retires each namespace's staging in place first."""
     root = tmp_path / "cache"
     root.mkdir()
     staging = _transactions.create_staging(root)
-    (staging.path / "builds" / "baml").mkdir()
-    (staging.path / "builds" / "baml" / "lib.so").write_bytes(b"l" * 43)
+    (staging.path("builds") / "baml").mkdir()
+    (staging.path("builds") / "baml" / "lib.so").write_bytes(b"l" * 43)
     result = _transactions.discard_staging(staging)
     assert result.errors == () and result.bytes_freed == 43
-    assert not staging.path.exists()
-    assert not (root / ".txn" / "retired" / staging.operation_id).exists()
+    for namespace in ("downloads", "builds"):
+        assert not staging.path(namespace).exists()
+        retired = root / namespace / ".txn-retired" / staging.operation_id
+        assert not retired.exists()
 
 
-SPLIT_NAMESPACE = r"""
-import json, sys, time
+CROSS_DEVICE = r"""
+import json, logging, os, sys, time
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from chunker.grammar_management import _transactions as t
+from chunker.grammar_management.core import GrammarInstaller, GrammarManager
 
-root = Path(sys.argv[2])
-t.open_cache_root(root)
-staging = t.create_staging(root)  # before any mount
-(staging.path / "builds" / "x").mkdir()
+root, scratch = Path(sys.argv[2]), Path(sys.argv[3])
 outcomes = {}
 try:
-    mount_tmpfs(root / "builds")
-    (root / "builds" / "old").mkdir()
-    (root / "builds" / "old" / "lib.so").write_bytes(b"o" * 7)
-    calls = {
-        "publish_entry": lambda: t.publish_entry(staging, "builds", "x"),
-        "remove_entry": lambda: t.remove_entry(root, "builds", "old"),
-        "prune_entries": lambda: t.prune_entries(root, "builds", cutoff=time.time() + 3600),
-        "create_staging": lambda: t.create_staging(root),
-    }
-    for name, call in calls.items():
-        try:
-            call()
-            outcomes[name] = "ok"
-        except t.CacheTransactionError as error:
-            outcomes[name] = "refused" if "different filesystem" in str(error) else str(error)
-        except OSError as error:
-            outcomes[name] = f"OSError: {error}"
-    outcomes["records"] = sorted(
-        t.update_json_records(root, "validation_cache.json", lambda d: {**d, "k": 1})
+    for namespace in ("downloads", "builds"):
+        mount_tmpfs(root / namespace)  # separate filesystems inside the root
+    outcomes["split"] = all(
+        (root / n).stat().st_dev != root.stat().st_dev for n in ("downloads", "builds")
     )
-    outcomes["other_namespace"] = t.prune_entries(
-        root, "downloads", cutoff=time.time() + 3600
-    ).errors
-    outcomes["entries_intact"] = sorted(p.name for p in (root / "builds").iterdir())
-    outcomes["staged_intact"] = (staging.path / "builds" / "x").is_dir()
+    old = root / "builds" / "expired"
+    old.mkdir()
+    (old / "lib.so").write_bytes(b"e" * 9)
+    os.utime(old / "lib.so", (1, 1))
+    os.utime(old, (1, 1))
+    installer = GrammarInstaller(cache_dir=root, build_timeout=120)
+    url = "https://github.com/example/tree-sitter-baml"
+    outcomes["install"] = installer.install_grammar("baml", url)[:2]
+    outcomes["reinstall"] = installer.install_grammar("baml", url)[:2]  # retires
+    outcomes["published"] = sorted(
+        p.name for n in ("downloads", "builds") for p in (root / n).iterdir()
+        if not p.name.startswith(".")
+    )
+    manager = GrammarManager(
+        user_dir=root / "grammars", package_dir=scratch / "package", cache_dir=root
+    )
+    stats = manager.cleanup_cache(older_than_days=30)
+    outcomes["cleanup"] = [stats["files_removed"], stats["bytes_freed"], stats["errors"]]
+    outcomes["removed"] = list(manager.remove_grammar("baml", clean_cache=True))
+    outcomes["left"] = sorted(
+        p.name for n in ("downloads", "builds") for p in (root / n).iterdir()
+        if not p.name.startswith(".")
+    )
 finally:
     unmount_all()
-print(json.dumps(outcomes, default=list))
+print(json.dumps(outcomes))
 """
 
 
-def test_rename_sites_refuse_a_namespace_on_another_filesystem(tmp_path):
-    """Amendment A1: a real tmpfs at ``builds/`` is refused before any rename.
+@POSIX_SHIM
+def test_split_mount_namespaces_install_republish_prune_and_remove(tmp_path, shim):
+    """Maintainer decision (2026-11-01): split-mount roots keep working.
 
-    The record update (Primitive 1) and the other namespace keep working.
-    Mutation ``drop_same_device_check`` lets the renames fail part-way with
-    ``EXDEV`` instead of the actionable refusal.
+    Real tmpfs mounts at ``downloads/`` and ``builds/`` make each namespace a
+    separate filesystem. Staging and retirement live inside each namespace,
+    so a real install, a republication, cleanup and removal all succeed.
+    Mutation ``retire_outside_namespace`` (retire into a root-level folder)
+    fails with ``EXDEV``.
     """
     root = tmp_path / "cache"
     root.mkdir()
-    result = run_mounting(SPLIT_NAMESPACE, [root])
+    repo = _repo(tmp_path / "repo")
+    env = _env(shim, repo)
+    result = run_mounting(CROSS_DEVICE, [root, tmp_path], env=env)
     assert result.returncode == 0, result.stderr[-3000:]
     outcomes = json.loads(result.stdout.strip().splitlines()[-1])
     assert outcomes == {
-        "publish_entry": "refused",
-        "remove_entry": "refused",
-        "prune_entries": "refused",
-        "create_staging": "refused",
-        "records": ["k"],
-        "other_namespace": [],
-        "entries_intact": ["old"],
-        "staged_intact": True,
+        "split": True,
+        "install": [True, None],
+        "reinstall": [True, None],
+        "published": ["baml", "expired", "tree-sitter-baml"],
+        "cleanup": [1, 9, []],
+        "removed": [True, None],
+        "left": [],
     }
+
+
+def test_scans_ignore_hidden_transaction_folders(tmp_path):
+    """Listing, discovery, analyzers and cleanup never see ``.txn-*`` folders."""
+    from chunker.grammar_management.cli import ComprehensiveGrammarCLI
+    from chunker.grammar_management.core import GrammarRegistry
+    from chunker.languages.compatibility.grammar_analyzer import GrammarAnalyzer
+
+    cache = tmp_path / "cache"
+    cli = ComprehensiveGrammarCLI(cache_dir=cache)
+    grammars = cli.user_grammars_dir
+    for namespace_dir in (grammars, cache / "downloads", cache / "builds"):
+        for hidden in (".txn-staging", ".txn-retired"):
+            planted = namespace_dir / hidden / ("0" * 32)
+            planted.mkdir(parents=True)
+            (planted / "libhidden.so").write_bytes(b"x")
+            os.utime(planted / "libhidden.so", (1, 1))
+            os.utime(planted, (1, 1))
+            os.utime(planted.parent, (1, 1))
+    assert not any(
+        key.startswith(".") or entry["language"].startswith(".")
+        for key, entry in cli._get_all_grammars(show_all=True).items()
+    )
+    registry = GrammarRegistry(
+        user_dir=grammars, package_dir=tmp_path / "pkg", cache_dir=cache
+    )
+    assert "hidden" not in registry.discover_grammars()
+    assert GrammarAnalyzer(grammars)._discover_supported_languages() == []
+    fallback = cli._cleanup_cache_fallback(1)
+    assert fallback["files_removed"] == 0 and fallback["errors"] == []
+    pruned = _transactions.prune_entries(cache, "builds", cutoff=time.time() + 3600)
+    # Neither folder is an entry. Retired garbage is claimed and deleted (its
+    # one byte is counted); staging is never pruned.
+    assert (pruned.entries_removed, pruned.skipped, pruned.errors) == (0, (), ())
+    assert pruned.bytes_freed == 1
+    assert not (cache / "builds" / ".txn-retired" / ("0" * 32)).exists()
+    for namespace_dir in (grammars, cache / "downloads", cache / "builds"):
+        assert (namespace_dir / ".txn-staging" / ("0" * 32) / "libhidden.so").is_file()
+    for namespace_dir in (grammars, cache / "downloads"):
+        assert (namespace_dir / ".txn-retired" / ("0" * 32) / "libhidden.so").is_file()
+
+
+def test_unreadable_candidate_is_reported_and_others_still_pruned(tmp_path):
+    """Claude finding 1: one bad entry never aborts the prune or its counts."""
+    if sys.platform == "win32" or os.geteuid() == 0:
+        pytest.skip("mode 000 denial is a POSIX, non-root contract")
+    root = tmp_path / "cache"
+    root.mkdir()
+    _transactions.open_cache_root(root)
+    first = _seed(root / "builds" / "a-first", {"lib.so": b"a" * 11})
+    _seed(root / "builds" / "b-bad", {"sub/held.bin": b"h" * 5})
+    last = _seed(root / "builds" / "c-last", {"lib.so": b"c" * 13})
+    (root / "builds" / "b-bad" / "sub").chmod(0)
+    try:
+        result = _transactions.prune_entries(root, "builds", cutoff=time.time() - 86400)
+    finally:
+        for sub in (root / "builds").rglob("sub"):
+            sub.chmod(0o700)
+    assert result.entries_removed == 2
+    assert result.bytes_freed == first + last
+    assert result.skipped == ("b-bad",)
+    assert len(result.errors) == 1 and "b-bad" in result.errors[0]
+    assert sorted(p.name for p in (root / "builds").iterdir() if p.name[0] != ".") == [
+        "b-bad"
+    ]
+
+
+ESCAPEE = r"""
+import subprocess, sys
+pidfile = sys.argv[1]
+child = subprocess.Popen(
+    [sys.executable, "-c", "import time; time.sleep(120)"],
+    start_new_session=True,  # leaves the group but keeps our stdout open
+)
+open(pidfile, "w").write(str(child.pid))
+"""
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX session escape")
+def test_escaped_pipe_holder_fails_closed_without_blocking(tmp_path):
+    """Claude finding 2: a reader still blocked means not confirmed empty.
+
+    The leader starts a process in a new session that keeps the output pipe
+    open. ``run_in_staging`` returns, reports ``group_empty=False``, and the
+    staging is unpublishable and retained.
+    """
+    root = tmp_path / "cache"
+    root.mkdir()
+    staging = _transactions.create_staging(root)
+    pidfile = tmp_path / "escapee.pid"
+    try:
+        run = _transactions.run_in_staging(
+            staging,
+            [sys.executable, "-c", ESCAPEE, str(pidfile)],
+            cwd=staging.path("builds"),
+            timeout=60,
+        )
+        assert run.returncode == 0 and not run.timed_out and not run.group_empty
+        with pytest.raises(_transactions.CacheTransactionError, match="unpublishable"):
+            _transactions.publish_entry(staging, "builds", "anything")
+        retained = _transactions.discard_staging(staging)
+        assert retained.skipped and staging.path("builds").is_dir()
+    finally:
+        _kill_pidfile(pidfile)
+
+
+INTERRUPTED = r"""
+import os, signal, sys, threading, time
+from pathlib import Path
+from chunker.grammar_management.core import GrammarInstaller
+
+cache, pidfile = Path(ARGS[0]), Path(ARGS[1])
+installer = GrammarInstaller(cache_dir=cache, build_timeout=120)
+
+
+def interrupt_once_running():
+    while not pidfile.exists():
+        time.sleep(0.01)  # readiness: the clone's grandchild is writing
+    os.kill(os.getpid(), signal.SIGINT)
+
+
+threading.Thread(target=interrupt_once_running, daemon=True).start()
+emit("ready")
+wait()
+try:
+    installer.install_grammar("baml", "https://github.com/example/tree-sitter-baml")
+    emit("done", interrupted=False)
+except KeyboardInterrupt:
+    import psutil
+    pid = int(pidfile.read_text())
+    try:
+        alive = psutil.Process(pid).status() != psutil.STATUS_ZOMBIE
+    except psutil.NoSuchProcess:
+        alive = False
+    staged = sorted(str(p) for p in (cache / "downloads" / ".txn-staging").glob("*/*"))
+    emit("done", interrupted=True, grandchild_alive=alive, staged=staged)
+"""
+
+
+@POSIX_SHIM
+def test_interrupted_run_confirms_shutdown_before_disposal(tmp_path, shim):
+    """Codex P1: SIGINT during a staged run never leaves a live writer.
+
+    The clone's leader keeps running with a grandchild writing into staging
+    when the installer gets SIGINT. Either the group is confirmed gone before
+    the staging is disposed of, or the staging is retained. Mutation
+    ``no_shutdown_on_interrupt`` deletes the staging under a live writer.
+    """
+    cache = tmp_path / "cache"
+    repo = _repo(tmp_path / "repo")
+    pidfile = tmp_path / "grandchild.pid"
+    env = _env(shim, repo, TXN_GIT_GRANDCHILD=str(pidfile), TXN_GIT_SLEEP="1")
+    try:
+        with participants() as children:
+            child = Child(INTERRUPTED, [cache, pidfile], env=env)
+            children.append(child)
+            child.expect("ready")
+            child.release()
+            done = child.finish()
+        assert done["interrupted"]
+        assert not done["grandchild_alive"] or done["staged"], done
+        assert not done["grandchild_alive"]  # confirmed shutdown is expected here
+    finally:
+        _kill_pidfile(pidfile)
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32" or shutil.which("make") is None,
+    reason="the git shim is a POSIX script and the fixture builds with make",
+)
+@pytest.mark.parametrize("fault", ["timeout", "escape"])
+def test_aborted_commit_lookup_fails_the_install(tmp_path, shim, fault):
+    """Codex P2: a timed-out or unconfirmed ``git rev-parse`` fails the install.
+
+    The commit is resolved before installation, so nothing is installed.
+    Mutation ``swallow_commit_abort`` reports success.
+    """
+    cache = tmp_path / "cache"
+    # No src/: the build is the real make fallback copying a prebuilt library,
+    # so only rev-parse is slow, never the build (a short build timeout).
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+    shutil.copy2(
+        _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"]), repo / "libbaml.so"
+    )
+    _age(repo)
+    pidfile = tmp_path / "escapee.pid"
+    extra = {"TXN_GIT_REVPARSE": fault, "TXN_GIT_PIDFILE": str(pidfile)}
+    try:
+        done = _install(cache, _env(shim, repo, **extra), timeout=3)
+    finally:
+        _kill_pidfile(pidfile)
+    assert not done["success"]
+    assert "Commit lookup aborted: Git rev-parse" in done["error"]
+    assert not (cache / "grammars" / "libbaml.so").exists()
+    assert not (cache / "downloads" / "tree-sitter-baml").exists()

@@ -35,7 +35,9 @@ MARKER_NAME: Final[str] = ".txn-keep"
 ROLLBACK_MANIFEST_NAME: Final[str] = "rollback.json"
 Namespace = Literal["downloads", "builds"]
 
-_CONTROL_CHILDREN: Final = ("staging", "retired", "rollback")
+# Root-level control area: rollback points (Primitive 3) and their garbage.
+# Staging and entry retirement live inside each namespace instead.
+_CONTROL_CHILDREN: Final = ("retired", "rollback")
 # A root may not be opened at or below another root's managed namespaces.
 _MANAGED_NAMES: Final = frozenset({"downloads", "builds", CONTROL_DIR_NAME})
 
@@ -791,7 +793,12 @@ def update_json_records(
 
 # --- Primitive 2: staging, owned subprocesses and cache-entry publication ----
 
-_NAMESPACES: Final = ("downloads", "builds")
+_NAMESPACES: Final[tuple[Namespace, ...]] = ("downloads", "builds")
+# Per-namespace control folders (maintainer decision, 2026-11-01): staging and
+# retirement live inside the namespace they move entries in, so every rename
+# stays within one directory tree and one filesystem.
+_STAGING_DIR: Final = ".txn-staging"
+_RETIRED_DIR: Final = ".txn-retired"
 _GROUP_CONFIRM_DEADLINE: Final = 10.0
 _READER_JOIN: Final = 10.0
 
@@ -800,7 +807,15 @@ _READER_JOIN: Final = 10.0
 class StagingArea:
     root: Path
     operation_id: str
-    path: Path  # publishability is tracked in-process by the helper
+
+    def path(self, namespace: Namespace) -> Path:
+        """This operation's staging directory inside ``namespace``.
+
+        ``<root>/<namespace>/.txn-staging/<operation-id>/``; publishability is
+        tracked in-process by the helper.
+        """
+        _check_namespace(namespace)
+        return _absolute(self.root) / namespace / _STAGING_DIR / self.operation_id
 
 
 @dataclass(frozen=True)
@@ -882,46 +897,13 @@ def _namespace_dir(rootdir: _Dir, namespace: str, *, create: bool) -> _Dir | Non
     return rootdir.child(namespace)
 
 
-def _require_same_device(rootdir: _Dir, *namespaces: str) -> None:
-    """Amendment A1: renames between ``.txn/`` and a namespace stay on one device.
+def _retired_dir(parent: _Dir, operation_id: str, *parts: str) -> _Dir:
+    """``<parent>/.txn-retired/<operation-id>/<parts...>``, each with a marker.
 
-    Checks ``.txn``, its ``staging``, ``retired`` and ``rollback`` children,
-    and the given namespace directories against the root's device. Missing
-    directories are created later on the root's device; links are refused
-    where they are used. Raises :class:`CacheTransactionError`, changing
-    nothing, because a rename across devices fails with ``EXDEV``.
+    Retired items stay in the directory they were renamed from, so retirement
+    never crosses a filesystem boundary.
     """
-    if rootdir.fd is not None:
-        device = os.fstat(rootdir.fd).st_dev
-    else:
-        device = rootdir.path.stat().st_dev
-    checks: list[tuple[_Dir, str]] = [(rootdir, name) for name in namespaces]
-    checks.append((rootdir, CONTROL_DIR_NAME))
-    control: _Dir | None = None
-    st = rootdir.lstat(CONTROL_DIR_NAME)
-    if st is not None and stat.S_ISDIR(st.st_mode) and not _is_link(st):
-        control = rootdir.child(CONTROL_DIR_NAME)
-        checks.extend((control, name) for name in _CONTROL_CHILDREN)
-    try:
-        for directory, name in checks:
-            st = directory.lstat(name)
-            if st is None or _is_link(st) or not stat.S_ISDIR(st.st_mode):
-                continue
-            if st.st_dev != device:
-                raise CacheTransactionError(
-                    f"{directory.path / name} is on a different filesystem than the "
-                    f"cache root {rootdir.path}; renames between them cannot work "
-                    "(cache transaction contract, amendment A1). Keep downloads/, "
-                    "builds/, grammars/ and .txn/ on the root's filesystem."
-                )
-    finally:
-        if control is not None:
-            control.close()
-
-
-def _retired_dir(rootdir: _Dir, operation_id: str, *parts: str) -> _Dir:
-    """``.txn/retired/<operation-id>/<parts...>``, each with its marker."""
-    current = _open_dirs(rootdir, CONTROL_DIR_NAME, "retired")
+    current = _control_dir(parent, _RETIRED_DIR)
     for part in (operation_id, *parts):
         try:
             following = _control_dir(current, part)
@@ -975,9 +957,15 @@ def _delete_tree(parent: _Dir, name: str, tally: _Tally) -> None:
     """Anchored deletion: links are leaves, ENOENT means already deleted.
 
     Only the ``lstat`` size of regular files actually unlinked is counted.
+    An error is recorded once, for the item that failed; its ancestors are
+    then left in place without further messages.
     """
     path = parent.path / name
-    st = parent.lstat(name)
+    try:
+        st = parent.lstat(name)
+    except OSError as error:
+        tally.errors.append(f"{path}: {error}")
+        return
     if st is None:
         return
     attributes = getattr(st, "st_file_attributes", 0)
@@ -990,6 +978,10 @@ def _delete_tree(parent: _Dir, name: str, tally: _Tally) -> None:
             # It became a link after lstat: remove it as a leaf.
             _delete_leaf(parent, name, path, None, tally)
             return
+        except OSError as error:
+            tally.errors.append(f"{path}: {error}")
+            return
+        failures = len(tally.errors)
         with directory:
             try:
                 children = _list(directory)
@@ -998,6 +990,8 @@ def _delete_tree(parent: _Dir, name: str, tally: _Tally) -> None:
                 return
             for child in children:
                 _delete_tree(directory, child, tally)
+        if len(tally.errors) > failures:
+            return  # a descendant was reported; leave this directory quietly
         try:
             parent.rmdir(name)
         except FileNotFoundError:
@@ -1037,57 +1031,50 @@ def _delete_leaf(
         tally.bytes_freed += st.st_size
 
 
-def _delete_retired(root: Path, operation_id: str, tally: _Tally) -> None:
-    """Delete ``.txn/retired/<operation-id>`` outside the lock."""
+def _delete_retired(
+    root: Path, directory: Sequence[str], name: str, tally: _Tally
+) -> None:
+    """Delete ``<root>/<directory...>/<name>`` (retired garbage) outside the lock."""
     absolute = _absolute(root)
     try:
         rootdir = _Dir.open_root(absolute, _root_identity(absolute))
     except (OSError, CacheTransactionError) as error:
         tally.errors.append(f"{absolute}: {error}")
         return
-    try:
-        retired = _open_dirs(rootdir, CONTROL_DIR_NAME, "retired")
-    except FileNotFoundError:
-        rootdir.close()
-        return
-    except (OSError, CacheTransactionError) as error:
-        rootdir.close()
-        tally.errors.append(f"{absolute}: {error}")
-        return
-    with rootdir, retired:
-        _delete_tree(retired, operation_id, tally)
+    with rootdir:
+        try:
+            parent = _open_dirs(rootdir, *directory)
+        except FileNotFoundError:
+            return
+        except (OSError, CacheTransactionError) as error:
+            tally.errors.append(f"{absolute.joinpath(*directory)}: {error}")
+            return
+        with parent:
+            _delete_tree(parent, name, tally)
 
 
-def _retire(
-    source: _Dir,
-    name: str,
-    rootdir: _Dir,
-    operation_id: str,
-    label: str,
-) -> None:
-    """Rename ``source/name`` to ``.txn/retired/<operation-id>/<label>/<name>``."""
-    with _retired_dir(rootdir, operation_id, label) as target:
+def _retire(source: _Dir, name: str, operation_id: str, *label: str) -> None:
+    """Rename ``source/name`` to ``source/.txn-retired/<operation-id>/<label>/<name>``."""
+    with _retired_dir(source, operation_id, *label) as target:
         source.replace_into(name, target, name)
 
 
 def create_staging(root: Path, *, timeout: float = DEFAULT_LOCK_TIMEOUT) -> StagingArea:
-    """Create ``.txn/staging/<operation-id>/`` with staged namespace directories."""
+    """Create ``<namespace>/.txn-staging/<operation-id>/`` in each namespace."""
     absolute = _absolute(root)
     operation_id = _new_operation_id()
     ctx = _LockContext("create_staging", absolute, operation_id)
     with _locked(root, timeout, ctx) as rootdir:
-        _require_same_device(rootdir, *_NAMESPACES)
-        with (
-            _open_dirs(rootdir, CONTROL_DIR_NAME, "staging") as area,
-            _control_dir(area, operation_id) as staging,
-        ):
-            for namespace in _NAMESPACES:
-                _control_dir(staging, namespace).close()
-    return StagingArea(
-        root=Path(root),
-        operation_id=operation_id,
-        path=absolute / CONTROL_DIR_NAME / "staging" / operation_id,
-    )
+        for namespace in _NAMESPACES:
+            directory = _namespace_dir(rootdir, namespace, create=True)
+            assert directory is not None
+            with (
+                directory,
+                _control_dir(directory, _STAGING_DIR) as area,
+                _control_dir(area, operation_id),
+            ):
+                pass
+    return StagingArea(root=Path(root), operation_id=operation_id)
 
 
 def _inside(path: Path, parent: Path) -> bool:
@@ -1119,13 +1106,22 @@ def _start_readers(
 
 def _finish_readers(
     process: subprocess.Popen[bytes], readers: list[threading.Thread]
-) -> None:
-    for reader in readers:
+) -> bool:
+    """Join the output readers; return False if one is still blocked.
+
+    A reader still running means a process outside the group holds the pipe.
+    Its stream is left open (closing it would block on the reader), and the
+    run is treated as not confirmed empty.
+    """
+    finished = True
+    for reader, stream in zip(readers, (process.stdout, process.stderr), strict=True):
         reader.join(_READER_JOIN)
-    for stream in (process.stdout, process.stderr):
-        if stream is not None:
+        if reader.is_alive():
+            finished = False
+        elif stream is not None:
             with suppress(OSError):
                 stream.close()
+    return finished
 
 
 def _group_members(pgid: int) -> list[Any]:
@@ -1158,6 +1154,26 @@ def _reap_adopted(pgid: int, leader: int) -> None:
                     os.waitpid(child.pid, os.WNOHANG)
 
 
+def _kill_and_confirm_posix(pgid: int, leader: int) -> bool:
+    """Kill the whole group, repeatedly, until no non-zombie member remains.
+
+    Runs while the leader is still unreaped, so the group ID cannot be
+    recycled under the kill (N5 on treesitter-chunker#540).
+    """
+    deadline = time.monotonic() + _GROUP_CONFIRM_DEADLINE
+    delay = _BACKOFF_FIRST
+    while True:
+        with suppress(ProcessLookupError, PermissionError):
+            os.killpg(pgid, signal.SIGKILL)
+        _reap_adopted(pgid, leader)
+        if not _group_members(pgid):
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(delay)
+        delay = min(delay * 2, _BACKOFF_MAX)
+
+
 def _run_posix(
     staging: StagingArea,
     argv: Sequence[str],
@@ -1165,6 +1181,7 @@ def _run_posix(
     timeout: float,
     env: Mapping[str, str] | None,
     ctx: _LockContext,
+    outcome: dict[str, bool],
 ) -> StagedRun:
     process = subprocess.Popen(
         list(argv),
@@ -1175,6 +1192,7 @@ def _run_posix(
         stderr=subprocess.PIPE,
         start_new_session=True,
     )
+    outcome["launched"] = True
     pgid = process.pid
     out, err, readers = _start_readers(process)
     exited = threading.Event()
@@ -1206,27 +1224,20 @@ def _run_posix(
         exited.set()
 
     threading.Thread(target=wait_without_reaping, daemon=True).start()
-    timed_out = not exited.wait(timeout)
-    ctx.seam("run.after_exit")
-    # The leader is not reaped yet, so the group ID cannot be recycled while
-    # the group is killed and checked (N5 on treesitter-chunker#540).
+    timed_out = True
     group_empty = False
-    deadline = time.monotonic() + _GROUP_CONFIRM_DEADLINE
-    delay = _BACKOFF_FIRST
-    while True:
-        with suppress(ProcessLookupError, PermissionError):
-            os.killpg(pgid, signal.SIGKILL)
-        _reap_adopted(pgid, process.pid)
-        if not _group_members(pgid):
-            group_empty = True
-            break
-        if time.monotonic() >= deadline:
-            break
-        time.sleep(delay)
-        delay = min(delay * 2, _BACKOFF_MAX)
-    exited.wait(_GROUP_CONFIRM_DEADLINE)
-    returncode = process.wait()
-    _finish_readers(process, readers)
+    try:
+        timed_out = not exited.wait(timeout)
+        ctx.seam("run.after_exit")
+    finally:
+        # Always, including on KeyboardInterrupt or any other exception: kill
+        # and confirm the group before anyone may dispose of the staging.
+        group_empty = _kill_and_confirm_posix(pgid, process.pid)
+        exited.wait(_GROUP_CONFIRM_DEADLINE)
+        returncode = process.wait()
+        if not _finish_readers(process, readers):
+            group_empty = False
+        outcome["group_empty"] = group_empty
     if group_empty:
         ctx.seam("run.after_group_empty")
     return StagedRun(
@@ -1245,6 +1256,7 @@ def _run_windows(
     timeout: float,
     env: Mapping[str, str] | None,
     ctx: _LockContext,
+    outcome: dict[str, bool],
 ) -> StagedRun:
     import ctypes
     from ctypes import wintypes
@@ -1347,33 +1359,45 @@ def _run_windows(
             process.wait()
             raise CacheTransactionError("Could not assign the process to its job")
         ntdll.NtResumeProcess(handle)
+        outcome["launched"] = True
         out, err, readers = _start_readers(process)
-        timed_out = False
-        try:
-            process.wait(timeout)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-        ctx.seam("run.after_exit")
-        kernel32.TerminateJobObject(job, 1)
+        timed_out = True
         group_empty = False
-        deadline = time.monotonic() + _GROUP_CONFIRM_DEADLINE
-        delay = _BACKOFF_FIRST
-        accounting = Accounting()
-        while True:
-            if (
-                kernel32.QueryInformationJobObject(
-                    job, 1, ctypes.byref(accounting), ctypes.sizeof(accounting), None
-                )
-                and accounting.ActiveProcesses == 0
-            ):
-                group_empty = True
-                break
-            if time.monotonic() >= deadline:
-                break
-            time.sleep(delay)
-            delay = min(delay * 2, _BACKOFF_MAX)
-        returncode = process.wait()
-        _finish_readers(process, readers)
+        try:
+            try:
+                process.wait(timeout)
+                timed_out = False
+            except subprocess.TimeoutExpired:
+                pass
+            ctx.seam("run.after_exit")
+        finally:
+            # Always, including on KeyboardInterrupt: terminate the job and
+            # confirm it is empty before anyone may dispose of the staging.
+            kernel32.TerminateJobObject(job, 1)
+            deadline = time.monotonic() + _GROUP_CONFIRM_DEADLINE
+            delay = _BACKOFF_FIRST
+            accounting = Accounting()
+            while True:
+                if (
+                    kernel32.QueryInformationJobObject(
+                        job,
+                        1,
+                        ctypes.byref(accounting),
+                        ctypes.sizeof(accounting),
+                        None,
+                    )
+                    and accounting.ActiveProcesses == 0
+                ):
+                    group_empty = True
+                    break
+                if time.monotonic() >= deadline:
+                    break
+                time.sleep(delay)
+                delay = min(delay * 2, _BACKOFF_MAX)
+            returncode = process.wait()
+            if not _finish_readers(process, readers):
+                group_empty = False
+            outcome["group_empty"] = group_empty
     finally:
         kernel32.CloseHandle(job)
     if group_empty:
@@ -1398,11 +1422,15 @@ def run_in_staging(
     """Run a subprocess that may write into ``staging``, in its own group/job.
 
     The whole process group (POSIX) or job (Windows) is killed after the
-    direct child exits or times out, and is confirmed empty before return.
-    A timeout or an unconfirmed group makes the staging unpublishable.
+    direct child exits or times out, and is confirmed empty before return,
+    also when the wait is interrupted (for example by ``KeyboardInterrupt``,
+    which is re-raised afterwards). A timeout, an unconfirmed group, a reader
+    still blocked on the output, or an interruption makes the staging
+    unpublishable; an unconfirmed or interrupted-before-confirmation run also
+    makes it retained, so ``discard_staging`` never deletes it.
     """
-    if not _inside(cwd, staging.path):
-        raise ContainmentError(f"Working directory {cwd} is outside {staging.path}")
+    if not any(_inside(cwd, staging.path(ns)) for ns in _NAMESPACES):
+        raise ContainmentError(f"Working directory {cwd} is outside the staging")
     key = _staging_key(staging)
     ctx = _LockContext(
         "run_in_staging",
@@ -1411,7 +1439,16 @@ def run_in_staging(
         program=Path(argv[0]).name if argv else "",
     )
     runner = _run_windows if _WINDOWS else _run_posix
-    result = runner(staging, argv, cwd, timeout, env, ctx)
+    outcome = {"launched": False, "group_empty": False}
+    try:
+        result = runner(staging, argv, cwd, timeout, env, ctx, outcome)
+    except BaseException:
+        if outcome["launched"]:
+            with _STAGING_GUARD:
+                _UNPUBLISHABLE.add(key)
+                if not outcome["group_empty"]:
+                    _RETAINED.add(key)
+        raise
     if result.timed_out or not result.group_empty:
         with _STAGING_GUARD:
             _UNPUBLISHABLE.add(key)
@@ -1442,12 +1479,13 @@ def publish_entry(
     *,
     timeout: float = DEFAULT_LOCK_TIMEOUT,
 ) -> Path:
-    """Publish ``<staging>/<namespace>/<name>`` as ``<root>/<namespace>/<name>``.
+    """Publish ``<namespace>/.txn-staging/<op>/<name>`` as ``<namespace>/<name>``.
 
-    Under the lock: stamp the staged entry, retire any existing entry (refusing
-    nested roots), then promote the staged entry. If promotion fails the old
-    entry is renamed back; if that fails too, the error names all three
-    locations. The retired generation is deleted outside the lock.
+    Under the lock: stamp the staged entry, retire any existing entry to
+    ``<namespace>/.txn-retired/<op>/`` (refusing nested roots), then promote
+    the staged entry. Every rename stays inside ``<namespace>``. If promotion
+    fails the old entry is renamed back; if that fails too, the error names
+    all three locations. The retired generation is deleted outside the lock.
     """
     _check_namespace(namespace)
     _check_component(name, "Entry name")
@@ -1455,63 +1493,56 @@ def publish_entry(
     with _STAGING_GUARD:
         if _staging_key(staging) in _UNPUBLISHABLE:
             raise CacheTransactionError(
-                f"Staging {staging.path} is unpublishable: a run timed out or its "
-                "process group was not confirmed empty"
+                f"Staging {staging.path(namespace)} is unpublishable: a run timed "
+                "out, was interrupted, or its process group was not confirmed empty"
             )
     ctx = _LockContext("publish_entry", absolute, staging.operation_id)
     seam = {"namespace": namespace, "name": name}
     retired = False
     with _locked(staging.root, timeout, ctx) as rootdir:
-        _require_same_device(rootdir, namespace)
-        staged_ns = _open_dirs(
-            rootdir, CONTROL_DIR_NAME, "staging", staging.operation_id, namespace
-        )
-        with staged_ns:
-            _stamp(staged_ns, name)
-            target = _namespace_dir(rootdir, namespace, create=True)
-            assert target is not None
-            with target:
-                if target.lstat(name) is not None:
-                    _refuse_nested_entry(target, name)
-                    _retire(target, name, rootdir, staging.operation_id, namespace)
-                    retired = True
-                    ctx.seam("publish.after_retire", **seam)
-                ctx.seam("publish.before_promote", **seam)
-                try:
-                    staged_ns.replace_into(name, target, name)
-                except OSError as error:
-                    published = absolute / namespace / name
-                    garbage = (
-                        absolute
-                        / CONTROL_DIR_NAME
-                        / "retired"
-                        / staging.operation_id
-                        / namespace
-                        / name
-                    )
-                    if not retired:
-                        raise CacheTransactionError(
-                            f"Could not publish {published}: {error}"
-                        ) from error
-                    try:
-                        with _retired_dir(
-                            rootdir, staging.operation_id, namespace
-                        ) as old:
-                            old.replace_into(name, target, name)
-                    except OSError as back:
-                        raise CacheTransactionError(
-                            f"Could not publish {published} ({error}) or restore its "
-                            f"previous generation ({back}). {published} is absent; the "
-                            f"previous generation is in {garbage}; the new one remains "
-                            f"in {staging.path / namespace / name}"
-                        ) from error
+        target = _namespace_dir(rootdir, namespace, create=True)
+        assert target is not None
+        with (
+            target,
+            _open_dirs(target, _STAGING_DIR, staging.operation_id) as staged,
+        ):
+            _stamp(staged, name)
+            if target.lstat(name) is not None:
+                _refuse_nested_entry(target, name)
+                _retire(target, name, staging.operation_id)
+                retired = True
+                ctx.seam("publish.after_retire", **seam)
+            ctx.seam("publish.before_promote", **seam)
+            try:
+                staged.replace_into(name, target, name)
+            except OSError as error:
+                published = absolute / namespace / name
+                garbage = (
+                    absolute / namespace / _RETIRED_DIR / staging.operation_id / name
+                )
+                if not retired:
                     raise CacheTransactionError(
-                        f"Could not publish {published} ({error}); the previous "
-                        "generation was restored"
+                        f"Could not publish {published}: {error}"
                     ) from error
+                try:
+                    with _retired_dir(target, staging.operation_id) as old:
+                        old.replace_into(name, target, name)
+                except OSError as back:
+                    raise CacheTransactionError(
+                        f"Could not publish {published} ({error}) or restore its "
+                        f"previous generation ({back}). {published} is absent; the "
+                        f"previous generation is in {garbage}; the new one remains "
+                        f"in {staging.path(namespace) / name}"
+                    ) from error
+                raise CacheTransactionError(
+                    f"Could not publish {published} ({error}); the previous "
+                    "generation was restored"
+                ) from error
     if retired:
         tally = _Tally()
-        _delete_retired(staging.root, staging.operation_id, tally)
+        _delete_retired(
+            staging.root, (namespace, _RETIRED_DIR), staging.operation_id, tally
+        )
         for message in tally.errors:
             logger.warning("Retired cache entry not deleted: %s", message)
     return absolute / namespace / name
@@ -1530,7 +1561,6 @@ def remove_entry(
     operation_id = _new_operation_id()
     ctx = _LockContext("remove_entry", _absolute(root), operation_id)
     with _locked(root, timeout, ctx) as rootdir:
-        _require_same_device(rootdir, namespace)
         directory = _namespace_dir(rootdir, namespace, create=False)
         if directory is None:
             return PruneResult(0, 0, (), ())
@@ -1538,41 +1568,50 @@ def remove_entry(
             if directory.lstat(name) is None:
                 return PruneResult(0, 0, (), ())
             _refuse_nested_entry(directory, name)
-            _retire(directory, name, rootdir, operation_id, namespace)
+            _retire(directory, name, operation_id)
     tally = _Tally()
-    _delete_retired(root, operation_id, tally)
+    _delete_retired(root, (namespace, _RETIRED_DIR), operation_id, tally)
     return PruneResult(1, tally.bytes_freed, (), tuple(tally.errors))
 
 
 def _claim_garbage(
-    root: Path, operation_id: str, timeout: float, ctx: _LockContext
+    root: Path,
+    namespace: Namespace,
+    operation_id: str,
+    timeout: float,
+    ctx: _LockContext,
 ) -> None:
     """Move other operations' retired trees under ``<own-id>/claimed/``."""
-    with (
-        _locked(root, timeout, ctx) as rootdir,
-        _open_dirs(rootdir, CONTROL_DIR_NAME, "retired") as retired,
-    ):
-        others = [
-            name
-            for name in _list(retired)
-            if name != operation_id and name != MARKER_NAME
-        ]
-        if not others:
+    with _locked(root, timeout, ctx) as rootdir:
+        directory = _namespace_dir(rootdir, namespace, create=False)
+        if directory is None:
             return
-        with _retired_dir(rootdir, operation_id, "claimed") as claimed:
-            for other in others:
-                st = retired.lstat(other)
-                if st is None or _is_link(st) or not stat.S_ISDIR(st.st_mode):
-                    continue
-                with suppress(FileNotFoundError):
-                    retired.replace_into(other, claimed, other)
+        with directory:
+            if directory.lstat(_RETIRED_DIR) is None:
+                return
+            with _open_dirs(directory, _RETIRED_DIR) as retired:
+                others = [
+                    name
+                    for name in _list(retired)
+                    if name not in (operation_id, MARKER_NAME)
+                ]
+                if not others:
+                    return
+                with _retired_dir(directory, operation_id, "claimed") as claimed:
+                    for other in others:
+                        st = retired.lstat(other)
+                        if st is None or _is_link(st) or not stat.S_ISDIR(st.st_mode):
+                            continue
+                        with suppress(FileNotFoundError):
+                            retired.replace_into(other, claimed, other)
 
 
-def _report_staging(rootdir: _Dir, cutoff: float) -> list[str]:
+def _report_staging(rootdir: _Dir, namespace: str, cutoff: float) -> list[str]:
+    """Log staging areas older than the cutoff; staging is never pruned."""
     retained = []
     with (
         suppress(OSError, CacheTransactionError),
-        _open_dirs(rootdir, CONTROL_DIR_NAME, "staging") as area,
+        _open_dirs(rootdir, namespace, _STAGING_DIR) as area,
     ):
         for name in _list(area):
             st = area.lstat(name)
@@ -1593,7 +1632,9 @@ def prune_entries(
     """Retire and delete entries whose whole tree is older than ``cutoff``.
 
     Candidates are listed without the lock, then each is re-checked under the
-    lock (no-follow walk, links as leaves) and retired before deletion.
+    lock (no-follow walk, links as leaves) and retired, within the namespace,
+    before deletion. A candidate that cannot be checked or retired is
+    reported in ``errors`` and ``skipped``, and the others still run.
     ``bytes_freed`` counts only regular files this call actually unlinked.
     """
     _check_namespace(namespace)
@@ -1604,19 +1645,19 @@ def prune_entries(
     tally = _Tally()
     removed = 0
     with _locked(root, timeout, ctx) as rootdir:
-        _require_same_device(rootdir, namespace)
         directory = _namespace_dir(rootdir, namespace, create=False)
-    if directory is not None:
-        directory.close()
-        rootdir = _Dir.open_root(absolute, _root_identity(absolute))
-        with rootdir, _open_dirs(rootdir, namespace) as listing:
-            candidates = _list(listing)
-        ctx.seam("prune.after_enumerate", namespace=namespace)
-        for name in candidates:
-            if name.startswith(CONTROL_DIR_NAME):
-                skipped.append(name)
-                continue
-            retired = False
+    if directory is None:
+        return PruneResult(0, 0, (), ())
+    directory.close()
+    rootdir = _Dir.open_root(absolute, _root_identity(absolute))
+    with rootdir, _open_dirs(rootdir, namespace) as listing:
+        candidates = _list(listing)
+    ctx.seam("prune.after_enumerate", namespace=namespace)
+    for name in candidates:
+        if name.startswith(CONTROL_DIR_NAME):
+            continue  # reserved: .txn-staging, .txn-retired and the like
+        retired = False
+        try:
             with _locked(root, timeout, ctx) as rootdir:
                 current = _namespace_dir(rootdir, namespace, create=False)
                 if current is None:
@@ -1626,10 +1667,6 @@ def prune_entries(
                         own, newest = _newest_mtime(current, name)
                     except FileNotFoundError:
                         continue
-                    except NestedRootError as error:
-                        skipped.append(name)
-                        tally.errors.append(str(error))
-                        continue
                     ctx.seam("prune.after_recheck", namespace=namespace, name=name)
                     if newest >= cutoff:
                         if own < cutoff:
@@ -1638,17 +1675,25 @@ def prune_entries(
                                 current.path / name,
                             )
                         continue
-                    _retire(current, name, rootdir, operation_id, namespace)
+                    _retire(current, name, operation_id)
                     retired = True
                     removed += 1
-            if retired:
-                _delete_retired(root, operation_id, tally)
+        except NestedRootError as error:
+            skipped.append(name)
+            tally.errors.append(str(error))
+            continue
+        except (OSError, ContainmentError) as error:
+            skipped.append(name)
+            tally.errors.append(f"{absolute / namespace / name}: {error}")
+            continue
+        if retired:
+            _delete_retired(root, (namespace, _RETIRED_DIR, operation_id), name, tally)
     try:
-        _claim_garbage(root, operation_id, timeout, ctx)
-        _delete_retired(root, operation_id, tally)
+        _claim_garbage(root, namespace, operation_id, timeout, ctx)
+        _delete_retired(root, (namespace, _RETIRED_DIR), operation_id, tally)
         with _locked(root, timeout, ctx) as rootdir:
-            _report_staging(rootdir, cutoff)
-    except CacheTransactionError as error:
+            _report_staging(rootdir, namespace, cutoff)
+    except (OSError, CacheTransactionError) as error:
         tally.errors.append(str(error))
     return PruneResult(removed, tally.bytes_freed, tuple(skipped), tuple(tally.errors))
 
@@ -1656,32 +1701,45 @@ def prune_entries(
 def discard_staging(
     staging: StagingArea, *, timeout: float = DEFAULT_LOCK_TIMEOUT
 ) -> PruneResult:
-    """Retire the staging area into ``.txn/retired`` and delete it.
+    """Retire each namespace's staging directory in place, then delete it.
 
-    Staging whose process group was not confirmed empty is retained and
-    reported. A file that cannot be deleted (for example, a library still
-    loaded on Windows) stays in ``.txn/retired`` for a later prune to claim.
+    ``<namespace>/.txn-staging/<op>`` becomes
+    ``<namespace>/.txn-retired/<op>/staging``. Staging whose process group was
+    not confirmed empty is retained and reported. A file that cannot be
+    deleted (for example, a library still loaded on Windows) stays in
+    ``.txn-retired`` for a later prune to claim.
     """
     key = _staging_key(staging)
     with _STAGING_GUARD:
         if key in _RETAINED:
+            paths = tuple(str(staging.path(ns)) for ns in _NAMESPACES)
             message = (
-                f"Staging {staging.path} is retained: a process group was not "
+                f"Staging {', '.join(paths)} is retained: a process group was not "
                 "confirmed empty"
             )
             logger.warning(message)
-            return PruneResult(0, 0, (str(staging.path),), (message,))
+            return PruneResult(0, 0, paths, (message,))
     ctx = _LockContext("discard_staging", _absolute(staging.root), staging.operation_id)
+    retired: list[Namespace] = []
     with _locked(staging.root, timeout, ctx) as rootdir:
-        _require_same_device(rootdir)
-        with _open_dirs(rootdir, CONTROL_DIR_NAME, "staging") as area:
-            if area.lstat(staging.operation_id) is None:
-                return PruneResult(0, 0, (), ())
-            _retire(
-                area, staging.operation_id, rootdir, staging.operation_id, "staging"
-            )
+        for namespace in _NAMESPACES:
+            directory = _namespace_dir(rootdir, namespace, create=False)
+            if directory is None:
+                continue
+            with directory:
+                if directory.lstat(_STAGING_DIR) is None:
+                    continue
+                with _open_dirs(directory, _STAGING_DIR) as area:
+                    if area.lstat(staging.operation_id) is None:
+                        continue
+                    with _retired_dir(directory, staging.operation_id) as target:
+                        area.replace_into(staging.operation_id, target, "staging")
+                    retired.append(namespace)
     tally = _Tally()
-    _delete_retired(staging.root, staging.operation_id, tally)
+    for namespace in retired:
+        _delete_retired(
+            staging.root, (namespace, _RETIRED_DIR), staging.operation_id, tally
+        )
     with _STAGING_GUARD:
         _UNPUBLISHABLE.discard(key)
     return PruneResult(0, tally.bytes_freed, (), tuple(tally.errors))

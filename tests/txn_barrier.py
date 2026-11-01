@@ -232,6 +232,10 @@ def run_with_tmpfs(
 
     mode = _mount_mode()
     if mode is None:
+        if sys.platform.startswith("linux") and os.environ.get("CI"):
+            pytest.fail(
+                "Linux CI must be able to mount a tmpfs (user namespace or sudo)"
+            )
         pytest.skip("mounting a tmpfs needs a user namespace or passwordless sudo")
     mount_point.mkdir(parents=True, exist_ok=True)
     command = [sys.executable, "-I", "-c", script, str(ROOT), *map(str, args)]
@@ -296,7 +300,10 @@ MOUNTED = []
 
 
 def run_mounting(
-    script: str, args: Sequence[str | os.PathLike[str]]
+    script: str,
+    args: Sequence[str | os.PathLike[str]],
+    *,
+    env: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run ``python -I -c MOUNT_PRELUDE+script ROOT args...`` able to mount tmpfs.
 
@@ -308,6 +315,10 @@ def run_mounting(
 
     mode = _mount_mode()
     if mode is None:
+        if sys.platform.startswith("linux") and os.environ.get("CI"):
+            pytest.fail(
+                "Linux CI must be able to mount a tmpfs (user namespace or sudo)"
+            )
         pytest.skip("mounting a tmpfs needs a user namespace or passwordless sudo")
     command = [
         sys.executable,
@@ -320,5 +331,10 @@ def run_mounting(
     if mode == "unshare":
         command = ["unshare", "--user", "--map-root-user", "--mount", *command]
     return subprocess.run(
-        command, capture_output=True, text=True, timeout=SAFETY_TIMEOUT, check=False
+        command,
+        capture_output=True,
+        text=True,
+        timeout=SAFETY_TIMEOUT,
+        check=False,
+        env=dict(env) if env is not None else None,
     )
