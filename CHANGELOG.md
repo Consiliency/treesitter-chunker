@@ -34,6 +34,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compact files whose caller text contains LF now hold LF instead of CRLF.
   Pretty files are unchanged. See
   [the newline policy](docs/graphml_export.md#special-character-handling).
+- Python context lookup is truthful against the shared real-parser reference
+  fixtures (`tests/fixtures/references/python/`). `find_symbol_definition` now
+  finds module and nested functions, classes, assignments and parameters
+  (including lambda parameters and lambda `*`/`**` splats), lets parameters
+  and locals shadow outer names, and no longer matches class-body names, or a
+  method's or class's own name, from inside it (treesitter-chunker#274).
+  Reference lookup treats loop, `with`, `except` and lambda targets, including
+  starred targets and lambda splat parameters, as bindings and
+  default-parameter values as uses (treesitter-chunker#294). Assignment
+  expressions bind in the nearest enclosing non-comprehension scope, and
+  parameter defaults are evaluated in the scope that contains the function
+  (treesitter-chunker#278).
+
 - The SQLite chunk cache (`ASTCache`, used by default by `ParallelChunker`,
   `chunk_files_parallel` and `chunk_directory_parallel`) no longer returns core
   chunks for a streaming request or the reverse, and no longer reuses entries
@@ -50,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `chunk_cache_v3` table: entries from earlier releases are ignored, so each file
   is re-extracted once after upgrading. Delete `ast_cache.db` to reclaim their
   space once no older release shares it.
+
 - `UserGrammarTools.install_grammar` and `update_grammar` no longer overwrite
   the installed grammar library in place, which could crash a process that had
   it loaded (treesitter-chunker#162). A new `publish_native_grammar` copies the
@@ -154,6 +168,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   treesitter-chunker#176, treesitter-chunker#182, treesitter-chunker#183,
   treesitter-chunker#184, treesitter-chunker#185). Structural validity does not
   establish native safety or provenance; see the packaging guide for profile limits.
+
+- JavaScript context lookup is truthful against the shared real-parser
+  reference fixtures (`tests/fixtures/references/javascript/`). A generator
+  declaration, also when exported, now yields the same signature-only
+  dependency context as an ordinary function instead of its whole body
+  (treesitter-chunker#289). Reference lookup treats default-import,
+  named function-expression, bare arrow-parameter, default-parameter and
+  array-pattern identifiers as bindings, and finds the reference in a
+  shorthand object property such as `{ value }` (treesitter-chunker#293).
 
 ### Breaking
 

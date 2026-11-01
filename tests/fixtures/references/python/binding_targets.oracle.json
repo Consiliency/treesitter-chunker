@@ -7,7 +7,8 @@
     "root": {"node_type": "module", "row": 0, "column": 0},
     "collect": {"node_type": "function_definition", "row": 8, "column": 0},
     "collect.key_lambda": {"node_type": "lambda", "row": 21, "column": 33},
-    "collect.squares_comp": {"node_type": "list_comprehension", "row": 22, "column": 14}
+    "collect.squares_comp": {"node_type": "list_comprehension", "row": 22, "column": 14},
+    "collect.spread_lambda": {"node_type": "lambda", "row": 29, "column": 32}
   },
   "occurrences": [
     {"issue": "treesitter-chunker#294", "name": "source", "row": 8, "column": 12, "role": "binding", "scope": "collect"},
@@ -40,6 +41,22 @@
     {"issue": "treesitter-chunker#294", "name": "offset", "row": 21, "column": 69, "role": "use", "scope": "collect.key_lambda"},
     {"issue": "treesitter-chunker#294", "name": "entry", "row": 22, "column": 15, "role": "use", "scope": "collect.squares_comp"},
     {"issue": "treesitter-chunker#294", "name": "factor", "row": 22, "column": 23, "role": "use", "scope": "collect.squares_comp"},
-    {"issue": "treesitter-chunker#294", "name": "entry", "row": 22, "column": 34, "role": "binding", "scope": "collect.squares_comp"}
+    {"issue": "treesitter-chunker#294", "name": "entry", "row": 22, "column": 34, "role": "binding", "scope": "collect.squares_comp"},
+    {"issue": "treesitter-chunker#294", "name": "first", "row": 23, "column": 8, "role": "binding", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "rest", "row": 23, "column": 16, "role": "binding", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "first", "row": 24, "column": 14, "role": "use", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "rest", "row": 24, "column": 21, "role": "use", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "inner", "row": 25, "column": 9, "role": "binding", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "others", "row": 25, "column": 17, "role": "binding", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "inner", "row": 26, "column": 14, "role": "use", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "others", "row": 26, "column": 21, "role": "use", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "head", "row": 27, "column": 33, "role": "binding", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "tail", "row": 27, "column": 40, "role": "binding", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "head", "row": 28, "column": 14, "role": "use", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "tail", "row": 28, "column": 20, "role": "use", "scope": "collect"},
+    {"issue": "treesitter-chunker#294", "name": "items", "row": 29, "column": 40, "role": "binding", "scope": "collect.spread_lambda"},
+    {"issue": "treesitter-chunker#294", "name": "options", "row": 29, "column": 49, "role": "binding", "scope": "collect.spread_lambda"},
+    {"issue": "treesitter-chunker#294", "name": "items", "row": 29, "column": 59, "role": "use", "scope": "collect.spread_lambda"},
+    {"issue": "treesitter-chunker#294", "name": "options", "row": 29, "column": 66, "role": "use", "scope": "collect.spread_lambda"}
   ]
 }
