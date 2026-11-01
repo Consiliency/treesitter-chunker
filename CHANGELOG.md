@@ -36,6 +36,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   escaping (`"` instead of `&quot;`) may differ. Regenerate affected GraphML
   files. See
   [the package exporter notes](docs/graphml_export.md#package-level-structured-exporter).
+- Python context lookup is truthful against the shared real-parser reference
+  fixtures (`tests/fixtures/references/python/`). `find_symbol_definition` now
+  finds module and nested functions, classes, assignments and parameters
+  (including lambda parameters and lambda `*`/`**` splats), lets parameters
+  and locals shadow outer names, and no longer matches class-body names, or a
+  method's or class's own name, from inside it (treesitter-chunker#274).
+  Reference lookup treats loop, `with`, `except` and lambda targets, including
+  starred targets and lambda splat parameters, as bindings and
+  default-parameter values as uses (treesitter-chunker#294). Assignment
+  expressions bind in the nearest enclosing non-comprehension scope, and
+  parameter defaults are evaluated in the scope that contains the function
+  (treesitter-chunker#278).
+
 - The SQLite chunk cache (`ASTCache`, used by default by `ParallelChunker`,
   `chunk_files_parallel` and `chunk_directory_parallel`) no longer returns core
   chunks for a streaming request or the reverse, and no longer reuses entries
@@ -52,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `chunk_cache_v3` table: entries from earlier releases are ignored, so each file
   is re-extracted once after upgrading. Delete `ast_cache.db` to reclaim their
   space once no older release shares it.
+
 - `UserGrammarTools.install_grammar` and `update_grammar` no longer overwrite
   the installed grammar library in place, which could crash a process that had
   it loaded (treesitter-chunker#162). A new `publish_native_grammar` copies the
