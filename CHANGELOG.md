@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The package-level `chunker.export.GraphMLExporter` no longer turns TAB, LF
+  or CR in caller chunk IDs and relationship endpoints into spaces on Python
+  3.12, which could merge distinct nodes and their edges
+  (treesitter-chunker#489). It now serializes with ElementTree instead of
+  reparsing through `xml.dom.minidom`. The declaration, metadata comment, keys,
+  data values and text-leaf newline normalization (CRLF and lone CR become LF)
+  are unchanged, and malformed caller values still raise before anything is
+  written; indentation may differ. Regenerate affected GraphML files. See
+  [the package exporter notes](docs/graphml_export.md#package-level-structured-exporter).
 - `UserGrammarTools.install_grammar` and `update_grammar` no longer overwrite
   the installed grammar library in place, which could crash a process that had
   it loaded (treesitter-chunker#162). A new `publish_native_grammar` copies the
