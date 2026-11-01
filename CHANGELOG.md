@@ -45,6 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   escaping (`"` instead of `&quot;`) may differ. Regenerate affected GraphML
   files. See
   [the package exporter notes](docs/graphml_export.md#package-level-structured-exporter).
+- `GrammarAnalyzer.analyze_grammar_symbols` now reports why its symbol lists
+  may be empty. The result has an `analysis` entry whose `status` is
+  `complete`, `deadline_expired`, `unavailable` or `failed`, with
+  `deadline_seconds` and a `detail` message. Before, an `nm` run killed at its
+  five-second deadline under host load returned the same empty lists as a
+  grammar with no symbols (treesitter-chunker#207). The deadline is unchanged,
+  and the new keyword-only `timeout` defaults to it. Code that iterates every
+  value of the result should skip the non-list `analysis` entry, as the
+  analyzer's own symbol counting and feature detection already do.
 - Python context lookup is truthful against the shared real-parser reference
   fixtures (`tests/fixtures/references/python/`). `find_symbol_definition` now
   finds module and nested functions, classes, assignments and parameters
