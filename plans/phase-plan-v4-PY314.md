@@ -126,16 +126,23 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
     Rust on Linux, macOS or Windows. The PR records the sync output that shows
     wheels only, or names any sdist build and its prerequisite.
   - interpreter layout (no more jobs than now):
-    - `ci.yml` `test`: 3.14 for Ruff, Black, the type gate, the governed check,
-      the smoke tier and the scheduled full tier.
+    - `ci.yml` `test`: one job whose interpreter is
+      `${{ github.event_name == 'schedule' && '3.12' || '3.14' }}`. Pushes and
+      pull requests run Ruff, Black, the type gate, the governed check and the
+      smoke tier on 3.14. The scheduled full tier stays on the 3.12 floor
+      (**maintainer decision, 2026-11-01**), so the full suite covers both
+      interpreters: 3.12 nightly, 3.14 at release. The `conftest.py`
+      forkserver preload applies to the 3.14 runs.
     - `test.yml` platform-core: Linux 3.12 (the focused minimum), macOS 3.14
       and Windows 3.14. That is still three jobs, with no version-by-OS cross
       product, and the cache key gets the matrix interpreter.
-    - `release.yml` `release-validation`: `['3.14']`. `verify-installed-wheel`
+    - `release.yml` `release-validation`: `['3.14']` (maintainer decision,
+      2026-11-01). `verify-installed-wheel`
       keeps `['3.12', '3.14']` deliberately, so the floor stays release-tested.
       `build-distributions` stays on 3.12: it builds a pure wheel and validates
       nothing.
-    - The type gate runs once, on 3.14. Its output does not depend on the
+    - The type gate runs once per CI run: on 3.14 for pushes and pull
+      requests, on 3.12 when scheduled. Its output does not depend on the
       interpreter (re-measurement above).
   - `.python-version` stays `3.12`, the roadmap default. A plain
     `uv sync --locked --all-extras` keeps developing on the floor, so 3.12
@@ -223,8 +230,9 @@ Named mutations (each fails its focused test):
    `test_type_commands_match_ci[.github/workflows/release.yml]` fails.
 3. `M502-lock`: restore the pre-SL-env `uv.lock`.
    `test_every_locked_native_package_has_a_cp314_wheel` fails.
-4. `M502-matrix`: put `release-validation` back on `['3.12']`, or drop the 3.12
-   platform-core job. The release-hygiene layout test fails.
+4. `M502-matrix`: put `release-validation` back on `['3.12']`, move the
+   scheduled `ci.yml` run off 3.12 (for example a constant `'3.14'`), or drop
+   the 3.12 platform-core job. The release-hygiene layout test fails.
 
 ## Acceptance Criteria
 

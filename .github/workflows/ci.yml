@@ -16,9 +16,10 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     env:
-      # Primary validation interpreter (treesitter-chunker#502). The 3.12 floor
-      # keeps platform-core coverage in test.yml and wheel checks in release.yml.
-      UV_PYTHON: '3.14'
+      # Pushes and pull requests validate on 3.14, the primary interpreter. The
+      # scheduled full tier stays on the 3.12 floor (maintainer decision,
+      # treesitter-chunker#502); release validation runs the full tier on 3.14.
+      UV_PYTHON: "${{ github.event_name == 'schedule' && '3.12' || '3.14' }}"
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
@@ -27,7 +28,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
-          python-version: '3.14'
+          python-version: "${{ github.event_name == 'schedule' && '3.12' || '3.14' }}"
 
       - name: Install Graphviz executable
         run: |

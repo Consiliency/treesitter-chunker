@@ -249,9 +249,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `httptools` 0.7.1, `line-profiler` 5.0.1, `markupsafe` 3.0.3, `pydantic`
   2.12.0 with `pydantic-core` 2.41.1 (and the `typing-inspection` 0.4.2 it
   requires), `uvloop` 0.22.1 and `watchfiles` 1.1.1. Parser and runtime pins
-  are unchanged. CI lint, type and smoke checks, the scheduled full tier and
-  release validation now run on 3.14. Linux platform-core and release wheel
-  checks keep covering the 3.12 floor, with no extra CI jobs. `requires-python`
+  are unchanged. Push and pull-request CI (lint, type and smoke checks) and
+  release validation now run on 3.14. The scheduled full tier, Linux
+  platform-core and release wheel checks keep covering the 3.12 floor, with no
+  extra CI jobs. `requires-python`
   stays `>=3.12`, and `.python-version` keeps 3.12 as the default development
   interpreter.
 - On Python 3.14, Linux starts multiprocessing workers with `forkserver` by

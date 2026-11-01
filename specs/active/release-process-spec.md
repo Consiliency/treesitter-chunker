@@ -19,6 +19,10 @@
   primary validation interpreter. The supported floor stays 3.12
   (`requires-python = ">=3.12"`); release acceptance below keeps checking it
   (treesitter-chunker#502)
+- Outside releases, the scheduled CI full tier (`tests/` and `spec_tests/`)
+  runs on the 3.12 floor, so the full suite covers both interpreters without
+  an extra job (maintainer decision, 2026-11-01). Push and pull-request CI
+  validates on 3.14
 - The locked environment installs from wheels on CPython 3.12 and 3.14; no
   host compiler, libffi or Rust toolchain is needed for
   `uv sync --locked --all-extras --python 3.14`

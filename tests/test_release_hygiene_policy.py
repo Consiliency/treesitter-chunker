@@ -310,9 +310,24 @@ def _setup_python_versions(job: dict) -> list[str]:
     ]
 
 
+_EVENT_CHOICE = re.compile(
+    r"\$\{\{\s*github\.event_name\s*==\s*'([\w-]+)'\s*&&\s*'([^']+)'"
+    r"\s*\|\|\s*'([^']+)'\s*\}\}"
+)
+
+
+def _event_choice(value: str) -> tuple[str, str, str] | None:
+    """Parse ``${{ github.event_name == 'E' && 'A' || 'B' }}`` as (E, A, B)."""
+    match = _EVENT_CHOICE.fullmatch(value)
+    return match.groups() if match else None
+
+
 def _resolve(job: dict, value: str) -> list[str]:
     expression = re.fullmatch(r"\$\{\{\s*matrix\.([\w-]+)\s*\}\}", value)
-    return _matrix_values(job, expression.group(1)) if expression else [value]
+    if expression:
+        return _matrix_values(job, expression.group(1))
+    choice = _event_choice(value)
+    return list(choice[1:]) if choice else [value]
 
 
 def test_workflow_setup_python_versions_respect_floor():
@@ -372,8 +387,10 @@ def test_docs_do_not_advertise_python_below_floor():
     assert not offenders, "\n".join(offenders)
 
 
-# treesitter-chunker#502: full CI and release validation run on the primary
-# interpreter; the floor keeps focused coverage without a version-by-OS matrix.
+# treesitter-chunker#502: pushes, pull requests and release validation run on
+# the primary interpreter. The scheduled full tier stays on the floor
+# (maintainer decision, 2026-11-01). The floor also keeps a platform-core job,
+# with no version-by-OS matrix and no extra jobs.
 PRIMARY_PYTHON = "3.14"
 
 
@@ -382,14 +399,23 @@ def _workflow(name: str) -> dict:
 
 
 def test_validation_runs_on_primary_python_and_keeps_floor_coverage():
-    """CI validates on 3.14, keeps one 3.12 platform-core job, and adds no jobs."""
+    """3.14 for PRs and releases, 3.12 for the scheduled full tier, no new jobs."""
     floor = _floor_text()
     assert floor != PRIMARY_PYTHON
 
     ci = _workflow("ci.yml")["jobs"]
     assert list(ci) == ["test"]
-    assert ci["test"]["env"]["UV_PYTHON"] == PRIMARY_PYTHON
-    assert _setup_python_versions(ci["test"]) == [PRIMARY_PYTHON]
+    job = ci["test"]
+    # One job: the schedule selects the floor, every other event the primary.
+    interpreter = job["env"]["UV_PYTHON"]
+    assert _event_choice(interpreter) == ("schedule", floor, PRIMARY_PYTHON)
+    assert _setup_python_versions(job) == [interpreter]
+    # The scheduled run is the full tier; other events run the smoke tier.
+    pytest_step = next(s for s in job["steps"] if s.get("name") == "Pytest")
+    full_branch, smoke_branch = pytest_step["run"].split("else", 1)
+    assert '"$GITHUB_EVENT_NAME" = "schedule"' in full_branch
+    assert "scripts/run_full_suite.py" in full_branch
+    assert "scripts/run_ci_smoke.py" in smoke_branch
 
     platform = _workflow("test.yml")["jobs"]
     assert list(platform) == ["test"]

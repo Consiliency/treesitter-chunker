@@ -93,11 +93,13 @@ governed tools. The body-type check covers only
 `tools/governed_scope.py` are excluded because of existing body-type findings
 tracked under treesitter-chunker#514.
 
-CI runs lint, the type gate and the smoke tier once, on Linux 3.14. Platform-core
-runs one job per OS: Linux on the 3.12 floor, macOS and Windows on 3.14. The
-scheduled full tier and release full validation use 3.14. Release wheels are
-installed and checked on 3.12 and 3.14. `tests/test_release_hygiene_policy.py`
-checks this layout (treesitter-chunker#502).
+For pushes and pull requests, CI runs lint, the type gate and the smoke tier
+once, on Linux 3.14. The same CI job runs the scheduled full tier on the 3.12
+floor, and release full validation runs on 3.14, so the full suite covers both
+interpreters without an extra job. Platform-core runs one job per OS: Linux on
+3.12, macOS and Windows on 3.14. Release wheels are installed and checked on
+3.12 and 3.14. `tests/test_release_hygiene_policy.py` checks this layout
+(treesitter-chunker#502).
 
 The type gate compares complete messages and error codes, normalizing only
 leading file locations. Literal values, numeric colons and backslashes inside
