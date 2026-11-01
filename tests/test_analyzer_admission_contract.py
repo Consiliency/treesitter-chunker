@@ -90,7 +90,11 @@ def test_analyzer_metadata_is_reused_only_under_its_own_inspector(
     first = analyzer.analyze_grammar_file("baml")
     require(first is not None, "analyzer ran its own inspector")
     capabilities = analyzer._capabilities["baml"]
-    require(capabilities["symbols_count"] > 0, f"own metadata {capabilities}")
+    # The manager's metadata holds only file_size; the analyzer's own
+    # inspector also supplies version and symbols (symbol counts depend on
+    # host tools such as nm, so only their presence is checked).
+    require(capabilities["version"] is not None, f"own metadata {capabilities}")
+    require(isinstance(capabilities["symbols_count"], int), f"{capabilities}")
     require(capabilities["file_size"] == len(baml_bytes), f"{capabilities}")
     probe_count = len(probes)
     second = analyzer.analyze_grammar_file("baml")
