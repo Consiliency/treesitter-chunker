@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   header's last blank line. So a `//go:build` line in a string or function
   body no longer counts. More than one `//go:build` line, a bare
   `//go:build`, and a direct `!!` are rejected by Go and are `unknown` here.
+  A release number longer than 9 digits is `unknown` rather than an error, and
+  a leading UTF-8 byte-order mark is skipped, as `go/build` does.
   Malformed, unsatisfiable or oversized expressions are `unknown` and never
   become a version, so
   `go.mod` and feature-based hints keep their precedence. The new

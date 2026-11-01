@@ -493,3 +493,72 @@ def test_go_build_header_placement_matches_go_build(
     assert hints["build_constraints"] == minimum
     assert hints["build_constraints_status"] == status
     assert detector.get_primary_version({**hints, "go_mod_version": "1.23"}) == "1.23"
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "//go:build go1." + "9" * 4500 + "\n",
+        "//go:build go" + "9" * 4500 + ".1\n",
+        "//go:build go1.20 || go1." + "9" * 4500 + "\n",
+        "// +build go1." + "9" * 4500 + "\n",
+        "//go:build go1.1000000000\n",
+    ],
+    ids=["minor-4500", "major-4500", "or-4500", "legacy-4500", "minor-10-digits"],
+)
+def test_oversized_release_numbers_are_unknown_not_errors(header: str) -> None:
+    """Codex round 2: int() of a huge component must not escape.
+
+    Go 1.26.8 never builds ``go1.<4500 nines>`` alone, and builds the OR form
+    at 1.20; ``unknown`` is the conservative answer here. Named mutation
+    ``M438-unbounded-int`` (no digit bound) raises ``ValueError`` through
+    every public method.
+    """
+    source = (
+        header + "\npackage sample\n\nfunc Same[T any](value T) T { return value }\n"
+    )
+    assert not get_parser("go").parse(source.encode("utf-8")).root_node.has_error
+    detector = GoVersionDetector()
+    analysis = detector.analyze_build_constraints(source)
+    assert analysis["status"] == "unknown"
+    assert analysis["minimum"] is None
+    assert "release number too long" in analysis["reason"]
+    assert detector.detect_from_build_constraints(source) is None
+    hints = detector.detect_version(source, Path("service.go"))
+    assert hints["build_constraints"] is None
+    assert hints["build_constraints_status"] == "unknown"
+    assert "generics" in hints["detected_features"]
+    assert hints["min_version_from_features"] == "1.18"
+    assert detector.get_primary_version(hints) == "1.18"
+    assert detector.get_primary_version({**hints, "go_mod_version": "1.22"}) == "1.22"
+
+
+def test_nine_digit_release_numbers_still_count() -> None:
+    detector = GoVersionDetector()
+    source = "//go:build go1.999999999\n\npackage sample\n"
+    assert not get_parser("go").parse(source.encode("utf-8")).root_node.has_error
+    assert detector.analyze_build_constraints(source) == {
+        "minimum": "1.999999999",
+        "status": "minimum",
+        "reason": None,
+    }
+
+
+@pytest.mark.parametrize(
+    ("source", "minimum"),
+    [
+        ("﻿//go:build go1.20\n\npackage sample\n", "1.20"),
+        ("﻿// +build go1.21\n\npackage sample\n", "1.21"),
+        ("﻿//go:build go1.20\r\n\r\npackage sample\r\n", "1.20"),
+    ],
+    ids=["modern", "legacy", "modern-crlf"],
+)
+def test_leading_byte_order_mark_is_skipped(source: str, minimum: str) -> None:
+    """Go 1.26.8 go/build reads these headers at 1.20 and 1.21.
+
+    Named mutation ``M438-bom`` (keep the BOM) makes them ``absent``.
+    """
+    detector = GoVersionDetector()
+    analysis = detector.analyze_build_constraints(source)
+    assert (analysis["minimum"], analysis["status"]) == (minimum, "minimum")
+    assert detector.detect_from_build_constraints(source) == minimum

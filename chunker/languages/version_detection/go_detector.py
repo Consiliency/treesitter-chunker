@@ -27,6 +27,7 @@ _GO_MAX_TOKENS = 1000
 _GO_MAX_DEPTH = 100
 _GO_MAX_FREE_TAGS = 32
 _GO_MAX_SEARCH_STEPS = 10_000
+_GO_MAX_RELEASE_DIGITS = 9
 
 # Expression nodes: ("tag", name), ("const", bool), ("not", node),
 # ("and", children), ("or", children). AND/OR are n-ary so that recursion
@@ -58,7 +59,8 @@ def _go_file_header(content: str) -> tuple[list[str], list[str]]:
     skipped, and legacy ``// +build`` lines count only up to the last blank
     line before the first non-``//`` line. Lines are whitespace-trimmed.
     """
-    lines = content.split("\n")
+    # go/build reads past a leading UTF-8 byte-order mark.
+    lines = content.removeprefix("\ufeff").split("\n")
     end = 0
     ended = False
     in_slash_star = False
@@ -193,7 +195,14 @@ def _parse_legacy_go_build(fields_text: str) -> _GoExpr:
 
 def _go_release(name: str) -> tuple[int, int] | None:
     match = _GO_RELEASE_TAG.fullmatch(name)
-    return (int(match.group(1)), int(match.group(2))) if match else None
+    if match is None:
+        return None
+    major, minor = match.groups()
+    # Bound the digits before int(): an oversized component is never a real
+    # release, and int() would otherwise raise past every other bound.
+    if len(major) > _GO_MAX_RELEASE_DIGITS or len(minor) > _GO_MAX_RELEASE_DIGITS:
+        raise _GoConstraintUnknownError(f"release number too long in {name[:24]!r}")
+    return (int(major), int(minor))
 
 
 def _go_tags(node: _GoExpr, found: set[str]) -> set[str]:
@@ -361,9 +370,13 @@ class GoVersionDetector:
         whitespace-separated fields (OR) of comma-separated atoms (AND),
         ``!tag`` negated.
 
-        ``unknown`` is deliberately conservative. Go treats a malformed
-        legacy line as the never-set ``ignore`` tag, and it rejects
-        malformed ``//go:build`` lines; neither gives a version here.
+        ``unknown`` is deliberately conservative. Go replaces each malformed
+        term of a legacy line with the never-set ``ignore`` tag, and the
+        rest of that line still counts; here any malformed legacy term makes
+        the whole hint ``unknown`` instead. Go rejects a malformed
+        ``//go:build`` line, which is ``unknown`` too. A release number with
+        more than 9 digits is also ``unknown``. A leading UTF-8 byte-order
+        mark is skipped, as ``go/build`` does.
 
         A release tag ``goX.Y`` holds exactly at releases >= X.Y. Every other
         tag (GOOS, GOARCH, ``cgo``, custom tags) is treated as independent
