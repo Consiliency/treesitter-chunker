@@ -5,7 +5,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from xml.dom import minidom
+from xml.parsers import expat
 
 from chunker.interfaces.export import (
     ChunkRelationship,
@@ -53,7 +53,7 @@ class GraphMLExporter(GraphExporter):
             metadata: Export metadata
         """
         graphml = self._build_graphml(chunks, relationships, metadata)
-        xml_str = self._prettify_xml(ET.tostring(graphml, encoding="unicode"))
+        xml_str = self._prettify_xml(graphml)
         if isinstance(output, str | Path):
             Path(output).write_text(xml_str, encoding="utf-8")
         else:
@@ -178,10 +178,28 @@ class GraphMLExporter(GraphExporter):
         return graphml
 
     @staticmethod
-    def _prettify_xml(xml_str: str) -> str:
-        """Pretty print XML with proper indentation."""
-        dom = minidom.parseString(xml_str)
-        return dom.toprettyxml(indent="  ")
+    def _prettify_xml(root: ET.Element) -> str:
+        """Serialize the GraphML tree with indentation and an XML declaration.
+
+        ElementTree escapes TAB, LF and CR in attribute values, so caller chunk
+        IDs and relationship endpoints survive reparsing. The former minidom
+        reparse wrote them back literally on Python 3.12, where XML attribute
+        normalization turned them into spaces (treesitter-chunker#489).
+
+        Text leaves keep the XML newline normalization the reparse applied:
+        CRLF and lone CR become LF. The tree is the exporter's own copy, so
+        caller chunks are unchanged. As before, output that is not well-formed
+        XML (for example a NUL or lone surrogate in a caller value) raises
+        ``ExpatError`` or ``UnicodeEncodeError`` before anything is written.
+        """
+        expat.ParserCreate(namespace_separator=" ").Parse(
+            ET.tostring(root, encoding="unicode"), True
+        )
+        for element in root.iter():
+            if element.text is not None:
+                element.text = element.text.replace("\r\n", "\n").replace("\r", "\n")
+        ET.indent(root, space="  ")
+        return '<?xml version="1.0" ?>\n' + ET.tostring(root, encoding="unicode") + "\n"
 
 
 class DOTExporter(GraphExporter):

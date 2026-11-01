@@ -245,13 +245,23 @@ class GraphMLExporter(GraphExporterBase):
     ) -> None:
         """Export the graph to a GraphML file.
 
+        The file parses to the same XML text values as ``export_string()``
+        with the same options. Compact files hold exactly the UTF-8 bytes of the compact
+        string, so a caller CR, LF or CRLF leaf is not translated into extra
+        line breaks on Windows (treesitter-chunker#488). Pretty text leaves
+        are already LF-normalized, so pretty files keep native newlines.
+
         Args:
             output_path: Path to write the GraphML file
             pretty_print: Whether to format the XML with indentation
             **options: Additional options
         """
         graphml_content = self.export_string(pretty_print=pretty_print, **options)
-        output_path.write_text(graphml_content, encoding="utf-8")
+        output_path.write_text(
+            graphml_content,
+            encoding="utf-8",
+            newline=None if pretty_print else "",
+        )
 
     def add_visualization_hints(
         self,

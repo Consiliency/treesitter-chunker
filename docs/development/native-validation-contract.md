@@ -704,7 +704,13 @@ language-pack (P1, P2), with no user pin. The boundary is exact:
    check tells our package's files apart from files added later. It is not a
    defence against someone who can rewrite the installed package, because
    that person could also rewrite our Python code; that is the same supplier
-   boundary as P1 and P2.
+   boundary as P1 and P2. A symbolic link is never package-supplied (item 2),
+   so a link to a RECORD file whose bytes differ from RECORD is an ordinary
+   local candidate: only a user pin for those exact bytes admits it. That is
+   intended, and grants nothing beyond copying the file elsewhere and pinning
+   the copy. A grammar shipped in RECORD is never replaced in place: grammar
+   publication refuses to overwrite it, because the replacement would differ
+   from RECORD and stay `integrity_mismatch` permanently.
 5. **Not an approval from discovered bytes.** The expected digest comes from
    `RECORD`, which the wheel ships and the installer writes. The tool only
    hashes the candidate to compare it with that supplied value. It never
