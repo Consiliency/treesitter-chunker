@@ -2,6 +2,7 @@
 
 from dataclasses import asdict
 import importlib.util
+import json
 import shutil
 import subprocess
 import sys
@@ -49,16 +50,36 @@ def test_compatibility_helpers_confine_cache_roots(
     tree = get_parser("python").parse(source)
     assert tree.root_node.child_count > 0
     assert not tree.root_node.has_error
+    # A real local Python grammar (the language pack's), copied and pinned
+    # before HOME is redirected: ADMIT stores only admitted ok records.
+    import hashlib
+
+    from tree_sitter_language_pack import cache_dir as pack_cache_dir
+    from tree_sitter_language_pack import get_parser as get_pack_parser
+
+    assert not get_pack_parser("python").parse(source).root_node.has_error
+    suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
+    prefix = "" if sys.platform == "win32" else "lib"
+    grammar = tmp_path / f"python-grammar{suffix}"
+    shutil.copyfile(
+        Path(pack_cache_dir()) / f"{prefix}tree_sitter_python{suffix}", grammar
+    )
+    pins = {"python": {"sha256": hashlib.sha256(grammar.read_bytes()).hexdigest()}}
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
     cache = tmp_path / "grammar-cache"
     manager = GrammarManager(
-        user_dir=tmp_path / "user", package_dir=tmp_path / "package", cache_dir=cache
+        user_dir=tmp_path / "user",
+        package_dir=tmp_path / "package",
+        cache_dir=cache,
+        trusted_artifacts=pins,
     )
     supplied = (
-        GrammarValidator(tmp_path / "supplied-cache") if supplied_validator else None
+        GrammarValidator(tmp_path / "supplied-cache", trusted_artifacts=pins)
+        if supplied_validator
+        else None
     )
     helper = helper_type(manager, validator=supplied)
     assert not (home / ".cache" / "treesitter-chunker").exists()
@@ -89,9 +110,32 @@ def test_compatibility_helpers_confine_cache_roots(
         # Failed admissions are recomputed every time and never stored
         # (verdict-reuse rule 2, treesitter-chunker#362).
         assert not validator._validation_cache.exists()
-    assert not (home / ".cache" / "treesitter-chunker").exists()
     assert not (cache / "validation_cache.json").exists()
     assert not (expected / "validation_cache.json").exists()
+    # Admitted records from several validators on one root are merged, never
+    # overwritten (treesitter-chunker#370). One pin per language means one
+    # digest, so the validators sharing a root use distinct validation levels
+    # to write distinct records.
+    levels = [
+        ValidationLevel.BASIC,
+        ValidationLevel.STANDARD,
+        ValidationLevel.EXTENSIVE,
+    ]
+    written: dict[Path, set[str]] = {}
+    for validator, level in [(helper.validator, ValidationLevel.BASIC)] + list(
+        zip(validators, levels, strict=True)
+    ):
+        result = validator.validate_grammar(grammar, "python", level)
+        assert result.is_valid, result.errors
+        key, digest = validator._verdict_cache_key(grammar, "python", level)
+        assert key is not None and digest == pins["python"]["sha256"]
+        written.setdefault(validator._validation_cache, set()).add(key)
+    for path, keys in written.items():
+        records = json.loads(path.read_text(encoding="utf-8"))
+        assert keys <= set(records), (path, sorted(records))
+        assert all(records[key]["is_valid"] is True for key in keys)
+    assert len(written[cache / "validation_cache.json"]) >= 3
+    assert not (home / ".cache" / "treesitter-chunker").exists()
 
 
 @pytest.mark.parametrize(
