@@ -13,7 +13,7 @@ from typing import Any
 
 from .auto import ZeroConfigAPI
 from ._internal.registry import baml_companion_available
-from .core import chunk_file
+from .core import _line_ending_offsets, chunk_file
 from .types import RESOLUTION_MODES, ResolutionMode, ResolutionStatus
 
 SKIP_PARTS = {
@@ -421,7 +421,11 @@ def _call_facts_for_chunks(
         if current is None or selection_rank < current[0]:
             selected[key] = (selection_rank, {**observation, "owner": owner})
 
-    newline_offsets = [match.start() for match in re.finditer(b"\n", source)]
+    # Count rows as the parser does, so CR-only Python call lines match its
+    # chunk lines while spans stay raw (treesitter-chunker#471). One file's
+    # chunks share a language.
+    language = chunks[0].language if chunks else None
+    newline_offsets = _line_ending_offsets(source, language)
     call_facts = []
     for _, observation in sorted(
         selected.values(),

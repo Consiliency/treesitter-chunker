@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
+
+if TYPE_CHECKING:
+    from chunker.grammar.manager import TreeSitterGrammarManager
 
 app = typer.Typer(help="Grammar setup and management commands")
 console = Console()
@@ -82,7 +86,7 @@ def get_default_dirs() -> tuple[Path, Path]:
 def get_grammar_manager(
     grammars_dir: Path | None = None,
     build_dir: Path | None = None,
-):
+) -> TreeSitterGrammarManager:
     """Get or create a TreeSitterGrammarManager instance.
 
     Args:
@@ -144,7 +148,7 @@ def setup_grammars(
         "-v",
         help="Show verbose output",
     ),
-):
+) -> None:
     """Set up tree-sitter grammars for code parsing.
 
     This command fetches and compiles tree-sitter grammar libraries needed
@@ -313,7 +317,7 @@ def setup_status(
         "-b",
         help="Directory for built grammar libraries",
     ),
-):
+) -> None:
     """Show current grammar setup status.
 
     Displays which grammars are installed and their build status.
@@ -433,7 +437,7 @@ def setup_clean(
         "-f",
         help="Skip confirmation",
     ),
-):
+) -> None:
     """Clean up grammar files.
 
     Removes downloaded grammar sources and/or compiled libraries.
@@ -485,7 +489,7 @@ def setup_clean(
 
 
 @app.command("list-available")
-def list_available():
+def list_available() -> None:
     """List all available grammars that can be installed."""
     table = Table(title="Available Grammar Sources")
     table.add_column("Language", style="cyan")

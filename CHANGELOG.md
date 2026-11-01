@@ -40,6 +40,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   regenerated. Subscript callees (`h['a']()`), parenthesized names and
   JavaScript are unchanged (treesitter-chunker#602). See
   [the Boundary IR specification](docs/interface-boundary-spec.md).
+- CR-only Python source now parses and reports correct lines through
+  `chunk_file`, `chunk_text`, `chunk_file_streaming` and VFS streaming
+  (`VFSChunker.chunk_file(..., streaming=True)` and files over 10 MiB)
+  (treesitter-chunker#471). Before, the pinned grammar reported a parse error
+  for a file whose lines end in a lone CR, and every chunk reported line 1.
+  Python containing a lone CR is now parsed from a copy in which each lone CR
+  is replaced with LF. The replacement keeps every byte offset, so byte spans,
+  chunk content and content-based IDs still refer to the physical bytes,
+  including the CRs. Call-site lines in symbol-graph `calls` relationships,
+  `call_facts` and Boundary IR call edges now count lone CR line endings too,
+  so LF, CRLF and CR-only Python report the same lines. LF and CRLF files are
+  parsed unchanged. Other languages are unchanged and still count only LF
+  (treesitter-chunker#601), as do complexity line metrics
+  (treesitter-chunker#597). See
+  [raw file newlines](docs/chunk-identity.md#raw-file-newlines-and-the-600-migration).
 - Go build-constraint version hints no longer drop earlier release tags from
   a legacy comma conjunction (treesitter-chunker#437). `// +build go1.10,go1.9`
   now reports `1.10` in either order, as `go1.10,go1.9,linux` and
@@ -290,6 +305,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter`
+  modules declare caller metadata named `label` with
+  `attr.name="caller_label"`, so readers that map GraphML data by `attr.name`,
+  such as NetworkX, see both labels (treesitter-chunker#453). `label` now holds
+  only the structural label; before, a NetworkX import replaced the structural
+  label with the caller value. To keep declared names distinct, a caller name
+  such as `caller_label` is declared as `caller_caller_label`. Key IDs and
+  values are unchanged, so consumers that select by key ID are unaffected.
+  In a yEd import NetworkX still replaces `label` with the yEd graphics text,
+  and `caller_label` is kept beside it. Name-keyed consumers should read
+  caller `label` metadata as `caller_label` and regenerate GraphML output. See
+  [caller label names](docs/graphml_export.md#caller-label-names-for-name-keyed-readers).
 - Require Python 3.12 or newer for the next main and BAML companion releases
   (treesitter-chunker#493). Published 6.0.0 and companion 0.1.0 keep their original
   metadata. CI uses Python 3.12 with installed-wheel checks on 3.12 and 3.14,
@@ -299,6 +326,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `scripts/mypy_gate.py --update` now only removes cleared signatures. When mypy
+  reports a signature that is not in the baseline, it exits 1 and leaves
+  `docs/development/mypy-baseline.txt` unchanged, so new errors can no longer be
+  absorbed. Release validation now also runs the governed-tools body-type check
+  that CI runs. Type-only annotations in `cli/` and 5 stale entries shrink the
+  baseline from 1,353 to 1,340 signatures; CLI behavior is unchanged
+  (treesitter-chunker#587).
 - Align the remaining Python version declarations with the 3.12 floor from
   treesitter-chunker#493: the release-process spec, getting-started, user guide,
   deployment, performance-core and VS Code docs, the conda recipe, all three

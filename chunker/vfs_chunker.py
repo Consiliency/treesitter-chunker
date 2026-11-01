@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from ._internal.gc_tuning import get_memory_optimizer, optimized_gc
 from .chunker import chunk_text
+from .core import _lone_cr_parse_copy
 from .exceptions import ParsingError
 from .languages import language_config_registry
 from .streaming import StreamingChunker
@@ -125,7 +126,10 @@ class VFSChunker:
                 return
             if chunker.language == "baml":
                 content.decode("utf-8")
-            tree = chunker.parser.parse(content)
+            # CR-only Python parses a CR->LF copy with identical offsets; the
+            # walk still slices the raw bytes (treesitter-chunker#471).
+            parse_copy = _lone_cr_parse_copy(content, chunker.language)
+            tree = chunker.parser.parse(content if parse_copy is None else parse_copy)
             config = language_config_registry.get(chunker.language)
             if config and config.strict_parse and tree.root_node.has_error:
                 raise ParsingError(chunker.language, "syntax error in source")
