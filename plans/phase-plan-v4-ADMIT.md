@@ -134,6 +134,7 @@ def user_config_pin_path() -> Path | None: ...
 def forbidden_pin_directories(
     *, cache_dir: Path | None = None, library_path: Path | None = None
 ) -> tuple[Path, ...]: ...
+def parse_trusted_artifacts(data: bytes, *, source: Path) -> TrustedArtifacts: ...
 def read_trusted_artifacts(
     path: Path, *, forbidden: Iterable[Path] = ()
 ) -> TrustedArtifacts: ...                     # raises TrustedArtifactsError
@@ -145,9 +146,6 @@ def resolve_command_pins(
 ) -> TrustedArtifacts | None: ...              # option, else config file
 def copy_trusted_artifacts(mapping: object) -> dict[str, dict[str, Any]]: ...
 def pin_provenance(mapping: Mapping[str, Any] | None, language: str) -> dict[str, str] | None: ...
-
-# chunker/_internal/native_admission.py
-def parse_trusted_artifacts(data: bytes, *, source: Path) -> TrustedArtifacts: ...
 
 # chunker/_internal/package_supplier.py  (the one RECORD check; M3)
 def package_grammar_build_dir() -> Path: ...
@@ -374,7 +372,9 @@ Every PR waits for the merge gate above.
   `fork_keeps_parent_state`, `access_error_as_absent`,
   `probe_unpinned_publication`, `unlocked_copy_creation`,
   `cli_ignores_package_supplier`, `pin_rescues_record_mismatch`,
-  `trust_package_dir_without_record`.
+  `trust_package_dir_without_record`, `drop_symlink_check`,
+  `drop_entry_parent_check`, `drop_distribution_identity`,
+  `hashless_entry_supplied`, `publish_over_record_entry`.
 
 ### SL-reg — Registry discovery, package supplier, parse-path pins, F1
 
