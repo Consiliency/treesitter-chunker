@@ -9,11 +9,13 @@ inside the child processes; it copies a local fixture repository (with
 ``copystat``, so sources keep old mtimes) and can leave a grandchild running.
 
 ADMIT (treesitter-chunker#362) admits an installed grammar only under its
-approved pin. Each install child therefore pins ``baml`` with the digest of its
-own fixture repository's build (``TXN_PIN_SHA256``), computed by the parent
-with the installer's own ``gcc`` command; the shim directory also holds a
-failing ``tree-sitter`` stub so that the installer's gcc builder, whose output
-is path-independent, is the one that runs.
+approved pin. Each install child pins ``baml`` with the digest of the artifact
+its own installer built (``PIN_OWN_BUILD``), as an operator who reviewed that
+build would. On Linux, where gcc output is path-independent, that digest must
+also equal the parent's independent build of the fixture (``TXN_PIN_SHA256``).
+On macOS the linker records the random staging output path as the install
+name, so no digest can be computed ahead of the build. The shim directory also
+holds a failing ``tree-sitter`` stub so that the installer's gcc builder runs.
 """
 
 from __future__ import annotations
@@ -106,7 +108,33 @@ if args[:2] == ["rev-parse", "HEAD"]:
 sys.exit(0)
 """
 
-INSTALL = r"""
+PIN_OWN_BUILD = r"""
+def pin_own_build(installer):
+    # Pin each build this installer makes (test harness; see the module docstring).
+    import hashlib, os, sys
+    from chunker.grammar_management.core import GrammarValidator
+
+    build = installer._build_grammar
+
+    def pinned(language, source_path, **kwargs):
+        ok, path, error = build(language, source_path, **kwargs)
+        if ok and path is not None:
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            expected = os.environ.get("TXN_PIN_SHA256")
+            if expected and sys.platform.startswith("linux") and digest != expected:
+                return False, None, f"built {digest}, fixture build {expected}"
+            installer._validator = GrammarValidator(
+                installer._base_cache_dir,
+                trusted_artifacts={language: {"sha256": digest}},
+            )
+        return ok, path, error
+
+    installer._build_grammar = pinned
+"""
+
+INSTALL = (
+    PIN_OWN_BUILD
+    + r"""
 import logging
 from pathlib import Path
 from chunker.grammar_management.core import GrammarInstaller
@@ -122,14 +150,14 @@ class Collect(logging.Handler):
 
 logging.getLogger().addHandler(Collect(level=logging.WARNING))
 logging.getLogger().setLevel(logging.WARNING)
-import os
-pins = {"baml": {"sha256": os.environ["TXN_PIN_SHA256"]}} if "TXN_PIN_SHA256" in os.environ else None
-installer = GrammarInstaller(cache_dir=cache, build_timeout=build_timeout, trusted_artifacts=pins)
+installer = GrammarInstaller(cache_dir=cache, build_timeout=build_timeout)
+pin_own_build(installer)
 emit("ready")
 wait()
 ok, error, _info = installer.install_grammar("baml", "https://github.com/example/tree-sitter-baml")
 emit("done", success=ok, error=error, warnings=messages)
 """
+)
 
 PRUNE = r"""
 from pathlib import Path
@@ -193,8 +221,9 @@ _FIXTURE_DIGESTS: dict[Path, str | None] = {}
 def _fixture_digest(repo: Path) -> str | None:
     """SHA-256 of ``repo``'s build with the installer's own gcc command.
 
-    gcc output does not depend on the source or output path, so this equals the
-    digest of what the installer builds from its staged copy. A fixture without
+    On Linux gcc output does not depend on the source or output path, so this
+    equals the digest of what the installer builds from its staged copy (the
+    children check it there). A fixture without
     sources ships a prebuilt ``libbaml.so`` that the make fallback copies, so its
     digest is that file's. ``None`` when the fixture does not build (for example
     the FIFO-hang fixture).
@@ -485,7 +514,12 @@ def test_build_timeout_fails_without_fallback_or_publication(tmp_path, shim):
     (repo / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
     prebuilt = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
     shutil.copy2(prebuilt, repo / "libbaml.so")
-    done = _install(cache, _env(shim, repo, TXN_GIT_FIFO="src/hang.h"), timeout=3)
+    # Pin the prebuilt library, so that under the mutation the make fallback's
+    # copy would be admitted and installed: the test then fails on success,
+    # not merely on a different error message.
+    pin = sha256((repo / "libbaml.so").read_bytes()).hexdigest()
+    env = _env(shim, repo, TXN_GIT_FIFO="src/hang.h", TXN_PIN_SHA256=pin)
+    done = _install(cache, env, timeout=3)
     assert not done["success"]
     assert "Build aborted: GCC build timed out" in done["error"]
     assert not (cache / "grammars" / "libbaml.so").exists()
@@ -807,7 +841,9 @@ def test_discarded_staging_is_retired_then_deleted(tmp_path):
         assert not retired.exists()
 
 
-CROSS_DEVICE = r"""
+CROSS_DEVICE = (
+    PIN_OWN_BUILD
+    + r"""
 import json, logging, os, sys, time
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
@@ -852,8 +888,8 @@ try:
     (old / "lib.so").write_bytes(b"e" * 9)
     os.utime(old / "lib.so", (1, 1))
     os.utime(old, (1, 1))
-    pins = {"baml": {"sha256": os.environ["TXN_PIN_SHA256"]}}
-    installer = GrammarInstaller(cache_dir=root, build_timeout=120, trusted_artifacts=pins)
+    installer = GrammarInstaller(cache_dir=root, build_timeout=120)
+    pin_own_build(installer)
     url = "https://github.com/example/tree-sitter-baml"
     outcomes["install"] = installer.install_grammar("baml", url)[:2]
     outcomes["clean_after_install"] = control_folders_clean()
@@ -883,6 +919,7 @@ finally:
     unmount_all()
 print(json.dumps(outcomes))
 """
+)
 
 
 @POSIX_SHIM
@@ -1022,14 +1059,15 @@ def test_escaped_pipe_holder_fails_closed_without_blocking(tmp_path):
         _kill_pidfile(pidfile)
 
 
-INTERRUPTED = r"""
+INTERRUPTED = (
+    PIN_OWN_BUILD
+    + r"""
 from pathlib import Path
 from chunker.grammar_management.core import GrammarInstaller
 
 cache, pidfile = Path(ARGS[0]), Path(ARGS[1])
-import os
-pins = {"baml": {"sha256": os.environ["TXN_PIN_SHA256"]}} if "TXN_PIN_SHA256" in os.environ else None
-installer = GrammarInstaller(cache_dir=cache, build_timeout=120, trusted_artifacts=pins)
+installer = GrammarInstaller(cache_dir=cache, build_timeout=120)
+pin_own_build(installer)
 emit("ready")
 wait()
 try:
@@ -1048,6 +1086,7 @@ except KeyboardInterrupt:
     )
     emit("done", interrupted=True, grandchild_alive=alive, staged=staged)
 """
+)
 
 
 @POSIX_SHIM
