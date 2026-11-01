@@ -507,6 +507,67 @@ def test_fixture_popen_type_and_bookkeeping_stay_out_of_product(
     assert not root.exists()
 
 
+def test_pending_bookkeeping_error_keeps_root_and_names_cause(
+    tmp_path, native_probe_lifetimes
+):
+    from tests.native_probe_lifetime import remove_retained_probe_root
+
+    root = tmp_path / "chunker-native-probe-bookkeeping"
+    root.mkdir()
+    native_probe_lifetimes.fixture_errors.append("control: lost observer")
+    with pytest.raises(
+        AssertionError, match=r"bookkeeping failed: \['control: lost observer'\]"
+    ):
+        remove_retained_probe_root(root, timeout=0)
+    assert root.exists()
+    native_probe_lifetimes.fixture_errors.clear()
+    remove_retained_probe_root(root, timeout=0)
+    assert not root.exists()
+
+
+def test_finish_raises_recorded_bookkeeping_errors():
+    from tests.native_probe_lifetime import ProbeLifetimes
+
+    clean = ProbeLifetimes()
+    clean.finish()
+    owners = ProbeLifetimes()
+    owners.fixture_errors.append("control: unrecorded launcher")
+    with pytest.raises(
+        AssertionError,
+        match=r"bookkeeping failed: \['control: unrecorded launcher'\]",
+    ):
+        owners.finish()
+
+
+def test_fixture_prefix_matches_real_product_probe_root(
+    tmp_path, monkeypatch, native_probe_lifetimes
+):
+    """Read the probe-root prefix from a real product launch, not a copy."""
+    import hashlib
+    from tests.native_probe_lifetime import PROBE_ROOT_PREFIX
+
+    candidate = tmp_path / ("invalid" + (".dll" if sys.platform == "win32" else ".so"))
+    candidate.write_bytes(b"reviewed invalid native image; cannot execute")
+    original, roots = integrity._read_child, []
+
+    def observe(command, cwd, timeout, **kwargs):
+        roots.append(Path(cwd))
+        return original(command, cwd, timeout, **kwargs)
+
+    monkeypatch.setattr(integrity, "_read_child", observe)
+    result = integrity.probe_native_grammar(
+        candidate,
+        "baml",
+        provenance={"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()},
+    )
+    assert not result.supported, result
+    assert len(roots) == 1, roots
+    # The product's real snapshot root carries the prefix the fixture records
+    # by, and the fixture actually retained that launcher for its waits.
+    assert roots[0].name.startswith(PROBE_ROOT_PREFIX), roots[0]
+    assert len(native_probe_lifetimes.launchers.get(roots[0], [])) == 1
+
+
 def test_fault_launcher_preserves_real_child_failure(tmp_path, monkeypatch):
     from tests import test_compiled_grammar_analysis_contract as compiled
 

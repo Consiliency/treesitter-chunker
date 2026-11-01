@@ -12,6 +12,10 @@ import pytest
 
 
 _current = ContextVar("native_probe_lifetimes", default=None)
+# The product inlines this mkdtemp prefix and exports no constant. The control
+# test_fixture_prefix_matches_real_product_probe_root reads it from a real
+# product launch, so a product rename fails loudly instead of emptying waits.
+PROBE_ROOT_PREFIX = "chunker-native-probe-"
 
 
 def _identity_alive(process):
@@ -64,9 +68,16 @@ class ProbeLifetimes:
             # keep that same identity rather than reopening its PID later.
             retained.setdefault((pid, process.create_time()), process)
 
+    def _bookkeeping_failure(self, root=None):
+        where = f"; root={root}. Root retained" if root is not None else ""
+        return f"Native probe fixture bookkeeping failed: {self.fixture_errors}{where}"
+
     def wait(self, root, timeout=10):
         """One bounded deadline; retain handles until every wait completes."""
         root = Path(root)
+        # Incomplete bookkeeping may hide an owner: keep the root and report
+        # the real cause, before any wait or removal can proceed.
+        assert not self.fixture_errors, self._bookkeeping_failure(root)
         deadline = time.monotonic() + timeout
         pending = []
         for process in self.launchers.get(root, []):
@@ -100,6 +111,10 @@ class ProbeLifetimes:
             f"PID(s) {sorted(set(pending))}; root={root}. "
             "Possible product process leak; root retained."
         )
+
+    def finish(self):
+        """Teardown check: recorded bookkeeping failures fail the test."""
+        assert not self.fixture_errors, self._bookkeeping_failure()
 
     def close(self):
         for owners in self.workers.values():
@@ -140,9 +155,7 @@ def native_probe_lifetimes(monkeypatch):
             super().__init__(*args, **kwargs)
             with owners.bookkeeping("record launcher"):
                 cwd = kwargs.get("cwd")
-                if cwd is not None and Path(cwd).name.startswith(
-                    "chunker-native-probe-"
-                ):
+                if cwd is not None and Path(cwd).name.startswith(PROBE_ROOT_PREFIX):
                     owners.launchers.setdefault(Path(cwd), []).append(self)
 
     def register(state, record):
@@ -177,9 +190,7 @@ def native_probe_lifetimes(monkeypatch):
                 for root in owners.roots():
                     owners.wait(root)
             finally:
-                assert (
-                    not owners.fixture_errors
-                ), f"Native probe fixture bookkeeping failed: {owners.fixture_errors}"
+                owners.finish()
         finally:
             owners.close()
             _current.reset(token)
