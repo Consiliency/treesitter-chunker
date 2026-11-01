@@ -74,6 +74,9 @@ def _run_mypy() -> list[str]:
 
 def main(argv: list[str]) -> int:
     current = {_signature(ln) for ln in _run_mypy()}
+    if not BASELINE.is_file():
+        print(f"mypy baseline not found: {BASELINE}", file=sys.stderr)
+        return 2
     baseline = {
         ln.strip()
         for ln in BASELINE.read_text(encoding="utf-8").splitlines()
