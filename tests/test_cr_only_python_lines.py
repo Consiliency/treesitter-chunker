@@ -17,7 +17,7 @@ import pytest
 
 from chunker import chunk_file, chunk_text, get_parser
 from chunker.boundary import extract_boundary_ir
-from chunker.core import _lone_cr_parse_copy
+from chunker.core import _line_ending_offsets, _lone_cr_parse_copy
 from chunker.streaming import chunk_file_streaming
 from chunker.symbol_graph import extract_symbol_graph
 from chunker.vfs import LocalFileSystem
@@ -261,3 +261,56 @@ def test_parse_copy_only_for_lone_cr(raw: bytes, copied: bool):
     assert copy.replace(b"\n", b"\r") == raw.replace(b"\n", b"\r")
     # Every other language parses the raw bytes.
     assert _lone_cr_parse_copy(raw, "javascript") is None
+
+
+# Other languages still parse raw bytes, so Tree-sitter rows count LF only;
+# call-site lines must stay consistent with those chunk rows
+# (treesitter-chunker#601 tracks changing them).
+NON_PYTHON_CALLS = {
+    "javascript": (
+        "js",
+        b"function alpha() {\r  beta(\r    1);\r}\r\rfunction beta(x) {\r"
+        b"  return x;\r}\r",
+    ),
+    "c": (
+        "c",
+        b"int beta(int x) {\r  return x;\r}\r\rint alpha(void) {\r"
+        b"  return beta(\r    1);\r}\r",
+    ),
+}
+
+
+def lf_line(raw: bytes, offset: int) -> int:
+    return raw[:offset].count(b"\n") + 1
+
+
+@pytest.mark.parametrize("variant", ["cr", "mixed"])
+@pytest.mark.parametrize("language", sorted(NON_PYTHON_CALLS))
+def test_other_languages_count_only_lf(tmp_path: Path, language: str, variant: str):
+    extension, raw = NON_PYTHON_CALLS[language]
+    if variant == "mixed":
+        # LF everywhere except a lone CR inside the multiline call.
+        raw = raw.replace(b"\r", b"\n").replace(b"(\n", b"(\r")
+    path = tmp_path / f"calls.{extension}"
+    path.write_bytes(raw)
+    assert _line_ending_offsets(raw, language) == [
+        index for index, byte in enumerate(raw) if byte == 0x0A
+    ]
+    graph = extract_symbol_graph(path, language, fail_fast=True)
+    (row,) = [r for r in graph["relationships"] if r["type"] == "calls"]
+    start = raw.index(b"beta(\r")  # the call, not the C definition
+    end = raw.index(b"1)", start) + len(b"1)")
+    location = row["location"]
+    assert (location["byte_start"], location["byte_end"]) == (start, end)
+    assert (location["start_line"], location["end_line"]) == (
+        lf_line(raw, start),
+        lf_line(raw, end - 1),
+    )
+    (owner,) = [
+        chunk
+        for chunk in chunk_file(path, language)
+        if chunk.byte_start <= start and end <= chunk.byte_end
+    ]
+    # The call lies within its chunk's (LF-only) rows.
+    assert owner.start_line <= location["start_line"]
+    assert location["end_line"] <= owner.end_line
