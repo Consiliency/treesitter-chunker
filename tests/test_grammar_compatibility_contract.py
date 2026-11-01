@@ -100,15 +100,17 @@ def test_compatibility_helpers_confine_cache_roots(
     )
     assert success and errors == []
     assert not helper.validator._validation_cache.exists()
-    written: dict[Path, dict[str, list[str]]] = {}
     for index, validator in enumerate([helper.validator, *validators]):
         candidate = tmp_path / f"empty-not-grammar-{index}.so"
         candidate.write_bytes(b"")
         result = validator.validate_grammar(candidate, "python", ValidationLevel.BASIC)
         assert not result.is_valid
         assert "Grammar file is empty" in result.errors
-        # Failed admissions are recomputed every time and never stored
-        # (verdict-reuse rule 2, treesitter-chunker#362).
+        # A candidate that does not match its pin gets no verdict key, so no
+        # record is written for it. That a pinned candidate failing
+        # validation is never stored is covered by
+        # tests/test_validator_admission_contract.py::
+        # test_pinned_failing_artifact_is_never_cached.
         assert not validator._validation_cache.exists()
     assert not (cache / "validation_cache.json").exists()
     assert not (expected / "validation_cache.json").exists()
@@ -121,7 +123,7 @@ def test_compatibility_helpers_confine_cache_roots(
         ValidationLevel.STANDARD,
         ValidationLevel.EXTENSIVE,
     ]
-    written: dict[Path, set[str]] = {}
+    written: dict[Path, dict[str, ValidationLevel]] = {}
     for validator, level in [(helper.validator, ValidationLevel.BASIC)] + list(
         zip(validators, levels, strict=True)
     ):
@@ -129,11 +131,14 @@ def test_compatibility_helpers_confine_cache_roots(
         assert result.is_valid, result.errors
         key, digest = validator._verdict_cache_key(grammar, "python", level)
         assert key is not None and digest == pins["python"]["sha256"]
-        written.setdefault(validator._validation_cache, set()).add(key)
+        written.setdefault(validator._validation_cache, {})[key] = level
     for path, keys in written.items():
         records = json.loads(path.read_text(encoding="utf-8"))
-        assert keys <= set(records), (path, sorted(records))
-        assert all(records[key]["is_valid"] is True for key in keys)
+        assert set(keys) <= set(records), (path, sorted(records))
+        for key, level in keys.items():
+            assert records[key]["is_valid"] is True, records[key]
+            assert records[key]["level"] == level.value, records[key]
+            assert records[key]["errors"] == [], records[key]
     assert len(written[cache / "validation_cache.json"]) >= 3
     assert not (home / ".cache" / "treesitter-chunker").exists()
 
