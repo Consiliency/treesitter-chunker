@@ -72,10 +72,18 @@ def baml_library(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture
 def config_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Isolate every pin-file location from the developer's real home.
+
+    ``APPDATA`` and ``XDG_CONFIG_HOME`` point into a private directory and
+    Python's ``Path.home()`` is redirected there (it decides the macOS path
+    and the ``~/.config`` and ``~/.cache`` fallbacks). The process ``HOME`` and
+    ``USERPROFILE`` are left alone in-process: on Windows the language-pack's
+    native cache lookup stops working for the rest of the process once
+    ``USERPROFILE`` has pointed elsewhere. Subprocess tests set all four.
+    """
     home = tmp_path / "home"
     home.mkdir()
-    monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
     monkeypatch.setenv("APPDATA", str(home / "AppData" / "Roaming"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "xdg"))
     monkeypatch.delenv("CHUNKER_GRAMMAR_BUILD_DIR", raising=False)
