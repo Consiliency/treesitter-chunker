@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: ADMIT
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: adf9c1d9b15ea58b38e532a56afb0498f5987867188a8902c85d4844bcc33e20
+roadmap_sha256: db213e3d33d1575968377f18627fd82a13a8704c82f2d94c5e0afbf8314f20a9
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_trusted_artifacts_contract.py tests/test_grammar_info_exit_contract.py -q"
 ---
