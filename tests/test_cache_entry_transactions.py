@@ -109,6 +109,7 @@ from chunker.grammar_management.core import GrammarInstaller
 cache, build_timeout = Path(ARGS[0]), float(ARGS[1])
 commit_timeout = float(ARGS[2]) if len(ARGS) > 2 else None
 messages = []
+commit_limits = []  # each short limit actually applied to the commit lookup
 
 
 class Collect(logging.Handler):
@@ -127,13 +128,14 @@ if commit_timeout is not None:
     def _run_staged(staging, argv, *, what, **kwargs):
         if what == "Git rev-parse":
             kwargs["timeout"] = commit_timeout
+            commit_limits.append(commit_timeout)
         return run_staged(staging, argv, what=what, **kwargs)
 
     installer._run_staged = _run_staged
 emit("ready")
 wait()
 ok, error, _info = installer.install_grammar("baml", "https://github.com/example/tree-sitter-baml")
-emit("done", success=ok, error=error, warnings=messages)
+emit("done", success=ok, error=error, warnings=messages, commit_limits=commit_limits)
 """
 
 PRUNE = r"""
@@ -1080,7 +1082,13 @@ def test_aborted_commit_lookup_fails_the_install(tmp_path, shim, fault):
     finally:
         _kill_pidfile(pidfile)
     assert not done["success"]
-    assert "Commit lookup aborted: Git rev-parse" in done["error"]
+    # The override reached the real commit lookup, exactly once.
+    assert done["commit_limits"] == [3.0]
+    reason = {
+        "timeout": "timed out",
+        "escape": "left processes that could not be confirmed stopped",
+    }[fault]
+    assert done["error"] == f"Commit lookup aborted: Git rev-parse {reason}"
     assert not (cache / "grammars" / "libbaml.so").exists()
     assert not (cache / "downloads" / "tree-sitter-baml").exists()
 
