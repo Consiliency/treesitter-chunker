@@ -12,7 +12,10 @@ import pytest
 
 pytestmark = pytest.mark.usefixtures("native_probe_lifetimes")
 
-from tests.native_probe_lifetime import remove_retained_probe_root
+from tests.native_probe_lifetime import (
+    remove_retained_probe_root,
+    retain_probe_observer,
+)
 
 from chunker.grammar_management.core import load_compiled_grammar
 from chunker.languages.compatibility.grammar_analyzer import GrammarAnalyzer
@@ -1156,7 +1159,7 @@ print(json.dumps(record), flush=True)
                 while observer.alive():
                     assert (
                         time.monotonic() < emergency_deadline
-                    ), "emergency worker cleanup failed"
+                    ), f"Retained probe PID {observer.process.pid} outlived teardown deadline"
                     time.sleep(0.01)
             observer.close()
         if controller.poll() is None:
@@ -1473,6 +1476,8 @@ def test_native_probe_unarmed_close_failure_keeps_cancellation_and_root(
 
     def register(state, record):
         states.append(state)
+        owner = _NativeObserver(record["pid"], record["windows_creation_filetime"])
+        retain_probe_observer(Path(state.launcher.args[5]).parent, owner)
         candidate = _failing_close_candidate(
             record["pid"], events, original, close_error
         )

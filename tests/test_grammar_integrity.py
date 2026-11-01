@@ -1421,9 +1421,22 @@ def test_native_pre_ready_uncertainty_retains_snapshot(tmp_path, monkeypatch, ev
         assert not (roots[0] / integrity._READY_NAME).exists()
     finally:
         if marker.exists():
-            identity = psutil.Process(int(marker.read_text()))
-            identity.kill()
-            identity.wait(timeout=10)
+            assert (
+                observer is not None
+            ), f"No retained observer for probe PID {marker.read_text()}; root retained"
+            # This deliberately unknown worker belongs to the fixture. Its
+            # observer was bound before launcher loss; never reopen a PID here.
+            if observer.alive():
+                observer.process.kill()
+            if observer.handle is not None:
+                assert (
+                    observer.api.WaitForSingleObject(observer.handle, 10000) == 0
+                ), f"Retained probe PID {observer.process.pid} outlived teardown deadline"
+            else:
+                observer.process.wait(timeout=10)
+            assert (
+                not observer.alive()
+            ), f"Retained probe PID {observer.process.pid} still alive"
         if observer is not None:
             observer.close()
         for root in roots:

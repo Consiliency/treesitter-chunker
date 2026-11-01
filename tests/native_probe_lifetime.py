@@ -55,6 +55,13 @@ class ProbeLifetimes:
                 owner.close()
 
 
+def retain_probe_observer(root, owner):
+    """Transfer a test-owned observer before injecting registration failure."""
+    owners = _current.get()
+    assert owners is not None, "observer transfer requires native_probe_lifetimes"
+    owners.workers.setdefault(Path(root), []).append(owner)
+
+
 def remove_retained_probe_root(root, *, timeout=10, remover=None):
     owners = _current.get()
     assert owners is not None, "retained-root teardown requires native_probe_lifetimes"

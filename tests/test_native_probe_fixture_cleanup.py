@@ -103,7 +103,9 @@ def test_invalid_registration_fixture_owns_its_directory_holder(
         released.touch()
         if captured["observer"] is not None:
             observer = captured["observer"]
-            assert observer.api.WaitForSingleObject(observer.handle, 10000) == 0
+            assert (
+                observer.api.WaitForSingleObject(observer.handle, 10000) == 0
+            ), f"Retained probe PID {observer.process.pid} outlived teardown deadline"
             assert not observer.alive()
             observer.close()
         if captured["root"] is not None and captured["root"].exists():
@@ -234,7 +236,9 @@ while not Path({str(release)!r}).exists(): time.sleep(0.01)
         )
         release.touch()
         if observer is not None:
-            assert observer.api.WaitForSingleObject(observer.handle, 10000) == 0
+            assert (
+                observer.api.WaitForSingleObject(observer.handle, 10000) == 0
+            ), f"Retained probe PID {observer.process.pid} outlived teardown deadline"
             assert not observer.alive()
             observer.close()
         if owned["root"] is not None and owned["root"].exists():
@@ -312,7 +316,9 @@ def test_native_marker_consumer_waits_for_publication_completion(tmp_path, monke
         for owner in owners:
             if owner.alive():
                 owner.process.kill()
-                assert owner.api.WaitForSingleObject(owner.handle, 10000) == 0
+                assert (
+                    owner.api.WaitForSingleObject(owner.handle, 10000) == 0
+                ), f"Retained probe PID {owner.process.pid} outlived teardown deadline"
             assert not owner.alive()
             owner.close()
         marker = tmp_path / "opened"
@@ -371,7 +377,7 @@ def test_fault_launcher_preserves_real_child_failure(tmp_path, monkeypatch):
         assert len(states) == 1 and not replies
         assert states[0].worker is None and not states[0].start_attempted
         assert states[0].exception["type"] == "ValueError"
-        assert states[0].exception["operation"] == "ready_read"
+        assert states[0].exception["operation"] == "register_worker"
         return
     with pytest.raises(AssertionError):
         compiled.test_native_valid_ack_abnormal_worker_launcher_zero(
