@@ -683,7 +683,10 @@ def test_product_unicode_preimage(tmp_path):
 
 def test_unexpected_recursion_exit(tmp_path):
     request = tmp_path / "deep.json"
-    request.write_text("[" * 10000 + "0" + "]" * 10000)
+    # CPython 3.14 bounds C recursion by stack size, so its json decoder accepts
+    # 10,000 levels; 100,000 raises RecursionError on 3.12 and 3.14 alike
+    # (treesitter-chunker#502).
+    request.write_text("[" * 100000 + "0" + "]" * 100000)
     cp = subprocess.run(
         [
             sys.executable,
