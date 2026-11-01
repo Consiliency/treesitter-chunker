@@ -148,22 +148,32 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
     - So 3.12 appears only in Linux platform-core, the installed-wheel check
       and those two BAML companion jobs. `tests/test_release_hygiene_policy.py`
       enforces this and rejects any event-selected interpreter. It also runs a
-      **plain-text scan** of every workflow line, with no shell parsing, after
-      the maintainer chose a simpler, stricter check in place of #591's
-      shell-parsing scan (2026-11-01, successor PR). Comments, `echo` text
-      and heredoc bodies are scanned too. Outside the jobs named in
-      `FLOOR_ALLOWED`, any of these fails: `--python`; `-p <version>`
-      (including combined flags such as `-qp 3.12`, but not `pytest -p no:…`);
-      `UV_PYTHON`; `python3.N`; `py -3.N`/`py -V:3.N`; and `python-version:`
-      with any value other than 3.14. The only exceptions are the canonical
-      3.14 settings (`python-version:`/`UV_PYTHON:` set to 3.14 or to a list of
-      only 3.14) and `${{ matrix.python-version }}` references, whose matrix
-      values are scanned on their own lines. The failure message says how to
-      fix it: reword the text, or add the job to `FLOOR_ALLOWED` with a
-      reason. 21 named mutations (`M502-text-*`) cover the reviewers' bypasses
-      (shell control prefixes, a `<<-EOF` heredoc, `bash -c`, `eval`,
-      `sudo -E env`, `tee -a $GITHUB_ENV`, `-p` after an unknown uv option,
-      `-qp 3.12`) and the earlier spellings.
+      **plain-text scan** of every workflow line (`.yml` and `.yaml`), with no
+      shell parsing. This replaced #591's shell-parsing scan after the
+      maintainer chose a simpler, stricter check (2026-11-01, successor PR).
+      Flag broadly, exempt narrowly:
+      - **What is scanned:** comments, `echo` text and heredoc bodies too.
+        Lines are attributed to jobs from the composed YAML node positions, not
+        indentation. Job names must match the parsed `jobs:` keys, quoted keys
+        included, and YAML anchors and aliases are rejected.
+      - **Exempt:** whole jobs whose `FLOOR_ALLOWED` family is `None`. For the
+        Linux platform-core entry, only that family's literal matrix include
+        entry is exempt; the rest of the job is scanned.
+      - **What fails elsewhere:** `--python`; every `-p` short-option cluster
+        (`-p`, `-qp`, `"-p"`, `-p=`, any value), except `pytest -p no:`,
+        `mkdir -p` and `tar -cpf`; `UV_PYTHON` in any case; `PYENV_VERSION`;
+        `python3.N`; `Python3NN` paths; `python@3`; `py -3.N`, `py -V:3.N` and
+        `py.exe`; `uv python pin|install|find`; and any `python-version`.
+      - **The one exemption:** a canonical 3.14 setting at the start of a line
+        (`python-version:`/`UV_PYTHON:` set to 3.14, or to a literal list of
+        only 3.14). `${{ matrix.python-version }}` counts only over a literal
+        matrix whose non-3.14 values are allowed floor entries. The rest of
+        that line, trailing comments included, is still scanned.
+      - The failure message says how to fix it: reword the text, or add the job
+        to `FLOOR_ALLOWED` with a reason.
+      - 44 named mutations (`M502-text-*`) cover both panels' bypasses,
+        including a `.yaml` file, quoted job keys, anchors, the macOS leg,
+        computed `include`, trailing comments and every `-p` form.
     - The type gate runs once per CI run, on 3.14. Its output does not depend
       on the interpreter (re-measurement above).
   - 3.12 deprecation: `requires-python` and `.python-version` stay at 3.12

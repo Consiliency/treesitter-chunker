@@ -100,10 +100,13 @@ minimum keeps only two main-package checks: the Linux platform-core job (macOS
 and Windows run 3.14) and the release installed-wheel check (3.12 and 3.14).
 Separately, the BAML companion workflow's `source` and `wheel` jobs run on 3.12,
 the companion's own minimum. No interpreter is chosen by event. Outside
-those jobs, workflow text (comments and `echo` output included) must not
-mention switching the Python version: `--python`, `-p <version>`,
-`python3.N`, `py -3.N`, or any `python-version`/`UV_PYTHON` other than a 3.14
-setting.
+those jobs (and, for platform-core, outside its Linux matrix entry), workflow
+text in `.yml` and `.yaml` files, comments and `echo` output included, must not
+mention switching the Python version. That means `--python`, any `-p` (except
+`pytest -p no:`, `mkdir -p` and `tar -cpf`), `UV_PYTHON`, `PYENV_VERSION`,
+`python3.N`, `python@3`, `Python3NN`, `py -3.N`, `uv python pin|install|find`,
+or any `python-version`/`UV_PYTHON` other than a canonical 3.14 setting.
+YAML anchors and aliases are not allowed in workflows.
 `tests/test_release_hygiene_policy.py` checks this layout
 (treesitter-chunker#502).
 
