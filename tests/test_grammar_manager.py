@@ -184,15 +184,19 @@ class TestGrammarManager:
         mock_cdll.assert_not_called()
 
     @classmethod
-    def test_get_available_languages_unpinned_library_is_never_probed(
+    def test_get_available_languages_mismatched_pin_is_not_reported(
         cls, grammar_manager, monkeypatch
     ):
-        """A pinned key whose bytes differ from the pin is not reported (M1)."""
-        from chunker import grammar_manager as module
+        """A pinned key whose bytes differ from the pin is not reported, and the
+        mismatch is decided by hashing alone, without a probe (M1)."""
+        from chunker.grammar import integrity
+
+        def no_probe(*args, **kwargs):
+            raise AssertionError("probe called for a mismatched pin")
 
         grammar_manager._lib_path.write_bytes(b"not the approved library")
         grammar_manager._trusted_artifacts = {"python": {"sha256": "0" * 64}}
-        monkeypatch.setattr(module.os.path, "lexists", lambda path: True)
+        monkeypatch.setattr(integrity, "probe_native_grammar", no_probe)
         assert grammar_manager.get_available_languages() == set()
 
     @staticmethod

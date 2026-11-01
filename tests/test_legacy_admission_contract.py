@@ -79,6 +79,18 @@ def test_legacy_validator_is_retired_and_names_its_replacement(
     message = str(caught.value)
     require("chunker.grammar_management.core.GrammarValidator" in message, message)
     require("probe_native_grammar" in message, message)
+    # The instance methods are reachable without the constructor (for example
+    # through a subclass); each raises the same retirement error.
+    unconstructed = object.__new__(TreeSitterGrammarValidator)
+    for call in (
+        lambda: unconstructed.validate_node_types("python", {"module"}),
+        lambda: unconstructed.test_parse("python", "x = 1\n"),
+        lambda: unconstructed.validate_grammar_features("python"),
+    ):
+        with pytest.raises(
+            ValidationError, match="TreeSitterGrammarValidator is retired"
+        ):
+            call()
     library = tmp_path / "libalpha.so"
     library.write_bytes(combined)
     require(

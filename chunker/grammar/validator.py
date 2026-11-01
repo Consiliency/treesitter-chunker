@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+
 from chunker.exceptions import ChunkerError
 from chunker.interfaces.grammar import GrammarValidator
 
@@ -27,8 +28,9 @@ class TreeSitterGrammarValidator(GrammarValidator):
     Its constructor never worked (it omitted ``LanguageRegistry.library_path``,
     treesitter-chunker#400), and it loaded grammars without native admission.
     The name stays importable until the next major version; constructing it
-    raises :class:`ValidationError` naming the replacement, and
-    :meth:`check_abi_compatibility` performs no native load.
+    and calling any instance method (reachable without the constructor, for
+    example through a subclass) raise :class:`ValidationError` naming the
+    replacement, and :meth:`check_abi_compatibility` performs no native load.
     """
 
     def __init__(self):
@@ -51,6 +53,8 @@ class TreeSitterGrammarValidator(GrammarValidator):
     ) -> list[str]:
         """Validate expected node types exist.
 
+        Retired: always raises :class:`ValidationError`.
+
         Args:
             language: Language name
             expected_types: Set of expected node type names
@@ -58,31 +62,12 @@ class TreeSitterGrammarValidator(GrammarValidator):
         Returns:
             List of missing node types
         """
-        try:
-            from chunker.parser import get_parser  # local import to avoid cycle
-
-            parser = get_parser(language)
-            test_code = self._get_minimal_test_code(language)
-            tree = parser.parse(test_code.encode())
-            found_types = set()
-            self._collect_node_types(tree.root_node, found_types)
-            missing = []
-            critical_types = self._get_critical_node_types(language)
-            for node_type in critical_types:
-                if node_type in expected_types and node_type not in found_types:
-                    logger.warning(
-                        "Expected node type '%s' not found in test parse",
-                        node_type,
-                    )
-
-                    missing.append(node_type)
-            return missing
-        except (IndexError, KeyError, SyntaxError) as e:
-            logger.error("Failed to validate node types for %s: %s", language, e)
-            return list(expected_types)
+        raise ValidationError(RETIREMENT_MESSAGE)
 
     def test_parse(self, language: str, sample_code: str) -> tuple[bool, str | None]:
         """Test parsing with sample code.
+
+        Retired: always raises :class:`ValidationError`.
 
         Args:
             language: Language name
@@ -91,27 +76,12 @@ class TreeSitterGrammarValidator(GrammarValidator):
         Returns:
             Tuple of (success, error_message)
         """
-        try:
-            from chunker.parser import get_parser  # local import to avoid cycle
-
-            parser = get_parser(language)
-            tree = parser.parse(sample_code.encode())
-            if tree.root_node is None:
-                return False, "Parse resulted in null root node"
-            if self._has_errors(tree.root_node):
-                error_nodes = self._find_error_nodes(tree.root_node)
-                error_info = ", ".join(
-                    f"Error at {n.start_point}" for n in error_nodes[:3]
-                )
-                return False, f"Parse errors found: {error_info}"
-            if tree.root_node.child_count == 0:
-                return False, "Parse resulted in empty tree"
-            return True, None
-        except (IndexError, KeyError, SyntaxError) as e:
-            return False, f"Parse failed: {e!s}"
+        raise ValidationError(RETIREMENT_MESSAGE)
 
     def validate_grammar_features(self, language: str) -> dict[str, bool]:
         """Validate specific grammar features.
+
+        Retired: always raises :class:`ValidationError`.
 
         Args:
             language: Language name
@@ -119,35 +89,7 @@ class TreeSitterGrammarValidator(GrammarValidator):
         Returns:
             Dictionary of feature -> supported
         """
-        features = {}
-        try:
-            from chunker.parser import get_parser  # local import to avoid cycle
-
-            parser = get_parser(language)
-            test_code = self._get_minimal_test_code(language)
-            tree = parser.parse(test_code.encode())
-            features["basic_parse"] = tree.root_node is not None
-            unicode_code = self._get_unicode_test_code(language)
-            if unicode_code:
-                try:
-                    tree = parser.parse(unicode_code.encode("utf-8"))
-                    features["unicode"] = not self._has_errors(tree.root_node)
-                except (IndexError, KeyError, SyntaxError):
-                    features["unicode"] = False
-            try:
-                parser.parse(test_code.encode(), tree)
-                features["incremental"] = True
-            except (IndexError, KeyError, SyntaxError):
-                features["incremental"] = False
-            try:
-                parser.set_timeout_micros(1000)
-                features["timeout"] = True
-            except (IndexError, KeyError, SyntaxError):
-                features["timeout"] = False
-            return features
-        except (IndexError, KeyError, SyntaxError) as e:
-            logger.error("Failed to validate features for %s: %s", language, e)
-            return {"error": str(e)}
+        raise ValidationError(RETIREMENT_MESSAGE)
 
     def _collect_node_types(self, node, types: set[str]) -> None:
         """Recursively collect all node types in a tree."""
