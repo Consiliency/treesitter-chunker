@@ -9,13 +9,15 @@ inside the child processes; it copies a local fixture repository (with
 ``copystat``, so sources keep old mtimes) and can leave a grandchild running.
 
 ADMIT (treesitter-chunker#362) admits an installed grammar only under its
-approved pin. Each install child pins ``baml`` with the digest of the artifact
-its own installer built (``PIN_OWN_BUILD``), as an operator who reviewed that
-build would. On Linux, where gcc output is path-independent, that digest must
-also equal the parent's independent build of the fixture (``TXN_PIN_SHA256``).
-On macOS the linker records the random staging output path as the install
-name, so no digest can be computed ahead of the build. The shim directory also
-holds a failing ``tree-sitter`` stub so that the installer's gcc builder runs.
+approved pin. Each install child pins ``baml`` through the public
+``trusted_artifacts=`` argument with ``TXN_PIN_SHA256``: the digest of the
+parent's own build of that fixture, computed before the install, independent
+of what the installer builds. The shim directory also holds a ``gcc`` wrapper
+and a failing ``tree-sitter`` stub (so the installer's gcc builder runs). On
+macOS the linker records the output path as the library's install name, which
+for the installer is a random staging path; the wrapper and the parent's build
+both add ``MACOS_LINK_FLAGS`` so the output is path-independent there too.
+A fixture that neither builds nor carries an explicit pin fails the test.
 """
 
 from __future__ import annotations
@@ -108,32 +110,18 @@ if args[:2] == ["rev-parse", "HEAD"]:
 sys.exit(0)
 """
 
-PIN_OWN_BUILD = r"""
-def pin_own_build(installer):
-    # Pin each build this installer makes (test harness; see the module docstring).
-    import hashlib, os, sys
-    from chunker.grammar_management.core import GrammarValidator
+#: Removes the build path from a macOS library (see the module docstring).
+MACOS_LINK_FLAGS = (
+    ["-Wl,-install_name,@rpath/libbaml.so"] if sys.platform == "darwin" else []
+)
 
-    build = installer._build_grammar
-
-    def pinned(language, source_path, **kwargs):
-        ok, path, error = build(language, source_path, **kwargs)
-        if ok and path is not None:
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            expected = os.environ.get("TXN_PIN_SHA256")
-            if expected and sys.platform.startswith("linux") and digest != expected:
-                return False, None, f"built {digest}, fixture build {expected}"
-            installer._validator = GrammarValidator(
-                installer._base_cache_dir,
-                trusted_artifacts={language: {"sha256": digest}},
-            )
-        return ok, path, error
-
-    installer._build_grammar = pinned
+PINS = r"""
+import os
+pins = {"baml": {"sha256": os.environ["TXN_PIN_SHA256"]}} if "TXN_PIN_SHA256" in os.environ else None
 """
 
 INSTALL = (
-    PIN_OWN_BUILD
+    PINS
     + r"""
 import logging
 from pathlib import Path
@@ -150,8 +138,9 @@ class Collect(logging.Handler):
 
 logging.getLogger().addHandler(Collect(level=logging.WARNING))
 logging.getLogger().setLevel(logging.WARNING)
-installer = GrammarInstaller(cache_dir=cache, build_timeout=build_timeout)
-pin_own_build(installer)
+installer = GrammarInstaller(
+    cache_dir=cache, build_timeout=build_timeout, trusted_artifacts=pins
+)
 emit("ready")
 wait()
 ok, error, _info = installer.install_grammar("baml", "https://github.com/example/tree-sitter-baml")
@@ -212,6 +201,16 @@ def shim(tmp_path: Path) -> Path:
     cli = directory / "tree-sitter"
     cli.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
     cli.chmod(0o755)
+    # The installer runs ``gcc`` by name; on macOS the wrapper adds the flags
+    # that keep the staging output path out of the library.
+    real_gcc = shutil.which("gcc")
+    if real_gcc is not None:
+        compiler = directory / "gcc"
+        extra = " ".join(MACOS_LINK_FLAGS)
+        compiler.write_text(
+            f'#!/bin/sh\nexec "{real_gcc}" "$@" {extra}\n', encoding="utf-8"
+        )
+        compiler.chmod(0o755)
     return directory
 
 
@@ -221,9 +220,10 @@ _FIXTURE_DIGESTS: dict[Path, str | None] = {}
 def _fixture_digest(repo: Path) -> str | None:
     """SHA-256 of ``repo``'s build with the installer's own gcc command.
 
-    On Linux gcc output does not depend on the source or output path, so this
-    equals the digest of what the installer builds from its staged copy (the
-    children check it there). A fixture without
+    With ``MACOS_LINK_FLAGS`` (macOS only; the children's gcc wrapper adds the
+    same flags) the output depends on neither the source nor the output path,
+    so this equals the digest of what the installer builds from its staged
+    copy, on every platform. A fixture without
     sources ships a prebuilt ``libbaml.so`` that the make fallback copies, so its
     digest is that file's. ``None`` when the fixture does not build (for example
     the FIFO-hang fixture).
@@ -247,6 +247,7 @@ def _fixture_digest(repo: Path) -> str | None:
                 str(src / "parser.c"),
                 "-o",
                 str(output),
+                *MACOS_LINK_FLAGS,
             ],
             capture_output=True,
             timeout=300,
@@ -263,6 +264,10 @@ def _fixture_digest(repo: Path) -> str | None:
 
 def _env(shim: Path, repo: Path, **extra: str) -> dict[str, str]:
     digest = _fixture_digest(repo)
+    if digest is None and "TXN_PIN_SHA256" not in extra:
+        # Never let an install run unpinned by accident: an unexpectedly
+        # successful build would then fail admission for the wrong reason.
+        pytest.fail(f"fixture {repo} does not build and has no explicit pin")
     return {
         **os.environ,
         "PATH": f"{shim}{os.pathsep}{os.environ.get('PATH', '')}",
@@ -842,7 +847,7 @@ def test_discarded_staging_is_retired_then_deleted(tmp_path):
 
 
 CROSS_DEVICE = (
-    PIN_OWN_BUILD
+    PINS
     + r"""
 import json, logging, os, sys, time
 from pathlib import Path
@@ -888,8 +893,7 @@ try:
     (old / "lib.so").write_bytes(b"e" * 9)
     os.utime(old / "lib.so", (1, 1))
     os.utime(old, (1, 1))
-    installer = GrammarInstaller(cache_dir=root, build_timeout=120)
-    pin_own_build(installer)
+    installer = GrammarInstaller(cache_dir=root, build_timeout=120, trusted_artifacts=pins)
     url = "https://github.com/example/tree-sitter-baml"
     outcomes["install"] = installer.install_grammar("baml", url)[:2]
     outcomes["clean_after_install"] = control_folders_clean()
@@ -1060,14 +1064,13 @@ def test_escaped_pipe_holder_fails_closed_without_blocking(tmp_path):
 
 
 INTERRUPTED = (
-    PIN_OWN_BUILD
+    PINS
     + r"""
 from pathlib import Path
 from chunker.grammar_management.core import GrammarInstaller
 
 cache, pidfile = Path(ARGS[0]), Path(ARGS[1])
-installer = GrammarInstaller(cache_dir=cache, build_timeout=120)
-pin_own_build(installer)
+installer = GrammarInstaller(cache_dir=cache, build_timeout=120, trusted_artifacts=pins)
 emit("ready")
 wait()
 try:
