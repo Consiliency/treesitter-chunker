@@ -403,7 +403,11 @@ Every PR waits for the merge gate above.
   `chunker/grammar/registry.py`, `chunker/auto.py` and the registry and
   zero-config contracts and stubs under `chunker/contracts/` (decision 10),
   tests, `CHANGELOG.md`, `docs/grammar_discovery.md`,
-  `docs/grammar_management.md`, `docs/zero_config_api.md`.
+  `docs/grammar_management.md`, `docs/zero_config_api.md`,
+  `chunker/grammar/README.md` and `docs/sphinx/index.rst` (decision 10).
+  In `docs/development/native-validation-contract.md`, SL-reg owns only the
+  F1 and F2 inventory rows (it sets them to `landed`) and their bullets in
+  the caller-migration list. The rest of that file stays with SL-plan.
 - **Tasks**:
   - `LanguageRegistry(library_path, *, trusted_artifacts=None)` and
     `default_library_path()`.
