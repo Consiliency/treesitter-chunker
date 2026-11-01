@@ -158,7 +158,9 @@ PARSE_SCRIPT = textwrap.dedent(
 
 def _parse_in_process(isolated, build_dir: Path, cwd: Path, *languages: str):
     env = {**os.environ, **isolated, "CHUNKER_GRAMMAR_BUILD_DIR": str(build_dir)}
-    env.pop("PYTHONPATH", None)
+    # The child imports this checkout, not whichever one an editable install
+    # points at.
+    env["PYTHONPATH"] = str(ROOT)
     completed = subprocess.run(
         [sys.executable, "-c", PARSE_SCRIPT, str(FIXTURE), *languages],
         cwd=cwd,
@@ -327,6 +329,112 @@ def test_combined_library_admits_each_language_on_its_own_pin(
         },
     )
     require(_parses(both.get_language("beta")), "beta with its own pin")
+
+
+def test_individual_libraries_are_admitted_per_requested_language(
+    isolated, tmp_path, combined_library, monkeypatch
+):
+    """Rule 5 for per-language files: a pin admits only its own language.
+
+    ``alpha`` and ``beta`` are identical bytes exporting both symbols, so the
+    ``alpha`` pin's digest matches ``beta`` too; ``beta`` still has no pin.
+    """
+    build = tmp_path / "build"
+    build.mkdir()
+    (build / f"alpha{SUFFIX}").write_bytes(combined_library)
+    (build / f"beta{SUFFIX}").write_bytes(combined_library)
+    loads = _record_loads(monkeypatch)
+    registry = LanguageRegistry(
+        build / f"missing{SUFFIX}",
+        trusted_artifacts={"alpha": _pin(combined_library)},
+    )
+    require(_parses(registry.get_language("alpha")), "alpha parses")
+    before = list(loads)
+    with pytest.raises(LanguageNotFoundError) as caught:
+        registry.get_language("beta")
+    require("untrusted" in str(caught.value), f"beta has no pin: {caught.value}")
+    require(loads == before, f"nothing loaded for beta {loads[len(before) :]}")
+
+
+def test_individual_library_pin_is_keyed_by_requested_language(
+    isolated, tmp_path, monkeypatch
+):
+    """R4: a filename variant (``my-lang``) is found for ``my_lang``, but the
+    pin consulted is the requested language's, never the variant's."""
+    build = tmp_path / "build"
+    library = _build(build, ["my_lang"], "my-lang")
+    data = library.read_bytes()
+    variant = LanguageRegistry(
+        build / f"missing{SUFFIX}", trusted_artifacts={"my-lang": _pin(data)}
+    )
+    with pytest.raises(LanguageNotFoundError) as caught:
+        variant.get_language("my_lang")
+    require("untrusted" in str(caught.value), f"variant pin ignored {caught.value}")
+    # The directory scan may admit the file under its own stem's pin, but that
+    # registers no ``my_lang``.
+    require(not variant.has_language("my_lang"), "my_lang stays unavailable")
+    requested = LanguageRegistry(
+        build / f"missing{SUFFIX}", trusted_artifacts={"my_lang": _pin(data)}
+    )
+    require(_parses(requested.get_language("my_lang")), "requested-language pin")
+
+
+def test_relative_library_path_is_made_absolute(
+    isolated, tmp_path, fixture_library, monkeypatch
+):
+    """A relative library path still finds and admits its sibling grammar."""
+    from chunker import parser as parser_module
+
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    (lib / f"{LANGUAGE}{SUFFIX}").write_bytes(fixture_library)
+    _write_config(_document({LANGUAGE: _pin(fixture_library)}))
+    monkeypatch.chdir(tmp_path)
+    state = parser_module._ParserState()
+    monkeypatch.setattr(parser_module, "_state", state)
+    parser_module._initialize(Path("lib") / f"missing{SUFFIX}")
+    require(state.registry is not None, "initialized")
+    require(state.registry._library_path.is_absolute(), "absolute library path")
+    tree = parser_module.get_parser(LANGUAGE).parse(SAMPLE)
+    require(not tree.root_node.has_error, "relative library path parses")
+
+
+def test_relative_build_dir_override_is_made_absolute(
+    isolated, tmp_path, fixture_library
+):
+    """A relative ``CHUNKER_GRAMMAR_BUILD_DIR`` is resolved against the cwd."""
+    work = tmp_path / "work"
+    (work / "grammars").mkdir(parents=True)
+    (work / "grammars" / f"{LANGUAGE}{SUFFIX}").write_bytes(fixture_library)
+    _write_config(_document({LANGUAGE: _pin(fixture_library)}))
+    result, _ = _parse_in_process(isolated, Path("grammars"), work, LANGUAGE)
+    require(result[LANGUAGE] == {"ok": True}, f"relative override parses {result}")
+
+
+def test_pin_file_beside_a_custom_library_is_refused(
+    isolated, tmp_path, fixture_library, monkeypatch
+):
+    """The parse path passes its library path to the pin reader, so a pin file
+    in the custom library's (tool-written) directory grants nothing."""
+    from chunker import parser as parser_module
+    from chunker._internal import trusted_artifacts
+
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    (lib / f"{LANGUAGE}{SUFFIX}").write_bytes(fixture_library)
+    planted = lib / "trusted-artifacts.json"
+    planted.write_text(_document({LANGUAGE: _pin(fixture_library)}), "utf-8")
+    monkeypatch.setattr(trusted_artifacts, "user_config_pin_path", lambda: planted)
+    loads = _record_loads(monkeypatch)
+    state = parser_module._ParserState()
+    monkeypatch.setattr(parser_module, "_state", state)
+    parser_module._initialize(lib / f"languages{SUFFIX}")
+    with pytest.raises(LanguageNotFoundError) as caught:
+        parser_module.get_parser(LANGUAGE)
+    message = str(caught.value)
+    require(str(planted) in message, f"names the refused pin file {message}")
+    require("grants no local trust" in message, f"no trust {message}")
+    require(loads == [], f"nothing loaded {loads}")
 
 
 # --- package-supplied grammars of our own wheel (EC-ADMIT-7) --------------------------

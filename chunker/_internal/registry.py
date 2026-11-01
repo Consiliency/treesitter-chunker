@@ -102,7 +102,9 @@ class LanguageRegistry:
                     own wheel. ``None`` means no pins; the registry never reads
                     a pin file itself.
         """
-        self._library_path = library_path
+        # Admission needs absolute candidate paths (a relative candidate is
+        # never admitted), so relative spellings are made absolute here.
+        self._library_path = Path(library_path).absolute()
         self._trusted_artifacts = copy_trusted_artifacts(trusted_artifacts)
         #: Set by ``chunker.parser`` when its user-config pin file is defective.
         self._pin_file_defect: str | None = None
@@ -115,13 +117,21 @@ class LanguageRegistry:
         self._selected_sources: dict[str, tuple[Language, str]] = {}
         self._selection_errors: dict[str, str] = {}
         self._discovered = False
-        # Do not raise if the combined library is missing; discovery will fall back to
-        # nm or per-language libraries and allow on-demand builds.
+        # Do not raise if the combined library is missing; discovery falls back
+        # to per-language libraries (admitted under their pins) and the packages.
         if not self._library_path.exists():
             logger.debug(
                 "Shared library not found at %s; will use fallbacks",
                 self._library_path,
             )
+
+    def record_pin_file_defect(self, defect: str | None) -> None:
+        """Record why the parse path's user-config pin file supplied no pins.
+
+        Set by ``chunker.parser`` when the file is defective; the defect is
+        repeated in errors for languages that would have needed a pin.
+        """
+        self._pin_file_defect = defect
 
     def _reject(self, language: str, path: Path, reason: str) -> None:
         """Record why a local candidate for ``language`` was not used."""
@@ -175,6 +185,7 @@ class LanguageRegistry:
         Returns:
             ``(library, loaded path, admitted hex digest)`` or ``None``.
         """
+        path = Path(path).absolute()
         status, digest = package_supplied_digest(path)
         if status == "mismatch":
             self._reject(
@@ -312,7 +323,7 @@ class LanguageRegistry:
 
         override = _getenv("CHUNKER_GRAMMAR_BUILD_DIR")
         if override:
-            override_path = Path(override)
+            override_path = Path(override).absolute()
             if override_path.exists():
                 logger.info("Scanning override directory: %s", override_path)
                 symbols.extend(self._scan_directory_for_languages(override_path))
@@ -696,7 +707,7 @@ class LanguageRegistry:
 
         override = _getenv("CHUNKER_GRAMMAR_BUILD_DIR")
         if override:
-            search_dirs.append(Path(override))
+            search_dirs.append(Path(override).absolute())
         user_cache = Path.home() / ".cache" / "treesitter-chunker" / "build"
         search_dirs.append(user_cache)
         combined_suffix = Path(self._library_path).suffix or ".so"
