@@ -21,9 +21,14 @@ from pathlib import Path
 def test_multi_instance_safety():
     """Test that multiple instances can run the send_event hook safely."""
 
-    # Create a test transcript file in disposable scratch under TMPDIR
-    scratch = tempfile.TemporaryDirectory(prefix="multi-instance-")
-    test_transcript = Path(scratch.name) / "test_transcript.jsonl"
+    # Disposable scratch under TMPDIR, removed even if setup or a run fails
+    with tempfile.TemporaryDirectory(prefix="multi-instance-") as scratch:
+        return _check_instances(Path(scratch))
+
+
+def _check_instances(scratch: Path) -> bool:
+    # Create a test transcript file in the scratch directory
+    test_transcript = scratch / "test_transcript.jsonl"
     test_data = [{"role": "user", "content": f"Test message {i}"} for i in range(100)]
 
     with open(test_transcript, "w") as f:
@@ -73,19 +78,14 @@ def test_multi_instance_safety():
 
     print("Testing multi-instance safety with 5 concurrent instances...")
 
-    try:
-        for i in range(5):
-            thread = threading.Thread(
-                target=lambda x=i: results.append((x, run_hook(x)))
-            )
-            threads.append(thread)
-            thread.start()
+    for i in range(5):
+        thread = threading.Thread(target=lambda x=i: results.append((x, run_hook(x))))
+        threads.append(thread)
+        thread.start()
 
-        # Wait for all threads to complete
-        for thread in threads:
-            thread.join()
-    finally:
-        scratch.cleanup()
+    # Wait for all threads to complete
+    for thread in threads:
+        thread.join()
 
     # Check results
     successful = sum(1 for _, success in results if success)

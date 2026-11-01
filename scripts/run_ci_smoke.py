@@ -77,6 +77,7 @@ CI_SMOKE_TESTS = [
     "tests/test_supported_wheel_verification.py",
     "tests/test_lint_path_policy.py",
     "tests/test_scratch_root_policy.py",
+    "tests/test_fork_terminal_scratch.py",
 ]
 
 

@@ -24,7 +24,9 @@ else
     IS_WSL2=false
     echo "⚠️  Not running in WSL2. Attempting Linux/macOS Chrome launch..."
     # Reused profile under the inherited TMPDIR (or the system default when
-    # TMPDIR is unset), never a hardcoded system path.
+    # TMPDIR is unset), never a hardcoded system path. It is kept between
+    # launches on purpose (sessions persist) and is never removed here;
+    # delete it by hand when it is no longer wanted.
     PROFILE_DIR="$(dirname "$(mktemp -u -t chrome-debug-profile.XXXXXX)")/chrome-debug-profile"
     # Try to find Chrome on Linux/macOS
     if command -v google-chrome &> /dev/null; then

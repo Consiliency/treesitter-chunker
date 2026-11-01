@@ -1,14 +1,27 @@
-"""No tracked script, tool or test hardcodes the system temp root (treesitter-chunker#481).
+"""No tracked script, tool or test hardcodes a RAM-backed scratch root (treesitter-chunker#481).
 
 Verification scratch belongs under the inherited disk ``TMPDIR``, created with
 ``tempfile`` or ``mktemp`` and removed when done. On the shared host the system
 temp root is RAM-backed, and retained scratch there exhausted memory.
 
-The scan covers tracked script, tool and test sources. It skips ``archive/``
-(historical helpers kept as evidence), generated ``site/`` output, data under
-``tests/fixtures/`` and the product package ``chunker/``. A line naming the
-root fails unless it is a synthetic path label listed below that is never
-created on disk.
+What the check covers:
+
+- Tracked files ending in ``.py``, ``.sh``, ``.bash``, ``.ps1``, ``.js``,
+  ``.mjs``, ``.cjs`` or ``.ts``. Extensionless scripts, Makefiles,
+  Dockerfiles (whose temp paths live inside the image) and workflow YAML are
+  not scanned.
+- Everything except ``archive/`` (a deliberate carve-out: historical helpers
+  kept unchanged as evidence, including archived scripts), generated
+  ``site/`` output, data under ``tests/fixtures/`` and the product package
+  ``chunker/``.
+- Literal spellings only: the system temp root and ``/dev/shm`` at a path
+  start, including fallbacks such as ``${TMPDIR:-<root>}``. A root assembled at
+  run time (joined path parts, ``os.sep`` concatenation, implicit string
+  concatenation) or another RAM-backed location such as ``/run/user/...`` is
+  not detected. This is a regression guard, not a proof.
+
+A matching line fails unless it is a synthetic path label listed below that is
+never created on disk.
 """
 
 from __future__ import annotations
@@ -24,9 +37,16 @@ THIS_FILE = Path(__file__).resolve().relative_to(ROOT).as_posix()
 SCRIPT_SUFFIXES = (".py", ".sh", ".bash", ".ps1", ".js", ".mjs", ".cjs", ".ts")
 EXCLUDED_PREFIXES = ("archive/", "site/", "tests/fixtures/", "chunker/")
 
-# Built from parts so this file never names the root itself.
+# Built from parts so this file never names the roots itself.
 SYSTEM_TMP = "/" + "tmp"
-ROOT_PATTERN = re.compile(r"(?<![\w$.~])" + re.escape(SYSTEM_TMP) + r"(?![\w-])")
+SHARED_MEMORY = "/dev/" + "shm"
+ROOT_PATTERN = re.compile(
+    r"(?<![\w$.~])(?:"
+    + re.escape(SYSTEM_TMP)
+    + "|"
+    + re.escape(SHARED_MEMORY)
+    + r")(?![\w-])"
+)
 
 # (path, stripped line) -> occurrences. Each is a string label that nothing
 # creates: chunk metadata, a cache-key field, a config value or a path
@@ -111,6 +131,8 @@ def test_pattern_matches_root_references_only() -> None:
         f'f"{SYSTEM_TMP}/fork-{{id}}.txt"',
         f'TMP="${{TMPDIR:-{SYSTEM_TMP}}}"',
         f"--user-data-dir={SYSTEM_TMP}/profile",
+        f'Path("{SHARED_MEMORY}") / "x"',
+        f"mkdir -p {SHARED_MEMORY}/scratch",
     ):
         assert ROOT_PATTERN.search(line), line
     for line in (
@@ -119,6 +141,7 @@ def test_pattern_matches_root_references_only() -> None:
         f"{SYSTEM_TMP}fs quota",
         f"/var{SYSTEM_TMP}/cache",
         f"$TMPDIR{SYSTEM_TMP}",
+        f"{SHARED_MEMORY}x",
     ):
         assert not ROOT_PATTERN.search(line), line
 

@@ -8,7 +8,57 @@ import subprocess
 import tempfile
 import time
 import uuid
-from typing import Optional
+from typing import Optional, Tuple
+
+
+def _output_paths(
+    output_id: str, log_agent_output: bool, log_to_file: bool
+) -> Tuple[Optional[str], Optional[str], str]:
+    """Return (agent output, debug output, done marker) paths.
+
+    They live under the inherited TMPDIR (``tempfile.gettempdir()``), resolved
+    once per call. The raw paths are used for Python I/O and return values;
+    shell commands must quote them (see ``_posix_capture_command``).
+    """
+    scratch_dir = tempfile.gettempdir()
+    agent_output_file = (
+        os.path.join(scratch_dir, f"fork-agent-{output_id}.json") if log_agent_output else None
+    )
+    debug_output_file = (
+        os.path.join(scratch_dir, f"fork-debug-{output_id}.txt") if log_to_file else None
+    )
+    done_file = os.path.join(scratch_dir, f"fork-output-{output_id}.done")
+    return agent_output_file, debug_output_file, done_file
+
+
+def _posix_capture_command(
+    command: str,
+    agent_output_file: Optional[str],
+    debug_output_file: Optional[str],
+    done_file: str,
+) -> Optional[str]:
+    """Wrap ``command`` to tee its output and touch the done marker.
+
+    Every path is ``shlex.quote``-d, so a TMPDIR containing spaces or shell
+    metacharacters still names exactly one file. Returns None when nothing is
+    captured.
+    """
+    if agent_output_file:
+        return (
+            f"{command} | tee {shlex.quote(agent_output_file)}; "
+            f"touch {shlex.quote(done_file)}"
+        )
+    if debug_output_file:
+        return (
+            f"{command} 2>&1 | tee {shlex.quote(debug_output_file)}; "
+            f"touch {shlex.quote(done_file)}"
+        )
+    return None
+
+
+def _applescript_string(text: str) -> str:
+    """Return ``text`` as an AppleScript string literal."""
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def fork_terminal(command: str, cwd: Optional[str] = None, capture: bool = False, log_to_file: bool = False, log_agent_output: bool = True) -> str:
@@ -39,21 +89,18 @@ def fork_terminal(command: str, cwd: Optional[str] = None, capture: bool = False
     if system == "darwin":
         # macOS: use osascript to open a new Terminal window
         output_id = str(uuid.uuid4())[:8]
-        agent_output_file = f"{tempfile.gettempdir()}/fork-agent-{output_id}.json" if log_agent_output else None
-        debug_output_file = f"{tempfile.gettempdir()}/fork-debug-{output_id}.txt" if log_to_file else None
-        done_file = f"{tempfile.gettempdir()}/fork-output-{output_id}.done"
-
-        if log_agent_output:
-            shell_cmd = f"cd {cwd}; {command} | tee {agent_output_file}; touch {done_file}"
-        elif log_to_file:
-            shell_cmd = f"cd {cwd}; {command} 2>&1 | tee {debug_output_file}; touch {done_file}"
-        else:
-            shell_cmd = f"cd {cwd}; {command}"
+        agent_output_file, debug_output_file, done_file = _output_paths(
+            output_id, log_agent_output, log_to_file
+        )
+        captured = _posix_capture_command(
+            command, agent_output_file, debug_output_file, done_file
+        )
+        shell_cmd = f"cd {shlex.quote(cwd)}; {captured or command}"
 
         osa_script = f'''
         tell application "Terminal"
             activate
-            do script "{shell_cmd}"
+            do script {_applescript_string(shell_cmd)}
         end tell
         '''
         subprocess.run(
@@ -132,21 +179,19 @@ def fork_terminal(command: str, cwd: Optional[str] = None, capture: bool = False
             if wt_path:
                 # Use '--' before wsl.exe to tell wt.exe the remaining args are the command
                 output_id = str(uuid.uuid4())[:8]
-                agent_output_file = f"{tempfile.gettempdir()}/fork-agent-{output_id}.json" if log_agent_output else None
-                debug_output_file = f"{tempfile.gettempdir()}/fork-debug-{output_id}.txt" if log_to_file else None
-                done_file = f"{tempfile.gettempdir()}/fork-output-{output_id}.done"
-                script_file = f"{tempfile.gettempdir()}/fork-script-{output_id}.sh"
+                agent_output_file, debug_output_file, done_file = _output_paths(
+                    output_id, log_agent_output, log_to_file
+                )
+                script_file = os.path.join(
+                    os.path.dirname(done_file), f"fork-script-{output_id}.sh"
+                )
+                captured = _posix_capture_command(
+                    command, agent_output_file, debug_output_file, done_file
+                )
 
-                if log_agent_output:
+                if captured:
                     script_content = f'''#!/bin/bash -li
-{command} | tee {agent_output_file}
-touch {done_file}
-exec bash
-'''
-                elif log_to_file:
-                    script_content = f'''#!/bin/bash -li
-{command} 2>&1 | tee {debug_output_file}
-touch {done_file}
+{captured}
 exec bash
 '''
                 else:
@@ -181,15 +226,14 @@ exec bash
         tmux = shutil.which("tmux")
         if tmux:
             output_id = str(uuid.uuid4())[:8]
-            agent_output_file = f"{tempfile.gettempdir()}/fork-agent-{output_id}.json" if log_agent_output else None
-            debug_output_file = f"{tempfile.gettempdir()}/fork-debug-{output_id}.txt" if log_to_file else None
-            done_file = f"{tempfile.gettempdir()}/fork-output-{output_id}.done"
+            agent_output_file, debug_output_file, done_file = _output_paths(
+                output_id, log_agent_output, log_to_file
+            )
+            wrapped_cmd = _posix_capture_command(
+                command, agent_output_file, debug_output_file, done_file
+            )
 
-            if log_agent_output:
-                wrapped_cmd = f"{command} | tee {agent_output_file}; touch {done_file}"
-                tmux_cmd = ["tmux", "new-window", "-c", cwd, "bash", "-li", "-c", wrapped_cmd]
-            elif log_to_file:
-                wrapped_cmd = f"{command} 2>&1 | tee {debug_output_file}; touch {done_file}"
+            if wrapped_cmd:
                 tmux_cmd = ["tmux", "new-window", "-c", cwd, "bash", "-li", "-c", wrapped_cmd]
             else:
                 tmux_cmd = ["tmux", "new-window", "-c", cwd, command]
@@ -208,18 +252,19 @@ exec bash
 
         # Fallback: spawn background process in same terminal
         output_id = str(uuid.uuid4())[:8]
-        agent_output_file = f"{tempfile.gettempdir()}/fork-agent-{output_id}.json" if log_agent_output else None
-        debug_output_file = f"{tempfile.gettempdir()}/fork-debug-{output_id}.txt" if log_to_file else None
-        done_file = f"{tempfile.gettempdir()}/fork-output-{output_id}.done"
+        agent_output_file, debug_output_file, done_file = _output_paths(
+            output_id, log_agent_output, log_to_file
+        )
+        wrapped_cmd = _posix_capture_command(
+            command, agent_output_file, debug_output_file, done_file
+        )
 
         if log_agent_output:
-            wrapped_cmd = f"{command} | tee {agent_output_file}; touch {done_file}"
             subprocess.Popen(wrapped_cmd, shell=True, cwd=cwd)
             if capture:
                 return read_fork_output(agent_output_file)
             return agent_output_file
         elif log_to_file:
-            wrapped_cmd = f"{command} 2>&1 | tee {debug_output_file}; touch {done_file}"
             subprocess.Popen(wrapped_cmd, shell=True, cwd=cwd)
             if capture:
                 return read_fork_output(debug_output_file)

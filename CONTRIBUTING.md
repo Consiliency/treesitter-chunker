@@ -112,8 +112,13 @@ it with `tempfile.TemporaryDirectory`, `tempfile.mkdtemp` or `mktemp -d`, never
 a literal `/tmp` path, and remove disposable trees in `finally` or an `EXIT`
 trap. pytest's `tmp_path` already follows `TMPDIR`. On shared hosts the system
 temporary directory can be RAM-backed, and scratch left there exhausts memory.
-`tests/test_scratch_root_policy.py` rejects literal `/tmp` roots in tracked
-scripts, tools and tests.
+Fallbacks such as `${TMPDIR:-/tmp}` count as a literal `/tmp` path.
+
+`tests/test_scratch_root_policy.py` rejects literal `/tmp` and `/dev/shm`
+roots in tracked Python, shell, PowerShell and JavaScript/TypeScript scripts,
+tools and tests. It matches literal spellings only. It does not scan
+`archive/`, which keeps historical helpers unchanged as evidence, or the
+product package `chunker/`.
 
 ### Platform checks
 
