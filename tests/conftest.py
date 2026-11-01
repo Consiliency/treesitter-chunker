@@ -1,5 +1,6 @@
 pytest_plugins = [
     "tests.integration.fixtures",
+    "tests.native_probe_lifetime",
 ]
 
 import gc
