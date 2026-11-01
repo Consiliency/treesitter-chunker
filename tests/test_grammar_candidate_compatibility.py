@@ -1,5 +1,6 @@
 """Selection checks each local grammar artifact on the pinned runtime."""
 
+import hashlib
 import subprocess
 import sys
 from pathlib import Path
@@ -63,6 +64,10 @@ def test_selector_prefers_compatible_candidate_and_keeps_canonical_history(
         user_dir=user_dir,
         package_dir=package_dir,
         cache_dir=tmp_path / "grammar-cache",
+        # The local grammar is admitted only under its approved pin.
+        trusted_artifacts={
+            "baml": {"sha256": hashlib.sha256(package_library.read_bytes()).hexdigest()}
+        },
     )
     database = CompatibilityDatabase(tmp_path / "compat.db")
     checker = CompatibilityChecker(manager, database)

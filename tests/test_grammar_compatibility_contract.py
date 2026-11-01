@@ -2,7 +2,6 @@
 
 from dataclasses import asdict
 import importlib.util
-import json
 import shutil
 import subprocess
 import sys
@@ -86,14 +85,12 @@ def test_compatibility_helpers_confine_cache_roots(
         result = validator.validate_grammar(candidate, "python", ValidationLevel.BASIC)
         assert not result.is_valid
         assert "Grammar file is empty" in result.errors
-        records = json.loads(validator._validation_cache.read_text(encoding="utf-8"))
-        assert records
-        assert all(not record["is_valid"] for record in records.values())
-        key = validator._get_cache_key(candidate, "python", ValidationLevel.BASIC)
-        assert records[key]["errors"] == result.errors
+        # Failed admissions are recomputed every time and never stored
+        # (verdict-reuse rule 2, treesitter-chunker#362).
+        assert not validator._validation_cache.exists()
     assert not (home / ".cache" / "treesitter-chunker").exists()
-    assert (cache / "validation_cache.json").is_file()
-    assert (expected / "validation_cache.json").is_file()
+    assert not (cache / "validation_cache.json").exists()
+    assert not (expected / "validation_cache.json").exists()
 
 
 @pytest.mark.parametrize(
@@ -587,10 +584,16 @@ def test_compatibility_reason_score_selection_and_history(
         .root_node.has_error
     )
 
+    import hashlib
+
     manager = GrammarManager(
         user_dir=user_dir,
         package_dir=package_dir,
         cache_dir=tmp_path / "cache",
+        # The local grammar is admitted only under its approved pin.
+        trusted_artifacts={
+            "baml": {"sha256": hashlib.sha256(package_library.read_bytes()).hexdigest()}
+        },
     )
     database = CompatibilityDatabase(tmp_path / "history.db")
     checker = CompatibilityChecker(manager, database)

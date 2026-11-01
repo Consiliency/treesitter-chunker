@@ -150,6 +150,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Behaviour change (treesitter-chunker#362):** `GrammarValidator`,
+  `GrammarInstaller`, `GrammarRegistry`, `GrammarManager` and
+  `ComprehensiveGrammarCLI` accept keyword-only `trusted_artifacts` and forward it;
+  the click `grammar` group takes `--trusted-artifacts PATH` (else the user-config
+  pin file) and exits 2 on a defective file. Validation admits local grammars
+  through `probe_native_grammar` and loads only admitted private copies, so an
+  unpinned local grammar is no longer valid. `test_parse_samples` without a path
+  uses the validator's own registry, never `chunker.parser`. `grammar build` no
+  longer loads unpinned output (`built, not admitted`, exit 0) and probes pinned
+  output. The validation cache is keyed by content, pin and environment, reused
+  only after an admission in the same process, and failed results are not
+  stored. `GrammarManager.get_admitted_health()` (IF-0-ADMIT-1) is the admitted
+  health accessor. The grammar self-tests no longer reload the original library
+  or load their corrupt fixture in-process, and `run_complete_test_suite` accepts
+  `trusted_artifacts`.
 - **Behaviour change (treesitter-chunker#362):** ordinary parsing reads the
   user-config pin file once per process. Local compiled grammars (the combined
   library, build directories, `~/.cache/treesitter-chunker/build`,

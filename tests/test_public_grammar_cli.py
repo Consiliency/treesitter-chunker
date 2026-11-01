@@ -1,5 +1,6 @@
 """Contract tests for the exported Click grammar commands."""
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -1082,8 +1083,23 @@ def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -
         check=True,
         capture_output=True,
     )
+    pins = tmp_path / "pins.json"
+    pins.write_text(
+        json.dumps(
+            {
+                "schema": "chunker.trusted_artifacts.v1",
+                "artifacts": {
+                    "baml": {
+                        "sha256": hashlib.sha256(user_library.read_bytes()).hexdigest()
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
     runner = CliRunner()
-    command = ["--cache-dir", str(cache_dir)]
+    # A local grammar is admitted only under an approved pin (treesitter-chunker#362).
+    command = ["--cache-dir", str(cache_dir), "--trusted-artifacts", str(pins)]
 
     info = runner.invoke(grammar_cli, [*command, "info", "baml"])
     assert info.exit_code == 0
@@ -1111,11 +1127,41 @@ def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -
     assert "Grammar test failed" in rejected.output
 
     shutil.copyfile(user_library, user_dir / "libjavascript.so")
-    wrong_grammar = runner.invoke(
+    unpinned = runner.invoke(
         grammar_cli, [*command, "test", "javascript", str(BAML_FIXTURE)]
     )
+    assert unpinned.exit_code == 1
+    assert "Native admission failed: untrusted" in unpinned.output
+    # Even pinned, a library without the language's own symbol is rejected by
+    # admission (rule 5: one library's digest admits only languages it serves).
+    digest = hashlib.sha256(user_library.read_bytes()).hexdigest()
+    both = tmp_path / "both-pins.json"
+    both.write_text(
+        json.dumps(
+            {
+                "schema": "chunker.trusted_artifacts.v1",
+                "artifacts": {
+                    "baml": {"sha256": digest},
+                    "javascript": {"sha256": digest},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    wrong_grammar = runner.invoke(
+        grammar_cli,
+        [
+            "--cache-dir",
+            str(cache_dir),
+            "--trusted-artifacts",
+            str(both),
+            "test",
+            "javascript",
+            str(BAML_FIXTURE),
+        ],
+    )
     assert wrong_grammar.exit_code == 1
-    assert "tree_sitter_javascript" in wrong_grammar.output
+    assert "Native admission failed: load_failed" in wrong_grammar.output
 
 
 @pytest.mark.skipif(
