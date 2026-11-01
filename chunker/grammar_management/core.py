@@ -29,6 +29,7 @@ import ctypes
 import hashlib
 import json
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -42,8 +43,11 @@ from tree_sitter import Language, Parser
 
 from chunker.exceptions import ChunkerError
 from chunker.grammar.source_validation import validate_grammar_source
+from chunker.grammar_management import _transactions
 
 logger = logging.getLogger(__name__)
+
+VALIDATION_CACHE_NAME = "validation_cache.json"
 
 
 def _valid_language_name(language: str) -> bool:
@@ -150,7 +154,7 @@ class GrammarValidator:
         """
         self._cache_dir = cache_dir or (Path.home() / ".cache" / "treesitter-chunker")
         self._cache_dir.mkdir(parents=True, exist_ok=True)
-        self._validation_cache = self._cache_dir / "validation_cache.json"
+        self._validation_cache = self._cache_dir / VALIDATION_CACHE_NAME
         self._cache = self._load_validation_cache()
 
     def validate_grammar(
@@ -512,25 +516,45 @@ class GrammarValidator:
         return hashlib.sha256(key_data.encode()).hexdigest()
 
     def _load_validation_cache(self) -> dict[str, Any]:
-        """Load validation cache from disk."""
-        if self._validation_cache.exists():
-            try:
-                with self._validation_cache.open("r") as f:
-                    return json.load(f)
-            except Exception as e:
-                logger.warning(f"Failed to load validation cache: {e}")
+        """Load validation records from disk into the read cache.
+
+        The record file is read under the cache root lock without following
+        links (cache transaction contract, Primitive 1). Construction never
+        fails because of it: a malformed or linked file, a lock timeout or a
+        refused root is logged and an empty read cache is used.
+        """
+        try:
+            _transactions.open_cache_root(self._cache_dir)
+            return _transactions.read_json_records(
+                self._cache_dir, VALIDATION_CACHE_NAME
+            )
+        except Exception as e:
+            logger.warning(f"Failed to load validation cache: {e}")
         return {}
 
     def _cache_validation_result(self, cache_key: str, result: ValidationResult):
-        """Cache validation result to disk."""
-        try:
-            self._cache[cache_key] = self._serialize_validation_result(result)
-            self._cache[cache_key]["timestamp"] = time.time()
+        """Merge one validation record into the file on disk.
 
-            with self._validation_cache.open("w") as f:
-                json.dump(self._cache, f, indent=2)
+        The file is read fresh under the lock and only ``cache_key`` is set, so
+        records written by other validators are kept. ``self._cache`` is only a
+        read cache, refreshed from the document written. If the write fails
+        (for example, a linked record file or a read-only root), the record is
+        kept in that read cache only, as before, and never written back.
+        """
+        record = self._serialize_validation_result(result)
+        record["timestamp"] = time.time()
+
+        def merge(current: dict[str, Any]) -> dict[str, Any]:
+            current[cache_key] = record
+            return current
+
+        try:
+            self._cache = _transactions.update_json_records(
+                self._cache_dir, VALIDATION_CACHE_NAME, merge, reset_malformed=True
+            )
         except Exception as e:
             logger.warning(f"Failed to cache validation result: {e}")
+            self._cache[cache_key] = record
 
     def _serialize_validation_result(self, result: ValidationResult) -> dict[str, Any]:
         """Serialize validation result for caching."""
@@ -1673,25 +1697,27 @@ class GrammarManager:
                 if cleaned["files_removed"] > 0:
                     stats["directories_cleaned"].append("builds")
 
-            # Clean validation cache
-            validation_cache = self._cache_dir / "validation_cache.json"
-            if validation_cache.exists():
+            # Clean validation cache: a locked fresh read, prune and replace.
+            # A link at the record name is reported, never followed.
+            validation_cache = self._cache_dir / VALIDATION_CACHE_NAME
+            if os.path.lexists(validation_cache):
                 try:
-                    with validation_cache.open("r") as f:
-                        cache_data = json.load(f)
+                    removed: list[int] = []
 
-                    # Remove old entries
-                    cleaned_cache = {
-                        key: value
-                        for key, value in cache_data.items()
-                        if value.get("timestamp", 0) > cutoff_time
-                    }
+                    def prune(current: dict[str, Any]) -> dict[str, Any]:
+                        kept = {
+                            key: value
+                            for key, value in current.items()
+                            if value.get("timestamp", 0) > cutoff_time
+                        }
+                        removed.append(len(current) - len(kept))
+                        return kept
 
-                    # Write back cleaned cache
-                    with validation_cache.open("w") as f:
-                        json.dump(cleaned_cache, f, indent=2)
+                    _transactions.update_json_records(
+                        self._cache_dir, VALIDATION_CACHE_NAME, prune
+                    )
 
-                    removed_entries = len(cache_data) - len(cleaned_cache)
+                    removed_entries = removed[-1]
                     if removed_entries > 0:
                         stats["files_removed"] += removed_entries
                         stats["directories_cleaned"].append("validation_cache")
