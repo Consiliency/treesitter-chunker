@@ -77,6 +77,10 @@ class NestedRootError(ContainmentError):
     """A cache root overlaps another root's managed namespace."""
 
 
+class _RootMovedError(CacheTransactionError):
+    """The root path no longer resolves to the directory that was opened."""
+
+
 def _seam(point: str, context: Mapping[str, str]) -> None:
     barrier = _BARRIER
     if barrier is not None:
@@ -131,14 +135,14 @@ class _Dir:
         if _WINDOWS:
             current = root.stat()
             if _identity(current) != identity:
-                raise CacheTransactionError(
+                raise _RootMovedError(
                     f"Cache root {root} no longer resolves to the directory opened"
                 )
             return cls(root, None)
         fd = os.open(root, os.O_RDONLY | _DIRECTORY | _CLOEXEC)
         try:
             if _identity(os.fstat(fd)) != identity:
-                raise CacheTransactionError(
+                raise _RootMovedError(
                     f"Cache root {root} no longer resolves to the directory opened"
                 )
         except BaseException:
@@ -305,7 +309,7 @@ def _current_identity(absolute: Path) -> tuple[int, int]:
     try:
         return _identity(absolute.stat())
     except OSError as error:
-        raise CacheTransactionError(
+        raise _RootMovedError(
             f"Cache root {absolute} no longer resolves to the directory opened: {error}"
         ) from error
 
@@ -606,7 +610,7 @@ def _locked(root: Path, timeout: float, ctx: _LockContext) -> Iterator[_Dir]:
         if _current_identity(absolute) != identity or (
             rootdir.fd is not None and _identity(os.fstat(rootdir.fd)) != identity
         ):
-            raise CacheTransactionError(
+            raise _RootMovedError(
                 f"Cache root {absolute} no longer resolves to the directory opened"
             )
         if _lock_key(rootdir) != key:
@@ -617,7 +621,7 @@ def _locked(root: Path, timeout: float, ctx: _LockContext) -> Iterator[_Dir]:
         # Post-initialization check (contract "Nested roots" rule 2).
         _refuse_nested(absolute)
         if _current_identity(absolute) != identity:
-            raise CacheTransactionError(
+            raise _RootMovedError(
                 f"Cache root {absolute} moved while it was initialized"
             )
         yield rootdir
@@ -919,6 +923,11 @@ class _Tally:
     errors: list[str] = field(default_factory=list)
 
 
+def _unique(errors: list[str]) -> tuple[str, ...]:
+    """Each distinct error once, in first-seen order."""
+    return tuple(dict.fromkeys(errors))
+
+
 def _newest_mtime(parent: _Dir, name: str) -> tuple[float, float]:
     """Return (own lstat mtime, newest mtime in the entry), links as leaves.
 
@@ -1183,60 +1192,81 @@ def _run_posix(
     ctx: _LockContext,
     outcome: dict[str, bool],
 ) -> StagedRun:
-    process = subprocess.Popen(
-        list(argv),
-        cwd=cwd,
-        env=dict(env) if env is not None else None,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        start_new_session=True,
-    )
-    outcome["launched"] = True
-    pgid = process.pid
-    out, err, readers = _start_readers(process)
+    try:
+        process = subprocess.Popen(
+            list(argv),
+            cwd=cwd,
+            env=dict(env) if env is not None else None,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+    except OSError:
+        outcome["launch_failed"] = True  # nothing was started
+        raise
+    out: list[bytes] = []
+    err: list[bytes] = []
+    readers: list[threading.Thread] = []
     exited = threading.Event()
-    waitid = getattr(os, "waitid", None)
-    nowait = getattr(os, "WNOWAIT", None)
-
-    def wait_without_reaping() -> None:
-        """Wait for the leader to exit but leave it unreaped (a zombie).
-
-        An unreaped leader keeps the group ID from being recycled while the
-        group is killed and checked. ``os.waitid(WNOWAIT)`` does this where it
-        exists; macOS lacks it, so the leader's state is polled instead.
-        """
-        if waitid is not None and nowait is not None:
-            with suppress(ChildProcessError, OSError):
-                waitid(os.P_PID, process.pid, os.WEXITED | nowait)
-        else:
-            import psutil
-
-            delay = _BACKOFF_FIRST
-            while True:
-                try:
-                    if psutil.Process(process.pid).status() == psutil.STATUS_ZOMBIE:
-                        break
-                except psutil.NoSuchProcess:
-                    break
-                time.sleep(delay)
-                delay = min(delay * 2, _BACKOFF_MAX)
-        exited.set()
-
-    threading.Thread(target=wait_without_reaping, daemon=True).start()
+    waiter_started = False
     timed_out = True
     group_empty = False
+    returncode: int | None = None
     try:
+        # Guarded from the first statement after Popen: the child exists now.
+        outcome["launched"] = True
+        ctx.seam("run.after_launch")
+        out, err, readers = _start_readers(process)
+        waitid = getattr(os, "waitid", None)
+        nowait = getattr(os, "WNOWAIT", None)
+
+        def wait_without_reaping() -> None:
+            """Wait for the leader to exit but leave it unreaped (a zombie).
+
+            An unreaped leader keeps the group ID from being recycled while
+            the group is killed and checked. ``os.waitid(WNOWAIT)`` does this
+            where it exists; macOS lacks it, so the leader's state is polled.
+            """
+            if waitid is not None and nowait is not None:
+                with suppress(ChildProcessError, OSError):
+                    waitid(os.P_PID, process.pid, os.WEXITED | nowait)
+            else:
+                import psutil
+
+                delay = _BACKOFF_FIRST
+                while True:
+                    try:
+                        status = psutil.Process(process.pid).status()
+                        if status == psutil.STATUS_ZOMBIE:
+                            break
+                    except psutil.NoSuchProcess:
+                        break
+                    time.sleep(delay)
+                    delay = min(delay * 2, _BACKOFF_MAX)
+            exited.set()
+
+        threading.Thread(target=wait_without_reaping, daemon=True).start()
+        waiter_started = True
+        ctx.seam("run.waiting")
         timed_out = not exited.wait(timeout)
         ctx.seam("run.after_exit")
     finally:
         # Always, including on KeyboardInterrupt or any other exception: kill
-        # and confirm the group before anyone may dispose of the staging.
-        group_empty = _kill_and_confirm_posix(pgid, process.pid)
-        exited.wait(_GROUP_CONFIRM_DEADLINE)
+        # and confirm the group before anyone may dispose of the staging. The
+        # leader is still unreaped here, so its group ID cannot be recycled.
+        group_empty = _kill_and_confirm_posix(process.pid, process.pid)
+        if waiter_started:
+            exited.wait(_GROUP_CONFIRM_DEADLINE)
         returncode = process.wait()
-        if not _finish_readers(process, readers):
-            group_empty = False
+        if readers:
+            if not _finish_readers(process, readers):
+                group_empty = False
+        else:
+            for stream in (process.stdout, process.stderr):
+                if stream is not None:
+                    with suppress(OSError):
+                        stream.close()
         outcome["group_empty"] = group_empty
     if group_empty:
         ctx.seam("run.after_group_empty")
@@ -1334,6 +1364,7 @@ def _run_windows(
 
     job = kernel32.CreateJobObjectW(None, None)
     if not job:
+        outcome["launch_failed"] = True  # nothing was started
         raise CacheTransactionError(
             f"Could not create a job object: {ctypes.get_last_error()}"  # type: ignore[attr-defined]
         )
@@ -1343,27 +1374,39 @@ def _run_windows(
         if not kernel32.SetInformationJobObject(
             job, 9, ctypes.byref(limits), ctypes.sizeof(limits)
         ):
+            outcome["launch_failed"] = True  # nothing was started
             raise CacheTransactionError("Could not configure the job object")
-        process = subprocess.Popen(
-            list(argv),
-            cwd=cwd,
-            env=dict(env) if env is not None else None,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=0x00000004 | 0x00000200,  # SUSPENDED | NEW_PROCESS_GROUP
-        )
-        handle = int(process._handle)  # type: ignore[attr-defined]
-        if not kernel32.AssignProcessToJobObject(job, handle):
-            process.kill()
-            process.wait()
-            raise CacheTransactionError("Could not assign the process to its job")
-        ntdll.NtResumeProcess(handle)
-        outcome["launched"] = True
-        out, err, readers = _start_readers(process)
+        try:
+            process = subprocess.Popen(
+                list(argv),
+                cwd=cwd,
+                env=dict(env) if env is not None else None,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=0x00000004 | 0x00000200,  # SUSPENDED | NEW_GROUP
+            )
+        except OSError:
+            outcome["launch_failed"] = True  # nothing was started
+            raise
+        out: list[bytes] = []
+        err: list[bytes] = []
+        readers: list[threading.Thread] = []
+        assigned = False
         timed_out = True
         group_empty = False
+        returncode: int | None = None
         try:
+            # Guarded from the first statement after Popen: the child exists.
+            outcome["launched"] = True
+            ctx.seam("run.after_launch")
+            handle = int(process._handle)  # type: ignore[attr-defined]
+            if not kernel32.AssignProcessToJobObject(job, handle):
+                raise CacheTransactionError("Could not assign the process to its job")
+            assigned = True
+            ntdll.NtResumeProcess(handle)
+            out, err, readers = _start_readers(process)
+            ctx.seam("run.waiting")
             try:
                 process.wait(timeout)
                 timed_out = False
@@ -1371,32 +1414,45 @@ def _run_windows(
                 pass
             ctx.seam("run.after_exit")
         finally:
-            # Always, including on KeyboardInterrupt: terminate the job and
-            # confirm it is empty before anyone may dispose of the staging.
-            kernel32.TerminateJobObject(job, 1)
-            deadline = time.monotonic() + _GROUP_CONFIRM_DEADLINE
-            delay = _BACKOFF_FIRST
-            accounting = Accounting()
-            while True:
-                if (
-                    kernel32.QueryInformationJobObject(
-                        job,
-                        1,
-                        ctypes.byref(accounting),
-                        ctypes.sizeof(accounting),
-                        None,
-                    )
-                    and accounting.ActiveProcesses == 0
-                ):
-                    group_empty = True
-                    break
-                if time.monotonic() >= deadline:
-                    break
-                time.sleep(delay)
-                delay = min(delay * 2, _BACKOFF_MAX)
+            # Always, including on KeyboardInterrupt: terminate the job (or the
+            # still-suspended, unassigned child) and confirm it is empty before
+            # anyone may dispose of the staging.
+            if assigned:
+                kernel32.TerminateJobObject(job, 1)
+                deadline = time.monotonic() + _GROUP_CONFIRM_DEADLINE
+                delay = _BACKOFF_FIRST
+                accounting = Accounting()
+                while True:
+                    if (
+                        kernel32.QueryInformationJobObject(
+                            job,
+                            1,
+                            ctypes.byref(accounting),
+                            ctypes.sizeof(accounting),
+                            None,
+                        )
+                        and accounting.ActiveProcesses == 0
+                    ):
+                        group_empty = True
+                        break
+                    if time.monotonic() >= deadline:
+                        break
+                    time.sleep(delay)
+                    delay = min(delay * 2, _BACKOFF_MAX)
+            else:
+                # Suspended and never resumed: it has no descendants.
+                with suppress(OSError):
+                    process.kill()
+                group_empty = True
             returncode = process.wait()
-            if not _finish_readers(process, readers):
-                group_empty = False
+            if readers:
+                if not _finish_readers(process, readers):
+                    group_empty = False
+            else:
+                for stream in (process.stdout, process.stderr):
+                    if stream is not None:
+                        with suppress(OSError):
+                            stream.close()
             outcome["group_empty"] = group_empty
     finally:
         kernel32.CloseHandle(job)
@@ -1439,21 +1495,33 @@ def run_in_staging(
         program=Path(argv[0]).name if argv else "",
     )
     runner = _run_windows if _WINDOWS else _run_posix
-    outcome = {"launched": False, "group_empty": False}
+    outcome = {"launched": False, "launch_failed": False, "group_empty": False}
+    with _STAGING_GUARD:
+        was_unpublishable = key in _UNPUBLISHABLE
+        was_retained = key in _RETAINED
+        # Conservatively unsafe *before* the launch: a child may exist as soon
+        # as Popen creates it, even if an interruption arrives before Popen
+        # returns. Only confirmed shutdown, or a launch that started nothing,
+        # clears these marks again.
+        _UNPUBLISHABLE.add(key)
+        _RETAINED.add(key)
     try:
         result = runner(staging, argv, cwd, timeout, env, ctx, outcome)
     except BaseException:
-        if outcome["launched"]:
-            with _STAGING_GUARD:
-                _UNPUBLISHABLE.add(key)
-                if not outcome["group_empty"]:
-                    _RETAINED.add(key)
-        raise
-    if result.timed_out or not result.group_empty:
         with _STAGING_GUARD:
-            _UNPUBLISHABLE.add(key)
-            if not result.group_empty:
-                _RETAINED.add(key)
+            if outcome["launch_failed"]:
+                if not was_unpublishable:
+                    _UNPUBLISHABLE.discard(key)
+                if not was_retained:
+                    _RETAINED.discard(key)
+            elif outcome["group_empty"] and not was_retained:
+                _RETAINED.discard(key)  # confirmed shutdown: unpublishable only
+        raise
+    with _STAGING_GUARD:
+        if result.group_empty and not was_retained:
+            _RETAINED.discard(key)
+        if result.group_empty and not result.timed_out and not was_unpublishable:
+            _UNPUBLISHABLE.discard(key)
     return result
 
 
@@ -1571,7 +1639,7 @@ def remove_entry(
             _retire(directory, name, operation_id)
     tally = _Tally()
     _delete_retired(root, (namespace, _RETIRED_DIR), operation_id, tally)
-    return PruneResult(1, tally.bytes_freed, (), tuple(tally.errors))
+    return PruneResult(1, tally.bytes_freed, (), _unique(tally.errors))
 
 
 def _claim_garbage(
@@ -1644,6 +1712,7 @@ def prune_entries(
     skipped: list[str] = []
     tally = _Tally()
     removed = 0
+    stopped = False
     with _locked(root, timeout, ctx) as rootdir:
         directory = _namespace_dir(rootdir, namespace, create=False)
     if directory is None:
@@ -1682,20 +1751,30 @@ def prune_entries(
             skipped.append(name)
             tally.errors.append(str(error))
             continue
-        except (OSError, ContainmentError) as error:
+        except (CacheLockTimeoutError, _RootMovedError) as error:
+            # Later candidates would fail the same way: stop, and report the
+            # truthful counts of what this call already removed.
+            tally.errors.append(f"Stopped before {name}: {error}")
+            stopped = True
+            break
+        except (OSError, CacheTransactionError) as error:
             skipped.append(name)
             tally.errors.append(f"{absolute / namespace / name}: {error}")
             continue
         if retired:
             _delete_retired(root, (namespace, _RETIRED_DIR, operation_id), name, tally)
     try:
-        _claim_garbage(root, namespace, operation_id, timeout, ctx)
+        if not stopped:
+            _claim_garbage(root, namespace, operation_id, timeout, ctx)
         _delete_retired(root, (namespace, _RETIRED_DIR), operation_id, tally)
-        with _locked(root, timeout, ctx) as rootdir:
-            _report_staging(rootdir, namespace, cutoff)
+        if not stopped:
+            with _locked(root, timeout, ctx) as rootdir:
+                _report_staging(rootdir, namespace, cutoff)
     except (OSError, CacheTransactionError) as error:
         tally.errors.append(str(error))
-    return PruneResult(removed, tally.bytes_freed, tuple(skipped), tuple(tally.errors))
+    return PruneResult(
+        removed, tally.bytes_freed, tuple(skipped), _unique(tally.errors)
+    )
 
 
 def discard_staging(
@@ -1742,4 +1821,4 @@ def discard_staging(
         )
     with _STAGING_GUARD:
         _UNPUBLISHABLE.discard(key)
-    return PruneResult(0, tally.bytes_freed, (), tuple(tally.errors))
+    return PruneResult(0, tally.bytes_freed, (), _unique(tally.errors))

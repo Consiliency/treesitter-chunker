@@ -27,8 +27,10 @@ SAFETY_TIMEOUT = 240.0
 PRELUDE = r'''
 import json
 import os
+import signal
 import sys
 import threading
+import time
 
 PAUSES = json.loads(sys.argv[1])
 sys.path.insert(0, sys.argv[2])
@@ -60,6 +62,13 @@ def _barrier(point, context):
         ):
             if rule.get("action") == "exit":
                 os._exit(int(rule.get("code", 17)))
+            if rule.get("action") == "sigint":
+                PAUSES.remove(rule)
+                ready = rule.get("await_file")
+                while ready and not os.path.exists(ready):
+                    time.sleep(0.01)  # readiness: the file the test names exists
+                signal.raise_signal(signal.SIGINT)  # KeyboardInterrupt right here
+                break
             wait()
             if rule.get("once", True):
                 PAUSES.remove(rule)
@@ -196,6 +205,18 @@ def pause_at(point: str, **match: str) -> dict[str, Any]:
 
 def exit_at(point: str, code: int = 17, **match: str) -> dict[str, Any]:
     return {"point": point, "match": match, "action": "exit", "code": code}
+
+
+def interrupt_at(
+    point: str, await_file: str | None = None, **match: str
+) -> dict[str, Any]:
+    """Raise SIGINT in the child's main thread at ``point`` (after ``await_file``)."""
+    return {
+        "point": point,
+        "match": match,
+        "action": "sigint",
+        "await_file": await_file,
+    }
 
 
 def _mount_mode() -> str | None:

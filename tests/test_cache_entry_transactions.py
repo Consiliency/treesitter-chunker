@@ -17,6 +17,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import threading
 import time
 from hashlib import sha256
 from pathlib import Path
@@ -32,6 +33,7 @@ from tests.txn_barrier import (
     SAFETY_TIMEOUT,
     Child,
     exit_at,
+    interrupt_at,
     pause_at,
     participants,
     run_mounting,
@@ -72,6 +74,8 @@ if args[:1] == ["clone"]:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+        with open(pidfile + ".leader", "w", encoding="utf-8") as handle:
+            handle.write(str(os.getpid()))
         with open(pidfile + ".tmp", "w", encoding="utf-8") as handle:
             handle.write(str(grandchild.pid))
         os.replace(pidfile + ".tmp", pidfile)
@@ -305,7 +309,9 @@ def test_prune_counts_expired_cutoff_and_denied_entries_truthfully(tmp_path):
             directory.chmod(0o700)
     assert result.entries_removed == 1
     assert result.bytes_freed == 17  # held.bin was not unlinked, so not counted
-    assert len(result.errors) >= 1 and any("held.bin" in e for e in result.errors)
+    # Reported once, for the file that failed (Claude round 2, finding 2).
+    assert sum("held.bin" in e for e in result.errors) == 1
+    assert len(result.errors) == len(set(result.errors))
     leftovers = list((root / "builds" / ".txn-retired").rglob("held.bin"))
     assert [p.read_bytes() for p in leftovers] == [b"h" * 19]
     # A later prune claims the garbage and counts it then, once.
@@ -698,7 +704,7 @@ try:
     _transactions.open_cache_root(Path(ARGS[0]))
     emit("done", error=None)
 except Exception as error:
-    emit("done", error=f"{type(error).__name__}: {error}")
+    emit("done", error=str(error), transaction=isinstance(error, _transactions.CacheTransactionError))
 """
 
 
@@ -722,7 +728,7 @@ def test_root_moved_during_initialization_fails_post_check(tmp_path):
         inner.rename(tmp_path / "moved")
         child.release()
         done = child.finish()
-    assert done["error"] and done["error"].startswith("CacheTransactionError")
+    assert done["error"] and done["transaction"]
 
 
 def test_discarded_staging_is_retired_then_deleted(tmp_path):
@@ -749,6 +755,31 @@ from chunker.grammar_management.core import GrammarInstaller, GrammarManager
 
 root, scratch = Path(sys.argv[2]), Path(sys.argv[3])
 outcomes = {}
+warnings = []
+
+
+class Collect(logging.Handler):
+    def emit(self, record):
+        warnings.append(record.getMessage())
+
+
+logging.getLogger().addHandler(Collect(level=logging.WARNING))
+logging.getLogger().setLevel(logging.WARNING)
+
+
+def control_folders_clean():
+    # Each .txn-staging holds only its marker; .txn-retired has no op folders.
+    leftovers = []
+    for namespace in ("downloads", "builds"):
+        for folder in (root / namespace / ".txn-staging", root / namespace / ".txn-retired"):
+            if folder.exists():
+                leftovers += [str(p) for p in folder.iterdir() if p.name != ".txn-keep"]
+    return leftovers
+
+
+def inodes():
+    return [os.lstat(root / "downloads" / "tree-sitter-baml").st_ino,
+            os.lstat(root / "builds" / "baml").st_ino]
 try:
     for namespace in ("downloads", "builds"):
         mount_tmpfs(root / namespace)  # separate filesystems inside the root
@@ -763,7 +794,13 @@ try:
     installer = GrammarInstaller(cache_dir=root, build_timeout=120)
     url = "https://github.com/example/tree-sitter-baml"
     outcomes["install"] = installer.install_grammar("baml", url)[:2]
+    outcomes["clean_after_install"] = control_folders_clean()
+    before = inodes()
     outcomes["reinstall"] = installer.install_grammar("baml", url)[:2]  # retires
+    # Republication really replaced both entries (a cross-device rename would
+    # leave the old generation and only log a warning).
+    outcomes["entries_replaced"] = [a != b for a, b in zip(before, inodes())]
+    outcomes["clean_after_reinstall"] = control_folders_clean()
     outcomes["published"] = sorted(
         p.name for n in ("downloads", "builds") for p in (root / n).iterdir()
         if not p.name.startswith(".")
@@ -778,6 +815,8 @@ try:
         p.name for n in ("downloads", "builds") for p in (root / n).iterdir()
         if not p.name.startswith(".")
     )
+    outcomes["clean_at_end"] = control_folders_clean()
+    outcomes["warnings"] = warnings
 finally:
     unmount_all()
 print(json.dumps(outcomes))
@@ -804,11 +843,16 @@ def test_split_mount_namespaces_install_republish_prune_and_remove(tmp_path, shi
     assert outcomes == {
         "split": True,
         "install": [True, None],
+        "clean_after_install": [],
         "reinstall": [True, None],
+        "entries_replaced": [True, True],
+        "clean_after_reinstall": [],
         "published": ["baml", "expired", "tree-sitter-baml"],
         "cleanup": [1, 9, []],
         "removed": [True, None],
         "left": [],
+        "clean_at_end": [],
+        "warnings": [],
     }
 
 
@@ -917,21 +961,11 @@ def test_escaped_pipe_holder_fails_closed_without_blocking(tmp_path):
 
 
 INTERRUPTED = r"""
-import os, signal, sys, threading, time
 from pathlib import Path
 from chunker.grammar_management.core import GrammarInstaller
 
 cache, pidfile = Path(ARGS[0]), Path(ARGS[1])
 installer = GrammarInstaller(cache_dir=cache, build_timeout=120)
-
-
-def interrupt_once_running():
-    while not pidfile.exists():
-        time.sleep(0.01)  # readiness: the clone's grandchild is writing
-    os.kill(os.getpid(), signal.SIGINT)
-
-
-threading.Thread(target=interrupt_once_running, daemon=True).start()
 emit("ready")
 wait()
 try:
@@ -944,19 +978,28 @@ except KeyboardInterrupt:
         alive = psutil.Process(pid).status() != psutil.STATUS_ZOMBIE
     except psutil.NoSuchProcess:
         alive = False
-    staged = sorted(str(p) for p in (cache / "downloads" / ".txn-staging").glob("*/*"))
+    staged = sorted(
+        str(p) for p in (cache / "downloads" / ".txn-staging").glob("*/*")
+        if p.name != ".txn-keep"
+    )
     emit("done", interrupted=True, grandchild_alive=alive, staged=staged)
 """
 
 
 @POSIX_SHIM
-def test_interrupted_run_confirms_shutdown_before_disposal(tmp_path, shim):
-    """Codex P1: SIGINT during a staged run never leaves a live writer.
+@pytest.mark.parametrize("point", ["run.after_launch", "run.waiting"])
+def test_interrupted_run_never_leaves_a_live_writer_without_its_staging(
+    tmp_path, shim, point
+):
+    """Codex P1/P2: SIGINT right after launch, or in the guarded wait.
 
-    The clone's leader keeps running with a grandchild writing into staging
-    when the installer gets SIGINT. Either the group is confirmed gone before
-    the staging is disposed of, or the staging is retained. Mutation
-    ``no_shutdown_on_interrupt`` deletes the staging under a live writer.
+    The signal is raised deterministically at the named seam point, once the
+    clone's grandchild is writing into staging. The contract allows two safe
+    outcomes: the group confirmed gone, or the staging retained. Because the
+    guard opens immediately after ``Popen``, the group is confirmed gone here.
+    Mutations ``launch_outside_guard`` (the launch point runs before the
+    guard) and ``mark_after_launch`` (also no conservative marking before
+    ``Popen``) leave a live writer, the second with its staging deleted.
     """
     cache = tmp_path / "cache"
     repo = _repo(tmp_path / "repo")
@@ -964,16 +1007,23 @@ def test_interrupted_run_confirms_shutdown_before_disposal(tmp_path, shim):
     env = _env(shim, repo, TXN_GIT_GRANDCHILD=str(pidfile), TXN_GIT_SLEEP="1")
     try:
         with participants() as children:
-            child = Child(INTERRUPTED, [cache, pidfile], env=env)
+            child = Child(
+                INTERRUPTED,
+                [cache, pidfile],
+                pauses=[interrupt_at(point, await_file=str(pidfile), program="git")],
+                env=env,
+            )
             children.append(child)
             child.expect("ready")
             child.release()
             done = child.finish()
         assert done["interrupted"]
+        # The contract's disjunction: shutdown confirmed, or staging retained.
         assert not done["grandchild_alive"] or done["staged"], done
-        assert not done["grandchild_alive"]  # confirmed shutdown is expected here
+        assert not done["grandchild_alive"], done
     finally:
         _kill_pidfile(pidfile)
+        _kill_pidfile(Path(str(pidfile) + ".leader"))
 
 
 @pytest.mark.skipif(
@@ -1007,3 +1057,47 @@ def test_aborted_commit_lookup_fails_the_install(tmp_path, shim, fault):
     assert "Commit lookup aborted: Git rev-parse" in done["error"]
     assert not (cache / "grammars" / "libbaml.so").exists()
     assert not (cache / "downloads" / "tree-sitter-baml").exists()
+
+
+def test_prune_stops_on_a_lock_timeout_with_truthful_partial_counts(
+    tmp_path, monkeypatch
+):
+    """Claude round 2, finding 3: a later lock timeout keeps earlier counts.
+
+    Another holder takes the lock just before the second candidate's section.
+    The prune stops, reports the timeout, and returns the entry it already
+    removed. Mutation ``abort_prune_on_lock_timeout`` loses the counts.
+    """
+    root = tmp_path / "cache"
+    root.mkdir()
+    _transactions.open_cache_root(root)
+    size = _seed(root / "builds" / "first", {"lib.so": b"f" * 11})
+    _seed(root / "builds" / "second", {"lib.so": b"s" * 11})
+    held, release = threading.Event(), threading.Event()
+    sections: list[str] = []
+
+    def hold_lock() -> None:
+        with _transactions.cache_lock(root):
+            held.set()
+            release.wait()
+
+    def barrier(point, context):
+        if point == "lock.before_acquire" and context["primitive"] == "prune_entries":
+            sections.append(point)
+            # 1: namespace check, 2: first candidate, 3: second candidate.
+            if len(sections) == 3:
+                threading.Thread(target=hold_lock, daemon=True).start()
+                held.wait()
+
+    monkeypatch.setattr(_transactions, "_BARRIER", barrier)
+    try:
+        result = _transactions.prune_entries(
+            root, "builds", cutoff=time.time() + 3600, timeout=0.5
+        )
+    finally:
+        release.set()
+    assert (result.entries_removed, result.bytes_freed) == (1, size)
+    assert len(result.errors) == 1 and result.errors[0].startswith("Stopped before ")
+    assert "Timed out" in result.errors[0]
+    remaining = [p.name for p in (root / "builds").iterdir() if p.name[0] != "."]
+    assert len(remaining) == 1

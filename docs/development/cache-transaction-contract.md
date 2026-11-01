@@ -423,11 +423,16 @@ inside `staging.path(namespace)` for `downloads` or `builds`.
 6. **Return.** The call returns `StagedRun(returncode, stdout, stderr,
    timed_out, group_empty)`.
 
-**Interruption.** Steps 3 and 4 run in a `finally`: an exception or
-`KeyboardInterrupt` during the wait still kills and confirms the group (or
-job) before it propagates. The staging then becomes unpublishable, and also
-retained unless confirmation completed. So `discard_staging`, which the
-installer runs on every exit, never deletes staging under a live writer.
+**Interruption.** Before the launch, the staging is marked unpublishable and
+retained, conservatively: a child may exist as soon as it is created. The
+guard that kills and confirms (steps 3 and 4, in a `finally`) opens with the
+first statement after `Popen` returns, so an exception or `KeyboardInterrupt`
+at any later point still kills and confirms the group (or job) before it
+propagates. The marks are cleared only by confirmed shutdown (retention) or a
+completed, confirmed, untimed run (both), or by a launch that started nothing
+(an `OSError` from `Popen`, or a job object that could not be set up). So
+`discard_staging`, which the installer runs on every exit, never deletes
+staging under a live writer.
 
 **Publishability.**
 
@@ -533,8 +538,11 @@ under the lock, and deletes it outside the lock. There is no age test.
 
    A descendant `.txn.lock` raises `NestedRootError`, which is reported and
    skipped. Seam point `prune.after_recheck`. Any other failure to check or
-   retire one candidate (for example, an unreadable subdirectory) is recorded
-   in `errors` and `skipped`, and the remaining candidates still run.
+   retire one candidate (for example, an unreadable subdirectory, or a
+   transaction error for that entry) is recorded in `errors` and `skipped`,
+   and the remaining candidates still run. A lock timeout or a moved root
+   stops the loop instead, because every later candidate would fail the same
+   way; the call still returns the truthful counts of what it removed.
 3. **Retire.** Still under the lock, rename the eligible entry to
    `<namespace>/.txn-retired/<operation-id>/<name>`, then release the lock. A
    candidate that vanished or became ineligible is skipped and not counted.
@@ -547,6 +555,7 @@ under the lock, and deletes it outside the lock. There is no age test.
      unlinked by this call. Links count zero, and nothing is counted before a
      successful unlink.
    - Bytes that fail to delete are reported in `errors` and not counted.
+     Each distinct error is reported once.
 6. **Claim old garbage** (see [Retired garbage](#retired-garbage)).
 7. **Report staging.** Staging is never deleted. Staging directories older
    than `cutoff` are logged as retained, with their paths.
@@ -951,6 +960,7 @@ crash tests, calls `os._exit`); it never replaces behavior.
 | `root.after_init` | After lock and control-area creation, before the post-initialization check |
 | `json.after_read` / `json.before_replace` | Primitive 1 steps 3 and 5 |
 | `run.after_exit` / `run.after_group_empty` | `run_in_staging` steps 2 and 4 |
+| `run.after_launch` / `run.waiting` | Private: the first statement inside the launch guard, and just before the guarded wait |
 | `publish.after_retire` / `publish.before_promote` | `publish_entry` steps 3 and 4 |
 | `prune.after_enumerate` / `prune.after_recheck` | Pruner steps 1 and 2 |
 | `rollback.after_capture` | Commit step 1 |
@@ -1021,9 +1031,11 @@ and treesitter-chunker#363).** It replaces the earlier same-device refusal
   `path` attribute becomes the method `path(namespace)`.
 - *Compatibility.* Split-mount roots, with a separate filesystem at any of
   `downloads/`, `builds/`, `grammars/` or a priority subdirectory, keep
-  working: nothing is refused for that reason. Leftover `.txn/staging/` or
-  `.txn/retired/` trees from an earlier development build are not used and are
-  safe to delete once no install is running.
+  working: nothing is refused for that reason. `.txn/staging/` and
+  `.txn/retired/<op>/<namespace>/…` subtrees left by an earlier development
+  build are not used and are safe to delete once no install is running;
+  `.txn/retired/<op>/rollback` remains the live garbage area for discarded
+  rollback points.
 - *Tests.* treesitter-chunker#323 runs a real install, a republication,
   cleanup and removal with real tmpfs mounts at `downloads/` and `builds/`
   (mutation `retire_outside_namespace` fails it), and checks that every scan
