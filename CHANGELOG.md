@@ -25,6 +25,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- CR-only Python source now parses and reports correct lines through
+  `chunk_file`, `chunk_text`, `chunk_file_streaming` and VFS streaming
+  (`VFSChunker.chunk_file(..., streaming=True)` and files over 10 MiB)
+  (treesitter-chunker#471). Before, the pinned grammar reported a parse error
+  for a file whose lines end in a lone CR, and every chunk reported line 1.
+  Python containing a lone CR is now parsed from a copy in which each lone CR
+  is replaced with LF. The replacement keeps every byte offset, so byte spans,
+  chunk content and content-based IDs still refer to the physical bytes,
+  including the CRs. Call-site lines in symbol-graph `calls` relationships,
+  `call_facts` and Boundary IR call edges now count lone CR line endings too,
+  so LF, CRLF and CR-only Python report the same lines. LF and CRLF files are
+  parsed unchanged. Other languages are unchanged and still count only LF
+  (treesitter-chunker#601), as do complexity line metrics
+  (treesitter-chunker#597). See
+  [raw file newlines](docs/chunk-identity.md#raw-file-newlines-and-the-600-migration).
 - Go build-constraint version hints no longer drop earlier release tags from
   a legacy comma conjunction (treesitter-chunker#437). `// +build go1.10,go1.9`
   now reports `1.10` in either order, as `go1.10,go1.9,linux` and
