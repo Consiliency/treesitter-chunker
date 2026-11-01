@@ -221,3 +221,125 @@ def test_python_report_bounds_match_prerelease_range_order(tmp_path: Path) -> No
         )
     finally:
         manager.database.close()
+
+
+def _javascript_fixture_parses() -> None:
+    fixture = FIXTURES / "javascript/service.js"
+    tree = get_parser("javascript").parse(fixture.read_bytes())
+    assert not tree.root_node.has_error
+    assert tree.root_node.named_child_count > 0
+
+
+def test_es_versions_respect_grammar_min_max_bounds() -> None:
+    """ES editions compare in release order (treesitter-chunker#170)."""
+    _javascript_fixture_parses()
+    grammar = GrammarVersion(
+        "javascript",
+        "1.0",
+        "javascript.so",
+        min_language_version="ES2020",
+        max_language_version="ES2023",
+    )
+    for version in ("ES2020", "ES2021", "ES2023", "es2022"):
+        lang = LanguageVersion("javascript", version)
+        assert grammar.supports_language_version(lang), version
+        assert (
+            grammar.get_compatibility_level(lang) == CompatibilityLevel.FULLY_COMPATIBLE
+        )
+    for version in ("ES3", "ES5", "ES2015", "ES2019", "ES2024", "ES2030"):
+        lang = LanguageVersion("javascript", version)
+        assert not grammar.supports_language_version(lang), version
+        assert grammar.get_compatibility_level(lang) == CompatibilityLevel.INCOMPATIBLE
+
+    legacy = GrammarVersion(
+        "javascript",
+        "0.9",
+        "javascript.so",
+        min_language_version="ES3",
+        max_language_version="ES5",
+    )
+    assert legacy.supports_language_version(LanguageVersion("javascript", "ES3"))
+    assert legacy.supports_language_version(LanguageVersion("javascript", "ES5"))
+    assert not legacy.supports_language_version(LanguageVersion("javascript", "ES2015"))
+
+    assert grammar._compare_versions("ES5", "ES2015") == -1
+    assert grammar._compare_versions("ES2023", "ES2020") == 1
+    assert grammar._compare_versions("es2020", "ES2020") == 0
+
+
+def test_uncomparable_versions_are_rejected_not_silently_accepted() -> None:
+    _javascript_fixture_parses()
+    grammar = GrammarVersion(
+        "javascript",
+        "1.0",
+        "javascript.so",
+        min_language_version="ES2020",
+        max_language_version="ES2023",
+    )
+    for version in ("ESNext", "ES6", "ES4", "ES5.1", "ES2014", "1.5", "next"):
+        lang = LanguageVersion("javascript", version)
+        assert not grammar.supports_language_version(lang), version
+        assert grammar.get_compatibility_level(lang) == CompatibilityLevel.INCOMPATIBLE
+    for left, right in (("ESNext", "ES2020"), ("ES2020", "1.5"), ("x", "1.0")):
+        try:
+            grammar._compare_versions(left, right)
+        except ValueError:
+            pass
+        else:  # pragma: no cover - a failed comparison must not be "equal"
+            raise AssertionError(f"{left!r} vs {right!r} compared")
+
+    # An uncomparable bound rejects instead of admitting every version.
+    open_bound = GrammarVersion(
+        "javascript", "1.0", "javascript.so", min_language_version="ESNext"
+    )
+    assert not open_bound.supports_language_version(
+        LanguageVersion("javascript", "ES2023")
+    )
+
+
+def test_es_grammar_selection_excludes_out_of_range_editions() -> None:
+    _javascript_fixture_parses()
+    schema = CompatibilitySchema()
+    modern = GrammarVersion(
+        "javascript",
+        "2.0",
+        "javascript-modern.so",
+        min_language_version="ES2020",
+        max_language_version="ES2023",
+    )
+    classic = GrammarVersion(
+        "javascript",
+        "1.0",
+        "javascript-classic.so",
+        min_language_version="ES2015",
+        max_language_version="ES2019",
+    )
+    schema.add_grammar_version(modern)
+    schema.add_grammar_version(classic)
+
+    def select(version: str) -> GrammarVersion | None:
+        return schema.find_compatible_grammar(LanguageVersion("javascript", version))
+
+    assert select("ES2015") is classic
+    assert select("ES2019") is classic
+    assert select("ES2020") is modern
+    assert select("ES2023") is modern
+    assert select("ES2030") is None
+    assert select("ES5") is None
+    assert select("ESNext") is None
+
+
+def test_numeric_bounds_are_unchanged_by_es_ordering() -> None:
+    fixture = FIXTURES / "python/app/service.py"
+    assert not get_parser("python").parse(fixture.read_bytes()).root_node.has_error
+    grammar = GrammarVersion(
+        "python",
+        "1.0",
+        "python.so",
+        min_language_version="3.8",
+        max_language_version="3.12",
+    )
+    for version in ("3.8", "3.10", "3.12", "3.11a1", "3.8.1"):
+        assert grammar.supports_language_version(LanguageVersion("python", version))
+    for version in ("3.7", "3.13", "4.0", "ES2020"):
+        assert not grammar.supports_language_version(LanguageVersion("python", version))

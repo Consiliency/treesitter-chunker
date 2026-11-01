@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Language-version bounds on a compatibility `GrammarVersion` no longer let
+  ES-style JavaScript versions through silently (treesitter-chunker#170).
+  `ES3`, `ES5` and the year editions `ES2015` and later now compare in release
+  order, so a grammar bounded `ES2020`–`ES2023` rejects `ES2015` and `ES2030`
+  in `supports_language_version`, `get_compatibility_level` and
+  `CompatibilitySchema.find_compatible_grammar`. A version that cannot be
+  compared fails closed instead of comparing as equal: another ES-shaped value
+  (`ES6`, `ESNext`), an ES edition against a dotted number, or any other
+  unparseable text. Dotted numeric versions compare as before.
 - Compact files from the direct `chunker.export.graphml_exporter` and
   `graphml_yed_exporter` modules no longer double CRLF caller text leaves on
   Windows (treesitter-chunker#488). `export(path, pretty_print=False)` now

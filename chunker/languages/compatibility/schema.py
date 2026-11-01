@@ -9,6 +9,30 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+_ES_PREFIX = re.compile(r"ES", re.IGNORECASE)
+_ES_SUPPORTED = re.compile(r"ES(3|5|20\d\d)", re.IGNORECASE)
+
+
+def _ecmascript_order(version: str) -> int | None:
+    """Return the release-order key of a supported ECMAScript edition.
+
+    The supported family is ES3, ES5 and the year editions ES2015 and later
+    (case-insensitive). They order as ES3 < ES5 < ES2015 < ES2016 < ...
+    (treesitter-chunker#170). Returns ``None`` for text that is not
+    ES-shaped, and raises ``ValueError`` for an ES-shaped value outside the
+    supported family (for example ``ES6``, ``ES4``, ``ES5.1`` or ``ESNext``),
+    which has no defined position in that order.
+    """
+    if not _ES_PREFIX.match(version):
+        return None
+    match = _ES_SUPPORTED.fullmatch(version)
+    if match is None or (len(match.group(1)) == 4 and int(match.group(1)) < 2015):
+        raise ValueError(
+            f"Unsupported ECMAScript version {version!r}; use ES3, ES5 or "
+            "a year edition ES2015 or later"
+        )
+    return int(match.group(1))
+
 
 class CompatibilityLevel(Enum):
     """Compatibility levels for language-grammar pairs."""
@@ -171,21 +195,31 @@ class GrammarVersion:
         if self.language != lang_version.language:
             return False
 
-        # Check minimum version constraint
-        if self.min_language_version:
-            if (
-                self._compare_versions(lang_version.version, self.min_language_version)
-                < 0
-            ):
-                return False
+        try:
+            # Check minimum version constraint
+            if self.min_language_version:
+                if (
+                    self._compare_versions(
+                        lang_version.version, self.min_language_version
+                    )
+                    < 0
+                ):
+                    return False
 
-        # Check maximum version constraint
-        if self.max_language_version:
-            if (
-                self._compare_versions(lang_version.version, self.max_language_version)
-                > 0
-            ):
-                return False
+            # Check maximum version constraint
+            if self.max_language_version:
+                if (
+                    self._compare_versions(
+                        lang_version.version, self.max_language_version
+                    )
+                    > 0
+                ):
+                    return False
+        except ValueError as e:
+            # An uncomparable version never satisfies a bound
+            # (treesitter-chunker#170).
+            logger.warning("%s cannot be checked against %s: %s", lang_version, self, e)
+            return False
 
         return True
 
@@ -212,9 +246,24 @@ class GrammarVersion:
     def _compare_versions(self, v1: str, v2: str) -> int:
         """Compare two version strings.
 
+        Supported ECMAScript editions compare in release order (see
+        ``_ecmascript_order``); dotted numeric versions compare numerically.
+
         Returns:
             -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+
+        Raises:
+            ValueError: If the versions cannot be compared, including an
+                unsupported ES edition or an ES edition against a numeric
+                version. A failed comparison is never reported as equal.
         """
+        es1, es2 = _ecmascript_order(v1), _ecmascript_order(v2)
+        if es1 is not None or es2 is not None:
+            if es1 is None or es2 is None:
+                raise ValueError(
+                    f"Cannot compare ECMAScript and numeric versions {v1!r}, {v2!r}"
+                )
+            return (es1 > es2) - (es1 < es2)
         try:
             # Simple version comparison
             v1_parts = [int(x) for x in re.sub(r"[a-zA-Z].*$", "", v1).split(".")]
@@ -232,9 +281,8 @@ class GrammarVersion:
                     return 1
 
             return 0
-        except Exception as e:
-            logger.error(f"Error comparing versions {v1} and {v2}: {e}")
-            return 0
+        except ValueError as e:
+            raise ValueError(f"Cannot compare versions {v1!r} and {v2!r}") from e
 
 
 @dataclass
