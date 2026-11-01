@@ -5,6 +5,7 @@ import platform
 import shlex
 import shutil
 import subprocess
+import tempfile
 import time
 import uuid
 from typing import Optional
@@ -38,9 +39,9 @@ def fork_terminal(command: str, cwd: Optional[str] = None, capture: bool = False
     if system == "darwin":
         # macOS: use osascript to open a new Terminal window
         output_id = str(uuid.uuid4())[:8]
-        agent_output_file = f"/tmp/fork-agent-{output_id}.json" if log_agent_output else None
-        debug_output_file = f"/tmp/fork-debug-{output_id}.txt" if log_to_file else None
-        done_file = f"/tmp/fork-output-{output_id}.done"
+        agent_output_file = f"{tempfile.gettempdir()}/fork-agent-{output_id}.json" if log_agent_output else None
+        debug_output_file = f"{tempfile.gettempdir()}/fork-debug-{output_id}.txt" if log_to_file else None
+        done_file = f"{tempfile.gettempdir()}/fork-output-{output_id}.done"
 
         if log_agent_output:
             shell_cmd = f"cd {cwd}; {command} | tee {agent_output_file}; touch {done_file}"
@@ -131,10 +132,10 @@ def fork_terminal(command: str, cwd: Optional[str] = None, capture: bool = False
             if wt_path:
                 # Use '--' before wsl.exe to tell wt.exe the remaining args are the command
                 output_id = str(uuid.uuid4())[:8]
-                agent_output_file = f"/tmp/fork-agent-{output_id}.json" if log_agent_output else None
-                debug_output_file = f"/tmp/fork-debug-{output_id}.txt" if log_to_file else None
-                done_file = f"/tmp/fork-output-{output_id}.done"
-                script_file = f"/tmp/fork-script-{output_id}.sh"
+                agent_output_file = f"{tempfile.gettempdir()}/fork-agent-{output_id}.json" if log_agent_output else None
+                debug_output_file = f"{tempfile.gettempdir()}/fork-debug-{output_id}.txt" if log_to_file else None
+                done_file = f"{tempfile.gettempdir()}/fork-output-{output_id}.done"
+                script_file = f"{tempfile.gettempdir()}/fork-script-{output_id}.sh"
 
                 if log_agent_output:
                     script_content = f'''#!/bin/bash -li
@@ -180,9 +181,9 @@ exec bash
         tmux = shutil.which("tmux")
         if tmux:
             output_id = str(uuid.uuid4())[:8]
-            agent_output_file = f"/tmp/fork-agent-{output_id}.json" if log_agent_output else None
-            debug_output_file = f"/tmp/fork-debug-{output_id}.txt" if log_to_file else None
-            done_file = f"/tmp/fork-output-{output_id}.done"
+            agent_output_file = f"{tempfile.gettempdir()}/fork-agent-{output_id}.json" if log_agent_output else None
+            debug_output_file = f"{tempfile.gettempdir()}/fork-debug-{output_id}.txt" if log_to_file else None
+            done_file = f"{tempfile.gettempdir()}/fork-output-{output_id}.done"
 
             if log_agent_output:
                 wrapped_cmd = f"{command} | tee {agent_output_file}; touch {done_file}"
@@ -207,9 +208,9 @@ exec bash
 
         # Fallback: spawn background process in same terminal
         output_id = str(uuid.uuid4())[:8]
-        agent_output_file = f"/tmp/fork-agent-{output_id}.json" if log_agent_output else None
-        debug_output_file = f"/tmp/fork-debug-{output_id}.txt" if log_to_file else None
-        done_file = f"/tmp/fork-output-{output_id}.done"
+        agent_output_file = f"{tempfile.gettempdir()}/fork-agent-{output_id}.json" if log_agent_output else None
+        debug_output_file = f"{tempfile.gettempdir()}/fork-debug-{output_id}.txt" if log_to_file else None
+        done_file = f"{tempfile.gettempdir()}/fork-output-{output_id}.done"
 
         if log_agent_output:
             wrapped_cmd = f"{command} | tee {agent_output_file}; touch {done_file}"

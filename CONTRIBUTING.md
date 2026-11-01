@@ -104,6 +104,17 @@ unsupported coverage claims or a blanket 95% requirement. Coverage slices
 under treesitter-chunker#69 are accepted by their stated behavior contracts
 and named mutations.
 
+### Verification scratch
+
+Put verification and review scratch, such as disposable checkouts, virtual
+environments and generated outputs, under the inherited disk `TMPDIR`. Create
+it with `tempfile.TemporaryDirectory`, `tempfile.mkdtemp` or `mktemp -d`, never
+a literal `/tmp` path, and remove disposable trees in `finally` or an `EXIT`
+trap. pytest's `tmp_path` already follows `TMPDIR`. On shared hosts the system
+temporary directory can be RAM-backed, and scratch left there exhausts memory.
+`tests/test_scratch_root_policy.py` rejects literal `/tmp` roots in tracked
+scripts, tools and tests.
+
 ### Platform checks
 
 The POSIX SIGINT contract observes the actual CLI's return of parsed regular-file

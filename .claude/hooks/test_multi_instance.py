@@ -13,6 +13,7 @@ Test script to verify multi-instance safety of the send_event hook.
 import json
 import subprocess
 import sys
+import tempfile
 import threading
 from pathlib import Path
 
@@ -20,8 +21,9 @@ from pathlib import Path
 def test_multi_instance_safety():
     """Test that multiple instances can run the send_event hook safely."""
 
-    # Create a test transcript file
-    test_transcript = Path("/tmp/test_transcript.jsonl")
+    # Create a test transcript file in disposable scratch under TMPDIR
+    scratch = tempfile.TemporaryDirectory(prefix="multi-instance-")
+    test_transcript = Path(scratch.name) / "test_transcript.jsonl"
     test_data = [{"role": "user", "content": f"Test message {i}"} for i in range(100)]
 
     with open(test_transcript, "w") as f:
@@ -71,21 +73,23 @@ def test_multi_instance_safety():
 
     print("Testing multi-instance safety with 5 concurrent instances...")
 
-    for i in range(5):
-        thread = threading.Thread(target=lambda x=i: results.append((x, run_hook(x))))
-        threads.append(thread)
-        thread.start()
+    try:
+        for i in range(5):
+            thread = threading.Thread(
+                target=lambda x=i: results.append((x, run_hook(x)))
+            )
+            threads.append(thread)
+            thread.start()
 
-    # Wait for all threads to complete
-    for thread in threads:
-        thread.join()
+        # Wait for all threads to complete
+        for thread in threads:
+            thread.join()
+    finally:
+        scratch.cleanup()
 
     # Check results
     successful = sum(1 for _, success in results if success)
     print(f"\nResults: {successful}/5 instances completed successfully")
-
-    # Cleanup
-    test_transcript.unlink(missing_ok=True)
 
     return successful == 5
 
