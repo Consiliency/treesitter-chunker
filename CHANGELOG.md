@@ -34,6 +34,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Compact files from the direct `chunker.export.graphml_exporter` and
+  `graphml_yed_exporter` modules no longer double CRLF caller text leaves on
+  Windows (treesitter-chunker#488). `export(path, pretty_print=False)` now
+  writes exactly the UTF-8 bytes of `export_string(pretty_print=False)`
+  without newline translation, so file and string output parse to the same
+  XML text values on every platform, including the `use_yed=False` route. On Windows,
+  compact files whose caller text contains LF now hold LF instead of CRLF.
+  Pretty files are unchanged. See
+  [the newline policy](docs/graphml_export.md#special-character-handling).
+- The package-level `chunker.export.GraphMLExporter` no longer turns TAB, LF
+  or CR in caller chunk IDs and relationship endpoints into spaces on Python
+  3.12, which could merge distinct nodes and their edges
+  (treesitter-chunker#489). It now serializes with ElementTree instead of
+  reparsing through `xml.dom.minidom`. The declaration, metadata comment, keys,
+  data values and text-leaf newline normalization (CRLF and lone CR become LF)
+  are unchanged, and malformed caller values still raise before anything is
+  written. Indentation is unchanged; empty-element layout (` />`) and text
+  escaping (`"` instead of `&quot;`) may differ. Regenerate affected GraphML
+  files. See
+  [the package exporter notes](docs/graphml_export.md#package-level-structured-exporter).
+- Python context lookup is truthful against the shared real-parser reference
+  fixtures (`tests/fixtures/references/python/`). `find_symbol_definition` now
+  finds module and nested functions, classes, assignments and parameters
+  (including lambda parameters and lambda `*`/`**` splats), lets parameters
+  and locals shadow outer names, and no longer matches class-body names, or a
+  method's or class's own name, from inside it (treesitter-chunker#274).
+  Reference lookup treats loop, `with`, `except` and lambda targets, including
+  starred targets and lambda splat parameters, as bindings and
+  default-parameter values as uses (treesitter-chunker#294). Assignment
+  expressions bind in the nearest enclosing non-comprehension scope, and
+  parameter defaults are evaluated in the scope that contains the function
+  (treesitter-chunker#278).
+
+- The SQLite chunk cache (`ASTCache`, used by default by `ParallelChunker`,
+  `chunk_files_parallel` and `chunk_directory_parallel`) no longer returns core
+  chunks for a streaming request or the reverse, and no longer reuses entries
+  across runtime/grammar upgrades (treesitter-chunker#358). Entries are keyed
+  by an extraction identity: the mode (`extraction="core"` or `"streaming"` on
+  `get_cached_chunks`/`cache_chunks`), the chunker, Tree-sitter and
+  language-pack versions, the grammar's ABI, node-kind count, symbol and
+  provenance, and the effective language configuration. Languages without a
+  reliable identity (today, all except Python and JavaScript; see
+  treesitter-chunker#543) bypass the cache, which previously could serve them
+  stale chunks. `cache_chunks` now returns whether it stored the entry. The
+  parallel helpers accept `cache_dir=` to keep the cache in a private
+  directory. `CACHE_VERSION` is now `3.0`, and entries move to a new
+  `chunk_cache_v3` table: entries from earlier releases are ignored, so each file
+  is re-extracted once after upgrading. Delete `ast_cache.db` to reclaim their
+  space once no older release shares it.
+
 - `UserGrammarTools.install_grammar` and `update_grammar` no longer overwrite
   the installed grammar library in place, which could crash a process that had
   it loaded (treesitter-chunker#162). A new `publish_native_grammar` copies the
@@ -139,6 +189,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   treesitter-chunker#184, treesitter-chunker#185). Structural validity does not
   establish native safety or provenance; see the packaging guide for profile limits.
 
+- JavaScript context lookup is truthful against the shared real-parser
+  reference fixtures (`tests/fixtures/references/javascript/`). A generator
+  declaration, also when exported, now yields the same signature-only
+  dependency context as an ordinary function instead of its whole body
+  (treesitter-chunker#289). Reference lookup treats default-import,
+  named function-expression, bare arrow-parameter, default-parameter and
+  array-pattern identifiers as bindings, and finds the reference in a
+  shorthand object property such as `{ value }` (treesitter-chunker#293).
+
 ### Breaking
 
 - Require Python 3.12 or newer for the next main and BAML companion releases
@@ -170,6 +229,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `healthy`; one whose bytes differ from the installed RECORD reports
   `integrity_mismatch`, which no pin overrides (one trust rule with parsing).
   `UserGrammarTools` no longer stages or probes a library it has no pin for.
+  It also refuses to publish over a grammar file listed in the installed
+  package's RECORD (checked before any clone in install and update); a local
+  link elsewhere that aliases a shipped grammar can still be replaced.
 - Align the remaining Python version declarations with the 3.12 floor from
   treesitter-chunker#493: the release-process spec, getting-started, user guide,
   deployment, performance-core and VS Code docs, the conda recipe, all three
