@@ -13,13 +13,14 @@ class UniversalRegistryContract(ABC):
     @abstractmethod
     def get_parser(
         language: str,
-        auto_download: bool = True,
+        auto_download: bool | None = None,
     ) -> tree_sitter.Parser:
-        """Get a parser for a language, downloading if needed
+        """Get a parser for an installed, admitted language
 
         Args:
             language: Language name
-            auto_download: Automatically download if not available
+            auto_download: Deprecated and ignored; passing it warns.
+                Grammars are never downloaded or built automatically.
 
         Returns:
             Configured parser instance
@@ -29,7 +30,7 @@ class UniversalRegistryContract(ABC):
 
         Postconditions:
             - Parser is configured with language
-            - Grammar downloaded if auto_download=True
+            - Nothing is downloaded or built
         """
 
     @staticmethod

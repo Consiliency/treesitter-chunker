@@ -32,7 +32,7 @@ Key Features
 * **Multiple Export Formats**: JSON, JSONL, Parquet, GraphML, Neo4j, SQLite
 * **Thread Safe**: Designed for concurrent processing
 * **Zero Config**: Works out of the box with sensible defaults
-* **Universal Language Support**: Auto-download 100+ languages
+* **Universal Language Support**: 100+ languages through the pinned grammar pack
 
 Quick Example
 -------------

@@ -92,7 +92,7 @@ class _ParserState:
             # it is read once, when this registry is built.
             pins, defect = self._user_config_pins(path)
             registry = LanguageRegistry(path, trusted_artifacts=pins)
-            registry._pin_file_defect = defect
+            registry.record_pin_file_defect(defect)
             factory = ParserFactory(registry)
             self.registry = registry
             self.factory = factory  # published last; the sentinel above gates on it

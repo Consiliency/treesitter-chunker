@@ -36,8 +36,7 @@ class ZeroConfigContract(ABC):
             - Language name is valid
 
         Postconditions:
-            - Language grammar installed if needed
-            - Parser available for language
+            - Nothing is downloaded, built or updated
         """
 
     @staticmethod
@@ -61,9 +60,9 @@ class ZeroConfigContract(ABC):
             - File exists and is readable
 
         Postconditions:
-            - File chunked using best available method
-            - Grammar downloaded if needed
-            - Falls back to text chunking if needed
+            - File chunked with an installed, admitted grammar when available
+            - Nothing is downloaded or built
+            - Falls back to text chunking otherwise
         """
 
     @staticmethod
@@ -90,7 +89,7 @@ class ZeroConfigContract(ABC):
         language: str,
         token_limit: int | None = None,
     ) -> AutoChunkResult:
-        """Chunk text content with automatic setup
+        """Chunk text with installed, admitted grammars or text fallback
 
         Args:
             text: Text content to chunk
@@ -105,8 +104,9 @@ class ZeroConfigContract(ABC):
             - Language is specified
 
         Postconditions:
-            - Grammar downloaded if needed
-            - Text chunked appropriately
+            - Nothing is downloaded or built
+            - Text chunked with an installed, admitted grammar, or by the text
+              fallback otherwise
         """
 
     @staticmethod
@@ -126,13 +126,14 @@ class ZeroConfigContract(ABC):
     @abstractmethod
     def get_chunker_for_language(
         language: str,
-        auto_download: bool = True,
+        auto_download: bool | None = None,
     ) -> Any:
         """Get a chunker instance for a specific language
 
         Args:
             language: Language name
-            auto_download: Download grammar if needed
+            auto_download: Deprecated and ignored; passing it warns.
+                Grammars are never downloaded or built automatically.
 
         Returns:
             Configured chunker instance
@@ -142,21 +143,21 @@ class ZeroConfigContract(ABC):
 
         Postconditions:
             - Chunker ready to use
-            - Grammar downloaded if auto_download=True
+            - Nothing is downloaded or built
         """
 
     @staticmethod
     @abstractmethod
     def preload_languages(languages: list[str]) -> dict[str, bool]:
-        """Preload multiple language grammars
+        """Report which languages are available (nothing is installed)
 
         Args:
             languages: List of languages to preload
 
         Returns:
-            Dict of language -> success status
+            Dict of language -> availability (True only when admitted)
 
         Postconditions:
-            - All requested grammars downloaded
-            - Ready for offline use
+            - Nothing is downloaded, built or installed
+            - True only for languages an installed, admitted source provides
         """

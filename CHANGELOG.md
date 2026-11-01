@@ -54,6 +54,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   escaping (`"` instead of `&quot;`) may differ. Regenerate affected GraphML
   files. See
   [the package exporter notes](docs/graphml_export.md#package-level-structured-exporter).
+- `GrammarAnalyzer.analyze_grammar_symbols` now reports why its symbol lists
+  may be empty. The result has an `analysis` entry whose `status` is
+  `complete`, `deadline_expired`, `unavailable` or `failed`, with
+  `deadline_seconds` and a `detail` message. Before, an `nm` run killed at its
+  five-second deadline under host load returned the same empty lists as a
+  grammar with no symbols (treesitter-chunker#207). The deadline is unchanged,
+  and the new keyword-only `timeout` defaults to it. Code that iterates every
+  value of the result should skip the non-list `analysis` entry, as the
+  analyzer's own symbol counting and feature detection already do.
 - Python context lookup is truthful against the shared real-parser reference
   fixtures (`tests/fixtures/references/python/`). `find_symbol_definition` now
   finds module and nested functions, classes, assignments and parameters
@@ -66,6 +75,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expressions bind in the nearest enclosing non-comprehension scope, and
   parameter defaults are evaluated in the scope that contains the function
   (treesitter-chunker#278).
+
+- `GrammarManager.cleanup_cache` can no longer delete a cache entry that an
+  installer publishes while cleanup runs, and `bytes_freed` now counts only
+  bytes actually deleted (treesitter-chunker#323). Installers clone and build
+  in private staging inside each namespace (`downloads/.txn-staging/<id>/`,
+  `builds/.txn-staging/<id>/`), kill and confirm the whole process group
+  (POSIX) or job (Windows) of every `git`/build subprocess, also when
+  interrupted, and publish `downloads/` and `builds/` entries only after the
+  installation, by rename under the cache root lock. Cleanup re-checks each
+  candidate under the lock, retires it into the namespace's `.txn-retired/`
+  and deletes it from there; one unreadable entry is reported without
+  stopping the rest. Because every rename stays inside its namespace, a
+  separately mounted `downloads/` or `builds/` keeps working. Links and Windows
+  junctions inside entries are removed as leaves and never followed. A build
+  or `git rev-parse` that times out, or leaves processes behind, fails the
+  install without falling back to another build method. Failure to publish a
+  cache entry after a successful installation is a warning. A failed install
+  no longer removes other installs' published cache entries.
+  `GrammarInstaller.remove_grammar` removes cache entries the same way. The
+  hidden `.txn-*` folders are skipped by grammar listing and the fallback
+  cleanup.
 
 - `GrammarValidator` no longer loses validation records written by another
   validator or process on the same cache root, and no longer follows a link at
@@ -257,6 +287,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LanguageNotFoundError` instead of cloning and compiling a grammar into
   `grammars/` and `build/` under the current directory. Build deliberately with
   the grammar commands and pin the result.
+- **Behaviour change (treesitter-chunker#362, maintainer decision 2026-11-01):**
+  the automatic download-and-build in `UniversalLanguageRegistry.get_parser` and
+  the zero-config API (`ZeroConfigAPI`) is retired too.
+  - `get_parser` raises `LanguageNotFoundError` with the cause and guidance: build
+    the grammar with the grammar commands, then pin it in `trusted-artifacts.json`
+    or with `--trusted-artifacts`. Its list of available languages comes from the
+    local registry (package-supplied, language-pack and admitted local
+    grammars), so no discovery request is made.
+  - `ensure_language` and `preload_languages` report availability and never
+    install or update anything. A language counts as available only when the
+    registry provides a parser for it; an install recorded in
+    `registry_metadata.json` whose output has no pin does not count.
+  - `get_chunker_for_language` no longer installs a missing grammar.
+    `AutoChunkResult.grammar_downloaded` is always `False`.
+  - The `auto_download` argument of `get_parser` and `get_chunker_for_language`
+    is still accepted but has no effect, and passing it emits a
+    `DeprecationWarning`. The registry and zero-config contracts and stubs
+    follow suit.
+  - The explicit `install_language`/`update_language` methods are unchanged.
 - **Behaviour change (treesitter-chunker#362):** every `grammar` subcommand now
   resolves its pin source first. A missing or defective `--trusted-artifacts`
   file, or a present but defective user-config pin file, exits 2 naming the

@@ -25,15 +25,15 @@ class UniversalRegistryStub(UniversalRegistryContract):
     @staticmethod
     def get_parser(
         language: str,
-        auto_download: bool = True,
+        auto_download: bool | None = None,
     ) -> tree_sitter.Parser:
-        """Stub that returns a parser instance"""
+        """Stub that returns a parser instance for an installed language.
+
+        ``auto_download`` is inert, as in the real registry: nothing is
+        installed on demand.
+        """
         if language not in UniversalRegistryStub._installed:
-            if auto_download and language in UniversalRegistryStub._available:
-                UniversalRegistryStub._installed.add(language)
-                UniversalRegistryStub._versions[language] = "0.20.0"
-            else:
-                raise ValueError(f"Language {language} not available")
+            raise ValueError(f"Language {language} not available")
 
         # Return a new parser instance
         return tree_sitter.Parser()
