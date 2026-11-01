@@ -8,6 +8,10 @@ from chunker.context.scope_analyzer import BaseScopeAnalyzer
 from chunker.context.symbol_resolver import BaseSymbolResolver
 from chunker.interfaces.context import ContextItem, ContextType
 
+# Leaf nodes that can name a variable in an expression. A shorthand object
+# property such as ``{ value }`` reads the ``value`` binding.
+_REFERENCE_NODE_TYPES = frozenset({"identifier", "shorthand_property_identifier"})
+
 
 class JavaScriptContextExtractor(BaseContextExtractor):
     """JavaScript-specific context extraction."""
@@ -78,6 +82,7 @@ class JavaScriptContextExtractor(BaseContextExtractor):
         """Extract just the declaration part of a scope."""
         extraction_methods = {
             "function_declaration": JavaScriptContextExtractor._extract_function_declaration,
+            "generator_function_declaration": JavaScriptContextExtractor._extract_function_declaration,
             "function_expression": JavaScriptContextExtractor._extract_function_expression,
             "arrow_function": JavaScriptContextExtractor._extract_function_expression,
             "method_definition": JavaScriptContextExtractor._extract_method_definition,
@@ -230,7 +235,7 @@ class JavaScriptContextExtractor(BaseContextExtractor):
         references = []
 
         def find_identifiers(n: Node):
-            if n.type == "identifier":
+            if n.type in _REFERENCE_NODE_TYPES:
                 parent = n.parent
                 if parent and not self._is_definition_context(n):
                     name = source[n.start_byte : n.end_byte].decode("utf-8")
@@ -255,6 +260,8 @@ class JavaScriptContextExtractor(BaseContextExtractor):
             return False
         if parent.type in {"function_declaration", "generator_function_declaration"}:
             return parent.child_by_field_name("name") == identifier_node
+        if JavaScriptContextExtractor._is_binding_identifier(identifier_node):
+            return True
         if parent.type == "class_declaration":
             for i, child in enumerate(parent.children):
                 if child == identifier_node and i < 2:
@@ -287,6 +294,59 @@ class JavaScriptContextExtractor(BaseContextExtractor):
                 return True
         return parent.type in {"import_specifier", "namespace_import"}
 
+    @staticmethod
+    def _is_binding_identifier(identifier_node: Node) -> bool:
+        """Check for default-import, function-expression, parameter and pattern bindings."""
+        parent = identifier_node.parent
+        if parent is None:
+            return False
+        if parent.type == "import_clause":
+            return True
+        if parent.type in {"function_expression", "generator_function"}:
+            return parent.child_by_field_name("name") == identifier_node
+        if parent.type == "arrow_function":
+            return parent.child_by_field_name("parameter") == identifier_node
+        if parent.type == "array_pattern" or (
+            parent.type == "assignment_pattern"
+            and parent.child_by_field_name("left") == identifier_node
+        ):
+            return JavaScriptContextExtractor._is_declared_pattern(parent)
+        return False
+
+    @staticmethod
+    def _is_declared_pattern(pattern: Node) -> bool:
+        """Check whether a pattern declares names rather than assigning them.
+
+        ``const [a = 1] = xs`` and ``function f([a]) {}`` declare ``a``;
+        ``[a, b] = [b, a]`` and ``for ([a] of xs)`` write to an existing
+        binding, so their targets stay references, like ``a = 1``.
+        """
+        outer = pattern
+        while outer.parent is not None and outer.parent.type in {
+            "array_pattern",
+            "object_pattern",
+            "pair_pattern",
+            "assignment_pattern",
+            "object_assignment_pattern",
+            "rest_pattern",
+        }:
+            outer = outer.parent
+        container = outer.parent
+        if container is None:
+            return False
+        if container.type == "formal_parameters":
+            return True
+        if container.type == "variable_declarator":
+            return container.child_by_field_name("name") == outer
+        if container.type == "catch_clause":
+            return container.child_by_field_name("parameter") == outer
+        if container.type == "for_in_statement":
+            return (
+                container.child_by_field_name("left") == outer
+                and container.child_by_field_name("kind") is not None
+            )
+        return False
+
     def _find_definition(
         self,
         name: str,
@@ -306,6 +366,7 @@ class JavaScriptContextExtractor(BaseContextExtractor):
                 content = self._extract_type_declaration(def_node, source)
             elif def_node.type in {
                 "function_declaration",
+                "generator_function_declaration",
                 "function_expression",
                 "arrow_function",
                 "method_definition",
@@ -350,8 +411,8 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
 
     @staticmethod
     def _is_identifier_node(node: Node) -> bool:
-        """Check if a node is an identifier."""
-        return node.type == "identifier"
+        """Check if a node can name a variable."""
+        return node.type in _REFERENCE_NODE_TYPES
 
     @staticmethod
     def _is_definition_node(node: Node) -> bool:
