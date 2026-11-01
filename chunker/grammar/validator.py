@@ -1,11 +1,7 @@
 """Tree-sitter grammar validator implementation."""
 
-import ctypes
 import logging
-import platform
 from pathlib import Path
-
-from chunker._internal.registry import LanguageRegistry
 from chunker.exceptions import ChunkerError
 from chunker.interfaces.grammar import GrammarValidator
 
@@ -16,53 +12,37 @@ class ValidationError(ChunkerError):
     """Error during grammar validation."""
 
 
+RETIREMENT_MESSAGE = (
+    "TreeSitterGrammarValidator is retired (treesitter-chunker#400, "
+    "treesitter-chunker#362): use "
+    "chunker.grammar_management.core.GrammarValidator(cache_dir, "
+    "trusted_artifacts=...) and its check_abi_compatibility(path, language) / "
+    "validate_grammar(...), or chunker.grammar.integrity.probe_native_grammar"
+)
+
+
 class TreeSitterGrammarValidator(GrammarValidator):
-    """Validates grammar compatibility and correctness."""
+    """Retired legacy validator (inventory V1).
+
+    Its constructor never worked (it omitted ``LanguageRegistry.library_path``,
+    treesitter-chunker#400), and it loaded grammars without native admission.
+    The name stays importable until the next major version; constructing it
+    raises :class:`ValidationError` naming the replacement, and
+    :meth:`check_abi_compatibility` performs no native load.
+    """
 
     def __init__(self):
-        """Initialize grammar validator."""
-        self._registry = LanguageRegistry()
+        """Raise: the class is retired."""
+        raise ValidationError(RETIREMENT_MESSAGE)
 
     @staticmethod
     def check_abi_compatibility(grammar_path: Path) -> tuple[bool, str | None]:
-        """Check if grammar ABI is compatible.
-
-        Args:
-            grammar_path: Path to compiled grammar
+        """Report retirement without loading ``grammar_path``.
 
         Returns:
-            Tuple of (is_compatible, error_message)
+            ``(False, <retirement message>)``
         """
-        if not grammar_path.exists():
-            return False, f"Grammar file not found: {grammar_path}"
-        try:
-            system = platform.system()
-            if system == "Windows":
-                lib = ctypes.CDLL(str(grammar_path))
-            else:
-                lib = ctypes.cdll.LoadLibrary(str(grammar_path))
-            language_name = grammar_path.stem
-            if language_name.startswith("lib"):
-                language_name = language_name[3:]
-            func_name = f"tree_sitter_{language_name}"
-            if not hasattr(lib, func_name):
-                for variant in [
-                    language_name.replace("-", "_"),
-                    language_name.replace("_", ""),
-                ]:
-                    func_name = f"tree_sitter_{variant}"
-                    if hasattr(lib, func_name):
-                        break
-                else:
-                    return (False, f"No tree_sitter function found in {grammar_path}")
-            lang_func = getattr(lib, func_name)
-            lang_func.restype = ctypes.c_void_p
-            lang_ptr = lang_func()
-            if not lang_ptr:
-                return False, "Language function returned null pointer"
-            return True, None
-        except (IndexError, KeyError) as e:
-            return False, f"Failed to load grammar: {e!s}"
+        return False, RETIREMENT_MESSAGE
 
     def validate_node_types(
         self,

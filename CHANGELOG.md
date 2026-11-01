@@ -150,6 +150,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Retired (treesitter-chunker#400, treesitter-chunker#362):** the legacy
+  `chunker.grammar.TreeSitterGrammarValidator`, whose constructor never worked,
+  now raises `ValidationError` naming the replacement
+  (`chunker.grammar_management.core.GrammarValidator(cache_dir,
+  trusted_artifacts=...)` or `probe_native_grammar`). Its static
+  `check_abi_compatibility` and `GrammarDownloadManager.validate_grammar` return
+  `(False, <retirement message>)` and never load the file. The names stay
+  importable until the next major version.
+- **Behaviour change (treesitter-chunker#362):** the legacy
+  `chunker.grammar_manager.GrammarManager` accepts keyword-only
+  `trusted_artifacts`; `get_available_languages()` reports only pinned languages
+  whose combined-library bytes pass `probe_native_grammar`, each on its own pin,
+  without mapping the library in-process. Without pins it returns an empty set
+  (configured or directory names are no longer reported).
 - **Behaviour change (treesitter-chunker#362):** every `grammar` subcommand now
   resolves its pin source first. A missing or defective `--trusted-artifacts`
   file, or a present but defective user-config pin file, exits 2 naming the

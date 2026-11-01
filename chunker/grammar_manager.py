@@ -1,11 +1,14 @@
 """Grammar manager implementation for tree-sitter language support."""
 
-import ctypes
 import json
 import logging
+import os
 import subprocess
 import threading
+from collections.abc import Mapping
 from pathlib import Path
+
+from ._internal.trusted_artifacts import copy_trusted_artifacts
 from .contracts.grammar_manager_contract import GrammarManagerContract
 from .exceptions import ChunkerError
 from .grammar.source_validation import validate_grammar_source
@@ -25,6 +28,8 @@ class GrammarManager(GrammarManagerContract):
         root_dir: Path | None = None,
         config_file: Path | None = None,
         max_workers: int = 4,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
     ):
         """Initialize the grammar manager.
 
@@ -32,7 +37,10 @@ class GrammarManager(GrammarManagerContract):
             root_dir: Root directory for grammars (defaults to project root)
             config_file: Path to grammar sources config (defaults to config/grammar_sources.json)
             max_workers: Maximum parallel workers for fetch/compile operations
+            trusted_artifacts: Approved pins (language -> {"sha256": hex}) for
+                the combined library, copied here; ``None`` means no pins
         """
+        self._trusted_artifacts = copy_trusted_artifacts(trusted_artifacts)
         self._root_dir = root_dir or Path(__file__).parent.parent
         self._config_file = (
             config_file or self._root_dir / "config" / "grammar_sources.json"
@@ -245,39 +253,24 @@ class GrammarManager(GrammarManagerContract):
             return results
 
     def get_available_languages(self) -> set[str]:
-        """Get set of languages with compiled grammars.
+        """Get the languages whose combined-library bytes are admitted (inventory M1).
+
+        Only pinned language keys are tried, each admitted on its own pin
+        through ``probe_native_grammar`` (rule 5). The library is never mapped
+        in this process and its symbols are never read. Without pins the
+        result is the empty set.
 
         Returns:
-            Set of available language identifiers
+            Set of admitted language identifiers
         """
-        if not self._lib_path.exists():
+        if not self._trusted_artifacts or not os.path.lexists(self._lib_path):
             return set()
-        try:
-            lib = ctypes.CDLL(str(self._lib_path))
-            available = set()
-            for lang in self._grammar_sources:
-                symbol_name = f"tree_sitter_{lang}"
-                try:
-                    getattr(lib, symbol_name)
-                    available.add(lang)
-                except AttributeError:
-                    pass
-            for gram_dir in self._grammars_dir.glob("tree-sitter-*"):
-                if gram_dir.is_dir():
-                    lang = gram_dir.name.replace("tree-sitter-", "")
-                    symbol_name = f"tree_sitter_{lang}"
-                    try:
-                        getattr(lib, symbol_name)
-                        available.add(lang)
-                    except AttributeError:
-                        pass
-            return available
-        except Exception as e:
-            # Fallback to directory-based discovery if library fails to load or symbols are missing
-            logger.error("Error discovering available languages: %s", e)
-            available = set()
-            for gram_dir in self._grammars_dir.glob("tree-sitter-*"):
-                if gram_dir.is_dir():
-                    lang = gram_dir.name.replace("tree-sitter-", "")
-                    available.add(lang)
-            return available
+        from chunker._internal.native_admission import admit_native_candidate
+
+        library = self._lib_path.absolute()
+        available = set()
+        for lang in sorted(self._trusted_artifacts):
+            result, _ = admit_native_candidate(library, lang, self._trusted_artifacts)
+            if result.supported:
+                available.add(lang)
+        return available

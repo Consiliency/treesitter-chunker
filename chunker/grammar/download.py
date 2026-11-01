@@ -3,7 +3,6 @@
 Handles downloading, extracting, and compiling tree-sitter grammars from GitHub.
 """
 
-import ctypes
 import json
 import os
 import platform
@@ -26,6 +25,13 @@ from chunker.contracts.download_contract import (
 )
 from chunker.grammar.integrity import ArtifactIntegrityError, verify_artifact
 from chunker.utils.json import safe_json_loads
+
+
+VALIDATE_GRAMMAR_RETIRED = (
+    "GrammarDownloadManager.validate_grammar is retired and performs no native "
+    "load (treesitter-chunker#362): admit the grammar with "
+    "chunker.grammar.integrity.probe_native_grammar and an approved SHA-256 pin"
+)
 
 
 class GrammarDownloadManager(GrammarDownloadContract):
@@ -403,17 +409,15 @@ class GrammarDownloadManager(GrammarDownloadContract):
 
     @staticmethod
     def validate_grammar(grammar_path: Path) -> tuple[bool, str | None]:
-        """Validate a compiled grammar"""
+        """Report on a compiled grammar without loading it (inventory D1, retired).
+
+        This static method cannot receive pins, so it never loads the file. It
+        keeps its non-native checks and otherwise returns ``(False,
+        <retirement message>)``. Admit grammars with
+        ``chunker.grammar.integrity.probe_native_grammar`` and an approved pin.
+        """
         if not grammar_path.exists():
             return False, "Grammar file does not exist"
         if grammar_path.suffix != ".so":
             return False, "Grammar file must be a .so file"
-        try:
-            lib = ctypes.CDLL(str(grammar_path))
-            lang_name = grammar_path.stem
-            expected_symbol = f"tree_sitter_{lang_name}"
-            if hasattr(lib, expected_symbol):
-                return True, None
-            return False, f"Missing expected symbol: {expected_symbol}"
-        except (AttributeError, FileNotFoundError, OSError) as e:
-            return False, f"Failed to load grammar: {e}"
+        return False, VALIDATE_GRAMMAR_RETIRED

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from chunker.contracts.download_contract import DownloadProgress
-from chunker.grammar.download import GrammarDownloadManager
+from chunker.grammar.download import VALIDATE_GRAMMAR_RETIRED, GrammarDownloadManager
 
 
 class TestGrammarDownloadManager:
@@ -74,12 +74,11 @@ class TestGrammarDownloadManager:
             assert result == (False, "Grammar file must be a .so file")
             so_file = cache_dir / "python.so"
             so_file.touch()
-            with patch("ctypes.CDLL") as mock_cdll:
-                mock_lib = MagicMock()
-                mock_lib.tree_sitter_python = True
-                mock_cdll.return_value = mock_lib
+            # Retired (treesitter-chunker#362, D1): no native load, ever.
+            with patch("ctypes.CDLL", side_effect=AssertionError("loaded")) as cdll:
                 result = manager.validate_grammar(so_file)
-                assert result == (True, None)
+            assert result == (False, VALIDATE_GRAMMAR_RETIRED)
+            cdll.assert_not_called()
 
     @classmethod
     def test_clean_cache(cls):
