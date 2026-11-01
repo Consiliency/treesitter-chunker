@@ -42,6 +42,7 @@ COMMON_TESTS = [
     "tests/test_grammar_info_exit_contract.py",
     "tests/test_grammar_candidate_compatibility.py",
     "tests/test_grammar_compatibility_contract.py",
+    "tests/test_grammar_global_constraints.py",
     "tests/test_grammar_compatibility_cleanup_contract.py",
     "tests/test_compatibility_database_reload.py",
     "tests/test_language_compatibility_records_contract.py",

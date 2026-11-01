@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `SmartSelector.select_multiple_grammars` no longer accepts
+  `global_constraints` and silently ignores them (treesitter-chunker#344). No
+  cross-language constraint is supported, so a nonempty mapping now raises
+  `ValueError`, naming its keys, before any selection runs. `None` and `{}` behave as
+  before. Use `select_best_grammar(language, constraints=...)` for
+  per-language constraints.
 - Compact files from the direct `chunker.export.graphml_exporter` and
   `graphml_yed_exporter` modules no longer double CRLF caller text leaves on
   Windows (treesitter-chunker#488). `export(path, pretty_print=False)` now
