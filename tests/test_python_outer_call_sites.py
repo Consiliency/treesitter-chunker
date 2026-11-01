@@ -255,3 +255,59 @@ def test_non_call_relationships_and_symbols_are_unchanged(tmp_path):
     assert added == ["getattr(obj, 'audit')"]
     local = [row for row in calls(with_call_graph) if row["reference"] == "audit"]
     assert len(local) == 1 and local[0]["resolution"] == "resolved"
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_parenthesized_callable_return_outer_sites(tmp_path, mode):
+    path, raw = write(
+        tmp_path,
+        "def audit():\n    return 1\n\n"
+        "def caller(o, h, g):\n"
+        "    (g())()\n"
+        "    ((getattr(o, 'audit')))(1)\n"
+        "    (  # audit\n        g())()\n"
+        "    (g)()\n"
+        "    h['audit']()\n",
+    )
+    rows = calls(
+        symbol_graph.extract_symbol_graph(
+            path, "python", resolution_mode=mode, fail_fast=True
+        )
+    )
+    plain = raw.index(b"(g())()")
+    nested = raw.index(b"((getattr")
+    commented = raw.index(b"(  # audit")
+    expected = [
+        expected_site(raw, "(g())", plain),
+        expected_site(raw, "g", plain + 1),
+        expected_site(raw, "((getattr(o, 'audit')))", nested),
+        expected_site(raw, "getattr", nested + 2),
+        expected_site(raw, "(  # audit\n        g())", commented),
+        expected_site(raw, "g", raw.index(b"g())()", commented)),
+    ]
+
+    def order(site):
+        return tuple(site.values())
+
+    # ``(g)()`` (a parenthesized name) and ``h['audit']()`` (a subscript) are
+    # not callable-return expressions and stay outside this contract.
+    assert sorted(map(observed, rows), key=order) == sorted(expected, key=order)
+    caller = owner_id(path, "caller")
+    audit = owner_id(path, "audit")
+    for row in rows:
+        assert row["from"] == caller
+        assert_unresolved(row, raw)
+        assert audit not in row["candidates"]
+    assert len({row["call_site_id"] for row in rows}) == len(rows)
+    (chunk,) = [c for c in chunk_file(path, "python") if "caller" in c.content[:12]]
+    # Chunk metadata names are the raw callee bytes, parentheses included.
+    assert sorted(chunk.metadata["calls"]) == sorted(
+        [
+            "(g())",
+            "g",
+            "((getattr(o, 'audit')))",
+            "getattr",
+            "(  # audit\n        g())",
+            "g",
+        ]
+    )

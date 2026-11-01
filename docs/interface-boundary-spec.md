@@ -214,8 +214,22 @@ and parenthesized callees, stay unresolved even if the old resolver could match
 their whole spelling. This is a conservative resolution limit, not invalid syntax.
 Previously emitted graph/IR resolution annotations and derived digests can change;
 consumers must qualify the corrected source profile and recapture affected outputs
-rather than reinterpret historical captures. Unrecognized forms, including the
-outer call in Python `getattr(obj, 'audit')()`, remain a separate emission limit.
+rather than reinterpret historical captures.
+
+In Python, the outer call of a callable-return expression is its own syntax
+`calls` fact (treesitter-chunker#516). This covers `getattr(obj, 'audit')()`,
+`f()()` (one fact per call level) and a parenthesized inner call such as
+`(f())()`. Its `reference` is the raw callee: the inner call expression's
+exact source bytes, with any parentheses or comments. `callee_byte_start` and
+`callee_byte_end` span that expression, and `location` spans the whole outer
+call. It has its own `call:` site ID, owner and lines. The fact is always
+unresolved: the guard above gives it no candidates, so it never binds a local
+definition through an incidental name. The inner call's fact is unchanged,
+including its ID. Consumers must recapture graph/IR outputs and the derived
+counts, memberships, aggregates and digests, because one `calls` edge is added
+per outer site. Other complex callees are not emitted as outer sites: subscript
+callees (`h['a']()`), parenthesized names (`(f)()`), and the JavaScript
+equivalents (treesitter-chunker#602).
 
 Per-site calls can increase edge counts, node memberships, clustering weights
 and dependency aggregates. Regenerate affected graph/IR outputs and their

@@ -26,16 +26,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Python call extraction now records the outer call of a callable-return
-  expression, such as `getattr(obj, 'audit')()` or `f()()`, as its own call
-  site (treesitter-chunker#516). Before, only the inner call (`getattr`) was
-  observed. The outer site's raw callee is the inner call's source text
-  (`getattr(obj, 'audit')`), with its byte span, the enclosing owner and a
-  distinct `call_site_id`; the inner site is unchanged. Such complex callees
-  stay unresolved and never bind a local definition by an incidental name.
-  Chunk `calls`/`call_spans` metadata and symbol-graph `calls` relationships
-  and `call_facts` gain these entries. Boundary IR goldens are unchanged (no
-  fixture contains such a call). Other complex callees, such as subscripts and
-  parenthesized expressions, and other languages are unchanged.
+  expression, such as `getattr(obj, 'audit')()`, `f()()` or `(f())()`, as its
+  own call site (treesitter-chunker#516). Before, only the inner call
+  (`getattr`) was observed. The outer site's raw callee is the inner call's
+  exact source text, parentheses included (`getattr(obj, 'audit')`, `(f())`),
+  with its byte span, the enclosing owner and a distinct `call_site_id`; the
+  inner site and its ID are unchanged. Such complex callees stay unresolved
+  and never bind a local definition by an incidental name. Chunk
+  `calls`/`call_spans` metadata, symbol-graph `calls` relationships and
+  `call_facts`, and Boundary IR `calls` edges gain one entry per outer site,
+  so recapture graph/IR outputs and their derived counts and digests. The
+  Python Boundary IR fixture now includes such a call, and its golden is
+  regenerated. Subscript callees (`h['a']()`), parenthesized names and
+  JavaScript are unchanged (treesitter-chunker#602). See
+  [the Boundary IR specification](docs/interface-boundary-spec.md).
 - Go build-constraint version hints no longer drop earlier release tags from
   a legacy comma conjunction (treesitter-chunker#437). `// +build go1.10,go1.9`
   now reports `1.10` in either order, as `go1.10,go1.9,linux` and
