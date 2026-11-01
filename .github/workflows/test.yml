@@ -12,6 +12,8 @@ on:
 
 jobs:
   test:
+    permissions:
+      contents: read
     runs-on: ${{ matrix.platform }}
     env:
       UV_PYTHON: '3.12'

@@ -52,6 +52,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `go1.10,café,go1.9` do (tags follow Go's Unicode tag rule); before, only
   the last `goX.Y` tag on the line counted. OR (whitespace) and negated legacy
   terms are unchanged, and `//go:build` and `go.mod` precedence are unchanged.
+- Language-version bounds on a compatibility `GrammarVersion` no longer let
+  ES-style JavaScript versions through silently (treesitter-chunker#170).
+  `ES3`, `ES5` and the year editions `ES2015` and later now compare in release
+  order, so a grammar bounded `ES2020`–`ES2023` rejects `ES2015` and `ES2030`
+  in `supports_language_version`, `get_compatibility_level` and
+  `CompatibilitySchema.find_compatible_grammar`. A version that cannot be
+  compared fails closed instead of comparing as equal: another ES-shaped value
+  (`ES6`, `ESNext`), an ES edition against a dotted number, or any other
+  unparseable text. Dotted numeric versions compare as before.
+  `CompatibilityRule` version constraints use the same ordering, so an ES rule
+  such as `ES2015-ES2019` or `>=ES2020` now applies to the editions it names.
+  Before, a restrictive `INCOMPATIBLE` rule for those editions never matched.
 - Compact files from the direct `chunker.export.graphml_exporter` and
   `graphml_yed_exporter` modules no longer double CRLF caller text leaves on
   Windows (treesitter-chunker#488). `export(path, pretty_print=False)` now
@@ -72,6 +84,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   escaping (`"` instead of `&quot;`) may differ. Regenerate affected GraphML
   files. See
   [the package exporter notes](docs/graphml_export.md#package-level-structured-exporter).
+- `GrammarAnalyzer.analyze_grammar_symbols` now reports why its symbol lists
+  may be empty. The result has an `analysis` entry whose `status` is
+  `complete`, `deadline_expired`, `unavailable` or `failed`, with
+  `deadline_seconds` and a `detail` message. Before, an `nm` run killed at its
+  five-second deadline under host load returned the same empty lists as a
+  grammar with no symbols (treesitter-chunker#207). The deadline is unchanged,
+  and the new keyword-only `timeout` defaults to it. Code that iterates every
+  value of the result should skip the non-list `analysis` entry, as the
+  analyzer's own symbol counting and feature detection already do.
 - Python context lookup is truthful against the shared real-parser reference
   fixtures (`tests/fixtures/references/python/`). `find_symbol_definition` now
   finds module and nested functions, classes, assignments and parameters
