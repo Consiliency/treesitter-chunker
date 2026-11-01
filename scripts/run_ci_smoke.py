@@ -50,6 +50,7 @@ CI_SMOKE_TESTS = [
     "tests/test_java_version_hints_contract.py",
     "tests/test_cpp_version_hints_contract.py",
     "tests/test_graphml_yed_export_contract.py",
+    "tests/test_graphml_caller_label_import.py",
     "tests/test_package_graphml_whitespace.py",
     "tests/test_sqlite_export_contract.py",
     "tests/test_platform_support_contract.py",
@@ -85,6 +86,7 @@ CI_SMOKE_TESTS = [
     "tests/test_symbol_analysis_deadline.py",
     "tests/test_lint_path_policy.py",
     "tests/test_workflow_permissions_policy.py",
+    "tests/test_type_gate_policy.py",
     # Workflow and release policy assertions; previously full-tier only.
     "tests/test_release_hygiene_policy.py",
     "tests/test_scratch_root_policy.py",
