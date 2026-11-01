@@ -25,6 +25,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Go build-constraint version hints now interpret `&&`, `||`, `!` and
+  parentheses in `//go:build` lines, and whitespace OR, comma AND and `!` in
+  legacy `// +build` lines (treesitter-chunker#438). The hint is the lowest Go
+  release at which the expression can hold. Non-release tags (GOOS, GOARCH,
+  `cgo`, custom tags) are treated as independent. It is a necessary minimum,
+  not a build evaluation. `//go:build go1.18 && !go1.21` and
+  `//go:build go1.18 || go1.21` now report `1.18` instead of `1.21`.
+  `// +build !go1.21` and `go1.18 || linux` imply no minimum.
+  `GoVersionDetector.detect_version` adds `build_constraints_status`, one of
+  `minimum`, `unconstrained`, `unknown` or `absent`. Malformed, unsatisfiable
+  or oversized expressions are `unknown` and never become a version, so
+  `go.mod` and feature-based hints keep their precedence. The new
+  `GoVersionDetector.analyze_build_constraints` also returns the reason.
 - Go build-constraint version hints no longer drop earlier release tags from
   a legacy comma conjunction (treesitter-chunker#437). `// +build go1.10,go1.9`
   now reports `1.10` in either order, as `go1.10,go1.9,linux` does; before, only
