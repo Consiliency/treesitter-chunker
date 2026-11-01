@@ -878,6 +878,24 @@ snapshot inside `inspect_artifact`.
 Every hit of
 `grep -rn 'ctypes.CDLL\|cdll.LoadLibrary\|Language(' chunker/` at `7440971a`
 appears as a `path:line` reference in the two tables above (EC-ADMITPIN-1).
+
+**Load sites after ADMIT.** ADMIT keeps the site IDs; once all its lanes have
+landed, the remaining direct loads in `chunker/` are these (named by function,
+because line numbers move):
+
+- R1/R2/R4: `chunker/_internal/registry.py` `LanguageRegistry._open_local_library`
+  is the only per-language load. It calls `ctypes.CDLL` in place only for a
+  RECORD-verified package file, and otherwise only on the private copy returned
+  by `chunker._internal.native_admission.admitted_private_copy` after `ok`.
+  `LanguageRegistry._load_library` maps a whole combined library only when it
+  is package-supplied.
+- R3: `LanguageRegistry._language_from_ctypes_symbol` (capsule `Language(`), on
+  a library opened as above, labelled with the admitted digest.
+- R5, P1, P2 and N1 (`load_compiled_grammar`, the caller-trusted primitive)
+  are unchanged.
+- V1, D1, M1, T1, T2 and A1 have no native load left.
+  `chunker/_internal/native_admission.py` loads nothing itself: it copies,
+  verifies and calls `probe_native_grammar`.
 After ADMIT, a new direct load anywhere in `chunker/` needs its own inventory
 row and disposition.
 
