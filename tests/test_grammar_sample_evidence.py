@@ -4,8 +4,9 @@ A grammar without built-in validation samples gets the validator warning
 ``No test samples available for <language>``. That warning is an evidence
 gap, not a performance finding: it must not classify a candidate as
 ``DEGRADED`` by itself. Caller-supplied samples parsed with the real artifact
-are the evidence. Named mutations: ``M133-gap-degrades`` (treat the gap as a quality warning,
-the old behavior) fails the successful-sample and no-sample cases;
+are the evidence. Named mutations: ``M133-gap-degrades`` (treat the gap as a
+quality warning, the old behavior) fails the successful-sample and
+failing-sample cases;
 ``M133-quality-before-gap`` (let a quality warning degrade a candidate that
 has no caller samples) fails the no-sample quality and selection cases.
 """
@@ -69,21 +70,7 @@ def baml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     user_dir.mkdir()
     package_dir.mkdir()
     library = package_dir / "libbaml.so"
-    subprocess.run(
-        [
-            "cc",
-            "-shared",
-            "-fPIC",
-            "-O2",
-            "-I",
-            str(GRAMMAR_SRC),
-            str(GRAMMAR_SRC / "parser.c"),
-            "-o",
-            str(library),
-        ],
-        check=True,
-        capture_output=True,
-    )
+    _build(library)
     source = FIXTURE.read_text(encoding="utf-8")
     tree = load_compiled_grammar(library, "baml").parse(source.encode("utf-8"))
     assert tree.root_node.type == "source_file"
