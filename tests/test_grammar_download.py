@@ -239,3 +239,34 @@ class TestGrammarDownloadManager:
             result = manager.get_grammar_cache_dir()
             assert result == cache_dir
             assert cache_dir.exists()
+
+
+def test_clean_cache_skips_reserved_transaction_entries(tmp_path):
+    """``.txn*`` names belong to the core cache transaction (treesitter-chunker#363,
+    #370): ``clean_cache`` never removes them or their contents, while ordinary
+    old entries are still pruned."""
+    import os
+
+    manager = GrammarDownloadManager(cache_dir=tmp_path)
+    live = tmp_path / ".txn-live-transaction"
+    live.mkdir()
+    (live / "pending").write_text("in flight", encoding="utf-8")
+    retired = tmp_path / ".txn-retired.so"
+    retired.write_bytes(b"retired")
+    lock = tmp_path / ".txn.lock"
+    lock.write_bytes(b"")
+    old_dir = tmp_path / "python-0.1.0"
+    old_dir.mkdir()
+    old_so = tmp_path / "python.so"
+    old_so.write_bytes(b"old")
+    for index, path in enumerate((live, retired, lock, old_dir, old_so)):
+        os.utime(path, (1_000_000 + index, 1_000_000 + index))
+
+    removed = manager.clean_cache(keep_recent=0)
+
+    assert removed == 2
+    assert not old_dir.exists()
+    assert not old_so.exists()
+    assert (live / "pending").read_text(encoding="utf-8") == "in flight"
+    assert retired.read_bytes() == b"retired"
+    assert lock.exists()
