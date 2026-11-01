@@ -284,6 +284,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `scripts/mypy_gate.py --update` now only removes cleared signatures. When mypy
+  reports a signature that is not in the baseline, it exits 1 and leaves
+  `docs/development/mypy-baseline.txt` unchanged, so new errors can no longer be
+  absorbed. Release validation now also runs the governed-tools body-type check
+  that CI runs. Type-only annotations in `cli/` and 5 stale entries shrink the
+  baseline from 1,353 to 1,340 signatures; CLI behavior is unchanged
+  (treesitter-chunker#587).
 - Align the remaining Python version declarations with the 3.12 floor from
   treesitter-chunker#493: the release-process spec, getting-started, user guide,
   deployment, performance-core and VS Code docs, the conda recipe, all three
