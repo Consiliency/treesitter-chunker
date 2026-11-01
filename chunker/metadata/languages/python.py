@@ -148,6 +148,12 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
         if func_node.type == "identifier":
             # Simple function call
             return self._create_call_info(call_node, func_node, source)
+        if func_node.type == "call":
+            # Callable-return expression such as ``getattr(obj, "name")()``:
+            # the outer call is its own site whose callee is the raw inner
+            # call expression. The inner call is collected separately
+            # (treesitter-chunker#516); the complex reference stays unresolved.
+            return self._create_call_info(call_node, func_node, source)
         if func_node.type == "attribute":
             # Method call: obj.method()
             # In Python's AST, attribute has structure: object . identifier
