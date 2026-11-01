@@ -141,8 +141,11 @@ that it regenerates after SL-cr merges.
   so the parse copy has the same meaning as the raw file. Other languages keep
   their current behavior; changing them is outside treesitter-chunker#471.
 - **Owned files**: `chunker/core.py` (the parse call in `chunk_text` plus the
-  helper), `chunker/streaming.py` (the parse call in
-  `chunk_file_streaming`), `tests/test_cr_only_python_lines.py` (new),
+  helpers), `chunker/streaming.py` (the parse call in
+  `chunk_file_streaming`), `chunker/vfs_chunker.py` (the VFS streaming parse,
+  review round 1), the call-site line index in `chunker/symbol_graph.py`
+  (review round 1; runner decision, so SL-call merges `main` in after SL-cr),
+  `tests/test_cr_only_python_lines.py` (new),
   `docs/chunk-identity.md` (the CR-only paragraph), `CHANGELOG.md`, and the
   smoke/platform-core registration lines.
 - **Tasks**:
@@ -155,8 +158,11 @@ that it regenerates after SL-cr merges.
     Assert no parse error, function lines, byte spans and raw content for
     `chunk_file`, `chunk_text` and `chunk_file_streaming`, and that LF/CRLF
     results are unchanged.
-  - impl: `_parse_source_bytes(source, language)` in `chunker/core.py`; the
-    regular and streaming entries parse its result and walk the raw bytes.
+  - impl: `_lone_cr_parse_copy(source, language)` in `chunker/core.py`; the
+    regular, streaming and VFS streaming entries parse its result and walk the
+    raw bytes. Call-site and Boundary IR call lines use
+    `_line_ending_offsets(source, language)`, which counts the same line
+    endings. Other languages: treesitter-chunker#601.
   - docs: replace the "CR-only parsing is not covered" paragraph with the
     contract; CHANGELOG under Fixed.
   - goldens: regenerate on the locked stack; expected no diff (recorded).
@@ -174,8 +180,11 @@ that it regenerates after SL-cr merges.
   owner is the enclosing definition, and the complex reference stays
   unresolved under the existing treesitter-chunker#515 guard (no candidates,
   never bound to a local `audit`). Chained returns (`f()()()`) emit one site
-  per call level. Other complex callee kinds (subscript, parenthesized
-  expressions) are out of scope.
+  per call level. A parenthesized callable-return callee (`(f())()`,
+  `(getattr(o, 'a'))()`) is also covered, with the exact parenthesized bytes
+  as the raw callee (runner decision on D4's scope, review round 1).
+  Subscript callees are not callable-return expressions and stay excluded;
+  the JavaScript equivalent is a follow-up.
 - **Owned files**: `chunker/metadata/languages/python.py`,
   `tests/test_python_outer_call_sites.py` (new),
   `tests/test_call_reference_guard.py` (the explicit coverage-limit test
@@ -185,15 +194,18 @@ that it regenerates after SL-cr merges.
   only if needed.
 - **Tasks**:
   - test: Real-parser fixtures for `getattr(obj, 'audit')()`, `f()()()`,
-    `self.factory()()`, `mod.make(x)(y)`, a repeated outer call, a commented
-    callee (`getattr(obj, 'audit') # audit\n()` style negative), and a decorator
-    `@make()()`. Independent byte oracle from `bytes.index`, line from counting
+    `self.factory()()`, `mod.make(x)(y)`, a repeated outer call, a comment
+    inside the inner call's argument list (`getattr(obj,  # audit\n 'audit')()`,
+    which must stay unresolved), and a decorator `@make()()`. Independent byte oracle from `bytes.index`, line from counting
     LF. Assert outer and inner facts, distinct IDs, owners, unresolved outer
     references in strict and permissive modes, import/dependency results
     unchanged, and regular versus `chunk_file`-metadata parity.
-  - impl: handle `func_node.type == "call"` in `_extract_python_call_info`.
-  - goldens: regenerate with `scripts/regenerate_boundary_goldens.py` on the
-    locked stack after SL-cr, run twice for idempotence, and record the result.
+  - impl: handle `func_node.type == "call"` (and a parenthesized `call`) in
+    `_extract_python_call_info`.
+  - goldens: add a callable-return call to the Python Boundary IR fixture and
+    regenerate with `scripts/regenerate_boundary_goldens.py` on the locked
+    stack after SL-cr merges, run twice for idempotence, and commit the
+    reviewed golden diff.
 
 ### SL-dl — First-use grammar download deadline and verified prewarm (planned, held)
 
@@ -249,7 +261,14 @@ that it regenerates after SL-cr merges.
 
 ## Verification
 
-- Narrow: the suite command above.
+- Narrow: the frontmatter `suite_command` names the test files added by all
+  three executed lanes, so it runs only after treesitter-chunker#596,
+  treesitter-chunker#598 and treesitter-chunker#600 have merged. Before
+  then, run each lane's own files: SL-gml
+  `tests/test_graphml_caller_label_import.py tests/test_graphml_exporter.py
+  tests/test_graphml_yed_export_contract.py`; SL-cr
+  `tests/test_cr_only_python_lines.py`; SL-call
+  `tests/test_python_outer_call_sites.py tests/test_call_reference_guard.py`.
 - The CONTRIBUTING.md local validation block (Ruff, Black, mypy gate, governed
   body-type check, CI smoke selection at `-n 4`).
 - SL-cr and SL-call: `scripts/regenerate_boundary_goldens.py` twice, then

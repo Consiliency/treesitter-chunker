@@ -139,8 +139,9 @@ Relationships become directed edges with:
 The two direct GraphML modules use `node_label` for a chunk's structural type
 and `edge_label` for a relationship type. Caller metadata keeps `n_<name>` and
 `e_<name>` keys. In particular, caller metadata named `label` uses `n_label` or
-`e_label`; its original name, type and value remain separate from the structural
-label. Names such as `node_label`, `edge_label` and `metadata_label` are ordinary
+`e_label`; its key ID, type and value remain separate from the structural
+label. Its declared `attr.name` is `caller_label`; see
+[caller label names](#caller-label-names-for-name-keyed-readers). Names such as `node_label`, `edge_label` and `metadata_label` are ordinary
 metadata and receive the same prefixes regardless of property insertion order.
 
 This is a BREAKING key-ID change reserved for 6.0.0. Regenerate graph output and
@@ -165,6 +166,8 @@ With NetworkX 3.6.1, plain and delegated (`use_yed=False`) imports expose the
 structural label as `label` and the caller label as `caller_label`. A yEd import
 also exposes `caller_label`, but NetworkX replaces `label` with the yEd
 `NodeLabel`/`EdgeLabel` graphics text, which is the reader's own yEd handling.
+The node graphics text currently contains a literal backslash-`n` separator
+(treesitter-chunker#603).
 
 This is a BREAKING change for name-keyed consumers in the next release after
 6.0.0: read the caller `label` metadata as `caller_label` (and `caller_label` as
