@@ -310,7 +310,7 @@ branch-on-a-variable (small, bounded inputs).
 | `go1.21 && !go1.18` (unsatisfiable) | `None` | `unknown` |
 | malformed (`go1.18 &&`, unbalanced parens, direct `!!`, bare `//go:build`, two `//go:build` lines, `!!x` in legacy, bad characters) | `None` | `unknown` |
 | no constraint line | `None` | `absent` |
-| too large (over 1,000 tokens, nesting over 100, over 32 distinct free tags, or over 10,000 search steps) | `None` | `unknown` |
+| too large (over 1,000 tokens, nesting over 100, over 32 distinct free tags, over 10,000 search steps, or a release number over 9 digits) | `None` | `unknown` |
 
 `detect_from_build_constraints` keeps its `str | None` signature and returns
 the minimum. The new `analyze_build_constraints(content)` returns
@@ -325,8 +325,12 @@ greedy positive regex and was wrong (a negated tag is an upper bound).
 **Documented unsupported forms.** GOOS/GOARCH exclusivity (e.g. `linux &&
 windows` is treated as satisfiable), `ignore`, and file-name constraints
 (`_linux.go`, `_test.go`) are not interpreted. The `unknown` results for
-malformed legacy lines are deliberately conservative: Go treats such a line
-as the never-set `ignore` tag, so the file never builds.
+malformed legacy lines are deliberately conservative: Go replaces each
+malformed term with the never-set `ignore` tag and the rest of that line
+still counts, whereas any malformed legacy term makes the whole hint
+`unknown` here. A release number longer than 9 digits is `unknown` (it is
+never a real release, and Go never builds `go1.<4500 digits>`), and a
+leading UTF-8 byte-order mark is skipped, as `go/build` does.
 
 **Tests** (all on the real Go fixture, parse-checked, LF and CRLF where the
 line ending matters):
@@ -358,6 +362,10 @@ line ending matters):
 10. `M438-double-negation` — allow a direct `!!`.
 11. `M438-slash-star` — read `//go:build` inside `/* */`.
 12. `M438-legacy-no-blank` — legacy lines not cut at the last blank line.
+13. `M438-unbounded-int` — no digit bound: a 4,500-digit release component
+    raises `ValueError` through every public method.
+14. `M438-bom` — keep a leading UTF-8 BOM: BOM-prefixed headers become
+    `absent`.
 
 The header cases are compared against Go 1.26.8 `go/build`
 `Context.MatchFile` in the PR, and committed with each case's Go result.
@@ -404,19 +412,26 @@ The header cases are compared against Go 1.26.8 `go/build`
 
 ## Acceptance Criteria
 
+Each criterion is met when every named mutation listed for its issue in
+the lane sections above fails its test file and passes once restored.
+
 - [ ] EC-SMALLFIX-1 — treesitter-chunker#133 by
-  `tests/test_grammar_sample_evidence.py` (`M133-gap-degrades`);
-  treesitter-chunker#134 by `tests/test_grammar_candidate_attribution.py`
-  (`M134-shared-record`, `M134-group-unknown`); treesitter-chunker#344 by
+  `tests/test_grammar_sample_evidence.py` (`M133-gap-degrades`,
+  `M133-quality-before-gap`); treesitter-chunker#134 by
+  `tests/test_grammar_candidate_attribution.py` (`M134-shared-record`,
+  `M134-group-unknown`, `M134-plain-equality`, `M134-fallback-false`,
+  `M134-valueerror-escapes`); treesitter-chunker#344 by
   `tests/test_grammar_global_constraints.py` (`M344-ignore`). Each uses real
   local BAML artifacts.
 - [ ] EC-SMALLFIX-2 — treesitter-chunker#170 by
-  `tests/test_compatibility_schema_version_boundaries.py` (`M170-zero`),
-  direct comparison and grammar selection.
+  `tests/test_compatibility_schema_version_boundaries.py` (`M170-zero`,
+  `M170-es6-ordinal`, `M170-rule-numeric`): direct comparison, compatibility
+  rules and grammar selection.
 - [ ] EC-SMALLFIX-3 — treesitter-chunker#437 by
-  `tests/test_go_version_hints_contract.py` (`M437-last-tag`), then
-  treesitter-chunker#438 by the same file (`M438-*`), with module precedence
-  preserved.
+  `tests/test_go_version_hints_contract.py` (`M437-last-tag`,
+  `M437-ascii-atoms`), then treesitter-chunker#438 by the same file (the 14
+  `M438-*` mutations listed in its detailed plan), with module precedence
+  preserved and the header cases checked against Go `go/build`.
 - [ ] EC-SMALLFIX-4 — VB-1 to VB-4 for each PR.
 
 ## Spec Closeout Plan
