@@ -1225,17 +1225,36 @@ def test_native_actual_worker_status_required_after_real_ack(
         assert worker_status == (7 if status == "abnormal" else None)
 
 
+def _write_fault_launcher(directory):
+    """Launcher reports 0 only for the worker exit this fixture injected.
+
+    The injecting worker publishes a sentinel before its deliberate exit 7, so
+    a genuine child status 7 (or any other real failure) is never masked.
+    """
+    launcher, injected = directory / "fault_launcher.py", directory / "fault-injected"
+    launcher.write_text(
+        "import os,subprocess,sys; child=subprocess.Popen([sys._base_executable,*sys.argv[1:]], stdin=sys.stdin.buffer, stdout=sys.stdout.buffer, stderr=sys.stderr.buffer); status=child.wait(); "
+        f"raise SystemExit(0 if status == 7 and os.path.exists({str(injected)!r}) else status)",
+        encoding="utf-8",
+    )
+    return launcher, injected
+
+
+def _inject_worker_exit_7(injected):
+    """Worker suffix: inject exit 7 only after genuine success, with sentinel."""
+    return (
+        f"open({str(injected)!r}, 'x').close() if result == 0 else None; "
+        "os._exit(7 if result == 0 else result)"
+    )
+
+
 def test_native_valid_ack_abnormal_worker_launcher_zero(tmp_path, monkeypatch):
     from chunker.grammar import integrity
 
     library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
     original_read = integrity._read_child
     states, replies, roots = [], [], []
-    launcher = tmp_path / "fault_launcher.py"
-    launcher.write_text(
-        "import subprocess,sys; child=subprocess.Popen([sys._base_executable,*sys.argv[1:]], stdin=sys.stdin.buffer, stdout=sys.stdout.buffer, stderr=sys.stderr.buffer); status=child.wait(); raise SystemExit(0 if status == 7 else status)",
-        encoding="utf-8",
-    )
+    launcher, injected = _write_fault_launcher(tmp_path)
 
     def read(command, cwd, timeout, **kwargs):
         import sysconfig
@@ -1250,7 +1269,8 @@ def test_native_valid_ack_abnormal_worker_launcher_zero(tmp_path, monkeypatch):
             + command[3]
         ).replace(
             "raise SystemExit(_native_probe_child(*sys.argv[2:]))",
-            "import os; result=_native_probe_child(*sys.argv[2:]); sys.stdout.flush(); os._exit(7 if result == 0 else result)",
+            "import os; result=_native_probe_child(*sys.argv[2:]); sys.stdout.flush(); "
+            + _inject_worker_exit_7(injected),
         )
         states.append(kwargs["lifecycle"])
         roots.append(cwd)
