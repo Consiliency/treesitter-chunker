@@ -554,3 +554,66 @@ def test_corrupt_grammar_self_test_compares_the_admission_reason(
     finally:
         tester.cleanup()
     require(loads == [], f"nothing loaded in-process {loads}")
+
+
+# --- one trust rule (maintainer decision, 2026-11-01) --------------------------------
+
+
+def test_admitted_health_honours_record_verified_package_grammars(
+    isolated, tmp_path, fixture_bytes, monkeypatch
+):
+    """The click/validator path uses the same RECORD check as parsing."""
+    import base64
+    from importlib.metadata import PathDistribution
+
+    from chunker._internal import package_supplier
+
+    site = tmp_path / "site"
+    package = site / "chunker"
+    build = package / "data" / "grammars" / "build"
+    build.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    name = f"lib{LANGUAGE}.so"
+    shipped = build / name
+    dist_info = site / "treesitter_chunker-6.0.0.dist-info"
+    dist_info.mkdir()
+    (dist_info / "METADATA").write_text(
+        "Metadata-Version: 2.1\nName: treesitter-chunker\nVersion: 6.0.0\n",
+        encoding="utf-8",
+    )
+    encoded = base64.urlsafe_b64encode(sha256(fixture_bytes).digest()).rstrip(b"=")
+    (dist_info / "RECORD").write_text(
+        f"chunker/__init__.py,,\nchunker/data/grammars/build/{name},"
+        f"sha256={encoded.decode()},{len(fixture_bytes)}\n",
+        encoding="utf-8",
+    )
+    distribution = PathDistribution(dist_info)
+    monkeypatch.setattr(package_supplier, "_package_distribution", lambda: distribution)
+    monkeypatch.setattr(
+        package_supplier, "_package_init_file", lambda: package / "__init__.py"
+    )
+    package_supplier._package_grammar_records.cache_clear()
+    try:
+        shipped.write_bytes(fixture_bytes)
+        manager = GrammarManager(
+            tmp_path / "user", build, tmp_path / "cache", trusted_artifacts={}
+        )
+        healthy = manager.get_admitted_health(LANGUAGE)
+        require(
+            (healthy["status"], healthy["validation_reason"]) == ("healthy", "ok"),
+            f"package-supplied without a pin {healthy}",
+        )
+        shipped.write_bytes(fixture_bytes + b"tampered")
+        pinned = GrammarManager(
+            tmp_path / "user",
+            build,
+            tmp_path / "cache2",
+            trusted_artifacts={LANGUAGE: _pin(fixture_bytes + b"tampered")},
+        )
+        mismatch = pinned.get_admitted_health(LANGUAGE)
+        require(
+            mismatch["validation_reason"] == "integrity_mismatch",
+            f"no pin rescues a RECORD mismatch {mismatch}",
+        )
+    finally:
+        package_supplier._package_grammar_records.cache_clear()
