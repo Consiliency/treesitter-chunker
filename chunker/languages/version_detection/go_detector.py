@@ -2,11 +2,20 @@
 
 import logging
 import re
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+def _is_go_build_tag(name: str) -> bool:
+    """Go's tag rule: Unicode letters and decimal digits, ``_`` and ``.``."""
+    return bool(name) and all(
+        char.isalpha() or unicodedata.category(char) == "Nd" or char in "_."
+        for char in name
+    )
 
 
 class GoVersionDetector:
@@ -123,19 +132,21 @@ class GoVersionDetector:
             matches = re.findall(pattern, content)
             # A legacy line that is one comma conjunction of positive tags
             # requires every release tag in it, so keep them all, not only the
-            # last one (treesitter-chunker#437). OR and negation are not
-            # interpreted here.
-            legacy_conjunctions = re.findall(
-                r"^[ \t]*//[ \t]*\+build[ \t]+"
-                r"([A-Za-z0-9_.]+(?:,[A-Za-z0-9_.]+)+)[ \t]*\r?$",
+            # last one (treesitter-chunker#437). Tags follow Go's Unicode tag
+            # rule. OR and negation are not interpreted here.
+            legacy_fields = re.findall(
+                r"^[ \t]*//[ \t]*\+build[ \t]+([^\s!]+)[ \t]*\r?$",
                 content,
                 re.MULTILINE,
             )
-            for conjunction in legacy_conjunctions:
+            for field in legacy_fields:
+                terms = field.split(",")
+                if len(terms) < 2 or not all(map(_is_go_build_tag, terms)):
+                    continue
                 matches.extend(
                     match.groups()
-                    for term in conjunction.split(",")
-                    if (match := re.fullmatch(r"go(\d+)\.(\d+)", term))
+                    for term in terms
+                    if (match := re.fullmatch(r"go([0-9]+)\.([0-9]+)", term))
                 )
             if matches:
                 versions = [f"{major}.{minor}" for major, minor in matches]
