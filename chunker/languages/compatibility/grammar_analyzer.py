@@ -10,13 +10,18 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from chunker._internal.native_admission import admit_native_candidate
+from chunker._internal.native_admission import admit_native_candidate, drop_verdicts
 from chunker._internal.trusted_artifacts import copy_trusted_artifacts
 from chunker.grammar.integrity import probe_native_grammar
 
 from .schema import CompatibilityLevel, GrammarVersion, LanguageVersion
 
 logger = logging.getLogger(__name__)
+
+#: Symbol-analysis outcomes that hold for the bytes, so their metadata may be
+#: reused with the admission verdict. ``deadline_expired`` and ``failed`` are
+#: transient and are re-inspected on the next call.
+_SETTLED_SYMBOL_ANALYSIS = frozenset({"complete", "unavailable"})
 
 
 class GrammarAnalyzer:
@@ -123,6 +128,16 @@ class GrammarAnalyzer:
 
         version = captured["version"]
         symbols = captured["symbols"]
+        status = symbols.get("analysis", {}).get("status")
+        if (
+            status not in _SETTLED_SYMBOL_ANALYSIS
+            and result.artifact_sha256 is not None
+        ):
+            # A deadline expiry or failed nm run says nothing about the
+            # grammar's symbols (treesitter-chunker#207): keep this result, but
+            # do not let the stored verdict serve it again, so the next call
+            # re-inspects.
+            drop_verdicts(language, result.artifact_sha256)
         features = self.detect_supported_features(language, symbols)
         min_version, max_version = self.determine_language_version_support(
             language, version

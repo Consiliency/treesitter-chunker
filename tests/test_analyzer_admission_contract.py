@@ -103,15 +103,137 @@ def test_analyzer_metadata_is_reused_only_under_its_own_inspector(
 
 
 def test_dependency_inspection_is_retired(tmp_path, baml_bytes, monkeypatch):
+    """A1: no tool runs at all (not merely: its result is discarded)."""
+    import os
+    import subprocess
+
     library = tmp_path / "baml.so"
     library.write_bytes(baml_bytes)
+    calls: list[tuple[str, object]] = []
 
-    def refuse(*args, **kwargs):
-        raise AssertionError(f"tool run: {args}")
+    def recorder(name):
+        def record(*args, **kwargs):
+            calls.append((name, args))
+            raise AssertionError(f"tool run through {name}: {args}")
 
-    monkeypatch.setattr(grammar_analyzer.subprocess, "run", refuse)
+        return record
+
+    for name in ("run", "Popen", "call", "check_call", "check_output"):
+        monkeypatch.setattr(subprocess, name, recorder(f"subprocess.{name}"))
+    monkeypatch.setattr(os, "system", recorder("os.system"))
+    monkeypatch.setattr(os, "popen", recorder("os.popen"))
+    result = GrammarMetadataExtractor.extract_from_dependencies(library)
+    require(calls == [], f"no tool runs, even if its failure is swallowed: {calls}")
     require(
-        GrammarMetadataExtractor.extract_from_dependencies(library)
-        == {"dependencies": [], "dependencies_status": "retired"},
+        result == {"dependencies": [], "dependencies_status": "retired"},
         "retired, distinguishable from no dependencies",
     )
+
+
+def test_transient_symbol_analysis_is_not_reused(
+    tmp_path, baml_bytes, probes, monkeypatch
+):
+    """An nm deadline expiry is reported for that call only; the next call
+    re-inspects instead of reusing an empty symbol table (treesitter-chunker#207)."""
+    import subprocess
+
+    directory = _grammars(tmp_path, baml_bytes)
+    pins = {"baml": {"sha256": sha256(baml_bytes).hexdigest()}}
+    real_run = subprocess.run
+
+    def nm_times_out(args, *rest, **kwargs):
+        if args and args[0] == "nm":
+            raise subprocess.TimeoutExpired(args, kwargs.get("timeout", 5.0))
+        return real_run(args, *rest, **kwargs)
+
+    analyzer = GrammarAnalyzer(directory, trusted_artifacts=pins)
+    with monkeypatch.context() as patched:
+        # Run nm even on Windows, where the analysis is otherwise unavailable.
+        patched.setattr(grammar_analyzer.platform, "system", lambda: "Linux")
+        patched.setattr(grammar_analyzer.subprocess, "run", nm_times_out)
+        first = analyzer.analyze_grammar_file("baml")
+    require(first is not None, "the expired analysis is still returned")
+    require(len(probes) == 1, f"one probe {probes}")
+
+    second = analyzer.analyze_grammar_file("baml")
+    require(second is not None, "re-inspected")
+    require(len(probes) == 2, f"the expired analysis was not reused {probes}")
+
+    fresh = GrammarAnalyzer(directory, trusted_artifacts=pins)
+    require(fresh.analyze_grammar_file("baml") is not None, "new instance")
+    require(len(probes) == 2, f"a settled analysis is reused {probes}")
+
+
+def _package_wheel(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, data: bytes, record: bytes
+) -> Path:
+    """Our wheel's grammar directory with a RECORD entry for ``baml.so``
+    (the analyzer always looks for ``<language>.so``)."""
+    import base64
+    from importlib.metadata import PathDistribution
+
+    from chunker._internal import package_supplier
+
+    site = tmp_path / "site"
+    package = site / "chunker"
+    build = package / "data" / "grammars" / "build"
+    build.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (build / "baml.so").write_bytes(data)
+    dist_info = site / "treesitter_chunker-6.0.0.dist-info"
+    dist_info.mkdir()
+    (dist_info / "METADATA").write_text(
+        "Metadata-Version: 2.1\nName: treesitter-chunker\nVersion: 6.0.0\n",
+        encoding="utf-8",
+    )
+    encoded = base64.urlsafe_b64encode(sha256(record).digest()).rstrip(b"=")
+    (dist_info / "RECORD").write_text(
+        "chunker/__init__.py,,\n"
+        f"chunker/data/grammars/build/baml.so,sha256={encoded.decode()},"
+        f"{len(record)}\n",
+        encoding="utf-8",
+    )
+    distribution = PathDistribution(dist_info)
+    monkeypatch.setattr(package_supplier, "_package_distribution", lambda: distribution)
+    monkeypatch.setattr(
+        package_supplier, "_package_init_file", lambda: package / "__init__.py"
+    )
+    package_supplier._package_grammar_records.cache_clear()
+    return build
+
+
+@pytest.fixture
+def clear_package_records():
+    from chunker._internal import package_supplier
+
+    package_supplier._package_grammar_records.cache_clear()
+    yield
+    package_supplier._package_grammar_records.cache_clear()
+
+
+def test_analyzer_admits_record_verified_package_grammar_without_pin(
+    tmp_path, baml_bytes, probes, monkeypatch, clear_package_records
+):
+    build = _package_wheel(tmp_path, monkeypatch, baml_bytes, baml_bytes)
+    analyzer = GrammarAnalyzer(build, trusted_artifacts=None)
+    require(analyzer.analyze_grammar_file("baml") is not None, "no pin needed")
+    capabilities = analyzer._capabilities["baml"]
+    require(capabilities["validation_reason"] == "ok", f"{capabilities}")
+    require(
+        capabilities["artifact_sha256"] == sha256(baml_bytes).hexdigest(),
+        f"{capabilities}",
+    )
+
+
+def test_analyzer_record_mismatch_is_never_rescued_by_a_pin(
+    tmp_path, baml_bytes, probes, monkeypatch, clear_package_records
+):
+    tampered = baml_bytes + b"appended after install"
+    build = _package_wheel(tmp_path, monkeypatch, tampered, baml_bytes)
+    analyzer = GrammarAnalyzer(
+        build, trusted_artifacts={"baml": {"sha256": sha256(tampered).hexdigest()}}
+    )
+    require(analyzer.analyze_grammar_file("baml") is None, "refused")
+    reason = analyzer._capabilities["baml"]["validation_reason"]
+    require(reason == "integrity_mismatch", f"{reason}")
+    require(probes == [], f"never probed {probes}")
