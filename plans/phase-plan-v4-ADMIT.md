@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: ADMIT
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: ff0dd7ae528c3dfb9e24a911c392b8d9a5bae6b60f24cfb8d2c58459770aa4ba
+roadmap_sha256: 54cc79dcf0b6240c7ed12be2e3f0a7234666b53a9fdb24a9d373947a3a18b7bc
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_trusted_artifacts_contract.py tests/test_grammar_info_exit_contract.py -q"
 ---
@@ -288,6 +288,27 @@ verified, probed (or reused under the copy's key), and returned only after
    `tests/test_supported_wheel_verification.py`. It touches nothing else in
    `builder.py`; whichever of SL-core-1 and CIFAST SL-lint merges second
    rebases.
+10. **M2 extends to the zero-config auto-download (maintainer decision,
+    2026-11-01).** F1 retired only the parse path's fetch-and-build.
+    `UniversalLanguageRegistry.get_parser(auto_download=True)` and
+    `ZeroConfigAPI` (`ensure_language`, `preload_languages`,
+    `get_chunker_for_language`, `auto_chunk_file`, `chunk_text`) still
+    fetched and compiled a grammar on a miss.
+    - The maintainer retired this too, as an extension of M2. The contract
+      inventory records it as F2.
+    - `get_parser` raises `LanguageNotFoundError` with the cause and guidance:
+      build the grammar with the grammar commands, then pin it in the
+      user-config pin file or with `--trusted-artifacts`.
+    - Nothing is downloaded or compiled, and the error makes no discovery
+      request.
+    - `ensure_language` and `preload_languages` only report availability.
+    - `auto_download` is still accepted but has no effect, and passing it
+      emits a `DeprecationWarning`.
+    - The explicit `install_language`/`update_language` remain, and their
+      output loads only under a pin.
+    - It belongs to SL-reg, the lane that owns `chunker/grammar/registry.py`.
+      SL-reg also takes `chunker/auto.py`, the registry and zero-config
+      contracts and stubs, `docs/zero_config_api.md` and the grammar README.
 
 ## Lane Index & Dependencies
 
@@ -376,11 +397,13 @@ Every PR waits for the merge gate above.
   `drop_entry_parent_check`, `drop_distribution_identity`,
   `hashless_entry_supplied`, `publish_over_record_entry`.
 
-### SL-reg — Registry discovery, package supplier, parse-path pins, F1
+### SL-reg — Registry discovery, package supplier, parse-path pins, F1, F2
 
 - **Owned files**: `chunker/_internal/registry.py`, `chunker/parser.py`,
-  `chunker/grammar/registry.py`, tests, `CHANGELOG.md`,
-  `docs/grammar_discovery.md`, `docs/grammar_management.md`.
+  `chunker/grammar/registry.py`, `chunker/auto.py` and the registry and
+  zero-config contracts and stubs under `chunker/contracts/` (decision 10),
+  tests, `CHANGELOG.md`, `docs/grammar_discovery.md`,
+  `docs/grammar_management.md`, `docs/zero_config_api.md`.
 - **Tasks**:
   - `LanguageRegistry(library_path, *, trusted_artifacts=None)` and
     `default_library_path()`.
@@ -398,11 +421,20 @@ Every PR waits for the merge gate above.
     pin-needing languages name the file and the defect.
   - F1: `get_parser`/`acquire_parser` raise `LanguageNotFoundError` on a miss
     without cloning or compiling.
+  - F2 (decision 10): `UniversalLanguageRegistry.get_parser` and
+    `ZeroConfigAPI` never download or build. `auto_download` is inert and
+    warns.
 - **Tests / mutations**: EC-ADMIT-6 (pinned fixture parses through
   `get_parser`; unpinned is ignored; defective file keeps package grammars and
   names the defect), EC-ADMIT-7 `trust_package_dir_without_record`, the
   R1/R2/R4 bypass mutations (`restore_direct_registry_cdll`), EC-ADMIT-8
   `restore_on_demand_build`.
+  - F2: `restore_auto_download`, `error_queries_discovery`,
+    `auto_download_silent`, `restore_zeroconfig_install`,
+    `restore_zeroconfig_auto_download`.
+  - Round 1: `drop_absolute` (a relative library path and a relative
+    `CHUNKER_GRAMMAR_BUILD_DIR`), `first_pin_for_all`,
+    `pin_forbidden_ignores_library_dir` and `r4_keyed_by_variant`.
 
 ### SL-core-2 — Validator, verdict reuse, CLI sites, IF-0-ADMIT-1
 

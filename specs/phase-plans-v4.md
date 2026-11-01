@@ -160,7 +160,8 @@ Non-DAG gates: PY314 also needs treesitter-chunker#534 merged (external; met 202
    - `chunker/grammar_management/testing.py` (the reload);
    - `GrammarMetadataExtractor.extract_from_dependencies` (the `ldd` path);
    - `chunker/_internal/language_pack.py` (around line 109, the `Language(module.language())` load of the pinned `tree_sitter_python`/`tree_sitter_javascript` packages), listed as a pack-managed supplier, out of scope for this contract;
-   - the on-demand fetch-and-build in `chunker/parser.py` (`get_parser`/`acquire_parser`), disposition **retired**, done in ADMIT (maintainer decision, 2026-10-31).
+   - the on-demand fetch-and-build in `chunker/parser.py` (`get_parser`/`acquire_parser`), disposition **retired**, done in ADMIT (maintainer decision, 2026-10-31);
+   - the automatic download-and-build in `UniversalLanguageRegistry.get_parser(auto_download=True)` and the zero-config API (`chunker/auto.py`), disposition **retired**. This extends M2 and is done in ADMIT SL-reg (maintainer decision, 2026-11-01). `auto_download` stays accepted but has no effect, and passing it emits a `DeprecationWarning`.
 
    It also fixes the verdict-reuse key: content digest plus provenance, never path/mtime/size.
 3. **IF-0-ADMIT-1** — A single admitted-health accessor that every CLI status/validate/list consumer reads. It is a `GrammarManager` method returning the existing legacy health mapping (`healthy`/`missing`/`corrupted`/`incompatible` with `validation_reason`), computed only from `probe_native_grammar` with IF-0-ADMITPIN-1 pins. ADMITFIX consumes it for treesitter-chunker#128 and treesitter-chunker#120.
@@ -517,7 +518,7 @@ Route every native discovery, validation and health path through `probe_native_g
 
 **Scope notes**
 - Decompose into four lanes by file:
-  - **SL-reg** owns `chunker/_internal/registry.py` (discovery and fallback loads, using SL-core's shared package-supplier RECORD check) and `chunker/parser.py` (reading the user-config pin file, retiring the on-demand fetch-and-build).
+  - **SL-reg** owns `chunker/_internal/registry.py` (discovery and fallback loads, using SL-core's shared package-supplier RECORD check) and `chunker/parser.py` (reading the user-config pin file, retiring the on-demand fetch-and-build). It also owns `chunker/grammar/registry.py` and `chunker/auto.py` for the zero-config auto-download retirement, an extension of M2 (maintainer decision, 2026-11-01).
   - **SL-core** owns the `chunker/grammar_management/core.py` `load_compiled_grammar` / GrammarValidator native-load region and verdict reuse, both `chunker/grammar_management/cli.py` CDLL sites (the `build_grammar` post-build load check and the admission step inside `_validate_compiled_grammar`), and publishes IF-0-ADMIT-1.
   - **SL-legacy** owns `chunker/grammar/validator.py` (treesitter-chunker#400), `chunker/grammar/download.py` and `chunker/grammar_manager.py`.
   - **SL-ins** owns, in `grammar_analyzer.py`, `GrammarAnalyzer.__init__`, `GrammarAnalyzer.analyze_grammar_file` (the per-language pin lookup) and `GrammarMetadataExtractor.extract_from_dependencies`.
