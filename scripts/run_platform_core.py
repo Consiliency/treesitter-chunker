@@ -51,6 +51,7 @@ COMMON_TESTS = [
     "tests/test_git_aware_linked_worktree.py",
     "tests/test_git_aware_contract.py",
     "tests/test_python_version_hints_contract.py",
+    "tests/test_python_reference_oracle_contract.py",
     "tests/test_javascript_version_hints_contract.py",
     "tests/test_rust_version_hints_contract.py",
     "tests/test_go_version_hints_contract.py",

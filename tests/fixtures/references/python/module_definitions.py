@@ -37,3 +37,20 @@ def uses_parameter(helper):
 
 
 SHADOW = sorted([], key=lambda helper: helper)
+
+
+def shadowed(shadowed):
+    return shadowed
+
+
+def rebound():
+    rebound = 1
+    return rebound
+
+
+class Outer:
+    class Inner:
+        marker = 1
+
+
+SPREAD = sorted([], key=lambda *helper, **render_report: (helper, render_report))
