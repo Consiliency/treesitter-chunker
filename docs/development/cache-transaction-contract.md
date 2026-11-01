@@ -49,6 +49,7 @@ claim concurrency safety for them.
 | `ComprehensiveGrammarCLI._cleanup_cache_fallback` (`cli.py`) | Runs only when the core manager is unavailable. It is not one of the three consumers. | Running it concurrently with a participating writer on the same root is unsupported. It keeps its static no-follow behavior from treesitter-chunker#324. It skips every `.txn*` name, so it never touches a namespace's `.txn-staging/` or `.txn-retired/`. Routing it through the helper is a separately filed follow-up. The helper has no core import, so that routing remains possible. |
 | `DirectoryManager.cleanup_empty_directories` (`config.py`), called by `CacheManager` | It walks `DirectoryManager.base_dir`. By default that **is** the core root (`~/.cache/treesitter-chunker`). It runs `rmdir` on every empty directory except those named `grammars`, `cache`, `logs`, `backups` or `tmp` and `base/cache/{downloads,builds}`. It deletes no files. | **Overlap:** it can remove any empty directory under the core root. Roadmap runner decision D-c leaves `config.py` unchanged. Instead, every control directory the helper creates (`.txn/` and each namespace's `.txn-staging/` and `.txn-retired/` trees) gets the marker file `.txn-keep` immediately after `mkdir` and before any other use, so an in-use control directory is never empty (see [Control area](#control-area)). **Remaining consequences:** (1) A sweep that wins the race between `mkdir` and writing the marker removes the new directory. The helper then fails to write the marker, retries `mkdir` plus marker once, and otherwise raises `CacheTransactionError`. The operation fails before using that directory. (2) An empty directory created by a subprocess inside staging, before the subprocess writes into it, can be removed. That subprocess then fails, and the operation fails before publication. (3) Empty published entries and empty `downloads/` or `builds/` namespaces can be removed. No bytes are lost; the helper re-creates a missing namespace directory, no-follow, under the lock. |
 | `CacheManager` age, size and clear (`config.py`) | Uses `directory_manager.get_directory("cache")`, by default `<core root>/cache/`. Its `downloads`/`builds` are not core namespaces. | Not protected. With the default layout it touches no core namespace. If an operator points it at the core root's `downloads/` or `builds/`, it becomes a non-participating deleter on that root, which is unsupported. |
+| `GrammarDownloadManager.clean_cache` (`chunker/grammar/download.py`) | Its default cache directory is `~/.cache/treesitter-chunker/grammars`, the core manager's default `grammars/`. It removes `-`-named directories beyond the newest few and old `*.so` files. It takes no lock. | A non-participating deleter on that folder: running it while a participant installs or removes grammars is unsupported. It skips every `.txn*` name, so it never removes `grammars/.txn-retired/` (treesitter-chunker#363). |
 | `chunker/_internal/cache.py` (AST cache), `chunker/boundary/cache.py` | Roadmap non-goals. HOTFIX owns the AST cache. | None |
 | `UserGrammarTools` (`chunker/_internal/user_grammar_tools.py`) | It writes `~/.cache/treesitter-chunker/build`, which is not a core namespace. It publishes through IF-0-HOTFIX-1. | None for this contract |
 | `GrammarRegistry` artifact discovery (`_discover_in_directory`) | It reads artifact files only, never metadata. | It sees either the previous or the new artifact, because `os.replace` is atomic. It never sees a partial file, and it is not pair-consistent with metadata (see [Remaining windows](#remaining-windows)). |
@@ -633,7 +634,10 @@ UTF-8. `InstallationInfo` ignores unknown keys, so older readers keep working.
 
 **Detection.** A metadata/artifact mismatch is detectable: `artifact_sha256`
 differs from the destination's SHA-256, or from the `artifact_sha256` of a
-`NativeProbeResult` that admitted the destination.
+`NativeProbeResult` that admitted the destination. `create_rollback_point`
+checks this before every capture and logs a warning naming any retained
+`rollback.json` for the language, so a crash left between commit steps 2 and
+3 is reported before the next install captures that state.
 
 **`publish_installation_metadata(root, language, document, *, timeout) -> str`**
 writes those canonical bytes to the metadata path under the lock. It uses
@@ -699,15 +703,22 @@ with the steps below.
    `fsync`ed. Each previous copy's SHA-256 is computed while copying with
    `hashlib`. The manifest is written last. Seam point
    `rollback.after_capture`.
-2. **Publish metadata** with `publish_installation_metadata`. The returned
-   digest must equal `intended_sha256`; if it differs, go to step 4.
+2. **Publish metadata** with `publish_installation_metadata`. Its bytes are
+   canonical, so the returned digest is `intended_sha256` by construction; a
+   participant never reports its own metadata as `superseded`. The private
+   seam point `commit.after_metadata` (context `section="commit"`) follows,
+   after the nested metadata hold is released and while the commit section
+   still holds the lock.
 3. **Publish the artifact** with
    `publish_native_grammar(<staged artifact>, destination, language,
    provenance=<pin record>)`. This is the last fallible mutation.
    `invalidate(destination)` then runs once, and is **non-fatal** (below).
    - If the result is supported, go to step 5.
-   - If it is unsupported, or raised `OSError`, the destination is unchanged
-     (an IF-0-HOTFIX-1 guarantee). Go to step 4.
+   - If it is unsupported (a False-returning failure) or raised `OSError`,
+     the destination is unchanged (an IF-0-HOTFIX-1 guarantee). Go to step 4.
+   - Any other exception from step 2 or 3, including a `BaseException` such
+     as `KeyboardInterrupt`, also goes to step 4; a `BaseException` is
+     re-raised after the restore.
 4. **Restore on failure.** Run
    `restore(point, provenance=<pin record>, invalidate=...)`. The install
    returns failure, with the restore outcome in its message. If the restore
@@ -752,15 +763,21 @@ digests from the manifest. It observes the current digests `Ac`/`Mc`.
 2. Otherwise, check the rollback copy against `Ap` with `hashlib`; identity
    checks never pass through an admission API. On mismatch, fail and change
    nothing.
-3. Otherwise, seam point `restore.before_artifact`, then call
-   `publish_native_grammar(<artifact.prev>, destination, language,
-   provenance=provenance)`, then call `invalidate(destination)` (non-fatal).
+3. Otherwise, seam point `restore.before_artifact`, then observe the pair
+   again; if it changed, the result is `superseded` and neither file is
+   touched. Otherwise call `publish_native_grammar(<artifact.prev>,
+   destination, language, provenance=provenance)`, then
+   `invalidate(destination)` (non-fatal).
 4. **Only if the artifact ends at `Ap`** (seam point `restore.before_metadata`)
    restore the metadata to `Mp`.
 5. If the artifact stays at `Ai`, for example because the probe rejects the
    copy without the previous revision's pin, **leave the metadata at `Mi`**.
    The metadata then describes the artifact that remains. Report failure and
    retain the point.
+
+Every metadata restore (rows 2 and 3) first checks `metadata.prev.json`
+against `Mp` with `hashlib`; on mismatch it fails and changes nothing. A
+verified restore removes the rollback point.
 
 `RestoreResult` fields:
 
@@ -819,6 +836,9 @@ makes that detectable.
 | Inside step 1 | Unchanged | Incomplete (no manifest), safe to delete |
 | After step 2, before step 3's replace | Metadata `Mi` with artifact `Ap`: the metadata names a digest that the artifact lacks | Retained with manifest |
 | After step 3's replace | (`Ai`, `Mi`), consistent | Retained, discardable |
+| Inside `restore`, before its artifact republication | (`Ai`, `Mi`) | Retained with manifest |
+| Inside `restore`, after the artifact returned to `Ap` and before the metadata | (`Ap`, `Mi`) | Retained with manifest; operator step 3 applies |
+| Inside `restore`, after the metadata returned to `Mp` | (`Ap`, `Mp`) | Retained; delete it |
 
 This middle window spans the probe. It is detectable, and it is not repaired
 automatically; see the operator procedure below.
@@ -900,6 +920,7 @@ A crash can leave:
 2. Read `rollback.json`. Compute the SHA-256 of the current
    `artifact.path` and `metadata.path`.
 3. If the artifact equals `artifact.previous_sha256` (or both are absent),
+   check `metadata.prev.json` against `metadata.previous_sha256`, then
    restore the metadata:
    - copy `metadata.prev.json` over `metadata.path`, or delete `metadata.path`
      if `previous_copy` is null;
@@ -964,6 +985,7 @@ crash tests, calls `os._exit`); it never replaces behavior.
 | `publish.after_retire` / `publish.before_promote` | `publish_entry` steps 3 and 4 |
 | `prune.after_enumerate` / `prune.after_recheck` | Pruner steps 1 and 2 |
 | `rollback.after_capture` | Commit step 1 |
+| `commit.after_metadata` | Commit step 2, after the nested hold is released (private; context `section="commit"`) |
 | `metadata.after_replace` | `publish_installation_metadata` |
 | `restore.before_artifact` / `restore.before_metadata` | Restore row 3 |
 
@@ -1024,9 +1046,9 @@ and treesitter-chunker#363).** It replaces the earlier same-device refusal
     garbage, which move by copy or within `.txn/`.
 - *Reserved names.* Every `.txn*` name is a control folder, never an entry.
   Participants and the scans that list namespaces or grammars skip it: the
-  pruner, `_cleanup_cache_fallback`, the CLI grammar listing, registry
-  discovery and the grammar analyzer (the last two match `lib*.so` files and
-  named priority subdirectories only).
+  pruner, `_cleanup_cache_fallback`, `GrammarDownloadManager.clean_cache`, the
+  CLI grammar listing, registry discovery and the grammar analyzer (the last
+  two match `lib*.so` files and named priority subdirectories only).
 - *Signature change.* `StagingArea` keeps `root` and `operation_id`; its
   `path` attribute becomes the method `path(namespace)`.
 - *Compatibility.* Split-mount roots, with a separate filesystem at any of

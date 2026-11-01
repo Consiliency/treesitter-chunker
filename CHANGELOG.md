@@ -58,6 +58,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parameter defaults are evaluated in the scope that contains the function
   (treesitter-chunker#278).
 
+- A failed grammar update now restores the previous installation instead of
+  deleting its metadata while logging that it rolled back
+  (treesitter-chunker#363). `GrammarInstaller.install_grammar` commits in one
+  locked section: it captures a rollback point holding copies of the current
+  library and metadata, publishes the new metadata, then publishes the staged
+  library through the admitted, same-directory `publish_native_grammar`
+  (treesitter-chunker#162). If that fails, the artifact and metadata are
+  restored as a pair. Installation now requires a pinned SHA-256 for the
+  language (`GrammarInstaller(trusted_artifacts=...)`); without one it fails
+  before anything changes. Metadata gains `artifact_sha256` and is written
+  canonically. `remove_grammar` removes the artifact and metadata in one locked
+  section and refuses recorded paths outside `<cache_dir>/grammars`. Removed
+  and restored files are retired into a hidden `.txn-retired/` folder beside
+  them before deletion, so a separately mounted `grammars/` keeps working.
+  `GrammarDownloadManager.clean_cache`, whose default folder is that same
+  `grammars/`, now skips the hidden `.txn*` folders.
+
 - `GrammarManager.cleanup_cache` can no longer delete a cache entry that an
   installer publishes while cleanup runs, and `bytes_freed` now counts only
   bytes actually deleted (treesitter-chunker#323). Installers clone and build

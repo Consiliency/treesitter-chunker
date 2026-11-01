@@ -157,6 +157,30 @@ class Child:
             ):
                 return item
 
+    def expect_any(self, *events: str) -> dict[str, Any]:
+        """Return the next reported event whose name is one of ``events``."""
+        while True:
+            item = self._next(events)
+            if item["event"] in events:
+                return item
+
+    def _next(self, wanted: object) -> dict[str, Any]:
+        try:
+            item = self._events.get(timeout=SAFETY_TIMEOUT)
+        except queue.Empty:
+            raise AssertionError(
+                f"child never reported {wanted}; seen "
+                f"{[e['event'] for e in self.seen]}\n{self.stderr[-4000:]}"
+            ) from None
+        if item is None:
+            self.process.wait(timeout=SAFETY_TIMEOUT)
+            raise AssertionError(
+                f"child exited {self.process.returncode} before {wanted}; seen "
+                f"{[e['event'] for e in self.seen]}\n{self.stderr[-4000:]}"
+            )
+        self.seen.append(item)
+        return item
+
     def release(self) -> None:
         """Release the child from its current wait (``ready`` or a pause)."""
         assert self.process.stdin is not None

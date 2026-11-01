@@ -27,12 +27,12 @@ from __future__ import annotations
 
 import ctypes
 import hashlib
-import json
 import logging
 import os
 import re
 import shutil
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -599,6 +599,8 @@ class GrammarInstaller:
         cache_dir: Path | None = None,
         build_timeout: int = 300,
         max_retries: int = 3,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, Any]] | None = None,
     ):
         """Initialize grammar installer.
 
@@ -606,7 +608,15 @@ class GrammarInstaller:
             cache_dir: Directory for downloads and builds
             build_timeout: Timeout for build operations in seconds
             max_retries: Maximum number of retry attempts
+            trusted_artifacts: Approved pins, language -> {"sha256": hex}. Only a
+                pinned language can be installed (IF-0-ADMITPIN-1; ADMIT
+                SL-core-2 owns this constructor line on main).
         """
+        self._trusted_artifacts = {
+            language: dict(record)
+            for language, record in (trusted_artifacts or {}).items()
+            if isinstance(record, Mapping)
+        }
         self._base_cache_dir = cache_dir or (
             Path.home() / ".cache" / "treesitter-chunker"
         )
@@ -645,90 +655,83 @@ class GrammarInstaller:
         try:
             logger.info(f"Installing grammar for {language} from {repository_url}")
 
-            # Create rollback point
-            rollback_info = self._create_rollback_point(language)
-
             # Every input stays in this operation's private staging until the
             # installation, its last consumer, has finished.
             staging = _transactions.create_staging(self._base_cache_dir)
             try:
+                # Download grammar source
+                download_success, download_path, download_error = (
+                    self._download_grammar(
+                        language, repository_url, version, staging=staging
+                    )
+                )
+
+                if not download_success:
+                    return False, f"Download failed: {download_error}", None
+
+                # Build grammar
+                build_success, grammar_path, build_error = self._build_grammar(
+                    language,
+                    download_path,
+                    staging=staging,
+                )
+
+                if not build_success:
+                    return False, f"Build failed: {build_error}", None
+
+                # Validate grammar
+                validation_result = self._validator.validate_grammar(
+                    grammar_path,
+                    language,
+                    ValidationLevel.STANDARD,
+                )
+
+                if not validation_result.is_valid:
+                    error_msg = (
+                        f"Validation failed: {'; '.join(validation_result.errors)}"
+                    )
+                    return False, error_msg, None
+
+                # Only a pinned language reaches the commit section.
+                pin = self._pin_record(language)
+                if pin is None:
+                    return (
+                        False,
+                        f"Grammar {language} is untrusted: no pinned sha256 "
+                        "was supplied for it, so nothing was installed",
+                        None,
+                    )
+                destination = self._destination_path(language, priority)
+
+                # Resolve the commit before the commit section (no subprocess
+                # runs under the lock); an aborted owned run fails the install.
                 try:
-                    # Download grammar source
-                    download_success, download_path, download_error = (
-                        self._download_grammar(
-                            language, repository_url, version, staging=staging
-                        )
+                    source_commit = self._get_commit_hash(
+                        download_path, staging=staging
                     )
+                except _StagedRunAbortedError as e:
+                    return False, f"Commit lookup aborted: {e}", None
 
-                    if not download_success:
-                        return False, f"Download failed: {download_error}", None
+                install_info = InstallationInfo(
+                    version=version or "latest",
+                    install_date=time.time(),
+                    install_path=destination,
+                    source_url=repository_url,
+                    source_commit=source_commit,
+                    priority=priority,
+                    metadata={
+                        "validation": validation_result.metadata,
+                        "performance": validation_result.performance_metrics,
+                    },
+                )
 
-                    # Build grammar
-                    build_success, grammar_path, build_error = self._build_grammar(
-                        language,
-                        download_path,
-                        staging=staging,
-                    )
-
-                    if not build_success:
-                        return False, f"Build failed: {build_error}", None
-
-                    # Validate grammar
-                    validation_result = self._validator.validate_grammar(
-                        grammar_path,
-                        language,
-                        ValidationLevel.STANDARD,
-                    )
-
-                    if not validation_result.is_valid:
-                        error_msg = (
-                            "Validation failed: "
-                            f"{'; '.join(validation_result.errors)}"
-                        )
-                        return False, error_msg, None
-
-                    # Resolve the commit before installing: an aborted owned
-                    # run fails the operation before anything is installed.
-                    try:
-                        source_commit = self._get_commit_hash(
-                            download_path, staging=staging
-                        )
-                    except _StagedRunAbortedError as e:
-                        return False, f"Commit lookup aborted: {e}", None
-
-                    # Install grammar
-                    install_success, final_path, install_error = (
-                        self._install_grammar_file(
-                            language,
-                            grammar_path,
-                            priority,
-                        )
-                    )
-
-                    if not install_success:
-                        return False, f"Installation failed: {install_error}", None
-
-                    # Create installation info
-                    install_info = InstallationInfo(
-                        version=version or "latest",
-                        install_date=time.time(),
-                        install_path=final_path,
-                        source_url=repository_url,
-                        source_commit=source_commit,
-                        priority=priority,
-                        metadata={
-                            "validation": validation_result.metadata,
-                            "performance": validation_result.performance_metrics,
-                        },
-                    )
-
-                    # Save installation metadata
-                    self._save_installation_info(language, install_info)
-
-                except Exception as e:
-                    # Rollback on failure
-                    self._perform_rollback(language, rollback_info)
-                    raise e
+                # Commit: metadata, then the admitted artifact, as one
+                # locked section with a restorable rollback point.
+                install_success, install_error = self._install_grammar_file(
+                    language, grammar_path, destination, install_info, pin
+                )
+                if not install_success:
+                    return False, f"Installation failed: {install_error}", None
 
                 # The installation is committed. Cache-entry publication is
                 # best effort: its failures are warnings, never a failed install.
@@ -814,19 +817,13 @@ class GrammarInstaller:
             if not install_info:
                 return False, f"Grammar {language} is not installed"
 
-            # Remove grammar file
-            if install_info.install_path and install_info.install_path.exists():
-                try:
-                    install_info.install_path.unlink()
-                except Exception as e:
-                    logger.warning(f"Failed to remove grammar file: {e}")
+            # Remove the artifact, then its metadata, as one participant
+            # section; a paused commit cannot interleave with it.
+            self._remove_installation_info(language)
 
             # Clean up cache files
             if clean_cache:
                 self._cleanup_cache(language)
-
-            # Remove installation metadata
-            self._remove_installation_info(language)
 
             # Clean up dependencies if requested
             if clean_dependencies:
@@ -1049,74 +1046,149 @@ class GrammarInstaller:
         except FileNotFoundError:
             return False, "Make not found"
 
+    def _pin_record(self, language: str) -> dict[str, str] | None:
+        """The one-field pin record for ``language``, or ``None`` (untrusted)."""
+        record = self._trusted_artifacts.get(language)
+        if isinstance(record, Mapping) and isinstance(record.get("sha256"), str):
+            return {"sha256": record["sha256"]}
+        return None
+
+    def _destination_path(self, language: str, priority: GrammarPriority) -> Path:
+        """The library path the requested priority selects under ``grammars/``."""
+        if priority == GrammarPriority.USER:
+            return self._grammars_dir / f"lib{language}.so"
+        return self._grammars_dir / priority.name.lower() / f"lib{language}.so"
+
+    @staticmethod
+    def _installation_document(
+        info: InstallationInfo, artifact_sha256: str | None
+    ) -> dict[str, Any]:
+        document: dict[str, Any] = {
+            "version": info.version,
+            "install_date": info.install_date,
+            "install_path": str(info.install_path),
+            "source_url": info.source_url,
+            "source_commit": info.source_commit,
+            "priority": info.priority.name,
+            "dependencies": info.dependencies,
+            "metadata": info.metadata,
+        }
+        if artifact_sha256 is not None:
+            document["artifact_sha256"] = artifact_sha256
+        return document
+
+    def _invalidate_installed(self, path: Path) -> None:
+        """Drop state derived from a replaced library (non-fatal hook).
+
+        The installer holds no loaded grammar; its validator's read cache is
+        refreshed so no record derived from the old file is reused here.
+        """
+        self._validator._cache = self._validator._load_validation_cache()
+
     def _install_grammar_file(
         self,
         language: str,
-        source_path: Path,
-        priority: GrammarPriority,
-    ) -> tuple[bool, Path | None, str | None]:
-        """Install compiled grammar file to final location."""
-        try:
-            # Determine final installation path based on priority
-            if priority == GrammarPriority.USER:
-                final_dir = self._grammars_dir
+        staged_artifact: Path,
+        destination: Path,
+        info: InstallationInfo,
+        pin: Mapping[str, Any],
+    ) -> tuple[bool, str | None]:
+        """Commit one installation (cache transaction contract, Primitive 3).
+
+        In one lock section: capture a rollback point, publish the metadata,
+        then publish the staged artifact through ``publish_native_grammar``
+        with the pin record. Any failure there restores the pair; a
+        ``BaseException`` is re-raised after the restore.
+        """
+        from chunker._internal.user_grammar_tools import publish_native_grammar
+
+        root = self._base_cache_dir
+        document = self._installation_document(info, str(pin["sha256"]))
+        previous = _transactions.read_installation_metadata(root, language)
+        if previous is not None and isinstance(previous.get("install_path"), str):
+            # Recorded metadata outside grammars/ refuses the install here.
+            _transactions._grammar_parts(root, Path(previous["install_path"]))
+
+        failure: str | None = None
+        interrupted: BaseException | None = None
+        outcome: _transactions.RestoreResult | None = None
+        with _transactions._commit_section(root) as operation_id:
+            point = self._create_rollback_point(language, destination, document, pin)
+            try:
+                _transactions.publish_installation_metadata(root, language, document)
+                _transactions._commit_seam(root, operation_id, "commit.after_metadata")
+                result = publish_native_grammar(
+                    staged_artifact, destination, language, provenance=dict(pin)
+                )
+                if not result.supported:
+                    failure = f"the artifact was not admitted ({result.reason})"
+            except BaseException as error:  # restore first, then re-raise
+                failure = f"{type(error).__name__}: {error}"
+                if not isinstance(error, Exception):
+                    interrupted = error
+            if failure is None:
+                try:
+                    self._invalidate_installed(destination)
+                except Exception as error:
+                    logger.warning(f"Cache invalidation failed for {language}: {error}")
             else:
-                # For package-level installs, use a subdirectory
-                final_dir = self._grammars_dir / priority.name.lower()
-
-            final_dir.mkdir(parents=True, exist_ok=True)
-            final_path = final_dir / f"lib{language}.so"
-
-            # Copy the file
-            shutil.copy2(source_path, final_path)
-
-            # Set appropriate permissions
-            Path(final_path).chmod(0o755)
-
-            return True, final_path, None
-
-        except Exception as e:
-            return False, None, str(e)
-
-    def _create_rollback_point(self, language: str) -> dict[str, Any] | None:
-        """Create rollback point for installation."""
+                outcome = self._perform_rollback(point, pin)
+        if interrupted is not None:
+            raise interrupted
+        if failure is not None:
+            assert outcome is not None
+            if outcome.restored:
+                restored = "The previous installation was restored."
+            else:
+                restored = "Restore incomplete: " + "; ".join(outcome.errors)
+            for warning in outcome.warnings:
+                logger.warning(f"Restore for {language}: {warning}")
+            return False, f"{failure}. {restored}"
         try:
-            rollback_info = {"timestamp": time.time(), "existing_installation": None}
+            _transactions.discard_rollback_point(point)
+        except Exception as error:
+            logger.warning(
+                f"Installed {language}; rollback point not removed: {point.path} "
+                f"({error})"
+            )
+        return True, None
 
-            # Check if grammar is already installed
-            existing_info = self._load_installation_info(language)
-            if existing_info:
-                rollback_info["existing_installation"] = {
-                    "install_path": str(existing_info.install_path),
-                    "info": existing_info.__dict__,
-                }
+    def _create_rollback_point(
+        self,
+        language: str,
+        destination: Path,
+        document: Mapping[str, Any],
+        pin: Mapping[str, Any],
+    ) -> _transactions.RollbackPoint:
+        """Capture restorable copies of the current artifact and metadata."""
+        return _transactions.create_rollback_point(
+            self._base_cache_dir,
+            language=language,
+            artifact=destination,
+            metadata_document=document,
+            artifact_sha256=str(pin["sha256"]),
+        )
 
-            return rollback_info
+    def _perform_rollback(
+        self, point: _transactions.RollbackPoint, pin: Mapping[str, Any]
+    ) -> _transactions.RestoreResult:
+        """Restore the previous artifact and metadata as a pair.
 
-        except Exception as e:
-            logger.warning(f"Failed to create rollback point: {e}")
-            return None
-
-    def _perform_rollback(self, language: str, rollback_info: dict[str, Any] | None):
-        """Perform rollback of failed installation."""
-        if not rollback_info:
-            return
-
-        try:
-            # A failed operation's inputs are in its own staging; the published
-            # download/build entries belong to other installs and are kept
-            # (runner decision on the treesitter-chunker#564 round-1 panel).
-            self._remove_installation_info(language)
-
-            # Restore existing installation if there was one
-            existing = rollback_info.get("existing_installation")
-            if existing:
-                # This would involve restoring the previous installation
-                # For now, just log that rollback was attempted
-                logger.info(f"Rollback performed for {language} installation")
-
-        except Exception as e:
-            logger.error(f"Rollback failed for {language}: {e}")
+        It never touches published download/build cache entries: a failed
+        operation's inputs live in its own staging (runner decision on the
+        treesitter-chunker#564 round-1 panel).
+        """
+        result = _transactions.restore(
+            point, provenance=dict(pin), invalidate=self._invalidate_installed
+        )
+        if result.restored:
+            logger.info(f"Rollback restored the previous {point.language} installation")
+        else:
+            logger.error(
+                f"Rollback for {point.language} did not complete: "
+                + "; ".join(result.errors)
+            )
+        return result
 
     def _get_commit_hash(
         self,
@@ -1149,39 +1221,43 @@ class GrammarInstaller:
         return None
 
     def _save_installation_info(self, language: str, info: InstallationInfo):
-        """Save installation metadata."""
+        """Publish installation metadata (locked, no-follow, atomic replace)."""
         try:
-            metadata_file = self._grammars_dir / f"{language}_install_info.json"
-
-            # Convert to serializable format
-            data = {
-                "version": info.version,
-                "install_date": info.install_date,
-                "install_path": str(info.install_path),
-                "source_url": info.source_url,
-                "source_commit": info.source_commit,
-                "priority": info.priority.name,
-                "dependencies": info.dependencies,
-                "metadata": info.metadata,
-            }
-
-            with metadata_file.open("w") as f:
-                json.dump(data, f, indent=2)
-
+            parts = _transactions._grammar_parts(
+                self._base_cache_dir, Path(info.install_path)
+            )
+            artifact_sha256 = None
+            if Path(info.install_path).is_file() and len(parts) > 1:
+                artifact_sha256 = hashlib.sha256(
+                    Path(info.install_path).read_bytes()
+                ).hexdigest()
+            _transactions.publish_installation_metadata(
+                self._base_cache_dir,
+                language,
+                self._installation_document(info, artifact_sha256),
+            )
         except Exception as e:
             logger.warning(f"Failed to save installation info: {e}")
 
     def _load_installation_info(self, language: str) -> InstallationInfo | None:
-        """Load installation metadata."""
+        """Load installation metadata under the cache root lock.
+
+        A malformed or linked file is warned about and treated as absent. A
+        lock timeout propagates: callers report it as an error, never as "not
+        installed".
+        """
         try:
-            metadata_file = self._grammars_dir / f"{language}_install_info.json"
-
-            if not metadata_file.exists():
-                return None
-
-            with metadata_file.open("r") as f:
-                data = json.load(f)
-
+            data = _transactions.read_installation_metadata(
+                self._base_cache_dir, language
+            )
+        except _transactions.CacheLockTimeoutError:
+            raise
+        except Exception as e:
+            logger.warning(f"Failed to load installation info: {e}")
+            return None
+        if data is None:
+            return None
+        try:
             return InstallationInfo(
                 version=data["version"],
                 install_date=data["install_date"],
@@ -1192,19 +1268,19 @@ class GrammarInstaller:
                 dependencies=data.get("dependencies", []),
                 metadata=data.get("metadata", {}),
             )
-
         except Exception as e:
             logger.warning(f"Failed to load installation info: {e}")
             return None
 
-    def _remove_installation_info(self, language: str):
-        """Remove installation metadata."""
-        try:
-            metadata_file = self._grammars_dir / f"{language}_install_info.json"
-            if metadata_file.exists():
-                metadata_file.unlink()
-        except Exception as e:
-            logger.warning(f"Failed to remove installation info: {e}")
+    def _remove_installation_info(self, language: str) -> int:
+        """Retire the installed artifact and its metadata in one lock section.
+
+        Returns the number of artifacts removed.
+        """
+        result = _transactions.remove_installation(self._base_cache_dir, language)
+        for error in result.errors:
+            logger.warning(f"Removal of {language} left files behind: {error}")
+        return result.entries_removed
 
     def _cleanup_cache(self, language: str):
         """Remove a language's download and build cache entries.
