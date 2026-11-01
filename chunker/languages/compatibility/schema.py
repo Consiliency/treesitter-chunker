@@ -54,6 +54,48 @@ class VersionConstraint(Enum):
     WILDCARD = "wildcard"
 
 
+def _compare_version_strings(v1: str, v2: str) -> int:
+    """Compare two version strings for grammar bounds and compatibility rules.
+
+    Supported ECMAScript editions compare in release order (see
+    ``_ecmascript_order``); dotted numeric versions compare numerically.
+
+    Returns:
+        -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+
+    Raises:
+        ValueError: If the versions cannot be compared, including an
+            unsupported ES edition or an ES edition against a numeric
+            version. A failed comparison is never reported as equal.
+    """
+    es1, es2 = _ecmascript_order(v1), _ecmascript_order(v2)
+    if es1 is not None or es2 is not None:
+        if es1 is None or es2 is None:
+            raise ValueError(
+                f"Cannot compare ECMAScript and numeric versions {v1!r}, {v2!r}"
+            )
+        return (es1 > es2) - (es1 < es2)
+    try:
+        # Simple version comparison
+        v1_parts = [int(x) for x in re.sub(r"[a-zA-Z].*$", "", v1).split(".")]
+        v2_parts = [int(x) for x in re.sub(r"[a-zA-Z].*$", "", v2).split(".")]
+
+        # Pad with zeros
+        max_len = max(len(v1_parts), len(v2_parts))
+        v1_parts.extend([0] * (max_len - len(v1_parts)))
+        v2_parts.extend([0] * (max_len - len(v2_parts)))
+
+        for p1, p2 in zip(v1_parts, v2_parts, strict=False):
+            if p1 < p2:
+                return -1
+            if p1 > p2:
+                return 1
+
+        return 0
+    except ValueError as e:
+        raise ValueError(f"Cannot compare versions {v1!r} and {v2!r}") from e
+
+
 @dataclass
 class LanguageVersion:
     """Represents a specific language version."""
@@ -244,45 +286,8 @@ class GrammarVersion:
         return CompatibilityLevel.PARTIALLY_COMPATIBLE
 
     def _compare_versions(self, v1: str, v2: str) -> int:
-        """Compare two version strings.
-
-        Supported ECMAScript editions compare in release order (see
-        ``_ecmascript_order``); dotted numeric versions compare numerically.
-
-        Returns:
-            -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
-
-        Raises:
-            ValueError: If the versions cannot be compared, including an
-                unsupported ES edition or an ES edition against a numeric
-                version. A failed comparison is never reported as equal.
-        """
-        es1, es2 = _ecmascript_order(v1), _ecmascript_order(v2)
-        if es1 is not None or es2 is not None:
-            if es1 is None or es2 is None:
-                raise ValueError(
-                    f"Cannot compare ECMAScript and numeric versions {v1!r}, {v2!r}"
-                )
-            return (es1 > es2) - (es1 < es2)
-        try:
-            # Simple version comparison
-            v1_parts = [int(x) for x in re.sub(r"[a-zA-Z].*$", "", v1).split(".")]
-            v2_parts = [int(x) for x in re.sub(r"[a-zA-Z].*$", "", v2).split(".")]
-
-            # Pad with zeros
-            max_len = max(len(v1_parts), len(v2_parts))
-            v1_parts.extend([0] * (max_len - len(v1_parts)))
-            v2_parts.extend([0] * (max_len - len(v2_parts)))
-
-            for p1, p2 in zip(v1_parts, v2_parts, strict=False):
-                if p1 < p2:
-                    return -1
-                if p1 > p2:
-                    return 1
-
-            return 0
-        except ValueError as e:
-            raise ValueError(f"Cannot compare versions {v1!r} and {v2!r}") from e
+        """Compare two version strings (see ``_compare_version_strings``)."""
+        return _compare_version_strings(v1, v2)
 
 
 @dataclass
@@ -395,24 +400,13 @@ class CompatibilityRule:
             return False
 
     def _compare_versions(self, v1: str, v2: str) -> int:
-        """Compare two version strings."""
-        try:
-            v1_parts = [int(x) for x in re.sub(r"[a-zA-Z].*$", "", v1).split(".")]
-            v2_parts = [int(x) for x in re.sub(r"[a-zA-Z].*$", "", v2).split(".")]
+        """Compare two version strings (see ``_compare_version_strings``).
 
-            max_len = max(len(v1_parts), len(v2_parts))
-            v1_parts.extend([0] * (max_len - len(v1_parts)))
-            v2_parts.extend([0] * (max_len - len(v2_parts)))
-
-            for p1, p2 in zip(v1_parts, v2_parts, strict=False):
-                if p1 < p2:
-                    return -1
-                if p1 > p2:
-                    return 1
-
-            return 0
-        except Exception:
-            raise
+        ES ranges such as ``ES2015-ES2019`` compare in release order, so a
+        rule applies to the editions it names (treesitter-chunker#170). A
+        version that cannot be compared raises, and the rule does not match.
+        """
+        return _compare_version_strings(v1, v2)
 
 
 @dataclass

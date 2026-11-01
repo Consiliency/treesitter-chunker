@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compared fails closed instead of comparing as equal: another ES-shaped value
   (`ES6`, `ESNext`), an ES edition against a dotted number, or any other
   unparseable text. Dotted numeric versions compare as before.
+  `CompatibilityRule` version constraints use the same ordering, so an ES rule
+  such as `ES2015-ES2019` or `>=ES2020` now applies to the editions it names.
+  Before, a restrictive `INCOMPATIBLE` rule for those editions never matched.
 - Compact files from the direct `chunker.export.graphml_exporter` and
   `graphml_yed_exporter` modules no longer double CRLF caller text leaves on
   Windows (treesitter-chunker#488). `export(path, pretty_print=False)` now

@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from chunker import get_parser
 from chunker.languages.compatibility.database import (
     CompatibilityDatabase,
@@ -343,3 +345,78 @@ def test_numeric_bounds_are_unchanged_by_es_ordering() -> None:
         assert grammar.supports_language_version(LanguageVersion("python", version))
     for version in ("3.7", "3.13", "4.0", "ES2020"):
         assert not grammar.supports_language_version(LanguageVersion("python", version))
+
+
+def test_unsupported_es_values_are_rejected_not_ordered_low() -> None:
+    """ES6, ES4, ES2014 and ES5.1 have no position, so a wide range rejects them.
+
+    An ordinal reading (ES6 as 6, ES2014 as 2014) would place them inside
+    ES3-ES2023 and admit them; rejection must not depend on the bound.
+    """
+    _javascript_fixture_parses()
+    wide = GrammarVersion(
+        "javascript",
+        "1.0",
+        "javascript.so",
+        min_language_version="ES3",
+        max_language_version="ES2023",
+    )
+    for version in ("ES6", "ES4", "ES2014", "ES5.1", "ESNext"):
+        for bound in ("ES3", "ES2020", "ES2023"):
+            with pytest.raises(ValueError):
+                wide._compare_versions(version, bound)
+            with pytest.raises(ValueError):
+                wide._compare_versions(bound, version)
+        lang = LanguageVersion("javascript", version)
+        assert not wide.supports_language_version(lang), version
+        assert wide.get_compatibility_level(lang) == CompatibilityLevel.INCOMPATIBLE
+    for version in ("ES3", "ES5", "ES2015", "ES2023"):
+        assert wide.supports_language_version(LanguageVersion("javascript", version))
+
+
+def test_es_range_compatibility_rules_apply_to_their_editions() -> None:
+    """A restrictive ES rule must not fail open (treesitter-chunker#170)."""
+    _javascript_fixture_parses()
+    grammar = GrammarVersion(
+        "javascript",
+        "1.0",
+        "javascript.so",
+        min_language_version="ES2015",
+        max_language_version="ES2023",
+    )
+    blocked = CompatibilityRule(
+        "javascript", "ES2015-ES2019", "*", CompatibilityLevel.INCOMPATIBLE
+    )
+    for version in ("ES2015", "ES2016", "ES2019"):
+        assert blocked.matches_language_version(LanguageVersion("javascript", version))
+    for version in ("ES5", "ES2020", "ES2023", "ESNext", "ES6", "3.11"):
+        assert not blocked.matches_language_version(
+            LanguageVersion("javascript", version)
+        ), version
+    for constraint, matching, other in (
+        (">=ES2020", "ES2021", "ES2019"),
+        ("<=ES5", "ES3", "ES2015"),
+        (">ES2015", "ES2016", "ES2015"),
+        ("<ES2016", "ES2015", "ES2016"),
+    ):
+        rule = CompatibilityRule(
+            "javascript", constraint, "*", CompatibilityLevel.PARTIALLY_COMPATIBLE
+        )
+        assert rule.matches_language_version(LanguageVersion("javascript", matching))
+        assert not rule.matches_language_version(LanguageVersion("javascript", other))
+
+    schema = CompatibilitySchema()
+    schema.add_grammar_version(grammar)
+    schema.add_compatibility_rule(blocked)
+    es2016 = LanguageVersion("javascript", "ES2016")
+    es2021 = LanguageVersion("javascript", "ES2021")
+    assert (
+        schema.get_compatibility_level(es2016, grammar)
+        == CompatibilityLevel.INCOMPATIBLE
+    )
+    assert schema.find_compatible_grammar(es2016) is None
+    assert (
+        schema.get_compatibility_level(es2021, grammar)
+        == CompatibilityLevel.FULLY_COMPATIBLE
+    )
+    assert schema.find_compatible_grammar(es2021) is grammar
