@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 # rules accept LF, CRLF and lone CR as physical line endings.
 _LONE_CR_LINE_ENDING_LANGUAGES = frozenset({"python"})
 _LONE_CR = re.compile(rb"\r(?!\n)")
+_LINE_ENDING_PATTERN = rb"\r\n|\r|\n"
 
 
 def _lone_cr_parse_copy(source: bytes | mmap.mmap, language: str) -> bytes | None:
@@ -52,12 +53,29 @@ def _lone_cr_parse_copy(source: bytes | mmap.mmap, language: str) -> bytes | Non
     rows advance once per LF, CRLF or lone CR line ending. LF and CRLF source,
     and source in every other language, is parsed unchanged (``None``).
     """
-    if language not in _LONE_CR_LINE_ENDING_LANGUAGES or source.find(b"\r") == -1:
+    if (
+        language not in _LONE_CR_LINE_ENDING_LANGUAGES
+        or _LONE_CR.search(source) is None
+    ):
         return None
     parse_copy = _LONE_CR.sub(b"\n", source)
     if len(parse_copy) != len(source):  # pragma: no cover - invariant
         raise AssertionError("CR->LF parse copy must keep every byte offset")
     return parse_copy
+
+
+def _line_ending_offsets(source: bytes, language: str | None) -> list[int]:
+    """Return the offset of the last byte of each line ending in raw ``source``.
+
+    Rows derived from these offsets match the rows the parser reports for
+    ``source``: for languages whose lone CR is parsed as a line ending (see
+    :func:`_lone_cr_parse_copy`), LF, CRLF and lone CR each end one line;
+    elsewhere only LF does, as Tree-sitter counts rows.
+    """
+    pattern = (
+        _LINE_ENDING_PATTERN if language in _LONE_CR_LINE_ENDING_LANGUAGES else b"\n"
+    )
+    return [match.end() - 1 for match in re.finditer(pattern, source)]
 
 
 def _extract_definition_name(
