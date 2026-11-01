@@ -254,6 +254,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   checks keep covering the 3.12 floor, with no extra CI jobs. `requires-python`
   stays `>=3.12`, and `.python-version` keeps 3.12 as the default development
   interpreter.
+- On Python 3.14, Linux starts multiprocessing workers with `forkserver` by
+  default. Scripts that call `chunk_files_parallel`, `chunk_directory_parallel`
+  or `ParallelChunker` need the `if __name__ == "__main__":` guard there, as on
+  macOS and Windows; see
+  [the parallel API](docs/api-reference.md#chunk_files_parallel)
+  (treesitter-chunker#502).
 - `scripts/mypy_gate.py --update` now only removes cleared signatures. When mypy
   reports a signature that is not in the baseline, it exits 1 and leaves
   `docs/development/mypy-baseline.txt` unchanged, so new errors can no longer be

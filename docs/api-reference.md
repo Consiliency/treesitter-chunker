@@ -428,6 +428,13 @@ if __name__ == "__main__":
         print(path, len(chunks))
 ```
 
+Keep the `if __name__ == "__main__":` guard around calls to
+`chunk_files_parallel`, `chunk_directory_parallel` and `ParallelChunker` in a
+script. macOS and Windows already start workers with `spawn`, and from Python
+3.14 Linux defaults to `forkserver`. Both re-import the main module in each new
+process, so an unguarded top-level call fails with a `RuntimeError` about the
+bootstrapping phase instead of returning chunks.
+
 ### chunk_directory_parallel
 
 Import from `chunker.parallel`, or use its alias `chunker.chunk_directory`.
