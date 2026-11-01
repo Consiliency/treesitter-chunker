@@ -290,6 +290,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter`
+  modules declare caller metadata named `label` with
+  `attr.name="caller_label"`, so readers that map GraphML data by `attr.name`,
+  such as NetworkX, see both labels (treesitter-chunker#453). `label` now holds
+  only the structural label; before, a NetworkX import replaced the structural
+  label with the caller value. To keep declared names distinct, a caller name
+  such as `caller_label` is declared as `caller_caller_label`. Key IDs and
+  values are unchanged, so consumers that select by key ID are unaffected.
+  In a yEd import NetworkX still replaces `label` with the yEd graphics text,
+  and `caller_label` is kept beside it. Name-keyed consumers should read
+  caller `label` metadata as `caller_label` and regenerate GraphML output. See
+  [caller label names](docs/graphml_export.md#caller-label-names-for-name-keyed-readers).
 - Require Python 3.12 or newer for the next main and BAML companion releases
   (treesitter-chunker#493). Published 6.0.0 and companion 0.1.0 keep their original
   metadata. CI uses Python 3.12 with installed-wheel checks on 3.12 and 3.14,
