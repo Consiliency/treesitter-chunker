@@ -25,6 +25,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Local-candidate checks, `CompatibilityChecker.check_compatibility(...,
+  grammar_path=...)` as `SmartSelector` uses them, no longer report a grammar as
+  `DEGRADED` (score 0.7) only because the validator has no built-in samples for
+  its language (treesitter-chunker#133). That warning is still reported, but it
+  is now an evidence gap, not a performance finding. Caller-supplied
+  `code_samples` parsed with the candidate decide the level, so a fully
+  successful sample set gives `COMPATIBLE`. With the gap and no caller samples,
+  nothing was parsed, so the level is `UNKNOWN` (score 0.3) whatever other
+  warnings exist, and all warnings are kept. A warned artifact therefore no
+  longer outranks a clean one in selection. Other validation warnings still give
+  `DEGRADED` when there is parse evidence. The canonical check without
+  `grammar_path=` is unchanged (treesitter-chunker#588).
 - Language-version bounds on a compatibility `GrammarVersion` no longer let
   ES-style JavaScript versions through silently (treesitter-chunker#170).
   `ES3`, `ES5` and the year editions `ES2015` and later now compare in release
