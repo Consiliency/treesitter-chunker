@@ -22,20 +22,25 @@ import json
 import os
 import subprocess
 import sys
+import warnings
 from pathlib import Path
 
 import pytest
 
 from chunker._internal.language_pack import UNSAFE_PACK_LANGUAGES
 from tests.boundary_ir_conformance import assert_grammar_runtime_pins
+from tests import language_smoke
 from tests.language_smoke import (
+    DEADLINE_EXPIRED,
     EMPTY,
     EXTRACTION_GAP,
+    FAILS_TO_LOAD,
     LOAD_ONLY,
     LOADS,
     RICH,
     SPARSE,
     compute_coverage,
+    confirm_load,
     load_language,
     pack_languages,
 )
@@ -95,10 +100,48 @@ def test_every_pack_language_loads(language: str) -> None:
 
     This is the forward-drift tripwire: a future ABI break that silently breaks
     a language (the C#/ABI-15 failure mode) turns this RED instead of passing
-    silently.
+    silently. A five-second deadline expiry is confirmed once under the
+    load-tolerant bound before it counts (treesitter-chunker#143); a load error
+    or a probe that never finishes still fails.
     """
-    status, error = load_language(language)
+    status, error = confirm_load(language)
     assert status == LOADS, f"{language} failed to load under the pinned stack: {error}"
+
+
+def test_deadline_expiry_is_not_reported_as_load_failure() -> None:
+    """A killed probe is ``deadline_expired``; a real load error is not."""
+    status, error = load_language("python", deadline=0.001)
+    assert status == DEADLINE_EXPIRED
+    assert error == "parse exceeded the 0.001-second hard-kill deadline"
+
+    status, error = load_language("not_a_pack_language")
+    assert status == FAILS_TO_LOAD
+    assert error
+
+
+def test_confirm_load_retries_only_a_deadline_expiry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Starvation is confirmed away; a probe that never finishes stays expired."""
+    status, _error = confirm_load("not_a_pack_language")
+    assert status == FAILS_TO_LOAD
+
+    monkeypatch.setattr(language_smoke, "LOAD_DEADLINE_SECONDS", 0.001)
+    with pytest.warns(
+        language_smoke.LoadDeadlineRescued,
+        match=r"python: first probe failed \(parse exceeded the 0\.001-second",
+    ):
+        assert confirm_load("python") == (LOADS, None)
+
+    monkeypatch.setattr(language_smoke, "LOAD_TOLERANT_DEADLINE_SECONDS", 0.002)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", language_smoke.LoadDeadlineRescued)
+        status, error = confirm_load("python")
+    assert status == DEADLINE_EXPIRED
+    assert error == (
+        "parse exceeded the 0.001-second hard-kill deadline; confirmation: "
+        "parse exceeded the 0.002-second hard-kill deadline"
+    )
 
 
 def test_unsafe_pack_grammars_are_contained_and_not_advertised() -> None:
@@ -112,7 +155,7 @@ def test_unsafe_pack_grammars_are_contained_and_not_advertised() -> None:
     from chunker._internal.language_pack import list_pack_languages
 
     status, error = load_language("cobol")
-    assert status == "fails_to_load"
+    assert status == DEADLINE_EXPIRED
     assert error == "parse exceeded the 5-second hard-kill deadline"
     assert "cobol" not in list_pack_languages()
 
