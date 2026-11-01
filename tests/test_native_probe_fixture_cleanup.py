@@ -355,13 +355,24 @@ def test_fault_launcher_preserves_real_child_failure(tmp_path, monkeypatch):
         return candidate
 
     def observe(*args, **kwargs):
+        states.append(kwargs["lifecycle"])
         reply = original(*args, **kwargs)
         replies.append(reply)
-        states.append(kwargs["lifecycle"])
         return reply
 
     monkeypatch.setattr(compiled, "_compile_probe_fixture", invalid_image)
     monkeypatch.setattr(integrity, "_read_child", observe)
+    if sys.platform != "win32":
+        # POSIX correctly rejects this distinct-worker launcher before START.
+        # Preserve that protocol assertion instead of requiring native entry.
+        compiled.test_native_valid_ack_abnormal_worker_launcher_zero(
+            tmp_path, monkeypatch
+        )
+        assert len(states) == 1 and not replies
+        assert states[0].worker is None and not states[0].start_attempted
+        assert states[0].exception["type"] == "ValueError"
+        assert states[0].exception["operation"] == "ready_read"
+        return
     with pytest.raises(AssertionError):
         compiled.test_native_valid_ack_abnormal_worker_launcher_zero(
             tmp_path, monkeypatch
