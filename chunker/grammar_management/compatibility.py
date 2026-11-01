@@ -1566,20 +1566,19 @@ class SmartSelector:
             registry_grammars = self.grammar_manager._registry.discover_grammars()
 
             if language in registry_grammars:
+                # The installer keeps one record per language, and it describes
+                # only the artifact at its install_path (treesitter-chunker#134).
+                install_info = self.grammar_manager._installer._load_installation_info(
+                    language,
+                )
                 for grammar_path, priority in registry_grammars[language]:
-                    # Get version info
                     version = "unknown"
-                    metadata = {}
-
-                    # Try to get installation info
-                    install_info = (
-                        self.grammar_manager._installer._load_installation_info(
-                            language,
-                        )
-                    )
-                    if install_info:
+                    metadata: dict[str, Any] = {}
+                    if install_info and self._is_same_artifact(
+                        grammar_path, install_info.install_path
+                    ):
                         version = install_info.version
-                        metadata = install_info.metadata
+                        metadata = dict(install_info.metadata)
 
                     candidate = SelectionCandidate(
                         language=language,
@@ -1596,6 +1595,16 @@ class SmartSelector:
         except Exception as e:
             logger.error(f"Failed to discover candidates for {language}: {e}")
             return []
+
+    @staticmethod
+    def _is_same_artifact(grammar_path: Path, install_path: Path) -> bool:
+        """Whether an install record's path names this discovered artifact."""
+        try:
+            return grammar_path.samefile(install_path)
+        except OSError:
+            return grammar_path.resolve(strict=False) == Path(install_path).resolve(
+                strict=False
+            )
 
     def _score_candidate(
         self,
@@ -1750,10 +1759,16 @@ class SmartSelector:
         if len(candidates) <= 1:
             return candidates
 
-        # Group by version and priority conflicts
-        conflicts = {}
-        for candidate in candidates:
-            key = (candidate.language, candidate.version)
+        # Group only true same-version conflicts. An unknown version says
+        # nothing about the artifact, so each such candidate stands alone
+        # (treesitter-chunker#134).
+        conflicts: dict[tuple[str, str] | int, list[SelectionCandidate]] = {}
+        for index, candidate in enumerate(candidates):
+            key = (
+                index
+                if candidate.version == "unknown"
+                else (candidate.language, candidate.version)
+            )
             if key not in conflicts:
                 conflicts[key] = []
             conflicts[key].append(candidate)
