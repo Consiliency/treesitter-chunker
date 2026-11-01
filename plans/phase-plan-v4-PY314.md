@@ -46,7 +46,7 @@ SL-types — shrink-only type gate, release type-check alignment, first package 
   Parallel-safe: no (single writer of the workflow files after CIFAST)
 
 SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502)
-  Depends on: SL-types (branches from main after it merges)
+  Depends on: SL-types (stacked on its branch; retargets to `main` after it merges)
   Blocks: RECORDS
   Parallel-safe: no
 
@@ -88,7 +88,8 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
 
 ### SL-env — treesitter-chunker#502
 
-- **Scope**: one PR, branched from main after SL-types merges.
+- **Scope**: one PR, stacked on the SL-types branch. It retargets to `main`
+  after SL-types merges, and nothing in it lands first.
 - **Owned files**: `uv.lock`, the dependency sections of `pyproject.toml` (only
   if the lock cannot be fixed within the current ranges), the interpreter
   fields of `.github/workflows/ci.yml`, `test.yml` and `release.yml`, the
@@ -103,7 +104,10 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
     0.22.1, `watchfiles` 1.1.1. For `pydantic-core`, use the smallest
     `pydantic` release whose exact `pydantic-core` pin ships cp314 wheels. Read
     the lock diff. Any other moved package is either a required transitive
-    change, recorded with the reason, or the change is reverted. No parser or
+    change, recorded with the reason, or the change is reverted. Result:
+    `pydantic` 2.12.0 (the first release whose exact `pydantic-core` pin,
+    2.41.1, ships cp314 wheels), plus `typing-inspection` 0.4.1 → 0.4.2, which
+    pydantic 2.12.0 requires (`typing-inspection>=0.4.2`). Nothing else moved. No parser or
     runtime pin moves. If a pinned dependency has no 3.14 wheel, the lane stops
     and reports.
   - host prerequisites: with the new lock, 3.14 needs no compiler, libffi or
@@ -132,7 +136,10 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
   - test: `tests/test_release_hygiene_policy.py` asserts the new layout: the
     release validation matrix, a 3.12 job in platform-core, a 3.14 CI lint/type
     job, and that no workflow gains jobs. On old code it fails at
-    `matrix == ['3.14']`.
+    `matrix == ['3.14']`. `tests/test_python314_lock_wheels.py` reads `uv.lock`
+    offline. On each runner platform, a package with a cp312 wheel must also
+    have a cp314-installable one; a pure wheel counts. On the old lock it lists
+    exactly the blocked packages.
   - evidence: on Linux, `uv sync --locked --all-extras --python 3.14` (heavy,
     one at a time) and on 3.12. On 3.14, the CONTRIBUTING block, docs build,
     a clean wheel/sdist build and hashed install with the chunk CLI, and the
@@ -177,7 +184,9 @@ Named mutations (each fails its focused test):
    `test_update_refuses_to_absorb_new_signature` fails.
 2. `M587-release`: drop the governed-tools line from `release-validation`.
    `test_type_commands_match_ci[.github/workflows/release.yml]` fails.
-3. `M502-matrix`: put `release-validation` back on `['3.12']`, or drop the 3.12
+3. `M502-lock`: restore the pre-SL-env `uv.lock`.
+   `test_every_locked_native_package_has_a_cp314_wheel` fails.
+4. `M502-matrix`: put `release-validation` back on `['3.12']`, or drop the 3.12
    platform-core job. The release-hygiene layout test fails.
 
 ## Acceptance Criteria
@@ -186,7 +195,7 @@ Named mutations (each fails its focused test):
 - [ ] EC-PY314-2: treesitter-chunker#502, by the SL-env PR. The 3.14 locked sync
   passes on Linux, Windows and hosted macOS, and the full checks pass on 3.14.
   The 3.12 minimum is kept and CI has no more jobs. Falsified by
-  `M502-matrix`.
+  `M502-lock` and `M502-matrix`.
 - [ ] EC-PY314-3: treesitter-chunker#587, by the SL-types PR. The baseline was
   re-measured on 3.12 and 3.14 and shrinks by cleared debt only, and the
   release type commands match CI. Falsified by `M587-absorb` and

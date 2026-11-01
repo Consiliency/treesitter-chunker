@@ -32,7 +32,8 @@ before offline BAML parsing, which then needs no network or compiler.
 - Production publishing uses GitHub trusted publishing
 - A release tag must match the version in `pyproject.toml`
 - The PyPI release workflow requires the full `tests/` and `spec_tests/` tier,
-  lint, formatting and the baseline type gate on Python 3.12.
+  lint, formatting, the baseline type gate and the governed-tools type check on
+  Python 3.14. Installed-wheel checks below cover the 3.12 floor.
   A failing or timed-out validation job blocks its build and publication jobs.
 - The built wheel is installed in a fresh environment using hashed, locked runtime
   dependencies and exercised outside the source checkout. Distribution checksums

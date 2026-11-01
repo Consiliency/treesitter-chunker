@@ -372,12 +372,57 @@ def test_docs_do_not_advertise_python_below_floor():
     assert not offenders, "\n".join(offenders)
 
 
+# treesitter-chunker#502: full CI and release validation run on the primary
+# interpreter; the floor keeps focused coverage without a version-by-OS matrix.
+PRIMARY_PYTHON = "3.14"
+
+
+def _workflow(name: str) -> dict:
+    return yaml.safe_load((ROOT / ".github/workflows" / name).read_text("utf-8"))
+
+
+def test_validation_runs_on_primary_python_and_keeps_floor_coverage():
+    """CI validates on 3.14, keeps one 3.12 platform-core job, and adds no jobs."""
+    floor = _floor_text()
+    assert floor != PRIMARY_PYTHON
+
+    ci = _workflow("ci.yml")["jobs"]
+    assert list(ci) == ["test"]
+    assert ci["test"]["env"]["UV_PYTHON"] == PRIMARY_PYTHON
+    assert _setup_python_versions(ci["test"]) == [PRIMARY_PYTHON]
+
+    platform = _workflow("test.yml")["jobs"]
+    assert list(platform) == ["test"]
+    matrix = platform["test"]["strategy"]["matrix"]
+    assert set(matrix) == {"include"}
+    layout = sorted(
+        (item["platform-family"], str(item["python-version"]))
+        for item in matrix["include"]
+    )
+    assert layout == [
+        ("linux", floor),
+        ("macos", PRIMARY_PYTHON),
+        ("windows", PRIMARY_PYTHON),
+    ]
+    assert platform["test"]["env"]["UV_PYTHON"] == "${{ matrix.python-version }}"
+
+    # The lint and type checks run once, in the ci.yml job on 3.14.
+    gate = "scripts/mypy_gate.py"
+    runs = [
+        (workflow, name)
+        for workflow, name, _env, job in _workflow_jobs()
+        for step in job.get("steps") or []
+        if gate in str(step.get("run", "")) and workflow in ("ci.yml", "test.yml")
+    ]
+    assert runs == [("ci.yml", "test")]
+
+
 def test_publication_requires_full_validation_and_verified_artifacts():
     """A release cannot bypass failed source checks or missing build artifacts."""
     jobs = yaml.safe_load((ROOT / ".github/workflows/release.yml").read_text())["jobs"]
     validation = jobs["release-validation"]
     assert not validation.get("continue-on-error", False)
-    assert validation["strategy"]["matrix"]["python-version"] == ["3.12"]
+    assert validation["strategy"]["matrix"]["python-version"] == [PRIMARY_PYTHON]
     assert any(
         "scripts/run_full_suite.py" in step.get("run", "")
         for step in validation["steps"]

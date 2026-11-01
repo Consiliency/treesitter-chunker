@@ -2,14 +2,26 @@
 
 ## Setup
 
-Use Python 3.12 and the project environment for development and CI. Keep source
-syntax compatible with 3.12; release wheel checks also cover 3.14:
+Develop on Python 3.12, the supported floor, in the project environment. CI
+validates on 3.14 as well, so check changes on both. Keep source syntax
+compatible with 3.12. `.python-version` pins 3.12, so a plain sync uses it:
 
 ```bash
 git clone https://github.com/Consiliency/treesitter-chunker.git
 cd treesitter-chunker
 uv sync --locked --all-extras
 ```
+
+For 3.14, select the interpreter explicitly and keep its environment separate
+from the 3.12 `.venv`. The locked environment installs from wheels on both
+interpreters; it needs no compiler, libffi or Rust toolchain:
+
+```bash
+export UV_PROJECT_ENVIRONMENT="$PWD/.venv-3.14" UV_PYTHON=3.14
+uv sync --locked --all-extras
+```
+
+Run the validation commands below in that shell to repeat them on 3.14.
 
 The lock pairs Tree-sitter 0.26 with language-pack 1.20 and the official
 `tree-sitter-python==0.25.0` and `tree-sitter-javascript==0.25.0` wheels. Those
@@ -81,9 +93,11 @@ governed tools. The body-type check covers only
 `tools/governed_scope.py` are excluded because of existing body-type findings
 tracked under treesitter-chunker#514.
 
-CI runs lint and the type gate once on Linux 3.12. Platform-core jobs use 3.12
-on Linux, macOS and Windows. The scheduled full tier and release full validation
-also use 3.12; release wheels are installed and checked on 3.12 and 3.14.
+CI runs lint, the type gate and the smoke tier once, on Linux 3.14. Platform-core
+runs one job per OS: Linux on the 3.12 floor, macOS and Windows on 3.14. The
+scheduled full tier and release full validation use 3.14. Release wheels are
+installed and checked on 3.12 and 3.14. `tests/test_release_hygiene_policy.py`
+checks this layout (treesitter-chunker#502).
 
 The type gate compares complete messages and error codes, normalizing only
 leading file locations. Literal values, numeric colons and backslashes inside

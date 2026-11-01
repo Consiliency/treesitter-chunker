@@ -244,6 +244,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The full locked development environment now installs on CPython 3.14 from
+  wheels alone (treesitter-chunker#502). In-range lock updates: `cffi` 2.0.0,
+  `httptools` 0.7.1, `line-profiler` 5.0.1, `markupsafe` 3.0.3, `pydantic`
+  2.12.0 with `pydantic-core` 2.41.1 (and the `typing-inspection` 0.4.2 it
+  requires), `uvloop` 0.22.1 and `watchfiles` 1.1.1. Parser and runtime pins
+  are unchanged. CI lint, type and smoke checks, the scheduled full tier and
+  release validation now run on 3.14. Linux platform-core and release wheel
+  checks keep covering the 3.12 floor, with no extra CI jobs. `requires-python`
+  stays `>=3.12`, and `.python-version` keeps 3.12 as the default development
+  interpreter.
 - `scripts/mypy_gate.py --update` now only removes cleared signatures. When mypy
   reports a signature that is not in the baseline, it exits 1 and leaves
   `docs/development/mypy-baseline.txt` unchanged, so new errors can no longer be

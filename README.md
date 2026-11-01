@@ -12,8 +12,8 @@ Chunker returns source content, line and byte spans, and context metadata.
 
 ## Install
 
-Development and the next release require Python 3.12 or newer. CI uses 3.12,
-with installed-wheel compatibility checks on 3.14 as well.
+Development and the next release require Python 3.12 or newer. CI validates on
+3.14 and keeps platform and installed-wheel checks on 3.12.
 Published 6.0.0 retains Python 3.11 support.
 The main package is a universal Python wheel.
 
