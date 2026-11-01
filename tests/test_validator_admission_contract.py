@@ -717,8 +717,13 @@ def test_pinned_failing_artifact_is_never_cached(isolated, tmp_path, probes):
     require(not native_admission.has_verdict(key), "no admission recorded")
     require(not (cache / "validation_cache.json").exists(), "nothing stored")
     require(len(probes) == 2, f"the second call probes again {probes}")
+    # GrammarRegistry discovers lib*.so on every platform today
+    # (treesitter-chunker#117 belongs to ADMITFIX), so use that name here.
+    user = tmp_path / "manager-user"
+    user.mkdir()
+    (user / f"lib{LANGUAGE}.so").write_bytes(data)
     manager = GrammarManager(
-        candidate.parent,
+        user,
         tmp_path / "package",
         tmp_path / "cache2",
         trusted_artifacts={LANGUAGE: _pin(data)},
