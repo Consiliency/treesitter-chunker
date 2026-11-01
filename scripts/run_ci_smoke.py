@@ -36,6 +36,7 @@ CI_SMOKE_TESTS = [
     "tests/test_compatibility_schema_version_boundaries.py",
     "tests/test_compiled_grammar_analysis_contract.py",
     "tests/test_native_probe_fixture_cleanup.py",
+    "tests/test_native_policy_contract.py",
     "tests/test_native_grammar_library_contract.py",
     "tests/test_git_aware_linked_worktree.py",
     "tests/test_git_aware_contract.py",

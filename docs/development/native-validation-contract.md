@@ -952,3 +952,36 @@ These changes take effect when ADMIT lands, and ADMIT records them in
   `GrammarMetadataExtractor.extract_from_dependencies`) keep their names and
   return types until the next major version, but perform no native load or
   dependency inspection.
+
+
+## Application-control result amendment (2026-11-01)
+
+The maintainer decision for treesitter-chunker#547 adds `policy_blocked` to the
+failure reasons above. It never permits support or a digest. Explicit Windows
+`OSError.winerror` 4551 (system integrity policy violation) or 1260 (disabled by
+policy) identifies this result; generic access denial, exit 1, an empty
+acknowledgment, or a matching error-message string does not.
+
+A registered worker reports it through the existing request-bound
+`native_probe.v1` failure envelope. The controller requires matching schema,
+nonce, language and digest, ordinary worker/launcher exit 1, and the existing
+containment checks before accepting that failure classification. A policy
+exception observed directly by the controller also retains the existing
+conditional cleanup/uncertain-root behavior. No success predicate, execution
+deadline, trust source, or snapshot/worker ownership requirement changes.
+
+`NativeProbeResult.message` supplies actionable policy guidance without changing
+the three dataclass fields. The low-level trusted loader raises
+`NativePolicyBlockedError` with the original OS error as its cause and the OS
+code retained. Manager issues/recommendations, analyzer reports and exported
+capabilities surface the guidance. Use a signed, organization-approved grammar
+build or ask the administrator for approval under the existing policy; do not
+bypass policy. See [troubleshooting](../troubleshooting.md#windows-application-control-blocks-a-native-grammar).
+
+Real-native tests may skip only a positively identified policy exception or an
+intact request-bound policy failure with confirmed worker status and cleanup.
+Malformed/missing acknowledgments, generic errors, unsafe cleanup and abnormal
+statuses remain test failures. Separate deterministic tests verify classification,
+fail-closed behavior and the narrow skip predicate without enabling these skips.
+This amendment does not infer the causes of the historically unexplained
+observations in treesitter-chunker#508 or treesitter-chunker#509.

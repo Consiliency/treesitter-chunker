@@ -11,7 +11,9 @@ from urllib.error import URLError
 
 import pytest
 
-pytestmark = pytest.mark.usefixtures("native_probe_lifetimes")
+pytestmark = pytest.mark.usefixtures(
+    "native_probe_lifetimes", "native_policy_environment"
+)
 
 from tests.native_probe_lifetime import remove_retained_probe_root
 

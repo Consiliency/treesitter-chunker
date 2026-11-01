@@ -10,7 +10,9 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.usefixtures("native_probe_lifetimes")
+pytestmark = pytest.mark.usefixtures(
+    "native_probe_lifetimes", "native_policy_environment"
+)
 
 from tests.native_probe_lifetime import (
     remove_retained_probe_root,
@@ -814,8 +816,15 @@ def _wait_for_file(path, process=None, timeout=45):
         if process is not None and process.poll() is not None:
             if path.exists() and path.stat().st_size:
                 return
+            from types import SimpleNamespace
+            from tests.native_policy import skip_policy_subprocess
+
+            stdout, stderr = process.communicate(timeout=5)
+            skip_policy_subprocess(
+                SimpleNamespace(returncode=process.returncode, stdout=stdout)
+            )
             raise AssertionError(
-                f"supervised controller exited before {path.name}: {process.communicate(timeout=5)}"
+                f"supervised controller exited before {path.name}: {(stdout, stderr)}"
             )
         assert time.monotonic() < deadline, f"missing barrier: {path}"
         time.sleep(0.01)
@@ -1017,6 +1026,9 @@ def read(*args, **kwargs):
 integrity._read_child = read
 integrity.shutil.rmtree = remove
 result = integrity.probe_native_grammar(library, "baml", provenance={"sha256": sys.argv[7]}, timeout=12)
+if result.reason == "policy_blocked":
+    print(json.dumps({"schema": "native_test.policy_result.v1", "reason": result.reason}), flush=True)
+    raise SystemExit(77)
 s = observed["state"]
 record = {"reason": result.reason, "digest": result.artifact_sha256, "launcher": s.launcher.pid, "worker": s.worker.pid if s.worker else None, "launcher_reaped": s.launcher.returncode is not None}
 publish(returned, record)

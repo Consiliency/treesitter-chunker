@@ -7,7 +7,9 @@ import subprocess
 from pathlib import Path
 import pytest
 
-pytestmark = pytest.mark.usefixtures("native_probe_lifetimes")
+pytestmark = pytest.mark.usefixtures(
+    "native_probe_lifetimes", "native_policy_environment"
+)
 import psutil
 from chunker.grammar import integrity
 from tests.test_grammar_integrity import (
@@ -148,11 +150,16 @@ from pathlib import Path
 sys.path.insert(0, {sysconfig.get_path('purelib')!r})
 sys.path.insert(0, sys.argv[1])
 from chunker.grammar.integrity import _worker_ready, verify_artifact
+from chunker.grammar._native_policy import NativePolicyBlockedError
 from chunker.grammar_management.core import load_compiled_grammar
 snapshot = Path(sys.argv[2])
 _worker_ready(snapshot.parent, sys.argv[-1])
 verify_artifact(snapshot, {{'sha256': sys.argv[4]}})
-parser = load_compiled_grammar(snapshot, sys.argv[3])
+try:
+    parser = load_compiled_grammar(snapshot, sys.argv[3])
+except NativePolicyBlockedError as error:
+    print(json.dumps({{'schema': 'native_test.policy.v1', 'winerror': error.winerror}}), flush=True)
+    raise SystemExit(77)
 assert parser.parse(b'').root_node.type == 'source_file'
 p=Path({str(marker)!r}); q=p.with_suffix('.tmp'); q.write_text('mapped',encoding='utf-8'); q.replace(p)
 while not Path({str(release)!r}).exists(): time.sleep(0.01)
@@ -173,10 +180,18 @@ while not Path({str(release)!r}).exists(): time.sleep(0.01)
             self.stream.close()
             if not self.waited:
                 self.waited = True
+                from types import SimpleNamespace
+                from tests.native_policy import skip_policy_subprocess
+
                 deadline = time.monotonic() + 10
                 while not marker.exists():
                     if self.process.poll() is not None:
                         stdout, stderr = self.process.communicate(timeout=5)
+                        skip_policy_subprocess(
+                            SimpleNamespace(
+                                returncode=self.process.returncode, stdout=stdout
+                            )
+                        )
                         raise AssertionError(f"worker did not load the DLL: {stderr!r}")
                     assert (
                         time.monotonic() < deadline

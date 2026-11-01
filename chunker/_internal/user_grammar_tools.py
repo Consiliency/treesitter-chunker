@@ -156,7 +156,7 @@ class UserGrammarTools:
             self.manager.health_cache.pop(language, None)
             self.manager.compatibility_cache.pop(language, None)
         if not probe.supported:
-            explanation = _ADMISSION_EXPLANATIONS.get(
+            explanation = probe.message or _ADMISSION_EXPLANATIONS.get(
                 probe.reason, "the native admission probe rejected it"
             )
             message = (

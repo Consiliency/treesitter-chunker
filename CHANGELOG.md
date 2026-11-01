@@ -193,6 +193,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   treesitter-chunker#176, treesitter-chunker#182, treesitter-chunker#183,
   treesitter-chunker#184, treesitter-chunker#185). Structural validity does not
   establish native safety or provenance; see the packaging guide for profile limits.
+- Native grammar probes now distinguish explicit Windows application-control
+  denials as `policy_blocked`, with guidance for signed or organization-approved
+  builds. Blocked libraries remain unsupported and publish no admitted digest.
+  Manager/analyzer diagnostics retain this guidance (treesitter-chunker#547).
 
 - JavaScript context lookup is truthful against the shared real-parser
   reference fixtures (`tests/fixtures/references/javascript/`). A generator

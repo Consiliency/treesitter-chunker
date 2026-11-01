@@ -60,3 +60,48 @@ def _restore_process_instrumentation():
         tracemalloc.stop()
     elif not tracemalloc.is_tracing():
         tracemalloc.start(trace_depth)
+
+
+@pytest.fixture
+def native_policy_environment(monkeypatch):
+    """Keep real-native tests strict unless an explicit OS policy denial occurs."""
+    import sys
+
+    from chunker.grammar import integrity
+    from chunker.grammar_management import core
+    from tests.native_policy import skip_policy_error, skip_policy_reply
+
+    original_read = integrity._read_child
+    original_probe = integrity.probe_native_grammar
+    original_load = core.load_compiled_grammar
+
+    def read(command, cwd, timeout, **kwargs):
+        try:
+            reply = original_read(command, cwd, timeout, **kwargs)
+        except OSError as error:
+            skip_policy_error(error)
+            raise
+        skip_policy_reply(
+            reply, command, kwargs.get("lifecycle"), kwargs.get("worker_nonce")
+        )
+        return reply
+
+    def probe(*args, **kwargs):
+        result = original_probe(*args, **kwargs)
+        if result.reason == "policy_blocked":
+            pytest.skip(result.message)
+        return result
+
+    def load(*args, **kwargs):
+        try:
+            return original_load(*args, **kwargs)
+        except OSError as error:
+            skip_policy_error(error)
+            raise
+
+    monkeypatch.setattr(integrity, "_read_child", read)
+    monkeypatch.setattr(integrity, "probe_native_grammar", probe)
+    monkeypatch.setattr(core, "load_compiled_grammar", load)
+    module = sys.modules.get("tests.test_compiled_grammar_analysis_contract")
+    if module is not None:
+        monkeypatch.setattr(module, "load_compiled_grammar", load)

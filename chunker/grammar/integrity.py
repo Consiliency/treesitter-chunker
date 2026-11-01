@@ -24,6 +24,11 @@ from typing import Any
 
 import psutil
 
+from chunker.grammar._native_policy import (
+    APPLICATION_CONTROL_MESSAGE,
+    is_application_control_error,
+)
+
 
 class ArtifactIntegrityError(ValueError):
     """Raised when an artifact is not covered by trusted provenance."""
@@ -36,6 +41,11 @@ class NativeProbeResult:
     supported: bool
     reason: str
     artifact_sha256: str | None
+
+    @property
+    def message(self) -> str | None:
+        """Actionable guidance when the OS explicitly blocks native admission."""
+        return APPLICATION_CONTROL_MESSAGE if self.reason == "policy_blocked" else None
 
 
 _SHA256 = re.compile(r"[0-9a-fA-F]{64}")
@@ -129,8 +139,10 @@ def _native_probe_child(
         from chunker.grammar_management.core import load_compiled_grammar
 
         parser = load_compiled_grammar(snapshot_path, language)
-    except Exception:
-        record["failure"] = "load_failed"
+    except Exception as error:
+        record["failure"] = (
+            "policy_blocked" if is_application_control_error(error) else "load_failed"
+        )
         print(json.dumps(record), flush=True)
         return 1
 
@@ -820,7 +832,10 @@ def probe_native_grammar(
     except FileNotFoundError:
         return reject("missing")
     except OSError as error:
-        return reject("child_failed", error)
+        return reject(
+            "policy_blocked" if is_application_control_error(error) else "child_failed",
+            error,
+        )
 
     try:
         phase = "source_validation"
@@ -932,7 +947,14 @@ def probe_native_grammar(
                     lifecycle=lifecycle,
                 )
             except (OSError, ValueError, RecursionError, psutil.Error) as error:
-                return reject("child_failed", error)
+                return reject(
+                    (
+                        "policy_blocked"
+                        if is_application_control_error(error)
+                        else "child_failed"
+                    ),
+                    error,
+                )
             phase = "acknowledgment"
             if (
                 not lifecycle.cleanup_safe
@@ -978,6 +1000,7 @@ def probe_native_grammar(
                     in {
                         "load_failed",
                         "parse_failed",
+                        "policy_blocked",
                     }
                 ):
                     return reject(failure)
@@ -1041,7 +1064,14 @@ def probe_native_grammar(
             except BaseException:
                 pass
         if isinstance(error, OSError):
-            return reject("child_failed", error)
+            return reject(
+                (
+                    "policy_blocked"
+                    if is_application_control_error(error)
+                    else "child_failed"
+                ),
+                error,
+            )
         _log_probe_failure(None, phase=phase, lifecycle=lifecycle, error=error)
         raise
     finally:

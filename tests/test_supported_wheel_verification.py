@@ -324,11 +324,11 @@ def _installed_python(target, code, *args):
 def test_payload_inventory_matches_trusted_source():
     expected = _source_inventory()
     assert set(expected) == _REQUIRED_WHEEL_PAYLOAD
-    assert len(expected) == 331
+    assert len(expected) == 332
     assert hashlib.sha256(
         "".join(name + "\n" for name in expected).encode()
     ).hexdigest() == (
-        "e70832bc5963311a5f97ff660c96facfc04ddbedbc4014f46cff72900903e1ae"
+        "f794f3d7f763c810e5b2137eee55b5e1374ab89791ee99117b4f8964b917e537"
     )
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))[
         "project"
