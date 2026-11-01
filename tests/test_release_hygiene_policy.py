@@ -426,7 +426,8 @@ def test_native_distribution_stays_suspended():
     assert workflow["permissions"] == {"contents": "read"}
     assert set(workflow["jobs"]) == {"native-packages-suspended"}
     job = workflow["jobs"]["native-packages-suspended"]
-    assert "permissions" not in job
+    # Explicitly no token scopes (treesitter-chunker#507).
+    assert job["permissions"] == {}
     assert not job.get("continue-on-error")
     assert len(job["steps"]) == 1
     step = job["steps"][0]
