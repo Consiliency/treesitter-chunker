@@ -4,6 +4,9 @@ phase: REFS
 roadmap: specs/phase-plans-v4.md
 roadmap_sha256: 0a15424c6230b812b095dd9668ecf62bd0457aebdc927533ccde04e6e20cae14
 automation:
+  # Post-merge suite: the two language contract tests land in
+  # treesitter-chunker#548 and treesitter-chunker#549; until both merge, drop
+  # the missing file(s) from this command.
   suite_command: "uv run --locked --all-extras pytest tests/test_reference_fixture_oracle.py tests/test_python_reference_oracle_contract.py tests/test_javascript_reference_oracle_contract.py tests/unit/context tests/test_python_scope_visible_symbols_contract.py tests/test_javascript_scope_local_definition_contract.py tests/test_javascript_scope_import_contract.py tests/test_javascript_arrow_context_contract.py -q"
 ---
 
@@ -97,10 +100,18 @@ Decisions this plan makes, which are open to challenge in review:
    value, and walrus targets in defaults bind in that enclosing scope.
 5. **Out of scope, filed separately.** Gaps seen during reproduction that no
    REFS issue names are filed as their own issues and not repaired here:
-   treesitter-chunker#544 (Python splat parameters `*args`/`**kwargs` and
-   walrus targets reported as references) and treesitter-chunker#545
-   (JavaScript `rest_pattern`, object-pattern `pair_pattern` values and
-   `catch` parameters reported as references).
+   - treesitter-chunker#544: Python `def` splat parameters and walrus
+     targets reported as references. Lambda splats moved into
+     treesitter-chunker#294 in round-1 review.
+   - treesitter-chunker#545: JavaScript `rest_pattern`, object-pattern
+     `pair_pattern` values and `catch` parameters reported as references.
+   - treesitter-chunker#552: JavaScript parent context empty inside
+     generators.
+   - treesitter-chunker#554: Python definition lookup ignores comprehension,
+     loop, `with`/`except`, import, walrus, splat and unpacking bindings. The
+     runner ruled these definitions out of REFS scope.
+   - treesitter-chunker#555: Python tuple-unpacking assignment targets
+     reported as references.
 6. **CI selection (parent decision, 2026-10-31).** Hosted PR CI must run
    the new REFS tests. Following HOTFIX, each PR enrolls its own tests in the
    platform-core batch (`scripts/run_platform_core.py`, run by `test.yml` on

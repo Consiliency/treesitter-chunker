@@ -15,3 +15,9 @@ class Container:
 def defaults(param, key=lambda item: item, rows=(row for row in ())):
     body_local = 1
     return param, key, rows, body_local
+
+
+def simple():
+    if (plain := 1) > 0:
+        return plain
+    return 0

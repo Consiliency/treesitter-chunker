@@ -11,7 +11,8 @@
     "render_report.helper": {"node_type": "function_definition", "row": 16, "column": 4},
     "helper": {"node_type": "function_definition", "row": 22, "column": 0},
     "cached_report": {"node_type": "function_definition", "row": 27, "column": 0},
-    "uses_parameter": {"node_type": "function_definition", "row": 34, "column": 0}
+    "uses_parameter": {"node_type": "function_definition", "row": 34, "column": 0},
+    "SHADOW.key_lambda": {"node_type": "lambda", "row": 38, "column": 24}
   },
   "definitions": [
     {"issue": "treesitter-chunker#274", "name": "Renderer", "scope": "root", "expect": "found", "node_type": "class_definition", "row": 5, "column": 0},
@@ -36,6 +37,8 @@
     {"issue": "treesitter-chunker#274", "name": "cleaned", "scope": "helper", "expect": "absent"},
     {"issue": "treesitter-chunker#274", "name": "render_report", "scope": "cached_report", "expect": "found", "node_type": "function_definition", "row": 13, "column": 0},
     {"issue": "treesitter-chunker#274", "name": "helper", "scope": "uses_parameter", "expect": "found", "node_type": "identifier", "row": 34, "column": 19},
-    {"issue": "treesitter-chunker#274", "name": "uses_parameter", "scope": "root", "expect": "found", "node_type": "function_definition", "row": 34, "column": 0}
+    {"issue": "treesitter-chunker#274", "name": "uses_parameter", "scope": "root", "expect": "found", "node_type": "function_definition", "row": 34, "column": 0},
+    {"issue": "treesitter-chunker#274", "name": "render", "scope": "Renderer.render", "expect": "absent"},
+    {"issue": "treesitter-chunker#274", "name": "helper", "scope": "SHADOW.key_lambda", "expect": "found", "node_type": "identifier", "row": 38, "column": 31}
   ]
 }

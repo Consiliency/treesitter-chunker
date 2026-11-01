@@ -62,7 +62,7 @@
       }
     },
     "occurrences": {
-      "description": "Name occurrences classified as binding targets (never reported as references) or expression uses (always reported). 'scope' is where a binding binds or where a use is evaluated; it must contain the occurrence.",
+      "description": "Name occurrences classified as binding targets (never reported as references) or expression uses (always reported). 'scope' is where a binding binds or where a use is evaluated. The integrity test checks only that it contains the occurrence; a language contract test asserts it where the language exposes an evaluation-scope API (Python: get_enclosing_scope). Otherwise it is informational.",
       "type": "array",
       "items": {
         "type": "object",

@@ -34,3 +34,6 @@ THRESHOLD = 3
 
 def uses_parameter(helper):
     return helper
+
+
+SHADOW = sorted([], key=lambda helper: helper)

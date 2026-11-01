@@ -13,18 +13,20 @@
     "Container.method": {"node_type": "function_definition", "row": 10, "column": 4},
     "defaults": {"node_type": "function_definition", "row": 14, "column": 0},
     "defaults.key_lambda": {"node_type": "lambda", "row": 14, "column": 24},
-    "defaults.rows_gen": {"node_type": "generator_expression", "row": 14, "column": 48}
+    "defaults.rows_gen": {"node_type": "generator_expression", "row": 14, "column": 48},
+    "simple": {"node_type": "function_definition", "row": 19, "column": 0}
   },
   "visible": [
     {"issue": "treesitter-chunker#278", "scope": "outer", "includes": ["captured", "deep", "result", "nested", "values"], "excludes": ["item", "cell", "row"]},
     {"issue": "treesitter-chunker#278", "scope": "outer.result_comp", "includes": ["captured", "item", "values"], "excludes": ["cell"]},
     {"issue": "treesitter-chunker#278", "scope": "outer.inner_comp", "includes": ["deep", "cell", "row", "captured"], "excludes": ["item"]},
-    {"issue": "treesitter-chunker#278", "scope": "root", "includes": ["outer", "Container", "defaults"], "excludes": ["captured", "deep", "class_capture", "item", "row", "body_local"]},
+    {"issue": "treesitter-chunker#278", "scope": "root", "includes": ["outer", "Container", "defaults"], "excludes": ["captured", "deep", "class_capture", "item", "row", "body_local", "plain"]},
     {"issue": "treesitter-chunker#278", "scope": "Container", "includes": ["class_capture", "method"], "excludes": ["captured"]},
     {"issue": "treesitter-chunker#278", "scope": "Container.method", "includes": ["self", "value"], "excludes": ["class_capture"]},
     {"issue": "treesitter-chunker#278", "scope": "defaults", "includes": ["param", "key", "rows", "body_local"], "excludes": ["item", "row"]},
     {"issue": "treesitter-chunker#278", "scope": "defaults.key_lambda", "includes": ["item", "defaults", "outer", "Container"], "excludes": ["param", "key", "rows", "body_local"]},
-    {"issue": "treesitter-chunker#278", "scope": "defaults.rows_gen", "includes": ["row", "defaults"], "excludes": ["param", "key", "rows", "body_local"]}
+    {"issue": "treesitter-chunker#278", "scope": "defaults.rows_gen", "includes": ["row", "defaults"], "excludes": ["param", "key", "rows", "body_local"]},
+    {"issue": "treesitter-chunker#278", "scope": "simple", "includes": ["plain", "simple"], "excludes": ["captured"]}
   ],
   "enclosing": [
     {"issue": "treesitter-chunker#278", "node_type": "named_expression", "row": 10, "column": 28, "scope": "Container", "not_scope": "Container.method"},
