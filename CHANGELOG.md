@@ -67,6 +67,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parameter defaults are evaluated in the scope that contains the function
   (treesitter-chunker#278).
 
+- `GrammarManager.cleanup_cache` can no longer delete a cache entry that an
+  installer publishes while cleanup runs, and `bytes_freed` now counts only
+  bytes actually deleted (treesitter-chunker#323). Installers clone and build
+  in private staging inside each namespace (`downloads/.txn-staging/<id>/`,
+  `builds/.txn-staging/<id>/`), kill and confirm the whole process group
+  (POSIX) or job (Windows) of every `git`/build subprocess, also when
+  interrupted, and publish `downloads/` and `builds/` entries only after the
+  installation, by rename under the cache root lock. Cleanup re-checks each
+  candidate under the lock, retires it into the namespace's `.txn-retired/`
+  and deletes it from there; one unreadable entry is reported without
+  stopping the rest. Because every rename stays inside its namespace, a
+  separately mounted `downloads/` or `builds/` keeps working. Links and Windows
+  junctions inside entries are removed as leaves and never followed. A build
+  or `git rev-parse` that times out, or leaves processes behind, fails the
+  install without falling back to another build method. Failure to publish a
+  cache entry after a successful installation is a warning. A failed install
+  no longer removes other installs' published cache entries.
+  `GrammarInstaller.remove_grammar` removes cache entries the same way. The
+  hidden `.txn-*` folders are skipped by grammar listing and the fallback
+  cleanup.
+
 - `GrammarValidator` no longer loses validation records written by another
   validator or process on the same cache root, and no longer follows a link at
   `validation_cache.json` (treesitter-chunker#370). Records are merged into a
