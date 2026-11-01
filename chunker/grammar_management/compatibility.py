@@ -503,7 +503,16 @@ class CompatibilityChecker:
         code_samples: list[str],
         grammar_path: Path | None = None,
     ) -> CompatibilityResult:
-        """Perform detailed compatibility analysis."""
+        """Perform detailed compatibility analysis.
+
+        The validator's missing built-in sample warning is an evidence gap,
+        not a quality finding (treesitter-chunker#133). It is reported but
+        never degrades a candidate by itself: caller ``code_samples`` parsed
+        with the candidate are the evidence. When it is present and there
+        are no caller samples, nothing was parsed, so the level is
+        ``UNKNOWN`` whatever other warnings exist (all are kept); quality
+        warnings degrade only evidence-backed results.
+        """
         try:
             # Start with basic compatibility
             result.level = CompatibilityLevel.COMPATIBLE
@@ -511,14 +520,25 @@ class CompatibilityChecker:
 
             # Check ABI compatibility
             validation_info = grammar_info.get("validation", {})
+            warnings = list(validation_info.get("warnings") or [])
+            evidence_gap = f"No test samples available for {result.language}"
+            quality_warnings = [w for w in warnings if w != evidence_gap]
             if validation_info.get("errors"):
                 result.level = CompatibilityLevel.INCOMPATIBLE
                 result.score = 0.0
                 result.issues.extend(validation_info["errors"])
-            elif validation_info.get("warnings"):
+            elif evidence_gap in warnings and not code_samples:
+                # Nothing was parsed, so no warning can place the candidate
+                # above "unknown"; every warning is still reported.
+                result.level = CompatibilityLevel.UNKNOWN
+                result.score = 0.3
+                result.warnings.extend(warnings)
+            elif quality_warnings:
                 result.level = CompatibilityLevel.DEGRADED
                 result.score = 0.7
-                result.warnings.extend(validation_info["warnings"])
+                result.warnings.extend(warnings)
+            elif warnings:
+                result.warnings.extend(warnings)
 
             # Performance analysis
             performance_metrics = grammar_info.get("performance", {})
