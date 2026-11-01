@@ -214,6 +214,14 @@ def _hints(tmp_path: Path, header: str, newline: str = "\n") -> dict:
         ("// +build go1.21,!go1.18\n", None, "unknown"),
         ("// +build !!go1.18\n", None, "unknown"),
         ("// +build go1.18,,linux\n", None, "unknown"),
+        # Go tags allow Unicode letters and decimal digits, "_" and ".".
+        ("//go:build go1.18 && café\n", "1.18", "minimum"),
+        ("// +build go1.18,café\n", "1.18", "minimum"),
+        ("//go:build go1.18 && tag\u0663\n", "1.18", "minimum"),
+        ("//go:build go1.20 || ünïcödé_1.x\n", None, "unconstrained"),
+        ("//go:build go\u0661.\u0661\u0668\n", None, "unconstrained"),
+        ("//go:build go1.18 && a\u00b2\n", None, "unknown"),
+        ("//go:build go1.18 && li-nux\n", None, "unknown"),
         # Modern lines take precedence over legacy ones.
         ("//go:build go1.18 || go1.21\n// +build go1.22\n", "1.18", "minimum"),
         ("//go:build !go1.21\n// +build go1.22\n", None, "unconstrained"),
@@ -230,7 +238,8 @@ def test_go_build_expressions_report_truthful_minimums(
     takes the highest minimum), ``M438-not-as-positive`` (``!goX.Y`` treated
     as ``goX.Y``), ``M438-unsat-as-max`` (an unsatisfiable expression
     reports its highest release), ``M438-free-tag-false`` (non-release tags
-    treated as false) and ``M438-legacy-last-tag``.
+    treated as false), ``M438-legacy-last-tag`` and ``M438-ascii-tags``
+    (ASCII-only tag characters).
     """
     hints = _hints(tmp_path, header, newline)
     assert hints["build_constraints"] == minimum

@@ -2,6 +2,7 @@
 
 import logging
 import re
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -17,13 +18,13 @@ logger = logging.getLogger(__name__)
 # expression can be true for some assignment of the free tags, so releases
 # below it cannot satisfy the constraint.
 
-_GO_RELEASE_TAG = re.compile(r"go(\d+)\.(\d+)")
-_GO_BUILD_TAG = re.compile(r"[A-Za-z0-9_.]+")
+_GO_RELEASE_TAG = re.compile(r"go([0-9]+)\.([0-9]+)")
 _GO_MODERN_LINE = re.compile(r"^[ \t]*//go:build[ \t]+(.*?)[ \t]*\r?$", re.MULTILINE)
 _GO_LEGACY_LINE = re.compile(
     r"^[ \t]*//[ \t]*\+build[ \t]+(\S.*?)[ \t]*\r?$", re.MULTILINE
 )
-_GO_MODERN_TOKEN = re.compile(r"[ \t]*(\(|\)|!|&&|\|\||[A-Za-z0-9_.]+)")
+# Tag-like runs are validated by _is_go_build_tag after tokenizing.
+_GO_MODERN_TOKEN = re.compile(r"[ \t]*(\(|\)|!|&&|\|\||[^\s()!&|]+)")
 _GO_MAX_TOKENS = 1000
 _GO_MAX_DEPTH = 100
 _GO_MAX_FREE_TAGS = 32
@@ -33,6 +34,14 @@ _GO_MAX_SEARCH_STEPS = 10_000
 # ("and", children), ("or", children). AND/OR are n-ary so that recursion
 # depth follows parenthesis nesting, not expression length.
 _GoExpr = tuple[Any, ...]
+
+
+def _is_go_build_tag(name: str) -> bool:
+    """Go's tag rule: Unicode letters and decimal digits, ``_`` and ``.``."""
+    return bool(name) and all(
+        char.isalpha() or unicodedata.category(char) == "Nd" or char in "_."
+        for char in name
+    )
 
 
 class _GoConstraintUnknownError(Exception):
@@ -97,7 +106,7 @@ def _parse_modern_go_build(expression: str) -> _GoExpr:
                 )
             take()
             return node
-        if _GO_BUILD_TAG.fullmatch(token):
+        if _is_go_build_tag(token):
             take()
             return ("tag", token)
         raise _GoConstraintUnknownError(f"unexpected {token!r} in {expression!r}")
@@ -123,7 +132,7 @@ def _parse_legacy_go_build(fields_text: str) -> _GoExpr:
         for atom in field.split(","):
             negated = atom.startswith("!")
             name = atom[1:] if negated else atom
-            if not _GO_BUILD_TAG.fullmatch(name):
+            if not _is_go_build_tag(name):
                 raise _GoConstraintUnknownError(f"invalid +build term {atom!r}")
             terms.append(("not", ("tag", name)) if negated else ("tag", name))
         disjuncts.append(("and", tuple(terms)))
