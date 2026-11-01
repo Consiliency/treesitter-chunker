@@ -777,8 +777,43 @@ def test_validate_fix_never_reports_an_unadmitted_rebuild_valid(
     capsys.readouterr()
     require(result["valid"] is False, f"not valid {result}")
     require(result["status"] != "fixed", f"not fixed {result}")
+    # The rebuild targets build_dir/tree_sitter_<lang>.so, not the validated
+    # file, so the message names both paths.
+    (fix,) = result["fixes_applied"]
     require(
-        result["fixes_applied"] == ["Grammar rebuilt, not admitted: untrusted"],
+        fix.startswith(f"Grammar rebuilt at {target}, but the validated grammar ")
+        and str(library) in fix
+        and fix.endswith("is not admitted: untrusted"),
         f"{result}",
     )
     require(probes == [], "nothing probed without a pin")
+
+
+def test_validate_fix_reports_a_pinned_admitted_rebuild_fixed(
+    isolated, tmp_path, fixture_bytes, monkeypatch, probes, capsys
+):
+    """The rebuilt file is the reported grammar; it fails first, then admits."""
+    cache = tmp_path / "cache"
+    (cache / "grammars" / "user" / LANGUAGE).mkdir(parents=True)
+    tool = ComprehensiveGrammarCLI(
+        cache, trusted_artifacts={LANGUAGE: _pin(fixture_bytes)}
+    )
+    reported = tool.build_dir / f"tree_sitter_{LANGUAGE}.so"
+    reported.write_bytes(b"stale bytes that do not match the pin")
+
+    def run_command(command, cwd=None, timeout=30):
+        if command[0] == "python":
+            reported.write_bytes(fixture_bytes)
+        return 0, "", ""
+
+    monkeypatch.setattr(tool, "_run_command", run_command)
+    result = tool._validate_compiled_grammar(LANGUAGE, reported, fix=True)
+    capsys.readouterr()
+    require(
+        result["issues"]
+        == ["Grammar is not loadable: native admission integrity_mismatch"],
+        f"the first check failed {result}",
+    )
+    require(result["valid"] is True and result["status"] == "fixed", f"{result}")
+    require(result["fixes_applied"] == ["Grammar rebuilt successfully"], f"{result}")
+    require(probes and probes[0] == reported.absolute(), f"rebuild probed {probes}")

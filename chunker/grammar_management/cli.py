@@ -2349,12 +2349,19 @@ if __name__ == "__main__":
                             admit_native_candidate,
                         )
 
+                        from chunker._internal.package_supplier import same_file
+
                         readmission, _ = admit_native_candidate(
                             grammar_path.absolute(), language, self.trusted_artifacts
                         )
+                        rebuilt = self.build_dir / f"tree_sitter_{language}.so"
+                        same_target = same_file(rebuilt, grammar_path)
                         if readmission.supported:
                             result["fixes_applied"].append(
                                 "Grammar rebuilt successfully"
+                                if same_target
+                                else f"Grammar rebuilt at {rebuilt}; the validated "
+                                f"grammar {grammar_path} is admitted"
                             )
                             result["valid"] = True
                             result["status"] = "fixed"
@@ -2362,6 +2369,10 @@ if __name__ == "__main__":
                             result["fixes_applied"].append(
                                 "Grammar rebuilt, not admitted: "
                                 f"{readmission.reason}"
+                                if same_target
+                                else f"Grammar rebuilt at {rebuilt}, but the "
+                                f"validated grammar {grammar_path} is not "
+                                f"admitted: {readmission.reason}"
                             )
                     else:
                         result["fixes_applied"].append("Grammar rebuild failed")
