@@ -21,4 +21,11 @@ def collect(source, limit=LIMIT, *, factor: int = FACTOR):
         print(error)
     ordered = sorted(source, key=lambda value, offset=limit: value * offset)
     squares = [entry * factor for entry in source]
-    return ordered, squares
+    for first, *rest in source:
+        print(first, rest)
+    for (inner, *others) in source:
+        print(inner, others)
+    with Path(source).open() as (head, *tail):
+        print(head, tail)
+    spread = sorted(source, key=lambda *items, **options: (items, options))
+    return ordered, squares, spread

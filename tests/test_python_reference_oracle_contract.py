@@ -81,6 +81,11 @@ def test_294_binding_targets_are_not_references_and_uses_are() -> None:
         observed = (point in resolved, (entry["name"], point) in extracted)
         if observed != (expected, expected):
             mismatches.append((entry["name"], point, entry["role"], observed))
+        enclosing = ContextFactory.create_scope_analyzer("python").get_enclosing_scope(
+            node
+        )
+        if enclosing != case.scope(entry["scope"]):
+            mismatches.append((entry["name"], point, "scope", _point(enclosing)))
     assert mismatches == []
 
 

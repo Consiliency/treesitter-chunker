@@ -138,6 +138,12 @@ class PythonContextExtractor(BaseContextExtractor):
             "identifier",
         }:
             return True
+        if (
+            parent.type in {"list_splat_pattern", "dictionary_splat_pattern"}
+            and parent.parent is not None
+            and parent.parent.type == "lambda_parameters"
+        ):
+            return True
         if PythonContextExtractor._is_binding_target(identifier_node):
             return True
         return bool(
@@ -150,8 +156,9 @@ class PythonContextExtractor(BaseContextExtractor):
     def _is_binding_target(identifier_node: Node) -> bool:
         """Check if an identifier is a loop, ``with`` or ``except`` target.
 
-        Targets may be nested in tuple and list patterns, for example
-        ``for left, (right, extra) in pairs`` or ``with f() as (a, b)``.
+        Targets may be nested in tuple and list patterns and starred, for
+        example ``for left, (right, *rest) in rows`` or
+        ``with f() as (a, *b)``.
         """
         target = identifier_node
         while target.parent is not None and target.parent.type in {
@@ -160,6 +167,8 @@ class PythonContextExtractor(BaseContextExtractor):
             "list_pattern",
             "tuple",
             "list",
+            "list_splat_pattern",
+            "list_splat",
         }:
             target = target.parent
         container = target.parent
