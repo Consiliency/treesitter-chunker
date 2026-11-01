@@ -392,28 +392,36 @@ def test_discovered_descendant_outliving_noop_stop_is_named(
     root = tmp_path / "chunker-native-probe-discovered"
     root.mkdir()
     marker, discovered = tmp_path / "descendant", tmp_path / "discovered"
-    release = tmp_path / "release-descendant"
+    published, release = tmp_path / "descendant-published", tmp_path / "release"
     descendant = (
         "import os,time; from pathlib import Path; "
         f"p=Path({str(marker)!r}); q=p.with_suffix('.tmp'); "
         "q.write_text(str(os.getpid()),encoding='utf-8'); q.replace(p); "
+        # Visibility is not completion on Windows: signal after replace returns.
+        f"Path({str(published)!r}).touch(); "
         f"r=Path({str(release)!r}); deadline=time.monotonic()+60"
         "\nwhile not r.exists() and time.monotonic() < deadline: time.sleep(0.01)\n"
     )
-    # The launcher exits by itself once the product has discovered its child;
-    # the child keeps no product pipe, so the read loop ends on launcher exit.
+    # The launcher exits by itself once the product has discovered its child
+    # (or the control releases it); the child keeps no product pipe, so the
+    # read loop ends on launcher exit.
     launcher = (
         "import subprocess,sys,time; from pathlib import Path; "
         f"subprocess.Popen([sys.executable,'-I','-c',{descendant!r}], "
         "stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); "
-        f"p=Path({str(discovered)!r}); deadline=time.monotonic()+30"
-        "\nwhile not p.exists() and time.monotonic() < deadline: time.sleep(0.01)\n"
+        f"p=Path({str(discovered)!r}); r=Path({str(release)!r}); "
+        "deadline=time.monotonic()+30"
+        "\nwhile not (p.exists() or r.exists()) and time.monotonic() < deadline:"
+        " time.sleep(0.01)\n"
     )
     stops, real_discover = [], integrity._discover
 
     def discover(state):
         real_discover(state)
-        if marker.exists() and int(marker.read_text(encoding="utf-8")) in state.known:
+        if (
+            published.exists()
+            and int(marker.read_text(encoding="utf-8")) in state.known
+        ):
             discovered.touch()
 
     def noop_stop(state):
