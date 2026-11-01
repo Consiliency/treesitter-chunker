@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Go build-constraint version hints no longer drop earlier release tags from
+  a legacy comma conjunction (treesitter-chunker#437). `// +build go1.10,go1.9`
+  now reports `1.10` in either order, as `go1.10,go1.9,linux` and
+  `go1.10,café,go1.9` do (tags follow Go's Unicode tag rule); before, only
+  the last `goX.Y` tag on the line counted. OR (whitespace) and negated legacy
+  terms are unchanged, and `//go:build` and `go.mod` precedence are unchanged.
 - `SmartSelector` no longer gives every local artifact of a language the
   version and metadata of that language's single install record
   (treesitter-chunker#134). The record now describes only the artifact at its
