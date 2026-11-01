@@ -803,10 +803,16 @@ def probe_native_grammar(
     *,
     provenance: Mapping[str, Any] | None,
     sample: bytes = b"",
-    timeout: float = 10.0,
+    timeout: float = 30.0,
     inspect_artifact: Callable[[Path], Any] | None = None,
 ) -> NativeProbeResult:
     """Admit a pinned grammar by loading only a private verified snapshot.
+
+    ``timeout`` is one shared deadline, in seconds, for starting the isolated
+    worker, loading and parsing, and its exit. An explicit value is used
+    exactly. The 30-second default outlasts a Windows Smart App Control cloud
+    check: the first load of a new unsigned library can wait about ten seconds
+    for that check before Windows allows it (treesitter-chunker#547).
 
     ``inspect_artifact`` is trusted application code. It runs only after the
     isolated child succeeds and must not mutate or load the supplied snapshot.

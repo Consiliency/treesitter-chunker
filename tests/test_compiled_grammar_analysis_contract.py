@@ -267,11 +267,12 @@ __attribute__((constructor)) static void start(void) { enter(); }
             == "untrusted"
         )
     assert not sentinel.exists()
+    # The default deadline: a hanging constructor must still reach native entry
+    # after a first-load Windows trust check (treesitter-chunker#547).
     result = probe_native_grammar(
         library,
         "baml",
         provenance=trusted_artifacts(library)["baml"],
-        timeout=10,
     )
     assert sentinel.read_bytes() == b"entered"
     assert not result.supported and result.reason == reason
@@ -279,6 +280,70 @@ __attribute__((constructor)) static void start(void) { enter(); }
     renamed = library.with_name("released" + library.suffix)
     library.rename(renamed)
     renamed.unlink()
+
+
+def test_default_deadline_admits_load_blocked_like_windows_trust_check(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A load that waits as long as the measured Windows fallback is admitted.
+
+    On WIN, a stalled Smart App Control cloud check held the first load of a new
+    unsigned library for 10.03-10.06 seconds before Windows allowed it
+    (treesitter-chunker#547). This constructor blocks the load for 11 seconds
+    instead, so it does not depend on the host's policy or network.
+    """
+    from chunker.grammar import integrity
+
+    sentinel = tmp_path / "entered"
+    monkeypatch.setenv("CHUNKER_TEST_NATIVE_SENTINEL", str(sentinel))
+    code = tmp_path / "slow-entry.c"
+    code.write_text(
+        """
+#include <stdio.h>
+#include <stdlib.h>
+#ifdef _WIN32
+#include <windows.h>
+#define BLOCK_LOAD() Sleep(11000)
+#else
+#include <unistd.h>
+#define BLOCK_LOAD() sleep(11)
+#endif
+static void enter(void) {
+    BLOCK_LOAD();
+    FILE *marker = fopen(getenv("CHUNKER_TEST_NATIVE_SENTINEL"), "wb");
+    if (marker) { fputs("entered", marker); fclose(marker); }
+}
+#ifdef _WIN32
+BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
+    (void)instance; (void)reserved;
+    if (reason == DLL_PROCESS_ATTACH) enter();
+    return TRUE;
+}
+#else
+__attribute__((constructor)) static void start(void) { enter(); }
+#endif
+""",
+        encoding="utf-8",
+    )
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c", code])
+    deadlines = []
+    original = integrity._read_child
+
+    def read(command, cwd, timeout, **kwargs):
+        deadlines.append(timeout)
+        return original(command, cwd, timeout, **kwargs)
+
+    monkeypatch.setattr(integrity, "_read_child", read)
+    result = integrity.probe_native_grammar(
+        library,
+        "baml",
+        provenance=trusted_artifacts(library)["baml"],
+        sample=FIXTURE.read_bytes(),
+    )
+    assert deadlines == [30.0]
+    assert sentinel.read_bytes() == b"entered"
+    assert result.supported and result.reason == "ok", result
+    assert result.artifact_sha256 == sha256(library.read_bytes()).hexdigest()
 
 
 @pytest.mark.parametrize(
@@ -1084,7 +1149,7 @@ def read(*args, **kwargs):
     return original_read(*args, **kwargs)
 integrity._read_child = read
 integrity.shutil.rmtree = remove
-result = integrity.probe_native_grammar(library, "baml", provenance={"sha256": sys.argv[7]}, timeout=12)
+result = integrity.probe_native_grammar(library, "baml", provenance={"sha256": sys.argv[7]})
 if result.reason == "policy_blocked":
     print(json.dumps({"schema": "native_test.policy_result.v1", "reason": result.reason}), flush=True)
     raise SystemExit(77)

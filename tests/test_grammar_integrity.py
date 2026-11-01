@@ -307,6 +307,57 @@ def test_nonfinite_probe_deadline_is_rejected(tmp_path, timeout):
     assert result.artifact_sha256 is None
 
 
+@pytest.mark.parametrize("timeout", [None, 0.5, 10.0, 45.0])
+def test_probe_uses_default_or_exact_caller_deadline(tmp_path, monkeypatch, timeout):
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"pinned candidate bytes")
+    deadlines = []
+
+    def read(command, cwd, deadline, **kwargs):
+        deadlines.append(deadline)
+        return None, b"", b"", True, False  # No worker launched; nothing to retain.
+
+    monkeypatch.setattr(integrity, "_read_child", read)
+    result = integrity.probe_native_grammar(
+        candidate,
+        "test",
+        provenance={"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()},
+        **({} if timeout is None else {"timeout": timeout}),
+    )
+    assert deadlines == [30.0 if timeout is None else timeout]
+    assert not result.supported and result.artifact_sha256 is None
+
+
+@pytest.mark.parametrize("timeout", [None, 0.5, 10.0, 45.0])
+def test_publish_passes_default_or_exact_caller_deadline(
+    tmp_path, monkeypatch, timeout
+):
+    from chunker._internal import user_grammar_tools
+    from chunker.grammar.integrity import NativeProbeResult
+
+    source = tmp_path / "compiled.so"
+    source.write_bytes(b"compiled grammar bytes")
+    destination = tmp_path / "baml.so"
+    deadlines = []
+
+    def probe(path, language, *, provenance, sample, timeout):
+        deadlines.append(timeout)
+        return NativeProbeResult(False, "timeout", None)
+
+    monkeypatch.setattr(user_grammar_tools, "probe_native_grammar", probe)
+    result = user_grammar_tools.publish_native_grammar(
+        source,
+        destination,
+        "baml",
+        provenance={"sha256": hashlib.sha256(source.read_bytes()).hexdigest()},
+        **({} if timeout is None else {"timeout": timeout}),
+    )
+    assert deadlines == [30.0 if timeout is None else timeout]
+    assert not result.supported and not destination.exists()
+
+
 def test_native_probe_rejects_untrusted_candidates_before_loading(tmp_path):
     missing = tmp_path / "missing.so"
     empty = tmp_path / "empty.so"

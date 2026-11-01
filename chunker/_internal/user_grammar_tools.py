@@ -36,7 +36,7 @@ def publish_native_grammar(
     *,
     provenance: Mapping[str, Any] | None,
     sample: bytes = b"",
-    timeout: float = 10.0,
+    timeout: float = 30.0,
 ) -> NativeProbeResult:
     """Publish a compiled grammar without overwriting the existing library file.
 
