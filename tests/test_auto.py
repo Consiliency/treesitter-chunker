@@ -293,7 +293,11 @@ class TestZeroConfigAPI:
         ):
             warnings.simplefilter("ignore", FallbackWarning)
             from_file = api.auto_chunk_file(source)
-            from_text = api.chunk_text("def hello\nend\n", "ruby")
+            # The text fallback's own file-type detection opens its pseudo-path
+            # "<text>", which Windows rejects (treesitter-chunker#585); the
+            # fallback itself is not under test here.
+            with patch.object(api._fallback_chunker, "chunk_text", return_value=[]):
+                from_text = api.chunk_text("def hello\nend\n", "ruby")
         assert not api.registry.is_language_installed("ruby")
         for result in (from_file, from_text):
             assert result.language == "ruby"
