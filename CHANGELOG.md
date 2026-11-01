@@ -25,6 +25,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The SQLite chunk cache (`ASTCache`, used by default by `ParallelChunker`,
+  `chunk_files_parallel` and `chunk_directory_parallel`) no longer returns core
+  chunks for a streaming request or the reverse, and no longer reuses entries
+  across runtime/grammar upgrades (treesitter-chunker#358). Entries are keyed
+  by an extraction identity: the mode (`extraction="core"` or `"streaming"` on
+  `get_cached_chunks`/`cache_chunks`), the chunker, Tree-sitter and
+  language-pack versions, the grammar's ABI, node-kind count, symbol and
+  provenance, and the effective language configuration. Languages without a
+  reliable identity (today, all except Python and JavaScript; see
+  treesitter-chunker#543) bypass the cache, which previously could serve them
+  stale chunks. `cache_chunks` now returns whether it stored the entry. The
+  parallel helpers accept `cache_dir=` to keep the cache in a private
+  directory. `CACHE_VERSION` is now `3.0`, and entries move to a new
+  `chunk_cache_v3` table: entries from earlier releases are ignored, so each file
+  is re-extracted once after upgrading. Delete `ast_cache.db` to reclaim their
+  space once no older release shares it.
 - `UserGrammarTools.install_grammar` and `update_grammar` no longer overwrite
   the installed grammar library in place, which could crash a process that had
   it loaded (treesitter-chunker#162). A new `publish_native_grammar` copies the
