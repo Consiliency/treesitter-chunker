@@ -2135,8 +2135,16 @@ def test_graphml_attribute_whitespace_graph_keys(
 @pytest.mark.parametrize("file_output", [False, True], ids=["string", "file"])
 @pytest.mark.parametrize(
     ("caller", "normalized"),
-    [(" \t ", " \t "), ("A\rB", "A\nB"), ("A\nB", "A\nB"), ("A\r\nB", "A\nB")],
-    ids=["space-tab", "cr", "lf", "crlf"],
+    [
+        (" \t ", " \t "),
+        ("A\rB", "A\nB"),
+        ("A\nB", "A\nB"),
+        ("A\r\nB", "A\nB"),
+        ("中文\r😀", "中文\n😀"),
+        ("中文\n😀", "中文\n😀"),
+        ("中文\r\n😀", "中文\n😀"),
+    ],
+    ids=["space-tab", "cr", "lf", "crlf", "unicode-cr", "unicode-lf", "unicode-crlf"],
 )
 def test_graphml_text_normalization(
     graphml_whitespace_graph, pretty, file_output, caller, normalized, tmp_path
@@ -2155,11 +2163,9 @@ def test_graphml_text_normalization(
             assert "\r" not in output
         elif "\r" in caller:
             assert caller in output
-    expected = (
-        "A\n\nB"
-        if file_output and not pretty and os.name == "nt" and caller == "A\r\nB"
-        else normalized
-    )
+    # File leaves decode exactly like string leaves on every platform
+    # (treesitter-chunker#488).
+    expected = normalized
     ns = "{http://graphml.graphdrawing.org/xmlns}"
     graph = root.find(f"{ns}graph")
     assert graph is not None
@@ -2207,7 +2213,10 @@ def graphml_contract_output(exporter, options, pretty, file_output, tmp_path):
         path = tmp_path / "caller.graphml"
         exporter.export(path, pretty_print=pretty, **options)
         payload = path.read_bytes()
-        assert payload == output.replace("\n", os.linesep).encode("utf-8")
+        if pretty:
+            assert payload == output.replace("\n", os.linesep).encode("utf-8")
+        else:
+            assert payload == output.encode("utf-8")
     return ET.fromstring(payload), output
 
 
