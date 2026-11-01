@@ -104,11 +104,21 @@ Those shared lines are resolved by the PR that merges second, by merging
   - With caller samples, their real parse outcomes classify the candidate by
     the existing success-rate thresholds. An all-successful sample set is
     `COMPATIBLE` with score 1.0 (absent other warnings or slow metrics).
-  - With no samples at all, nothing was parsed. The level is `UNKNOWN`
-    ("compatibility not yet determined") with score 0.3, the same value
-    `_calculate_compatibility_score` gives `UNKNOWN`. It is not `DEGRADED`.
-  - Any other validation warning (e.g. `Parsing performance is slow`) still
-    gives `DEGRADED` 0.7, and errors still give `INCOMPATIBLE`.
+  - With the gap present and no caller samples, nothing was parsed. The
+    level is `UNKNOWN` ("compatibility not yet determined") with score 0.3,
+    the same value `_calculate_compatibility_score` gives `UNKNOWN`,
+    **whatever other warnings exist**; every warning is kept. Otherwise a
+    warned candidate (`DEGRADED`) would outrank a clean one (`UNKNOWN`) in
+    `SmartSelector`, which never passes samples.
+  - Other validation warnings (e.g. `Parsing performance is slow`) give
+    `DEGRADED` 0.7 only for evidence-backed results; errors still give
+    `INCOMPATIBLE`.
+  - This contract covers local-candidate checks (`grammar_path=`). The
+    canonical check without `grammar_path=` validates at BASIC, never sees
+    the gap, and is unchanged (treesitter-chunker#588).
+- **Docs**: `docs/grammar_management.md` (detailed compatibility checks)
+  records the gap, the `UNKNOWN` no-evidence result and the evidence-only
+  degradation.
 - **Tests**: the real BAML artifact checked through `check_compatibility`
   with `grammar_path=`:
   - one successful `declarations.baml` sample → `COMPATIBLE`, 1.0, warning
@@ -118,10 +128,16 @@ Those shared lines are resolved by the PR that merges second, by merging
   - no samples → `UNKNOWN`, not `DEGRADED`;
   - the real validator's warning text equals the text the checker
     recognizes (guards against wording drift);
-  - an extra quality warning alongside the gap still gives `DEGRADED`.
-- **Named mutation** `M133-gap-degrades`: treat the evidence-gap warning as a
-  quality warning (the old code). The successful-sample and no-sample cases
-  fail.
+  - an extra quality warning alongside the gap still gives `DEGRADED` when
+    a caller sample was parsed;
+  - the gap plus `Grammar file is unusually large` with no samples →
+    `UNKNOWN`, both warnings kept;
+  - selection with real artifacts: a USER build padded past 50 MB (warned)
+    and a clean PACKAGE build; `select_best_grammar` returns PACKAGE.
+- **Named mutations**: `M133-gap-degrades` (treat the gap as a quality
+  warning, the old code) fails the successful- and failing-sample cases;
+  `M133-quality-before-gap` (let a quality warning degrade a candidate with
+  no samples) fails the no-sample quality and selection cases.
 
 #### treesitter-chunker#134 — Per-artifact version and metadata
 
@@ -142,9 +158,17 @@ Those shared lines are resolved by the PR that merges second, by merging
   group (`_resolve_conflicts` exercised with the discovered candidates
   re-versioned). A record naming a third path attaches to neither.
   `select_best_grammar` still returns a real artifact.
+- **Path matching tests**: the record names the USER file through `..`, a
+  symlinked directory, and a missing segment (resolved-path fallback only);
+  a record path with an embedded NUL attaches to no candidate and hides
+  none.
 - **Named mutations**: `M134-shared-record` (assign the record to every
   artifact, the old code) fails the attribution and grouping cases;
-  `M134-group-unknown` (group `unknown` versions) fails the no-record case.
+  `M134-group-unknown` (group `unknown` versions) fails the no-record case;
+  `M134-plain-equality` (`grammar_path == Path(install_path)`) fails the
+  spelling cases; `M134-fallback-false` (no resolved-path fallback) fails
+  the missing-segment case; `M134-valueerror-escapes` (catch only
+  `OSError`) fails the corrupt-path case.
 
 #### treesitter-chunker#344 — Global constraints are rejected explicitly
 
@@ -177,7 +201,12 @@ Those shared lines are resolved by the PR that merges second, by merging
   uncomparable: `_compare_versions` raises `ValueError` instead of returning
   0, and `supports_language_version` fails closed (returns `False`, logs
   why). The same applies to any other version text that cannot be compared.
-  Numeric versions compare exactly as before.
+  Numeric versions compare exactly as before. `CompatibilityRule` version
+  constraints use the same comparator, so ES ranges and operators
+  (`ES2015-ES2019`, `>=ES2020`) apply to the editions they name; a value a
+  rule cannot compare makes it not match. ES6–ES14 aliases stay rejected:
+  `_version_sort_key` reads `ES6` as 6 for breaking-change ranges, so
+  aliasing would need both orderings changed.
 - **Tests**: real JavaScript fixture parse (`service.js`) as the language
   guard; a grammar bounded ES2020–ES2023 rejects ES2015 and ES2030 and
   accepts ES2020/ES2021/ES2023, through `supports_language_version`,
@@ -189,7 +218,10 @@ Those shared lines are resolved by the PR that merges second, by merging
 - **Named mutation** `M170-zero`: restore `return 0` on a comparison failure;
   the uncomparable, selection (`ESNext` selected) and numeric-control cases
   fail. The unchanged code also fails the in-order ES bounds case, because it
-  had no ES ordering at all.
+  had no ES ordering at all. `M170-es6-ordinal` (accept `ES6` as 6) fails
+  the "rejected, not ordered low" case against an `ES3`–`ES2023` grammar;
+  `M170-rule-numeric` (rules keep the numeric-only comparison) fails the
+  ES-range rule case.
 
 ### SL-go — Go build-constraint minimums (treesitter-chunker#437 → treesitter-chunker#438)
 
@@ -217,8 +249,13 @@ Those shared lines are resolved by the PR that merges second, by merging
   `go1.9,go1.10` give `1.10`; three-tag permutations; a mixed
   `go1.10,go1.9,linux` conjunction; LF and CRLF; modern-before-legacy and
   go.mod precedence controls.
-- **Named mutation** `M437-last-tag`: drop the conjunction supplement (only
-  the greedy last tag is kept); the reversed-order cases fail.
+- **Tags**: atoms follow Go's tag rule (Unicode letters and decimal digits,
+  `_` and `.`), so `go1.10,café,go1.9` keeps both release tags; both release
+  orders are tested.
+- **Named mutations**: `M437-last-tag`: drop the conjunction supplement
+  (only the greedy last tag is kept); the reversed-order cases fail.
+  `M437-ascii-atoms` (ASCII-only atoms) fails the Unicode cases whose
+  highest tag is not last.
 
 #### treesitter-chunker#438 — Boolean expressions (detailed plan)
 
@@ -229,19 +266,26 @@ file builds for a given GOOS/GOARCH/tag set.
 
 **Recognized lines.**
 
-- Modern: a line whose trimmed text starts with `//go:build` followed by
-  whitespace (Go's `constraint.IsGoBuild` rule). Grammar: `or := and ('||'
-  and)*`, `and := unary ('&&' unary)*`, `unary := '!' unary | '(' or ')' |
-  tag`, tags following Go's rule (Unicode letters and decimal digits, `_`
+- Header only, mirroring `go/build` `parseFileHeader`: blank lines and
+  comments before the first other text, skipping `/* */` comments. A
+  `//go:build` line anywhere in the header controls; legacy lines count only
+  up to the header's last blank line. Lines after `package` (string
+  templates, function bodies) are never read.
+- Modern: a header line whose trimmed text is `//go:build` alone or
+  followed by whitespace (Go's `isGoBuildComment` rule); a bare
+  `//go:build` is recognized and `unknown`. Grammar: `or := and ('||'
+  and)*`, `and := unary ('&&' unary)*`, `unary := '!' atom | atom`,
+  `atom := '(' or ')' | tag` (a direct `!!` is `unknown`, as Go rejects it;
+  `!(!x)` is valid), tags following Go's rule (Unicode letters and decimal digits, `_`
   and `.`; release tags `goX.Y` use ASCII digits), `&&` binding tighter
   than `||`.
 - Legacy: a line whose trimmed text is `//`, optional spaces, `+build`, then
   whitespace-separated fields (OR) of comma-separated atoms (AND), each atom
   a tag or `!tag`.
-- If any modern line is present, legacy lines are ignored (Go 1.17+
-  behavior, and the existing modern-first precedence). Multiple lines of one
-  kind are combined with AND (Go ANDs multiple `// +build` lines; the
-  existing contract test also ANDs repeated `//go:build` lines).
+- If a modern line is present, legacy lines are ignored (Go 1.17+
+  behavior, and the existing modern-first precedence). More than one
+  `//go:build` line is `unknown` (Go rejects the file: "multiple //go:build
+  comments"). Multiple legacy lines are AND-ed, as Go does.
 
 **Semantics.** A release tag `goX.Y` is true exactly at releases ≥ X.Y.
 Every other tag (`linux`, `cgo`, `ignore`, custom tags) is treated as an
@@ -264,7 +308,7 @@ branch-on-a-variable (small, bounded inputs).
 | `(go1.18 \|\| go1.20) && linux` | `1.18` | `minimum` |
 | `!go1.21`, `go1.18 \|\| linux`, `linux` | `None` | `unconstrained` |
 | `go1.21 && !go1.18` (unsatisfiable) | `None` | `unknown` |
-| malformed (`go1.18 &&`, unbalanced parens, `!!x` in legacy, bad characters) | `None` | `unknown` |
+| malformed (`go1.18 &&`, unbalanced parens, direct `!!`, bare `//go:build`, two `//go:build` lines, `!!x` in legacy, bad characters) | `None` | `unknown` |
 | no constraint line | `None` | `absent` |
 | too large (over 1,000 tokens, nesting over 100, over 32 distinct free tags, or over 10,000 search steps) | `None` | `unknown` |
 
@@ -280,8 +324,9 @@ greedy positive regex and was wrong (a negated tag is an upper bound).
 
 **Documented unsupported forms.** GOOS/GOARCH exclusivity (e.g. `linux &&
 windows` is treated as satisfiable), `ignore`, and file-name constraints
-(`_linux.go`, `_test.go`) are not interpreted. Constraint lines are matched
-anywhere in the text (as before), not only in the file header.
+(`_linux.go`, `_test.go`) are not interpreted. The `unknown` results for
+malformed legacy lines are deliberately conservative: Go treats such a line
+as the never-set `ignore` tag, so the file never builds.
 
 **Tests** (all on the real Go fixture, parse-checked, LF and CRLF where the
 line ending matters):
@@ -306,10 +351,23 @@ line ending matters):
    (`M437-last-tag` on the new code).
 6. `M438-ascii-tags` — ASCII-only tag characters: `go1.18 && café`
    becomes unknown instead of 1.18.
+7. `M438-whole-file` — scan every line (the old behavior): body and
+   template lines count.
+8. `M438-and-duplicates` — AND repeated `//go:build` lines.
+9. `M438-bare-absent` — require whitespace after `//go:build`.
+10. `M438-double-negation` — allow a direct `!!`.
+11. `M438-slash-star` — read `//go:build` inside `/* */`.
+12. `M438-legacy-no-blank` — legacy lines not cut at the last blank line.
+
+The header cases are compared against Go 1.26.8 `go/build`
+`Context.MatchFile` in the PR, and committed with each case's Go result.
 
 ## Execution Notes
 
-- One issue per PR, each branch off `origin/main`. The parent runs the
+- One issue per PR, each branch off `origin/main`, except
+  treesitter-chunker#438, which starts from the treesitter-chunker#437 head
+  because both rewrite the same function; it merges `origin/main` and the
+  later #437 head in (never a rebase or force-push). The parent runs the
   two-reviewer panel (VB-4); the execution agent does not merge or request
   reviews, and does not force-push after a PR is open.
 - Merge order: SL-sel serial (#133 → #134 → #344); SL-go serial (#437 →
