@@ -25,6 +25,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `UserGrammarTools.install_grammar` and `update_grammar` no longer overwrite
+  the installed grammar library in place, which could crash a process that had
+  it loaded (treesitter-chunker#162). A new `publish_native_grammar` copies the
+  library into a temporary file in the same directory, admits it with the
+  caller's pin and moves it into place with `os.replace`; the old file is never
+  truncated. The temporary `.<language>.so-<random>.staged` name is never
+  listed or loaded; a crash leftover is safe to delete.
+  **Interim limitation until treesitter-chunker#362 (ADMIT):**
+  - A library that fails admission, including one without a pin, is no longer
+    copied. Install/update return `error` instead of `warning`, and the message
+    names the reason and says the grammar CLI cannot supply pins until
+    treesitter-chunker#362.
+  - The legacy `grammar install` and `grammar update` commands therefore exit 1
+    for new or changed libraries.
+  - On Linux, an unpinned install no longer makes the grammar discoverable for
+    chunking.
+
+  Embedding callers can pass `trusted_artifacts`. Official and package-supplied
+  grammars (the official Python/JavaScript wheels, language-pack grammars and
+  the BAML companion) are unaffected. On Windows, updating a library that a
+  running process has loaded returns `error` and leaves the file unchanged; run
+  `install_grammar` again after closing those processes.
 - `chunk`, `batch`, `boundary`, the `debug` commands, `chunk_file` and
   `ZeroConfigAPI.auto_chunk_file` now reject FIFOs, character and block devices,
   sockets and (for single-file inputs) directories with an `os.stat` check before

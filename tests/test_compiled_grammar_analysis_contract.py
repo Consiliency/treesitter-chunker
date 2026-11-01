@@ -521,15 +521,28 @@ def test_real_repository_install_reports_failed_native_admission(
     result = tools.install_grammar(
         "baml", "https://github.com/Consiliency/native-fixture.git"
     )
-    assert result["status"] == "warning", result
-    assert not result["errors"]
+    # Publication admits the staged library first (treesitter-chunker#162), so
+    # a rejected library is never copied into the build directory.
+    assert result["status"] == "error", result
     assert "Cloned repository" in result["steps_completed"]
-    assert "Copied baml.so to build directory" in result["steps_completed"]
-    assert (build / "baml.so").read_bytes() == library.read_bytes()
-    reason = "untrusted" if pin_state == "missing" else "integrity_mismatch"
-    assert result["warnings"] == [
-        f"Grammar installed but native admission failed: {reason}"
-    ]
+    assert "Copied baml.so to build directory" not in result["steps_completed"]
+    assert list(build.iterdir()) == []
+    if pin_state == "missing":
+        expected = (
+            "Native admission failed for baml.so: untrusted (the library is not "
+            "trusted by an approved SHA-256 pin); the installed library is "
+            "unchanged. No approved pin was supplied for baml: pass "
+            "trusted_artifacts to UserGrammarTools. The grammar CLI cannot "
+            "supply pins until treesitter-chunker#362."
+        )
+    else:
+        expected = (
+            "Native admission failed for baml.so: integrity_mismatch (the "
+            "library does not match its approved SHA-256 pin); the installed "
+            "library is unchanged."
+        )
+    assert result["errors"] == [expected]
+    assert result["warnings"] == []
 
 
 @pytest.mark.parametrize("artifact_state", ["missing", "stale_pin"])
