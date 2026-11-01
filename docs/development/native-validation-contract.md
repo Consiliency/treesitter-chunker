@@ -1019,9 +1019,10 @@ parsing and the acknowledgment, so it always lost that race. The controller
 forcibly stopped the worker (`TerminateProcess`, status 1). Stdout was empty,
 and the result was `timeout` at admission or `child_failed` where containment
 was uncertain. These were the "probe child exit 1" and "empty acknowledgment"
-observations. Thirty seconds covers the longest measured stall plus the
-slowest measured whole probe (about 1.7 s), with more than 18 s to spare. An
-administrator can lengthen Defender's cloud check (`CloudExtendedTimeout`, up
+observations. Trust checks are not always quick when they do not fall back:
+in the WIN campaigns some took 2–9.4 s. The longest whole probe measured,
+stalls included, took 10.55 s. Thirty seconds leaves more than 19 s over that.
+An administrator can lengthen Defender's cloud check (`CloudExtendedTimeout`, up
 to 50 more seconds); such hosts should pass an explicit `timeout`.
 
 **What it does not change.** The deadline still bounds a hostile or hung
