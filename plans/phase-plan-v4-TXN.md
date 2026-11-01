@@ -63,10 +63,11 @@ findings into TXN. Each is addressed in the PR named below, and that PR's body
 says how. The runner allows TXN to add private test pause points and to change
 how a test injects its fault, as long as every named mutation is still
 reliably killed. A change to a public signature or rule needs a reviewed
-contract amendment. One is made: **A1** (N11), a same-device check scoped to
-the operations that rename between `.txn/` and a namespace
-(treesitter-chunker#323 and treesitter-chunker#363), recorded in the contract's
-Amendments section. Other contract edits only bring the text in line with
+contract amendment. One is made: **A1**, per-namespace staging and retirement
+(maintainer decision, 2026-11-01), which replaces the earlier same-device
+refusal for N11 and changes `StagingArea.path` into a per-namespace method. It
+is reviewed in treesitter-chunker#323 and treesitter-chunker#363 and recorded
+in the contract's Amendments section. Other contract edits only bring the text in line with
 these findings and with merged facts.
 
 | Finding | Resolution | PR |
@@ -82,7 +83,7 @@ these findings and with merged facts.
 | Claude N8 — verify `metadata.prev.json` | Checked against `Mp` before any metadata restore, and in the operator procedure. | treesitter-chunker#363 |
 | Claude N9 — leftover mismatch | Before capture, compare the current metadata's `artifact_sha256` with the destination; warn and name any retained `rollback.json` for the language. Restore-time crashes added to the crash table. | treesitter-chunker#363 |
 | Claude N10 — lock and marker lists | The lock-scope list says "including" and names initialization, staging creation/discard and garbage claiming. Every directory the helper creates under `.txn/` gets a marker; a missing marker is re-created idempotently. The 60 s rationale includes the probe's stop grace. Polling acquisition is documented as not fair. | treesitter-chunker#370 (infrastructure and text), treesitter-chunker#323 (retired/claimed directories) |
-| Claude N11 — one filesystem | Contract amendment A1: operations that rename between `.txn/` and a namespace refuse a different device with `CacheTransactionError`. Initialization and Primitive 1 keep working on split mounts (runner decision, treesitter-chunker#560 round 1). Each PR adds a real-mount Linux test. | treesitter-chunker#323, treesitter-chunker#363 (treesitter-chunker#370 tests split mounts keep records) |
+| Claude N11 — one filesystem | Contract amendment A1 (maintainer decision, 2026-11-01): staging and retirement live inside each namespace, so every rename stays on one filesystem and split-mount roots keep working; nothing is refused. Real tmpfs tests: records on a split `grammars/` (treesitter-chunker#370), install/republish/prune/remove with split `downloads/` and `builds/` (treesitter-chunker#323), split `grammars/` (treesitter-chunker#363). | treesitter-chunker#323, treesitter-chunker#363 |
 | Claude N12 — HOTFIX citation | Cite merge `60a5518f`, the `.staged` suffix, and discharge the re-review trigger. State that the probe child never takes the cache lock. | treesitter-chunker#370 |
 
 ## Lane Index & Dependencies
