@@ -412,30 +412,303 @@ FLOOR_ALLOWED = {
     ("baml-grammar-wheels.yml", "wheel", None): "BAML companion on its 3.12 minimum",
 }
 
-# Shell-level interpreter selection inside a step's ``run:`` script.
-_RUN_OVERRIDES = (
-    # uv/uvx --python X, --python=X, uv venv --python X, pip --python-version X
-    re.compile(r"--python(?:-version)?[ =]['\"]?(\d+\.\d+)"),
-    # uv/uvx ... -p X (short form; only on a uv command line)
-    re.compile(r"\buvx?\b[^\n;&|]*?\s-p\s*['\"]?(\d+\.\d+)"),
-    # UV_PYTHON=X (export or inline)
-    re.compile(r"\bUV_PYTHON=['\"]?(\d+\.\d+)"),
-    # uv python install/pin/find X
-    re.compile(r"\buv\s+python\s+(?:install|pin|find)\s+['\"]?(\d+\.\d+)"),
-    # python3.12 ... invocations
-    re.compile(r"(?<![\w/.-])python(\d\.\d+)\b"),
-    # Windows launcher: py -3.12
-    re.compile(r"\bpy\s+-(\d\.\d+)\b"),
-)
+# Shell-level interpreter selection inside a step's ``run:`` script. The scan is
+# structural: each script is normalized (line continuations joined, heredoc
+# bodies skipped, GitHub expressions held as placeholders), split into shell
+# commands with shlex (comments dropped, quotes respected, operators split), and
+# only command tokens are inspected, never echo output or prose. Every
+# selector value must resolve to concrete versions; an unresolvable or
+# event-dependent value is reported as UNRESOLVED.
+_GH_EXPR = re.compile(r"\$\{\{(.*?)\}\}", re.S)
+_SHELL_VAR = re.compile(r"\$(?:\{(\w+)\}|(\w+))")
+_ASSIGNMENT = re.compile(r"^([A-Za-z_]\w*)=(.*)$", re.S)
+_PYTHON_COMMAND = re.compile(r"(?:^|[/\\])python(\d+\.\d+)(?:\.exe)?$")
+_PY_LAUNCHER = re.compile(r"^-(?:V:)?(\d+\.\d+)$")
+_OPERATORS = {";", "&&", "||", "|", "&", "(", ")", ";;", "|&"}
+_COMMAND_PREFIXES = {"sudo", "exec", "time", "command", "nohup", "then", "do", "else"}
+# uv options that consume the next token as their value.
+_UV_VALUE_OPTIONS = {
+    "--python",
+    "-p",
+    "--python-version",
+    "--with",
+    "-w",
+    "--with-requirements",
+    "--with-editable",
+    "--directory",
+    "--project",
+    "--config-file",
+    "--cache-dir",
+    "--index",
+    "--default-index",
+    "--index-url",
+    "-i",
+    "--extra-index-url",
+    "--find-links",
+    "-f",
+    "--extra",
+    "--group",
+    "--only-group",
+    "--no-group",
+    "--package",
+    "--env-file",
+    "--from",
+    "--python-platform",
+    "--exclude-newer",
+    "--prerelease",
+    "--resolution",
+    "--link-mode",
+    "--keyring-provider",
+    "--allow-insecure-host",
+    "-C",
+    "--config-setting",
+    "--refresh-package",
+    "-P",
+    "--upgrade-package",
+    "--reinstall-package",
+    "--no-binary-package",
+    "--no-build-package",
+    "--format",
+    "-o",
+    "--output-file",
+    "-r",
+    "--requirement",
+    "--constraint",
+    "-c",
+    "--overrides",
+    "--target",
+    "--prefix",
+}
+# After these, the remaining tokens belong to the wrapped program.
+_UV_PROGRAM_SUBCOMMANDS = {"run", "tool"}
+_KNOWN_MINORS = [f"3.{minor}" for minor in range(8, 17)]
 
 
-def _run_overrides(job: dict) -> list[str]:
-    """Interpreter versions that a job's ``run:`` scripts select directly."""
-    versions = []
+def _expand(
+    text: str, job: dict, env: dict[str, str], depth: int = 0
+) -> list[str] | None:
+    """Expand GitHub matrix expressions and shell variables, or None if unknown."""
+    if depth > 5 or "$(" in text or "`" in text:
+        return None
+    gh = _GH_EXPR.search(text)
+    if gh:
+        expression = gh.group(1).strip()
+        match = re.fullmatch(r"matrix\.([\w-]+)", expression)
+        if not match or "github.event" in expression:
+            return None
+        values = _matrix_values(job, match.group(1))
+        if not values:
+            return None
+        out: list[str] = []
+        for value in values:
+            sub = _expand(
+                text[: gh.start()] + value + text[gh.end() :], job, env, depth + 1
+            )
+            if sub is None:
+                return None
+            out += sub
+        return out
+    var = _SHELL_VAR.search(text)
+    if var:
+        name = var.group(1) or var.group(2)
+        if name not in env:
+            return None
+        sub = _expand(str(env[name]), job, env, depth + 1)
+        if sub is None:
+            return None
+        return [
+            out
+            for value in sub
+            for out in (
+                _expand(
+                    text[: var.start()] + value + text[var.end() :], job, env, depth + 1
+                )
+                or [None]
+            )
+            if out is not None
+        ] or None
+    return [text]
+
+
+def _versions_of(value: str) -> list[str] | None:
+    """Versions an interpreter request selects: 3.12, cpython-3.12, cpython@3.12,
+    a specifier such as >=3.12,<3.13 (every admitted minor), or None."""
+    from packaging.specifiers import InvalidSpecifier, SpecifierSet
+
+    value = value.strip().strip("'\"")
+    if value[:1] in "<>=!~":
+        try:
+            spec = SpecifierSet(value)
+        except InvalidSpecifier:
+            return None
+        admitted = [
+            v for v in _KNOWN_MINORS if spec.contains(f"{v}.0", prereleases=True)
+        ]
+        return admitted or None
+    match = re.search(r"(\d+)\.(\d+)", value)
+    return [f"{match.group(1)}.{match.group(2)}"] if match else None
+
+
+def _split_commands(script: str) -> list[list[str]]:
+    """Normalize a run: script and split it into shell commands (token lists)."""
+    import shlex
+
+    placeholders: dict[str, str] = {}
+
+    def hold(match: re.Match) -> str:
+        key = f"__GHE{len(placeholders)}__"
+        placeholders[key] = match.group(0)
+        return key
+
+    script = _GH_EXPR.sub(hold, re.sub(r"\\\r?\n", " ", script))
+    commands: list[list[str]] = []
+    heredoc: tuple[str, bool] | None = None
+    for line in script.splitlines():
+        if heredoc:
+            tag, strip_tabs = heredoc
+            if (line.lstrip("\t") if strip_tabs else line).strip() == tag:
+                heredoc = None
+            continue
+        lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        lexer.commenters = "#"
+        try:
+            tokens = list(lexer)
+        except ValueError:
+            tokens = line.split()
+        current: list[str] = []
+        for index, token in enumerate(tokens):
+            if token in ("<<", "<<-") and index + 1 < len(tokens):
+                heredoc = (tokens[index + 1], token == "<<-")
+            if token in _OPERATORS:
+                if current:
+                    commands.append(current)
+                current = []
+            else:
+                for key, original in placeholders.items():
+                    token = token.replace(key, original)
+                current.append(token)
+        if current:
+            commands.append(current)
+    return commands
+
+
+def _command_selectors(tokens: list[str], local: dict[str, str]) -> list[str]:
+    """Raw interpreter-selector values named by one shell command."""
+    selected: list[str] = []
+    index = 0
+    # Leading assignments (VAR=value cmd, or a bare assignment line).
+    while index < len(tokens) and _ASSIGNMENT.match(tokens[index]):
+        name, value = _ASSIGNMENT.match(tokens[index]).groups()
+        local[name] = value
+        if name == "UV_PYTHON":
+            selected.append(value)
+        index += 1
+    while index < len(tokens) and tokens[index] in _COMMAND_PREFIXES:
+        index += 1
+    if index >= len(tokens):
+        return selected
+    command, args = tokens[index], tokens[index + 1 :]
+    base = command.replace("\\", "/").rsplit("/", 1)[-1]
+    if base in ("export", "env", "declare", "typeset", "local", "readonly"):
+        for arg in args:
+            match = _ASSIGNMENT.match(arg)
+            if match:
+                local[match.group(1)] = match.group(2)
+                if match.group(1) == "UV_PYTHON":
+                    selected.append(match.group(2))
+            elif base == "env" and not arg.startswith("-"):
+                rest = args[args.index(arg) :]
+                return selected + _command_selectors(rest, local)
+        return selected
+    if command.startswith("$env:UV_PYTHON"):  # PowerShell
+        value = command.partition("=")[2] or (args[1] if args[:1] == ["="] else "")
+        return selected + [value or "$env:UV_PYTHON"]
+    if base in ("echo", "printf"):
+        writes_env = any(
+            op in (">", ">>")
+            and target.strip("'\"") in ("$GITHUB_ENV", "${GITHUB_ENV}")
+            for op, target in zip(args, args[1:])
+        )
+        if writes_env:
+            selected += [
+                m.group(2)
+                for arg in args
+                if (m := _ASSIGNMENT.match(arg)) and m.group(1) == "UV_PYTHON"
+            ]
+        return selected
+    if _PYTHON_COMMAND.search(command):
+        return selected + [_PYTHON_COMMAND.search(command).group(1)]
+    if base in ("py", "py.exe"):
+        if args and _PY_LAUNCHER.match(args[0]):
+            selected.append(_PY_LAUNCHER.match(args[0]).group(1))
+        return selected
+    if base not in ("uv", "uvx", "uv.exe", "uvx.exe"):
+        return selected
+    subcommand = "tool" if base.startswith("uvx") else None
+    position = 0
+    while position < len(args):
+        token = args[position]
+        if token == "--":
+            break
+        if subcommand is None and not token.startswith("-"):
+            subcommand = token
+            if token == "python" and position + 1 < len(args):
+                if args[position + 1] in ("install", "pin", "find"):
+                    selected += [
+                        a for a in args[position + 2 :] if not a.startswith("-")
+                    ]
+                    return selected
+            position += 1
+            continue
+        for option in ("--python", "--python-version", "-p"):
+            if token == option and position + 1 < len(args):
+                selected.append(args[position + 1])
+            elif token.startswith(option + "="):
+                selected.append(token.split("=", 1)[1])
+            elif (
+                option == "-p"
+                and token.startswith("-p")
+                and len(token) > 2
+                and token[2] != "-"
+            ):
+                selected.append(token[2:].lstrip("="))
+        if token.startswith("-"):
+            name = token.split("=", 1)[0]
+            if name in ("-m", "--module", "--script", "-s"):
+                break
+            position += 2 if name in _UV_VALUE_OPTIONS and "=" not in token else 1
+            continue
+        if subcommand in _UV_PROGRAM_SUBCOMMANDS:
+            if subcommand == "tool" and token == "run":
+                position += 1
+                continue
+            break  # the wrapped program's own arguments follow
+        position += 1
+    return selected
+
+
+def _run_selectors(workflow_env: dict, job: dict) -> list[str]:
+    """Versions selected inside a job's run: scripts; UNRESOLVED:<value> if unknown."""
+    versions: list[str] = []
     for step in job.get("steps") or []:
-        script = str(step.get("run", ""))
-        for pattern in _RUN_OVERRIDES:
-            versions += pattern.findall(script)
+        if "run" not in step:
+            continue
+        env = {
+            **{k: str(v) for k, v in (workflow_env or {}).items()},
+            **{k: str(v) for k, v in (job.get("env") or {}).items()},
+            **{k: str(v) for k, v in (step.get("env") or {}).items()},
+        }
+        local: dict[str, str] = {}
+        for tokens in _split_commands(str(step["run"])):
+            for raw in _command_selectors(tokens, local):
+                expanded = _expand(raw, job, {**env, **local})
+                found = (
+                    [v for value in expanded for v in (_versions_of(value) or [None])]
+                    if expanded
+                    else [None]
+                )
+                versions += [v if v else f"UNRESOLVED:{raw}" for v in found]
     return versions
 
 
@@ -461,7 +734,7 @@ def _floor_uses(
     floor = _floor_text()
     uses = set()
     for workflow, name, workflow_env, job in _workflow_jobs(docs):
-        if floor in _run_overrides(job):
+        if floor in _run_selectors(workflow_env, job):
             uses.add((workflow, name, None))
         for value in _interpreter_fields(workflow_env, job):
             if floor not in _resolve(job, value):
@@ -498,42 +771,155 @@ def test_floor_interpreter_appears_only_in_floor_checks():
     assert _floor_uses() == set(FLOOR_ALLOWED)
 
 
-def test_run_scripts_select_only_the_primary_or_allowed_floor():
-    """``run:`` overrides may name 3.14, or 3.12 only in an allowed floor job."""
+def _run_offenders(docs: dict[str, dict] | None = None) -> list[tuple[str, str, str]]:
     floor = _floor_text()
     allowed = {(w, j) for w, j, _family in FLOOR_ALLOWED}
-    offenders = [
+    return [
         (workflow, name, version)
-        for workflow, name, _env, job in _workflow_jobs()
-        for version in _run_overrides(job)
+        for workflow, name, workflow_env, job in _workflow_jobs(docs)
+        for version in _run_selectors(workflow_env, job)
         if version != PRIMARY_PYTHON
         and not (version == floor and (workflow, name) in allowed)
     ]
-    assert offenders == []
 
 
-# Named mutations: shell-level overrides in the ci.yml Pytest step.
+def test_run_scripts_select_only_the_primary_or_allowed_floor():
+    """``run:`` selectors resolve to 3.14, or 3.12 only in an allowed floor job."""
+    assert _run_offenders() == []
+
+
+def _pytest_step(docs: dict[str, dict]) -> dict:
+    return next(
+        s for s in docs["ci.yml"]["jobs"]["test"]["steps"] if s.get("name") == "Pytest"
+    )
+
+
+_FULL = "uv run --locked --all-extras python scripts/run_full_suite.py"
+
+
+def _replace_full(new: str):
+    def mutate(docs: dict[str, dict]) -> None:
+        step = _pytest_step(docs)
+        assert _FULL in step["run"]
+        step["run"] = step["run"].replace(_FULL, new, 1)
+
+    return mutate
+
+
+def _with_job(key: str, value: dict, new: str):
+    def mutate(docs: dict[str, dict]) -> None:
+        docs["ci.yml"]["jobs"]["test"].setdefault(key, {}).update(value)
+        _replace_full(new)(docs)
+
+    return mutate
+
+
+_EVENT = "${{ github.event_name == 'schedule' && '3.12' || '3.14' }}"
+
+# Named mutations of the scheduled full-tier command in the ci.yml Pytest step.
+# Each selects 3.12 (or an event-chosen interpreter) and must be rejected.
 RUN_OVERRIDE_MUTATIONS = {
-    "M502-run-uv-python": ("uv run --locked", "uv run --python 3.12 --locked"),
-    "M502-run-export": ("if [", "export UV_PYTHON=3.12\nif ["),
-    "M502-run-uv-p": ("uv run --locked", "uv run -p 3.12 --locked"),
-    "M502-run-python3x": (
-        "uv run --locked --all-extras python ",
-        "python3.12 -m uv run --locked --all-extras python ",
+    "M502-run-uv-python": _replace_full(
+        _FULL.replace("uv run", "uv run --python 3.12")
+    ),
+    "M502-run-double-space": _replace_full(
+        _FULL.replace("uv run", "uv run --python  3.12")
+    ),
+    "M502-run-python-equals": _replace_full(
+        _FULL.replace("uv run", "uv run --python=3.12")
+    ),
+    "M502-run-uv-p": _replace_full(_FULL.replace("uv run", "uv run -p 3.12")),
+    "M502-run-p-equals": _replace_full(_FULL.replace("uv run", "uv run -p=3.12")),
+    "M502-run-continued-p": _replace_full(
+        _FULL.replace("uv run", "uv run \\\n  -p 3.12")
+    ),
+    "M502-run-continued-python": _replace_full(
+        _FULL.replace("uv run", "uv run --python \\\n  3.12")
+    ),
+    "M502-run-cpython-dash": _replace_full(
+        _FULL.replace("uv run", "uv run --python cpython-3.12")
+    ),
+    "M502-run-cpython-at": _replace_full(
+        _FULL.replace("uv run", "uv run --python cpython@3.12")
+    ),
+    "M502-run-specifier": _replace_full(
+        _FULL.replace("uv run", "uv run --python '>=3.12,<3.13'")
+    ),
+    "M502-run-export": _replace_full("export UV_PYTHON=3.12; " + _FULL),
+    "M502-run-export-quoted": _replace_full('export "UV_PYTHON=3.12"; ' + _FULL),
+    "M502-run-github-env": _replace_full(
+        'echo UV_PYTHON=3.12 >> "$GITHUB_ENV"; ' + _FULL
+    ),
+    "M502-run-python3x": _replace_full("python3.12 -m " + _FULL),
+    "M502-run-path-python": _replace_full("/usr/bin/python3.12 -m " + _FULL),
+    "M502-run-py-launcher": _replace_full("py -3.12 -m " + _FULL),
+    "M502-run-py-v": _replace_full("py -V:3.12 -m " + _FULL),
+    "M502-run-uv-python-install": _replace_full("uv python install 3.12; " + _FULL),
+    "M502-run-matrix-expr": _with_job(
+        "strategy",
+        {"matrix": {"legacy": ["3.12"]}},
+        _FULL.replace("uv run", "uv run --python ${{ matrix.legacy }}"),
+    ),
+    "M502-run-env-var": _with_job(
+        "env", {"PY": "3.12"}, _FULL.replace("uv run", "uv run --python $PY")
+    ),
+    "M502-run-env-braces": _with_job(
+        "env", {"PY": "3.12"}, _FULL.replace("uv run", 'uv run --python "${PY}"')
+    ),
+    "M502-run-event": _replace_full(
+        _FULL.replace("uv run", f"uv run --python {_EVENT}")
+    ),
+    "M502-run-event-local-var": _replace_full(
+        f"PY={_EVENT}; " + _FULL.replace("uv run", 'uv run --python "$PY"')
+    ),
+    "M502-run-unknown-var": _replace_full(
+        _FULL.replace("uv run", "uv run --python $UNDECLARED")
     ),
 }
 
 
 @pytest.mark.parametrize("mutation", sorted(RUN_OVERRIDE_MUTATIONS))
 def test_run_override_mutations_are_rejected(mutation):
-    old, new = RUN_OVERRIDE_MUTATIONS[mutation]
     docs = _workflow_docs()
-    step = next(
-        s for s in docs["ci.yml"]["jobs"]["test"]["steps"] if s.get("name") == "Pytest"
-    )
-    assert old in step["run"]
-    step["run"] = step["run"].replace(old, new, 1)
-    assert ("ci.yml", "test", None) in _floor_uses(docs) - set(FLOOR_ALLOWED)
+    assert _run_offenders(docs) == []
+    RUN_OVERRIDE_MUTATIONS[mutation](docs)
+    offenders = _run_offenders(docs)
+    assert offenders and all(o[:2] == ("ci.yml", "test") for o in offenders)
+
+
+# Lines that mention 3.12 without selecting an interpreter: comments, output,
+# a wrapped program's own -p option, heredoc script content and quoted strings.
+RUN_NON_SELECTORS = {
+    "comment": "# Never use uv run --python 3.12 here",
+    "trailing-comment": "true  # uv run -p 3.12",
+    "echo-prose": "echo 'see the docs for python3.12 notes'",
+    "echo-floor": 'echo "Python floor: python3.12"',
+    "echo-uv-python": 'echo "uv run --python 3.12 is not used"',
+    "printf-assignment": "printf 'UV_PYTHON=3.12\\n'",
+    "tool-own-p": "uv run --locked python -m sometool -p 3.12",
+    "uvx-tool-p": "uvx ruff check -p 3.12",
+    "pytest-plugin-p": "uv run --locked pytest -p no:cacheprovider",
+    "heredoc-body": "python - <<'PY'\nimport subprocess\nsubprocess.run(['python3.12', '-V'])\nPY",
+    "site-packages-path": "ls .venv/lib/python3.12/site-packages",
+    "quoted-arg": "grep -n 'uv run --python 3.12' README.md",
+}
+
+
+@pytest.mark.parametrize("case", sorted(RUN_NON_SELECTORS))
+def test_run_scan_ignores_non_selectors(case):
+    docs = _workflow_docs()
+    _replace_full(RUN_NON_SELECTORS[case] + "\n" + _FULL)(docs)
+    assert _run_offenders(docs) == []
+
+
+def test_run_scan_accepts_primary_selectors():
+    docs = _workflow_docs()
+    _replace_full(
+        "uv python install 3.14; export UV_PYTHON=3.14; "
+        + _FULL.replace("uv run", "uv run --python cpython@3.14")
+    )(docs)
+    assert _run_offenders(docs) == []
+    assert "3.14" in _run_selectors({}, docs["ci.yml"]["jobs"]["test"])
 
 
 def test_baml_companion_abi_floor_comes_from_its_build_config():

@@ -298,8 +298,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   requires), `uvloop` 0.22.1 and `watchfiles` 1.1.1. Parser and runtime pins
   are unchanged. Python 3.14 is now the main version: CI (lint, type and smoke
   checks), the scheduled full tier, release validation and the distribution
-  build run on it. The 3.12 minimum keeps only Linux platform-core and the
-  release installed-wheel check, with no extra CI jobs. `requires-python` stays
+  build run on it. The 3.12 minimum keeps only two main-package checks, Linux
+  platform-core and the release installed-wheel check, plus the BAML companion
+  workflow's `source` and `wheel` jobs on the companion's own 3.12 minimum, with
+  no extra CI jobs. `requires-python` stays
   `>=3.12`, and `.python-version` keeps 3.12 as the default development
   interpreter.
 - On Python 3.14, Linux starts multiprocessing workers with `forkserver` by

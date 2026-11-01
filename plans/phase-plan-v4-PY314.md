@@ -147,11 +147,23 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
       runner interpreter. The policy test asserts both settings.
     - So 3.12 appears only in Linux platform-core, the installed-wheel check
       and those two BAML companion jobs. `tests/test_release_hygiene_policy.py`
-      enforces this. It rejects any event-selected interpreter, and it scans
-      every step's `run:` for shell-level overrides (`--python X`, `uv … -p X`,
-      `UV_PYTHON=`, `uv python install X`, `pythonX.Y`, `py -X.Y`). The named
-      mutations `M502-run-uv-python`, `M502-run-export`, `M502-run-uv-p` and
-      `M502-run-python3x` each fail it.
+      enforces this and rejects any event-selected interpreter. It also scans
+      every step's `run:` structurally:
+      - Normalize: join `\` continuations, skip heredoc bodies, keep `${{ }}`
+        expressions as placeholders, then shlex-split into commands (comments
+        dropped, quotes respected, operators split).
+      - Inspect command tokens only, never echo output or prose. Selectors are
+        `--python`/`--python-version` (space or `=`), uv/uvx `-p`/`-p=`/`-pX`
+        up to the wrapped program, `UV_PYTHON` assignments, exports and
+        `$GITHUB_ENV` writes, `uv python install|pin|find`, a command token
+        ending in `pythonX.Y` (paths included), and `py -X.Y`/`py -V:X.Y`.
+      - Resolve each value through `${{ matrix.* }}` and step/job/workflow or
+        in-script variables. Read `cpython-3.12`, `cpython@3.12` and
+        specifiers such as `>=3.12,<3.13` as the minors they admit. An
+        unresolvable or `github.event`-dependent value is a violation.
+      - 24 named mutations (`M502-run-*`) are rejected, and 12 non-selector
+        controls (comments, echo output, a wrapped tool's `-p`, heredoc
+        content, quoted strings, site-packages paths) are not flagged.
     - The type gate runs once per CI run, on 3.14. Its output does not depend
       on the interpreter (re-measurement above).
   - 3.12 deprecation: `requires-python` and `.python-version` stay at 3.12
