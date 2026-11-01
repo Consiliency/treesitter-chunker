@@ -503,7 +503,16 @@ class CompatibilityChecker:
         code_samples: list[str],
         grammar_path: Path | None = None,
     ) -> CompatibilityResult:
-        """Perform detailed compatibility analysis."""
+        """Perform detailed compatibility analysis.
+
+        The validator's missing built-in sample warning is an evidence gap,
+        not a quality finding (treesitter-chunker#133). It is reported but
+        never degrades a candidate by itself: caller ``code_samples`` parsed
+        with the candidate are the evidence. When it is present and there
+        are no caller samples, nothing was parsed, so the level is
+        ``UNKNOWN`` whatever other warnings exist (all are kept); quality
+        warnings degrade only evidence-backed results.
+        """
         try:
             # Start with basic compatibility
             result.level = CompatibilityLevel.COMPATIBLE
@@ -511,14 +520,25 @@ class CompatibilityChecker:
 
             # Check ABI compatibility
             validation_info = grammar_info.get("validation", {})
+            warnings = list(validation_info.get("warnings") or [])
+            evidence_gap = f"No test samples available for {result.language}"
+            quality_warnings = [w for w in warnings if w != evidence_gap]
             if validation_info.get("errors"):
                 result.level = CompatibilityLevel.INCOMPATIBLE
                 result.score = 0.0
                 result.issues.extend(validation_info["errors"])
-            elif validation_info.get("warnings"):
+            elif evidence_gap in warnings and not code_samples:
+                # Nothing was parsed, so no warning can place the candidate
+                # above "unknown"; every warning is still reported.
+                result.level = CompatibilityLevel.UNKNOWN
+                result.score = 0.3
+                result.warnings.extend(warnings)
+            elif quality_warnings:
                 result.level = CompatibilityLevel.DEGRADED
                 result.score = 0.7
-                result.warnings.extend(validation_info["warnings"])
+                result.warnings.extend(warnings)
+            elif warnings:
+                result.warnings.extend(warnings)
 
             # Performance analysis
             performance_metrics = grammar_info.get("performance", {})
@@ -1573,20 +1593,19 @@ class SmartSelector:
             registry_grammars = self.grammar_manager._registry.discover_grammars()
 
             if language in registry_grammars:
+                # The installer keeps one record per language, and it describes
+                # only the artifact at its install_path (treesitter-chunker#134).
+                install_info = self.grammar_manager._installer._load_installation_info(
+                    language,
+                )
                 for grammar_path, priority in registry_grammars[language]:
-                    # Get version info
                     version = "unknown"
-                    metadata = {}
-
-                    # Try to get installation info
-                    install_info = (
-                        self.grammar_manager._installer._load_installation_info(
-                            language,
-                        )
-                    )
-                    if install_info:
+                    metadata: dict[str, Any] = {}
+                    if install_info and self._is_same_artifact(
+                        grammar_path, install_info.install_path
+                    ):
                         version = install_info.version
-                        metadata = install_info.metadata
+                        metadata = dict(install_info.metadata)
 
                     candidate = SelectionCandidate(
                         language=language,
@@ -1603,6 +1622,24 @@ class SmartSelector:
         except Exception as e:
             logger.error(f"Failed to discover candidates for {language}: {e}")
             return []
+
+    @staticmethod
+    def _is_same_artifact(grammar_path: Path, install_path: Path) -> bool:
+        """Whether an install record's path names this discovered artifact.
+
+        Same file first; if the record's path is missing, the same resolved
+        location. A corrupt path (e.g. an embedded NUL) names no artifact.
+        """
+        try:
+            return grammar_path.samefile(install_path)
+        except (OSError, ValueError):
+            pass
+        try:
+            return grammar_path.resolve(strict=False) == Path(install_path).resolve(
+                strict=False
+            )
+        except (OSError, ValueError):
+            return False
 
     def _score_candidate(
         self,
@@ -1757,10 +1794,16 @@ class SmartSelector:
         if len(candidates) <= 1:
             return candidates
 
-        # Group by version and priority conflicts
-        conflicts = {}
-        for candidate in candidates:
-            key = (candidate.language, candidate.version)
+        # Group only true same-version conflicts. An unknown version says
+        # nothing about the artifact, so each such candidate stands alone
+        # (treesitter-chunker#134).
+        conflicts: dict[tuple[str, str] | int, list[SelectionCandidate]] = {}
+        for index, candidate in enumerate(candidates):
+            key = (
+                index
+                if candidate.version == "unknown"
+                else (candidate.language, candidate.version)
+            )
             if key not in conflicts:
                 conflicts[key] = []
             conflicts[key].append(candidate)
