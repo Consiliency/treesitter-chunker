@@ -15,7 +15,11 @@ from chunker.grammar._native_policy import (
     NativePolicyBlockedError,
     is_application_control_error,
 )
-from tests.native_policy import skip_policy_error, skip_policy_reply
+from tests.native_policy import (
+    skip_policy_error,
+    skip_policy_reply,
+    skip_policy_reply_under_status_fault,
+)
 
 
 def policy_error(code=4551):
@@ -282,6 +286,61 @@ def test_test_skip_preserves_protocol_failures(fault):
         stdout = stdout[:-1] + b',"failure":"policy_blocked"}'
     skip_policy_reply(
         (1, stdout, b"", fault == "timeout", False), command, state, "nonce"
+    )
+
+
+INJECTED = "GetExitCodeProcess unavailable"
+
+
+def status_fault_policy_reply():
+    state, command, record = valid_policy_reply()
+    state.worker_status, state.error = None, INJECTED
+    return state, command, (1, json.dumps(record).encode(), b"", False, False)
+
+
+def test_status_fault_skip_accepts_only_observed_policy_failure():
+    state, command, reply = status_fault_policy_reply()
+    with pytest.raises(
+        pytest.skip.Exception, match="Blocked by OS application-control policy"
+    ):
+        skip_policy_reply_under_status_fault(
+            reply, command, state, "nonce", [1, 1], INJECTED
+        )
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "no_observation",
+        "observed_zero",
+        "observed_mixed",
+        "other_error",
+        "product_status",
+        "unsafe",
+        "forced",
+        "timeout",
+        "generic",
+    ],
+)
+def test_status_fault_skip_preserves_protocol_failures(fault):
+    state, command, reply = status_fault_policy_reply()
+    observed = {"no_observation": [], "observed_zero": [0], "observed_mixed": [1, 0]}
+    if fault == "other_error":
+        state.error = "WaitForSingleObject unavailable"
+    if fault == "product_status":
+        state.worker_status = 1
+    if fault == "unsafe":
+        state.cleanup_safe = False
+    if fault == "forced":
+        state.forced = True
+    if fault == "timeout":
+        reply = reply[:3] + (True, False)
+    if fault == "generic":
+        record = json.loads(reply[1])
+        record["failure"] = "load_failed"
+        reply = (1, json.dumps(record).encode(), b"", False, False)
+    skip_policy_reply_under_status_fault(
+        reply, command, state, "nonce", observed.get(fault, [1]), INJECTED
     )
 
 

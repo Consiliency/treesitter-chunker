@@ -1,6 +1,7 @@
 ﻿"""Opt-in handling of positively identified native policy denials in tests."""
 
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -51,6 +52,37 @@ def skip_policy_reply(reply, command, state, nonce):
     }
     if record == expected and len(pairs) == len(expected):
         pytest.skip(APPLICATION_CONTROL_MESSAGE)
+
+
+def skip_policy_reply_under_status_fault(
+    reply, command, state, nonce, observed_statuses, injected_error
+):
+    """Skip a status-fault test only for the same intact policy failure.
+
+    Such a test hides the worker's exit status from the product on purpose, so
+    ``state.worker_status`` is unavailable and ``state.error`` is the injected
+    fault. The test reads the actual status from the same handle before
+    injecting the fault. Only that observed status (always 1) and the product
+    error being exactly the injected one stand in for those two fields; every
+    other condition of :func:`skip_policy_reply` still applies unchanged.
+    """
+    if (
+        state is None
+        or state.worker_status is not None
+        or state.error != injected_error
+        or not observed_statuses
+        or set(observed_statuses) != {1}
+    ):
+        return
+    view = SimpleNamespace(
+        worker_status=1,
+        cleanup_safe=state.cleanup_safe,
+        discovery_complete=state.discovery_complete,
+        error="",
+        forced=state.forced,
+        start_completed=state.start_completed,
+    )
+    skip_policy_reply(reply, command, view, nonce)
 
 
 def skip_policy_subprocess(completed):

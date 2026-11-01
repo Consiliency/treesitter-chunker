@@ -1823,6 +1823,7 @@ def test_native_windows_handle_failure_after_real_ack_rejects(
     tmp_path, monkeypatch, operation
 ):
     from chunker.grammar import integrity
+    from tests.native_policy import skip_policy_reply_under_status_fault
 
     library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
     real_status, real_exited, real_read = (
@@ -1830,10 +1831,12 @@ def test_native_windows_handle_failure_after_real_ack_rejects(
         integrity._WindowsProcess.exited,
         integrity._read_child,
     )
-    failures, observations, roots = [], [], []
+    failures, observations, roots, observed_statuses = [], [], [], []
 
     def status(handle):
         if operation == "status":
+            # Keep the real status for the policy check only; the product never sees it.
+            observed_statuses.append(real_status(handle))
             failures.append("status")
             raise OSError("GetExitCodeProcess unavailable")
         return real_status(handle)
@@ -1849,6 +1852,15 @@ def test_native_windows_handle_failure_after_real_ack_rejects(
         roots.append(args[1])
         try:
             result = real_read(*args, **kwargs)
+            if operation == "status":
+                skip_policy_reply_under_status_fault(
+                    result,
+                    args[0],
+                    kwargs["lifecycle"],
+                    kwargs["worker_nonce"],
+                    observed_statuses,
+                    "GetExitCodeProcess unavailable",
+                )
             observations.append(json.loads(result[1]))
             return result
         except OSError:
