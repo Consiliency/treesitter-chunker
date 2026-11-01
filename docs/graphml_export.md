@@ -93,6 +93,7 @@ The exporter automatically generates GraphML key definitions for all unique attr
 ```xml
 <key id="node_label" for="node" attr.name="label" attr.type="string"/>
 <key id="edge_label" for="edge" attr.name="label" attr.type="string"/>
+<key id="n_label" for="node" attr.name="caller_label" attr.type="string"/>  <!-- caller metadata named "label" -->
 <key id="n_file_path" for="node" attr.name="file_path" attr.type="string"/>
 <key id="n_start_line" for="node" attr.name="start_line" attr.type="int"/>
 <key id="n_chunk_type" for="node" attr.name="chunk_type" attr.type="string"/>
@@ -144,18 +145,31 @@ metadata and receive the same prefixes regardless of property insertion order.
 
 This is a BREAKING key-ID change reserved for 6.0.0. Regenerate graph output and
 update consumers that selected the old structural `n_label`/`e_label` keys to
-read `node_label`/`edge_label`. Select by key ID and domain when distinguishing
-structural labels from caller metadata: both still have `attr.name="label"`.
-Plain, yEd, compact, pretty and delegated output share this ID rule. The package-level
-structured exporter is a separate API; XSD validation is outside this repair
-(treesitter-chunker#169).
+read `node_label`/`edge_label`. Plain, yEd, compact, pretty and delegated output
+share this ID rule. The package-level structured exporter is a separate API;
+XSD validation is outside this repair (treesitter-chunker#169).
 
-NetworkX 3.6.1 imports fields by `attr.name`: plain/delegated import keeps one
-`label` value, and yEd graphics can overwrite caller labels. Its imported
-attributes therefore do not retain these fields independently. Use a reader
-that distinguishes key IDs when both values are needed; this interoperability
-gap remains treesitter-chunker#453. Raw key uniqueness does not certify every
-tool's imported attribute mapping.
+### Caller label names for name-keyed readers
+
+Readers such as NetworkX map GraphML data by `attr.name`, not by key ID. The
+attribute name `label` is reserved for the structural label (`node_label`,
+`edge_label`). Caller metadata named `label` keeps its `n_label`/`e_label` key
+ID and value, but is declared with `attr.name="caller_label"`
+(treesitter-chunker#453). To keep every declared name distinct, a caller name
+of the form `caller_label`, `caller_caller_label` and so on gains one more
+`caller_` prefix (`caller_label` is declared as `caller_caller_label`). All
+other caller names, including `node_label` and `metadata_label`, are declared
+unchanged.
+
+With NetworkX 3.6.1, plain and delegated (`use_yed=False`) imports expose the
+structural label as `label` and the caller label as `caller_label`. A yEd import
+also exposes `caller_label`, but NetworkX replaces `label` with the yEd
+`NodeLabel`/`EdgeLabel` graphics text, which is the reader's own yEd handling.
+
+This is a BREAKING change for name-keyed consumers in the next release after
+6.0.0: read the caller `label` metadata as `caller_label` (and `caller_label` as
+`caller_caller_label`) and regenerate GraphML output. Consumers that select by
+key ID are unaffected.
 
 ### Graph ID migration for 6.0.0
 
@@ -403,7 +417,7 @@ exporter does not validate GraphML schema.
 ## Compatibility
 
 GraphML can be opened by the following tools; attribute mapping depends on the
-reader. In particular, see the NetworkX label limitation above
+reader. In particular, see the caller label names above
 (treesitter-chunker#453):
 - yEd Graph Editor
 - Gephi
