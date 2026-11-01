@@ -506,11 +506,12 @@ class TestUserGrammarTools:
         assert result["status"] == "error"
         assert "Updated to latest version" in result["steps_completed"]
         assert result["errors"] == [
-            "Native admission failed for test_lang.so: empty (the library is "
-            "empty); the installed library is unchanged. No approved pin was "
-            "supplied for test_lang: add its reviewed SHA-256 to the user-config "
-            "pin file, pass --trusted-artifacts PATH to the grammar command, or "
-            "pass trusted_artifacts to UserGrammarTools."
+            "Native admission failed for test_lang.so: untrusted (the library is "
+            "not trusted by an approved SHA-256 pin); the installed library is "
+            "unchanged. No approved pin was supplied for test_lang: add its "
+            "reviewed SHA-256 to the user-config pin file, pass "
+            "--trusted-artifacts PATH to the grammar command, or pass "
+            "trusted_artifacts to UserGrammarTools."
         ]
         assert installed.read_bytes() == b"previous library"
         assert sorted(path.name for path in build_dir.iterdir()) == ["test_lang.so"]

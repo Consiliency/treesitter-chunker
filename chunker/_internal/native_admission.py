@@ -37,6 +37,11 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
+from chunker._internal.package_supplier import (
+    MISMATCH,
+    SUPPLIED,
+    package_supplied_digest,
+)
 from chunker._internal.trusted_artifacts import pin_provenance
 from chunker.grammar import integrity
 from chunker.grammar.integrity import (
@@ -65,8 +70,33 @@ _verdicts: dict[str, Any] = {}
 _verdict_index: dict[tuple[str, str], set[str]] = {}
 #: (language, digest) -> admitted private copy
 _copies: dict[tuple[str, str], Path] = {}
+#: (language, digest) -> lock held across check, create and register
+_copy_locks: dict[tuple[str, str], threading.Lock] = {}
 _copy_roots: list[Path] = []
+#: The process that created ``_copy_roots`` and alone may remove them.
+_copy_owner_pid = os.getpid()
 _cleanup_registered = False
+
+
+def _reset_after_fork() -> None:
+    """Give a forked child an empty admission state (POSIX ``fork``).
+
+    Admission is per process: a child must probe again before its first use of
+    an artifact, and it never owns (or removes) its parent's private copies.
+    Locks are recreated because the parent's could be held mid-operation.
+    """
+    global _lock, _copy_owner_pid
+    _lock = threading.RLock()
+    _verdicts.clear()
+    _verdict_index.clear()
+    _copies.clear()
+    _copy_locks.clear()
+    _copy_roots.clear()
+    _copy_owner_pid = os.getpid()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_after_fork)
 
 
 def _distribution_version(name: str) -> str:
@@ -89,6 +119,28 @@ def _environment() -> dict[str, Any]:
     }
 
 
+def _verdict_payload(
+    *,
+    language: str,
+    pin_sha256: str,
+    content_sha256: str,
+    level: str,
+    inspector: str,
+) -> dict[str, Any]:
+    """Return the 15 fields of the frozen ``chunker.native_verdict.v1`` key."""
+    return {
+        "schema": _VERDICT_SCHEMA,
+        "language": language,
+        "pin_sha256": pin_sha256.lower(),
+        "content_sha256": content_sha256.lower(),
+        "level": level,
+        "probe_schema": _PROBE_SCHEMA,
+        "probe_profile": _PROBE_PROFILE,
+        "inspector": inspector,
+        **_environment(),
+    }
+
+
 def verdict_key(
     *,
     language: str,
@@ -101,17 +153,13 @@ def verdict_key(
 
     It never contains a path, mtime, size, inode, ctime or timestamp.
     """
-    payload = {
-        "schema": _VERDICT_SCHEMA,
-        "language": language,
-        "pin_sha256": pin_sha256.lower(),
-        "content_sha256": content_sha256.lower(),
-        "level": level,
-        "probe_schema": _PROBE_SCHEMA,
-        "probe_profile": _PROBE_PROFILE,
-        "inspector": inspector,
-        **_environment(),
-    }
+    payload = _verdict_payload(
+        language=language,
+        pin_sha256=pin_sha256,
+        content_sha256=content_sha256,
+        level=level,
+        inspector=inspector,
+    )
     canonical = json.dumps(
         payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
     ).encode("utf-8")
@@ -172,6 +220,31 @@ def hash_regular_file(path: Path) -> str | None:
         os.close(descriptor)
 
 
+def admission_record(
+    path: Path, language: str, trusted_artifacts: Mapping[str, Any] | None
+) -> tuple[dict[str, str] | None, NativeProbeResult | None]:
+    """Choose the one-field probe record for ``path`` under the one trust rule.
+
+    A RECORD-verified package file of our own wheel uses its RECORD digest and
+    needs no pin; a package file whose bytes differ from RECORD is
+    ``integrity_mismatch`` and no user pin can override it; any other local
+    candidate uses ``trusted_artifacts[language]`` (rule 3) and is
+    ``untrusted`` without one.
+
+    Returns:
+        ``(record, None)``, or ``(None, rejection)``.
+    """
+    status, supplied = package_supplied_digest(Path(path))
+    if status == MISMATCH:
+        return None, NativeProbeResult(False, "integrity_mismatch", None)
+    if status == SUPPLIED and supplied is not None:
+        return {"sha256": supplied}, None
+    record = pin_provenance(trusted_artifacts, language)
+    if record is None:
+        return None, NativeProbeResult(False, "untrusted", None)
+    return record, None
+
+
 def admit_native_candidate(
     path: Path,
     language: str,
@@ -208,9 +281,10 @@ def admit_native_candidate(
     candidate = Path(path)
     if not os.path.lexists(candidate):
         return NativeProbeResult(False, "missing", None), None
-    record = pin_provenance(trusted_artifacts, language)
+    record, rejection = admission_record(candidate, language, trusted_artifacts)
     if record is None:
-        return NativeProbeResult(False, "untrusted", None), None
+        assert rejection is not None
+        return rejection, None
     pin = record["sha256"]
     default_profile = sample == _DEFAULT_SAMPLE and timeout == _DEFAULT_TIMEOUT
     content = hash_regular_file(candidate) if candidate.is_absolute() else None
@@ -259,6 +333,9 @@ def admit_native_candidate(
 
 def _remove_copy_roots() -> None:
     with _lock:
+        if os.getpid() != _copy_owner_pid:
+            # Never remove another process's copies (inherited atexit handler).
+            return
         roots = list(_copy_roots)
         _copy_roots.clear()
         _copies.clear()
@@ -323,9 +400,10 @@ def admitted_private_copy(
     candidate = Path(path)
     if not os.path.lexists(candidate):
         return NativeProbeResult(False, "missing", None), None
-    record = pin_provenance(trusted_artifacts, language)
+    record, rejection = admission_record(candidate, language, trusted_artifacts)
     if record is None:
-        return NativeProbeResult(False, "untrusted", None), None
+        assert rejection is not None
+        return rejection, None
     pin = record["sha256"]
     if not _is_sha256(pin):
         return NativeProbeResult(False, "untrusted", None), None
@@ -333,21 +411,36 @@ def admitted_private_copy(
     content = hash_regular_file(candidate)
     if content is not None and not hmac.compare_digest(content, digest):
         return NativeProbeResult(False, "integrity_mismatch", None), None
-    with _lock:
-        existing = _copies.get((language, digest))
-    if existing is not None and content is not None:
-        key = verdict_key(
-            language=language,
-            pin_sha256=digest,
-            content_sha256=digest,
-            level="probe",
-            inspector="none",
-        )
-        if has_verdict(key) and hash_regular_file(existing) == digest:
-            return NativeProbeResult(True, "ok", digest), existing
-
     if not candidate.is_absolute():
         return NativeProbeResult(False, "untrusted", None), None
+    pair = (language, digest)
+    with _lock:
+        pair_lock = _copy_locks.setdefault(pair, threading.Lock())
+    # One check-create-register at a time per (language, digest), so a process
+    # never makes two copies (or two probes) for the same pair.
+    with pair_lock:
+        with _lock:
+            existing = _copies.get(pair)
+        if existing is not None and content is not None:
+            key = verdict_key(
+                language=language,
+                pin_sha256=digest,
+                content_sha256=digest,
+                level="probe",
+                inspector="none",
+            )
+            if has_verdict(key) and hash_regular_file(existing) == digest:
+                return NativeProbeResult(True, "ok", digest), existing
+        return _create_private_copy(candidate, language, record, digest, probe)
+
+
+def _create_private_copy(
+    candidate: Path,
+    language: str,
+    record: dict[str, str],
+    digest: str,
+    probe: Callable[..., NativeProbeResult] | None,
+) -> tuple[NativeProbeResult, Path | None]:
     root = Path(tempfile.mkdtemp(prefix="chunker-admitted-"))
     keep = False
     try:
@@ -397,4 +490,5 @@ def _reset_for_tests() -> None:
         _verdicts.clear()
         _verdict_index.clear()
         _copies.clear()
+        _copy_locks.clear()
     _environment.cache_clear()

@@ -43,6 +43,7 @@ _REQUIRED_WHEEL_PAYLOAD = frozenset(
         "chunker/_internal/language_pack.py",
         "chunker/_internal/native_admission.py",
         "chunker/_internal/pack_pin.py",
+        "chunker/_internal/package_supplier.py",
         "chunker/_internal/path_confinement.py",
         "chunker/_internal/registry.py",
         "chunker/_internal/trusted_artifacts.py",

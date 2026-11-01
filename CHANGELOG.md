@@ -159,6 +159,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rather than `empty`. Only the one-field record `{"sha256": ...}` reaches the
   probe, and a positive admission is reused only within the same process,
   keyed by content, pin and environment, never by path or file times.
+  A RECORD-verified grammar shipped in our own wheel needs no pin and reports
+  `healthy`; one whose bytes differ from the installed RECORD reports
+  `integrity_mismatch`, which no pin overrides (one trust rule with parsing).
+  `UserGrammarTools` no longer stages or probes a library it has no pin for.
 - Align the remaining Python version declarations with the 3.12 floor from
   treesitter-chunker#493: the release-process spec, getting-started, user guide,
   deployment, performance-core and VS Code docs, the conda recipe, all three

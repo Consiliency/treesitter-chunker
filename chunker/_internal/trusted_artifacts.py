@@ -94,14 +94,26 @@ def _default_cache_root() -> Path:
 
 
 def _inside(path: Path, directory: Path) -> bool:
+    """Whether resolved ``path`` lies in ``directory``.
+
+    Each ancestor of ``path`` is compared with ``directory`` by file identity
+    (``os.path.samefile``), so case-insensitive file systems that ``resolve()``
+    does not fold (macOS APFS) are handled. A string comparison of resolved,
+    case-normalized paths is the fallback when the identity check raises (for
+    example a forbidden directory that does not exist).
+    """
+    for ancestor in path.parents:
+        try:
+            if Path(ancestor).samefile(directory):
+                return True
+        except (OSError, ValueError):
+            continue
     try:
         resolved = os.path.normcase(str(directory.resolve()))
     except (OSError, RuntimeError):
         return False
     candidate = os.path.normcase(str(path))
-    return candidate == resolved or candidate.startswith(
-        resolved.rstrip(os.sep) + os.sep
-    )
+    return candidate.startswith(resolved.rstrip(os.sep) + os.sep)
 
 
 def _reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -234,8 +246,18 @@ def load_user_config_pins(
             commands exit 2.
     """
     path = user_config_pin_path()
-    if path is None or not os.path.lexists(path):
+    if path is None:
         return None
+    try:
+        os.lstat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    except OSError as error:
+        # Present but inaccessible (for example a parent directory without
+        # search permission) is a defect, never "absent".
+        raise TrustedArtifactsError(
+            path, f"cannot be accessed ({error.strerror or error})"
+        ) from None
     return read_trusted_artifacts(
         path,
         forbidden=forbidden_pin_directories(

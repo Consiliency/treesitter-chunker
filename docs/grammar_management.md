@@ -298,6 +298,13 @@ directory, `CHUNKER_GRAMMAR_BUILD_DIR` or the combined library's directory is
 rejected. `chunker.config.*` and `~/.chunker/config.*` files are never pin
 sources.
 
+**One trust rule for package-supplied grammars** (maintainer decision,
+2026-11-01). The grammar commands use the same RECORD check as parsing: a
+grammar shipped in our wheel's `chunker/data/grammars/build/` whose bytes match
+the installed `RECORD` reports `healthy` with no pin; a file there whose bytes
+differ from `RECORD` reports `integrity_mismatch`, and no pin overrides it; a
+file there with no `RECORD` entry needs a pin like any other local grammar.
+
 **Every grammar subcommand is pin-dependent.** The group resolves the active
 pin source before any subcommand runs. A missing or defective option file, or
 a present but defective config file when the option is absent, is a usage

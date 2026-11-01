@@ -133,6 +133,21 @@ class UserGrammarTools:
         """
         target = self.build_dir / f"{language}.so"
         provenance = pin_provenance(self.manager.trusted_artifacts, language)
+        if provenance is None:
+            # Rule 3: without a pin nothing is staged and the probe is not
+            # called; the existing untrusted error is reported.
+            self.manager.health_cache.pop(language, None)
+            self.manager.compatibility_cache.pop(language, None)
+            result["errors"].append(
+                f"Native admission failed for {library.name}: untrusted "
+                f"({_ADMISSION_EXPLANATIONS['untrusted']}); the installed "
+                f"library is unchanged. No approved pin was supplied for "
+                f"{language}: add its reviewed SHA-256 to the user-config pin "
+                "file, pass --trusted-artifacts PATH to the grammar command, or "
+                "pass trusted_artifacts to UserGrammarTools."
+            )
+            result["status"] = "error"
+            return False
         try:
             probe = publish_native_grammar(
                 library,
@@ -164,13 +179,6 @@ class UserGrammarTools:
                 f"Native admission failed for {library.name}: {probe.reason} "
                 f"({explanation}); the installed library is unchanged."
             )
-            if provenance is None:
-                message += (
-                    f" No approved pin was supplied for {language}: add its "
-                    "reviewed SHA-256 to the user-config pin file, pass "
-                    "--trusted-artifacts PATH to the grammar command, or pass "
-                    "trusted_artifacts to UserGrammarTools."
-                )
             result["errors"].append(message)
             result["status"] = "error"
             return False

@@ -711,3 +711,305 @@ def test_hashing_and_pin_reading_are_byte_exact(tmp_path):
         + b'"}}}\r\n'
     )
     require(read_trusted_artifacts(pins) == {"x": {"sha256": "a" * 64}}, "CRLF file")
+
+
+# --- round-1 review fixes ------------------------------------------------------------
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="POSIX fork only")
+def test_forked_child_probes_again_and_keeps_parent_copies(tmp_path, baml_library):
+    """A forked child holds no admission and never removes the parent's copies."""
+    import atexit
+    import json as json_module
+
+    candidate = tmp_path / "baml.so"
+    data = baml_library.read_bytes()
+    candidate.write_bytes(data)
+    pins = {"baml": _pin_of(data)}
+    calls: list[dict[str, object]] = []
+    result, copy = native_admission.admitted_private_copy(
+        candidate, "baml", pins, probe=_counting_probe(calls)
+    )
+    require(result.supported and copy is not None and len(calls) == 1, "warm parent")
+    read_end, write_end = os.pipe()
+    pid = os.fork()
+    if pid == 0:  # child
+        status = 1
+        try:
+            os.close(read_end)
+            child_calls: list[dict[str, object]] = []
+            admitted, _ = native_admission.admit_native_candidate(
+                candidate, "baml", pins, probe=_counting_probe(child_calls)
+            )
+            child_result, child_copy = native_admission.admitted_private_copy(
+                candidate, "baml", pins, probe=_counting_probe(child_calls)
+            )
+            report = {
+                "admitted": admitted.supported,
+                "copied": child_result.supported,
+                "probes": len(child_calls),
+                "same_copy": str(child_copy) == str(copy),
+            }
+            os.write(write_end, json_module.dumps(report).encode())
+            atexit._run_exitfuncs()  # an ordinary child exit runs atexit
+            status = 0
+        finally:
+            os._exit(status)
+    os.close(write_end)
+    with os.fdopen(read_end, "rb") as reader:
+        payload = reader.read()
+    _, wait_status = os.waitpid(pid, 0)
+    require(os.WIFEXITED(wait_status) and os.WEXITSTATUS(wait_status) == 0, "child ok")
+    report = json_module.loads(payload)
+    require(report["admitted"] and report["copied"], f"child admits {report}")
+    require(report["probes"] >= 1, f"the child probed again {report}")
+    require(not report["same_copy"], f"the child made its own copy {report}")
+    require(copy.is_file(), "the child's exit left the parent's copy in place")
+
+
+@pytest.mark.skipif(os.name == "nt" or os.geteuid() == 0, reason="POSIX mode bits")
+def test_inaccessible_config_path_is_defective_not_absent(
+    config_home, project, probes, monkeypatch, capsys
+):
+    config = _write_config(_document({}))
+    parent = config.parent
+    parent.chmod(0o600)  # no search permission: the file cannot be reached
+    try:
+        with pytest.raises(TrustedArtifactsError, match="cannot be accessed"):
+            load_user_config_pins()
+        code, out, err = _grammar(monkeypatch, capsys, "info", "baml")
+    finally:
+        parent.chmod(0o700)
+    require(code == 2 and str(config) in err, f"exit 2 naming the file {code} {err!r}")
+    require(probes == [] and "Status:" not in out, "before dispatch")
+
+
+def test_unpinned_publication_neither_stages_nor_probes(
+    config_home, tmp_path, baml_library, monkeypatch
+):
+    from chunker._internal import user_grammar_tools
+    from chunker.grammar import integrity
+
+    calls = []
+
+    def refuse(*args, **kwargs):
+        calls.append(args)
+        raise AssertionError("probe called without a pin")
+
+    monkeypatch.setattr(user_grammar_tools, "probe_native_grammar", refuse)
+    monkeypatch.setattr(integrity, "probe_native_grammar", refuse)
+    build = tmp_path / "build"
+    build.mkdir()
+    library = tmp_path / "built.so"
+    library.write_bytes(baml_library.read_bytes())
+    tools = UserGrammarTools(build, tmp_path / "sources")
+    result = {"errors": [], "status": "running"}
+    require(tools._publish_library("baml", library, result) is False, "refused")
+    require(calls == [], "no probe")
+    require(list(build.iterdir()) == [], "nothing staged or published")
+    require(result["status"] == "error", f"{result}")
+    require("untrusted" in result["errors"][0], f"{result}")
+
+
+def test_verdict_payload_has_exactly_the_frozen_fields():
+    import platform as platform_module
+    import sysconfig
+    from importlib.metadata import version as dist_version
+
+    native_admission._environment.cache_clear()
+    payload = native_admission._verdict_payload(
+        language="baml",
+        pin_sha256="A" * 64,
+        content_sha256="B" * 64,
+        level="probe",
+        inspector="none",
+    )
+    require(
+        set(payload)
+        == {
+            "schema",
+            "language",
+            "pin_sha256",
+            "content_sha256",
+            "level",
+            "probe_schema",
+            "probe_profile",
+            "inspector",
+            "validator_schema",
+            "chunker",
+            "tree_sitter",
+            "python",
+            "abi",
+            "platform",
+            "machine",
+        },
+        f"15 frozen fields {sorted(payload)}",
+    )
+    expected = {
+        "schema": "chunker.native_verdict.v1",
+        "language": "baml",
+        "pin_sha256": "a" * 64,
+        "content_sha256": "b" * 64,
+        "level": "probe",
+        "probe_schema": "native_probe.v1",
+        "probe_profile": "default-v1",
+        "inspector": "none",
+        "validator_schema": native_admission.NATIVE_VERDICT_VALIDATOR_SCHEMA,
+        "chunker": dist_version("treesitter-chunker"),
+        "tree_sitter": dist_version("tree-sitter"),
+        "python": sys.implementation.cache_tag,
+        "abi": sysconfig.get_config_var("SOABI") or "",
+        "platform": sys.platform,
+        "machine": platform_module.machine(),
+    }
+    require(payload == expected, f"real values {payload}")
+
+
+def test_concurrent_copies_of_one_pair_probe_once(tmp_path, baml_library):
+    import threading
+
+    candidate = tmp_path / "baml.so"
+    data = baml_library.read_bytes()
+    candidate.write_bytes(data)
+    pins = {"baml": _pin_of(data)}
+    calls: list[dict[str, object]] = []
+    barrier = threading.Barrier(2)
+    results: list[object] = []
+
+    def admit() -> None:
+        barrier.wait()
+        results.append(
+            native_admission.admitted_private_copy(
+                candidate, "baml", pins, probe=_counting_probe(calls)
+            )
+        )
+
+    threads = [threading.Thread(target=admit) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=120)
+    require(len(results) == 2, "both finished")
+    copies = {str(copy) for _, copy in results}
+    require(all(result.supported for result, _ in results), f"{results}")
+    require(len(copies) == 1, f"one copy per pair {copies}")
+    require(len(calls) == 1, f"one probe per pair {len(calls)}")
+
+
+def _case_insensitive(directory: Path) -> bool:
+    probe = directory / "CaseProbe"
+    probe.write_text("x", encoding="utf-8")
+    try:
+        return (directory / "caseprobe").exists()
+    finally:
+        probe.unlink()
+
+
+def test_forbidden_directory_matches_by_identity_not_spelling(
+    config_home, tmp_path, monkeypatch
+):
+    if not _case_insensitive(tmp_path):
+        pytest.skip("needs a case-insensitive file system (macOS, Windows)")
+    build = tmp_path / "BuildDir"
+    build.mkdir()
+    (build / "pins.json").write_text(_document({}), encoding="utf-8")
+    monkeypatch.setenv("CHUNKER_GRAMMAR_BUILD_DIR", str(tmp_path / "builddir"))
+    with pytest.raises(TrustedArtifactsError, match="tool-written directory"):
+        read_trusted_artifacts(
+            build / "pins.json",
+            forbidden=pins_module.forbidden_pin_directories(),
+        )
+
+
+# --- one trust rule: package-supplied grammars in the grammar commands (M3) ----------
+
+
+def _fake_wheel(tmp_path, monkeypatch, data: bytes, *, record_bytes: bytes | None):
+    """An installed-like distribution whose RECORD lists (or omits) the grammar."""
+    import base64
+    from importlib.metadata import PathDistribution
+
+    from chunker._internal import package_supplier
+
+    site = tmp_path / "site"
+    package = site / "chunker"
+    build = package / "data" / "grammars" / "build"
+    build.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
+    (build / f"baml{suffix}").write_bytes(data)
+    dist_info = site / "treesitter_chunker-6.0.0.dist-info"
+    dist_info.mkdir()
+    (dist_info / "METADATA").write_text(
+        "Metadata-Version: 2.1\nName: treesitter-chunker\nVersion: 6.0.0\n",
+        encoding="utf-8",
+    )
+    rows = ["chunker/__init__.py,,"]
+    if record_bytes is not None:
+        encoded = base64.urlsafe_b64encode(sha256(record_bytes).digest()).rstrip(b"=")
+        rows.append(
+            f"chunker/data/grammars/build/baml{suffix},sha256={encoded.decode()},"
+            f"{len(record_bytes)}"
+        )
+    (dist_info / "RECORD").write_text("\n".join(rows) + "\n", encoding="utf-8")
+    distribution = PathDistribution(dist_info)
+    monkeypatch.setattr(package_supplier, "_package_distribution", lambda: distribution)
+    monkeypatch.setattr(
+        package_supplier, "_package_init_file", lambda: package / "__init__.py"
+    )
+    package_supplier._package_grammar_records.cache_clear()
+    monkeypatch.setattr(
+        grammar_commands, "__file__", str(package / "cli" / "grammar_commands.py")
+    )
+    return build / f"baml{suffix}"
+
+
+@pytest.fixture
+def clear_package_records():
+    from chunker._internal import package_supplier
+
+    package_supplier._package_grammar_records.cache_clear()
+    yield
+    package_supplier._package_grammar_records.cache_clear()
+
+
+def test_grammar_info_reports_record_verified_package_grammar_healthy_without_pin(
+    config_home, tmp_path, baml_library, monkeypatch, capsys, clear_package_records
+):
+    data = baml_library.read_bytes()
+    _fake_wheel(tmp_path, monkeypatch, data, record_bytes=data)
+    code, out, err = _grammar(monkeypatch, capsys, "info", "baml")
+    require("Status: ✅ healthy" in out, f"package-supplied, no pin {out!r} {err!r}")
+    require(code == 0, f"exit {code}")
+
+
+def test_grammar_info_record_mismatch_is_never_rescued_by_a_pin(
+    config_home, tmp_path, baml_library, monkeypatch, capsys, clear_package_records
+):
+    data = baml_library.read_bytes()
+    tampered = data + b"appended after install"
+    _fake_wheel(tmp_path, monkeypatch, tampered, record_bytes=data)
+    option = tmp_path / "pins.json"
+    option.write_text(_document({"baml": _pin_of(tampered)}), encoding="utf-8")
+    for argv in (
+        ("info", "baml"),
+        ("--trusted-artifacts", str(option), "info", "baml"),
+    ):
+        code, out, err = _grammar(monkeypatch, capsys, *argv)
+        require("Native admission failed: integrity_mismatch" in out, f"{argv} {out!r}")
+        require(code == 1, f"{argv} exit {code}")
+
+
+def test_grammar_info_package_dir_file_without_record_needs_a_pin(
+    config_home, tmp_path, baml_library, monkeypatch, capsys, clear_package_records
+):
+    data = baml_library.read_bytes()
+    _fake_wheel(tmp_path, monkeypatch, data, record_bytes=None)
+    code, out, err = _grammar(monkeypatch, capsys, "info", "baml")
+    require("Native admission failed: untrusted" in out and code == 1, f"{out!r}")
+    option = tmp_path / "pins.json"
+    option.write_text(_document({"baml": _pin_of(data)}), encoding="utf-8")
+    code, out, err = _grammar(
+        monkeypatch, capsys, "--trusted-artifacts", str(option), "info", "baml"
+    )
+    require("Status: ✅ healthy" in out and code == 0, f"pinned {out!r}")
