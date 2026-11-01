@@ -28,6 +28,7 @@ from pathlib import Path
 import pytest
 from tree_sitter import Parser
 
+from chunker._internal import package_supplier
 from chunker._internal import registry as registry_module
 from chunker._internal.registry import LanguageRegistry, default_library_path
 from chunker._internal.trusted_artifacts import (
@@ -107,7 +108,7 @@ def isolated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     monkeypatch.setenv("APPDATA", env["APPDATA"])
     monkeypatch.setenv("XDG_CONFIG_HOME", env["XDG_CONFIG_HOME"])
     monkeypatch.delenv("CHUNKER_GRAMMAR_BUILD_DIR", raising=False)
-    registry_module._package_grammar_records.cache_clear()
+    package_supplier._package_grammar_records.cache_clear()
     return env
 
 
@@ -362,12 +363,12 @@ def _fake_distribution(
             rows.append(f"{name},sha256={digest.decode()},{len(data)}")
     (dist_info / "RECORD").write_text("\n".join(rows) + "\n", encoding="utf-8")
     distribution = PathDistribution(dist_info)
-    monkeypatch.setattr(registry_module, "_package_distribution", lambda: distribution)
+    monkeypatch.setattr(package_supplier, "_package_distribution", lambda: distribution)
     monkeypatch.setattr(
-        registry_module, "_package_init_file", lambda: package / "__init__.py"
+        package_supplier, "_package_init_file", lambda: package / "__init__.py"
     )
     monkeypatch.setattr(registry_module, "package_grammar_build_dir", lambda: build)
-    registry_module._package_grammar_records.cache_clear()
+    package_supplier._package_grammar_records.cache_clear()
     return build
 
 
@@ -422,7 +423,7 @@ def test_package_dir_file_without_record_hash_is_an_ordinary_candidate(
         record_file.write_text(
             record_file.read_text("utf-8").replace("sha256=", "md5="), encoding="utf-8"
         )
-        registry_module._package_grammar_records.cache_clear()
+        package_supplier._package_grammar_records.cache_clear()
     loads = _record_loads(monkeypatch)
     registry = LanguageRegistry(tmp_path / f"missing{SUFFIX}", trusted_artifacts={})
     with pytest.raises(LanguageNotFoundError, match="untrusted"):
@@ -461,8 +462,8 @@ def test_shadowing_distribution_supplies_nothing(
     other = tmp_path / "other" / "chunker" / "__init__.py"
     other.parent.mkdir(parents=True)
     other.write_text("", encoding="utf-8")
-    monkeypatch.setattr(registry_module, "_package_init_file", lambda: other)
-    registry_module._package_grammar_records.cache_clear()
+    monkeypatch.setattr(package_supplier, "_package_init_file", lambda: other)
+    package_supplier._package_grammar_records.cache_clear()
     registry = LanguageRegistry(tmp_path / f"missing{SUFFIX}", trusted_artifacts={})
     with pytest.raises(LanguageNotFoundError, match="untrusted"):
         registry.get_language(LANGUAGE)
