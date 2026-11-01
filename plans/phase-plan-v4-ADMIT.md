@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: ADMIT
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: 186d27c759de25ff5672fc1cf2fcfdd82f88a63db0452c2f805e306ab6822021
+roadmap_sha256: adf9c1d9b15ea58b38e532a56afb0498f5987867188a8902c85d4844bcc33e20
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_trusted_artifacts_contract.py tests/test_grammar_info_exit_contract.py -q"
 ---
@@ -47,6 +47,19 @@ Status since the roadmap snapshot:
   visibly recurs during ADMIT's Windows checks (a `PermissionError` before the
   constructor, or a manager admission rejection), the phase pauses
   (Assumption 4).
+- **State, 2026-11-01:** ADMIT paused once. In SL-core-1's Windows probe runs
+  (head `73dbb5a7`, clean temporary checkout), run 1 of 10 failed 9 tests:
+  Code Integrity event 3077 (policy `VerifiedAndReputableDesktop`) blocked
+  freshly compiled fixture DLLs and three probe-worker snapshot loads; runs
+  2–10 passed. **Maintainer ruling (2026-11-01), relayed by the roadmap
+  runner:** Application Control (Code Integrity 3077) denials of unsigned
+  freshly written DLLs are an OS environment effect, not an ADMIT defect.
+  ADMIT continues under EC-ADMIT-9; the treesitter-chunker#547 lane adds a
+  distinct "blocked by OS application-control policy" result and makes the
+  tests robust to it, and ADMIT does not duplicate that work. Further 3077
+  denials are recorded in the PR with their Code Integrity evidence and do not
+  stop the phase. Evidence is on treesitter-chunker#508 and
+  treesitter-chunker#547. The SL-core split (decision 2) is approved.
 
 ## Merge gate (maintainer decision, 2026-10-31)
 
@@ -83,7 +96,7 @@ SL-core reader PR):
 ```python
 # chunker/exceptions.py
 class TrustedArtifactsError(ChunkerError):
-    path: Path        # the pin file
+    path: str         # the pin file
     defect: str       # one-line, user-facing
 
 # chunker/_internal/trusted_artifacts.py
@@ -379,7 +392,9 @@ grep -rnE "ctypes\.CDLL|cdll\.LoadLibrary|Language\(" chunker/ | sort
   no higher than 4, scratch under `$TMPDIR`.
 - A `PermissionError` before the probe constructor, or a manager admission
   rejection, on Windows is a treesitter-chunker#508/#509 recurrence: stop and
-  report (roadmap pause trigger).
+  report (roadmap pause trigger). Exception (maintainer ruling, 2026-11-01):
+  Code Integrity 3077 Application Control denials of unsigned freshly written
+  DLLs are recorded with their evidence and do not stop the phase.
 - The lane does not merge and does not request reviews; the parent runs the
   panel.
 
