@@ -232,10 +232,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the zero-config API (`ZeroConfigAPI`) is retired too.
   - `get_parser` raises `LanguageNotFoundError` with the cause and guidance: build
     the grammar with the grammar commands, then pin it in `trusted-artifacts.json`
-    or with `--trusted-artifacts`. The error lists installed languages only, so
-    no discovery request is made.
+    or with `--trusted-artifacts`. Its list of available languages comes from the
+    local registry (package-supplied, language-pack and admitted local
+    grammars), so no discovery request is made.
   - `ensure_language` and `preload_languages` report availability and never
-    install or update anything.
+    install or update anything. A language counts as available only when the
+    registry provides a parser for it; an install recorded in
+    `registry_metadata.json` whose output has no pin does not count.
   - `get_chunker_for_language` no longer installs a missing grammar.
     `AutoChunkResult.grammar_downloaded` is always `False`.
   - The `auto_download` argument of `get_parser` and `get_chunker_for_language`

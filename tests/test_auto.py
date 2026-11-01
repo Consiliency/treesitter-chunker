@@ -1,6 +1,7 @@
 """Unit tests for the ZeroConfigAPI implementation."""
 
 import tempfile
+import warnings
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -278,6 +279,26 @@ class TestZeroConfigAPI:
         """Test chunking empty text raises error."""
         with pytest.raises(ValueError, match="Text cannot be empty"):
             api.chunk_text("", "python")
+
+    def test_auto_chunk_never_installs_or_updates(self, api, tmp_path):
+        """``auto_chunk_file`` and ``chunk_text`` on the real API never install
+        or update a missing grammar, and report ``grammar_downloaded=False``."""
+        source = tmp_path / "script.rb"
+        source.write_text("def hello\n  puts 'hi'\nend\n", encoding="utf-8")
+        refuse = MagicMock(side_effect=AssertionError("install or update attempted"))
+        with (
+            patch.object(api.registry, "install_language", refuse),
+            patch.object(api.registry, "update_language", refuse),
+            warnings.catch_warnings(),
+        ):
+            warnings.simplefilter("ignore", FallbackWarning)
+            from_file = api.auto_chunk_file(source)
+            from_text = api.chunk_text("def hello\nend\n", "ruby")
+        assert not api.registry.is_language_installed("ruby")
+        for result in (from_file, from_text):
+            assert result.language == "ruby"
+            assert result.grammar_downloaded is False
+        refuse.assert_not_called()
 
     def test_chunk_text_no_language(self, api):
         """Test chunking text without language raises error."""

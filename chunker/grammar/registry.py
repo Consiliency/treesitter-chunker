@@ -1,4 +1,4 @@
-"""Universal Language Registry with auto-download capabilities."""
+"""Universal Language Registry: admitted parsers plus explicit grammar installs."""
 
 from __future__ import annotations
 
@@ -24,7 +24,12 @@ logger = logging.getLogger(__name__)
 
 
 class UniversalLanguageRegistry(UniversalRegistryContract):
-    """Enhanced language registry with auto-download capabilities."""
+    """Language registry with explicit install, update and metadata operations.
+
+    ``get_parser`` serves only installed, admitted sources and never downloads
+    or builds a grammar; ``install_language``/``update_language`` fetch and
+    compile only when called, and their output loads only under a pin.
+    """
 
     def __init__(
         self,
@@ -127,9 +132,10 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
             parser.language = lang
             return parser
 
-        # Only installed languages: the discovery listing is not consulted, so
-        # this error path makes no network request either.
-        available = self.list_installed_languages()
+        # Only what the base registry can actually load (no metadata-only
+        # installs, which may lack a pin); the discovery listing is not
+        # consulted, so this error path makes no network request either.
+        available = sorted(self._base_registry.list_languages())
         cause = self._base_registry.unavailable_cause(language)
         guidance = (
             "Grammars are no longer downloaded or built automatically. Build "
@@ -181,7 +187,10 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
             language: Language name
 
         Returns:
-            True if language is installed and ready
+            True if the base registry provides the language, or an explicit
+            install recorded it in the registry metadata. A recorded install
+            is not necessarily usable (its output loads only under a pin); use
+            ``get_parser`` or ``ZeroConfigAPI.ensure_language`` to check that.
         """
         if language == "baml":
             return self._base_registry.has_language("baml")

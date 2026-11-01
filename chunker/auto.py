@@ -1,7 +1,8 @@
-"""Zero-configuration API for automatic language setup and chunking.
+"""Zero-configuration API for language detection and chunking.
 
 This module provides a simple, zero-config interface for chunking code files
-with automatic language detection and grammar management.
+with automatic language detection and text fallback. It uses grammars that an
+installed, admitted source provides and never downloads or builds one.
 """
 
 from __future__ import annotations
@@ -30,10 +31,11 @@ if TYPE_CHECKING:
 class ZeroConfigAPI(ZeroConfigContract):
     """Zero-configuration API for automatic chunking.
 
-    This class provides a simple interface that automatically:
+    This class provides a simple interface that:
     - Detects languages from file extensions and content
-    - Downloads and sets up grammars as needed
-    - Falls back to text chunking when tree-sitter is unavailable
+    - Uses grammars from installed, admitted sources (package-supplied, or
+      local grammars under their pins); it never downloads or builds one
+    - Falls back to text chunking when no grammar is available
     """
 
     EXTENSION_MAP: ClassVar[dict[str, str]] = {
@@ -149,12 +151,25 @@ class ZeroConfigAPI(ZeroConfigContract):
             return baml_companion_available()
         # The automatic download-and-build is retired (maintainer decision,
         # 2026-11-01, extending M2 of treesitter-chunker#362): this only
-        # reports whether an installed, admitted grammar is available.
-        if self.registry.is_language_installed(language):
-            if version:
-                return self.registry.get_language_version(language) == version
-            return True
-        return False
+        # reports whether an installed, admitted grammar is available. A
+        # recorded install (registry metadata) is not enough: its output may
+        # lack a pin, so the registry must actually provide a parser.
+        if not self._has_admitted_parser(language):
+            return False
+        if version:
+            return self.registry.get_language_version(language) == version
+        return True
+
+    def _has_admitted_parser(self, language: str) -> bool:
+        """Return whether the registry provides a parser for ``language``."""
+        try:
+            parser = self.registry.get_parser(language)
+        except (LanguageNotFoundError, ValueError):
+            # LanguageNotFoundError: no installed, admitted source.
+            # ValueError: registries that report "not available" this way
+            # (the contract stub), or an incompatible grammar.
+            return False
+        return parser is not None
 
     def auto_chunk_file(
         self,

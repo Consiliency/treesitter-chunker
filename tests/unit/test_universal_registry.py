@@ -131,6 +131,27 @@ class TestUniversalLanguageRegistry:
         message = str(exc_info.value)
         assert message.index("has no pin") < message.index("no longer downloaded")
 
+    def test_metadata_only_install_is_not_available(self):
+        """A language recorded in ``registry_metadata.json`` (for example an
+        explicit install whose output has no pin) is not reported available
+        when no admitted source provides it."""
+        from chunker.auto import ZeroConfigAPI
+
+        self.registry._metadata["installed"] = {
+            "mylang": {"version": "1.0", "path": "/nowhere/mylang.so"},
+        }
+        self.mock_base_registry.has_language.return_value = False
+        self.mock_base_registry.list_languages.return_value = ["python"]
+        self.mock_base_registry.unavailable_cause.return_value = None
+        api = ZeroConfigAPI(self.registry)
+        assert self.registry.is_language_installed("mylang")  # recorded only
+        assert api.ensure_language("mylang") is False
+        assert api.ensure_language("mylang", "1.0") is False
+        assert api.preload_languages(["mylang"]) == {"mylang": False}
+        with pytest.raises(LanguageNotFoundError) as exc_info:
+            self.registry.get_parser("mylang")
+        assert exc_info.value.available == ["python"]
+
     def test_list_installed_languages(self):
         """Test listing installed languages."""
         # Mock base registry languages
