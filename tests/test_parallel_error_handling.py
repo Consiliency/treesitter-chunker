@@ -422,8 +422,12 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
             except (RuntimeError, ValueError) as e:
                 result_queue.put(f"worker2_error: {e}")
 
-        p1 = multiprocessing.Process(target=worker1)
-        p2 = multiprocessing.Process(target=worker2)
+        # The workers are closures over the managed locks, so they need fork:
+        # Python 3.14 defaults to forkserver on Linux, which cannot pickle
+        # them (treesitter-chunker#502). This test is Linux full-tier only.
+        fork = multiprocessing.get_context("fork")
+        p1 = fork.Process(target=worker1)
+        p2 = fork.Process(target=worker2)
         p1.start()
         p2.start()
         p1.join(timeout=3.0)

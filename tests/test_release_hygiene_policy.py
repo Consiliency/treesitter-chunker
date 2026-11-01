@@ -288,11 +288,17 @@ def test_macos_build_script_rejects_python_below_floor():
     assert f"Python {major}.{minor} or higher" in text
 
 
-def _workflow_jobs():
-    for path in sorted((ROOT / ".github/workflows").glob("*.yml")):
-        workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+def _workflow_docs() -> dict[str, dict]:
+    return {
+        path.name: yaml.safe_load(path.read_text(encoding="utf-8"))
+        for path in sorted((ROOT / ".github/workflows").glob("*.yml"))
+    }
+
+
+def _workflow_jobs(docs: dict[str, dict] | None = None):
+    for name_, workflow in (docs if docs is not None else _workflow_docs()).items():
         for name, job in (workflow.get("jobs") or {}).items():
-            yield path.name, name, workflow.get("env") or {}, job
+            yield name_, name, workflow.get("env") or {}, job
 
 
 def _matrix_values(job: dict, key: str) -> list[str]:
@@ -310,9 +316,24 @@ def _setup_python_versions(job: dict) -> list[str]:
     ]
 
 
+_EVENT_CHOICE = re.compile(
+    r"\$\{\{\s*github\.event_name\s*==\s*'([\w-]+)'\s*&&\s*'([^']+)'"
+    r"\s*\|\|\s*'([^']+)'\s*\}\}"
+)
+
+
+def _event_choice(value: str) -> tuple[str, str, str] | None:
+    """Parse ``${{ github.event_name == 'E' && 'A' || 'B' }}`` as (E, A, B)."""
+    match = _EVENT_CHOICE.fullmatch(value)
+    return match.groups() if match else None
+
+
 def _resolve(job: dict, value: str) -> list[str]:
     expression = re.fullmatch(r"\$\{\{\s*matrix\.([\w-]+)\s*\}\}", value)
-    return _matrix_values(job, expression.group(1)) if expression else [value]
+    if expression:
+        return _matrix_values(job, expression.group(1))
+    choice = _event_choice(value)
+    return list(choice[1:]) if choice else [value]
 
 
 def test_workflow_setup_python_versions_respect_floor():
@@ -372,12 +393,386 @@ def test_docs_do_not_advertise_python_below_floor():
     assert not offenders, "\n".join(offenders)
 
 
+# treesitter-chunker#502, maintainer decision (2026-11-01): 3.14 is the main
+# version for every CI and release run, including the scheduled full tier. The
+# 3.12 minimum (requires-python, .python-version) keeps only Linux platform-core
+# and the release installed-wheel check until 7.0 drops it
+# (treesitter-chunker#599).
+PRIMARY_PYTHON = "3.14"
+
+# Where the floor interpreter may appear: (workflow, job, platform family or
+# None) -> reason.
+FLOOR_ALLOWED = {
+    ("test.yml", "test", "linux"): "focused minimum: Linux platform-core",
+    ("release.yml", "verify-installed-wheel", None): "installed-wheel floor check",
+    # The BAML companion is a separate package whose minimum is also 3.12. These
+    # jobs check, build and smoke-test it on that minimum. Its cp312-abi3 floor
+    # comes from packages/baml-grammar/setup.py and CIBW_BUILD, asserted below.
+    ("baml-grammar-wheels.yml", "source", None): "BAML companion on its 3.12 minimum",
+    ("baml-grammar-wheels.yml", "wheel", None): "BAML companion on its 3.12 minimum",
+}
+
+
+def _workflow(name: str) -> dict:
+    return yaml.safe_load((ROOT / ".github/workflows" / name).read_text("utf-8"))
+
+
+def _interpreter_fields(workflow_env: dict, job: dict) -> list[str]:
+    """Every setup-python version and UV_PYTHON value that applies to a job."""
+    values = _setup_python_versions(job)
+    for env in (workflow_env, job.get("env") or {}):
+        if "UV_PYTHON" in env:
+            values.append(str(env["UV_PYTHON"]))
+    for step in job.get("steps") or []:
+        if "UV_PYTHON" in (step.get("env") or {}):
+            values.append(str(step["env"]["UV_PYTHON"]))
+    return values
+
+
+def _floor_uses(
+    docs: dict[str, dict] | None = None,
+) -> set[tuple[str, str, str | None]]:
+    floor = _floor_text()
+    uses = set()
+    for workflow, name, workflow_env, job in _workflow_jobs(docs):
+        for value in _interpreter_fields(workflow_env, job):
+            if floor not in _resolve(job, value):
+                continue
+            include = ((job.get("strategy") or {}).get("matrix") or {}).get("include")
+            if (
+                value == "${{ matrix.python-version }}"
+                and include
+                and all("platform-family" in item for item in include)
+            ):
+                uses |= {
+                    (workflow, name, item["platform-family"])
+                    for item in include
+                    if str(item.get("python-version")) == floor
+                }
+            else:
+                uses.add((workflow, name, None))
+    return uses
+
+
+def test_no_workflow_selects_its_interpreter_by_event():
+    """No event-conditional interpreter, such as 3.12-when-scheduled."""
+    offenders = [
+        (workflow, name, value)
+        for workflow, name, workflow_env, job in _workflow_jobs()
+        for value in _interpreter_fields(workflow_env, job)
+        if "github.event_name" in value or _event_choice(value)
+    ]
+    assert offenders == []
+
+
+def test_floor_interpreter_appears_only_in_floor_checks():
+    """3.12 runs only Linux platform-core, the installed-wheel check and BAML."""
+    assert _floor_uses() == set(FLOOR_ALLOWED)
+
+
+# Plain-text interpreter scan (maintainer decision, 2026-11-01). Every line of
+# every workflow file is scanned, including comments, echo text and heredoc
+# bodies, with no shell parsing. Outside the jobs named in FLOOR_ALLOWED, any
+# mention of switching the Python version fails. The only exceptions are the
+# canonical 3.14 settings: `python-version:` / `UV_PYTHON:` set to 3.14 (or to
+# a list of only 3.14), and `${{ matrix.python-version }}` references, whose
+# matrix values are scanned on their own lines.
+_PRIMARY_VALUE = re.compile(
+    r"""^\s*(?:['"]?3\.14['"]?|\[\s*['"]?3\.14['"]?\s*\]|\$\{\{\s*matrix\.python-version\s*\}\})\s*(?:\#.*)?$"""
+)
+_TEXT_RULES = (
+    ("--python", re.compile(r"--python")),
+    (
+        "-p <version>",
+        re.compile(
+            r"""(?<![\w-])-[A-Za-z]*p(?:[ \t]+|=)?['"]?(?:cpython[-@]|python)?\d+(?:\.\d+)*"""
+        ),
+    ),
+    ("python3.N", re.compile(r"python3\.\d+")),
+    ("py -3.N", re.compile(r"\bpy[ \t]+-(?:V:)?3\.\d+")),
+)
+# Not a dotted reference such as ${{ matrix.python-version }}.
+_SETTING = re.compile(r"(?<![.\w-])(python-version|UV_PYTHON)\b\s*(:|=)?(.*)$")
+_JOB_HEADER = re.compile(r"^  ([A-Za-z0-9_-]+):")
+_TEXT_FIX = (
+    "Each line above mentions switching the Python version outside the 3.12 floor "
+    "jobs. To fix it, either (a) reword the text (comments and echo output count) "
+    "so it no longer names --python, -p <version>, UV_PYTHON, python3.N, py -3.N "
+    "or a non-3.14 python-version, or (b) if the job is a deliberate 3.12 floor "
+    "check, add (workflow, job, platform family or None) to FLOOR_ALLOWED in "
+    "tests/test_release_hygiene_policy.py with a reason."
+)
+
+
+def _workflow_texts() -> dict[str, str]:
+    return {
+        path.name: path.read_text(encoding="utf-8")
+        for path in sorted((ROOT / ".github/workflows").glob("*.yml"))
+    }
+
+
+def _job_of_lines(text: str) -> list[str | None]:
+    """Map each line to the job whose block contains it (None outside jobs)."""
+    owners: list[str | None] = []
+    in_jobs, job = False, None
+    for line in text.splitlines():
+        if re.match(r"^jobs:\s*(#.*)?$", line):
+            in_jobs, job = True, None
+        elif re.match(r"^\S", line) and not line.startswith("#"):
+            in_jobs, job = False, None
+        elif in_jobs and _JOB_HEADER.match(line):
+            job = _JOB_HEADER.match(line).group(1)
+        owners.append(job if in_jobs else None)
+    return owners
+
+
+def _text_offenders(texts: dict[str, str] | None = None) -> list[str]:
+    allowed = {(w, j) for w, j, _family in FLOOR_ALLOWED}
+    offenders = []
+    for workflow, text in (texts if texts is not None else _workflow_texts()).items():
+        for number, (line, job) in enumerate(
+            zip(text.splitlines(), _job_of_lines(text)), start=1
+        ):
+            if (workflow, job) in allowed:
+                continue
+            hits = [name for name, pattern in _TEXT_RULES if pattern.search(line)]
+            for setting in _SETTING.finditer(line):
+                name, separator, value = setting.groups()
+                yaml_setting = separator == ":" and line.lstrip().startswith(
+                    (name, f"- {name}")
+                )
+                if not (yaml_setting and _PRIMARY_VALUE.match(value)):
+                    hits.append(name)
+            offenders += [
+                f"{workflow}:{number} [{job or '<workflow>'}] {hit}: {line.strip()}"
+                for hit in hits
+            ]
+    return offenders
+
+
+def test_workflow_text_mentions_no_interpreter_switch_outside_floor_jobs():
+    offenders = _text_offenders()
+    assert not offenders, "\n".join([*offenders, "", _TEXT_FIX])
+
+
+# Mutation tests: (workflow, anchor line in the workflow text, inserted lines).
+# Each inserts text into a non-floor job and must be reported for that job.
+_CI_PYTEST = '          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then\n'
+TEXT_MUTATIONS = {
+    "M502-text-uv-python": (
+        "ci.yml",
+        _CI_PYTEST,
+        "          uv run --python 3.12 -V\n",
+    ),
+    "M502-text-if-prefix": (
+        "ci.yml",
+        _CI_PYTEST,
+        "          if uv run --python 3.12 --locked python -V; then echo ok; fi\n",
+    ),
+    "M502-text-then-assignment": (
+        "ci.yml",
+        _CI_PYTEST,
+        "          if true; then UV_PYTHON=3.12 uv run --locked python -V; fi\n",
+    ),
+    "M502-text-heredoc-dash": (
+        "ci.yml",
+        _CI_PYTEST,
+        "          cat <<-EOF\n\t\tlog text\n\tEOF\n"
+        "          uv run --python 3.12 --locked python -V\n",
+    ),
+    "M502-text-bash-c": (
+        "ci.yml",
+        _CI_PYTEST,
+        "          bash -c 'uv run -p 3.12 --locked python -V'\n",
+    ),
+    "M502-text-eval": (
+        "ci.yml",
+        _CI_PYTEST,
+        '          eval "uv run --python=3.12 --locked python -V"\n',
+    ),
+    "M502-text-sudo-env": (
+        "ci.yml",
+        _CI_PYTEST,
+        "          sudo -E env UV_PYTHON=3.12 uv run --locked python -V\n",
+    ),
+    "M502-text-tee-github-env": (
+        "ci.yml",
+        _CI_PYTEST,
+        '          echo UV_PYTHON=3.12 | tee -a "$GITHUB_ENV"\n',
+    ),
+    "M502-text-unknown-uv-option": (
+        "ci.yml",
+        _CI_PYTEST,
+        "          uv run --no-extra baml -p 3.12 --locked python -V\n",
+    ),
+    "M502-text-combined-short-flags": (
+        "ci.yml",
+        _CI_PYTEST,
+        "          uv run -qp 3.12 --locked python -V\n",
+    ),
+    "M502-text-p-equals": ("ci.yml", _CI_PYTEST, "          uv run -p=3.12 -V\n"),
+    "M502-text-cpython-p": (
+        "ci.yml",
+        _CI_PYTEST,
+        "          uvx -p cpython@3.12 ruff\n",
+    ),
+    "M502-text-python3x": ("ci.yml", _CI_PYTEST, "          python3.12 -m pytest\n"),
+    "M502-text-path-python": (
+        "ci.yml",
+        _CI_PYTEST,
+        "          /usr/bin/python3.12 -m pytest\n",
+    ),
+    "M502-text-py-launcher": ("ci.yml", _CI_PYTEST, "          py -3.12 -m pytest\n"),
+    "M502-text-py-v": ("ci.yml", _CI_PYTEST, "          py -V:3.12 -m pytest\n"),
+    "M502-text-comment": (
+        "ci.yml",
+        _CI_PYTEST,
+        "          # switch to python3.12 for this step\n",
+    ),
+    "M502-text-echo": (
+        "ci.yml",
+        _CI_PYTEST,
+        '          echo "export UV_PYTHON=3.12"\n',
+    ),
+    "M502-text-uv-python-env": (
+        "ci.yml",
+        "      UV_PYTHON: '3.14'\n",
+        "      UV_PYTHON: '3.12'\n",
+    ),
+    "M502-text-setup-python": (
+        "docs.yml",
+        "        python-version: '3.14'\n",
+        "        python-version: '3.12'\n",
+    ),
+    "M502-text-event-version": (
+        "ci.yml",
+        "      UV_PYTHON: '3.14'\n",
+        "      UV_PYTHON: \"${{ github.event_name == 'schedule' && '3.12' || '3.14' }}\"\n",
+    ),
+}
+
+
+@pytest.mark.parametrize("mutation", sorted(TEXT_MUTATIONS))
+def test_text_mutations_are_rejected(mutation):
+    workflow, anchor, inserted = TEXT_MUTATIONS[mutation]
+    texts = _workflow_texts()
+    assert anchor in texts[workflow]
+    replace = mutation in (
+        "M502-text-uv-python-env",
+        "M502-text-setup-python",
+        "M502-text-event-version",
+    )
+    texts[workflow] = texts[workflow].replace(
+        anchor, inserted if replace else inserted + anchor, 1
+    )
+    offenders = _text_offenders(texts)
+    assert offenders and all(o.startswith(f"{workflow}:") for o in offenders)
+    assert _TEXT_FIX.startswith("Each line above")
+
+
+# Text that must not be reported: other tools' -p, flags whose value is not a
+# version, and the canonical 3.14 settings.
+TEXT_NON_SELECTORS = {
+    "pytest-plugin-p": "          uv run --locked pytest -p no:cacheprovider -q\n",
+    "mkdir-p": "          mkdir -p dist/wheelhouse\n",
+    "pip-p-path": "          tar -cpf out.tar dist\n",
+    "primary-uv-python": None,
+}
+
+
+@pytest.mark.parametrize("case", sorted(TEXT_NON_SELECTORS))
+def test_text_scan_ignores_non_selectors(case):
+    texts = _workflow_texts()
+    inserted = TEXT_NON_SELECTORS[case]
+    if inserted is not None:
+        assert _CI_PYTEST in texts["ci.yml"]
+        texts["ci.yml"] = texts["ci.yml"].replace(_CI_PYTEST, inserted + _CI_PYTEST, 1)
+    assert _text_offenders(texts) == []
+
+
+def test_text_scan_allows_anything_in_named_floor_jobs():
+    texts = _workflow_texts()
+    anchor = "    - name: Verify complete wheel-only locked installation and CLI\n"
+    assert anchor in texts["release.yml"]
+    texts["release.yml"] = texts["release.yml"].replace(
+        anchor,
+        "    # floor check: uv run --python 3.12, python3.12, UV_PYTHON\n" + anchor,
+        1,
+    )
+    assert _text_offenders(texts) == []
+
+
+def test_baml_companion_abi_floor_comes_from_its_build_config():
+    """The companion's cp312-abi3 floor is set by setup.py and CIBW_BUILD."""
+    setup = (ROOT / "packages/baml-grammar/setup.py").read_text(encoding="utf-8")
+    assert '("Py_LIMITED_API", "0x030C0000")' in setup
+    assert '"py_limited_api": "cp312"' in setup
+    wheel = _workflow("baml-grammar-wheels.yml")["jobs"]["wheel"]
+    builds = [
+        (step.get("env") or {}).get("CIBW_BUILD")
+        for step in wheel["steps"]
+        if "CIBW_BUILD" in (step.get("env") or {})
+    ]
+    assert builds == ["cp312-*"]
+
+
+def test_primary_python_runs_ci_full_tier_and_release():
+    """CI (smoke and scheduled full tier) and release run on 3.14; no new jobs."""
+    floor = _floor_text()
+    assert floor != PRIMARY_PYTHON
+
+    ci = _workflow("ci.yml")["jobs"]
+    assert list(ci) == ["test"]
+    job = ci["test"]
+    assert str(job["env"]["UV_PYTHON"]) == PRIMARY_PYTHON
+    assert _setup_python_versions(job) == [PRIMARY_PYTHON]
+    # The same job runs the full tier when scheduled and the smoke tier otherwise.
+    pytest_step = next(s for s in job["steps"] if s.get("name") == "Pytest")
+    full_branch, smoke_branch = pytest_step["run"].split("else", 1)
+    assert '"$GITHUB_EVENT_NAME" = "schedule"' in full_branch
+    assert "scripts/run_full_suite.py" in full_branch
+    assert "scripts/run_ci_smoke.py" in smoke_branch
+
+    release = _workflow("release.yml")["jobs"]
+    assert release["release-validation"]["strategy"]["matrix"]["python-version"] == [
+        PRIMARY_PYTHON
+    ]
+    build = release["build-distributions"]
+    assert str(build["env"]["UV_PYTHON"]) == PRIMARY_PYTHON
+    assert _setup_python_versions(build) == [PRIMARY_PYTHON]
+
+    platform = _workflow("test.yml")["jobs"]
+    assert list(platform) == ["test"]
+    matrix = platform["test"]["strategy"]["matrix"]
+    assert set(matrix) == {"include"}
+    layout = sorted(
+        (item["platform-family"], str(item["python-version"]))
+        for item in matrix["include"]
+    )
+    assert layout == [
+        ("linux", floor),
+        ("macos", PRIMARY_PYTHON),
+        ("windows", PRIMARY_PYTHON),
+    ]
+    assert platform["test"]["env"]["UV_PYTHON"] == "${{ matrix.python-version }}"
+
+    # The lint and type checks run once per CI run, in the ci.yml job on 3.14.
+    gate = "scripts/mypy_gate.py"
+    runs = [
+        (workflow, name)
+        for workflow, name, _env, job in _workflow_jobs()
+        for step in job.get("steps") or []
+        if gate in str(step.get("run", "")) and workflow in ("ci.yml", "test.yml")
+    ]
+    assert runs == [("ci.yml", "test")]
+
+
 def test_publication_requires_full_validation_and_verified_artifacts():
     """A release cannot bypass failed source checks or missing build artifacts."""
     jobs = yaml.safe_load((ROOT / ".github/workflows/release.yml").read_text())["jobs"]
     validation = jobs["release-validation"]
     assert not validation.get("continue-on-error", False)
-    assert validation["strategy"]["matrix"]["python-version"] == ["3.12"]
+    assert validation["strategy"]["matrix"]["python-version"] == [PRIMARY_PYTHON]
     assert any(
         "scripts/run_full_suite.py" in step.get("run", "")
         for step in validation["steps"]

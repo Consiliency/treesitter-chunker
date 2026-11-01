@@ -47,7 +47,7 @@ SL-types — shrink-only type gate, release type-check alignment, first package 
   Parallel-safe: no (single writer of the workflow files after CIFAST)
 
 SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502)
-  Depends on: SL-types (branches from main after it merges)
+  Depends on: SL-types (stacked on its branch; retargets to `main` after it merges)
   Blocks: RECORDS
   Parallel-safe: no
 
@@ -100,7 +100,8 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
 
 ### SL-env — treesitter-chunker#502
 
-- **Scope**: one PR, branched from main after SL-types merges.
+- **Scope**: one PR, stacked on the SL-types branch. It retargets to `main`
+  after SL-types merges, and nothing in it lands first.
 - **Owned files**: `uv.lock`, the dependency sections of `pyproject.toml` (only
   if the lock cannot be fixed within the current ranges), the interpreter
   fields of `.github/workflows/ci.yml`, `test.yml` and `release.yml`, the
@@ -115,36 +116,103 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
     0.22.1, `watchfiles` 1.1.1. For `pydantic-core`, use the smallest
     `pydantic` release whose exact `pydantic-core` pin ships cp314 wheels. Read
     the lock diff. Any other moved package is either a required transitive
-    change, recorded with the reason, or the change is reverted. No parser or
+    change, recorded with the reason, or the change is reverted. Result:
+    `pydantic` 2.12.0 (the first release whose exact `pydantic-core` pin,
+    2.41.1, ships cp314 wheels), plus `typing-inspection` 0.4.1 → 0.4.2, which
+    pydantic 2.12.0 requires (`typing-inspection>=0.4.2`). Nothing else moved. No parser or
     runtime pin moves. If a pinned dependency has no 3.14 wheel, the lane stops
     and reports.
   - host prerequisites: with the new lock, 3.14 needs no compiler, libffi or
     Rust on Linux, macOS or Windows. The PR records the sync output that shows
     wheels only, or names any sdist build and its prerequisite.
-  - interpreter layout (no more jobs than now):
-    - `ci.yml` `test`: 3.14 for Ruff, Black, the type gate, the governed check,
-      the smoke tier and the scheduled full tier.
+  - interpreter layout (no more jobs than now). **Maintainer decision,
+    2026-11-01: 3.14 is the main version.** This supersedes an earlier same-day
+    split that kept the scheduled full tier on 3.12.
+    - `ci.yml` `test`: 3.14 for every run. Pushes and pull requests run Ruff,
+      Black, the type gate, the governed check and the smoke tier; the
+      scheduled run is the full tier. No interpreter is selected by event. The
+      `conftest.py` forkserver preload applies to these 3.14 runs.
     - `test.yml` platform-core: Linux 3.12 (the focused minimum), macOS 3.14
       and Windows 3.14. That is still three jobs, with no version-by-OS cross
       product, and the cache key gets the matrix interpreter.
-    - `release.yml` `release-validation`: `['3.14']`. `verify-installed-wheel`
-      keeps `['3.12', '3.14']` deliberately, so the floor stays release-tested.
-      `build-distributions` stays on 3.12: it builds a pure wheel and validates
-      nothing.
-    - The type gate runs once, on 3.14. Its output does not depend on the
-      interpreter (re-measurement above).
+    - `release.yml`: `release-validation` is `['3.14']`, and
+      `build-distributions` moves to 3.14. `verify-installed-wheel` keeps
+      `['3.12', '3.14']`, so the minimum stays release-tested.
+    - `docs.yml` and the manual `build-wheels.yml` move to 3.14.
+      `baml-grammar-wheels.yml` keeps 3.12 in its `source` and `wheel` jobs:
+      they check, build and smoke-test the separate BAML companion on its own
+      3.12 minimum. The companion's `cp312-abi3` floor comes from
+      `packages/baml-grammar/setup.py` (`Py_LIMITED_API=0x030C0000`,
+      `py_limited_api="cp312"`) and `CIBW_BUILD: 'cp312-*'`, not from the
+      runner interpreter. The policy test asserts both settings.
+    - So 3.12 appears only in Linux platform-core, the installed-wheel check
+      and those two BAML companion jobs. `tests/test_release_hygiene_policy.py`
+      enforces this and rejects any event-selected interpreter. It also runs a
+      **plain-text scan** of every workflow line, with no shell parsing, after
+      the maintainer chose a simpler, stricter check in place of #591's
+      shell-parsing scan (2026-11-01, successor PR). Comments, `echo` text
+      and heredoc bodies are scanned too. Outside the jobs named in
+      `FLOOR_ALLOWED`, any of these fails: `--python`; `-p <version>`
+      (including combined flags such as `-qp 3.12`, but not `pytest -p no:…`);
+      `UV_PYTHON`; `python3.N`; `py -3.N`/`py -V:3.N`; and `python-version:`
+      with any value other than 3.14. The only exceptions are the canonical
+      3.14 settings (`python-version:`/`UV_PYTHON:` set to 3.14 or to a list of
+      only 3.14) and `${{ matrix.python-version }}` references, whose matrix
+      values are scanned on their own lines. The failure message says how to
+      fix it: reword the text, or add the job to `FLOOR_ALLOWED` with a
+      reason. 21 named mutations (`M502-text-*`) cover the reviewers' bypasses
+      (shell control prefixes, a `<<-EOF` heredoc, `bash -c`, `eval`,
+      `sudo -E env`, `tee -a $GITHUB_ENV`, `-p` after an unknown uv option,
+      `-qp 3.12`) and the earlier spellings.
+    - The type gate runs once per CI run, on 3.14. Its output does not depend
+      on the interpreter (re-measurement above).
+  - 3.12 deprecation: `requires-python` and `.python-version` stay at 3.12
+    until the next major release (7.0) drops it. The CHANGELOG (Deprecated),
+    README, getting-started, user guide and packaging docs carry the notice.
+    treesitter-chunker#599 tracks the drop and records downstream readiness:
+    Greenfield, Spec and jev-assembler do not yet resolve on 3.14, blocked on
+    `consiliency-canon-core` cp314 wheels and unconditional `unicodedata2`
+    pins.
   - `.python-version` stays `3.12`, the roadmap default. A plain
     `uv sync --locked --all-extras` keeps developing on the floor, so 3.12
     regressions show up locally first. 3.14 commands select the interpreter
     explicitly (`--python 3.14` or `UV_PYTHON=3.14`) in a separate project
     environment.
+  - 3.14 test compatibility (test-only; no product change): the 3.14 tiers
+    found three tests that only worked on 3.12.
+    - CPython 3.14 bounds the json C decoder's recursion by the process stack
+      size, so `tests/test_governed_scope.py::test_unexpected_recursion_exit`
+      runs the driver with an 8 MiB `RLIMIT_STACK` and a 100,000-level
+      request.
+    - 3.14 makes `forkserver` the default Linux start method, and its
+      bootstrap rebuilds `sys.path` from its repr. A `Path` that
+      `tests/test_overlapping_fallback_isolated.py` put on `sys.path` at
+      collection killed every later forkserver start. The entry is now a str.
+    - `tests/test_parallel_error_handling.py::test_deadlock_prevention` passes
+      closures as `Process` targets, which forkserver cannot pickle. It now
+      uses an explicit `fork` context; the test is Linux full-tier only.
+  - **Decided (maintainer, 2026-11-01): preload in the test harness.**
+    `tests/test_performance_advanced.py::TestConcurrentPerformance::test_multiprocess_scaling`
+    asserts a speedup above 2.0 with 4 workers on a sub-second workload. On
+    3.14 under pytest it got 1.1–1.6 (3.12 passes). With forkserver, each new
+    pool's workers re-import `chunker` inside the timed region, because pytest,
+    not chunker, is `__main__`. `tests/conftest.py` now calls
+    `multiprocessing.set_forkserver_preload(["__main__", "chunker.parallel"])`,
+    and only when forkserver is the start method in use; fork and spawn are
+    unaffected. There is no product change, and the `> 2.0` assertion is
+    unchanged. `docs/api-reference.md` and CHANGELOG.md tell library users to
+    keep the `if __name__ == "__main__":` guard, which 3.14 Linux now needs as
+    macOS and Windows already did.
   - spec and docs: `release-process-spec.md` and CONTRIBUTING.md describe the
     3.14 validation interpreter, the 3.12 minimum coverage, and the 3.14 local
     commands.
   - test: `tests/test_release_hygiene_policy.py` asserts the new layout: the
     release validation matrix, a 3.12 job in platform-core, a 3.14 CI lint/type
     job, and that no workflow gains jobs. On old code it fails at
-    `matrix == ['3.14']`.
+    `matrix == ['3.14']`. `tests/test_python314_lock_wheels.py` reads `uv.lock`
+    offline. On each runner platform, a package with a cp312 wheel must also
+    have a cp314-installable one; a pure wheel counts. On the old lock it lists
+    exactly the blocked packages.
   - evidence: on Linux, `uv sync --locked --all-extras --python 3.14` (heavy,
     one at a time) and on 3.12. On 3.14, the CONTRIBUTING block, docs build,
     a clean wheel/sdist build and hashed install with the chunk CLI, and the
@@ -189,8 +257,12 @@ Named mutations (each fails its focused test):
    `test_update_refuses_to_absorb_new_signature` fails.
 2. `M587-release`: drop the governed-tools line from `release-validation`.
    `test_type_commands_match_ci[.github/workflows/release.yml]` fails.
-3. `M502-matrix`: put `release-validation` back on `['3.12']`, or drop the 3.12
-   platform-core job. The release-hygiene layout test fails.
+3. `M502-lock`: restore the pre-SL-env `uv.lock`.
+   `test_every_locked_native_package_has_a_cp314_wheel` fails.
+4. `M502-matrix`: put `release-validation`, `build-distributions` or
+   `docs.yml` back on 3.12, select the `ci.yml` interpreter by event (for
+   example 3.12 when scheduled), or drop the 3.12 platform-core job. The
+   release-hygiene layout tests fail.
 
 ## Acceptance Criteria
 
@@ -198,7 +270,7 @@ Named mutations (each fails its focused test):
 - [ ] EC-PY314-2: treesitter-chunker#502, by the SL-env PR. The 3.14 locked sync
   passes on Linux, Windows and hosted macOS, and the full checks pass on 3.14.
   The 3.12 minimum is kept and CI has no more jobs. Falsified by
-  `M502-matrix`.
+  `M502-lock` and `M502-matrix`.
 - [ ] EC-PY314-3: treesitter-chunker#587, by the SL-types PR. The baseline was
   re-measured on 3.12 and 3.14 and shrinks by cleared debt only, and the
   release type commands match CI. Falsified by `M587-absorb` and

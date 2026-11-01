@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add an experimental stdlib snapshot selector for opt-in governed extraction. Excluded repositories, dependencies and symlinks remain opaque. Published parser APIs and Boundary IR bytes are unchanged.
 - Keep unexpected selector failures on setup exit 2; test actual canonical bytes and receipt digests for Unicode and escaped paths.
 
+### Deprecated
+
+- Python 3.12 support is deprecated and ends at the next major release (7.0).
+  Python 3.14 is the main supported version. `requires-python` stays `>=3.12`
+  until then. The drop waits until downstream consumers run on 3.14
+  (treesitter-chunker#599).
+
 ### Fixed
 
 - CR-only Python source now parses and reports correct lines through
@@ -311,6 +318,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The full locked development environment now installs on CPython 3.14 from
+  wheels alone (treesitter-chunker#502). In-range lock updates: `cffi` 2.0.0,
+  `httptools` 0.7.1, `line-profiler` 5.0.1, `markupsafe` 3.0.3, `pydantic`
+  2.12.0 with `pydantic-core` 2.41.1 (and the `typing-inspection` 0.4.2 it
+  requires), `uvloop` 0.22.1 and `watchfiles` 1.1.1. Parser and runtime pins
+  are unchanged. Python 3.14 is now the main version: CI (lint, type and smoke
+  checks), the scheduled full tier, release validation and the distribution
+  build run on it. The 3.12 minimum keeps only two main-package checks, Linux
+  platform-core and the release installed-wheel check, plus the BAML companion
+  workflow's `source` and `wheel` jobs on the companion's own 3.12 minimum, with
+  no extra CI jobs. `requires-python` stays
+  `>=3.12`, and `.python-version` keeps 3.12 as the default development
+  interpreter.
+- On Python 3.14, Linux starts multiprocessing workers with `forkserver` by
+  default. Scripts that call `chunk_files_parallel`, `chunk_directory_parallel`
+  or `ParallelChunker` need the `if __name__ == "__main__":` guard there, as on
+  macOS and Windows. Without it, Python prints a bootstrapping `RuntimeError` to
+  stderr, and the call then raises under forkserver or returns empty chunk lists
+  under `spawn`; see
+  [the parallel API](docs/api-reference.md#chunk_files_parallel)
+  (treesitter-chunker#502).
 - `scripts/mypy_gate.py --update` now only removes cleared signatures. When mypy
   reports a signature that is not in the baseline, it exits 1 and leaves
   `docs/development/mypy-baseline.txt` unchanged, so new errors can no longer be
