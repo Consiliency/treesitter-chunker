@@ -130,6 +130,29 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
     regressions show up locally first. 3.14 commands select the interpreter
     explicitly (`--python 3.14` or `UV_PYTHON=3.14`) in a separate project
     environment.
+  - 3.14 test compatibility (test-only; no product change): the 3.14 tiers
+    found two tests that only worked on 3.12.
+    - CPython 3.14 bounds the json C decoder's recursion by the process stack
+      size, so `tests/test_governed_scope.py::test_unexpected_recursion_exit`
+      runs the driver with an 8 MiB `RLIMIT_STACK` and a 100,000-level
+      request.
+    - 3.14 makes `forkserver` the default Linux start method, and its
+      bootstrap rebuilds `sys.path` from its repr. A `Path` that
+      `tests/test_overlapping_fallback_isolated.py` put on `sys.path` at
+      collection killed every later forkserver start. The entry is now a str.
+    - `tests/test_parallel_error_handling.py::test_deadlock_prevention` passes
+      closures as `Process` targets, which forkserver cannot pickle. It now
+      uses an explicit `fork` context; the test is Linux full-tier only.
+  - **Open (owner/scope decision):**
+    `tests/test_performance_advanced.py::TestConcurrentPerformance::test_multiprocess_scaling`
+    asserts a speedup above 2.0 with 4 workers on a sub-second workload. On
+    3.14 under pytest it gets 1.5–1.6 (3.12 passes). With forkserver, each new
+    pool's workers re-import `chunker` inside the timed region, because pytest,
+    not chunker, is `__main__`. Preloading `chunker.parallel` in the forkserver
+    restores about 1.1 s and passes. The options are a test-harness preload, an
+    explicit product `mp_context`, relaxing the timing assertion, or keeping
+    the full tier on 3.12 for now. SL-env does not choose one; the full tier
+    and release validation on 3.14 stay blocked on it.
   - spec and docs: `release-process-spec.md` and CONTRIBUTING.md describe the
     3.14 validation interpreter, the 3.12 minimum coverage, and the 3.14 local
     commands.
