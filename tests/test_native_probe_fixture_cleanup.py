@@ -343,25 +343,244 @@ def test_native_marker_consumer_waits_for_publication_completion(tmp_path, monke
                 integrity.shutil.rmtree(root)
 
 
-def test_retained_probe_deadline_names_live_pid_and_keeps_root(tmp_path):
-    from tests.native_probe_lifetime import ProbeLifetimes
+def _sleeper(*, cwd=None):
+    return subprocess.Popen(
+        [sys._base_executable, "-I", "-c", "import time; time.sleep(60)"], cwd=cwd
+    )
+
+
+def _release(process):
+    # Each control deliberately creates a survivor; only after proving the
+    # required failure do we release that process and confirm its exit.
+    process.kill()
+    process.wait(timeout=10)
+
+
+def test_retained_probe_deadline_names_live_pid_and_keeps_root(
+    tmp_path, native_probe_lifetimes
+):
+    from tests.native_probe_lifetime import remove_retained_probe_root
 
     root = tmp_path / "retained"
     root.mkdir()
-    process = subprocess.Popen(
-        [sys._base_executable, "-I", "-c", "import time; time.sleep(60)"]
-    )
-    owners = ProbeLifetimes()
-    owners.launchers[root] = [process]
+    process = _sleeper()
+    native_probe_lifetimes.launchers[root] = [process]
     try:
-        with pytest.raises(AssertionError, match=rf"PID\(s\).*{process.pid}.*root="):
-            owners.wait(root, timeout=0)
+        with pytest.raises(AssertionError, match=rf"PID\(s\) \[{process.pid}\].*root="):
+            remove_retained_probe_root(root, timeout=0)
         assert root.exists() and process.poll() is None
     finally:
-        # The control deliberately creates a survivor; only after proving the
-        # required failure do we release its own process and confirm exit.
-        process.kill()
-        process.wait(timeout=10)
+        _release(process)
+
+
+def test_registered_worker_deadline_names_live_pid_and_keeps_root(
+    tmp_path, native_probe_lifetimes
+):
+    from tests.native_probe_lifetime import (
+        remove_retained_probe_root,
+        retain_probe_observer,
+    )
+
+    root = tmp_path / "chunker-native-probe-registered"
+    root.mkdir()
+    process = _sleeper()
+    try:
+        # The same identity-bound observer type the fixture acquires before
+        # START: a Windows process HANDLE, or a psutil (PID, creation) identity.
+        observer = _NativeObserver(process.pid, None)
+        assert (observer.handle is not None) == (sys.platform == "win32")
+        retain_probe_observer(root, observer)
+        assert not native_probe_lifetimes.launchers.get(root)
+        with pytest.raises(AssertionError, match=rf"PID\(s\) \[{process.pid}\].*root="):
+            remove_retained_probe_root(root, timeout=0)
+        assert root.exists() and observer.alive()
+    finally:
+        _release(process)
+
+
+def test_discovered_descendant_outliving_noop_stop_is_named(
+    tmp_path, monkeypatch, native_probe_lifetimes
+):
+    """A product-discovered, never-registered descendant blocks root removal."""
+    from tests.native_probe_lifetime import remove_retained_probe_root
+
+    root = tmp_path / "chunker-native-probe-discovered"
+    root.mkdir()
+    marker, discovered = tmp_path / "descendant", tmp_path / "discovered"
+    published, release = tmp_path / "descendant-published", tmp_path / "release"
+    descendant = (
+        "import os,time; from pathlib import Path; "
+        f"p=Path({str(marker)!r}); q=p.with_suffix('.tmp'); "
+        "q.write_text(str(os.getpid()),encoding='utf-8'); q.replace(p); "
+        # Visibility is not completion on Windows: signal after replace returns.
+        f"Path({str(published)!r}).touch(); "
+        f"r=Path({str(release)!r}); deadline=time.monotonic()+60"
+        "\nwhile not r.exists() and time.monotonic() < deadline: time.sleep(0.01)\n"
+    )
+    # The launcher exits by itself once the product has discovered its child
+    # (or the control releases it); the child keeps no product pipe, so the
+    # read loop ends on launcher exit.
+    launcher = (
+        "import subprocess,sys,time; from pathlib import Path; "
+        f"subprocess.Popen([sys.executable,'-I','-c',{descendant!r}], "
+        "stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); "
+        f"p=Path({str(discovered)!r}); r=Path({str(release)!r}); "
+        "deadline=time.monotonic()+30"
+        "\nwhile not (p.exists() or r.exists()) and time.monotonic() < deadline:"
+        " time.sleep(0.01)\n"
+    )
+    stops, real_discover = [], integrity._discover
+
+    def discover(state):
+        real_discover(state)
+        if (
+            published.exists()
+            and int(marker.read_text(encoding="utf-8")) in state.known
+        ):
+            discovered.touch()
+
+    def noop_stop(state):
+        # A permitted uncertain stop that signals nothing.
+        stops.append(state)
+        state.cleanup_safe = False
+
+    monkeypatch.setattr(integrity, "_discover", discover)
+    monkeypatch.setattr(integrity, "_stop_child", noop_stop)
+    pid = None
+    try:
+        reply = integrity._read_child(
+            [sys._base_executable, "-I", "-c", launcher], root, 30
+        )
+        assert reply[0] == 0 and not reply[3] and not reply[4], reply
+        assert discovered.exists() and len(stops) == 1
+        pid = int(marker.read_text(encoding="utf-8"))
+        assert set(stops[0].known) == {stops[0].launcher.pid, pid}
+        assert stops[0].launcher.poll() == 0
+        with pytest.raises(AssertionError, match=rf"PID\(s\) \[{pid}\].*root="):
+            remove_retained_probe_root(root, timeout=0)
+        assert root.exists()
+        assert psutil.Process(pid) == stops[0].known[pid]
+    finally:
+        # The fixture's identity-bound teardown wait confirms this exit.
+        release.touch()
+
+
+def test_fault_launcher_maps_only_injected_exit_7(tmp_path):
+    from tests.test_compiled_grammar_analysis_contract import (
+        _write_fault_launcher,
+    )
+
+    launcher, injected = _write_fault_launcher(tmp_path)
+
+    def status(code):
+        return subprocess.run(
+            [sys._base_executable, "-I", str(launcher), "-I", "-c", code],
+            stdin=subprocess.DEVNULL,
+            timeout=30,
+        ).returncode
+
+    # A genuine child exit 7, without the injecting worker's sentinel, is kept.
+    assert status("raise SystemExit(7)") == 7
+    assert status("raise SystemExit(1)") == 1
+    assert not injected.exists()
+    inject = f"open({str(injected)!r}, 'x').close(); raise SystemExit(7)"
+    assert status(inject) == 0 and injected.exists()
+
+
+def test_fixture_popen_type_and_bookkeeping_stay_out_of_product(
+    tmp_path, native_probe_lifetimes
+):
+    from tests.native_probe_lifetime import remove_retained_probe_root
+
+    # The fixture installs a real Popen subclass, not a replacement function.
+    assert isinstance(subprocess.Popen, type)
+    assert subprocess.Popen.__mro__[1].__name__ == "Popen"
+    assert subprocess.Popen[bytes] is not None
+    root = tmp_path / "chunker-native-probe-recorded"
+    root.mkdir()
+    process = _sleeper(cwd=root)
+    try:
+        assert isinstance(process, subprocess.Popen)
+        assert native_probe_lifetimes.launchers[root] == [process]
+
+        class BrokenIdentity:
+            def create_time(self):
+                raise RuntimeError("fixture bookkeeping fault")
+
+        state = integrity._ProbeLifecycle(native=False)
+        state.launcher = process
+        state.known = {process.pid: psutil.Process(process.pid), -1: BrokenIdentity()}
+        # A fixture failure is recorded for teardown, never raised in product flow.
+        integrity._discover(state)
+        assert native_probe_lifetimes.fixture_errors == [
+            "retain discovered identities: RuntimeError: fixture bookkeeping fault"
+        ]
+        native_probe_lifetimes.fixture_errors.clear()
+    finally:
+        _release(process)
+    remove_retained_probe_root(root, timeout=0)
+    assert not root.exists()
+
+
+def test_pending_bookkeeping_error_keeps_root_and_names_cause(
+    tmp_path, native_probe_lifetimes
+):
+    from tests.native_probe_lifetime import remove_retained_probe_root
+
+    root = tmp_path / "chunker-native-probe-bookkeeping"
+    root.mkdir()
+    native_probe_lifetimes.fixture_errors.append("control: lost observer")
+    with pytest.raises(
+        AssertionError, match=r"bookkeeping failed: \['control: lost observer'\]"
+    ):
+        remove_retained_probe_root(root, timeout=0)
+    assert root.exists()
+    native_probe_lifetimes.fixture_errors.clear()
+    remove_retained_probe_root(root, timeout=0)
+    assert not root.exists()
+
+
+def test_finish_raises_recorded_bookkeeping_errors():
+    from tests.native_probe_lifetime import ProbeLifetimes
+
+    clean = ProbeLifetimes()
+    clean.finish()
+    owners = ProbeLifetimes()
+    owners.fixture_errors.append("control: unrecorded launcher")
+    with pytest.raises(
+        AssertionError,
+        match=r"bookkeeping failed: \['control: unrecorded launcher'\]",
+    ):
+        owners.finish()
+
+
+def test_fixture_prefix_matches_real_product_probe_root(
+    tmp_path, monkeypatch, native_probe_lifetimes
+):
+    """Read the probe-root prefix from a real product launch, not a copy."""
+    import hashlib
+    from tests.native_probe_lifetime import PROBE_ROOT_PREFIX
+
+    candidate = tmp_path / ("invalid" + (".dll" if sys.platform == "win32" else ".so"))
+    candidate.write_bytes(b"reviewed invalid native image; cannot execute")
+    original, roots = integrity._read_child, []
+
+    def observe(command, cwd, timeout, **kwargs):
+        roots.append(Path(cwd))
+        return original(command, cwd, timeout, **kwargs)
+
+    monkeypatch.setattr(integrity, "_read_child", observe)
+    result = integrity.probe_native_grammar(
+        candidate,
+        "baml",
+        provenance={"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()},
+    )
+    assert not result.supported, result
+    assert len(roots) == 1, roots
+    # The product's real snapshot root carries the prefix the fixture records
+    # by, and the fixture actually retained that launcher for its waits.
+    assert roots[0].name.startswith(PROBE_ROOT_PREFIX), roots[0]
+    assert len(native_probe_lifetimes.launchers.get(roots[0], [])) == 1
 
 
 def test_fault_launcher_preserves_real_child_failure(tmp_path, monkeypatch):

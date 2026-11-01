@@ -537,7 +537,6 @@ class BuildSystem(BuildSystemContract):
 
             # Build wheel manually using wheel package
             try:
-                from wheel.metadata import pkginfo_to_metadata
                 from wheel.wheelfile import WheelFile
 
                 # Create wheel filename

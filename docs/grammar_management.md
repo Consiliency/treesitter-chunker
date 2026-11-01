@@ -597,6 +597,14 @@ is incompatible and success from 0.5 through below 0.8 is limited; sample counts
 parse errors and existing score multipliers remain available in the result.
 These thresholds interpret metadata; they do not impose a wall-clock test gate.
 
+For a local candidate (`check_compatibility(..., grammar_path=...)`, as
+`SmartSelector` uses), the validator's `No test samples available for
+<language>` warning is an evidence gap, not a quality finding. Caller
+`code_samples` parsed with the candidate decide the level. With the gap and no
+caller samples, nothing was parsed, so the result is `UNKNOWN` (score 0.3)
+whatever other warnings are present; every warning stays in the result. Other
+validation warnings give `DEGRADED` only when there is parse evidence.
+
 An explicit `GrammarManager(cache_dir=...)` supplies the validation cache root for
 its registry, installer and default `CompatibilityChecker`/`GrammarTester`
 validators. Passing an actual `validator=` object to either helper preserves that
@@ -617,6 +625,22 @@ local filesystem only, and a cache root inside another root's `downloads/`,
 `builds/` or `.txn/` is refused. The cache root must be writable, because every
 reader takes the lock: on a read-only root (for example, a pre-populated image),
 existing records are not loaded and new ones are kept in memory only.
+
+Installers clone and build inside private staging directories,
+`downloads/.txn-staging/<id>/` and `builds/.txn-staging/<id>/`, and run each `git`
+and build command in its own process group (a job object on Windows), which is
+killed and confirmed empty before anything is published, also when the install is
+interrupted. The
+`downloads/` and `builds/` cache entries are published only after the grammar is
+installed. `cleanup_cache` re-checks every candidate entry under the lock, so it
+never deletes an entry published after it started, and `bytes_freed` counts only
+bytes it actually deleted. Links and junctions inside entries are removed without
+touching their targets. A staging directory left by a crashed installer is never
+deleted automatically; remove it once no install is running (see the cache
+transaction contract for the full list of leftovers). Staging and retired items
+stay inside the directory they belong to (hidden `.txn-staging/` and `.txn-retired/`
+folders, which listings and cleanup ignore), so `downloads/`, `builds/` or
+`grammars/` may each be a separate filesystem, such as a container volume.
 
 The separate Python `GrammarManager.remove_grammar(language, clean_cache=False)`
 option retains that language's download and build cache while removing its

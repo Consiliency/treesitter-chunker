@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from hashlib import sha256
 from pathlib import Path
 
@@ -27,6 +28,7 @@ from chunker.languages.compatibility.schema import (
     CompatibilitySchema,
     LanguageVersion,
 )
+from tests.language_smoke import LOAD_TOLERANT_DEADLINE_SECONDS
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -624,8 +626,37 @@ def test_unchanged_real_repository_update_validates_installed_artifact(
     assert any("failed native admission" in warning for warning in result["warnings"])
 
 
+def _symbol_count(symbols: dict) -> int:
+    return sum(len(value) for value in symbols.values() if isinstance(value, list))
+
+
+def _assert_symbols_found(
+    confirm: Callable[[], dict], symbols: dict, reported: int
+) -> None:
+    """Hold a reported symbol count to the analysis outcome that produced it.
+
+    A completed analysis must find symbols. A five-second ``nm`` deadline that
+    expired under host load must be reported as such, with no symbols counted,
+    and a re-analysis of the same artifact under the load-tolerant bound must
+    then find them (treesitter-chunker#207). ``confirm`` runs that re-analysis
+    at most once per artifact. Any other outcome fails.
+    """
+    analysis = symbols["analysis"]
+    assert reported == _symbol_count(symbols)
+    if analysis["status"] == "complete":
+        assert reported > 0
+        return
+    assert analysis["status"] == "deadline_expired", analysis
+    assert reported == 0
+    confirmed = confirm()
+    assert confirmed["analysis"]["status"] == "complete", confirmed["analysis"]
+    assert _symbol_count(confirmed) > 0
+
+
 @pytest.mark.skipif(sys.platform != "linux", reason="Analyzer inspects ELF .so symbols")
-def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) -> None:
+def test_local_baml_grammar_capabilities_and_missing_language(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     grammar_path = tmp_path / "baml.so"
     metadata_source = tmp_path / "metadata.c"
     metadata_source.write_text(
@@ -658,6 +689,28 @@ def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) ->
     analyzer = GrammarAnalyzer(
         tmp_path, trusted_artifacts=trusted_artifacts(grammar_path)
     )
+    # Record each real analysis result so a count is judged by its own outcome.
+    analyses: list[dict] = []
+    analyze_symbols = analyzer.analyze_grammar_symbols
+
+    def recorded(path: Path, **kwargs) -> dict:
+        symbols = analyze_symbols(path, **kwargs)
+        analyses.append(symbols)
+        return symbols
+
+    monkeypatch.setattr(analyzer, "analyze_grammar_symbols", recorded)
+
+    # Every analysis reads the same artifact, so an expiry is confirmed once
+    # and the result reused; this keeps the test inside the smoke timeout.
+    confirmations: list[dict] = []
+
+    def confirm() -> dict:
+        if not confirmations:
+            confirmations.append(
+                analyze_symbols(grammar_path, timeout=LOAD_TOLERANT_DEADLINE_SECONDS)
+            )
+        return confirmations[0]
+
     assert analyzer.supported_languages == ["baml"]
     grammar = analyzer.analyze_grammar_file("baml")
     assert grammar is not None
@@ -669,7 +722,7 @@ def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) ->
     assert capabilities["supported"] is True
     assert capabilities["version"] == grammar.version
     assert capabilities["file_size"] == grammar_path.stat().st_size
-    assert capabilities["symbols_count"] > 0
+    _assert_symbols_found(confirm, analyses[-1], capabilities["symbols_count"])
     assert (
         capabilities["artifact_sha256"]
         == trusted_artifacts(grammar_path)["baml"]["sha256"]
@@ -684,9 +737,11 @@ def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) ->
     assert missing["validation_reason"] == "missing"
 
     report = analyzer.generate_grammar_report("baml")
+    report_count = _symbol_count(analyses[-1])
     assert "Status: Supported" in report
     assert f"Version: {grammar.version}" in report
-    assert f"Symbols Count: {capabilities['symbols_count']}" in report
+    assert f"Symbols Count: {report_count}" in report
+    _assert_symbols_found(confirm, analyses[-1], report_count)
     assert "Status: Not Supported" in analyzer.generate_grammar_report("missing")
 
     export_path = tmp_path / "analysis.json"
@@ -695,7 +750,11 @@ def test_local_baml_grammar_capabilities_and_missing_language(tmp_path: Path) ->
     assert exported["metadata"]["total_languages"] == 1
     assert exported["grammars"]["baml"]["file"] == str(grammar_path)
     assert exported["grammars"]["baml"]["capabilities"]["supported"] is True
-    assert exported["grammars"]["baml"]["capabilities"]["symbols_count"] > 0
+    _assert_symbols_found(
+        confirm,
+        analyses[-1],
+        exported["grammars"]["baml"]["capabilities"]["symbols_count"],
+    )
     assert exported["validation_failures"] == {}
     assert (
         not load_compiled_grammar(grammar_path, "baml")
@@ -1237,17 +1296,36 @@ def test_native_actual_worker_status_required_after_real_ack(
         assert worker_status == (7 if status == "abnormal" else None)
 
 
+def _write_fault_launcher(directory):
+    """Launcher reports 0 only for the worker exit this fixture injected.
+
+    The injecting worker publishes a sentinel before its deliberate exit 7, so
+    a genuine child status 7 (or any other real failure) is never masked.
+    """
+    launcher, injected = directory / "fault_launcher.py", directory / "fault-injected"
+    launcher.write_text(
+        "import os,subprocess,sys; child=subprocess.Popen([sys._base_executable,*sys.argv[1:]], stdin=sys.stdin.buffer, stdout=sys.stdout.buffer, stderr=sys.stderr.buffer); status=child.wait(); "
+        f"raise SystemExit(0 if status == 7 and os.path.exists({str(injected)!r}) else status)",
+        encoding="utf-8",
+    )
+    return launcher, injected
+
+
+def _inject_worker_exit_7(injected):
+    """Worker suffix: inject exit 7 only after genuine success, with sentinel."""
+    return (
+        f"open({str(injected)!r}, 'x').close() if result == 0 else None; "
+        "os._exit(7 if result == 0 else result)"
+    )
+
+
 def test_native_valid_ack_abnormal_worker_launcher_zero(tmp_path, monkeypatch):
     from chunker.grammar import integrity
 
     library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
     original_read = integrity._read_child
     states, replies, roots = [], [], []
-    launcher = tmp_path / "fault_launcher.py"
-    launcher.write_text(
-        "import subprocess,sys; child=subprocess.Popen([sys._base_executable,*sys.argv[1:]], stdin=sys.stdin.buffer, stdout=sys.stdout.buffer, stderr=sys.stderr.buffer); status=child.wait(); raise SystemExit(0 if status == 7 else status)",
-        encoding="utf-8",
-    )
+    launcher, injected = _write_fault_launcher(tmp_path)
 
     def read(command, cwd, timeout, **kwargs):
         import sysconfig
@@ -1262,7 +1340,8 @@ def test_native_valid_ack_abnormal_worker_launcher_zero(tmp_path, monkeypatch):
             + command[3]
         ).replace(
             "raise SystemExit(_native_probe_child(*sys.argv[2:]))",
-            "import os; result=_native_probe_child(*sys.argv[2:]); sys.stdout.flush(); os._exit(7 if result == 0 else result)",
+            "import os; result=_native_probe_child(*sys.argv[2:]); sys.stdout.flush(); "
+            + _inject_worker_exit_7(injected),
         )
         states.append(kwargs["lifecycle"])
         roots.append(cwd)

@@ -27,8 +27,10 @@ SAFETY_TIMEOUT = 240.0
 PRELUDE = r'''
 import json
 import os
+import signal
 import sys
 import threading
+import time
 
 PAUSES = json.loads(sys.argv[1])
 sys.path.insert(0, sys.argv[2])
@@ -60,6 +62,13 @@ def _barrier(point, context):
         ):
             if rule.get("action") == "exit":
                 os._exit(int(rule.get("code", 17)))
+            if rule.get("action") == "sigint":
+                PAUSES.remove(rule)
+                ready = rule.get("await_file")
+                while ready and not os.path.exists(ready):
+                    time.sleep(0.01)  # readiness: the file the test names exists
+                signal.raise_signal(signal.SIGINT)  # KeyboardInterrupt right here
+                break
             wait()
             if rule.get("once", True):
                 PAUSES.remove(rule)
@@ -198,6 +207,18 @@ def exit_at(point: str, code: int = 17, **match: str) -> dict[str, Any]:
     return {"point": point, "match": match, "action": "exit", "code": code}
 
 
+def interrupt_at(
+    point: str, await_file: str | None = None, **match: str
+) -> dict[str, Any]:
+    """Raise SIGINT in the child's main thread at ``point`` (after ``await_file``)."""
+    return {
+        "point": point,
+        "match": match,
+        "action": "sigint",
+        "await_file": await_file,
+    }
+
+
 def _mount_mode() -> str | None:
     """How this host can mount a private tmpfs for a test, if at all."""
     if not sys.platform.startswith("linux"):
@@ -232,6 +253,10 @@ def run_with_tmpfs(
 
     mode = _mount_mode()
     if mode is None:
+        if sys.platform.startswith("linux") and os.environ.get("CI"):
+            pytest.fail(
+                "Linux CI must be able to mount a tmpfs (user namespace or sudo)"
+            )
         pytest.skip("mounting a tmpfs needs a user namespace or passwordless sudo")
     mount_point.mkdir(parents=True, exist_ok=True)
     command = [sys.executable, "-I", "-c", script, str(ROOT), *map(str, args)]
@@ -266,3 +291,71 @@ def run_with_tmpfs(
         )
     finally:
         subprocess.run(["sudo", "-n", "umount", str(mount_point)], check=False)
+
+
+MOUNT_PRELUDE = r'''
+import os, subprocess
+
+
+def mount_tmpfs(path):
+    """Mount a private tmpfs (root in a user namespace, or passwordless sudo)."""
+    path.mkdir(parents=True, exist_ok=True)
+    if os.geteuid() == 0:
+        subprocess.run(["mount", "-t", "tmpfs", "tmpfs", str(path)], check=True)
+    else:
+        owner = f"uid={os.getuid()},gid={os.getgid()}"
+        subprocess.run(
+            ["sudo", "-n", "mount", "-t", "tmpfs", "-o", owner, "tmpfs", str(path)],
+            check=True,
+        )
+        MOUNTED.append(path)
+
+
+def unmount_all():
+    for path in MOUNTED:
+        subprocess.run(["sudo", "-n", "umount", str(path)], check=False)
+
+
+MOUNTED = []
+'''
+
+
+def run_mounting(
+    script: str,
+    args: Sequence[str | os.PathLike[str]],
+    *,
+    env: Mapping[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run ``python -I -c MOUNT_PRELUDE+script ROOT args...`` able to mount tmpfs.
+
+    In a user and mount namespace when the kernel allows it (mounts vanish with
+    it), otherwise with passwordless ``sudo`` (the script must call
+    ``unmount_all()`` in a ``finally``). Skips the test when neither exists.
+    """
+    import pytest
+
+    mode = _mount_mode()
+    if mode is None:
+        if sys.platform.startswith("linux") and os.environ.get("CI"):
+            pytest.fail(
+                "Linux CI must be able to mount a tmpfs (user namespace or sudo)"
+            )
+        pytest.skip("mounting a tmpfs needs a user namespace or passwordless sudo")
+    command = [
+        sys.executable,
+        "-I",
+        "-c",
+        MOUNT_PRELUDE + script,
+        str(ROOT),
+        *map(str, args),
+    ]
+    if mode == "unshare":
+        command = ["unshare", "--user", "--map-root-user", "--mount", *command]
+    return subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        timeout=SAFETY_TIMEOUT,
+        check=False,
+        env=dict(env) if env is not None else None,
+    )

@@ -32,7 +32,6 @@ import logging
 import os
 import re
 import shutil
-import subprocess
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -593,6 +592,19 @@ class GrammarValidator:
         )
 
 
+class _StagedRunAbortedError(Exception):
+    """A staged subprocess timed out or left processes behind."""
+
+    def __init__(self, run: _transactions.StagedRun, what: str):
+        reason = (
+            "timed out"
+            if run.timed_out
+            else "left processes that could not be confirmed stopped"
+        )
+        super().__init__(f"{what} {reason}")
+        self.run = run
+
+
 class GrammarInstaller:
     """Handles grammar download, build, and installation processes."""
 
@@ -650,75 +662,144 @@ class GrammarInstaller:
             # Create rollback point
             rollback_info = self._create_rollback_point(language)
 
+            # Every input stays in this operation's private staging until the
+            # installation, its last consumer, has finished.
+            staging = _transactions.create_staging(self._base_cache_dir)
             try:
-                # Download grammar source
-                download_success, download_path, download_error = (
-                    self._download_grammar(language, repository_url, version)
-                )
-
-                if not download_success:
-                    return False, f"Download failed: {download_error}", None
-
-                # Build grammar
-                build_success, grammar_path, build_error = self._build_grammar(
-                    language,
-                    download_path,
-                )
-
-                if not build_success:
-                    return False, f"Build failed: {build_error}", None
-
-                # Validate grammar
-                validation_result = self._validator.validate_grammar(
-                    grammar_path,
-                    language,
-                    ValidationLevel.STANDARD,
-                )
-
-                if not validation_result.is_valid:
-                    error_msg = (
-                        f"Validation failed: {'; '.join(validation_result.errors)}"
+                try:
+                    # Download grammar source
+                    download_success, download_path, download_error = (
+                        self._download_grammar(
+                            language, repository_url, version, staging=staging
+                        )
                     )
-                    return False, error_msg, None
 
-                # Install grammar
-                install_success, final_path, install_error = self._install_grammar_file(
-                    language,
-                    grammar_path,
-                    priority,
-                )
+                    if not download_success:
+                        return False, f"Download failed: {download_error}", None
 
-                if not install_success:
-                    return False, f"Installation failed: {install_error}", None
+                    # Build grammar
+                    build_success, grammar_path, build_error = self._build_grammar(
+                        language,
+                        download_path,
+                        staging=staging,
+                    )
 
-                # Create installation info
-                install_info = InstallationInfo(
-                    version=version or "latest",
-                    install_date=time.time(),
-                    install_path=final_path,
-                    source_url=repository_url,
-                    source_commit=self._get_commit_hash(download_path),
-                    priority=priority,
-                    metadata={
-                        "validation": validation_result.metadata,
-                        "performance": validation_result.performance_metrics,
-                    },
-                )
+                    if not build_success:
+                        return False, f"Build failed: {build_error}", None
 
-                # Save installation metadata
-                self._save_installation_info(language, install_info)
+                    # Validate grammar
+                    validation_result = self._validator.validate_grammar(
+                        grammar_path,
+                        language,
+                        ValidationLevel.STANDARD,
+                    )
 
+                    if not validation_result.is_valid:
+                        error_msg = (
+                            "Validation failed: "
+                            f"{'; '.join(validation_result.errors)}"
+                        )
+                        return False, error_msg, None
+
+                    # Resolve the commit before installing: an aborted owned
+                    # run fails the operation before anything is installed.
+                    try:
+                        source_commit = self._get_commit_hash(
+                            download_path, staging=staging
+                        )
+                    except _StagedRunAbortedError as e:
+                        return False, f"Commit lookup aborted: {e}", None
+
+                    # Install grammar
+                    install_success, final_path, install_error = (
+                        self._install_grammar_file(
+                            language,
+                            grammar_path,
+                            priority,
+                        )
+                    )
+
+                    if not install_success:
+                        return False, f"Installation failed: {install_error}", None
+
+                    # Create installation info
+                    install_info = InstallationInfo(
+                        version=version or "latest",
+                        install_date=time.time(),
+                        install_path=final_path,
+                        source_url=repository_url,
+                        source_commit=source_commit,
+                        priority=priority,
+                        metadata={
+                            "validation": validation_result.metadata,
+                            "performance": validation_result.performance_metrics,
+                        },
+                    )
+
+                    # Save installation metadata
+                    self._save_installation_info(language, install_info)
+
+                except Exception as e:
+                    # Rollback on failure
+                    self._perform_rollback(language, rollback_info)
+                    raise e
+
+                # The installation is committed. Cache-entry publication is
+                # best effort: its failures are warnings, never a failed install.
+                self._publish_cache_entries(language, staging)
                 logger.info(f"Successfully installed grammar for {language}")
                 return True, None, install_info
-
-            except Exception as e:
-                # Rollback on failure
-                self._perform_rollback(language, rollback_info)
-                raise e
+            finally:
+                self._discard_staging(staging)
 
         except Exception as e:
             logger.error(f"Grammar installation failed for {language}: {e}")
             return False, str(e), None
+
+    def _publish_cache_entries(
+        self, language: str, staging: _transactions.StagingArea
+    ) -> None:
+        """Publish the staged download and build after a committed install."""
+        entries: tuple[tuple[_transactions.Namespace, str], ...] = (
+            ("downloads", f"tree-sitter-{language}"),
+            ("builds", language),
+        )
+        for namespace, name in entries:
+            if not os.path.lexists(staging.path(namespace) / name):
+                continue
+            try:
+                _transactions.publish_entry(staging, namespace, name)
+            except Exception as e:
+                logger.warning(
+                    f"Installed {language}, but its {namespace} cache entry was "
+                    f"not published: {e}"
+                )
+
+    def _discard_staging(self, staging: _transactions.StagingArea) -> None:
+        try:
+            result = _transactions.discard_staging(staging)
+        except Exception as e:
+            logger.warning(
+                f"Could not discard staging {staging.path('downloads')}: {e}"
+            )
+            return
+        for error in result.errors:
+            logger.warning(f"Staging not fully removed: {error}")
+
+    def _run_staged(
+        self,
+        staging: _transactions.StagingArea,
+        argv: list[str],
+        *,
+        cwd: Path,
+        timeout: float,
+        what: str,
+    ) -> _transactions.StagedRun:
+        """Run one owned subprocess; a timeout or survivor aborts the operation."""
+        run = _transactions.run_in_staging(staging, argv, cwd=cwd, timeout=timeout)
+        if run.timed_out or not run.group_empty:
+            raise _StagedRunAbortedError(run, what)
+        return run
 
     def remove_grammar(
         self,
@@ -777,8 +858,10 @@ class GrammarInstaller:
         language: str,
         repository_url: str,
         version: str | None = None,
+        *,
+        staging: _transactions.StagingArea | None = None,
     ) -> tuple[bool, Path | None, str | None]:
-        """Download grammar source code."""
+        """Clone grammar source into the operation's private staging."""
         if not _valid_language_name(language):
             return False, None, "Invalid grammar language"
         try:
@@ -787,21 +870,16 @@ class GrammarInstaller:
             return False, None, f"Invalid grammar source: {e}"
         if version and version.startswith("-"):
             return False, None, "Invalid grammar version"
-        download_dir = self._downloads_dir / f"tree-sitter-{language}"
-
-        # Clean up existing download
-        if download_dir.exists():
-            shutil.rmtree(download_dir)
+        if staging is None:
+            return False, None, "Downloads need an operation staging area"
+        downloads = staging.path("downloads")
+        download_dir = downloads / f"tree-sitter-{language}"
 
         try:
             # Clone repository
             cmd = ["git", "clone", "--", repository_url, str(download_dir)]
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=300,
-                check=False,
+            result = self._run_staged(
+                staging, cmd, cwd=downloads, timeout=300, what="Git clone"
             )
 
             if result.returncode != 0:
@@ -810,13 +888,8 @@ class GrammarInstaller:
             # Checkout specific version if requested
             if version:
                 cmd = ["git", "checkout", "--detach", version]
-                result = subprocess.run(
-                    cmd,
-                    cwd=download_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    check=False,
+                result = self._run_staged(
+                    staging, cmd, cwd=download_dir, timeout=60, what="Git checkout"
                 )
 
                 if result.returncode != 0:
@@ -824,8 +897,8 @@ class GrammarInstaller:
 
             return True, download_dir, None
 
-        except subprocess.TimeoutExpired:
-            return False, None, "Download timed out"
+        except _StagedRunAbortedError as e:
+            return False, None, f"Download aborted: {e}"
         except Exception as e:
             return False, None, str(e)
 
@@ -833,9 +906,13 @@ class GrammarInstaller:
         self,
         language: str,
         source_path: Path,
+        *,
+        staging: _transactions.StagingArea | None = None,
     ) -> tuple[bool, Path | None, str | None]:
-        """Build grammar from source code."""
-        build_dir = self._builds_dir / language
+        """Build grammar from staged source into the same staging."""
+        if staging is None:
+            return False, None, "Builds need an operation staging area"
+        build_dir = staging.path("builds") / language
         build_dir.mkdir(exist_ok=True)
 
         output_path = build_dir / f"lib{language}.so"
@@ -852,10 +929,15 @@ class GrammarInstaller:
 
             for build_method in build_methods:
                 try:
-                    success, error = build_method(language, source_path, output_path)
+                    success, error = build_method(
+                        language, source_path, output_path, staging=staging
+                    )
                     if success:
                         return True, output_path, None
                     last_error = error
+                except _StagedRunAbortedError as e:
+                    # The staging is unpublishable now; no fallback runs in it.
+                    return False, None, f"Build aborted: {e}"
                 except Exception as e:
                     last_error = str(e)
                     continue
@@ -870,6 +952,8 @@ class GrammarInstaller:
         language: str,
         source_path: Path,
         output_path: Path,
+        *,
+        staging: _transactions.StagingArea,
     ) -> tuple[bool, str | None]:
         """Build using tree-sitter CLI."""
         try:
@@ -881,30 +965,28 @@ class GrammarInstaller:
                 str(source_path),
             ]
 
-            result = subprocess.run(
+            result = self._run_staged(
+                staging,
                 cmd,
-                capture_output=True,
-                text=True,
+                cwd=output_path.parent,
                 timeout=self._build_timeout,
-                check=False,
+                what="tree-sitter build",
             )
 
             if result.returncode == 0:
                 return True, None
             return False, f"tree-sitter build failed: {result.stderr}"
 
-        except subprocess.TimeoutExpired:
-            return False, "Build timed out"
         except FileNotFoundError:
             return False, "tree-sitter CLI not found"
-        except Exception as e:
-            return False, str(e)
 
     def _build_with_gcc(
         self,
         language: str,
         source_path: Path,
         output_path: Path,
+        *,
+        staging: _transactions.StagingArea,
     ) -> tuple[bool, str | None]:
         """Build using GCC directly."""
         try:
@@ -928,30 +1010,28 @@ class GrammarInstaller:
 
             cmd.extend(["-o", str(output_path)])
 
-            result = subprocess.run(
+            result = self._run_staged(
+                staging,
                 cmd,
-                capture_output=True,
-                text=True,
+                cwd=output_path.parent,
                 timeout=self._build_timeout,
-                check=False,
+                what="GCC build",
             )
 
             if result.returncode == 0:
                 return True, None
             return False, f"GCC build failed: {result.stderr}"
 
-        except subprocess.TimeoutExpired:
-            return False, "GCC build timed out"
         except FileNotFoundError:
             return False, "GCC not found"
-        except Exception as e:
-            return False, str(e)
 
     def _build_with_make(
         self,
         language: str,
         source_path: Path,
         output_path: Path,
+        *,
+        staging: _transactions.StagingArea,
     ) -> tuple[bool, str | None]:
         """Build using Makefile if available."""
         try:
@@ -959,14 +1039,13 @@ class GrammarInstaller:
             if not makefile.exists():
                 return False, "Makefile not found"
 
-            # Run make
-            result = subprocess.run(
+            # Run make in the staged source
+            result = self._run_staged(
+                staging,
                 ["make"],
                 cwd=source_path,
-                capture_output=True,
-                text=True,
                 timeout=self._build_timeout,
-                check=False,
+                what="Make",
             )
 
             if result.returncode != 0:
@@ -981,12 +1060,8 @@ class GrammarInstaller:
 
             return False, "Built library not found after make"
 
-        except subprocess.TimeoutExpired:
-            return False, "Make timed out"
         except FileNotFoundError:
             return False, "Make not found"
-        except Exception as e:
-            return False, str(e)
 
     def _install_grammar_file(
         self,
@@ -1042,8 +1117,9 @@ class GrammarInstaller:
             return
 
         try:
-            # Remove any partially installed files
-            self._cleanup_cache(language)
+            # A failed operation's inputs are in its own staging; the published
+            # download/build entries belong to other installs and are kept
+            # (runner decision on the treesitter-chunker#564 round-1 panel).
             self._remove_installation_info(language)
 
             # Restore existing installation if there was one
@@ -1056,24 +1132,35 @@ class GrammarInstaller:
         except Exception as e:
             logger.error(f"Rollback failed for {language}: {e}")
 
-    def _get_commit_hash(self, repo_path: Path) -> str | None:
-        """Get current commit hash from repository."""
+    def _get_commit_hash(
+        self,
+        repo_path: Path,
+        *,
+        staging: _transactions.StagingArea | None = None,
+    ) -> str | None:
+        """Get the commit hash of a staged repository.
+
+        A nonzero ``git rev-parse`` means "unknown" and returns ``None``. A
+        timed-out or unconfirmed run raises ``_StagedRunAbortedError``: the
+        staging is unpublishable and the operation must fail.
+        """
+        if staging is None:
+            return None
         try:
-            result = subprocess.run(
+            result = self._run_staged(
+                staging,
                 ["git", "rev-parse", "HEAD"],
                 cwd=repo_path,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=False,
+                timeout=min(30, self._build_timeout),
+                what="Git rev-parse",
             )
-
-            if result.returncode == 0:
-                return result.stdout.strip()
-            return None
-
+        except _StagedRunAbortedError:
+            raise
         except Exception:
             return None
+        if result.returncode == 0:
+            return result.stdout.strip()
+        return None
 
     def _save_installation_info(self, language: str, info: InstallationInfo):
         """Save installation metadata."""
@@ -1134,23 +1221,28 @@ class GrammarInstaller:
             logger.warning(f"Failed to remove installation info: {e}")
 
     def _cleanup_cache(self, language: str):
-        """Clean up cache files for a language."""
+        """Remove a language's download and build cache entries.
+
+        Each entry is retired under the cache root lock and deleted outside it,
+        refusing links and nested cache roots (treesitter-chunker#323).
+        """
         if not _valid_language_name(language):
             logger.warning("Skipping cache cleanup for invalid grammar language")
             return
-        try:
-            # Clean downloads
-            download_dir = self._downloads_dir / f"tree-sitter-{language}"
-            if download_dir.exists():
-                shutil.rmtree(download_dir)
-
-            # Clean builds
-            build_dir = self._builds_dir / language
-            if build_dir.exists():
-                shutil.rmtree(build_dir)
-
-        except Exception as e:
-            logger.warning(f"Cache cleanup failed for {language}: {e}")
+        entries: tuple[tuple[_transactions.Namespace, str], ...] = (
+            ("downloads", f"tree-sitter-{language}"),
+            ("builds", language),
+        )
+        for namespace, name in entries:
+            try:
+                result = _transactions.remove_entry(
+                    self._base_cache_dir, namespace, name
+                )
+            except Exception as e:
+                logger.warning(f"Cache cleanup failed for {language}: {e}")
+                continue
+            for error in result.errors:
+                logger.warning(f"Cache cleanup failed for {language}: {error}")
 
     def _cleanup_dependencies(self, language: str, dependencies: list[str]):
         """Clean up grammar dependencies if no longer needed."""
@@ -1683,7 +1775,7 @@ class GrammarManager:
         Returns:
             Cleanup statistics
         """
-        stats = {
+        stats: dict[str, Any] = {
             "files_removed": 0,
             "bytes_freed": 0,
             "directories_cleaned": [],
@@ -1693,23 +1785,20 @@ class GrammarManager:
         cutoff_time = time.time() - (older_than_days * 24 * 60 * 60)
 
         try:
-            # Clean downloads directory
-            downloads_dir = self._cache_dir / "downloads"
-            if downloads_dir.exists():
-                cleaned = self._cleanup_directory(downloads_dir, cutoff_time)
+            # Clean download and build entries: each candidate is re-checked
+            # and retired under the cache root lock (treesitter-chunker#323).
+            namespaces: tuple[_transactions.Namespace, ...] = ("downloads", "builds")
+            for namespace in namespaces:
+                if not os.path.lexists(self._cache_dir / namespace):
+                    continue
+                cleaned = self._cleanup_directory(
+                    self._cache_dir / namespace, cutoff_time
+                )
                 stats["files_removed"] += cleaned["files_removed"]
                 stats["bytes_freed"] += cleaned["bytes_freed"]
+                stats["errors"].extend(cleaned["errors"])
                 if cleaned["files_removed"] > 0:
-                    stats["directories_cleaned"].append("downloads")
-
-            # Clean builds directory
-            builds_dir = self._cache_dir / "builds"
-            if builds_dir.exists():
-                cleaned = self._cleanup_directory(builds_dir, cutoff_time)
-                stats["files_removed"] += cleaned["files_removed"]
-                stats["bytes_freed"] += cleaned["bytes_freed"]
-                if cleaned["files_removed"] > 0:
-                    stats["directories_cleaned"].append("builds")
+                    stats["directories_cleaned"].append(namespace)
 
             # Clean validation cache: a locked fresh read, prune and replace.
             # A link at the record name is reported, never followed.
@@ -1749,39 +1838,29 @@ class GrammarManager:
             stats["errors"].append(str(e))
             return stats
 
-    def _cleanup_directory(self, directory: Path, cutoff_time: float) -> dict[str, int]:
-        """Clean up files in a directory older than cutoff time."""
-        stats = {"files_removed": 0, "bytes_freed": 0}
+    def _cleanup_directory(self, directory: Path, cutoff_time: float) -> dict[str, Any]:
+        """Prune entries of one namespace older than the cutoff.
 
+        ``files_removed`` counts entries removed; ``bytes_freed`` counts only
+        regular files actually deleted. Links are removed as leaves and never
+        followed.
+        """
+        stats: dict[str, Any] = {"files_removed": 0, "bytes_freed": 0, "errors": []}
+        namespace = directory.name
+        if namespace not in ("downloads", "builds"):
+            stats["errors"].append(f"Not a cache namespace: {directory}")
+            return stats
         try:
-            for item in directory.iterdir():
-                try:
-                    item_stat = item.stat()
-                    if item_stat.st_mtime < cutoff_time:
-                        if item.is_file():
-                            stats["bytes_freed"] += item_stat.st_size
-                            item.unlink()
-                            stats["files_removed"] += 1
-                        elif item.is_dir():
-                            if any(
-                                child.lstat().st_mtime >= cutoff_time
-                                for child in item.rglob("*")
-                            ):
-                                logger.warning(
-                                    "Skipping mixed-age cache directory: %s", item
-                                )
-                                continue
-                            dir_size = sum(
-                                f.stat().st_size for f in item.rglob("*") if f.is_file()
-                            )
-                            stats["bytes_freed"] += dir_size
-                            shutil.rmtree(item)
-                            stats["files_removed"] += 1
-
-                except Exception as e:
-                    logger.warning(f"Failed to clean {item}: {e}")
-
+            result = _transactions.prune_entries(
+                directory.parent,
+                "downloads" if namespace == "downloads" else "builds",
+                cutoff=cutoff_time,
+            )
         except Exception as e:
             logger.error(f"Failed to cleanup directory {directory}: {e}")
-
+            stats["errors"].append(f"Failed to clean {namespace}: {e}")
+            return stats
+        stats["files_removed"] = result.entries_removed
+        stats["bytes_freed"] = result.bytes_freed
+        stats["errors"].extend(f"Failed to clean {e}" for e in result.errors)
         return stats
