@@ -106,8 +106,10 @@ entirely: nothing is read or written, and every request is extracted.
   that refers back to itself, or nesting too deep to fingerprint.
 
 Core and streaming entries for one file coexist. Writing an entry removes the
-same file's entries for that language and mode under any older identity.
+same file's entries for that language and mode under any other identity.
 Entries for files that are never written again stay until `invalidate_cache()`.
+Installs or configurations that share one cache directory therefore replace
+each other's entries and re-extract; give each its own `cache_dir=`.
 
 The chunker version is part of the identity, so a development build whose
 version did not change keeps serving entries written before its extraction

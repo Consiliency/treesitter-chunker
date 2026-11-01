@@ -376,7 +376,7 @@ class ASTCache:
         Returns ``False`` without writing when there is no identity (see
         :func:`chunk_cache_identity`) or the grammar cannot be loaded. A write
         also removes this file's entries for the same language and mode under
-        any older identity.
+        any other identity.
         """
         identity = _identity_or_none(language, extraction)
         if identity is None:

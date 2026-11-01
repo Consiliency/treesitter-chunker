@@ -471,7 +471,57 @@ def _concurrent_cache_user(cache_dir, source, barrier, results, rounds):
     results.put(report)
 
 
+def test_opening_the_cache_only_creates_and_never_drops(tmp_path, monkeypatch):
+    cache_dir = tmp_path / "cache"
+    _seed_pre_release_table(cache_dir)
+    with closing(sqlite3.connect(cache_dir / "ast_cache.db")) as conn:
+        conn.execute(
+            "CREATE TABLE file_cache (file_path TEXT NOT NULL, "
+            "language TEXT NOT NULL, chunks_data BLOB NOT NULL, "
+            "PRIMARY KEY (file_path, language))"
+        )
+        conn.execute("INSERT INTO file_cache VALUES ('old.py', 'python', x'00')")
+        conn.commit()
+
+    statements: list[str] = []
+    real_connect = sqlite3.connect
+
+    def traced_connect(*args, **kwargs):
+        # Spy only: the real SQLite connection executes every statement.
+        connection = real_connect(*args, **kwargs)
+        connection.set_trace_callback(
+            lambda sql: statements.append(" ".join(sql.split()))
+        )
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", traced_connect)
+    for _ in range(2):  # a fresh database, then one that already has the table
+        statements.clear()
+        ASTCache(cache_dir=cache_dir)
+        assert len(statements) == 2, statements
+        assert statements[0].startswith("CREATE TABLE IF NOT EXISTS chunk_cache_v3 (")
+        assert statements[1] == (
+            "CREATE INDEX IF NOT EXISTS idx_chunk_cache_v3_hash "
+            "ON chunk_cache_v3(file_hash)"
+        )
+        for statement in statements:
+            assert not statement.upper().startswith(("DROP", "ALTER", "DELETE"))
+    monkeypatch.undo()
+
+    with closing(sqlite3.connect(cache_dir / "ast_cache.db")) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM chunk_cache").fetchone() == (1,)
+        assert conn.execute("SELECT COUNT(*) FROM file_cache").fetchone() == (1,)
+        indexes = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+            )
+        }
+    assert {"idx_chunk_cache_hash", "idx_chunk_cache_v3_hash"} <= indexes
+
+
 def test_concurrent_processes_share_the_cache_without_losing_entries(tmp_path):
+    """Smoke test: real spawned processes open, write and re-read together."""
     workers, rounds = 4, 15
     cache_dir = tmp_path / "cache"
     _seed_pre_release_table(cache_dir)
