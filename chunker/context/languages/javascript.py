@@ -84,7 +84,6 @@ class JavaScriptContextExtractor(BaseContextExtractor):
             "function_declaration": JavaScriptContextExtractor._extract_function_declaration,
             "generator_function_declaration": JavaScriptContextExtractor._extract_function_declaration,
             "function_expression": JavaScriptContextExtractor._extract_function_expression,
-            "generator_function": JavaScriptContextExtractor._extract_function_expression,
             "arrow_function": JavaScriptContextExtractor._extract_function_expression,
             "method_definition": JavaScriptContextExtractor._extract_method_definition,
             "class_declaration": JavaScriptContextExtractor._extract_class_declaration,
@@ -369,7 +368,6 @@ class JavaScriptContextExtractor(BaseContextExtractor):
                 "function_declaration",
                 "generator_function_declaration",
                 "function_expression",
-                "generator_function",
                 "arrow_function",
                 "method_definition",
             }:
