@@ -1,0 +1,37 @@
+{
+  "schema": "treesitter-chunker.reference-oracle.v1",
+  "language": "javascript",
+  "fixture": "binding_identifiers.js",
+  "issues": ["treesitter-chunker#293"],
+  "scopes": {
+    "root": {"node_type": "program", "row": 0, "column": 0},
+    "callback_fn": {"node_type": "function_expression", "row": 5, "column": 17},
+    "single_arrow": {"node_type": "arrow_function", "row": 9, "column": 15},
+    "withDefault": {"node_type": "function_declaration", "row": 11, "column": 0},
+    "fromArray": {"node_type": "function_declaration", "row": 17, "column": 0}
+  },
+  "occurrences": [
+    {"issue": "treesitter-chunker#293", "name": "Default", "row": 1, "column": 7, "role": "binding", "scope": "root"},
+    {"issue": "treesitter-chunker#293", "name": "LIMIT", "row": 3, "column": 6, "role": "binding", "scope": "root"},
+    {"issue": "treesitter-chunker#293", "name": "namedExpression", "row": 5, "column": 26, "role": "binding", "scope": "callback_fn"},
+    {"issue": "treesitter-chunker#293", "name": "first", "row": 5, "column": 42, "role": "binding", "scope": "callback_fn"},
+    {"issue": "treesitter-chunker#293", "name": "first", "row": 6, "column": 9, "role": "use", "scope": "callback_fn"},
+    {"issue": "treesitter-chunker#293", "name": "namedExpression", "row": 6, "column": 17, "role": "use", "scope": "callback_fn"},
+    {"issue": "treesitter-chunker#293", "name": "param", "row": 9, "column": 15, "role": "binding", "scope": "single_arrow"},
+    {"issue": "treesitter-chunker#293", "name": "param", "row": 9, "column": 24, "role": "use", "scope": "single_arrow"},
+    {"issue": "treesitter-chunker#293", "name": "option", "row": 11, "column": 21, "role": "binding", "scope": "withDefault"},
+    {"issue": "treesitter-chunker#293", "name": "LIMIT", "row": 11, "column": 30, "role": "use", "scope": "withDefault"},
+    {"issue": "treesitter-chunker#293", "name": "option", "row": 12, "column": 9, "role": "use", "scope": "withDefault"},
+    {"issue": "treesitter-chunker#293", "name": "head", "row": 15, "column": 7, "role": "binding", "scope": "root"},
+    {"issue": "treesitter-chunker#293", "name": "tail", "row": 15, "column": 15, "role": "binding", "scope": "root"},
+    {"issue": "treesitter-chunker#293", "name": "alpha", "row": 17, "column": 20, "role": "binding", "scope": "fromArray"},
+    {"issue": "treesitter-chunker#293", "name": "beta", "row": 17, "column": 27, "role": "binding", "scope": "fromArray"},
+    {"issue": "treesitter-chunker#293", "name": "alpha", "row": 18, "column": 9, "role": "use", "scope": "fromArray"},
+    {"issue": "treesitter-chunker#293", "name": "beta", "row": 18, "column": 17, "role": "use", "scope": "fromArray"},
+    {"issue": "treesitter-chunker#293", "name": "value", "row": 22, "column": 20, "role": "use", "scope": "root", "node_type": "shorthand_property_identifier"},
+    {"issue": "treesitter-chunker#293", "name": "LIMIT", "row": 22, "column": 27, "role": "use", "scope": "root", "node_type": "shorthand_property_identifier"},
+    {"issue": "treesitter-chunker#293", "name": "Default", "row": 24, "column": 12, "role": "use", "scope": "root"},
+    {"issue": "treesitter-chunker#293", "name": "head", "row": 24, "column": 52, "role": "use", "scope": "root"},
+    {"issue": "treesitter-chunker#293", "name": "tail", "row": 24, "column": 58, "role": "use", "scope": "root"}
+  ]
+}

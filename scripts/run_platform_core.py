@@ -67,6 +67,7 @@ COMMON_TESTS = [
     "tests/test_parser.py",
     "tests/test_core_span_consistency.py",
     "tests/test_call_reference_guard.py",
+    "tests/test_reference_fixture_oracle.py",
     "tests/test_boundary_ir_incremental_runtime.py",
     "tests/test_boundary_cache_key.py",
     "tests/test_factory.py::TestParserFactory::test_492_incompatible_custom_never_uses_pack",
