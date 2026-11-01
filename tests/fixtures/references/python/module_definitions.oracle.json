@@ -16,7 +16,8 @@
     "shadowed": {"node_type": "function_definition", "row": 41, "column": 0},
     "rebound": {"node_type": "function_definition", "row": 45, "column": 0},
     "Outer": {"node_type": "class_definition", "row": 50, "column": 0},
-    "Outer.Inner": {"node_type": "class_definition", "row": 51, "column": 4}
+    "Outer.Inner": {"node_type": "class_definition", "row": 51, "column": 4},
+    "SPREAD.key_lambda": {"node_type": "lambda", "row": 55, "column": 24}
   },
   "definitions": [
     {"issue": "treesitter-chunker#274", "name": "Renderer", "scope": "root", "expect": "found", "node_type": "class_definition", "row": 5, "column": 0},
@@ -51,6 +52,8 @@
     {"issue": "treesitter-chunker#274", "name": "rebound", "scope": "root", "expect": "found", "node_type": "function_definition", "row": 45, "column": 0},
     {"issue": "treesitter-chunker#274", "name": "Inner", "scope": "Outer.Inner", "expect": "absent"},
     {"issue": "treesitter-chunker#274", "name": "Outer", "scope": "Outer.Inner", "expect": "found", "node_type": "class_definition", "row": 50, "column": 0},
-    {"issue": "treesitter-chunker#274", "name": "marker", "scope": "Outer", "expect": "absent"}
+    {"issue": "treesitter-chunker#274", "name": "marker", "scope": "Outer", "expect": "absent"},
+    {"issue": "treesitter-chunker#274", "name": "helper", "scope": "SPREAD.key_lambda", "expect": "found", "node_type": "identifier", "row": 55, "column": 32},
+    {"issue": "treesitter-chunker#274", "name": "render_report", "scope": "SPREAD.key_lambda", "expect": "found", "node_type": "identifier", "row": 55, "column": 42}
   ]
 }

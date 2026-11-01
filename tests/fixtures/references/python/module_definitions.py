@@ -51,3 +51,6 @@ def rebound():
 class Outer:
     class Inner:
         marker = 1
+
+
+SPREAD = sorted([], key=lambda *helper, **render_report: (helper, render_report))

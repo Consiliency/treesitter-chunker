@@ -18,7 +18,28 @@ _COMPREHENSION_SCOPES = frozenset(
 )
 _FUNCTION_SCOPES = frozenset({"function_definition", "lambda"})
 _DEFAULT_PARAMETERS = frozenset({"default_parameter", "typed_default_parameter"})
-_PARAMETER_LISTS = frozenset({"parameters", "lambda_parameters"})
+_LAMBDA_PARAMETER_LISTS = frozenset({"lambda_parameters"})
+_PARAMETER_LISTS = frozenset({"parameters"}) | _LAMBDA_PARAMETER_LISTS
+_SPLAT_PATTERNS = frozenset({"list_splat_pattern", "dictionary_splat_pattern"})
+
+
+def _is_parameter_name(node: Node) -> bool:
+    """Check if an identifier names a lookup-visible parameter.
+
+    Plain ``def`` and ``lambda`` parameters count, and so do lambda splats
+    (``lambda *items, **options``). ``def`` splats remain tracked by
+    treesitter-chunker#554.
+    """
+    parent = node.parent
+    if node.type != "identifier" or parent is None:
+        return False
+    if parent.type in _PARAMETER_LISTS:
+        return True
+    return (
+        parent.type in _SPLAT_PATTERNS
+        and parent.parent is not None
+        and parent.parent.type in _LAMBDA_PARAMETER_LISTS
+    )
 
 
 class PythonContextExtractor(BaseContextExtractor):
@@ -265,11 +286,7 @@ class PythonSymbolResolver(BaseSymbolResolver):
     @staticmethod
     def _is_definition_node(node: Node) -> bool:
         """Check if a node defines a symbol."""
-        if (
-            node.type == "identifier"
-            and node.parent is not None
-            and node.parent.type in _PARAMETER_LISTS
-        ):
+        if _is_parameter_name(node):
             return True
         return node.type in {
             "function_definition",
@@ -290,7 +307,7 @@ class PythonSymbolResolver(BaseSymbolResolver):
     def _get_defined_name(node: Node) -> str | None:
         """Get the name being defined by a definition node."""
         if node.type == "identifier":
-            if node.parent is None or node.parent.type not in _PARAMETER_LISTS:
+            if not _is_parameter_name(node):
                 return None
             return node.text.decode("utf-8") if node.text else None
         return PythonScopeAnalyzer._get_defined_name(node)

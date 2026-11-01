@@ -26,16 +26,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Python context lookup is truthful against the shared real-parser reference
-  fixtures (`tests/fixtures/references/python/`).
-  `find_symbol_definition` now finds module and nested functions, classes,
-  assignments and parameters (including lambda parameters), lets parameters
+  fixtures (`tests/fixtures/references/python/`). `find_symbol_definition` now
+  finds module and nested functions, classes, assignments and parameters
+  (including lambda parameters and lambda `*`/`**` splats), lets parameters
   and locals shadow outer names, and no longer matches class-body names, or a
-  method's or class's own name, from inside it (treesitter-chunker#274). Reference lookup treats loop, `with`,
-  `except` and lambda targets, including starred targets and lambda splat
-  parameters, as bindings and default-parameter values as uses
-  (treesitter-chunker#294). Assignment expressions bind in the nearest
-  enclosing non-comprehension scope, and parameter defaults are evaluated in
-  the scope that contains the function (treesitter-chunker#278).
+  method's or class's own name, from inside it (treesitter-chunker#274).
+  Reference lookup treats loop, `with`, `except` and lambda targets, including
+  starred targets and lambda splat parameters, as bindings and
+  default-parameter values as uses (treesitter-chunker#294). Assignment
+  expressions bind in the nearest enclosing non-comprehension scope, and
+  parameter defaults are evaluated in the scope that contains the function
+  (treesitter-chunker#278).
 
 - `UserGrammarTools.install_grammar` and `update_grammar` no longer overwrite
   the installed grammar library in place, which could crash a process that had
