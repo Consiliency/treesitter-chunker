@@ -38,6 +38,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parameter defaults are evaluated in the scope that contains the function
   (treesitter-chunker#278).
 
+- `GrammarValidator` no longer loses validation records written by another
+  validator or process on the same cache root, and no longer follows a link at
+  `validation_cache.json` (treesitter-chunker#370). Records are merged into a
+  fresh read under the cache root lock (`<cache_dir>/.txn.lock`) and published
+  with an atomic same-directory replace. `GrammarManager.cleanup_cache` prunes
+  the file the same way, with the same expiration rule. A symlink, junction or
+  other non-regular file at that name is now reported (a warning for the
+  validator, an `errors` entry for cleanup) and its target is never read or
+  written. The cache root gains `.txn.lock` and a `.txn/` control directory,
+  which are safe to leave in place. Nested or multi-filesystem cache roots are
+  refused (see the cache transaction contract).
+
 - The SQLite chunk cache (`ASTCache`, used by default by `ParallelChunker`,
   `chunk_files_parallel` and `chunk_directory_parallel`) no longer returns core
   chunks for a streaming request or the reverse, and no longer reuses entries
