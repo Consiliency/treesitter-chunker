@@ -89,8 +89,16 @@ The type gate compares complete messages and error codes, normalizing only
 leading file locations. Literal values, numeric colons and backslashes inside
 messages remain significant. For a diagnostic-format migration, measure and
 reconcile the baseline from unchanged accepted code before candidate edits. A new
-candidate's errors must be fixed or tracked separately; do not use `--update`
-to absorb them into the baseline. Ordinary baseline updates remove cleared debt.
+candidate's errors must be fixed or tracked separately. `--update` only
+removes cleared signatures: when mypy reports a signature absent from the
+baseline, it fails and leaves the file unchanged, so new errors cannot be
+absorbed (treesitter-chunker#587).
+
+`[tool.mypy] python_version` stays at the 3.12 floor, so the gate checks the
+same target whichever interpreter runs it. On unchanged main its output was
+identical under 3.12 and 3.14. Release validation runs the same lint, format
+and type commands as CI; `tests/test_type_gate_policy.py` checks the type
+commands in `ci.yml`, `release.yml`, this file and the release checklist.
 
 For broad behavior changes, run the platform-core and full tiers locally:
 
