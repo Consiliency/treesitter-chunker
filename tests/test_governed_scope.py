@@ -683,10 +683,22 @@ def test_product_unicode_preimage(tmp_path):
 
 def test_unexpected_recursion_exit(tmp_path):
     request = tmp_path / "deep.json"
-    # CPython 3.14 bounds C recursion by stack size, so its json decoder accepts
-    # 10,000 levels; 100,000 raises RecursionError on 3.12 and 3.14 alike
-    # (treesitter-chunker#502).
+    # CPython 3.14 bounds C recursion by the process's stack size, not the
+    # recursion limit: with a large or unlimited stack its json decoder accepts
+    # this request (treesitter-chunker#502). The driver therefore runs with an
+    # 8 MiB stack, under which 100,000 levels raise RecursionError on 3.12 and
+    # 3.14 alike.
     request.write_text("[" * 100000 + "0" + "]" * 100000)
+
+    def bounded_stack():
+        import resource
+
+        limit = 8 * 1024 * 1024
+        hard = resource.getrlimit(resource.RLIMIT_STACK)[1]
+        if hard != resource.RLIM_INFINITY:
+            limit = min(limit, hard)
+        resource.setrlimit(resource.RLIMIT_STACK, (limit, hard))
+
     cp = subprocess.run(
         [
             sys.executable,
@@ -700,6 +712,7 @@ def test_unexpected_recursion_exit(tmp_path):
             str(tmp_path / "out"),
         ],
         capture_output=True,
+        preexec_fn=bounded_stack,
     )
     require(
         cp.returncode == 2
