@@ -35,6 +35,30 @@ OIDC_ACTIONS = {"actions/download-artifact", "pypa/gh-action-pypi-publish"}
 OIDC_RUN_STEPS = {
     "cd dist\nsha256sum --check checksums.txt\nrm checksums.txt\n",
 }
+# Nothing else may shape what runs with the OIDC token: no ``shell:`` or step
+# ``env:`` (e.g. ``BASH_ENV``), no job-wide environment, defaults, container or
+# services, and no publisher input that redirects the upload.
+OIDC_STEP_KEYS = {"name", "id", "uses", "with", "run", "working-directory"}
+OIDC_FORBIDDEN_JOB_KEYS = {"env", "defaults", "container", "services"}
+OIDC_ACTION_INPUTS = {
+    "actions/download-artifact": {"name", "path", "pattern", "merge-multiple"},
+    # No ``repository-url``, ``user`` or ``password``: trusted publishing to
+    # the real PyPI only.
+    "pypa/gh-action-pypi-publish": {
+        "packages-dir",
+        "skip-existing",
+        "verbose",
+        "print-hash",
+        "attestations",
+    },
+}
+# The docs deploy job holds ``contents: write``; it may only check out (without
+# persisting the token), download the build artifact and publish it.
+DEPLOY_ACTIONS = {
+    "actions/checkout",
+    "actions/download-artifact",
+    "peaceiris/actions-gh-pages",
+}
 
 
 def _load(path: Path) -> dict:
@@ -99,9 +123,13 @@ def test_oidc_publishing_runs_only_behind_an_environment() -> None:
                 continue
             where = f"{path.name}:{name}"
             assert job.get("environment"), where
+            assert not OIDC_FORBIDDEN_JOB_KEYS & set(job), (where, sorted(job))
             for step in job["steps"]:
+                assert set(step) <= OIDC_STEP_KEYS, (where, step)
                 if "uses" in step:
-                    assert step["uses"].split("@", 1)[0] in OIDC_ACTIONS, (
+                    action = step["uses"].split("@", 1)[0]
+                    assert action in OIDC_ACTIONS, (where, step)
+                    assert set(step.get("with") or {}) <= OIDC_ACTION_INPUTS[action], (
                         where,
                         step,
                     )
@@ -125,6 +153,11 @@ def test_docs_build_never_holds_a_write_token() -> None:
     assert not any(
         "run" in step for step in deploy["steps"] if isinstance(step, dict)
     ), "deploy must not run repository code"
+    # No local action (``uses: ./...``) either: only the three pinned actions.
+    assert not any(
+        step.get("uses", "").startswith("./") for step in deploy["steps"]
+    ), "deploy must not run repository actions"
+    assert _actions(deploy) == DEPLOY_ACTIONS
     checkouts = [
         step
         for step in deploy["steps"]
