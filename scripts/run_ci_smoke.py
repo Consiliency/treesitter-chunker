@@ -83,6 +83,8 @@ CI_SMOKE_TESTS = [
     "tests/test_workflow_permissions_policy.py",
     # Workflow and release policy assertions; previously full-tier only.
     "tests/test_release_hygiene_policy.py",
+    "tests/test_scratch_root_policy.py",
+    "tests/test_fork_terminal_scratch.py",
 ]
 
 
