@@ -316,10 +316,18 @@ line ending matters):
   under `$TMPDIR`. `scripts/run_ci_smoke.py` hard-codes `-n auto`
   (treesitter-chunker#567), so local smoke runs its `CI_SMOKE_TESTS`
   selection with `-n 4`; each PR records that substitution.
-- Windows preflight: none of these lanes touches paths, native code,
-  temporary files, export formatting or configuration, so the standing
-  Windows preflight is not required. The SL-sel tests are Linux-only (local
-  `.so` builds); hosted macOS/Windows platform-core runs them as skips.
+- Windows preflight: treesitter-chunker#134 changes path handling (an
+  install record attaches to an artifact by same-file or resolved-path
+  match), so its PR runs the standing Windows preflight via `ssh win` in a
+  clean temporary clone at the exact head (`git rev-parse HEAD` checked, every
+  `uv` with `--directory <clone>`, clone removed afterwards). It also runs a
+  real-file probe of that matching on Windows, because the compiled-BAML
+  attribution tests are Linux-only (local `.so` builds) and hosted
+  macOS/Windows platform-core runs them as skips. The other PRs touch no
+  paths, native code, temporary files, export formatting or configuration,
+  so they do not need it. Host WIN Application Control (Code Integrity 3077)
+  and the treesitter-chunker#547 `WinError 32` teardown flake are recorded
+  if seen, not chased.
 - Separately discovered defects are recorded in their own issues, not folded
   in.
 
