@@ -36,4 +36,4 @@ def test_id_keyed_maps_preserve_duplicate_named_siblings_and_parent_links():
 
 
 def test_cache_version_invalidates_pre_identity_contract_entries():
-    assert CACHE_VERSION == "2.0"
+    assert CACHE_VERSION == "3.0"
