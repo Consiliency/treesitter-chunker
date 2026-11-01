@@ -117,3 +117,54 @@ def test_go_mod_version_precedes_source_build_constraint(tmp_path: Path) -> None
     assert serialized["go_version"] == "1.22"
     assert serialized["build_constraints"] == ["1.21"]
     assert serialized["source"] == "go.mod"
+
+
+@pytest.mark.parametrize(
+    ("conjunction", "expected"),
+    [
+        ("go1.10,go1.9", "1.10"),
+        ("go1.9,go1.10", "1.10"),
+        ("go1.21,go1.9,go1.10", "1.21"),
+        ("go1.9,go1.21,go1.10", "1.21"),
+        ("go1.10,go1.9,go1.21", "1.21"),
+        ("go1.10,go1.9,linux", "1.10"),
+        ("linux,go1.10,cgo,go1.9", "1.10"),
+        ("go2.0,go1.99", "2.0"),
+    ],
+)
+@pytest.mark.parametrize("comment", ["// +build", "//+build"])
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_legacy_comma_conjunction_retains_every_release_tag(
+    tmp_path: Path, conjunction: str, expected: str, comment: str, newline: str
+) -> None:
+    """treesitter-chunker#437: a legacy comma conjunction needs its highest tag.
+
+    Named mutation ``M437-last-tag`` (keep only the greedy last tag) fails
+    every case whose highest release tag is not the last one.
+    """
+    source = f"{comment} {conjunction}{newline}{newline}" + FIXTURE.read_text(
+        encoding="utf-8"
+    )
+    source_path = tmp_path / "service.go"
+    source_path.write_text(source, encoding="utf-8", newline="")
+    assert not get_parser("go").parse(source.encode("utf-8")).root_node.has_error
+
+    detector = GoVersionDetector()
+    hints = detector.detect_version(source, source_path)
+    assert hints["build_constraints"] == expected
+    assert detector.get_primary_version(hints) == expected
+
+
+def test_modern_constraint_precedes_legacy_comma_conjunction(tmp_path: Path) -> None:
+    source = "//go:build go1.11\n// +build go1.22,go1.9\n\n" + FIXTURE.read_text(
+        encoding="utf-8"
+    )
+    source_path = tmp_path / "service.go"
+    source_path.write_text(source, encoding="utf-8")
+    assert not get_parser("go").parse(source.encode("utf-8")).root_node.has_error
+    detector = GoVersionDetector()
+    hints = detector.detect_version(source, source_path)
+    assert hints["build_constraints"] == "1.11"
+    assert detector.get_primary_version(hints) == "1.11"
+    combined = {**hints, "go_mod_version": "1.23"}
+    assert detector.get_primary_version(combined) == "1.23"

@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Go build-constraint version hints no longer drop earlier release tags from
+  a legacy comma conjunction (treesitter-chunker#437). `// +build go1.10,go1.9`
+  now reports `1.10` in either order, as `go1.10,go1.9,linux` does; before, only
+  the last `goX.Y` tag on the line counted. OR (whitespace) and negated legacy
+  terms are unchanged, and `//go:build` and `go.mod` precedence are unchanged.
 - Compact files from the direct `chunker.export.graphml_exporter` and
   `graphml_yed_exporter` modules no longer double CRLF caller text leaves on
   Windows (treesitter-chunker#488). `export(path, pretty_print=False)` now

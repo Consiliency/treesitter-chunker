@@ -121,6 +121,22 @@ class GoVersionDetector:
             # Check old style build constraints (// +build)
             pattern = r"//\s*\+build\s+.*go(\d+)\.(\d+)"
             matches = re.findall(pattern, content)
+            # A legacy line that is one comma conjunction of positive tags
+            # requires every release tag in it, so keep them all, not only the
+            # last one (treesitter-chunker#437). OR and negation are not
+            # interpreted here.
+            legacy_conjunctions = re.findall(
+                r"^[ \t]*//[ \t]*\+build[ \t]+"
+                r"([A-Za-z0-9_.]+(?:,[A-Za-z0-9_.]+)+)[ \t]*\r?$",
+                content,
+                re.MULTILINE,
+            )
+            for conjunction in legacy_conjunctions:
+                matches.extend(
+                    match.groups()
+                    for term in conjunction.split(",")
+                    if (match := re.fullmatch(r"go(\d+)\.(\d+)", term))
+                )
             if matches:
                 versions = [f"{major}.{minor}" for major, minor in matches]
                 max_version = max(
