@@ -25,6 +25,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The package-level `chunker.export.GraphMLExporter` no longer turns TAB, LF
+  or CR in caller chunk IDs and relationship endpoints into spaces on Python
+  3.12, which could merge distinct nodes and their edges
+  (treesitter-chunker#489). It now serializes with ElementTree instead of
+  reparsing through `xml.dom.minidom`. The declaration, metadata comment, keys,
+  data values and text-leaf newline normalization (CRLF and lone CR become LF)
+  are unchanged, and malformed caller values still raise before anything is
+  written. Indentation is unchanged; empty-element layout (` />`) and text
+  escaping (`"` instead of `&quot;`) may differ. Regenerate affected GraphML
+  files. See
+  [the package exporter notes](docs/graphml_export.md#package-level-structured-exporter).
 - Python context lookup is truthful against the shared real-parser reference
   fixtures (`tests/fixtures/references/python/`). `find_symbol_definition` now
   finds module and nested functions, classes, assignments and parameters
