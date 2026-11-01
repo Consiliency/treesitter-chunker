@@ -496,7 +496,6 @@ chunker/grammar_management/compatibility.py: error: Dict entry 4 has incompatibl
 chunker/grammar_management/compatibility.py: error: Function is missing a return type annotation  [no-untyped-def]
 chunker/grammar_management/compatibility.py: error: Incompatible return value type (got "object", expected "SupportsDunderLT[Any] | SupportsDunderGT[Any]")  [return-value]
 chunker/grammar_management/compatibility.py: error: Incompatible types in assignment (expression has type "object", target has type "float")  [assignment]
-chunker/grammar_management/compatibility.py: error: Need type annotation for "conflicts" (hint: "conflicts: dict[<type>, <type>] = ...")  [var-annotated]
 chunker/grammar_management/compatibility.py: error: Need type annotation for "error_counts" (hint: "error_counts: dict[<type>, <type>] = ...")  [var-annotated]
 chunker/grammar_management/compatibility.py: error: Need type annotation for "lines" (hint: "lines: list[<type>] = ...")  [var-annotated]
 chunker/grammar_management/compatibility.py: error: Need type annotation for "matrix" (hint: "matrix: dict[<type>, <type>] = ...")  [var-annotated]
