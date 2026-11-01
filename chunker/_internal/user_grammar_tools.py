@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from .grammar_management import SmartGrammarManager, _require_language_component
+from .package_supplier import is_record_entry
 from .trusted_artifacts import pin_provenance
 from ..grammar.integrity import NativeProbeResult, probe_native_grammar
 from ..grammar.source_validation import validate_grammar_source
@@ -132,6 +133,10 @@ class UserGrammarTools:
         health and compatibility for ``language`` are dropped either way.
         """
         target = self.build_dir / f"{language}.so"
+        if self._refuse_shipped_target(language, result):
+            self.manager.health_cache.pop(language, None)
+            self.manager.compatibility_cache.pop(language, None)
+            return False
         provenance = pin_provenance(self.manager.trusted_artifacts, language)
         if provenance is None:
             # Rule 3: without a pin nothing is staged and the probe is not
@@ -184,6 +189,20 @@ class UserGrammarTools:
             return False
         return True
 
+    def _refuse_shipped_target(self, language: str, result: dict[str, Any]) -> bool:
+        """Record an error if ``<language>.so`` here is a shipped RECORD entry."""
+        target = self.build_dir / f"{language}.so"
+        if not is_record_entry(target):
+            return False
+        result["errors"].append(
+            f"Refusing to replace {target}: it is a grammar shipped with the "
+            "installed treesitter-chunker package (listed in its RECORD), and "
+            "the shipped grammar cannot be replaced in place. Use a separate "
+            "build directory for local grammars and pin those instead."
+        )
+        result["status"] = "error"
+        return True
+
     def _refuse_shadowed_legacy_copy(
         self, language: str, result: dict[str, Any]
     ) -> bool:
@@ -224,6 +243,8 @@ class UserGrammarTools:
 
         try:
             _require_language_component(language)
+            if self._refuse_shipped_target(language, result):
+                return result  # before any clone or build
             repo_url = validate_grammar_source(repo_url)
             if branch.startswith("-"):
                 raise ValueError("Grammar branch must not start with '-'")
@@ -417,6 +438,8 @@ class UserGrammarTools:
 
         try:
             _require_language_component(language)
+            if self._refuse_shipped_target(language, result):
+                return result  # before any fetch or build
             source_dir = self.grammars_dir / f"tree-sitter-{language}"
             if not source_dir.exists():
                 result["errors"].append(f"Grammar source not found: {source_dir}")
