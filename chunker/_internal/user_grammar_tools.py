@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from .grammar_management import SmartGrammarManager, _require_language_component
+from .trusted_artifacts import pin_provenance
 from ..grammar.integrity import NativeProbeResult, probe_native_grammar
 from ..grammar.source_validation import validate_grammar_source
 
@@ -131,7 +132,7 @@ class UserGrammarTools:
         health and compatibility for ``language`` are dropped either way.
         """
         target = self.build_dir / f"{language}.so"
-        provenance = self.manager.trusted_artifacts.get(language)
+        provenance = pin_provenance(self.manager.trusted_artifacts, language)
         try:
             probe = publish_native_grammar(
                 library,
@@ -165,9 +166,10 @@ class UserGrammarTools:
             )
             if provenance is None:
                 message += (
-                    f" No approved pin was supplied for {language}: pass "
-                    "trusted_artifacts to UserGrammarTools. The grammar CLI "
-                    "cannot supply pins until treesitter-chunker#362."
+                    f" No approved pin was supplied for {language}: add its "
+                    "reviewed SHA-256 to the user-config pin file, pass "
+                    "--trusted-artifacts PATH to the grammar command, or pass "
+                    "trusted_artifacts to UserGrammarTools."
                 )
             result["errors"].append(message)
             result["status"] = "error"

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Grammar commands accept approved native-grammar pins (treesitter-chunker#362).
+  The argparse `grammar` group takes `--trusted-artifacts PATH` before the
+  subcommand, and otherwise reads the user-config pin file
+  `treesitter-chunker/trusted-artifacts.json` under `%APPDATA%`,
+  `~/Library/Application Support` or `$XDG_CONFIG_HOME` (`~/.config`). Both use
+  the strict `chunker.trusted_artifacts.v1` format and are never merged. With
+  a pin, `grammar info`/`diagnose` report a real compiled grammar `healthy`
+  and exit 0 again. Add `chunker.exceptions.TrustedArtifactsError` and the
+  shared reader `chunker._internal.trusted_artifacts`.
 - Add a trusted-controller reference producer of `scope_root_metadata.v2`
   (`tools/governed_scope_commitment.py`, treesitter-chunker#512) that reads only an
   independently identified bare Git store, never a working tree, with bounded Git I/O.
@@ -141,6 +150,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Behaviour change (treesitter-chunker#362):** every `grammar` subcommand now
+  resolves its pin source first. A missing or defective `--trusted-artifacts`
+  file, or a present but defective user-config pin file, exits 2 naming the
+  file and the defect, before any discovery, probe or native load. A local
+  grammar without a pin is reported `untrusted` (status `incompatible`) and is
+  never opened or probed, so an unpinned empty library now reports `untrusted`
+  rather than `empty`. Only the one-field record `{"sha256": ...}` reaches the
+  probe, and a positive admission is reused only within the same process,
+  keyed by content, pin and environment, never by path or file times.
 - Align the remaining Python version declarations with the 3.12 floor from
   treesitter-chunker#493: the release-process spec, getting-started, user guide,
   deployment, performance-core and VS Code docs, the conda recipe, all three

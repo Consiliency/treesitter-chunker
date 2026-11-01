@@ -36,7 +36,7 @@ def require(condition, name):
 
 
 def _run_main(monkeypatch, capsys, argv, tools):
-    monkeypatch.setattr(grammar_commands, "get_grammar_tools", lambda: tools)
+    monkeypatch.setattr(grammar_commands, "get_grammar_tools", lambda *_args: tools)
     monkeypatch.setattr(sys, "argv", ["chunker", *argv])
     code = main()
     captured = capsys.readouterr()
@@ -94,7 +94,8 @@ NONHEALTHY_CASES = {
     ),
     "corrupted": (
         _seed_corrupted,
-        None,
+        # Rule 3: an unpinned candidate is untrusted before any check.
+        {LANGUAGE: {"sha256": "0" * 64}},
         ["Status: ❌ corrupted", "Native admission failed: empty"],
     ),
     "untrusted": (
@@ -156,7 +157,7 @@ def test_grammar_info_uses_single_diagnosis(tmp_path, monkeypatch, capsys):
     original_diagnose = tools.manager.diagnose_grammar_issues
     original_probe = grammar_management.probe_native_grammar
 
-    def factory():
+    def factory(*_args):
         calls["factory"] += 1
         return tools
 
@@ -182,8 +183,10 @@ def test_grammar_info_uses_single_diagnosis(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
 
     require("Status: ⚠️ missing" in out, "missing report")
+    # Rule 3: a candidate that does not exist is reported missing without
+    # calling the probe.
     require(
-        calls == {"factory": 1, "info": 1, "diagnose": 1, "probe": 1},
+        calls == {"factory": 1, "info": 1, "diagnose": 1, "probe": 0},
         f"single observation counts {calls!r}",
     )
     require(code == 1, f"exit {code!r}")
@@ -261,10 +264,8 @@ def test_cli_factory_supplies_no_implicit_pins(tmp_path, monkeypatch, capsys):
     code = main()
     out = capsys.readouterr().out
 
-    require(
-        probes == [(artifact.absolute(), LANGUAGE, None)],
-        f"probe observed {probes!r}",
-    )
+    # Rule 3: with no pin the probe is never called and nothing is opened.
+    require(probes == [], f"probe observed {probes!r}")
     require("Status: ⚠️ incompatible" in out, "untrusted status")
     require("Native admission failed: untrusted" in out, "untrusted reason")
     require(artifact.read_bytes() == UNAPPROVED_BYTES, "seeded bytes unchanged")

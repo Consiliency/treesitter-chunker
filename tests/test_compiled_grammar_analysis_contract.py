@@ -531,9 +531,9 @@ def test_real_repository_install_reports_failed_native_admission(
         expected = (
             "Native admission failed for baml.so: untrusted (the library is not "
             "trusted by an approved SHA-256 pin); the installed library is "
-            "unchanged. No approved pin was supplied for baml: pass "
-            "trusted_artifacts to UserGrammarTools. The grammar CLI cannot "
-            "supply pins until treesitter-chunker#362."
+            "unchanged. No approved pin was supplied for baml: add its reviewed SHA-256 to the user-config pin file, pass "
+            "--trusted-artifacts PATH to the grammar command, or pass "
+            "trusted_artifacts to UserGrammarTools."
         )
     else:
         expected = (

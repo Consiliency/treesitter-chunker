@@ -82,9 +82,12 @@ failures to `corrupted`, other admission failures to `incompatible`, and only
 successful admission to `healthy`. An unchanged revision on update returns
 `warning` with the cause when the installed library is rejected.
 `grammar info` and `grammar diagnose` exit 1 unless the requested grammar is
-admitted as healthy. The CLI does not yet accept application pins
-(treesitter-chunker#362), so real grammars cannot be healthy: the preserved
-report may be missing, corrupted or incompatible, and these commands exit 1.
+admitted as healthy. The grammar commands take their pins from
+`--trusted-artifacts PATH` or the user-config pin file (see
+[Approved pins](#approved-pins)). A language without a pin is `untrusted`
+(status `incompatible`) and is never opened or probed; a grammar that was never
+installed still reports `missing`. Only the one-field record
+`{"sha256": ...}` for the requested language reaches the probe.
 
 #### Staged publication in the legacy tools
 
@@ -116,9 +119,10 @@ nothing. Close the processes using the library, then run `install_grammar`
 again for the same repository, with an approved pin for the new library.
 Automatic recovery and rollback are treesitter-chunker#363 work.
 
-**Interim limitation until treesitter-chunker#362 (ADMIT).** Without a pin, a
-generated library is never published. The error says so, and that the grammar
-CLI cannot supply pins until treesitter-chunker#362. Until then:
+**Pins are required to publish.** Without a pin, a generated library is never
+published, and the error names the ways to supply one: the user-config pin
+file, `--trusted-artifacts PATH` on the grammar command, or `trusted_artifacts`
+for embedding callers (see [Approved pins](#approved-pins)).
 
 - `grammar install` and `grammar update` (and unpinned `UserGrammarTools`
   callers) fail with `error` and exit 1 for a new or changed library.
@@ -126,8 +130,6 @@ CLI cannot supply pins until treesitter-chunker#362. Until then:
   chunking. Before, the copied `<language>.so` in the build directory was loaded
   by registry discovery. On macOS and Windows, discovery looks for
   `.dylib`/`.dll`, so the copied `.so` was not used there before either.
-- Embedding callers can publish today by passing `trusted_artifacts` with the
-  approved SHA-256 for each language.
 
 Official and package-supplied grammars are unaffected. They are loaded without
 going through this publication path and need no pin: the official
@@ -259,6 +261,52 @@ repository-owned artifact manifest before compiling it. The downloader fails
 closed when no manifest entry is available.
 
 ## CLI Commands Reference
+
+### Approved pins
+
+Local compiled grammars are used only under an approved SHA-256 pin
+(treesitter-chunker#362). Pins come from exactly one source, chosen in this
+order and **never merged**:
+
+1. `trusted_artifacts=` passed to a constructor (embedding code);
+2. `--trusted-artifacts PATH`, given to the `grammar` group before the
+   subcommand: `python -m chunker.cli grammar --trusted-artifacts pins.json info python`;
+3. the user-config pin file `trusted-artifacts.json`;
+4. no pins.
+
+| Platform | User-config pin file |
+|---|---|
+| Windows | `%APPDATA%\treesitter-chunker\trusted-artifacts.json` (none if `APPDATA` is unset or relative) |
+| macOS | `~/Library/Application Support/treesitter-chunker/trusted-artifacts.json` |
+| Linux and others | `$XDG_CONFIG_HOME/treesitter-chunker/trusted-artifacts.json` when `XDG_CONFIG_HOME` is absolute, otherwise `~/.config/treesitter-chunker/trusted-artifacts.json` |
+
+Both sources use the same file, at most 1 MiB of UTF-8 JSON with no duplicate
+keys:
+
+```json
+{"schema": "chunker.trusted_artifacts.v1",
+ "artifacts": {"python": {"sha256": "<64 hex digits>"}}}
+```
+
+Keys are requested language names (`[A-Za-z0-9][A-Za-z0-9_-]*`). Each value
+has exactly `sha256`. An empty `artifacts` object is valid and supplies no
+pins, so an option file with `{}` artifacts shuts off every local grammar for
+that command. Take digests from an independently reviewed build or release
+record, never from hashing a file the tool discovered. The tool never writes
+the pin file, and a pin file inside the cache directory, the package grammar
+directory, `CHUNKER_GRAMMAR_BUILD_DIR` or the combined library's directory is
+rejected. `chunker.config.*` and `~/.chunker/config.*` files are never pin
+sources.
+
+**Every grammar subcommand is pin-dependent.** The group resolves the active
+pin source before any subcommand runs. A missing or defective option file, or
+a present but defective config file when the option is absent, is a usage
+error: every subcommand (`list`, `info`, `install`, `update`, `remove`,
+`diagnose`, `health`, `validate`) exits **2** with a message naming the file
+and the defect, before discovery, any probe or any native load. No subcommand
+only warns. `--help` is unaffected. Fix or remove the file, or name a valid
+file with `--trusted-artifacts`. A missing config file is not an error; it
+supplies no pins.
 
 ### `grammar list`
 Lists all installed grammars with their health status.
