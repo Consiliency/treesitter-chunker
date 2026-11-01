@@ -23,9 +23,14 @@ if [ -f /proc/version ] && grep -qi "microsoft" /proc/version 2>/dev/null; then
 else
     IS_WSL2=false
     echo "⚠️  Not running in WSL2. Attempting Linux/macOS Chrome launch..."
+    # Reused profile under the inherited TMPDIR (or the system default when
+    # TMPDIR is unset), never a hardcoded system path. It is kept between
+    # launches on purpose (sessions persist) and is never removed here;
+    # delete it by hand when it is no longer wanted.
+    PROFILE_DIR="$(dirname "$(mktemp -u -t chrome-debug-profile.XXXXXX)")/chrome-debug-profile"
     # Try to find Chrome on Linux/macOS
     if command -v google-chrome &> /dev/null; then
-        google-chrome --remote-debugging-port="$PORT" --user-data-dir="/tmp/chrome-debug-profile" > /dev/null 2>&1 &
+        google-chrome --remote-debugging-port="$PORT" --user-data-dir="$PROFILE_DIR" > /dev/null 2>&1 &
         echo "✅ Chrome launched (Linux/macOS)"
         sleep 2
         if curl -s "http://localhost:$PORT/json/version" > /dev/null 2>&1; then
@@ -33,7 +38,7 @@ else
         fi
         exit 0
     elif command -v chromium-browser &> /dev/null; then
-        chromium-browser --remote-debugging-port="$PORT" --user-data-dir="/tmp/chrome-debug-profile" > /dev/null 2>&1 &
+        chromium-browser --remote-debugging-port="$PORT" --user-data-dir="$PROFILE_DIR" > /dev/null 2>&1 &
         echo "✅ Chromium launched (Linux)"
         sleep 2
         if curl -s "http://localhost:$PORT/json/version" > /dev/null 2>&1; then
