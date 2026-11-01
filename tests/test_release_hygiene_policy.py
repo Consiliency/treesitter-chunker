@@ -267,14 +267,13 @@ def _build_wheel_metadata(tmp_path, monkeypatch) -> str:
 
 def test_wheel_builder_zip_fallback_writes_requires_python(tmp_path, monkeypatch):
     """Without the ``wheel`` package the ZIP fallback still declares the floor."""
-    monkeypatch.setitem(sys.modules, "wheel.metadata", None)
+    monkeypatch.setitem(sys.modules, "wheel.wheelfile", None)
     metadata = _build_wheel_metadata(tmp_path, monkeypatch)
     assert f"Requires-Python: >={_floor_text()}" in metadata.splitlines()
 
 
 def test_wheel_builder_wheel_path_writes_requires_python(tmp_path, monkeypatch):
     """The ``wheel``-library path declares the floor in METADATA."""
-    pytest.importorskip("wheel.metadata")
     pytest.importorskip("wheel.wheelfile")
     metadata = _build_wheel_metadata(tmp_path, monkeypatch)
     assert f"Requires-Python: >={_floor_text()}" in metadata.splitlines()
