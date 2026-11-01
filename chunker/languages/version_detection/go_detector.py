@@ -19,10 +19,8 @@ logger = logging.getLogger(__name__)
 # below it cannot satisfy the constraint.
 
 _GO_RELEASE_TAG = re.compile(r"go([0-9]+)\.([0-9]+)")
-_GO_MODERN_LINE = re.compile(r"^[ \t]*//go:build[ \t]+(.*?)[ \t]*\r?$", re.MULTILINE)
-_GO_LEGACY_LINE = re.compile(
-    r"^[ \t]*//[ \t]*\+build[ \t]+(\S.*?)[ \t]*\r?$", re.MULTILINE
-)
+_GO_BUILD_PREFIX = "//go:build"
+_GO_LEGACY_LINE = re.compile(r"//\s*\+build(?:\s+(.*))?", re.DOTALL)
 # Tag-like runs are validated by _is_go_build_tag after tokenizing.
 _GO_MODERN_TOKEN = re.compile(r"[ \t]*(\(|\)|!|&&|\|\||[^\s()!&|]+)")
 _GO_MAX_TOKENS = 1000
@@ -42,6 +40,54 @@ def _is_go_build_tag(name: str) -> bool:
         char.isalpha() or unicodedata.category(char) == "Nd" or char in "_."
         for char in name
     )
+
+
+def _is_go_build_comment(line: str) -> bool:
+    """``//go:build`` alone or followed by whitespace (go/build rule)."""
+    if not line.startswith(_GO_BUILD_PREFIX):
+        return False
+    rest = line[len(_GO_BUILD_PREFIX) :]
+    return not rest or rest[0].isspace()
+
+
+def _go_file_header(content: str) -> tuple[list[str], list[str]]:
+    """Return the header's ``//go:build`` lines and its legacy region.
+
+    Mirrors ``go/build`` ``parseFileHeader``: only blank lines and comments
+    before the first other text form the header, ``/* */`` comments are
+    skipped, and legacy ``// +build`` lines count only up to the last blank
+    line before the first non-``//`` line. Lines are whitespace-trimmed.
+    """
+    lines = content.split("\n")
+    end = 0
+    ended = False
+    in_slash_star = False
+    go_build: list[str] = []
+    for index, raw in enumerate(lines):
+        line = raw.strip()
+        if not line and not ended:
+            end = index + 1
+            continue
+        if not line.startswith("//"):
+            ended = True
+        if not in_slash_star and _is_go_build_comment(line):
+            go_build.append(line)
+        while line:
+            if in_slash_star:
+                close = line.find("*/")
+                if close < 0:
+                    break
+                in_slash_star = False
+                line = line[close + 2 :].strip()
+                continue
+            if line.startswith("//"):
+                break
+            if line.startswith("/*"):
+                in_slash_star = True
+                line = line[2:].strip()
+                continue
+            return go_build, [text.strip() for text in lines[:end]]
+    return go_build, [text.strip() for text in lines[:end]]
 
 
 class _GoConstraintUnknownError(Exception):
@@ -89,14 +135,20 @@ def _parse_modern_go_build(expression: str) -> _GoExpr:
         return children[0] if len(children) == 1 else ("and", tuple(children))
 
     def parse_unary(depth: int) -> _GoExpr:
+        if peek() == "!":
+            take()
+            # Go rejects a direct "!!"; "!(!x)" stays valid.
+            if peek() == "!":
+                raise _GoConstraintUnknownError("double negation not allowed")
+            return ("not", parse_atom(depth + 1))
+        return parse_atom(depth)
+
+    def parse_atom(depth: int) -> _GoExpr:
         if depth > _GO_MAX_DEPTH:
             raise _GoConstraintUnknownError("expression nested too deeply")
         token = peek()
         if token is None:
             raise _GoConstraintUnknownError(f"unexpected end of {expression!r}")
-        if token == "!":
-            take()
-            return ("not", parse_unary(depth + 1))
         if token == "(":
             take()
             node = parse_or(depth + 1)
@@ -299,11 +351,19 @@ class GoVersionDetector:
     def analyze_build_constraints(self, content: str) -> dict[str, str | None]:
         """Infer the minimum Go release a file's build constraints require.
 
-        Recognizes ``//go:build`` expressions (``&&``, ``||``, ``!``,
-        parentheses) and legacy ``// +build`` lines (whitespace-separated
-        fields are OR-ed, comma-separated atoms AND-ed, ``!tag`` negated).
-        When any ``//go:build`` line is present, legacy lines are ignored;
-        several lines of one kind are AND-ed.
+        Only the file header is read, as ``go/build`` does: blank lines and
+        comments before the first other text, skipping ``/* */`` comments.
+        A ``//go:build`` line (``&&``, ``||``, ``!``, parentheses) anywhere
+        in the header controls, and legacy lines are then ignored. More than
+        one ``//go:build`` line, or one with no expression, is ``unknown``
+        (Go rejects the file). Without one, legacy ``// +build`` lines
+        before the header's last blank line are AND-ed; each has
+        whitespace-separated fields (OR) of comma-separated atoms (AND),
+        ``!tag`` negated.
+
+        ``unknown`` is deliberately conservative. Go treats a malformed
+        legacy line as the never-set ``ignore`` tag, and it rejects
+        malformed ``//go:build`` lines; neither gives a version here.
 
         A release tag ``goX.Y`` holds exactly at releases >= X.Y. Every other
         tag (GOOS, GOARCH, ``cgo``, custom tags) is treated as independent
@@ -319,15 +379,23 @@ class GoVersionDetector:
             line).
         """
         try:
-            modern = _GO_MODERN_LINE.findall(content)
+            modern, legacy_region = _go_file_header(content)
+            if len(modern) > 1:
+                raise _GoConstraintUnknownError("multiple //go:build lines")
             if modern:
-                nodes = [_parse_modern_go_build(expression) for expression in modern]
+                node = _parse_modern_go_build(
+                    modern[0][len(_GO_BUILD_PREFIX) :].strip()
+                )
             else:
-                legacy = _GO_LEGACY_LINE.findall(content)
+                legacy = [
+                    (match.group(1) or "").strip()
+                    for line in legacy_region
+                    if (match := _GO_LEGACY_LINE.fullmatch(line))
+                ]
                 if not legacy:
                     return {"minimum": None, "status": "absent", "reason": None}
                 nodes = [_parse_legacy_go_build(fields) for fields in legacy]
-            node = nodes[0] if len(nodes) == 1 else ("and", tuple(nodes))
+                node = nodes[0] if len(nodes) == 1 else ("and", tuple(nodes))
             minimum = _go_minimum_release(node)
         except _GoConstraintUnknownError as e:
             logger.debug("Go build constraint hint unknown: %s", e)

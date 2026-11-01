@@ -18,7 +18,6 @@ FIXTURE = (
 )
 
 
-@pytest.mark.parametrize("prefix", ["//go:build", "// +build"])
 @pytest.mark.parametrize(
     ("versions", "expected"),
     [
@@ -29,10 +28,13 @@ FIXTURE = (
     ],
 )
 def test_go_build_constraint_versions_are_numeric(
-    tmp_path: Path, prefix: str, versions: tuple[str, str], expected: str
+    tmp_path: Path, versions: tuple[str, str], expected: str
 ) -> None:
-    constraints = "".join(f"{prefix} go{version}\n" for version in versions)
-    source = constraints + FIXTURE.read_text(encoding="utf-8")
+    # Legacy lines are AND-ed; they must be followed by a blank line, as
+    # go/build requires. (Two //go:build lines are invalid: see
+    # test_go_build_header_placement_matches_go_build.)
+    constraints = "".join(f"// +build go{version}\n" for version in versions)
+    source = constraints + "\n" + FIXTURE.read_text(encoding="utf-8")
     source_path = tmp_path / "service.go"
     source_path.write_text(source, encoding="utf-8")
     assert not get_parser("go").parse(source.encode("utf-8")).root_node.has_error
@@ -346,3 +348,148 @@ def test_build_expression_search_has_a_step_budget(
         "status": "unknown",
         "reason": "expression too complex",
     }
+
+
+# Go 1.26.8 ``go/build`` ``Context.MatchFile`` results (GOOS=linux, lowest
+# go1.N accepted; "1.1" means no constraint) are noted per case. Go reads
+# constraints only from the file header (treesitter-chunker#438).
+@pytest.mark.parametrize(
+    ("source", "minimum", "status"),
+    [
+        pytest.param(
+            "//go:build go1.18\n\npackage sample\n\nconst tmpl = `\n//go:build go1.23\n`\n",
+            "1.18",
+            "minimum",
+            id="go-00",  # Go: 1.18
+        ),
+        pytest.param(
+            "//go:build go1.18\n\npackage sample\n\nfunc F() int {\n\t//go:build go1.22\n\treturn 1\n}\n",
+            "1.18",
+            "minimum",
+            id="go-01",  # Go: 1.18
+        ),
+        pytest.param(
+            "/*\n//go:build go1.22\n*/\n\npackage sample\n",
+            None,
+            "absent",
+            id="go-02",  # Go: 1.1
+        ),
+        pytest.param(
+            "// +build go1.21\npackage sample\n",
+            None,
+            "absent",
+            id="go-03",  # Go: 1.1
+        ),
+        pytest.param(
+            "//go:build go1.18\n\npackage sample\n\nconst tmpl = `\n//go:build go1.21 &&\n`\n",
+            "1.18",
+            "minimum",
+            id="go-04",  # Go: 1.18
+        ),
+        pytest.param(
+            "//go:build go1.18\n//go:build go1.21\n\npackage sample\n",
+            None,
+            "unknown",
+            id="go-05",  # Go: error: multiple //go:build comments
+        ),
+        pytest.param(
+            "//go:build\n\npackage sample\n",
+            None,
+            "unknown",
+            id="go-06",  # Go: error: unexpected end of expression
+        ),
+        pytest.param(
+            "//go:build\n// +build go1.22\n\npackage sample\n",
+            None,
+            "unknown",
+            id="go-07",  # Go: error: unexpected end of expression
+        ),
+        pytest.param(
+            "//go:build !!go1.18\n\npackage sample\n",
+            None,
+            "unknown",
+            id="go-08",  # Go: error: double negation not allowed
+        ),
+        pytest.param(
+            "//go:build !(!go1.18)\n\npackage sample\n",
+            "1.18",
+            "minimum",
+            id="go-09",  # Go: 1.18
+        ),
+        pytest.param(
+            "//go:build go1.20\npackage sample\n",
+            "1.20",
+            "minimum",
+            id="go-10",  # Go: 1.20
+        ),
+        pytest.param(
+            "// Copyright 2026\n\n//go:build go1.20\n\npackage sample\n",
+            "1.20",
+            "minimum",
+            id="go-11",  # Go: 1.20
+        ),
+        pytest.param(
+            "/* c */\n// +build go1.21\n\npackage sample\n",
+            None,
+            "absent",
+            id="go-12",  # Go: 1.1
+        ),
+        pytest.param(
+            "// +build go1.21\n\n/* c */\npackage sample\n",
+            "1.21",
+            "minimum",
+            id="go-13",  # Go: 1.21
+        ),
+        pytest.param(
+            "// +build go1.18 go1.20\n// +build go1.19\n\npackage sample\n",
+            "1.19",
+            "minimum",
+            id="go-14",  # Go: 1.19
+        ),
+        pytest.param(
+            "  //go:build go1.20\n\npackage sample\n",
+            "1.20",
+            "minimum",
+            id="go-15",  # Go: 1.20
+        ),
+        pytest.param(
+            "//go:build go1.20\r\n\r\npackage sample\r\n",
+            "1.20",
+            "minimum",
+            id="go-16",  # Go: 1.20
+        ),
+        pytest.param(
+            "// +build go1.21\r\n\r\npackage sample\r\n",
+            "1.21",
+            "minimum",
+            id="go-17",  # Go: 1.21
+        ),
+        pytest.param(
+            "// +build\n\npackage sample\n",
+            None,
+            "unknown",
+            id="go-18",  # Go: never
+        ),
+        pytest.param(
+            "//go:buildgo1.20\n\npackage sample\n",
+            None,
+            "absent",
+            id="go-19",  # Go: 1.1
+        ),
+    ],
+)
+def test_go_build_header_placement_matches_go_build(
+    source: str, minimum: str | None, status: str
+) -> None:
+    """Named mutations: ``M438-whole-file``, ``M438-and-duplicates``,
+    ``M438-bare-absent``, ``M438-double-negation``, ``M438-slash-star`` and
+    ``M438-legacy-no-blank``."""
+    assert not get_parser("go").parse(source.encode("utf-8")).root_node.has_error
+    detector = GoVersionDetector()
+    analysis = detector.analyze_build_constraints(source)
+    assert (analysis["minimum"], analysis["status"]) == (minimum, status)
+    assert bool(analysis["reason"]) is (status == "unknown")
+    hints = detector.detect_version(source, Path("service.go"))
+    assert hints["build_constraints"] == minimum
+    assert hints["build_constraints_status"] == status
+    assert detector.get_primary_version({**hints, "go_mod_version": "1.23"}) == "1.23"
