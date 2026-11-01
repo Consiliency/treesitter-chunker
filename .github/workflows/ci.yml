@@ -76,7 +76,11 @@ jobs:
           # Run ruff on production code and tests only (exclude archive, logs, etc.)
           # Use the uv-locked ruff (0.12.5) so CI matches the lockfile + local;
           # avoids unpinned-ruff drift flagging pre-existing issues on every push.
-          uv run --locked --all-extras ruff check chunker/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site
+          # chunker/build/ is listed explicitly: recursive discovery skips it via
+          # the .gitignore and [tool.ruff] "build" exclusions meant for generated
+          # output. The path list must match release.yml and CONTRIBUTING.md
+          # (tests/test_lint_path_policy.py, treesitter-chunker#517).
+          uv run --locked --all-extras ruff check chunker/ chunker/build/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site
 
       - name: Black
         run: uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py

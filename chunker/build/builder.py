@@ -183,6 +183,7 @@ _REQUIRED_WHEEL_PAYLOAD = frozenset(
         "chunker/grammar/source_validation.py",
         "chunker/grammar/validator.py",
         "chunker/grammar_management/__init__.py",
+        "chunker/grammar_management/_transactions.py",
         "chunker/grammar_management/cli.py",
         "chunker/grammar_management/compatibility.py",
         "chunker/grammar_management/config.py",
@@ -535,7 +536,6 @@ class BuildSystem(BuildSystemContract):
 
             # Build wheel manually using wheel package
             try:
-                from wheel.metadata import pkginfo_to_metadata
                 from wheel.wheelfile import WheelFile
 
                 # Create wheel filename

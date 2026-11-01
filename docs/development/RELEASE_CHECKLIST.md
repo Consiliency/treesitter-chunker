@@ -79,8 +79,8 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 
 ## Local-First Validation
 
-- `uv run --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site`
-- `uv run --all-extras black --check chunker/ cli/ tests/ scripts/`
+- `uv run --locked --all-extras ruff check chunker/ chunker/build/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site`
+- `uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py`
 - `uv run --with toml --all-extras python scripts/run_ci_smoke.py`
 - `uv run --with toml --all-extras python scripts/run_platform_core.py --platform linux`
 - `uv run --with toml --all-extras python scripts/run_full_suite.py` (nightly tier; includes `spec_tests/`)
