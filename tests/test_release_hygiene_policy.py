@@ -432,7 +432,8 @@ def test_validation_runs_on_primary_python_and_keeps_floor_coverage():
     ]
     assert platform["test"]["env"]["UV_PYTHON"] == "${{ matrix.python-version }}"
 
-    # The lint and type checks run once, in the ci.yml job on 3.14.
+    # The lint and type checks run once per run, in the ci.yml job (3.14, or
+    # 3.12 when scheduled).
     gate = "scripts/mypy_gate.py"
     runs = [
         (workflow, name)

@@ -690,13 +690,17 @@ def test_unexpected_recursion_exit(tmp_path):
     # 3.14 alike.
     request.write_text("[" * 100000 + "0" + "]" * 100000)
 
-    def bounded_stack():
-        import resource
+    # Imported here, not at module level, so the module still imports on
+    # Windows. The limit is computed before the fork, so preexec_fn makes only
+    # the setrlimit call (no import or lookup in the child).
+    import resource
 
-        limit = 8 * 1024 * 1024
-        hard = resource.getrlimit(resource.RLIMIT_STACK)[1]
-        if hard != resource.RLIM_INFINITY:
-            limit = min(limit, hard)
+    limit = 8 * 1024 * 1024
+    hard = resource.getrlimit(resource.RLIMIT_STACK)[1]
+    if hard != resource.RLIM_INFINITY:
+        limit = min(limit, hard)
+
+    def bounded_stack():
         resource.setrlimit(resource.RLIMIT_STACK, (limit, hard))
 
     cp = subprocess.run(

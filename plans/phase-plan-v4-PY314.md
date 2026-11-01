@@ -150,7 +150,7 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
     explicitly (`--python 3.14` or `UV_PYTHON=3.14`) in a separate project
     environment.
   - 3.14 test compatibility (test-only; no product change): the 3.14 tiers
-    found two tests that only worked on 3.12.
+    found three tests that only worked on 3.12.
     - CPython 3.14 bounds the json C decoder's recursion by the process stack
       size, so `tests/test_governed_scope.py::test_unexpected_recursion_exit`
       runs the driver with an 8 MiB `RLIMIT_STACK` and a 100,000-level
