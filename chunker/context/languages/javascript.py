@@ -301,14 +301,51 @@ class JavaScriptContextExtractor(BaseContextExtractor):
         parent = identifier_node.parent
         if parent is None:
             return False
-        if parent.type in {"import_clause", "array_pattern"}:
+        if parent.type == "import_clause":
             return True
         if parent.type in {"function_expression", "generator_function"}:
             return parent.child_by_field_name("name") == identifier_node
         if parent.type == "arrow_function":
             return parent.child_by_field_name("parameter") == identifier_node
-        if parent.type == "assignment_pattern":
-            return parent.child_by_field_name("left") == identifier_node
+        if parent.type == "array_pattern" or (
+            parent.type == "assignment_pattern"
+            and parent.child_by_field_name("left") == identifier_node
+        ):
+            return JavaScriptContextExtractor._is_declared_pattern(parent)
+        return False
+
+    @staticmethod
+    def _is_declared_pattern(pattern: Node) -> bool:
+        """Check whether a pattern declares names rather than assigning them.
+
+        ``const [a = 1] = xs`` and ``function f([a]) {}`` declare ``a``;
+        ``[a, b] = [b, a]`` and ``for ([a] of xs)`` write to an existing
+        binding, so their targets stay references, like ``a = 1``.
+        """
+        outer = pattern
+        while outer.parent is not None and outer.parent.type in {
+            "array_pattern",
+            "object_pattern",
+            "pair_pattern",
+            "assignment_pattern",
+            "object_assignment_pattern",
+            "rest_pattern",
+        }:
+            outer = outer.parent
+        container = outer.parent
+        if container is None:
+            return False
+        if container.type == "formal_parameters":
+            return True
+        if container.type == "variable_declarator":
+            return container.child_by_field_name("name") == outer
+        if container.type == "catch_clause":
+            return container.child_by_field_name("parameter") == outer
+        if container.type == "for_in_statement":
+            return (
+                container.child_by_field_name("left") == outer
+                and container.child_by_field_name("kind") is not None
+            )
         return False
 
     def _find_definition(
