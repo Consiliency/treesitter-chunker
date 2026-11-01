@@ -8,7 +8,8 @@ the ``[tool.ruff]`` ``exclude`` entry ``"build"`` both match any directory named
 The policy keeps both exclusions for generated build output and lists the
 tracked source package ``chunker/build/`` explicitly. Ruff does not apply its
 exclusions to a path named on the command line (``force-exclude`` is unset).
-CI, release validation and CONTRIBUTING.md must run exactly these commands.
+CI, release validation, CONTRIBUTING.md and the release checklist must run
+exactly these commands.
 """
 
 from __future__ import annotations
@@ -48,6 +49,7 @@ COMMAND_FILES = (
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
     "CONTRIBUTING.md",
+    "docs/development/RELEASE_CHECKLIST.md",
 )
 
 # A deliberate violation: Ruff F401 (unused import) at the appended line.
@@ -58,7 +60,8 @@ def _command_lines(relative: str, tool: str) -> list[str]:
     text = (ROOT / relative).read_text(encoding="utf-8")
     marker = f"{UV_PREFIX} {tool} "
     return [
-        line[line.index(marker) :].strip()
+        # Markdown lists wrap commands in inline code; drop the backticks.
+        line[line.index(marker) :].strip().rstrip("`")
         for line in text.splitlines()
         if marker in line
     ]
