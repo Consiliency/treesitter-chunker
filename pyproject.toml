@@ -222,6 +222,9 @@ exclude = [
     ".ruff_cache",
     ".venv",
     "__pypackages__",
+    # Matches every directory named build, including the tracked source package
+    # chunker/build. CI therefore names chunker/build/ explicitly; see
+    # tests/test_lint_path_policy.py (treesitter-chunker#517).
     "build",
     "dist",
     ".claude",

@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Compact files from the direct `chunker.export.graphml_exporter` and
+  `graphml_yed_exporter` modules no longer double CRLF caller text leaves on
+  Windows (treesitter-chunker#488). `export(path, pretty_print=False)` now
+  writes exactly the UTF-8 bytes of `export_string(pretty_print=False)`
+  without newline translation, so file and string output parse to the same
+  XML text values on every platform, including the `use_yed=False` route. On Windows,
+  compact files whose caller text contains LF now hold LF instead of CRLF.
+  Pretty files are unchanged. See
+  [the newline policy](docs/graphml_export.md#special-character-handling).
 - The package-level `chunker.export.GraphMLExporter` no longer turns TAB, LF
   or CR in caller chunk IDs and relationship endpoints into spaces on Python
   3.12, which could merge distinct nodes and their edges
@@ -48,6 +57,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expressions bind in the nearest enclosing non-comprehension scope, and
   parameter defaults are evaluated in the scope that contains the function
   (treesitter-chunker#278).
+
+- `GrammarValidator` no longer loses validation records written by another
+  validator or process on the same cache root, and no longer follows a link at
+  `validation_cache.json` (treesitter-chunker#370). Records are merged into a
+  fresh read under the cache root lock (`<cache_dir>/.txn.lock`) and published
+  with an atomic same-directory replace. `GrammarManager.cleanup_cache` prunes
+  the file the same way, with the same expiration rule. A symlink, junction or
+  other non-regular file at that name is now reported (a warning for the
+  validator, an `errors` entry for cleanup) and its target is never read or
+  written. The cache root gains `.txn.lock` and a `.txn/` control directory,
+  which are safe to leave in place. The cache root must be writable: on a
+  read-only root, records are not loaded or persisted (the validator keeps
+  working with an in-memory cache). Nested cache roots are refused (see the
+  cache transaction contract).
 
 - The SQLite chunk cache (`ASTCache`, used by default by `ParallelChunker`,
   `chunk_files_parallel` and `chunk_directory_parallel`) no longer returns core

@@ -600,9 +600,23 @@ These thresholds interpret metadata; they do not impose a wall-clock test gate.
 An explicit `GrammarManager(cache_dir=...)` supplies the validation cache root for
 its registry, installer and default `CompatibilityChecker`/`GrammarTester`
 validators. Passing an actual `validator=` object to either helper preserves that
-object and its chosen cache root. Set `user_dir=...` separately to isolate installed
-user grammars as well. This controls grammar helper storage; concurrent
-validation-cache writer coordination remains treesitter-chunker#370.
+object and its chosen cache root. `user_dir=...` is the user-grammar discovery
+directory; set it separately to isolate discovered user grammars as well.
+Installation still writes to `<cache_dir>/grammars`.
+
+Validators, installers and managers that share a cache root coordinate through
+the lock file `<cache_dir>/.txn.lock` (treesitter-chunker#370). Each validation
+record is merged into a fresh read of `validation_cache.json` and published by an
+atomic replace, so concurrent validators keep each other's records, and
+`cleanup_cache` prunes expired records the same way. A link or other non-regular
+file at `validation_cache.json` is refused rather than followed: the validator
+logs a warning and keeps working without persisted records, and `cleanup_cache`
+reports it in `errors`. The `.txn/` directory beside the lock file holds the
+transaction control area; leave both in place. Coordination covers one host and a
+local filesystem only, and a cache root inside another root's `downloads/`,
+`builds/` or `.txn/` is refused. The cache root must be writable, because every
+reader takes the lock: on a read-only root (for example, a pre-populated image),
+existing records are not loaded and new ones are kept in memory only.
 
 The separate Python `GrammarManager.remove_grammar(language, clean_cache=False)`
 option retains that language's download and build cache while removing its
