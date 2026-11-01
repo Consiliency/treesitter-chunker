@@ -2135,8 +2135,16 @@ def test_graphml_attribute_whitespace_graph_keys(
 @pytest.mark.parametrize("file_output", [False, True], ids=["string", "file"])
 @pytest.mark.parametrize(
     ("caller", "normalized"),
-    [(" \t ", " \t "), ("A\rB", "A\nB"), ("A\nB", "A\nB"), ("A\r\nB", "A\nB")],
-    ids=["space-tab", "cr", "lf", "crlf"],
+    [
+        (" \t ", " \t "),
+        ("A\rB", "A\nB"),
+        ("A\nB", "A\nB"),
+        ("A\r\nB", "A\nB"),
+        ("中文\r😀", "中文\n😀"),
+        ("中文\n😀", "中文\n😀"),
+        ("中文\r\n😀", "中文\n😀"),
+    ],
+    ids=["space-tab", "cr", "lf", "crlf", "unicode-cr", "unicode-lf", "unicode-crlf"],
 )
 def test_graphml_text_normalization(
     graphml_whitespace_graph, pretty, file_output, caller, normalized, tmp_path
@@ -2155,11 +2163,9 @@ def test_graphml_text_normalization(
             assert "\r" not in output
         elif "\r" in caller:
             assert caller in output
-    expected = (
-        "A\n\nB"
-        if file_output and not pretty and os.name == "nt" and caller == "A\r\nB"
-        else normalized
-    )
+    # File leaves decode exactly like string leaves on every platform
+    # (treesitter-chunker#488).
+    expected = normalized
     ns = "{http://graphml.graphdrawing.org/xmlns}"
     graph = root.find(f"{ns}graph")
     assert graph is not None
@@ -2207,8 +2213,76 @@ def graphml_contract_output(exporter, options, pretty, file_output, tmp_path):
         path = tmp_path / "caller.graphml"
         exporter.export(path, pretty_print=pretty, **options)
         payload = path.read_bytes()
-        assert payload == output.replace("\n", os.linesep).encode("utf-8")
+        if pretty:
+            assert payload == output.replace("\n", os.linesep).encode("utf-8")
+        else:
+            assert payload == output.encode("utf-8")
     return ET.fromstring(payload), output
+
+
+@pytest.fixture
+def windows_text_transport(monkeypatch):
+    """Make ``Path.write_text`` translate newlines like Windows text mode.
+
+    With ``newline=None`` it writes each LF as CRLF, as it does on Windows, so
+    the treesitter-chunker#488 file transport is exercised on every platform.
+    Explicit ``newline`` values keep their usual meaning.
+    """
+    original = Path.write_text
+
+    def write_text(self, data, encoding=None, errors=None, newline=None):
+        if newline is None:
+            data = data.replace("\n", "\r\n")
+            newline = ""
+        return original(self, data, encoding=encoding, errors=errors, newline=newline)
+
+    monkeypatch.setattr(Path, "write_text", write_text)
+
+
+@pytest.mark.parametrize("pretty", [False, True], ids=["compact", "pretty"])
+@pytest.mark.parametrize(
+    ("caller", "normalized"),
+    [
+        ("A\rB", "A\nB"),
+        ("A\nB", "A\nB"),
+        ("A\r\nB", "A\nB"),
+        ("中文\r😀", "中文\n😀"),
+        ("中文\n😀", "中文\n😀"),
+        ("中文\r\n😀", "中文\n😀"),
+    ],
+    ids=["cr", "lf", "crlf", "unicode-cr", "unicode-lf", "unicode-crlf"],
+)
+def test_graphml_file_text_windows_transport(
+    graphml_whitespace_graph,
+    windows_text_transport,
+    pretty,
+    caller,
+    normalized,
+    tmp_path,
+):
+    exporter, chunks, options, _ = graphml_whitespace_graph
+    exporter.add_chunks(chunks)
+    for chunk in chunks:
+        exporter.nodes[chunk.node_id].properties["caller"] = caller
+    exporter.add_relationship(chunks[0], chunks[1], "CALLS", {"caller": caller})
+    output = exporter.export_string(pretty_print=pretty, **options)
+    path = tmp_path / "windows.graphml"
+    exporter.export(path, pretty_print=pretty, **options)
+    payload = path.read_bytes()
+    ns = "{http://graphml.graphdrawing.org/xmlns}"
+    string_graph = ET.fromstring(output).find(f"{ns}graph")
+    file_graph = ET.fromstring(payload).find(f"{ns}graph")
+    for graph in (string_graph, file_graph):
+        leaves = [
+            data.text
+            for data in graph.iter(f"{ns}data")
+            if data.get("key") in {"n_caller", "e_caller"}
+        ]
+        assert leaves == [normalized] * 3
+    if pretty:
+        assert payload == output.replace("\n", "\r\n").encode("utf-8")
+    else:
+        assert payload == output.encode("utf-8")
 
 
 @pytest.mark.parametrize("with_edges", [False, True], ids=["no-edges", "edges"])
