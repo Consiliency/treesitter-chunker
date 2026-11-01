@@ -25,6 +25,7 @@ COMMON_TESTS = [
     "tests/test_grammar_management.py::test_real_grammar_mtimes_do_not_invent_compilation_dates",
     "tests/test_streaming.py::TestBufferOptimization::test_repeated_streaming_preserves_eager_fixture_chunks",
     "tests/test_streaming.py::TestBufferOptimization::test_file_hash_matches_sha256_for_chunk_sizes",
+    "tests/test_cr_only_python_lines.py",
     "tests/test_config.py",
     "tests/test_env_config.py",
     "tests/test_config_advanced_scenarios.py",
