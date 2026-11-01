@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -30,6 +31,8 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
         discovery_service: GrammarDiscoveryContract,
         download_service: GrammarDownloadContract,
         cache_dir: Path | None = None,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
     ):
         """Initialize the universal registry.
 
@@ -38,8 +41,12 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
             discovery_service: Service for discovering available grammars
             download_service: Service for downloading and compiling grammars
             cache_dir: Directory for storing metadata (defaults to ~/.cache/treesitter-chunker)
+            trusted_artifacts: Approved pins forwarded to the ``LanguageRegistry``
+                it builds. This registry never reads a pin file itself.
         """
-        self._base_registry = LanguageRegistry(library_path)
+        self._base_registry = LanguageRegistry(
+            library_path, trusted_artifacts=trusted_artifacts
+        )
         self._discovery = discovery_service
         self._downloader = download_service
 

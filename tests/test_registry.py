@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from chunker._internal.registry import LanguageMetadata, LanguageRegistry
@@ -61,44 +61,21 @@ class TestLanguageRegistry:
     @classmethod
     @pytest.mark.filterwarnings("error::DeprecationWarning")
     def test_get_language(cls, tmp_path):
-        """Test getting a specific language."""
+        """An unpinned combined library is never mapped; official grammars serve."""
         lib_path = tmp_path / "my-languages.so"
-        lib_path.write_bytes(b"mock combined library")
+        lib_path.write_bytes(b"unpinned combined library")
         registry = LanguageRegistry(lib_path)
-        # NOTE: The following block mocks the underlying C library and Language construction
-        # to ensure the test can pass in environments without a valid compiled shared library.
-        # This is intentionally annotated so we remember it's a test-time mock.
-        with (
-            patch("ctypes.CDLL") as mock_cdll,
-            patch.object(
-                registry,
-                "_discover_symbols",
-                return_value=[("python", "tree_sitter_python")],
-            ),
-            patch(
-                "chunker._internal.registry.Language",
-            ) as MockLanguage,
-            patch(
-                "chunker._internal.registry.Parser",
-            ) as MockParser,
+        with patch(
+            "chunker._internal.registry.ctypes.CDLL",
+            side_effect=AssertionError("unpinned local library loaded"),
         ):
-            # Mock the CDLL to provide a callable symbol for python
-            fake_lib = Mock()
-
-            def fake_symbol():
-                return 1  # non-null pointer value; used only by the mocked Language
-
-            fake_lib.tree_sitter_python = fake_symbol
-            mock_cdll.return_value = fake_lib
-            # Make the mocked Language callable and return an instance
-            lang_instance = MockLanguage()
-            MockLanguage.return_value = lang_instance
-            # Mock parser.language assignment to accept our mocked Language
-            parser_instance = Mock()
-            type(parser_instance).language = Mock()
-            MockParser.return_value = parser_instance
             python_lang = registry.get_language("python")
-            assert python_lang is lang_instance
+        assert python_lang is not None
+        assert (
+            registry.get_metadata("python")
+            .capabilities["grammar_source"]
+            .startswith("official:")
+        )
         with pytest.raises(LanguageNotFoundError) as exc_info:
             registry.get_language("nonexistent")
         assert "nonexistent" in str(exc_info.value)
@@ -152,14 +129,14 @@ class TestLanguageRegistry:
     @staticmethod
     @patch("ctypes.CDLL")
     def test_library_load_error(mock_cdll, tmp_path):
-        """Test handling of library load errors."""
-        mock_cdll.side_effect = OSError("Cannot load library")
+        """A combined library that is not package-supplied is never mapped whole."""
         lib_path = tmp_path / "my-languages.so"
         lib_path.write_bytes(b"not a real shared library")
         registry = LanguageRegistry(lib_path)
         with pytest.raises(LibraryLoadError) as exc_info:
             registry._load_library()
-        assert "Cannot load library" in str(exc_info.value)
+        assert "not a package-supplied library" in str(exc_info.value)
+        mock_cdll.assert_not_called()
 
     @staticmethod
     def test_discover_symbols_scans_validated_libraries(tmp_path):
@@ -168,7 +145,13 @@ class TestLanguageRegistry:
         build_dir.mkdir()
         (build_dir / f"python{_LIB_EXT}").write_bytes(b"fake")
         (build_dir / f"javascript{_LIB_EXT}").write_bytes(b"fake")
-        registry = LanguageRegistry(build_dir / f"my-languages{_LIB_EXT}")
+        registry = LanguageRegistry(
+            build_dir / f"my-languages{_LIB_EXT}",
+            trusted_artifacts={
+                "python": {"sha256": "0" * 64},
+                "javascript": {"sha256": "1" * 64},
+            },
+        )
 
         with patch.object(registry, "_validate_language_library", return_value=True):
             symbols = registry._discover_symbols()
@@ -182,7 +165,10 @@ class TestLanguageRegistry:
         build_dir = tmp_path / "build"
         build_dir.mkdir()
         (build_dir / f"python{_LIB_EXT}").write_bytes(b"fake")
-        registry = LanguageRegistry(build_dir / f"my-languages{_LIB_EXT}")
+        registry = LanguageRegistry(
+            build_dir / f"my-languages{_LIB_EXT}",
+            trusted_artifacts={"python": {"sha256": "0" * 64}},
+        )
 
         with patch.object(
             registry, "_validate_language_library", return_value=False

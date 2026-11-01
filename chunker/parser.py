@@ -2,22 +2,25 @@
 
 from __future__ import annotations
 
-import threading
-import json
 import logging
-import sys
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ._internal.factory import ParserConfig, ParserFactory, ParserLease
-from ._internal.registry import LanguageMetadata, LanguageRegistry
+from ._internal.registry import (
+    LanguageMetadata,
+    LanguageRegistry,
+    default_library_path,
+)
+from ._internal.trusted_artifacts import load_user_config_pins
 from .exceptions import (
     LanguageNotFoundError,
     ParserConfigError,
     ParserError,
     ParserInitError,
+    TrustedArtifactsError,
 )
-from .grammar.manager import TreeSitterGrammarManager
 
 if TYPE_CHECKING:
     from tree_sitter import Parser
@@ -43,15 +46,25 @@ class _ParserState:
         self.registry: LanguageRegistry | None = None
         self.factory: ParserFactory | None = None
         self._init_lock = threading.Lock()
+        self._pin_warning_emitted = False
         # Prefer in-package built artifacts when present (for wheels with prebuilt grammars)
-        _lib_ext = {"darwin": ".dylib", "win32": ".dll"}.get(sys.platform, ".so")
-        package_build = Path(__file__).parent / "data" / "grammars" / "build"
-        combined_lib = package_build / f"languages{_lib_ext}"
-        self.default_library_path = (
-            combined_lib
-            if combined_lib.exists()
-            else Path(__file__).parent.parent / "build" / f"my-languages{_lib_ext}"
-        )
+        self.default_library_path = default_library_path()
+
+    def _user_config_pins(
+        self, library_path: Path
+    ) -> tuple[dict[str, dict[str, str]] | None, str | None]:
+        """Read the user-config pin file once; a defective file grants no trust."""
+        try:
+            return load_user_config_pins(library_path=library_path), None
+        except TrustedArtifactsError as error:
+            if not self._pin_warning_emitted:
+                self._pin_warning_emitted = True
+                logger.warning(
+                    "%s. It grants no local trust: package-supplied grammars "
+                    "keep working and local grammars that need a pin are not used.",
+                    error,
+                )
+            return None, str(error)
 
     def initialize(self, library_path: Path | None = None) -> None:
         """Lazy initialization of registry and factory.
@@ -75,7 +88,11 @@ class _ParserState:
             # If the compiled library doesn't exist or fails to load, initialize registry
             # with no shared library so that list_languages() can still function for tests
             # Always initialize the registry; it now tolerates missing combined library
-            registry = LanguageRegistry(path)
+            # The parse path is the only reader of the user-config pin file;
+            # it is read once, when this registry is built.
+            pins, defect = self._user_config_pins(path)
+            registry = LanguageRegistry(path, trusted_artifacts=pins)
+            registry._pin_file_defect = defect
             factory = ParserFactory(registry)
             self.registry = registry
             self.factory = factory  # published last; the sentinel above gates on it
@@ -133,47 +150,9 @@ def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
                 normalized,
                 f"Required tree-sitter-{normalized}==0.25.0 is unavailable; reinstall the declared grammar distribution.",
             ) from None
-        # Attempt on-demand grammar fetch/build for missing language
-        try:
-            # Load repository URL from config
-            sources_path = (
-                Path(__file__).parent.parent / "config" / "grammar_sources.json"
-            )
-            repo_url: str | None = None
-            if sources_path.exists():
-                try:
-                    with sources_path.open("r", encoding="utf-8") as f:
-                        sources = json.load(f)
-                except json.JSONDecodeError as e:
-                    logger.warning(
-                        "Invalid JSON in %s: %s at line %s",
-                        sources_path,
-                        e.msg,
-                        e.lineno,
-                    )
-                    sources = {}
-                # Handle common alias differences for repo lookup
-                repo_alias_map = {
-                    "csharp": "csharp",
-                    "c_sharp": "csharp",
-                    "typescript": "typescript",
-                }
-                repo_key = repo_alias_map.get(language, language)
-                repo_url = sources.get(repo_key)
-            if repo_url:
-                gm = TreeSitterGrammarManager()
-                if not gm.get_grammar_info(language):
-                    gm.add_grammar(language, repo_url)
-                # Fetch and build; ignore failures silently so we raise the original error
-                if gm.fetch_grammar(language):
-                    gm.build_grammar(language)
-                    # After building, try again (factory will now be able to load individual lib
-                    return _state.factory.get_parser(normalized, config)
-        except Exception as e:
-            # Fall back to raising the original error, but log for diagnostics in CI
-            logger.debug("On-demand grammar build attempt failed: %s", e)
-        available = _state.registry.list_languages() if _state.registry else []
-        raise LanguageNotFoundError(normalized, available) from None
+        # On-demand fetch-and-build is retired (treesitter-chunker#362, F1):
+        # a miss never clones or compiles a grammar.
+        raise
     except ParserConfigError:
         raise
     except (IndexError, KeyError, SyntaxError) as e:
@@ -205,36 +184,8 @@ def acquire_parser(language: str, config: ParserConfig | None = None) -> ParserL
                 normalized,
                 f"Required tree-sitter-{normalized}==0.25.0 is unavailable; reinstall the declared grammar distribution.",
             ) from None
-        try:
-            sources_path = (
-                Path(__file__).parent.parent / "config" / "grammar_sources.json"
-            )
-            repo_url: str | None = None
-            if sources_path.exists():
-                try:
-                    with sources_path.open("r", encoding="utf-8") as f:
-                        sources = json.load(f)
-                except json.JSONDecodeError as e:
-                    logger.warning(
-                        "Invalid JSON in %s: %s at line %s",
-                        sources_path,
-                        e.msg,
-                        e.lineno,
-                    )
-                    sources = {}
-                repo_key = alias_map.get(language, language)
-                repo_url = sources.get(repo_key)
-            if repo_url:
-                gm = TreeSitterGrammarManager()
-                if not gm.get_grammar_info(language):
-                    gm.add_grammar(language, repo_url)
-                if gm.fetch_grammar(language):
-                    gm.build_grammar(language)
-                    return _state.factory.acquire_parser(normalized, config)
-        except Exception as e:
-            logger.debug("On-demand grammar build attempt failed: %s", e)
-        available = _state.registry.list_languages() if _state.registry else []
-        raise LanguageNotFoundError(normalized, available) from None
+        # On-demand fetch-and-build is retired (treesitter-chunker#362, F1).
+        raise
 
 
 def list_languages() -> list[str]:

@@ -55,6 +55,25 @@ def _copy_pack_library(tmp_path: Path, language: str, directory: str) -> Path:
     return target
 
 
+def _pin_parse_path(monkeypatch, tmp_path: Path, pins: dict[str, Path]) -> None:
+    """Point the parse path's user-config pin file at approved test pins."""
+    import json
+
+    from chunker._internal import trusted_artifacts
+
+    path = tmp_path / "pin-config" / "trusted-artifacts.json"
+    path.parent.mkdir(exist_ok=True)
+    artifacts = {
+        language: {"sha256": hashlib.sha256(library.read_bytes()).hexdigest()}
+        for language, library in pins.items()
+    }
+    path.write_text(
+        json.dumps({"schema": "chunker.trusted_artifacts.v1", "artifacts": artifacts}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(trusted_artifacts, "user_config_pin_path", lambda: path)
+
+
 def _set_parser_state(monkeypatch, library_path: Path):
     from chunker import parser
 
@@ -67,8 +86,15 @@ def _set_parser_state(monkeypatch, library_path: Path):
 def _isolate_official_state(monkeypatch, tmp_path: Path):
     from chunker._internal.registry import LanguageRegistry
 
+    from chunker._internal import trusted_artifacts
+
     state = _set_parser_state(
         monkeypatch, tmp_path / "missing" / f"languages{_LIB_EXT}"
+    )
+    monkeypatch.setattr(
+        trusted_artifacts,
+        "user_config_pin_path",
+        lambda: tmp_path / "missing" / "trusted-artifacts.json",
     )
     monkeypatch.setattr(LanguageRegistry, "_discover_symbols", lambda self: [])
     monkeypatch.setattr(
@@ -505,6 +531,7 @@ def test_492_incremental_tracks_actual_official_and_custom_sources(
                 return real_cdll(path, *args, **kwargs)
 
             patch.setattr(registry_module.ctypes, "CDLL", record_cdll)
+            _pin_parse_path(patch, tmp_path, {language: custom})
             _set_parser_state(patch, custom.parent / f"languages{_LIB_EXT}")
             cold = extract_boundary_ir(
                 tmp_path, language, incremental=True, cache_dir=cache_dir
@@ -514,7 +541,12 @@ def test_492_incremental_tracks_actual_official_and_custom_sources(
             )
             selected = parser._state.registry.get_language(language)
             assert not Parser(selected).parse(b"x = 1").root_node.has_error
-            assert custom.resolve() in loaded_paths
+            # Only the admitted private copy of the pinned bytes is loaded.
+            assert custom.resolve() not in loaded_paths
+            assert any(
+                hashlib.sha256(path.read_bytes()).hexdigest() == expected_digest
+                for path in loaded_paths
+            )
             selected_source = parser._state.registry._selected_sources[language]
             assert selected_source == (
                 selected,
@@ -700,6 +732,7 @@ def test_492_known_version_incompatible_custom_fails_before_cache_identity(
     )
 
     with monkeypatch.context() as patch:
+        _pin_parse_path(patch, tmp_path, {language: custom})
         state = _set_parser_state(
             patch,
             (
@@ -792,7 +825,6 @@ def test_492_known_version_incompatible_custom_fails_before_cache_identity(
 def test_492_null_custom_export_is_typed_and_preserves_mixed_cache(
     tmp_path, monkeypatch, language, previously_warm, custom_source
 ):
-    from chunker import parser as parser_module
     from chunker._internal import language_pack
     from chunker._internal.registry import LanguageRegistry
 
@@ -826,23 +858,34 @@ def test_492_null_custom_export_is_typed_and_preserves_mixed_cache(
             assert all(item["status"] == "parsed" for item in seeded["files"])
     before = _cache_bytes(cache_dir)
 
+    custom_digest = hashlib.sha256(custom_path.read_bytes()).hexdigest()
     with monkeypatch.context() as patch:
+        _pin_parse_path(patch, tmp_path, {language: custom_path})
         state = _set_parser_state(patch, combined_path)
         real_construct = LanguageRegistry._language_from_ctypes_symbol
         observed_exports = []
 
-        def return_null(self, lib, symbol_name, library_path, language_name):
-            if library_path == custom_path and language_name == language:
+        def return_null(
+            self, lib, symbol_name, library_path, language_name, *, digest=None
+        ):
+            if digest == custom_digest and language_name == language:
                 assert hasattr(lib, symbol_name)
                 observed_exports.append(symbol_name)
                 if custom_source == "individual-lazy" and len(observed_exports) == 1:
                     return real_construct(
-                        self, lib, symbol_name, library_path, language_name
+                        self,
+                        lib,
+                        symbol_name,
+                        library_path,
+                        language_name,
+                        digest=digest,
                     )
                 raise ValueError(
                     f"{library_path} symbol {symbol_name} returned null for {language_name}"
                 )
-            return real_construct(self, lib, symbol_name, library_path, language_name)
+            return real_construct(
+                self, lib, symbol_name, library_path, language_name, digest=digest
+            )
 
         patch.setattr(LanguageRegistry, "_language_from_ctypes_symbol", return_null)
         real_provider = language_pack.get_language_from_pack
@@ -857,7 +900,8 @@ def test_492_null_custom_export_is_typed_and_preserves_mixed_cache(
         def manager():
             pytest.fail("automatic grammar build used")
 
-        patch.setattr(parser_module, "TreeSitterGrammarManager", manager)
+        # On-demand fetch-and-build is retired (F1); it must stay unused.
+        patch.setattr("chunker.grammar.manager.TreeSitterGrammarManager", manager)
 
         failed = extract_boundary_ir(
             tmp_path,

@@ -15,7 +15,10 @@ a file, and to applications that pass the resulting settings to plugin APIs. The
 `CHUNKER_QUIET` suppresses CLI configuration-load warning messages; it is not
 a guarantee of error-free stdout. `CHUNKER_GRAMMAR_BUILD_DIR` adds a native
 grammar discovery directory for development/testing; it does not bypass
-compatibility checks or change the pinned installed parser stack.
+compatibility checks or change the pinned installed parser stack. Like every
+scan directory it confers no trust: a library found there is used only under
+an approved pin in the user-config pin file (treesitter-chunker#362), and a pin
+file inside it is rejected.
 
 `CHUNKER_WHEEL_LANGS` selects comma-separated languages for the auxiliary
 `scripts/fetch_grammars.py` and `scripts/build_lib.py` workflows (default:

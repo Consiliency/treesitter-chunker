@@ -41,12 +41,16 @@ class BamlExtraRequiredError(LanguageError):
 class LanguageNotFoundError(LanguageError):
     """Raised when requested language is not available."""
 
-    def __init__(self, language: str, available: list[str]):
+    def __init__(self, language: str, available: list[str], cause: str | None = None):
         message = f"Language '{language}' not found"
         if available:
             message += f". Available languages: {', '.join(sorted(available))}"
         else:
             message += ". No languages available (check library compilation)"
+        if cause:
+            # For example local candidates that lacked a pin, or a defective
+            # user-config pin file (native validation contract).
+            message += f"\n\n{cause}"
 
         # Add user guidance for common scenarios
         guidance = self._get_user_guidance(language, available)
@@ -56,6 +60,7 @@ class LanguageNotFoundError(LanguageError):
         super().__init__(message, {"requested": language, "available": available})
         self.language = language
         self.available = available
+        self.cause = cause
 
     def _get_user_guidance(self, language: str, available: list[str]) -> str:
         """Provide user guidance based on the error context.

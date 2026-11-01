@@ -150,6 +150,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Behaviour change (treesitter-chunker#362):** ordinary parsing reads the
+  user-config pin file once per process. Local compiled grammars (the combined
+  library, build directories, `~/.cache/treesitter-chunker/build`,
+  `CHUNKER_GRAMMAR_BUILD_DIR`) are used only under an approved pin, loaded from a
+  verified admitted copy, and admitted per language inside a combined library.
+  RECORD-verified files of our own wheel's `chunker/data/grammars/build/` need
+  no pin; a file that differs from RECORD is never loaded. Other local libraries
+  are ignored and resolution continues to the official wheels, the language-pack
+  and the BAML companion. A defective pin file grants no local trust, warns once
+  and is named in `LanguageNotFoundError`. `LanguageRegistry` and
+  `UniversalLanguageRegistry` accept keyword-only `trusted_artifacts`, and
+  `chunker._internal.registry.default_library_path()` names the default combined
+  library.
+- **Behaviour change (treesitter-chunker#362):** the on-demand fetch-and-build in
+  `get_parser`/`acquire_parser` is retired. A language no source provides raises
+  `LanguageNotFoundError` instead of cloning and compiling a grammar into
+  `grammars/` and `build/` under the current directory. Build deliberately with
+  the grammar commands and pin the result.
 - **Behaviour change (treesitter-chunker#362):** every `grammar` subcommand now
   resolves its pin source first. A missing or defective `--trusted-artifacts`
   file, or a present but defective user-config pin file, exits 2 naming the
