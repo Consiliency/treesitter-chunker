@@ -6,7 +6,11 @@ Status: **accepted interface freeze IF-0-TXNSPEC-1** (roadmap
 `specs/phase-plans-v4.md`, Phase 3 TXNSPEC; treesitter-chunker#540, merge
 `d681d8bf`). Phase TXN implements it. TXN PRs edit this text only to answer
 the non-blocking findings that the treesitter-chunker#540 panel carried over to
-TXN, and to refresh merged facts; public signatures and rules are unchanged.
+TXN, and to refresh merged facts. Public signatures are unchanged. The one
+rule change is amendment **A1** (one filesystem at rename sites, Claude N11),
+reviewed in TXN; it lands with treesitter-chunker#323 and
+treesitter-chunker#363, at the operations that rename. See
+[Amendments](#amendments).
 
 The helper module `chunker/grammar_management/_transactions.py` was created by
 TXN lane SL-cache in its first PR (treesitter-chunker#370). Each public
@@ -50,11 +54,11 @@ claim concurrency safety for them.
 | `GrammarRegistry` artifact discovery (`_discover_in_directory`) | It reads artifact files only, never metadata. | It sees either the previous or the new artifact, because `os.replace` is atomic. It never sees a partial file, and it is not pair-consistent with metadata (see [Remaining windows](#remaining-windows)). |
 | Older package versions, external tools, and hostile processes running as the same user | They do not take the lock. | Stop them before using a root with a participating version. The `superseded` outcome of `restore` exists only for these. |
 
-**One filesystem.** Retirement and promotion are renames between `.txn/` and
-the namespaces. `open_cache_root`, and every lock acquisition, refuses a root
-whose existing `downloads/`, `builds/`, `grammars/` or `.txn/` (or a `.txn/`
-child) is a real directory on a different device (`st_dev`) from the root,
-with `ContainmentError`, because such renames would fail with `EXDEV`.
+**Filesystems.** Root initialization and Primitive 1 work on any layout of
+the root's subdirectories, including split mounts (a separate volume at
+`grammars/` or `builds/`): the record update replaces a file within the root
+directory only. Operations that rename between `.txn/` and a namespace follow
+amendment A1 (see [Amendments](#amendments)).
 
 **Concurrency scope.** One host only. Participating threads and processes on
 that host share one cache root on a local filesystem. Cross-host sharing and
@@ -69,6 +73,10 @@ rejects this scope, decision S-TXN applies.
 - Windows on NTFS: `msvcrt.locking`, reparse-point checks, job objects.
 
 Python 3.12 is the floor. Release checks also cover 3.14.
+
+The cache root must be writable. Every reader takes the exclusive lock, so a
+read-only root (for example, a pre-populated image) loads no records; the
+validator then keeps records it computes in its in-memory read cache only.
 
 If a required primitive is unavailable, the operation raises
 `CacheTransactionError` and changes nothing; it never passes silently.
@@ -124,9 +132,15 @@ may release a byte-range lock only after process teardown completes; the
 bounded acquisition timeout absorbs that delay. No stale-lock breaking exists,
 by design.
 
-**Fork.** The helper registers `os.register_at_fork(after_in_child=...)`. In the
-child, that handler clears the process-local lock table and closes every
-inherited lock descriptor. The parent's lock is unaffected: flock state belongs
+**Fork.** The helper registers `os.register_at_fork(before=..., after_in_parent=...,
+after_in_child=...)`. Every lock descriptor, including one whose acquisition
+is still pending, is registered when it is opened and forgotten when it is
+closed, under a guard the fork also takes. In the child, the handler closes
+every registered descriptor and clears the process-local lock table, so a
+child never keeps a lock alive after its parent dies. Each hold records the
+process that acquired it; a forked child leaving the parent's section skips
+the unlock, the close and the release, so it never closes an unrelated
+descriptor that reused the number. The parent's lock is unaffected: flock state belongs
 to the open file description, and the parent still holds its descriptor. A
 forked child must acquire again before using the helper.
 
@@ -799,9 +813,11 @@ never match. The staged file lives in `grammars/`, which the pruner never
 enters. A staged file left by a crash is outside every primitive here; see the
 operator procedure.
 
-**The probe child never takes the cache lock.** It imports only
-`chunker.grammar.integrity`, builds no manager and never imports this helper,
-so a probe started under the lock cannot wait on that lock.
+**The probe child never takes the cache lock.** It imports this helper
+module only indirectly, through `load_compiled_grammar` in
+`chunker.grammar_management.core`. It constructs no validator, installer or
+manager and calls no helper function, so a probe started under the lock never
+acquires, or waits on, that lock.
 
 This contract uses the function unchanged for forward publication and artifact
 restoration. It defines no second native publish path and splits out no
@@ -940,6 +956,29 @@ The TXN PRs keep `tests/test_core_grammar_cache_cleanup.py` and the existing
 helper-cache tests passing. They change an existing assertion only where it
 pins the lost-update behavior, such as treesitter-chunker#401's `all(...)`
 lookup.
+
+## Amendments
+
+Amendments to IF-0-TXNSPEC-1 made during TXN. Each is reviewed in the PR that
+implements it.
+
+**A1 — One filesystem at rename sites (Claude N11 on treesitter-chunker#540;
+scope set by the roadmap runner in the treesitter-chunker#560 round-1 panel).**
+
+- *Rule.* An operation that renames between `.txn/` and a namespace first
+  checks that the root, `.txn/` and the namespace directories it renames
+  between are on the root's device (`st_dev`). If not, it raises
+  `CacheTransactionError` and changes nothing, because the rename would fail
+  with `EXDEV` part-way through a sequence.
+- *Scope.* Primitive 2: `create_staging`, `publish_entry`, `remove_entry`,
+  `prune_entries`, `discard_staging` (treesitter-chunker#323). Primitive 3:
+  `remove_installation`, `restore`, `discard_rollback_point`
+  (treesitter-chunker#363). Not initialization, not Primitive 1, not reads.
+- *Compatibility.* Split-mount roots keep validation records and metadata
+  reads. On such a root, installing, cleaning or removing grammars whose
+  namespace is a separate mount now fails with an actionable error instead of
+  failing part-way. Equal devices are necessary, not sufficient: other rename
+  failures keep their specified handling.
 
 ## Signatures
 

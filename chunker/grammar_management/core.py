@@ -537,7 +537,9 @@ class GrammarValidator:
 
         The file is read fresh under the lock and only ``cache_key`` is set, so
         records written by other validators are kept. ``self._cache`` is only a
-        read cache, refreshed from the document written.
+        read cache, refreshed from the document written. If the write fails
+        (for example, a linked record file or a read-only root), the record is
+        kept in that read cache only, as before, and never written back.
         """
         record = self._serialize_validation_result(result)
         record["timestamp"] = time.time()
@@ -552,6 +554,7 @@ class GrammarValidator:
             )
         except Exception as e:
             logger.warning(f"Failed to cache validation result: {e}")
+            self._cache[cache_key] = record
 
     def _serialize_validation_result(self, result: ValidationResult) -> dict[str, Any]:
         """Serialize validation result for caching."""

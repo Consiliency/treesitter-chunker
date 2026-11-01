@@ -36,8 +36,6 @@ Namespace = Literal["downloads", "builds"]
 _CONTROL_CHILDREN: Final = ("staging", "retired", "rollback")
 # A root may not be opened at or below another root's managed namespaces.
 _MANAGED_NAMES: Final = frozenset({"downloads", "builds", CONTROL_DIR_NAME})
-# Renames between these and ``.txn`` must stay on the root's filesystem.
-_SAME_DEVICE_NAMES: Final = ("downloads", "builds", "grammars", CONTROL_DIR_NAME)
 
 _WINDOWS: Final = os.name == "nt"
 _NOFOLLOW: Final[int] = getattr(os, "O_NOFOLLOW", 0)
@@ -335,29 +333,57 @@ class _Hold:
     depth: int = 0
     lock_fd: int | None = None
     rootdir: _Dir | None = None
+    pid: int = 0  # the process that acquired the hold
 
 
 _HOLDS: dict[tuple[int, int], _Hold] = {}
 _HOLDS_GUARD = threading.Lock()
 
+# Every open lock-file descriptor in this process, whether its acquisition is
+# still pending or the lock is held. Opening and registering, and closing and
+# forgetting, each happen under ``_FD_GUARD``, which a fork also takes, so a
+# forked child always knows every lock descriptor it inherited.
+_LOCK_FDS: set[int] = set()
+_FD_GUARD = threading.Lock()
+
+
+def _before_fork() -> None:
+    _FD_GUARD.acquire()
+
+
+def _after_fork_in_parent() -> None:
+    _FD_GUARD.release()
+
 
 def _after_fork_in_child() -> None:
-    """Forget the parent's holds; the child must acquire again (contract)."""
-    global _HOLDS_GUARD, _ROOTS_GUARD
+    """Drop every inherited lock descriptor and hold; the child acquires anew.
+
+    Closing the child's copies never unlocks the parent: ``flock`` state
+    belongs to the open file description, which the parent still references.
+    Without this, a child would keep the description (and so the lock) alive
+    after the parent dies, including one the parent was still acquiring.
+    """
+    global _FD_GUARD, _HOLDS_GUARD, _ROOTS_GUARD
+    for fd in _LOCK_FDS:
+        with suppress(OSError):
+            os.close(fd)
+    _LOCK_FDS.clear()
     for hold in list(_HOLDS.values()):
-        if hold.lock_fd is not None:
-            with suppress(OSError):
-                os.close(hold.lock_fd)
         if hold.rootdir is not None:
             with suppress(OSError):
                 hold.rootdir.close()
     _HOLDS.clear()
+    _FD_GUARD = threading.Lock()
     _HOLDS_GUARD = threading.Lock()
     _ROOTS_GUARD = threading.Lock()
 
 
 if hasattr(os, "register_at_fork"):
-    os.register_at_fork(after_in_child=_after_fork_in_child)
+    os.register_at_fork(
+        before=_before_fork,
+        after_in_parent=_after_fork_in_parent,
+        after_in_child=_after_fork_in_child,
+    )
 
 
 def _lock_key(rootdir: _Dir) -> tuple[int, int] | None:
@@ -369,8 +395,16 @@ def _lock_key(rootdir: _Dir) -> tuple[int, int] | None:
     return _identity(st)
 
 
+def _close_lock_fd(fd: int) -> None:
+    with _FD_GUARD:
+        _LOCK_FDS.discard(fd)
+        os.close(fd)
+
+
 def _open_lock_file(rootdir: _Dir) -> tuple[int, tuple[int, int]]:
-    fd = rootdir.open_file(LOCK_FILE_NAME, os.O_RDWR | os.O_CREAT, 0o600)
+    with _FD_GUARD:
+        fd = rootdir.open_file(LOCK_FILE_NAME, os.O_RDWR | os.O_CREAT, 0o600)
+        _LOCK_FDS.add(fd)
     try:
         if os.get_inheritable(fd):
             raise CacheTransactionError("Cache lock descriptor is inheritable")
@@ -381,7 +415,7 @@ def _open_lock_file(rootdir: _Dir) -> tuple[int, tuple[int, int]]:
                 os.write(fd, b"\0")
         return fd, _identity(st)
     except BaseException:
-        os.close(fd)
+        _close_lock_fd(fd)
         raise
 
 
@@ -419,18 +453,6 @@ def _os_unlock(fd: int) -> None:
         fcntl.flock(fd, fcntl.LOCK_UN)
 
 
-def _check_same_device(rootdir: _Dir, device: int) -> None:
-    for name in _SAME_DEVICE_NAMES:
-        st = rootdir.lstat(name)
-        if st is None or _is_link(st) or not stat.S_ISDIR(st.st_mode):
-            continue  # Links refuse their namespace when it is used.
-        if st.st_dev != device:
-            raise ContainmentError(
-                f"{rootdir.path / name} is on a different filesystem than the "
-                "cache root; renames between them cannot be atomic"
-            )
-
-
 def _ensure_marker(directory: _Dir) -> None:
     try:
         os.close(directory.open_file(MARKER_NAME, os.O_WRONLY | os.O_CREAT | os.O_EXCL))
@@ -442,7 +464,7 @@ def _ensure_marker(directory: _Dir) -> None:
             ) from None
 
 
-def _control_dir(parent: _Dir, name: str, device: int) -> _Dir:
+def _control_dir(parent: _Dir, name: str) -> _Dir:
     """Create or open a control directory and give it its marker.
 
     The marker keeps the directory non-empty for
@@ -461,10 +483,6 @@ def _control_dir(parent: _Dir, name: str, device: int) -> _Dir:
                 break
             continue
         try:
-            if directory.stat_self().st_dev != device:
-                raise ContainmentError(
-                    f"{directory.path} is on a different filesystem than the cache root"
-                )
             _ensure_marker(directory)
             return directory
         except FileNotFoundError:
@@ -479,11 +497,10 @@ def _control_dir(parent: _Dir, name: str, device: int) -> _Dir:
     )
 
 
-def _initialize(rootdir: _Dir, absolute: Path, device: int) -> None:
-    with _control_dir(rootdir, CONTROL_DIR_NAME, device) as control:
+def _initialize(rootdir: _Dir) -> None:
+    with _control_dir(rootdir, CONTROL_DIR_NAME) as control:
         for name in _CONTROL_CHILDREN:
-            _control_dir(control, name, device).close()
-    _check_same_device(rootdir, device)
+            _control_dir(control, name).close()
 
 
 class _LockContext:
@@ -561,12 +578,13 @@ def _locked(root: Path, timeout: float, ctx: _LockContext) -> Iterator[_Dir]:
         if thread_held and hold is not None:
             hold.guard.release()
         if lock_fd is not None:
-            os.close(lock_fd)
+            _close_lock_fd(lock_fd)
         rootdir.close()
         raise
 
     assert hold is not None and lock_fd is not None
     hold.owner, hold.depth, hold.lock_fd, hold.rootdir = me, 1, lock_fd, rootdir
+    hold.pid = os.getpid()
     try:
         # The root path may be an operator-trusted link, so follow it here.
         if _identity(absolute.stat()) != identity or (
@@ -578,7 +596,7 @@ def _locked(root: Path, timeout: float, ctx: _LockContext) -> Iterator[_Dir]:
         if _lock_key(rootdir) != key:
             raise ContainmentError(f"Cache lock file was replaced: {absolute}")
         ctx.seam("lock.acquired")
-        _initialize(rootdir, absolute, identity[0])
+        _initialize(rootdir)
         ctx.seam("root.after_init")
         # Post-initialization check (contract "Nested roots" rule 2).
         _refuse_nested(absolute)
@@ -588,15 +606,20 @@ def _locked(root: Path, timeout: float, ctx: _LockContext) -> Iterator[_Dir]:
             )
         yield rootdir
     finally:
-        hold.owner, hold.depth, hold.lock_fd, hold.rootdir = None, 0, None, None
-        try:
-            _os_unlock(lock_fd)
-        except OSError:
-            pass  # Closing the descriptor releases the lock as well.
-        finally:
-            os.close(lock_fd)
-            rootdir.close()
-            hold.guard.release()
+        if hold.pid != os.getpid():
+            # A forked child leaving the parent's section: the at-fork handler
+            # already closed its copies, and this hold is the parent's.
+            pass
+        else:
+            hold.owner, hold.depth, hold.lock_fd, hold.rootdir = None, 0, None, None
+            try:
+                _os_unlock(lock_fd)
+            except OSError:
+                pass  # Closing the descriptor releases the lock as well.
+            finally:
+                _close_lock_fd(lock_fd)
+                rootdir.close()
+                hold.guard.release()
 
 
 def _timeout_message(absolute: Path, timeout: float) -> str:
@@ -612,7 +635,7 @@ def open_cache_root(root: Path) -> Path:
 
     Records the root's identity, creates the lock file and the ``.txn``
     control area with markers, and refuses roots that overlap another root's
-    managed namespaces or span filesystems. Consumers call it at construction
+    managed namespaces. Consumers call it at construction
     so that a bad root is reported early.
     """
     absolute = _absolute(root)

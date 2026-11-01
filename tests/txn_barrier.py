@@ -196,3 +196,73 @@ def pause_at(point: str, **match: str) -> dict[str, Any]:
 
 def exit_at(point: str, code: int = 17, **match: str) -> dict[str, Any]:
     return {"point": point, "match": match, "action": "exit", "code": code}
+
+
+def _mount_mode() -> str | None:
+    """How this host can mount a private tmpfs for a test, if at all."""
+    if not sys.platform.startswith("linux"):
+        return None
+    import shutil
+
+    if shutil.which("unshare"):
+        probe = subprocess.run(
+            ["unshare", "--user", "--map-root-user", "--mount", "true"],
+            capture_output=True,
+            check=False,
+        )
+        if probe.returncode == 0:
+            return "unshare"
+    if shutil.which("sudo"):
+        probe = subprocess.run(["sudo", "-n", "true"], capture_output=True, check=False)
+        if probe.returncode == 0:
+            return "sudo"
+    return None
+
+
+def run_with_tmpfs(
+    mount_point: Path, script: str, args: Sequence[str | os.PathLike[str]]
+) -> subprocess.CompletedProcess[str]:
+    """Run ``python -I -c script ROOT args...`` with a tmpfs at ``mount_point``.
+
+    Uses an unprivileged user and mount namespace when the kernel allows it,
+    otherwise passwordless ``sudo`` (hosted Linux runners). Skips the calling
+    test when neither is available. The mount never outlives the call.
+    """
+    import pytest
+
+    mode = _mount_mode()
+    if mode is None:
+        pytest.skip("mounting a tmpfs needs a user namespace or passwordless sudo")
+    mount_point.mkdir(parents=True, exist_ok=True)
+    command = [sys.executable, "-I", "-c", script, str(ROOT), *map(str, args)]
+    if mode == "unshare":
+        return subprocess.run(
+            [
+                "unshare",
+                "--user",
+                "--map-root-user",
+                "--mount",
+                "sh",
+                "-c",
+                'mount -t tmpfs tmpfs "$1" && shift && exec "$@"',
+                "sh",
+                str(mount_point),
+                *command,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=SAFETY_TIMEOUT,
+            check=False,
+        )
+    owner = f"uid={os.getuid()},gid={os.getgid()}"
+    subprocess.run(
+        ["sudo", "-n", "mount", "-t", "tmpfs", "-o", owner, "tmpfs", str(mount_point)],
+        check=True,
+        capture_output=True,
+    )
+    try:
+        return subprocess.run(
+            command, capture_output=True, text=True, timeout=SAFETY_TIMEOUT, check=False
+        )
+    finally:
+        subprocess.run(["sudo", "-n", "umount", str(mount_point)], check=False)

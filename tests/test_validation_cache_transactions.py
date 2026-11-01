@@ -12,9 +12,11 @@ tests hold under the path-based key and under ADMIT's content-based key.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
+import signal
 import subprocess
 import sys
 import threading
@@ -31,7 +33,14 @@ from chunker.grammar_management.core import (
     ValidationLevel,
 )
 from tests.test_compiled_grammar_analysis_contract import SOURCE, _compile_probe_fixture
-from tests.txn_barrier import ROOT, SAFETY_TIMEOUT, Child, pause_at, participants
+from tests.txn_barrier import (
+    ROOT,
+    SAFETY_TIMEOUT,
+    Child,
+    pause_at,
+    participants,
+    run_with_tmpfs,
+)
 
 RECORDS = "validation_cache.json"
 
@@ -207,7 +216,9 @@ def test_symlinked_record_file_never_touches_outside_sentinel(
     assert any(
         m.startswith("Failed to cache validation result") for m in load_and_write
     )
-    assert validator._cache == {}
+    # The record is kept in the in-memory read cache only (never written back).
+    key = validator._get_cache_key(rev_a, "baml", ValidationLevel.STANDARD)
+    assert list(validator._cache) == [key]
 
     manager = GrammarManager(
         user_dir=tmp_path / "user", package_dir=tmp_path / "package", cache_dir=cache
@@ -381,3 +392,173 @@ def test_linked_control_area_is_refused(tmp_path):
     with pytest.raises(_transactions.ContainmentError):
         _transactions.open_cache_root(root)
     assert list(elsewhere.iterdir()) == []
+
+
+FORK_PENDING = r"""
+import os, signal, sys, threading
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from chunker.grammar_management import _transactions
+
+root = Path(sys.argv[2])
+_transactions.open_cache_root(root)
+at_before, go, acquired = threading.Event(), threading.Event(), threading.Event()
+
+
+def barrier(point, context):
+    if point == "lock.before_acquire" and threading.current_thread().name == "worker":
+        at_before.set()
+        go.wait()
+
+
+_transactions._BARRIER = barrier
+
+
+def worker():
+    with _transactions.cache_lock(root):
+        acquired.set()
+        threading.Event().wait()
+
+
+threading.Thread(target=worker, name="worker", daemon=True).start()
+at_before.wait()  # the worker's lock descriptor is open, acquisition pending
+pid = os.fork()
+if pid == 0:
+    signal.pause()  # the forked child lingers until the test kills it
+    os._exit(0)
+print(pid, flush=True)
+go.set()
+acquired.wait()
+os._exit(0)  # the holder dies while holding the lock
+"""
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="fork is POSIX-only")
+def test_fork_during_pending_acquisition_does_not_keep_the_lock(tmp_path):
+    """A child forked while a thread is acquiring must not keep the lock alive.
+
+    The worker has opened its lock descriptor and is paused at
+    ``lock.before_acquire`` when the main thread forks. The worker then
+    acquires and its process dies holding the lock. A fresh participant must
+    acquire it. Mutation ``fork_keeps_pending_fd`` (register descriptors only
+    once acquired) leaves the child holding the open file description.
+    """
+    root = tmp_path / "root"
+    root.mkdir()
+    holder = subprocess.Popen(
+        [sys.executable, "-I", "-c", FORK_PENDING, str(ROOT), str(root)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    child = int(holder.stdout.readline())
+    try:
+        assert holder.wait(timeout=SAFETY_TIMEOUT) == 0, holder.stderr.read()
+        with _transactions.cache_lock(root, timeout=10.0):
+            pass
+    finally:
+        with contextlib.suppress(ProcessLookupError):
+            os.kill(child, signal.SIGKILL)
+        holder.stdout.close()
+        holder.stderr.close()
+
+
+FORK_LEAVE = r"""
+import os, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from chunker.grammar_management import _transactions
+
+root = Path(sys.argv[2])
+other = root / "unrelated.bin"
+other.write_bytes(b"x")
+_transactions.open_cache_root(root)
+mine = []
+with _transactions.cache_lock(root):
+    (hold,) = [h for h in _transactions._HOLDS.values() if h.owner is not None]
+    numbers = {hold.lock_fd, hold.rootdir.fd}
+    pid = os.fork()
+    if pid == 0:
+        # Reuse the numbers the at-fork handler freed for unrelated files.
+        while not numbers <= set(mine):
+            fd = os.open(other, os.O_RDONLY)
+            mine.append(fd)
+            if len(mine) > 64:
+                break
+if pid == 0:
+    try:
+        for fd in mine:
+            os.fstat(fd)  # still open: the helper closed nothing of ours
+    except OSError:
+        os._exit(2)
+    os._exit(0)
+_, status = os.waitpid(pid, 0)
+sys.exit(os.waitstatus_to_exitcode(status))
+"""
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="fork is POSIX-only")
+def test_forked_child_leaving_a_section_closes_nothing_of_its_own(tmp_path):
+    """A child that leaves the parent's section normally must not release it.
+
+    The child reuses the descriptor numbers the at-fork handler freed, then
+    leaves the ``with`` block. Mutation ``release_in_forked_child`` (no owner
+    PID check) unlocks and closes the child's unrelated descriptors, or raises
+    ``EBADF``.
+    """
+    root = tmp_path / "root"
+    root.mkdir()
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", FORK_LEAVE, str(ROOT), str(root)],
+        capture_output=True,
+        text=True,
+        timeout=SAFETY_TIMEOUT,
+        check=False,
+    )
+    assert result.returncode == 0, (result.returncode, result.stderr[-2000:])
+
+
+SPLIT_MOUNT = r"""
+import json, logging, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from chunker.grammar_management.core import GrammarManager, GrammarValidator, ValidationLevel
+
+cache, library = Path(sys.argv[2]), Path(sys.argv[3])
+messages = []
+
+
+class Collect(logging.Handler):
+    def emit(self, record):
+        messages.append(record.getMessage())
+
+
+logging.getLogger().addHandler(Collect(level=logging.WARNING))
+assert (cache / "grammars").stat().st_dev != cache.stat().st_dev, "not mounted"
+validator = GrammarValidator(cache)
+assert validator.validate_grammar(library, "baml", ValidationLevel.STANDARD).is_valid
+key = validator._get_cache_key(library, "baml", ValidationLevel.STANDARD)
+records = json.loads((cache / "validation_cache.json").read_text(encoding="utf-8"))
+manager = GrammarManager(
+    user_dir=cache / "grammars", package_dir=cache / "package", cache_dir=cache
+)
+stats = manager.cleanup_cache(older_than_days=30)
+print(json.dumps({"stored": key in records, "reloaded": key in GrammarValidator(cache)._cache,
+                  "errors": stats["errors"], "warnings": messages}))
+"""
+
+
+def test_split_mount_root_keeps_validation_records(tmp_path, revisions):
+    """A separate filesystem at ``grammars/`` does not stop Primitive 1.
+
+    Amendment A1 applies the same-device check only where a rename crosses
+    from ``.txn/`` to a namespace; the record update replaces a file in the
+    root directory, which main supports on split-mount roots.
+    """
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    rev_a, _ = revisions
+    result = run_with_tmpfs(cache / "grammars", SPLIT_MOUNT, [cache, rev_a])
+    assert result.returncode == 0, result.stderr[-3000:]
+    report = json.loads(result.stdout.strip().splitlines()[-1])
+    assert report == {"stored": True, "reloaded": True, "errors": [], "warnings": []}

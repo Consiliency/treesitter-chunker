@@ -63,8 +63,11 @@ findings into TXN. Each is addressed in the PR named below, and that PR's body
 says how. The runner allows TXN to add private test pause points and to change
 how a test injects its fault, as long as every named mutation is still
 reliably killed. A change to a public signature or rule needs a reviewed
-contract amendment; none is planned. Contract text edits below only bring the
-text in line with these findings and with merged facts.
+contract amendment. One is made: **A1** (N11), a same-device check scoped to
+the operations that rename between `.txn/` and a namespace
+(treesitter-chunker#323 and treesitter-chunker#363), recorded in the contract's
+Amendments section. Other contract edits only bring the text in line with
+these findings and with merged facts.
 
 | Finding | Resolution | PR |
 |---|---|---|
@@ -79,7 +82,7 @@ text in line with these findings and with merged facts.
 | Claude N8 — verify `metadata.prev.json` | Checked against `Mp` before any metadata restore, and in the operator procedure. | treesitter-chunker#363 |
 | Claude N9 — leftover mismatch | Before capture, compare the current metadata's `artifact_sha256` with the destination; warn and name any retained `rollback.json` for the language. Restore-time crashes added to the crash table. | treesitter-chunker#363 |
 | Claude N10 — lock and marker lists | The lock-scope list says "including" and names initialization, staging creation/discard and garbage claiming. Every directory the helper creates under `.txn/` gets a marker; a missing marker is re-created idempotently. The 60 s rationale includes the probe's stop grace. Polling acquisition is documented as not fair. | treesitter-chunker#370 (infrastructure and text), treesitter-chunker#323 (retired/claimed directories) |
-| Claude N11 — one filesystem | `open_cache_root` refuses a root whose existing `downloads`, `builds`, `grammars` or `.txn` lies on another device. | treesitter-chunker#370 |
+| Claude N11 — one filesystem | Contract amendment A1: operations that rename between `.txn/` and a namespace refuse a different device with `CacheTransactionError`. Initialization and Primitive 1 keep working on split mounts (runner decision, treesitter-chunker#560 round 1). Each PR adds a real-mount Linux test. | treesitter-chunker#323, treesitter-chunker#363 (treesitter-chunker#370 tests split mounts keep records) |
 | Claude N12 — HOTFIX citation | Cite merge `60a5518f`, the `.staged` suffix, and discharge the re-review trigger. State that the probe child never takes the cache lock. | treesitter-chunker#370 |
 
 ## Lane Index & Dependencies
@@ -130,7 +133,8 @@ the pinned count and digest in `tests/test_supported_wheel_verification.py`.
 - **Mutations**: `stale_validation_snapshot`, `pruner_stale_rewrite`,
   `follow_validation_symlink`.
 - **Helper checks**: lock not inheritable; fork handler; nested-root refusal
-  at open; different-device refusal; marker re-creation.
+  at open; split-mount roots keep records (real mount, Linux); marker
+  re-creation; fork with a pending acquisition and a child leaving a section.
 
 ### SL-cache — treesitter-chunker#323 (PR 2)
 

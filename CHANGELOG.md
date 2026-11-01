@@ -67,8 +67,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   other non-regular file at that name is now reported (a warning for the
   validator, an `errors` entry for cleanup) and its target is never read or
   written. The cache root gains `.txn.lock` and a `.txn/` control directory,
-  which are safe to leave in place. Nested or multi-filesystem cache roots are
-  refused (see the cache transaction contract).
+  which are safe to leave in place. The cache root must be writable: on a
+  read-only root, records are not loaded or persisted (the validator keeps
+  working with an in-memory cache). Nested cache roots are refused (see the
+  cache transaction contract).
 
 - The SQLite chunk cache (`ASTCache`, used by default by `ParallelChunker`,
   `chunk_files_parallel` and `chunk_directory_parallel`) no longer returns core

@@ -614,7 +614,9 @@ logs a warning and keeps working without persisted records, and `cleanup_cache`
 reports it in `errors`. The `.txn/` directory beside the lock file holds the
 transaction control area; leave both in place. Coordination covers one host and a
 local filesystem only, and a cache root inside another root's `downloads/`,
-`builds/` or `.txn/` is refused.
+`builds/` or `.txn/` is refused. The cache root must be writable, because every
+reader takes the lock: on a read-only root (for example, a pre-populated image),
+existing records are not loaded and new ones are kept in memory only.
 
 The separate Python `GrammarManager.remove_grammar(language, clean_cache=False)`
 option retains that language's download and build cache while removing its
