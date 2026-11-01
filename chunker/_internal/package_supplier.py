@@ -155,3 +155,16 @@ def package_supplied_digest(candidate: Path) -> tuple[str, str | None]:
             return SUPPLIED, digest.hexdigest()
         return MISMATCH, None
     return LOCAL, None
+
+
+def is_record_entry(path: Path) -> bool:
+    """Whether ``path`` is one of our distribution's package grammar files.
+
+    True for any valid RECORD entry under ``chunker/data/grammars/build``,
+    whatever its hash, when ``path`` exists. Used to refuse replacing a shipped
+    grammar in place: the replacement would differ from RECORD and stay
+    ``integrity_mismatch`` permanently.
+    """
+    if not os.path.lexists(path):
+        return False
+    return any(same_file(path, located) for located, _ in _package_grammar_records())

@@ -1013,3 +1013,212 @@ def test_grammar_info_package_dir_file_without_record_needs_a_pin(
         monkeypatch, capsys, "--trusted-artifacts", str(option), "info", "baml"
     )
     require("Status: ✅ healthy" in out and code == 0, f"pinned {out!r}")
+
+
+# --- RECORD boundary edge cases (contract items 1-3; round-2 review) -------------------
+
+
+def _wheel_rows(tmp_path, monkeypatch, files: dict[str, bytes], rows: list[str]):
+    """Fake installed distribution with arbitrary RECORD rows; returns build dir."""
+    from importlib.metadata import PathDistribution
+
+    from chunker._internal import package_supplier
+
+    site = tmp_path / "site"
+    package = site / "chunker"
+    build = package / "data" / "grammars" / "build"
+    build.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    for relative, data in files.items():
+        target = site / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    dist_info = site / "treesitter_chunker-6.0.0.dist-info"
+    dist_info.mkdir()
+    (dist_info / "METADATA").write_text(
+        "Metadata-Version: 2.1\nName: treesitter-chunker\nVersion: 6.0.0\n",
+        encoding="utf-8",
+    )
+    (dist_info / "RECORD").write_text(
+        "\n".join(["chunker/__init__.py,,", *rows]) + "\n", encoding="utf-8"
+    )
+    distribution = PathDistribution(dist_info)
+    monkeypatch.setattr(package_supplier, "_package_distribution", lambda: distribution)
+    monkeypatch.setattr(
+        package_supplier, "_package_init_file", lambda: package / "__init__.py"
+    )
+    package_supplier._package_grammar_records.cache_clear()
+    return build
+
+
+def _row(entry: str, data: bytes, algorithm: str = "sha256") -> str:
+    import base64
+    import hashlib
+
+    digest = hashlib.new(algorithm, data).digest()
+    encoded = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+    return f"{entry},{algorithm}={encoded},{len(data)}"
+
+
+GOOD_ENTRY = "chunker/data/grammars/build/baml.so"
+GRAMMAR_BYTES = b"\x7fELF shipped grammar bytes"
+
+
+def test_record_check_accepts_a_matching_entry(
+    tmp_path, monkeypatch, clear_package_records
+):
+    from chunker._internal.package_supplier import package_supplied_digest
+
+    build = _wheel_rows(
+        tmp_path,
+        monkeypatch,
+        {GOOD_ENTRY: GRAMMAR_BYTES},
+        [_row(GOOD_ENTRY, GRAMMAR_BYTES)],
+    )
+    require(
+        package_supplied_digest(build / "baml.so")
+        == ("supplied", sha256(GRAMMAR_BYTES).hexdigest()),
+        "control: matching RECORD entry",
+    )
+
+
+@pytest.mark.skipif(os.name == "nt", reason="file symlinks need privileges on Windows")
+def test_record_check_rejects_a_symlink_to_a_record_file(
+    tmp_path, monkeypatch, clear_package_records
+):
+    from chunker._internal.package_supplier import package_supplied_digest
+
+    build = _wheel_rows(
+        tmp_path,
+        monkeypatch,
+        {GOOD_ENTRY: GRAMMAR_BYTES},
+        [_row(GOOD_ENTRY, GRAMMAR_BYTES)],
+    )
+    link = tmp_path / "linked.so"
+    link.symlink_to(build / "baml.so")
+    require(package_supplied_digest(link) == ("local", None), "a symlink never counts")
+
+
+@pytest.mark.parametrize("case", ["wrong_parent", "dot_dot", "absolute", "backslash"])
+def test_record_check_ignores_malformed_entries(
+    tmp_path, monkeypatch, clear_package_records, case
+):
+    from chunker._internal.package_supplier import package_supplied_digest
+
+    if case == "wrong_parent":
+        # The file sits where the entry points, one level above the build dir.
+        entry = "chunker/data/grammars/baml.so"
+        files = {entry: GRAMMAR_BYTES}
+        candidate_relative = entry
+    else:
+        files = {GOOD_ENTRY: GRAMMAR_BYTES}
+        candidate_relative = GOOD_ENTRY
+        site = tmp_path / "site"
+        entry = {
+            "dot_dot": "chunker/data/grammars/build/../build/baml.so",
+            "absolute": str((site / GOOD_ENTRY).absolute()).replace("\\", "/"),
+            "backslash": GOOD_ENTRY.replace("/", "\\"),
+        }[case]
+    _wheel_rows(tmp_path, monkeypatch, files, [_row(entry, GRAMMAR_BYTES)])
+    candidate = tmp_path / "site" / candidate_relative
+    require(
+        package_supplied_digest(candidate) == ("local", None),
+        f"{case}: entry {entry!r} is ignored",
+    )
+
+
+def test_record_check_requires_the_imported_distribution(
+    tmp_path, monkeypatch, clear_package_records
+):
+    from chunker._internal import package_supplier
+
+    build = _wheel_rows(
+        tmp_path,
+        monkeypatch,
+        {GOOD_ENTRY: GRAMMAR_BYTES},
+        [_row(GOOD_ENTRY, GRAMMAR_BYTES)],
+    )
+    other = tmp_path / "shadow" / "chunker" / "__init__.py"
+    other.parent.mkdir(parents=True)
+    other.write_text("", encoding="utf-8")
+    monkeypatch.setattr(package_supplier, "_package_init_file", lambda: other)
+    package_supplier._package_grammar_records.cache_clear()
+    require(package_supplier._package_grammar_records() == (), "no records")
+    require(
+        package_supplier.package_supplied_digest(build / "baml.so") == ("local", None),
+        "a shadowing distribution supplies nothing",
+    )
+
+
+@pytest.mark.parametrize("case", ["no_hash", "md5"])
+def test_record_check_requires_a_sha256_hash(
+    tmp_path, monkeypatch, clear_package_records, case
+):
+    from chunker._internal.package_supplier import package_supplied_digest
+
+    row = (
+        f"{GOOD_ENTRY},,"
+        if case == "no_hash"
+        else _row(GOOD_ENTRY, GRAMMAR_BYTES, "md5")
+    )
+    build = _wheel_rows(tmp_path, monkeypatch, {GOOD_ENTRY: GRAMMAR_BYTES}, [row])
+    require(
+        package_supplied_digest(build / "baml.so") == ("local", None),
+        f"{case}: not package-supplied",
+    )
+
+
+@pytest.mark.skipif(os.name == "nt", reason="directory symlinks need privileges")
+def test_record_check_matches_through_a_symlinked_site_path(
+    tmp_path, monkeypatch, clear_package_records
+):
+    from chunker._internal.package_supplier import package_supplied_digest
+
+    _wheel_rows(
+        tmp_path,
+        monkeypatch,
+        {GOOD_ENTRY: GRAMMAR_BYTES},
+        [_row(GOOD_ENTRY, GRAMMAR_BYTES)],
+    )
+    alias = tmp_path / "site-alias"
+    alias.symlink_to(tmp_path / "site", target_is_directory=True)
+    require(
+        package_supplied_digest(alias / GOOD_ENTRY)[0] == "supplied",
+        "file identity, not path text",
+    )
+
+
+def test_publication_refuses_to_replace_a_shipped_grammar(
+    config_home, tmp_path, monkeypatch, clear_package_records
+):
+    from chunker._internal import user_grammar_tools
+    from chunker.grammar import integrity
+
+    build = _wheel_rows(
+        tmp_path,
+        monkeypatch,
+        {GOOD_ENTRY: GRAMMAR_BYTES},
+        [_row(GOOD_ENTRY, GRAMMAR_BYTES)],
+    )
+    calls = []
+
+    def refuse(*args, **kwargs):
+        calls.append(args)
+        raise AssertionError("probe called")
+
+    monkeypatch.setattr(user_grammar_tools, "probe_native_grammar", refuse)
+    monkeypatch.setattr(integrity, "probe_native_grammar", refuse)
+    replacement = tmp_path / "rebuilt.so"
+    replacement.write_bytes(b"rebuilt grammar bytes")
+    tools = UserGrammarTools(
+        build,
+        tmp_path / "sources",
+        trusted_artifacts={"baml": _pin_of(b"rebuilt grammar bytes")},
+    )
+    result = {"errors": [], "status": "running"}
+    require(tools._publish_library("baml", replacement, result) is False, "refused")
+    require(result["status"] == "error", f"{result}")
+    require("cannot be replaced in place" in result["errors"][0], f"{result}")
+    require((build / "baml.so").read_bytes() == GRAMMAR_BYTES, "shipped file untouched")
+    require(calls == [], "nothing staged or probed")
+    require(sorted(p.name for p in build.iterdir()) == ["baml.so"], "no staged file")
