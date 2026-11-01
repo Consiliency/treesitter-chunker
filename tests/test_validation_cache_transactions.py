@@ -65,6 +65,10 @@ cache, scratch = Path(ARGS[0]), Path(ARGS[1])
 manager = GrammarManager(
     user_dir=scratch / "user", package_dir=scratch / "package", cache_dir=cache
 )
+# No download or build entries: the first lock cleanup_cache takes is the
+# validation-record prune, which this test interleaves with a writer.
+(cache / "downloads").rmdir()
+(cache / "builds").rmdir()
 emit("ready")
 wait()
 emit("done", stats=manager.cleanup_cache(older_than_days=30))

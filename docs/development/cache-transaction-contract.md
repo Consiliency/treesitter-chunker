@@ -290,8 +290,10 @@ renames or deletes.
    - POSIX walks opened directory descriptors (`os.scandir(fd)`,
      `O_DIRECTORY | O_NOFOLLOW`, `unlink`/`rmdir` with `dir_fd`) and rechecks
      each directory's identity after opening it.
-   - Windows walks validated non-reparse directories by path, using
-     `DirEntry.is_junction()` and `is_symlink()`.
+   - Windows walks validated non-reparse directories by path, treating every
+     reparse point (symlink or junction) as a leaf. It clears the read-only
+     attribute of a regular file, without following links, before `unlink`,
+     because git object files are read-only.
    - On either platform, `ENOENT` during deletion means "already deleted": it
      is not an error and not counted. No unchecked `shutil.rmtree` is used.
 6. **Bounded Windows retry.** On Windows, every `os.replace` and `os.rename`
@@ -390,12 +392,21 @@ inside `staging.path`.
    - Windows: the child is created suspended, assigned to a new job object
      with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` and without the breakaway
      limits, then resumed.
-2. **Wait.** Wait for the direct child, up to `timeout`.
+2. **Wait.** Wait for the direct child, up to `timeout`. On POSIX the wait
+   uses `os.waitid(..., WEXITED | WNOWAIT)` (macOS, which lacks it, polls the
+   leader's state until it is a zombie), so the exited leader is **not
+   reaped** yet and its group ID cannot be recycled while the group is killed
+   and checked.
 3. **Kill the group.** Whether the child exited or timed out, kill the whole
-   group or job: `os.killpg(pgid, SIGKILL)`, or `TerminateJobObject`.
+   group or job: `os.killpg(pgid, SIGKILL)`, or `TerminateJobObject`. On POSIX
+   the kill is repeated while the leader is still unreaped, never after.
 4. **Confirm empty.** Poll until the group or job is confirmed empty, within a
    bounded deadline:
-   - POSIX: `os.killpg(pgid, 0)` raises `ProcessLookupError`.
+   - POSIX: no **non-zombie** process has the group ID (checked with
+     `psutil`, as `integrity._alive` does), so orphans that nobody reaps
+     promptly (Python as PID 1 or a subreaper) do not block confirmation. The
+     helper reaps the group's zombies that are its own children, then reaps
+     the leader.
    - Windows: the job's `ActiveProcesses` is 0.
 
    Seam points: `run.after_exit` after step 2, `run.after_group_empty` after
@@ -411,7 +422,11 @@ inside `staging.path`.
 - After a timeout, the operation fails. Build-method fallback in
   `_build_grammar` does not continue into the same staging.
 - If the group was confirmed empty, `discard_staging` may remove the staging.
-  Otherwise the staging is retained and reported.
+  It first retires the staging directory, under the lock, to
+  `.txn/retired/<operation-id>/staging`, then deletes it from there. A file
+  that cannot be deleted (for example, a library the validator still has
+  loaded on Windows) stays as garbage that a later prune claims. Otherwise the
+  staging is retained and reported.
 
 **Parent death.**
 
@@ -979,6 +994,10 @@ scope set by the roadmap runner in the treesitter-chunker#560 round-1 panel).**
   namespace is a separate mount now fails with an actionable error instead of
   failing part-way. Equal devices are necessary, not sufficient: other rename
   failures keep their specified handling.
+- *Implemented* for Primitive 2 in treesitter-chunker#323
+  (`_require_same_device`, before any rename and under the lock), with a
+  real-tmpfs test that a split `builds/` is refused while the record update
+  and the other namespace keep working.
 
 ## Signatures
 

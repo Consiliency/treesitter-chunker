@@ -266,3 +266,59 @@ def run_with_tmpfs(
         )
     finally:
         subprocess.run(["sudo", "-n", "umount", str(mount_point)], check=False)
+
+
+MOUNT_PRELUDE = r'''
+import os, subprocess
+
+
+def mount_tmpfs(path):
+    """Mount a private tmpfs (root in a user namespace, or passwordless sudo)."""
+    path.mkdir(parents=True, exist_ok=True)
+    if os.geteuid() == 0:
+        subprocess.run(["mount", "-t", "tmpfs", "tmpfs", str(path)], check=True)
+    else:
+        owner = f"uid={os.getuid()},gid={os.getgid()}"
+        subprocess.run(
+            ["sudo", "-n", "mount", "-t", "tmpfs", "-o", owner, "tmpfs", str(path)],
+            check=True,
+        )
+        MOUNTED.append(path)
+
+
+def unmount_all():
+    for path in MOUNTED:
+        subprocess.run(["sudo", "-n", "umount", str(path)], check=False)
+
+
+MOUNTED = []
+'''
+
+
+def run_mounting(
+    script: str, args: Sequence[str | os.PathLike[str]]
+) -> subprocess.CompletedProcess[str]:
+    """Run ``python -I -c MOUNT_PRELUDE+script ROOT args...`` able to mount tmpfs.
+
+    In a user and mount namespace when the kernel allows it (mounts vanish with
+    it), otherwise with passwordless ``sudo`` (the script must call
+    ``unmount_all()`` in a ``finally``). Skips the test when neither exists.
+    """
+    import pytest
+
+    mode = _mount_mode()
+    if mode is None:
+        pytest.skip("mounting a tmpfs needs a user namespace or passwordless sudo")
+    command = [
+        sys.executable,
+        "-I",
+        "-c",
+        MOUNT_PRELUDE + script,
+        str(ROOT),
+        *map(str, args),
+    ]
+    if mode == "unshare":
+        command = ["unshare", "--user", "--map-root-user", "--mount", *command]
+    return subprocess.run(
+        command, capture_output=True, text=True, timeout=SAFETY_TIMEOUT, check=False
+    )
