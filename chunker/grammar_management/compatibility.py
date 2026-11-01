@@ -1412,21 +1412,35 @@ class SmartSelector:
         languages: list[str],
         global_constraints: dict[str, Any] | None = None,
     ) -> dict[str, SelectionCandidate | None]:
-        """Select best grammars for multiple languages with global optimization.
+        """Select the best grammar for each language independently.
+
+        No cross-language constraint is supported (treesitter-chunker#344).
+        A nonempty ``global_constraints`` is rejected before any selection
+        runs, so a caller never mistakes an unconstrained result for a
+        constrained one. Pass per-language constraints to
+        ``select_best_grammar(language, constraints=...)`` instead.
 
         Args:
             languages: List of languages to select grammars for
-            global_constraints: Global constraints across all selections
+            global_constraints: Must be ``None`` or empty
 
         Returns:
             Dictionary mapping language to selected candidate
+
+        Raises:
+            ValueError: If ``global_constraints`` is nonempty.
         """
+        if global_constraints:
+            raise ValueError(
+                "SmartSelector.select_multiple_grammars does not support global "
+                f"constraints (got {sorted(map(str, global_constraints))}); use "
+                "select_best_grammar(language, constraints=...) per language"
+            )
         try:
             logger.info(f"Smart selecting grammars for {len(languages)} languages")
 
             selections = {}
 
-            # First pass: individual selections
             for language in languages:
                 try:
                     candidate = self.select_best_grammar(language)
@@ -1434,13 +1448,6 @@ class SmartSelector:
                 except Exception as e:
                     logger.error(f"Failed to select grammar for {language}: {e}")
                     selections[language] = None
-
-            # Second pass: global optimization
-            if global_constraints:
-                selections = self._optimize_global_selection(
-                    selections,
-                    global_constraints,
-                )
 
             return selections
 
@@ -1834,16 +1841,6 @@ class SmartSelector:
 
         # Return highest scoring candidate
         return max(candidates, key=lambda c: c.overall_score)
-
-    def _optimize_global_selection(
-        self,
-        selections: dict[str, SelectionCandidate | None],
-        global_constraints: dict[str, Any],
-    ) -> dict[str, SelectionCandidate | None]:
-        """Optimize selections globally considering cross-language constraints."""
-        # This would implement global optimization logic
-        # For now, return unchanged selections
-        return selections
 
     def _apply_constraint_penalties(
         self,
