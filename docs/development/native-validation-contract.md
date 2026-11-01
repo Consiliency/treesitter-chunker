@@ -454,7 +454,9 @@ Rules:
    only from the sources in "Pin sources" below. No trust-all switch exists.
    The one exception to pinning is the package-supplied grammars of our own
    distribution (below), whose expected digest comes from the installed
-   distribution's RECORD.
+   distribution's RECORD. The exception applies at every admitting site,
+   grammar commands included, through one shared check (maintainer decision,
+   2026-11-01; see "Package-supplied grammars in our own wheels", item 6).
 5. One combined library may serve several languages. Each language is
    admitted separately against its own record, so the same digest may appear
    under several keys. Mapping a library for one language admits no other
@@ -585,8 +587,9 @@ is; they never make anything trusted, so this is not a trust switch.
     callback. So a defective option file, or a defective config file when the
     option is absent, exits 2 for every subcommand of both groups, including
     commands such as `build`, `remove` or `cleanup` that do not consult pins
-    today. No subcommand only warns. `--help` is unaffected. The CLI reference
-    records this.
+    today. No subcommand only warns. `--help` is unaffected.
+    `docs/grammar_management.md` ("CLI Commands Reference" → "Approved pins")
+    records this, and `docs/cli-reference.md` points to it.
 - **Test isolation.** ADMIT's tests set `HOME`, `USERPROFILE`, `APPDATA` and
   `XDG_CONFIG_HOME` to private temporary directories, so a developer's real
   pin file never affects a test.
@@ -731,6 +734,16 @@ language-pack (P1, P2), with no user pin. The boundary is exact:
    hashes the candidate to compare it with that supplied value. It never
    creates, stores or widens an approval from what it finds. `RECORD` is
    installer metadata, not a manifest the tool writes beside artifacts.
+6. **One trust rule everywhere** (maintainer decision, 2026-11-01, relayed by
+   the roadmap runner). The grammar commands honour this boundary through the
+   same code as parsing, not a copy: one shared check
+   (`chunker/_internal/package_supplier.py`) is applied by the shared
+   admission helper that every admitting site uses, and by the registry. So
+   in `grammar info`, `diagnose`, `validate`, `list` and the validator, a
+   shipped grammar whose bytes match RECORD is admitted (probed under its
+   RECORD digest) and reports healthy with no pin; a RECORD mismatch reports
+   `integrity_mismatch`, and no user pin overrides it; a file in that
+   directory without a RECORD entry is not package-supplied and needs a pin.
 
 ### Verdict-reuse key
 
@@ -873,8 +886,8 @@ does not cover.
 | V1 | `chunker/grammar/validator.py:41` and `chunker/grammar/validator.py:43` `TreeSitterGrammarValidator.check_abi_compatibility` | caller path | retired (treesitter-chunker#400, above) | SL-legacy | open |
 | D1 | `chunker/grammar/download.py:412` `GrammarDownloadManager.validate_grammar` | downloaded/compiled output | retired. The static method has no way to receive pins: it keeps its existing non-native checks and returns `(False, <retirement message naming probe_native_grammar>)`. It has no in-repository callers | SL-legacy | open |
 | M1 | `chunker/grammar_manager.py:256` `GrammarManager.get_available_languages` (legacy combined `my-languages.so`) | combined library | integrated (probe only, rule 5). It tries only the pinned language keys and returns only those whose combined-library bytes are admitted against their own pin. With no pins it returns the empty set. It never maps the library in the parent or reads its symbols | SL-legacy | open |
-| T1 | `chunker/grammar_management/testing.py:153` reload of the original path after validation → N1 | original candidate | retired. The duplicate reload goes; `test_parse_samples` (N3) already checks parse errors on admitted bytes | SL-ins | open |
-| T2 | `chunker/grammar_management/testing.py:381` `ctypes.CDLL` of a self-written corrupt file, used to compute an expected message | bytes the self-test just wrote | retired. The self-test compares against the admission reason instead | SL-ins | open |
+| T1 | `chunker/grammar_management/testing.py:153` reload of the original path after validation → N1 | original candidate | retired. The duplicate reload goes; `test_parse_samples` (N3) already checks parse errors on admitted bytes | SL-core (SL-core-2 PR) | open |
+| T2 | `chunker/grammar_management/testing.py:381` `ctypes.CDLL` of a self-written corrupt file, used to compute an expected message | bytes the self-test just wrote | retired. The self-test compares against the admission reason instead | SL-core (SL-core-2 PR) | open |
 | A1 | `GrammarMetadataExtractor.extract_from_dependencies` (`chunker/languages/compatibility/grammar_analyzer.py:591`, `ldd`) | caller-supplied path, through the dynamic loader | retired. It returns `{"dependencies": [], "dependencies_status": "retired"}` without running any tool, so a caller can tell retirement from a library with no dependencies. It has no in-repository callers | SL-ins | open |
 | I1 | `chunker/grammar/integrity.py:131` probe child → N1 | verified private snapshot | integrated (this is the admission mechanism) | — | landed |
 | P1 | `chunker/_internal/language_pack.py:109` `Language(module.language())` | pinned `tree_sitter_python` / `tree_sitter_javascript` wheels | package supplier, out of scope | — | n/a |
@@ -913,7 +926,12 @@ File ownership notes for the ADMIT plan:
   - `chunker/cli/grammar_commands.py`, the argparse option and the config
     fallback;
   - `chunker/_internal/grammar_management.py`, the rule-3 lookup in
-    `SmartGrammarManager`.
+    `SmartGrammarManager`;
+  - `chunker/_internal/package_supplier.py`, the one RECORD-verified
+    package-supplier check (item 6 of "Package-supplied grammars in our own wheels"), which SL-reg's registry imports;
+  - `chunker/grammar_management/testing.py` (T1, T2), carried in SL-core's
+    validator PR because that PR makes the validator pin-only
+    (runner-accepted, 2026-11-01; plan decision 8).
 
   SL-core publishes the reader's signatures on day 1, alongside IF-0-ADMIT-1,
   and SL-reg consumes them for `chunker/parser.py` instead of writing its own.
@@ -943,7 +961,9 @@ These changes take effect when ADMIT lands, and ADMIT records them in
   the subcommand. The option replaces the config file for that command; the
   two are never merged. With no pins from either source, an installed local
   compiled grammar reports `incompatible` with an `untrusted` cause, and
-  `grammar info` exits 1. A grammar that was never installed still reports
+  `grammar info` exits 1, unless it is a RECORD-verified package-supplied file
+  of our own wheel, which reports healthy (item 6 of the package-supplier
+  section). A grammar that was never installed still reports
   `missing` (rule 3).
 - **Ordinary parsing** (`get_parser`, `acquire_parser`, `chunk_file` and
   everything else that resolves through `chunker.parser`) reads the user-config

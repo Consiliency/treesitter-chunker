@@ -517,11 +517,11 @@ Route every native discovery, validation and health path through `probe_native_g
 
 **Scope notes**
 - Decompose into four lanes by file:
-  - **SL-reg** owns `chunker/_internal/registry.py` (discovery and fallback loads, the package-supplier RECORD check) and `chunker/parser.py` (reading the user-config pin file, retiring the on-demand fetch-and-build).
+  - **SL-reg** owns `chunker/_internal/registry.py` (discovery and fallback loads, using SL-core's shared package-supplier RECORD check) and `chunker/parser.py` (reading the user-config pin file, retiring the on-demand fetch-and-build).
   - **SL-core** owns the `chunker/grammar_management/core.py` `load_compiled_grammar` / GrammarValidator native-load region and verdict reuse, both `chunker/grammar_management/cli.py` CDLL sites (the `build_grammar` post-build load check and the admission step inside `_validate_compiled_grammar`), and publishes IF-0-ADMIT-1.
   - **SL-legacy** owns `chunker/grammar/validator.py` (treesitter-chunker#400), `chunker/grammar/download.py` and `chunker/grammar_manager.py`.
-  - **SL-ins** owns `chunker/grammar_management/testing.py` and, in `grammar_analyzer.py`, `GrammarAnalyzer.__init__`, `GrammarAnalyzer.analyze_grammar_file` (the per-language pin lookup) and `GrammarMetadataExtractor.extract_from_dependencies`.
-  - **SL-core** also owns the shared pin-file reader `chunker/_internal/trusted_artifacts.py` (per-OS path resolution, forbidden-directory check, `chunker.trusted_artifacts.v1` parser), `chunker/exceptions.py` (`TrustedArtifactsError`), `chunker/cli/grammar_commands.py` (the option and the config fallback) and `chunker/_internal/grammar_management.py` (the per-language lookup in `SmartGrammarManager`), plus the `test_parse_samples` change that keeps pin-holding components off `chunker.parser`.
+  - **SL-ins** owns, in `grammar_analyzer.py`, `GrammarAnalyzer.__init__`, `GrammarAnalyzer.analyze_grammar_file` (the per-language pin lookup) and `GrammarMetadataExtractor.extract_from_dependencies`.
+  - **SL-core** also owns the shared pin-file reader `chunker/_internal/trusted_artifacts.py` (per-OS path resolution, forbidden-directory check, `chunker.trusted_artifacts.v1` parser), `chunker/exceptions.py` (`TrustedArtifactsError`), `chunker/cli/grammar_commands.py` (the option and the config fallback) and `chunker/_internal/grammar_management.py` (the per-language lookup in `SmartGrammarManager`), plus the `test_parse_samples` change that keeps pin-holding components off `chunker.parser`. SL-core also owns `chunker/_internal/package_supplier.py`, the one RECORD-verified package-supplier check used by the registry and, through the shared admission helper, by the grammar commands (maintainer decision, 2026-11-01: one trust rule everywhere), and `chunker/grammar_management/testing.py` (inventory T1/T2, carried in SL-core's validator PR because that PR makes the validator pin-only; runner-accepted, 2026-11-01).
 - SL-core publishes the IF-0-ADMIT-1 accessor signature and the pin-file reader's signatures on day 1. SL-reg consumes the reader for `chunker/parser.py` and does not write its own.
 - `_validate_compiled_grammar` is split so EC-ADMIT-2 can close in this phase. SL-core replaces its direct `ctypes.CDLL` with `probe_native_grammar` (a pinned admission, failing closed without a pin) and adds the bypass mutation, while keeping today's command output and exit codes as they are. The observable `validate` behaviour (verifying the requested language and giving an actionable cause, treesitter-chunker#128) stays with ADMITFIX SL-cli in its own PR.
 - `grammar_analyzer.py` is shared with CIFAST SL-deadline (disjoint functions) and merges one at a time. `core.py` follows the cross-phase merge order in Execution Notes.
@@ -536,6 +536,7 @@ Route every native discovery, validation and health path through `probe_native_g
 - `chunker/_internal/registry.py`
 - `chunker/parser.py`
 - `chunker/_internal/trusted_artifacts.py` (new)
+- `chunker/_internal/package_supplier.py` (new)
 - `chunker/exceptions.py`
 - `chunker/cli/grammar_commands.py`
 - `chunker/_internal/grammar_management.py`
@@ -902,7 +903,7 @@ Bring the records trackers up to date after the automated phases: refresh the tr
   - `chunker/grammar_management/compatibility.py` — SMALLFIX SL-sel (treesitter-chunker#133 → treesitter-chunker#134 → treesitter-chunker#344) and ADMIT SL-core (the two `GrammarValidator(...)` constructor lines only). Merges one at a time.
   - `.github/workflows/ci.yml` — CIFAST SL-lint → CIFAST SL-perm → PY314 SL-types → PY314 SL-env.
   - `.github/workflows/release.yml` — treesitter-chunker#534 → CIFAST SL-lint → CIFAST SL-perm → PY314 SL-types → PY314 SL-env.
-  - `chunker/build/builder.py` — treesitter-chunker#534 → CIFAST SL-lint (F401, treesitter-chunker#517).
+  - `chunker/build/builder.py` — treesitter-chunker#534 → CIFAST SL-lint (F401, treesitter-chunker#517). ADMIT SL-core adds `_REQUIRED_WHEEL_PAYLOAD` entries for its new modules only; whichever of it and CIFAST SL-lint merges second rebases.
   - `.python-version` — created by treesitter-chunker#534 (3.12 pin); afterwards owned by PY314 SL-env only.
   - `specs/active/release-process-spec.md` — treesitter-chunker#534 → PY314 SL-env.
   - `CONTRIBUTING.md` — CIFAST SL-lint → CIFAST SL-scratch → PY314.

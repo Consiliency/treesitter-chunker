@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: ADMIT
 roadmap: specs/phase-plans-v4.md
-roadmap_sha256: db213e3d33d1575968377f18627fd82a13a8704c82f2d94c5e0afbf8314f20a9
+roadmap_sha256: ff0dd7ae528c3dfb9e24a911c392b8d9a5bae6b60f24cfb8d2c58459770aa4ba
 automation:
   suite_command: "uv run --locked --all-extras pytest tests/test_trusted_artifacts_contract.py tests/test_grammar_info_exit_contract.py -q"
 ---
@@ -60,6 +60,24 @@ Status since the roadmap snapshot:
   denials are recorded in the PR with their Code Integrity evidence and do not
   stop the phase. Evidence is on treesitter-chunker#508 and
   treesitter-chunker#547. The SL-core split (decision 2) is approved.
+- **Further recorded 3077 incidents** (each in its PR body with the Code
+  Integrity evidence):
+  - treesitter-chunker#556 at `81c82240`, run 7 of 10: 16 event-3077
+    denials of probe-worker snapshots (`chunker-native-probe-*`),
+    00:43:25–00:43:31 UTC; runs 1–6 and 8–10 passed.
+  - treesitter-chunker#563 at `57d9d566`: in the unchanged
+    `tests/test_compiled_grammar_analysis_contract.py`, 1–5 scattered
+    failures per run, with 17 event-3077 denials of probe-worker snapshots,
+    01:14–01:36 UTC, while the Windows host was shared with the
+    treesitter-chunker#547 lane. Run 1 also logged `PermissionError
+    [WinError 5]` on a snapshot inside the KeyboardInterrupt fault-injection
+    test (a registered-worker cleanup path, not before the constructor). It
+    is flagged to the treesitter-chunker#547/#508/#509 owners, not classified
+    here.
+- **Round-1 review (2026-11-01)** of this plan and treesitter-chunker#556:
+  addressed in both PRs. **Maintainer decision (2026-11-01)** on plan
+  decision 5: one trust rule for package-supplied grammars everywhere
+  (decision 5 below).
 
 ## Merge gate (maintainer decision, 2026-10-31)
 
@@ -70,6 +88,13 @@ Recorded on treesitter-chunker#362: **no ADMIT PR merges** until
 
 ADMIT may build, open PRs and collect reviews meanwhile. Every ADMIT PR body
 states the gate. This plan's PR adds it to Phase 8 as EC-ADMIT-9.
+
+**How the gate is counted (runner decision, 2026-11-01).** EC-ADMIT-9 is
+evaluated only on Windows runs made after the treesitter-chunker#547 fix has
+merged and is included in the ADMIT branch under test, using that fix's
+distinct application-control handling. Runs from before treesitter-chunker#547
+do not count, whatever their result; the repeated-run evidence already in the
+PR bodies is diagnostic, not gate evidence.
 
 ## Interface Freeze Gates
 
@@ -122,20 +147,49 @@ def copy_trusted_artifacts(mapping: object) -> dict[str, dict[str, Any]]: ...
 def pin_provenance(mapping: Mapping[str, Any] | None, language: str) -> dict[str, str] | None: ...
 
 # chunker/_internal/native_admission.py
+def parse_trusted_artifacts(data: bytes, *, source: Path) -> TrustedArtifacts: ...
+
+# chunker/_internal/package_supplier.py  (the one RECORD check; M3)
+def package_grammar_build_dir() -> Path: ...
+def same_file(first: Path | str, second: Path | str) -> bool: ...   # samefile, then resolve
+def package_supplied_digest(candidate: Path) -> tuple[str, str | None]: ...
+    # ("supplied", hex) | ("mismatch", None) | ("local", None)
+
+# chunker/_internal/native_admission.py
+def admission_record(
+    path: Path, language: str, trusted_artifacts: Mapping[str, Any] | None,
+) -> tuple[dict[str, str] | None, NativeProbeResult | None]: ...
+    # RECORD digest for a package-supplied file, integrity_mismatch for a
+    # RECORD mismatch (no pin overrides it), else the rule-3 pin record
 def admit_native_candidate(
     path: Path, language: str, trusted_artifacts: Mapping[str, Any] | None, *,
     level: str = "probe", inspector: str = "none",
     inspect_artifact: Callable[[Path], Any] | None = None,
     sample: bytes = b"", timeout: float = 10.0,
+    probe: Callable[..., NativeProbeResult] | None = None,
 ) -> tuple[NativeProbeResult, Any]: ...        # (result, inspector metadata or None)
 def admitted_private_copy(
-    path: Path, language: str, trusted_artifacts: Mapping[str, Any] | None,
+    path: Path, language: str, trusted_artifacts: Mapping[str, Any] | None, *,
+    probe: Callable[..., NativeProbeResult] | None = None,
 ) -> tuple[NativeProbeResult, Path | None]: ...
 def verdict_key(*, language: str, pin_sha256: str, content_sha256: str,
                 level: str, inspector: str) -> str: ...
-def drop_verdict(key: str) -> None: ...
+def has_verdict(key: str) -> bool: ...
+def store_verdict(key: str, *, language: str, content_sha256: str,
+                  metadata: Any = None) -> None: ...
+def drop_verdicts(language: str, content_sha256: str) -> None: ...
+def forget_private_copy(language: str, digest: str) -> None: ...
+def hash_regular_file(path: Path) -> str | None: ...
 NATIVE_VERDICT_VALIDATOR_SCHEMA: int
 ```
+
+`probe=` defaults to `chunker.grammar.integrity.probe_native_grammar`, looked
+up at call time; callers pass their own module's reference so existing test
+seams keep working. Invalidation on a load failure (rule 4): a site that fails
+to load an admitted copy calls `forget_private_copy(language, digest)`, which
+also calls `drop_verdicts(language, digest)`; `drop_verdicts` alone drops every
+verdict for those bytes without touching copies. A forked child starts with no
+verdicts, copies or cleanup ownership (`os.register_at_fork`).
 
 `admit_native_candidate` applies rule 3 (`os.path.lexists` → `missing`; no
 `str` `sha256` → `untrusted` without opening the file), then the verdict-reuse
@@ -174,7 +228,9 @@ verified, probed (or reused under the copy's key), and returned only after
       defective option file, or a defective config file when the option is
       absent, exits 2 for every subcommand, before discovery, any probe or
       any native load. `--help` is unaffected. No subcommand only warns.
-      The CLI reference records this. (SL-core.) Reason: one rule is easier
+      `docs/grammar_management.md` ("CLI Commands Reference" → "Approved
+      pins") records this, and `docs/cli-reference.md` points to it.
+      (SL-core.) Reason: one rule is easier
       to state and audit, and it errs on the safe side. Commands such as
       `grammar build` or `remove` that do not need pins today still name the
       broken file, which the operator has to fix anyway.
@@ -185,8 +241,9 @@ verified, probed (or reused under the copy's key), and returned only after
    SL-reg consume the reader instead of writing its own. The validator PR
    (SL-core-2) takes the `core.py`/`cli.py`/`compatibility.py` region. It
    needs SL-reg's `LanguageRegistry(*, trusted_artifacts=)` and
-   `default_library_path()` for decision 1.2, so it stacks on SL-reg. The
-   roadmap's lane ownership is unchanged.
+   `default_library_path()` for decision 1.2, so it stacks on SL-reg.
+   Ownership changes from this split and later decisions are recorded in
+   decisions 5 and 8.
 3. **Admission helpers live in a second new module,**
    `chunker/_internal/native_admission.py` (SL-core), not in the reader.
    The reader only reads pins; the helpers apply rule 3, the verdict key and
@@ -195,13 +252,21 @@ verified, probed (or reused under the copy's key), and returned only after
    SL-reg.** The contract lists it in IF-0-ADMITPIN-1 but the roadmap's file
    lists do not name it. It only forwards pins to the `LanguageRegistry` it
    builds.
-5. **Grammar commands stay pin-only.** `SmartGrammarManager` and the
-   validator do not apply the package-supplier exemption to the files they
-   report on. A package grammar reported by `grammar info` needs a pin, as
-   every local candidate does today. The exemption applies where the
-   contract puts it: registry resolution (R1, R2, R4) and therefore the
-   no-path `test_parse_samples` branch. This is no regression: since
-   treesitter-chunker#519 every such file already reports `untrusted`.
+5. **One trust rule for package-supplied grammars (maintainer decision,
+   2026-11-01, relayed by the roadmap runner; replaces the earlier
+   "grammar commands stay pin-only").** The grammar commands honour M3
+   through the same code path as parsing, not a copy: the RECORD check lives
+   in `chunker/_internal/package_supplier.py` (SL-core-1), and
+   `native_admission.admission_record` applies it inside
+   `admit_native_candidate` and `admitted_private_copy`, which every
+   admitting site uses (both grammar groups, the validator, the analyzer,
+   the legacy manager and the registry). Three cases: a shipped grammar whose
+   bytes match RECORD reports healthy with no pin; a RECORD mismatch reports
+   `integrity_mismatch`, and no user pin overrides it; a file in that
+   directory that is not in RECORD needs a pin. SL-reg's registry imports the
+   same module instead of defining its own check. The code change lands in
+   treesitter-chunker#556 (SL-core-1), because the shared admission helper
+   lives there.
 6. **Persisted validation results are never admission receipts.**
    `GrammarValidator` keys its JSON cache with `verdict_key(...)` (level =
    validation level) and returns a cached result only when this process
@@ -210,14 +275,29 @@ verified, probed (or reused under the copy's key), and returned only after
    never consulted. TXN still owns the cache-file write protocol.
 7. **IF-0-ADMIT-1 is one method,** `GrammarManager.get_admitted_health`.
    A list consumer calls it per language.
+8. **`chunker/grammar_management/testing.py` moves from SL-ins to SL-core-2
+   (runner-accepted, 2026-11-01).** `testing.py` builds unpinned
+   `GrammarValidator` instances and calls `test_parse_samples` and
+   `load_compiled_grammar` (inventory T1, T2). SL-core-2 makes the validator
+   pin-only, which breaks those self-tests unless they change in the same PR.
+   So T1, T2, the pin pass-through in `IntegrationTester` and
+   `run_complete_test_suite`, and their mutations belong to SL-core-2, as a
+   separate commit. SL-ins keeps only the `grammar_analyzer.py` regions.
+9. **`chunker/build/builder.py` (cross-phase).** Each new module must be listed
+   in `_REQUIRED_WHEEL_PAYLOAD`, so SL-core-1 adds three payload entries
+   (`native_admission.py`, `package_supplier.py`, `trusted_artifacts.py`) and
+   updates the inventory count and hash in
+   `tests/test_supported_wheel_verification.py`. It touches nothing else in
+   `builder.py`; whichever of SL-core-1 and CIFAST SL-lint merges second
+   rebases.
 
 ## Lane Index & Dependencies
 
 ```
 SL-plan  (this PR: plan, EC-ADMIT-9, contract touch-ups)     docs only
-SL-core-1 (reader, admission helpers, argparse option, SGM)  ── blocks ──► SL-reg ──► SL-core-2
+SL-core-1 (reader, admission helpers, RECORD check, argparse option, SGM) ── blocks ──► SL-reg ──► SL-core-2 (+ testing.py)
 SL-legacy (validator.py, download.py, grammar_manager.py)    after SL-core-1 (helpers); independent of SL-reg
-SL-ins    (testing.py, grammar_analyzer.py regions)          after SL-core-1 (helpers); independent of SL-reg
+SL-ins    (grammar_analyzer.py regions only)                 after SL-core-1 (helpers); independent of SL-reg
 ```
 
 - SL-core-1 — Depends on: (none). Blocks: SL-reg, SL-core-2, SL-ins.
@@ -226,6 +306,7 @@ SL-ins    (testing.py, grammar_analyzer.py regions)          after SL-core-1 (he
   `default_library_path()`). Publishes IF-0-ADMIT-1. Blocks: ADMITFIX.
 - SL-legacy — Depends on: SL-core-1 (helpers for M1).
 - SL-ins — Depends on: SL-core-1 (rule-3 lookup).
+  (`testing.py`, T1 and T2 moved to SL-core-2; decision 8.)
 
 Stacked PRs are opened while earlier ones are under review. Merge order:
 SL-plan → SL-core-1 → SL-reg → SL-core-2; SL-legacy and SL-ins after
@@ -250,10 +331,15 @@ Every PR waits for the merge gate above.
 ### SL-core-1 — Shared pin reader, admission helpers, argparse group
 
 - **Owned files**: `chunker/_internal/trusted_artifacts.py` (new),
-  `chunker/_internal/native_admission.py` (new), `chunker/exceptions.py`,
-  `chunker/cli/grammar_commands.py`, `chunker/_internal/grammar_management.py`,
-  `chunker/_internal/user_grammar_tools.py` (pin pass-through only), tests,
-  `CHANGELOG.md`, `docs/cli-reference.md`, `docs/grammar_management.md`.
+  `chunker/_internal/native_admission.py` (new),
+  `chunker/_internal/package_supplier.py` (new; the one RECORD check,
+  decision 5), `chunker/exceptions.py`, `chunker/cli/grammar_commands.py`,
+  `chunker/_internal/grammar_management.py`,
+  `chunker/_internal/user_grammar_tools.py` (pin pass-through only),
+  `chunker/build/builder.py` (three `_REQUIRED_WHEEL_PAYLOAD` entries only,
+  decision 9) and `tests/test_supported_wheel_verification.py` (inventory
+  count and hash), tests, `CHANGELOG.md`, `docs/cli-reference.md` (a pointer),
+  `docs/grammar_management.md`.
 - **Tasks**:
   - The reader: per-OS path (contract table), forbidden-directory check after
     resolving symbolic links, regular-file and 1 MiB limits, strict UTF-8
@@ -265,7 +351,14 @@ Every PR waits for the merge gate above.
   - `SmartGrammarManager.diagnose_grammar_issues` uses
     `admit_native_candidate` (rule 3: only `{"sha256": value}` reaches the
     probe; a non-`str` value never calls it), inspector
-    `smart_grammar_manager.v1`.
+    `smart_grammar_manager.v1`. `UserGrammarTools` neither stages nor probes
+    without a pin.
+  - The RECORD check and `admission_record` (decision 5): package-supplied
+    healthy without a pin, RECORD mismatch never rescued, no RECORD entry
+    needs a pin.
+  - Process boundary: a forked child resets admission state and cleanup
+    ownership; one copy and one probe per (language, digest) under a
+    per-pair lock; an inaccessible config path is a defective file.
 - **Tests** (real compiled BAML fixture, isolated `HOME`/`USERPROFILE`/
   `APPDATA`/`XDG_CONFIG_HOME`): EC-ADMIT-1 option → exit 0; no pins → exit 1
   with `untrusted`; config file → exit 0; defective option/config → exit 2
@@ -277,7 +370,11 @@ Every PR waits for the merge gate above.
   (pass the stored record, not a one-field copy), `accept_partial_pin_file`,
   `reuse_stat_keyed_verdict`, `reuse_verdict_across_pin_change`,
   `reuse_verdict_across_environment`, `reuse_verdict_across_inspector`,
-  `reuse_verdict_across_probe_profile`.
+  `reuse_verdict_across_probe_profile`, `drop_machine_from_key`,
+  `fork_keeps_parent_state`, `access_error_as_absent`,
+  `probe_unpinned_publication`, `unlocked_copy_creation`,
+  `cli_ignores_package_supplier`, `pin_rescues_record_mismatch`,
+  `trust_package_dir_without_record`.
 
 ### SL-reg — Registry discovery, package supplier, parse-path pins, F1
 
@@ -292,9 +389,10 @@ Every PR waits for the merge gate above.
     `admitted_private_copy` (rule 5). Discovery tries only pinned keys and
     never inspects symbols of an unadmitted library. Scan directories confer
     no trust. R3 labels `custom:sha256:<admitted digest>`.
-  - RECORD check (decision 1.3): distribution identity, entry validation,
-    `samefile` first, URL-safe base64 `sha256`, mismatch is
-    `integrity_mismatch` that no pin rescues.
+  - The registry uses SL-core-1's `package_supplier.package_supplied_digest`
+    (decision 5; distribution identity, entry validation, `samefile` first,
+    URL-safe base64 `sha256`, a mismatch is `integrity_mismatch` that no pin
+    rescues). It does not define its own check.
   - `chunker.parser` reads the user-config pin file once when it builds its
     registry. A defective file: one warning, no pins, and errors for
     pin-needing languages name the file and the defect.
@@ -314,17 +412,21 @@ Every PR waits for the merge gate above.
   `get_admitted_health`), `chunker/grammar_management/cli.py` (N4, N5, N6,
   the constructor and the click group option),
   `chunker/grammar_management/compatibility.py` (lines 148 and 770 only),
+  `chunker/grammar_management/testing.py` (decision 8, its own commit),
   tests, `CHANGELOG.md`.
 - **Tasks**: N2 probe only; N3 in-process pattern, and the no-path branch
   through the validator's own `LanguageRegistry` (decision 1.2); N4 `built,
   not admitted` / probe with a pin; N5 keeps today's output and exit codes;
   N6 in-process pattern; verdict reuse (decision 6);
   `GrammarInstaller(*, trusted_artifacts=)` for TXN (treesitter-chunker#540);
-  IF-0-ADMIT-1.
+  IF-0-ADMIT-1; T1 retire (drop the duplicate reload), T2 retire (compare
+  the admission reason), pins passed through `IntegrationTester` and
+  `run_complete_test_suite`.
 - **Mutations**: `parse_samples_via_global_parser` (EC-ADMIT-6),
   `restore_direct_cdll` for N2, N3, N4, N5, N6 (EC-ADMIT-2),
   `persist_admission_across_processes` and `reuse_stat_keyed_verdict` through
-  the validator cache (EC-ADMIT-3).
+  the validator cache (EC-ADMIT-3), `reload_original_after_validation` (T1),
+  `restore_selftest_cdll` (T2).
 
 ### SL-legacy — Legacy validator, download validator, legacy manager
 
@@ -339,19 +441,18 @@ Every PR waits for the merge gate above.
 - **Mutations**: `restore_legacy_abi_load` (V1), `restore_download_cdll`
   (D1), `restore_combined_cdll` (M1).
 
-### SL-ins — Testing reload, self-test, analyzer lookup, dependency inspector
+### SL-ins — Analyzer lookup and dependency inspector
 
-- **Owned files**: `chunker/grammar_management/testing.py`, in
+- **Owned files**: in
   `chunker/languages/compatibility/grammar_analyzer.py` only
   `GrammarAnalyzer.__init__`, `GrammarAnalyzer.analyze_grammar_file` and
   `GrammarMetadataExtractor.extract_from_dependencies`; tests, `CHANGELOG.md`.
-- **Tasks**: T1 retire (drop the duplicate reload), T2 retire (compare the
-  admission reason), analyzer rule-3 lookup with inspector
+- **Tasks**: analyzer rule-3 lookup with inspector
   `grammar_analyzer.v1`, A1 retire
   (`{"dependencies": [], "dependencies_status": "retired"}`, no tool runs).
-- **Mutations**: `reload_original_after_validation` (T1),
-  `restore_selftest_cdll` (T2), `forward_whole_record` (analyzer),
-  `restore_ldd_inspection` (A1).
+- **Mutations**: `forward_whole_record` (analyzer),
+  `reuse_verdict_across_inspector` (analyzer), `restore_ldd_inspection` (A1).
+  (T1/T2 and their mutations moved to SL-core-2; decision 8.)
 
 ## Verification (every implementation PR)
 
