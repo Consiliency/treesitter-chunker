@@ -1,5 +1,6 @@
 """Grammar self-test utilities use current APIs without network installation."""
 
+import hashlib
 import json
 import os
 import shutil
@@ -26,6 +27,11 @@ from tree_sitter_language_pack import cache_dir
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+
+
+def _python_pin(library: Path) -> dict[str, dict[str, str]]:
+    """Approved pin for a local Python grammar (untrusted without one)."""
+    return {"python": {"sha256": hashlib.sha256(library.read_bytes()).hexdigest()}}
 
 
 @pytest.mark.parametrize(
@@ -327,7 +333,11 @@ def test_complete_suite_native_fixture_and_owned_cleanup(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "chunker.grammar_management.testing.tempfile.mkdtemp", observe_root
     )
-    result = run_complete_test_suite(sample_path=FIXTURE, grammar_path=grammar)
+    result = run_complete_test_suite(
+        sample_path=FIXTURE,
+        grammar_path=grammar,
+        trusted_artifacts=_python_pin(grammar),
+    )
     workflow = result["test_suites"]["integration"]["workflow"]
     assert workflow["status"] == "pass", result
     assert workflow["workflows_tested"] == ["discovery", "validation"]
@@ -337,7 +347,10 @@ def test_complete_suite_native_fixture_and_owned_cleanup(tmp_path, monkeypatch):
     disposable_library = supplied_root / f"python{suffix}"
     disposable_library.write_bytes(grammar.read_bytes())
     disposable_result = run_complete_test_suite(
-        test_dir=supplied_root, sample_path=FIXTURE, grammar_path=disposable_library
+        test_dir=supplied_root,
+        sample_path=FIXTURE,
+        grammar_path=disposable_library,
+        trusted_artifacts=_python_pin(grammar),
     )
     assert (
         disposable_result["test_suites"]["integration"]["workflow"]["status"] == "pass"
@@ -346,7 +359,11 @@ def test_complete_suite_native_fixture_and_owned_cleanup(tmp_path, monkeypatch):
     assert supplied_root.exists()
     invalid = tmp_path / "invalid.py"
     invalid.write_text("def broken(\n", encoding="utf-8")
-    rejected = run_complete_test_suite(sample_path=invalid, grammar_path=grammar)
+    rejected = run_complete_test_suite(
+        sample_path=invalid,
+        grammar_path=grammar,
+        trusted_artifacts=_python_pin(grammar),
+    )
     assert rejected["status"] == "fail", rejected
     assert rejected["summary"]["failed"] > 0
     assert owned_roots and all(not path.exists() for path in owned_roots)
@@ -489,7 +506,7 @@ def test_relative_caller_root_runs_real_worker_fixture(tmp_path, monkeypatch):
     grammar = libraries[0].resolve()
     monkeypatch.chdir(tmp_path)
     root = Path("relative-caller")
-    tester = IntegrationTester(root)
+    tester = IntegrationTester(root, trusted_artifacts=_python_pin(grammar))
     result = tester.test_complete_workflow(FIXTURE, "python", grammar)
     assert result["status"] == "pass", result
     tester.cleanup()
@@ -519,7 +536,7 @@ def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
     monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "config"))
     monkeypatch.setenv("XDG_CACHE_HOME", str(home / "cache"))
     work_dir = tmp_path / "self-test"
-    tester = IntegrationTester(work_dir)
+    tester = IntegrationTester(work_dir, trusted_artifacts=_python_pin(grammar_path))
     assert tester.dir_manager.base_dir == work_dir
     assert tester.cache_manager.cache_dir == work_dir / "cache"
 
@@ -578,6 +595,7 @@ def test_health_report_distinguishes_parseable_and_broken_local_grammars(
         user_dir=user_dir,
         package_dir=package_dir,
         cache_dir=tmp_path / "cache",
+        trusted_artifacts=_python_pin(python_grammar),
     )
     report = manager.check_grammar_health()
 
