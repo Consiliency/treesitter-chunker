@@ -25,6 +25,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Go build-constraint version hints now interpret `&&`, `||`, `!` and
+  parentheses in `//go:build` lines, and whitespace OR, comma AND and `!` in
+  legacy `// +build` lines (treesitter-chunker#438). The hint is the lowest Go
+  release at which the expression can hold. Non-release tags (GOOS, GOARCH,
+  `cgo`, custom tags) are treated as independent. It is a necessary minimum,
+  not a build evaluation. `//go:build go1.18 && !go1.21` and
+  `//go:build go1.18 || go1.21` now report `1.18` instead of `1.21`.
+  `// +build !go1.21` and `go1.18 || linux` imply no minimum.
+  `GoVersionDetector.detect_version` adds `build_constraints_status`, one of
+  `minimum`, `unconstrained`, `unknown` or `absent`. As in `go/build`, only
+  the file header is read: blank lines and comments before the first other
+  text, skipping `/* */` comments, with legacy lines counted only up to the
+  header's last blank line. So a `//go:build` line in a string or function
+  body no longer counts. More than one `//go:build` line, a bare
+  `//go:build`, and a direct `!!` are rejected by Go and are `unknown` here.
+  A release number longer than 9 digits is `unknown` rather than an error, and
+  a leading UTF-8 byte-order mark is skipped, as `go/build` does.
+  Malformed, unsatisfiable or oversized expressions are `unknown` and never
+  become a version, so
+  `go.mod` and feature-based hints keep their precedence. The new
+  `GoVersionDetector.analyze_build_constraints` also returns the reason.
 - CR-only Python source now parses and reports correct lines through
   `chunk_file`, `chunk_text`, `chunk_file_streaming` and VFS streaming
   (`VFSChunker.chunk_file(..., streaming=True)` and files over 10 MiB)
