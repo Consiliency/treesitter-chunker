@@ -10,12 +10,272 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+# Go build-constraint minimum-release computation (treesitter-chunker#438).
+#
+# This is not a build-constraint evaluator. A release tag ``goX.Y`` is true
+# exactly at Go releases >= X.Y; every other tag is an independent free
+# variable. The reported minimum is the lowest release at which the
+# expression can be true for some assignment of the free tags, so releases
+# below it cannot satisfy the constraint.
+
+_GO_RELEASE_TAG = re.compile(r"go([0-9]+)\.([0-9]+)")
+_GO_BUILD_PREFIX = "//go:build"
+_GO_LEGACY_LINE = re.compile(r"//\s*\+build(?:\s+(.*))?", re.DOTALL)
+# Tag-like runs are validated by _is_go_build_tag after tokenizing.
+_GO_MODERN_TOKEN = re.compile(r"[ \t]*(\(|\)|!|&&|\|\||[^\s()!&|]+)")
+_GO_MAX_TOKENS = 1000
+_GO_MAX_DEPTH = 100
+_GO_MAX_FREE_TAGS = 32
+_GO_MAX_SEARCH_STEPS = 10_000
+_GO_MAX_RELEASE_DIGITS = 9
+
+# Expression nodes: ("tag", name), ("const", bool), ("not", node),
+# ("and", children), ("or", children). AND/OR are n-ary so that recursion
+# depth follows parenthesis nesting, not expression length.
+_GoExpr = tuple[Any, ...]
+
+
 def _is_go_build_tag(name: str) -> bool:
     """Go's tag rule: Unicode letters and decimal digits, ``_`` and ``.``."""
     return bool(name) and all(
         char.isalpha() or unicodedata.category(char) == "Nd" or char in "_."
         for char in name
     )
+
+
+def _is_go_build_comment(line: str) -> bool:
+    """``//go:build`` alone or followed by whitespace (go/build rule)."""
+    if not line.startswith(_GO_BUILD_PREFIX):
+        return False
+    rest = line[len(_GO_BUILD_PREFIX) :]
+    return not rest or rest[0].isspace()
+
+
+def _go_file_header(content: str) -> tuple[list[str], list[str]]:
+    """Return the header's ``//go:build`` lines and its legacy region.
+
+    Mirrors ``go/build`` ``parseFileHeader``: only blank lines and comments
+    before the first other text form the header, ``/* */`` comments are
+    skipped, and legacy ``// +build`` lines count only up to the last blank
+    line before the first non-``//`` line. Lines are whitespace-trimmed.
+    """
+    # go/build reads past a leading UTF-8 byte-order mark.
+    lines = content.removeprefix("\ufeff").split("\n")
+    end = 0
+    ended = False
+    in_slash_star = False
+    go_build: list[str] = []
+    for index, raw in enumerate(lines):
+        line = raw.strip()
+        if not line and not ended:
+            end = index + 1
+            continue
+        if not line.startswith("//"):
+            ended = True
+        if not in_slash_star and _is_go_build_comment(line):
+            go_build.append(line)
+        while line:
+            if in_slash_star:
+                close = line.find("*/")
+                if close < 0:
+                    break
+                in_slash_star = False
+                line = line[close + 2 :].strip()
+                continue
+            if line.startswith("//"):
+                break
+            if line.startswith("/*"):
+                in_slash_star = True
+                line = line[2:].strip()
+                continue
+            return go_build, [text.strip() for text in lines[:end]]
+    return go_build, [text.strip() for text in lines[:end]]
+
+
+class _GoConstraintUnknownError(Exception):
+    """The constraint cannot be interpreted; the hint is unknown."""
+
+
+def _parse_modern_go_build(expression: str) -> _GoExpr:
+    tokens: list[str] = []
+    position = 0
+    while position < len(expression):
+        match = _GO_MODERN_TOKEN.match(expression, position)
+        if match is None:
+            if expression[position:].strip(" \t") == "":
+                break
+            raise _GoConstraintUnknownError(f"unexpected text in {expression!r}")
+        tokens.append(match.group(1))
+        position = match.end()
+        if len(tokens) > _GO_MAX_TOKENS:
+            raise _GoConstraintUnknownError("expression too large")
+    if not tokens:
+        raise _GoConstraintUnknownError("empty //go:build expression")
+    index = 0
+
+    def peek() -> str | None:
+        return tokens[index] if index < len(tokens) else None
+
+    def take() -> str:
+        nonlocal index
+        token = tokens[index]
+        index += 1
+        return token
+
+    def parse_or(depth: int) -> _GoExpr:
+        children = [parse_and(depth)]
+        while peek() == "||":
+            take()
+            children.append(parse_and(depth))
+        return children[0] if len(children) == 1 else ("or", tuple(children))
+
+    def parse_and(depth: int) -> _GoExpr:
+        children = [parse_unary(depth)]
+        while peek() == "&&":
+            take()
+            children.append(parse_unary(depth))
+        return children[0] if len(children) == 1 else ("and", tuple(children))
+
+    def parse_unary(depth: int) -> _GoExpr:
+        if peek() == "!":
+            take()
+            # Go rejects a direct "!!"; "!(!x)" stays valid.
+            if peek() == "!":
+                raise _GoConstraintUnknownError("double negation not allowed")
+            return ("not", parse_atom(depth + 1))
+        return parse_atom(depth)
+
+    def parse_atom(depth: int) -> _GoExpr:
+        if depth > _GO_MAX_DEPTH:
+            raise _GoConstraintUnknownError("expression nested too deeply")
+        token = peek()
+        if token is None:
+            raise _GoConstraintUnknownError(f"unexpected end of {expression!r}")
+        if token == "(":
+            take()
+            node = parse_or(depth + 1)
+            if peek() != ")":
+                raise _GoConstraintUnknownError(
+                    f"unbalanced parentheses in {expression!r}"
+                )
+            take()
+            return node
+        if _is_go_build_tag(token):
+            take()
+            return ("tag", token)
+        raise _GoConstraintUnknownError(f"unexpected {token!r} in {expression!r}")
+
+    node = parse_or(0)
+    if index != len(tokens):
+        raise _GoConstraintUnknownError(
+            f"unexpected {tokens[index]!r} in {expression!r}"
+        )
+    return node
+
+
+def _parse_legacy_go_build(fields_text: str) -> _GoExpr:
+    """Fields are OR-ed; comma-separated atoms are AND-ed; ``!tag`` negates."""
+    fields = fields_text.split()
+    if sum(len(field.split(",")) for field in fields) > _GO_MAX_TOKENS:
+        raise _GoConstraintUnknownError("expression too large")
+    if not fields:
+        raise _GoConstraintUnknownError("empty +build line")
+    disjuncts: list[_GoExpr] = []
+    for field in fields:
+        terms: list[_GoExpr] = []
+        for atom in field.split(","):
+            negated = atom.startswith("!")
+            name = atom[1:] if negated else atom
+            if not _is_go_build_tag(name):
+                raise _GoConstraintUnknownError(f"invalid +build term {atom!r}")
+            terms.append(("not", ("tag", name)) if negated else ("tag", name))
+        disjuncts.append(("and", tuple(terms)))
+    return ("or", tuple(disjuncts))
+
+
+def _go_release(name: str) -> tuple[int, int] | None:
+    match = _GO_RELEASE_TAG.fullmatch(name)
+    if match is None:
+        return None
+    major, minor = match.groups()
+    # Bound the digits before int(): an oversized component is never a real
+    # release, and int() would otherwise raise past every other bound.
+    if len(major) > _GO_MAX_RELEASE_DIGITS or len(minor) > _GO_MAX_RELEASE_DIGITS:
+        raise _GoConstraintUnknownError(f"release number too long in {name[:24]!r}")
+    return (int(major), int(minor))
+
+
+def _go_tags(node: _GoExpr, found: set[str]) -> set[str]:
+    kind = node[0]
+    if kind == "tag":
+        found.add(node[1])
+    elif kind == "not":
+        _go_tags(node[1], found)
+    elif kind in ("and", "or"):
+        for child in node[1]:
+            _go_tags(child, found)
+    return found
+
+
+def _go_assign(node: _GoExpr, values: dict[str, bool]) -> _GoExpr:
+    """Substitute known tag values and fold constants."""
+    kind = node[0]
+    if kind == "tag":
+        value = values.get(node[1])
+        return node if value is None else ("const", value)
+    if kind == "const":
+        return node
+    if kind == "not":
+        inner = _go_assign(node[1], values)
+        return ("const", not inner[1]) if inner[0] == "const" else ("not", inner)
+    absorbing = kind == "or"  # True absorbs OR, False absorbs AND
+    children: list[_GoExpr] = []
+    for child in node[1]:
+        folded = _go_assign(child, values)
+        if folded[0] == "const":
+            if folded[1] is absorbing:
+                return folded
+            continue  # the identity element drops out
+        children.append(folded)
+    if not children:
+        return ("const", not absorbing)
+    return children[0] if len(children) == 1 else (kind, tuple(children))
+
+
+def _go_satisfiable(node: _GoExpr, budget: list[int]) -> bool:
+    if node[0] == "const":
+        return bool(node[1])
+    budget[0] -= 1
+    if budget[0] < 0:
+        raise _GoConstraintUnknownError("expression too complex")
+    name = min(_go_tags(node, set()))
+    return _go_satisfiable(_go_assign(node, {name: True}), budget) or (
+        _go_satisfiable(_go_assign(node, {name: False}), budget)
+    )
+
+
+def _go_minimum_release(node: _GoExpr) -> tuple[int, int] | None:
+    """Lowest release at which ``node`` can hold; ``None`` if no minimum.
+
+    Raises ``_GoConstraintUnknownError`` when no release can satisfy it or the
+    search is too large.
+    """
+    tags = _go_tags(node, set())
+    releases = sorted({r for tag in tags if (r := _go_release(tag)) is not None})
+    if len(tags) - len(releases) > _GO_MAX_FREE_TAGS:
+        raise _GoConstraintUnknownError("too many build tags")
+    budget = [_GO_MAX_SEARCH_STEPS]
+    # Release tags change value only at mentioned releases, so these points
+    # cover every release: below all of them, then each in ascending order.
+    for point in [None, *releases]:
+        values = {
+            tag: point is not None and release <= point
+            for tag in tags
+            if (release := _go_release(tag)) is not None
+        }
+        if _go_satisfiable(_go_assign(node, values), budget):
+            return point
+    raise _GoConstraintUnknownError("no Go release satisfies the constraint")
 
 
 class GoVersionDetector:
@@ -97,85 +357,80 @@ class GoVersionDetector:
 
         return None
 
+    def analyze_build_constraints(self, content: str) -> dict[str, str | None]:
+        """Infer the minimum Go release a file's build constraints require.
+
+        Only the file header is read, as ``go/build`` does: blank lines and
+        comments before the first other text, skipping ``/* */`` comments.
+        A ``//go:build`` line (``&&``, ``||``, ``!``, parentheses) anywhere
+        in the header controls, and legacy lines are then ignored. More than
+        one ``//go:build`` line, or one with no expression, is ``unknown``
+        (Go rejects the file). Without one, legacy ``// +build`` lines
+        before the header's last blank line are AND-ed; each has
+        whitespace-separated fields (OR) of comma-separated atoms (AND),
+        ``!tag`` negated.
+
+        ``unknown`` is deliberately conservative. Go replaces each malformed
+        term of a legacy line with the never-set ``ignore`` tag, and the
+        rest of that line still counts; here any malformed legacy term makes
+        the whole hint ``unknown`` instead. Go rejects a malformed
+        ``//go:build`` line, which is ``unknown`` too. A release number with
+        more than 9 digits is also ``unknown``. A leading UTF-8 byte-order
+        mark is skipped, as ``go/build`` does.
+
+        A release tag ``goX.Y`` holds exactly at releases >= X.Y. Every other
+        tag (GOOS, GOARCH, ``cgo``, custom tags) is treated as independent
+        and free, so this is a necessary minimum, not a build evaluation
+        (treesitter-chunker#438).
+
+        Returns:
+            ``{"minimum", "status", "reason"}``. ``status`` is ``"minimum"``
+            (``minimum`` is a ``"major.minor"`` string), ``"unconstrained"``
+            (the constraint can hold below every mentioned release, so it
+            implies no minimum), ``"unknown"`` (malformed, unsatisfiable or
+            too large; ``reason`` says which) or ``"absent"`` (no constraint
+            line).
+        """
+        try:
+            modern, legacy_region = _go_file_header(content)
+            if len(modern) > 1:
+                raise _GoConstraintUnknownError("multiple //go:build lines")
+            if modern:
+                node = _parse_modern_go_build(
+                    modern[0][len(_GO_BUILD_PREFIX) :].strip()
+                )
+            else:
+                legacy = [
+                    (match.group(1) or "").strip()
+                    for line in legacy_region
+                    if (match := _GO_LEGACY_LINE.fullmatch(line))
+                ]
+                if not legacy:
+                    return {"minimum": None, "status": "absent", "reason": None}
+                nodes = [_parse_legacy_go_build(fields) for fields in legacy]
+                node = nodes[0] if len(nodes) == 1 else ("and", tuple(nodes))
+            minimum = _go_minimum_release(node)
+        except _GoConstraintUnknownError as e:
+            logger.debug("Go build constraint hint unknown: %s", e)
+            return {"minimum": None, "status": "unknown", "reason": str(e)}
+        if minimum is None:
+            return {"minimum": None, "status": "unconstrained", "reason": None}
+        version = f"{minimum[0]}.{minimum[1]}"
+        logger.debug("Go build constraints require at least %s", version)
+        return {"minimum": version, "status": "minimum", "reason": None}
+
     def detect_from_build_constraints(self, content: str) -> str | None:
-        """Extract Go version from build constraints.
+        """Extract the minimum Go version implied by build constraints.
 
         Args:
             content: The file content to search
 
         Returns:
-            Version string like "1.19" or None if not found
+            Version string like "1.19", or None when the constraints are
+            absent, imply no minimum, or cannot be interpreted (see
+            ``analyze_build_constraints``).
         """
-        try:
-            # Check new style build constraints (//go:build)
-            pattern = r"//go:build\s+.*go(\d+)\.(\d+)"
-            matches = re.findall(pattern, content)
-            conjunctions = re.findall(
-                r"^//go:build[ \t]+(go\d+\.\d+(?:[ \t]*&&[ \t]*go\d+\.\d+)+)"
-                r"[ \t]*\r?$",
-                content,
-                re.MULTILINE,
-            )
-            for conjunction in conjunctions:
-                matches.extend(re.findall(r"go(\d+)\.(\d+)", conjunction))
-            if matches:
-                # Get the highest version from constraints
-                versions = [f"{major}.{minor}" for major, minor in matches]
-                max_version = max(
-                    versions, key=lambda value: tuple(map(int, value.split(".")))
-                )
-                logger.debug("Found go:build constraint: %s", max_version)
-                return max_version
-
-            # Check old style build constraints (// +build)
-            pattern = r"//\s*\+build\s+.*go(\d+)\.(\d+)"
-            matches = re.findall(pattern, content)
-            # A legacy line that is one comma conjunction of positive tags
-            # requires every release tag in it, so keep them all, not only the
-            # last one (treesitter-chunker#437). Tags follow Go's Unicode tag
-            # rule. OR and negation are not interpreted here.
-            legacy_fields = re.findall(
-                r"^[ \t]*//[ \t]*\+build[ \t]+([^\s!]+)[ \t]*\r?$",
-                content,
-                re.MULTILINE,
-            )
-            for field in legacy_fields:
-                terms = field.split(",")
-                if len(terms) < 2 or not all(map(_is_go_build_tag, terms)):
-                    continue
-                matches.extend(
-                    match.groups()
-                    for term in terms
-                    if (match := re.fullmatch(r"go([0-9]+)\.([0-9]+)", term))
-                )
-            if matches:
-                versions = [f"{major}.{minor}" for major, minor in matches]
-                max_version = max(
-                    versions, key=lambda value: tuple(map(int, value.split(".")))
-                )
-                logger.debug("Found +build constraint: %s", max_version)
-                return max_version
-
-            # Check for negated constraints
-            pattern = r"//\s*\+build\s+!go(\d+)\.(\d+)"
-            matches = re.findall(pattern, content)
-            if matches:
-                # Negated means requires version after this
-                versions = [
-                    f"{int(major)}.{int(minor) + 1}" for major, minor in matches
-                ]
-                if versions:
-                    min_version = min(versions)
-                    logger.debug(
-                        "Found negated build constraint implying: %s",
-                        min_version,
-                    )
-                    return min_version
-
-        except Exception as e:
-            logger.error("Error detecting build constraints: %s", e)
-
-        return None
+        return self.analyze_build_constraints(content)["minimum"]
 
     def detect_from_runtime_version(self, content: str) -> str | None:
         """Detect Go version from runtime.Version() usage.
@@ -366,7 +621,9 @@ class GoVersionDetector:
         try:
             # Try all detection methods
             results["go_mod_version"] = self.detect_from_go_mod(content)
-            results["build_constraints"] = self.detect_from_build_constraints(content)
+            constraint_hint = self.analyze_build_constraints(content)
+            results["build_constraints"] = constraint_hint["minimum"]
+            results["build_constraints_status"] = constraint_hint["status"]
             results["runtime_version"] = self.detect_from_runtime_version(content)
 
             # Detect language features
