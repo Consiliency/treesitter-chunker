@@ -139,12 +139,19 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
       `build-distributions` moves to 3.14. `verify-installed-wheel` keeps
       `['3.12', '3.14']`, so the minimum stays release-tested.
     - `docs.yml` and the manual `build-wheels.yml` move to 3.14.
-      `baml-grammar-wheels.yml` keeps 3.12 for the BAML companion's
-      `cp312-abi3` build: that interpreter sets the companion's ABI floor, and
-      it is not a main-package validation interpreter.
+      `baml-grammar-wheels.yml` keeps 3.12 in its `source` and `wheel` jobs:
+      they check, build and smoke-test the separate BAML companion on its own
+      3.12 minimum. The companion's `cp312-abi3` floor comes from
+      `packages/baml-grammar/setup.py` (`Py_LIMITED_API=0x030C0000`,
+      `py_limited_api="cp312"`) and `CIBW_BUILD: 'cp312-*'`, not from the
+      runner interpreter. The policy test asserts both settings.
     - So 3.12 appears only in Linux platform-core, the installed-wheel check
-      and the BAML companion build. `tests/test_release_hygiene_policy.py`
-      enforces this and rejects any event-selected interpreter.
+      and those two BAML companion jobs. `tests/test_release_hygiene_policy.py`
+      enforces this. It rejects any event-selected interpreter, and it scans
+      every step's `run:` for shell-level overrides (`--python X`, `uv … -p X`,
+      `UV_PYTHON=`, `uv python install X`, `pythonX.Y`, `py -X.Y`). The named
+      mutations `M502-run-uv-python`, `M502-run-export`, `M502-run-uv-p` and
+      `M502-run-python3x` each fail it.
     - The type gate runs once per CI run, on 3.14. Its output does not depend
       on the interpreter (re-measurement above).
   - 3.12 deprecation: `requires-python` and `.python-version` stay at 3.12

@@ -288,11 +288,17 @@ def test_macos_build_script_rejects_python_below_floor():
     assert f"Python {major}.{minor} or higher" in text
 
 
-def _workflow_jobs():
-    for path in sorted((ROOT / ".github/workflows").glob("*.yml")):
-        workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+def _workflow_docs() -> dict[str, dict]:
+    return {
+        path.name: yaml.safe_load(path.read_text(encoding="utf-8"))
+        for path in sorted((ROOT / ".github/workflows").glob("*.yml"))
+    }
+
+
+def _workflow_jobs(docs: dict[str, dict] | None = None):
+    for name_, workflow in (docs if docs is not None else _workflow_docs()).items():
         for name, job in (workflow.get("jobs") or {}).items():
-            yield path.name, name, workflow.get("env") or {}, job
+            yield name_, name, workflow.get("env") or {}, job
 
 
 def _matrix_values(job: dict, key: str) -> list[str]:
@@ -399,12 +405,38 @@ PRIMARY_PYTHON = "3.14"
 FLOOR_ALLOWED = {
     ("test.yml", "test", "linux"): "focused minimum: Linux platform-core",
     ("release.yml", "verify-installed-wheel", None): "installed-wheel floor check",
-    # The BAML companion is a separate package whose cp312-abi3 wheels are built
-    # on the oldest interpreter they support; its build interpreter sets its ABI
-    # floor and is not a main-package validation interpreter.
-    ("baml-grammar-wheels.yml", "source", None): "BAML companion cp312-abi3 build",
-    ("baml-grammar-wheels.yml", "wheel", None): "BAML companion cp312-abi3 build",
+    # The BAML companion is a separate package whose minimum is also 3.12. These
+    # jobs check, build and smoke-test it on that minimum. Its cp312-abi3 floor
+    # comes from packages/baml-grammar/setup.py and CIBW_BUILD, asserted below.
+    ("baml-grammar-wheels.yml", "source", None): "BAML companion on its 3.12 minimum",
+    ("baml-grammar-wheels.yml", "wheel", None): "BAML companion on its 3.12 minimum",
 }
+
+# Shell-level interpreter selection inside a step's ``run:`` script.
+_RUN_OVERRIDES = (
+    # uv/uvx --python X, --python=X, uv venv --python X, pip --python-version X
+    re.compile(r"--python(?:-version)?[ =]['\"]?(\d+\.\d+)"),
+    # uv/uvx ... -p X (short form; only on a uv command line)
+    re.compile(r"\buvx?\b[^\n;&|]*?\s-p\s*['\"]?(\d+\.\d+)"),
+    # UV_PYTHON=X (export or inline)
+    re.compile(r"\bUV_PYTHON=['\"]?(\d+\.\d+)"),
+    # uv python install/pin/find X
+    re.compile(r"\buv\s+python\s+(?:install|pin|find)\s+['\"]?(\d+\.\d+)"),
+    # python3.12 ... invocations
+    re.compile(r"(?<![\w/.-])python(\d\.\d+)\b"),
+    # Windows launcher: py -3.12
+    re.compile(r"\bpy\s+-(\d\.\d+)\b"),
+)
+
+
+def _run_overrides(job: dict) -> list[str]:
+    """Interpreter versions that a job's ``run:`` scripts select directly."""
+    versions = []
+    for step in job.get("steps") or []:
+        script = str(step.get("run", ""))
+        for pattern in _RUN_OVERRIDES:
+            versions += pattern.findall(script)
+    return versions
 
 
 def _workflow(name: str) -> dict:
@@ -423,10 +455,14 @@ def _interpreter_fields(workflow_env: dict, job: dict) -> list[str]:
     return values
 
 
-def _floor_uses() -> set[tuple[str, str, str | None]]:
+def _floor_uses(
+    docs: dict[str, dict] | None = None,
+) -> set[tuple[str, str, str | None]]:
     floor = _floor_text()
     uses = set()
-    for workflow, name, workflow_env, job in _workflow_jobs():
+    for workflow, name, workflow_env, job in _workflow_jobs(docs):
+        if floor in _run_overrides(job):
+            uses.add((workflow, name, None))
         for value in _interpreter_fields(workflow_env, job):
             if floor not in _resolve(job, value):
                 continue
@@ -458,8 +494,60 @@ def test_no_workflow_selects_its_interpreter_by_event():
 
 
 def test_floor_interpreter_appears_only_in_floor_checks():
-    """3.12 runs only Linux platform-core and the installed-wheel check."""
+    """3.12 runs only Linux platform-core, the installed-wheel check and BAML."""
     assert _floor_uses() == set(FLOOR_ALLOWED)
+
+
+def test_run_scripts_select_only_the_primary_or_allowed_floor():
+    """``run:`` overrides may name 3.14, or 3.12 only in an allowed floor job."""
+    floor = _floor_text()
+    allowed = {(w, j) for w, j, _family in FLOOR_ALLOWED}
+    offenders = [
+        (workflow, name, version)
+        for workflow, name, _env, job in _workflow_jobs()
+        for version in _run_overrides(job)
+        if version != PRIMARY_PYTHON
+        and not (version == floor and (workflow, name) in allowed)
+    ]
+    assert offenders == []
+
+
+# Named mutations: shell-level overrides in the ci.yml Pytest step.
+RUN_OVERRIDE_MUTATIONS = {
+    "M502-run-uv-python": ("uv run --locked", "uv run --python 3.12 --locked"),
+    "M502-run-export": ("if [", "export UV_PYTHON=3.12\nif ["),
+    "M502-run-uv-p": ("uv run --locked", "uv run -p 3.12 --locked"),
+    "M502-run-python3x": (
+        "uv run --locked --all-extras python ",
+        "python3.12 -m uv run --locked --all-extras python ",
+    ),
+}
+
+
+@pytest.mark.parametrize("mutation", sorted(RUN_OVERRIDE_MUTATIONS))
+def test_run_override_mutations_are_rejected(mutation):
+    old, new = RUN_OVERRIDE_MUTATIONS[mutation]
+    docs = _workflow_docs()
+    step = next(
+        s for s in docs["ci.yml"]["jobs"]["test"]["steps"] if s.get("name") == "Pytest"
+    )
+    assert old in step["run"]
+    step["run"] = step["run"].replace(old, new, 1)
+    assert ("ci.yml", "test", None) in _floor_uses(docs) - set(FLOOR_ALLOWED)
+
+
+def test_baml_companion_abi_floor_comes_from_its_build_config():
+    """The companion's cp312-abi3 floor is set by setup.py and CIBW_BUILD."""
+    setup = (ROOT / "packages/baml-grammar/setup.py").read_text(encoding="utf-8")
+    assert '("Py_LIMITED_API", "0x030C0000")' in setup
+    assert '"py_limited_api": "cp312"' in setup
+    wheel = _workflow("baml-grammar-wheels.yml")["jobs"]["wheel"]
+    builds = [
+        (step.get("env") or {}).get("CIBW_BUILD")
+        for step in wheel["steps"]
+        if "CIBW_BUILD" in (step.get("env") or {})
+    ]
+    assert builds == ["cp312-*"]
 
 
 def test_primary_python_runs_ci_full_tier_and_release():

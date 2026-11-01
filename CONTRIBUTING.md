@@ -96,9 +96,11 @@ tracked under treesitter-chunker#514.
 
 CI runs lint, the type gate and the smoke tier once, on Linux 3.14. The
 scheduled full tier and release full validation also run on 3.14. The 3.12
-minimum keeps only two checks: the Linux platform-core job (macOS and Windows
-run 3.14) and the release installed-wheel check (3.12 and 3.14). No interpreter
-is chosen by event. `tests/test_release_hygiene_policy.py` checks this layout
+minimum keeps only two main-package checks: the Linux platform-core job (macOS
+and Windows run 3.14) and the release installed-wheel check (3.12 and 3.14).
+Separately, the BAML companion workflow's `source` and `wheel` jobs run on 3.12,
+the companion's own minimum. No interpreter is chosen by event or by a
+shell-level override. `tests/test_release_hygiene_policy.py` checks this layout
 (treesitter-chunker#502).
 
 The type gate compares complete messages and error codes, normalizing only

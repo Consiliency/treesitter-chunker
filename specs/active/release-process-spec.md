@@ -21,7 +21,9 @@
   treesitter-chunker#502)
 - The supported minimum stays 3.12 (`requires-python = ">=3.12"`) until the next
   major release (7.0) drops it (treesitter-chunker#599). Until then, 3.12 keeps
-  only the Linux platform-core job and the installed-wheel acceptance below
+  only two main-package checks: the Linux platform-core job and the
+  installed-wheel acceptance below. The BAML companion's `source` and `wheel`
+  jobs (`baml-grammar-wheels.yml`) also run on 3.12, its own minimum
 - The locked environment installs from wheels on CPython 3.12 and 3.14; no
   host compiler, libffi or Rust toolchain is needed for
   `uv sync --locked --all-extras --python 3.14`
