@@ -4,9 +4,10 @@ A grammar without built-in validation samples gets the validator warning
 ``No test samples available for <language>``. That warning is an evidence
 gap, not a performance finding: it must not classify a candidate as
 ``DEGRADED`` by itself. Caller-supplied samples parsed with the real artifact
-are the evidence. Named mutation ``M133-gap-degrades`` (treat the gap as a
-quality warning, the old behavior) fails the successful-sample and no-sample
-cases.
+are the evidence. Named mutations: ``M133-gap-degrades`` (treat the gap as a quality warning,
+the old behavior) fails the successful-sample and no-sample cases;
+``M133-quality-before-gap`` (let a quality warning degrade a candidate that
+has no caller samples) fails the no-sample quality and selection cases.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from chunker.grammar_management.compatibility import (
     CompatibilityChecker,
     CompatibilityLevel,
     CompatibilityResult,
+    SmartSelector,
 )
 from chunker.grammar_management.core import (
     GrammarManager,
@@ -37,6 +39,24 @@ pytestmark = pytest.mark.skipif(
     sys.platform != "linux",
     reason="The checked-in BAML grammar builds as a Linux shared library",
 )
+
+
+def _build(library: Path) -> None:
+    subprocess.run(
+        [
+            "cc",
+            "-shared",
+            "-fPIC",
+            "-O2",
+            "-I",
+            str(GRAMMAR_SRC),
+            str(GRAMMAR_SRC / "parser.c"),
+            "-o",
+            str(library),
+        ],
+        check=True,
+        capture_output=True,
+    )
 
 
 @pytest.fixture
@@ -143,3 +163,59 @@ def test_quality_warning_beside_the_gap_still_degrades(baml) -> None:
     assert result.level == CompatibilityLevel.DEGRADED
     assert result.score == pytest.approx(0.7)
     assert result.warnings == [GAP_WARNING, "Parsing performance is slow"]
+
+
+def test_no_samples_stays_unknown_beside_a_quality_warning(baml) -> None:
+    """With nothing parsed, a quality warning must not outrank a bare gap."""
+    manager, library, _source = baml
+    result = CompatibilityChecker(manager)._perform_detailed_compatibility_check(
+        CompatibilityResult("baml", "local", None, CompatibilityLevel.UNKNOWN),
+        {
+            "path": str(library),
+            "validation": {
+                "errors": [],
+                "warnings": [GAP_WARNING, "Grammar file is unusually large"],
+            },
+        },
+        [],
+        library,
+    )
+    assert result.test_results is None
+    assert result.level == CompatibilityLevel.UNKNOWN
+    assert result.score == pytest.approx(0.3)
+    assert result.warnings == [GAP_WARNING, "Grammar file is unusually large"]
+
+
+def test_selection_does_not_prefer_a_warned_artifact_without_samples(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Claude's round-1 repro: a USER build padded past 50 MB vs a clean PACKAGE."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    user_dir, package_dir = tmp_path / "user", tmp_path / "package"
+    user_dir.mkdir()
+    package_dir.mkdir()
+    user_library = user_dir / "libbaml.so"
+    package_library = package_dir / "libbaml.so"
+    _build(user_library)
+    _build(package_library)
+    with user_library.open("r+b") as handle:  # sparse padding past 50 MB
+        handle.truncate(51 * 1024 * 1024)
+    source = FIXTURE.read_bytes()
+    for library in (user_library, package_library):
+        tree = load_compiled_grammar(library, "baml").parse(source)
+        assert not tree.root_node.has_error
+    manager = GrammarManager(
+        user_dir=user_dir, package_dir=package_dir, cache_dir=tmp_path / "cache"
+    )
+    checker = CompatibilityChecker(manager)
+    warned = checker.check_compatibility("baml", grammar_path=user_library)
+    clean = checker.check_compatibility("baml", grammar_path=package_library)
+    # Basic validation reports the size before the standard gap.
+    assert warned.warnings == ["Grammar file is unusually large", GAP_WARNING]
+    assert warned.level == clean.level == CompatibilityLevel.UNKNOWN
+    assert clean.warnings == [GAP_WARNING]
+
+    selected = SmartSelector(manager, checker).select_best_grammar("baml")
+    assert selected is not None
+    assert selected.grammar_path == package_library
