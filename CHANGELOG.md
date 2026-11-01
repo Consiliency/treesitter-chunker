@@ -157,6 +157,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   treesitter-chunker#184, treesitter-chunker#185). Structural validity does not
   establish native safety or provenance; see the packaging guide for profile limits.
 
+- JavaScript context lookup is truthful against the shared real-parser
+  reference fixtures (`tests/fixtures/references/javascript/`). A generator
+  declaration, also when exported, now yields the same signature-only
+  dependency context as an ordinary function instead of its whole body
+  (treesitter-chunker#289). Reference lookup treats default-import,
+  named function-expression, bare arrow-parameter, default-parameter and
+  array-pattern identifiers as bindings, and finds the reference in a
+  shorthand object property such as `{ value }` (treesitter-chunker#293).
+
 ### Breaking
 
 - Require Python 3.12 or newer for the next main and BAML companion releases
