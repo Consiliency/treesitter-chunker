@@ -340,9 +340,9 @@ __attribute__((constructor)) static void start(void) { enter(); }
         provenance=trusted_artifacts(library)["baml"],
         sample=FIXTURE.read_bytes(),
     )
+    assert result.supported and result.reason == "ok", (result, deadlines)
     assert deadlines == [30.0]
     assert sentinel.read_bytes() == b"entered"
-    assert result.supported and result.reason == "ok", result
     assert result.artifact_sha256 == sha256(library.read_bytes()).hexdigest()
 
 
