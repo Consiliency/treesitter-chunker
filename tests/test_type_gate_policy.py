@@ -18,6 +18,7 @@ the real code.
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -105,23 +106,85 @@ def test_check_fails_on_new_signature_and_passes_on_subset(
     assert gate.BASELINE.read_bytes() == before
 
 
-def test_committed_baseline_is_sorted_and_unique() -> None:
-    lines = (
-        (ROOT / "docs" / "development" / "mypy-baseline.txt")
-        .read_text(encoding="utf-8")
-        .splitlines()
-    )
+def _assert_committed_form(data: bytes) -> None:
+    """Sorted, unique, LF-terminated signature lines; empty when debt is zero."""
+    text = data.decode("utf-8")
+    assert "\r" not in text
+    assert text == "" or text.endswith("\n")
+    lines = text.splitlines()
     assert lines == sorted(set(lines))
     assert all(line.strip() == line and line for line in lines)
 
 
+def test_committed_baseline_is_sorted_and_unique() -> None:
+    _assert_committed_form(
+        (ROOT / "docs" / "development" / "mypy-baseline.txt").read_bytes()
+    )
+
+
+def test_update_clearing_the_last_signature_leaves_an_empty_file(
+    gate: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _report(gate, monkeypatch)
+    assert gate.main(["--update"]) == 0
+    assert gate.BASELINE.read_bytes() == b""
+    _assert_committed_form(gate.BASELINE.read_bytes())
+
+
+def test_update_of_an_empty_baseline_stays_empty(
+    gate: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    gate.BASELINE.write_bytes(b"")
+    _report(gate, monkeypatch)
+    assert gate.main(["--update"]) == 0
+    assert gate.BASELINE.read_bytes() == b""
+    _report(gate, monkeypatch, NEW)
+    assert gate.main(["--update"]) == 1
+    assert gate.BASELINE.read_bytes() == b""
+
+
+def test_update_writes_lf_terminated_sorted_lines(
+    gate: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _report(gate, monkeypatch, CLEARED, OLD)
+    assert gate.main(["--update"]) == 0
+    expected = sorted(gate._signature(line) for line in (OLD, CLEARED))
+    assert gate.BASELINE.read_bytes() == "".join(f"{s}\n" for s in expected).encode(
+        "utf-8"
+    )
+    _assert_committed_form(gate.BASELINE.read_bytes())
+
+
 def _command_lines(relative: str, marker: str) -> list[str]:
+    """Whole stripped lines naming the command.
+
+    Markdown list items lose their ``- `` marker and inline-code backticks.
+    Nothing else is removed, so a commented-out or prefixed command no longer
+    equals the canonical text.
+    """
     text = (ROOT / relative).read_text(encoding="utf-8")
     return [
-        # Markdown lists wrap commands in inline code; drop the backticks.
-        line[line.index(marker) :].strip().rstrip("`")
+        line.strip().removeprefix("- ").strip("`")
         for line in text.splitlines()
         if marker in line
+    ]
+
+
+def test_command_lines_reject_commented_or_prefixed_commands(tmp_path, monkeypatch):
+    sample = tmp_path / "sample.yml"
+    sample.write_text(
+        f"        {CANONICAL_GATE}\n"
+        f"#        {CANONICAL_GATE}\n"
+        f"        {CANONICAL_GATE} || true\n"
+        f"- `{CANONICAL_GATE}`\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sys.modules[__name__], "ROOT", tmp_path)
+    assert _command_lines("sample.yml", CANONICAL_GATE) == [
+        CANONICAL_GATE,
+        f"#        {CANONICAL_GATE}",
+        f"{CANONICAL_GATE} || true",
+        CANONICAL_GATE,
     ]
 
 

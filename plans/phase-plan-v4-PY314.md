@@ -4,7 +4,8 @@ phase: PY314
 roadmap: specs/phase-plans-v4.md
 roadmap_sha256: a96ef9073df2cd1bd860b1a151d75abc0a7edde7f242d8a2d7613c3fb38726c9
 automation:
-  # Post-merge suite. Until SL-env merges, run it without --python 3.14.
+  # Post-merge suite (default interpreter). After SL-env, also run it with
+  # UV_PYTHON=3.14 in a separate UV_PROJECT_ENVIRONMENT.
   suite_command: "uv run --locked --all-extras pytest tests/test_type_gate_policy.py tests/test_lint_path_policy.py tests/test_release_hygiene_policy.py tests/test_workflow_permissions_policy.py -q -n 4"
 ---
 
@@ -72,7 +73,13 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
   - debt: remove the 5 stale entries. Type-only fixes in the top-level `cli/`
     package (return annotations on Typer commands, local container
     annotations, a typed `check_node`) clear 8 signatures. The baseline goes
-    from 1,353 to 1,340, with no line added. Signatures that need a behavior
+    from 1,353 (measured on `17d73d46`; the roadmap's "1,356" is stale) to
+    1,340, with no line added. Starting with `cli/` is a deliberate deviation
+    from the roadmap, which assigns SL-types "the type-only fixes in
+    `chunker/**`". `cli/` is a separate top-level package that no in-flight
+    lane touches, while most `chunker/` packages with pure-annotation debt are
+    owned by open ADMIT/TXN/SMALLFIX PRs. Later SL-types PRs take one
+    `chunker/` package each. Signatures that need a behavior
     change stay in the baseline: `CodeChunk` has no `chunk_type`/`name` in
     `cli/repo_command.py`, and the graphviz fallback stubs in
     `cli/debug/commands.py`.
@@ -82,6 +89,11 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
     cleared debt removes it. The committed baseline is sorted and unique. The
     gate and governed-tools commands appear exactly once, byte-identical, in
     `ci.yml`, `release.yml`, CONTRIBUTING.md and the release checklist.
+- Gate follow-ups from the round-1 review, filed under treesitter-chunker#587
+  and not implemented here: treesitter-chunker#593 (a reviewable reseed for
+  diagnostic-format migrations, since `--update` can no longer add) and
+  treesitter-chunker#594 (per-signature counts, so a new instance of a
+  baselined signature is caught).
 - Other packages' type debt goes in later SL-types PRs under
   treesitter-chunker#587, one top-level package each. They avoid packages owned
   by in-flight ADMIT, TXN or FOLLOWUP lanes until those merge.

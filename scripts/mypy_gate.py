@@ -73,10 +73,10 @@ def _run_mypy() -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    current = {_signature(ln) for ln in _run_mypy()}
     if not BASELINE.is_file():
         print(f"mypy baseline not found: {BASELINE}", file=sys.stderr)
         return 2
+    current = {_signature(ln) for ln in _run_mypy()}
     baseline = {
         ln.strip()
         for ln in BASELINE.read_text(encoding="utf-8").splitlines()
@@ -100,7 +100,12 @@ def main(argv: list[str]) -> int:
         return 1
     if "--update" in argv:
         # current is a subset of baseline here, so this only removes entries.
-        BASELINE.write_text("\n".join(sorted(current)) + "\n", encoding="utf-8")
+        # One LF-terminated line per signature; no debt leaves an empty file.
+        BASELINE.write_text(
+            "".join(f"{s}\n" for s in sorted(current)),
+            encoding="utf-8",
+            newline="\n",
+        )
         print(
             f"mypy baseline updated: {len(current)} signatures "
             f"({len(baseline) - len(current)} cleared)"

@@ -134,6 +134,8 @@ def test_real_checker_distinguishes_wrapped_messages_and_ignores_line_shifts(
     assert mypy_gate.main([]) == 1
     assert annotation in capsys.readouterr().err
     assert baseline.read_bytes() == accepted
+    assert mypy_gate.main(["--update"]) == 1
+    assert baseline.read_bytes() == accepted
 
 
 @pytest.mark.parametrize(
@@ -184,6 +186,8 @@ def test_real_checker_keeps_literal_values_in_diagnostic_messages(
     assert len(errors) == 1 and errors[0].endswith("[assignment]")
     assert mypy_gate.main([]) == 1
     assert baseline.read_bytes() == accepted
+    assert mypy_gate.main(["--update"]) == 1
+    assert baseline.read_bytes() == accepted
     signature = mypy_gate._signature(errors[0])
     location, separator, message = errors[0].partition(": error:")
     assert separator
@@ -198,12 +202,17 @@ def test_real_checker_keeps_literal_values_in_diagnostic_messages(
         assert mypy_gate._signature(variant) == signature
 
 
-def test_update_without_baseline_fails_without_creating_one(
-    monkeypatch, tmp_path, capsys
+@pytest.mark.parametrize("argv", [[], ["--update"]])
+def test_missing_baseline_fails_before_mypy_without_creating_one(
+    monkeypatch, tmp_path, capsys, argv
 ):
     baseline = tmp_path / "missing" / "baseline.txt"
     monkeypatch.setattr(mypy_gate, "BASELINE", baseline)
-    monkeypatch.setattr(mypy_gate, "_run_mypy", lambda: ["x.py:1: error: debt"])
-    assert mypy_gate.main(["--update"]) == 2
+
+    def must_not_run():
+        raise AssertionError("mypy ran before the baseline check")
+
+    monkeypatch.setattr(mypy_gate, "_run_mypy", must_not_run)
+    assert mypy_gate.main(argv) == 2
     assert not baseline.exists()
     assert "baseline not found" in capsys.readouterr().err
