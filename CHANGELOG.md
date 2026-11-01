@@ -288,6 +288,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The default admission deadline of `probe_native_grammar` and
+  `publish_native_grammar` is now 30 seconds instead of 10. With Smart App
+  Control enforced, Windows can hold the first load of a new unsigned grammar
+  for about ten seconds while a stalled cloud trust check falls back, which
+  made the probe report `timeout` or an empty acknowledgment
+  (treesitter-chunker#547). An explicit `timeout` is used exactly. The
+  verdict-reuse probe profile becomes `default-v2`.
+
 - Align the remaining Python version declarations with the 3.12 floor from
   treesitter-chunker#493: the release-process spec, getting-started, user guide,
   deployment, performance-core and VS Code docs, the conda recipe, all three

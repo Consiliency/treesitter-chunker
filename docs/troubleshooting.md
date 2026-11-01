@@ -126,3 +126,20 @@ and exception cause. `probe_native_grammar` returns `supported=False`,
 its `message` property. Manager diagnostics and analyzer reports/exports retain
 that guidance. No Windows security setting needs to be disabled to diagnose the
 failure.
+
+## A new native grammar times out on Windows
+
+With Smart App Control enforced, Windows asks Microsoft Defender for a cloud
+verdict the first time it loads a new unsigned library. Usually the verdict
+arrives in under a second. If the cloud check stalls, Windows waits about ten
+seconds, then falls back to a local scan and loads the library. Later loads of
+the same bytes are fast once a verdict has been recorded.
+
+`probe_native_grammar` and `publish_native_grammar` therefore default to a
+30-second admission deadline, which outlasts that wait. If you pass a shorter
+`timeout`, it is used exactly, and a first-time load can then report
+`reason="timeout"` even though nothing is wrong with the library. If your
+administrator has lengthened Defender's cloud check (`CloudExtendedTimeout`),
+pass a `timeout` longer than that check. A library that the policy rejects
+reports `policy_blocked` instead, as described above. A `timeout` is never
+treated as admission, and no Windows security setting needs to be changed.
