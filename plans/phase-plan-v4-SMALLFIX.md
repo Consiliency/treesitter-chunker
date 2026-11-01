@@ -232,7 +232,9 @@ file builds for a given GOOS/GOARCH/tag set.
 - Modern: a line whose trimmed text starts with `//go:build` followed by
   whitespace (Go's `constraint.IsGoBuild` rule). Grammar: `or := and ('||'
   and)*`, `and := unary ('&&' unary)*`, `unary := '!' unary | '(' or ')' |
-  tag`, tags `[A-Za-z0-9_.]+`, `&&` binding tighter than `||`.
+  tag`, tags following Go's rule (Unicode letters and decimal digits, `_`
+  and `.`; release tags `goX.Y` use ASCII digits), `&&` binding tighter
+  than `||`.
 - Legacy: a line whose trimmed text is `//`, optional spaces, `+build`, then
   whitespace-separated fields (OR) of comma-separated atoms (AND), each atom
   a tag or `!tag`.
@@ -302,6 +304,8 @@ line ending matters):
    gives 1.18.
 5. `M438-legacy-last-tag` — legacy comma terms keep only the last tag
    (`M437-last-tag` on the new code).
+6. `M438-ascii-tags` — ASCII-only tag characters: `go1.18 && café`
+   becomes unknown instead of 1.18.
 
 ## Execution Notes
 
