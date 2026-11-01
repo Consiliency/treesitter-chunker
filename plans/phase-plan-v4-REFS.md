@@ -189,10 +189,12 @@ SL-js — JavaScript generator context and binding repairs
   in `scripts/run_platform_core.py` (decision 6)
 - **Interfaces consumed**: IF-0-REFS-1
 - **Tasks and named mutations**:
-  - treesitter-chunker#289: add `generator_function_declaration` and
-    `generator_function` to the `_find_definition` summary dispatch and to
-    `_extract_scope_declaration`. Mutation **M289**: bypass the generator
-    summary dispatch; the body-local `excludes` fail.
+  - treesitter-chunker#289: add `generator_function_declaration` (plain
+    and exported) to the `_find_definition` summary dispatch and to
+    `_extract_scope_declaration`. `generator_function` is not added: an
+    assigned generator expression resolves to its `variable_declarator`, so
+    the summary dispatch never sees it. Mutation **M289**: bypass the
+    generator summary dispatch; the body-local `excludes` fail.
   - treesitter-chunker#293: classify default-import, named
     function-expression, bare arrow-parameter, default-parameter and
     array-pattern identifiers as bindings, and report

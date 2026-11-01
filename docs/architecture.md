@@ -89,8 +89,8 @@ Python parallel helpers use `ProcessPoolExecutor`; CLI batch uses threads.
 Use a main guard for process helpers with spawn or forkserver process startup.
 
 Parallel helpers enable chunk caching by default at
-`~/.cache/treesitter-chunker/ast_cache.db`, with no directory override. Disable
-it with `use_cache=False` unless you manage invalidation of this shared cache.
+`~/.cache/treesitter-chunker/ast_cache.db`. Pass `cache_dir=` for a private
+cache, or disable it with `use_cache=False`.
 
 ```mermaid
 flowchart TD
@@ -105,8 +105,11 @@ flowchart TD
 ```
 
 The parser cache and SQLite chunk cache store different objects. `ASTCache`
-stores extracted chunks, not native ASTs. Its keys do not include every parser
-pin or extraction option; invalidate it when these change. Boundary incremental
+stores extracted chunks, not native ASTs. Entries are keyed by extraction mode
+(core or streaming), the runtime/grammar pairing and the effective language
+configuration. Languages without a reliable grammar or configuration identity
+bypass the cache; today that is every language except Python and JavaScript.
+Boundary incremental
 caching has its own contract. See [performance](performance-guide.md) and
 [Boundary IR](interface-boundary-spec.md).
 
