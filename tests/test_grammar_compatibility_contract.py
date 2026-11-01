@@ -80,6 +80,7 @@ def test_compatibility_helpers_confine_cache_roots(
     )
     assert success and errors == []
     assert not helper.validator._validation_cache.exists()
+    written: dict[Path, dict[str, list[str]]] = {}
     for index, validator in enumerate([helper.validator, *validators]):
         candidate = tmp_path / f"empty-not-grammar-{index}.so"
         candidate.write_bytes(b"")
@@ -87,10 +88,17 @@ def test_compatibility_helpers_confine_cache_roots(
         assert not result.is_valid
         assert "Grammar file is empty" in result.errors
         records = json.loads(validator._validation_cache.read_text(encoding="utf-8"))
-        assert records
-        assert all(not record["is_valid"] for record in records.values())
+        # Exact-key lookup: records from other validators on this root may
+        # remain (treesitter-chunker#370 merges instead of overwriting).
         key = validator._get_cache_key(candidate, "python", ValidationLevel.BASIC)
+        assert not records[key]["is_valid"]
         assert records[key]["errors"] == result.errors
+        written.setdefault(validator._validation_cache, {})[key] = result.errors
+    for path, expected_records in written.items():
+        records = json.loads(path.read_text(encoding="utf-8"))
+        assert {key: records[key]["errors"] for key in expected_records} == (
+            expected_records
+        )
     assert not (home / ".cache" / "treesitter-chunker").exists()
     assert (cache / "validation_cache.json").is_file()
     assert (expected / "validation_cache.json").is_file()
