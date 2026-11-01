@@ -367,7 +367,9 @@ class ComprehensiveGrammarCLI:
             # Find source directories
             if search_path.is_dir():
                 for source_dir in search_path.iterdir():
-                    if source_dir.is_dir() and source_dir.name not in [".", ".."]:
+                    # Hidden names (such as the cache transaction's
+                    # .txn-retired) are never grammars.
+                    if source_dir.is_dir() and not source_dir.name.startswith("."):
                         language = source_dir.name
                         key = str(source_dir) if show_all else language
                         if key not in grammars:
@@ -2538,6 +2540,8 @@ if __name__ == "__main__":
                     raise ValueError("Cache namespace must be a regular directory")
                 removed_before = stats["files_removed"]
                 for item in cache_dir.iterdir():
+                    if item.name.startswith(".txn"):
+                        continue  # cache transaction staging/retired areas
                     try:
                         pending = [item]
                         bytes_to_free = 0
