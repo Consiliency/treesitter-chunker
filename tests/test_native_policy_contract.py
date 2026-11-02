@@ -196,14 +196,19 @@ def test_policy_guidance_reaches_manager_and_analyzer(tmp_path, monkeypatch):
         analyzers, "probe_native_grammar", lambda *args, **kwargs: blocked
     )
     (tmp_path / "baml.so").write_bytes(b"fixture")
-    manager = managers.SmartGrammarManager(tmp_path, tmp_path / "sources")
+    # ADMIT (treesitter-chunker#362): an unpinned local grammar is untrusted
+    # before any probe, so pin the fixture's bytes to reach the probe's verdict.
+    pins = {"baml": {"sha256": sha256(b"fixture").hexdigest()}}
+    manager = managers.SmartGrammarManager(
+        tmp_path, tmp_path / "sources", trusted_artifacts=pins
+    )
     health = manager.diagnose_grammar_issues("baml")
     assert (
         health.status == "incompatible" and health.validation_reason == "policy_blocked"
     )
     assert APPLICATION_CONTROL_MESSAGE in health.issues
     assert not any("Recompile" in item for item in health.recommendations)
-    analyzer = analyzers.GrammarAnalyzer(tmp_path)
+    analyzer = analyzers.GrammarAnalyzer(tmp_path, trusted_artifacts=pins)
     report = analyzer.generate_grammar_report("baml")
     assert APPLICATION_CONTROL_MESSAGE in report
     capabilities = analyzer.get_grammar_capabilities("baml")
