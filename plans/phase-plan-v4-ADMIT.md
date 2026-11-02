@@ -400,7 +400,9 @@ Every PR waits for the merge gate above.
   `cli_ignores_package_supplier`, `pin_rescues_record_mismatch`,
   `trust_package_dir_without_record`, `drop_symlink_check`,
   `drop_entry_parent_check`, `drop_distribution_identity`,
-  `hashless_entry_supplied`, `publish_over_record_entry`.
+  `hashless_entry_supplied`, `publish_over_record_entry`,
+  `hardcoded_10s_default` and `restate_default_timeout` (probe profile
+  `default-v2`, treesitter-chunker#561).
 
 ### SL-reg — Registry discovery, package supplier, parse-path pins, F1, F2
 
@@ -492,7 +494,11 @@ Every PR waits for the merge gate above.
   `grammar_analyzer.v1`, A1 retire
   (`{"dependencies": [], "dependencies_status": "retired"}`, no tool runs).
 - **Mutations**: `forward_whole_record` (analyzer),
-  `reuse_verdict_across_inspector` (analyzer), `restore_ldd_inspection` (A1).
+  `reuse_verdict_across_inspector` (analyzer), `restore_ldd_inspection` (A1),
+  `ldd_runs_but_reports_retired` (A1), `package_grammar_needs_pin`,
+  `pin_rescues_record_mismatch`, `cache_incomplete_symbol_analysis`,
+  `drop_all_inspectors_on_transient`, `store_ignores_reusable` and
+  `failed_is_settled`.
   (T1/T2 and their mutations moved to SL-core-2; decision 8.)
 
 ## Verification (every implementation PR)
