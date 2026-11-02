@@ -327,6 +327,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- `SmartSelector.select_multiple_grammars` no longer accepts
+  `global_constraints` and silently ignores them (treesitter-chunker#344). No
+  cross-language constraint is supported, so a nonempty mapping now raises
+  `ValueError`, naming its keys, before any selection runs. `None` and `{}` behave as
+  before. Use `select_best_grammar(language, constraints=...)` for
+  per-language constraints.
 - The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter`
   modules declare caller metadata named `label` with
   `attr.name="caller_label"`, so readers that map GraphML data by `attr.name`,
