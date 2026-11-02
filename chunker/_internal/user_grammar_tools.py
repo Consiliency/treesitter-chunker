@@ -32,6 +32,11 @@ _ADMISSION_EXPLANATIONS = {
     "load_failed": "the library could not be loaded",
     "parse_failed": "the library loaded but could not parse",
     "timeout": "the admission probe timed out",
+    "missing": "the library file does not exist",
+    "child_failed": "the probe process failed or ended abnormally",
+    "inspect_failed": "the artifact inspection step failed",
+    "ack_missing": "the probe process returned no result",
+    "ack_invalid": "the probe process returned an invalid result",
 }
 
 
@@ -168,8 +173,9 @@ class UserGrammarTools:
             hint = ""
             if sys.platform == "win32" and isinstance(error, PermissionError):
                 hint = (
-                    " Windows cannot replace a library that a running process "
-                    "has loaded; close those processes, then reinstall."
+                    " This usually means a running process has the library "
+                    "loaded, and Windows cannot replace a loaded library; close "
+                    "those processes, then reinstall."
                 )
             result["errors"].append(
                 f"Could not publish {library.name} to {target}: {error}. The "
