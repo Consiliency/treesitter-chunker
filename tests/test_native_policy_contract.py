@@ -219,6 +219,14 @@ def test_policy_guidance_reaches_manager_and_analyzer(tmp_path, monkeypatch):
     )
 
 
+def assert_not_policy_skip(label, predicate, *args):
+    """A rejected case must stay a test failure; an over-accepting predicate fails."""
+    try:
+        predicate(*args)
+    except pytest.skip.Exception as skipped:
+        pytest.fail(f"{label} must stay a test failure, not a policy skip: {skipped}")
+
+
 def valid_policy_reply():
     state = SimpleNamespace(
         worker_status=1,
@@ -248,7 +256,14 @@ def test_test_skip_accepts_only_positive_policy_evidence():
         skip_policy_reply(reply, command, state, "nonce")
     with pytest.raises(pytest.skip.Exception, match="4551"):
         skip_policy_error(policy_error())
-    skip_policy_error(PermissionError(13, "access denied"))
+    for label, error in (
+        ("access denied", PermissionError(13, "access denied")),
+        ("generic OSError", OSError("generic loader failure")),
+        ("winerror 5", policy_error(5)),
+        ("winerror 32", policy_error(32)),
+        ("bool winerror", policy_error(True)),
+    ):
+        assert_not_policy_skip(label, skip_policy_error, error)
 
 
 @pytest.mark.parametrize(
@@ -284,12 +299,14 @@ def test_test_skip_preserves_protocol_failures(fault):
         stdout = b"not JSON"
     if fault == "duplicate":
         stdout = stdout[:-1] + b',"failure":"policy_blocked"}'
-    try:
-        skip_policy_reply(
-            (1, stdout, b"", fault == "timeout", False), command, state, "nonce"
-        )
-    except pytest.skip.Exception as skipped:
-        pytest.fail(f"{fault} must stay a test failure, not a policy skip: {skipped}")
+    assert_not_policy_skip(
+        fault,
+        skip_policy_reply,
+        (1, stdout, b"", fault == "timeout", False),
+        command,
+        state,
+        "nonce",
+    )
 
 
 INJECTED = "GetExitCodeProcess unavailable"
@@ -342,12 +359,16 @@ def test_status_fault_skip_preserves_protocol_failures(fault):
         record = json.loads(reply[1])
         record["failure"] = "load_failed"
         reply = (1, json.dumps(record).encode(), b"", False, False)
-    try:
-        skip_policy_reply_under_status_fault(
-            reply, command, state, "nonce", observed.get(fault, [1]), INJECTED
-        )
-    except pytest.skip.Exception as skipped:
-        pytest.fail(f"{fault} must stay a test failure, not a policy skip: {skipped}")
+    assert_not_policy_skip(
+        fault,
+        skip_policy_reply_under_status_fault,
+        reply,
+        command,
+        state,
+        "nonce",
+        observed.get(fault, [1]),
+        INJECTED,
+    )
 
 
 def test_isolated_worker_policy_failure_uses_real_protocol(tmp_path, monkeypatch):
@@ -417,7 +438,7 @@ def test_isolated_positive_control_requires_typed_policy_record(fault):
         with pytest.raises(pytest.skip.Exception, match="WinError 4551"):
             skip_policy_subprocess(result)
     else:
-        skip_policy_subprocess(result)
+        assert_not_policy_skip(fault, skip_policy_subprocess, result)
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows indirect fault launcher")
@@ -502,7 +523,7 @@ def test_trusted_driver_policy_result_is_narrow(reason):
         ):
             skip_policy_subprocess(result)
     else:
-        skip_policy_subprocess(result)
+        assert_not_policy_skip(reason, skip_policy_subprocess, result)
 
 
 @pytest.mark.parametrize(

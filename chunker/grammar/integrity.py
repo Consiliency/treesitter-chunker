@@ -20,7 +20,7 @@ import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import psutil
 
@@ -47,6 +47,13 @@ class NativeProbeResult:
         """Actionable guidance when the OS explicitly blocks native admission."""
         return APPLICATION_CONTROL_MESSAGE if self.reason == "policy_blocked" else None
 
+
+#: Default execution deadline, in seconds, of :func:`probe_native_grammar` and
+#: ``publish_native_grammar``. It outlasts a stalled Windows Smart App Control
+#: cloud trust check, which can hold the first load of a new unsigned library
+#: for about ten seconds (treesitter-chunker#547). Callers that forward a
+#: default deadline should import this rather than restate the value.
+DEFAULT_PROBE_TIMEOUT: Final[float] = 30.0
 
 _SHA256 = re.compile(r"[0-9a-fA-F]{64}")
 _ACK_SCHEMA = "native_probe.v1"
@@ -803,16 +810,17 @@ def probe_native_grammar(
     *,
     provenance: Mapping[str, Any] | None,
     sample: bytes = b"",
-    timeout: float = 30.0,
+    timeout: float = DEFAULT_PROBE_TIMEOUT,
     inspect_artifact: Callable[[Path], Any] | None = None,
 ) -> NativeProbeResult:
     """Admit a pinned grammar by loading only a private verified snapshot.
 
     ``timeout`` is one shared deadline, in seconds, for starting the isolated
     worker, loading and parsing, and its exit. An explicit value is used
-    exactly. The 30-second default outlasts a Windows Smart App Control cloud
-    check: the first load of a new unsigned library can wait about ten seconds
-    for that check before Windows allows it (treesitter-chunker#547).
+    exactly. The default, :data:`DEFAULT_PROBE_TIMEOUT` (30 seconds),
+    outlasts a Windows Smart App Control cloud check: the first load of a new
+    unsigned library can wait about ten seconds for that check before Windows
+    allows it (treesitter-chunker#547).
 
     ``inspect_artifact`` is trusted application code. It runs only after the
     isolated child succeeds and must not mutate or load the supplied snapshot.

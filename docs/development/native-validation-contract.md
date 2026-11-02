@@ -58,8 +58,9 @@ below.
 
 ## Snapshot and isolated completion
 
-`probe_native_grammar(path, language, *, provenance, sample=b"", timeout=30.0,
-inspect_artifact=None)`
+`probe_native_grammar(path, language, *, provenance, sample=b"",
+timeout=DEFAULT_PROBE_TIMEOUT, inspect_artifact=None)`, where
+`DEFAULT_PROBE_TIMEOUT` is 30.0 seconds,
 returns an immutable `NativeProbeResult(supported, reason, artifact_sha256)`.
 Missing and empty artifacts fail without native execution. Copy bytes from one
 open regular file to an exclusively created private temporary snapshot with its
@@ -202,7 +203,7 @@ Only new transcriptions correct the CPython reference to 445–460 and use
 
 ## Minimal private interfaces and snapshot ownership
 
-Keep public `probe_native_grammar(path, language, *, provenance, sample=b"", timeout=30.0, inspect_artifact=None)` (default deadline amended from 10.0 by the [probe deadline amendment](#probe-deadline-amendment-2026-11-01)) and frozen `NativeProbeResult(supported, reason, artifact_sha256)` unchanged. Keep reasons `ok`, `missing`, `empty`, `untrusted`, `integrity_mismatch`, `load_failed`, `parse_failed`, `timeout`, `child_failed`, `ack_missing`, `ack_invalid`, `inspect_failed`. Only `ok` carries a digest. Keep `native_probe.v1` exactly:
+Keep public `probe_native_grammar(path, language, *, provenance, sample=b"", timeout=DEFAULT_PROBE_TIMEOUT, inspect_artifact=None)` with `DEFAULT_PROBE_TIMEOUT = 30.0` (default deadline amended from 10.0 by the [probe deadline amendment](#probe-deadline-amendment-2026-11-01)) and frozen `NativeProbeResult(supported, reason, artifact_sha256)` unchanged. Keep reasons `ok`, `missing`, `empty`, `untrusted`, `integrity_mismatch`, `load_failed`, `parse_failed`, `timeout`, `child_failed`, `ack_missing`, `ack_invalid`, `inspect_failed`, plus `policy_blocked` (added by the [application-control result amendment](#application-control-result-amendment-2026-11-01)). Only `ok` carries a digest. Keep `native_probe.v1` exactly:
 
 ```json
 {"schema":"native_probe.v1","nonce":"per-request","language":"requested","sha256":"snapshot","loader_returned":true,"parse_returned":true}
@@ -994,9 +995,14 @@ observations in treesitter-chunker#508 or treesitter-chunker#509.
 
 The maintainer decision for treesitter-chunker#547 raises the **default**
 execution deadline of `probe_native_grammar` from 10.0 to 30.0 seconds. The
-`publish_native_grammar` pass-through default changes with it. This is the only
-change. The single shared monotonic deadline, its one ≤1 s grace and ≤5 s
-hard-stop confirmation, the frozen reasons, the `native_probe.v1`
+value is the public constant `chunker.grammar.integrity.DEFAULT_PROBE_TIMEOUT`.
+`probe_native_grammar` and the `publish_native_grammar` pass-through both use
+that constant as their default, and any code that forwards a default deadline
+must import it rather than restate a number. This is the only change. The
+single shared monotonic deadline, its one ≤1 s grace and ≤5 s hard-stop
+confirmation, the reasons (including `policy_blocked` from the
+[application-control result amendment](#application-control-result-amendment-2026-11-01)),
+the `native_probe.v1`
 acknowledgment and every admission and containment rule above are unchanged. An
 explicit caller-supplied `timeout` is still used exactly: it is never raised to,
 lowered to or replaced by the default. A finite non-positive or non-finite
@@ -1023,7 +1029,11 @@ observations. Trust checks are not always quick when they do not fall back:
 in the WIN campaigns some took 2–9.4 s. The longest whole probe measured,
 stalls included, took 10.55 s. Thirty seconds leaves more than 19 s over that.
 An administrator can lengthen Defender's cloud check (`CloudExtendedTimeout`, up
-to 50 more seconds); such hosts should pass an explicit `timeout`.
+to 50 more seconds). On such hosts, code that calls `probe_native_grammar` or
+`publish_native_grammar` directly can pass a longer explicit `timeout`; those
+are the only entry points that accept one. `SmartGrammarManager`,
+`GrammarAnalyzer` and `UserGrammarTools` always use `DEFAULT_PROBE_TIMEOUT` and
+have no timeout option.
 
 **What it does not change.** The deadline still bounds a hostile or hung
 constructor; a hang is now stopped after 30 s instead of 10 s. The OS check
@@ -1033,14 +1043,18 @@ trust check from any other slow load, so a slower load than the deadline is stil
 `timeout`.
 
 **Verdict-reuse profile.** The probe profile in the verdict-reuse key becomes
-`default-v2` (`sample=b""`, `timeout=30.0`). ADMIT's cache implementation and
-its `reuse_verdict_across_probe_profile` mutation use the new default
-deadline; `default-v1` entries miss. The ADMIT gate (EC-ADMIT-9) is otherwise
+`default-v2` (`sample=b""`, `timeout=DEFAULT_PROBE_TIMEOUT`). ADMIT's cache
+implementation decides "default profile" by comparing with the imported
+`DEFAULT_PROBE_TIMEOUT`, never a local copy of the number, and passes no
+restated default to the probe; a test must fail if the two diverge. Its
+`reuse_verdict_across_probe_profile` mutation uses the new default deadline,
+and `default-v1` entries miss. The ADMIT gate (EC-ADMIT-9) is otherwise
 unchanged.
 
 **Regressions.** A real native library whose constructor blocks its load for
 11 s, which is longer than the measured fallback, is admitted under the default
-and times out under the old one. Separate checks require the 30.0 default and
-the exact explicit deadline for both functions. Named mutations:
-`restore_ten_second_default`, `publish_keeps_ten_second_default`,
+and times out under the old one. Separate checks require the 30.0 default, the
+shared constant as both signatures' default, and the exact explicit deadline
+for both functions. Named mutations: `restore_ten_second_default`,
+`publish_keeps_ten_second_default`, `publish_restates_default_literal`,
 `ignore_explicit_timeout`, `floor_explicit_timeout_at_default`.

@@ -135,11 +135,14 @@ arrives in under a second. If the cloud check stalls, Windows waits about ten
 seconds, then falls back to a local scan and loads the library. Later loads of
 the same bytes are fast once a verdict has been recorded.
 
-`probe_native_grammar` and `publish_native_grammar` therefore default to a
-30-second admission deadline, which outlasts that wait. If you pass a shorter
-`timeout`, it is used exactly, and a first-time load can then report
-`reason="timeout"` even though nothing is wrong with the library. If your
-administrator has lengthened Defender's cloud check (`CloudExtendedTimeout`),
-pass a `timeout` longer than that check. A library that the policy rejects
+Native grammar admission therefore defaults to a 30-second deadline
+(`chunker.grammar.integrity.DEFAULT_PROBE_TIMEOUT`), which outlasts that wait.
+Only `probe_native_grammar` and `publish_native_grammar` accept a `timeout`.
+If you pass a shorter one, it is used exactly, and a first-time load can then
+report `reason="timeout"` even though nothing is wrong with the library.
+`SmartGrammarManager`, `GrammarAnalyzer` and `UserGrammarTools` always use the
+default and have no timeout option. If your administrator has lengthened
+Defender's cloud check (`CloudExtendedTimeout`), call `probe_native_grammar` or
+`publish_native_grammar` directly with a `timeout` longer than that check. A library that the policy rejects
 reports `policy_blocked` instead, as described above. A `timeout` is never
 treated as admission, and no Windows security setting needs to be changed.

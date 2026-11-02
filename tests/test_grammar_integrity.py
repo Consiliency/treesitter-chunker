@@ -307,6 +307,19 @@ def test_nonfinite_probe_deadline_is_rejected(tmp_path, timeout):
     assert result.artifact_sha256 is None
 
 
+def test_probe_and_publish_defaults_are_the_public_deadline():
+    import inspect
+
+    from chunker._internal.user_grammar_tools import publish_native_grammar
+    from chunker.grammar.integrity import DEFAULT_PROBE_TIMEOUT
+
+    assert DEFAULT_PROBE_TIMEOUT == 30.0
+    # The same object, not a restated literal, so one constant moves both.
+    for function in (probe_native_grammar, publish_native_grammar):
+        default = inspect.signature(function).parameters["timeout"].default
+        assert default is DEFAULT_PROBE_TIMEOUT, function.__name__
+
+
 @pytest.mark.parametrize("timeout", [None, 0.5, 10.0, 45.0])
 def test_probe_uses_default_or_exact_caller_deadline(tmp_path, monkeypatch, timeout):
     from chunker.grammar import integrity

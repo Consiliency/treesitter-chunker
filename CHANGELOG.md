@@ -305,8 +305,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Control enforced, Windows can hold the first load of a new unsigned grammar
   for about ten seconds while a stalled cloud trust check falls back, which
   made the probe report `timeout` or an empty acknowledgment
-  (treesitter-chunker#547). An explicit `timeout` is used exactly. The
-  verdict-reuse probe profile becomes `default-v2`.
+  (treesitter-chunker#547). The value is the new public constant
+  `chunker.grammar.integrity.DEFAULT_PROBE_TIMEOUT`. An explicit `timeout` is
+  used exactly. The verdict-reuse probe profile becomes `default-v2`.
 
 - `scripts/mypy_gate.py --update` now only removes cleared signatures. When mypy
   reports a signature that is not in the baseline, it exits 1 and leaves
