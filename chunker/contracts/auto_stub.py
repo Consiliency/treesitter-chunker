@@ -32,20 +32,9 @@ class ZeroConfigStub(ZeroConfigContract):
         language: str,
         version: str | None = None,
     ) -> bool:
-        """Stub that simulates language setup"""
-        if language in {
-            "python",
-            "rust",
-            "javascript",
-            "go",
-            "java",
-            "ruby",
-            "c",
-            "cpp",
-        }:
-            ZeroConfigStub._installed_languages.add(language)
-            return True
-        return False
+        """Stub that reports whether a language is installed (nothing is
+        installed on demand)"""
+        return language in ZeroConfigStub._installed_languages
 
     @staticmethod
     def auto_chunk_file(
@@ -58,8 +47,6 @@ class ZeroConfigStub(ZeroConfigContract):
         if not language:
             language = ZeroConfigStub.detect_language(path)
         grammar_downloaded = False
-        if language and language not in ZeroConfigStub._installed_languages:
-            grammar_downloaded = ZeroConfigStub.ensure_language(language)
         return AutoChunkResult(
             chunks=[
                 {
@@ -91,8 +78,6 @@ class ZeroConfigStub(ZeroConfigContract):
     ) -> AutoChunkResult:
         """Stub that chunks text"""
         grammar_downloaded = False
-        if language not in ZeroConfigStub._installed_languages:
-            grammar_downloaded = ZeroConfigStub.ensure_language(language)
         return AutoChunkResult(
             chunks=[
                 {
@@ -122,11 +107,9 @@ class ZeroConfigStub(ZeroConfigContract):
     @staticmethod
     def get_chunker_for_language(
         language: str,
-        auto_download: bool = True,
+        auto_download: bool | None = None,
     ) -> Any:
-        """Stub that returns a mock chunker"""
-        if auto_download:
-            ZeroConfigStub.ensure_language(language)
+        """Stub that returns a mock chunker (``auto_download`` is inert)"""
         if language not in ZeroConfigStub._installed_languages:
             raise ValueError(f"Language {language} not available")
 
@@ -143,11 +126,8 @@ class ZeroConfigStub(ZeroConfigContract):
 
     @staticmethod
     def preload_languages(languages: list[str]) -> dict[str, bool]:
-        """Stub that simulates preloading"""
+        """Stub that reports which languages are installed"""
         results = {}
         for lang in languages:
-            success = ZeroConfigStub.ensure_language(lang)
-            results[lang] = success
-            if success:
-                ZeroConfigStub._installed_languages.add(lang)
+            results[lang] = ZeroConfigStub.ensure_language(lang)
         return results

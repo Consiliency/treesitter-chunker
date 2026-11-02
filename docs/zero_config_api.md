@@ -18,6 +18,23 @@ version selection does not replace the core parser pins. Detection, batch
 operation and text fallback are orchestration features; validate them with
 the concrete registry and parser environment used by your application.
 
+Neither the zero-config API nor `UniversalLanguageRegistry` downloads or builds
+a grammar on demand. This automatic download-and-build was retired by a
+maintainer decision of 2026-11-01, extending M2 of treesitter-chunker#362:
+- `ensure_language()` and `preload_languages()` report availability and never
+  install or update anything.
+- `UniversalLanguageRegistry.get_parser()` raises `LanguageNotFoundError` for a
+  language that no installed, admitted source provides. The error states the
+  cause and this guidance.
+- The `auto_download` argument of `get_parser()` and
+  `get_chunker_for_language()` is still accepted but has no effect. Passing it
+  emits a `DeprecationWarning`.
+
+To use a grammar that is not package-supplied, build it with the grammar
+commands, review it, and pin its SHA-256 in the user-config pin file
+(`trusted-artifacts.json`) or with `--trusted-artifacts`. See the
+[CLI reference](cli-reference.md).
+
 ## Basic Usage
 
 ```python
@@ -59,10 +76,6 @@ language = api.detect_language("Dockerfile")  # Returns "dockerfile"
 # Automatically detects language and chunks appropriately
 result = api.auto_chunk_file("main.go")
 
-# Check if grammar was downloaded
-if result.grammar_downloaded:
-    print("Grammar was automatically downloaded")
-
 # Check if fallback was used
 if result.fallback_used:
     print("Used text-based chunking (tree-sitter unavailable)")
@@ -90,7 +103,7 @@ result = api.auto_chunk_file("large_file.py", token_limit=1000)
 ### 5. Language Preloading
 
 ```python
-# Preload multiple languages for offline use
+# Check which languages are ready before batch work (nothing is installed)
 languages = ["python", "javascript", "go", "rust"]
 results = api.preload_languages(languages)
 
@@ -101,11 +114,11 @@ for lang, success in results.items():
 ### 6. Ensure Language Availability
 
 ```python
-# Ensure a specific language is ready
+# Check that a language is ready (it is never installed on demand)
 if api.ensure_language("java"):
     print("Java is ready to use")
-    
-# Ensure specific version
+
+# Check for a specific installed version (a mismatch is not updated)
 if api.ensure_language("python", "0.20.0"):
     print("Python 0.20.0 is ready")
 ```
@@ -145,7 +158,7 @@ The `AutoChunkResult` object contains:
 class AutoChunkResult:
     chunks: list[dict[str, Any]]  # List of chunk dictionaries
     language: str                  # Detected or specified language
-    grammar_downloaded: bool       # Whether grammar was downloaded
+    grammar_downloaded: bool       # Always False: nothing is downloaded
     fallback_used: bool           # Whether fallback chunking was used
     metadata: dict[str, Any]      # Additional metadata
 ```
@@ -201,7 +214,7 @@ replacement mode on invalid input so fallback remains available for imperfect
 source files:
 
 ```python
-# If grammar download fails or language unsupported
+# If no admitted grammar is available or the language is unsupported
 result = api.auto_chunk_file("data.csv")
 assert result.fallback_used is True
 assert result.language == "unknown"  # Or detected type
@@ -223,10 +236,10 @@ for root, dirs, files in os.walk("src"):
 
 ## Best Practices
 
-1. **Preload for Production**: Use `preload_languages()` to ensure grammars are available before processing
+1. **Check Before Production Runs**: Use `preload_languages()` to confirm grammars are available before processing; it installs nothing
 2. **Check Results**: Always check `fallback_used` to know if tree-sitter chunking was successful
 3. **Handle Unknown Languages**: Implement fallback logic for files with unknown languages
-4. **Cache Registry**: Use a persistent registry implementation to avoid re-downloading grammars
+4. **Pin Local Grammars**: Build a grammar the pack does not supply with the grammar commands and pin it; unpinned local grammars are ignored
 
 ## Example: Complete Workflow
 
@@ -251,7 +264,6 @@ def process_file(file_path):
         print(f"\nFile: {file_path}")
         print(f"Language: {result.language}")
         print(f"Chunks: {len(result.chunks)}")
-        print(f"Grammar downloaded: {result.grammar_downloaded}")
         print(f"Fallback used: {result.fallback_used}")
         
         # Process chunks
@@ -271,17 +283,20 @@ process_file("Makefile")
 
 ## Performance Considerations
 
-1. **Grammar Download**: First use of a language may be slower due to grammar download
+1. **Grammar Pack**: First use of a pack language may fetch it; prefetch as described in [getting started](getting-started.md)
 2. **Caching**: The registry should cache parsers for better performance
 3. **Parallel Processing**: Consider using parallel processing for large codebases
 4. **Memory Usage**: Large files may consume significant memory during parsing
 
 ## Troubleshooting
 
-### Grammar Download Failures
-- Check internet connection
-- Verify language name is correct
-- Check if grammar is available in tree-sitter ecosystem
+### Language Not Found
+- Verify the language name is correct
+- Read the cause in the `LanguageNotFoundError` message (for example, a local
+  grammar with no pin)
+- Build the grammar with the grammar commands and pin its SHA-256 in
+  `trusted-artifacts.json` or with `--trusted-artifacts`; nothing is downloaded
+  or built automatically
 
 ### Fallback Warnings
 - Normal for non-code files (markdown, config files)

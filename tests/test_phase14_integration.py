@@ -61,24 +61,32 @@ class TestDiscoveryDownloadIntegration:
 class TestRegistryAutoIntegration:
     """Test integration between registry and zero-config API"""
 
-    @classmethod
-    def test_auto_download_through_registry(cls):
-        """Test automatic grammar download when using registry"""
+    @staticmethod
+    def test_registry_never_installs_on_demand(monkeypatch):
+        """Nothing is downloaded or installed on demand (M2 of
+        treesitter-chunker#362, extended by the 2026-11-01 maintainer
+        decision): ``auto_download`` is inert."""
+        monkeypatch.setattr(
+            UniversalRegistryStub,
+            "_installed",
+            set(UniversalRegistryStub._installed) - {"go"},
+        )
+        monkeypatch.setattr(
+            ZeroConfigStub,
+            "_installed_languages",
+            set(ZeroConfigStub._installed_languages) - {"go"},
+        )
         registry = UniversalRegistryStub()
         auto_api = ZeroConfigStub()
-        initial_installed = registry.list_installed_languages()
-        go_ready = auto_api.ensure_language("go")
-        parser = registry.get_parser("go", auto_download=True)
-        assert "go" not in initial_installed, "Go should not be initially installed"
-        assert go_ready is True, "ensure_language should succeed"
-        assert parser is not None, "Parser should be returned"
-        assert registry.is_language_installed(
-            "go",
-        ), "Go should now be installed"
+        assert auto_api.ensure_language("go") is False
+        with pytest.raises(ValueError, match="not available"):
+            registry.get_parser("go", auto_download=True)
+        assert not registry.is_language_installed("go")
+        assert "go" not in ZeroConfigStub._installed_languages
 
     @classmethod
-    def test_file_chunking_with_auto_download(cls):
-        """Test chunking a file that requires grammar download"""
+    def test_file_chunking_reports_no_download(cls):
+        """Chunking a file never downloads a grammar"""
         auto_api = ZeroConfigStub()
         UniversalRegistryStub()
         with tempfile.NamedTemporaryFile(encoding="utf-8", suffix=".go", mode="w") as f:
@@ -91,6 +99,7 @@ class TestRegistryAutoIntegration:
                 result,
                 "grammar_downloaded",
             ), "Result should have download flag"
+            assert result.grammar_downloaded is False
             assert result.language == "go", f"Should detect Go, got {result.language}"
             assert isinstance(result.chunks, list), "Chunks should be a list"
             assert len(result.chunks) > 0, "Should have at least one chunk"
@@ -122,21 +131,28 @@ class TestFullWorkflowIntegration:
         assert len(result.chunks) > 0
         assert result.language == "python"
 
-    @classmethod
-    def test_preload_multiple_languages(cls):
-        """Test preloading multiple languages for offline use"""
+    @staticmethod
+    def test_preload_multiple_languages(monkeypatch):
+        """Preloading reports availability and installs nothing; installing
+        stays an explicit step"""
+        monkeypatch.setattr(
+            ZeroConfigStub,
+            "_installed_languages",
+            {"python", "rust", "javascript"},
+        )
+        monkeypatch.setattr(
+            UniversalRegistryStub,
+            "_installed",
+            set(UniversalRegistryStub._installed),
+        )
         auto_api = ZeroConfigStub()
         registry = UniversalRegistryStub()
-        languages_to_preload = ["go", "java", "ruby"]
+        languages_to_preload = ["python", "go", "java", "ruby"]
         results = auto_api.preload_languages(languages_to_preload)
-        assert isinstance(results, dict)
-        for lang in languages_to_preload:
-            assert lang in results
-            assert results[lang] is True, f"Failed to preload {lang}"
-        for lang in languages_to_preload:
-            if results[lang]:
-                registry.install_language(lang)
-        for lang in languages_to_preload:
+        assert results == {"python": True, "go": False, "java": False, "ruby": False}
+        assert ZeroConfigStub._installed_languages == {"python", "rust", "javascript"}
+        for lang in ("go", "java", "ruby"):
+            assert registry.install_language(lang) is True
             metadata = registry.get_language_metadata(lang)
             assert metadata != {}, f"No metadata for {lang}"
             assert "version" in metadata

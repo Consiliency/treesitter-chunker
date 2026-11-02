@@ -1,12 +1,14 @@
-"""Zero-configuration API for automatic language setup and chunking.
+"""Zero-configuration API for language detection and chunking.
 
 This module provides a simple, zero-config interface for chunking code files
-with automatic language detection and grammar management.
+with automatic language detection and text fallback. It uses grammars that an
+installed, admitted source provides and never downloads or builds one.
 """
 
 from __future__ import annotations
 
 import re
+import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -29,10 +31,11 @@ if TYPE_CHECKING:
 class ZeroConfigAPI(ZeroConfigContract):
     """Zero-configuration API for automatic chunking.
 
-    This class provides a simple interface that automatically:
+    This class provides a simple interface that:
     - Detects languages from file extensions and content
-    - Downloads and sets up grammars as needed
-    - Falls back to text chunking when tree-sitter is unavailable
+    - Uses grammars from installed, admitted sources (package-supplied, or
+      local grammars under their pins); it never downloads or builds one
+    - Falls back to text chunking when no grammar is available
     """
 
     EXTENSION_MAP: ClassVar[dict[str, str]] = {
@@ -130,7 +133,12 @@ class ZeroConfigAPI(ZeroConfigContract):
         language: str,
         version: str | None = None,
     ) -> bool:
-        """Ensure a language is available for use.
+        """Report whether a language is available for use.
+
+        Nothing is downloaded, built or updated: a grammar that is not
+        installed and admitted stays unavailable until it is built with the
+        grammar commands and pinned (user-config ``trusted-artifacts.json``
+        or ``--trusted-artifacts``).
 
         Args:
             language: Language name
@@ -141,20 +149,29 @@ class ZeroConfigAPI(ZeroConfigContract):
         """
         if language == "baml":
             return baml_companion_available()
-        if self.registry.is_language_installed(language):
-            if version:
-                installed_version = self.registry.get_language_version(
-                    language,
-                )
-                if installed_version == version:
-                    return True
-                success, _ = self.registry.update_language(language)
-                return success
-            return True
-        available = self.registry.list_available_languages()
-        if language not in available:
+        # The automatic download-and-build is retired (maintainer decision,
+        # 2026-11-01, extending M2 of treesitter-chunker#362): this only
+        # reports whether an installed, admitted grammar is available. A
+        # recorded install (registry metadata) is not enough: its output may
+        # lack a pin, so the registry must actually provide a parser.
+        if not self._has_admitted_parser(language):
             return False
-        return self.registry.install_language(language, version)
+        if version:
+            return self.registry.get_language_version(language) == version
+        return True
+
+    def _has_admitted_parser(self, language: str) -> bool:
+        """Return whether the registry provides a parser for ``language``."""
+        try:
+            parser = self.registry.get_parser(language)
+        except (LanguageNotFoundError, ParserError, ValueError):
+            # LanguageNotFoundError: no installed, admitted source.
+            # ParserError: for example ParserInitError from a pinned grammar
+            # that fails to load; availability stays a yes/no answer.
+            # ValueError: registries that report "not available" this way
+            # (the contract stub), or an incompatible grammar.
+            return False
+        return parser is not None
 
     def auto_chunk_file(
         self,
@@ -202,11 +219,11 @@ class ZeroConfigAPI(ZeroConfigContract):
                     metadata={"file_path": str(file_path)},
                 )
             language = detected
+        # Nothing is downloaded or built automatically (M2 of
+        # treesitter-chunker#362), so this is always False.
         grammar_downloaded = False
         if language == "baml" and not baml_companion_available():
             raise BamlExtraRequiredError
-        if not self.registry.is_language_installed(language):
-            grammar_downloaded = self.ensure_language(language)
         try:
             if self.registry.is_language_installed(language):
                 if token_limit:
@@ -343,7 +360,10 @@ class ZeroConfigAPI(ZeroConfigContract):
         token_limit: int | None = None,
         include_retrieval_metadata: bool = False,
     ) -> AutoChunkResult:
-        """Chunk text content with automatic setup.
+        """Chunk text with installed, admitted grammars or text fallback.
+
+        Nothing is downloaded or built: the text is parsed with a grammar an
+        installed, admitted source provides, or chunked by the text fallback.
 
         Args:
             text: Text content to chunk
@@ -357,11 +377,11 @@ class ZeroConfigAPI(ZeroConfigContract):
             raise ValueError("Text cannot be empty")
         if not language:
             raise ValueError("Language must be specified for text chunking")
+        # Nothing is downloaded or built automatically (M2 of
+        # treesitter-chunker#362), so this is always False.
         grammar_downloaded = False
         if language == "baml" and not baml_companion_available():
             raise BamlExtraRequiredError
-        if not self.registry.is_language_installed(language):
-            grammar_downloaded = self.ensure_language(language)
         try:
             if self.registry.is_language_installed(language):
                 if token_limit:
@@ -440,26 +460,28 @@ class ZeroConfigAPI(ZeroConfigContract):
     def get_chunker_for_language(
         self,
         language: str,
-        auto_download: bool = True,
+        auto_download: bool | None = None,
     ) -> Any:
         """Get a chunker instance for a specific language.
 
         Args:
             language: Language name
-            auto_download: Download grammar if needed
+            auto_download: Deprecated and ignored (grammars are no longer
+                downloaded automatically); passing it warns
 
         Returns:
             Configured chunker instance
         """
-        if (
-            auto_download
-            and not self.registry.is_language_installed(
-                language,
+        if auto_download is not None:
+            warnings.warn(
+                "get_chunker_for_language(auto_download=...) is deprecated and has "
+                "no effect: grammars are no longer downloaded or built "
+                "automatically. Build one with the grammar commands, then pin it "
+                "in the user-config pin file or with --trusted-artifacts.",
+                DeprecationWarning,
+                stacklevel=2,
             )
-            and not self.ensure_language(language)
-        ):
-            raise ChunkerError(f"Failed to setup language: {language}")
-        parser = self.registry.get_parser(language, auto_download=False)
+        parser = self.registry.get_parser(language)
         if not parser:
             raise ChunkerError(f"No parser available for language: {language}")
 
@@ -492,13 +514,13 @@ class ZeroConfigAPI(ZeroConfigContract):
         return LanguageChunker(language)
 
     def preload_languages(self, languages: list[str]) -> dict[str, bool]:
-        """Preload multiple language grammars.
+        """Report which languages are available (nothing is installed).
 
         Args:
             languages: List of languages to preload
 
         Returns:
-            Dict of language -> success status
+            Dict of language -> availability (True only when admitted)
         """
         results = {}
         for language in languages:

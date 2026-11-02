@@ -1,19 +1,25 @@
 """Unit tests for the UniversalLanguageRegistry."""
 
-import json
+import contextlib
 import shutil
 import tempfile
-from datetime import datetime
+import warnings
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from chunker.contracts.discovery_contract import GrammarInfo
 from chunker.contracts.discovery_stub import GrammarDiscoveryStub
 from chunker.contracts.download_stub import GrammarDownloadStub
 from chunker.exceptions import LanguageNotFoundError
 from chunker.grammar.registry import UniversalLanguageRegistry
+
+
+@contextlib.contextmanager
+def _no_deprecation_warning():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        yield
 
 
 class TestUniversalLanguageRegistry:
@@ -69,67 +75,82 @@ class TestUniversalLanguageRegistry:
             mock_parser_class.return_value = mock_parser
 
             # Get parser
-            parser = self.registry.get_parser("python", auto_download=False)
+            parser = self.registry.get_parser("python")
 
             # Verify
             assert parser == mock_parser
             self.mock_base_registry.has_language.assert_called_with("python")
             self.mock_base_registry.get_language.assert_called_with("python")
 
-    def test_get_parser_auto_download(self):
-        """Test auto-downloading when language not available."""
-        # Mock base registry to not have the language initially, then have it after download
-        self.mock_base_registry.has_language.side_effect = [False, True]
-
-        # Mock discovery to return info for go
-
-        go_info = GrammarInfo(
-            name="go",
-            url="https://github.com/tree-sitter/tree-sitter-go",
-            version="0.20.0",
-            last_updated=datetime(2023, 1, 1),
-            stars=300,
-            description="Go grammar for tree-sitter",
-            supported_extensions=[".go"],
-            official=True,
-        )
-
-        with (
-            patch.object(self.discovery, "get_grammar_info", return_value=go_info),
-            patch(
-                "chunker.grammar.registry.tree_sitter.Parser",
-            ) as mock_parser_class,
-        ):
-            mock_parser = MagicMock()
-            mock_parser_class.return_value = mock_parser
-
-            # Get parser with auto-download
-            parser = self.registry.get_parser("go", auto_download=True)
-
-            # Verify
-            assert parser == mock_parser
-            assert "go" in self.registry._auto_downloaded
-
-            # Check metadata was saved
-            assert self.registry._metadata_path.exists()
-            with self.registry._metadata_path.open() as f:
-                metadata = json.load(f)
-                assert "go" in metadata["auto_downloaded"]
-                assert "go" in metadata["installed"]
-
-    def test_get_parser_no_auto_download(self):
-        """Test error when language not available and auto-download disabled."""
-        # Mock base registry to not have the language
+    @pytest.mark.parametrize("flag", [None, True, False])
+    def test_get_parser_never_downloads(self, flag):
+        """No download or compile is attempted for a missing language, with or
+        without ``auto_download`` (M2 of treesitter-chunker#362, extended by
+        the 2026-11-01 maintainer decision); the flag only warns."""
         self.mock_base_registry.has_language.return_value = False
         self.mock_base_registry.list_languages.return_value = ["python", "rust"]
+        self.mock_base_registry.unavailable_cause.return_value = None
+        refuse = Mock(side_effect=AssertionError("network or build attempted"))
+        with (
+            patch.object(self.discovery, "get_grammar_info", refuse),
+            patch.object(self.discovery, "list_available_grammars", refuse),
+            patch.object(self.discovery, "search_grammars", refuse),
+            patch.object(self.downloader, "download_grammar", refuse),
+            patch.object(self.downloader, "compile_grammar", refuse),
+            patch.object(self.downloader, "download_and_compile", refuse),
+            patch.object(self.registry, "install_language", refuse),
+            patch.object(self.registry, "update_language", refuse),
+            (
+                pytest.warns(DeprecationWarning, match="no effect")
+                if flag is not None
+                else _no_deprecation_warning()
+            ),
+            pytest.raises(LanguageNotFoundError) as exc_info,
+        ):
+            if flag is None:
+                self.registry.get_parser("go")
+            else:
+                self.registry.get_parser("go", auto_download=flag)
+        message = str(exc_info.value)
+        assert "go" in message
+        assert "no longer downloaded or built automatically" in message
+        assert "trusted-artifacts.json" in message
+        assert "--trusted-artifacts" in message
+        assert "go" not in self.registry._auto_downloaded
+        assert not self.registry._metadata_path.exists()
 
-        # Mock discovery to not have go in available grammars
-        with patch.object(self.discovery, "list_available_grammars", return_value=[]):
-            # Should raise error
-            with pytest.raises(LanguageNotFoundError) as exc_info:
-                self.registry.get_parser("go", auto_download=False)
+    def test_get_parser_reports_unavailable_cause(self):
+        """The registry's recorded cause precedes the guidance."""
+        self.mock_base_registry.has_language.return_value = False
+        self.mock_base_registry.list_languages.return_value = []
+        self.mock_base_registry.unavailable_cause.return_value = (
+            "go: tree_sitter_go.so has no pin"
+        )
+        with pytest.raises(LanguageNotFoundError) as exc_info:
+            self.registry.get_parser("go")
+        message = str(exc_info.value)
+        assert message.index("has no pin") < message.index("no longer downloaded")
 
-            assert "go" in str(exc_info.value)
+    def test_metadata_only_install_is_not_available(self):
+        """A language recorded in ``registry_metadata.json`` (for example an
+        explicit install whose output has no pin) is not reported available
+        when no admitted source provides it."""
+        from chunker.auto import ZeroConfigAPI
+
+        self.registry._metadata["installed"] = {
+            "mylang": {"version": "1.0", "path": "/nowhere/mylang.so"},
+        }
+        self.mock_base_registry.has_language.return_value = False
+        self.mock_base_registry.list_languages.return_value = ["python"]
+        self.mock_base_registry.unavailable_cause.return_value = None
+        api = ZeroConfigAPI(self.registry)
+        assert self.registry.is_language_installed("mylang")  # recorded only
+        assert api.ensure_language("mylang") is False
+        assert api.ensure_language("mylang", "1.0") is False
+        assert api.preload_languages(["mylang"]) == {"mylang": False}
+        with pytest.raises(LanguageNotFoundError) as exc_info:
+            self.registry.get_parser("mylang")
+        assert exc_info.value.available == ["python"]
 
     def test_list_installed_languages(self):
         """Test listing installed languages."""

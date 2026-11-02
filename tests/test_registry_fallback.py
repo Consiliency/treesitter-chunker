@@ -194,7 +194,13 @@ class TestRegistryFallback:
         library_path = (
             tmp_path / f"missing{_LIB_EXT}" if custom_source == "individual" else custom
         )
-        registry = LanguageRegistry(library_path)
+        # A local custom grammar is used only under its own approved pin.
+        registry = LanguageRegistry(
+            library_path,
+            trusted_artifacts={
+                language: {"sha256": hashlib.sha256(custom.read_bytes()).hexdigest()}
+            },
+        )
         monkeypatch.setattr(
             registry,
             "_try_load_from_language_pack",
@@ -227,20 +233,15 @@ class TestRegistryFallback:
         combined = tmp_path / f"languages{_LIB_EXT}"
         individual = tmp_path / f"{language}{_LIB_EXT}"
         shutil.copy2(candidates[0], combined)
-        shutil.copy2(candidates[0], individual)
-        expected_source = (
-            f"custom:sha256:{hashlib.sha256(combined.read_bytes()).hexdigest()}"
+        # The lower-priority individual library differs from the pinned bytes,
+        # so it is rejected (integrity_mismatch) without being loaded.
+        individual.write_bytes(candidates[0].read_bytes() + b"not-the-pinned-bytes")
+        digest = hashlib.sha256(combined.read_bytes()).hexdigest()
+        expected_source = f"custom:sha256:{digest}"
+
+        registry = LanguageRegistry(
+            combined, trusted_artifacts={language: {"sha256": digest}}
         )
-
-        registry = LanguageRegistry(combined)
-        real_construct = registry._language_from_ctypes_symbol
-
-        def reject_individual(lib, symbol_name, library_path, language_name):
-            if library_path == individual and language_name == language:
-                raise ValueError("lower-priority individual construction rejected")
-            return real_construct(lib, symbol_name, library_path, language_name)
-
-        monkeypatch.setattr(registry, "_language_from_ctypes_symbol", reject_individual)
         monkeypatch.setattr(
             registry,
             "_try_load_from_language_pack",
@@ -251,6 +252,10 @@ class TestRegistryFallback:
         assert not Parser(selected).parse(b"x = 1").root_node.has_error
         assert registry._selected_sources[language] == (selected, expected_source)
         assert language not in registry._selection_errors
+        assert any(
+            "integrity_mismatch" in note
+            for note in registry._local_rejections.get(language, [])
+        )
 
     def test_registry_fallback_preserves_language_not_found_error(self):
         """Test that LanguageNotFoundError is raised for invalid languages."""
@@ -289,7 +294,10 @@ class TestRegistryFallback:
         python_lib = build_dir / f"python{_LIB_EXT}"
         python_lib.write_bytes(b"fake")
 
-        registry = LanguageRegistry(build_dir / f"my-languages{_LIB_EXT}")
+        registry = LanguageRegistry(
+            build_dir / f"my-languages{_LIB_EXT}",
+            trusted_artifacts={"python": {"sha256": "0" * 64}},
+        )
 
         with patch.object(registry, "_validate_language_library", return_value=True):
             symbols = registry._discover_symbols()
@@ -324,7 +332,10 @@ class TestRegistryFallback:
         build_dir.mkdir()
         (build_dir / f"python{_LIB_EXT}").write_bytes(b"fake")
 
-        registry = LanguageRegistry(build_dir / f"my-languages{_LIB_EXT}")
+        registry = LanguageRegistry(
+            build_dir / f"my-languages{_LIB_EXT}",
+            trusted_artifacts={"python": {"sha256": "0" * 64}},
+        )
 
         with patch.object(registry, "_validate_language_library", return_value=True):
             with caplog.at_level("INFO"):

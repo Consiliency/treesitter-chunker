@@ -374,6 +374,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Behaviour change (treesitter-chunker#362):** ordinary parsing reads the
+  user-config pin file once per process. Local compiled grammars (the combined
+  library, build directories, `~/.cache/treesitter-chunker/build`,
+  `CHUNKER_GRAMMAR_BUILD_DIR`) are used only under an approved pin, loaded from a
+  verified admitted copy, and admitted per language inside a combined library.
+  RECORD-verified files of our own wheel's `chunker/data/grammars/build/` need
+  no pin; a file that differs from RECORD is never loaded. Other local libraries
+  are ignored and resolution continues to the official wheels, the language-pack
+  and the BAML companion. A defective pin file grants no local trust, warns once
+  and is named in `LanguageNotFoundError`. `LanguageRegistry` and
+  `UniversalLanguageRegistry` accept keyword-only `trusted_artifacts`, and
+  `chunker._internal.registry.default_library_path()` names the default combined
+  library.
+- **Behaviour change (treesitter-chunker#362):** the on-demand fetch-and-build in
+  `get_parser`/`acquire_parser` is retired. A language no source provides raises
+  `LanguageNotFoundError` instead of cloning and compiling a grammar into
+  `grammars/` and `build/` under the current directory. Build deliberately with
+  the grammar commands and pin the result.
+- **Behaviour change (treesitter-chunker#362, maintainer decision 2026-11-01):**
+  the automatic download-and-build in `UniversalLanguageRegistry.get_parser` and
+  the zero-config API (`ZeroConfigAPI`) is retired too.
+  - `get_parser` raises `LanguageNotFoundError` with the cause and guidance: build
+    the grammar with the grammar commands, then pin it in `trusted-artifacts.json`
+    or with `--trusted-artifacts`. Its list of available languages comes from the
+    local registry (package-supplied, language-pack and admitted local
+    grammars), so no discovery request is made.
+  - `ensure_language` and `preload_languages` report availability and never
+    install or update anything. A language counts as available only when the
+    registry provides a parser for it; an install recorded in
+    `registry_metadata.json` whose output has no pin does not count.
+  - `get_chunker_for_language` no longer installs a missing grammar.
+    `AutoChunkResult.grammar_downloaded` is always `False`.
+  - The `auto_download` argument of `get_parser` and `get_chunker_for_language`
+    is still accepted but has no effect, and passing it emits a
+    `DeprecationWarning`. The registry and zero-config contracts and stubs
+    follow suit.
+  - The explicit `install_language`/`update_language` methods are unchanged.
 - **Behaviour change (treesitter-chunker#362):** every `grammar` subcommand now
   resolves its pin source first. A missing or defective `--trusted-artifacts`
   file, or a present but defective user-config pin file, exits 2 naming the
