@@ -393,21 +393,29 @@ if chunks is None:
 print(cache.get_cache_stats())
 ```
 
-`get_cache_stats()` returns `total_files`, `total_size_bytes` and `cache_db_size`.
-`invalidate_cache(path)` removes a file; `invalidate_cache()` removes all entries.
+`get_cached_chunks()` and `cache_chunks()` take a keyword-only
+`extraction="core"` (chunks from `chunk_file()`) or `extraction="streaming"`
+(chunks from `chunk_file_streaming()`). An entry is returned only for the same
+mode, runtime/grammar pairing and language configuration. Without a reliable
+identity, `get_cached_chunks()` returns `None` and `cache_chunks()` stores
+nothing and returns `False`; today that applies to every language except
+Python and JavaScript. See [performance](performance-guide.md#ast-caching).
+`get_cache_stats()` returns `total_files` (stored entries), `total_size_bytes`
+and `cache_db_size`. `invalidate_cache(path)` removes a file's entries for every
+mode; `invalidate_cache()` removes all entries.
 There is no `max_size`, `get_stats()` or LRU/TTL policy. Direct `chunk_file()`
-does not use this cache automatically. See [performance](performance-guide.md)
-for invalidation limits.
+does not use this cache automatically.
 
-Parallel helpers default to `use_cache=True` and share
-`~/.cache/treesitter-chunker/ast_cache.db`; no directory override is exposed.
-Disable with `use_cache=False` unless you manage invalidation when parser pins
-or extraction mode/options change.
+Parallel helpers default to `use_cache=True` and
+`~/.cache/treesitter-chunker/ast_cache.db`. Pass `cache_dir=` to
+`ParallelChunker`, `chunk_files_parallel` or `chunk_directory_parallel` to keep
+the cache in a private directory, or `use_cache=False` to disable it.
 
 ### chunk_files_parallel
 
 Import from `chunker.parallel`. Returns `dict[Path, list[CodeChunk]]` using a
-**process pool**, with `num_workers`, `use_cache` and `use_streaming` options:
+**process pool**, with `num_workers`, `use_cache`, `use_streaming` and
+`cache_dir` options:
 
 ```python
 from chunker.parallel import chunk_files_parallel
@@ -420,10 +428,20 @@ if __name__ == "__main__":
         print(path, len(chunks))
 ```
 
+Keep the `if __name__ == "__main__":` guard around calls to
+`chunk_files_parallel`, `chunk_directory_parallel` and `ParallelChunker` in a
+script. macOS and Windows already start workers with `spawn`, and from Python
+3.14 Linux defaults to `forkserver`. Both re-import the main module in each new
+process. Without the guard, that import re-runs the call, and Python prints a
+`RuntimeError` about the bootstrapping phase to stderr. Under the 3.14 Linux
+forkserver, the call then raises in the caller (for example
+`ConnectionResetError`). Under `spawn` it returns empty chunk lists.
+
 ### chunk_directory_parallel
 
 Import from `chunker.parallel`, or use its alias `chunker.chunk_directory`.
-Accepts `extensions=[".py"]`, `num_workers`, `use_cache` and `use_streaming`.
+Accepts `extensions=[".py"]`, `num_workers`, `use_cache`, `use_streaming` and
+`cache_dir`.
 It recurses through the directory; it does not accept `pattern` or `show_progress`.
 
 ### chunk_file_streaming

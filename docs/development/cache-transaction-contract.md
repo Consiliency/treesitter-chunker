@@ -2,14 +2,20 @@
 
 > Maintainer/internal documentation. This page is intentionally omitted from public navigation.
 
-Status: **proposed interface freeze IF-0-TXNSPEC-1** (roadmap
-`specs/phase-plans-v4.md`, Phase 3 TXNSPEC). It has not been accepted yet.
-This revision answers the round-1 VB-4 reviews on treesitter-chunker#540.
+Status: **accepted interface freeze IF-0-TXNSPEC-1** (roadmap
+`specs/phase-plans-v4.md`, Phase 3 TXNSPEC; treesitter-chunker#540, merge
+`d681d8bf`). Phase TXN implements it. TXN PRs edit this text only to answer
+the non-blocking findings that the treesitter-chunker#540 panel carried over to
+TXN, and to refresh merged facts. The one rule change is amendment **A1**,
+per-namespace staging and retirement (maintainer decision, 2026-11-01),
+reviewed in treesitter-chunker#323 and treesitter-chunker#363. It replaces the
+earlier same-device refusal and changes one signature: `StagingArea.path` is
+now a per-namespace method. See [Amendments](#amendments).
 
-This document changes no runtime behavior, and no consumer is migrated here.
-The helper module `chunker/grammar_management/_transactions.py` does not exist
-yet. Its signatures are frozen in [Signatures](#signatures), and TXN lane
-SL-cache creates the module in its first PR.
+The helper module `chunker/grammar_management/_transactions.py` was created by
+TXN lane SL-cache in its first PR (treesitter-chunker#370). Each public
+function lands with the PR of the consumer that first uses it, with the
+signature frozen in [Signatures](#signatures).
 
 Phase TXN implements the contract for treesitter-chunker#370,
 treesitter-chunker#323 and treesitter-chunker#363. It succeeds the rejected
@@ -40,13 +46,21 @@ claim concurrency safety for them.
 
 | Path | Why it is outside the contract | Consequence |
 |---|---|---|
-| `ComprehensiveGrammarCLI._cleanup_cache_fallback` (`cli.py`) | Runs only when the core manager is unavailable. It is not one of the three consumers. | Running it concurrently with a participating writer on the same root is unsupported. It keeps its static no-follow behavior from treesitter-chunker#324. It never lists `.txn`. Routing it through the helper is a separately filed follow-up. The helper has no core import, so that routing remains possible. |
-| `DirectoryManager.cleanup_empty_directories` (`config.py`), called by `CacheManager` | It walks `DirectoryManager.base_dir`. By default that **is** the core root (`~/.cache/treesitter-chunker`). It runs `rmdir` on every empty directory except those named `grammars`, `cache`, `logs`, `backups` or `tmp` and `base/cache/{downloads,builds}`. It deletes no files. | **Overlap:** it can remove any empty directory under the core root. Roadmap runner decision D-c leaves `config.py` unchanged. Instead, every directory the helper creates under `.txn/` gets the marker file `.txn-keep` immediately after `mkdir` and before any other use, so an in-use control directory is never empty (see [Control area](#control-area)). **Remaining consequences:** (1) A sweep that wins the race between `mkdir` and writing the marker removes the new directory. The helper then fails to write the marker, retries `mkdir` plus marker once, and otherwise raises `CacheTransactionError`. The operation fails before using that directory. (2) An empty directory created by a subprocess inside staging, before the subprocess writes into it, can be removed. That subprocess then fails, and the operation fails before publication. (3) Empty published entries and empty `downloads/` or `builds/` namespaces can be removed. No bytes are lost; the helper re-creates a missing namespace directory, no-follow, under the lock. |
+| `ComprehensiveGrammarCLI._cleanup_cache_fallback` (`cli.py`) | Runs only when the core manager is unavailable. It is not one of the three consumers. | Running it concurrently with a participating writer on the same root is unsupported. It keeps its static no-follow behavior from treesitter-chunker#324. It skips every `.txn*` name, so it never touches a namespace's `.txn-staging/` or `.txn-retired/`. Routing it through the helper is a separately filed follow-up. The helper has no core import, so that routing remains possible. |
+| `DirectoryManager.cleanup_empty_directories` (`config.py`), called by `CacheManager` | It walks `DirectoryManager.base_dir`. By default that **is** the core root (`~/.cache/treesitter-chunker`). It runs `rmdir` on every empty directory except those named `grammars`, `cache`, `logs`, `backups` or `tmp` and `base/cache/{downloads,builds}`. It deletes no files. | **Overlap:** it can remove any empty directory under the core root. Roadmap runner decision D-c leaves `config.py` unchanged. Instead, every control directory the helper creates (`.txn/` and each namespace's `.txn-staging/` and `.txn-retired/` trees) gets the marker file `.txn-keep` immediately after `mkdir` and before any other use, so an in-use control directory is never empty (see [Control area](#control-area)). **Remaining consequences:** (1) A sweep that wins the race between `mkdir` and writing the marker removes the new directory. The helper then fails to write the marker, retries `mkdir` plus marker once, and otherwise raises `CacheTransactionError`. The operation fails before using that directory. (2) An empty directory created by a subprocess inside staging, before the subprocess writes into it, can be removed. That subprocess then fails, and the operation fails before publication. (3) Empty published entries and empty `downloads/` or `builds/` namespaces can be removed. No bytes are lost; the helper re-creates a missing namespace directory, no-follow, under the lock. |
 | `CacheManager` age, size and clear (`config.py`) | Uses `directory_manager.get_directory("cache")`, by default `<core root>/cache/`. Its `downloads`/`builds` are not core namespaces. | Not protected. With the default layout it touches no core namespace. If an operator points it at the core root's `downloads/` or `builds/`, it becomes a non-participating deleter on that root, which is unsupported. |
 | `chunker/_internal/cache.py` (AST cache), `chunker/boundary/cache.py` | Roadmap non-goals. HOTFIX owns the AST cache. | None |
 | `UserGrammarTools` (`chunker/_internal/user_grammar_tools.py`) | It writes `~/.cache/treesitter-chunker/build`, which is not a core namespace. It publishes through IF-0-HOTFIX-1. | None for this contract |
 | `GrammarRegistry` artifact discovery (`_discover_in_directory`) | It reads artifact files only, never metadata. | It sees either the previous or the new artifact, because `os.replace` is atomic. It never sees a partial file, and it is not pair-consistent with metadata (see [Remaining windows](#remaining-windows)). |
 | Older package versions, external tools, and hostile processes running as the same user | They do not take the lock. | Stop them before using a root with a participating version. The `superseded` outcome of `restore` exists only for these. |
+
+**Filesystems.** Every rename the helper performs stays within one directory
+tree: staging and retirement live inside the namespace whose items they move
+(amendment A1). So any of `downloads/`, `builds/`, `grammars/` or a
+`grammars/<priority>/` subdirectory may be a separate filesystem (a split-mount
+root), and nothing is refused for that reason. The record update replaces a
+file within the root directory only. A mount point *inside* an entry cannot be
+renamed; that failure is reported like any other rename failure.
 
 **Concurrency scope.** One host only. Participating threads and processes on
 that host share one cache root on a local filesystem. Cross-host sharing and
@@ -61,6 +75,10 @@ rejects this scope, decision S-TXN applies.
 - Windows on NTFS: `msvcrt.locking`, reparse-point checks, job objects.
 
 Python 3.12 is the floor. Release checks also cover 3.14.
+
+The cache root must be writable. Every reader takes the exclusive lock, so a
+read-only root (for example, a pre-populated image) loads no records; the
+validator then keeps records it computes in its in-memory read cache only.
 
 If a required primitive is unavailable, the operation raises
 `CacheTransactionError` and changes nothing; it never passes silently.
@@ -116,9 +134,15 @@ may release a byte-range lock only after process teardown completes; the
 bounded acquisition timeout absorbs that delay. No stale-lock breaking exists,
 by design.
 
-**Fork.** The helper registers `os.register_at_fork(after_in_child=...)`. In the
-child, that handler clears the process-local lock table and closes every
-inherited lock descriptor. The parent's lock is unaffected: flock state belongs
+**Fork.** The helper registers `os.register_at_fork(before=..., after_in_parent=...,
+after_in_child=...)`. Every lock descriptor, including one whose acquisition
+is still pending, is registered when it is opened and forgotten when it is
+closed, under a guard the fork also takes. In the child, the handler closes
+every registered descriptor and clears the process-local lock table, so a
+child never keeps a lock alive after its parent dies. Each hold records the
+process that acquired it; a forked child leaving the parent's section skips
+the unlock, the close and the release, so it never closes an unrelated
+descriptor that reused the number. The parent's lock is unaffected: flock state belongs
 to the open file description, and the parent still holds its descriptor. A
 forked child must acquire again before using the helper.
 
@@ -128,23 +152,28 @@ acquire another root, or call helper functions on another root.
 
 **Acquisition.** Acquisition is bounded by `timeout`, with default
 `DEFAULT_LOCK_TIMEOUT = 60.0` seconds. That exceeds the longest critical
-section's bound: two default probe timeouts plus copying. Acquisition uses
-non-blocking attempts with a short backoff. Seam point `lock.contended` fires
-after the first failed attempt. A timeout raises `CacheLockTimeoutError`, and
+section's bound: two default probe timeouts, each probe's stop grace (about
+1 s, plus up to 5 s to confirm its process tree is gone), and copying.
+Acquisition uses non-blocking attempts with a short backoff, so it is not fair:
+a waiter can be overtaken. The bounded timeout makes that acceptable. Seam
+point `lock.contended` fires after the first failed attempt. A timeout raises `CacheLockTimeoutError`, and
 the caller reports an actionable error and performs no write, prune, publish,
 restore or removal. The timeout bounds waiting; it is not a correctness
 deadline, and tests must not assert on its wall-clock behavior.
 
 ### Lock scope
 
-The lock is held only for these critical sections:
+The lock is held only for critical sections, including:
 
-1. a JSON or installation-metadata read or update;
-2. one entry's eligibility walk plus retirement (pruner, `remove_entry`, and
+1. root initialization and validation (the control area, markers and
+   post-initialization check), the creation and discarding of staging, and
+   the claiming of retired garbage;
+2. a JSON or installation-metadata read or update;
+3. one entry's eligibility walk plus retirement (pruner, `remove_entry`, and
    the retirement inside `publish_entry`);
-3. one cache-entry publication;
-4. one installation removal;
-5. **one installation commit**, as one `cache_lock` section: capture the
+4. one cache-entry publication;
+5. one installation removal;
+6. **one installation commit**, as one `cache_lock` section: capture the
    rollback point, publish the metadata, call `publish_native_grammar`, then
    either discard the rollback point (success) or `restore` (failure). See
    [Installation commit](#installation-commit).
@@ -152,7 +181,7 @@ The lock is held only for these critical sections:
 **Only one subprocess may run under the lock: the IF-0-HOTFIX-1 probe child.**
 `publish_native_grammar` starts it during the commit section, and `restore`
 may start it once more. It is bounded by the `timeout` passed to
-`publish_native_grammar`, the default 10 seconds, plus the probe's own
+`publish_native_grammar`, the default 30 seconds, plus the probe's own
 documented cleanup. It inherits no lock descriptor or handle. It reads only
 its private snapshot, never the root.
 
@@ -161,22 +190,29 @@ other subprocess. Those run through `run_in_staging` with no lock held.
 
 ### Control area
 
-The control area is `<root>/.txn/`, a real directory. It has three fixed
-subdirectories:
+Control directories have fixed, reserved names; a name starting with `.txn`
+is never an entry. Under amendment A1 they are:
 
 | Path | Owner | Lifetime |
 |---|---|---|
-| `.txn/staging/<operation-id>/` | One writer operation | Created at operation start. The owner removes it after the last consumer and after its process group or job is confirmed empty. It is **retained** if the owner dies, or if emptiness cannot be confirmed. No other participant publishes from it or deletes it. |
-| `.txn/retired/<operation-id>/<namespace>/<name>` (and `.../grammars/<file>`) | The operation that retired the item | Garbage. The owner deletes it right after retirement. Any later prune may claim and delete it (see [Retired garbage](#retired-garbage)). |
-| `.txn/rollback/<operation-id>/` | One installer commit | Created at the start of the commit section and removed after success or a verified restore. It is **retained** after a failed or superseded restore, or a crash. |
+| `<ns>/.txn-staging/<operation-id>/`, for `<ns>` in `downloads/`, `builds/` | One writer operation | Created at operation start, one per namespace. The owner removes it after the last consumer and after its process group or job is confirmed empty. It is **retained** if the owner dies, or if emptiness cannot be confirmed. No other participant publishes from it or deletes it. |
+| `<dir>/.txn-retired/<operation-id>/<name>`, for `<dir>` in `downloads/`, `builds/`, `grammars/` and `grammars/<priority>/` | The operation that retired the item | Garbage, in the same directory the item was renamed from. The owner deletes it right after retirement. A later prune of `downloads/` or `builds/` may claim and delete that namespace's garbage (see [Retired garbage](#retired-garbage)). |
+| `<root>/.txn/rollback/<operation-id>/` | One installer commit | Created at the start of the commit section and removed after success or a verified restore. It is **retained** after a failed or superseded restore, or a crash. |
+| `<root>/.txn/retired/<operation-id>/` | The discard of a rollback point | Garbage inside the root control area; deleted by its owner right after. |
+
+The root control area `<root>/.txn/` holds only `rollback/` and `retired/`.
 
 **Markers.** The helper creates each of these directories with `os.mkdir`
 (no-follow on the final component). It then immediately creates the marker
 file `.txn-keep` inside it with `O_CREAT | O_EXCL` and no-follow. This covers
-`.txn`, the three subdirectories, every `<operation-id>` directory, and the
-helper-created namespace directories inside staging (`<staging>/downloads`,
-`<staging>/builds`). Markers are never moved into published entries. This is
-decision D-c, against `DirectoryManager.cleanup_empty_directories`.
+every control directory the helper creates: `.txn` and its two
+subdirectories; each namespace's `.txn-staging/` and `.txn-retired/`; every
+`<operation-id>` directory under them; the `claimed/` and `staging` labels
+under `.txn-retired/<operation-id>/`; and each rollback point's own directory.
+An existing control directory without a marker, left by a crash between
+`mkdir` and the marker, gets its marker created again idempotently. Markers are
+never moved into published entries. This is decision D-c, against
+`DirectoryManager.cleanup_empty_directories`.
 
 An `<operation-id>` is `uuid.uuid4().hex`: 32 lowercase hex characters,
 portable on every supported filesystem.
@@ -259,8 +295,10 @@ renames or deletes.
    - POSIX walks opened directory descriptors (`os.scandir(fd)`,
      `O_DIRECTORY | O_NOFOLLOW`, `unlink`/`rmdir` with `dir_fd`) and rechecks
      each directory's identity after opening it.
-   - Windows walks validated non-reparse directories by path, using
-     `DirEntry.is_junction()` and `is_symlink()`.
+   - Windows walks validated non-reparse directories by path, treating every
+     reparse point (symlink or junction) as a leaf. It clears the read-only
+     attribute of a regular file, without following links, before `unlink`,
+     because git object files are read-only.
    - On either platform, `ENOENT` during deletion means "already deleted": it
      is not an error and not counted. No unchecked `shutil.rmtree` is used.
 6. **Bounded Windows retry.** On Windows, every `os.replace` and `os.rename`
@@ -314,12 +352,18 @@ lock. A malformed document always raises.
   errors are caught and warned as today. The pruner's `mutate` keeps entries
   whose `timestamp` is greater than the cutoff, so the expiration rule is
   unchanged. Removed-entry counts still go into `files_removed`.
-- **Staging-path keys are accepted.** `_get_cache_key` includes the artifact
-  path. Validation of a build inside staging therefore writes a record keyed
-  by a `.txn/staging/<operation-id>/...` path that is never looked up again.
-  Such records expire through the normal age pruning. The alternative,
-  validating after publication, would consume a published path outside the
-  lock (see [Input routing](#input-routing)).
+- **Record keys and eligibility are main's.** The helper does not define the
+  record key or which results are stored; the validator does. Until ADMIT
+  SL-core-2 lands, `_get_cache_key` includes the artifact path, so a
+  validation inside staging writes a record keyed by a
+  `<namespace>/.txn-staging/<operation-id>/...` path that is never looked up again; such
+  records expire through normal age pruning. After ADMIT SL-core-2, the key
+  follows the merged ADMITPIN contract (`native-validation-contract.md`,
+  "Verdict-reuse key": content, pin and environment, never a path) and only
+  `ok` verdicts are stored, so staging-path records stop appearing. Nothing
+  here requires keeping the path-based key. ADMIT's verdict-reuse edit and
+  TXN's `_cache_validation_result` touch neighboring `core.py` code; the
+  `core.py` merge window serializes them.
 
 ## Primitive 2 — staging, owned subprocesses and cache-entry publication (treesitter-chunker#323)
 
@@ -346,35 +390,66 @@ the first through retirement.
 
 `run_in_staging(staging, argv, *, cwd, timeout, env=None)` is the only way a
 participant starts a subprocess that may write into staging. `cwd` must lie
-inside `staging.path`.
+inside `staging.path(namespace)` for `downloads` or `builds`.
 
 1. **Launch.**
    - POSIX: `start_new_session=True`, so the child leads a new process group.
    - Windows: the child is created suspended, assigned to a new job object
      with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` and without the breakaway
      limits, then resumed.
-2. **Wait.** Wait for the direct child, up to `timeout`.
+2. **Wait.** Wait for the direct child, up to `timeout`. On POSIX the wait
+   uses `os.waitid(..., WEXITED | WNOWAIT)` (macOS, which lacks it, polls the
+   leader's state until it is a zombie), so the exited leader is **not
+   reaped** yet and its group ID cannot be recycled while the group is killed
+   and checked.
 3. **Kill the group.** Whether the child exited or timed out, kill the whole
-   group or job: `os.killpg(pgid, SIGKILL)`, or `TerminateJobObject`.
+   group or job: `os.killpg(pgid, SIGKILL)`, or `TerminateJobObject`. On POSIX
+   the kill is repeated while the leader is still unreaped, never after.
 4. **Confirm empty.** Poll until the group or job is confirmed empty, within a
    bounded deadline:
-   - POSIX: `os.killpg(pgid, 0)` raises `ProcessLookupError`.
+   - POSIX: no **non-zombie** process has the group ID (checked with
+     `psutil`, as `integrity._alive` does), so orphans that nobody reaps
+     promptly (Python as PID 1 or a subreaper) do not block confirmation. The
+     helper reaps the group's zombies that are its own children, then reaps
+     the leader.
    - Windows: the job's `ActiveProcesses` is 0.
 
    Seam points: `run.after_exit` after step 2, `run.after_group_empty` after
    step 4.
-5. **Return.** The call returns `StagedRun(returncode, stdout, stderr,
+5. **Drain the output.** The output readers are joined with a bounded wait. A
+   reader still blocked means a process outside the group (an escapee) holds
+   the pipe: its stream is left open, and the run counts as `group_empty=False`,
+   so the call returns instead of blocking.
+6. **Return.** The call returns `StagedRun(returncode, stdout, stderr,
    timed_out, group_empty)`.
+
+**Interruption.** Before the launch, the staging is marked unpublishable and
+retained, conservatively: a child may exist as soon as it is created. The
+guard that kills and confirms (steps 3 and 4, in a `finally`) opens with the
+first statement after `Popen` returns, so an exception or `KeyboardInterrupt`
+at any later point still kills and confirms the group (or job) before it
+propagates. The marks are cleared only by confirmed shutdown (retention) or a
+completed, confirmed, untimed run (both), or by a launch that started nothing
+(an `OSError` from `Popen`, or a job object that could not be set up). So
+`discard_staging`, which the installer runs on every exit, never deletes
+staging under a live writer.
 
 **Publishability.**
 
 - A staging area becomes **unpublishable** for the rest of its life if any run
-  timed out or ended with `group_empty=False`.
+  timed out, was interrupted, or ended with `group_empty=False`.
 - `publish_entry` refuses unpublishable staging.
-- After a timeout, the operation fails. Build-method fallback in
-  `_build_grammar` does not continue into the same staging.
+- After a timeout or an unconfirmed group, the operation fails. Build-method
+  fallback in `_build_grammar` does not continue into the same staging, and an
+  aborted `git rev-parse` fails the install. The commit is resolved before
+  anything is installed.
 - If the group was confirmed empty, `discard_staging` may remove the staging.
-  Otherwise the staging is retained and reported.
+  It first retires each namespace's staging directory, under the lock and in
+  place, to `<ns>/.txn-retired/<operation-id>/staging`, then deletes it from
+  there. A file
+  that cannot be deleted (for example, a library the validator still has
+  loaded on Windows) stays as garbage that a later prune claims. Otherwise the
+  staging is retained and reported.
 
 **Parent death.**
 
@@ -393,13 +468,13 @@ breakaway is impossible because the job lacks the breakaway limits.
 
 The installer pipeline keeps every input operation-owned through its last use:
 
-1. `create_staging(root)` registers `.txn/staging/<operation-id>/` and its
-   staged namespace directories.
+1. `create_staging(root)` registers `downloads/.txn-staging/<operation-id>/`
+   and `builds/.txn-staging/<operation-id>/`.
 2. `git clone` and `git checkout` run through `run_in_staging`. The clone
-   lands in `<staging>/downloads/tree-sitter-<language>`. `_get_commit_hash`
-   reads it there.
+   lands in `downloads/.txn-staging/<operation-id>/tree-sitter-<language>`.
+   `_get_commit_hash` reads it there, before anything is installed.
 3. The build runs through `run_in_staging` from that staged source into
-   `<staging>/builds/<language>/`. This includes `make` in the staged source
+   `builds/.txn-staging/<operation-id>/<language>/`. This includes `make` in the staged source
    directory, and `_build_with_make`'s copy of the result. Validation reads the
    staged artifact.
 4. The installation commit (Primitive 3) passes the **staged** artifact as
@@ -421,21 +496,21 @@ under the lock first.
 `publish_entry(staging, namespace, name)` runs under the lock:
 
 1. **Check the staged entry.** Refuse unpublishable staging, a reserved name,
-   or a missing staged entry `<staging>/<namespace>/<name>`.
+   or a missing staged entry `<namespace>/.txn-staging/<operation-id>/<name>`.
 2. **Stamp it.** Set the *staged* entry's own mtime to now, without following
    links. A later rename never makes it older. A failure here fails the
    publication before any rename.
 3. **Retire the existing entry**, if `namespace/name` exists. Walk it (nested
    root refusal), then rename it to
-   `.txn/retired/<operation-id>/<namespace>/<name>`. Seam point
+   `<namespace>/.txn-retired/<operation-id>/<name>`. Seam point
    `publish.after_retire` follows. If retirement fails, the publication fails
    and the existing entry is untouched.
 4. **Promote.** Seam point `publish.before_promote`, then rename the staged
    entry to `namespace/name`.
 5. **Handle promotion failure.** If promotion fails after the Windows retry,
    rename the retired entry back to `namespace/name`. If that also fails, the
-   published name is **absent**, the old generation is garbage in `.txn/retired/`,
-   and the new one remains in staging. The call raises
+   published name is **absent**, the old generation is garbage in
+   `<namespace>/.txn-retired/`, and the new one remains in staging. The call raises
    `CacheTransactionError` naming all three locations.
 
 This is two renames, not one atomic publication. Readers and crashes can see
@@ -462,11 +537,17 @@ under the lock, and deletes it outside the lock. There is no age test.
      counting as leaves.
 
    A descendant `.txn.lock` raises `NestedRootError`, which is reported and
-   skipped. Seam point `prune.after_recheck`.
+   skipped. Seam point `prune.after_recheck`. Any other failure to check or
+   retire one candidate (for example, an unreadable subdirectory, or a
+   transaction error for that entry) is recorded in `errors` and `skipped`,
+   and the remaining candidates still run. A lock timeout or a moved root
+   stops the loop instead, because every later candidate would fail the same
+   way; the call still returns the truthful counts of what it removed.
 3. **Retire.** Still under the lock, rename the eligible entry to
-   `.txn/retired/<operation-id>/<namespace>/<name>`, then release the lock. A
+   `<namespace>/.txn-retired/<operation-id>/<name>`, then release the lock. A
    candidate that vanished or became ineligible is skipped and not counted.
-4. **Delete** the retired tree with the anchored deleter, outside the lock.
+4. **Delete** that one retired entry with the anchored deleter, outside the
+   lock. A failure is reported once, for the item that failed.
 5. **Count truthfully.**
    - `entries_removed` counts entries retired by this call, matching the
      existing top-level `files_removed` counter.
@@ -474,6 +555,7 @@ under the lock, and deletes it outside the lock. There is no age test.
      unlinked by this call. Links count zero, and nothing is counted before a
      successful unlink.
    - Bytes that fail to delete are reported in `errors` and not counted.
+     Each distinct error is reported once.
 6. **Claim old garbage** (see [Retired garbage](#retired-garbage)).
 7. **Report staging.** Staging is never deleted. Staging directories older
    than `cutoff` are logged as retained, with their paths.
@@ -483,13 +565,14 @@ under the lock, and deletes it outside the lock. There is no age test.
 
 ### Retired garbage
 
-Several deleters can meet in `.txn/retired/`:
+Several deleters can meet in a namespace's `.txn-retired/`:
 
 - the owner deleting its own retired tree outside the lock;
 - a later prune deleting leftover trees.
 
-A prune **claims** another operation's `.txn/retired/<other-id>/` by renaming
-it, under the lock, into `.txn/retired/<own-id>/claimed/<other-id>`. It then
+A prune of a namespace **claims** another operation's
+`<namespace>/.txn-retired/<other-id>/` by renaming it, under the lock, into
+`<namespace>/.txn-retired/<own-id>/claimed/<other-id>`. It then
 deletes the claimed tree. If the original owner is still deleting, `ENOENT` on
 either side means "already deleted" (containment rule 5). Each byte is
 therefore counted at most once, by the deleter whose `unlink` succeeded.
@@ -703,8 +786,8 @@ one lock section it:
 
 1. reads the metadata no-follow;
 2. requires the recorded `install_path` to lie under `grammars/`;
-3. retires the artifact, then the metadata, to
-   `.txn/retired/<operation-id>/grammars/`;
+3. retires the artifact, then the metadata, each into `.txn-retired/<operation-id>/`
+   in its own directory (`grammars/` or `grammars/<priority>/`);
 4. deletes them outside the lock.
 
 `remove_grammar` then calls `remove_entry` for the cache entries. It is a full
@@ -714,7 +797,8 @@ leaves metadata that describes a missing artifact, which today's health check
 already reports as `missing`.
 
 On Windows, deleting a retired library that a process still has loaded fails.
-It stays in `.txn/retired/`, is reported, and a later prune claims it.
+It stays in that directory's `.txn-retired/` and is reported; delete it once
+no process has it loaded.
 
 ### Remaining windows
 
@@ -755,7 +839,7 @@ def publish_native_grammar(
     *,
     provenance: Mapping[str, Any] | None,
     sample: bytes = b"",
-    timeout: float = 10.0,
+    timeout: float = 30.0,
 ) -> NativeProbeResult:
 ```
 
@@ -770,10 +854,17 @@ The contract relies only on these guarantees:
 4. Cache invalidation is the caller's job.
 
 **Staged-file naming is IF-0-HOTFIX-1's choice.** Nothing here depends on the
-staged file's name, prefix or suffix. That includes the pending
-treesitter-chunker#539 change to a suffix that `*.so` scans do not match. The
-staged file lives in `grammars/`, which the pruner never enters. A staged file
-left by a crash is outside every primitive here; see the operator procedure.
+staged file's name, prefix or suffix. As merged (treesitter-chunker#539, merge
+`60a5518f`), it is `.<destination name>-<random>.staged`, which library scans
+never match. The staged file lives in `grammars/`, which the pruner never
+enters. A staged file left by a crash is outside every primitive here; see the
+operator procedure.
+
+**The probe child never takes the cache lock.** It imports this helper
+module only indirectly, through `load_compiled_grammar` in
+`chunker.grammar_management.core`. It constructs no validator, installer or
+manager and calls no helper function, so a probe started under the lock never
+acquires, or waits on, that lock.
 
 This contract uses the function unchanged for forward publication and artifact
 restoration. It defines no second native publish path and splits out no
@@ -782,9 +873,10 @@ call: a link at the destination or metadata path refuses the install before
 the commit section, so IF-0-HOTFIX-1's "replaced, not followed" behavior never
 applies to a contained installation.
 
-**Re-review trigger.** treesitter-chunker#539 was still open when this was
-cited. If its signature or the guarantees above change before IF-0-TXNSPEC-1
-is approved, this section is reviewed again (roadmap TXNSPEC scope notes).
+**Re-review trigger (discharged).** treesitter-chunker#539 merged at
+`60a5518f` before IF-0-TXNSPEC-1 was approved, with the signature and
+guarantees 1–4 unchanged. A later change to them would trigger a review of
+this section again.
 
 ## Crash states and operator recovery
 
@@ -793,8 +885,8 @@ A crash can leave:
 
 | Leftover | Meaning | Safe action |
 |---|---|---|
-| `.txn/staging/<id>/` | A writer died, or its descendants could not be confirmed gone | Delete it once no install is running |
-| `.txn/retired/**` | Garbage, which can include the old generation of a cache entry whose republication was interrupted | Always safe to delete; any prune claims it |
+| `<ns>/.txn-staging/<id>/` in `downloads/` or `builds/` | A writer died, was interrupted before its group was confirmed gone, or its descendants could not be confirmed gone | Delete it once no install is running |
+| `<dir>/.txn-retired/**` in `downloads/`, `builds/`, `grammars/` or a priority subdirectory, and `.txn/retired/**` | Garbage, which can include the old generation of a cache entry whose republication was interrupted | Always safe to delete; a prune of `downloads/` or `builds/` claims that namespace's garbage |
 | An absent `downloads/` or `builds/` entry | A republication was interrupted between its two renames | None needed; the next install regenerates it |
 | `.txn/rollback/<id>/` without `rollback.json` | An incomplete capture, before any mutation | Delete it |
 | `.txn/rollback/<id>/rollback.json` | An interrupted or failed commit | Follow the procedure below |
@@ -830,7 +922,7 @@ the treesitter-chunker#364 head `4465de92`.
 |---|---|---|---|
 | 1 | Child-writer lifetime across parent death | **addressed**, with one scoped-out escape | Writer subprocesses run only through `run_in_staging`, in their own process group or job, with `cwd` inside private staging. Before anything is published or discarded, the whole group is killed and confirmed empty. A timeout or an unconfirmed group makes the staging unpublishable for good. On parent death, POSIX descendants can write only into staging that is never published (only its dead owner could publish it) and never pruned; on Windows, closing the job kills them. The lock is never inherited. The only subprocess under the lock is the probe child, which is bounded by its timeout, holds no lock handle and reads only its private snapshot; parent death during the probe releases the lock through the kernel. **Scoped out:** a POSIX descendant that leaves its process group (daemonizing). No supported build tool does. |
 | 2 | Durable operation and initialization recovery | **addressed** (initialization, state reporting); **scoped out** (automatic crash recovery) | No persistent authority state exists: no journal, no generation counter, no root registration. The lock file carries no state, and creating it idempotently is the whole initialization. A missing `validation_cache.json` means empty. Crash states are enumerated honestly. A cache entry can be old, new or **absent**; absent is acceptable for regenerable caches. An installation can be left with metadata naming a digest its artifact lacks; that is detectable through `artifact_sha256`, and repairable from the self-describing `rollback.json`. Leftover temporary and staged files are listed. An operator procedure exists. Automatic recovery is scoped out: no consumer's acceptance requires it, and a journal was what failed review. |
-| 3 | Transactional deletion retirement | **addressed** | Pruning, explicit removal, installation removal and republication all retire whole items by rename under the lock, and delete only from `.txn/retired/`. Republication's two-rename sequence has defined failure handling: rename back, otherwise report all three locations. Garbage is claimed by rename, and `ENOENT` is tolerated, so concurrent deleters never double-count or report spurious errors. |
+| 3 | Transactional deletion retirement | **addressed** | Pruning, explicit removal, installation removal and republication all retire whole items by rename under the lock, and delete only from a `.txn-retired/` folder in the same directory (amendment A1). Republication's two-rename sequence has defined failure handling: rename back, otherwise report all three locations. Garbage is claimed by rename, and `ENOENT` is tolerated, so concurrent deleters never double-count or report spurious errors. |
 | 4 | Enforceable nested-root detection | **addressed** for sequential initialization; overlapping roots otherwise **scoped out** (unsupported) | `open_cache_root` refuses roots equal to or below an ancestor root's `downloads`, `builds` or `.txn`, and repeats the check after initialization. Reserved names are never entries. Every retirement path (pruner, `remove_entry`, `publish_entry`) refuses entries that contain a `.txn.lock`. Every lock acquisition re-checks root identity. Residual risk: an inner root initialized for the first time inside the very entry an outer root is retiring at that moment (see [Nested roots](#nested-roots)). |
 | 5 | No-follow control-file creation | **addressed** | Containment rule 1 covers the lock file, markers, temporary files, staging, retirement, rollback directories and manifests: POSIX `O_NOFOLLOW` with `dir_fd`; `O_EXCL` unique names; Windows `lstat`/`fstat` identity and reparse checks. |
 | 6 | Concrete portable entry keys | **addressed** | The helper keeps no key map. Entries are their top-level directory-entry names; installer names are restricted by `_valid_language_name`; reserved names are excluded. Operation IDs are lowercase `uuid4` hex. Manifest paths are root-relative with `/`. Validation keys stay SHA-256 hex. Behavior on case-insensitive filesystems is stated. |
@@ -868,6 +960,7 @@ crash tests, calls `os._exit`); it never replaces behavior.
 | `root.after_init` | After lock and control-area creation, before the post-initialization check |
 | `json.after_read` / `json.before_replace` | Primitive 1 steps 3 and 5 |
 | `run.after_exit` / `run.after_group_empty` | `run_in_staging` steps 2 and 4 |
+| `run.after_launch` / `run.waiting` | Private: the first statement inside the launch guard, and just before the guarded wait |
 | `publish.after_retire` / `publish.before_promote` | `publish_entry` steps 3 and 4 |
 | `prune.after_enumerate` / `prune.after_recheck` | Pruner steps 1 and 2 |
 | `rollback.after_capture` | Commit step 1 |
@@ -894,7 +987,7 @@ both runs (VB-2).
 
 | Consumer | Deterministic barrier test | Named mutation that must fail it |
 |---|---|---|
-| treesitter-chunker#370 | **Two writers.** Two real `GrammarValidator` instances are created before either writes. Writer A persists a unique record through `validate_grammar` and pauses at `json.before_replace` while holding the lock. Writer B starts, and the test observes B's `lock.contended`. A resumes. Both records are on disk, checked by exact key or `any(...)` (the treesitter-chunker#401 note). Run in both orders. Use a real rejection record from a non-library fixture if no native fixture exists. | `stale_validation_snapshot`: write the instance snapshot instead of merging. |
+| treesitter-chunker#370 | **Two writers.** Two real `GrammarValidator` instances are created before either writes. Writer A persists a unique record through `validate_grammar` and pauses at `json.before_replace` while holding the lock. Writer B starts, and the test observes B's `lock.contended`. A resumes. Both records are on disk, checked by exact key or `any(...)` (the treesitter-chunker#401 note). Run in both orders. The records are `ok` results from two distinct real compiled fixture revisions, so the test holds under main's key and under ADMITPIN's content-based key (pinned once ADMIT SL-core-2 lands). | `stale_validation_snapshot`: write the instance snapshot instead of merging. |
 | treesitter-chunker#370 | **Writer and pruner.** Writer A pauses at `json.before_replace`. `cleanup_cache` starts, and the test observes its `lock.contended`. A resumes. A's fresh record survives, and expired records are pruned by the existing cutoff rule. | `pruner_stale_rewrite`: the pruner reads before taking the lock and writes that read. |
 | treesitter-chunker#370 | **Outside-symlink sentinel.** `validation_cache.json` is a symlink to an outside sentinel. The writer and the pruner each report a containment error, the sentinel's bytes are unchanged, and constructing a validator still succeeds. | `follow_validation_symlink`: open the target following links. |
 | treesitter-chunker#323 | **Writer and pruner.** `cleanup_cache` pauses at `prune.after_enumerate` with an expired candidate. A real `install_grammar` (with the shim producing old-mtime sources) republishes the same name. Resume: the new entry survives and is not counted in `bytes_freed`. Separate cases cover entries that are fully expired, exactly at the cutoff, and denied deletion, each with truthful counts. | `prune_without_recheck`: use enumeration-time eligibility. `trust_copied_mtime`: skip the stamp. `overcount_failed_removal`: count bytes before unlink. |
@@ -911,6 +1004,43 @@ The TXN PRs keep `tests/test_core_grammar_cache_cleanup.py` and the existing
 helper-cache tests passing. They change an existing assertion only where it
 pins the lost-update behavior, such as treesitter-chunker#401's `all(...)`
 lookup.
+
+## Amendments
+
+Amendments to IF-0-TXNSPEC-1 made during TXN. Each is reviewed in the PR that
+implements it.
+
+**A1 — Per-namespace staging and retirement (maintainer decision,
+2026-11-01, relayed by the roadmap runner; reviewed in treesitter-chunker#323
+and treesitter-chunker#363).** It replaces the earlier same-device refusal
+(Claude N11 on treesitter-chunker#540).
+
+- *Rule.* Staging and retirement live inside the directory whose items they
+  move, so every rename stays within one directory tree and one filesystem:
+  - staging is `downloads/.txn-staging/<op>/` and `builds/.txn-staging/<op>/`;
+  - an entry or installed file is retired into `.txn-retired/<op>/` in its own
+    directory: `downloads/`, `builds/`, `grammars/` or `grammars/<priority>/`;
+  - the root control area `.txn/` keeps only rollback points and their
+    garbage, which move by copy or within `.txn/`.
+- *Reserved names.* Every `.txn*` name is a control folder, never an entry.
+  Participants and the scans that list namespaces or grammars skip it: the
+  pruner, `_cleanup_cache_fallback`, the CLI grammar listing, registry
+  discovery and the grammar analyzer (the last two match `lib*.so` files and
+  named priority subdirectories only).
+- *Signature change.* `StagingArea` keeps `root` and `operation_id`; its
+  `path` attribute becomes the method `path(namespace)`.
+- *Compatibility.* Split-mount roots, with a separate filesystem at any of
+  `downloads/`, `builds/`, `grammars/` or a priority subdirectory, keep
+  working: nothing is refused for that reason. `.txn/staging/` and
+  `.txn/retired/<op>/<namespace>/…` subtrees left by an earlier development
+  build are not used and are safe to delete once no install is running;
+  `.txn/retired/<op>/rollback` remains the live garbage area for discarded
+  rollback points.
+- *Tests.* treesitter-chunker#323 runs a real install, a republication,
+  cleanup and removal with real tmpfs mounts at `downloads/` and `builds/`
+  (mutation `retire_outside_namespace` fails it), and checks that every scan
+  ignores the hidden folders. treesitter-chunker#363 does the same for
+  `grammars/`.
 
 ## Signatures
 
@@ -939,7 +1069,7 @@ class NestedRootError(ContainmentError): ...
 class StagingArea:
     root: Path
     operation_id: str
-    path: Path  # publishability is tracked in-process by the helper
+    def path(self, namespace: Namespace) -> Path: ...  # <root>/<namespace>/.txn-staging/<op>; publishability is tracked in-process
 
 @dataclass(frozen=True)
 class StagedRun:

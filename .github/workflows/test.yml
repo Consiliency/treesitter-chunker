@@ -12,20 +12,26 @@ on:
 
 jobs:
   test:
+    permissions:
+      contents: read
     runs-on: ${{ matrix.platform }}
     env:
-      UV_PYTHON: '3.12'
+      # Keep uv on the job's interpreter instead of the .python-version pin.
+      UV_PYTHON: ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
+        # One job per OS, no version-by-OS cross product: Linux keeps the 3.12
+        # floor; macOS and Windows run the 3.14 validation interpreter
+        # (treesitter-chunker#502).
         include:
           - python-version: '3.12'
             platform: ubuntu-latest
             platform-family: linux
-          - python-version: '3.12'
+          - python-version: '3.14'
             platform: blacksmith-4vcpu-windows-2025
             platform-family: windows
-          - python-version: '3.12'
+          - python-version: '3.14'
             platform: macos-latest
             platform-family: macos
 
@@ -43,9 +49,9 @@ jobs:
         path: |
           ~/.cache/pip
           ~/.cache/uv
-        key: ${{ runner.os }}-py312-${{ hashFiles('uv.lock') }}
+        key: ${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('uv.lock') }}
         restore-keys: |
-          ${{ runner.os }}-py312-
+          ${{ runner.os }}-py${{ matrix.python-version }}-
 
     - name: Install dependencies
       run: |

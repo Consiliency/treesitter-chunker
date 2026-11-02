@@ -18,6 +18,23 @@ _NCNAME = re.compile(
     + _NCNAME_START
     + r"|[-.0-9\u00B7\u0300-\u036F\u203F-\u2040])*"
 )
+_CALLER_LABEL_FAMILY = re.compile(r"(?:caller_)*label")
+_CALLER_LABEL_PREFIX = "caller_"
+
+
+def _caller_attr_name(name: Any) -> str:
+    """Return the GraphML ``attr.name`` declared for caller metadata ``name``.
+
+    ``label`` is reserved for the structural label, so caller metadata named
+    ``label`` is declared as ``caller_label`` (treesitter-chunker#453). To keep
+    every declared name distinct, names of the form ``caller_...label`` gain
+    one more ``caller_`` prefix; all other names are declared unchanged. Key
+    IDs (``n_<name>``/``e_<name>``) are not affected.
+    """
+    text = str(name)
+    if _CALLER_LABEL_FAMILY.fullmatch(text):
+        return _CALLER_LABEL_PREFIX + text
+    return text
 
 
 class GraphMLExporter(GraphExporterBase):
@@ -38,14 +55,20 @@ class GraphMLExporter(GraphExporterBase):
             for key, value in node.properties.items():
                 if key not in self.node_attrs:
                     self._validate_xml_characters(
-                        ET.Element("key", {"id": f"n_{key}", "attr.name": key}),
+                        ET.Element(
+                            "key",
+                            {"id": f"n_{key}", "attr.name": _caller_attr_name(key)},
+                        ),
                     )
                     self.node_attrs[key] = self._infer_type(value)
         for edge in self.edges:
             for key, value in edge.properties.items():
                 if key not in self.edge_attrs:
                     self._validate_xml_characters(
-                        ET.Element("key", {"id": f"e_{key}", "attr.name": key}),
+                        ET.Element(
+                            "key",
+                            {"id": f"e_{key}", "attr.name": _caller_attr_name(key)},
+                        ),
                     )
                     self.edge_attrs[key] = self._infer_type(value)
 
@@ -138,13 +161,13 @@ class GraphMLExporter(GraphExporterBase):
             key = ET.SubElement(root, "key")
             key.set("id", f"n_{attr_name}")
             key.set("for", "node")
-            key.set("attr.name", attr_name)
+            key.set("attr.name", _caller_attr_name(attr_name))
             key.set("attr.type", attr_type)
         for attr_name, attr_type in self.edge_attrs.items():
             key = ET.SubElement(root, "key")
             key.set("id", f"e_{attr_name}")
             key.set("for", "edge")
-            key.set("attr.name", attr_name)
+            key.set("attr.name", _caller_attr_name(attr_name))
             key.set("attr.type", attr_type)
         key = ET.SubElement(root, "key")
         key.set("id", "node_label")
@@ -245,13 +268,23 @@ class GraphMLExporter(GraphExporterBase):
     ) -> None:
         """Export the graph to a GraphML file.
 
+        The file parses to the same XML text values as ``export_string()``
+        with the same options. Compact files hold exactly the UTF-8 bytes of the compact
+        string, so a caller CR, LF or CRLF leaf is not translated into extra
+        line breaks on Windows (treesitter-chunker#488). Pretty text leaves
+        are already LF-normalized, so pretty files keep native newlines.
+
         Args:
             output_path: Path to write the GraphML file
             pretty_print: Whether to format the XML with indentation
             **options: Additional options
         """
         graphml_content = self.export_string(pretty_print=pretty_print, **options)
-        output_path.write_text(graphml_content, encoding="utf-8")
+        output_path.write_text(
+            graphml_content,
+            encoding="utf-8",
+            newline=None if pretty_print else "",
+        )
 
     def add_visualization_hints(
         self,

@@ -3,6 +3,10 @@
 
 API_URL="http://localhost:8000"
 
+# Disposable scratch under the inherited TMPDIR, removed on exit
+SCRATCH="$(mktemp -d)"
+trap 'rm -rf "$SCRATCH"' EXIT
+
 echo "=== Health Check ==="
 curl -s "$API_URL/health" | jq .
 
@@ -11,7 +15,7 @@ curl -s "$API_URL/languages" | jq .
 
 echo -e "\n=== Chunk Python Code ==="
 # Create a JSON payload with Python code
-cat > /tmp/chunk_request.json << 'EOF'
+cat > "$SCRATCH/chunk_request.json" << 'EOF'
 {
   "content": "def hello(name):\n    \"\"\"Say hello to someone.\"\"\"\n    print(f'Hello, {name}!')\n\nclass Greeter:\n    def __init__(self, name):\n        self.name = name\n    \n    def greet(self):\n        hello(self.name)",
   "language": "python",
@@ -21,11 +25,11 @@ EOF
 
 curl -s -X POST "$API_URL/chunk/text" \
   -H "Content-Type: application/json" \
-  -d @/tmp/chunk_request.json | jq .
+  -d @"$SCRATCH/chunk_request.json" | jq .
 
 echo -e "\n=== Chunk File ==="
 # Create a sample file
-cat > /tmp/example.py << 'EOF'
+cat > "$SCRATCH/example.py" << 'EOF'
 def calculate_sum(numbers):
     """Calculate the sum of a list of numbers."""
     total = 0
@@ -43,10 +47,7 @@ EOF
 # Request to chunk the file
 curl -s -X POST "$API_URL/chunk/file" \
   -H "Content-Type: application/json" \
-  -d '{
-    "file_path": "/tmp/example.py",
-    "language": "python"
-  }' | jq .
-
-# Clean up
-rm -f /tmp/chunk_request.json /tmp/example.py
+  -d "{
+    \"file_path\": \"$SCRATCH/example.py\",
+    \"language\": \"python\"
+  }" | jq .

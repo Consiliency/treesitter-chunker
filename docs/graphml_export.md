@@ -93,6 +93,7 @@ The exporter automatically generates GraphML key definitions for all unique attr
 ```xml
 <key id="node_label" for="node" attr.name="label" attr.type="string"/>
 <key id="edge_label" for="edge" attr.name="label" attr.type="string"/>
+<key id="n_label" for="node" attr.name="caller_label" attr.type="string"/>  <!-- caller metadata named "label" -->
 <key id="n_file_path" for="node" attr.name="file_path" attr.type="string"/>
 <key id="n_start_line" for="node" attr.name="start_line" attr.type="int"/>
 <key id="n_chunk_type" for="node" attr.name="chunk_type" attr.type="string"/>
@@ -138,24 +139,40 @@ Relationships become directed edges with:
 The two direct GraphML modules use `node_label` for a chunk's structural type
 and `edge_label` for a relationship type. Caller metadata keeps `n_<name>` and
 `e_<name>` keys. In particular, caller metadata named `label` uses `n_label` or
-`e_label`; its original name, type and value remain separate from the structural
-label. Names such as `node_label`, `edge_label` and `metadata_label` are ordinary
+`e_label`; its key ID, type and value remain separate from the structural
+label. Its declared `attr.name` is `caller_label`; see
+[caller label names](#caller-label-names-for-name-keyed-readers). Names such as `node_label`, `edge_label` and `metadata_label` are ordinary
 metadata and receive the same prefixes regardless of property insertion order.
 
 This is a BREAKING key-ID change reserved for 6.0.0. Regenerate graph output and
 update consumers that selected the old structural `n_label`/`e_label` keys to
-read `node_label`/`edge_label`. Select by key ID and domain when distinguishing
-structural labels from caller metadata: both still have `attr.name="label"`.
-Plain, yEd, compact, pretty and delegated output share this ID rule. The package-level
-structured exporter is a separate API; XSD validation is outside this repair
-(treesitter-chunker#169).
+read `node_label`/`edge_label`. Plain, yEd, compact, pretty and delegated output
+share this ID rule. The package-level structured exporter is a separate API;
+XSD validation is outside this repair (treesitter-chunker#169).
 
-NetworkX 3.6.1 imports fields by `attr.name`: plain/delegated import keeps one
-`label` value, and yEd graphics can overwrite caller labels. Its imported
-attributes therefore do not retain these fields independently. Use a reader
-that distinguishes key IDs when both values are needed; this interoperability
-gap remains treesitter-chunker#453. Raw key uniqueness does not certify every
-tool's imported attribute mapping.
+### Caller label names for name-keyed readers
+
+Readers such as NetworkX map GraphML data by `attr.name`, not by key ID. The
+attribute name `label` is reserved for the structural label (`node_label`,
+`edge_label`). Caller metadata named `label` keeps its `n_label`/`e_label` key
+ID and value, but is declared with `attr.name="caller_label"`
+(treesitter-chunker#453). To keep every declared name distinct, a caller name
+of the form `caller_label`, `caller_caller_label` and so on gains one more
+`caller_` prefix (`caller_label` is declared as `caller_caller_label`). All
+other caller names, including `node_label` and `metadata_label`, are declared
+unchanged.
+
+With NetworkX 3.6.1, plain and delegated (`use_yed=False`) imports expose the
+structural label as `label` and the caller label as `caller_label`. A yEd import
+also exposes `caller_label`, but NetworkX replaces `label` with the yEd
+`NodeLabel`/`EdgeLabel` graphics text, which is the reader's own yEd handling.
+The node graphics text currently contains a literal backslash-`n` separator
+(treesitter-chunker#603).
+
+This is a BREAKING change for name-keyed consumers in the next release after
+6.0.0: read the caller `label` metadata as `caller_label` (and `caller_label` as
+`caller_caller_label`) and regenerate GraphML output. Consumers that select by
+key ID are unaffected.
 
 ### Graph ID migration for 6.0.0
 
@@ -299,12 +316,22 @@ declaration without an encoding label and its trailing newline. Indentation and
 empty-element layout may differ from earlier output.
 
 Pretty text leaves retain XML newline normalization: CRLF and lone CR become LF;
-space-TAB-space leaves stay intact. Caller inputs are unchanged. UTF-8 files
-retain native newline translation. Compact Windows files can still turn CRLF
-caller text into two decoded LF characters (treesitter-chunker#488); this differs
-from compact string output and is outside the attribute repair. The separate
-package-level `chunker.export.GraphMLExporter` still has the Python 3.11/3.12
-attribute-whitespace defect (treesitter-chunker#489).
+space-TAB-space leaves stay intact. Caller inputs are unchanged.
+
+File output parses to the same XML text values as `export_string()` with the
+same options, on every platform and for the plain, yEd and `use_yed=False` delegated routes
+(treesitter-chunker#488). Compact files contain exactly the UTF-8 bytes of the
+compact string, with no newline translation, so a caller CR, LF or CRLF text
+leaf parses to the same value from the file as from the string: an XML reader
+reports LF for each of them. Earlier releases translated LF to CRLF in compact
+Windows files, which turned a CRLF leaf into two decoded LF characters.
+Pretty files keep native newline translation; their text leaves are already
+LF-normalized, so their decoded text and bytes are unchanged. Compact Windows
+files whose caller text contains LF now hold LF where they held CRLF; no
+decoded value other than the former doubled break changes, and caller values
+are not normalized. The separate
+package-level `chunker.export.GraphMLExporter` has its own contract, described
+under [Package-level structured exporter](#package-level-structured-exporter).
 
 File export rejected by this character check leaves an existing file unchanged
 and creates no new file.
@@ -353,10 +380,47 @@ attribute values, including physical TAB/LF/CR, are preserved. Name diagnostics
 identify the name or namespace failure without printing caller attribute values
 or presenting probe positions as output locations.
 
+## Package-level structured exporter
+
+`chunker.export.GraphMLExporter` (also `chunker.export.formats.GraphMLExporter`)
+is a different API from the direct `chunker.export.graphml_exporter` and
+`graphml_yed_exporter` modules described above. The package exporter takes
+chunk and `ChunkRelationship` lists in a single
+`export(chunks, relationships, output, metadata=None)` call, writes to a path
+or a text stream, uses each chunk's `chunk_id` as its node ID, and declares
+`d<n>` keys for the attributes chosen with `set_node_attributes` and
+`set_edge_attributes`. The direct modules build a graph model with
+`add_chunks`/`add_relationship`, write with `export_string()` or
+`export(path)`, and own the key-ID, XML-character, graph-name and newline
+contracts above. A contract stated for one API does not apply to the other.
+
+The package exporter preserves physical TAB, LF and CR in caller chunk IDs and
+relationship endpoints on Python 3.12 and later (treesitter-chunker#489).
+Distinct IDs stay distinct and each edge keeps its direction when text-stream
+or UTF-8 file output is read back with ElementTree, and when the file is
+imported with NetworkX 3.6.1. Earlier releases reparsed the output with
+`xml.dom.minidom`, which on Python 3.11/3.12 wrote these characters back
+literally, so XML attribute normalization turned them into spaces and could
+merge distinct IDs. Regenerate GraphML written by those releases if your chunk
+IDs contain TAB, LF or CR.
+
+The output keeps its `<?xml version="1.0" ?>` declaration without an encoding
+label, the metadata comment, its key declarations and data values, and a
+trailing newline. Indentation is unchanged, but empty-element layout (` />`)
+and text escaping (a `"` in text is no longer written as `&quot;`) may differ
+from earlier output. Text leaves and the metadata comment keep
+XML newline normalization: CRLF and lone CR become LF, and other whitespace is
+unchanged. Caller chunks are not modified. Path output is UTF-8 with native
+newline translation, and a text stream receives the same text. Output that
+would not be well-formed XML, such as a NUL, U+FFFE or a lone surrogate in a
+caller value, still raises `xml.parsers.expat.ExpatError` or
+`UnicodeEncodeError` before anything is written; no file is created. This
+exporter does not validate GraphML schema.
+
 ## Compatibility
 
 GraphML can be opened by the following tools; attribute mapping depends on the
-reader. In particular, see the NetworkX label limitation above
+reader. In particular, see the caller label names above
 (treesitter-chunker#453):
 - yEd Graph Editor
 - Gephi

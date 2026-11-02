@@ -1,0 +1,16 @@
+{
+  "schema": "treesitter-chunker.reference-oracle.v1",
+  "language": "javascript",
+  "fixture": "generator_context.js",
+  "issues": ["treesitter-chunker#289"],
+  "scopes": {
+    "root": {"node_type": "program", "row": 0, "column": 0},
+    "consumer": {"node_type": "function_declaration", "row": 21, "column": 0}
+  },
+  "dependency_context": [
+    {"issue": "treesitter-chunker#289", "name": "ordinary", "scope": "root", "node_type": "function_declaration", "row": 1, "column": 0, "includes": ["function ordinary(input)"], "excludes": ["secret", "return"]},
+    {"issue": "treesitter-chunker#289", "name": "generated", "scope": "root", "node_type": "generator_function_declaration", "row": 6, "column": 0, "includes": ["function* generated(input)"], "excludes": ["secret", "yield"]},
+    {"issue": "treesitter-chunker#289", "name": "exportedOrdinary", "scope": "root", "node_type": "function_declaration", "row": 11, "column": 7, "includes": ["function exportedOrdinary(input)"], "excludes": ["secret", "return"]},
+    {"issue": "treesitter-chunker#289", "name": "exportedGenerated", "scope": "root", "node_type": "generator_function_declaration", "row": 16, "column": 7, "includes": ["function* exportedGenerated(input)"], "excludes": ["secret", "yield"]}
+  ]
+}

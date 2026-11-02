@@ -12,9 +12,15 @@ on:
 
 jobs:
   test:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     env:
-      UV_PYTHON: '3.12'
+      # 3.14 is the main version for every CI run, including the scheduled full
+      # tier (maintainer decision, treesitter-chunker#502). The 3.12 minimum
+      # keeps only Linux platform-core (test.yml) and the release installed-wheel
+      # check until it is dropped in 7.0 (treesitter-chunker#599).
+      UV_PYTHON: '3.14'
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
@@ -23,7 +29,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
-          python-version: '3.12'
+          python-version: '3.14'
 
       - name: Install Graphviz executable
         run: |
@@ -76,7 +82,11 @@ jobs:
           # Run ruff on production code and tests only (exclude archive, logs, etc.)
           # Use the uv-locked ruff (0.12.5) so CI matches the lockfile + local;
           # avoids unpinned-ruff drift flagging pre-existing issues on every push.
-          uv run --locked --all-extras ruff check chunker/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site
+          # chunker/build/ is listed explicitly: recursive discovery skips it via
+          # the .gitignore and [tool.ruff] "build" exclusions meant for generated
+          # output. The path list must match release.yml and CONTRIBUTING.md
+          # (tests/test_lint_path_policy.py, treesitter-chunker#517).
+          uv run --locked --all-extras ruff check chunker/ chunker/build/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site
 
       - name: Black
         run: uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py

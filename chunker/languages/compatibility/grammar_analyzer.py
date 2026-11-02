@@ -106,13 +106,16 @@ class GrammarAnalyzer:
             "symbols_count": 0,
             "file_size": 0,
             "validation_reason": result.reason,
+            "validation_message": result.message,
             "artifact_sha256": result.artifact_sha256,
         }
         if not result.supported:
             self.grammar_cache.pop(language, None)
             self._capabilities[language] = base_capabilities
             logger.warning(
-                "Grammar admission failed for %s: %s", language, result.reason
+                "Grammar admission failed for %s: %s",
+                language,
+                result.message or result.reason,
             )
             return None
 
@@ -187,28 +190,50 @@ class GrammarAnalyzer:
             logger.error(f"Error extracting version from {so_file_path}: {e}")
             return None
 
-    def analyze_grammar_symbols(self, so_file_path: Path) -> dict[str, Any]:
+    def analyze_grammar_symbols(
+        self, so_file_path: Path, *, timeout: float = 5.0
+    ) -> dict[str, Any]:
         """Analyze symbols in grammar file to understand capabilities.
 
         Args:
             so_file_path: Path to the .so file
+            timeout: Wall-clock deadline in seconds for each ``nm`` run
 
         Returns:
-            Dict with symbol information
+            Dict with the ``functions``, ``constants``, ``data`` and
+            ``undefined`` symbol lists, plus an ``analysis`` mapping whose
+            ``status`` says why the lists may be empty: ``complete``,
+            ``deadline_expired`` (``nm`` was killed at ``deadline_seconds``),
+            ``unavailable`` (Windows, or no ``nm``) or ``failed``.
         """
-        symbols = {"functions": [], "constants": [], "data": [], "undefined": []}
+        symbols: dict[str, Any] = {
+            "functions": [],
+            "constants": [],
+            "data": [],
+            "undefined": [],
+        }
+
+        def outcome(status: str, detail: str) -> dict[str, Any]:
+            symbols["analysis"] = {
+                "status": status,
+                "deadline_seconds": timeout,
+                "detail": detail,
+            }
+            return symbols
 
         try:
             # Use nm command to list symbols
             if platform.system() == "Windows":
                 logger.warning("Symbol analysis not fully supported on Windows")
-                return symbols
+                return outcome(
+                    "unavailable", "symbol analysis is not supported on Windows"
+                )
 
             result = subprocess.run(
                 ["nm", "-D", str(so_file_path)],
                 capture_output=True,
                 text=True,
-                timeout=5,
+                timeout=timeout,
                 check=False,
             )
 
@@ -218,39 +243,53 @@ class GrammarAnalyzer:
                     ["nm", str(so_file_path)],
                     capture_output=True,
                     text=True,
-                    timeout=5,
+                    timeout=timeout,
                     check=False,
                 )
 
-            if result.returncode == 0:
-                for line in result.stdout.splitlines():
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        symbol_type = parts[-2] if len(parts) >= 3 else "U"
-                        symbol_name = parts[-1]
+            if result.returncode != 0:
+                detail = result.stderr.strip() or f"nm exited {result.returncode}"
+                logger.warning(f"Symbol analysis failed for {so_file_path}: {detail}")
+                return outcome("failed", detail)
 
-                        if symbol_type in ["T", "t"]:  # Text (functions)
-                            symbols["functions"].append(symbol_name)
-                        elif symbol_type in ["D", "d", "B", "b"]:  # Data
-                            symbols["data"].append(symbol_name)
-                        elif symbol_type in ["R", "r"]:  # Read-only data
-                            symbols["constants"].append(symbol_name)
-                        elif symbol_type == "U":  # Undefined
-                            symbols["undefined"].append(symbol_name)
+            for line in result.stdout.splitlines():
+                parts = line.split()
+                if len(parts) >= 2:
+                    symbol_type = parts[-2] if len(parts) >= 3 else "U"
+                    symbol_name = parts[-1]
+
+                    if symbol_type in ["T", "t"]:  # Text (functions)
+                        symbols["functions"].append(symbol_name)
+                    elif symbol_type in ["D", "d", "B", "b"]:  # Data
+                        symbols["data"].append(symbol_name)
+                    elif symbol_type in ["R", "r"]:  # Read-only data
+                        symbols["constants"].append(symbol_name)
+                    elif symbol_type == "U":  # Undefined
+                        symbols["undefined"].append(symbol_name)
 
             logger.debug(
                 f"Found {len(symbols['functions'])} functions, "
                 f"{len(symbols['data'])} data symbols in {so_file_path.name}",
             )
+            return outcome("complete", "nm completed")
 
         except subprocess.TimeoutExpired:
-            logger.warning(f"Timeout analyzing symbols in {so_file_path}")
+            # A deadline expiry says nothing about the grammar's symbols; report
+            # it as such rather than as an empty symbol table
+            # (treesitter-chunker#207).
+            logger.warning(
+                f"Timeout analyzing symbols in {so_file_path}: "
+                f"nm exceeded the {timeout:g}-second deadline"
+            )
+            return outcome(
+                "deadline_expired", f"nm exceeded the {timeout:g}-second deadline"
+            )
         except FileNotFoundError:
             logger.warning("nm command not found - symbol analysis unavailable")
+            return outcome("unavailable", "nm command not found")
         except Exception as e:
             logger.error(f"Error analyzing symbols: {e}")
-
-        return symbols
+            return outcome("failed", str(e))
 
     def detect_supported_features(
         self,
@@ -385,6 +424,8 @@ class GrammarAnalyzer:
             report.append("=" * 50)
             report.append(f"Validation reason: {capabilities['validation_reason']}")
             report.append(f"Artifact SHA-256: {capabilities['artifact_sha256']}")
+            if capabilities.get("validation_message"):
+                report.append(capabilities["validation_message"])
 
             if capabilities["supported"]:
                 report.append("Status: Supported")
