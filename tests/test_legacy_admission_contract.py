@@ -19,6 +19,11 @@ import pytest
 
 from tests.test_compiled_grammar_analysis_contract import _compile_probe_fixture
 
+# Like the sibling native suites: a verified OS application-control denial
+# (WinError 4551/1260, probe reason policy_blocked) skips with the policy
+# reason; every other outcome, including other probe failures, still fails.
+pytestmark = pytest.mark.usefixtures("native_policy_environment")
+
 
 def _build(directory: Path, languages: list[str], name: str) -> Path:
     """Compile the BAML parser once per language, with renamed exported symbols."""
