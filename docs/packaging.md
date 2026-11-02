@@ -118,7 +118,7 @@ source-build/runtime paths have not been accepted for the current parser stack.
 the current unreleased `treesitter-chunker` 6.0.0 source profile: Python >=3.12,
 the paired Tree-sitter runtime/language-pack ranges, and the exact official
 Python/JavaScript grammar dependencies. The embedded required-minimum inventory
-contains 330 Python modules/resources, including `py.typed` and the Boundary IR
+contains 332 Python modules/resources, including `py.typed` and the Boundary IR
 schema. It is independent of candidate contents and the installed filesystem.
 Unknown versions or other profiles are outside this verifier's supported payload
 contract. In particular, published 6.0.0 retains >=3.11 metadata and is not

@@ -322,6 +322,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   treesitter-chunker#176, treesitter-chunker#182, treesitter-chunker#183,
   treesitter-chunker#184, treesitter-chunker#185). Structural validity does not
   establish native safety or provenance; see the packaging guide for profile limits.
+- Native grammar probes now distinguish explicit Windows application-control
+  denials as `policy_blocked`, with guidance for signed or organization-approved
+  builds. Blocked libraries remain unsupported and publish no admitted digest.
+  Manager/analyzer diagnostics retain this guidance (treesitter-chunker#547).
 
 - JavaScript context lookup is truthful against the shared real-parser
   reference fixtures (`tests/fixtures/references/javascript/`). A generator
@@ -361,6 +365,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The default admission deadline of `probe_native_grammar` and
+  `publish_native_grammar` is now 30 seconds instead of 10. With Smart App
+  Control enforced, Windows can hold the first load of a new unsigned grammar
+  for about ten seconds while a stalled cloud trust check falls back, which
+  made the probe report `timeout` or an empty acknowledgment
+  (treesitter-chunker#547). The value is the new public constant
+  `chunker.grammar.integrity.DEFAULT_PROBE_TIMEOUT`. An explicit `timeout` is
+  used exactly. The verdict-reuse probe profile becomes `default-v2`.
 - The full locked development environment now installs on CPython 3.14 from
   wheels alone (treesitter-chunker#502). In-range lock updates: `cffi` 2.0.0,
   `httptools` 0.7.1, `line-profiler` 5.0.1, `markupsafe` 3.0.3, `pydantic`

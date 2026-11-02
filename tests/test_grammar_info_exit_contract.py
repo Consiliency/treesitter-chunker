@@ -8,6 +8,10 @@ from unittest.mock import Mock
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("native_policy_environment")
+
+from tests.native_policy import run_isolated_baml_parse
+
 from chunker._internal import grammar_management
 from chunker._internal.user_grammar_tools import UserGrammarTools
 from chunker.cli import grammar_commands
@@ -321,26 +325,7 @@ def test_pinned_healthy_grammar_info_succeeds(tmp_path, monkeypatch, capsys):
         build_dir.mkdir()
         so_file = build_dir / "baml.so"
         so_file.write_bytes(library.read_bytes())
-        subprocess.run(
-            [
-                sys.executable,
-                "-I",
-                "-c",
-                "import sys; from pathlib import Path; "
-                "sys.path.insert(0, sys.argv[1]); "
-                "from chunker.grammar_management.core import load_compiled_grammar; "
-                "root = load_compiled_grammar(Path(sys.argv[2]), 'baml')"
-                ".parse(Path(sys.argv[3]).read_bytes()).root_node; "
-                "raise SystemExit(0 if root.type == 'source_file' "
-                "and not root.has_error else 3)",
-                str(ROOT),
-                str(so_file),
-                str(FIXTURE),
-            ],
-            check=True,
-            capture_output=True,
-            timeout=20,
-        )
+        run_isolated_baml_parse(ROOT, so_file, FIXTURE, timeout=20).check_returncode()
         tools = UserGrammarTools(
             build_dir,
             workspace / "sources",

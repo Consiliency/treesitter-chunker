@@ -21,6 +21,7 @@ COMMON_TESTS = [
     "tests/test_streaming.py::test_full_benchmark_runner_observes_real_cache_and_chunk_counts",
     "tests/test_grammar_integrity.py",
     "tests/test_native_probe_fixture_cleanup.py",
+    "tests/test_native_policy_contract.py",
     "tests/test_grammar_management.py::TestSmartGrammarManager::test_diagnose_grammar_healthy",
     "tests/test_grammar_management.py::test_real_grammar_mtimes_do_not_invent_compilation_dates",
     "tests/test_streaming.py::TestBufferOptimization::test_repeated_streaming_preserves_eager_fixture_chunks",

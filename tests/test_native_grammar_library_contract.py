@@ -14,6 +14,10 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("native_policy_environment")
+
+from tests.native_policy import run_isolated_baml_parse
+
 from chunker._internal import grammar_management, user_grammar_tools
 from chunker._internal.grammar_management import (
     SmartGrammarManager,
@@ -123,26 +127,7 @@ def _record_probes(monkeypatch):
 
 
 def _isolated_parse(library: Path) -> None:
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-I",
-            "-c",
-            "import sys; from pathlib import Path; "
-            "sys.path.insert(0, sys.argv[1]); "
-            "from chunker.grammar_management.core import load_compiled_grammar; "
-            "root = load_compiled_grammar(Path(sys.argv[2]), 'baml')"
-            ".parse(Path(sys.argv[3]).read_bytes()).root_node; "
-            "raise SystemExit(0 if root.type == 'source_file' "
-            "and not root.has_error else 3)",
-            str(ROOT),
-            str(library),
-            str(FIXTURE),
-        ],
-        check=False,
-        capture_output=True,
-        timeout=60,
-    )
+    completed = run_isolated_baml_parse(ROOT, library, FIXTURE, timeout=60)
     require(
         completed.returncode == 0,
         f"isolated BAML parse of {library}: {completed.returncode} "

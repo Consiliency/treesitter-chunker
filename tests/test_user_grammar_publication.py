@@ -16,6 +16,10 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("native_policy_environment")
+
+from tests.native_policy import policy_aware_native_driver, skip_policy_subprocess
+
 import chunker._internal.user_grammar_tools as tools_module
 from chunker._internal.user_grammar_tools import (
     STAGED_SUFFIX,
@@ -46,6 +50,17 @@ sys.path.insert(0, str(root))
 import chunker._internal.user_grammar_tools as tools_module
 from chunker._internal.user_grammar_tools import UserGrammarTools
 from chunker.grammar_management.core import load_compiled_grammar
+
+real_probe = tools_module.probe_native_grammar
+
+def probe(*args, **kwargs):
+    result = real_probe(*args, **kwargs)
+    if result.reason == "policy_blocked":
+        print(json.dumps({"schema": "native_test.policy_result.v1", "reason": result.reason}), flush=True)
+        raise SystemExit(77)
+    return result
+
+tools_module.probe_native_grammar = probe
 
 current = {"artifact": rev_a}
 real_run = subprocess.run
@@ -178,7 +193,7 @@ def _scenario(tmp_path: Path, revisions, mode: str) -> tuple[dict, Path]:
             sys.executable,
             "-I",
             "-c",
-            CHILD,
+            policy_aware_native_driver(CHILD),
             str(ROOT),
             str(build_dir),
             str(grammars_dir),
@@ -193,18 +208,28 @@ def _scenario(tmp_path: Path, revisions, mode: str) -> tuple[dict, Path]:
         env=environment,
         check=False,
     )
+    skip_policy_subprocess(child)
     assert child.returncode == 0, (child.returncode, child.stderr[-4000:])
     return json.loads(child.stdout.strip().splitlines()[-1]), build_dir / "baml.so"
 
 
 def _fresh_load(library: Path) -> dict:
     loaded = subprocess.run(
-        [sys.executable, "-I", "-c", LOAD, str(ROOT), str(library), str(FIXTURE)],
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            policy_aware_native_driver(LOAD),
+            str(ROOT),
+            str(library),
+            str(FIXTURE),
+        ],
         capture_output=True,
         text=True,
         timeout=60,
         check=False,
     )
+    skip_policy_subprocess(loaded)
     assert loaded.returncode == 0, (loaded.returncode, loaded.stderr[-4000:])
     return json.loads(loaded.stdout)
 

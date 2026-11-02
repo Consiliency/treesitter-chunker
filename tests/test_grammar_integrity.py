@@ -11,7 +11,9 @@ from urllib.error import URLError
 
 import pytest
 
-pytestmark = pytest.mark.usefixtures("native_probe_lifetimes")
+pytestmark = pytest.mark.usefixtures(
+    "native_probe_lifetimes", "native_policy_environment"
+)
 
 from tests.native_probe_lifetime import remove_retained_probe_root
 
@@ -303,6 +305,70 @@ def test_nonfinite_probe_deadline_is_rejected(tmp_path, timeout):
     result = probe_native_grammar(candidate, "test", provenance=None, timeout=timeout)
     assert not result.supported and result.reason == "timeout"
     assert result.artifact_sha256 is None
+
+
+def test_probe_and_publish_defaults_are_the_public_deadline():
+    import inspect
+
+    from chunker._internal.user_grammar_tools import publish_native_grammar
+    from chunker.grammar.integrity import DEFAULT_PROBE_TIMEOUT
+
+    assert DEFAULT_PROBE_TIMEOUT == 30.0
+    # The same object, not a restated literal, so one constant moves both.
+    for function in (probe_native_grammar, publish_native_grammar):
+        default = inspect.signature(function).parameters["timeout"].default
+        assert default is DEFAULT_PROBE_TIMEOUT, function.__name__
+
+
+@pytest.mark.parametrize("timeout", [None, 0.5, 10.0, 45.0])
+def test_probe_uses_default_or_exact_caller_deadline(tmp_path, monkeypatch, timeout):
+    from chunker.grammar import integrity
+
+    candidate = tmp_path / "candidate.so"
+    candidate.write_bytes(b"pinned candidate bytes")
+    deadlines = []
+
+    def read(command, cwd, deadline, **kwargs):
+        deadlines.append(deadline)
+        return None, b"", b"", True, False  # No worker launched; nothing to retain.
+
+    monkeypatch.setattr(integrity, "_read_child", read)
+    result = integrity.probe_native_grammar(
+        candidate,
+        "test",
+        provenance={"sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()},
+        **({} if timeout is None else {"timeout": timeout}),
+    )
+    assert deadlines == [30.0 if timeout is None else timeout]
+    assert not result.supported and result.artifact_sha256 is None
+
+
+@pytest.mark.parametrize("timeout", [None, 0.5, 10.0, 45.0])
+def test_publish_passes_default_or_exact_caller_deadline(
+    tmp_path, monkeypatch, timeout
+):
+    from chunker._internal import user_grammar_tools
+    from chunker.grammar.integrity import NativeProbeResult
+
+    source = tmp_path / "compiled.so"
+    source.write_bytes(b"compiled grammar bytes")
+    destination = tmp_path / "baml.so"
+    deadlines = []
+
+    def probe(path, language, *, provenance, sample, timeout):
+        deadlines.append(timeout)
+        return NativeProbeResult(False, "timeout", None)
+
+    monkeypatch.setattr(user_grammar_tools, "probe_native_grammar", probe)
+    result = user_grammar_tools.publish_native_grammar(
+        source,
+        destination,
+        "baml",
+        provenance={"sha256": hashlib.sha256(source.read_bytes()).hexdigest()},
+        **({} if timeout is None else {"timeout": timeout}),
+    )
+    assert deadlines == [30.0 if timeout is None else timeout]
+    assert not result.supported and not destination.exists()
 
 
 def test_native_probe_rejects_untrusted_candidates_before_loading(tmp_path):
