@@ -374,6 +374,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Retired (treesitter-chunker#362):**
+  `GrammarMetadataExtractor.extract_from_dependencies` no longer runs `ldd` on a
+  caller-supplied library; it returns `{"dependencies": [],
+  "dependencies_status": "retired"}`. `GrammarAnalyzer` passes only the one-field
+  `{"sha256": ...}` pin record to the probe, never probes a language without a
+  `str` pin, and reuses its analysis only under its own inspector key within the
+  process. An analysis whose `nm` run hit its deadline or failed is not reused;
+  the next call re-inspects. RECORD-verified grammars of our own wheel need no
+  pin, and one that differs from RECORD is `integrity_mismatch` even with a pin.
 - **Behaviour change (treesitter-chunker#362):** every `grammar` subcommand now
   resolves its pin source first. A missing or defective `--trusted-artifacts`
   file, or a present but defective user-config pin file, exits 2 naming the

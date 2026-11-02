@@ -611,7 +611,6 @@ chunker/languages/compatibility/grammar_analyzer.py: error: Call to untyped func
 chunker/languages/compatibility/grammar_analyzer.py: error: Function is missing a return type annotation  [no-untyped-def]
 chunker/languages/compatibility/grammar_analyzer.py: error: Incompatible return value type (got "tuple[str, None]", expected "tuple[str, str]")  [return-value]
 chunker/languages/compatibility/grammar_analyzer.py: error: Need type annotation for "languages" (hint: "languages: list[<type>] = ...")  [var-annotated]
-chunker/languages/compatibility/grammar_analyzer.py: error: Need type annotation for "metadata"  [var-annotated]
 chunker/languages/compatibility/grammar_analyzer.py: error: Need type annotation for "metadata" (hint: "metadata: dict[<type>, <type>] = ...")  [var-annotated]
 chunker/languages/compatibility/grammar_analyzer.py: error: Returning Any from function declared to return "str | None"  [no-any-return]
 chunker/languages/compatibility/schema.py: error: Function is missing a return type annotation  [no-untyped-def]

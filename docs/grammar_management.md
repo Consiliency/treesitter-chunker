@@ -305,6 +305,12 @@ the installed `RECORD` reports `healthy` with no pin; a file there whose bytes
 differ from `RECORD` reports `integrity_mismatch`, and no pin overrides it; a
 file there with no `RECORD` entry needs a pin like any other local grammar.
 
+**Retired dependency inspection.**
+`GrammarMetadataExtractor.extract_from_dependencies` returns
+`{"dependencies": [], "dependencies_status": "retired"}` without running any
+tool: `ldd` can execute an unapproved library's code through the dynamic loader.
+`GrammarAnalyzer` reads symbols and versions only from the admitted snapshot.
+
 **Every grammar subcommand is pin-dependent.** The group resolves the active
 pin source before any subcommand runs. A missing or defective option file, or
 a present but defective config file when the option is absent, is a usage
