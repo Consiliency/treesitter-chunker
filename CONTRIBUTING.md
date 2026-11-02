@@ -99,9 +99,12 @@ scheduled full tier and release full validation also run on 3.14. The 3.12
 minimum keeps only two main-package checks: the Linux platform-core job (macOS
 and Windows run 3.14) and the release installed-wheel check (3.12 and 3.14).
 Separately, the BAML companion workflow's `source` and `wheel` jobs run on 3.12,
-the companion's own minimum. No interpreter is chosen by event, and every job
-that runs `uv` names its interpreter (setup-python or `UV_PYTHON`), so none
-falls back to `.python-version`.
+the companion's own minimum. No interpreter is chosen by event. Each step that
+runs `uv` must have `UV_PYTHON` in its own effective env (the workflow, job or
+that step's `env:`), unless its job uses setup-python. A `UV_PYTHON` on a
+different step does not count. A job whose setup-python version is not the
+floor must also set `UV_PYTHON` for its uv steps. Without these, uv would fall
+back to the `.python-version` pin (3.12).
 
 Workflow text (`.yml` and `.yaml`, comments and `echo` output included) is
 checked by a plain-text scan. Quotes and backslashes are removed before
@@ -116,7 +119,8 @@ Outside the floor jobs, these fail:
   not `setup-python@`);
 - `py -3.N`, `py -V:3.N` and `py.exe`;
 - `uv python pin|install|find`;
-- writes to `.python-version`;
+- writes to `.python-version`: `>`/`>>` redirects (including `echo`/`printf`),
+  `tee` and `tee -a`, `cp`/`mv`/`install`/`ln` onto it, `sed -i` and `dd of=`;
 - any `python-version` mention.
 
 A canonical 3.14 setting at the start of a line is allowed: `python-version:`

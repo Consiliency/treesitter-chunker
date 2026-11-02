@@ -147,8 +147,11 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
       runner interpreter. The policy test asserts both settings.
     - So 3.12 appears only in Linux platform-core, the installed-wheel check
       and those two BAML companion jobs. `tests/test_release_hygiene_policy.py`
-      enforces this and rejects any event-selected interpreter. Every job that
-      runs `uv` must name its interpreter (setup-python or `UV_PYTHON`). It also
+      enforces this and rejects any event-selected interpreter. Each step that
+      runs `uv` must have `UV_PYTHON` in its own effective env (workflow, job or
+      that step), unless its job uses setup-python; a sibling step's `UV_PYTHON`
+      does not count. A non-floor setup-python job must also set `UV_PYTHON`
+      for its uv steps (an existing check). It also
       runs a **plain-text scan** of every workflow line (`.yml` and `.yaml`), with
       no shell parsing. This replaced #591's shell-parsing scan after the
       maintainer chose a simpler, stricter check (2026-11-01, successor PR).
@@ -169,7 +172,9 @@ SL-env — locked 3.14 environment and validation switch (treesitter-chunker#502
         `UV_PYTHON` in any case; `PYENV_VERSION`; `python3.N`; `Python3NN`;
         `python@N` (not `setup-python@`) and `pypy@`/`graalpy@`;
         `py -3.N`/`py -V:3.N`/`py.exe`; `uv python pin|install|find`;
-        `.python-version` writes; and any `python-version`.
+        writes to `.python-version` (`>`/`>>` redirects including
+        `echo`/`printf`, `tee`/`tee -a`, `cp`/`mv`/`install`/`ln` onto it,
+        `sed -i`, `dd of=`); and any `python-version`.
       - **Named exclusions,** each covering only its own token: `pytest -p no:`,
         `mkdir -p`, `tar -cpf`, the `test.yml` cache key
         `}}-py${{ matrix.python-version }}`, and `setup-python@`.

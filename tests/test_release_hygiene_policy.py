@@ -517,7 +517,16 @@ _TEXT_RULES = (
     ("PYENV_VERSION", re.compile(r"PYENV_VERSION")),
     ("UV_PYTHON", re.compile(r"(?i)uv_python")),
     ("python-version", re.compile(r"(?<![.\w-])python-version")),
+    # Writes to the .python-version pin: redirects (including echo/printf >),
+    # tee/tee -a, cp/mv/install/ln onto it, sed -i, dd of=.
     ("write .python-version", re.compile(r">\s*\S*\.python-version")),
+    ("write .python-version", re.compile(r"\btee\b[^|;&]*\.python-version")),
+    (
+        "write .python-version",
+        re.compile(r"\b(?:cp|mv|install|ln)\b[^|;&]*\s\S*\.python-version\b"),
+    ),
+    ("write .python-version", re.compile(r"\bsed\b[^|;&]*\s-i[^|;&]*\.python-version")),
+    ("write .python-version", re.compile(r"\bof=\S*\.python-version")),
 )
 # A short-option cluster containing p: a single '-' not preceded by a letter,
 # digit or '-', then letters including p (-p, -qp, -cpf, ${X}-p, {,-p}).
@@ -542,8 +551,9 @@ _TEXT_FIX = (
     "quotes and backslashes are ignored when matching) so it no longer names "
     "--python, a -p option, UV_PYTHON, PYENV_VERSION, python3.N, python@N, "
     "pypy@/graalpy@, Python3NN, py -3.N, uv python pin|install|find, a "
-    ".python-version write or a non-3.14 python-version, and give every uv job an "
-    "explicit interpreter (setup-python or UV_PYTHON), or (b) if the job is a "
+    ".python-version write or a non-3.14 python-version, and give every uv step "
+    "UV_PYTHON in its workflow, job or step env (or its job setup-python), or (b) "
+    "if the job is a "
     "deliberate 3.12 floor check, add (workflow, job, platform family or None) to "
     "FLOOR_ALLOWED in tests/test_release_hygiene_policy.py with a reason."
 )
@@ -691,27 +701,27 @@ def _floor_entry_lines(text: str, workflow: str) -> tuple[set[int], list[str]]:
 
 
 def _uv_interpreter_problems(workflow: str, text: str) -> list[str]:
-    """Every job that runs uv names its interpreter (setup-python or UV_PYTHON)."""
+    """Each step that runs uv has UV_PYTHON in its own effective env (workflow,
+    job or that step), unless its job uses setup-python. A UV_PYTHON on a
+    different step does not count."""
     doc = yaml.safe_load(text) or {}
     problems = []
     for name, job in (doc.get("jobs") or {}).items():
-        steps = job.get("steps") or []
-        runs_uv = any(
-            _UV_COMMAND.search(str(step.get("run", "")))
-            or str(step.get("uses", "")).startswith("astral-sh/setup-uv")
-            for step in steps
-        )
-        if not runs_uv:
+        if _setup_python_versions(job):
             continue
-        has_env = any(
-            "UV_PYTHON" in (env or {})
-            for env in [doc.get("env"), job.get("env"), *[s.get("env") for s in steps]]
+        inherited = "UV_PYTHON" in (doc.get("env") or {}) or "UV_PYTHON" in (
+            job.get("env") or {}
         )
-        if not (_setup_python_versions(job) or has_env):
-            problems.append(
-                f"{workflow}: [{name}] runs uv without setup-python or UV_PYTHON, so it "
-                "would fall back to .python-version (3.12)"
-            )
+        for number, step in enumerate(job.get("steps") or [], start=1):
+            runs_uv = _UV_COMMAND.search(str(step.get("run", ""))) or str(
+                step.get("uses", "")
+            ).startswith("astral-sh/setup-uv")
+            if runs_uv and not (inherited or "UV_PYTHON" in (step.get("env") or {})):
+                problems.append(
+                    f"{workflow}: [{name}] step {number} runs uv without setup-python "
+                    "or UV_PYTHON in its workflow, job or step env, so it would fall "
+                    "back to .python-version (3.12)"
+                )
     return problems
 
 
@@ -1021,6 +1031,33 @@ TEXT_MUTATIONS = {
     ),
     "M502-text-write-python-version": _insert_ci(
         "          echo 3.12 > .python-version\n"
+    ),
+    # round 3 delta: per-step interpreter and any write to .python-version
+    "M502-text-uv-step-without-interpreter": (
+        "docs.yml",
+        "jobs:\n",
+        "jobs:\n  audit-probe:\n    runs-on: ubuntu-latest\n    permissions:\n"
+        "      contents: read\n    steps:\n    - uses: astral-sh/setup-uv@v5\n"
+        "      env:\n        UV_PYTHON: '3.14'\n"
+        "    - run: uv sync --locked --all-extras\n      env:\n        UV_PYTHON: '3.14'\n"
+        "    - run: uv run --locked --all-extras python -V\n",
+    ),
+    "M502-text-tee-python-version": _insert_ci(
+        "          echo 3.12 | tee .python-version\n"
+    ),
+    "M502-text-tee-a-python-version": _insert_ci(
+        "          printf 3.12 | tee -a .python-version\n"
+    ),
+    "M502-text-cp-python-version": _insert_ci("          cp x .python-version\n"),
+    "M502-text-mv-python-version": _insert_ci("          mv pin ./.python-version\n"),
+    "M502-text-install-python-version": _insert_ci(
+        "          install -m 644 pin .python-version\n"
+    ),
+    "M502-text-printf-append-python-version": _insert_ci(
+        "          printf 3.12 >> .python-version\n"
+    ),
+    "M502-text-sed-python-version": _insert_ci(
+        "          sed -i s/3.14/3.12/ .python-version\n"
     ),
 }
 
