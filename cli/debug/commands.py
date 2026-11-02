@@ -3,12 +3,16 @@ Debug CLI commands for Tree-sitter chunker.
 """
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 from rich.console import Console
 
 from chunker.core import chunk_file, ensure_regular_file
 from chunker.exceptions import NonRegularFileError
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 # Import debug modules conditionally to handle missing graphviz
 try:
@@ -122,7 +126,7 @@ def repl(
         "-f",
         help="Initial file_path to load",
     ),
-):
+) -> None:
     """Start interactive debugging REPL."""
     _require_regular_file(file_path)
     if not HAS_DEBUG_MODULES:
@@ -187,7 +191,7 @@ def ast(
         "--no-positions",
         help="Hide position information",
     ),
-):
+) -> None:
     """Visualize AST for a source file_path."""
     _require_regular_file(file_path)
     if not HAS_DEBUG_MODULES:
@@ -294,7 +298,7 @@ def query(
         "--no-highlight",
         help="Don't highlight matches in source",
     ),
-):
+) -> None:
     """Debug a Tree-sitter query."""
     _require_regular_file(file_path)
     # Get source code
@@ -367,7 +371,7 @@ def chunks(
         "--side-by-side",
         help="Show original and chunked side by side",
     ),
-):
+) -> None:
     """Analyze and debug chunking decisions."""
     _require_regular_file(file_path)
     if not HAS_DEBUG_MODULES:
@@ -432,7 +436,7 @@ def explore(
         help="Inline code to explore",
     ),
     language: str = typer.Option(..., "--lang", "-l", help="Programming language"),
-):
+) -> None:
     """Interactively explore AST nodes."""
     _require_regular_file(file_path)
     if not HAS_DEBUG_MODULES:
@@ -478,7 +482,7 @@ def validate(
         "--missing/--no-missing",
         help="Show missing nodes",
     ),
-):
+) -> None:
     """Validate parsing and identify errors."""
     _require_regular_file(file_path)
     if not HAS_DEBUG_MODULES:
@@ -519,7 +523,7 @@ def validate(
         error_nodes = []
         missing_nodes = []
 
-        def check_node(node):
+        def check_node(node: "Node") -> None:
             nonlocal has_errors
             if node.has_error:
                 has_errors = True

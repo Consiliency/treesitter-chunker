@@ -25,6 +25,8 @@ on:
 
 jobs:
   release-validation:
+    permissions:
+      contents: read
     name: Validate release on Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -33,7 +35,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.12']
+        # Full validation runs on the primary interpreter; the 3.12 floor is
+        # release-tested by verify-installed-wheel (treesitter-chunker#502).
+        python-version: ['3.14']
     steps:
     - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
     - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
@@ -60,6 +64,7 @@ jobs:
         uv run --locked --all-extras ruff check chunker/ chunker/build/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site
         uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py
         uv run --locked --all-extras python scripts/mypy_gate.py
+        uv run --locked --all-extras mypy --follow-imports=silent --allow-untyped-defs --allow-incomplete-defs --allow-untyped-calls --check-untyped-defs --no-pretty --no-error-summary --show-error-codes tools/sync_governed_test_transport.py
         uv run --locked --all-extras python scripts/run_full_suite.py
 
   build-distributions:
@@ -67,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-validation
     env:
-      UV_PYTHON: '3.12'
+      UV_PYTHON: '3.14'
     permissions:
       contents: read
     outputs:
@@ -145,7 +150,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
       with:
-        python-version: '3.12'
+        python-version: '3.14'
 
     - name: Install build dependencies
       run: |
@@ -173,6 +178,8 @@ jobs:
           dist/checksums.txt
 
   verify-installed-wheel:
+    permissions:
+      contents: read
     name: Verify installed wheel on Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     needs: build-distributions
