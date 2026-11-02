@@ -163,8 +163,9 @@ def admit_native_candidate(
     path: Path, language: str, trusted_artifacts: Mapping[str, Any] | None, *,
     level: str = "probe", inspector: str = "none",
     inspect_artifact: Callable[[Path], Any] | None = None,
-    sample: bytes = b"", timeout: float = 10.0,
+    sample: bytes = b"", timeout: float | None = None,  # None: the probe's own DEFAULT_PROBE_TIMEOUT
     probe: Callable[..., NativeProbeResult] | None = None,
+    reusable: Callable[[Any], bool] | None = None,  # store rule for an ok result's metadata
 ) -> tuple[NativeProbeResult, Any]: ...        # (result, inspector metadata or None)
 def admitted_private_copy(
     path: Path, language: str, trusted_artifacts: Mapping[str, Any] | None, *,
@@ -194,7 +195,11 @@ verdicts, copies or cleanup ownership (`os.register_at_fork`).
 lookup order (hash from one open regular file; a digest that differs from the
 pin is `integrity_mismatch` without probing), and only then probes with the
 one-field record. Only `ok` results with `artifact_sha256 == content_sha256`
-and the default probe profile are stored, in process memory only.
+and the default probe profile (`default-v2`: `sample=b""` with
+`integrity.DEFAULT_PROBE_TIMEOUT`, compared against the imported constant, never
+a restated copy; treesitter-chunker#561) are stored, in process memory only. A
+site may pass `reusable` to decline storing a transient result (for example a
+timed-out symbol analysis, treesitter-chunker#563).
 `admitted_private_copy` implements "Using an admitted grammar in-process":
 one `chunker-admitted-*` private copy per (language, digest) per process,
 verified, probed (or reused under the copy's key), and returned only after
