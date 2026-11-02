@@ -41,6 +41,11 @@ from typing import Any
 from tree_sitter import Language, Parser
 
 from chunker.exceptions import ChunkerError
+from chunker.grammar._native_policy import (
+    APPLICATION_CONTROL_MESSAGE,
+    NativePolicyBlockedError,
+    is_application_control_error,
+)
 from chunker.grammar.source_validation import validate_grammar_source
 from chunker.grammar_management import _transactions
 
@@ -129,7 +134,16 @@ class GrammarRegistryError(GrammarManagementError):
 
 def load_compiled_grammar(grammar_path: Path, language: str) -> Parser:
     """Load a local grammar's own symbol with the pinned Tree-sitter API."""
-    library = ctypes.CDLL(str(grammar_path))
+    try:
+        library = ctypes.CDLL(str(grammar_path))
+    except OSError as error:
+        if is_application_control_error(error):
+            blocked = NativePolicyBlockedError(
+                error.errno, APPLICATION_CONTROL_MESSAGE, error.filename
+            )
+            blocked.winerror = int(getattr(error, "winerror", 0))
+            raise blocked from error
+        raise
     symbol = getattr(library, f"tree_sitter_{language.replace('-', '_')}")
     symbol.restype = ctypes.c_void_p
     pointer = symbol()

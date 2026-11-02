@@ -12,7 +12,11 @@ from typing import Any
 from .grammar_management import SmartGrammarManager, _require_language_component
 from .package_supplier import is_record_entry
 from .trusted_artifacts import pin_provenance
-from ..grammar.integrity import NativeProbeResult, probe_native_grammar
+from ..grammar.integrity import (
+    DEFAULT_PROBE_TIMEOUT,
+    NativeProbeResult,
+    probe_native_grammar,
+)
 from ..grammar.source_validation import validate_grammar_source
 
 logger = logging.getLogger(__name__)
@@ -38,7 +42,7 @@ def publish_native_grammar(
     *,
     provenance: Mapping[str, Any] | None,
     sample: bytes = b"",
-    timeout: float = 10.0,
+    timeout: float = DEFAULT_PROBE_TIMEOUT,
 ) -> NativeProbeResult:
     """Publish a compiled grammar without overwriting the existing library file.
 
@@ -177,7 +181,7 @@ class UserGrammarTools:
             self.manager.health_cache.pop(language, None)
             self.manager.compatibility_cache.pop(language, None)
         if not probe.supported:
-            explanation = _ADMISSION_EXPLANATIONS.get(
+            explanation = probe.message or _ADMISSION_EXPLANATIONS.get(
                 probe.reason, "the native admission probe rejected it"
             )
             message = (

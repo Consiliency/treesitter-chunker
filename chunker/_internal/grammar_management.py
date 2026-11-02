@@ -166,6 +166,13 @@ class SmartGrammarManager:
                     "Verify the grammar repository was cloned correctly",
                 ],
             )
+        elif probe.reason == "policy_blocked":
+            health.status = "incompatible"
+            health.issues.append(probe.message or probe.reason)
+            health.recommendations.append(
+                "Use a signed, organization-approved build or ask your administrator "
+                "to approve the library under the existing application-control policy"
+            )
         elif probe.reason in {"empty", "load_failed", "parse_failed"}:
             health.status = "corrupted"
             health.issues.append(f"Native admission failed: {probe.reason}")
