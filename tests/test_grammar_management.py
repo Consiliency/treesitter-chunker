@@ -2,7 +2,6 @@
 
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -18,6 +17,7 @@ from chunker._internal.user_grammar_tools import UserGrammarTools
 from chunker.grammar.integrity import NativeProbeResult
 
 
+@pytest.mark.usefixtures("native_policy_environment")
 def test_real_grammar_mtimes_do_not_invent_compilation_dates(tmp_path):
     import tree_sitter_language_pack as provider
 
@@ -175,6 +175,7 @@ class TestSmartGrammarManager:
         assert len(health.issues) > 0
         assert "empty" in health.issues[0] or "0 bytes" in health.issues[0]
 
+    @pytest.mark.usefixtures("native_policy_environment")
     def test_diagnose_grammar_healthy(self, manager, temp_dirs, tmp_path):
         """Test diagnosing a healthy grammar."""
         build_dir, _ = temp_dirs
@@ -189,25 +190,11 @@ class TestSmartGrammarManager:
         library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
         so_file = build_dir / "baml.so"
         so_file.write_bytes(library.read_bytes())
-        subprocess.run(
-            [
-                sys.executable,
-                "-I",
-                "-c",
-                "import sys; from pathlib import Path; "
-                "sys.path.insert(0, sys.argv[1]); "
-                "from chunker.grammar_management.core import load_compiled_grammar; "
-                "root = load_compiled_grammar(Path(sys.argv[2]), 'baml')"
-                ".parse(Path(sys.argv[3]).read_bytes()).root_node; "
-                "assert root.type == 'source_file' and not root.has_error",
-                str(Path(__file__).resolve().parents[1]),
-                str(so_file),
-                str(FIXTURE),
-            ],
-            check=True,
-            capture_output=True,
-            timeout=20,
-        )
+        from tests.native_policy import run_isolated_baml_parse
+
+        run_isolated_baml_parse(
+            Path(__file__).resolve().parents[1], so_file, FIXTURE, timeout=20
+        ).check_returncode()
         manager.trusted_artifacts = trusted_artifacts(so_file)
         health = manager.diagnose_grammar_issues("baml")
 

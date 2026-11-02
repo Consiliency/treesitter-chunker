@@ -31,12 +31,29 @@ include source string offsets: CRLF preservation can change those paths and
 their path-based structural IDs, including `definition_id`. Rechunk CRLF sources
 and rebuild ID-based joins and parent links (treesitter-chunker#464).
 
-Lone CR bytes are also preserved. CR-only Python parsing and line recovery are
-not covered by the LF/CRLF contract: the raw parser reports errors and both
-functions in the recorded CR-only fixture report line 1. Convert CR-only source
-to LF when accurate line recovery is required until treesitter-chunker#471 is
-resolved. Raw spans can end between CR and LF when the parser includes CR in a
-token, such as a Python comment; source slicing still retains those exact bytes.
+Lone CR bytes are also preserved. For Python, the regular (`chunk_file`,
+`chunk_text`), streaming (`chunk_file_streaming`) and VFS streaming
+(`VFSChunker.chunk_file(..., streaming=True)`, used automatically for files
+over 10 MiB) entries parse a copy in which each lone CR (a CR not followed by
+LF) is replaced with LF, because the pinned grammar does not treat a lone CR as
+a line ending and Tree-sitter counts rows by LF (treesitter-chunker#471). The
+copy is made only when a lone CR is present. The replacement is one byte for
+one byte, so byte offsets map to the raw file unchanged: byte spans and chunk
+content are the physical bytes, including each CR. Reported lines count every
+LF, CRLF or lone CR line ending, as Python itself does. That covers chunk
+lines, Boundary IR node spans and call-site locations (symbol-graph `calls`
+relationships and `call_facts`, and Boundary IR call edges). LF and CRLF files
+parse exactly as before.
+
+Other languages still parse the raw bytes and count only LF, so a CR-only
+file in those languages reports every chunk on line 1
+(treesitter-chunker#601). Complexity metrics
+(`lines_of_code`, `logical_lines`) count LF only (treesitter-chunker#597). The
+VFS standard (non-streaming) path reads translated text, so its chunk content
+holds LF and its CRLF offsets refer to the translated text rather than the raw
+bytes; that predates this contract. Raw spans can end between CR and LF when
+the parser includes CR in a token, such as a Python comment; source slicing
+still retains those exact bytes.
 
 An explicit `identity_path` still determines regular chunk identities independently
 of the physical read path. Invalid UTF-8 outside BAML retains replacement
