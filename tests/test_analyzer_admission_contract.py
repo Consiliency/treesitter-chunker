@@ -130,11 +130,15 @@ def test_dependency_inspection_is_retired(tmp_path, baml_bytes, monkeypatch):
     )
 
 
+@pytest.mark.parametrize("nm_outcome", ["timeout", "exit_1"])
 def test_transient_symbol_analysis_is_not_reused(
-    tmp_path, baml_bytes, probes, monkeypatch
+    tmp_path, baml_bytes, probes, monkeypatch, nm_outcome
 ):
-    """An nm deadline expiry is reported for that call only; the next call
+    """An nm deadline expiry (``deadline_expired``) or a failed nm run
+    (``failed``, exit 1) is reported for that call only; the next call
     re-inspects instead of reusing an empty symbol table (treesitter-chunker#207).
+    Mutation ``failed_is_settled`` (store a failed analysis) fails the exit-1
+    case.
 
     The transient result is never stored, so the other sites' verdicts for the
     same bytes are untouched: the manager does not probe again and the loader
@@ -179,18 +183,20 @@ def test_transient_symbol_analysis_is_not_reused(
 
     real_run = subprocess.run
 
-    def nm_times_out(args, *rest, **kwargs):
+    def broken_nm(args, *rest, **kwargs):
         if args and args[0] == "nm":
-            raise subprocess.TimeoutExpired(args, kwargs.get("timeout", 5.0))
+            if nm_outcome == "timeout":
+                raise subprocess.TimeoutExpired(args, kwargs.get("timeout", 5.0))
+            return subprocess.CompletedProcess(args, 1, "", "nm: simulated failure")
         return real_run(args, *rest, **kwargs)
 
     analyzer = GrammarAnalyzer(directory, trusted_artifacts=pins)
     with monkeypatch.context() as patched:
         # Run nm even on Windows, where the analysis is otherwise unavailable.
         patched.setattr(grammar_analyzer.platform, "system", lambda: "Linux")
-        patched.setattr(grammar_analyzer.subprocess, "run", nm_times_out)
+        patched.setattr(grammar_analyzer.subprocess, "run", broken_nm)
         first = analyzer.analyze_grammar_file("baml")
-    require(first is not None, "the expired analysis is still returned")
+    require(first is not None, "the transient analysis is still returned")
     require(len(probes) == 1, f"one analyzer probe {probes}")
 
     # The other sites still reuse their own verdicts.
