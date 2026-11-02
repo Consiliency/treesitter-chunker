@@ -16,7 +16,11 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     env:
-      UV_PYTHON: '3.12'
+      # 3.14 is the main version for every CI run, including the scheduled full
+      # tier (maintainer decision, treesitter-chunker#502). The 3.12 minimum
+      # keeps only Linux platform-core (test.yml) and the release installed-wheel
+      # check until it is dropped in 7.0 (treesitter-chunker#599).
+      UV_PYTHON: '3.14'
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
@@ -25,7 +29,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
-          python-version: '3.12'
+          python-version: '3.14'
 
       - name: Install Graphviz executable
         run: |
