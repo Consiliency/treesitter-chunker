@@ -4,9 +4,33 @@ pytest_plugins = [
 ]
 
 import gc
+import multiprocessing
 import tracemalloc
 
 import pytest
+
+
+def _forkserver_in_use() -> bool:
+    """Return whether new processes start from the forkserver.
+
+    Checks without fixing the start method: an explicitly set method wins,
+    otherwise the platform default (listed first) applies.
+    """
+    method = multiprocessing.get_start_method(allow_none=True)
+    if method is None:
+        method = multiprocessing.get_all_start_methods()[0]
+    return method == "forkserver"
+
+
+# Python 3.14 makes forkserver the default start method on Linux. Each new
+# ProcessPoolExecutor worker is then forked from a server that preloaded only
+# __main__, which under pytest is pytest itself, so every new pool re-imports
+# chunker and tree-sitter inside the caller's timed section. Applications that
+# import chunker in __main__ already avoid that, so the test harness preloads
+# chunker.parallel the same way (maintainer decision, treesitter-chunker#502).
+# Assertions are unchanged; fork and spawn are unaffected.
+if _forkserver_in_use():
+    multiprocessing.set_forkserver_preload(["__main__", "chunker.parallel"])
 
 
 @pytest.fixture(autouse=True, scope="module")

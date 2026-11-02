@@ -25,6 +25,7 @@ CI_SMOKE_TESTS = [
     "tests/test_validation_cache_transactions.py",
     "tests/test_cache_entry_transactions.py",
     "tests/test_call_reference_guard.py",
+    "tests/test_python_outer_call_sites.py",
     "tests/test_grammar_installer_language_safety.py",
     "tests/test_public_grammar_registry.py",
     "tests/test_public_grammar_cli.py",
@@ -89,6 +90,7 @@ CI_SMOKE_TESTS = [
     "tests/test_lint_path_policy.py",
     "tests/test_workflow_permissions_policy.py",
     "tests/test_type_gate_policy.py",
+    "tests/test_python314_lock_wheels.py",
     # Workflow and release policy assertions; previously full-tier only.
     "tests/test_release_hygiene_policy.py",
     "tests/test_scratch_root_policy.py",
