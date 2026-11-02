@@ -305,6 +305,37 @@ the installed `RECORD` reports `healthy` with no pin; a file there whose bytes
 differ from `RECORD` reports `integrity_mismatch`, and no pin overrides it; a
 file there with no `RECORD` entry needs a pin like any other local grammar.
 
+#### Pins for the click group and embedding code
+
+The click group `chunker.grammar_management.cli.grammar_cli` takes the same
+option before the subcommand (`grammar --trusted-artifacts pins.json validate
+python`) and resolves the source in its group callback, so its subcommands are
+pin-dependent in the same way: a missing or defective file exits 2 before any
+subcommand runs.
+
+`GrammarValidator`, `GrammarInstaller`, `GrammarRegistry`, `GrammarManager` and
+`ComprehensiveGrammarCLI` accept keyword-only `trusted_artifacts=` and pass it
+down (manager → registry/installer/validator). Constructors never read a pin
+file. With a pin, a local grammar is admitted through `probe_native_grammar`:
+`check_abi_compatibility` loads nothing in-process, and parse checks load only
+an admitted private copy. `test_parse_samples(language, samples)` without a
+grammar path resolves through the validator's own `LanguageRegistry` (the
+parse path's default combined library and the validator's pins), never through
+`chunker.parser`, so package-supplied grammars still resolve there.
+
+`grammar build` without a pin does not load the new output: it exits 0 and
+prints `built, not admitted: add a pin via --trusted-artifacts`. With a pin it
+probes the output and exits 1 on any result other than `ok`. `grammar validate`
+reports a library that fails admission as not loadable, with the admission
+reason. `GrammarManager.get_admitted_health(language)` returns the admitted
+health (`healthy`, `missing`, `corrupted` or `incompatible`, with
+`validation_reason`) for status, validate and list consumers.
+
+The validation cache is keyed by the grammar's content, pin, validation level
+and runtime environment, never by path or file times. A cached result is
+returned only after this process has admitted the same bytes; a new process
+always probes again, and failed validations are never stored.
+
 #### Pins on the parse path
 
 Ordinary parsing (`get_parser`, `acquire_parser`, `list_languages`,

@@ -18,6 +18,11 @@ from tree_sitter_language_pack import cache_dir, get_parser as get_pack_parser
 FIXTURE_DIR = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app"
 
 
+def _python_pin(library: Path) -> dict[str, dict[str, str]]:
+    """Approved pin for a local Python grammar (it is untrusted without one)."""
+    return {"python": {"sha256": hashlib.sha256(library.read_bytes()).hexdigest()}}
+
+
 @pytest.mark.parametrize("level", tuple(ValidationLevel))
 @pytest.mark.parametrize("path_kind", ["missing", "directory"])
 def test_invalid_grammar_path_keeps_actionable_diagnostic(
@@ -59,7 +64,7 @@ def test_appearing_grammar_stat_failure_keeps_requested_invalid_result(
     assert native.is_file()
     candidate = tmp_path / f"appearing{suffix}"
     cache = tmp_path / "validation"
-    validator = GrammarValidator(cache_dir=cache)
+    validator = GrammarValidator(cache_dir=cache, trusted_artifacts=_python_pin(native))
     events = []
     previous = sys.getprofile()
 
@@ -152,7 +157,7 @@ def test_validation_cache_rechecks_replaced_local_grammar(tmp_path: Path) -> Non
     candidate = tmp_path / f"libpython{suffix}"
     candidate.write_bytes(b"")
     cache = tmp_path / "validator-cache"
-    validator = GrammarValidator(cache_dir=cache)
+    validator = GrammarValidator(cache_dir=cache, trusted_artifacts=_python_pin(native))
     broken = validator.validate_grammar(candidate, "python", ValidationLevel.STANDARD)
     assert not broken.is_valid
     assert any("empty" in error.lower() for error in broken.errors)
@@ -168,7 +173,7 @@ def test_validation_cache_rechecks_replaced_local_grammar(tmp_path: Path) -> Non
     assert repaired.errors == []
     assert repaired.performance_metrics["samples_tested"] > 0
     assert (
-        GrammarValidator(cache_dir=cache)
+        GrammarValidator(cache_dir=cache, trusted_artifacts=_python_pin(native))
         .validate_grammar(candidate, "python", ValidationLevel.STANDARD)
         .is_valid
     )
@@ -193,7 +198,9 @@ def test_extensive_validation_reports_metrics_after_local_grammar_parse(
     parser = load_compiled_grammar(candidate, "python")
     assert not parser.parse(source).root_node.has_error
 
-    validator = GrammarValidator(cache_dir=tmp_path / "validator-cache")
+    validator = GrammarValidator(
+        cache_dir=tmp_path / "validator-cache", trusted_artifacts=_python_pin(candidate)
+    )
     result = validator.validate_grammar(candidate, "python", ValidationLevel.EXTENSIVE)
 
     assert result.is_valid, result.errors
@@ -235,7 +242,9 @@ def test_extensive_validation_uses_selected_grammar_for_all_parse_checks(
         return javascript_parser
 
     monkeypatch.setattr("chunker.parser.get_parser", wrong_default)
-    validator = GrammarValidator(cache_dir=tmp_path / "validator-cache")
+    validator = GrammarValidator(
+        cache_dir=tmp_path / "validator-cache", trusted_artifacts=_python_pin(candidate)
+    )
     result = validator.validate_grammar(candidate, "python", ValidationLevel.EXTENSIVE)
 
     assert result.is_valid, result.errors
@@ -285,7 +294,9 @@ def test_extensive_validation_rechecks_legacy_cached_result(tmp_path: Path) -> N
         encoding="utf-8",
     )
 
-    validator = GrammarValidator(cache_dir=cache)
+    validator = GrammarValidator(
+        cache_dir=cache, trusted_artifacts=_python_pin(candidate)
+    )
     result = validator.validate_grammar(candidate, "python", ValidationLevel.EXTENSIVE)
 
     assert result.is_valid, result.errors

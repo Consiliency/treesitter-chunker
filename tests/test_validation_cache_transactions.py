@@ -5,9 +5,16 @@ Cache transaction contract, Primitive 1. Every writer is a real
 pruner is a real ``GrammarManager.cleanup_cache``. Concurrent participants run
 in separate processes and are ordered only by seam events (tests/txn_barrier.py).
 
-The records are ``ok`` results from two distinct compiled revisions. They are
-keyed by whatever ``GrammarValidator._get_cache_key`` defines on main, so the
-tests hold under the path-based key and under ADMIT's content-based key.
+The records are ``ok`` results from two distinct compiled revisions.
+
+ADMIT (treesitter-chunker#362) requires pins for stored validation records:
+an unpinned validator reports ``untrusted`` and never stores a record, and
+failures are never stored. So every writer here gets ``trusted_artifacts`` with
+its revision's reviewed fixture digest, and record keys come from ADMIT's
+verdict-key accessor ``GrammarValidator._verdict_cache_key`` (the frozen
+content/pin/environment key; the path-based ``_get_cache_key`` is gone).
+Reconciled when ADMIT SL-core-2 (treesitter-chunker#562) merged main after
+treesitter-chunker#560, per the roadmap runner's decision.
 """
 
 from __future__ import annotations
@@ -48,12 +55,12 @@ WRITER = r"""
 from pathlib import Path
 from chunker.grammar_management.core import GrammarValidator, ValidationLevel
 
-cache, library = Path(ARGS[0]), Path(ARGS[1])
-validator = GrammarValidator(cache)
+cache, library, digest = Path(ARGS[0]), Path(ARGS[1]), ARGS[2]
+validator = GrammarValidator(cache, trusted_artifacts={"baml": {"sha256": digest}})
 emit("ready")
 wait()
 result = validator.validate_grammar(library, "baml", ValidationLevel.STANDARD)
-key = validator._get_cache_key(library, "baml", ValidationLevel.STANDARD)
+key, _ = validator._verdict_cache_key(library, "baml", ValidationLevel.STANDARD)
 emit("done", key=key, valid=result.is_valid, errors=result.errors)
 """
 
@@ -93,6 +100,21 @@ def revisions(tmp_path_factory) -> tuple[Path, Path]:
     return rev_a, rev_b
 
 
+def _digest(library: Path) -> str:
+    """The reviewed fixture build's digest (supplied deliberately as its pin)."""
+    return sha256(library.read_bytes()).hexdigest()
+
+
+def _pins(library: Path) -> dict[str, dict[str, str]]:
+    return {"baml": {"sha256": _digest(library)}}
+
+
+def _key(validator: GrammarValidator, library: Path) -> str:
+    key, _ = validator._verdict_cache_key(library, "baml", ValidationLevel.STANDARD)
+    assert key is not None
+    return key
+
+
 def _records(cache: Path) -> dict:
     return json.loads((cache / RECORDS).read_text(encoding="utf-8"))
 
@@ -111,10 +133,18 @@ def test_two_validators_keep_both_records(tmp_path, revisions, first_writer):
     cache.mkdir()
     rev_a, rev_b = revisions
     with participants() as children:
-        a = Child(WRITER, [cache, rev_a], pauses=[pause_at("json.before_replace")])
+        a = Child(
+            WRITER,
+            [cache, rev_a, _digest(rev_a)],
+            pauses=[pause_at("json.before_replace")],
+        )
         children.append(a)
         a.expect("ready")
-        b = Child(WRITER, [cache, rev_b], pauses=[pause_at("json.before_replace")])
+        b = Child(
+            WRITER,
+            [cache, rev_b, _digest(rev_b)],
+            pauses=[pause_at("json.before_replace")],
+        )
         children.append(b)
         b.expect("ready")
         first, second = (a, b) if first_writer == "constructed_first" else (b, a)
@@ -157,7 +187,11 @@ def test_writer_and_pruner_keep_fresh_record(tmp_path, revisions):
     (cache / RECORDS).write_text(json.dumps(seeded), encoding="utf-8")
     rev_a, _ = revisions
     with participants() as children:
-        writer = Child(WRITER, [cache, rev_a], pauses=[pause_at("json.before_replace")])
+        writer = Child(
+            WRITER,
+            [cache, rev_a, _digest(rev_a)],
+            pauses=[pause_at("json.before_replace")],
+        )
         children.append(writer)
         writer.expect("ready")
         pruner = Child(PRUNER, [cache, tmp_path])
@@ -209,7 +243,7 @@ def test_symlinked_record_file_never_touches_outside_sentinel(
     rev_a, _ = revisions
 
     caplog.set_level(logging.WARNING, logger="chunker.grammar_management.core")
-    validator = GrammarValidator(cache)  # construction still succeeds
+    validator = GrammarValidator(cache, trusted_artifacts=_pins(rev_a))  # constructs
     assert validator._cache == {}
     result = validator.validate_grammar(rev_a, "baml", ValidationLevel.STANDARD)
     assert result.is_valid
@@ -221,7 +255,7 @@ def test_symlinked_record_file_never_touches_outside_sentinel(
         m.startswith("Failed to cache validation result") for m in load_and_write
     )
     # The record is kept in the in-memory read cache only (never written back).
-    key = validator._get_cache_key(rev_a, "baml", ValidationLevel.STANDARD)
+    key = _key(validator, rev_a)
     assert list(validator._cache) == [key]
 
     manager = GrammarManager(
@@ -250,10 +284,10 @@ def test_malformed_records_keep_writer_reset_and_pruner_refusal(tmp_path, revisi
     assert len(stats["errors"]) == 1 and "Malformed record file" in stats["errors"][0]
     assert (cache / RECORDS).read_bytes() == b"[1, 2]"
 
-    validator = GrammarValidator(cache)
     rev_a, _ = revisions
+    validator = GrammarValidator(cache, trusted_artifacts=_pins(rev_a))
     assert validator.validate_grammar(rev_a, "baml", ValidationLevel.STANDARD).is_valid
-    key = validator._get_cache_key(rev_a, "baml", ValidationLevel.STANDARD)
+    key = _key(validator, rev_a)
     assert list(_records(cache)) == [key]
 
 
@@ -261,7 +295,10 @@ def test_threads_in_one_process_keep_both_records(tmp_path, revisions):
     """In-process writers serialize on the same root lock."""
     cache = tmp_path / "cache"
     cache.mkdir()
-    validators = [GrammarValidator(cache), GrammarValidator(cache)]
+    validators = [
+        GrammarValidator(cache, trusted_artifacts=_pins(library))
+        for library in revisions
+    ]
     keys: list[str] = []
     errors: list[BaseException] = []
 
@@ -270,9 +307,7 @@ def test_threads_in_one_process_keep_both_records(tmp_path, revisions):
             assert validator.validate_grammar(
                 library, "baml", ValidationLevel.STANDARD
             ).is_valid
-            keys.append(
-                validator._get_cache_key(library, "baml", ValidationLevel.STANDARD)
-            )
+            keys.append(_key(validator, library))
         except BaseException as error:  # pragma: no cover - reported below
             errors.append(error)
 
@@ -528,7 +563,7 @@ from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from chunker.grammar_management.core import GrammarManager, GrammarValidator, ValidationLevel
 
-cache, library = Path(sys.argv[2]), Path(sys.argv[3])
+cache, library, digest = Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4]
 messages = []
 
 
@@ -539,9 +574,9 @@ class Collect(logging.Handler):
 
 logging.getLogger().addHandler(Collect(level=logging.WARNING))
 assert (cache / "grammars").stat().st_dev != cache.stat().st_dev, "not mounted"
-validator = GrammarValidator(cache)
+validator = GrammarValidator(cache, trusted_artifacts={"baml": {"sha256": digest}})
 assert validator.validate_grammar(library, "baml", ValidationLevel.STANDARD).is_valid
-key = validator._get_cache_key(library, "baml", ValidationLevel.STANDARD)
+key, _ = validator._verdict_cache_key(library, "baml", ValidationLevel.STANDARD)
 records = json.loads((cache / "validation_cache.json").read_text(encoding="utf-8"))
 manager = GrammarManager(
     user_dir=cache / "grammars", package_dir=cache / "package", cache_dir=cache
@@ -562,7 +597,9 @@ def test_split_mount_root_keeps_validation_records(tmp_path, revisions):
     cache = tmp_path / "cache"
     cache.mkdir()
     rev_a, _ = revisions
-    result = run_with_tmpfs(cache / "grammars", SPLIT_MOUNT, [cache, rev_a])
+    result = run_with_tmpfs(
+        cache / "grammars", SPLIT_MOUNT, [cache, rev_a, _digest(rev_a)]
+    )
     assert result.returncode == 0, result.stderr[-3000:]
     report = json.loads(result.stdout.strip().splitlines()[-1])
     assert report == {"stored": True, "reloaded": True, "errors": [], "warnings": []}

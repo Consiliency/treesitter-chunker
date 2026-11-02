@@ -50,16 +50,36 @@ def test_compatibility_helpers_confine_cache_roots(
     tree = get_parser("python").parse(source)
     assert tree.root_node.child_count > 0
     assert not tree.root_node.has_error
+    # A real local Python grammar (the language pack's), copied and pinned
+    # before HOME is redirected: ADMIT stores only admitted ok records.
+    import hashlib
+
+    from tree_sitter_language_pack import cache_dir as pack_cache_dir
+    from tree_sitter_language_pack import get_parser as get_pack_parser
+
+    assert not get_pack_parser("python").parse(source).root_node.has_error
+    suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
+    prefix = "" if sys.platform == "win32" else "lib"
+    grammar = tmp_path / f"python-grammar{suffix}"
+    shutil.copyfile(
+        Path(pack_cache_dir()) / f"{prefix}tree_sitter_python{suffix}", grammar
+    )
+    pins = {"python": {"sha256": hashlib.sha256(grammar.read_bytes()).hexdigest()}}
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
     cache = tmp_path / "grammar-cache"
     manager = GrammarManager(
-        user_dir=tmp_path / "user", package_dir=tmp_path / "package", cache_dir=cache
+        user_dir=tmp_path / "user",
+        package_dir=tmp_path / "package",
+        cache_dir=cache,
+        trusted_artifacts=pins,
     )
     supplied = (
-        GrammarValidator(tmp_path / "supplied-cache") if supplied_validator else None
+        GrammarValidator(tmp_path / "supplied-cache", trusted_artifacts=pins)
+        if supplied_validator
+        else None
     )
     helper = helper_type(manager, validator=supplied)
     assert not (home / ".cache" / "treesitter-chunker").exists()
@@ -80,28 +100,47 @@ def test_compatibility_helpers_confine_cache_roots(
     )
     assert success and errors == []
     assert not helper.validator._validation_cache.exists()
-    written: dict[Path, dict[str, list[str]]] = {}
     for index, validator in enumerate([helper.validator, *validators]):
         candidate = tmp_path / f"empty-not-grammar-{index}.so"
         candidate.write_bytes(b"")
         result = validator.validate_grammar(candidate, "python", ValidationLevel.BASIC)
         assert not result.is_valid
         assert "Grammar file is empty" in result.errors
-        records = json.loads(validator._validation_cache.read_text(encoding="utf-8"))
-        # Exact-key lookup: records from other validators on this root may
-        # remain (treesitter-chunker#370 merges instead of overwriting).
-        key = validator._get_cache_key(candidate, "python", ValidationLevel.BASIC)
-        assert not records[key]["is_valid"]
-        assert records[key]["errors"] == result.errors
-        written.setdefault(validator._validation_cache, {})[key] = result.errors
-    for path, expected_records in written.items():
+        # A candidate that does not match its pin gets no verdict key, so no
+        # record is written for it. That a pinned candidate failing
+        # validation is never stored is covered by
+        # tests/test_validator_admission_contract.py::
+        # test_pinned_failing_artifact_is_never_cached.
+        assert not validator._validation_cache.exists()
+    assert not (cache / "validation_cache.json").exists()
+    assert not (expected / "validation_cache.json").exists()
+    # Admitted records from several validators on one root are merged, never
+    # overwritten (treesitter-chunker#370). One pin per language means one
+    # digest, so the validators sharing a root use distinct validation levels
+    # to write distinct records.
+    levels = [
+        ValidationLevel.BASIC,
+        ValidationLevel.STANDARD,
+        ValidationLevel.EXTENSIVE,
+    ]
+    written: dict[Path, dict[str, ValidationLevel]] = {}
+    for validator, level in [(helper.validator, ValidationLevel.BASIC)] + list(
+        zip(validators, levels, strict=True)
+    ):
+        result = validator.validate_grammar(grammar, "python", level)
+        assert result.is_valid, result.errors
+        key, digest = validator._verdict_cache_key(grammar, "python", level)
+        assert key is not None and digest == pins["python"]["sha256"]
+        written.setdefault(validator._validation_cache, {})[key] = level
+    for path, keys in written.items():
         records = json.loads(path.read_text(encoding="utf-8"))
-        assert {key: records[key]["errors"] for key in expected_records} == (
-            expected_records
-        )
+        assert set(keys) <= set(records), (path, sorted(records))
+        for key, level in keys.items():
+            assert records[key]["is_valid"] is True, records[key]
+            assert records[key]["level"] == level.value, records[key]
+            assert records[key]["errors"] == [], records[key]
+    assert len(written[cache / "validation_cache.json"]) >= 3
     assert not (home / ".cache" / "treesitter-chunker").exists()
-    assert (cache / "validation_cache.json").is_file()
-    assert (expected / "validation_cache.json").is_file()
 
 
 @pytest.mark.parametrize(
@@ -595,10 +634,16 @@ def test_compatibility_reason_score_selection_and_history(
         .root_node.has_error
     )
 
+    import hashlib
+
     manager = GrammarManager(
         user_dir=user_dir,
         package_dir=package_dir,
         cache_dir=tmp_path / "cache",
+        # The local grammar is admitted only under its approved pin.
+        trusted_artifacts={
+            "baml": {"sha256": hashlib.sha256(package_library.read_bytes()).hexdigest()}
+        },
     )
     database = CompatibilityDatabase(tmp_path / "history.db")
     checker = CompatibilityChecker(manager, database)
