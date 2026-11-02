@@ -32,6 +32,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Python call extraction now records the outer call of a callable-return
+  expression, such as `getattr(obj, 'audit')()`, `f()()` or `(f())()`, as its
+  own call site (treesitter-chunker#516). Before, only the inner call
+  (`getattr`) was observed. The outer site's raw callee is the inner call's
+  exact source text, parentheses included (`getattr(obj, 'audit')`, `(f())`),
+  with its byte span, the enclosing owner and a distinct `call_site_id`; the
+  inner site and its ID are unchanged. Such complex callees stay unresolved
+  and never bind a local definition by an incidental name. Chunk
+  `calls`/`call_spans` metadata, symbol-graph `calls` relationships and
+  `call_facts`, and Boundary IR `calls` edges gain one entry per outer site,
+  so recapture graph/IR outputs and their derived counts and digests. The
+  Python Boundary IR fixture now includes such a call, and its golden is
+  regenerated. Other complex callees, such as subscripts (`h['a']()`) and
+  parenthesized names, are unchanged, as is JavaScript
+  (treesitter-chunker#602). See
+  [the Boundary IR specification](docs/interface-boundary-spec.md).
+- Go build-constraint version hints now interpret `&&`, `||`, `!` and
+  parentheses in `//go:build` lines, and whitespace OR, comma AND and `!` in
+  legacy `// +build` lines (treesitter-chunker#438). The hint is the lowest Go
+  release at which the expression can hold. Non-release tags (GOOS, GOARCH,
+  `cgo`, custom tags) are treated as independent. It is a necessary minimum,
+  not a build evaluation. `//go:build go1.18 && !go1.21` and
+  `//go:build go1.18 || go1.21` now report `1.18` instead of `1.21`.
+  `// +build !go1.21` and `go1.18 || linux` imply no minimum.
+  `GoVersionDetector.detect_version` adds `build_constraints_status`, one of
+  `minimum`, `unconstrained`, `unknown` or `absent`. As in `go/build`, only
+  the file header is read: blank lines and comments before the first other
+  text, skipping `/* */` comments, with legacy lines counted only up to the
+  header's last blank line. So a `//go:build` line in a string or function
+  body no longer counts. More than one `//go:build` line, a bare
+  `//go:build`, and a direct `!!` are rejected by Go and are `unknown` here.
+  A release number longer than 9 digits is `unknown` rather than an error, and
+  a leading UTF-8 byte-order mark is skipped, as `go/build` does.
+  Malformed, unsatisfiable or oversized expressions are `unknown` and never
+  become a version, so
+  `go.mod` and feature-based hints keep their precedence. The new
+  `GoVersionDetector.analyze_build_constraints` also returns the reason.
 - CR-only Python source now parses and reports correct lines through
   `chunk_file`, `chunk_text`, `chunk_file_streaming` and VFS streaming
   (`VFSChunker.chunk_file(..., streaming=True)` and files over 10 MiB)
@@ -297,6 +334,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- `SmartSelector.select_multiple_grammars` no longer accepts
+  `global_constraints` and silently ignores them (treesitter-chunker#344). No
+  cross-language constraint is supported, so a nonempty mapping now raises
+  `ValueError`, naming its keys, before any selection runs. `None` and `{}` behave as
+  before. Use `select_best_grammar(language, constraints=...)` for
+  per-language constraints.
 - The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter`
   modules declare caller metadata named `label` with
   `attr.name="caller_label"`, so readers that map GraphML data by `attr.name`,
