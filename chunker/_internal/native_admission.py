@@ -56,9 +56,10 @@ logger = logging.getLogger(__name__)
 NATIVE_VERDICT_VALIDATOR_SCHEMA = 1
 _VERDICT_SCHEMA = "chunker.native_verdict.v1"
 _PROBE_SCHEMA = "native_probe.v1"
-_PROBE_PROFILE = "default-v1"
+#: ``sample=b""`` with ``integrity.DEFAULT_PROBE_TIMEOUT`` (treesitter-chunker#561);
+#: ``default-v1`` (the retired 10 s deadline) entries never match it.
+_PROBE_PROFILE = "default-v2"
 _DEFAULT_SAMPLE = b""
-_DEFAULT_TIMEOUT = 10.0
 #: Binary read-only open; ``O_BINARY`` keeps Windows from translating bytes.
 _READ_FLAGS = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NONBLOCK", 0)
 _HEX64 = frozenset("0123456789abcdef")
@@ -254,7 +255,7 @@ def admit_native_candidate(
     inspector: str = "none",
     inspect_artifact: Callable[[Path], Any] | None = None,
     sample: bytes = _DEFAULT_SAMPLE,
-    timeout: float = _DEFAULT_TIMEOUT,
+    timeout: float | None = None,
     probe: Callable[..., NativeProbeResult] | None = None,
 ) -> tuple[NativeProbeResult, Any]:
     """Admit ``path`` for ``language`` under ``trusted_artifacts[language]``.
@@ -268,8 +269,12 @@ def admit_native_candidate(
 
     ``inspect_artifact`` runs on the probe's admitted snapshot; its return
     value is the returned metadata, and it is stored with the verdict under
-    ``inspector``. A probe with a non-default ``sample`` or ``timeout`` is
-    never answered from, or stored in, the verdict store.
+    ``inspector``. ``timeout=None`` leaves the deadline to the probe's own
+    default; no default is restated here. The default profile is
+    ``sample=b""`` with that default, compared against the imported
+    ``integrity.DEFAULT_PROBE_TIMEOUT`` (an explicit equal value is the same
+    profile). A probe with a non-default ``sample`` or ``timeout`` is never
+    answered from, or stored in, the verdict store.
 
     Returns:
         ``(result, metadata)``; ``metadata`` is ``None`` unless the result is
@@ -286,7 +291,9 @@ def admit_native_candidate(
         assert rejection is not None
         return rejection, None
     pin = record["sha256"]
-    default_profile = sample == _DEFAULT_SAMPLE and timeout == _DEFAULT_TIMEOUT
+    default_profile = sample == _DEFAULT_SAMPLE and (
+        timeout is None or timeout == integrity.DEFAULT_PROBE_TIMEOUT
+    )
     content = hash_regular_file(candidate) if candidate.is_absolute() else None
     key: str | None = None
     if content is not None and _is_sha256(pin):
@@ -315,8 +322,8 @@ def admit_native_candidate(
         language,
         provenance=record,
         sample=sample,
-        timeout=timeout,
         inspect_artifact=inspect if inspect_artifact is not None else None,
+        **({} if timeout is None else {"timeout": timeout}),
     )
     if not result.supported:
         return result, None

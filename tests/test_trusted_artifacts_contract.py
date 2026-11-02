@@ -626,6 +626,45 @@ def test_verdict_misses_across_inspector_and_probe_profile(tmp_path, baml_librar
     require(len(calls) == 7, "default profile still reused")
 
 
+def test_default_probe_profile_follows_the_integrity_deadline(tmp_path, baml_library):
+    """Profile ``default-v2`` (treesitter-chunker#561): the default is the
+    probe's own ``DEFAULT_PROBE_TIMEOUT``, never a restated copy.
+
+    No ``timeout`` reaches the probe for a default call; an explicit value
+    equal to the imported constant is the same profile (reused); the retired
+    ``default-v1`` deadline (10 s) is another profile (never reused). Mutation
+    ``hardcoded_10s_default`` (compare with a local 10 s) fails here, and so
+    does ``restate_default_timeout`` (pass a local default to the probe).
+    """
+    from chunker.grammar.integrity import DEFAULT_PROBE_TIMEOUT
+
+    calls: list[dict[str, object]] = []
+    candidate = tmp_path / "baml.so"
+    candidate.write_bytes(baml_library.read_bytes())
+    pins = {"baml": _pin_of(baml_library.read_bytes())}
+    first, _ = native_admission.admit_native_candidate(
+        candidate, "baml", pins, probe=_counting_probe(calls)
+    )
+    require(first.supported, f"default admission {first}")
+    require(
+        len(calls) == 1 and "timeout" not in calls[0], f"no restated deadline {calls}"
+    )
+    native_admission.admit_native_candidate(
+        candidate,
+        "baml",
+        pins,
+        probe=_counting_probe(calls),
+        timeout=DEFAULT_PROBE_TIMEOUT,
+    )
+    require(len(calls) == 1, "an explicit DEFAULT_PROBE_TIMEOUT is the default profile")
+    for _ in range(2):
+        native_admission.admit_native_candidate(
+            candidate, "baml", pins, probe=_counting_probe(calls), timeout=10.0
+        )
+    require(len(calls) == 3, f"the retired 10 s deadline never reuses {len(calls)}")
+    require(calls[-1].get("timeout") == 10.0, "an explicit deadline is passed through")
+
+
 def test_verdict_key_has_no_path_or_stat_fields():
     key_a = native_admission.verdict_key(
         language="baml",
@@ -852,7 +891,7 @@ def test_verdict_payload_has_exactly_the_frozen_fields():
         "content_sha256": "b" * 64,
         "level": "probe",
         "probe_schema": "native_probe.v1",
-        "probe_profile": "default-v1",
+        "probe_profile": "default-v2",
         "inspector": "none",
         "validator_schema": native_admission.NATIVE_VERDICT_VALIDATOR_SCHEMA,
         "chunker": dist_version("treesitter-chunker"),
