@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import shutil
 import stat
 import subprocess
@@ -222,9 +223,10 @@ def shim(tmp_path: Path) -> Path:
     real_gcc = shutil.which("gcc")
     if real_gcc is not None:
         compiler = directory / "gcc"
-        extra = " ".join(MACOS_LINK_FLAGS)
+        extra = " ".join(shlex.quote(flag) for flag in MACOS_LINK_FLAGS)
         compiler.write_text(
-            f'#!/bin/sh\nexec "{real_gcc}" "$@" {extra}\n', encoding="utf-8"
+            f'#!/bin/sh\nexec {shlex.quote(real_gcc)} "$@" {extra}\n',
+            encoding="utf-8",
         )
         compiler.chmod(0o755)
     return directory
@@ -261,6 +263,8 @@ def _fixture_digest(repo: Path) -> str | None:
                 "-I",
                 str(src),
                 str(src / "parser.c"),
+                # The installer adds scanner.c when the grammar has one.
+                *([str(src / "scanner.c")] if (src / "scanner.c").exists() else []),
                 "-o",
                 str(output),
                 *MACOS_LINK_FLAGS,
