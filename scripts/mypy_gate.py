@@ -11,8 +11,10 @@ useless. Instead this gate:
   * fails ONLY on signatures absent from `docs/development/mypy-baseline.txt`.
 
 So new type errors are blocked immediately while the tracked debt is paid down by
-shrinking the baseline over time. Regenerate the baseline intentionally with
-`--update` after a legitimate reduction.
+shrinking the baseline over time. After a legitimate reduction, `--update`
+removes the cleared signatures. It never adds one: when mypy reports a signature
+absent from the baseline, `--update` fails and leaves the file unchanged, so new
+errors cannot be absorbed (treesitter-chunker#587).
 """
 from __future__ import annotations
 
@@ -71,11 +73,10 @@ def _run_mypy() -> list[str]:
 
 
 def main(argv: list[str]) -> int:
+    if not BASELINE.is_file():
+        print(f"mypy baseline not found: {BASELINE}", file=sys.stderr)
+        return 2
     current = {_signature(ln) for ln in _run_mypy()}
-    if "--update" in argv:
-        BASELINE.write_text("\n".join(sorted(current)) + "\n", encoding="utf-8")
-        print(f"mypy baseline updated: {len(current)} signatures")
-        return 0
     baseline = {
         ln.strip()
         for ln in BASELINE.read_text(encoding="utf-8").splitlines()
@@ -91,7 +92,25 @@ def main(argv: list[str]) -> int:
             f"baseline holds {len(baseline)} tracked-debt signatures.",
             file=sys.stderr,
         )
+        if "--update" in argv:
+            print(
+                "Baseline not updated: --update only removes cleared signatures.",
+                file=sys.stderr,
+            )
         return 1
+    if "--update" in argv:
+        # current is a subset of baseline here, so this only removes entries.
+        # One LF-terminated line per signature; no debt leaves an empty file.
+        BASELINE.write_text(
+            "".join(f"{s}\n" for s in sorted(current)),
+            encoding="utf-8",
+            newline="\n",
+        )
+        print(
+            f"mypy baseline updated: {len(current)} signatures "
+            f"({len(baseline) - len(current)} cleared)"
+        )
+        return 0
     fixed = len(baseline) - len(current & baseline)
     print(
         f"mypy gate OK: no new errors. Tracked debt: {len(current & baseline)}"

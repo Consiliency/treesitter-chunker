@@ -135,13 +135,16 @@ class GrammarAnalyzer:
             "symbols_count": 0,
             "file_size": 0,
             "validation_reason": result.reason,
+            "validation_message": result.message,
             "artifact_sha256": result.artifact_sha256,
         }
         if not result.supported:
             self.grammar_cache.pop(language, None)
             self._capabilities[language] = base_capabilities
             logger.warning(
-                "Grammar admission failed for %s: %s", language, result.reason
+                "Grammar admission failed for %s: %s",
+                language,
+                result.message or result.reason,
             )
             return None
 
@@ -450,6 +453,8 @@ class GrammarAnalyzer:
             report.append("=" * 50)
             report.append(f"Validation reason: {capabilities['validation_reason']}")
             report.append(f"Artifact SHA-256: {capabilities['artifact_sha256']}")
+            if capabilities.get("validation_message"):
+                report.append(capabilities["validation_message"])
 
             if capabilities["supported"]:
                 report.append("Status: Supported")

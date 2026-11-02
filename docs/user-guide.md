@@ -42,7 +42,9 @@ Tree-sitter Chunker is ideal for:
 
 ### Prerequisites
 
-- Python 3.12 or higher (published 6.0.0 also supports 3.11)
+- Python 3.12 or higher; Python 3.14 is the main supported version (published
+  6.0.0 also supports 3.11). Python 3.12 support is deprecated and ends at the
+  next major release (7.0, treesitter-chunker#599).
 - ~~uv package manager (recommended) or pip~~ **pip is sufficient for PyPI installation**
 - ~~C compiler (for building tree-sitter grammars)~~ **No longer required for basic usage!**
 - ~~Git (for fetching grammar repositories)~~ **No longer required for basic usage!**

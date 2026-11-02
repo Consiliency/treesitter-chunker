@@ -658,6 +658,14 @@ is incompatible and success from 0.5 through below 0.8 is limited; sample counts
 parse errors and existing score multipliers remain available in the result.
 These thresholds interpret metadata; they do not impose a wall-clock test gate.
 
+For a local candidate (`check_compatibility(..., grammar_path=...)`, as
+`SmartSelector` uses), the validator's `No test samples available for
+<language>` warning is an evidence gap, not a quality finding. Caller
+`code_samples` parsed with the candidate decide the level. With the gap and no
+caller samples, nothing was parsed, so the result is `UNKNOWN` (score 0.3)
+whatever other warnings are present; every warning stays in the result. Other
+validation warnings give `DEGRADED` only when there is parse evidence.
+
 An explicit `GrammarManager(cache_dir=...)` supplies the validation cache root for
 its registry, installer and default `CompatibilityChecker`/`GrammarTester`
 validators. Passing an actual `validator=` object to either helper preserves that

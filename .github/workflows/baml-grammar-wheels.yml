@@ -15,6 +15,8 @@ permissions:
 
 jobs:
   source:
+    permissions:
+      contents: read
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
@@ -55,6 +57,8 @@ jobs:
           path: dist/*.tar.gz
 
   wheel:
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -99,6 +103,8 @@ jobs:
           path: wheelhouse/*.whl
 
   test-wheel:
+    permissions:
+      contents: read
     needs: wheel
     strategy:
       fail-fast: false

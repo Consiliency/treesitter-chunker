@@ -176,6 +176,7 @@ _REQUIRED_WHEEL_PAYLOAD = frozenset(
         "chunker/fallback_overlap/__init__.py",
         "chunker/fallback_overlap/chunker.py",
         "chunker/grammar/__init__.py",
+        "chunker/grammar/_native_policy.py",
         "chunker/grammar/builder.py",
         "chunker/grammar/discovery.py",
         "chunker/grammar/download.py",

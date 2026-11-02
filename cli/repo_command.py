@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -33,7 +34,7 @@ def process(
         "depth-first",
         help="Traversal strategy: depth-first or breadth-first",
     ),
-):
+) -> None:
     """Process all files in a repository."""
 
     # Create processor
@@ -81,7 +82,7 @@ def process(
 
         # Save to file_path if requested
         if output:
-            output_data = {
+            output_data: dict[str, Any] = {
                 "repo_path": result.repo_path,
                 "total_files": result.total_files,
                 "total_chunks": result.total_chunks,
@@ -91,7 +92,7 @@ def process(
             }
 
             for file_result in result.file_results:
-                file_data = {
+                file_data: dict[str, Any] = {
                     "path": file_result.file_path,
                     "processing_time": file_result.processing_time,
                     "chunks": [],
@@ -126,7 +127,7 @@ def process(
 @app.command()
 def estimate(
     repo_path: str = typer.Argument(help="Path to repository"),
-):
+) -> None:
     """Estimate processing time for a repository."""
 
     processor = GitAwareRepoProcessor(show_progress=False)
@@ -146,7 +147,7 @@ def estimate(
         console.print(f"  • Estimated time: {estimated_time:.1f} seconds")
 
         # Show file_path breakdown by language
-        lang_counts = {}
+        lang_counts: dict[str, int] = {}
         for file_path in files:
             ext = file_path.suffix.lower()
             lang = processor._language_extensions.get(ext, "unknown")
@@ -170,7 +171,7 @@ def changed(
         help="Show changes since this commit (e.g., HEAD~1)",
     ),
     branch: str | None = typer.Option(None, help="Compare with this branch"),
-):
+) -> None:
     """Show files that would be processed in incremental mode."""
 
     processor = GitAwareRepoProcessor(show_progress=False)
