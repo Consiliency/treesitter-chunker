@@ -181,7 +181,7 @@ The lock is held only for critical sections, including:
 **Only one subprocess may run under the lock: the IF-0-HOTFIX-1 probe child.**
 `publish_native_grammar` starts it during the commit section, and `restore`
 may start it once more. It is bounded by the `timeout` passed to
-`publish_native_grammar`, the default 10 seconds, plus the probe's own
+`publish_native_grammar`, the default 30 seconds, plus the probe's own
 documented cleanup. It inherits no lock descriptor or handle. It reads only
 its private snapshot, never the root.
 
@@ -839,7 +839,7 @@ def publish_native_grammar(
     *,
     provenance: Mapping[str, Any] | None,
     sample: bytes = b"",
-    timeout: float = 10.0,
+    timeout: float = 30.0,
 ) -> NativeProbeResult:
 ```
 

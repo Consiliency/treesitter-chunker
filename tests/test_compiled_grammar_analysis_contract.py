@@ -11,7 +11,9 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.usefixtures("native_probe_lifetimes")
+pytestmark = pytest.mark.usefixtures(
+    "native_probe_lifetimes", "native_policy_environment"
+)
 
 from tests.native_probe_lifetime import (
     remove_retained_probe_root,
@@ -265,11 +267,12 @@ __attribute__((constructor)) static void start(void) { enter(); }
             == "untrusted"
         )
     assert not sentinel.exists()
+    # The default deadline: a hanging constructor must still reach native entry
+    # after a first-load Windows trust check (treesitter-chunker#547).
     result = probe_native_grammar(
         library,
         "baml",
         provenance=trusted_artifacts(library)["baml"],
-        timeout=10,
     )
     assert sentinel.read_bytes() == b"entered"
     assert not result.supported and result.reason == reason
@@ -277,6 +280,70 @@ __attribute__((constructor)) static void start(void) { enter(); }
     renamed = library.with_name("released" + library.suffix)
     library.rename(renamed)
     renamed.unlink()
+
+
+def test_default_deadline_admits_load_blocked_like_windows_trust_check(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A load that waits as long as the measured Windows fallback is admitted.
+
+    On WIN, a stalled Smart App Control cloud check held the first load of a new
+    unsigned library for 10.03-10.06 seconds before Windows allowed it
+    (treesitter-chunker#547). This constructor blocks the load for 11 seconds
+    instead, so it does not depend on the host's policy or network.
+    """
+    from chunker.grammar import integrity
+
+    sentinel = tmp_path / "entered"
+    monkeypatch.setenv("CHUNKER_TEST_NATIVE_SENTINEL", str(sentinel))
+    code = tmp_path / "slow-entry.c"
+    code.write_text(
+        """
+#include <stdio.h>
+#include <stdlib.h>
+#ifdef _WIN32
+#include <windows.h>
+#define BLOCK_LOAD() Sleep(11000)
+#else
+#include <unistd.h>
+#define BLOCK_LOAD() sleep(11)
+#endif
+static void enter(void) {
+    BLOCK_LOAD();
+    FILE *marker = fopen(getenv("CHUNKER_TEST_NATIVE_SENTINEL"), "wb");
+    if (marker) { fputs("entered", marker); fclose(marker); }
+}
+#ifdef _WIN32
+BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
+    (void)instance; (void)reserved;
+    if (reason == DLL_PROCESS_ATTACH) enter();
+    return TRUE;
+}
+#else
+__attribute__((constructor)) static void start(void) { enter(); }
+#endif
+""",
+        encoding="utf-8",
+    )
+    library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c", code])
+    deadlines = []
+    original = integrity._read_child
+
+    def read(command, cwd, timeout, **kwargs):
+        deadlines.append(timeout)
+        return original(command, cwd, timeout, **kwargs)
+
+    monkeypatch.setattr(integrity, "_read_child", read)
+    result = integrity.probe_native_grammar(
+        library,
+        "baml",
+        provenance=trusted_artifacts(library)["baml"],
+        sample=FIXTURE.read_bytes(),
+    )
+    assert result.supported and result.reason == "ok", (result, deadlines)
+    assert deadlines == [30.0]
+    assert sentinel.read_bytes() == b"entered"
+    assert result.artifact_sha256 == sha256(library.read_bytes()).hexdigest()
 
 
 @pytest.mark.parametrize(
@@ -873,8 +940,15 @@ def _wait_for_file(path, process=None, timeout=45):
         if process is not None and process.poll() is not None:
             if path.exists() and path.stat().st_size:
                 return
+            from types import SimpleNamespace
+            from tests.native_policy import skip_policy_subprocess
+
+            stdout, stderr = process.communicate(timeout=5)
+            skip_policy_subprocess(
+                SimpleNamespace(returncode=process.returncode, stdout=stdout)
+            )
             raise AssertionError(
-                f"supervised controller exited before {path.name}: {process.communicate(timeout=5)}"
+                f"supervised controller exited before {path.name}: {(stdout, stderr)}"
             )
         assert time.monotonic() < deadline, f"missing barrier: {path}"
         time.sleep(0.01)
@@ -958,6 +1032,100 @@ class _NativeObserver:
         if self.handle is not None:
             assert self.api.CloseHandle(self.handle)
             self.handle = None
+
+
+_CLEANUP_DRIVER = """import json, os, sys, time
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from chunker.grammar import integrity
+library, cleanup, release, returned, return_observed = map(Path, sys.argv[2:7])
+original = integrity.shutil.rmtree
+observed = {}
+def publish(path, record):
+    pending = path.with_name(path.name + ".tmp")
+    pending.write_text(json.dumps(record), encoding="utf-8")
+    pending.replace(path)
+def wait(path):
+    deadline = time.monotonic() + 45
+    while not path.exists():
+        if time.monotonic() > deadline: raise RuntimeError("driver did not release " + path.name)
+        time.sleep(0.01)
+published = Path(os.environ["CHUNKER_TEST_OPEN_PUBLISHED"])
+def remove(path, *args, **kwargs):
+    publish(cleanup, {"root": str(path), "launcher_reaped": observed["state"].launcher.returncode is not None})
+    # Only a worker that published native entry has state for the test to observe
+    # before cleanup. Without entry (for example a policy denial) report at once.
+    if published.exists():
+        wait(release)
+    return original(path, *args, **kwargs)
+original_read = integrity._read_child
+def read(*args, **kwargs):
+    observed["state"] = kwargs["lifecycle"]
+    return original_read(*args, **kwargs)
+integrity._read_child = read
+integrity.shutil.rmtree = remove
+result = integrity.probe_native_grammar(library, "baml", provenance={"sha256": sys.argv[7]})
+if result.reason == "policy_blocked":
+    print(json.dumps({"schema": "native_test.policy_result.v1", "reason": result.reason}), flush=True)
+    raise SystemExit(77)
+s = observed["state"]
+record = {"reason": result.reason, "digest": result.artifact_sha256, "launcher": s.launcher.pid, "worker": s.worker.pid if s.worker else None, "launcher_reaped": s.launcher.returncode is not None}
+publish(returned, record)
+wait(return_observed)
+print(json.dumps(record), flush=True)
+"""
+
+
+def test_cleanup_driver_reports_probe_without_native_entry_unreleased(tmp_path):
+    """A probe that never entered native code is not held at the cleanup barrier.
+
+    Only an entered worker has state for the test to observe before cleanup. A
+    probe that ends without entry, such as an application-control denial, must
+    report its result (exit 77 for a denial) rather than wait for a release the
+    test grants only after native entry.
+    """
+    library = tmp_path / "invalid.dll"
+    library.write_bytes(b"reviewed bytes that are not a native library")
+    names = ("cleanup", "release", "returned", "return-observed")
+    cleanup, release, returned, return_observed = (tmp_path / n for n in names)
+    driver = tmp_path / "driver.py"
+    driver.write_text(_CLEANUP_DRIVER, encoding="utf-8")
+    environment = dict(os.environ)
+    environment["CHUNKER_TEST_OPEN_PUBLISHED"] = str(tmp_path / "opened-published")
+    controller = subprocess.Popen(
+        [
+            sys.executable,
+            "-I",
+            str(driver),
+            str(ROOT),
+            str(library),
+            str(cleanup),
+            str(release),
+            str(returned),
+            str(return_observed),
+            sha256(library.read_bytes()).hexdigest(),
+        ],
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        _wait_for_file(returned, controller)
+        assert not release.exists(), "the test granted no release"
+        assert json.loads(cleanup.read_text(encoding="utf-8"))["launcher_reaped"]
+        record = json.loads(returned.read_text(encoding="utf-8"))
+        assert record["reason"] == "load_failed" and record["digest"] is None
+        return_observed.touch()
+        stdout, stderr = controller.communicate(timeout=45)
+        assert controller.returncode == 0, stderr
+        assert json.loads(stdout) == record
+    finally:
+        release.touch()
+        return_observed.touch()
+        if controller.poll() is None:
+            controller.kill()
+            controller.communicate(timeout=10)
 
 
 @pytest.mark.parametrize("fault", ["timeout", "stdout_overflow", "stderr_overflow"])
@@ -1047,43 +1215,7 @@ __attribute__((constructor)) static void start(void) { enter(); }
     ]
     published = tmp_path / "opened-published"
     driver = tmp_path / "driver.py"
-    driver.write_text(
-        """
-import json, sys, time
-from pathlib import Path
-sys.path.insert(0, sys.argv[1])
-from chunker.grammar import integrity
-library, cleanup, release, returned, return_observed = map(Path, sys.argv[2:7])
-original = integrity.shutil.rmtree
-observed = {}
-def publish(path, record):
-    pending = path.with_name(path.name + ".tmp")
-    pending.write_text(json.dumps(record), encoding="utf-8")
-    pending.replace(path)
-def wait(path):
-    deadline = time.monotonic() + 45
-    while not path.exists():
-        if time.monotonic() > deadline: raise RuntimeError("driver did not release " + path.name)
-        time.sleep(0.01)
-def remove(path, *args, **kwargs):
-    publish(cleanup, {"root": str(path), "launcher_reaped": observed["state"].launcher.returncode is not None})
-    wait(release)
-    return original(path, *args, **kwargs)
-original_read = integrity._read_child
-def read(*args, **kwargs):
-    observed["state"] = kwargs["lifecycle"]
-    return original_read(*args, **kwargs)
-integrity._read_child = read
-integrity.shutil.rmtree = remove
-result = integrity.probe_native_grammar(library, "baml", provenance={"sha256": sys.argv[7]}, timeout=12)
-s = observed["state"]
-record = {"reason": result.reason, "digest": result.artifact_sha256, "launcher": s.launcher.pid, "worker": s.worker.pid if s.worker else None, "launcher_reaped": s.launcher.returncode is not None}
-publish(returned, record)
-wait(return_observed)
-print(json.dumps(record), flush=True)
-""",
-        encoding="utf-8",
-    )
+    driver.write_text(_CLEANUP_DRIVER, encoding="utf-8")
     environment = dict(os.environ)
     environment.update(
         {
@@ -1691,6 +1823,7 @@ def test_native_windows_handle_failure_after_real_ack_rejects(
     tmp_path, monkeypatch, operation
 ):
     from chunker.grammar import integrity
+    from tests.native_policy import skip_policy_reply_under_status_fault
 
     library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
     real_status, real_exited, real_read = (
@@ -1698,10 +1831,12 @@ def test_native_windows_handle_failure_after_real_ack_rejects(
         integrity._WindowsProcess.exited,
         integrity._read_child,
     )
-    failures, observations, roots = [], [], []
+    failures, observations, roots, observed_statuses = [], [], [], []
 
     def status(handle):
         if operation == "status":
+            # Keep the real status for the policy check only; the product never sees it.
+            observed_statuses.append(real_status(handle))
             failures.append("status")
             raise OSError("GetExitCodeProcess unavailable")
         return real_status(handle)
@@ -1717,6 +1852,15 @@ def test_native_windows_handle_failure_after_real_ack_rejects(
         roots.append(args[1])
         try:
             result = real_read(*args, **kwargs)
+            if operation == "status":
+                skip_policy_reply_under_status_fault(
+                    result,
+                    args[0],
+                    kwargs["lifecycle"],
+                    kwargs["worker_nonce"],
+                    observed_statuses,
+                    "GetExitCodeProcess unavailable",
+                )
             observations.append(json.loads(result[1]))
             return result
         except OSError:

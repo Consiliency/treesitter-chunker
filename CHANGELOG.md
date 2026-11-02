@@ -32,8 +32,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add an experimental stdlib snapshot selector for opt-in governed extraction. Excluded repositories, dependencies and symlinks remain opaque. Published parser APIs and Boundary IR bytes are unchanged.
 - Keep unexpected selector failures on setup exit 2; test actual canonical bytes and receipt digests for Unicode and escaped paths.
 
+### Deprecated
+
+- Python 3.12 support is deprecated and ends at the next major release (7.0).
+  Python 3.14 is the main supported version. `requires-python` stays `>=3.12`
+  until then. The drop waits until downstream consumers run on 3.14
+  (treesitter-chunker#599).
+
 ### Fixed
 
+- Python call extraction now records the outer call of a callable-return
+  expression, such as `getattr(obj, 'audit')()`, `f()()` or `(f())()`, as its
+  own call site (treesitter-chunker#516). Before, only the inner call
+  (`getattr`) was observed. The outer site's raw callee is the inner call's
+  exact source text, parentheses included (`getattr(obj, 'audit')`, `(f())`),
+  with its byte span, the enclosing owner and a distinct `call_site_id`; the
+  inner site and its ID are unchanged. Such complex callees stay unresolved
+  and never bind a local definition by an incidental name. Chunk
+  `calls`/`call_spans` metadata, symbol-graph `calls` relationships and
+  `call_facts`, and Boundary IR `calls` edges gain one entry per outer site,
+  so recapture graph/IR outputs and their derived counts and digests. The
+  Python Boundary IR fixture now includes such a call, and its golden is
+  regenerated. Other complex callees, such as subscripts (`h['a']()`) and
+  parenthesized names, are unchanged, as is JavaScript
+  (treesitter-chunker#602). See
+  [the Boundary IR specification](docs/interface-boundary-spec.md).
+- Go build-constraint version hints now interpret `&&`, `||`, `!` and
+  parentheses in `//go:build` lines, and whitespace OR, comma AND and `!` in
+  legacy `// +build` lines (treesitter-chunker#438). The hint is the lowest Go
+  release at which the expression can hold. Non-release tags (GOOS, GOARCH,
+  `cgo`, custom tags) are treated as independent. It is a necessary minimum,
+  not a build evaluation. `//go:build go1.18 && !go1.21` and
+  `//go:build go1.18 || go1.21` now report `1.18` instead of `1.21`.
+  `// +build !go1.21` and `go1.18 || linux` imply no minimum.
+  `GoVersionDetector.detect_version` adds `build_constraints_status`, one of
+  `minimum`, `unconstrained`, `unknown` or `absent`. As in `go/build`, only
+  the file header is read: blank lines and comments before the first other
+  text, skipping `/* */` comments, with legacy lines counted only up to the
+  header's last blank line. So a `//go:build` line in a string or function
+  body no longer counts. More than one `//go:build` line, a bare
+  `//go:build`, and a direct `!!` are rejected by Go and are `unknown` here.
+  A release number longer than 9 digits is `unknown` rather than an error, and
+  a leading UTF-8 byte-order mark is skipped, as `go/build` does.
+  Malformed, unsatisfiable or oversized expressions are `unknown` and never
+  become a version, so
+  `go.mod` and feature-based hints keep their precedence. The new
+  `GoVersionDetector.analyze_build_constraints` also returns the reason.
+- CR-only Python source now parses and reports correct lines through
+  `chunk_file`, `chunk_text`, `chunk_file_streaming` and VFS streaming
+  (`VFSChunker.chunk_file(..., streaming=True)` and files over 10 MiB)
+  (treesitter-chunker#471). Before, the pinned grammar reported a parse error
+  for a file whose lines end in a lone CR, and every chunk reported line 1.
+  Python containing a lone CR is now parsed from a copy in which each lone CR
+  is replaced with LF. The replacement keeps every byte offset, so byte spans,
+  chunk content and content-based IDs still refer to the physical bytes,
+  including the CRs. Call-site lines in symbol-graph `calls` relationships,
+  `call_facts` and Boundary IR call edges now count lone CR line endings too,
+  so LF, CRLF and CR-only Python report the same lines. LF and CRLF files are
+  parsed unchanged. Other languages are unchanged and still count only LF
+  (treesitter-chunker#601), as do complexity line metrics
+  (treesitter-chunker#597). See
+  [raw file newlines](docs/chunk-identity.md#raw-file-newlines-and-the-600-migration).
 - Go build-constraint version hints no longer drop earlier release tags from
   a legacy comma conjunction (treesitter-chunker#437). `// +build go1.10,go1.9`
   now reports `1.10` in either order, as `go1.10,go1.9,linux` and
@@ -272,6 +331,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   treesitter-chunker#176, treesitter-chunker#182, treesitter-chunker#183,
   treesitter-chunker#184, treesitter-chunker#185). Structural validity does not
   establish native safety or provenance; see the packaging guide for profile limits.
+- Native grammar probes now distinguish explicit Windows application-control
+  denials as `policy_blocked`, with guidance for signed or organization-approved
+  builds. Blocked libraries remain unsupported and publish no admitted digest.
+  Manager/analyzer diagnostics retain this guidance (treesitter-chunker#547).
 
 - JavaScript context lookup is truthful against the shared real-parser
   reference fixtures (`tests/fixtures/references/javascript/`). A generator
@@ -284,6 +347,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- `SmartSelector.select_multiple_grammars` no longer accepts
+  `global_constraints` and silently ignores them (treesitter-chunker#344). No
+  cross-language constraint is supported, so a nonempty mapping now raises
+  `ValueError`, naming its keys, before any selection runs. `None` and `{}` behave as
+  before. Use `select_best_grammar(language, constraints=...)` for
+  per-language constraints.
 - The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter`
   modules declare caller metadata named `label` with
   `attr.name="caller_label"`, so readers that map GraphML data by `attr.name`,
@@ -374,6 +443,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   It also refuses to publish over a grammar file listed in the installed
   package's RECORD (checked before any clone in install and update); a local
   link elsewhere that aliases a shipped grammar can still be replaced.
+- The default admission deadline of `probe_native_grammar` and
+  `publish_native_grammar` is now 30 seconds instead of 10. With Smart App
+  Control enforced, Windows can hold the first load of a new unsigned grammar
+  for about ten seconds while a stalled cloud trust check falls back, which
+  made the probe report `timeout` or an empty acknowledgment
+  (treesitter-chunker#547). The value is the new public constant
+  `chunker.grammar.integrity.DEFAULT_PROBE_TIMEOUT`. An explicit `timeout` is
+  used exactly. The verdict-reuse probe profile becomes `default-v2`.
+- The full locked development environment now installs on CPython 3.14 from
+  wheels alone (treesitter-chunker#502). In-range lock updates: `cffi` 2.0.0,
+  `httptools` 0.7.1, `line-profiler` 5.0.1, `markupsafe` 3.0.3, `pydantic`
+  2.12.0 with `pydantic-core` 2.41.1 (and the `typing-inspection` 0.4.2 it
+  requires), `uvloop` 0.22.1 and `watchfiles` 1.1.1. Parser and runtime pins
+  are unchanged. Python 3.14 is now the main version: CI (lint, type and smoke
+  checks), the scheduled full tier, release validation and the distribution
+  build run on it. The 3.12 minimum keeps only two main-package checks, Linux
+  platform-core and the release installed-wheel check, plus the BAML companion
+  workflow's `source` and `wheel` jobs on the companion's own 3.12 minimum, with
+  no extra CI jobs. `requires-python` stays
+  `>=3.12`, and `.python-version` keeps 3.12 as the default development
+  interpreter.
+- On Python 3.14, Linux starts multiprocessing workers with `forkserver` by
+  default. Scripts that call `chunk_files_parallel`, `chunk_directory_parallel`
+  or `ParallelChunker` need the `if __name__ == "__main__":` guard there, as on
+  macOS and Windows. Without it, Python prints a bootstrapping `RuntimeError` to
+  stderr, and the call then raises under forkserver or returns empty chunk lists
+  under `spawn`; see
+  [the parallel API](docs/api-reference.md#chunk_files_parallel)
+  (treesitter-chunker#502).
 - `scripts/mypy_gate.py --update` now only removes cleared signatures. When mypy
   reports a signature that is not in the baseline, it exits 1 and leaves
   `docs/development/mypy-baseline.txt` unchanged, so new errors can no longer be

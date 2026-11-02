@@ -7,6 +7,8 @@ Builds use the real C compiler on the real BAML grammar sources, and every
 native load is real. The only substitution is a ``git`` shim on ``PATH``
 inside the child processes; it copies a local fixture repository (with
 ``copystat``, so sources keep old mtimes) and can leave a grandchild running.
+A test may also give ``git rev-parse`` its own short limit while the build keeps
+a generous one (treesitter-chunker#606).
 
 ADMIT (treesitter-chunker#362) admits an installed grammar only under its
 approved pin. Each install child pins ``baml`` through the public
@@ -128,7 +130,9 @@ from pathlib import Path
 from chunker.grammar_management.core import GrammarInstaller
 
 cache, build_timeout = Path(ARGS[0]), float(ARGS[1])
+commit_timeout = float(ARGS[2]) if len(ARGS) > 2 else None
 messages = []
+commit_limits = []  # each short limit actually applied to the commit lookup
 
 
 class Collect(logging.Handler):
@@ -141,10 +145,22 @@ logging.getLogger().setLevel(logging.WARNING)
 installer = GrammarInstaller(
     cache_dir=cache, build_timeout=build_timeout, trusted_artifacts=pins
 )
+if commit_timeout is not None:
+    # Only the commit lookup gets the short limit; the build steps before it
+    # keep ``build_timeout``, so a slow ``make`` cannot reach the deadline.
+    run_staged = installer._run_staged
+
+    def _run_staged(staging, argv, *, what, **kwargs):
+        if what == "Git rev-parse":
+            kwargs["timeout"] = commit_timeout
+            commit_limits.append(commit_timeout)
+        return run_staged(staging, argv, what=what, **kwargs)
+
+    installer._run_staged = _run_staged
 emit("ready")
 wait()
 ok, error, _info = installer.install_grammar("baml", "https://github.com/example/tree-sitter-baml")
-emit("done", success=ok, error=error, warnings=messages)
+emit("done", success=ok, error=error, warnings=messages, commit_limits=commit_limits)
 """
 )
 
@@ -277,8 +293,18 @@ def _env(shim: Path, repo: Path, **extra: str) -> dict[str, str]:
     }
 
 
-def _installer(cache: Path, env: dict[str, str], *, timeout: float = 120.0, pauses=()):
-    return Child(INSTALL, [cache, timeout], pauses=pauses, env=env)
+def _installer(
+    cache: Path,
+    env: dict[str, str],
+    *,
+    timeout: float = 120.0,
+    commit_timeout: float | None = None,
+    pauses=(),
+):
+    args = (
+        [cache, timeout] if commit_timeout is None else [cache, timeout, commit_timeout]
+    )
+    return Child(INSTALL, args, pauses=pauses, env=env)
 
 
 def _install(cache: Path, env: dict[str, str], **kwargs) -> dict:
@@ -1144,8 +1170,10 @@ def test_aborted_commit_lookup_fails_the_install(tmp_path, shim, fault):
     Mutation ``swallow_commit_abort`` reports success.
     """
     cache = tmp_path / "cache"
-    # No src/: the build is the real make fallback copying a prebuilt library,
-    # so only rev-parse is slow, never the build (a short build timeout).
+    # No src/: the build is the real make fallback copying a prebuilt library.
+    # Only rev-parse has the short limit; the build keeps 120 seconds, because
+    # ``make`` can be slow to start (the Xcode shim on hosted macOS,
+    # treesitter-chunker#606).
     repo = tmp_path / "repo"
     repo.mkdir()
     (repo / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
@@ -1156,11 +1184,17 @@ def test_aborted_commit_lookup_fails_the_install(tmp_path, shim, fault):
     pidfile = tmp_path / "escapee.pid"
     extra = {"TXN_GIT_REVPARSE": fault, "TXN_GIT_PIDFILE": str(pidfile)}
     try:
-        done = _install(cache, _env(shim, repo, **extra), timeout=3)
+        done = _install(cache, _env(shim, repo, **extra), timeout=120, commit_timeout=3)
     finally:
         _kill_pidfile(pidfile)
     assert not done["success"]
-    assert "Commit lookup aborted: Git rev-parse" in done["error"]
+    # The override reached the real commit lookup, exactly once.
+    assert done["commit_limits"] == [3.0]
+    reason = {
+        "timeout": "timed out",
+        "escape": "left processes that could not be confirmed stopped",
+    }[fault]
+    assert done["error"] == f"Commit lookup aborted: Git rev-parse {reason}"
     assert not (cache / "grammars" / "libbaml.so").exists()
     assert not (cache / "downloads" / "tree-sitter-baml").exists()
 

@@ -6,7 +6,10 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, Path(Path(Path(__file__).resolve().parent).parent))
+# sys.path entries must be str: on Python 3.14 the default multiprocessing
+# forkserver rebuilds sys.path from its repr, and a Path entry kills it
+# (treesitter-chunker#502).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from chunker.fallback.overlapping import OverlappingFallbackChunker, OverlapStrategy
 
 
