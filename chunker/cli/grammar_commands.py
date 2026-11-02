@@ -1,10 +1,42 @@
 """CLI commands for grammar management."""
 
 import argparse
+import functools
 import sys
+from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import Any
 
+from chunker._internal.trusted_artifacts import resolve_command_pins
 from chunker._internal.user_grammar_tools import UserGrammarTools
+from chunker.exceptions import TrustedArtifactsError
+
+#: Exit status for a missing or defective pin file (a usage error).
+PIN_FILE_USAGE_ERROR = 2
+
+
+def _with_pins(
+    command: Callable[[argparse.Namespace], int],
+) -> Callable[[argparse.Namespace], int]:
+    """Resolve the active pin source before ``command`` runs.
+
+    Every grammar subcommand is pin-dependent: ``--trusted-artifacts PATH``
+    wins, otherwise the user-config pin file applies, and the two are never
+    merged. A missing or defective option file, or a present but defective
+    config file, exits 2 naming the file and the defect, before discovery, any
+    probe or any native load.
+    """
+
+    @functools.wraps(command)
+    def run(args: argparse.Namespace) -> int:
+        try:
+            args.pins = resolve_command_pins(getattr(args, "trusted_artifacts", None))
+        except TrustedArtifactsError as error:
+            print(f"chunker grammar: error: {error}", file=sys.stderr)
+            return PIN_FILE_USAGE_ERROR
+        return command(args)
+
+    return run
 
 
 def setup_grammar_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -17,6 +49,16 @@ def setup_grammar_parser(subparsers: argparse._SubParsersAction) -> None:
         "grammar",
         help="Manage tree-sitter grammar libraries",
     )
+    grammar_parser.add_argument(
+        "--trusted-artifacts",
+        metavar="PATH",
+        type=Path,
+        default=None,
+        help=(
+            "chunker.trusted_artifacts.v1 file of approved grammar SHA-256 pins; "
+            "replaces the user-config pin file for this command"
+        ),
+    )
 
     grammar_subparsers = grammar_parser.add_subparsers(
         dest="grammar_command",
@@ -28,7 +70,7 @@ def setup_grammar_parser(subparsers: argparse._SubParsersAction) -> None:
         "list",
         help="List all installed grammars with their status",
     )
-    list_parser.set_defaults(func=cmd_list_grammars)
+    list_parser.set_defaults(func=_with_pins(cmd_list_grammars))
 
     # Info command
     info_parser = grammar_subparsers.add_parser(
@@ -36,7 +78,7 @@ def setup_grammar_parser(subparsers: argparse._SubParsersAction) -> None:
         help="Get detailed information about a specific grammar",
     )
     info_parser.add_argument("language", help="Language name to get information about")
-    info_parser.set_defaults(func=cmd_grammar_info)
+    info_parser.set_defaults(func=_with_pins(cmd_grammar_info))
 
     # Install command
     install_parser = grammar_subparsers.add_parser(
@@ -50,7 +92,7 @@ def setup_grammar_parser(subparsers: argparse._SubParsersAction) -> None:
         default="main",
         help="Branch to checkout (default: main)",
     )
-    install_parser.set_defaults(func=cmd_install_grammar)
+    install_parser.set_defaults(func=_with_pins(cmd_install_grammar))
 
     # Update command
     update_parser = grammar_subparsers.add_parser(
@@ -58,7 +100,7 @@ def setup_grammar_parser(subparsers: argparse._SubParsersAction) -> None:
         help="Update a grammar to the latest version",
     )
     update_parser.add_argument("language", help="Language name to update")
-    update_parser.set_defaults(func=cmd_update_grammar)
+    update_parser.set_defaults(func=_with_pins(cmd_update_grammar))
 
     # Remove command
     remove_parser = grammar_subparsers.add_parser(
@@ -66,7 +108,7 @@ def setup_grammar_parser(subparsers: argparse._SubParsersAction) -> None:
         help="Remove a grammar and its source",
     )
     remove_parser.add_argument("language", help="Language name to remove")
-    remove_parser.set_defaults(func=cmd_remove_grammar)
+    remove_parser.set_defaults(func=_with_pins(cmd_remove_grammar))
 
     # Diagnose command
     diagnose_parser = grammar_subparsers.add_parser(
@@ -74,25 +116,30 @@ def setup_grammar_parser(subparsers: argparse._SubParsersAction) -> None:
         help="Diagnose issues with a specific grammar",
     )
     diagnose_parser.add_argument("language", help="Language name to diagnose")
-    diagnose_parser.set_defaults(func=cmd_diagnose_grammar)
+    diagnose_parser.set_defaults(func=_with_pins(cmd_diagnose_grammar))
 
     # Health command
     health_parser = grammar_subparsers.add_parser(
         "health",
         help="Check overall system health for grammar management",
     )
-    health_parser.set_defaults(func=cmd_system_health)
+    health_parser.set_defaults(func=_with_pins(cmd_system_health))
 
     # Validate command
     validate_parser = grammar_subparsers.add_parser(
         "validate",
         help="Validate all installed grammars",
     )
-    validate_parser.set_defaults(func=cmd_validate_all)
+    validate_parser.set_defaults(func=_with_pins(cmd_validate_all))
 
 
-def get_grammar_tools() -> UserGrammarTools:
+def get_grammar_tools(
+    trusted_artifacts: Mapping[str, Mapping[str, Any]] | None = None,
+) -> UserGrammarTools:
     """Get grammar tools instance with default paths.
+
+    Args:
+        trusted_artifacts: The command's active pins (option or config file)
 
     Returns:
         UserGrammarTools instance
@@ -102,7 +149,9 @@ def get_grammar_tools() -> UserGrammarTools:
     build_dir = project_root / "chunker" / "data" / "grammars" / "build"
     grammars_dir = project_root / "grammars"
 
-    return UserGrammarTools(build_dir, grammars_dir)
+    return UserGrammarTools(
+        build_dir, grammars_dir, trusted_artifacts=trusted_artifacts
+    )
 
 
 def cmd_list_grammars(args: argparse.Namespace) -> int:
@@ -115,7 +164,7 @@ def cmd_list_grammars(args: argparse.Namespace) -> int:
         Exit code
     """
     try:
-        tools = get_grammar_tools()
+        tools = get_grammar_tools(getattr(args, "pins", None))
         result = tools.list_installed_grammars()
 
         print("\n📋 Grammar Status Summary:")
@@ -163,7 +212,7 @@ def cmd_grammar_info(args: argparse.Namespace) -> int:
         1 otherwise or on error.
     """
     try:
-        tools = get_grammar_tools()
+        tools = get_grammar_tools(getattr(args, "pins", None))
         result = tools.get_grammar_info(args.language)
 
         print(f"\n📊 Grammar Information: {args.language}")
@@ -242,7 +291,7 @@ def cmd_install_grammar(args: argparse.Namespace) -> int:
         print(f"   Repository: {args.repo_url}")
         print(f"   Branch: {args.branch}")
 
-        tools = get_grammar_tools()
+        tools = get_grammar_tools(getattr(args, "pins", None))
         result = tools.install_grammar(args.language, args.repo_url, args.branch)
 
         print("\n📋 Installation Result:")
@@ -288,7 +337,7 @@ def cmd_update_grammar(args: argparse.Namespace) -> int:
     try:
         print(f"🔄 Updating grammar for {args.language}...")
 
-        tools = get_grammar_tools()
+        tools = get_grammar_tools(getattr(args, "pins", None))
         result = tools.update_grammar(args.language)
 
         print("\n📋 Update Result:")
@@ -340,7 +389,7 @@ def cmd_remove_grammar(args: argparse.Namespace) -> int:
             print("Removal cancelled.")
             return 0
 
-        tools = get_grammar_tools()
+        tools = get_grammar_tools(getattr(args, "pins", None))
         result = tools.remove_grammar(args.language)
 
         print("\n📋 Removal Result:")
@@ -404,7 +453,7 @@ def cmd_system_health(args: argparse.Namespace) -> int:
     try:
         print("🏥 Checking system health for grammar management...")
 
-        tools = get_grammar_tools()
+        tools = get_grammar_tools(getattr(args, "pins", None))
         result = tools.check_system_health()
 
         print("\n📋 System Health Report:")
@@ -479,7 +528,7 @@ def cmd_validate_all(args: argparse.Namespace) -> int:
     try:
         print("🔍 Validating all installed grammars...")
 
-        tools = get_grammar_tools()
+        tools = get_grammar_tools(getattr(args, "pins", None))
         result = tools.list_installed_grammars()
 
         print("\n📋 Validation Results:")

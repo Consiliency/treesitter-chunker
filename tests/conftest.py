@@ -86,6 +86,20 @@ def _restore_process_instrumentation():
         tracemalloc.start(trace_depth)
 
 
+@pytest.fixture(autouse=True)
+def _reset_native_admission_state():
+    """Start each test without verdicts or admitted copies from earlier tests.
+
+    Verdict reuse is process-wide by design (native validation contract,
+    "Verdict-reuse key"); tests that count probes need a fresh process view.
+    """
+    from chunker._internal import native_admission
+
+    native_admission._reset_for_tests()
+    yield
+    native_admission._reset_for_tests()
+
+
 @pytest.fixture
 def native_policy_environment(monkeypatch):
     """Keep real-native tests strict unless an explicit OS policy denial occurs."""

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Grammar commands accept approved native-grammar pins (treesitter-chunker#362).
+  The argparse `grammar` group takes `--trusted-artifacts PATH` before the
+  subcommand, and otherwise reads the user-config pin file
+  `treesitter-chunker/trusted-artifacts.json` under `%APPDATA%`,
+  `~/Library/Application Support` or `$XDG_CONFIG_HOME` (`~/.config`). Both use
+  the strict `chunker.trusted_artifacts.v1` format and are never merged. With
+  a pin, `grammar info`/`diagnose` report a real compiled grammar `healthy`
+  and exit 0 again. Add `chunker.exceptions.TrustedArtifactsError` and the
+  shared reader `chunker._internal.trusted_artifacts`.
 - Add a trusted-controller reference producer of `scope_root_metadata.v2`
   (`tools/governed_scope_commitment.py`, treesitter-chunker#512) that reads only an
   independently identified bare Git store, never a working tree, with bounded Git I/O.
@@ -365,6 +374,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Behaviour change (treesitter-chunker#362):** every `grammar` subcommand now
+  resolves its pin source first. A missing or defective `--trusted-artifacts`
+  file, or a present but defective user-config pin file, exits 2 naming the
+  file and the defect, before any discovery, probe or native load. A local
+  grammar without a pin is reported `untrusted` (status `incompatible`) and is
+  never opened or probed, so an unpinned empty library now reports `untrusted`
+  rather than `empty`. Only the one-field record `{"sha256": ...}` reaches the
+  probe, and a positive admission is reused only within the same process,
+  keyed by content, pin and environment, never by path or file times.
+  A RECORD-verified grammar shipped in our own wheel needs no pin and reports
+  `healthy`; one whose bytes differ from the installed RECORD reports
+  `integrity_mismatch`, which no pin overrides (one trust rule with parsing).
+  `UserGrammarTools` no longer stages or probes a library it has no pin for.
+  It also refuses to publish over a grammar file listed in the installed
+  package's RECORD (checked before any clone in install and update); a local
+  link elsewhere that aliases a shipped grammar can still be replaced.
 - The default admission deadline of `probe_native_grammar` and
   `publish_native_grammar` is now 30 seconds instead of 10. With Smart App
   Control enforced, Windows can hold the first load of a new unsigned grammar

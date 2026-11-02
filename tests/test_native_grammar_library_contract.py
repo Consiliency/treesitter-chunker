@@ -136,7 +136,7 @@ def _isolated_parse(library: Path) -> None:
 
 
 def _run_cli(monkeypatch, capsys, argv, tools):
-    monkeypatch.setattr(grammar_commands, "get_grammar_tools", lambda: tools)
+    monkeypatch.setattr(grammar_commands, "get_grammar_tools", lambda *_args: tools)
     monkeypatch.setattr(sys, "argv", ["chunker", *argv])
     code = main()
     captured = capsys.readouterr()
@@ -235,7 +235,10 @@ def test_failed_native_never_falls_back_to_valid_legacy(
     )
     health = manager.diagnose_grammar_issues("baml")
     expected_status, reasons = NATIVE_FAILURES[state]
-    require(probes == [native.absolute()], f"NATIVE_ONLY_PROBED {probes!r}")
+    # A nonempty regular file whose digest differs from the pin is reported
+    # integrity_mismatch before any probe (verdict-reuse lookup order).
+    expected_probes = [] if state == "mismatch" else [native.absolute()]
+    require(probes == expected_probes, f"NATIVE_ONLY_PROBED {probes!r}")
     require(health.status != "healthy", "native failure never rescued")
     require(health.status == expected_status, f"{state}: {health.status}")
     require(health.validation_reason in reasons, f"{state}: {health!r}")
@@ -348,10 +351,8 @@ def test_enumeration_omits_invalid_language_components(tmp_path, monkeypatch, ca
     )
     require(listed["total_grammars"] == 1, f"NATIVE_ENUM_COMPONENT count {listed!r}")
     require(list(listed["grammars"]) == ["baml"], "NATIVE_ENUM_COMPONENT rows")
-    require(
-        set(probes) == {(build / "baml.so").absolute()},
-        f"NATIVE_ENUM_COMPONENT probes {probes!r}",
-    )
+    # Rule 3: the unpinned candidate is untrusted without calling the probe.
+    require(probes == [], f"NATIVE_ENUM_COMPONENT probes {probes!r}")
     require(code == 0, f"NATIVE_ENUM_COMPONENT list exit {code!r} {err!r}")
     require("baml: incompatible" in out, "NATIVE_ENUM_COMPONENT baml row")
     require("Total grammars: 1" in out, "NATIVE_ENUM_COMPONENT public count")
@@ -573,7 +574,8 @@ def test_language_component_accepts_hyphen_and_underscore(tmp_path, monkeypatch)
     tools = UserGrammarTools(build, sources)
     health = tools.manager.diagnose_grammar_issues(language)
     require(health.status == "missing", f"valid name diagnosed {health!r}")
-    require(probes == [(build / f"{language}.dll").absolute()], f"probe {probes!r}")
+    # Rule 3: a candidate that does not exist is missing without a probe.
+    require(probes == [], f"probe {probes!r}")
     (build / f"{language}.dll").write_bytes(b"native")
     (build / f"{language}.so").write_bytes(b"legacy")
     result = tools.remove_grammar(language)
@@ -770,6 +772,8 @@ def test_recovery_plan_names_selected_library_without_glob(tmp_path, monkeypatch
     )
     require(not any("*" in step for step in steps), "no glob copy instruction")
     (build / "baml.so").write_bytes(b"")
+    # Rule 3: pin the language so the empty file reaches the probe's check.
+    manager.trusted_artifacts["baml"] = {"sha256": "0" * 64}
     corrupted = manager.generate_recovery_plan("baml")
     require(corrupted["current_status"] == "corrupted", f"corrupted {corrupted!r}")
     require(
@@ -802,7 +806,9 @@ def test_native_named_public_info_and_diagnose_with_approved_tool(
         require("Error" not in err, f"{command}: stderr {err!r}")
         require(code == 0, f"{command}: exit {code!r}")
         require(probes[-1] == library.absolute(), f"{command}: probe {probes!r}")
-    require(len(probes) == 2, f"one probe per command {probes!r}")
+    # The second command reuses this process's fresh admission under the
+    # frozen verdict key (same bytes, pin and inspector).
+    require(len(probes) == 1, f"one probe per process {probes!r}")
     require(library.read_bytes() == baml_bytes, "fixture unchanged")
 
 

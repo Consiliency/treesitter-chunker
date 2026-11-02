@@ -164,6 +164,9 @@ class TestSmartGrammarManager:
         # Create an empty .so file (corrupted)
         so_file = build_dir / "corrupted_lang.so"
         so_file.touch()
+        # Rule 3: without a pin the candidate is untrusted before any check,
+        # so pin it to reach the probe's empty-artifact check.
+        manager.trusted_artifacts["corrupted_lang"] = {"sha256": "0" * 64}
 
         health = manager.diagnose_grammar_issues("corrupted_lang")
 
@@ -255,6 +258,9 @@ class TestSmartGrammarManager:
         # Create an empty .so file
         so_file = build_dir / "corrupted_lang.so"
         so_file.touch()
+        # Rule 3: without a pin the candidate is untrusted before any check,
+        # so pin it to reach the probe's empty-artifact check.
+        manager.trusted_artifacts["corrupted_lang"] = {"sha256": "0" * 64}
 
         plan = manager.generate_recovery_plan("corrupted_lang")
 
@@ -372,9 +378,9 @@ class TestUserGrammarTools:
         assert result["errors"] == [
             "Native admission failed for test_lang.so: untrusted (the library is "
             "not trusted by an approved SHA-256 pin); the installed library is "
-            "unchanged. No approved pin was supplied for test_lang: pass "
-            "trusted_artifacts to UserGrammarTools. The grammar CLI cannot "
-            "supply pins until treesitter-chunker#362."
+            "unchanged. No approved pin was supplied for test_lang: add its reviewed SHA-256 to the user-config pin file, pass "
+            "--trusted-artifacts PATH to the grammar command, or pass "
+            "trusted_artifacts to UserGrammarTools."
         ]
         assert list(tools.build_dir.iterdir()) == []
 
@@ -487,10 +493,12 @@ class TestUserGrammarTools:
         assert result["status"] == "error"
         assert "Updated to latest version" in result["steps_completed"]
         assert result["errors"] == [
-            "Native admission failed for test_lang.so: empty (the library is "
-            "empty); the installed library is unchanged. No approved pin was "
-            "supplied for test_lang: pass trusted_artifacts to UserGrammarTools. "
-            "The grammar CLI cannot supply pins until treesitter-chunker#362."
+            "Native admission failed for test_lang.so: untrusted (the library is "
+            "not trusted by an approved SHA-256 pin); the installed library is "
+            "unchanged. No approved pin was supplied for test_lang: add its "
+            "reviewed SHA-256 to the user-config pin file, pass "
+            "--trusted-artifacts PATH to the grammar command, or pass "
+            "trusted_artifacts to UserGrammarTools."
         ]
         assert installed.read_bytes() == b"previous library"
         assert sorted(path.name for path in build_dir.iterdir()) == ["test_lang.so"]

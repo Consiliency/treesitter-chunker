@@ -130,6 +130,13 @@ treesitter-chunker chunk example.py --config .chunkerrc --lang python
 The `chunk`/`batch` CLI loader accepts TOML. Plugin configuration is a separate
 TOML/YAML/JSON interface; see [Configuration](configuration.md).
 
+### Grammar commands and approved pins
+
+The `grammar` command group and its `--trusted-artifacts PATH` option, the
+user-config pin file, and the rule that every grammar subcommand exits 2 on a
+missing or defective pin file are documented in the
+[Grammar Management Guide](grammar_management.md#approved-pins).
+
 ### Export helpers
 
 Use exporters from Python for structured outputs (JSON, JSONL, Parquet, GraphML, Neo4j). See the Export Formats guide for examples.
