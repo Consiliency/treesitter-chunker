@@ -1,9 +1,11 @@
-"""Universal Language Registry with auto-download capabilities."""
+"""Universal Language Registry: admitted parsers plus explicit grammar installs."""
 
 from __future__ import annotations
 
 import json
 import logging
+import warnings
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -22,7 +24,12 @@ logger = logging.getLogger(__name__)
 
 
 class UniversalLanguageRegistry(UniversalRegistryContract):
-    """Enhanced language registry with auto-download capabilities."""
+    """Language registry with explicit install, update and metadata operations.
+
+    ``get_parser`` serves only installed, admitted sources and never downloads
+    or builds a grammar; ``install_language``/``update_language`` fetch and
+    compile only when called, and their output loads only under a pin.
+    """
 
     def __init__(
         self,
@@ -30,6 +37,8 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
         discovery_service: GrammarDiscoveryContract,
         download_service: GrammarDownloadContract,
         cache_dir: Path | None = None,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
     ):
         """Initialize the universal registry.
 
@@ -38,8 +47,12 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
             discovery_service: Service for discovering available grammars
             download_service: Service for downloading and compiling grammars
             cache_dir: Directory for storing metadata (defaults to ~/.cache/treesitter-chunker)
+            trusted_artifacts: Approved pins forwarded to the ``LanguageRegistry``
+                it builds. This registry never reads a pin file itself.
         """
-        self._base_registry = LanguageRegistry(library_path)
+        self._base_registry = LanguageRegistry(
+            library_path, trusted_artifacts=trusted_artifacts
+        )
         self._discovery = discovery_service
         self._downloader = download_service
 
@@ -80,68 +93,59 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
     def get_parser(
         self,
         language: str,
-        auto_download: bool = True,
+        auto_download: bool | None = None,
     ) -> tree_sitter.Parser:
-        """Get a parser for a language, downloading if needed.
+        """Get a parser for a language from installed, admitted sources.
+
+        The automatic download-and-build is retired (maintainer decision,
+        2026-11-01, extending M2 of treesitter-chunker#362): a language that
+        no source provides raises ``LanguageNotFoundError`` with the cause and
+        guidance, and nothing is downloaded or compiled.
 
         Args:
             language: Language name
-            auto_download: Automatically download if not available
+            auto_download: Deprecated and ignored. Passing it emits a
+                ``DeprecationWarning``; it is kept so existing callers do not
+                break.
 
         Returns:
             Configured parser instance
         """
+        if auto_download is not None:
+            warnings.warn(
+                "UniversalLanguageRegistry.get_parser(auto_download=...) is "
+                "deprecated and has no effect: grammars are no longer downloaded "
+                "or built automatically. Build one with the grammar commands, "
+                "then pin it in the user-config pin file or with "
+                "--trusted-artifacts.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         if language == "baml":
             parser = tree_sitter.Parser()
             parser.language = self._base_registry.get_language("baml")
             return parser
-        # First try to get from base registry
+        # Installed, admitted sources only (the registry applies the pins).
         if self._base_registry.has_language(language):
             lang = self._base_registry.get_language(language)
             parser = tree_sitter.Parser()
             parser.language = lang
             return parser
 
-        # If not available and auto_download is enabled
-        if auto_download:
-            # Check if language is available for download
-            grammar_info = self._discovery.get_grammar_info(language)
-            if grammar_info:
-                # Download and compile
-                success, path = self._downloader.download_and_compile(
-                    language,
-                    grammar_info.version,
-                )
-
-                if success:
-                    # Mark as auto-downloaded
-                    self._auto_downloaded.add(language)
-
-                    # Update metadata
-                    if "installed" not in self._metadata:
-                        self._metadata["installed"] = {}
-
-                    self._metadata["installed"][language] = {
-                        "version": grammar_info.version,
-                        "path": path,
-                        "auto_downloaded": True,
-                    }
-                    self._save_metadata()
-
-                    # Re-discover languages in base registry
-                    self._base_registry._discovered = False
-                    self._base_registry.discover_languages()
-
-                    # Now get the parser
-                    if self._base_registry.has_language(language):
-                        lang = self._base_registry.get_language(language)
-                        parser = tree_sitter.Parser()
-                        parser.language = lang
-                        return parser
-
-        # Language not available
-        available = self.list_available_languages()
-        raise LanguageNotFoundError(language, available)
+        # Only what the base registry can actually load (no metadata-only
+        # installs, which may lack a pin); the discovery listing is not
+        # consulted, so this error path makes no network request either.
+        available = sorted(self._base_registry.list_languages())
+        cause = self._base_registry.unavailable_cause(language)
+        guidance = (
+            "Grammars are no longer downloaded or built automatically. Build "
+            f"{language} deliberately with the grammar commands, review it, and pin "
+            "its SHA-256 in the user-config pin file (trusted-artifacts.json) or "
+            "with --trusted-artifacts."
+        )
+        raise LanguageNotFoundError(
+            language, available, cause=f"{cause}\n{guidance}" if cause else guidance
+        )
 
     def list_installed_languages(self) -> list[str]:
         """List all currently installed languages.
@@ -183,7 +187,10 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
             language: Language name
 
         Returns:
-            True if language is installed and ready
+            True if the base registry provides the language, or an explicit
+            install recorded it in the registry metadata. A recorded install
+            is not necessarily usable (its output loads only under a pin); use
+            ``get_parser`` or ``ZeroConfigAPI.ensure_language`` to check that.
         """
         if language == "baml":
             return self._base_registry.has_language("baml")

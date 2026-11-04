@@ -314,7 +314,7 @@ class TestParserFactory:
             lambda *args, **kwargs: pytest.fail("pack parser used"),
         )
         manager = Mock(side_effect=AssertionError("automatic grammar build used"))
-        monkeypatch.setattr(parser_module, "TreeSitterGrammarManager", manager)
+        monkeypatch.setattr("chunker.grammar.manager.TreeSitterGrammarManager", manager)
 
         with pytest.raises(ParserInitError, match=f"tree-sitter-{language}==0.25.0"):
             parser_module.get_parser(language)

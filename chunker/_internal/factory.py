@@ -297,7 +297,11 @@ class ParserFactory:
             raise BamlExtraRequiredError
         if not self._registry.has_language(language):
             available = self._registry.list_languages()
-            raise LanguageNotFoundError(language, available)
+            explain = getattr(self._registry, "unavailable_cause", None)
+            cause = explain(language) if callable(explain) else None
+            raise LanguageNotFoundError(
+                language, available, cause=cause if isinstance(cause, str) else None
+            )
 
     def _thread_parsers(self) -> dict[str, Parser]:
         if getattr(self._thread_local, "generation", None) != self._cache_generation:
