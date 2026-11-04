@@ -990,9 +990,9 @@ TEXT_MUTATIONS = {
     # round 2: the floor matrix entry, from parsed values
     "M502-text-windows-line-comment": (
         "test.yml",
-        "          - python-version: '3.14'\n            platform: blacksmith-4vcpu-windows-2025\n",
+        "          - python-version: '3.14'\n            platform: windows-2025\n",
         "          - python-version: '3.14'  # uv run -p 3.12 python -V\n"
-        "            platform: blacksmith-4vcpu-windows-2025\n",
+        "            platform: windows-2025\n",
     ),
     "M502-text-linux-line-comment": (
         "test.yml",
@@ -1011,10 +1011,10 @@ TEXT_MUTATIONS = {
     ),
     "M502-text-second-linux-entry": (
         "test.yml",
-        "          - python-version: '3.14'\n            platform: blacksmith-4vcpu-windows-2025\n",
-        "          - python-version: '3.12'\n            platform: blacksmith-4vcpu-windows-2025\n"
+        "          - python-version: '3.14'\n            platform: windows-2025\n",
+        "          - python-version: '3.12'\n            platform: windows-2025\n"
         "            platform-family: linux\n"
-        "          - python-version: '3.14'\n            platform: blacksmith-4vcpu-windows-2025\n",
+        "          - python-version: '3.14'\n            platform: windows-2025\n",
     ),
     "M502-text-runs-on-not-matrix": (
         "test.yml",
@@ -1079,7 +1079,7 @@ def _apply(mutation: str, texts: dict[str, str]) -> str:
             + (
                 "        include: [{python-version: '3.12', platform: ubuntu-latest, "
                 "platform-family: linux, selector: ''}, {python-version: '3.14', platform: "
-                "blacksmith-4vcpu-windows-2025, platform-family: windows, selector: -p 3.12}, "
+                "windows-2025, platform-family: windows, selector: -p 3.12}, "
                 "{python-version: '3.14', platform: macos-latest, platform-family: macos, "
                 "selector: ''}]"
             )
