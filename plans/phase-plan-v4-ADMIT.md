@@ -527,7 +527,12 @@ grep -rnE "ctypes\.CDLL|cdll\.LoadLibrary|Language\(" chunker/ | sort
 ## Acceptance Criteria
 
 - [ ] EC-ADMIT-1 to EC-ADMIT-8 as written in Phase 8 of the roadmap.
-- [ ] EC-ADMIT-9 — the merge gate above is met before any ADMIT PR merges.
+- [x] EC-ADMIT-9 — the merge gate above is met before any ADMIT PR merges.
+  **Met (owner sign-off, 2026-11-03)** on 20/20 clean Windows series each on
+  #562 `09a2461b`, #559 `f5d5e922` and #563 `ac3577b7`. Caveats: helper-process
+  policy skips were matched by time, count and file type under the accepted
+  rule (follow-up treesitter-chunker#613), and the docs-only pushes on #550
+  (`1e1f8c7c`) and #563 (`ac3577b7`) were not re-reviewed.
 - [ ] The inventory status column says `landed` for every ADMIT row, and a
   new direct load has its own row.
 - [ ] The four ADMITPIN carry-overs are implemented as decision 1 records.
