@@ -34,11 +34,18 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import click
 
+from chunker._internal.trusted_artifacts import (
+    copy_trusted_artifacts,
+    pin_provenance,
+    resolve_command_pins,
+)
+from chunker.exceptions import TrustedArtifactsError
 from chunker.grammar.source_validation import validate_grammar_source
 
 # Import grammar management components from core
@@ -184,14 +191,25 @@ class ProgressIndicator:
 class ComprehensiveGrammarCLI:
     """Comprehensive grammar management CLI with error handling integration."""
 
-    def __init__(self, cache_dir: Path | None = None, verbose: bool = False):
+    def __init__(
+        self,
+        cache_dir: Path | None = None,
+        verbose: bool = False,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
+    ):
         """Initialize the comprehensive grammar CLI.
 
         Args:
             cache_dir: Cache directory for grammars (defaults to ~/.cache/treesitter-chunker/grammars/)
             verbose: Enable verbose output
+            trusted_artifacts: Approved pins, copied here and passed to the
+                ``GrammarManager``. The constructor never reads a pin file;
+                the click group resolves ``--trusted-artifacts`` or the
+                user-config pin file before building it.
         """
         self.verbose = verbose
+        self.trusted_artifacts = copy_trusted_artifacts(trusted_artifacts)
 
         # Set up cache directory (Phase 1.8 specification compliance)
         if cache_dir is None:
@@ -225,6 +243,7 @@ class ComprehensiveGrammarCLI:
                     user_dir=self.user_grammars_dir,
                     package_dir=self.package_grammars_dir,
                     cache_dir=self.cache_dir,
+                    trusted_artifacts=self.trusted_artifacts,
                 )
                 if self.verbose:
                     click.echo("✅ Core grammar manager initialized")
@@ -1547,16 +1566,28 @@ class ComprehensiveGrammarCLI:
                     click.echo("❌ Build completed but compiled grammar not found")
                     return 1
 
-                # Test loading the grammar
-                try:
-                    import ctypes
+                # Fresh build output is never loaded without a pin (N4). With
+                # a pin it is admitted through the probe; nothing is mapped
+                # in this process.
+                if pin_provenance(self.trusted_artifacts, language) is None:
+                    progress.stop(True, "built, not admitted")
+                    click.echo(f"✅ Built {language} grammar: {compiled_grammar}")
+                    click.echo("built, not admitted: add a pin via --trusted-artifacts")
+                    return 0
+                from chunker._internal.native_admission import (
+                    admit_native_candidate,
+                )
 
-                    lib = ctypes.CDLL(str(compiled_grammar))
-                    progress.update("Grammar loadable")
-                except Exception as e:
-                    progress.stop(False, f"grammar not loadable: {e}")
-                    click.echo(f"⚠️ Grammar built but may not be loadable: {e}")
+                admission, _ = admit_native_candidate(
+                    compiled_grammar.absolute(), language, self.trusted_artifacts
+                )
+                if not admission.supported:
+                    progress.stop(False, f"native admission {admission.reason}")
+                    click.echo(
+                        f"⚠️ Grammar built but failed native admission: {admission.reason}"
+                    )
                     return 1
+                progress.update("Grammar admitted")
 
                 progress.stop(True, "build completed successfully")
 
@@ -1944,7 +1975,25 @@ if __name__ == "__main__":
         try:
             # Try to use tree-sitter Python bindings if available
             try:
-                parser = load_compiled_grammar(grammar_path, language)
+                from chunker._internal.native_admission import (
+                    admitted_private_copy,
+                    forget_private_copy,
+                )
+
+                # In-process use only through an admitted private copy (N6).
+                admission, copy = admitted_private_copy(
+                    grammar_path.absolute(), language, self.trusted_artifacts
+                )
+                if copy is None or admission.artifact_sha256 is None:
+                    return {
+                        "success": False,
+                        "error": f"Native admission failed: {admission.reason}",
+                    }
+                try:
+                    parser = load_compiled_grammar(copy, language)
+                except Exception:
+                    forget_private_copy(language, admission.artifact_sha256)
+                    raise
 
                 # Read test file
                 with open(test_file, "rb") as f:
@@ -2267,13 +2316,19 @@ if __name__ == "__main__":
             )
             return result
 
-        # Try to load the grammar
+        # Admit the grammar (N5): probe only, under this command's pins.
+        # Output and exit codes keep their existing shape; the actionable
+        # treesitter-chunker#128 messages belong to ADMITFIX.
         try:
-            import ctypes
+            from chunker._internal.native_admission import admit_native_candidate
 
-            ctypes.CDLL(str(grammar_path))
+            admission, _ = admit_native_candidate(
+                grammar_path.absolute(), language, self.trusted_artifacts
+            )
+            if not admission.supported:
+                raise RuntimeError(f"native admission {admission.reason}")
 
-            # Basic load test passed
+            # Admission passed
             result["valid"] = True
             result["status"] = "healthy"
 
@@ -2290,9 +2345,37 @@ if __name__ == "__main__":
                     click.echo(f"    🔧 Attempting to rebuild {language}...")
                     build_result = self.build_grammar(language, force=True)
                     if build_result == 0:
-                        result["fixes_applied"].append("Grammar rebuilt successfully")
-                        result["valid"] = True
-                        result["status"] = "fixed"
+                        # A 0 return can mean "built, not admitted": report the
+                        # grammar valid only if the reported path now admits.
+                        from chunker._internal.native_admission import (
+                            admit_native_candidate,
+                        )
+
+                        from chunker._internal.package_supplier import same_file
+
+                        readmission, _ = admit_native_candidate(
+                            grammar_path.absolute(), language, self.trusted_artifacts
+                        )
+                        rebuilt = self.build_dir / f"tree_sitter_{language}.so"
+                        same_target = same_file(rebuilt, grammar_path)
+                        if readmission.supported:
+                            result["fixes_applied"].append(
+                                "Grammar rebuilt successfully"
+                                if same_target
+                                else f"Grammar rebuilt at {rebuilt}; the validated "
+                                f"grammar {grammar_path} is admitted"
+                            )
+                            result["valid"] = True
+                            result["status"] = "fixed"
+                        else:
+                            result["fixes_applied"].append(
+                                "Grammar rebuilt, not admitted: "
+                                f"{readmission.reason}"
+                                if same_target
+                                else f"Grammar rebuilt at {rebuilt}, but the "
+                                f"validated grammar {grammar_path} is not "
+                                f"admitted: {readmission.reason}"
+                            )
                     else:
                         result["fixes_applied"].append("Grammar rebuild failed")
                 except Exception as fix_error:
@@ -2589,15 +2672,35 @@ if __name__ == "__main__":
 @click.group(name="grammar")
 @click.option("--cache-dir", type=click.Path(), help="Grammar cache directory")
 @click.option("--verbose", is_flag=True, help="Enable verbose output")
+@click.option(
+    "--trusted-artifacts",
+    "trusted_artifacts",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=(
+        "chunker.trusted_artifacts.v1 file of approved grammar SHA-256 pins; "
+        "replaces the user-config pin file for this command"
+    ),
+)
 @click.pass_context
-def grammar_cli(ctx: Any, cache_dir: Any, verbose: Any) -> None:
+def grammar_cli(
+    ctx: Any, cache_dir: Any, verbose: Any, trusted_artifacts: Path | None = None
+) -> None:
     """Comprehensive grammar management for treesitter-chunker."""
     ctx.ensure_object(dict)
     ctx.obj["cache_dir"] = Path(cache_dir) if cache_dir else None
     ctx.obj["verbose"] = verbose
+    # Every subcommand is pin-dependent: resolve the one active source (the
+    # option, else the user-config pin file; never merged) before any
+    # subcommand runs. A missing or defective file is a usage error (exit 2).
+    try:
+        pins = resolve_command_pins(trusted_artifacts, cache_dir=ctx.obj["cache_dir"])
+    except TrustedArtifactsError as error:
+        raise click.UsageError(str(error)) from None
     ctx.obj["cli"] = ComprehensiveGrammarCLI(
         cache_dir=ctx.obj["cache_dir"],
         verbose=verbose,
+        trusted_artifacts=pins,
     )
 
 

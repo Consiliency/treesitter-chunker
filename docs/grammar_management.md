@@ -314,6 +314,75 @@ message>)` without loading anything. The legacy combined-library manager
 `chunker.grammar_manager.GrammarManager(..., trusted_artifacts=...)` reports
 only pinned languages whose library bytes pass native admission, and none
 without pins.
+#### Pins for the click group and embedding code
+
+The click group `chunker.grammar_management.cli.grammar_cli` takes the same
+option before the subcommand (`grammar --trusted-artifacts pins.json validate
+python`) and resolves the source in its group callback, so its subcommands are
+pin-dependent in the same way: a missing or defective file exits 2 before any
+subcommand runs.
+
+`GrammarValidator`, `GrammarInstaller`, `GrammarRegistry`, `GrammarManager` and
+`ComprehensiveGrammarCLI` accept keyword-only `trusted_artifacts=` and pass it
+down (manager → registry/installer/validator). Constructors never read a pin
+file. With a pin, a local grammar is admitted through `probe_native_grammar`:
+`check_abi_compatibility` loads nothing in-process, and parse checks load only
+an admitted private copy. `test_parse_samples(language, samples)` without a
+grammar path resolves through the validator's own `LanguageRegistry` (the
+parse path's default combined library and the validator's pins), never through
+`chunker.parser`, so package-supplied grammars still resolve there.
+
+`grammar build` without a pin does not load the new output: it exits 0 and
+prints `built, not admitted: add a pin via --trusted-artifacts`. With a pin it
+probes the output and exits 1 on any result other than `ok`. `grammar validate`
+reports a library that fails admission as not loadable, with the admission
+reason. `GrammarManager.get_admitted_health(language)` returns the admitted
+health (`healthy`, `missing`, `corrupted` or `incompatible`, with
+`validation_reason`) for status, validate and list consumers.
+
+The validation cache is keyed by the grammar's content, pin, validation level
+and runtime environment, never by path or file times. A cached result is
+returned only after this process has admitted the same bytes; a new process
+always probes again, and failed validations are never stored.
+
+#### Pins on the parse path
+
+Ordinary parsing (`get_parser`, `acquire_parser`, `list_languages`,
+`chunk_file` and everything that resolves parsers through `chunker.parser`)
+reads the user-config pin file once per process, when it builds its registry.
+`--trusted-artifacts` applies only to the grammar commands. A local compiled
+grammar (the combined library, the package or checkout build directory,
+`~/.cache/treesitter-chunker/build`, `CHUNKER_GRAMMAR_BUILD_DIR`) is used only
+when the pin file pins its language, or when it is a package-supplied file of
+our own wheel (below). It is then loaded from a verified, admitted private copy
+named `chunker-admitted-*` in the temporary directory, never from the
+candidate path. Other local libraries are ignored, and resolution continues to
+the official `tree-sitter-python`/`tree-sitter-javascript` wheels, the
+language-pack and the BAML companion. A combined library is admitted per
+language: pinning one language in it admits no other.
+
+On POSIX the process removes its admitted copies at exit. Windows cannot
+delete a loaded library, so copies stay there after exit; they hold approved
+bytes and can be removed once no chunker process is running.
+
+A defective user-config pin file grants no local trust. Parsing continues:
+package-supplied grammars keep working, one warning names the file and the
+defect, and the `LanguageNotFoundError` for a language that would have needed
+a pin repeats the defect and lists the local candidates that were not used.
+
+**Package-supplied grammars of our own wheel.** A native file directly in the
+installed package's `chunker/data/grammars/build/` is trusted without a pin
+only when it is listed in the installed `treesitter-chunker` distribution's
+`RECORD` with a `sha256` that matches its bytes. A file whose bytes differ
+from `RECORD` is never loaded, and no pin can admit it. A file with no `RECORD`
+entry (for example `grammar build` output, an editable install or a source
+checkout) is an ordinary local candidate that needs a pin.
+
+**On-demand fetch-and-build is retired.** A language that no source provides
+raises `LanguageNotFoundError`. Earlier versions cloned and compiled a grammar
+from `config/grammar_sources.json` in the background, into `grammars/` and
+`build/` in the current directory. Build deliberately with the grammar
+commands, review the result, and pin its digest.
 
 **Every grammar subcommand is pin-dependent.** The group resolves the active
 pin source before any subcommand runs. A missing or defective option file, or

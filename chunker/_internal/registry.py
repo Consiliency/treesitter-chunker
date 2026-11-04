@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import ctypes
-import hashlib
+import importlib.metadata
 import importlib.util
 import logging
 import os
 import re
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -17,6 +18,11 @@ from typing import Any
 from tree_sitter import Language, Parser
 
 from chunker._internal.error_handling import log_grammar_discovery_summary
+from chunker._internal.package_supplier import (
+    package_grammar_build_dir,
+    package_supplied_digest,
+)
+from chunker._internal.trusted_artifacts import copy_trusted_artifacts
 from chunker.exceptions import (
     BamlExtraRequiredError,
     LanguageNotFoundError,
@@ -25,6 +31,29 @@ from chunker.exceptions import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _platform_library_suffix() -> str:
+    return {"darwin": ".dylib", "win32": ".dll"}.get(sys.platform, ".so")
+
+
+def default_library_path() -> Path:
+    """Return the default combined grammar library used by ``chunker.parser``.
+
+    The package's ``languages<ext>`` is preferred when it exists; otherwise the
+    checkout's ``build/my-languages<ext>``. Pin-holding components that need a
+    registry (for example ``GrammarValidator.test_parse_samples``) build their
+    own ``LanguageRegistry`` with this path instead of using ``chunker.parser``.
+    """
+    suffix = _platform_library_suffix()
+    combined = package_grammar_build_dir() / f"languages{suffix}"
+    if combined.exists():
+        return combined
+    return (
+        Path(__file__).resolve().parent.parent.parent
+        / "build"
+        / f"my-languages{suffix}"
+    )
 
 
 def baml_companion_version() -> str | None:
@@ -57,29 +86,151 @@ class LanguageMetadata:
 class LanguageRegistry:
     """Registry for discovering and managing tree-sitter languages."""
 
-    def __init__(self, library_path: Path):
+    def __init__(
+        self,
+        library_path: Path,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
+    ):
         """Initialize the registry with a path to the compiled language library.
 
         Args:
                 library_path: Path to the .so/.dll/.dylib file containing languages
+                trusted_artifacts: Approved pins (language -> {"sha256": hex}).
+                    Local compiled grammars are used only under their own pin,
+                    or when they are RECORD-verified files of this package's
+                    own wheel. ``None`` means no pins; the registry never reads
+                    a pin file itself.
         """
-        self._library_path = library_path
+        # Admission needs absolute candidate paths (a relative candidate is
+        # never admitted), so relative spellings are made absolute here.
+        self._library_path = Path(library_path).absolute()
+        self._trusted_artifacts = copy_trusted_artifacts(trusted_artifacts)
+        #: Set by ``chunker.parser`` when its user-config pin file is defective.
+        self._pin_file_defect: str | None = None
+        self._local_rejections: dict[str, list[str]] = {}
+        self._combined_languages: dict[str, tuple[ctypes.CDLL, Path, str]] = {}
+        self._library_digest: str | None = None
         self._library: ctypes.CDLL | None = None
         self._languages: dict[str, tuple[Language | None, LanguageMetadata]] = {}
         self._loaded_sources: dict[str, tuple[Language, str]] = {}
         self._selected_sources: dict[str, tuple[Language, str]] = {}
         self._selection_errors: dict[str, str] = {}
         self._discovered = False
-        # Do not raise if the combined library is missing; discovery will fall back to
-        # nm or per-language libraries and allow on-demand builds.
+        # Do not raise if the combined library is missing; discovery falls back
+        # to per-language libraries (admitted under their pins) and the packages.
         if not self._library_path.exists():
             logger.debug(
                 "Shared library not found at %s; will use fallbacks",
                 self._library_path,
             )
 
+    def record_pin_file_defect(self, defect: str | None) -> None:
+        """Record why the parse path's user-config pin file supplied no pins.
+
+        Set by ``chunker.parser`` when the file is defective; the defect is
+        repeated in errors for languages that would have needed a pin.
+        """
+        self._pin_file_defect = defect
+
+    def _reject(self, language: str, path: Path, reason: str) -> None:
+        """Record why a local candidate for ``language`` was not used."""
+        note = f"{path}: {reason}"
+        notes = self._local_rejections.setdefault(language, [])
+        if not any(existing.startswith(f"{path}: ") for existing in notes):
+            notes.append(note)
+        logger.debug("Local grammar %s not used for %s: %s", path, language, reason)
+
+    def unavailable_cause(self, language: str) -> str | None:
+        """Explain why local candidates for ``language`` were not used.
+
+        Names rejected local candidates and their admission reason, and a
+        defective user-config pin file, or returns ``None``.
+        """
+        parts = []
+        rejected = self._local_rejections.get(language)
+        if rejected:
+            parts.append(
+                "Local compiled grammars were not used: "
+                + "; ".join(rejected)
+                + ". Local grammars need an approved SHA-256 pin in the "
+                "user-config pin file (trusted-artifacts.json) or "
+                "trusted_artifacts=."
+            )
+        if self._pin_file_defect:
+            parts.append(
+                "The user-config pin file is defective and grants no local "
+                f"trust: {self._pin_file_defect}"
+            )
+        return "\n".join(parts) or None
+
+    def _with_pin_note(self, reason: str) -> str:
+        if self._pin_file_defect:
+            return (
+                f"{reason} (the user-config pin file is defective and grants no "
+                f"local trust: {self._pin_file_defect})"
+            )
+        return reason
+
+    def _open_local_library(
+        self, path: Path, language: str
+    ) -> tuple[ctypes.CDLL, Path, str] | None:
+        """Open a local grammar library for ``language`` under the contract.
+
+        A RECORD-verified file of our own wheel is loaded in place. Any other
+        local file is admitted for ``language`` under its own pin and only the
+        admitted private copy is loaded (rule 5 for combined libraries). An
+        unpinned candidate is neither opened nor loaded.
+
+        Returns:
+            ``(library, loaded path, admitted hex digest)`` or ``None``.
+        """
+        path = Path(path).absolute()
+        status, digest = package_supplied_digest(path)
+        if status == "mismatch":
+            self._reject(
+                language, path, "integrity_mismatch (differs from the package RECORD)"
+            )
+            return None
+        if status == "supplied" and digest is not None:
+            # On Windows, ctypes.CDLL() won't find a DLL's dependencies unless
+            # the containing directory is registered (WinError 126).
+            dll_ctx = None
+            if sys.platform == "win32" and hasattr(os, "add_dll_directory"):
+                dll_ctx = os.add_dll_directory(str(path.parent))
+            try:
+                return ctypes.CDLL(str(path)), path, digest
+            except OSError as error:
+                self._reject(language, path, f"load_failed ({error})")
+                return None
+            finally:
+                if dll_ctx is not None:
+                    dll_ctx.__exit__(None, None, None)
+        # Imported here: native_admission imports chunker.grammar, whose package
+        # imports this module.
+        from chunker._internal.native_admission import (
+            admitted_private_copy,
+            forget_private_copy,
+        )
+
+        result, copy = admitted_private_copy(path, language, self._trusted_artifacts)
+        if copy is None or result.artifact_sha256 is None:
+            self._reject(language, path, result.reason)
+            return None
+        try:
+            return ctypes.CDLL(str(copy)), copy, result.artifact_sha256
+        except OSError as error:
+            forget_private_copy(language, result.artifact_sha256)
+            self._reject(language, path, f"load_failed ({error})")
+            return None
+
     def _load_library(self) -> ctypes.CDLL:
-        """Load the shared library."""
+        """Load the combined library in place when it is package-supplied.
+
+        A combined library that is not a RECORD-verified file of our own wheel
+        is never mapped as a whole; its pinned languages are admitted one by
+        one in ``_discover_symbols``.
+        """
         if self._library is None:
             if not self._library_path.exists():
                 logger.info(
@@ -89,6 +240,14 @@ class LanguageRegistry:
                 raise LibraryLoadError(
                     self._library_path, "combined library not present"
                 )
+            status, digest = package_supplied_digest(self._library_path)
+            if status != "supplied":
+                raise LibraryLoadError(
+                    self._library_path,
+                    "not a package-supplied library; local languages load only "
+                    "under their own pins",
+                )
+            self._library_digest = digest
             try:
                 self._library = ctypes.CDLL(str(self._library_path))
                 logger.info("Loaded library from %s", self._library_path)
@@ -118,7 +277,18 @@ class LanguageRegistry:
                 combined_library = self._load_library()
             except LibraryLoadError:
                 combined_library = None
-            if combined_library is not None:
+            if combined_library is None:
+                # Rule 5: try only pinned languages, each admitted on its own
+                # pin; never inspect symbols of an unadmitted library.
+                for lang_name in sorted(self._trusted_artifacts):
+                    opened = self._open_local_library(self._library_path, lang_name)
+                    if opened is None:
+                        continue
+                    symbol_name = f"tree_sitter_{lang_name}"
+                    if hasattr(opened[0], symbol_name):
+                        self._combined_languages[lang_name] = opened
+                        symbols.append((lang_name, symbol_name))
+            else:
                 for lang_name in ("python", "javascript"):
                     symbol_name = f"tree_sitter_{lang_name}"
                     if hasattr(combined_library, symbol_name):
@@ -137,9 +307,7 @@ class LanguageRegistry:
             symbols.extend(self._scan_directory_for_languages(build_dir))
 
         # SECONDARY SOURCE: Package grammar directory (deterministic location)
-        package_grammar_build = (
-            Path(__file__).parent.parent / "data" / "grammars" / "build"
-        )
+        package_grammar_build = package_grammar_build_dir()
         if package_grammar_build.exists():
             logger.info("Scanning package grammar directory: %s", package_grammar_build)
             symbols.extend(self._scan_directory_for_languages(package_grammar_build))
@@ -155,7 +323,7 @@ class LanguageRegistry:
 
         override = _getenv("CHUNKER_GRAMMAR_BUILD_DIR")
         if override:
-            override_path = Path(override)
+            override_path = Path(override).absolute()
             if override_path.exists():
                 logger.info("Scanning override directory: %s", override_path)
                 symbols.extend(self._scan_directory_for_languages(override_path))
@@ -195,6 +363,14 @@ class LanguageRegistry:
                 # Extract language name from filename (e.g., "python.so" -> "python")
                 lang_name = file_path.stem
                 symbol_name = f"tree_sitter_{lang_name}"
+                if (
+                    lang_name not in self._trusted_artifacts
+                    and package_supplied_digest(file_path)[0] == "local"
+                ):
+                    # Scan directories confer no trust: without a pin the
+                    # candidate is neither opened nor loaded.
+                    self._reject(lang_name, file_path, "untrusted (no pin)")
+                    continue
 
                 # Validate this is a language library by checking for the symbol
                 if self._validate_language_library(file_path, symbol_name):
@@ -224,26 +400,20 @@ class LanguageRegistry:
             True if the library contains the expected symbol
         """
         try:
-            # On Windows, ctypes.CDLL() won't find a DLL's dependencies unless the
-            # containing directory is registered. os.add_dll_directory() (Python 3.8+)
-            # fixes WinError 126 "The specified module could not be found".
-            dll_ctx = None
-            if sys.platform == "win32" and hasattr(os, "add_dll_directory"):
-                dll_ctx = os.add_dll_directory(str(library_path.parent))
-            try:
-                lib = ctypes.CDLL(str(library_path))
-            finally:
-                if dll_ctx is not None:
-                    dll_ctx.__exit__(None, None, None)
-            # Check if the symbol exists
+            opened = self._open_local_library(library_path, library_path.stem)
+            if opened is None:
+                return False
+            lib, loaded_path, digest = opened
+            # Check if the symbol exists (only on a supplied or admitted library)
             if hasattr(lib, symbol_name):
                 # Additional validation: try to create a Language object
                 try:
                     self._language_from_ctypes_symbol(
                         lib,
                         symbol_name,
-                        library_path,
+                        loaded_path,
                         library_path.stem,
+                        digest=digest,
                     )
                     return True
                 except Exception as e:
@@ -272,8 +442,14 @@ class LanguageRegistry:
         symbol_name: str,
         library_path: Path,
         language_name: str,
+        *,
+        digest: str | None = None,
     ) -> Language:
-        """Construct a tree-sitter Language from a loaded ctypes grammar symbol."""
+        """Construct a tree-sitter Language from a loaded ctypes grammar symbol.
+
+        ``digest`` is the admitted (or RECORD-verified) SHA-256 of the loaded
+        bytes; the ``custom:sha256:`` source label uses it, never a re-read.
+        """
         func = getattr(lib, symbol_name)
         func.restype = ctypes.c_void_p
         lang_ptr = func()
@@ -295,8 +471,12 @@ class LanguageRegistry:
             selected = self._selected_sources.get(language_name)
             if selected is not None and selected[0] == language:
                 source = selected[1]
+            elif digest is not None:
+                source = f"custom:sha256:{digest}"
             else:
-                source = f"custom:sha256:{hashlib.sha256(library_path.read_bytes()).hexdigest()}"
+                raise ValueError(
+                    f"{library_path}: no admitted digest for {language_name}"
+                )
             self._loaded_sources[language_name] = (language, source)
         return language
 
@@ -342,8 +522,39 @@ class LanguageRegistry:
                 continue
             try:
                 if lib is None:
-                    # Try to load from individual library instead of just creating placeholder
-                    language = self._try_load_from_individual_library_safely(lang_name)
+                    combined = self._combined_languages.get(lang_name)
+                    language = None
+                    combined_error: Exception | None = None
+                    if combined is not None:
+                        try:
+                            language = self._language_from_ctypes_symbol(
+                                combined[0],
+                                symbol_name,
+                                combined[1],
+                                lang_name,
+                                digest=combined[2],
+                            )
+                        except (AttributeError, OSError, ValueError) as exc:
+                            combined_error = exc
+                            self._reject(
+                                lang_name, self._library_path, f"load_failed ({exc})"
+                            )
+                    if language is None:
+                        # Try to load from individual library instead of just creating placeholder
+                        language = self._try_load_from_individual_library_safely(
+                            lang_name
+                        )
+                    if (
+                        language is None
+                        and lang_name in {"python", "javascript"}
+                        and isinstance(combined_error, ValueError)
+                    ):
+                        # A selected (pinned) custom grammar that fails never
+                        # silently falls back to the official provider.
+                        raise ParserInitError(
+                            lang_name,
+                            f"Selected custom grammar failed to load: {combined_error}",
+                        ) from combined_error
                     if language is not None:
                         has_scanner = lang_name == "cpp"
                         is_compatible = True
@@ -361,6 +572,7 @@ class LanguageRegistry:
                             symbol_name,
                             self._library_path,
                             lang_name,
+                            digest=self._library_digest,
                         )
                         has_scanner = hasattr(
                             lib,
@@ -487,9 +699,7 @@ class LanguageRegistry:
         search_dirs: list[Path] = [base_dir]
 
         # Add package grammar build directory where individual .so files are located
-        package_grammar_build = (
-            Path(__file__).parent.parent / "data" / "grammars" / "build"
-        )
+        package_grammar_build = package_grammar_build_dir()
         if package_grammar_build.exists():
             search_dirs.append(package_grammar_build)
 
@@ -497,7 +707,7 @@ class LanguageRegistry:
 
         override = _getenv("CHUNKER_GRAMMAR_BUILD_DIR")
         if override:
-            search_dirs.append(Path(override))
+            search_dirs.append(Path(override).absolute())
         user_cache = Path.home() / ".cache" / "treesitter-chunker" / "build"
         search_dirs.append(user_cache)
         combined_suffix = Path(self._library_path).suffix or ".so"
@@ -514,13 +724,17 @@ class LanguageRegistry:
                 path_candidate = directory / f"{candidate_name}{combined_suffix}"
                 if path_candidate.exists():
                     try:
-                        lib = ctypes.CDLL(str(path_candidate))
+                        opened = self._open_local_library(path_candidate, name)
+                        if opened is None:
+                            continue
+                        lib, loaded_path, digest = opened
                         symbol_name = f"tree_sitter_{name}"
                         language = self._language_from_ctypes_symbol(
                             lib,
                             symbol_name,
-                            path_candidate,
+                            loaded_path,
                             name,
+                            digest=digest,
                         )
                         logger.info(
                             "Loaded '%s' from individual library %s",
@@ -547,7 +761,9 @@ class LanguageRegistry:
                             e,
                         )
         if name in self._selection_errors:
-            raise ParserInitError(name, self._selection_errors[name])
+            raise ParserInitError(
+                name, self._with_pin_note(self._selection_errors[name])
+            )
         return None
 
     def _try_load_from_individual_library_safely(self, name: str) -> Language | None:
@@ -592,7 +808,9 @@ class LanguageRegistry:
         if not self._discovered:
             self.discover_languages()
         if name in self._selection_errors:
-            raise ParserInitError(name, self._selection_errors[name])
+            raise ParserInitError(
+                name, self._with_pin_note(self._selection_errors[name])
+            )
         if name not in self._languages:
             # Try to load from a per-language library as a fallback
             language = self._try_load_from_individual_library_safely(name)
@@ -601,7 +819,9 @@ class LanguageRegistry:
                 language = self._try_load_from_language_pack(name)
             if language is None:
                 available = self._get_all_available_languages()
-                raise LanguageNotFoundError(name, available)
+                raise LanguageNotFoundError(
+                    name, available, cause=self.unavailable_cause(name)
+                )
             self._select_loaded_source(name, language)
             return language
         language, metadata = self._languages[name]
@@ -616,7 +836,9 @@ class LanguageRegistry:
                 self._languages[name] = (language, metadata)
             else:
                 available = self._get_all_available_languages()
-                raise LanguageNotFoundError(name, available)
+                raise LanguageNotFoundError(
+                    name, available, cause=self.unavailable_cause(name)
+                )
         return language
 
     def _try_load_from_language_pack(self, name: str) -> Language | None:

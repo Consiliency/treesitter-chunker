@@ -9,12 +9,19 @@ quality warning, the old behavior) fails the successful-sample and
 failing-sample cases;
 ``M133-quality-before-gap`` (let a quality warning degrade a candidate that
 has no caller samples) fails the no-sample quality and selection cases.
+
+ADMIT (treesitter-chunker#362) admits a local grammar only under its approved
+pin, so the managers here pin the artifact they validate. One pin per language
+cannot admit two different artifacts, so in the selection case the PACKAGE
+build is a RECORD-verified file of a stand-in for our own wheel (admitted
+without a pin, decision M3) while the padded USER build holds the pin.
 """
 
 from __future__ import annotations
 
 import subprocess
 import sys
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -40,6 +47,47 @@ pytestmark = pytest.mark.skipif(
     sys.platform != "linux",
     reason="The checked-in BAML grammar builds as a Linux shared library",
 )
+
+
+def _pins(library: Path) -> dict[str, dict[str, str]]:
+    return {"baml": {"sha256": sha256(library.read_bytes()).hexdigest()}}
+
+
+def _record_verified_package(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, library_bytes: bytes
+) -> Path:
+    """Our wheel's grammar directory holding a RECORD-verified ``libbaml.so``."""
+    import base64
+    from importlib.metadata import PathDistribution
+
+    from chunker._internal import package_supplier
+
+    site = tmp_path / "site"
+    package = site / "chunker"
+    build = package / "data" / "grammars" / "build"
+    build.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (build / "libbaml.so").write_bytes(library_bytes)
+    dist_info = site / "treesitter_chunker-6.0.0.dist-info"
+    dist_info.mkdir()
+    (dist_info / "METADATA").write_text(
+        "Metadata-Version: 2.1\nName: treesitter-chunker\nVersion: 6.0.0\n",
+        encoding="utf-8",
+    )
+    encoded = base64.urlsafe_b64encode(sha256(library_bytes).digest()).rstrip(b"=")
+    (dist_info / "RECORD").write_text(
+        "chunker/__init__.py,,\n"
+        f"chunker/data/grammars/build/libbaml.so,sha256={encoded.decode()},"
+        f"{len(library_bytes)}\n",
+        encoding="utf-8",
+    )
+    distribution = PathDistribution(dist_info)
+    monkeypatch.setattr(package_supplier, "_package_distribution", lambda: distribution)
+    monkeypatch.setattr(
+        package_supplier, "_package_init_file", lambda: package / "__init__.py"
+    )
+    package_supplier._package_grammar_records.cache_clear()
+    return build
 
 
 def _build(library: Path) -> None:
@@ -76,7 +124,10 @@ def baml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     assert tree.root_node.type == "source_file"
     assert not tree.root_node.has_error
     manager = GrammarManager(
-        user_dir=user_dir, package_dir=package_dir, cache_dir=tmp_path / "cache"
+        user_dir=user_dir,
+        package_dir=package_dir,
+        cache_dir=tmp_path / "cache",
+        trusted_artifacts=_pins(library),
     )
     return manager, library, source
 
@@ -179,30 +230,43 @@ def test_selection_does_not_prefer_a_warned_artifact_without_samples(
     """Claude's round-1 repro: a USER build padded past 50 MB vs a clean PACKAGE."""
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
-    user_dir, package_dir = tmp_path / "user", tmp_path / "package"
+    from chunker._internal import package_supplier
+
+    user_dir = tmp_path / "user"
     user_dir.mkdir()
-    package_dir.mkdir()
     user_library = user_dir / "libbaml.so"
-    package_library = package_dir / "libbaml.so"
     _build(user_library)
-    _build(package_library)
+    clean_build = tmp_path / "clean-libbaml.so"
+    _build(clean_build)
+    # The clean PACKAGE build is a RECORD-verified file of our own wheel (no pin
+    # needed); the padded USER build holds the language's one pin.
+    package_dir = _record_verified_package(
+        tmp_path, monkeypatch, clean_build.read_bytes()
+    )
+    package_library = package_dir / "libbaml.so"
     with user_library.open("r+b") as handle:  # sparse padding past 50 MB
         handle.truncate(51 * 1024 * 1024)
     source = FIXTURE.read_bytes()
     for library in (user_library, package_library):
         tree = load_compiled_grammar(library, "baml").parse(source)
         assert not tree.root_node.has_error
-    manager = GrammarManager(
-        user_dir=user_dir, package_dir=package_dir, cache_dir=tmp_path / "cache"
-    )
-    checker = CompatibilityChecker(manager)
-    warned = checker.check_compatibility("baml", grammar_path=user_library)
-    clean = checker.check_compatibility("baml", grammar_path=package_library)
-    # Basic validation reports the size before the standard gap.
-    assert warned.warnings == ["Grammar file is unusually large", GAP_WARNING]
-    assert warned.level == clean.level == CompatibilityLevel.UNKNOWN
-    assert clean.warnings == [GAP_WARNING]
+    try:
+        manager = GrammarManager(
+            user_dir=user_dir,
+            package_dir=package_dir,
+            cache_dir=tmp_path / "cache",
+            trusted_artifacts=_pins(user_library),
+        )
+        checker = CompatibilityChecker(manager)
+        warned = checker.check_compatibility("baml", grammar_path=user_library)
+        clean = checker.check_compatibility("baml", grammar_path=package_library)
+        # Basic validation reports the size before the standard gap.
+        assert warned.warnings == ["Grammar file is unusually large", GAP_WARNING]
+        assert warned.level == clean.level == CompatibilityLevel.UNKNOWN
+        assert clean.warnings == [GAP_WARNING]
 
-    selected = SmartSelector(manager, checker).select_best_grammar("baml")
-    assert selected is not None
-    assert selected.grammar_path == package_library
+        selected = SmartSelector(manager, checker).select_best_grammar("baml")
+        assert selected is not None
+        assert selected.grammar_path == package_library
+    finally:
+        package_supplier._package_grammar_records.cache_clear()
