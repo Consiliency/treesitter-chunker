@@ -1225,6 +1225,74 @@ def test_record_verification_io_failure_cannot_fall_back_to_user_pin(
     )
 
 
+@pytest.mark.parametrize("warm", [False, True])
+def test_record_lstat_failure_rejects_matching_pin_and_cached_verdict(
+    tmp_path, monkeypatch, clear_package_records, baml_library, warm
+):
+    import sys
+
+    from chunker._internal import package_supplier
+
+    data = baml_library.read_bytes()
+    build = _wheel_rows(
+        tmp_path, monkeypatch, {GOOD_ENTRY: data}, [_row(GOOD_ENTRY, GRAMMAR_BYTES)]
+    )
+    candidate = build / "baml.so"
+    local = tmp_path / "local.so"
+    local.write_bytes(data)
+    pins = {"baml": _pin_of(data)}
+    calls = []
+    probe = _counting_probe(calls)
+    if warm:
+        result, _ = native_admission.admit_native_candidate(
+            local, "baml", pins, probe=probe
+        )
+        require(result.supported, "warm the matching bytes through a local file")
+    calls.clear()
+    package_supplier._package_grammar_records()
+    original_lstat = os.lstat
+    faults = []
+    fault_type = PermissionError
+
+    def failing_lstat(path, *args, **kwargs):
+        if sys._getframe(
+            1
+        ).f_code is package_supplier.package_supplied_digest.__code__ and Path(
+            path
+        ) in (
+            candidate,
+            local,
+        ):
+            faults.append(Path(path))
+            raise fault_type("injected supplier metadata failure")
+        return original_lstat(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "lstat", failing_lstat)
+    record, rejection = native_admission.admission_record(candidate, "baml", pins)
+    require(record is None and rejection.reason == "integrity_mismatch", str(rejection))
+    for admit in (
+        native_admission.admit_native_candidate,
+        native_admission.admitted_private_copy,
+    ):
+        result, payload = admit(candidate, "baml", pins, probe=probe)
+        require(result.reason == "integrity_mismatch", str(result))
+        require(payload is None, "no admitted metadata or private copy")
+    require(calls == [], "RECORD metadata failure never probes, even with warm verdict")
+    require(faults.count(candidate) == 3, "all supplier observations were faulted")
+    require(
+        package_supplier.package_supplied_digest(local) == ("local", None), "no entry"
+    )
+    result, _ = native_admission.admit_native_candidate(
+        local, "baml", pins, probe=probe
+    )
+    require(result.supported, "local candidate retains pin admission")
+    fault_type = FileNotFoundError
+    require(
+        package_supplier.package_supplied_digest(candidate) == ("local", None),
+        "a missing file retains the existing classification",
+    )
+
+
 def test_record_check_accepts_a_matching_entry(
     tmp_path, monkeypatch, clear_package_records
 ):

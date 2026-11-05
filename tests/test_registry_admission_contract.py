@@ -377,6 +377,10 @@ def test_language_construction_failure_requires_a_fresh_probe(
             )
         else:
             registry.discover_languages()
+    require(
+        "load_failed" in (registry.unavailable_cause(LANGUAGE) or ""),
+        "constructor failure is reported as load_failed",
+    )
     prior = len(calls)
     require(prior > 0, "real native admission ran before constructor failure")
     restored = LanguageRegistry(library_path, trusted_artifacts=pins)
