@@ -124,7 +124,8 @@ def package_supplied_digest(candidate: Path) -> tuple[str, str | None]:
     Returns ``("supplied", hex_digest)`` when the candidate is a regular,
     non-symlink file that is one of our distribution's package grammar files and
     matches its ``RECORD`` ``sha256``; ``("mismatch", None)`` when it is such a
-    file but its bytes differ (never loaded, and no user pin can admit it); and
+    file but its bytes differ or cannot be verified (never loaded, and no user
+    pin can admit it); and
     ``("local", None)`` otherwise (an ordinary local candidate that needs a pin).
     """
     try:
@@ -141,16 +142,18 @@ def package_supplied_digest(candidate: Path) -> tuple[str, str | None]:
         try:
             descriptor = os.open(candidate, _READ_FLAGS)
         except OSError:
-            return LOCAL, None
+            return MISMATCH, None
         try:
             if not stat.S_ISREG(os.fstat(descriptor).st_mode):
-                return LOCAL, None
+                return MISMATCH, None
             digest = hashlib.sha256()
             while True:
                 block = os.read(descriptor, 1024 * 1024)
                 if not block:
                     break
                 digest.update(block)
+        except OSError:
+            return MISMATCH, None
         finally:
             os.close(descriptor)
         actual = base64.urlsafe_b64encode(digest.digest()).rstrip(b"=").decode("ascii")
