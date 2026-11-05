@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep grammar subcommand help available with defective or missing pin files,
+  while validating pins before command work (treesitter-chunker#562).
 - Discard the affected native admission verdict and private copy when registry
   Language construction fails, so subsequent resolution probes again
   (treesitter-chunker#558).
