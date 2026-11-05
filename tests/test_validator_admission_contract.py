@@ -476,6 +476,49 @@ def test_click_defective_pin_file_exits_two_for_every_subcommand(
     )
 
 
+@pytest.mark.parametrize("subcommand", sorted(grammar_cli.commands))
+def test_click_subcommand_help_ignores_defective_pins(isolated, tmp_path, subcommand):
+    config = user_config_pin_path()
+    assert config is not None
+    config.parent.mkdir(parents=True)
+    config.write_text("{broken", encoding="utf-8")
+    for pins in (None, tmp_path / "missing.json"):
+        result = _click(tmp_path / "cache", subcommand, "--help", pins=pins)
+        require(result.exit_code == 0, result.output)
+        require("Usage:" in result.output, "subcommand help rendered")
+
+
+@pytest.mark.parametrize("via_symlink", [False, True])
+def test_click_explicit_pin_file_rejects_cache_directory(
+    isolated, tmp_path, monkeypatch, via_symlink
+):
+    cache = tmp_path / "custom-cache"
+    cache.mkdir()
+    option = cache / "pins.json"
+    option.write_text(_document({}), encoding="utf-8")
+    if via_symlink:
+        alias = tmp_path / "alias.json"
+        try:
+            alias.symlink_to(option)
+        except OSError:
+            pytest.skip("symlink creation unavailable")
+        option = alias
+    calls = []
+    monkeypatch.setattr(
+        ComprehensiveGrammarCLI,
+        "list_grammars",
+        lambda *args: calls.append(args) or 0,
+    )
+    result = _click(cache, "list", pins=option)
+    require(result.exit_code == 2, result.output)
+    require("tool-written directory" in result.output, result.output)
+    require(not calls, "forbidden file rejected before command work")
+    allowed = tmp_path / "allowed.json"
+    allowed.write_text(_document({}), encoding="utf-8")
+    result = _click(cache, "list", pins=allowed)
+    require(result.exit_code == 0 and len(calls) == 1, result.output)
+
+
 def test_validate_compiled_grammar_admits_and_keeps_output_shape(
     isolated, tmp_path, fixture_bytes, loads
 ):

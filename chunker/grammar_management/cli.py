@@ -2690,16 +2690,20 @@ def grammar_cli(
     ctx.ensure_object(dict)
     ctx.obj["cache_dir"] = Path(cache_dir) if cache_dir else None
     ctx.obj["verbose"] = verbose
-    # Every subcommand is pin-dependent: resolve the one active source (the
-    # option, else the user-config pin file; never merged) before any
-    # subcommand runs. A missing or defective file is a usage error (exit 2).
+    ctx.obj["trusted_artifacts"] = trusted_artifacts
+
+
+def _command_cli(ctx: Any) -> ComprehensiveGrammarCLI:
+    """Resolve pins before command work, after Click's eager help handling."""
     try:
-        pins = resolve_command_pins(trusted_artifacts, cache_dir=ctx.obj["cache_dir"])
+        pins = resolve_command_pins(
+            ctx.obj["trusted_artifacts"], cache_dir=ctx.obj["cache_dir"]
+        )
     except TrustedArtifactsError as error:
         raise click.UsageError(str(error)) from None
-    ctx.obj["cli"] = ComprehensiveGrammarCLI(
+    return ComprehensiveGrammarCLI(
         cache_dir=ctx.obj["cache_dir"],
-        verbose=verbose,
+        verbose=ctx.obj["verbose"],
         trusted_artifacts=pins,
     )
 
@@ -2710,7 +2714,7 @@ def grammar_cli(
 @click.pass_context
 def list(ctx: Any, language: Any, show_all: Any) -> None:
     """List available and user-installed grammars."""
-    cli = ctx.obj["cli"]
+    cli = _command_cli(ctx)
     sys.exit(cli.list_grammars(language, show_all))
 
 
@@ -2719,7 +2723,7 @@ def list(ctx: Any, language: Any, show_all: Any) -> None:
 @click.pass_context
 def info(ctx: Any, language: Any) -> None:
     """Show grammar details and compatibility information."""
-    cli = ctx.obj["cli"]
+    cli = _command_cli(ctx)
     sys.exit(cli.info_grammar(language))
 
 
@@ -2728,7 +2732,7 @@ def info(ctx: Any, language: Any) -> None:
 @click.pass_context
 def versions(ctx: Any, language: Any) -> None:
     """List available versions for a language."""
-    cli = ctx.obj["cli"]
+    cli = _command_cli(ctx)
     sys.exit(cli.versions_grammar(language))
 
 
@@ -2740,7 +2744,7 @@ def versions(ctx: Any, language: Any) -> None:
 @click.pass_context
 def fetch(ctx: Any, language: Any, version: Any, branch: Any, force: Any) -> None:
     """Download specific grammar version."""
-    cli = ctx.obj["cli"]
+    cli = _command_cli(ctx)
     sys.exit(cli.fetch_grammar(language, version, branch, force))
 
 
@@ -2750,7 +2754,7 @@ def fetch(ctx: Any, language: Any, version: Any, branch: Any, force: Any) -> Non
 @click.pass_context
 def build(ctx: Any, language: Any, force: Any) -> None:
     """Build grammar from source."""
-    cli = ctx.obj["cli"]
+    cli = _command_cli(ctx)
     sys.exit(cli.build_grammar(language, force))
 
 
@@ -2760,7 +2764,7 @@ def build(ctx: Any, language: Any, force: Any) -> None:
 @click.pass_context
 def remove(ctx: Any, language: Any, no_confirm: Any) -> None:
     """Remove user-installed grammar."""
-    cli = ctx.obj["cli"]
+    cli = _command_cli(ctx)
     sys.exit(cli.remove_grammar(language, not no_confirm))
 
 
@@ -2771,7 +2775,7 @@ def remove(ctx: Any, language: Any, no_confirm: Any) -> None:
 @click.pass_context
 def test(ctx: Any, language: Any, file_path: Any, ast: Any) -> None:
     """Test grammar with specific file."""
-    cli = ctx.obj["cli"]
+    cli = _command_cli(ctx)
     sys.exit(cli.test_grammar(language, file_path, ast))
 
 
@@ -2781,7 +2785,7 @@ def test(ctx: Any, language: Any, file_path: Any, ast: Any) -> None:
 @click.pass_context
 def validate(ctx: Any, language: Any, fix: Any) -> None:
     """Validate grammar installation with comprehensive testing."""
-    cli = ctx.obj["cli"]
+    cli = _command_cli(ctx)
     sys.exit(cli.validate_grammar(language, fix))
 
 
@@ -2796,7 +2800,7 @@ def validate(ctx: Any, language: Any, fix: Any) -> None:
 @click.pass_context
 def export(ctx: Any, output_file: Any, format: Any) -> None:
     """Export grammar configurations to file."""
-    cli = ctx.obj["cli"]
+    cli = _command_cli(ctx)
     sys.exit(cli.export_grammars(output_file, format))
 
 
@@ -2810,7 +2814,7 @@ def export(ctx: Any, output_file: Any, format: Any) -> None:
 @click.pass_context
 def cleanup_cmd(ctx: Any, days: Any) -> None:
     """Clean up old cache files."""
-    cli = ctx.obj["cli"]
+    cli = _command_cli(ctx)
     sys.exit(cli.cleanup_cache(days))
 
 
