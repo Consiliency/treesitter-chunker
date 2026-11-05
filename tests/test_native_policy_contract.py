@@ -224,6 +224,72 @@ ctypes.CDLL = load
         assert APPLICATION_CONTROL_MESSAGE in output
 
 
+@pytest.mark.parametrize(
+    "fault", ["load_failed", "malformed", "nonce", "timeout", "overflow"]
+)
+def test_unavailable_status_does_not_mask_other_worker_faults(tmp_path, fault):
+    plugin = tmp_path / "reply_fault.py"
+    plugin.write_text(
+        """
+import json, os
+from pathlib import Path
+from chunker.grammar import integrity
+original = integrity._read_child
+def injected(command, cwd, timeout, **kwargs):
+    reply = original(command, cwd, timeout, **kwargs)
+    fault = os.environ["ADMIT_TEST_FAULT"]
+    Path(os.environ["ADMIT_TEST_MARKER"]).write_text(fault, encoding="utf-8")
+    rc, stdout, stderr, timed_out, overflow = reply
+    if fault == "malformed":
+        stdout = b"not JSON"
+    elif fault in ("nonce", "load_failed"):
+        record = json.loads(stdout)
+        if fault == "nonce":
+            record["nonce"] = "wrong"
+        else:
+            record.pop("loader_returned")
+            record.pop("parse_returned")
+            record["failure"] = "load_failed"
+        stdout = json.dumps(record).encode()
+    elif fault == "timeout":
+        timed_out = True
+    elif fault == "overflow":
+        overflow = True
+    return rc, stdout, stderr, timed_out, overflow
+integrity._read_child = injected
+""",
+        encoding="utf-8",
+    )
+    root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env.update(
+        PYTHONPATH=os.pathsep.join((str(tmp_path), str(root))),
+        ADMIT_TEST_FAULT=fault,
+        ADMIT_TEST_MARKER=str(tmp_path / "injected"),
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-p",
+            "reply_fault",
+            "tests/test_compiled_grammar_analysis_contract.py::test_native_actual_worker_status_required_after_real_ack[unavailable]",
+            "-q",
+        ],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    output = completed.stdout + completed.stderr
+    assert (tmp_path / "injected").read_text(encoding="utf-8") == fault, output
+    assert completed.returncode == 1 and "1 failed" in output, output
+    assert "skipped" not in output
+
+
 def policy_error(code=4551):
     error = OSError("deliberate OS policy denial")
     error.winerror = code

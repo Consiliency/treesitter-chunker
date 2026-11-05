@@ -1384,12 +1384,24 @@ def test_native_actual_worker_status_required_after_real_ack(
             skip_policy_reply_under_status_fault(
                 result, command, state, kwargs["worker_nonce"], actual_statuses, ""
             )
+        pairs = json.loads(result[1], object_pairs_hook=list)
+        ack = dict(pairs)
+        assert len(pairs) == len(ack)
+        assert ack == {
+            "schema": "native_probe.v1",
+            "nonce": kwargs["worker_nonce"],
+            "language": command[-4],
+            "sha256": command[-3],
+            "loader_returned": True,
+            "parse_returned": True,
+        }
+        assert not result[3] and not result[4]
         observed.append(
             (
                 state.worker_status,
                 state.launcher.returncode,
                 state.cleanup_safe,
-                json.loads(result[1]),
+                ack,
             )
         )
         return result
