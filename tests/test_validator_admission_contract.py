@@ -32,6 +32,7 @@ from chunker._internal.trusted_artifacts import (
 )
 from chunker.grammar import integrity
 from chunker.grammar_management import core as core_module
+from chunker.grammar_management import cli as cli_module
 from chunker.grammar_management.cli import ComprehensiveGrammarCLI, grammar_cli
 from chunker.grammar_management.core import (
     GrammarInstaller,
@@ -42,6 +43,24 @@ from chunker.grammar_management.core import (
 )
 from tests.test_compiled_grammar_analysis_contract import FIXTURE
 from tests.test_registry_admission_contract import _build
+from tests.native_policy import skip_policy_error
+
+pytestmark = pytest.mark.usefixtures("native_policy_environment", "cli_policy_load")
+
+
+@pytest.fixture
+def cli_policy_load(monkeypatch):
+    real = cli_module.load_compiled_grammar
+
+    def load(*args, **kwargs):
+        try:
+            return real(*args, **kwargs)
+        except OSError as error:
+            skip_policy_error(error)
+            raise
+
+    monkeypatch.setattr(cli_module, "load_compiled_grammar", load)
+
 
 LANGUAGE = "admitfixture"
 SUFFIX = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")

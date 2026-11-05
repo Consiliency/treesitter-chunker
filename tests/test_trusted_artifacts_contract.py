@@ -40,6 +40,8 @@ from chunker.exceptions import ChunkerError, TrustedArtifactsError
 from chunker.grammar.integrity import probe_native_grammar
 from tests.test_compiled_grammar_analysis_contract import SOURCE, _compile_probe_fixture
 
+pytestmark = pytest.mark.usefixtures("native_policy_environment")
+
 SUBCOMMANDS = [
     ["list"],
     ["info", "baml"],
@@ -914,20 +916,30 @@ def test_concurrent_copies_of_one_pair_probe_once(tmp_path, baml_library):
     calls: list[dict[str, object]] = []
     barrier = threading.Barrier(2)
     results: list[object] = []
+    failures: list[BaseException] = []
 
     def admit() -> None:
         barrier.wait()
-        results.append(
-            native_admission.admitted_private_copy(
-                candidate, "baml", pins, probe=_counting_probe(calls)
+        try:
+            results.append(
+                native_admission.admitted_private_copy(
+                    candidate, "baml", pins, probe=_counting_probe(calls)
+                )
             )
-        )
+        except BaseException as error:
+            failures.append(error)
 
     threads = [threading.Thread(target=admit) for _ in range(2)]
     for thread in threads:
         thread.start()
     for thread in threads:
         thread.join(timeout=120)
+    require(not any(thread.is_alive() for thread in threads), "workers finished")
+    for error in failures:
+        if not isinstance(error, pytest.skip.Exception):
+            raise error
+    if failures:
+        raise failures[0]
     require(len(results) == 2, "both finished")
     copies = {str(copy) for _, copy in results}
     require(all(result.supported for result, _ in results), f"{results}")

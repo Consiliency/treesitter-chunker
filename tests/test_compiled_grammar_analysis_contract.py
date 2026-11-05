@@ -1365,10 +1365,11 @@ def test_native_actual_worker_status_required_after_real_ack(
     tmp_path, monkeypatch, status
 ):
     from chunker.grammar import integrity
+    from tests.native_policy import skip_policy_reply_under_status_fault
 
     library = _compile_probe_fixture(tmp_path, [SOURCE / "parser.c"])
     original_read, original_exited = integrity._read_child, integrity._worker_exited
-    observed, inspected = [], []
+    observed, inspected, actual_statuses = [], [], []
 
     def read(command, cwd, timeout, **kwargs):
         if status == "abnormal":
@@ -1379,6 +1380,10 @@ def test_native_actual_worker_status_required_after_real_ack(
             )
         result = original_read(command, cwd, timeout, **kwargs)
         state = kwargs["lifecycle"]
+        if status == "unavailable":
+            skip_policy_reply_under_status_fault(
+                result, command, state, kwargs["worker_nonce"], actual_statuses, ""
+            )
         observed.append(
             (
                 state.worker_status,
@@ -1392,6 +1397,7 @@ def test_native_actual_worker_status_required_after_real_ack(
     def exited(state):
         done = original_exited(state)
         if done and status == "unavailable":
+            actual_statuses.append(state.worker_status)
             state.worker_status = None
         return done
 

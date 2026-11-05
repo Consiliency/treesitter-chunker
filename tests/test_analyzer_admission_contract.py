@@ -24,6 +24,8 @@ from chunker.languages.compatibility.grammar_analyzer import (
 )
 from tests.test_compiled_grammar_analysis_contract import SOURCE, _compile_probe_fixture
 
+pytestmark = pytest.mark.usefixtures("native_policy_environment")
+
 
 def require(condition: object, name: str) -> None:
     if not condition:
