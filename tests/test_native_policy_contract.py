@@ -124,8 +124,6 @@ integrity._read_child = injected
     assert (tmp_path / "injected").read_text(encoding="utf-8") == "worker", output
     assert f"1 {expected}" in output, output
     assert completed.returncode == (0 if expected == "skipped" else 1), output
-    if expected == "skipped":
-        assert APPLICATION_CONTROL_MESSAGE in output
 
 
 @pytest.mark.parametrize(("winerror", "expected"), [(4551, "skipped"), (5, "failed")])
@@ -290,6 +288,8 @@ ctypes.CDLL = load
     output = completed.stdout + completed.stderr
     require_injection_marker(tmp_path / "injected", "load", completed)
     assert f"1 {expected}" in output, output
+    if expected == "skipped":
+        assert APPLICATION_CONTROL_MESSAGE in output
     assert completed.returncode == (0 if expected == "skipped" else 1), output
     if expected == "skipped":
         assert APPLICATION_CONTROL_MESSAGE in output
@@ -930,9 +930,10 @@ def test_marker_wait_classifies_only_trusted_policy_result(
 
 
 @pytest.mark.parametrize("suffix", ["actual", ".dll"])
-@pytest.mark.parametrize("code", [4551, 1260, 5])
+@pytest.mark.parametrize("code", [4551, 1260, 5, None, 4551.0])
 def test_sentinel_child_classifies_real_load_errors(tmp_path, code, suffix):
     from tests.test_native_grammar_library_contract import (
+        ACTUAL_SUFFIX,
         ROOT,
         SENTINEL_CONTROL_SCRIPT,
         _check_sentinel_control,
@@ -944,8 +945,8 @@ def test_sentinel_child_classifies_real_load_errors(tmp_path, code, suffix):
         f"Path({str(marker)!r}).write_text('reached')\n"
         "def denied(*args):\n"
         "    error = OSError('injected')\n"
-        f"    error.winerror = {code}\n"
-        "    raise error\n"
+        + (f"    error.winerror = {code!r}\n" if code is not None else "")
+        + "    raise error\n"
         "ctypes.CDLL = denied\n"
     )
     anchor = "try:\n    ctypes.CDLL(sys.argv[2])"
@@ -958,14 +959,7 @@ def test_sentinel_child_classifies_real_load_errors(tmp_path, code, suffix):
             "-c",
             script,
             str(ROOT),
-            str(
-                tmp_path
-                / (
-                    "helper.so"
-                    if suffix == "actual" and sys.platform != "win32"
-                    else "helper.dll"
-                )
-            ),
+            str(tmp_path / f"helper{ACTUAL_SUFFIX if suffix == 'actual' else suffix}"),
         ],
         capture_output=True,
         timeout=30,
@@ -973,8 +967,8 @@ def test_sentinel_child_classifies_real_load_errors(tmp_path, code, suffix):
     )
     assert marker.read_text() == "reached"
     sentinel = tmp_path / "sentinel"
-    if code in (4551, 1260):
-        with pytest.raises(pytest.skip.Exception):
+    if type(code) is int and code in (4551, 1260):
+        with pytest.raises(pytest.skip.Exception, match="Blocked by OS"):
             _check_sentinel_control(control, sentinel)
     else:
         assert control.returncode == 1
@@ -1026,18 +1020,11 @@ def test_sentinel_control_rejects_invalid_outcomes(
         pytest.fail("invalid sentinel outcome must not skip")
 
 
-def test_sentinel_control_timeout_is_not_a_skip(tmp_path):
-    with pytest.raises(subprocess.TimeoutExpired):
-        subprocess.run(
-            [sys.executable, "-I", "-c", "import time; time.sleep(5)"],
-            timeout=0.1,
-            capture_output=True,
-            check=False,
-        )
-
-
 @pytest.mark.parametrize("suffix", ["actual", ".dll"])
-@pytest.mark.parametrize(("code", "expected"), [(4551, "skipped"), (5, "failed")])
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [(4551, "skipped"), (5, "failed"), ("exit", "failed"), ("timeout", "failed")],
+)
 def test_sentinel_test_propagates_child_policy(tmp_path, suffix, code, expected):
     plugin = tmp_path / "sentinel_injection.py"
     plugin.write_text(
@@ -1050,8 +1037,22 @@ def wrapped(command, *args, **kwargs):
         command = list(command)
         anchor = "try:\\n    ctypes.CDLL(sys.argv[2])"
         assert command[3].count(anchor) == 1
-        injection = "from pathlib import Path\\nPath(%r).write_text('reached')\\ndef denied(*args):\\n error=OSError('injected')\\n error.winerror=%d\\n raise error\\nctypes.CDLL=denied\\n" % (os.environ["SENTINEL_INJECTION_MARKER"], int(os.environ["SENTINEL_INJECTION_CODE"]))
+        mode = os.environ["SENTINEL_INJECTION_CODE"]
+        prefix = "from pathlib import Path\\nPath(%r).write_text('reached')\\n" % os.environ["SENTINEL_INJECTION_MARKER"]
+        if mode == "exit":
+            injection = prefix + "import os\\ndef denied(*args):\\n Path(os.environ['CHUNKER_TEST_NATIVE_SENTINEL']).write_bytes(b'entered')\\n os._exit(3)\\nctypes.CDLL=denied\\n"
+        elif mode == "timeout":
+            injection = prefix + "import time\\ndef denied(*args):\\n time.sleep(20)\\nctypes.CDLL=denied\\n"
+            kwargs["timeout"] = 3
+        else:
+            injection = prefix + "def denied(*args):\\n error=OSError('injected')\\n error.winerror=%d\\n raise error\\nctypes.CDLL=denied\\n" % int(mode)
         command[3] = command[3].replace(anchor, injection + anchor)
+        result = original(command, *args, **kwargs)
+        if mode == "exit":
+            from pathlib import Path
+            assert result.returncode == 3
+            assert Path(kwargs["env"]["CHUNKER_TEST_NATIVE_SENTINEL"]).read_bytes() == b"entered"
+        return result
     return original(command, *args, **kwargs)
 subprocess.run = wrapped
 """,
@@ -1078,4 +1079,19 @@ subprocess.run = wrapped
     output = completed.stdout + completed.stderr
     require_injection_marker(marker, "reached", completed)
     assert f"1 {expected}" in output, output
+    if expected == "skipped":
+        assert APPLICATION_CONTROL_MESSAGE in output
+    if code == "timeout":
+        assert "TimeoutExpired" in output
     assert completed.returncode == (0 if expected == "skipped" else 1), output
+
+
+def test_sentinel_control_rejects_wrong_marker_bytes(tmp_path):
+    from tests.test_native_grammar_library_contract import _check_sentinel_control
+
+    marker = tmp_path / "sentinel"
+    marker.write_bytes(b"wrong")
+    with pytest.raises(AssertionError):
+        _check_sentinel_control(
+            SimpleNamespace(returncode=0, stdout=b"", stderr=b""), marker
+        )

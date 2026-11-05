@@ -737,7 +737,7 @@ except OSError as error:
 def _check_sentinel_control(control, sentinel):
     require(type(control.returncode) is int, "isolated CDLL requires actual status")
     if control.returncode == 77:
-        require(not sentinel.exists(), "policy denial cannot create sentinel")
+        require(not os.path.lexists(sentinel), "policy denial cannot create sentinel")
         try:
             pairs = json.loads(control.stdout, object_pairs_hook=list)
             record = dict(pairs)
@@ -745,6 +745,7 @@ def _check_sentinel_control(control, sentinel):
             require(False, "invalid policy record")
         require(
             isinstance(pairs, list)
+            and all(isinstance(pair, tuple) and len(pair) == 2 for pair in pairs)
             and len(pairs) == 2
             and set(record) == {"schema", "winerror"}
             and record["schema"] == "native_test.policy.v1"
