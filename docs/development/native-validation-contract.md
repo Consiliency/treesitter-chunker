@@ -583,10 +583,11 @@ is; they never make anything trusted, so this is not a trust switch.
     or any native load. Those commands exist to report on pinned grammars, so
     continuing would misreport them.
   - **Every subcommand is pin-dependent** (ADMIT carry-over). Both grammar
-    groups resolve the active pin source once, before any subcommand runs:
-    the argparse group before it dispatches, the click group in its group
-    callback. So a defective option file, or a defective config file when the
-    option is absent, exits 2 for every subcommand of both groups, including
+    groups resolve the active pin source once before subcommand work:
+    the argparse group before it dispatches, the click group at the start of
+    each subcommand body, before that subcommand does any work and after
+    click has handled `--help`. So a defective option file, or a defective
+    config file when the option is absent, exits 2 for every subcommand of both groups, including
     commands such as `build`, `remove` or `cleanup` that do not consult pins
     today. No subcommand only warns. `--help` is unaffected.
     `docs/grammar_management.md` ("CLI Commands Reference" → "Approved pins")

@@ -421,6 +421,11 @@ class LanguageRegistry:
 
                     if digest is not None:
                         forget_private_copy(library_path.stem, digest)
+                    self._reject(
+                        library_path.stem,
+                        Path(library_path).absolute(),
+                        f"load_failed ({e})",
+                    )
                     language_name = symbol_name.removeprefix("tree_sitter_")
                     if language_name in {"python", "javascript"} and isinstance(
                         e, ValueError
@@ -765,6 +770,10 @@ class LanguageRegistry:
 
                         if opened is not None and opened[2] is not None:
                             forget_private_copy(name, opened[2])
+                        if opened is not None:
+                            self._reject(
+                                name, path_candidate.absolute(), f"load_failed ({e})"
+                            )
                         if name in {"python", "javascript"} and isinstance(
                             e, ValueError
                         ):
