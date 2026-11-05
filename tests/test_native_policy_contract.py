@@ -215,6 +215,10 @@ integrity._read_child = injected_read
             "tests/test_validator_admission_contract.py::test_click_group_option_and_config_fallback",
             "chunker-admitted-",
         ),
+        (
+            "tests/test_validator_admission_contract.py::test_parse_samples_without_path_stays_off_the_parse_path",
+            "chunker-admitted-",
+        ),
     ],
 )
 @pytest.mark.parametrize(("winerror", "expected"), [(4551, "skipped"), (5, "failed")])
@@ -264,7 +268,7 @@ ctypes.CDLL = load
 
 
 @pytest.mark.parametrize(
-    "fault", ["load_failed", "malformed", "nonce", "timeout", "overflow"]
+    "fault", ["load_failed", "malformed", "nonce", "timeout", "overflow", "duplicate"]
 )
 def test_unavailable_status_does_not_mask_other_worker_faults(tmp_path, fault):
     plugin = tmp_path / "reply_fault.py"
@@ -275,21 +279,24 @@ from pathlib import Path
 from chunker.grammar import integrity
 original = integrity._read_child
 def injected(command, cwd, timeout, **kwargs):
+    command = list(command)
+    anchor = 'from chunker.grammar.integrity import _native_probe_child; '
+    assert anchor in command[3]
+    code = 5 if os.environ["ADMIT_TEST_FAULT"] == "load_failed" else 4551
+    denied = "def denied(*args):\\n error = OSError('injected denial')\\n error.winerror = %d\\n raise error\\n" % code
+    command[3] = command[3].replace(anchor, anchor + 'import chunker.grammar_management.core as core; exec(%r); core.load_compiled_grammar=denied; ' % denied)
     reply = original(command, cwd, timeout, **kwargs)
     fault = os.environ["ADMIT_TEST_FAULT"]
     Path(os.environ["ADMIT_TEST_MARKER"]).write_text(fault, encoding="utf-8")
     rc, stdout, stderr, timed_out, overflow = reply
     if fault == "malformed":
         stdout = b"not JSON"
-    elif fault in ("nonce", "load_failed"):
+    elif fault == "nonce":
         record = json.loads(stdout)
-        if fault == "nonce":
-            record["nonce"] = "wrong"
-        else:
-            record.pop("loader_returned")
-            record.pop("parse_returned")
-            record["failure"] = "load_failed"
+        record["nonce"] = "wrong"
         stdout = json.dumps(record).encode()
+    elif fault == "duplicate":
+        stdout = stdout.rstrip()[:-1] + b',"failure":"policy_blocked"}'
     elif fault == "timeout":
         timed_out = True
     elif fault == "overflow":
@@ -656,6 +663,7 @@ def test_status_fault_skip_accepts_only_observed_policy_failure():
         "malformed",
         "nonce",
         "normal",
+        "duplicate",
     ],
 )
 def test_status_fault_skip_preserves_protocol_failures(fault):
@@ -685,6 +693,8 @@ def test_status_fault_skip_preserves_protocol_failures(fault):
         reply = (1, json.dumps(record).encode(), b"", False, False)
     if fault == "normal":
         reply = (0, b'{"loader_returned": true}', b"", False, False)
+    if fault == "duplicate":
+        reply = (1, reply[1][:-1] + b',"failure":"policy_blocked"}', b"", False, False)
     assert_not_policy_skip(
         fault,
         skip_policy_reply_under_status_fault,

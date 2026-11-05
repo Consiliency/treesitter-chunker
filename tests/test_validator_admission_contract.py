@@ -191,6 +191,18 @@ def test_parse_samples_without_path_stays_off_the_parse_path(
 ):
     """EC-ADMIT-6: a config pin never reaches a validator with its own (empty) pins."""
     from chunker import parser as parser_module
+    from chunker._internal import registry as registry_module
+
+    real_load = registry_module.ctypes.CDLL
+
+    def policy_load(*args, **kwargs):
+        try:
+            return real_load(*args, **kwargs)
+        except OSError as error:
+            skip_policy_error(error)
+            raise
+
+    monkeypatch.setattr(registry_module.ctypes, "CDLL", policy_load)
 
     build = tmp_path / "build"
     build.mkdir()
