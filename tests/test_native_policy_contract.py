@@ -930,7 +930,7 @@ def test_marker_wait_classifies_only_trusted_policy_result(
 
 
 @pytest.mark.parametrize("suffix", ["actual", ".dll"])
-@pytest.mark.parametrize("code", [4551, 1260, 5, None, 4551.0])
+@pytest.mark.parametrize("code", [4551, 1260, 5, "missing", None, True, 4551.0])
 def test_sentinel_child_classifies_real_load_errors(tmp_path, code, suffix):
     from tests.test_native_grammar_library_contract import (
         ACTUAL_SUFFIX,
@@ -945,7 +945,7 @@ def test_sentinel_child_classifies_real_load_errors(tmp_path, code, suffix):
         f"Path({str(marker)!r}).write_text('reached')\n"
         "def denied(*args):\n"
         "    error = OSError('injected')\n"
-        + (f"    error.winerror = {code!r}\n" if code is not None else "")
+        + (f"    error.winerror = {code!r}\n" if code != "missing" else "")
         + "    raise error\n"
         "ctypes.CDLL = denied\n"
     )
@@ -1023,7 +1023,13 @@ def test_sentinel_control_rejects_invalid_outcomes(
 @pytest.mark.parametrize("suffix", ["actual", ".dll"])
 @pytest.mark.parametrize(
     ("code", "expected"),
-    [(4551, "skipped"), (5, "failed"), ("exit", "failed"), ("timeout", "failed")],
+    [
+        (4551, "skipped"),
+        (5, "failed"),
+        ("exit", "failed"),
+        ("timeout", "failed"),
+        ("noop", "failed"),
+    ],
 )
 def test_sentinel_test_propagates_child_policy(tmp_path, suffix, code, expected):
     plugin = tmp_path / "sentinel_injection.py"
@@ -1043,7 +1049,9 @@ def wrapped(command, *args, **kwargs):
             injection = prefix + "import os\\ndef denied(*args):\\n Path(os.environ['CHUNKER_TEST_NATIVE_SENTINEL']).write_bytes(b'entered')\\n os._exit(3)\\nctypes.CDLL=denied\\n"
         elif mode == "timeout":
             injection = prefix + "import time\\ndef denied(*args):\\n time.sleep(20)\\nctypes.CDLL=denied\\n"
-            kwargs["timeout"] = 3
+            kwargs["timeout"] = 5
+        elif mode == "noop":
+            injection = prefix + "def denied(*args):\\n return None\\nctypes.CDLL=denied\\n"
         else:
             injection = prefix + "def denied(*args):\\n error=OSError('injected')\\n error.winerror=%d\\n raise error\\nctypes.CDLL=denied\\n" % int(mode)
         command[3] = command[3].replace(anchor, injection + anchor)
