@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Discard the affected native admission verdict and private copy when registry
+  Language construction fails, so subsequent resolution probes again
+  (treesitter-chunker#558).
 - Reject explicit native-grammar pin files in tool-written directories, and
   keep matched wheel RECORD entries closed to user-pin admission when their
   contents cannot be verified (treesitter-chunker#556).
