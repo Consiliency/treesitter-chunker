@@ -6,6 +6,7 @@ pin. "Simulated" cases substitute ``_platform_library_suffix``; they never patch
 ``sys.platform`` or ``platform.system``.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -16,7 +17,7 @@ import pytest
 
 pytestmark = pytest.mark.usefixtures("native_policy_environment")
 
-from tests.native_policy import run_isolated_baml_parse
+from tests.native_policy import run_isolated_baml_parse, skip_policy_subprocess
 
 from chunker._internal import grammar_management, user_grammar_tools
 from chunker._internal.grammar_management import (
@@ -719,6 +720,43 @@ def test_shadowed_legacy_copy_refused_before_install_or_changed_update(
     )
 
 
+SENTINEL_CONTROL_SCRIPT = """
+import ctypes, json, sys
+sys.path.insert(0, sys.argv[1])
+from chunker.grammar._native_policy import is_application_control_error
+try:
+    ctypes.CDLL(sys.argv[2])
+except OSError as error:
+    if type(getattr(error, "winerror", None)) is int and is_application_control_error(error):
+        print(json.dumps({"schema": "native_test.policy.v1", "winerror": error.winerror}), flush=True)
+        raise SystemExit(77)
+    raise
+"""
+
+
+def _check_sentinel_control(control, sentinel):
+    require(type(control.returncode) is int, "isolated CDLL requires actual status")
+    if control.returncode == 77:
+        require(not sentinel.exists(), "policy denial cannot create sentinel")
+        try:
+            pairs = json.loads(control.stdout, object_pairs_hook=list)
+            record = dict(pairs)
+        except (TypeError, ValueError, RecursionError):
+            require(False, "invalid policy record")
+        require(
+            isinstance(pairs, list)
+            and len(pairs) == 2
+            and set(record) == {"schema", "winerror"}
+            and record["schema"] == "native_test.policy.v1"
+            and type(record["winerror"]) is int
+            and record["winerror"] in {4551, 1260},
+            "invalid policy record",
+        )
+        skip_policy_subprocess(control)
+    require(control.returncode == 0, f"isolated CDLL control {control.stderr!r}")
+    require(sentinel.read_bytes() == b"entered", "isolated CDLL creates sentinel")
+
+
 @pytest.mark.parametrize("suffix", ["actual", ".dll"])
 def test_selection_paths_never_load_unapproved_library_in_parent(
     tmp_path, monkeypatch, sentinel_bytes, suffix
@@ -749,7 +787,8 @@ def test_selection_paths_never_load_unapproved_library_in_parent(
             sys.executable,
             "-I",
             "-c",
-            "import ctypes, sys; ctypes.CDLL(sys.argv[1])",
+            SENTINEL_CONTROL_SCRIPT,
+            str(ROOT),
             str(build / f"helper{suffix}"),
         ],
         check=False,
@@ -757,8 +796,7 @@ def test_selection_paths_never_load_unapproved_library_in_parent(
         timeout=60,
         env={**os.environ, "CHUNKER_TEST_NATIVE_SENTINEL": str(sentinel)},
     )
-    require(control.returncode == 0, f"isolated CDLL control {control.stderr!r}")
-    require(sentinel.read_bytes() == b"entered", "isolated CDLL creates sentinel")
+    _check_sentinel_control(control, sentinel)
 
 
 def test_recovery_plan_names_selected_library_without_glob(tmp_path, monkeypatch):

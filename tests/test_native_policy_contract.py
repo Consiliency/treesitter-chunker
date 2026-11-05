@@ -927,3 +927,155 @@ def test_marker_wait_classifies_only_trusted_policy_result(
     process.returncode = returncode
     with pytest.raises(pytest.skip.Exception if policy else AssertionError):
         _wait_for_file(tmp_path / "unpublished", process)
+
+
+@pytest.mark.parametrize("suffix", ["actual", ".dll"])
+@pytest.mark.parametrize("code", [4551, 1260, 5])
+def test_sentinel_child_classifies_real_load_errors(tmp_path, code, suffix):
+    from tests.test_native_grammar_library_contract import (
+        ROOT,
+        SENTINEL_CONTROL_SCRIPT,
+        _check_sentinel_control,
+    )
+
+    marker = tmp_path / "injected"
+    injection = (
+        "from pathlib import Path\n"
+        f"Path({str(marker)!r}).write_text('reached')\n"
+        "def denied(*args):\n"
+        "    error = OSError('injected')\n"
+        f"    error.winerror = {code}\n"
+        "    raise error\n"
+        "ctypes.CDLL = denied\n"
+    )
+    anchor = "try:\n    ctypes.CDLL(sys.argv[2])"
+    assert SENTINEL_CONTROL_SCRIPT.count(anchor) == 1
+    script = SENTINEL_CONTROL_SCRIPT.replace(anchor, injection + anchor)
+    control = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            script,
+            str(ROOT),
+            str(
+                tmp_path
+                / (
+                    "helper.so"
+                    if suffix == "actual" and sys.platform != "win32"
+                    else "helper.dll"
+                )
+            ),
+        ],
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
+    assert marker.read_text() == "reached"
+    sentinel = tmp_path / "sentinel"
+    if code in (4551, 1260):
+        with pytest.raises(pytest.skip.Exception):
+            _check_sentinel_control(control, sentinel)
+    else:
+        assert control.returncode == 1
+        assert b"OSError" in control.stderr
+        assert control.stdout == b""
+        with pytest.raises(AssertionError):
+            _check_sentinel_control(control, sentinel)
+
+
+@pytest.mark.parametrize("suffix", ["actual", ".dll"])
+@pytest.mark.parametrize(
+    ("status", "output", "exists"),
+    [
+        (None, b"", True),
+        (False, b"", True),
+        (3, b"", True),
+        (
+            77,
+            b'{"schema":"native_test.policy_result.v1","reason":"policy_blocked"}',
+            False,
+        ),
+        (77, b'{"schema":"native_test.policy.v1","winerror":4551}', True),
+        (
+            77,
+            b'{"schema":"native_test.policy.v1","winerror":4551,"winerror":4551}',
+            False,
+        ),
+        (77, b"WinError 4551", False),
+        (77, b"{", False),
+        (77, b'{"schema":"native_test.policy.v1","winerror":4551,"extra":1}', False),
+        (77, b'{"schema":"native_test.policy.v1","winerror":4551.0}', False),
+        (77, b'{"schema":"native_test.policy.v1","winerror":5}', False),
+        (0, b"", False),
+    ],
+)
+def test_sentinel_control_rejects_invalid_outcomes(
+    tmp_path, status, output, exists, suffix
+):
+    from tests.test_native_grammar_library_contract import _check_sentinel_control
+
+    sentinel = tmp_path / ("sentinel-" + suffix)
+    if exists:
+        sentinel.write_bytes(b"entered")
+    result = SimpleNamespace(returncode=status, stdout=output, stderr=b"")
+    try:
+        with pytest.raises((AssertionError, FileNotFoundError)):
+            _check_sentinel_control(result, sentinel)
+    except pytest.skip.Exception:
+        pytest.fail("invalid sentinel outcome must not skip")
+
+
+def test_sentinel_control_timeout_is_not_a_skip(tmp_path):
+    with pytest.raises(subprocess.TimeoutExpired):
+        subprocess.run(
+            [sys.executable, "-I", "-c", "import time; time.sleep(5)"],
+            timeout=0.1,
+            capture_output=True,
+            check=False,
+        )
+
+
+@pytest.mark.parametrize("suffix", ["actual", ".dll"])
+@pytest.mark.parametrize(("code", "expected"), [(4551, "skipped"), (5, "failed")])
+def test_sentinel_test_propagates_child_policy(tmp_path, suffix, code, expected):
+    plugin = tmp_path / "sentinel_injection.py"
+    plugin.write_text(
+        """
+import os
+import subprocess
+original = subprocess.run
+def wrapped(command, *args, **kwargs):
+    if isinstance(command, list) and len(command) > 3 and command[1:3] == ["-I", "-c"] and "ctypes.CDLL(sys.argv[2])" in command[3]:
+        command = list(command)
+        anchor = "try:\\n    ctypes.CDLL(sys.argv[2])"
+        assert command[3].count(anchor) == 1
+        injection = "from pathlib import Path\\nPath(%r).write_text('reached')\\ndef denied(*args):\\n error=OSError('injected')\\n error.winerror=%d\\n raise error\\nctypes.CDLL=denied\\n" % (os.environ["SENTINEL_INJECTION_MARKER"], int(os.environ["SENTINEL_INJECTION_CODE"]))
+        command[3] = command[3].replace(anchor, injection + anchor)
+    return original(command, *args, **kwargs)
+subprocess.run = wrapped
+""",
+        encoding="utf-8",
+    )
+    marker = tmp_path / "injected"
+    root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env.update(
+        PYTHONPATH=str(tmp_path) + os.pathsep + str(root),
+        SENTINEL_INJECTION_MARKER=str(marker),
+        SENTINEL_INJECTION_CODE=str(code),
+    )
+    node = f"tests/test_native_grammar_library_contract.py::test_selection_paths_never_load_unapproved_library_in_parent[{suffix}]"
+    completed = subprocess.run(
+        [sys.executable, "-m", "pytest", "-p", "sentinel_injection", node, "-q", "-rs"],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    output = completed.stdout + completed.stderr
+    require_injection_marker(marker, "reached", completed)
+    assert f"1 {expected}" in output, output
+    assert completed.returncode == (0 if expected == "skipped" else 1), output
