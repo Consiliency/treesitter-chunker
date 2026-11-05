@@ -943,6 +943,18 @@ def test_verdict_payload_has_exactly_the_frozen_fields():
     require(payload == expected, f"real values {payload}")
 
 
+def _check_concurrent_admission_outcomes(results, failures):
+    for error in failures:
+        if not isinstance(error, pytest.skip.Exception):
+            raise error
+    require(
+        all(result.supported and copy is not None for result, copy in results),
+        f"completed admissions must succeed: {results}",
+    )
+    if failures:
+        raise failures[0]
+
+
 def test_concurrent_copies_of_one_pair_probe_once(tmp_path, baml_library):
     import threading
 
@@ -972,11 +984,7 @@ def test_concurrent_copies_of_one_pair_probe_once(tmp_path, baml_library):
     for thread in threads:
         thread.join(timeout=120)
     require(not any(thread.is_alive() for thread in threads), "workers finished")
-    for error in failures:
-        if not isinstance(error, pytest.skip.Exception):
-            raise error
-    if failures:
-        raise failures[0]
+    _check_concurrent_admission_outcomes(results, failures)
     require(len(results) == 2, "both finished")
     copies = {str(copy) for _, copy in results}
     require(all(result.supported for result, _ in results), f"{results}")

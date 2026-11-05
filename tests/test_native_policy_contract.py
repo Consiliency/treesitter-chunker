@@ -24,6 +24,45 @@ from tests.native_policy import (
 )
 
 
+def require_injection_marker(marker, expected, completed):
+    output = completed.stdout + completed.stderr
+    if (
+        not marker.exists()
+        and completed.returncode == 0
+        and "1 skipped" in output
+        and APPLICATION_CONTROL_MESSAGE in output
+    ):
+        pytest.skip(APPLICATION_CONTROL_MESSAGE)
+    assert marker.read_text(encoding="utf-8") == expected, output
+
+
+def test_injection_marker_handles_only_verified_prerequisite_skip(tmp_path):
+    marker = tmp_path / "missing"
+    skipped = SimpleNamespace(
+        stdout=f"1 skipped: {APPLICATION_CONTROL_MESSAGE}", stderr="", returncode=0
+    )
+    with pytest.raises(pytest.skip.Exception, match="Blocked by OS"):
+        require_injection_marker(marker, "load", skipped)
+    skipped.stdout = "1 skipped: unrelated reason"
+    with pytest.raises(FileNotFoundError):
+        require_injection_marker(marker, "load", skipped)
+    skipped.stdout = f"1 failed: {APPLICATION_CONTROL_MESSAGE}"
+    skipped.returncode = 1
+    with pytest.raises(FileNotFoundError):
+        require_injection_marker(marker, "load", skipped)
+
+
+def test_concurrent_policy_skip_does_not_hide_other_failure():
+    from tests.test_trusted_artifacts_contract import (
+        _check_concurrent_admission_outcomes,
+    )
+
+    policy_skip = pytest.skip.Exception(APPLICATION_CONTROL_MESSAGE)
+    failed = integrity.NativeProbeResult(False, "load_failed", None)
+    with pytest.raises(AssertionError, match="completed admissions must succeed"):
+        _check_concurrent_admission_outcomes([(failed, None)], [policy_skip])
+
+
 @pytest.mark.parametrize(
     "node",
     [
@@ -154,7 +193,7 @@ integrity._read_child = injected_read
         check=False,
     )
     output = completed.stdout + completed.stderr
-    assert (tmp_path / "injected").read_text(encoding="utf-8") == site, output
+    require_injection_marker(tmp_path / "injected", site, completed)
     assert f"1 {expected}" in output, output
     assert completed.returncode == (0 if expected == "skipped" else 1), output
     if expected == "skipped":
@@ -217,7 +256,7 @@ ctypes.CDLL = load
         check=False,
     )
     output = completed.stdout + completed.stderr
-    assert (tmp_path / "injected").read_text(encoding="utf-8") == "load", output
+    require_injection_marker(tmp_path / "injected", "load", completed)
     assert f"1 {expected}" in output, output
     assert completed.returncode == (0 if expected == "skipped" else 1), output
     if expected == "skipped":
