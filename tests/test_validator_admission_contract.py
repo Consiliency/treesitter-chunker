@@ -186,11 +186,8 @@ def test_parse_samples_with_path_loads_only_admitted_copy(
     )
 
 
-def test_parse_samples_without_path_stays_off_the_parse_path(
-    isolated, tmp_path, fixture_bytes, monkeypatch
-):
-    """EC-ADMIT-6: a config pin never reaches a validator with its own (empty) pins."""
-    from chunker import parser as parser_module
+@pytest.fixture
+def validator_registry_policy_load(monkeypatch):
     from chunker._internal import registry as registry_module
 
     real_load = registry_module.ctypes.CDLL
@@ -203,6 +200,13 @@ def test_parse_samples_without_path_stays_off_the_parse_path(
             raise
 
     monkeypatch.setattr(registry_module.ctypes, "CDLL", policy_load)
+
+
+def test_parse_samples_without_path_stays_off_the_parse_path(
+    isolated, tmp_path, fixture_bytes, monkeypatch, validator_registry_policy_load
+):
+    """EC-ADMIT-6: a config pin never reaches a validator with its own (empty) pins."""
+    from chunker import parser as parser_module
 
     build = tmp_path / "build"
     build.mkdir()
@@ -228,7 +232,9 @@ def test_parse_samples_without_path_stays_off_the_parse_path(
     require(ok and errors == [], f"own registry and pins resolve it {errors}")
 
 
-def test_parse_samples_without_path_keeps_package_supplied_grammars(isolated, tmp_path):
+def test_parse_samples_without_path_keeps_package_supplied_grammars(
+    isolated, tmp_path, validator_registry_policy_load
+):
     """Carry-over 2: the validator's own registry still serves P1/P2 grammars."""
     validator = GrammarValidator(tmp_path / "cache", trusted_artifacts={})
     ok, errors = validator.test_parse_samples("python", ["def f():\n    return 1\n"])

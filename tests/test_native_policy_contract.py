@@ -44,8 +44,11 @@ def test_injection_marker_handles_only_verified_prerequisite_skip(tmp_path):
     with pytest.raises(pytest.skip.Exception, match="Blocked by OS"):
         require_injection_marker(marker, "load", skipped)
     skipped.stdout = "1 skipped: unrelated reason"
-    with pytest.raises(FileNotFoundError):
-        require_injection_marker(marker, "load", skipped)
+    try:
+        with pytest.raises(FileNotFoundError):
+            require_injection_marker(marker, "load", skipped)
+    except pytest.skip.Exception:
+        pytest.fail("unrelated skip must not become a policy skip")
     skipped.stdout = f"1 failed: {APPLICATION_CONTROL_MESSAGE}"
     skipped.returncode = 1
     with pytest.raises(FileNotFoundError):
@@ -59,8 +62,11 @@ def test_concurrent_policy_skip_does_not_hide_other_failure():
 
     policy_skip = pytest.skip.Exception(APPLICATION_CONTROL_MESSAGE)
     failed = integrity.NativeProbeResult(False, "load_failed", None)
-    with pytest.raises(AssertionError, match="completed admissions must succeed"):
-        _check_concurrent_admission_outcomes([(failed, None)], [policy_skip])
+    try:
+        with pytest.raises(AssertionError, match="completed admissions must succeed"):
+            _check_concurrent_admission_outcomes([(failed, None)], [policy_skip])
+    except pytest.skip.Exception:
+        pytest.fail("policy skip must not hide an admission failure")
 
 
 @pytest.mark.parametrize(
