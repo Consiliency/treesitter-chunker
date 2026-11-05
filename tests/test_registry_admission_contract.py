@@ -288,6 +288,63 @@ def test_pinned_individual_library_loads_only_its_admitted_copy(
     )
 
 
+@pytest.mark.parametrize("route", ["validation", "individual", "combined"])
+def test_language_construction_failure_requires_a_fresh_probe(
+    isolated, tmp_path, fixture_library, monkeypatch, route
+):
+    from chunker._internal import native_admission
+    from chunker._internal import registry as registry_module
+    from chunker.grammar import integrity
+
+    build = tmp_path / "build"
+    build.mkdir()
+    filename = "languages" if route == "combined" else LANGUAGE
+    candidate = build / f"{filename}{SUFFIX}"
+    candidate.write_bytes(fixture_library)
+    library_path = candidate if route == "combined" else build / f"missing{SUFFIX}"
+    pins = {LANGUAGE: _pin(fixture_library)}
+    probe = integrity.probe_native_grammar
+    calls = []
+
+    def recording(*args, **kwargs):
+        calls.append(args[1])
+        return probe(*args, **kwargs)
+
+    monkeypatch.setattr(integrity, "probe_native_grammar", recording)
+    native_admission.store_verdict(
+        "unrelated-verdict", language="unrelated", content_sha256="a" * 64
+    )
+    registry = LanguageRegistry(library_path, trusted_artifacts=pins)
+
+    def fail_language(capsule):
+        raise ValueError("injected Language construction failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(registry_module, "Language", fail_language)
+        if route == "validation":
+            require(
+                not registry._validate_language_library(
+                    candidate, f"tree_sitter_{LANGUAGE}"
+                ),
+                "failed constructor rejects validation",
+            )
+        elif route == "individual":
+            require(
+                registry._try_load_from_individual_library(LANGUAGE) is None,
+                "failed constructor rejects individual load",
+            )
+        else:
+            registry.discover_languages()
+    prior = len(calls)
+    require(prior > 0, "real native admission ran before constructor failure")
+    restored = LanguageRegistry(library_path, trusted_artifacts=pins)
+    require(_parses(restored.get_language(LANGUAGE)), "next resolution parses")
+    require(len(calls) > prior, "failed construction cannot reuse its verdict/copy")
+    require(
+        native_admission.has_verdict("unrelated-verdict"), "unrelated verdict retained"
+    )
+
+
 def test_wrong_pin_rejects_local_library(
     isolated, tmp_path, fixture_library, monkeypatch
 ):

@@ -417,6 +417,10 @@ class LanguageRegistry:
                     )
                     return True
                 except Exception as e:
+                    from chunker._internal.native_admission import forget_private_copy
+
+                    if digest is not None:
+                        forget_private_copy(library_path.stem, digest)
                     language_name = symbol_name.removeprefix("tree_sitter_")
                     if language_name in {"python", "javascript"} and isinstance(
                         e, ValueError
@@ -535,6 +539,12 @@ class LanguageRegistry:
                                 digest=combined[2],
                             )
                         except (AttributeError, OSError, ValueError) as exc:
+                            from chunker._internal.native_admission import (
+                                forget_private_copy,
+                            )
+
+                            if combined[2] is not None:
+                                forget_private_copy(lang_name, combined[2])
                             combined_error = exc
                             self._reject(
                                 lang_name, self._library_path, f"load_failed ({exc})"
@@ -723,6 +733,7 @@ class LanguageRegistry:
             for candidate_name in alt_names:
                 path_candidate = directory / f"{candidate_name}{combined_suffix}"
                 if path_candidate.exists():
+                    opened = None
                     try:
                         opened = self._open_local_library(path_candidate, name)
                         if opened is None:
@@ -748,6 +759,12 @@ class LanguageRegistry:
                         ValueError,
                         DeprecationWarning,
                     ) as e:
+                        from chunker._internal.native_admission import (
+                            forget_private_copy,
+                        )
+
+                        if opened is not None and opened[2] is not None:
+                            forget_private_copy(name, opened[2])
                         if name in {"python", "javascript"} and isinstance(
                             e, ValueError
                         ):
