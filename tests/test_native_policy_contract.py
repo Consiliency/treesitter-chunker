@@ -207,34 +207,55 @@ integrity._read_child = injected_read
 
 
 @pytest.mark.parametrize(
-    ("node", "path_fragment"),
+    ("node", "path_fragment", "fake_package"),
     [
         (
             "tests/test_registry_admission_contract.py::test_pinned_individual_library_loads_only_its_admitted_copy",
             "chunker-admitted-",
+            False,
         ),
         (
             "tests/test_registry_admission_contract.py::test_record_verified_package_grammar_loads_without_pin",
             "admitfixture",
+            False,
         ),
         (
             "tests/test_validator_admission_contract.py::test_click_group_option_and_config_fallback",
             "chunker-admitted-",
+            False,
         ),
         (
             "tests/test_validator_admission_contract.py::test_parse_samples_without_path_stays_off_the_parse_path",
             "chunker-admitted-",
+            False,
+        ),
+        (
+            "tests/test_validator_admission_contract.py::test_parse_samples_without_path_keeps_package_supplied_grammars",
+            "python",
+            True,
         ),
     ],
 )
 @pytest.mark.parametrize(("winerror", "expected"), [(4551, "skipped"), (5, "failed")])
 def test_direct_load_distinguishes_policy_denials(
-    tmp_path, node, path_fragment, winerror, expected
+    tmp_path, node, path_fragment, fake_package, winerror, expected
 ):
     plugin = tmp_path / "load_injection.py"
     plugin.write_text(
         """
-import ctypes, os
+import ctypes, os, sys
+import pytest
+@pytest.fixture(autouse=True)
+def package_fixture(tmp_path, monkeypatch):
+    if os.environ['ADMIT_TEST_FAKE_PACKAGE'] == '1':
+        from tests.test_registry_admission_contract import _fake_distribution
+        from chunker._internal import package_supplier
+        suffix = {'win32': '.dll', 'darwin': '.dylib'}.get(sys.platform, '.so')
+        _fake_distribution(tmp_path / 'distribution', monkeypatch, {'python' + suffix: b'RECORD verified fixture'})
+        yield
+        package_supplier._package_grammar_records.cache_clear()
+    else:
+        yield
 real = ctypes.CDLL
 def load(name, *args, **kwargs):
     if os.environ["ADMIT_TEST_PATH"] in str(name):
@@ -255,6 +276,7 @@ ctypes.CDLL = load
         ADMIT_TEST_WINERROR=str(winerror),
         ADMIT_TEST_PATH=path_fragment,
         ADMIT_TEST_MARKER=str(tmp_path / "injected"),
+        ADMIT_TEST_FAKE_PACKAGE="1" if fake_package else "0",
     )
     completed = subprocess.run(
         [sys.executable, "-m", "pytest", "-p", "load_injection", node, "-q", "-rs"],

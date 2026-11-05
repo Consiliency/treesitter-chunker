@@ -191,15 +191,18 @@ def validator_registry_policy_load(monkeypatch):
     from chunker._internal import registry as registry_module
 
     real_load = registry_module.ctypes.CDLL
+    errors = []
 
     def policy_load(*args, **kwargs):
         try:
             return real_load(*args, **kwargs)
         except OSError as error:
             skip_policy_error(error)
+            errors.append(error)
             raise
 
     monkeypatch.setattr(registry_module.ctypes, "CDLL", policy_load)
+    return errors
 
 
 def test_parse_samples_without_path_stays_off_the_parse_path(
@@ -230,6 +233,10 @@ def test_parse_samples_without_path_stays_off_the_parse_path(
     )
     ok, errors = own.test_parse_samples(LANGUAGE, [SAMPLE])
     require(ok and errors == [], f"own registry and pins resolve it {errors}")
+    require(
+        not validator_registry_policy_load,
+        f"load failures {validator_registry_policy_load}",
+    )
 
 
 def test_parse_samples_without_path_keeps_package_supplied_grammars(
@@ -241,6 +248,10 @@ def test_parse_samples_without_path_keeps_package_supplied_grammars(
     require(ok and errors == [], f"official python wheel {errors}")
     ok, errors = validator.test_parse_samples("typescript", ["const x: number = 1;\n"])
     require(ok and errors == [], f"language-pack grammar {errors}")
+    require(
+        not validator_registry_policy_load,
+        f"load failures {validator_registry_policy_load}",
+    )
 
 
 # --- verdict reuse in the validator cache (EC-ADMIT-3) -------------------------------
