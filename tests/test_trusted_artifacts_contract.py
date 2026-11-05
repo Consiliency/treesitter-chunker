@@ -320,6 +320,43 @@ def test_missing_config_file_supplies_no_pins(config_home):
     require(resolve_command_pins(None) is None, "no source active")
 
 
+@pytest.mark.parametrize("via_symlink", [False, True])
+def test_explicit_pin_file_rejects_tool_written_directory(
+    config_home, tmp_path, monkeypatch, capsys, via_symlink
+):
+    build = tmp_path / "managed-build"
+    build.mkdir()
+    monkeypatch.setenv("CHUNKER_GRAMMAR_BUILD_DIR", str(build))
+    option = build / "pins.json"
+    option.write_text(_document({}), encoding="utf-8")
+    if via_symlink:
+        link = tmp_path / "alias.json"
+        try:
+            link.symlink_to(option)
+        except OSError:
+            pytest.skip("symlink creation unavailable")
+        option = link
+    with pytest.raises(TrustedArtifactsError, match="tool-written directory"):
+        resolve_command_pins(option)
+    code, out, err = _grammar(
+        monkeypatch, capsys, "--trusted-artifacts", str(option), "list"
+    )
+    require(code == 2, f"rejected before dispatch: {out!r} {err!r}")
+    require("tool-written directory" in err, err)
+    allowed = tmp_path / "allowed.json"
+    allowed.write_text(_document({}), encoding="utf-8")
+    require(resolve_command_pins(allowed) == {}, "allowed explicit source works")
+
+
+def test_explicit_pin_file_rejects_custom_cache_root(config_home, tmp_path):
+    cache = tmp_path / "custom-cache"
+    cache.mkdir()
+    option = cache / "pins.json"
+    option.write_text(_document({}), encoding="utf-8")
+    with pytest.raises(TrustedArtifactsError, match="tool-written directory"):
+        resolve_command_pins(option, cache_dir=cache)
+
+
 def test_option_wins_over_config_and_is_never_merged(config_home, tmp_path):
     _write_config(_document({"baml": {"sha256": "1" * 64}}))
     option = tmp_path / "pins.json"
@@ -1103,6 +1140,71 @@ GOOD_ENTRY = "chunker/data/grammars/build/baml.so"
 GRAMMAR_BYTES = b"\x7fELF shipped grammar bytes"
 
 
+@pytest.mark.parametrize("fault", ["open", "fstat", "nonregular", "read"])
+def test_record_verification_io_failure_cannot_fall_back_to_user_pin(
+    tmp_path, monkeypatch, clear_package_records, fault
+):
+    import stat
+    from types import SimpleNamespace
+
+    from chunker._internal import package_supplier
+
+    build = _wheel_rows(
+        tmp_path,
+        monkeypatch,
+        {GOOD_ENTRY: GRAMMAR_BYTES},
+        [_row(GOOD_ENTRY, GRAMMAR_BYTES)],
+    )
+    candidate = build / "baml.so"
+    package_supplier._package_grammar_records()
+    original_open, original_stat, original_read = os.open, os.fstat, os.read
+    descriptors = set()
+    faults = []
+
+    def opening(path, flags, *args, **kwargs):
+        if Path(path) == candidate and fault == "open" and not faults:
+            faults.append(fault)
+            raise PermissionError("transient verification open failure")
+        fd = original_open(path, flags, *args, **kwargs)
+        if Path(path) == candidate:
+            descriptors.add(fd)
+        return fd
+
+    def stating(fd):
+        if fd in descriptors and fault in ("fstat", "nonregular"):
+            faults.append(fault)
+            if fault == "fstat":
+                raise OSError("verification fstat failure")
+            return SimpleNamespace(st_mode=stat.S_IFDIR)
+        return original_stat(fd)
+
+    def reading(fd, count):
+        if fd in descriptors and fault == "read":
+            faults.append(fault)
+            raise OSError("verification read failure")
+        return original_read(fd, count)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "open", opening)
+        patch.setattr(os, "fstat", stating)
+        patch.setattr(os, "read", reading)
+        record, rejection = native_admission.admission_record(
+            candidate, "baml", {"baml": _pin_of(GRAMMAR_BYTES)}
+        )
+    require(bool(faults), "the verification fault was exercised")
+    require(record is None, "even a matching user pin cannot rescue failed RECORD I/O")
+    require(rejection is not None, "failure is classified rather than raised")
+    require(rejection.reason == "integrity_mismatch", str(rejection))
+    for fd in descriptors:
+        with pytest.raises(OSError):
+            original_stat(fd)
+    require(
+        package_supplier.package_supplied_digest(candidate)
+        == ("supplied", sha256(GRAMMAR_BYTES).hexdigest()),
+        "after the fault, the genuine RECORD match still works",
+    )
+
+
 def test_record_check_accepts_a_matching_entry(
     tmp_path, monkeypatch, clear_package_records
 ):
@@ -1356,3 +1458,14 @@ def test_install_and_update_refuse_a_shipped_target_before_cloning(
     require(result["status"] == "error", f"{result}")
     require("cannot be replaced in place" in result["errors"][0], f"{result}")
     require(result["steps_completed"] == [], "no clone, fetch or build")
+
+
+@pytest.mark.parametrize("argv", SUBCOMMANDS, ids=lambda argv: argv[0])
+def test_argparse_subcommand_help_ignores_defective_pins(
+    config_home, monkeypatch, capsys, argv
+):
+    _write_config("{broken")
+    with pytest.raises(SystemExit) as caught:
+        _grammar(monkeypatch, capsys, argv[0], "--help")
+    require(caught.value.code == 0, "argparse subcommand help remains available")
+    require("usage:" in capsys.readouterr().out.lower(), "help rendered")

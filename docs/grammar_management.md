@@ -318,7 +318,7 @@ without pins.
 
 The click group `chunker.grammar_management.cli.grammar_cli` takes the same
 option before the subcommand (`grammar --trusted-artifacts pins.json validate
-python`) and resolves the source in its group callback, so its subcommands are
+python`) and resolves the source before each subcommand performs any work, so its subcommands are
 pin-dependent in the same way: a missing or defective file exits 2 before any
 subcommand runs.
 
