@@ -124,6 +124,8 @@ integrity._read_child = injected
     assert (tmp_path / "injected").read_text(encoding="utf-8") == "worker", output
     assert f"1 {expected}" in output, output
     assert completed.returncode == (0 if expected == "skipped" else 1), output
+    if expected == "skipped":
+        assert APPLICATION_CONTROL_MESSAGE in output
 
 
 @pytest.mark.parametrize(("winerror", "expected"), [(4551, "skipped"), (5, "failed")])
@@ -288,8 +290,6 @@ ctypes.CDLL = load
     output = completed.stdout + completed.stderr
     require_injection_marker(tmp_path / "injected", "load", completed)
     assert f"1 {expected}" in output, output
-    if expected == "skipped":
-        assert APPLICATION_CONTROL_MESSAGE in output
     assert completed.returncode == (0 if expected == "skipped" else 1), output
     if expected == "skipped":
         assert APPLICATION_CONTROL_MESSAGE in output
