@@ -280,7 +280,9 @@ def resolve_command_pins(
             usage error (exit status 2).
     """
     if option_path is not None:
-        return read_trusted_artifacts(Path(option_path))
+        return read_trusted_artifacts(
+            Path(option_path), forbidden=forbidden_pin_directories(cache_dir=cache_dir)
+        )
     return load_user_config_pins(cache_dir=cache_dir)
 
 
