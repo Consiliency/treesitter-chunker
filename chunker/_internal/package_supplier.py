@@ -130,8 +130,17 @@ def package_supplied_digest(candidate: Path) -> tuple[str, str | None]:
     """
     try:
         status = os.lstat(candidate)
-    except OSError:
+    except FileNotFoundError:
         return LOCAL, None
+    except OSError:
+        name = os.path.normcase(candidate.name)
+        hashed_entry = any(
+            expected is not None
+            and os.path.normcase(located.name) == name
+            and same_file(candidate.parent, located.parent)
+            for located, expected in _package_grammar_records()
+        )
+        return (MISMATCH, None) if hashed_entry else (LOCAL, None)
     if not stat.S_ISREG(status.st_mode):
         return LOCAL, None
     for located, expected in _package_grammar_records():
