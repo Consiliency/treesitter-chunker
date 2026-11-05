@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Reject explicit native-grammar pin files in tool-written directories, and
+  keep matched wheel RECORD entries closed to user-pin admission when their
+  contents cannot be verified (treesitter-chunker#556).
+
 ### Added
 
 - Grammar commands accept approved native-grammar pins (treesitter-chunker#362).
