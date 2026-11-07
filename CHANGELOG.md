@@ -186,6 +186,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parameter defaults are evaluated in the scope that contains the function
   (treesitter-chunker#278).
 
+- A failed grammar update now restores the previous installation instead of
+  deleting its metadata while logging that it rolled back
+  (treesitter-chunker#363). `GrammarInstaller.install_grammar` commits in one
+  locked section: it captures a rollback point holding copies of the current
+  library and metadata, publishes the new metadata, then publishes the staged
+  library through the admitted, same-directory `publish_native_grammar`
+  (treesitter-chunker#162) with the language's approved pin. If that fails, or
+  the published metadata digest is not the intended one, the artifact and
+  metadata are restored as a pair. A language without an approved pin is now
+  refused before anything is cloned, built or validated; unsafe sources and
+  versions keep their own messages. With only the new revision pinned, a
+  restored previous revision is reported `incompatible` until its pin is
+  returned. Metadata gains `artifact_sha256` (lower case) and is written
+  canonically. `GrammarInstaller.remove_grammar` and
+  `GrammarManager.remove_grammar` read and remove the artifact and metadata in
+  one locked section, so a removal waits for an install still committing and
+  removes metadata whose library is missing; removal refuses recorded paths
+  outside `<cache_dir>/grammars`, and a non-regular file at the library path.
+  For a language with no installation, `GrammarManager.remove_grammar` now
+  returns the installer's "Grammar <language> is not installed" instead of
+  "Grammar for <language> not found". Unreadable installation metadata no longer
+  blocks a reinstall, which replaces it (removal still reports it as not
+  installed). Removed and restored files are retired into
+  a hidden `.txn-retired/` folder beside them before deletion, so a separately
+  mounted `grammars/` keeps working. `GrammarDownloadManager.clean_cache`,
+  whose default folder is that same `grammars/`, skips the hidden `.txn*`
+  folders.
+
 - `GrammarManager.cleanup_cache` can no longer delete a cache entry that an
   installer publishes while cleanup runs, and `bytes_freed` now counts only
   bytes actually deleted (treesitter-chunker#323). Installers clone and build

@@ -208,6 +208,11 @@ def _repo(base: Path, *, minor: int = 1, fifo: bool = False) -> Path:
 
 @pytest.fixture
 def shim(tmp_path: Path) -> Path:
+    return _make_shim(tmp_path)
+
+
+def _make_shim(tmp_path: Path) -> Path:
+    """The ``git`` shim, a failing ``tree-sitter`` stub and the ``gcc`` wrapper."""
     directory = tmp_path / "shim"
     directory.mkdir()
     git = directory / "git"
@@ -665,7 +670,7 @@ def test_windows_job_kills_grandchild_when_parent_dies(tmp_path):
 
 @POSIX_SHIM
 def test_installer_uses_its_own_staged_inputs(tmp_path, shim):
-    """Installer A pauses after its build; B installs, then its entries go.
+    """Installer A pauses at its commit section; B installs, then its entries go.
 
     A resumes and installs its own revision from its staging; a fresh process
     parses A's revision. Mutation ``consume_published_input`` (install from
@@ -678,12 +683,16 @@ def test_installer_uses_its_own_staged_inputs(tmp_path, shim):
         a = _installer(
             cache,
             _env(shim, repo_a),
-            pauses=[pause_at("run.after_group_empty", program="gcc")],
+            pauses=[
+                pause_at(
+                    "lock.before_acquire", primitive="cache_lock", section="commit"
+                )
+            ],
         )
         children.append(a)
         a.expect("ready")
         a.release()
-        a.expect("run.after_group_empty", program="gcc")
+        a.expect("lock.before_acquire", primitive="cache_lock", section="commit")
         (staged_a,) = (cache / "builds" / ".txn-staging").glob("*/baml/libbaml.so")
         staged_digest = sha256(staged_a.read_bytes()).hexdigest()
 

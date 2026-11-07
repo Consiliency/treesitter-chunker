@@ -34,12 +34,14 @@ def test_remove_grammar_respects_cache_option(tmp_path, consumer, clean_cache):
     assert not parser.parse(source).root_node.has_error
     libraries = list(Path(provider.cache_dir()).glob("*tree_sitter_python.*"))
     assert len(libraries) == 1
+    # Installations live under <cache>/grammars, the default user directory;
+    # removal refuses recorded paths outside it (treesitter-chunker#363).
     manager = GrammarManager(
-        user_dir=tmp_path / "user",
+        user_dir=tmp_path / "cache" / "grammars",
         package_dir=tmp_path / "package",
         cache_dir=tmp_path / "cache",
     )
-    installed = tmp_path / "user" / "libpython.so"
+    installed = tmp_path / "cache" / "grammars" / "libpython.so"
     installed.write_bytes(libraries[0].read_bytes())
     installer = manager._installer
     installer._save_installation_info(
