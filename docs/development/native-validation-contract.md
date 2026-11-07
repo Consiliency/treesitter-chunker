@@ -384,6 +384,19 @@ retirement of the on-demand fetch-and-build. Line numbers below refer to main
 `7440971a`. ADMIT keeps the inventory's site IDs and updates its status column
 as each site lands.
 
+**ADMIT status: landed (main `b33994e9`, 2026-11-07).**
+
+- The lanes merged as:
+  - treesitter-chunker#556 (SL-core-1, `762a92de`);
+  - treesitter-chunker#558 (SL-reg, `401a6b74`);
+  - treesitter-chunker#562 (SL-core-2, `4e260b6d`);
+  - treesitter-chunker#559 (SL-legacy, `b726812d`);
+  - treesitter-chunker#563 (SL-ins, `9cc59d66`).
+- Every ADMIT row of the inventory below says `landed`. The rows for package
+  suppliers, which are out of scope, say `n/a`.
+- The four carry-overs are implemented. `plans/phase-plan-v4-ADMIT.md` holds
+  the acceptance evidence and the review record.
+
 This section extends the contract above. `probe_native_grammar` and
 `NativeProbeResult` stay unchanged and remain the only admission mechanism.
 Nothing here changes `chunker/grammar/integrity.py`, `_read_child` or launcher
@@ -948,6 +961,30 @@ because line numbers move):
   verifies and calls `probe_native_grammar`.
 After ADMIT, a new direct load anywhere in `chunker/` needs its own inventory
 row and disposition.
+
+**Closeout reconciliation (main `b33994e9`).** On that commit, each hit of
+`grep -rnE "ctypes\.CDLL|cdll\.LoadLibrary|Language\(" chunker/` is one of
+the following:
+
+- one of the loads listed above:
+  - `LanguageRegistry._open_local_library` (RECORD-verified file in place, or
+    admitted copy);
+  - `LanguageRegistry._load_library` (package-supplied combined library);
+  - `_language_from_ctypes_symbol` (R3);
+  - the BAML companion (R5);
+  - `load_compiled_grammar` (N1);
+  - `chunker/_internal/language_pack.py` (P1);
+- a type annotation or comment in `chunker/_internal/registry.py`.
+
+No direct grammar load is without a row. The only callers of
+`load_compiled_grammar` are the probe child (I1), on its verified snapshot,
+and the two in-process pattern sites, on admitted copies:
+`GrammarValidator._admitted_parser` (N3) and the click `test` command (N6).
+Like `chunker/grammar/integrity.py`, `_run_windows` in
+`chunker/grammar_management/_transactions.py` loads the Windows `kernel32`
+and `ntdll` system libraries. It uses them for job-object process control in
+the grammar transaction runner (treesitter-chunker#323), not to load a
+grammar.
 
 File ownership notes for the ADMIT plan:
 
