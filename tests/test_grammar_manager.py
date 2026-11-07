@@ -176,27 +176,28 @@ class TestGrammarManager:
     @classmethod
     @patch("ctypes.CDLL")
     def test_get_available_languages_with_library(cls, mock_cdll, grammar_manager):
-        """Test getting languages from compiled library."""
-        grammar_manager._lib_path.touch()
-        mock_lib = MagicMock()
-        mock_cdll.return_value = mock_lib
-        # Expose only selected symbols on the mock library
-        mock_lib.tree_sitter_python = MagicMock()
-        mock_lib.tree_sitter_javascript = MagicMock()
-        languages = grammar_manager.get_available_languages()
-        assert "python" in languages
-        assert "javascript" in languages
-
-    @classmethod
-    def test_get_available_languages_fallback(cls, grammar_manager):
-        """Test fallback language detection from directories."""
+        """Without pins the combined library is neither mapped nor reported (M1)."""
         grammar_manager._lib_path.touch()
         for lang in ["python", "rust"]:
             (grammar_manager._grammars_dir / f"tree-sitter-{lang}").mkdir(parents=True)
-        with patch("ctypes.CDLL", side_effect=Exception("Load failed")):
-            languages = grammar_manager.get_available_languages()
-        assert "python" in languages
-        assert "rust" in languages
+        assert grammar_manager.get_available_languages() == set()
+        mock_cdll.assert_not_called()
+
+    @classmethod
+    def test_get_available_languages_mismatched_pin_is_not_reported(
+        cls, grammar_manager, monkeypatch
+    ):
+        """A pinned key whose bytes differ from the pin is not reported, and the
+        mismatch is decided by hashing alone, without a probe (M1)."""
+        from chunker.grammar import integrity
+
+        def no_probe(*args, **kwargs):
+            raise AssertionError("probe called for a mismatched pin")
+
+        grammar_manager._lib_path.write_bytes(b"not the approved library")
+        grammar_manager._trusted_artifacts = {"python": {"sha256": "0" * 64}}
+        monkeypatch.setattr(integrity, "probe_native_grammar", no_probe)
+        assert grammar_manager.get_available_languages() == set()
 
     @staticmethod
     def test_concurrent_operations(grammar_manager):

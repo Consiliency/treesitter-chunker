@@ -305,6 +305,15 @@ the installed `RECORD` reports `healthy` with no pin; a file there whose bytes
 differ from `RECORD` reports `integrity_mismatch`, and no pin overrides it; a
 file there with no `RECORD` entry needs a pin like any other local grammar.
 
+**Retired legacy loaders.** `chunker.grammar.TreeSitterGrammarValidator`
+(treesitter-chunker#400) raises `ValidationError` naming its replacement,
+`chunker.grammar_management.core.GrammarValidator(cache_dir,
+trusted_artifacts=...)`. Its static `check_abi_compatibility` and
+`GrammarDownloadManager.validate_grammar` return `(False, <retirement
+message>)` without loading anything. The legacy combined-library manager
+`chunker.grammar_manager.GrammarManager(..., trusted_artifacts=...)` reports
+only pinned languages whose library bytes pass native admission, and none
+without pins.
 #### Pins for the click group and embedding code
 
 The click group `chunker.grammar_management.cli.grammar_cli` takes the same
