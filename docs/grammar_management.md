@@ -305,6 +305,11 @@ the installed `RECORD` reports `healthy` with no pin; a file there whose bytes
 differ from `RECORD` reports `integrity_mismatch`, and no pin overrides it; a
 file there with no `RECORD` entry needs a pin like any other local grammar.
 
+**Retired dependency inspection.**
+`GrammarMetadataExtractor.extract_from_dependencies` returns
+`{"dependencies": [], "dependencies_status": "retired"}` without running any
+tool: `ldd` can execute an unapproved library's code through the dynamic loader.
+`GrammarAnalyzer` reads symbols and versions only from the admitted snapshot.
 **Retired legacy loaders.** `chunker.grammar.TreeSitterGrammarValidator`
 (treesitter-chunker#400) raises `ValidationError` naming its replacement,
 `chunker.grammar_management.core.GrammarValidator(cache_dir,

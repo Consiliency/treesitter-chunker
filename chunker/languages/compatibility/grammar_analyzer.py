@@ -10,11 +10,32 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from chunker._internal.native_admission import admit_native_candidate
+from chunker._internal.trusted_artifacts import copy_trusted_artifacts
 from chunker.grammar.integrity import probe_native_grammar
 
 from .schema import CompatibilityLevel, GrammarVersion, LanguageVersion
 
 logger = logging.getLogger(__name__)
+
+#: Symbol-analysis outcomes that hold for the bytes, so their metadata may be
+#: reused with the admission verdict. ``deadline_expired`` and ``failed`` are
+#: transient and are re-inspected on the next call.
+_SETTLED_SYMBOL_ANALYSIS = frozenset({"complete", "unavailable"})
+
+
+def _settled_symbol_analysis(metadata: Any) -> bool:
+    """Whether the inspector metadata may be stored with the verdict."""
+    if not isinstance(metadata, Mapping):
+        return False
+    symbols = metadata.get("symbols")
+    if not isinstance(symbols, Mapping):
+        return False
+    analysis = symbols.get("analysis")
+    return (
+        isinstance(analysis, Mapping)
+        and analysis.get("status") in _SETTLED_SYMBOL_ANALYSIS
+    )
 
 
 class GrammarAnalyzer:
@@ -32,11 +53,7 @@ class GrammarAnalyzer:
             grammars_dir: Path to directory containing compiled grammar .so files
         """
         self.grammars_dir = Path(grammars_dir)
-        self.trusted_artifacts = {
-            language: dict(provenance)
-            for language, provenance in (trusted_artifacts or {}).items()
-            if isinstance(provenance, Mapping)
-        }
+        self.trusted_artifacts = copy_trusted_artifacts(trusted_artifacts)
         self.grammar_cache: dict[str, GrammarVersion] = {}
         self._capabilities: dict[str, dict[str, Any]] = {}
         self.supported_languages = self._discover_supported_languages()
@@ -85,17 +102,29 @@ class GrammarAnalyzer:
         grammar_path = (self.grammars_dir / f"{language}.so").absolute()
         captured: dict[str, Any] = {}
 
-        def inspect(snapshot: Path) -> None:
-            captured["version"] = self.extract_grammar_version(snapshot) or "unknown"
-            captured["symbols"] = self.analyze_grammar_symbols(snapshot)
-            captured["file_size"] = snapshot.stat().st_size
+        def inspect(snapshot: Path) -> dict[str, Any]:
+            return {
+                "version": self.extract_grammar_version(snapshot) or "unknown",
+                "symbols": self.analyze_grammar_symbols(snapshot),
+                "file_size": snapshot.stat().st_size,
+            }
 
-        result = probe_native_grammar(
+        # Rule 3: only a fresh one-field record reaches the probe; a language
+        # without a str pin is untrusted and the candidate is never opened.
+        result, metadata = admit_native_candidate(
             grammar_path,
             language,
-            provenance=self.trusted_artifacts.get(language),
+            self.trusted_artifacts,
+            inspector="grammar_analyzer.v1",
             inspect_artifact=inspect,
+            probe=probe_native_grammar,
+            # A deadline expiry or failed nm run says nothing about the
+            # grammar's symbols (treesitter-chunker#207): such a result is
+            # returned for this call but never stored, so the next call
+            # re-inspects and no other inspector's verdict is touched.
+            reusable=_settled_symbol_analysis,
         )
+        captured.update(metadata or {})
         base_capabilities = {
             "language": language,
             "supported": result.supported,
@@ -630,39 +659,19 @@ class GrammarMetadataExtractor:
 
     @staticmethod
     def extract_from_dependencies(so_file_path: Path) -> dict[str, Any]:
-        """Extract metadata from library dependencies.
+        """Retired dependency inspection (inventory A1, treesitter-chunker#362).
+
+        ``ldd`` may run an unapproved library's code through the dynamic
+        loader, so no tool runs. ``dependencies_status`` tells retirement apart
+        from a library that has no dependencies.
 
         Args:
-            so_file_path: Path to the .so file
+            so_file_path: Path to the library (not opened)
 
         Returns:
-            Dict with dependency metadata
+            ``{"dependencies": [], "dependencies_status": "retired"}``
         """
-        metadata = {"dependencies": []}
-
-        try:
-            if platform.system() == "Windows":
-                return metadata
-
-            # Use ldd to list dependencies
-            result = subprocess.run(
-                ["ldd", str(so_file_path)],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            )
-
-            if result.returncode == 0:
-                for line in result.stdout.splitlines():
-                    if "=>" in line:
-                        lib_name = line.split("=>")[0].strip()
-                        metadata["dependencies"].append(lib_name)
-
-        except Exception as e:
-            logger.debug(f"Error extracting from dependencies: {e}")
-
-        return metadata
+        return {"dependencies": [], "dependencies_status": "retired"}
 
 
 class FeatureDetector:
