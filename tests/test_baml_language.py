@@ -357,7 +357,7 @@ def test_absent_companion_never_uses_ambient_grammar(monkeypatch, tmp_path):
     with pytest.raises(BamlExtraRequiredError):
         acquire_parser("baml")
     monkeypatch.setattr(
-        "chunker.parser.TreeSitterGrammarManager",
+        "chunker.grammar.manager.TreeSitterGrammarManager",
         lambda: pytest.fail("grammar manager used"),
     )
     with pytest.raises(BamlExtraRequiredError):

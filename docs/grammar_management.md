@@ -305,6 +305,45 @@ the installed `RECORD` reports `healthy` with no pin; a file there whose bytes
 differ from `RECORD` reports `integrity_mismatch`, and no pin overrides it; a
 file there with no `RECORD` entry needs a pin like any other local grammar.
 
+#### Pins on the parse path
+
+Ordinary parsing (`get_parser`, `acquire_parser`, `list_languages`,
+`chunk_file` and everything that resolves parsers through `chunker.parser`)
+reads the user-config pin file once per process, when it builds its registry.
+`--trusted-artifacts` applies only to the grammar commands. A local compiled
+grammar (the combined library, the package or checkout build directory,
+`~/.cache/treesitter-chunker/build`, `CHUNKER_GRAMMAR_BUILD_DIR`) is used only
+when the pin file pins its language, or when it is a package-supplied file of
+our own wheel (below). It is then loaded from a verified, admitted private copy
+named `chunker-admitted-*` in the temporary directory, never from the
+candidate path. Other local libraries are ignored, and resolution continues to
+the official `tree-sitter-python`/`tree-sitter-javascript` wheels, the
+language-pack and the BAML companion. A combined library is admitted per
+language: pinning one language in it admits no other.
+
+On POSIX the process removes its admitted copies at exit. Windows cannot
+delete a loaded library, so copies stay there after exit; they hold approved
+bytes and can be removed once no chunker process is running.
+
+A defective user-config pin file grants no local trust. Parsing continues:
+package-supplied grammars keep working, one warning names the file and the
+defect, and the `LanguageNotFoundError` for a language that would have needed
+a pin repeats the defect and lists the local candidates that were not used.
+
+**Package-supplied grammars of our own wheel.** A native file directly in the
+installed package's `chunker/data/grammars/build/` is trusted without a pin
+only when it is listed in the installed `treesitter-chunker` distribution's
+`RECORD` with a `sha256` that matches its bytes. A file whose bytes differ
+from `RECORD` is never loaded, and no pin can admit it. A file with no `RECORD`
+entry (for example `grammar build` output, an editable install or a source
+checkout) is an ordinary local candidate that needs a pin.
+
+**On-demand fetch-and-build is retired.** A language that no source provides
+raises `LanguageNotFoundError`. Earlier versions cloned and compiled a grammar
+from `config/grammar_sources.json` in the background, into `grammars/` and
+`build/` in the current directory. Build deliberately with the grammar
+commands, review the result, and pin its digest.
+
 **Every grammar subcommand is pin-dependent.** The group resolves the active
 pin source before any subcommand runs. A missing or defective option file, or
 a present but defective config file when the option is absent, is a usage
