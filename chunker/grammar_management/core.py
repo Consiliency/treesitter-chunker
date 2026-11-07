@@ -1255,23 +1255,14 @@ class GrammarInstaller:
         # recorded and intended digests use hashlib's lower-case form.
         artifact_sha256 = str(pin["sha256"]).lower()
         document = self._installation_document(info, artifact_sha256)
-        try:
-            previous = _transactions.read_installation_metadata(root, language)
-        except (_transactions.CacheLockTimeoutError, _transactions.ContainmentError):
-            raise
-        except _transactions.CacheTransactionError as error:
-            # Undecodable metadata names no install path to check. The capture
-            # keeps its bytes, so a restore returns them unchanged.
-            logger.warning(f"Replacing unreadable metadata for {language}: {error}")
-            previous = None
-        if previous is not None and isinstance(previous.get("install_path"), str):
-            # Recorded metadata outside grammars/ refuses the install here.
-            _transactions._grammar_parts(root, Path(previous["install_path"]))
 
         failure: str | None = None
         interrupted: BaseException | None = None
         outcome: _transactions.RestoreResult | None = None
         with _transactions._commit_section(root) as operation_id:
+            # Checked under the commit's own hold, so no participant can
+            # publish a different record between the check and the capture.
+            self._check_previous_metadata(language)
             point = self._create_rollback_point(
                 language, destination, document, artifact_sha256
             )
@@ -1336,6 +1327,28 @@ class GrammarInstaller:
                 f"({error})"
             )
         return True, None
+
+    def _check_previous_metadata(self, language: str) -> None:
+        """Refuse an install over recorded metadata outside ``grammars/``.
+
+        Raises ``ContainmentError`` before anything is captured or changed.
+        Undecodable metadata names no path: it is warned about, and the capture
+        keeps its bytes, so a restore returns them unchanged.
+        """
+        root = self._base_cache_dir
+        try:
+            previous = _transactions.read_installation_metadata(root, language)
+        except (
+            _transactions.CacheLockTimeoutError,
+            _transactions.ContainmentError,
+            _transactions._RootMovedError,
+        ):
+            raise
+        except _transactions.CacheTransactionError as error:
+            logger.warning(f"Replacing unreadable metadata for {language}: {error}")
+            return
+        if previous is not None and isinstance(previous.get("install_path"), str):
+            _transactions._grammar_parts(root, Path(previous["install_path"]))
 
     def _create_rollback_point(
         self,

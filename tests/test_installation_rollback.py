@@ -49,6 +49,7 @@ from chunker.grammar_management.core import (
     GrammarInstaller,
     GrammarManager,
     GrammarValidator,
+    InstallationInfo,
 )
 from tests.native_policy import policy_aware_native_driver, skip_policy_subprocess
 from tests.test_cache_entry_transactions import (
@@ -583,6 +584,33 @@ def test_unreadable_previous_metadata_does_not_block_install(tmp_path, shim):
     assert json.loads(_pair(cache)[1])["artifact_sha256"] == _fixture_digest(repo)
     assert _pair(cache)[0] == _fixture_digest(repo)
     assert _rollback_points(cache) == []
+
+
+@POSIX_SHIM
+def test_install_over_a_record_outside_grammars_is_refused(tmp_path, shim):
+    """Recorded metadata outside ``grammars/`` refuses the install, unchanged.
+
+    The record is read under the commit's hold, before capture. Mutation
+    ``skip_previous_check`` captures and installs over it.
+    """
+    cache = tmp_path / "cache"
+    outside = tmp_path / "user" / "libbaml.so"
+    outside.parent.mkdir()
+    outside.write_bytes(b"user library")
+    GrammarInstaller(cache_dir=cache, trusted_artifacts={})._save_installation_info(
+        "baml",
+        InstallationInfo(
+            version="user", install_date=0, install_path=outside, source_url=URL
+        ),
+    )
+    before = _pair(cache)
+    assert before[0] is None and before[1] is not None
+    done = _install(cache, _env(shim, _repo(tmp_path / "repo")))
+    assert not done["success"]
+    assert "is not under" in done["error"], done
+    assert _pair(cache) == before
+    assert _rollback_points(cache) == []
+    assert outside.read_bytes() == b"user library"
 
 
 @POSIX_SHIM
@@ -1360,7 +1388,15 @@ def test_windows_installer_failed_update_restores_previous_pair(tmp_path, failur
         child.expect("ready")
         child.release()
         # A policy-blocked validation probe ends the install before the commit.
-        reached = child.expect_any("lock.before_acquire", "done")
+        # Earlier lock sections (staging) also report lock.before_acquire, so
+        # wait for the commit section itself or for the end of the install.
+        while True:
+            reached = child.expect_any("lock.before_acquire", "done")
+            if reached["event"] == "done" or (
+                reached.get("primitive") == "cache_lock"
+                and reached.get("section") == "commit"
+            ):
+                break
         _skip_on_policy_probe(child)
         assert reached["event"] == "lock.before_acquire", reached
         (staged,) = (cache / "builds" / ".txn-staging").glob("*/baml/libbaml.so")

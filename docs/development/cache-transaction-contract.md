@@ -647,9 +647,12 @@ No previous approval is ever derived from a rollback digest.
 
 A previous installation at a different priority path is never touched; the
 restored metadata points back to it. If recorded metadata points outside
-`grammars/`, the install fails before the commit section with
-`ContainmentError`. Metadata that cannot be decoded names no path: the install
+`grammars/`, the install fails with `ContainmentError` before anything is
+captured or changed. The check reads the record inside the commit section,
+before capture, so no participant can replace it in between. Metadata that cannot be decoded names no path: the install
 logs a warning, captures its bytes like any previous metadata, and replaces it.
+`remove_grammar` reports such metadata as not installed and leaves it; the next
+install replaces it.
 `_save_installation_info` still records any `install_path` (treesitter-chunker#134
 records user and package directories); only a library under `grammars/` gets an
 `artifact_sha256`.
