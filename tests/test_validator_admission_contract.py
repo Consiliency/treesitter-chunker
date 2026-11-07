@@ -32,6 +32,7 @@ from chunker._internal.trusted_artifacts import (
 )
 from chunker.grammar import integrity
 from chunker.grammar_management import core as core_module
+from chunker.grammar_management import cli as cli_module
 from chunker.grammar_management.cli import ComprehensiveGrammarCLI, grammar_cli
 from chunker.grammar_management.core import (
     GrammarInstaller,
@@ -42,6 +43,24 @@ from chunker.grammar_management.core import (
 )
 from tests.test_compiled_grammar_analysis_contract import FIXTURE
 from tests.test_registry_admission_contract import _build
+from tests.native_policy import skip_policy_error
+
+pytestmark = pytest.mark.usefixtures("native_policy_environment", "cli_policy_load")
+
+
+@pytest.fixture
+def cli_policy_load(monkeypatch):
+    real = cli_module.load_compiled_grammar
+
+    def load(*args, **kwargs):
+        try:
+            return real(*args, **kwargs)
+        except OSError as error:
+            skip_policy_error(error)
+            raise
+
+    monkeypatch.setattr(cli_module, "load_compiled_grammar", load)
+
 
 LANGUAGE = "admitfixture"
 SUFFIX = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
@@ -167,8 +186,27 @@ def test_parse_samples_with_path_loads_only_admitted_copy(
     )
 
 
+@pytest.fixture
+def validator_registry_policy_load(monkeypatch):
+    from chunker._internal import registry as registry_module
+
+    real_load = registry_module.ctypes.CDLL
+    errors = []
+
+    def policy_load(*args, **kwargs):
+        try:
+            return real_load(*args, **kwargs)
+        except OSError as error:
+            skip_policy_error(error)
+            errors.append(error)
+            raise
+
+    monkeypatch.setattr(registry_module.ctypes, "CDLL", policy_load)
+    return errors
+
+
 def test_parse_samples_without_path_stays_off_the_parse_path(
-    isolated, tmp_path, fixture_bytes, monkeypatch
+    isolated, tmp_path, fixture_bytes, monkeypatch, validator_registry_policy_load
 ):
     """EC-ADMIT-6: a config pin never reaches a validator with its own (empty) pins."""
     from chunker import parser as parser_module
@@ -195,15 +233,25 @@ def test_parse_samples_without_path_stays_off_the_parse_path(
     )
     ok, errors = own.test_parse_samples(LANGUAGE, [SAMPLE])
     require(ok and errors == [], f"own registry and pins resolve it {errors}")
+    require(
+        not validator_registry_policy_load,
+        f"load failures {validator_registry_policy_load}",
+    )
 
 
-def test_parse_samples_without_path_keeps_package_supplied_grammars(isolated, tmp_path):
+def test_parse_samples_without_path_keeps_package_supplied_grammars(
+    isolated, tmp_path, validator_registry_policy_load
+):
     """Carry-over 2: the validator's own registry still serves P1/P2 grammars."""
     validator = GrammarValidator(tmp_path / "cache", trusted_artifacts={})
     ok, errors = validator.test_parse_samples("python", ["def f():\n    return 1\n"])
     require(ok and errors == [], f"official python wheel {errors}")
     ok, errors = validator.test_parse_samples("typescript", ["const x: number = 1;\n"])
     require(ok and errors == [], f"language-pack grammar {errors}")
+    require(
+        not validator_registry_policy_load,
+        f"load failures {validator_registry_policy_load}",
+    )
 
 
 # --- verdict reuse in the validator cache (EC-ADMIT-3) -------------------------------

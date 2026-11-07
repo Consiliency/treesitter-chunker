@@ -1,7 +1,9 @@
 ﻿"""Application-control classification remains fail-closed and request-bound."""
 
 import json
+import os
 import pickle
+import subprocess
 import sys
 from hashlib import sha256
 from pathlib import Path
@@ -20,6 +22,346 @@ from tests.native_policy import (
     skip_policy_reply,
     skip_policy_reply_under_status_fault,
 )
+
+
+def require_injection_marker(marker, expected, completed):
+    output = completed.stdout + completed.stderr
+    if (
+        not marker.exists()
+        and completed.returncode == 0
+        and "1 skipped" in output
+        and APPLICATION_CONTROL_MESSAGE in output
+    ):
+        pytest.skip(APPLICATION_CONTROL_MESSAGE)
+    assert marker.read_text(encoding="utf-8") == expected, output
+
+
+def test_injection_marker_handles_only_verified_prerequisite_skip(tmp_path):
+    marker = tmp_path / "missing"
+    skipped = SimpleNamespace(
+        stdout=f"1 skipped: {APPLICATION_CONTROL_MESSAGE}", stderr="", returncode=0
+    )
+    with pytest.raises(pytest.skip.Exception, match="Blocked by OS"):
+        require_injection_marker(marker, "load", skipped)
+    skipped.stdout = "1 skipped: unrelated reason"
+    try:
+        with pytest.raises(FileNotFoundError):
+            require_injection_marker(marker, "load", skipped)
+    except pytest.skip.Exception:
+        pytest.fail("unrelated skip must not become a policy skip")
+    skipped.stdout = f"1 failed: {APPLICATION_CONTROL_MESSAGE}"
+    skipped.returncode = 1
+    with pytest.raises(FileNotFoundError):
+        require_injection_marker(marker, "load", skipped)
+
+
+def test_concurrent_policy_skip_does_not_hide_other_failure():
+    from tests.test_trusted_artifacts_contract import (
+        _check_concurrent_admission_outcomes,
+    )
+
+    policy_skip = pytest.skip.Exception(APPLICATION_CONTROL_MESSAGE)
+    failed = integrity.NativeProbeResult(False, "load_failed", None)
+    try:
+        with pytest.raises(AssertionError, match="completed admissions must succeed"):
+            _check_concurrent_admission_outcomes([(failed, None)], [policy_skip])
+    except pytest.skip.Exception:
+        pytest.fail("policy skip must not hide an admission failure")
+
+
+@pytest.mark.parametrize(
+    "node",
+    [
+        "tests/test_trusted_artifacts_contract.py::test_verdict_reused_only_for_same_bytes_and_pin",
+        "tests/test_trusted_artifacts_contract.py::test_concurrent_copies_of_one_pair_probe_once",
+        "tests/test_registry_admission_contract.py::test_pinned_individual_library_loads_only_its_admitted_copy",
+        "tests/test_validator_admission_contract.py::test_abi_check_admits_through_probe_without_loading",
+        "tests/test_analyzer_admission_contract.py::test_analyzer_forwards_only_one_field_record",
+        "tests/test_compiled_grammar_analysis_contract.py::test_native_actual_worker_status_required_after_real_ack[zero]",
+        "tests/test_compiled_grammar_analysis_contract.py::test_native_actual_worker_status_required_after_real_ack[abnormal]",
+        "tests/test_compiled_grammar_analysis_contract.py::test_native_actual_worker_status_required_after_real_ack[unavailable]",
+    ],
+)
+@pytest.mark.parametrize(("winerror", "expected"), [(4551, "skipped"), (5, "failed")])
+def test_admit_suites_distinguish_worker_policy_denials(
+    tmp_path, node, winerror, expected
+):
+    """Force the real worker before the suite's policy fixture wraps its reader."""
+    plugin = tmp_path / "policy_injection.py"
+    plugin.write_text(
+        """
+import os
+from chunker.grammar import integrity
+original = integrity._read_child
+def injected(command, cwd, timeout, **kwargs):
+    from pathlib import Path
+    Path(os.environ['ADMIT_TEST_MARKER']).write_text('worker', encoding='utf-8')
+    command = list(command)
+    anchor = 'from chunker.grammar.integrity import _native_probe_child; '
+    assert anchor in command[3]
+    denied = "def denied(*args):\\n error = OSError('injected denial')\\n error.winerror = %d\\n raise error\\n" % int(os.environ['ADMIT_TEST_WINERROR'])
+    command[3] = command[3].replace(anchor, anchor + 'import chunker.grammar_management.core as core; exec(%r); core.load_compiled_grammar=denied; ' % denied)
+    return original(command, cwd, timeout, **kwargs)
+integrity._read_child = injected
+""",
+        encoding="utf-8",
+    )
+    root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join((str(tmp_path), str(root)))
+    env["ADMIT_TEST_WINERROR"] = str(winerror)
+    env["ADMIT_TEST_MARKER"] = str(tmp_path / "injected")
+    completed = subprocess.run(
+        [sys.executable, "-m", "pytest", "-p", "policy_injection", node, "-q", "-rs"],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    output = completed.stdout + completed.stderr
+    assert (tmp_path / "injected").read_text(encoding="utf-8") == "worker", output
+    assert f"1 {expected}" in output, output
+    assert completed.returncode == (0 if expected == "skipped" else 1), output
+    if expected == "skipped":
+        assert APPLICATION_CONTROL_MESSAGE in output
+
+
+@pytest.mark.parametrize(("winerror", "expected"), [(4551, "skipped"), (5, "failed")])
+@pytest.mark.parametrize("site", ["worker", "load"])
+def test_registry_child_distinguishes_worker_policy_denials(
+    tmp_path, winerror, expected, site
+):
+    plugin = tmp_path / "child_injection.py"
+    plugin.write_text(
+        '''
+import os
+def pytest_collection_modifyitems(items):
+    module = items[0].module
+    if os.environ["ADMIT_TEST_SITE"] == "load":
+        anchor = "real_load = registry_module.ctypes.CDLL"
+        injection = """
+def denied_load(*args, **kwargs):
+    import os
+    from pathlib import Path
+    Path(os.environ['ADMIT_TEST_MARKER']).write_text('load', encoding='utf-8')
+    error = OSError('injected load denial')
+    error.winerror = int(os.environ['ADMIT_TEST_WINERROR'])
+    raise error
+real_load = denied_load
+"""
+        assert anchor in module.PARSE_SCRIPT
+        module.PARSE_SCRIPT = module.PARSE_SCRIPT.replace(anchor, anchor + injection)
+        return
+    anchor = "real_probe = integrity.probe_native_grammar"
+    injection = """
+real_read = integrity._read_child
+def injected_read(command, cwd, timeout, **kwargs):
+    import os
+    from pathlib import Path
+    Path(os.environ['ADMIT_TEST_MARKER']).write_text('worker', encoding='utf-8')
+    command = list(command)
+    anchor = 'from chunker.grammar.integrity import _native_probe_child; '
+    assert anchor in command[3]
+    denied = "def denied(*args):\\\\n error = OSError('injected denial')\\\\n error.winerror = %d\\\\n raise error\\\\n" % int(os.environ['ADMIT_TEST_WINERROR'])
+    command[3] = command[3].replace(anchor, anchor + 'import chunker.grammar_management.core as core; exec(%r); core.load_compiled_grammar=denied; ' % denied)
+    return real_read(command, cwd, timeout, **kwargs)
+integrity._read_child = injected_read
+"""
+    assert anchor in module.PARSE_SCRIPT
+    module.PARSE_SCRIPT = module.PARSE_SCRIPT.replace(anchor, injection + anchor)
+''',
+        encoding="utf-8",
+    )
+    root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join((str(tmp_path), str(root)))
+    env["ADMIT_TEST_WINERROR"] = str(winerror)
+    env["ADMIT_TEST_SITE"] = site
+    env["ADMIT_TEST_MARKER"] = str(tmp_path / "injected")
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-p",
+            "child_injection",
+            "tests/test_registry_admission_contract.py::test_pinned_local_grammar_parses_through_get_parser",
+            "-q",
+            "-rs",
+        ],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    output = completed.stdout + completed.stderr
+    require_injection_marker(tmp_path / "injected", site, completed)
+    assert f"1 {expected}" in output, output
+    assert completed.returncode == (0 if expected == "skipped" else 1), output
+    if expected == "skipped":
+        assert APPLICATION_CONTROL_MESSAGE in output
+
+
+@pytest.mark.parametrize(
+    ("node", "path_fragment", "fake_package"),
+    [
+        (
+            "tests/test_registry_admission_contract.py::test_pinned_individual_library_loads_only_its_admitted_copy",
+            "chunker-admitted-",
+            False,
+        ),
+        (
+            "tests/test_registry_admission_contract.py::test_record_verified_package_grammar_loads_without_pin",
+            "admitfixture",
+            False,
+        ),
+        (
+            "tests/test_validator_admission_contract.py::test_click_group_option_and_config_fallback",
+            "chunker-admitted-",
+            False,
+        ),
+        (
+            "tests/test_validator_admission_contract.py::test_parse_samples_without_path_stays_off_the_parse_path",
+            "chunker-admitted-",
+            False,
+        ),
+        (
+            "tests/test_validator_admission_contract.py::test_parse_samples_without_path_keeps_package_supplied_grammars",
+            "python",
+            True,
+        ),
+    ],
+)
+@pytest.mark.parametrize(("winerror", "expected"), [(4551, "skipped"), (5, "failed")])
+def test_direct_load_distinguishes_policy_denials(
+    tmp_path, node, path_fragment, fake_package, winerror, expected
+):
+    plugin = tmp_path / "load_injection.py"
+    plugin.write_text(
+        """
+import ctypes, os, sys
+import pytest
+@pytest.fixture(autouse=True)
+def package_fixture(tmp_path, monkeypatch):
+    if os.environ['ADMIT_TEST_FAKE_PACKAGE'] == '1':
+        from tests.test_registry_admission_contract import _fake_distribution
+        from chunker._internal import package_supplier
+        suffix = {'win32': '.dll', 'darwin': '.dylib'}.get(sys.platform, '.so')
+        _fake_distribution(tmp_path / 'distribution', monkeypatch, {'python' + suffix: b'RECORD verified fixture'})
+        yield
+        package_supplier._package_grammar_records.cache_clear()
+    else:
+        yield
+real = ctypes.CDLL
+def load(name, *args, **kwargs):
+    if os.environ["ADMIT_TEST_PATH"] in str(name):
+        from pathlib import Path
+        Path(os.environ["ADMIT_TEST_MARKER"]).write_text("load", encoding="utf-8")
+        error = OSError("injected load denial")
+        error.winerror = int(os.environ["ADMIT_TEST_WINERROR"])
+        raise error
+    return real(name, *args, **kwargs)
+ctypes.CDLL = load
+""",
+        encoding="utf-8",
+    )
+    root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env.update(
+        PYTHONPATH=os.pathsep.join((str(tmp_path), str(root))),
+        ADMIT_TEST_WINERROR=str(winerror),
+        ADMIT_TEST_PATH=path_fragment,
+        ADMIT_TEST_MARKER=str(tmp_path / "injected"),
+        ADMIT_TEST_FAKE_PACKAGE="1" if fake_package else "0",
+    )
+    completed = subprocess.run(
+        [sys.executable, "-m", "pytest", "-p", "load_injection", node, "-q", "-rs"],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    output = completed.stdout + completed.stderr
+    require_injection_marker(tmp_path / "injected", "load", completed)
+    assert f"1 {expected}" in output, output
+    assert completed.returncode == (0 if expected == "skipped" else 1), output
+    if expected == "skipped":
+        assert APPLICATION_CONTROL_MESSAGE in output
+
+
+@pytest.mark.parametrize(
+    "fault", ["load_failed", "malformed", "nonce", "timeout", "overflow", "duplicate"]
+)
+def test_unavailable_status_does_not_mask_other_worker_faults(tmp_path, fault):
+    plugin = tmp_path / "reply_fault.py"
+    plugin.write_text(
+        """
+import json, os
+from pathlib import Path
+from chunker.grammar import integrity
+original = integrity._read_child
+def injected(command, cwd, timeout, **kwargs):
+    command = list(command)
+    anchor = 'from chunker.grammar.integrity import _native_probe_child; '
+    assert anchor in command[3]
+    code = 5 if os.environ["ADMIT_TEST_FAULT"] == "load_failed" else 4551
+    denied = "def denied(*args):\\n error = OSError('injected denial')\\n error.winerror = %d\\n raise error\\n" % code
+    command[3] = command[3].replace(anchor, anchor + 'import chunker.grammar_management.core as core; exec(%r); core.load_compiled_grammar=denied; ' % denied)
+    reply = original(command, cwd, timeout, **kwargs)
+    fault = os.environ["ADMIT_TEST_FAULT"]
+    Path(os.environ["ADMIT_TEST_MARKER"]).write_text(fault, encoding="utf-8")
+    rc, stdout, stderr, timed_out, overflow = reply
+    if fault == "malformed":
+        stdout = b"not JSON"
+    elif fault == "nonce":
+        record = json.loads(stdout)
+        record["nonce"] = "wrong"
+        stdout = json.dumps(record).encode()
+    elif fault == "duplicate":
+        stdout = stdout.rstrip()[:-1] + b',"failure":"policy_blocked"}'
+    elif fault == "timeout":
+        timed_out = True
+    elif fault == "overflow":
+        overflow = True
+    return rc, stdout, stderr, timed_out, overflow
+integrity._read_child = injected
+""",
+        encoding="utf-8",
+    )
+    root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env.update(
+        PYTHONPATH=os.pathsep.join((str(tmp_path), str(root))),
+        ADMIT_TEST_FAULT=fault,
+        ADMIT_TEST_MARKER=str(tmp_path / "injected"),
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-p",
+            "reply_fault",
+            "tests/test_compiled_grammar_analysis_contract.py::test_native_actual_worker_status_required_after_real_ack[unavailable]",
+            "-q",
+        ],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    output = completed.stdout + completed.stderr
+    assert (tmp_path / "injected").read_text(encoding="utf-8") == fault, output
+    assert completed.returncode == 1 and "1 failed" in output, output
+    assert "skipped" not in output
 
 
 def policy_error(code=4551):
@@ -345,6 +687,11 @@ def test_status_fault_skip_accepts_only_observed_policy_failure():
         "forced",
         "timeout",
         "generic",
+        "overflow",
+        "malformed",
+        "nonce",
+        "normal",
+        "duplicate",
     ],
 )
 def test_status_fault_skip_preserves_protocol_failures(fault):
@@ -364,6 +711,18 @@ def test_status_fault_skip_preserves_protocol_failures(fault):
         record = json.loads(reply[1])
         record["failure"] = "load_failed"
         reply = (1, json.dumps(record).encode(), b"", False, False)
+    if fault == "overflow":
+        reply = reply[:3] + (False, True)
+    if fault == "malformed":
+        reply = (1, b"not JSON", b"", False, False)
+    if fault == "nonce":
+        record = json.loads(reply[1])
+        record["nonce"] = "wrong"
+        reply = (1, json.dumps(record).encode(), b"", False, False)
+    if fault == "normal":
+        reply = (0, b'{"loader_returned": true}', b"", False, False)
+    if fault == "duplicate":
+        reply = (1, reply[1][:-1] + b',"failure":"policy_blocked"}', b"", False, False)
     assert_not_policy_skip(
         fault,
         skip_policy_reply_under_status_fault,
@@ -568,3 +927,179 @@ def test_marker_wait_classifies_only_trusted_policy_result(
     process.returncode = returncode
     with pytest.raises(pytest.skip.Exception if policy else AssertionError):
         _wait_for_file(tmp_path / "unpublished", process)
+
+
+@pytest.mark.parametrize("suffix", ["actual", ".dll"])
+@pytest.mark.parametrize("code", [4551, 1260, 5, "missing", None, True, 4551.0])
+def test_sentinel_child_classifies_real_load_errors(tmp_path, code, suffix):
+    from tests.test_native_grammar_library_contract import (
+        ACTUAL_SUFFIX,
+        ROOT,
+        SENTINEL_CONTROL_SCRIPT,
+        _check_sentinel_control,
+    )
+
+    marker = tmp_path / "injected"
+    injection = (
+        "from pathlib import Path\n"
+        f"Path({str(marker)!r}).write_text('reached')\n"
+        "def denied(*args):\n"
+        "    error = OSError('injected')\n"
+        + (f"    error.winerror = {code!r}\n" if code != "missing" else "")
+        + "    raise error\n"
+        "ctypes.CDLL = denied\n"
+    )
+    anchor = "try:\n    ctypes.CDLL(sys.argv[2])"
+    assert SENTINEL_CONTROL_SCRIPT.count(anchor) == 1
+    script = SENTINEL_CONTROL_SCRIPT.replace(anchor, injection + anchor)
+    control = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            script,
+            str(ROOT),
+            str(tmp_path / f"helper{ACTUAL_SUFFIX if suffix == 'actual' else suffix}"),
+        ],
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
+    assert marker.read_text() == "reached"
+    sentinel = tmp_path / "sentinel"
+    if type(code) is int and code in (4551, 1260):
+        with pytest.raises(pytest.skip.Exception, match="Blocked by OS"):
+            _check_sentinel_control(control, sentinel)
+    else:
+        assert control.returncode == 1
+        assert b"OSError" in control.stderr
+        assert control.stdout == b""
+        with pytest.raises(AssertionError):
+            _check_sentinel_control(control, sentinel)
+
+
+@pytest.mark.parametrize("suffix", ["actual", ".dll"])
+@pytest.mark.parametrize(
+    ("status", "output", "exists"),
+    [
+        (None, b"", True),
+        (False, b"", True),
+        (3, b"", True),
+        (
+            77,
+            b'{"schema":"native_test.policy_result.v1","reason":"policy_blocked"}',
+            False,
+        ),
+        (77, b'{"schema":"native_test.policy.v1","winerror":4551}', True),
+        (
+            77,
+            b'{"schema":"native_test.policy.v1","winerror":4551,"winerror":4551}',
+            False,
+        ),
+        (77, b"WinError 4551", False),
+        (77, b"{", False),
+        (77, b'{"schema":"native_test.policy.v1","winerror":4551,"extra":1}', False),
+        (77, b'{"schema":"native_test.policy.v1","winerror":4551.0}', False),
+        (77, b'{"schema":"native_test.policy.v1","winerror":5}', False),
+        (0, b"", False),
+    ],
+)
+def test_sentinel_control_rejects_invalid_outcomes(
+    tmp_path, status, output, exists, suffix
+):
+    from tests.test_native_grammar_library_contract import _check_sentinel_control
+
+    sentinel = tmp_path / ("sentinel-" + suffix)
+    if exists:
+        sentinel.write_bytes(b"entered")
+    result = SimpleNamespace(returncode=status, stdout=output, stderr=b"")
+    try:
+        with pytest.raises((AssertionError, FileNotFoundError)):
+            _check_sentinel_control(result, sentinel)
+    except pytest.skip.Exception:
+        pytest.fail("invalid sentinel outcome must not skip")
+
+
+@pytest.mark.parametrize("suffix", ["actual", ".dll"])
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        (4551, "skipped"),
+        (5, "failed"),
+        ("exit", "failed"),
+        ("timeout", "failed"),
+        ("noop", "failed"),
+    ],
+)
+def test_sentinel_test_propagates_child_policy(tmp_path, suffix, code, expected):
+    plugin = tmp_path / "sentinel_injection.py"
+    plugin.write_text(
+        """
+import os
+import subprocess
+original = subprocess.run
+def wrapped(command, *args, **kwargs):
+    if isinstance(command, list) and len(command) > 3 and command[1:3] == ["-I", "-c"] and "ctypes.CDLL(sys.argv[2])" in command[3]:
+        command = list(command)
+        anchor = "try:\\n    ctypes.CDLL(sys.argv[2])"
+        assert command[3].count(anchor) == 1
+        mode = os.environ["SENTINEL_INJECTION_CODE"]
+        prefix = "from pathlib import Path\\nPath(%r).write_text('reached')\\n" % os.environ["SENTINEL_INJECTION_MARKER"]
+        if mode == "exit":
+            injection = prefix + "import os\\ndef denied(*args):\\n Path(os.environ['CHUNKER_TEST_NATIVE_SENTINEL']).write_bytes(b'entered')\\n os._exit(3)\\nctypes.CDLL=denied\\n"
+        elif mode == "timeout":
+            injection = prefix + "import time\\ndef denied(*args):\\n time.sleep(20)\\nctypes.CDLL=denied\\n"
+            kwargs["timeout"] = 5
+        elif mode == "noop":
+            injection = prefix + "def denied(*args):\\n return None\\nctypes.CDLL=denied\\n"
+        else:
+            injection = prefix + "def denied(*args):\\n error=OSError('injected')\\n error.winerror=%d\\n raise error\\nctypes.CDLL=denied\\n" % int(mode)
+        command[3] = command[3].replace(anchor, injection + anchor)
+        result = original(command, *args, **kwargs)
+        if mode == "exit":
+            from pathlib import Path
+            assert result.returncode == 3
+            assert Path(kwargs["env"]["CHUNKER_TEST_NATIVE_SENTINEL"]).read_bytes() == b"entered"
+        return result
+    return original(command, *args, **kwargs)
+subprocess.run = wrapped
+""",
+        encoding="utf-8",
+    )
+    marker = tmp_path / "injected"
+    root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env.update(
+        PYTHONPATH=str(tmp_path) + os.pathsep + str(root),
+        SENTINEL_INJECTION_MARKER=str(marker),
+        SENTINEL_INJECTION_CODE=str(code),
+    )
+    node = f"tests/test_native_grammar_library_contract.py::test_selection_paths_never_load_unapproved_library_in_parent[{suffix}]"
+    completed = subprocess.run(
+        [sys.executable, "-m", "pytest", "-p", "sentinel_injection", node, "-q", "-rs"],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    output = completed.stdout + completed.stderr
+    require_injection_marker(marker, "reached", completed)
+    assert f"1 {expected}" in output, output
+    if expected == "skipped":
+        assert APPLICATION_CONTROL_MESSAGE in output
+    if code == "timeout":
+        assert "TimeoutExpired" in output
+    assert completed.returncode == (0 if expected == "skipped" else 1), output
+
+
+def test_sentinel_control_rejects_wrong_marker_bytes(tmp_path):
+    from tests.test_native_grammar_library_contract import _check_sentinel_control
+
+    marker = tmp_path / "sentinel"
+    marker.write_bytes(b"wrong")
+    with pytest.raises(AssertionError):
+        _check_sentinel_control(
+            SimpleNamespace(returncode=0, stdout=b"", stderr=b""), marker
+        )

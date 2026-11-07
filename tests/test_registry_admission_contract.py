@@ -40,6 +40,26 @@ from tests.test_compiled_grammar_analysis_contract import (
     FIXTURE,
     _compile_probe_fixture,
 )
+from tests.native_policy import skip_policy_error, skip_policy_subprocess
+
+pytestmark = pytest.mark.usefixtures(
+    "native_policy_environment", "registry_policy_load"
+)
+
+
+@pytest.fixture
+def registry_policy_load(monkeypatch):
+    real = registry_module.ctypes.CDLL
+
+    def load(*args, **kwargs):
+        try:
+            return real(*args, **kwargs)
+        except OSError as error:
+            skip_policy_error(error)
+            raise
+
+    monkeypatch.setattr(registry_module.ctypes, "CDLL", load)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SUFFIX = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
@@ -142,6 +162,27 @@ def _parses(language) -> bool:
 PARSE_SCRIPT = textwrap.dedent(
     """
     import json, sys
+    from chunker.grammar import integrity
+    from chunker.grammar._native_policy import is_application_control_error
+    from chunker._internal import registry as registry_module
+    real_probe = integrity.probe_native_grammar
+    real_load = registry_module.ctypes.CDLL
+    def probe(*args, **kwargs):
+        result = real_probe(*args, **kwargs)
+        if result.reason == 'policy_blocked':
+            print(json.dumps({'schema': 'native_test.policy_result.v1', 'reason': 'policy_blocked'}), flush=True)
+            raise SystemExit(77)
+        return result
+    def load(*args, **kwargs):
+        try:
+            return real_load(*args, **kwargs)
+        except OSError as error:
+            if is_application_control_error(error):
+                print(json.dumps({'schema': 'native_test.policy.v1', 'winerror': error.winerror}), flush=True)
+                raise SystemExit(77)
+            raise
+    integrity.probe_native_grammar = probe
+    registry_module.ctypes.CDLL = load
     from chunker.parser import get_parser, acquire_parser
     out = {}
     for name in sys.argv[2:]:
@@ -171,6 +212,7 @@ def _parse_in_process(isolated, build_dir: Path, cwd: Path, *languages: str):
         timeout=300,
         check=False,
     )
+    skip_policy_subprocess(completed)
     require(completed.returncode == 0, f"child failed {completed.stderr}")
     return json.loads(completed.stdout.strip().splitlines()[-1]), completed.stderr
 
