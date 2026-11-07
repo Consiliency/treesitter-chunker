@@ -1526,3 +1526,14 @@ def test_install_and_update_refuse_a_shipped_target_before_cloning(
     require(result["status"] == "error", f"{result}")
     require("cannot be replaced in place" in result["errors"][0], f"{result}")
     require(result["steps_completed"] == [], "no clone, fetch or build")
+
+
+@pytest.mark.parametrize("argv", SUBCOMMANDS, ids=lambda argv: argv[0])
+def test_argparse_subcommand_help_ignores_defective_pins(
+    config_home, monkeypatch, capsys, argv
+):
+    _write_config("{broken")
+    with pytest.raises(SystemExit) as caught:
+        _grammar(monkeypatch, capsys, argv[0], "--help")
+    require(caught.value.code == 0, "argparse subcommand help remains available")
+    require("usage:" in capsys.readouterr().out.lower(), "help rendered")
