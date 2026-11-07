@@ -78,6 +78,12 @@ Status since the roadmap snapshot:
   addressed in both PRs. **Maintainer decision (2026-11-01)** on plan
   decision 5: one trust rule for package-supplied grammars everywhere
   (decision 5 below).
+- **State, 2026-11-07: ADMIT closed.**
+  - Merged in this order: treesitter-chunker#556, #558, #562, #559 and #563.
+  - treesitter-chunker#547 closed, and the #614 follow-up merged as
+    treesitter-chunker#616 (main `b33994e9`).
+  - Every acceptance criterion below is met. The Review record has the
+    evidence.
 
 ## Merge gate (maintainer decision, 2026-10-31)
 
@@ -98,7 +104,7 @@ PR bodies is diagnostic, not gate evidence.
 
 ## Interface Freeze Gates
 
-- [ ] IF-0-ADMIT-1 — The admitted-health accessor, published by SL-core:
+- [x] IF-0-ADMIT-1 — The admitted-health accessor, published by SL-core:
 
   ```python
   # chunker/grammar_management/core.py
@@ -114,6 +120,9 @@ PR bodies is diagnostic, not gate evidence.
   from `probe_native_grammar` under the manager's IF-0-ADMITPIN-1 pins
   (rule 3; verdict reuse under the frozen key). ADMITFIX consumes it for
   treesitter-chunker#128 and treesitter-chunker#120.
+  **Landed** in treesitter-chunker#562 (merge `4e260b6d`):
+  `chunker/grammar_management/core.py:1821`; test
+  `tests/test_validator_admission_contract.py::test_admitted_health_accessor`.
 
 Signatures SL-core publishes on day 1 (in this plan; the code lands in the
 SL-core reader PR):
@@ -526,16 +535,199 @@ grep -rnE "ctypes\.CDLL|cdll\.LoadLibrary|Language\(" chunker/ | sort
 
 ## Acceptance Criteria
 
-- [ ] EC-ADMIT-1 to EC-ADMIT-8 as written in Phase 8 of the roadmap.
+Verified against main `b33994e9` (2026-11-07). Test nodes are under `tests/`.
+On that commit the six admission contract files
+(`test_grammar_info_exit_contract.py`, `test_trusted_artifacts_contract.py`,
+`test_legacy_admission_contract.py`, `test_registry_admission_contract.py`,
+`test_validator_admission_contract.py`, `test_analyzer_admission_contract.py`)
+give 193 passed, 1 skipped in the locked Python 3.12 environment, run
+serially. The skip is the case-insensitive file-system case, which runs only on
+macOS and Windows. The named mutations `parse_samples_via_global_parser` and
+`trust_package_dir_without_record` were applied again to that tree: each
+failed its named test, and the restored tree passed. All other mutations are
+cited from the VB-2 table in the PR that landed them.
+
+- [x] EC-ADMIT-1 to EC-ADMIT-8 as written in Phase 8 of the roadmap.
+  - [x] EC-ADMIT-1 (pinned `grammar info` exits 0, unpinned exits 1
+    `untrusted`, on three platforms). treesitter-chunker#556 (argparse
+    group) and treesitter-chunker#562 (click group). Tests:
+    `test_trusted_artifacts_contract.py::test_grammar_info_with_option_pins_exits_zero`
+    (`:437`, mutation `pin_source_ignored`),
+    `::test_grammar_info_without_pins_exits_one_untrusted` (`:457`),
+    `::test_grammar_info_reads_user_config_pins` (`:468`), and
+    `test_validator_admission_contract.py::test_click_group_option_and_config_fallback`
+    (`:446`). The fixture is the real BAML parser compiled per platform. A
+    missing compiler fails the fixture rather than skipping it
+    (`test_compiled_grammar_analysis_contract.py:83`). The files are in
+    `scripts/run_platform_core.py:45-50`, and the hosted Linux 3.12, macOS
+    3.14 and Windows 3.14 `Test Suite` jobs passed at every merged ADMIT head.
+    On the Smart App Control host, the #563 round-3 campaign ran them 20 of
+    20 clean.
+  - [x] EC-ADMIT-2 (every inventory site disposed, with a bypass mutation per
+    integrated site). Every row of the IF-0-ADMITPIN-2 table in
+    `docs/development/native-validation-contract.md` is `landed` or `n/a`.
+    The `ctypes.CDLL|cdll.LoadLibrary|Language(` grep on `b33994e9` finds
+    only the sites listed under "Load sites after ADMIT" (reconciled in the
+    contract). Bypass mutations, each failing its named test:
+    - N2–N6: `restore_direct_cdll`, treesitter-chunker#562.
+      `test_validator_admission_contract.py::test_abi_check_admits_through_probe_without_loading`
+      (`:139`), `::test_parse_samples_with_path_loads_only_admitted_copy`
+      (`:166`), `::test_build_without_pin_is_not_admitted_and_with_pin_is_probed`
+      (`:576`), `::test_validate_compiled_grammar_admits_and_keeps_output_shape`
+      (`:551`) and `::test_click_group_option_and_config_fallback` (`:446`).
+    - T1 `reload_original_after_validation` and T2 `restore_selftest_cdll`,
+      treesitter-chunker#562: `::test_self_test_workflow_never_reloads_the_original_path`
+      (`:618`) and `::test_corrupt_grammar_self_test_compares_the_admission_reason`
+      (`:644`).
+    - R1, R2 and R4: `restore_direct_registry_cdll`, treesitter-chunker#558.
+      `test_registry_admission_contract.py::test_ctypes_is_only_reached_through_admission`
+      (`:747`), `::test_discovery_scan_never_loads_unpinned_library` (`:758`)
+      and `::test_registry_constructor_never_reads_config` (`:292`). R3 rule 5
+      is `combined_admits_all_languages` on
+      `::test_combined_library_admits_each_language_on_its_own_pin` (`:410`).
+    - V1 `restore_legacy_abi_load`, D1 `restore_download_cdll` and M1
+      `restore_combined_cdll`, treesitter-chunker#559:
+      `test_legacy_admission_contract.py:68`, `:109` and `:147`.
+    - A1 `restore_ldd_inspection`, treesitter-chunker#563:
+      `test_analyzer_admission_contract.py::test_dependency_inspection_is_retired`
+      (`:107`).
+  - [x] EC-ADMIT-3 (verdict reuse rejects same-stat replacement and
+    provenance change; dependency inspection secured or retired).
+    `chunker/_internal/native_admission.py:145` (`verdict_key`: no path or
+    stat fields) landed in treesitter-chunker#556:
+    `test_trusted_artifacts_contract.py::test_verdict_reused_only_for_same_bytes_and_pin`
+    (`:555`, `reuse_stat_keyed_verdict`, `reuse_verdict_across_pin_change`)
+    and `::test_verdict_key_has_no_path_or_stat_fields` (`:707`). The
+    validator cache landed in treesitter-chunker#562:
+    `test_validator_admission_contract.py::test_validator_cache_rejects_same_stat_replacement_and_pin_change`
+    (`:284`) and `::test_persisted_ok_never_admits_in_a_new_process`
+    (`:260`, `persist_admission_across_processes`). Dependency inspection is
+    retired (A1, treesitter-chunker#563):
+    `chunker/languages/compatibility/grammar_analyzer.py:661`, with
+    `test_analyzer_admission_contract.py:107` (`restore_ldd_inspection`,
+    `ldd_runs_but_reports_retired`).
+  - [x] EC-ADMIT-4 (treesitter-chunker#400 retired with documented
+    migration). treesitter-chunker#559. `chunker/grammar/validator.py:25-45`
+    raises `ValidationError` naming the replacement, and the static
+    `check_abi_compatibility` loads nothing. The name stays exported
+    (`chunker/grammar/__init__.py:13`). Test:
+    `test_legacy_admission_contract.py::test_legacy_validator_is_retired_and_names_its_replacement`
+    (`:68`, `restore_legacy_abi_load`, `legacy_constructor_works`). The
+    migration is in `CHANGELOG.md` (Unreleased, "Retired
+    (treesitter-chunker#400, treesitter-chunker#362)"), in
+    `docs/grammar_management.md` ("Retired legacy loaders"), in
+    `examples/manage_grammars.py:83` and in the contract's
+    "treesitter-chunker#400 disposition: retire".
+  - [x] EC-ADMIT-5 (VB-1 to VB-4 on every PR, including the Windows
+    preflight).
+    - VB-1 and VB-2: each of treesitter-chunker#556, #558, #562, #559 and
+      #563 records a reproduction on unchanged main and its mutation table in
+      the PR body.
+    - VB-3: the local validation block is recorded in each PR body. Hosted
+      Linux, macOS and Windows `Test Suite` and `docs` were green at every
+      merged head. The Windows preflight ran at every round-3 head (Review
+      record).
+    - VB-4: the two-reviewer rounds, then the four-seat board, which approved
+      all five heads in round 3 of 3 (Review record).
+    - treesitter-chunker#508 and treesitter-chunker#509 did not recur: no
+      `PermissionError` before the probe constructor and no manager
+      admission rejection. The Code Integrity 3077 denials fall under the
+      2026-11-01 ruling.
+  - [x] EC-ADMIT-6 (the parse path reads the user-config pin file).
+    treesitter-chunker#558, with the validator branch in
+    treesitter-chunker#562.
+    - `test_registry_admission_contract.py::test_pinned_local_grammar_parses_through_get_parser`
+      (`:220`, `parse_path_ignores_config_pins`) and
+      `::test_unpinned_local_grammar_is_ignored_by_get_parser` (`:232`).
+    - `::test_defective_config_keeps_package_grammars_and_names_the_defect`
+      (`:246`, `defect_not_named`).
+    - Exit 2 for every subcommand:
+      `test_trusted_artifacts_contract.py::test_defective_config_exits_two_for_every_subcommand`
+      (`:494`) and
+      `test_validator_admission_contract.py::test_click_defective_pin_file_exits_two_for_every_subcommand`
+      (`:484`).
+    - Precedence: `test_trusted_artifacts_contract.py::test_option_wins_over_config_and_is_never_merged`
+      (`:362`) and `::test_valid_option_ignores_defective_config` (`:529`).
+    - `test_validator_admission_contract.py::test_parse_samples_without_path_stays_off_the_parse_path`
+      (`:208`), which uses `GrammarValidator(trusted_artifacts={})` and a
+      config file that pins the language. `parse_samples_via_global_parser`
+      fails it (re-run on `b33994e9`).
+    - The config directory is isolated (`config_home` and `isolated`
+      fixtures). In-process tests redirect `Path.home()` and set `APPDATA`
+      and `XDG_CONFIG_HOME`. Subprocess tests also set `HOME` and
+      `USERPROFILE`.
+  - [x] EC-ADMIT-7 (RECORD-verified package grammars). The check is
+    `chunker/_internal/package_supplier.py:120`, from treesitter-chunker#556;
+    the registry uses it from treesitter-chunker#558.
+    - `test_registry_admission_contract.py::test_record_verified_package_grammar_loads_without_pin`
+      (`:586`).
+    - `::test_package_grammar_mismatching_record_fails_closed_even_with_pin`
+      (`:598`, `pin_rescues_record_mismatch`).
+    - `::test_package_dir_file_without_record_hash_is_an_ordinary_candidate[no_entry]`
+      (`:619`, `trust_package_dir_without_record`, re-run on `b33994e9`).
+      The CLI form is
+      `test_trusted_artifacts_contract.py::test_grammar_info_package_dir_file_without_record_needs_a_pin`
+      (`:1099`), which the same mutation also fails.
+  - [x] EC-ADMIT-8 (no on-demand clone or compile). treesitter-chunker#558
+    (F1, and F2 under decision 10).
+    `test_registry_admission_contract.py::test_on_demand_fetch_and_build_is_retired`
+    (`:264`, `restore_on_demand_build`). Recorded as behaviour changes in
+    `CHANGELOG.md` (Unreleased, "the on-demand fetch-and-build in
+    `get_parser`/`acquire_parser` is retired" and the zero-config entry),
+    `docs/grammar_management.md` ("On-demand fetch-and-build is retired"),
+    `docs/zero_config_api.md` and `chunker/grammar/README.md`.
 - [x] EC-ADMIT-9 — the merge gate above is met before any ADMIT PR merges.
   **Met (owner sign-off, 2026-11-03)** on 20/20 clean Windows series each on
   #562 `09a2461b`, #559 `f5d5e922` and #563 `ac3577b7`. Caveats: helper-process
   policy skips were matched by time, count and file type under the accepted
   rule (follow-up treesitter-chunker#613), and the docs-only pushes on #550
-  (`1e1f8c7c`) and #563 (`ac3577b7`) were not re-reviewed.
-- [ ] The inventory status column says `landed` for every ADMIT row, and a
-  new direct load has its own row.
-- [ ] The four ADMITPIN carry-overs are implemented as decision 1 records.
+  (`1e1f8c7c`) and #563 (`ac3577b7`) were not re-reviewed. The round-3 heads
+  that merged were then gated again on WIN under the owner's standing rule of
+  2026-11-05 (Review record).
+- [x] The inventory status column says `landed` for every ADMIT row, and a
+  new direct load has its own row. On `b33994e9`, rows N1–N6, R1–R4, V1, D1,
+  M1, T1, T2, A1, I1, F1 and F2 say `landed`, and R5, P1 and P2 (package
+  suppliers, out of scope) say `n/a`. Each lane set its own rows: N and T in
+  treesitter-chunker#562, R, F1 and F2 in #558, V, D and M in #559, and A1 in
+  #563. The closeout grep finds no direct load without a row (contract,
+  "Load sites after ADMIT").
+- [x] The four ADMITPIN carry-overs are implemented as decision 1 records.
+  - [x] 1.1 Off the parse path for every pin-holding component.
+    `GrammarValidator.test_parse_samples` resolves through its own registry
+    (`chunker/grammar_management/core.py:327-331`, treesitter-chunker#562).
+    `GrammarAnalyzer`, `SmartGrammarManager` and `UserGrammarTools`
+    (treesitter-chunker#556, #563) never import or call `chunker.parser`.
+    Tests:
+    `test_validator_admission_contract.py::test_parse_samples_without_path_stays_off_the_parse_path`
+    (`:208`),
+    `test_trusted_artifacts_contract.py::test_constructor_never_reads_config_file`
+    (`:420`) and
+    `test_analyzer_admission_contract.py::test_analyzer_forwards_only_one_field_record`
+    (`:64`).
+  - [x] 1.2 The no-path branch uses `default_library_path()`.
+    `GrammarValidator._registry` (`chunker/grammar_management/core.py:349-364`,
+    treesitter-chunker#562) builds `LanguageRegistry(default_library_path(),
+    trusted_artifacts=<own pins>)`. `default_library_path()` was published by
+    treesitter-chunker#558. Tests:
+    `test_validator_admission_contract.py::test_parse_samples_without_path_keeps_package_supplied_grammars`
+    (`:242`) and
+    `test_registry_admission_contract.py::test_default_library_path_matches_parse_path`
+    (`:737`).
+  - [x] 1.3 `samefile` first, then `resolve()`. `same_file`
+    (`chunker/_internal/package_supplier.py:45-53`) was landed by
+    treesitter-chunker#556 and used by the registry in #558 (decision 5).
+    Tests: `test_registry_admission_contract.py::test_package_identity_survives_symlinked_site_path`
+    (`:684`, `compare_paths_as_text`) and
+    `test_trusted_artifacts_contract.py::test_record_check_matches_through_a_symlinked_site_path`
+    (`:1401`).
+  - [x] 1.4 Every subcommand of both groups is pin-dependent.
+    treesitter-chunker#556 (argparse) and treesitter-chunker#562 (click):
+    `test_trusted_artifacts_contract.py:494`, `:513`, and `:1552` (`--help`
+    unaffected), plus `test_validator_admission_contract.py:484` and `:509`.
+    It is documented in `docs/grammar_management.md` ("Every grammar
+    subcommand is pin-dependent", under "Approved pins"), and
+    `docs/cli-reference.md` ("Grammar commands and approved pins") points to
+    it.
 
 ## Execution Notes
 
@@ -553,8 +745,109 @@ grep -rnE "ctypes\.CDLL|cdll\.LoadLibrary|Language\(" chunker/ | sort
 
 ## Review record
 
-- Pending. The parent records each reviewer, the reviewed head SHA and the
-  verdict here or in the PR.
+ADMIT closed on main `b33994e9` (2026-11-07). Hosted Linux 3.12, macOS 3.14
+and Windows 3.14 `Test Suite`, `test` and `docs` were green at every merged
+head below.
+
+**How review ran.**
+
+- **Earlier two-reviewer rounds (2026-11-01 to 11-02).** Each PR first had
+  Codex and Claude rounds, recorded in its body and comments.
+  treesitter-chunker#556 and #558 were approved by both in round 3.
+- **Integrated board (2026-11-05).** All five implementation heads then went
+  to one board, with a new three-round cap. It had four seats:
+  - correctness: Claude Opus 5.5;
+  - red-team: GPT-6 Astra, blind to the brief and to prior conclusions;
+  - adversarial: Grok 4.7;
+  - alternative-approach: Gemini 4 Argon.
+  An independent president (Claude Opus 5.5) adjudicated.
+- **Board rounds.** Round 1 was not approved, with four blockers. Round 2 was
+  not approved, with R2-B1 on #556, R2-B2 on #558 and R2-B3 on #562. In round
+  3 of 3, all four seats returned AGREE, and the president approved code
+  review at the five exact candidate heads: no surviving blocker, nothing
+  descoped and nothing waived. The president ruled that this was not a merge
+  authorization. Windows, macOS and hosted checks stayed separate gates.
+
+**Windows (WIN) gate.**
+
+- **Host and method.** Each round-3 candidate ran on the Smart App Control
+  host: a verify step, the standing preflight, and a 20-series campaign. Each
+  ran from a clean clone of the exact head, with no retries and no policy
+  changes.
+- **Attribution rule.** Failures were attributed under the owner's standing
+  rule of 2026-11-05. A failure is explained only when it is a confirmed
+  policy failure (WinError 4551 or 1260, or `policy_blocked`) and a Code
+  Integrity 3077 in the run's own window names, by exact path, a file the run
+  created. Where a PID is available, it must match too.
+- **Earlier rulings.** The earlier scoped rulings stay as recorded: the
+  treesitter-chunker#614 files, `[unavailable]`, the positive control, and
+  the #613 helper caveat.
+- **What an explained failure means.** It is recorded as an explained
+  failure, never a pass, together with the behaviour it left unexercised. An
+  unexplained or non-policy failure would have stopped the gate. None
+  occurred.
+
+**Merged heads.** Each merged head after #556 is a "Merge main into …" commit
+on top of the board-approved, WIN-tested candidate. It is tree-identical to
+that candidate (`git diff` and `--remerge-diff` are both empty).
+
+- **treesitter-chunker#550** (plan, SL-plan): merge `dd8f9dec`, head
+  `1e7aa742`. Codex and Claude both asked for changes in round 1 and both
+  approved in round 2. Focused re-checks of decision 10 and of the
+  merge-forward were also approved (PR comments). The owner signed off
+  EC-ADMIT-9 on 2026-11-03 (above), with the docs-only push caveat.
+- **treesitter-chunker#556** (SL-core-1): merge `762a92de`, head `14db1390`,
+  the board's round-3 head.
+  - WIN preflight: exit 0, 212 passed, 1 skipped, 0 Code Integrity events.
+  - Campaign: 15 clean / 5 explained failures, with 23 failures all matched
+    under the scoped rulings. It is not a pass. The policy-skip gap it showed
+    became treesitter-chunker#614.
+- **treesitter-chunker#558** (SL-reg): merge `401a6b74`, head `f8017ed1`,
+  identical to the WIN-tested `54fcf4c9`.
+  - WIN preflight: 49 failed, 163 passed, 1 skipped. All 49 failures are
+    explained under the standing rule: blocked console launchers in the
+    run's own venv, with WinError 4551 and exact-path 3077s. CLI
+    console-launcher execution was not exercised there. This preflight is
+    what led to the standing rule.
+  - Campaign: 13 clean / 7 explained failures (10 failures), 0 unexplained.
+- **treesitter-chunker#562** (SL-core-2): merge `4e260b6d`, head `d88d6c47`,
+  identical to the WIN-tested `02a5bc9c`.
+  - WIN preflight: exit 0, 212 passed, 1 skipped.
+  - Campaign: 16 clean / 4 explained failures (29 failures, 0 unexplained).
+    Two of the 29 rest only on a helper match by time, count and file type,
+    under the #613 caveat.
+- **treesitter-chunker#559** (SL-legacy, treesitter-chunker#400): merge
+  `b726812d`, head `0cb60365`, identical to the WIN-tested `4fb322b9`.
+  - WIN preflight: exit 0, 212 passed, 1 skipped.
+  - Campaign: 19 clean / 1 explained failure (15 failures in that series, 0
+    unexplained).
+- **treesitter-chunker#563** (SL-ins): merge `9cc59d66`, head `496e865a`,
+  identical to the WIN-tested `b6020d0f`.
+  - WIN preflight: exit 0, 212 passed, 1 skipped.
+  - Campaign: 20 clean of 20.
+- **treesitter-chunker#616** (treesitter-chunker#614, a test-only follow-up
+  that routes verified policy denials in the ADMIT suites through the
+  existing skip protocol): merge `b33994e9`, head `e42e2b9d`, identical to
+  the reviewed `519f7afe`.
+  - Review: a four-seat panel with an independent president reviewed both
+    the plan and the code. Approval was conditional on a WIN timing check of
+    the sentinel timeout path.
+  - WIN check: every node run passed, and the inner `TimeoutExpired` took
+    5.018 s and 5.014 s (the condition was 5–8 s; 15 s would have halted).
+  - Evidence gap: WIN logged no Code Integrity event in that run. So a real
+    WinError 4551 or 1260 child-policy skip is still unobserved, and the #556
+    campaign result above stands.
+
+**Open after ADMIT.**
+
+- treesitter-chunker#613: helper policy records should carry the snapshot
+  path and worker PID.
+- The `tests/test_cli.py` launcher-subprocess harness gaps that #616 left out
+  of scope.
+- treesitter-chunker#508 and treesitter-chunker#509 stay on hold. Neither
+  recurred.
+- The ADMITFIX issues stay as their own repairs: treesitter-chunker#117,
+  treesitter-chunker#120 and treesitter-chunker#128.
 
 ## Spec Closeout Plan
 
@@ -565,3 +858,13 @@ grep -rnE "ctypes\.CDLL|cdll\.LoadLibrary|Language\(" chunker/ | sort
 - evidence paths: `plans/phase-plan-v4-ADMIT.md`, PR logs, platform runs
 - redaction posture: `metadata_only`
 - missing or malformed evidence: `blocker_class=contract_bug`
+- outcome (2026-11-07, main `b33994e9`): applied, and no evidence was missing.
+  - The inventory status column already said `landed` for every ADMIT row,
+    because each lane set its own rows.
+  - The closeout adds the contract's ADMIT completion status and the grep
+    reconciliation on `b33994e9`.
+  - `CHANGELOG.md` already records ADMIT under Unreleased: the "Grammar
+    commands accept approved native-grammar pins" entry under Added, the
+    treesitter-chunker#362 and treesitter-chunker#400 "Retired" and
+    "Behaviour change" entries under Changed, and the round-3 entries under
+    Fixed. No new entry was needed.
