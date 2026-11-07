@@ -182,7 +182,7 @@ The lock is held only for critical sections, including:
 **Only one subprocess may run under the lock: the IF-0-HOTFIX-1 probe child.**
 `publish_native_grammar` starts it during the commit section, and `restore`
 may start it once more. It is bounded by the `timeout` passed to
-`publish_native_grammar`, the default 10 seconds, plus the probe's own
+`publish_native_grammar`, the default 30 seconds, plus the probe's own
 documented cleanup. It inherits no lock descriptor or handle. It reads only
 its private snapshot, never the root.
 
@@ -598,9 +598,19 @@ For the language being installed, the installer applies treesitter-chunker#538's
 per-probe rule:
 
 - If `trusted_artifacts.get(language)` is a Mapping with a `str` `sha256`, the
-  installer builds the one-field record `{"sha256": value}` (the *pin record*).
+  installer obtains the one-field record `{"sha256": value}` (the *pin record*)
+  from `pin_provenance`: a fresh dict, never the stored record, and never a
+  rollback digest.
 - Otherwise the install fails with an untrusted result **before the commit
-  section**. Nothing is captured or mutated, and no probe runs.
+  section**. Nothing is captured or mutated, and no probe runs. The installer
+  makes this check before it creates staging, so nothing is cloned, built or
+  validated either. An unsafe language, source or version is rejected first,
+  with the download's own messages.
+
+A pin may be given in upper case; admission compares digests case-insensitively.
+The metadata's `artifact_sha256` and the rollback point's intended artifact
+digest use `hashlib`'s lower-case form, so detection and the restore table
+compare like with like.
 
 **Production restore limit.** IF-0-ADMITPIN-1 holds one pin per language, so
 publishing a new revision means the operator has already moved the pin to it.
@@ -611,6 +621,20 @@ in production by the [commit order](#installation-commit): a failed update
 never replaces the artifact. Republishing the artifact with the previous
 revision's pin happens only where a caller holds that pin, such as fixtures.
 No previous approval is ever derived from a rollback digest.
+
+**Single-pin limitations.** With only the new revision B pinned:
+
+- A failed publication leaves A's artifact in place and restores A's
+  metadata, so the pair is (A, A). Admission of A under B's pin fails with
+  `integrity_mismatch`. A's library is therefore not loaded, and
+  `GrammarManager.get_admitted_health` reports `incompatible` until the
+  operator returns the pin to A (or retries the update). Under A's pin, the
+  restored A is admitted again. This is fail-closed, not a lost installation.
+- If B's artifact was already published when a later step failed, restore
+  with B's pin cannot republish A. The pair stays (B, B), consistent and
+  admitted under B's pin, and the rollback point is retained. A displaced
+  artifact is republished only by a caller that independently supplies A's
+  pin record (for example `restore(point, provenance={"sha256": <A's pin>})`).
 
 ### Paths, metadata format and manifest
 
@@ -627,7 +651,8 @@ restored metadata points back to it. If recorded metadata points outside
 `ContainmentError`.
 
 **Metadata format.** The metadata keeps today's fields and adds
-`"artifact_sha256"`, the pin record's `sha256`. That is the digest the artifact
+`"artifact_sha256"`, the pin record's `sha256` in lower case. That is the
+digest the artifact
 must have once publication succeeds. It is serialized canonically as
 `json.dumps(document, indent=2, sort_keys=True, ensure_ascii=False) + "\n"`,
 UTF-8. `InstallationInfo` ignores unknown keys, so older readers keep working.
@@ -703,12 +728,14 @@ with the steps below.
    `fsync`ed. Each previous copy's SHA-256 is computed while copying with
    `hashlib`. The manifest is written last. Seam point
    `rollback.after_capture`.
-2. **Publish metadata** with `publish_installation_metadata`. Its bytes are
-   canonical, so the returned digest is `intended_sha256` by construction; a
-   participant never reports its own metadata as `superseded`. The private
-   seam point `commit.after_metadata` (context `section="commit"`) follows,
-   after the nested metadata hold is released and while the commit section
-   still holds the lock.
+2. **Publish metadata** with `publish_installation_metadata`. The returned
+   digest must equal `intended_sha256`; if it differs, go to step 4. The bytes
+   on disk are then the intended ones, so the restore table's (`Ap`, `Mi`) row
+   returns the metadata to `Mp`; the participant never reports its own
+   metadata as `superseded`. Otherwise the private seam point
+   `commit.after_metadata` (context `section="commit"`) follows, after the
+   nested metadata hold is released and while the commit section still holds
+   the lock.
 3. **Publish the artifact** with
    `publish_native_grammar(<staged artifact>, destination, language,
    provenance=<pin record>)`. This is the last fallible mutation.
@@ -793,8 +820,10 @@ uses a rollback digest as `provenance`.
 library that a process has loaded, and the destination is then unchanged.
 Restore does not retry that call, because each attempt re-runs the probe. A
 refusal fails the restore and retains the point. The installer process holds
-no handle to the destination, because it validates through the probe's
-private snapshot. EC-TXN-3 shows this on a real Windows run.
+no handle to the destination. Validation goes through the probe's private
+snapshot, and where ADMIT loads a grammar in the installer it loads an admitted
+private copy of the staged file, never the destination. EC-TXN-3 shows this on
+a real Windows run.
 
 ### Installation removal
 
@@ -807,9 +836,14 @@ one lock section it:
    in its own directory (`grammars/` or `grammars/<priority>/`);
 4. deletes them outside the lock.
 
-`remove_grammar` then calls `remove_entry` for the cache entries. It is a full
-participant: it cannot interleave with a commit, so a restore can never bring
-back an installation that was removed. A crash between the two retirements
+`GrammarInstaller.remove_grammar` reads the metadata and calls
+`remove_installation` inside one reentrant `cache_lock` section, then calls
+`remove_entry` for the cache entries. It is a full participant: it cannot
+interleave with a commit, so a restore can never bring back an installation
+that was removed. `GrammarManager.remove_grammar` delegates to it without an
+unlocked registry lookup first, so a removal that contends with a paused fresh
+install waits for it and then removes it, and metadata whose artifact is
+missing is still removed. A crash between the two retirements
 leaves metadata that describes a missing artifact, which today's health check
 already reports as `missing`.
 
@@ -859,7 +893,7 @@ def publish_native_grammar(
     *,
     provenance: Mapping[str, Any] | None,
     sample: bytes = b"",
-    timeout: float = 10.0,
+    timeout: float = 30.0,
 ) -> NativeProbeResult:
 ```
 

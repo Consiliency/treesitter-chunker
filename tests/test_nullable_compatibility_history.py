@@ -355,8 +355,16 @@ def test_concrete_checker_evaluates_instead_of_reusing_unspecified_result(
         .parse(source.encode())
         .root_node.has_error
     )
+    import hashlib
+
     manager = GrammarManager(
-        user_dir=user, package_dir=tmp_path / "package", cache_dir=tmp_path / "cache"
+        user_dir=user,
+        package_dir=tmp_path / "package",
+        cache_dir=tmp_path / "cache",
+        # The local grammar is admitted only under its approved pin.
+        trusted_artifacts={
+            "baml": {"sha256": hashlib.sha256(library.read_bytes()).hexdigest()}
+        },
     )
     path = tmp_path / "checker.db"
     database = CompatibilityDatabase(path)

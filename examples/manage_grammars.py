@@ -6,11 +6,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from chunker.grammar import (
-    TreeSitterGrammarManager,
-    TreeSitterGrammarValidator,
-    get_grammar_repository,
-)
+from chunker.grammar import TreeSitterGrammarManager, get_grammar_repository
 from chunker.interfaces.grammar import GrammarStatus
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -84,8 +80,10 @@ def manage_grammars(action: str, languages: list):
 
 def show_status():
     """Show status of all managed grammars."""
+    # TreeSitterGrammarValidator is retired (treesitter-chunker#400). To admit a
+    # compiled grammar, use chunker.grammar_management.core.GrammarValidator(
+    # cache_dir, trusted_artifacts={"<language>": {"sha256": "<pin>"}}).
     manager = TreeSitterGrammarManager()
-    TreeSitterGrammarValidator()
     print("\n=== Grammar Status ===")
     grammars = manager.list_grammars()
     if not grammars:

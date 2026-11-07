@@ -59,7 +59,7 @@ if HAS_DEBUG:
 else:
 
     @app.command()
-    def debug():
+    def debug() -> None:
         """Debug and visualization tools (requires graphviz dependency)"""
         if DEBUG_ERROR == "graphviz":
             console.print(
@@ -143,7 +143,7 @@ def boundary(
         "--summary",
         help="Print a Boundary IR run summary to stderr/stdout console output",
     ),
-):
+) -> None:
     """Generate canonical Boundary IR for a file or repository."""
     if not path.is_dir():
         # Repositories are directories; any other input must be a regular
@@ -435,7 +435,7 @@ def chunk(
         "--stdin",
         help="Read source code from stdin instead of file",
     ),
-):
+) -> None:
     """Chunk a single source file or stdin input."""
     results: list[dict[str, Any]] = []
     failed = False
@@ -667,7 +667,7 @@ def batch(
         "--stdin",
         help="Read file_path paths from stdin",
     ),
-):
+) -> None:
     """Process multiple files with batch operations."""
     # Load config
     # For batch, prefer configs relative to provided paths if any
@@ -793,7 +793,7 @@ def batch(
     all_results = []
     failed = rejected_inputs
 
-    def process_with_progress(file_path: Path):
+    def process_with_progress(file_path: Path) -> list[dict[str, Any]]:
         return process_file(file_path, language, types_list, min_size, max_size)
 
     if quiet:
@@ -872,7 +872,7 @@ def batch(
                 )
     else:
         # Summary table (default). Quiet suppresses progress only.
-        summary = {}
+        summary: dict[str, int] = {}
         total_chunks = len(all_results)
 
         for result in all_results:
@@ -899,7 +899,7 @@ def batch(
 
 
 @app.command()
-def languages():
+def languages() -> None:
     """List available languages."""
     try:
         langs = list_languages()

@@ -40,7 +40,13 @@ from typing import Any
 
 from tree_sitter import Language, Parser
 
+from chunker._internal.trusted_artifacts import copy_trusted_artifacts, pin_provenance
 from chunker.exceptions import ChunkerError
+from chunker.grammar._native_policy import (
+    APPLICATION_CONTROL_MESSAGE,
+    NativePolicyBlockedError,
+    is_application_control_error,
+)
 from chunker.grammar.source_validation import validate_grammar_source
 from chunker.grammar_management import _transactions
 
@@ -127,9 +133,38 @@ class GrammarRegistryError(GrammarManagementError):
     """Exception for grammar registry operations."""
 
 
+#: Legacy health status for each ``probe_native_grammar`` reason (contract,
+#: "Results and consumer compatibility").
+_LEGACY_HEALTH = {
+    "ok": "healthy",
+    "missing": "missing",
+    "empty": "corrupted",
+    "load_failed": "corrupted",
+    "parse_failed": "corrupted",
+}
+
+
+def legacy_health_status(reason: str) -> str:
+    """Map a native admission reason to the legacy health status."""
+    return _LEGACY_HEALTH.get(reason, "incompatible")
+
+
 def load_compiled_grammar(grammar_path: Path, language: str) -> Parser:
-    """Load a local grammar's own symbol with the pinned Tree-sitter API."""
-    library = ctypes.CDLL(str(grammar_path))
+    """Load a local grammar's own symbol with the pinned Tree-sitter API.
+
+    Caller-trusted primitive (inventory N1): pass only the probe child's
+    verified snapshot or an admitted private copy, never a discovered path.
+    """
+    try:
+        library = ctypes.CDLL(str(grammar_path))
+    except OSError as error:
+        if is_application_control_error(error):
+            blocked = NativePolicyBlockedError(
+                error.errno, APPLICATION_CONTROL_MESSAGE, error.filename
+            )
+            blocked.winerror = int(getattr(error, "winerror", 0))
+            raise blocked from error
+        raise
     symbol = getattr(library, f"tree_sitter_{language.replace('-', '_')}")
     symbol.restype = ctypes.c_void_p
     pointer = symbol()
@@ -145,12 +180,23 @@ def load_compiled_grammar(grammar_path: Path, language: str) -> Parser:
 class GrammarValidator:
     """Validates grammar integrity, compatibility, and performance."""
 
-    def __init__(self, cache_dir: Path | None = None):
+    def __init__(
+        self,
+        cache_dir: Path | None = None,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
+    ):
         """Initialize grammar validator.
 
         Args:
             cache_dir: Directory for caching validation results
+            trusted_artifacts: Approved pins (language -> {"sha256": hex}),
+                copied here. Without a pin a local grammar is ``untrusted``.
+                The validator never reads a pin file and never resolves
+                grammars through ``chunker.parser``.
         """
+        self._trusted_artifacts = copy_trusted_artifacts(trusted_artifacts)
+        self._language_registry: Any = None
         self._cache_dir = cache_dir or (Path.home() / ".cache" / "treesitter-chunker")
         self._cache_dir.mkdir(parents=True, exist_ok=True)
         self._validation_cache = self._cache_dir / VALIDATION_CACHE_NAME
@@ -180,13 +226,25 @@ class GrammarValidator:
                 if not basic_result.is_valid:
                     basic_result.level = level
                     return basic_result
+            # A candidate that vanished during the check fails visibly.
+            grammar_path.stat()
 
-            # Check cache first
-            cache_key = self._get_cache_key(grammar_path, language, level)
-            if cache_key in self._cache:
+            # A cached result is returned only under the frozen verdict key and
+            # only when this process already holds a fresh ok admission under
+            # it; a persisted entry alone is never an admission receipt.
+            # The shared trust rule (RECORD check, then the pin) runs before
+            # any cache reuse, so a cached result can never rescue a RECORD
+            # mismatch or an untrusted candidate.
+            cache_key, cache_digest = self._verdict_cache_key(
+                grammar_path, language, level
+            )
+            if cache_key is not None and cache_key in self._cache:
                 cached_result = self._cache[cache_key]
-                # Check if cache is still valid (24 hours)
-                if time.time() - cached_result.get("timestamp", 0) < 86400:
+                # The 24-hour expiry may only shorten reuse.
+                if (
+                    self._holds_fresh_admission(cache_key)
+                    and time.time() - cached_result.get("timestamp", 0) < 86400
+                ):
                     return self._deserialize_validation_result(cached_result)
 
             # Perform validation based on level
@@ -197,8 +255,10 @@ class GrammarValidator:
             elif level == ValidationLevel.EXTENSIVE:
                 result = self._validate_extensive(grammar_path, language)
 
-            # Cache the result
-            self._cache_validation_result(cache_key, result)
+            # Only valid results under a pinned, matching digest are stored.
+            if cache_key is not None and cache_digest is not None and result.is_valid:
+                self._record_fresh_admission(cache_key, cache_digest, language)
+                self._cache_validation_result(cache_key, result)
 
             return result
 
@@ -223,16 +283,20 @@ class GrammarValidator:
             if not grammar_path.exists():
                 return False, f"Grammar file not found: {grammar_path}"
 
-            # Load this artifact rather than a language with the same name elsewhere.
-            try:
-                if language is None:
-                    language = grammar_path.stem.removeprefix("lib").removeprefix(
-                        "tree_sitter_"
-                    )
-                load_compiled_grammar(grammar_path, language)
+            # Admit this artifact (probe only; nothing is loaded in this
+            # process). A derived language is only the pin lookup key.
+            if language is None:
+                language = grammar_path.stem.removeprefix("lib").removeprefix(
+                    "tree_sitter_"
+                )
+            from chunker._internal.native_admission import admit_native_candidate
+
+            result, _ = admit_native_candidate(
+                grammar_path.absolute(), language, self._trusted_artifacts
+            )
+            if result.supported:
                 return True, None
-            except Exception as e:
-                return False, f"ABI compatibility check failed: {e!s}"
+            return False, f"Native admission failed: {result.reason}"
 
         except Exception as e:
             return False, f"Error checking ABI compatibility: {e!s}"
@@ -256,14 +320,15 @@ class GrammarValidator:
         errors = []
 
         try:
-            # Lazy import to avoid circular dependencies
-            from chunker.parser import get_parser
-
-            parser = (
-                load_compiled_grammar(grammar_path, language)
-                if grammar_path is not None
-                else get_parser(language)
-            )
+            if grammar_path is not None:
+                parser = self._admitted_parser(grammar_path, language)
+                if isinstance(parser, str):
+                    return False, [parser]
+            else:
+                # Never chunker.parser (pin-holding components stay off the
+                # parse path): the validator's own registry and pins, where
+                # package-supplied grammars still resolve.
+                parser = Parser(self._registry().get_language(language))
 
             for i, sample in enumerate(samples):
                 try:
@@ -280,6 +345,91 @@ class GrammarValidator:
         except Exception as e:
             errors.append(f"Parser setup failed: {e!s}")
             return False, errors
+
+    def _registry(self) -> Any:
+        """Return this validator's own ``LanguageRegistry`` (built lazily).
+
+        It uses ``default_library_path()``, the same default combined library
+        as ``chunker.parser``, and this validator's pins.
+        """
+        if self._language_registry is None:
+            from chunker._internal.registry import (
+                LanguageRegistry,
+                default_library_path,
+            )
+
+            self._language_registry = LanguageRegistry(
+                default_library_path(), trusted_artifacts=self._trusted_artifacts
+            )
+        return self._language_registry
+
+    def _admitted_parser(self, grammar_path: Path, language: str) -> Parser | str:
+        """Load an admitted private copy of ``grammar_path`` (inventory N3).
+
+        Returns a parser, or an error message when admission or loading fails.
+        """
+        from chunker._internal.native_admission import (
+            admitted_private_copy,
+            forget_private_copy,
+        )
+
+        result, copy = admitted_private_copy(
+            grammar_path.absolute(), language, self._trusted_artifacts
+        )
+        if copy is None or result.artifact_sha256 is None:
+            return f"Parser setup failed: native admission {result.reason}"
+        try:
+            return load_compiled_grammar(copy, language)
+        except Exception as error:
+            forget_private_copy(language, result.artifact_sha256)
+            return f"Parser setup failed: load_failed ({error})"
+
+    def _verdict_cache_key(
+        self, grammar_path: Path, language: str, level: ValidationLevel
+    ) -> tuple[str | None, str | None]:
+        """Return ``(key, digest)`` for an admissible, matching candidate.
+
+        The record comes from the shared trust rule
+        (``native_admission.admission_record``): a RECORD-verified package file
+        uses its RECORD digest, a RECORD mismatch or a missing pin yields no
+        key, and only then is the pin used. The key stays path-independent.
+        """
+        from chunker._internal.native_admission import (
+            admission_record,
+            hash_regular_file,
+            verdict_key,
+        )
+
+        record, _rejection = admission_record(
+            grammar_path.absolute(), language, self._trusted_artifacts
+        )
+        if record is None:
+            return None, None
+        pin = record["sha256"].lower()
+        content = hash_regular_file(grammar_path)
+        if content is None or content != pin:
+            return None, None
+        key = verdict_key(
+            language=language,
+            pin_sha256=pin,
+            content_sha256=content,
+            level=level.value,
+            inspector="none",
+        )
+        return key, content
+
+    @staticmethod
+    def _holds_fresh_admission(cache_key: str) -> bool:
+        from chunker._internal.native_admission import has_verdict
+
+        return has_verdict(cache_key)
+
+    @staticmethod
+    def _record_fresh_admission(cache_key: str, digest: str, language: str) -> None:
+        """Index the verdict under the digest the key was computed from."""
+        from chunker._internal.native_admission import store_verdict
+
+        store_verdict(cache_key, language=language, content_sha256=digest)
 
     def _validate_basic(self, grammar_path: Path, language: str) -> ValidationResult:
         """Perform basic validation (file existence and basic checks)."""
@@ -498,22 +648,6 @@ class GrammarValidator:
         except Exception:
             return None
 
-    def _get_cache_key(
-        self,
-        grammar_path: Path,
-        language: str,
-        level: ValidationLevel,
-    ) -> str:
-        """Generate cache key for validation result."""
-        # Include file modification time and size in cache key
-        stat = grammar_path.stat()
-        key_data = (
-            f"{grammar_path}:{language}:{level.value}:{stat.st_mtime}:{stat.st_size}"
-        )
-        if level == ValidationLevel.EXTENSIVE:
-            key_data += ":selected-grammar-v1"
-        return hashlib.sha256(key_data.encode()).hexdigest()
-
     def _load_validation_cache(self) -> dict[str, Any]:
         """Load validation records from disk into the read cache.
 
@@ -600,7 +734,7 @@ class GrammarInstaller:
         build_timeout: int = 300,
         max_retries: int = 3,
         *,
-        trusted_artifacts: Mapping[str, Mapping[str, Any]] | None = None,
+        trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
     ):
         """Initialize grammar installer.
 
@@ -608,15 +742,10 @@ class GrammarInstaller:
             cache_dir: Directory for downloads and builds
             build_timeout: Timeout for build operations in seconds
             max_retries: Maximum number of retry attempts
-            trusted_artifacts: Approved pins, language -> {"sha256": hex}. Only a
-                pinned language can be installed (IF-0-ADMITPIN-1; ADMIT
-                SL-core-2 owns this constructor line on main).
+            trusted_artifacts: Approved pins, copied and passed to the
+                installer's own ``GrammarValidator``
         """
-        self._trusted_artifacts = {
-            language: dict(record)
-            for language, record in (trusted_artifacts or {}).items()
-            if isinstance(record, Mapping)
-        }
+        self._trusted_artifacts = copy_trusted_artifacts(trusted_artifacts)
         self._base_cache_dir = cache_dir or (
             Path.home() / ".cache" / "treesitter-chunker"
         )
@@ -630,7 +759,9 @@ class GrammarInstaller:
 
         self._build_timeout = build_timeout
         self._max_retries = max_retries
-        self._validator = GrammarValidator(self._base_cache_dir)
+        self._validator = GrammarValidator(
+            self._base_cache_dir, trusted_artifacts=self._trusted_artifacts
+        )
 
     def install_grammar(
         self,
@@ -654,6 +785,21 @@ class GrammarInstaller:
             return False, "Invalid grammar language", None
         try:
             logger.info(f"Installing grammar for {language} from {repository_url}")
+
+            # Unsafe inputs are rejected first, with the download's own
+            # messages; then only a pinned language goes on. Nothing is staged,
+            # cloned, built, validated, probed or captured without a pin.
+            input_error = self._source_input_error(repository_url, version)
+            if input_error is not None:
+                return False, f"Download failed: {input_error}", None
+            pin = pin_provenance(self._trusted_artifacts, language)
+            if pin is None:
+                return (
+                    False,
+                    f"Grammar {language} is untrusted: no pinned sha256 "
+                    "was supplied for it, so nothing was installed",
+                    None,
+                )
 
             # Every input stays in this operation's private staging until the
             # installation, its last consumer, has finished.
@@ -692,15 +838,6 @@ class GrammarInstaller:
                     )
                     return False, error_msg, None
 
-                # Only a pinned language reaches the commit section.
-                pin = self._pin_record(language)
-                if pin is None:
-                    return (
-                        False,
-                        f"Grammar {language} is untrusted: no pinned sha256 "
-                        "was supplied for it, so nothing was installed",
-                        None,
-                    )
                 destination = self._destination_path(language, priority)
 
                 # Resolve the commit before the commit section (no subprocess
@@ -812,14 +949,14 @@ class GrammarInstaller:
         try:
             logger.info(f"Removing grammar for {language}")
 
-            # Get installation info
-            install_info = self._load_installation_info(language)
-            if not install_info:
-                return False, f"Grammar {language} is not installed"
-
-            # Remove the artifact, then its metadata, as one participant
-            # section; a paused commit cannot interleave with it.
-            self._remove_installation_info(language)
+            # Read the installation and retire the artifact, then its
+            # metadata, in one reentrant participant section: a paused commit
+            # cannot interleave, and metadata without an artifact is removed.
+            with _transactions.cache_lock(self._base_cache_dir):
+                install_info = self._load_installation_info(language)
+                if not install_info:
+                    return False, f"Grammar {language} is not installed"
+                self._remove_installation_info(language)
 
             # Clean up cache files
             if clean_cache:
@@ -1046,11 +1183,19 @@ class GrammarInstaller:
         except FileNotFoundError:
             return False, "Make not found"
 
-    def _pin_record(self, language: str) -> dict[str, str] | None:
-        """The one-field pin record for ``language``, or ``None`` (untrusted)."""
-        record = self._trusted_artifacts.get(language)
-        if isinstance(record, Mapping) and isinstance(record.get("sha256"), str):
-            return {"sha256": record["sha256"]}
+    @staticmethod
+    def _source_input_error(repository_url: str, version: str | None) -> str | None:
+        """The download's rejection of an unsafe source or version, if any.
+
+        These are the checks ``_download_grammar`` makes before cloning, with
+        its messages, so they still win over a missing pin.
+        """
+        try:
+            validate_grammar_source(repository_url)
+        except ValueError as e:
+            return f"Invalid grammar source: {e}"
+        if version and version.startswith("-"):
+            return "Invalid grammar version"
         return None
 
     def _destination_path(self, language: str, priority: GrammarPriority) -> Path:
@@ -1078,10 +1223,12 @@ class GrammarInstaller:
         return document
 
     def _invalidate_installed(self, path: Path) -> None:
-        """Drop state derived from a replaced library (non-fatal hook).
+        """Refresh state derived from a replaced library (non-fatal hook).
 
-        The installer holds no loaded grammar; its validator's read cache is
-        refreshed so no record derived from the old file is reused here.
+        The installer never holds the destination open: admission loads a
+        private copy of the staged file. This reloads the validator's on-disk
+        read cache. That cache is not admission (only in-process verdicts keyed
+        by pin and content are), so this only keeps reported records current.
         """
         self._validator._cache = self._validator._load_validation_cache()
 
@@ -1095,15 +1242,19 @@ class GrammarInstaller:
     ) -> tuple[bool, str | None]:
         """Commit one installation (cache transaction contract, Primitive 3).
 
-        In one lock section: capture a rollback point, publish the metadata,
-        then publish the staged artifact through ``publish_native_grammar``
-        with the pin record. Any failure there restores the pair; a
+        In one lock section: capture a rollback point, publish the metadata
+        (its returned digest must equal the point's intended digest), then
+        publish the staged artifact through ``publish_native_grammar`` with the
+        one-field pin record. Any failure there restores the pair; a
         ``BaseException`` is re-raised after the restore.
         """
         from chunker._internal.user_grammar_tools import publish_native_grammar
 
         root = self._base_cache_dir
-        document = self._installation_document(info, str(pin["sha256"]))
+        # Pins may be upper case (the probe compares case-insensitively); the
+        # recorded and intended digests use hashlib's lower-case form.
+        artifact_sha256 = str(pin["sha256"]).lower()
+        document = self._installation_document(info, artifact_sha256)
         previous = _transactions.read_installation_metadata(root, language)
         if previous is not None and isinstance(previous.get("install_path"), str):
             # Recorded metadata outside grammars/ refuses the install here.
@@ -1113,15 +1264,27 @@ class GrammarInstaller:
         interrupted: BaseException | None = None
         outcome: _transactions.RestoreResult | None = None
         with _transactions._commit_section(root) as operation_id:
-            point = self._create_rollback_point(language, destination, document, pin)
+            point = self._create_rollback_point(
+                language, destination, document, artifact_sha256
+            )
             try:
-                _transactions.publish_installation_metadata(root, language, document)
-                _transactions._commit_seam(root, operation_id, "commit.after_metadata")
-                result = publish_native_grammar(
-                    staged_artifact, destination, language, provenance=dict(pin)
+                digest = _transactions.publish_installation_metadata(
+                    root, language, document
                 )
-                if not result.supported:
-                    failure = f"the artifact was not admitted ({result.reason})"
+                if digest != point.intended_metadata_sha256:
+                    failure = (
+                        f"the published metadata digest {digest} differs from "
+                        f"the intended {point.intended_metadata_sha256}"
+                    )
+                else:
+                    _transactions._commit_seam(
+                        root, operation_id, "commit.after_metadata"
+                    )
+                    result = publish_native_grammar(
+                        staged_artifact, destination, language, provenance=dict(pin)
+                    )
+                    if not result.supported:
+                        failure = f"the artifact was not admitted ({result.reason})"
             except BaseException as error:  # restore first, then re-raise
                 failure = f"{type(error).__name__}: {error}"
                 if not isinstance(error, Exception):
@@ -1158,7 +1321,7 @@ class GrammarInstaller:
         language: str,
         destination: Path,
         document: Mapping[str, Any],
-        pin: Mapping[str, Any],
+        artifact_sha256: str,
     ) -> _transactions.RollbackPoint:
         """Capture restorable copies of the current artifact and metadata."""
         return _transactions.create_rollback_point(
@@ -1166,7 +1329,7 @@ class GrammarInstaller:
             language=language,
             artifact=destination,
             metadata_document=document,
-            artifact_sha256=str(pin["sha256"]),
+            artifact_sha256=artifact_sha256,
         )
 
     def _perform_rollback(
@@ -1322,6 +1485,8 @@ class GrammarRegistry:
         user_dir: Path | None = None,
         package_dir: Path | None = None,
         cache_dir: Path | None = None,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
     ):
         """Initialize grammar registry.
 
@@ -1329,6 +1494,8 @@ class GrammarRegistry:
             user_dir: User grammar directory
             package_dir: Package grammar directory
             cache_dir: Directory for installer and validation state
+            trusted_artifacts: Approved pins for the installer it builds; the
+                registry itself loads nothing
         """
         self._user_dir = user_dir or (
             Path.home() / ".cache" / "treesitter-chunker" / "grammars"
@@ -1343,7 +1510,9 @@ class GrammarRegistry:
 
         self._registry_cache = {}
         self._cache_timestamp = 0
-        self._installer = GrammarInstaller(cache_dir)
+        self._installer = GrammarInstaller(
+            cache_dir, trusted_artifacts=copy_trusted_artifacts(trusted_artifacts)
+        )
 
     def discover_grammars(self) -> dict[str, list[tuple[Path, GrammarPriority]]]:
         """Discover all available grammars with their priorities.
@@ -1563,6 +1732,8 @@ class GrammarManager:
         user_dir: Path | None = None,
         package_dir: Path | None = None,
         cache_dir: Path | None = None,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
     ):
         """Initialize grammar manager.
 
@@ -1570,12 +1741,25 @@ class GrammarManager:
             user_dir: User grammar directory
             package_dir: Package grammar directory
             cache_dir: Cache directory for downloads and builds
+            trusted_artifacts: Approved pins (language -> {"sha256": hex}),
+                copied and passed to the registry, installer and validator.
+                ``None`` means no pins; the manager never reads a pin file.
         """
         self._cache_dir = cache_dir or (Path.home() / ".cache" / "treesitter-chunker")
+        self._trusted_artifacts = copy_trusted_artifacts(trusted_artifacts)
 
-        self._registry = GrammarRegistry(user_dir, package_dir, self._cache_dir)
-        self._installer = GrammarInstaller(self._cache_dir)
-        self._validator = GrammarValidator(self._cache_dir)
+        self._registry = GrammarRegistry(
+            user_dir,
+            package_dir,
+            self._cache_dir,
+            trusted_artifacts=self._trusted_artifacts,
+        )
+        self._installer = GrammarInstaller(
+            self._cache_dir, trusted_artifacts=self._trusted_artifacts
+        )
+        self._validator = GrammarValidator(
+            self._cache_dir, trusted_artifacts=self._trusted_artifacts
+        )
 
         # Create required directories
         self._cache_dir.mkdir(parents=True, exist_ok=True)
@@ -1676,12 +1860,9 @@ class GrammarManager:
             Tuple of (success, error_message)
         """
         try:
-            # Check if grammar exists
-            grammar_path = self._registry.get_grammar_path(language)
-            if not grammar_path:
-                return False, f"Grammar for {language} not found"
-
-            # Remove using installer
+            # The installer reads and removes the installation under the cache
+            # lock. An unlocked registry lookup here would miss a fresh install
+            # still committing, or metadata whose artifact is already gone.
             success, error = self._installer.remove_grammar(
                 language, clean_cache=clean_cache
             )
@@ -1726,6 +1907,65 @@ class GrammarManager:
             result = ValidationResult(is_valid=False, level=level)
             result.errors.append(f"Validation error: {e!s}")
             return result
+
+    @property
+    def trusted_artifacts(self) -> dict[str, dict[str, Any]]:
+        """A copy of this manager's pins."""
+        return copy_trusted_artifacts(self._trusted_artifacts)
+
+    def get_admitted_health(self, language: str) -> dict[str, Any]:
+        """Return the admitted health of ``language`` (IF-0-ADMIT-1).
+
+        The single health accessor for CLI status, validate and list
+        consumers. It is computed only from ``probe_native_grammar`` under
+        this manager's pins (rule 3; in-process verdict reuse under the frozen
+        key) and returns the legacy mapping ``{"language", "status",
+        "validation_reason", "artifact_sha256", "path", "issues"}``, where
+        ``status`` is ``healthy``, ``missing``, ``corrupted`` or
+        ``incompatible``.
+        """
+        from chunker._internal.native_admission import admit_native_candidate
+
+        located = self._registry.get_grammar_path(language)
+        if located is None:
+            return {
+                "language": language,
+                "status": "missing",
+                "validation_reason": "missing",
+                "artifact_sha256": None,
+                "path": None,
+                "issues": [f"Grammar for {language} not found"],
+            }
+        path = Path(located[0]).absolute()
+        result, _ = admit_native_candidate(path, language, self._trusted_artifacts)
+        status = legacy_health_status(result.reason)
+        issues = (
+            [] if result.supported else [f"Native admission failed: {result.reason}"]
+        )
+        from chunker._internal.package_supplier import MISMATCH, package_supplied_digest
+
+        if (
+            result.reason == "integrity_mismatch"
+            and package_supplied_digest(path)[0] == MISMATCH
+        ):
+            # No pin can override a RECORD mismatch (one trust rule).
+            issues.append(
+                f"The installed package grammar {path} differs from the "
+                "treesitter-chunker package RECORD; reinstall the package"
+            )
+        elif result.reason in {"untrusted", "integrity_mismatch"}:
+            issues.append(
+                f"Supply an approved SHA-256 pin for {language} via "
+                "--trusted-artifacts or the user-config pin file"
+            )
+        return {
+            "language": language,
+            "status": status,
+            "validation_reason": result.reason,
+            "artifact_sha256": result.artifact_sha256,
+            "path": str(path),
+            "issues": issues,
+        }
 
     def list_installed_grammars(self) -> dict[str, dict[str, Any]]:
         """List all installed grammars with their information.

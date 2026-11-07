@@ -11,4 +11,5 @@ def render_report(value: str) -> str:
 
     cleaned = format_name(value)
     duplicate = helper(cleaned)  # noqa: F821 - unresolved-call fixture
+    duplicate = getattr(duplicate, value)()  # treesitter-chunker#516 outer call
     return missing_call(duplicate)  # noqa: F821 - unresolved-call fixture

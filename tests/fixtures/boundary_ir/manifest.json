@@ -27,7 +27,7 @@
     "expected_qualified_names": ["Renderer", "Renderer.render", "format_name", "helper", "render_report"],
     "expected_resolution_statuses": ["ambiguous", "resolved", "unresolved"],
     "expected_signatures": ["format_name", "helper", "render", "render_report"],
-    "expected_calls": ["format_name", "helper", "missing_call"],
+    "expected_calls": ["format_name", "getattr", "getattr(duplicate, value)", "helper", "missing_call"],
     "strict_reference_targets": ["helper", "missing_call"]
   },
   "typescript": {

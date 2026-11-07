@@ -10,11 +10,32 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from chunker._internal.native_admission import admit_native_candidate
+from chunker._internal.trusted_artifacts import copy_trusted_artifacts
 from chunker.grammar.integrity import probe_native_grammar
 
 from .schema import CompatibilityLevel, GrammarVersion, LanguageVersion
 
 logger = logging.getLogger(__name__)
+
+#: Symbol-analysis outcomes that hold for the bytes, so their metadata may be
+#: reused with the admission verdict. ``deadline_expired`` and ``failed`` are
+#: transient and are re-inspected on the next call.
+_SETTLED_SYMBOL_ANALYSIS = frozenset({"complete", "unavailable"})
+
+
+def _settled_symbol_analysis(metadata: Any) -> bool:
+    """Whether the inspector metadata may be stored with the verdict."""
+    if not isinstance(metadata, Mapping):
+        return False
+    symbols = metadata.get("symbols")
+    if not isinstance(symbols, Mapping):
+        return False
+    analysis = symbols.get("analysis")
+    return (
+        isinstance(analysis, Mapping)
+        and analysis.get("status") in _SETTLED_SYMBOL_ANALYSIS
+    )
 
 
 class GrammarAnalyzer:
@@ -32,11 +53,7 @@ class GrammarAnalyzer:
             grammars_dir: Path to directory containing compiled grammar .so files
         """
         self.grammars_dir = Path(grammars_dir)
-        self.trusted_artifacts = {
-            language: dict(provenance)
-            for language, provenance in (trusted_artifacts or {}).items()
-            if isinstance(provenance, Mapping)
-        }
+        self.trusted_artifacts = copy_trusted_artifacts(trusted_artifacts)
         self.grammar_cache: dict[str, GrammarVersion] = {}
         self._capabilities: dict[str, dict[str, Any]] = {}
         self.supported_languages = self._discover_supported_languages()
@@ -85,17 +102,29 @@ class GrammarAnalyzer:
         grammar_path = (self.grammars_dir / f"{language}.so").absolute()
         captured: dict[str, Any] = {}
 
-        def inspect(snapshot: Path) -> None:
-            captured["version"] = self.extract_grammar_version(snapshot) or "unknown"
-            captured["symbols"] = self.analyze_grammar_symbols(snapshot)
-            captured["file_size"] = snapshot.stat().st_size
+        def inspect(snapshot: Path) -> dict[str, Any]:
+            return {
+                "version": self.extract_grammar_version(snapshot) or "unknown",
+                "symbols": self.analyze_grammar_symbols(snapshot),
+                "file_size": snapshot.stat().st_size,
+            }
 
-        result = probe_native_grammar(
+        # Rule 3: only a fresh one-field record reaches the probe; a language
+        # without a str pin is untrusted and the candidate is never opened.
+        result, metadata = admit_native_candidate(
             grammar_path,
             language,
-            provenance=self.trusted_artifacts.get(language),
+            self.trusted_artifacts,
+            inspector="grammar_analyzer.v1",
             inspect_artifact=inspect,
+            probe=probe_native_grammar,
+            # A deadline expiry or failed nm run says nothing about the
+            # grammar's symbols (treesitter-chunker#207): such a result is
+            # returned for this call but never stored, so the next call
+            # re-inspects and no other inspector's verdict is touched.
+            reusable=_settled_symbol_analysis,
         )
+        captured.update(metadata or {})
         base_capabilities = {
             "language": language,
             "supported": result.supported,
@@ -106,13 +135,16 @@ class GrammarAnalyzer:
             "symbols_count": 0,
             "file_size": 0,
             "validation_reason": result.reason,
+            "validation_message": result.message,
             "artifact_sha256": result.artifact_sha256,
         }
         if not result.supported:
             self.grammar_cache.pop(language, None)
             self._capabilities[language] = base_capabilities
             logger.warning(
-                "Grammar admission failed for %s: %s", language, result.reason
+                "Grammar admission failed for %s: %s",
+                language,
+                result.message or result.reason,
             )
             return None
 
@@ -187,28 +219,50 @@ class GrammarAnalyzer:
             logger.error(f"Error extracting version from {so_file_path}: {e}")
             return None
 
-    def analyze_grammar_symbols(self, so_file_path: Path) -> dict[str, Any]:
+    def analyze_grammar_symbols(
+        self, so_file_path: Path, *, timeout: float = 5.0
+    ) -> dict[str, Any]:
         """Analyze symbols in grammar file to understand capabilities.
 
         Args:
             so_file_path: Path to the .so file
+            timeout: Wall-clock deadline in seconds for each ``nm`` run
 
         Returns:
-            Dict with symbol information
+            Dict with the ``functions``, ``constants``, ``data`` and
+            ``undefined`` symbol lists, plus an ``analysis`` mapping whose
+            ``status`` says why the lists may be empty: ``complete``,
+            ``deadline_expired`` (``nm`` was killed at ``deadline_seconds``),
+            ``unavailable`` (Windows, or no ``nm``) or ``failed``.
         """
-        symbols = {"functions": [], "constants": [], "data": [], "undefined": []}
+        symbols: dict[str, Any] = {
+            "functions": [],
+            "constants": [],
+            "data": [],
+            "undefined": [],
+        }
+
+        def outcome(status: str, detail: str) -> dict[str, Any]:
+            symbols["analysis"] = {
+                "status": status,
+                "deadline_seconds": timeout,
+                "detail": detail,
+            }
+            return symbols
 
         try:
             # Use nm command to list symbols
             if platform.system() == "Windows":
                 logger.warning("Symbol analysis not fully supported on Windows")
-                return symbols
+                return outcome(
+                    "unavailable", "symbol analysis is not supported on Windows"
+                )
 
             result = subprocess.run(
                 ["nm", "-D", str(so_file_path)],
                 capture_output=True,
                 text=True,
-                timeout=5,
+                timeout=timeout,
                 check=False,
             )
 
@@ -218,39 +272,53 @@ class GrammarAnalyzer:
                     ["nm", str(so_file_path)],
                     capture_output=True,
                     text=True,
-                    timeout=5,
+                    timeout=timeout,
                     check=False,
                 )
 
-            if result.returncode == 0:
-                for line in result.stdout.splitlines():
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        symbol_type = parts[-2] if len(parts) >= 3 else "U"
-                        symbol_name = parts[-1]
+            if result.returncode != 0:
+                detail = result.stderr.strip() or f"nm exited {result.returncode}"
+                logger.warning(f"Symbol analysis failed for {so_file_path}: {detail}")
+                return outcome("failed", detail)
 
-                        if symbol_type in ["T", "t"]:  # Text (functions)
-                            symbols["functions"].append(symbol_name)
-                        elif symbol_type in ["D", "d", "B", "b"]:  # Data
-                            symbols["data"].append(symbol_name)
-                        elif symbol_type in ["R", "r"]:  # Read-only data
-                            symbols["constants"].append(symbol_name)
-                        elif symbol_type == "U":  # Undefined
-                            symbols["undefined"].append(symbol_name)
+            for line in result.stdout.splitlines():
+                parts = line.split()
+                if len(parts) >= 2:
+                    symbol_type = parts[-2] if len(parts) >= 3 else "U"
+                    symbol_name = parts[-1]
+
+                    if symbol_type in ["T", "t"]:  # Text (functions)
+                        symbols["functions"].append(symbol_name)
+                    elif symbol_type in ["D", "d", "B", "b"]:  # Data
+                        symbols["data"].append(symbol_name)
+                    elif symbol_type in ["R", "r"]:  # Read-only data
+                        symbols["constants"].append(symbol_name)
+                    elif symbol_type == "U":  # Undefined
+                        symbols["undefined"].append(symbol_name)
 
             logger.debug(
                 f"Found {len(symbols['functions'])} functions, "
                 f"{len(symbols['data'])} data symbols in {so_file_path.name}",
             )
+            return outcome("complete", "nm completed")
 
         except subprocess.TimeoutExpired:
-            logger.warning(f"Timeout analyzing symbols in {so_file_path}")
+            # A deadline expiry says nothing about the grammar's symbols; report
+            # it as such rather than as an empty symbol table
+            # (treesitter-chunker#207).
+            logger.warning(
+                f"Timeout analyzing symbols in {so_file_path}: "
+                f"nm exceeded the {timeout:g}-second deadline"
+            )
+            return outcome(
+                "deadline_expired", f"nm exceeded the {timeout:g}-second deadline"
+            )
         except FileNotFoundError:
             logger.warning("nm command not found - symbol analysis unavailable")
+            return outcome("unavailable", "nm command not found")
         except Exception as e:
             logger.error(f"Error analyzing symbols: {e}")
-
-        return symbols
+            return outcome("failed", str(e))
 
     def detect_supported_features(
         self,
@@ -385,6 +453,8 @@ class GrammarAnalyzer:
             report.append("=" * 50)
             report.append(f"Validation reason: {capabilities['validation_reason']}")
             report.append(f"Artifact SHA-256: {capabilities['artifact_sha256']}")
+            if capabilities.get("validation_message"):
+                report.append(capabilities["validation_message"])
 
             if capabilities["supported"]:
                 report.append("Status: Supported")
@@ -589,39 +659,19 @@ class GrammarMetadataExtractor:
 
     @staticmethod
     def extract_from_dependencies(so_file_path: Path) -> dict[str, Any]:
-        """Extract metadata from library dependencies.
+        """Retired dependency inspection (inventory A1, treesitter-chunker#362).
+
+        ``ldd`` may run an unapproved library's code through the dynamic
+        loader, so no tool runs. ``dependencies_status`` tells retirement apart
+        from a library that has no dependencies.
 
         Args:
-            so_file_path: Path to the .so file
+            so_file_path: Path to the library (not opened)
 
         Returns:
-            Dict with dependency metadata
+            ``{"dependencies": [], "dependencies_status": "retired"}``
         """
-        metadata = {"dependencies": []}
-
-        try:
-            if platform.system() == "Windows":
-                return metadata
-
-            # Use ldd to list dependencies
-            result = subprocess.run(
-                ["ldd", str(so_file_path)],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            )
-
-            if result.returncode == 0:
-                for line in result.stdout.splitlines():
-                    if "=>" in line:
-                        lib_name = line.split("=>")[0].strip()
-                        metadata["dependencies"].append(lib_name)
-
-        except Exception as e:
-            logger.debug(f"Error extracting from dependencies: {e}")
-
-        return metadata
+        return {"dependencies": [], "dependencies_status": "retired"}
 
 
 class FeatureDetector:

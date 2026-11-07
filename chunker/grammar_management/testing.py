@@ -4,7 +4,7 @@ Integration and testing module for Phase 1.8 grammar management system.
 
 import contextlib
 import copy
-import ctypes
+import hashlib
 import io
 import json
 import logging
@@ -14,11 +14,14 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import psutil
+
+from chunker._internal.trusted_artifacts import copy_trusted_artifacts
 
 from .cli import ComprehensiveGrammarCLI
 from .compatibility import (
@@ -38,8 +41,20 @@ logger = logging.getLogger(__name__)
 class IntegrationTester:
     """Tests complete grammar management system integration."""
 
-    def __init__(self, test_dir: Path | None = None):
-        """Initialize integration tester."""
+    def __init__(
+        self,
+        test_dir: Path | None = None,
+        *,
+        trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
+    ):
+        """Initialize integration tester.
+
+        Args:
+            test_dir: Caller-owned root, or ``None`` for a private one
+            trusted_artifacts: Approved pins for the local grammars under test;
+                without a pin a local grammar is ``untrusted``
+        """
+        self.trusted_artifacts = copy_trusted_artifacts(trusted_artifacts)
         self._owns_test_dir = test_dir is None
         if test_dir is None:
             temporary_parent = Path(tempfile.gettempdir()).resolve()
@@ -92,8 +107,11 @@ class IntegrationTester:
             user_dir=self.grammar_dir,
             package_dir=self.grammar_dir,
             cache_dir=self.cache_dir,
+            trusted_artifacts=self.trusted_artifacts,
         )
-        self.validator = GrammarValidator(self.cache_dir)
+        self.validator = GrammarValidator(
+            self.cache_dir, trusted_artifacts=self.trusted_artifacts
+        )
         self.compatibility_checker = CompatibilityChecker(
             self.grammar_manager, validator=self.validator
         )
@@ -111,7 +129,12 @@ class IntegrationTester:
     ) -> dict[str, Any]:
         """Validate a caller-supplied fixture in a short-lived worker."""
         result = _run_test_worker(
-            self.test_dir, "workflow", sample_path, language, grammar_path
+            self.test_dir,
+            "workflow",
+            sample_path,
+            language,
+            grammar_path,
+            trusted_artifacts=self.trusted_artifacts,
         )
         self.test_results["complete_workflow"] = result
         return result
@@ -143,19 +166,12 @@ class IntegrationTester:
                 raise ValueError("A local grammar_path is required")
             source = sample_path.read_text(encoding="utf-8")
             start = time.time()
-            valid, errors = GrammarValidator(self.cache_dir).test_parse_samples(
-                language, [source], grammar_path
-            )
-            if valid:
-                from .core import load_compiled_grammar
-
-                if (
-                    load_compiled_grammar(grammar_path, language)
-                    .parse(source.encode("utf-8"))
-                    .root_node.has_error
-                ):
-                    valid = False
-                    errors.append("Sample contains parse errors")
+            # test_parse_samples admits the grammar and parses the sample on
+            # an admitted private copy, reporting parse errors; the original
+            # path is never reloaded (inventory T1, retired).
+            valid, errors = GrammarValidator(
+                self.cache_dir, trusted_artifacts=self.trusted_artifacts
+            ).test_parse_samples(language, [source], grammar_path)
             results["workflows_tested"].append("validation")
             results["performance"]["validation"] = time.time() - start
             if not valid:
@@ -368,23 +384,25 @@ class IntegrationTester:
             return not result.is_valid and result.errors == [expected]
 
     def _test_corrupt_grammar_error(self) -> bool:
-        """Reject actual corrupt bytes through the current validator."""
+        """Reject actual corrupt bytes through native admission.
+
+        The self-test pins the bytes it just wrote, so the probe (not a pin
+        lookup) rejects them, and compares the admission reason. Nothing is
+        loaded in this process (inventory T2, retired).
+        """
         with tempfile.TemporaryDirectory(
             prefix="corrupt-fixture-", dir=self.test_dir
         ) as operation:
             corrupt_file = Path(operation) / "corrupt.so"
-            corrupt_file.write_bytes(b"corrupt data")
-            result = GrammarValidator(Path(operation) / "cache").validate_grammar(
-                corrupt_file, "corrupt"
-            )
-            try:
-                ctypes.CDLL(str(corrupt_file))
-            except OSError as error:
-                expected = (
-                    f"ABI compatibility issue: ABI compatibility check failed: {error}"
-                )
-            else:
-                return False
+            data = b"corrupt data"
+            corrupt_file.write_bytes(data)
+            result = GrammarValidator(
+                Path(operation) / "cache",
+                trusted_artifacts={
+                    "corrupt": {"sha256": hashlib.sha256(data).hexdigest()}
+                },
+            ).validate_grammar(corrupt_file, "corrupt")
+            expected = "ABI compatibility issue: Native admission failed: load_failed"
             return not result.is_valid and result.errors == [expected]
 
     def test_performance_under_load(self) -> dict[str, Any]:
@@ -882,6 +900,7 @@ def _run_test_worker(
     grammar_path: Path | None,
     *,
     timeout: float = 30.0,
+    trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Reap a bounded fixture worker before removing its private operation root."""
     with tempfile.TemporaryDirectory(prefix="worker-", dir=test_dir) as temporary:
@@ -898,6 +917,7 @@ def _run_test_worker(
                     "grammar_path": (
                         str(grammar_path.absolute()) if grammar_path else None
                     ),
+                    "trusted_artifacts": copy_trusted_artifacts(trusted_artifacts),
                 }
             ),
             encoding="utf-8",
@@ -1012,7 +1032,9 @@ def _test_worker_main(request_path: str, response_path: str) -> None:
     root = Path(request["test_dir"])
     sample = Path(request["sample_path"]) if request["sample_path"] else None
     grammar = Path(request["grammar_path"]) if request["grammar_path"] else None
-    environment = IntegrationTester(root)
+    environment = IntegrationTester(
+        root, trusted_artifacts=request.get("trusted_artifacts")
+    )
     if request["operation"] == "workflow":
         result = environment._test_complete_workflow_local(
             sample, request["language"], grammar
@@ -1129,12 +1151,22 @@ def run_complete_test_suite(
     language: str = "python",
     grammar_path: Path | None = None,
     report_path: Path | None = None,
+    trusted_artifacts: Mapping[str, Mapping[str, str]] | None = None,
 ) -> dict[str, Any]:
-    """Return isolated local observations; persist only to an explicit report."""
-    environment = IntegrationTester(test_dir)
+    """Return isolated local observations; persist only to an explicit report.
+
+    ``trusted_artifacts`` supplies the approved pin for ``grammar_path``; a
+    local grammar without one is reported ``untrusted``.
+    """
+    environment = IntegrationTester(test_dir, trusted_artifacts=trusted_artifacts)
     try:
         result = _run_test_worker(
-            environment.test_dir, "suite", sample_path, language, grammar_path
+            environment.test_dir,
+            "suite",
+            sample_path,
+            language,
+            grammar_path,
+            trusted_artifacts=trusted_artifacts,
         )
     finally:
         environment.cleanup()

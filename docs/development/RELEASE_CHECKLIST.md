@@ -56,7 +56,7 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 - the top `CHANGELOG.md` heading matches `TARGET_VERSION`
 - version does not already exist on PyPI
 - build and package checks succeed
-- the release workflow's Python 3.12 full validation succeeds
+- the release workflow's Python 3.14 full validation succeeds
 - the wheel installs from hashed locked requirements outside the source checkout
   on Python 3.12 and 3.14
 - uploaded distribution checksums are present and verified before publication
@@ -81,6 +81,8 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 
 - `uv run --locked --all-extras ruff check chunker/ chunker/build/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site`
 - `uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py`
+- `uv run --locked --all-extras python scripts/mypy_gate.py`
+- `uv run --locked --all-extras mypy --follow-imports=silent --allow-untyped-defs --allow-incomplete-defs --allow-untyped-calls --check-untyped-defs --no-pretty --no-error-summary --show-error-codes tools/sync_governed_test_transport.py`
 - `uv run --with toml --all-extras python scripts/run_ci_smoke.py`
 - `uv run --with toml --all-extras python scripts/run_platform_core.py --platform linux`
 - `uv run --with toml --all-extras python scripts/run_full_suite.py` (nightly tier; includes `spec_tests/`)

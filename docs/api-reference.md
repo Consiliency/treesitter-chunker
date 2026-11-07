@@ -246,8 +246,7 @@ Configuration options for parser instances.
 
 Invalid option types, negative timeouts and unsupported timeout/logger requests
 raise `ParserConfigError` before factory language lookup, including requests for
-unavailable languages. Omit unsupported options when requesting on-demand grammar
-acquisition. Range elements are checked when Tree-sitter applies the ranges.
+unavailable languages. Range elements are checked when Tree-sitter applies the ranges.
 
 **Attributes:**
 - `timeout_ms`: Applied only on runtimes exposing the legacy timeout API.
@@ -427,6 +426,15 @@ if __name__ == "__main__":
     for path, chunks in results.items():
         print(path, len(chunks))
 ```
+
+Keep the `if __name__ == "__main__":` guard around calls to
+`chunk_files_parallel`, `chunk_directory_parallel` and `ParallelChunker` in a
+script. macOS and Windows already start workers with `spawn`, and from Python
+3.14 Linux defaults to `forkserver`. Both re-import the main module in each new
+process. Without the guard, that import re-runs the call, and Python prints a
+`RuntimeError` about the bootstrapping phase to stderr. Under the 3.14 Linux
+forkserver, the call then raises in the caller (for example
+`ConnectionResetError`). Under `spawn` it returns empty chunk lists.
 
 ### chunk_directory_parallel
 

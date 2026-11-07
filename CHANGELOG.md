@@ -7,8 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep grammar subcommand help available with defective or missing pin files,
+  while validating pins before command work (treesitter-chunker#562).
+- Discard the affected native admission verdict and private copy when registry
+  Language construction fails, so subsequent resolution probes again
+  (treesitter-chunker#558).
+- Reject explicit native-grammar pin files in tool-written directories, and
+  keep matched wheel RECORD entries closed to user-pin admission when their
+  contents cannot be verified (treesitter-chunker#556).
+
 ### Added
 
+- Grammar commands accept approved native-grammar pins (treesitter-chunker#362).
+  The argparse `grammar` group takes `--trusted-artifacts PATH` before the
+  subcommand, and otherwise reads the user-config pin file
+  `treesitter-chunker/trusted-artifacts.json` under `%APPDATA%`,
+  `~/Library/Application Support` or `$XDG_CONFIG_HOME` (`~/.config`). Both use
+  the strict `chunker.trusted_artifacts.v1` format and are never merged. With
+  a pin, `grammar info`/`diagnose` report a real compiled grammar `healthy`
+  and exit 0 again. Add `chunker.exceptions.TrustedArtifactsError` and the
+  shared reader `chunker._internal.trusted_artifacts`.
 - Add a trusted-controller reference producer of `scope_root_metadata.v2`
   (`tools/governed_scope_commitment.py`, treesitter-chunker#512) that reads only an
   independently identified bare Git store, never a working tree, with bounded Git I/O.
@@ -23,8 +43,107 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add an experimental stdlib snapshot selector for opt-in governed extraction. Excluded repositories, dependencies and symlinks remain opaque. Published parser APIs and Boundary IR bytes are unchanged.
 - Keep unexpected selector failures on setup exit 2; test actual canonical bytes and receipt digests for Unicode and escaped paths.
 
+### Deprecated
+
+- Python 3.12 support is deprecated and ends at the next major release (7.0).
+  Python 3.14 is the main supported version. `requires-python` stays `>=3.12`
+  until then. The drop waits until downstream consumers run on 3.14
+  (treesitter-chunker#599).
+
 ### Fixed
 
+- Python call extraction now records the outer call of a callable-return
+  expression, such as `getattr(obj, 'audit')()`, `f()()` or `(f())()`, as its
+  own call site (treesitter-chunker#516). Before, only the inner call
+  (`getattr`) was observed. The outer site's raw callee is the inner call's
+  exact source text, parentheses included (`getattr(obj, 'audit')`, `(f())`),
+  with its byte span, the enclosing owner and a distinct `call_site_id`; the
+  inner site and its ID are unchanged. Such complex callees stay unresolved
+  and never bind a local definition by an incidental name. Chunk
+  `calls`/`call_spans` metadata, symbol-graph `calls` relationships and
+  `call_facts`, and Boundary IR `calls` edges gain one entry per outer site,
+  so recapture graph/IR outputs and their derived counts and digests. The
+  Python Boundary IR fixture now includes such a call, and its golden is
+  regenerated. Other complex callees, such as subscripts (`h['a']()`) and
+  parenthesized names, are unchanged, as is JavaScript
+  (treesitter-chunker#602). See
+  [the Boundary IR specification](docs/interface-boundary-spec.md).
+- Go build-constraint version hints now interpret `&&`, `||`, `!` and
+  parentheses in `//go:build` lines, and whitespace OR, comma AND and `!` in
+  legacy `// +build` lines (treesitter-chunker#438). The hint is the lowest Go
+  release at which the expression can hold. Non-release tags (GOOS, GOARCH,
+  `cgo`, custom tags) are treated as independent. It is a necessary minimum,
+  not a build evaluation. `//go:build go1.18 && !go1.21` and
+  `//go:build go1.18 || go1.21` now report `1.18` instead of `1.21`.
+  `// +build !go1.21` and `go1.18 || linux` imply no minimum.
+  `GoVersionDetector.detect_version` adds `build_constraints_status`, one of
+  `minimum`, `unconstrained`, `unknown` or `absent`. As in `go/build`, only
+  the file header is read: blank lines and comments before the first other
+  text, skipping `/* */` comments, with legacy lines counted only up to the
+  header's last blank line. So a `//go:build` line in a string or function
+  body no longer counts. More than one `//go:build` line, a bare
+  `//go:build`, and a direct `!!` are rejected by Go and are `unknown` here.
+  A release number longer than 9 digits is `unknown` rather than an error, and
+  a leading UTF-8 byte-order mark is skipped, as `go/build` does.
+  Malformed, unsatisfiable or oversized expressions are `unknown` and never
+  become a version, so
+  `go.mod` and feature-based hints keep their precedence. The new
+  `GoVersionDetector.analyze_build_constraints` also returns the reason.
+- CR-only Python source now parses and reports correct lines through
+  `chunk_file`, `chunk_text`, `chunk_file_streaming` and VFS streaming
+  (`VFSChunker.chunk_file(..., streaming=True)` and files over 10 MiB)
+  (treesitter-chunker#471). Before, the pinned grammar reported a parse error
+  for a file whose lines end in a lone CR, and every chunk reported line 1.
+  Python containing a lone CR is now parsed from a copy in which each lone CR
+  is replaced with LF. The replacement keeps every byte offset, so byte spans,
+  chunk content and content-based IDs still refer to the physical bytes,
+  including the CRs. Call-site lines in symbol-graph `calls` relationships,
+  `call_facts` and Boundary IR call edges now count lone CR line endings too,
+  so LF, CRLF and CR-only Python report the same lines. LF and CRLF files are
+  parsed unchanged. Other languages are unchanged and still count only LF
+  (treesitter-chunker#601), as do complexity line metrics
+  (treesitter-chunker#597). See
+  [raw file newlines](docs/chunk-identity.md#raw-file-newlines-and-the-600-migration).
+- Go build-constraint version hints no longer drop earlier release tags from
+  a legacy comma conjunction (treesitter-chunker#437). `// +build go1.10,go1.9`
+  now reports `1.10` in either order, as `go1.10,go1.9,linux` and
+  `go1.10,café,go1.9` do (tags follow Go's Unicode tag rule); before, only
+  the last `goX.Y` tag on the line counted. OR (whitespace) and negated legacy
+  terms are unchanged, and `//go:build` and `go.mod` precedence are unchanged.
+- `SmartSelector` no longer gives every local artifact of a language the
+  version and metadata of that language's single install record
+  (treesitter-chunker#134). The record now describes only the artifact at its
+  `install_path`, matched by file identity: the same file, or the same resolved
+  location when the recorded path is missing. A corrupt recorded path matches
+  nothing. Other USER or PACKAGE artifacts report version `unknown`
+  with no metadata, so their performance, reliability and feature scores
+  reflect what is known about them. Conflict resolution now groups candidates
+  only when they share a known version, and `unknown` artifacts are no longer
+  collapsed into one candidate.
+- Local-candidate checks, `CompatibilityChecker.check_compatibility(...,
+  grammar_path=...)` as `SmartSelector` uses them, no longer report a grammar as
+  `DEGRADED` (score 0.7) only because the validator has no built-in samples for
+  its language (treesitter-chunker#133). That warning is still reported, but it
+  is now an evidence gap, not a performance finding. Caller-supplied
+  `code_samples` parsed with the candidate decide the level, so a fully
+  successful sample set gives `COMPATIBLE`. With the gap and no caller samples,
+  nothing was parsed, so the level is `UNKNOWN` (score 0.3) whatever other
+  warnings exist, and all warnings are kept. A warned artifact therefore no
+  longer outranks a clean one in selection. Other validation warnings still give
+  `DEGRADED` when there is parse evidence. The canonical check without
+  `grammar_path=` is unchanged (treesitter-chunker#588).
+- Language-version bounds on a compatibility `GrammarVersion` no longer let
+  ES-style JavaScript versions through silently (treesitter-chunker#170).
+  `ES3`, `ES5` and the year editions `ES2015` and later now compare in release
+  order, so a grammar bounded `ES2020`–`ES2023` rejects `ES2015` and `ES2030`
+  in `supports_language_version`, `get_compatibility_level` and
+  `CompatibilitySchema.find_compatible_grammar`. A version that cannot be
+  compared fails closed instead of comparing as equal: another ES-shaped value
+  (`ES6`, `ESNext`), an ES edition against a dotted number, or any other
+  unparseable text. Dotted numeric versions compare as before.
+  `CompatibilityRule` version constraints use the same ordering, so an ES rule
+  such as `ES2015-ES2019` or `>=ES2020` now applies to the editions it names.
+  Before, a restrictive `INCOMPATIBLE` rule for those editions never matched.
 - Compact files from the direct `chunker.export.graphml_exporter` and
   `graphml_yed_exporter` modules no longer double CRLF caller text leaves on
   Windows (treesitter-chunker#488). `export(path, pretty_print=False)` now
@@ -45,6 +164,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   escaping (`"` instead of `&quot;`) may differ. Regenerate affected GraphML
   files. See
   [the package exporter notes](docs/graphml_export.md#package-level-structured-exporter).
+- `GrammarAnalyzer.analyze_grammar_symbols` now reports why its symbol lists
+  may be empty. The result has an `analysis` entry whose `status` is
+  `complete`, `deadline_expired`, `unavailable` or `failed`, with
+  `deadline_seconds` and a `detail` message. Before, an `nm` run killed at its
+  five-second deadline under host load returned the same empty lists as a
+  grammar with no symbols (treesitter-chunker#207). The deadline is unchanged,
+  and the new keyword-only `timeout` defaults to it. Code that iterates every
+  value of the result should skip the non-list `analysis` entry, as the
+  analyzer's own symbol counting and feature detection already do.
 - Python context lookup is truthful against the shared real-parser reference
   fixtures (`tests/fixtures/references/python/`). `find_symbol_definition` now
   finds module and nested functions, classes, assignments and parameters
@@ -64,16 +192,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   locked section: it captures a rollback point holding copies of the current
   library and metadata, publishes the new metadata, then publishes the staged
   library through the admitted, same-directory `publish_native_grammar`
-  (treesitter-chunker#162). If that fails, the artifact and metadata are
-  restored as a pair. Installation now requires a pinned SHA-256 for the
-  language (`GrammarInstaller(trusted_artifacts=...)`); without one it fails
-  before anything changes. Metadata gains `artifact_sha256` and is written
-  canonically. `remove_grammar` removes the artifact and metadata in one locked
-  section and refuses recorded paths outside `<cache_dir>/grammars`. Removed
-  and restored files are retired into a hidden `.txn-retired/` folder beside
-  them before deletion, so a separately mounted `grammars/` keeps working.
-  `GrammarDownloadManager.clean_cache`, whose default folder is that same
-  `grammars/`, now skips the hidden `.txn*` folders.
+  (treesitter-chunker#162) with the language's approved pin. If that fails, or
+  the published metadata digest is not the intended one, the artifact and
+  metadata are restored as a pair. A language without an approved pin is now
+  refused before anything is cloned, built or validated; unsafe sources and
+  versions keep their own messages. With only the new revision pinned, a
+  restored previous revision is reported `incompatible` until its pin is
+  returned. Metadata gains `artifact_sha256` (lower case) and is written
+  canonically. `GrammarInstaller.remove_grammar` and
+  `GrammarManager.remove_grammar` read and remove the artifact and metadata in
+  one locked section, so a removal waits for an install still committing and
+  removes metadata whose library is missing; removal refuses recorded paths
+  outside `<cache_dir>/grammars`. Removed and restored files are retired into
+  a hidden `.txn-retired/` folder beside them before deletion, so a separately
+  mounted `grammars/` keeps working. `GrammarDownloadManager.clean_cache`,
+  whose default folder is that same `grammars/`, skips the hidden `.txn*`
+  folders.
 
 - `GrammarManager.cleanup_cache` can no longer delete a cache entry that an
   installer publishes while cleanup runs, and `bytes_freed` now counts only
@@ -231,6 +365,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   treesitter-chunker#176, treesitter-chunker#182, treesitter-chunker#183,
   treesitter-chunker#184, treesitter-chunker#185). Structural validity does not
   establish native safety or provenance; see the packaging guide for profile limits.
+- Native grammar probes now distinguish explicit Windows application-control
+  denials as `policy_blocked`, with guidance for signed or organization-approved
+  builds. Blocked libraries remain unsupported and publish no admitted digest.
+  Manager/analyzer diagnostics retain this guidance (treesitter-chunker#547).
 
 - JavaScript context lookup is truthful against the shared real-parser
   reference fixtures (`tests/fixtures/references/javascript/`). A generator
@@ -243,6 +381,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- `SmartSelector.select_multiple_grammars` no longer accepts
+  `global_constraints` and silently ignores them (treesitter-chunker#344). No
+  cross-language constraint is supported, so a nonempty mapping now raises
+  `ValueError`, naming its keys, before any selection runs. `None` and `{}` behave as
+  before. Use `select_best_grammar(language, constraints=...)` for
+  per-language constraints.
+- The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter`
+  modules declare caller metadata named `label` with
+  `attr.name="caller_label"`, so readers that map GraphML data by `attr.name`,
+  such as NetworkX, see both labels (treesitter-chunker#453). `label` now holds
+  only the structural label; before, a NetworkX import replaced the structural
+  label with the caller value. To keep declared names distinct, a caller name
+  such as `caller_label` is declared as `caller_caller_label`. Key IDs and
+  values are unchanged, so consumers that select by key ID are unaffected.
+  In a yEd import NetworkX still replaces `label` with the yEd graphics text,
+  and `caller_label` is kept beside it. Name-keyed consumers should read
+  caller `label` metadata as `caller_label` and regenerate GraphML output. See
+  [caller label names](docs/graphml_export.md#caller-label-names-for-name-keyed-readers).
 - Require Python 3.12 or newer for the next main and BAML companion releases
   (treesitter-chunker#493). Published 6.0.0 and companion 0.1.0 keep their original
   metadata. CI uses Python 3.12 with installed-wheel checks on 3.12 and 3.14,
@@ -252,6 +408,134 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Retired (treesitter-chunker#362):**
+  `GrammarMetadataExtractor.extract_from_dependencies` no longer runs `ldd` on a
+  caller-supplied library; it returns `{"dependencies": [],
+  "dependencies_status": "retired"}`. `GrammarAnalyzer` passes only the one-field
+  `{"sha256": ...}` pin record to the probe, never probes a language without a
+  `str` pin, and reuses its analysis only under its own inspector key within the
+  process. An analysis whose `nm` run hit its deadline or failed is not reused;
+  the next call re-inspects. RECORD-verified grammars of our own wheel need no
+  pin, and one that differs from RECORD is `integrity_mismatch` even with a pin.
+- **Retired (treesitter-chunker#400, treesitter-chunker#362):** the legacy
+  `chunker.grammar.TreeSitterGrammarValidator`, whose constructor never worked,
+  now raises `ValidationError` naming the replacement
+  (`chunker.grammar_management.core.GrammarValidator(cache_dir,
+  trusted_artifacts=...)` or `probe_native_grammar`). Its static
+  `check_abi_compatibility` and `GrammarDownloadManager.validate_grammar` return
+  `(False, <retirement message>)` and never load the file. The names stay
+  importable until the next major version.
+- **Behaviour change (treesitter-chunker#362):** the legacy
+  `chunker.grammar_manager.GrammarManager` accepts keyword-only
+  `trusted_artifacts`; `get_available_languages()` reports only pinned languages
+  whose combined-library bytes pass `probe_native_grammar`, each on its own pin,
+  without mapping the library in-process. Without pins it returns an empty set
+  (configured or directory names are no longer reported).
+- **Behaviour change (treesitter-chunker#362):** `GrammarValidator`,
+  `GrammarInstaller`, `GrammarRegistry`, `GrammarManager` and
+  `ComprehensiveGrammarCLI` accept keyword-only `trusted_artifacts` and forward it;
+  the click `grammar` group takes `--trusted-artifacts PATH` (else the user-config
+  pin file) and exits 2 on a defective file. Validation admits local grammars
+  through `probe_native_grammar` and loads only admitted private copies, so an
+  unpinned local grammar is no longer valid. `test_parse_samples` without a path
+  uses the validator's own registry, never `chunker.parser`. `grammar build` no
+  longer loads unpinned output (`built, not admitted`, exit 0) and probes pinned
+  output; `grammar validate --fix` reports a rebuilt grammar valid only when it
+  then passes admission. The validation cache is keyed by content, pin and environment, reused
+  only after an admission in the same process, and failed results are not
+  stored. `GrammarManager.get_admitted_health()` (IF-0-ADMIT-1) is the admitted
+  health accessor. The grammar self-tests no longer reload the original library
+  or load their corrupt fixture in-process, and `run_complete_test_suite` accepts
+  `trusted_artifacts`.
+- **Behaviour change (treesitter-chunker#362):** ordinary parsing reads the
+  user-config pin file once per process. Local compiled grammars (the combined
+  library, build directories, `~/.cache/treesitter-chunker/build`,
+  `CHUNKER_GRAMMAR_BUILD_DIR`) are used only under an approved pin, loaded from a
+  verified admitted copy, and admitted per language inside a combined library.
+  RECORD-verified files of our own wheel's `chunker/data/grammars/build/` need
+  no pin; a file that differs from RECORD is never loaded. Other local libraries
+  are ignored and resolution continues to the official wheels, the language-pack
+  and the BAML companion. A defective pin file grants no local trust, warns once
+  and is named in `LanguageNotFoundError`. `LanguageRegistry` and
+  `UniversalLanguageRegistry` accept keyword-only `trusted_artifacts`, and
+  `chunker._internal.registry.default_library_path()` names the default combined
+  library.
+- **Behaviour change (treesitter-chunker#362):** the on-demand fetch-and-build in
+  `get_parser`/`acquire_parser` is retired. A language no source provides raises
+  `LanguageNotFoundError` instead of cloning and compiling a grammar into
+  `grammars/` and `build/` under the current directory. Build deliberately with
+  the grammar commands and pin the result.
+- **Behaviour change (treesitter-chunker#362, maintainer decision 2026-11-01):**
+  the automatic download-and-build in `UniversalLanguageRegistry.get_parser` and
+  the zero-config API (`ZeroConfigAPI`) is retired too.
+  - `get_parser` raises `LanguageNotFoundError` with the cause and guidance: build
+    the grammar with the grammar commands, then pin it in `trusted-artifacts.json`
+    or with `--trusted-artifacts`. Its list of available languages comes from the
+    local registry (package-supplied, language-pack and admitted local
+    grammars), so no discovery request is made.
+  - `ensure_language` and `preload_languages` report availability and never
+    install or update anything. A language counts as available only when the
+    registry provides a parser for it; an install recorded in
+    `registry_metadata.json` whose output has no pin does not count.
+  - `get_chunker_for_language` no longer installs a missing grammar.
+    `AutoChunkResult.grammar_downloaded` is always `False`.
+  - The `auto_download` argument of `get_parser` and `get_chunker_for_language`
+    is still accepted but has no effect, and passing it emits a
+    `DeprecationWarning`. The registry and zero-config contracts and stubs
+    follow suit.
+  - The explicit `install_language`/`update_language` methods are unchanged.
+- **Behaviour change (treesitter-chunker#362):** every `grammar` subcommand now
+  resolves its pin source first. A missing or defective `--trusted-artifacts`
+  file, or a present but defective user-config pin file, exits 2 naming the
+  file and the defect, before any discovery, probe or native load. A local
+  grammar without a pin is reported `untrusted` (status `incompatible`) and is
+  never opened or probed, so an unpinned empty library now reports `untrusted`
+  rather than `empty`. Only the one-field record `{"sha256": ...}` reaches the
+  probe, and a positive admission is reused only within the same process,
+  keyed by content, pin and environment, never by path or file times.
+  A RECORD-verified grammar shipped in our own wheel needs no pin and reports
+  `healthy`; one whose bytes differ from the installed RECORD reports
+  `integrity_mismatch`, which no pin overrides (one trust rule with parsing).
+  `UserGrammarTools` no longer stages or probes a library it has no pin for.
+  It also refuses to publish over a grammar file listed in the installed
+  package's RECORD (checked before any clone in install and update); a local
+  link elsewhere that aliases a shipped grammar can still be replaced.
+- The default admission deadline of `probe_native_grammar` and
+  `publish_native_grammar` is now 30 seconds instead of 10. With Smart App
+  Control enforced, Windows can hold the first load of a new unsigned grammar
+  for about ten seconds while a stalled cloud trust check falls back, which
+  made the probe report `timeout` or an empty acknowledgment
+  (treesitter-chunker#547). The value is the new public constant
+  `chunker.grammar.integrity.DEFAULT_PROBE_TIMEOUT`. An explicit `timeout` is
+  used exactly. The verdict-reuse probe profile becomes `default-v2`.
+- The full locked development environment now installs on CPython 3.14 from
+  wheels alone (treesitter-chunker#502). In-range lock updates: `cffi` 2.0.0,
+  `httptools` 0.7.1, `line-profiler` 5.0.1, `markupsafe` 3.0.3, `pydantic`
+  2.12.0 with `pydantic-core` 2.41.1 (and the `typing-inspection` 0.4.2 it
+  requires), `uvloop` 0.22.1 and `watchfiles` 1.1.1. Parser and runtime pins
+  are unchanged. Python 3.14 is now the main version: CI (lint, type and smoke
+  checks), the scheduled full tier, release validation and the distribution
+  build run on it. The 3.12 minimum keeps only two main-package checks, Linux
+  platform-core and the release installed-wheel check, plus the BAML companion
+  workflow's `source` and `wheel` jobs on the companion's own 3.12 minimum, with
+  no extra CI jobs. `requires-python` stays
+  `>=3.12`, and `.python-version` keeps 3.12 as the default development
+  interpreter.
+- On Python 3.14, Linux starts multiprocessing workers with `forkserver` by
+  default. Scripts that call `chunk_files_parallel`, `chunk_directory_parallel`
+  or `ParallelChunker` need the `if __name__ == "__main__":` guard there, as on
+  macOS and Windows. Without it, Python prints a bootstrapping `RuntimeError` to
+  stderr, and the call then raises under forkserver or returns empty chunk lists
+  under `spawn`; see
+  [the parallel API](docs/api-reference.md#chunk_files_parallel)
+  (treesitter-chunker#502).
+- `scripts/mypy_gate.py --update` now only removes cleared signatures. When mypy
+  reports a signature that is not in the baseline, it exits 1 and leaves
+  `docs/development/mypy-baseline.txt` unchanged, so new errors can no longer be
+  absorbed. Release validation now also runs the governed-tools body-type check
+  that CI runs. Type-only annotations in `cli/` and 5 stale entries shrink the
+  baseline from 1,353 to 1,340 signatures; CLI behavior is unchanged
+  (treesitter-chunker#587).
 - Align the remaining Python version declarations with the 3.12 floor from
   treesitter-chunker#493: the release-process spec, getting-started, user guide,
   deployment, performance-core and VS Code docs, the conda recipe, all three

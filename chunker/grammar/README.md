@@ -1,10 +1,12 @@
 # Universal Language Registry
 
-The Universal Language Registry extends the base `LanguageRegistry` with automatic grammar download capabilities. It integrates with the Grammar Discovery and Download services to provide seamless language support.
+The Universal Language Registry wraps the base `LanguageRegistry` with explicit install, update and metadata operations. It uses the Grammar Discovery and Download services only when you call those operations.
+
+Nothing is downloaded or built on demand. This automatic download-and-build was retired by a maintainer decision of 2026-11-01, extending M2 of treesitter-chunker#362. `get_parser()` returns parsers only for installed, admitted sources (package-supplied grammars, or local grammars under their own pins, passed as `trusted_artifacts`). For any other language it raises `LanguageNotFoundError` with the cause and guidance. The `auto_download` argument is still accepted but has no effect, and passing it emits a `DeprecationWarning`.
 
 ## Features
 
-- **Auto-download**: Automatically downloads and compiles grammars when requested
+- **Explicit installs**: `install_language()` downloads and compiles on request; a local result is used only under its pin
 - **Version management**: Tracks installed grammar versions and supports updates
 - **Metadata persistence**: Stores installation information in `~/.cache/treesitter-chunker/registry_metadata.json`
 - **Backward compatibility**: Works with existing parser API seamlessly
@@ -16,17 +18,18 @@ from chunker.grammar.registry import UniversalLanguageRegistry
 from chunker.contracts.discovery_stub import GrammarDiscoveryStub
 from chunker.contracts.download_stub import GrammarDownloadStub
 
-# Initialize with services
+# Initialize with services and the approved pins for local grammars
 discovery = GrammarDiscoveryStub()
 downloader = GrammarDownloadStub()
 registry = UniversalLanguageRegistry(
     library_path=Path("build/my-languages.so"),
     discovery_service=discovery,
-    download_service=downloader
+    download_service=downloader,
+    trusted_artifacts={"go": {"sha256": "<reviewed sha256 of the go grammar>"}},
 )
 
-# Get parser with auto-download
-parser = registry.get_parser("go")  # Downloads if not available
+# Get a parser from an installed, admitted source (never downloads)
+parser = registry.get_parser("go")  # LanguageNotFoundError if unavailable
 
 # List languages
 installed = registry.list_installed_languages()
@@ -52,8 +55,8 @@ metadata = registry.get_language_metadata("python")
 
 The `UniversalLanguageRegistry` wraps the existing `LanguageRegistry` and adds:
 
-1. **Auto-download logic**: When a language isn't found, it queries the discovery service and downloads via the download service
-2. **Metadata tracking**: Maintains a JSON file tracking installed languages, versions, and whether they were auto-downloaded
+1. **Explicit install/update**: `install_language()` and `update_language()` use the discovery and download services when called; `get_parser()` never does
+2. **Metadata tracking**: Maintains a JSON file tracking installed languages and versions (the `auto_downloaded` fields are kept for older files)
 3. **Version management**: Supports checking for updates and upgrading grammars
 
 ## Metadata Format
@@ -86,6 +89,6 @@ The registry stores metadata in `~/.cache/treesitter-chunker/registry_metadata.j
 
 ## Error Handling
 
-- Returns `LanguageNotFoundError` when a language isn't available and auto-download is disabled
+- Raises `LanguageNotFoundError` when no installed, admitted source provides a language, with the cause and the build-and-pin guidance
 - Logs warnings/errors for download failures
 - Preserves old versions if updates fail

@@ -2452,7 +2452,10 @@ def test_structural_and_caller_label_keys_are_disjoint(
     parsed_xml_graph, pretty, reverse
 ):
     exporter, chunks, options = parsed_xml_graph
-    names = ["label", "node_label", "edge_label", "metadata_label"]
+    names = ["label", "node_label", "edge_label", "metadata_label", "caller_label"]
+    declared = {name: name for name in names}
+    declared["label"] = "caller_label"
+    declared["caller_label"] = "caller_caller_label"
     if reverse:
         names.reverse()
     node_values = {}
@@ -2470,11 +2473,16 @@ def test_structural_and_caller_label_keys_are_disjoint(
     declarations = {key.get("id"): key.attrib for key in keys}
     assert declarations["node_label"]["for"] == "node"
     assert declarations["edge_label"]["for"] == "edge"
+    assert declarations["node_label"]["attr.name"] == "label"
+    assert declarations["edge_label"]["attr.name"] == "label"
+    for domain in ("node", "edge"):
+        attr_names = [key.get("attr.name") for key in keys if key.get("for") == domain]
+        assert len(attr_names) == len(set(attr_names))
     for domain, prefix in [("node", "n_"), ("edge", "e_")]:
         for name in names:
             declaration = declarations[prefix + name]
             assert declaration["for"] == domain
-            assert declaration["attr.name"] == name
+            assert declaration["attr.name"] == declared[name]
             assert declaration["attr.type"] == "string"
     graph = root.find(f"{ns}graph")
     assert graph is not None

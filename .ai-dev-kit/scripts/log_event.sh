@@ -16,9 +16,9 @@
 #   ok, error, blocked, skipped
 #
 # Example:
-#   log_event.sh /tmp/run.jsonl "P1-A-20251221" "P1" "A" "A1" "task_start" "ok"
-#   log_event.sh /tmp/run.jsonl "P1-A-20251221" "P1" "A" "A1" "task_done" "ok" "npm test" "0"
-#   log_event.sh /tmp/run.jsonl "P1-A-20251221" "P1" "-" "-" "phase_start" "ok"
+#   log_event.sh "$TMPDIR/run.jsonl" "P1-A-20251221" "P1" "A" "A1" "task_start" "ok"
+#   log_event.sh "$TMPDIR/run.jsonl" "P1-A-20251221" "P1" "A" "A1" "task_done" "ok" "npm test" "0"
+#   log_event.sh "$TMPDIR/run.jsonl" "P1-A-20251221" "P1" "-" "-" "phase_start" "ok"
 
 set -euo pipefail
 

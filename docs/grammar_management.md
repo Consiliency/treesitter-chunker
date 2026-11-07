@@ -82,9 +82,12 @@ failures to `corrupted`, other admission failures to `incompatible`, and only
 successful admission to `healthy`. An unchanged revision on update returns
 `warning` with the cause when the installed library is rejected.
 `grammar info` and `grammar diagnose` exit 1 unless the requested grammar is
-admitted as healthy. The CLI does not yet accept application pins
-(treesitter-chunker#362), so real grammars cannot be healthy: the preserved
-report may be missing, corrupted or incompatible, and these commands exit 1.
+admitted as healthy. The grammar commands take their pins from
+`--trusted-artifacts PATH` or the user-config pin file (see
+[Approved pins](#approved-pins)). A language without a pin is `untrusted`
+(status `incompatible`) and is never opened or probed; a grammar that was never
+installed still reports `missing`. Only the one-field record
+`{"sha256": ...}` for the requested language reaches the probe.
 
 #### Staged publication in the legacy tools
 
@@ -116,9 +119,10 @@ nothing. Close the processes using the library, then run `install_grammar`
 again for the same repository, with an approved pin for the new library.
 Automatic recovery and rollback are treesitter-chunker#363 work.
 
-**Interim limitation until treesitter-chunker#362 (ADMIT).** Without a pin, a
-generated library is never published. The error says so, and that the grammar
-CLI cannot supply pins until treesitter-chunker#362. Until then:
+**Pins are required to publish.** Without a pin, a generated library is never
+published, and the error names the ways to supply one: the user-config pin
+file, `--trusted-artifacts PATH` on the grammar command, or `trusted_artifacts`
+for embedding callers (see [Approved pins](#approved-pins)).
 
 - `grammar install` and `grammar update` (and unpinned `UserGrammarTools`
   callers) fail with `error` and exit 1 for a new or changed library.
@@ -126,8 +130,6 @@ CLI cannot supply pins until treesitter-chunker#362. Until then:
   chunking. Before, the copied `<language>.so` in the build directory was loaded
   by registry discovery. On macOS and Windows, discovery looks for
   `.dylib`/`.dll`, so the copied `.so` was not used there before either.
-- Embedding callers can publish today by passing `trusted_artifacts` with the
-  approved SHA-256 for each language.
 
 Official and package-supplied grammars are unaffected. They are loaded without
 going through this publication path and need no pin: the official
@@ -259,6 +261,143 @@ repository-owned artifact manifest before compiling it. The downloader fails
 closed when no manifest entry is available.
 
 ## CLI Commands Reference
+
+### Approved pins
+
+Local compiled grammars are used only under an approved SHA-256 pin
+(treesitter-chunker#362). Pins come from exactly one source, chosen in this
+order and **never merged**:
+
+1. `trusted_artifacts=` passed to a constructor (embedding code);
+2. `--trusted-artifacts PATH`, given to the `grammar` group before the
+   subcommand: `python -m chunker.cli grammar --trusted-artifacts pins.json info python`;
+3. the user-config pin file `trusted-artifacts.json`;
+4. no pins.
+
+| Platform | User-config pin file |
+|---|---|
+| Windows | `%APPDATA%\treesitter-chunker\trusted-artifacts.json` (none if `APPDATA` is unset or relative) |
+| macOS | `~/Library/Application Support/treesitter-chunker/trusted-artifacts.json` |
+| Linux and others | `$XDG_CONFIG_HOME/treesitter-chunker/trusted-artifacts.json` when `XDG_CONFIG_HOME` is absolute, otherwise `~/.config/treesitter-chunker/trusted-artifacts.json` |
+
+Both sources use the same file, at most 1 MiB of UTF-8 JSON with no duplicate
+keys:
+
+```json
+{"schema": "chunker.trusted_artifacts.v1",
+ "artifacts": {"python": {"sha256": "<64 hex digits>"}}}
+```
+
+Keys are requested language names (`[A-Za-z0-9][A-Za-z0-9_-]*`). Each value
+has exactly `sha256`. An empty `artifacts` object is valid and supplies no
+pins, so an option file with `{}` artifacts shuts off every local grammar for
+that command. Take digests from an independently reviewed build or release
+record, never from hashing a file the tool discovered. The tool never writes
+the pin file, and a pin file inside the cache directory, the package grammar
+directory, `CHUNKER_GRAMMAR_BUILD_DIR` or the combined library's directory is
+rejected. `chunker.config.*` and `~/.chunker/config.*` files are never pin
+sources.
+
+**One trust rule for package-supplied grammars** (maintainer decision,
+2026-11-01). The grammar commands use the same RECORD check as parsing: a
+grammar shipped in our wheel's `chunker/data/grammars/build/` whose bytes match
+the installed `RECORD` reports `healthy` with no pin; a file there whose bytes
+differ from `RECORD` reports `integrity_mismatch`, and no pin overrides it; a
+file there with no `RECORD` entry needs a pin like any other local grammar.
+
+**Retired dependency inspection.**
+`GrammarMetadataExtractor.extract_from_dependencies` returns
+`{"dependencies": [], "dependencies_status": "retired"}` without running any
+tool: `ldd` can execute an unapproved library's code through the dynamic loader.
+`GrammarAnalyzer` reads symbols and versions only from the admitted snapshot.
+**Retired legacy loaders.** `chunker.grammar.TreeSitterGrammarValidator`
+(treesitter-chunker#400) raises `ValidationError` naming its replacement,
+`chunker.grammar_management.core.GrammarValidator(cache_dir,
+trusted_artifacts=...)`. Its static `check_abi_compatibility` and
+`GrammarDownloadManager.validate_grammar` return `(False, <retirement
+message>)` without loading anything. The legacy combined-library manager
+`chunker.grammar_manager.GrammarManager(..., trusted_artifacts=...)` reports
+only pinned languages whose library bytes pass native admission, and none
+without pins.
+#### Pins for the click group and embedding code
+
+The click group `chunker.grammar_management.cli.grammar_cli` takes the same
+option before the subcommand (`grammar --trusted-artifacts pins.json validate
+python`) and resolves the source before each subcommand performs any work, so its subcommands are
+pin-dependent in the same way: a missing or defective file exits 2 before any
+subcommand runs.
+
+`GrammarValidator`, `GrammarInstaller`, `GrammarRegistry`, `GrammarManager` and
+`ComprehensiveGrammarCLI` accept keyword-only `trusted_artifacts=` and pass it
+down (manager → registry/installer/validator). Constructors never read a pin
+file. With a pin, a local grammar is admitted through `probe_native_grammar`:
+`check_abi_compatibility` loads nothing in-process, and parse checks load only
+an admitted private copy. `test_parse_samples(language, samples)` without a
+grammar path resolves through the validator's own `LanguageRegistry` (the
+parse path's default combined library and the validator's pins), never through
+`chunker.parser`, so package-supplied grammars still resolve there.
+
+`grammar build` without a pin does not load the new output: it exits 0 and
+prints `built, not admitted: add a pin via --trusted-artifacts`. With a pin it
+probes the output and exits 1 on any result other than `ok`. `grammar validate`
+reports a library that fails admission as not loadable, with the admission
+reason. `GrammarManager.get_admitted_health(language)` returns the admitted
+health (`healthy`, `missing`, `corrupted` or `incompatible`, with
+`validation_reason`) for status, validate and list consumers.
+
+The validation cache is keyed by the grammar's content, pin, validation level
+and runtime environment, never by path or file times. A cached result is
+returned only after this process has admitted the same bytes; a new process
+always probes again, and failed validations are never stored.
+
+#### Pins on the parse path
+
+Ordinary parsing (`get_parser`, `acquire_parser`, `list_languages`,
+`chunk_file` and everything that resolves parsers through `chunker.parser`)
+reads the user-config pin file once per process, when it builds its registry.
+`--trusted-artifacts` applies only to the grammar commands. A local compiled
+grammar (the combined library, the package or checkout build directory,
+`~/.cache/treesitter-chunker/build`, `CHUNKER_GRAMMAR_BUILD_DIR`) is used only
+when the pin file pins its language, or when it is a package-supplied file of
+our own wheel (below). It is then loaded from a verified, admitted private copy
+named `chunker-admitted-*` in the temporary directory, never from the
+candidate path. Other local libraries are ignored, and resolution continues to
+the official `tree-sitter-python`/`tree-sitter-javascript` wheels, the
+language-pack and the BAML companion. A combined library is admitted per
+language: pinning one language in it admits no other.
+
+On POSIX the process removes its admitted copies at exit. Windows cannot
+delete a loaded library, so copies stay there after exit; they hold approved
+bytes and can be removed once no chunker process is running.
+
+A defective user-config pin file grants no local trust. Parsing continues:
+package-supplied grammars keep working, one warning names the file and the
+defect, and the `LanguageNotFoundError` for a language that would have needed
+a pin repeats the defect and lists the local candidates that were not used.
+
+**Package-supplied grammars of our own wheel.** A native file directly in the
+installed package's `chunker/data/grammars/build/` is trusted without a pin
+only when it is listed in the installed `treesitter-chunker` distribution's
+`RECORD` with a `sha256` that matches its bytes. A file whose bytes differ
+from `RECORD` is never loaded, and no pin can admit it. A file with no `RECORD`
+entry (for example `grammar build` output, an editable install or a source
+checkout) is an ordinary local candidate that needs a pin.
+
+**On-demand fetch-and-build is retired.** A language that no source provides
+raises `LanguageNotFoundError`. Earlier versions cloned and compiled a grammar
+from `config/grammar_sources.json` in the background, into `grammars/` and
+`build/` in the current directory. Build deliberately with the grammar
+commands, review the result, and pin its digest.
+
+**Every grammar subcommand is pin-dependent.** The group resolves the active
+pin source before any subcommand runs. A missing or defective option file, or
+a present but defective config file when the option is absent, is a usage
+error: every subcommand (`list`, `info`, `install`, `update`, `remove`,
+`diagnose`, `health`, `validate`) exits **2** with a message naming the file
+and the defect, before discovery, any probe or any native load. No subcommand
+only warns. `--help` is unaffected. Fix or remove the file, or name a valid
+file with `--trusted-artifacts`. A missing config file is not an error; it
+supplies no pins.
 
 ### `grammar list`
 Lists all installed grammars with their health status.
@@ -597,6 +736,14 @@ is incompatible and success from 0.5 through below 0.8 is limited; sample counts
 parse errors and existing score multipliers remain available in the result.
 These thresholds interpret metadata; they do not impose a wall-clock test gate.
 
+For a local candidate (`check_compatibility(..., grammar_path=...)`, as
+`SmartSelector` uses), the validator's `No test samples available for
+<language>` warning is an evidence gap, not a quality finding. Caller
+`code_samples` parsed with the candidate decide the level. With the gap and no
+caller samples, nothing was parsed, so the result is `UNKNOWN` (score 0.3)
+whatever other warnings are present; every warning stays in the result. Other
+validation warnings give `DEGRADED` only when there is parse evidence.
+
 An explicit `GrammarManager(cache_dir=...)` supplies the validation cache root for
 its registry, installer and default `CompatibilityChecker`/`GrammarTester`
 validators. Passing an actual `validator=` object to either helper preserves that
@@ -635,14 +782,18 @@ folders, which listings and cleanup ignore), so `downloads/`, `builds/` or
 `grammars/` may each be a separate filesystem, such as a container volume.
 
 `GrammarInstaller.install_grammar` installs only languages with an approved pin,
-`GrammarInstaller(..., trusted_artifacts={"lang": {"sha256": "<64 hex>"}})`. It
-commits under the lock: it captures copies of the current library and
+`GrammarInstaller(..., trusted_artifacts={"lang": {"sha256": "<64 hex>"}})`; an
+unpinned language is refused before anything is cloned or built. It commits
+under the lock: it captures copies of the current library and
 `<lang>_install_info.json` in `.txn/rollback/<id>/`, writes the new metadata (now
 including `artifact_sha256`), then replaces the library through the staged,
 admitted publication used by the user-grammar tools. A failed update restores the
 previous library and metadata together and reports whether the restore completed;
 if it could not, the message names the retained rollback directory, whose
-`rollback.json` describes how to finish by hand.
+`rollback.json` describes how to finish by hand. While only the new revision is
+pinned, the restored previous library fails admission (`integrity_mismatch`) and
+health reports it as `incompatible`; return the pin to the previous revision, or
+retry the update, to use it again.
 
 The separate Python `GrammarManager.remove_grammar(language, clean_cache=False)`
 option retains that language's download and build cache while removing its

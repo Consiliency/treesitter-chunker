@@ -58,8 +58,9 @@ below.
 
 ## Snapshot and isolated completion
 
-`probe_native_grammar(path, language, *, provenance, sample=b"", timeout=10.0,
-inspect_artifact=None)`
+`probe_native_grammar(path, language, *, provenance, sample=b"",
+timeout=DEFAULT_PROBE_TIMEOUT, inspect_artifact=None)`, where
+`DEFAULT_PROBE_TIMEOUT` is 30.0 seconds,
 returns an immutable `NativeProbeResult(supported, reason, artifact_sha256)`.
 Missing and empty artifacts fail without native execution. Copy bytes from one
 open regular file to an exclusively created private temporary snapshot with its
@@ -202,7 +203,7 @@ Only new transcriptions correct the CPython reference to 445–460 and use
 
 ## Minimal private interfaces and snapshot ownership
 
-Keep public `probe_native_grammar(path, language, *, provenance, sample=b"", timeout=10.0, inspect_artifact=None)` and frozen `NativeProbeResult(supported, reason, artifact_sha256)` unchanged. Keep reasons `ok`, `missing`, `empty`, `untrusted`, `integrity_mismatch`, `load_failed`, `parse_failed`, `timeout`, `child_failed`, `ack_missing`, `ack_invalid`, `inspect_failed`. Only `ok` carries a digest. Keep `native_probe.v1` exactly:
+Keep public `probe_native_grammar(path, language, *, provenance, sample=b"", timeout=DEFAULT_PROBE_TIMEOUT, inspect_artifact=None)` with `DEFAULT_PROBE_TIMEOUT = 30.0` (default deadline amended from 10.0 by the [probe deadline amendment](#probe-deadline-amendment-2026-11-01)) and frozen `NativeProbeResult(supported, reason, artifact_sha256)` unchanged. Keep reasons `ok`, `missing`, `empty`, `untrusted`, `integrity_mismatch`, `load_failed`, `parse_failed`, `timeout`, `child_failed`, `ack_missing`, `ack_invalid`, `inspect_failed`, plus `policy_blocked` (added by the [application-control result amendment](#application-control-result-amendment-2026-11-01)). Only `ok` carries a digest. Keep `native_probe.v1` exactly:
 
 ```json
 {"schema":"native_probe.v1","nonce":"per-request","language":"requested","sha256":"snapshot","loader_returned":true,"parse_returned":true}
@@ -369,10 +370,14 @@ Precedence when there is no propagating caller exception:
 
 ## Production pin source and native-load inventory (ADMITPIN)
 
-Status: proposed interface freeze for IF-0-ADMITPIN-1 and IF-0-ADMITPIN-2 of
-`specs/phase-plans-v4.md`, pending two independent approvals. When ADMITPIN
-closes, this line changes to "accepted", with the merge commit and the review
-record. It changes no product code. treesitter-chunker#362 (phase ADMIT)
+Status: accepted interface freeze for IF-0-ADMITPIN-1 and IF-0-ADMITPIN-2 of
+`specs/phase-plans-v4.md`. ADMITPIN merged as `6d8d71cf`
+(treesitter-chunker#538) after two independent round-3 approvals at
+`273c6de4`, recorded in that PR's comments and in
+`plans/phase-plan-v4-ADMITPIN.md`. Four non-blocking findings from that review
+were carried over to ADMIT; `plans/phase-plan-v4-ADMIT.md` (decision 1)
+records them, and the sentences marked "(ADMIT carry-over)" below write them
+in. The freeze itself changes no product code. treesitter-chunker#362 (phase ADMIT)
 implements it. It includes three maintainer decisions from 2026-10-31: the
 user-config pin file, the package-supplier boundary for our own wheels, and the
 retirement of the on-demand fetch-and-build. Line numbers below refer to main
@@ -450,7 +455,9 @@ Rules:
    only from the sources in "Pin sources" below. No trust-all switch exists.
    The one exception to pinning is the package-supplied grammars of our own
    distribution (below), whose expected digest comes from the installed
-   distribution's RECORD.
+   distribution's RECORD. The exception applies at every admitting site,
+   grammar commands included, through one shared check (maintainer decision,
+   2026-11-01; see "Package-supplied grammars in our own wheels", item 6).
 5. One combined library may serve several languages. Each language is
    admitted separately against its own record, so the same digest may appear
    under several keys. Mapping a library for one language admits no other
@@ -511,9 +518,11 @@ is; they never make anything trusted, so this is not a trust switch.
   two grammar command groups, when `--trusted-artifacts` is absent.
   Constructors never read it: `trusted_artifacts=None` on a constructor means
   no pins. A change to the file takes effect in the next process.
-- **Pin-holding components stay off the parse path.** Every component in the
-  IF-0-ADMITPIN-1 constructor list, whatever its `trusted_artifacts` value,
-  never resolves grammars through `chunker.parser`'s module state
+- **Pin-holding components stay off the parse path.** Every component that
+  accepts `trusted_artifacts` (the IF-0-ADMITPIN-1 constructor list and the
+  SAFELOAD components `GrammarAnalyzer`, `SmartGrammarManager` and
+  `UserGrammarTools`; ADMIT carry-over), whatever its `trusted_artifacts`
+  value, never resolves grammars through `chunker.parser`'s module state
   (`get_parser`, `acquire_parser`, or anything else that reads the config
   file). Otherwise a narrower option file, an explicit empty mapping, or a
   defective config file could be bypassed or leak into a command run with a
@@ -521,11 +530,14 @@ is; they never make anything trusted, so this is not a trust switch.
   `GrammarValidator.test_parse_samples` (`core.py:257-263`, reached from
   `compatibility.py:1061` and from other `compatibility.py` calls whose
   `grammar_path` may be `None`) calls `chunker.parser.get_parser`. ADMIT
-  changes that branch to do one of two things:
-  - resolve through a `LanguageRegistry` built from the validator's own
-    mapping, where package-supplied grammars (our wheels, P1, P2, R5) still
-    apply;
-  - or report `untrusted` for a language that would need a pin.
+  changes that branch to resolve through a `LanguageRegistry` built from the
+  validator's own mapping (ADMIT carry-over: this is the chosen option). Its
+  `library_path` is `chunker._internal.registry.default_library_path()`, the
+  same default combined library that `chunker.parser` uses. Package-supplied
+  grammars (our wheels' RECORD-verified files, P1, P2, R5) therefore still
+  resolve there, and a local candidate resolves only under the validator's
+  own pin; without one it is `untrusted`. The branch never imports or reads
+  `chunker.parser`'s state.
 
   The named mutation `parse_samples_via_global_parser` (EC-ADMIT-6) restores
   the `get_parser` call, and a test with `GrammarValidator(trusted_artifacts={})`
@@ -570,6 +582,16 @@ is; they never make anything trusted, so this is not a trust switch.
     exit status 2, naming the file and the defect, before discovery, any probe
     or any native load. Those commands exist to report on pinned grammars, so
     continuing would misreport them.
+  - **Every subcommand is pin-dependent** (ADMIT carry-over). Both grammar
+    groups resolve the active pin source once before subcommand work:
+    the argparse group before it dispatches, the click group at the start of
+    each subcommand body, before that subcommand does any work and after
+    click has handled `--help`. So a defective option file, or a defective
+    config file when the option is absent, exits 2 for every subcommand of both groups, including
+    commands such as `build`, `remove` or `cleanup` that do not consult pins
+    today. No subcommand only warns. `--help` is unaffected.
+    `docs/grammar_management.md` ("CLI Commands Reference" → "Approved pins")
+    records this, and `docs/cli-reference.md` points to it.
 - **Test isolation.** ADMIT's tests set `HOME`, `USERPROFILE`, `APPDATA` and
   `XDG_CONFIG_HOME` to private temporary directories, so a developer's real
   pin file never affects a test.
@@ -664,13 +686,17 @@ language-pack (P1, P2), with no user pin. The boundary is exact:
 1. **The distribution.** It is the one returned by
    `importlib.metadata.distribution("treesitter-chunker")`, and only if its
    `locate_file("chunker/__init__.py")` is the same file as the imported
-   `chunker.__file__` (compared resolved, or with `os.path.samefile`). A different or shadowing distribution
-   supplies nothing.
+   `chunker.__file__`. A different or shadowing distribution supplies
+   nothing. File identity here and in item 2 uses `os.path.samefile` first;
+   only when `samefile` raises are the two `Path.resolve()` results compared
+   (ADMIT carry-over). `resolve()` alone does not fold case on a
+   case-insensitive file system such as macOS APFS, so it is only the
+   fallback.
 2. **Which files count.** A candidate counts only when all of these hold:
    - It is a regular file, not a symbolic link.
    - It is the same file as `locate_file(entry)` for one entry in that
-     distribution's `RECORD`. Both paths are compared after `Path.resolve()`,
-     or with `os.path.samefile`, never as text. `locate_file()` returns an
+     distribution's `RECORD`, compared with `os.path.samefile` (falling back
+     to resolved paths only if it raises, as in item 1), never as text. `locate_file()` returns an
      unresolved path, so a symbolic link in the site-packages path (a venv
      `lib64`, or `/var` → `/private/var` on macOS) or a difference in case on
      a case-insensitive file system does not demote our own files.
@@ -704,12 +730,28 @@ language-pack (P1, P2), with no user pin. The boundary is exact:
    check tells our package's files apart from files added later. It is not a
    defence against someone who can rewrite the installed package, because
    that person could also rewrite our Python code; that is the same supplier
-   boundary as P1 and P2.
+   boundary as P1 and P2. A symbolic link is never package-supplied (item 2),
+   so a link to a RECORD file whose bytes differ from RECORD is an ordinary
+   local candidate: only a user pin for those exact bytes admits it. That is
+   intended, and grants nothing beyond copying the file elsewhere and pinning
+   the copy. A grammar shipped in RECORD is never replaced in place: grammar
+   publication refuses to overwrite it, because the replacement would differ
+   from RECORD and stay `integrity_mismatch` permanently.
 5. **Not an approval from discovered bytes.** The expected digest comes from
    `RECORD`, which the wheel ships and the installer writes. The tool only
    hashes the candidate to compare it with that supplied value. It never
    creates, stores or widens an approval from what it finds. `RECORD` is
    installer metadata, not a manifest the tool writes beside artifacts.
+6. **One trust rule everywhere** (maintainer decision, 2026-11-01, relayed by
+   the roadmap runner). The grammar commands honour this boundary through the
+   same code as parsing, not a copy: one shared check
+   (`chunker/_internal/package_supplier.py`) is applied by the shared
+   admission helper that every admitting site uses, and by the registry. So
+   in `grammar info`, `diagnose`, `validate`, `list` and the validator, a
+   shipped grammar whose bytes match RECORD is admitted (probed under its
+   RECORD digest) and reports healthy with no pin; a RECORD mismatch reports
+   `integrity_mismatch`, and no user pin overrides it; a file in that
+   directory without a RECORD entry is not package-supplied and needs a pin.
 
 ### Verdict-reuse key
 
@@ -727,7 +769,7 @@ sha256(canonical JSON of {
   "content_sha256": <lower-case SHA-256 of the candidate bytes read for this lookup>,
   "level": <validation level value, or "probe">,
   "probe_schema": "native_probe.v1",
-  "probe_profile": "default-v1",
+  "probe_profile": "default-v2",
   "inspector": <stable identifier of the inspect_artifact callback, or "none">,
   "validator_schema": <integer constant that ADMIT bumps whenever validation semantics change>,
   "chunker": <installed treesitter-chunker distribution version>,
@@ -740,9 +782,13 @@ sha256(canonical JSON of {
 ```
 
 Canonical JSON means sorted keys, no insignificant whitespace and UTF-8. The
-probe profile `default-v1` means `probe_native_grammar` called with
-`sample=b""` and `timeout=10.0`. A probe with a different sample or deadline is
-never answered from the cache, and its result is not stored.
+probe profile `default-v2` means `probe_native_grammar` called with
+`sample=b""` and `timeout=30.0`. A probe with a different sample or deadline is
+never answered from the cache, and its result is not stored. The earlier
+profile `default-v1` (`timeout=10.0`) is retired by the
+[probe deadline amendment](#probe-deadline-amendment-2026-11-01): an entry
+stored under it never answers a `default-v2` request, and a caller that passes
+`timeout=10.0` explicitly is a non-default deadline.
 
 `inspector` is a stable identifier for the `inspect_artifact` callback; `none`
 means no callback. ADMIT fixes one constant per inspecting site, for example
@@ -762,7 +808,10 @@ through its own key, which never matches `none`.
    probing. Only then compute the key and reuse a hit.
 2. **What is stored.** Only results whose admission verdict was `ok` are
    stored, and only when the probe's `artifact_sha256` equals the key's
-   `content_sha256`. A failed admission is recomputed every time.
+   `content_sha256`. A failed admission is recomputed every time. A site may
+   also decline to store an `ok` result whose inspector metadata is transient
+   (for example a symbol analysis that hit its deadline); that result is
+   returned for the call and never answers a later request.
 3. **Process boundary.** A positive admission is reusable only in the process
    that ran the fresh probe, so every new process probes again before its
    first use of an artifact. A validation result written to disk is never an
@@ -838,27 +887,28 @@ does not cover.
 
 | ID | Site (main `7440971a`) | What it loads | Disposition | ADMIT lane | Status |
 |---|---|---|---|---|---|
-| N1 | `chunker/grammar_management/core.py:129` `load_compiled_grammar` (`ctypes.CDLL`); its capsule `Language(` at `chunker/grammar_management/core.py:138` | the path it is given | caller-trusted primitive. Allowed callers pass the probe child's verified snapshot (I1) or an admitted private copy | SL-core | open |
-| N2 | `chunker/grammar_management/core.py:229` `GrammarValidator.check_abi_compatibility` → N1 | discovered/validated candidate | integrated (probe only; no in-process load) | SL-core | open |
-| N3 | `chunker/grammar_management/core.py:260` `GrammarValidator.test_parse_samples(grammar_path=...)` → N1 | local candidate, parsed in-process | integrated (in-process pattern). The `grammar_path=None` branch (`core.py:262`, today `chunker.parser.get_parser`) stops using `chunker.parser`. It resolves through a `LanguageRegistry` built from the validator's own pins, or reports `untrusted` ("Pin-holding components stay off the parse path"; mutation `parse_samples_via_global_parser`) | SL-core | open |
-| N4 | `chunker/grammar_management/cli.py:1552` `build_grammar` post-build load check | fresh build output | integrated. With no pin, it skips the load and exits 0 with `built, not admitted: add a pin via --trusted-artifacts`. With a pin, it probes the output and exits 1 on any result other than `ok`. The build itself is unchanged | SL-core | open |
-| N5 | `chunker/grammar_management/cli.py:2272` `_validate_compiled_grammar` | installed candidate | integrated, keeping today's output and exit codes; the treesitter-chunker#128 behaviour stays with ADMITFIX | SL-core | open |
-| N6 | `chunker/grammar_management/cli.py:1945` `_test_compiled_grammar` (grammar test command) → N1 | local candidate, parsed in-process | integrated (in-process pattern) | SL-core | open |
-| R1 | `chunker/_internal/registry.py:93` `LanguageRegistry._load_library` (combined library, including the `hasattr` symbol checks in `_discover_symbols`) | configured combined library | package-supplied when the file passes the RECORD check for our wheels (below); otherwise integrated (in-process pattern, one admission per language under rule 5). Discovery tries only the pinned language keys. It never uses `hasattr` or any other symbol inspection on a library that has not been admitted | SL-reg | open |
-| R2 | `chunker/_internal/registry.py:234` `_validate_language_library` | per-language libraries found by scanning the combined library's own directory (`Path(library_path).parent`), the package build directory, `~/.cache/treesitter-chunker/build` and `CHUNKER_GRAMMAR_BUILD_DIR` | package-supplied for files that pass the RECORD check; otherwise integrated (in-process pattern). Scan directories confer no trust | SL-reg | open |
-| R3 | `chunker/_internal/registry.py:293` `_language_from_ctypes_symbol` capsule `Language(` | nothing new; it wraps a library opened by R1/R2/R4 | integrated under rule 5. It may build language L only if L has its own record, that record's `sha256` equals the admitted copy's digest, and L's own probe (or a verdict reused under L's key) returned `ok`. Otherwise L is `untrusted`, even though the library is mapped. The `custom:sha256:` source label must use the admitted digest, not a re-read of the path | SL-reg | open |
-| R4 | `chunker/_internal/registry.py:517` `_try_load_from_individual_library` | candidates in the combined library's own directory (`Path(library_path).parent`), the package build directory, `CHUNKER_GRAMMAR_BUILD_DIR` and `~/.cache/treesitter-chunker/build` | package-supplied for files that pass the RECORD check; otherwise integrated (in-process pattern). Search directories confer no trust | SL-reg | open |
+| N1 | `chunker/grammar_management/core.py:129` `load_compiled_grammar` (`ctypes.CDLL`); its capsule `Language(` at `chunker/grammar_management/core.py:138` | the path it is given | caller-trusted primitive. Allowed callers pass the probe child's verified snapshot (I1) or an admitted private copy | SL-core | landed |
+| N2 | `chunker/grammar_management/core.py:229` `GrammarValidator.check_abi_compatibility` → N1 | discovered/validated candidate | integrated (probe only; no in-process load) | SL-core | landed |
+| N3 | `chunker/grammar_management/core.py:260` `GrammarValidator.test_parse_samples(grammar_path=...)` → N1 | local candidate, parsed in-process | integrated (in-process pattern). The `grammar_path=None` branch (`core.py:262`, today `chunker.parser.get_parser`) stops using `chunker.parser`. It resolves through a `LanguageRegistry` built from the validator's own pins, or reports `untrusted` ("Pin-holding components stay off the parse path"; mutation `parse_samples_via_global_parser`) | SL-core | landed |
+| N4 | `chunker/grammar_management/cli.py:1552` `build_grammar` post-build load check | fresh build output | integrated. With no pin, it skips the load and exits 0 with `built, not admitted: add a pin via --trusted-artifacts`. With a pin, it probes the output and exits 1 on any result other than `ok`. The build itself is unchanged | SL-core | landed |
+| N5 | `chunker/grammar_management/cli.py:2272` `_validate_compiled_grammar` | installed candidate | integrated, keeping today's output and exit codes; the treesitter-chunker#128 behaviour stays with ADMITFIX | SL-core | landed |
+| N6 | `chunker/grammar_management/cli.py:1945` `_test_compiled_grammar` (grammar test command) → N1 | local candidate, parsed in-process | integrated (in-process pattern) | SL-core | landed |
+| R1 | `chunker/_internal/registry.py:93` `LanguageRegistry._load_library` (combined library, including the `hasattr` symbol checks in `_discover_symbols`) | configured combined library | package-supplied when the file passes the RECORD check for our wheels (below); otherwise integrated (in-process pattern, one admission per language under rule 5). Discovery tries only the pinned language keys. It never uses `hasattr` or any other symbol inspection on a library that has not been admitted | SL-reg | landed |
+| R2 | `chunker/_internal/registry.py:234` `_validate_language_library` | per-language libraries found by scanning the combined library's own directory (`Path(library_path).parent`), the package build directory, `~/.cache/treesitter-chunker/build` and `CHUNKER_GRAMMAR_BUILD_DIR` | package-supplied for files that pass the RECORD check; otherwise integrated (in-process pattern). Scan directories confer no trust | SL-reg | landed |
+| R3 | `chunker/_internal/registry.py:293` `_language_from_ctypes_symbol` capsule `Language(` | nothing new; it wraps a library opened by R1/R2/R4 | integrated under rule 5. It may build language L only if L has its own record, that record's `sha256` equals the admitted copy's digest, and L's own probe (or a verdict reused under L's key) returned `ok`. Otherwise L is `untrusted`, even though the library is mapped. The `custom:sha256:` source label must use the admitted digest, not a re-read of the path | SL-reg | landed |
+| R4 | `chunker/_internal/registry.py:517` `_try_load_from_individual_library` | candidates in the combined library's own directory (`Path(library_path).parent`), the package build directory, `CHUNKER_GRAMMAR_BUILD_DIR` and `~/.cache/treesitter-chunker/build` | package-supplied for files that pass the RECORD check; otherwise integrated (in-process pattern). Search directories confer no trust | SL-reg | landed |
 | R5 | `chunker/_internal/registry.py:589` BAML companion `Language(baml_language())` | installed `treesitter_chunker_baml_grammar` distribution | package supplier, out of scope | — | n/a |
-| V1 | `chunker/grammar/validator.py:41` and `chunker/grammar/validator.py:43` `TreeSitterGrammarValidator.check_abi_compatibility` | caller path | retired (treesitter-chunker#400, above) | SL-legacy | open |
-| D1 | `chunker/grammar/download.py:412` `GrammarDownloadManager.validate_grammar` | downloaded/compiled output | retired. The static method has no way to receive pins: it keeps its existing non-native checks and returns `(False, <retirement message naming probe_native_grammar>)`. It has no in-repository callers | SL-legacy | open |
-| M1 | `chunker/grammar_manager.py:256` `GrammarManager.get_available_languages` (legacy combined `my-languages.so`) | combined library | integrated (probe only, rule 5). It tries only the pinned language keys and returns only those whose combined-library bytes are admitted against their own pin. With no pins it returns the empty set. It never maps the library in the parent or reads its symbols | SL-legacy | open |
-| T1 | `chunker/grammar_management/testing.py:153` reload of the original path after validation → N1 | original candidate | retired. The duplicate reload goes; `test_parse_samples` (N3) already checks parse errors on admitted bytes | SL-ins | open |
-| T2 | `chunker/grammar_management/testing.py:381` `ctypes.CDLL` of a self-written corrupt file, used to compute an expected message | bytes the self-test just wrote | retired. The self-test compares against the admission reason instead | SL-ins | open |
-| A1 | `GrammarMetadataExtractor.extract_from_dependencies` (`chunker/languages/compatibility/grammar_analyzer.py:591`, `ldd`) | caller-supplied path, through the dynamic loader | retired. It returns `{"dependencies": [], "dependencies_status": "retired"}` without running any tool, so a caller can tell retirement from a library with no dependencies. It has no in-repository callers | SL-ins | open |
+| V1 | `chunker/grammar/validator.py:41` and `chunker/grammar/validator.py:43` `TreeSitterGrammarValidator.check_abi_compatibility` | caller path | retired (treesitter-chunker#400, above) | SL-legacy | landed |
+| D1 | `chunker/grammar/download.py:412` `GrammarDownloadManager.validate_grammar` | downloaded/compiled output | retired. The static method has no way to receive pins: it keeps its existing non-native checks and returns `(False, <retirement message naming probe_native_grammar>)`. It has no in-repository callers | SL-legacy | landed |
+| M1 | `chunker/grammar_manager.py:256` `GrammarManager.get_available_languages` (legacy combined `my-languages.so`) | combined library | integrated (probe only, rule 5). It tries only the pinned language keys and returns only those whose combined-library bytes are admitted against their own pin. With no pins it returns the empty set. It never maps the library in the parent or reads its symbols | SL-legacy | landed |
+| T1 | `chunker/grammar_management/testing.py:153` reload of the original path after validation → N1 | original candidate | retired. The duplicate reload goes; `test_parse_samples` (N3) already checks parse errors on admitted bytes | SL-core-2 (testing.py commit) | landed |
+| T2 | `chunker/grammar_management/testing.py:381` `ctypes.CDLL` of a self-written corrupt file, used to compute an expected message | bytes the self-test just wrote | retired. The self-test compares against the admission reason instead | SL-core-2 (testing.py commit) | landed |
+| A1 | `GrammarMetadataExtractor.extract_from_dependencies` (`chunker/languages/compatibility/grammar_analyzer.py:591` on main `7440971a`, `:661` after SL-ins; `ldd`) | caller-supplied path, through the dynamic loader | retired. It returns `{"dependencies": [], "dependencies_status": "retired"}` without running any tool, so a caller can tell retirement from a library with no dependencies. It has no in-repository callers | SL-ins | landed |
 | I1 | `chunker/grammar/integrity.py:131` probe child → N1 | verified private snapshot | integrated (this is the admission mechanism) | — | landed |
 | P1 | `chunker/_internal/language_pack.py:109` `Language(module.language())` | pinned `tree_sitter_python` / `tree_sitter_javascript` wheels | package supplier, out of scope | — | n/a |
 | P2 | `chunker/_internal/language_pack.py:130` `tree_sitter_language_pack.get_language` | pinned language-pack | package supplier, out of scope | — | n/a |
-| F1 | `chunker/parser.py:164` (`get_parser`) and `chunker/parser.py:228` (`acquire_parser`) on-demand fetch-and-build through `chunker.grammar.manager.TreeSitterGrammarManager` | no load of its own: it clones and compiles a grammar on a miss, then retries the registry (R4) | retired in ADMIT (maintainer decision, 2026-10-31). A miss raises `LanguageNotFoundError` without cloning or compiling. Deliberate builds remain available through the grammar commands. ADMIT records it as a behaviour change in `CHANGELOG.md` and the grammar docs | SL-reg | open |
+| F1 | `chunker/parser.py:164` (`get_parser`) and `chunker/parser.py:228` (`acquire_parser`) on-demand fetch-and-build through `chunker.grammar.manager.TreeSitterGrammarManager` | no load of its own: it clones and compiles a grammar on a miss, then retries the registry (R4) | retired in ADMIT (maintainer decision, 2026-10-31). A miss raises `LanguageNotFoundError` without cloning or compiling. Deliberate builds remain available through the grammar commands. ADMIT records it as a behaviour change in `CHANGELOG.md` and the grammar docs | SL-reg | landed |
+| F2 | `UniversalLanguageRegistry.get_parser(auto_download=True)` (`chunker/grammar/registry.py`) and the zero-config API (`ZeroConfigAPI.ensure_language`, `preload_languages`, `get_chunker_for_language`, `auto_chunk_file`, `chunk_text` in `chunker/auto.py`) automatic download-and-build | no load of its own: on a miss it fetched and compiled a grammar through the discovery and download services, then loaded it through the registry (R1-R4) | retired in ADMIT as an extension of M2 (maintainer decision, 2026-11-01). `get_parser` raises `LanguageNotFoundError` with the cause and the build-and-pin guidance and makes no discovery request; `ensure_language`/`preload_languages` only report availability; `auto_download` is accepted but inert and warns (`DeprecationWarning`). The explicit `install_language`/`update_language` remain, and their output loads only under a pin | SL-reg | landed |
 
 These grep hits are not load sites:
 
@@ -878,6 +928,24 @@ snapshot inside `inspect_artifact`.
 Every hit of
 `grep -rn 'ctypes.CDLL\|cdll.LoadLibrary\|Language(' chunker/` at `7440971a`
 appears as a `path:line` reference in the two tables above (EC-ADMITPIN-1).
+
+**Load sites after ADMIT.** ADMIT keeps the site IDs; once all its lanes have
+landed, the remaining direct loads in `chunker/` are these (named by function,
+because line numbers move):
+
+- R1/R2/R4: `chunker/_internal/registry.py` `LanguageRegistry._open_local_library`
+  is the only per-language load. It calls `ctypes.CDLL` in place only for a
+  RECORD-verified package file, and otherwise only on the private copy returned
+  by `chunker._internal.native_admission.admitted_private_copy` after `ok`.
+  `LanguageRegistry._load_library` maps a whole combined library only when it
+  is package-supplied.
+- R3: `LanguageRegistry._language_from_ctypes_symbol` (capsule `Language(`), on
+  a library opened as above, labelled with the admitted digest.
+- R5, P1, P2 and N1 (`load_compiled_grammar`, the caller-trusted primitive)
+  are unchanged.
+- V1, D1, M1, T1, T2 and A1 have no native load left.
+  `chunker/_internal/native_admission.py` loads nothing itself: it copies,
+  verifies and calls `probe_native_grammar`.
 After ADMIT, a new direct load anywhere in `chunker/` needs its own inventory
 row and disposition.
 
@@ -892,7 +960,12 @@ File ownership notes for the ADMIT plan:
   - `chunker/cli/grammar_commands.py`, the argparse option and the config
     fallback;
   - `chunker/_internal/grammar_management.py`, the rule-3 lookup in
-    `SmartGrammarManager`.
+    `SmartGrammarManager`;
+  - `chunker/_internal/package_supplier.py`, the one RECORD-verified
+    package-supplier check (item 6 of "Package-supplied grammars in our own wheels"), which SL-reg's registry imports;
+  - `chunker/grammar_management/testing.py` (T1, T2), carried in SL-core's
+    validator PR because that PR makes the validator pin-only
+    (runner-accepted, 2026-11-01; plan decision 8).
 
   SL-core publishes the reader's signatures on day 1, alongside IF-0-ADMIT-1,
   and SL-reg consumes them for `chunker/parser.py` instead of writing its own.
@@ -922,7 +995,9 @@ These changes take effect when ADMIT lands, and ADMIT records them in
   the subcommand. The option replaces the config file for that command; the
   two are never merged. With no pins from either source, an installed local
   compiled grammar reports `incompatible` with an `untrusted` cause, and
-  `grammar info` exits 1. A grammar that was never installed still reports
+  `grammar info` exits 1, unless it is a RECORD-verified package-supplied file
+  of our own wheel, which reports healthy (item 6 of the package-supplier
+  section). A grammar that was never installed still reports
   `missing` (rule 3).
 - **Ordinary parsing** (`get_parser`, `acquire_parser`, `chunk_file` and
   everything else that resolves through `chunker.parser`) reads the user-config
@@ -942,6 +1017,12 @@ These changes take effect when ADMIT lands, and ADMIT records them in
   from every source raises `LanguageNotFoundError` instead of cloning and
   compiling in the background. Build deliberately with the grammar commands,
   review the result, and pin it.
+- **Zero-config auto-download is retired** (F2, an extension of M2 by the
+  maintainer decision of 2026-11-01). `UniversalLanguageRegistry.get_parser`
+  and `ZeroConfigAPI` never download or build a grammar. A missing language
+  raises `LanguageNotFoundError` with the cause and guidance. The
+  `auto_download` argument is accepted but has no effect, and passing it emits
+  a `DeprecationWarning`.
 - **`grammar build`** with no pin does not load the new output. It exits 0 and
   prints `built, not admitted: add a pin via --trusted-artifacts`. An operator
   who has reviewed the build adds its digest to the pin file and validates
@@ -952,3 +1033,104 @@ These changes take effect when ADMIT lands, and ADMIT records them in
   `GrammarMetadataExtractor.extract_from_dependencies`) keep their names and
   return types until the next major version, but perform no native load or
   dependency inspection.
+
+
+## Application-control result amendment (2026-11-01)
+
+The maintainer decision for treesitter-chunker#547 adds `policy_blocked` to the
+failure reasons above. It never permits support or a digest. Explicit Windows
+`OSError.winerror` 4551 (system integrity policy violation) or 1260 (disabled by
+policy) identifies this result; generic access denial, exit 1, an empty
+acknowledgment, or a matching error-message string does not.
+
+A registered worker reports it through the existing request-bound
+`native_probe.v1` failure envelope. The controller requires matching schema,
+nonce, language and digest, ordinary worker/launcher exit 1, and the existing
+containment checks before accepting that failure classification. A policy
+exception observed directly by the controller also retains the existing
+conditional cleanup/uncertain-root behavior. No success predicate, execution
+deadline, trust source, or snapshot/worker ownership requirement changes.
+
+`NativeProbeResult.message` supplies actionable policy guidance without changing
+the three dataclass fields. The low-level trusted loader raises
+`NativePolicyBlockedError` with the original OS error as its cause and the OS
+code retained. Manager issues/recommendations, analyzer reports and exported
+capabilities surface the guidance. Use a signed, organization-approved grammar
+build or ask the administrator for approval under the existing policy; do not
+bypass policy. See [troubleshooting](../troubleshooting.md#windows-application-control-blocks-a-native-grammar).
+
+Real-native tests may skip only a positively identified policy exception or an
+intact request-bound policy failure with confirmed worker status and cleanup.
+Malformed/missing acknowledgments, generic errors, unsafe cleanup and abnormal
+statuses remain test failures. Separate deterministic tests verify classification,
+fail-closed behavior and the narrow skip predicate without enabling these skips.
+This amendment does not infer the causes of the historically unexplained
+observations in treesitter-chunker#508 or treesitter-chunker#509.
+
+## Probe deadline amendment (2026-11-01)
+
+The maintainer decision for treesitter-chunker#547 raises the **default**
+execution deadline of `probe_native_grammar` from 10.0 to 30.0 seconds. The
+value is the public constant `chunker.grammar.integrity.DEFAULT_PROBE_TIMEOUT`.
+`probe_native_grammar` and the `publish_native_grammar` pass-through both use
+that constant as their default, and any code that forwards a default deadline
+must import it rather than restate a number. This is the only change. The
+single shared monotonic deadline, its one ≤1 s grace and ≤5 s hard-stop
+confirmation, the reasons (including `policy_blocked` from the
+[application-control result amendment](#application-control-result-amendment-2026-11-01)),
+the `native_probe.v1`
+acknowledgment and every admission and containment rule above are unchanged. An
+explicit caller-supplied `timeout` is still used exactly: it is never raised to,
+lowered to or replaced by the default. A finite non-positive or non-finite
+value still reports `timeout`.
+
+**Why.** On a Windows 11 host with Smart App Control enforced
+(`VerifiedAndReputableDesktop`), the first executable image section created
+for a never-seen unsigned file hash waits for a Microsoft Defender cloud trust
+check. Defender's performance recording reports these as `TrustCheck` scans. Usually
+the verdict arrives in under a second. Sometimes the cloud check stalls. Windows
+then waits a fixed time of about ten seconds, falls back to a local signature
+scan and **allows** the image. In a load benchmark on WIN, outside the probe, 11 of
+520 first loads of fresh unsigned DLLs stalled, all for 10.03–10.06 s. Defender recorded a TrustCheck of matching length on
+each exact file. None was blocked, and no Code Integrity event 3077 matched
+any of them. A stalled check caches no verdict, so the next first load of the
+same bytes is checked again.
+
+The ten-second default deadline also has to cover worker start-up, the load,
+parsing and the acknowledgment, so it always lost that race. The controller
+forcibly stopped the worker (`TerminateProcess`, status 1). Stdout was empty,
+and the result was `timeout` at admission or `child_failed` where containment
+was uncertain. These were the "probe child exit 1" and "empty acknowledgment"
+observations. Trust checks are not always quick when they do not fall back:
+in the WIN campaigns some took 2–9.4 s. The longest whole probe measured,
+stalls included, took 10.55 s. Thirty seconds leaves more than 19 s over that.
+An administrator can lengthen Defender's cloud check (`CloudExtendedTimeout`, up
+to 50 more seconds). On such hosts, code that calls `probe_native_grammar` or
+`publish_native_grammar` directly can pass a longer explicit `timeout`; those
+are the only entry points that accept one. `SmartGrammarManager`,
+`GrammarAnalyzer` and `UserGrammarTools` always use `DEFAULT_PROBE_TIMEOUT` and
+have no timeout option.
+
+**What it does not change.** The deadline still bounds a hostile or hung
+constructor; a hang is now stopped after 30 s instead of 10 s. The OS check
+itself is not bypassed, retried, cached or inferred, and a denial
+(WinError 4551/1260) remains `policy_blocked`. The product cannot tell a stalled
+trust check from any other slow load, so a slower load than the deadline is still
+`timeout`.
+
+**Verdict-reuse profile.** The probe profile in the verdict-reuse key becomes
+`default-v2` (`sample=b""`, `timeout=DEFAULT_PROBE_TIMEOUT`). ADMIT's cache
+implementation decides "default profile" by comparing with the imported
+`DEFAULT_PROBE_TIMEOUT`, never a local copy of the number, and passes no
+restated default to the probe; a test must fail if the two diverge. Its
+`reuse_verdict_across_probe_profile` mutation uses the new default deadline,
+and `default-v1` entries miss. The ADMIT gate (EC-ADMIT-9) is otherwise
+unchanged.
+
+**Regressions.** A real native library whose constructor blocks its load for
+11 s, which is longer than the measured fallback, is admitted under the default
+and times out under the old one. Separate checks require the 30.0 default, the
+shared constant as both signatures' default, and the exact explicit deadline
+for both functions. Named mutations: `restore_ten_second_default`,
+`publish_keeps_ten_second_default`, `publish_restates_default_literal`,
+`ignore_explicit_timeout`, `floor_explicit_timeout_at_default`.

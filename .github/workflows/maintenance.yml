@@ -11,6 +11,7 @@ on:
 
 jobs:
   notify-worker:
+    permissions: {}
     runs-on: ubuntu-latest
     steps:
       - name: Notify maintenance worker

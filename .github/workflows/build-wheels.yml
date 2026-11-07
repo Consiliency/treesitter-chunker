@@ -8,6 +8,8 @@ on:
 
 jobs:
   build-wheels:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -16,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
-          python-version: "3.12"
+          python-version: "3.14"
 
       - name: Build wheel
         run: |

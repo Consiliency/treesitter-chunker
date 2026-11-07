@@ -8,6 +8,10 @@ from unittest.mock import Mock
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("native_policy_environment")
+
+from tests.native_policy import run_isolated_baml_parse
+
 from chunker._internal import grammar_management
 from chunker._internal.user_grammar_tools import UserGrammarTools
 from chunker.cli import grammar_commands
@@ -36,7 +40,7 @@ def require(condition, name):
 
 
 def _run_main(monkeypatch, capsys, argv, tools):
-    monkeypatch.setattr(grammar_commands, "get_grammar_tools", lambda: tools)
+    monkeypatch.setattr(grammar_commands, "get_grammar_tools", lambda *_args: tools)
     monkeypatch.setattr(sys, "argv", ["chunker", *argv])
     code = main()
     captured = capsys.readouterr()
@@ -94,7 +98,8 @@ NONHEALTHY_CASES = {
     ),
     "corrupted": (
         _seed_corrupted,
-        None,
+        # Rule 3: an unpinned candidate is untrusted before any check.
+        {LANGUAGE: {"sha256": "0" * 64}},
         ["Status: ❌ corrupted", "Native admission failed: empty"],
     ),
     "untrusted": (
@@ -156,7 +161,7 @@ def test_grammar_info_uses_single_diagnosis(tmp_path, monkeypatch, capsys):
     original_diagnose = tools.manager.diagnose_grammar_issues
     original_probe = grammar_management.probe_native_grammar
 
-    def factory():
+    def factory(*_args):
         calls["factory"] += 1
         return tools
 
@@ -182,8 +187,10 @@ def test_grammar_info_uses_single_diagnosis(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
 
     require("Status: ⚠️ missing" in out, "missing report")
+    # Rule 3: a candidate that does not exist is reported missing without
+    # calling the probe.
     require(
-        calls == {"factory": 1, "info": 1, "diagnose": 1, "probe": 1},
+        calls == {"factory": 1, "info": 1, "diagnose": 1, "probe": 0},
         f"single observation counts {calls!r}",
     )
     require(code == 1, f"exit {code!r}")
@@ -261,10 +268,8 @@ def test_cli_factory_supplies_no_implicit_pins(tmp_path, monkeypatch, capsys):
     code = main()
     out = capsys.readouterr().out
 
-    require(
-        probes == [(artifact.absolute(), LANGUAGE, None)],
-        f"probe observed {probes!r}",
-    )
+    # Rule 3: with no pin the probe is never called and nothing is opened.
+    require(probes == [], f"probe observed {probes!r}")
     require("Status: ⚠️ incompatible" in out, "untrusted status")
     require("Native admission failed: untrusted" in out, "untrusted reason")
     require(artifact.read_bytes() == UNAPPROVED_BYTES, "seeded bytes unchanged")
@@ -321,26 +326,7 @@ def test_pinned_healthy_grammar_info_succeeds(tmp_path, monkeypatch, capsys):
         build_dir.mkdir()
         so_file = build_dir / "baml.so"
         so_file.write_bytes(library.read_bytes())
-        subprocess.run(
-            [
-                sys.executable,
-                "-I",
-                "-c",
-                "import sys; from pathlib import Path; "
-                "sys.path.insert(0, sys.argv[1]); "
-                "from chunker.grammar_management.core import load_compiled_grammar; "
-                "root = load_compiled_grammar(Path(sys.argv[2]), 'baml')"
-                ".parse(Path(sys.argv[3]).read_bytes()).root_node; "
-                "raise SystemExit(0 if root.type == 'source_file' "
-                "and not root.has_error else 3)",
-                str(ROOT),
-                str(so_file),
-                str(FIXTURE),
-            ],
-            check=True,
-            capture_output=True,
-            timeout=20,
-        )
+        run_isolated_baml_parse(ROOT, so_file, FIXTURE, timeout=20).check_returncode()
         tools = UserGrammarTools(
             build_dir,
             workspace / "sources",

@@ -102,3 +102,47 @@ for the locked test tiers. A new skip or xfail needs an explanation, rather
 than being dismissed as an expected ABI mismatch. Include package versions,
 platform, a small real fixture, the exact invocation and the error traceback in
 this repository's [issue tracker](https://github.com/Consiliency/treesitter-chunker/issues).
+
+
+## Windows application control blocks a native grammar
+
+`policy_blocked` means Windows explicitly rejected the native load under its
+application-control policy (WinError 4551 or 1260). Unsigned or newly compiled
+DLLs, including private probe snapshots, may not yet be trusted by Smart App
+Control or an organization's application-control policy. The library remains
+unsupported; no admitted digest is published. Repeating a blocked load is not a
+validation strategy.
+
+Use a signed, organization-approved grammar build, or ask your administrator to
+approve the library under the existing policy. Inspect the read-only
+`Microsoft-Windows-CodeIntegrity/Operational` event log around the failed call;
+event 3077 can identify the blocked path, process, hash and policy. Preserve that
+record when reporting a problem. A generic `child_failed`, empty acknowledgment
+or `PermissionError` alone does not prove an application-control denial.
+
+The low-level loader raises `NativePolicyBlockedError` with the original OS code
+and exception cause. `probe_native_grammar` returns `supported=False`,
+`reason="policy_blocked"`, `artifact_sha256=None` and actionable guidance through
+its `message` property. Manager diagnostics and analyzer reports/exports retain
+that guidance. No Windows security setting needs to be disabled to diagnose the
+failure.
+
+## A new native grammar times out on Windows
+
+With Smart App Control enforced, Windows asks Microsoft Defender for a cloud
+verdict the first time it loads a new unsigned library. Usually the verdict
+arrives in under a second. If the cloud check stalls, Windows waits about ten
+seconds, then falls back to a local scan and loads the library. Later loads of
+the same bytes are fast once a verdict has been recorded.
+
+Native grammar admission therefore defaults to a 30-second deadline
+(`chunker.grammar.integrity.DEFAULT_PROBE_TIMEOUT`), which outlasts that wait.
+Only `probe_native_grammar` and `publish_native_grammar` accept a `timeout`.
+If you pass a shorter one, it is used exactly, and a first-time load can then
+report `reason="timeout"` even though nothing is wrong with the library.
+`SmartGrammarManager`, `GrammarAnalyzer` and `UserGrammarTools` always use the
+default and have no timeout option. If your administrator has lengthened
+Defender's cloud check (`CloudExtendedTimeout`), call `probe_native_grammar` or
+`publish_native_grammar` directly with a `timeout` longer than that check. A library that the policy rejects
+reports `policy_blocked` instead, as described above. A `timeout` is never
+treated as admission, and no Windows security setting needs to be changed.

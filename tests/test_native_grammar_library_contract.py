@@ -6,6 +6,7 @@ pin. "Simulated" cases substitute ``_platform_library_suffix``; they never patch
 ``sys.platform`` or ``platform.system``.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -13,6 +14,10 @@ from hashlib import sha256
 from pathlib import Path
 
 import pytest
+
+pytestmark = pytest.mark.usefixtures("native_policy_environment")
+
+from tests.native_policy import run_isolated_baml_parse, skip_policy_subprocess
 
 from chunker._internal import grammar_management, user_grammar_tools
 from chunker._internal.grammar_management import (
@@ -123,26 +128,7 @@ def _record_probes(monkeypatch):
 
 
 def _isolated_parse(library: Path) -> None:
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-I",
-            "-c",
-            "import sys; from pathlib import Path; "
-            "sys.path.insert(0, sys.argv[1]); "
-            "from chunker.grammar_management.core import load_compiled_grammar; "
-            "root = load_compiled_grammar(Path(sys.argv[2]), 'baml')"
-            ".parse(Path(sys.argv[3]).read_bytes()).root_node; "
-            "raise SystemExit(0 if root.type == 'source_file' "
-            "and not root.has_error else 3)",
-            str(ROOT),
-            str(library),
-            str(FIXTURE),
-        ],
-        check=False,
-        capture_output=True,
-        timeout=60,
-    )
+    completed = run_isolated_baml_parse(ROOT, library, FIXTURE, timeout=60)
     require(
         completed.returncode == 0,
         f"isolated BAML parse of {library}: {completed.returncode} "
@@ -151,7 +137,7 @@ def _isolated_parse(library: Path) -> None:
 
 
 def _run_cli(monkeypatch, capsys, argv, tools):
-    monkeypatch.setattr(grammar_commands, "get_grammar_tools", lambda: tools)
+    monkeypatch.setattr(grammar_commands, "get_grammar_tools", lambda *_args: tools)
     monkeypatch.setattr(sys, "argv", ["chunker", *argv])
     code = main()
     captured = capsys.readouterr()
@@ -250,7 +236,10 @@ def test_failed_native_never_falls_back_to_valid_legacy(
     )
     health = manager.diagnose_grammar_issues("baml")
     expected_status, reasons = NATIVE_FAILURES[state]
-    require(probes == [native.absolute()], f"NATIVE_ONLY_PROBED {probes!r}")
+    # A nonempty regular file whose digest differs from the pin is reported
+    # integrity_mismatch before any probe (verdict-reuse lookup order).
+    expected_probes = [] if state == "mismatch" else [native.absolute()]
+    require(probes == expected_probes, f"NATIVE_ONLY_PROBED {probes!r}")
     require(health.status != "healthy", "native failure never rescued")
     require(health.status == expected_status, f"{state}: {health.status}")
     require(health.validation_reason in reasons, f"{state}: {health!r}")
@@ -363,10 +352,8 @@ def test_enumeration_omits_invalid_language_components(tmp_path, monkeypatch, ca
     )
     require(listed["total_grammars"] == 1, f"NATIVE_ENUM_COMPONENT count {listed!r}")
     require(list(listed["grammars"]) == ["baml"], "NATIVE_ENUM_COMPONENT rows")
-    require(
-        set(probes) == {(build / "baml.so").absolute()},
-        f"NATIVE_ENUM_COMPONENT probes {probes!r}",
-    )
+    # Rule 3: the unpinned candidate is untrusted without calling the probe.
+    require(probes == [], f"NATIVE_ENUM_COMPONENT probes {probes!r}")
     require(code == 0, f"NATIVE_ENUM_COMPONENT list exit {code!r} {err!r}")
     require("baml: incompatible" in out, "NATIVE_ENUM_COMPONENT baml row")
     require("Total grammars: 1" in out, "NATIVE_ENUM_COMPONENT public count")
@@ -588,7 +575,8 @@ def test_language_component_accepts_hyphen_and_underscore(tmp_path, monkeypatch)
     tools = UserGrammarTools(build, sources)
     health = tools.manager.diagnose_grammar_issues(language)
     require(health.status == "missing", f"valid name diagnosed {health!r}")
-    require(probes == [(build / f"{language}.dll").absolute()], f"probe {probes!r}")
+    # Rule 3: a candidate that does not exist is missing without a probe.
+    require(probes == [], f"probe {probes!r}")
     (build / f"{language}.dll").write_bytes(b"native")
     (build / f"{language}.so").write_bytes(b"legacy")
     result = tools.remove_grammar(language)
@@ -732,6 +720,44 @@ def test_shadowed_legacy_copy_refused_before_install_or_changed_update(
     )
 
 
+SENTINEL_CONTROL_SCRIPT = """
+import ctypes, json, sys
+sys.path.insert(0, sys.argv[1])
+from chunker.grammar._native_policy import is_application_control_error
+try:
+    ctypes.CDLL(sys.argv[2])
+except OSError as error:
+    if type(getattr(error, "winerror", None)) is int and is_application_control_error(error):
+        print(json.dumps({"schema": "native_test.policy.v1", "winerror": error.winerror}), flush=True)
+        raise SystemExit(77)
+    raise
+"""
+
+
+def _check_sentinel_control(control, sentinel):
+    require(type(control.returncode) is int, "isolated CDLL requires actual status")
+    if control.returncode == 77:
+        require(not os.path.lexists(sentinel), "policy denial cannot create sentinel")
+        try:
+            pairs = json.loads(control.stdout, object_pairs_hook=list)
+            record = dict(pairs)
+        except (TypeError, ValueError, RecursionError):
+            require(False, "invalid policy record")
+        require(
+            isinstance(pairs, list)
+            and all(isinstance(pair, tuple) and len(pair) == 2 for pair in pairs)
+            and len(pairs) == 2
+            and set(record) == {"schema", "winerror"}
+            and record["schema"] == "native_test.policy.v1"
+            and type(record["winerror"]) is int
+            and record["winerror"] in {4551, 1260},
+            "invalid policy record",
+        )
+        skip_policy_subprocess(control)
+    require(control.returncode == 0, f"isolated CDLL control {control.stderr!r}")
+    require(sentinel.read_bytes() == b"entered", "isolated CDLL creates sentinel")
+
+
 @pytest.mark.parametrize("suffix", ["actual", ".dll"])
 def test_selection_paths_never_load_unapproved_library_in_parent(
     tmp_path, monkeypatch, sentinel_bytes, suffix
@@ -762,7 +788,8 @@ def test_selection_paths_never_load_unapproved_library_in_parent(
             sys.executable,
             "-I",
             "-c",
-            "import ctypes, sys; ctypes.CDLL(sys.argv[1])",
+            SENTINEL_CONTROL_SCRIPT,
+            str(ROOT),
             str(build / f"helper{suffix}"),
         ],
         check=False,
@@ -770,8 +797,7 @@ def test_selection_paths_never_load_unapproved_library_in_parent(
         timeout=60,
         env={**os.environ, "CHUNKER_TEST_NATIVE_SENTINEL": str(sentinel)},
     )
-    require(control.returncode == 0, f"isolated CDLL control {control.stderr!r}")
-    require(sentinel.read_bytes() == b"entered", "isolated CDLL creates sentinel")
+    _check_sentinel_control(control, sentinel)
 
 
 def test_recovery_plan_names_selected_library_without_glob(tmp_path, monkeypatch):
@@ -785,6 +811,8 @@ def test_recovery_plan_names_selected_library_without_glob(tmp_path, monkeypatch
     )
     require(not any("*" in step for step in steps), "no glob copy instruction")
     (build / "baml.so").write_bytes(b"")
+    # Rule 3: pin the language so the empty file reaches the probe's check.
+    manager.trusted_artifacts["baml"] = {"sha256": "0" * 64}
     corrupted = manager.generate_recovery_plan("baml")
     require(corrupted["current_status"] == "corrupted", f"corrupted {corrupted!r}")
     require(
@@ -817,7 +845,9 @@ def test_native_named_public_info_and_diagnose_with_approved_tool(
         require("Error" not in err, f"{command}: stderr {err!r}")
         require(code == 0, f"{command}: exit {code!r}")
         require(probes[-1] == library.absolute(), f"{command}: probe {probes!r}")
-    require(len(probes) == 2, f"one probe per command {probes!r}")
+    # The second command reuses this process's fresh admission under the
+    # frozen verdict key (same bytes, pin and inspector).
+    require(len(probes) == 1, f"one probe per process {probes!r}")
     require(library.read_bytes() == baml_bytes, "fixture unchanged")
 
 

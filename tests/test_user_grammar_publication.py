@@ -16,6 +16,10 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("native_policy_environment")
+
+from tests.native_policy import policy_aware_native_driver, skip_policy_subprocess
+
 import chunker._internal.user_grammar_tools as tools_module
 from chunker._internal.user_grammar_tools import (
     STAGED_SUFFIX,
@@ -46,6 +50,17 @@ sys.path.insert(0, str(root))
 import chunker._internal.user_grammar_tools as tools_module
 from chunker._internal.user_grammar_tools import UserGrammarTools
 from chunker.grammar_management.core import load_compiled_grammar
+
+real_probe = tools_module.probe_native_grammar
+
+def probe(*args, **kwargs):
+    result = real_probe(*args, **kwargs)
+    if result.reason == "policy_blocked":
+        print(json.dumps({"schema": "native_test.policy_result.v1", "reason": result.reason}), flush=True)
+        raise SystemExit(77)
+    return result
+
+tools_module.probe_native_grammar = probe
 
 current = {"artifact": rev_a}
 real_run = subprocess.run
@@ -178,7 +193,7 @@ def _scenario(tmp_path: Path, revisions, mode: str) -> tuple[dict, Path]:
             sys.executable,
             "-I",
             "-c",
-            CHILD,
+            policy_aware_native_driver(CHILD),
             str(ROOT),
             str(build_dir),
             str(grammars_dir),
@@ -193,18 +208,28 @@ def _scenario(tmp_path: Path, revisions, mode: str) -> tuple[dict, Path]:
         env=environment,
         check=False,
     )
+    skip_policy_subprocess(child)
     assert child.returncode == 0, (child.returncode, child.stderr[-4000:])
     return json.loads(child.stdout.strip().splitlines()[-1]), build_dir / "baml.so"
 
 
 def _fresh_load(library: Path) -> dict:
     loaded = subprocess.run(
-        [sys.executable, "-I", "-c", LOAD, str(ROOT), str(library), str(FIXTURE)],
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            policy_aware_native_driver(LOAD),
+            str(ROOT),
+            str(library),
+            str(FIXTURE),
+        ],
         capture_output=True,
         text=True,
         timeout=60,
         check=False,
     )
+    skip_policy_subprocess(loaded)
     assert loaded.returncode == 0, (loaded.returncode, loaded.stderr[-4000:])
     return json.loads(loaded.stdout)
 
@@ -220,7 +245,9 @@ def test_update_replaces_loaded_grammar_without_crash(tmp_path, revisions):
         # Windows refuses to replace a loaded library; nothing is overwritten.
         assert report["update"]["status"] == "error"
         assert "Could not publish baml.so" in report["update"]["errors"][-1]
-        assert "Windows cannot replace a library" in report["update"]["errors"][-1]
+        assert "This usually means a running process has the library loaded" in (
+            report["update"]["errors"][-1]
+        )
         assert report["installed_sha256"] == _digest(rev_a)
         assert _fresh_load(installed) == {"version": [0, 1, 0], "ok": True}
         return
@@ -361,3 +388,38 @@ def test_failed_replacement_reports_error_and_keeps_destination(tmp_path, revisi
     assert (blocker / "keep.txt").read_text(encoding="utf-8") == "kept"
     assert sorted(entry.name for entry in tools.build_dir.iterdir()) == ["baml.so"]
     assert "baml" not in tools.manager.health_cache
+
+
+@pytest.mark.parametrize(
+    ("reason", "explanation"),
+    [
+        ("missing", "the library file does not exist"),
+        ("child_failed", "the probe process failed or ended abnormally"),
+        ("inspect_failed", "the artifact inspection step failed"),
+        ("ack_missing", "the probe process returned no result"),
+        ("ack_invalid", "the probe process returned an invalid result"),
+    ],
+)
+def test_probe_failure_reasons_are_explained(
+    tmp_path, monkeypatch, reason, explanation
+):
+    """Every probe rejection reason is explained in plain English, never the
+    generic fallback (treesitter-chunker#539 carry-over)."""
+    from chunker.grammar.integrity import NativeProbeResult
+
+    tools = UserGrammarTools(
+        tmp_path / "build",
+        tmp_path / "grammars",
+        trusted_artifacts={"baml": {"sha256": "0" * 64}},
+    )
+    monkeypatch.setattr(
+        tools_module,
+        "publish_native_grammar",
+        lambda *args, **kwargs: NativeProbeResult(False, reason, None),
+    )
+    result = {"status": "success", "errors": [], "warnings": []}
+    assert tools._publish_library("baml", tmp_path / "baml.so", result) is False
+    assert result["errors"] == [
+        f"Native admission failed for baml.so: {reason} ({explanation}); the "
+        "installed library is unchanged."
+    ]

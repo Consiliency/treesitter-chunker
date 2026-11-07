@@ -12,8 +12,13 @@ Chunker returns source content, line and byte spans, and context metadata.
 
 ## Install
 
-Development and the next release require Python 3.12 or newer. CI uses 3.12,
-with installed-wheel compatibility checks on 3.14 as well.
+Development and the next release require Python 3.12 or newer. Python 3.14 is
+the main supported version: CI and release validation run on it. Linux platform
+checks and installed-wheel checks keep covering 3.12.
+
+> **Deprecation:** Python 3.12 support ends at the next major release (7.0).
+> Plan to move to Python 3.14 (treesitter-chunker#599).
+
 Published 6.0.0 retains Python 3.11 support.
 The main package is a universal Python wheel.
 

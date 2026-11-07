@@ -106,7 +106,7 @@ class CallReferenceGuard(unittest.TestCase):
         self.assertEqual(len(new), 1)
         self.assert_unresolved_raw(new[0], reference, path.read_bytes())
 
-    def test_python_higher_order_call_coverage_limit_is_explicit(self):
+    def test_python_higher_order_outer_call_stays_unresolved(self):
         reference = "getattr(obj, 'audit')"
         path = self.file(
             "def audit():\n    return 1\n\ndef caller():\n    return "
@@ -114,10 +114,17 @@ class CallReferenceGuard(unittest.TestCase):
             + "()\n",
             "py",
         )
-        graph = candidate.extract_symbol_graph(path, "python", fail_fast=True)
-        # An observed pre-existing emission limit, not a repaired outer call.
-        self.assertEqual(calls(graph, reference), [])
-        self.assertEqual([row["reference"] for row in calls(graph)], ["getattr"])
+        for mode in ("permissive", "strict"):
+            graph = candidate.extract_symbol_graph(
+                path, "python", resolution_mode=mode, fail_fast=True
+            )
+            # The outer call is its own unresolved site (treesitter-chunker#516).
+            outer = calls(graph, reference)
+            self.assertEqual(len(outer), 1)
+            self.assert_unresolved_raw(outer[0], reference, path.read_bytes())
+            self.assertEqual(
+                [row["reference"] for row in calls(graph)], ["getattr", reference]
+            )
 
     def test_simple_qualified_formatted_optional_and_self_calls_are_preserved(self):
         references = ["audit", "ns.audit", "ns . audit", "ns?.audit", "audit"]

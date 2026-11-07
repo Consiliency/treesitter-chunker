@@ -14,8 +14,19 @@
 - Release tags must use the form `vX.Y.Z`
 - The tag version must exactly match `pyproject.toml`
 - The release workflow must fail before publish if that version already exists on PyPI
-- Build and publication depend on full source validation on Python 3.12, the
-  supported floor (`requires-python = ">=3.12"`)
+- Build and publication depend on full source validation (lint, format, type
+  gate, governed-tools type check and the full test tier) on CPython 3.14, the
+  main version. The scheduled CI full tier, push and pull-request CI, and the
+  distribution build also run on 3.14 (maintainer decision, 2026-11-01;
+  treesitter-chunker#502)
+- The supported minimum stays 3.12 (`requires-python = ">=3.12"`) until the next
+  major release (7.0) drops it (treesitter-chunker#599). Until then, 3.12 keeps
+  only two main-package checks: the Linux platform-core job and the
+  installed-wheel acceptance below. The BAML companion's `source` and `wheel`
+  jobs (`baml-grammar-wheels.yml`) also run on 3.12, its own minimum
+- The locked environment installs from wheels on CPython 3.12 and 3.14; no
+  host compiler, libffi or Rust toolchain is needed for
+  `uv sync --locked --all-extras --python 3.14`
 - The built wheel must pass a fresh installation with hashed locked runtime requirements
 - CPython 3.12 and 3.14 release acceptance downloads only wheels for the complete
   locked runtime closure, installs those wheels with hashes, and checks the installed

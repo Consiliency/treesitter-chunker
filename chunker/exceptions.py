@@ -41,12 +41,16 @@ class BamlExtraRequiredError(LanguageError):
 class LanguageNotFoundError(LanguageError):
     """Raised when requested language is not available."""
 
-    def __init__(self, language: str, available: list[str]):
+    def __init__(self, language: str, available: list[str], cause: str | None = None):
         message = f"Language '{language}' not found"
         if available:
             message += f". Available languages: {', '.join(sorted(available))}"
         else:
             message += ". No languages available (check library compilation)"
+        if cause:
+            # For example local candidates that lacked a pin, or a defective
+            # user-config pin file (native validation contract).
+            message += f"\n\n{cause}"
 
         # Add user guidance for common scenarios
         guidance = self._get_user_guidance(language, available)
@@ -56,6 +60,7 @@ class LanguageNotFoundError(LanguageError):
         super().__init__(message, {"requested": language, "available": available})
         self.language = language
         self.available = available
+        self.cause = cause
 
     def _get_user_guidance(self, language: str, available: list[str]) -> str:
         """Provide user guidance based on the error context.
@@ -469,6 +474,24 @@ class NonRegularFileError(ChunkerError):
         return (type(self), (self.path, self.kind))
 
 
+class TrustedArtifactsError(ChunkerError):
+    """Raised when a native-grammar pin file is missing, unreadable or defective.
+
+    A defective pin file grants no local trust: nothing in it is used. The
+    parse path continues without pins (package-supplied grammars keep working)
+    and grammar commands exit 2. See the native validation contract.
+    """
+
+    def __init__(self, path: str | Path, defect: str):
+        message = f"Trusted artifacts file {path}: {defect}"
+        super().__init__(message)
+        self.path = str(path)
+        self.defect = defect
+
+    def __reduce__(self) -> tuple[type[TrustedArtifactsError], tuple[str, str]]:
+        return (type(self), (self.path, self.defect))
+
+
 __all__ = [
     "ChunkerError",
     "ConfigurationError",
@@ -483,4 +506,5 @@ __all__ = [
     "ParserError",
     "ParserInitError",
     "ParsingError",
+    "TrustedArtifactsError",
 ]
