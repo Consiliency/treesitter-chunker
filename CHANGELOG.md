@@ -203,7 +203,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `GrammarManager.remove_grammar` read and remove the artifact and metadata in
   one locked section, so a removal waits for an install still committing and
   removes metadata whose library is missing; removal refuses recorded paths
-  outside `<cache_dir>/grammars`. Removed and restored files are retired into
+  outside `<cache_dir>/grammars`, and a non-regular file at the library path.
+  For a language with no installation, `GrammarManager.remove_grammar` now
+  returns the installer's "Grammar <language> is not installed" instead of
+  "Grammar for <language> not found". Removed and restored files are retired into
   a hidden `.txn-retired/` folder beside them before deletion, so a separately
   mounted `grammars/` keeps working. `GrammarDownloadManager.clean_cache`,
   whose default folder is that same `grammars/`, skips the hidden `.txn*`

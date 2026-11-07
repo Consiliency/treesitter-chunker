@@ -1255,7 +1255,15 @@ class GrammarInstaller:
         # recorded and intended digests use hashlib's lower-case form.
         artifact_sha256 = str(pin["sha256"]).lower()
         document = self._installation_document(info, artifact_sha256)
-        previous = _transactions.read_installation_metadata(root, language)
+        try:
+            previous = _transactions.read_installation_metadata(root, language)
+        except (_transactions.CacheLockTimeoutError, _transactions.ContainmentError):
+            raise
+        except _transactions.CacheTransactionError as error:
+            # Undecodable metadata names no install path to check. The capture
+            # keeps its bytes, so a restore returns them unchanged.
+            logger.warning(f"Replacing unreadable metadata for {language}: {error}")
+            previous = None
         if previous is not None and isinstance(previous.get("install_path"), str):
             # Recorded metadata outside grammars/ refuses the install here.
             _transactions._grammar_parts(root, Path(previous["install_path"]))
@@ -1295,7 +1303,20 @@ class GrammarInstaller:
                 except Exception as error:
                     logger.warning(f"Cache invalidation failed for {language}: {error}")
             else:
-                outcome = self._perform_rollback(point, pin)
+                try:
+                    outcome = self._perform_rollback(point, pin)
+                except Exception as error:  # keep the original failure
+                    outcome = _transactions.RestoreResult(
+                        restored=False,
+                        artifact_restored=False,
+                        metadata_restored=False,
+                        superseded=False,
+                        errors=(
+                            f"restore raised {type(error).__name__}: {error}; "
+                            f"rollback point retained: {point.path}",
+                        ),
+                        warnings=(),
+                    )
         if interrupted is not None:
             raise interrupted
         if failure is not None:
@@ -1384,16 +1405,23 @@ class GrammarInstaller:
         return None
 
     def _save_installation_info(self, language: str, info: InstallationInfo):
-        """Publish installation metadata (locked, no-follow, atomic replace)."""
+        """Publish installation metadata (locked, no-follow, atomic replace).
+
+        Any ``install_path`` is recorded, as before (treesitter-chunker#134
+        records libraries in user and package directories). Only a library
+        under ``grammars/`` gets an ``artifact_sha256``; installing over, or
+        removing, a record outside ``grammars/`` is still refused.
+        """
         try:
-            parts = _transactions._grammar_parts(
-                self._base_cache_dir, Path(info.install_path)
-            )
+            path = Path(info.install_path)
             artifact_sha256 = None
-            if Path(info.install_path).is_file() and len(parts) > 1:
-                artifact_sha256 = hashlib.sha256(
-                    Path(info.install_path).read_bytes()
-                ).hexdigest()
+            try:
+                _transactions._grammar_parts(self._base_cache_dir, path)
+            except _transactions.ContainmentError:
+                pass
+            else:
+                if path.is_file():
+                    artifact_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
             _transactions.publish_installation_metadata(
                 self._base_cache_dir,
                 language,

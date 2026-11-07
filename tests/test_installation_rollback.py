@@ -505,6 +505,86 @@ def test_installer_restore_never_uses_rollback_digest_as_provenance(tmp_path, sh
     _require_restored_a(cache, digest_a, digest_b)
 
 
+RESTORE_RAISES = (
+    PINS
+    + r"""
+from pathlib import Path
+from chunker._internal import user_grammar_tools
+from chunker.grammar_management.core import GrammarInstaller
+fault = ARGS[1]
+
+
+def publish(*args, **kwargs):
+    if fault == "interrupt":
+        raise KeyboardInterrupt
+    raise OSError("injected publication failure")
+
+
+def restore(*args, **kwargs):
+    raise OSError("injected restore failure")
+
+
+user_grammar_tools.publish_native_grammar = publish
+_transactions.restore = restore
+installer = GrammarInstaller(cache_dir=Path(ARGS[0]), trusted_artifacts=pins)
+emit("ready")
+wait()
+try:
+    ok, error, _ = installer.install_grammar("baml", "https://github.com/example/tree-sitter-baml")
+except KeyboardInterrupt:
+    emit("done", interrupted=True, success=False, error=None)
+else:
+    emit("done", interrupted=False, success=ok, error=error)
+"""
+)
+
+
+@POSIX_SHIM
+@pytest.mark.parametrize("fault", ["oserror", "interrupt"])
+def test_raising_restore_keeps_the_original_failure(tmp_path, shim, fault):
+    """A restore that raises is reported with the commit's own failure.
+
+    The point is retained for the operator, and a ``KeyboardInterrupt`` from
+    the commit is still re-raised. Mutation ``unguarded_restore`` lets the
+    restore's exception replace both.
+    """
+    cache = tmp_path / "cache"
+    child = Child(
+        RESTORE_RAISES, [cache, fault], env=_env(shim, _repo(tmp_path / "repo"))
+    )
+    try:
+        child.expect("ready")
+        child.release()
+        done = child.finish()
+    finally:
+        child.close()
+    if fault == "interrupt":
+        assert done["interrupted"], done
+    else:
+        assert not done["interrupted"] and not done["success"]
+        assert "OSError: injected publication failure" in done["error"], done
+        assert "restore raised OSError: injected restore failure" in done["error"]
+        assert "Restore incomplete" in done["error"]
+    assert len(_rollback_points(cache)) == 1
+
+
+@POSIX_SHIM
+def test_unreadable_previous_metadata_does_not_block_install(tmp_path, shim):
+    """Truncated metadata (the old writer was not atomic) is replaced on install.
+
+    Mutation ``strict_previous_metadata`` fails every install of the language.
+    """
+    cache = tmp_path / "cache"
+    (cache / "grammars").mkdir(parents=True)
+    (cache / "grammars" / "baml_install_info.json").write_bytes(b'{"version": ')
+    repo = _repo(tmp_path / "repo")
+    done = _install(cache, _env(shim, repo))
+    assert done["success"], done
+    assert json.loads(_pair(cache)[1])["artifact_sha256"] == _fixture_digest(repo)
+    assert _pair(cache)[0] == _fixture_digest(repo)
+    assert _rollback_points(cache) == []
+
+
 @POSIX_SHIM
 def test_upper_case_pin_records_lower_case_digest(tmp_path, shim, caplog):
     """An upper-case pin is admitted; metadata and capture use hashlib's form.
@@ -912,6 +992,55 @@ def test_metadata_without_artifact_is_removed(tmp_path, consumer):
     assert _pair(cache) == (None, None)
 
 
+@pytest.mark.parametrize("kind", ["directory", "symlink"])
+def test_removal_refuses_a_non_regular_artifact(tmp_path, kind):
+    """Containment rule 2: only a regular file is removed at the artifact name.
+
+    A directory (or a link) at ``grammars/libbaml.so`` makes removal fail with
+    nothing moved: the directory's files, the link's target and the metadata
+    are all kept. Mutation ``retire_any_artifact`` (retire whatever is there)
+    deletes the directory tree and the metadata.
+    """
+    cache = tmp_path / "cache"
+    installer = GrammarInstaller(cache_dir=cache, trusted_artifacts={})
+    artifact = cache / "grammars" / "libbaml.so"
+    outside = tmp_path / "outside.so"
+    outside.write_bytes(b"keep")
+    if kind == "directory":
+        artifact.mkdir()
+        (artifact / "kept.txt").write_bytes(b"keep")
+    else:
+        try:
+            artifact.symlink_to(outside)
+        except OSError as error:
+            pytest.skip(f"symlinks unavailable: {error}")
+    _transactions.publish_installation_metadata(
+        cache,
+        "baml",
+        {
+            "version": "latest",
+            "install_date": 0,
+            "install_path": str(artifact),
+            "source_url": URL,
+            "source_commit": None,
+            "priority": "USER",
+            "dependencies": [],
+            "metadata": {},
+        },
+    )
+    metadata = _pair(cache)[1]
+    ok, error = installer.remove_grammar("baml")
+    assert not ok and "is not a regular file; nothing was removed" in error, error
+    assert _pair(cache)[1] == metadata
+    if kind == "directory":
+        assert (artifact / "kept.txt").read_bytes() == b"keep"
+    else:
+        assert artifact.is_symlink() and outside.read_bytes() == b"keep"
+    with pytest.raises(_transactions.ContainmentError):
+        _transactions.remove_installation(cache, "baml")
+    assert _pair(cache)[1] == metadata
+
+
 SPLIT_GRAMMARS = r"""
 import json, sys
 from hashlib import sha256
@@ -1193,9 +1322,11 @@ def test_windows_installer_failed_update_restores_previous_pair(tmp_path, failur
     Builds run through the installer's own gcc builder (MinGW, deterministic
     PE flags through the wrapper), and the pins are independent builds with
     the same command, flags and output basename. Before the fault, the staged
-    build must equal B's pin. The failed update then restores A's pair; the
-    installing process held no handle on the destination, so the restore's
-    ``os.replace`` was not refused.
+    build must equal B's pin. The failed update then restores A's pair. The
+    destination library is never displaced here (the restore returns only the
+    metadata); handle release for the library is shown by
+    ``test_restore_with_previous_pin_returns_both_files`` and
+    ``test_restore_refused_while_another_process_has_the_library_loaded``.
     """
     shim_dir, real_gcc = _windows_shim(tmp_path)
     cache = tmp_path / "cache"
@@ -1228,8 +1359,10 @@ def test_windows_installer_failed_update_restores_previous_pair(tmp_path, failur
         children.append(child)
         child.expect("ready")
         child.release()
-        child.expect("lock.before_acquire", primitive="cache_lock", section="commit")
+        # A policy-blocked validation probe ends the install before the commit.
+        reached = child.expect_any("lock.before_acquire", "done")
         _skip_on_policy_probe(child)
+        assert reached["event"] == "lock.before_acquire", reached
         (staged,) = (cache / "builds" / ".txn-staging").glob("*/baml/libbaml.so")
         assert _sha(staged) == digest_b, "the Windows build is not reproducible"
         _damage_staged(cache, failure)

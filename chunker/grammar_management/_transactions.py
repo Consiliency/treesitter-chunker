@@ -1925,15 +1925,16 @@ def _copy_into(source: _Dir, name: str, target: _Dir, target_name: str) -> str |
     except FileNotFoundError:
         return None
     digest = hashlib.sha256()
-    write_fd = target.open_file(
-        target_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | _BINARY, 0o600
-    )
-    with os.fdopen(read_fd, "rb") as reader, os.fdopen(write_fd, "wb") as writer:
-        for chunk in iter(lambda: reader.read(1 << 20), b""):
-            digest.update(chunk)
-            writer.write(chunk)
-        writer.flush()
-        os.fsync(writer.fileno())
+    with os.fdopen(read_fd, "rb") as reader:  # owns read_fd even if the next open fails
+        write_fd = target.open_file(
+            target_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | _BINARY, 0o600
+        )
+        with os.fdopen(write_fd, "wb") as writer:
+            for chunk in iter(lambda: reader.read(1 << 20), b""):
+                digest.update(chunk)
+                writer.write(chunk)
+            writer.flush()
+            os.fsync(writer.fileno())
     return digest.hexdigest()
 
 
@@ -2348,7 +2349,15 @@ def remove_installation(
             artifact_dir = _grammar_dir(rootdir, parts[1:-1], create=False)
             if artifact_dir is not None:
                 with artifact_dir:
-                    if artifact_dir.lstat(parts[-1]) is not None:
+                    st = artifact_dir.lstat(parts[-1])
+                    if st is not None:
+                        # A protected artifact name holds only a regular file;
+                        # anything else is refused before either file moves.
+                        if _is_link(st) or not stat.S_ISREG(st.st_mode):
+                            raise ContainmentError(
+                                f"{artifact_dir.path / parts[-1]} is not a regular "
+                                "file; nothing was removed"
+                            )
                         _retire(artifact_dir, parts[-1], operation_id)
                         removed = 1
             # Each file is retired beside itself (amendment A1).

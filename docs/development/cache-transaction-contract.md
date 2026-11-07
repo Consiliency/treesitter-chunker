@@ -648,7 +648,11 @@ No previous approval is ever derived from a rollback digest.
 A previous installation at a different priority path is never touched; the
 restored metadata points back to it. If recorded metadata points outside
 `grammars/`, the install fails before the commit section with
-`ContainmentError`.
+`ContainmentError`. Metadata that cannot be decoded names no path: the install
+logs a warning, captures its bytes like any previous metadata, and replaces it.
+`_save_installation_info` still records any `install_path` (treesitter-chunker#134
+records user and package directories); only a library under `grammars/` gets an
+`artifact_sha256`.
 
 **Metadata format.** The metadata keeps today's fields and adds
 `"artifact_sha256"`, the pin record's `sha256` in lower case. That is the
@@ -831,7 +835,10 @@ a real Windows run.
 one lock section it:
 
 1. reads the metadata no-follow;
-2. requires the recorded `install_path` to lie under `grammars/`;
+2. requires the recorded `install_path` to lie under `grammars/`, and the
+   artifact name to hold a regular file or nothing (containment rule 2); a
+   directory, link or other non-regular file raises `ContainmentError` and
+   neither file is moved;
 3. retires the artifact, then the metadata, each into `.txn-retired/<operation-id>/`
    in its own directory (`grammars/` or `grammars/<priority>/`);
 4. deletes them outside the lock.
