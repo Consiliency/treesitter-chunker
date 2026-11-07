@@ -1170,8 +1170,11 @@ WINDOWS_TOOLCHAIN = pytest.mark.skipif(
     sys.platform != "win32" or shutil.which("gcc") is None,
     reason="the Windows installer fixture needs MinGW gcc on PATH",
 )
-#: MinGW ld otherwise writes the link time into the PE header.
-PE_LINK_FLAGS = ["-Wl,--no-insert-timestamp"]
+#: Without these, MinGW ld writes the link time into the PE header and picks
+#: the DLL's ImageBase from a hash of its output path, so the installer's
+#: staging build and the independent pin build could never match. The gcc shim
+#: passes the same flags to every installer build.
+PE_LINK_FLAGS = ["-Wl,--no-insert-timestamp", "-Wl,--disable-auto-image-base"]
 
 #: A console launcher: runs ``<its name>.cmdline`` (UTF-16-LE) followed by its
 #: own arguments, verbatim, with inherited standard handles, and returns the
