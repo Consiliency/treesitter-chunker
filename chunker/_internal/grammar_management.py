@@ -9,6 +9,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from chunker._internal.native_admission import admit_native_candidate
+from chunker._internal.trusted_artifacts import copy_trusted_artifacts
 from chunker.grammar.integrity import probe_native_grammar
 
 
@@ -87,11 +89,7 @@ class SmartGrammarManager:
         """
         self.build_dir = Path(build_dir)
         self.grammars_dir = Path(grammars_dir)
-        self.trusted_artifacts = {
-            language: dict(provenance)
-            for language, provenance in (trusted_artifacts or {}).items()
-            if isinstance(provenance, Mapping)
-        }
+        self.trusted_artifacts = copy_trusted_artifacts(trusted_artifacts)
         self.health_cache: dict[str, GrammarHealth] = {}
         self.compatibility_cache: dict[str, GrammarCompatibility] = {}
         self.library_suffix = _platform_library_suffix()
@@ -140,16 +138,19 @@ class SmartGrammarManager:
 
         selected = self._library_path(language)
         so_file = selected.absolute()
-        snapshot_metadata = {}
 
-        def inspect(snapshot: Path) -> None:
-            snapshot_metadata["file_size"] = snapshot.stat().st_size
+        def inspect(snapshot: Path) -> dict[str, int]:
+            return {"file_size": snapshot.stat().st_size}
 
-        probe = probe_native_grammar(
+        # Rule 3: only a fresh one-field record reaches the probe; a language
+        # without a str pin is untrusted without opening the candidate.
+        probe, snapshot_metadata = admit_native_candidate(
             so_file,
             language,
-            provenance=self.trusted_artifacts.get(language),
+            self.trusted_artifacts,
+            inspector="smart_grammar_manager.v1",
             inspect_artifact=inspect,
+            probe=probe_native_grammar,
         )
         health.validation_reason = probe.reason
         health.artifact_sha256 = probe.artifact_sha256

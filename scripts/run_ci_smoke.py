@@ -31,6 +31,7 @@ CI_SMOKE_TESTS = [
     "tests/test_public_grammar_cli.py",
     "tests/test_public_grammar_config.py",
     "tests/test_grammar_info_exit_contract.py",
+    "tests/test_trusted_artifacts_contract.py",
     "tests/test_grammar_candidate_compatibility.py",
     "tests/test_grammar_candidate_attribution.py",
     "tests/test_grammar_compatibility_contract.py",
