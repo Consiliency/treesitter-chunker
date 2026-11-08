@@ -1423,23 +1423,27 @@ class GrammarInstaller:
         Any ``install_path`` is recorded, as before (treesitter-chunker#134
         records libraries in user and package directories). Only a library
         under ``grammars/`` gets an ``artifact_sha256``; installing over, or
-        removing, a record outside ``grammars/`` is still refused.
+        removing, a record outside ``grammars/`` is still refused. The digest
+        is taken in the same lock section that writes the metadata, so no
+        participant can replace the library in between
+        (treesitter-chunker#618).
         """
         try:
             path = Path(info.install_path)
-            artifact_sha256 = None
-            try:
-                _transactions._grammar_parts(self._base_cache_dir, path)
-            except _transactions.ContainmentError:
-                pass
-            else:
-                if path.is_file():
-                    artifact_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
-            _transactions.publish_installation_metadata(
-                self._base_cache_dir,
-                language,
-                self._installation_document(info, artifact_sha256),
-            )
+            with _transactions.cache_lock(self._base_cache_dir):
+                artifact_sha256 = None
+                try:
+                    _transactions._grammar_parts(self._base_cache_dir, path)
+                except _transactions.ContainmentError:
+                    pass
+                else:
+                    if path.is_file():
+                        artifact_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+                _transactions.publish_installation_metadata(
+                    self._base_cache_dir,
+                    language,
+                    self._installation_document(info, artifact_sha256),
+                )
         except Exception as e:
             logger.warning(f"Failed to save installation info: {e}")
 

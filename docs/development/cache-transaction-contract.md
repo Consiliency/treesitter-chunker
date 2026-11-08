@@ -655,7 +655,9 @@ logs a warning, captures its bytes like any previous metadata, and replaces it.
 install replaces it.
 `_save_installation_info` still records any `install_path` (treesitter-chunker#134
 records user and package directories); only a library under `grammars/` gets an
-`artifact_sha256`.
+`artifact_sha256`. It hashes that library in the same lock section that
+publishes the metadata, so no participant can replace the library between the
+hash and the write (treesitter-chunker#618).
 
 **Metadata format.** The metadata keeps today's fields and adds
 `"artifact_sha256"`, the pin record's `sha256` in lower case. That is the

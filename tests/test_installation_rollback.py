@@ -1164,6 +1164,58 @@ def test_download_cache_cleanup_keeps_retired_grammars_folder(tmp_path):
     assert (retired / "libold.so").read_bytes() == b"r"
 
 
+# --- follow-ups: treesitter-chunker#618, #619, #620 -----------------------------
+
+SAVE_INFO = r"""
+from pathlib import Path
+from chunker.grammar_management.core import GrammarInstaller, InstallationInfo
+cache = Path(ARGS[0])
+library = cache / "grammars" / "libbaml.so"
+installer = GrammarInstaller(cache_dir=cache, trusted_artifacts={})
+emit("ready")
+wait()
+# Pause at the save's first lock attempt, after construction's own sections.
+PAUSES.append({"point": "lock.before_acquire", "match": {}})
+installer._save_installation_info(
+    "baml",
+    InstallationInfo(version="a", install_date=0, install_path=library,
+                     source_url="https://github.com/example/tree-sitter-baml"),
+)
+emit("done")
+"""
+
+
+def test_saved_metadata_digest_is_hashed_under_the_lock(tmp_path):
+    """treesitter-chunker#618: the recorded digest describes the published library.
+
+    ``_save_installation_info`` pauses at its first lock attempt; a
+    participant then replaces the library under the lock. The digest is taken
+    inside the section that writes the metadata, so it names the library on
+    disk when the metadata is published. Mutation ``hash_outside_lock``
+    (hash before taking the lock) records the replaced bytes' digest.
+    """
+    cache = tmp_path / "cache"
+    library = cache / "grammars" / "libbaml.so"
+    library.parent.mkdir(parents=True)
+    library.write_bytes(b"revision a")
+    child = Child(SAVE_INFO, [cache])
+    try:
+        child.expect("ready")
+        child.release()
+        child.expect("lock.before_acquire")
+        with _transactions.cache_lock(cache):
+            staged = library.with_name("libbaml.so.replacement")
+            staged.write_bytes(b"revision b")
+            staged.replace(library)
+        child.release()
+        child.finish()
+    finally:
+        child.close()
+    metadata = json.loads(_pair(cache)[1])
+    assert metadata["artifact_sha256"] == sha256(b"revision b").hexdigest()
+    assert _sha(library) == metadata["artifact_sha256"]
+
+
 # --- Windows: a real installer failed update ------------------------------------
 
 WINDOWS_TOOLCHAIN = pytest.mark.skipif(

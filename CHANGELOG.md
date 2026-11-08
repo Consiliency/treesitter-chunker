@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `GrammarInstaller._save_installation_info` now hashes the grammar library in
+  the same locked section that writes its metadata, so the recorded
+  `artifact_sha256` always describes the library on disk when the metadata is
+  published (treesitter-chunker#618).
 - Keep grammar subcommand help available with defective or missing pin files,
   while validating pins before command work (treesitter-chunker#562).
 - Discard the affected native admission verdict and private copy when registry
