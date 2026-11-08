@@ -1297,15 +1297,21 @@ class GrammarInstaller:
                 try:
                     outcome = self._perform_rollback(point, pin)
                 except Exception as error:  # keep the original failure
+                    detail = f"restore raised {type(error).__name__}: {error}"
+                    if str(point.path) not in detail:
+                        detail += f"; rollback point retained: {point.path}"
+                    if isinstance(error, _transactions.ContainmentError):
+                        rerun = self._install_call(language, info)
+                        detail = (
+                            f"{detail.rstrip('.')}. Once both installation paths "
+                            f"are regular files or absent, re-run {rerun}"
+                        )
                     outcome = _transactions.RestoreResult(
                         restored=False,
                         artifact_restored=False,
                         metadata_restored=False,
                         superseded=False,
-                        errors=(
-                            f"restore raised {type(error).__name__}: {error}; "
-                            f"rollback point retained: {point.path}",
-                        ),
+                        errors=(detail,),
                         warnings=(),
                     )
         if interrupted is not None:
@@ -1327,6 +1333,14 @@ class GrammarInstaller:
                 f"({error})"
             )
         return True, None
+
+    @staticmethod
+    def _install_call(language: str, info: InstallationInfo) -> str:
+        """The ``install_grammar`` call that repeats this install."""
+        arguments = [repr(language), repr(info.source_url)]
+        if info.version != "latest":
+            arguments.append(repr(info.version))
+        return f"install_grammar({', '.join(arguments)})"
 
     def _check_previous_metadata(self, language: str) -> None:
         """Refuse an install over recorded metadata outside ``grammars/``.

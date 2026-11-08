@@ -2223,6 +2223,37 @@ def _observe(rootdir: _Dir, point: RollbackPoint) -> tuple[str | None, str | Non
                 directory.close()
 
 
+def _refuse_linked_installation(rootdir: _Dir, point: RollbackPoint) -> None:
+    """Refuse a link or other non-regular file at an installation name.
+
+    Containment rule 2: restore never follows or replaces it. The error names
+    each such path and the operator's next steps (treesitter-chunker#620).
+    """
+    parts = _grammar_parts(point.root, point.artifact)
+    found: list[Path] = []
+    for subdirs, name in ((parts[1:-1], parts[-1]), ((), point.metadata.name)):
+        directory = _grammar_dir(rootdir, subdirs, create=False)
+        if directory is None:
+            continue
+        with directory:
+            st = directory.lstat(name)
+            if st is not None and (_is_link(st) or not stat.S_ISREG(st.st_mode)):
+                found.append(directory.path / name)
+    if not found:
+        return
+    paths = " and ".join(str(path) for path in found)
+    each = "it is" if len(found) == 1 else "each is"
+    raise ContainmentError(
+        f"Restore refused {paths}: {each} a link or other non-regular file, "
+        "which restore never follows or replaces, so neither installation file "
+        f"was touched. Rollback point retained: {point.path}. To recover, with "
+        f"no grammar command running: delete {paths} (a link's target is left "
+        f"unchanged), then finish from {point.path / ROLLBACK_MANIFEST_NAME} "
+        "with the procedure for a retained rollback point in "
+        "docs/development/cache-transaction-contract.md."
+    )
+
+
 def restore(
     point: RollbackPoint,
     *,
@@ -2259,6 +2290,7 @@ def restore(
             rootdir, CONTROL_DIR_NAME, "rollback", point.operation_id
         )
         with point_dir:
+            _refuse_linked_installation(rootdir, point)
             ac, mc = _observe(rootdir, point)
             if (ac, mc) == (ap, mp):
                 artifact_restored = metadata_restored = True
@@ -2284,6 +2316,7 @@ def restore(
                 else:
                     ctx.seam("restore.before_artifact")
                     # Observe again: a non-participant may have changed the pair.
+                    _refuse_linked_installation(rootdir, point)
                     if _observe(rootdir, point) != (ac, mc):
                         superseded = True
                     else:

@@ -830,6 +830,18 @@ verified restore removes the rollback point.
 Restore never falls back to an unadmitted artifact replacement, and never
 uses a rollback digest as `provenance`.
 
+**Links at installation paths.** Before it observes the pair, and again after
+`restore.before_artifact`, restore `lstat`s the artifact and metadata names. A
+link or other non-regular file at either raises `ContainmentError`
+(containment rule 2): restore never follows it, never replaces it with the
+restored file, and touches neither file, so the point is retained. Replacing
+the link under the lock was rejected: a link there is a change by a
+non-participant, which the restore table leaves to the operator. The message
+names each such path to delete (a link's target is left unchanged), the
+retained `rollback.json` to finish from with the
+[operator procedure](#crash-states-and-operator-recovery), and the installer
+appends the `install_grammar(...)` call to re-run (treesitter-chunker#620).
+
 **Windows.** IF-0-HOTFIX-1 raises `OSError` when Windows refuses to replace a
 library that a process has loaded, and the destination is then unchanged.
 Restore does not retry that call, because each attempt re-runs the probe. A
@@ -967,7 +979,9 @@ A crash can leave:
 **Procedure for a retained rollback point.**
 
 1. Make sure no `grammar` command or other participating process is running
-   on this root.
+   on this root. If the restore refused a link or other non-regular file at
+   `artifact.path` or `metadata.path`, delete that entry first (only the link;
+   its target is not part of the installation) and treat the path as absent.
 2. Read `rollback.json`. Compute the SHA-256 of the current
    `artifact.path` and `metadata.path`.
 3. If the artifact equals `artifact.previous_sha256` (or both are absent),

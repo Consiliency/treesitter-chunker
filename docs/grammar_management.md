@@ -790,10 +790,13 @@ including `artifact_sha256`), then replaces the library through the staged,
 admitted publication used by the user-grammar tools. A failed update restores the
 previous library and metadata together and reports whether the restore completed;
 if it could not, the message names the retained rollback directory, whose
-`rollback.json` describes how to finish by hand. While only the new revision is
-pinned, the restored previous library fails admission (`integrity_mismatch`) and
-health reports it as `incompatible`; return the pin to the previous revision, or
-retry the update, to use it again.
+`rollback.json` describes how to finish by hand. If the library or metadata path
+holds a link or other non-regular file, the restore refuses it without following
+or replacing it, and the message names the path to delete, the `rollback.json` to
+finish from, and the `install_grammar(...)` call to re-run. While only the new
+revision is pinned, the restored previous library fails admission
+(`integrity_mismatch`) and health reports it as `incompatible`; return the pin
+to the previous revision, or retry the update, to use it again.
 
 The separate Python `GrammarManager.remove_grammar(language, clean_cache=False)`
 option retains that language's download and build cache while removing its

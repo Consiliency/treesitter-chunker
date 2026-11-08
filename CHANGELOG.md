@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   copying the previous library, now removes its incomplete
   `.txn/rollback/<operation-id>/` folder instead of leaving it behind
   (treesitter-chunker#619).
+- When a grammar's library or metadata path is a link or other non-regular
+  file, rollback recovery still refuses to follow or replace it, but the error
+  now names the path to delete, the retained `rollback.json` to finish from,
+  and, from `install_grammar`, the call to re-run (treesitter-chunker#620).
 - Keep grammar subcommand help available with defective or missing pin files,
   while validating pins before command work (treesitter-chunker#562).
 - Discard the affected native admission verdict and private copy when registry

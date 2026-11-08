@@ -1278,6 +1278,112 @@ def test_capture_io_error_leaves_no_partial_rollback_folder(tmp_path):
     assert json.loads(_pair(cache)[1])["version"] == "a"
 
 
+def _metadata_link(cache: Path, tmp_path: Path) -> tuple[Path, Path]:
+    """A non-participant swaps the metadata for a link to an outside sentinel."""
+    sentinel = tmp_path / "outside.json"
+    sentinel.write_bytes(b"sentinel")
+    metadata = cache / "grammars" / "baml_install_info.json"
+    metadata.unlink()
+    try:
+        metadata.symlink_to(sentinel)
+    except OSError as error:
+        pytest.skip(f"symlinks unavailable: {error}")
+    return metadata, sentinel
+
+
+def test_restore_refuses_linked_metadata_with_recovery_steps(tmp_path, revisions):
+    """treesitter-chunker#620: a linked metadata file is refused, actionably.
+
+    Containment rule 2 keeps the refusal: restore never follows or replaces
+    the link, and neither file is touched. The error names the link to
+    delete, the retained ``rollback.json`` to finish from, and says the
+    link's target is left alone. Mutation ``bare_link_refusal`` (drop the
+    up-front check) raises only "Refusing to follow link".
+    """
+    rev_a, rev_b = revisions
+    cache = tmp_path / "cache"
+    point, _, pair_b = _published_pair(cache, rev_a, rev_b)
+    metadata, sentinel = _metadata_link(cache, tmp_path)
+    with pytest.raises(_transactions.ContainmentError) as raised:
+        _transactions.restore(point, provenance=_pin(rev_a), invalidate=lambda _: None)
+    message = str(raised.value)
+    assert f"delete {point.metadata}" in message, message
+    assert str(point.path / "rollback.json") in message
+    assert "neither installation file was touched" in message
+    assert metadata.is_symlink() and sentinel.read_bytes() == b"sentinel"
+    assert _sha(point.artifact) == pair_b[0]
+    assert (point.path / "rollback.json").is_file()
+
+
+LINK_DURING_COMMIT = (
+    PINS
+    + r"""
+import os
+from pathlib import Path
+from chunker._internal import user_grammar_tools
+from chunker.grammar_management.core import GrammarInstaller
+cache, sentinel = Path(ARGS[0]), Path(ARGS[1])
+
+
+def publish(*args, **kwargs):
+    # A non-participant swaps the published metadata for a link mid-commit.
+    metadata = cache / "grammars" / "baml_install_info.json"
+    metadata.unlink()
+    os.symlink(sentinel, metadata)
+    raise OSError("injected publication failure")
+
+
+user_grammar_tools.publish_native_grammar = publish
+installer = GrammarInstaller(cache_dir=cache, trusted_artifacts=pins)
+emit("ready")
+wait()
+ok, error, _ = installer.install_grammar(
+    "baml", "https://github.com/example/tree-sitter-baml", "v2"
+)
+emit("done", success=ok, error=error)
+"""
+)
+
+
+@POSIX_SHIM
+def test_installer_names_the_recovery_for_linked_metadata(tmp_path, shim):
+    """treesitter-chunker#620: the failed install says what to delete and re-run.
+
+    Mutation ``bare_link_refusal`` reports only "Refusing to follow link".
+    """
+    cache = tmp_path / "cache"
+    assert _install(cache, _env(shim, _repo(tmp_path / "a", minor=1)))["success"]
+    artifact_a = _pair(cache)[0]
+    sentinel = tmp_path / "outside.json"
+    sentinel.write_bytes(b"sentinel")
+    child = Child(
+        LINK_DURING_COMMIT,
+        [cache, sentinel],
+        env=_env(shim, _repo(tmp_path / "b", minor=2)),
+    )
+    try:
+        child.expect("ready")
+        child.release()
+        done = child.finish()
+    finally:
+        child.close()
+    metadata = cache.absolute() / "grammars" / "baml_install_info.json"
+    (operation_id,) = _rollback_points(cache)
+    manifest = cache.absolute() / ".txn" / "rollback" / operation_id / "rollback.json"
+    assert not done["success"]
+    error = done["error"]
+    assert "OSError: injected publication failure" in error, error
+    assert "Restore incomplete" in error
+    assert f"delete {metadata}" in error
+    assert str(manifest) in error
+    assert (
+        "re-run install_grammar('baml', "
+        "'https://github.com/example/tree-sitter-baml', 'v2')"
+    ) in error
+    assert metadata.is_symlink() and sentinel.read_bytes() == b"sentinel"
+    assert _pair(cache)[0] == artifact_a
+
+
 # --- Windows: a real installer failed update ------------------------------------
 
 WINDOWS_TOOLCHAIN = pytest.mark.skipif(
