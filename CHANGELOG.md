@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the same locked section that writes its metadata, so the recorded
   `artifact_sha256` always describes the library on disk when the metadata is
   published (treesitter-chunker#618).
+- A rollback capture that fails part-way, for example on an I/O error while
+  copying the previous library, now removes its incomplete
+  `.txn/rollback/<operation-id>/` folder instead of leaving it behind
+  (treesitter-chunker#619).
 - Keep grammar subcommand help available with defective or missing pin files,
   while validating pins before command work (treesitter-chunker#562).
 - Discard the affected native admission verdict and private copy when registry

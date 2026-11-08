@@ -198,8 +198,8 @@ is never an entry. Under amendment A1 they are:
 |---|---|---|
 | `<ns>/.txn-staging/<operation-id>/`, for `<ns>` in `downloads/`, `builds/` | One writer operation | Created at operation start, one per namespace. The owner removes it after the last consumer and after its process group or job is confirmed empty. It is **retained** if the owner dies, or if emptiness cannot be confirmed. No other participant publishes from it or deletes it. |
 | `<dir>/.txn-retired/<operation-id>/<name>`, for `<dir>` in `downloads/`, `builds/`, `grammars/` and `grammars/<priority>/` | The operation that retired the item | Garbage, in the same directory the item was renamed from. The owner deletes it right after retirement. A later prune of `downloads/` or `builds/` may claim and delete that namespace's garbage (see [Retired garbage](#retired-garbage)). |
-| `<root>/.txn/rollback/<operation-id>/` | One installer commit | Created at the start of the commit section and removed after success or a verified restore. It is **retained** after a failed or superseded restore, or a crash. |
-| `<root>/.txn/retired/<operation-id>/` | The discard of a rollback point | Garbage inside the root control area; deleted by its owner right after. |
+| `<root>/.txn/rollback/<operation-id>/` | One installer commit | Created at the start of the commit section and removed after success or a verified restore. It is **retained** after a failed or superseded restore, or a crash. A capture that raises removes its own incomplete directory. |
+| `<root>/.txn/retired/<operation-id>/` | The discard of a rollback point, or of a failed capture | Garbage inside the root control area; deleted by its owner right after. |
 
 The root control area `<root>/.txn/` holds only `rollback/` and `retired/`.
 
@@ -718,7 +718,12 @@ root-relative with `/` separators:
 placeholder.
 
 A rollback directory **without** `rollback.json` is an incomplete capture.
-Capture precedes every mutation, so such a directory is safe to delete.
+Capture precedes every mutation, so such a directory is safe to delete. If the
+capture raises, for example on an I/O error while copying,
+`create_rollback_point` retires its incomplete directory into
+`.txn/retired/<operation-id>/rollback` under the lock and deletes it before
+the error propagates; only a crash leaves one behind
+(treesitter-chunker#619).
 
 ### Installation commit
 
@@ -954,7 +959,7 @@ A crash can leave:
 | `<ns>/.txn-staging/<id>/` in `downloads/` or `builds/` | A writer died, was interrupted before its group was confirmed gone, or its descendants could not be confirmed gone | Delete it once no install is running |
 | `<dir>/.txn-retired/**` in `downloads/`, `builds/`, `grammars/` or a priority subdirectory, and `.txn/retired/**` | Garbage, which can include the old generation of a cache entry whose republication was interrupted | Always safe to delete; a prune of `downloads/` or `builds/` claims that namespace's garbage |
 | An absent `downloads/` or `builds/` entry | A republication was interrupted between its two renames | None needed; the next install regenerates it |
-| `.txn/rollback/<id>/` without `rollback.json` | An incomplete capture, before any mutation | Delete it |
+| `.txn/rollback/<id>/` without `rollback.json` | A capture interrupted by a crash, before any mutation (a capture that raises removes its own) | Delete it |
 | `.txn/rollback/<id>/rollback.json` | An interrupted or failed commit | Follow the procedure below |
 | `<root>/.validation_cache.json.<id>.tmp`, `grammars/.<language>_install_info.json.<id>.tmp` | Primitive 1 temporary files | Delete them once no participant is running |
 | An IF-0-HOTFIX-1 staged sibling in `grammars/` | The probe or replacement was interrupted | Delete it once no install is running; the name is IF-0-HOTFIX-1's |

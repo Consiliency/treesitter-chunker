@@ -1216,6 +1216,68 @@ def test_saved_metadata_digest_is_hashed_under_the_lock(tmp_path):
     assert _sha(library) == metadata["artifact_sha256"]
 
 
+CAPTURE_EFBIG = r"""
+import errno, json, resource, signal, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from chunker.grammar_management import _transactions as t
+
+root = Path(sys.argv[2])
+destination = root / "grammars" / "libbaml.so"
+t.open_cache_root(root)
+destination.parent.mkdir(exist_ok=True)
+destination.write_bytes(b"\x7fELF" * (1 << 16))  # 256 KiB, beyond the limit
+t.publish_installation_metadata(root, "baml", {"version": "a",
+                                               "install_path": str(destination)})
+# A real write error: the artifact copy fails with EFBIG part-way through.
+signal.signal(signal.SIGXFSZ, signal.SIG_IGN)
+soft, hard = resource.getrlimit(resource.RLIMIT_FSIZE)
+resource.setrlimit(resource.RLIMIT_FSIZE, (64 * 1024, hard))
+outcome = {}
+try:
+    t.create_rollback_point(root, language="baml", artifact=destination,
+                            metadata_document={"version": "b"},
+                            artifact_sha256="0" * 64)
+except OSError as error:
+    outcome["errno"] = errno.errorcode.get(error.errno)
+finally:
+    resource.setrlimit(resource.RLIMIT_FSIZE, (soft, hard))
+print(json.dumps(outcome))
+"""
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="RLIMIT_FSIZE is a POSIX write limit"
+)
+def test_capture_io_error_leaves_no_partial_rollback_folder(tmp_path):
+    """treesitter-chunker#619: a failed capture removes its own folder.
+
+    A real ``EFBIG`` (``RLIMIT_FSIZE``) interrupts the copy of the previous
+    library. Capture precedes every mutation, so the incomplete
+    ``.txn/rollback/<op>/`` is retired and deleted; the installation is
+    unchanged and no garbage is left in ``.txn/``. Mutation
+    ``keep_partial_capture`` (skip the cleanup) leaves the folder with a
+    truncated ``artifact.prev``.
+    """
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    completed = subprocess.run(
+        [sys.executable, "-I", "-c", CAPTURE_EFBIG, str(ROOT), str(cache)],
+        capture_output=True,
+        text=True,
+        timeout=SAFETY_TIMEOUT,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr[-4000:]
+    outcome = json.loads(completed.stdout.strip().splitlines()[-1])
+    assert outcome == {"errno": "EFBIG"}
+    assert _rollback_points(cache) == []
+    retired = cache / ".txn" / "retired"
+    assert sorted(p.name for p in retired.iterdir() if p.name != ".txn-keep") == []
+    assert _pair(cache)[0] == sha256(b"\x7fELF" * (1 << 16)).hexdigest()
+    assert json.loads(_pair(cache)[1])["version"] == "a"
+
+
 # --- Windows: a real installer failed update ------------------------------------
 
 WINDOWS_TOOLCHAIN = pytest.mark.skipif(
