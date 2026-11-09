@@ -1389,6 +1389,7 @@ def test_installer_names_the_recovery_for_linked_metadata(tmp_path, shim):
     error = done["error"]
     assert "OSError: injected publication failure" in error, error
     assert "Restore incomplete" in error
+    assert "restore raised ContainmentError" in error
     assert f"delete {metadata}" in error
     assert str(manifest) in error
     assert (

@@ -15,8 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   published (treesitter-chunker#618).
 - A rollback capture that fails part-way, for example on an I/O error while
   copying the previous library, now removes its incomplete
-  `.txn/rollback/<operation-id>/` folder instead of leaving it behind
-  (treesitter-chunker#619).
+  `.txn/rollback/<operation-id>/` folder. Only a crash, or a cleanup failure
+  (logged as a warning), leaves it behind (treesitter-chunker#619).
 - When a grammar's library or metadata path is a link or other non-regular
   file, rollback recovery still refuses to follow or replace it, but the error
   now names the path to delete, the retained `rollback.json` to finish from,

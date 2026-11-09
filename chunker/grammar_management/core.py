@@ -1297,10 +1297,13 @@ class GrammarInstaller:
                 try:
                     outcome = self._perform_rollback(point, pin)
                 except Exception as error:  # keep the original failure
-                    detail = f"restore raised {type(error).__name__}: {error}"
+                    linked = isinstance(error, _transactions._LinkedInstallationError)
+                    # Report the public type, never the private marker.
+                    kind = "ContainmentError" if linked else type(error).__name__
+                    detail = f"restore raised {kind}: {error}"
                     if str(point.path) not in detail:
                         detail += f"; rollback point retained: {point.path}"
-                    if isinstance(error, _transactions._LinkedInstallationError):
+                    if linked:
                         rerun = self._install_call(language, info)
                         detail = (
                             f"{detail.rstrip('.')}. After finishing that "
