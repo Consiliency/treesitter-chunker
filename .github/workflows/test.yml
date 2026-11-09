@@ -12,6 +12,10 @@ on:
 
 jobs:
   test:
+    # Keep the job name equal to the branch-protection required check
+    # ("test (3.12, ubuntu-latest, linux)"); the matrix also carries
+    # pack-cache-path, which must not appear in the name.
+    name: test (${{ matrix.python-version }}, ${{ matrix.platform }}, ${{ matrix.platform-family }})
     permissions:
       contents: read
     runs-on: ${{ matrix.platform }}
