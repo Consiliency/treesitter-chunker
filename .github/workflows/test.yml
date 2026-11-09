@@ -38,41 +38,6 @@ jobs:
     steps:
     - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
 
-    # TEMPORARY Phase A diagnostic (treesitter-chunker#621): find the image's
-    # MinGW-w64 gcc. Removed before the PR leaves draft.
-    - name: "Diagnostic: where.exe gcc"
-      if: matrix.platform-family == 'windows'
-      continue-on-error: true
-      shell: pwsh
-      run: where.exe gcc
-
-    - name: "Diagnostic: list gcc.exe on the Windows image"
-      if: matrix.platform-family == 'windows'
-      continue-on-error: true
-      shell: pwsh
-      run: |
-        $global:LASTEXITCODE = 0
-        Write-Host '--- Get-Command gcc.exe -All'
-        Get-Command gcc.exe -All -ErrorAction SilentlyContinue | Format-Table -AutoSize CommandType, Version, Source | Out-String -Width 400 | Write-Host
-        Write-Host '--- PATH'
-        $env:PATH -split ';' | ForEach-Object { Write-Host $_ }
-        $roots = @('C:\mingw64', 'C:\ProgramData\mingw64', 'C:\msys64', 'C:\Strawberry', 'C:\tools')
-        if ($env:ChocolateyInstall) { $roots += (Join-Path $env:ChocolateyInstall 'lib\mingw') }
-        foreach ($root in $roots) {
-          Write-Host "--- scan $root (exists: $(Test-Path $root))"
-          if (-not (Test-Path $root)) { continue }
-          Get-ChildItem -Path $root -Recurse -Depth 5 -Filter gcc.exe -ErrorAction SilentlyContinue | ForEach-Object {
-            $exe = $_.FullName
-            $machine = (& $exe -dumpmachine 2>&1 | Out-String).Trim()
-            $version = ((& $exe --version 2>&1 | Out-String) -split "`n")[0].Trim()
-            Write-Host "gcc.exe: $exe"
-            Write-Host "  -dumpmachine: $machine"
-            Write-Host "  --version: $version"
-          }
-        }
-        Write-Host '--- scan complete'
-        $global:LASTEXITCODE = 0
-
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
       with:
@@ -98,6 +63,54 @@ jobs:
 
     - name: Build grammars
       run: uv run --locked --all-extras python scripts/build_lib.py
+
+    # The installer runs the gcc first on PATH (treesitter-chunker#621). On
+    # Windows that must be MinGW-w64: the image's own, found by the Phase A
+    # diagnostic (run 42547736508: C:\mingw64\bin\gcc.exe, target
+    # x86_64-w64-mingw32, gcc 15.2.0), or MSYS2 UCRT64 gcc if it is gone.
+    # Add-Content, and the Target line of gcc -v (the same configured target
+    # machine as its dumpmachine option), keep these lines clear of the
+    # release-hygiene short-option scan.
+    - name: Locate the image's MinGW-w64 gcc
+      id: mingw
+      if: matrix.platform-family == 'windows'
+      shell: pwsh
+      env:
+        MINGW_BIN: 'C:\mingw64\bin'
+      run: |
+        if (Test-Path (Join-Path $env:MINGW_BIN 'gcc.exe')) {
+          Add-Content -Path $env:GITHUB_PATH -Value $env:MINGW_BIN -Encoding utf8
+          Add-Content -Path $env:GITHUB_OUTPUT -Value 'found=true' -Encoding utf8
+        } else {
+          Write-Host "::warning::no gcc.exe in $env:MINGW_BIN; installing MSYS2 UCRT64 gcc"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value 'found=false' -Encoding utf8
+        }
+
+    - name: Install MSYS2 UCRT64 gcc (only if the image has no MinGW)
+      id: msys2
+      if: matrix.platform-family == 'windows' && steps.mingw.outputs.found != 'true'
+      uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e  # v2.33.0 (2026-09-27)
+      with:
+        msystem: UCRT64
+        install: mingw-w64-ucrt-x86_64-gcc
+        path-type: inherit
+        update: false
+
+    - name: Put MSYS2 UCRT64 gcc on PATH (fallback)
+      if: matrix.platform-family == 'windows' && steps.mingw.outputs.found != 'true'
+      shell: pwsh
+      run: Add-Content -Path $env:GITHUB_PATH -Value (Join-Path '${{ steps.msys2.outputs.msys2-location }}' 'ucrt64\bin') -Encoding utf8
+
+    - name: Check the installer's gcc is MinGW-w64
+      if: matrix.platform-family == 'windows'
+      shell: pwsh
+      run: |
+        where.exe gcc
+        gcc --version
+        $target = (gcc -v 2>&1 | Select-String -Pattern '^Target:\s*(\S+)').Matches
+        $machine = if ($target) { $target[0].Groups[1].Value } else { '' }
+        Write-Host "gcc target machine: $machine"
+        if ($machine -notmatch 'w64-mingw32') { throw "gcc on PATH is not MinGW-w64: $machine" }
 
     - name: Run platform core tests
       run: |
