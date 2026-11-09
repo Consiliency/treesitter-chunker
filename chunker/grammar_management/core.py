@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import ctypes
 import functools
-import hashlib
 import logging
 import os
 import platform
@@ -1569,8 +1568,9 @@ class GrammarInstaller:
                 except _transactions.ContainmentError:
                     pass
                 else:
-                    if path.is_file():
-                        artifact_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+                    artifact_sha256 = _transactions._installation_artifact_digest(
+                        self._base_cache_dir, path
+                    )
                 _transactions.publish_installation_metadata(
                     self._base_cache_dir,
                     language,

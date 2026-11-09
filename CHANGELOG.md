@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Saving installation metadata refuses a linked or non-regular library, or a
+  linked parent, without hashing their targets or publishing metadata
+  (treesitter-chunker#628).
+- Restore gives recovery steps for a linked `grammars/` root and links found
+  after artifact publication, without claiming nothing changed or suggesting
+  an unhelpful install re-run (treesitter-chunker#627).
+- Restore recovery errors link to a commit-pinned copy of the operator
+  procedure, available to wheel-only users (treesitter-chunker#626).
 - Decline the controlled installer route before starting any process when
   `src` or its inputs are symlinks, including linked headers and dangling
   links. Make and CLI fallbacks remain available, with pin admission unchanged
