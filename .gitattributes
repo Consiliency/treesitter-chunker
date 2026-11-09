@@ -1,2 +1,5 @@
 # Boundary IR goldens hash the fixture source bytes; preserve their committed LF.
 tests/fixtures/boundary_ir/repos/** -text
+
+# The type gate validates sorted signatures as exact LF-delimited bytes.
+docs/development/mypy-baseline.txt text eol=lf

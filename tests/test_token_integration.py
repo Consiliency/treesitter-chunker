@@ -122,7 +122,7 @@ class TestTokenAwareChunker:
     def create_test_file(self, content: str, filename: str = "test.py") -> Path:
         """Create a test file with given content."""
         file_path = self.test_dir / filename
-        file_path.write_text(content)
+        file_path.write_text(content, encoding="utf-8")
         return file_path
 
     def test_add_token_info(self):

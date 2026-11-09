@@ -7,7 +7,6 @@ import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from pathlib import Path
-from queue import Empty
 from unittest.mock import MagicMock, patch
 
 import psutil
@@ -29,6 +28,24 @@ def process_file_with_memory(args):
     if iteration % 3 == 0:
         raise RuntimeError(f"Simulated error in iteration {iteration}")
     return len(data)
+
+
+def deadlock_worker(first, second, barrier, result_queue, detected, name):
+    """Exercise opposing lock order with a bounded acquisition on every OS."""
+    try:
+        with first:
+            barrier.wait(timeout=10)
+            acquired = second.acquire(timeout=1.0)
+            if acquired:
+                try:
+                    result_queue.put(f"{name}_success")
+                finally:
+                    second.release()
+            else:
+                detected.value = True
+                result_queue.put(f"{name}_timeout")
+    except (RuntimeError, ValueError) as exc:
+        result_queue.put(f"{name}_error: {exc}")
 
 
 class TestParallelErrorHandling(ErrorPropagationMixin):
@@ -387,68 +404,25 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
         lock2 = manager.Lock()
         result_queue = manager.Queue()
         deadlock_detected = manager.Value("b", False)
+        barrier = manager.Barrier(2)
 
-        def worker1():
-            """Worker that acquires lock1 then lock2."""
-            try:
-                with lock1:
-                    time.sleep(0.1)
-                    acquired = lock2.acquire(timeout=1.0)
-                    if acquired:
-                        try:
-                            result_queue.put("worker1_success")
-                        finally:
-                            lock2.release()
-                    else:
-                        result_queue.put("worker1_timeout")
-                        deadlock_detected.value = True
-            except (RuntimeError, ValueError) as e:
-                result_queue.put(f"worker1_error: {e}")
-
-        def worker2():
-            """Worker that acquires lock2 then lock1."""
-            try:
-                with lock2:
-                    time.sleep(0.1)
-                    acquired = lock1.acquire(timeout=1.0)
-                    if acquired:
-                        try:
-                            result_queue.put("worker2_success")
-                        finally:
-                            lock1.release()
-                    else:
-                        result_queue.put("worker2_timeout")
-                        deadlock_detected.value = True
-            except (RuntimeError, ValueError) as e:
-                result_queue.put(f"worker2_error: {e}")
-
-        # The workers are closures over the managed locks, so they need fork:
-        # Python 3.14 defaults to forkserver on Linux, which cannot pickle
-        # them (treesitter-chunker#502). This test is Linux full-tier only.
-        fork = multiprocessing.get_context("fork")
-        p1 = fork.Process(target=worker1)
-        p2 = fork.Process(target=worker2)
-        p1.start()
-        p2.start()
-        p1.join(timeout=3.0)
-        p2.join(timeout=3.0)
-        results = []
-        while not result_queue.empty():
-            try:
-                results.append(result_queue.get_nowait())
-            except Empty:
-                break
-        assert deadlock_detected.value, "Deadlock should have been detected"
-        assert "worker1_timeout" in results or "worker2_timeout" in results
-        if p1.is_alive():
-            p1.terminate()
-            p1.join()
-        if p2.is_alive():
-            p2.terminate()
-            p2.join()
-        assert not p1.is_alive(), "Process 1 should be terminated"
-        assert not p2.is_alive(), "Process 2 should be terminated"
-        if deadlock_detected.value:
+        context = multiprocessing.get_context("spawn")
+        p1 = context.Process(
+            target=deadlock_worker,
+            args=(lock1, lock2, barrier, result_queue, deadlock_detected, "worker1"),
+        )
+        p2 = context.Process(
+            target=deadlock_worker,
+            args=(lock2, lock1, barrier, result_queue, deadlock_detected, "worker2"),
+        )
+        try:
+            p1.start()
+            p2.start()
+            p1.join(timeout=15.0)
+            p2.join(timeout=15.0)
+            results = [result_queue.get(timeout=2.0) for _ in range(2)]
+            assert deadlock_detected.value, "Deadlock should have been detected"
+            assert "worker1_timeout" in results or "worker2_timeout" in results
             deadlock_error = RuntimeError("Deadlock detected between worker processes")
             error_context = error_tracking_context.capture_and_propagate(
                 source="chunker.parallel.DeadlockDetector",
@@ -458,6 +432,15 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
             error_context["context_data"]["timeout_seconds"] = 1.0
             error_context["context_data"]["workers_involved"] = ["worker1", "worker2"]
             error_context["context_data"]["recovery_action"] = "terminated_workers"
+        finally:
+            for process in (p1, p2):
+                if process.is_alive():
+                    process.terminate()
+                if process.pid is not None:
+                    process.join()
+            manager.shutdown()
+        assert not p1.is_alive(), "Process 1 should be terminated"
+        assert not p2.is_alive(), "Process 2 should be terminated"
         resource_monitor.release_resource("deadlock_test_lock1")
         resource_monitor.release_resource("deadlock_test_lock2")
         leaked = resource_monitor.verify_cleanup("chunker.parallel")

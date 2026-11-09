@@ -607,11 +607,11 @@ function Component() {
             f.write(content)
             f.flush()
 
+        try:
             chunks = self.processor.process_mixed_file(f.name, "javascript")
-
             assert len(chunks) > 0
             assert chunks[0].language == "javascript"
-
+        finally:
             Path(f.name).unlink()
 
     def test_cross_language_references(self):

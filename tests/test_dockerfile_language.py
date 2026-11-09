@@ -254,3 +254,15 @@ CMD ["./main"]
         assert len(from_chunks) == 2
         copy_chunks = [c for c in chunks if c.node_type == "copy_instruction"]
         assert any("--from=builder" in c.content for c in copy_chunks)
+
+
+def test_crlf_continuation_preserves_physical_spans(tmp_path):
+    source = b"FROM alpine\r\nRUN apk add \\\r\n    python3 \\\r\n    git\r\n"
+    path = tmp_path / "Dockerfile"
+    path.write_bytes(source)
+    chunks = chunk_file(path, "dockerfile")
+    run = next(chunk for chunk in chunks if chunk.node_type == "run_instruction")
+    assert "git" in run.content
+    assert "python3" in run.content
+    assert run.content.encode("utf-8") == source[run.byte_start : run.byte_end]
+    assert (run.start_line, run.end_line) == (2, 4)

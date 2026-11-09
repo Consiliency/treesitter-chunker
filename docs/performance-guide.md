@@ -12,6 +12,15 @@ Performance depends on source size, language, grammar availability, storage and
 worker count. Measure your workload; this guide makes no fixed speedup or memory
 multiplier claim.
 
+## Process metrics without psutil
+
+The metrics collector reports process CPU time from `os.times()` on every
+platform. Without psutil, peak process memory comes from `getrusage()` on
+Linux and macOS, and `GetProcessMemoryInfo()` on Windows. The
+`process_memory_peak` value is in bytes on all three platforms; it measures
+peak resident memory (the peak working set on Windows), rather than current
+RSS or Python allocations.
+
 ## Large-file quality check
 
 The large-file test parses 5,000 generated Python functions in an isolated
