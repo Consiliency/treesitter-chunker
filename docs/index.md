@@ -285,3 +285,5 @@ Built on top of the excellent [Tree-sitter](https://tree-sitter.github.io/) pars
 *Happy chunking!* 🚀
 
 Scratch routing validation for Consiliency/treesitter-chunker#647.
+
+A second prose revision exercises superseded PR-run cancellation.
