@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Route lightweight prose PRs through the policy and docs lanes as needed,
+  retaining the required gate, nightly full validation and main docs publication;
+  remove duplicate main-push validation (Consiliency/treesitter-chunker#647).
+
 - Consolidate PR validation under a fail-closed `CI gate`, preserve legacy
   checks during migration, bound smoke workers, and add three-OS full nightly
   routing and cache warming (Consiliency/treesitter-chunker#647). Main docs
