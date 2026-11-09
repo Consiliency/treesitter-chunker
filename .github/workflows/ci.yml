@@ -4,6 +4,7 @@ permissions:
   contents: read
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
@@ -61,13 +62,82 @@ jobs:
           print(f"parser stack pinned at {installed}")
           PY
 
-      - name: Prefetch language pack
+      # Parsers are verified when downloaded; restored libraries are not re-checked.
+      # Warm caches survive an outage; a cold cache during an outage still fails.
+      - name: Check language pack cache path
+        id: pack-path
+        shell: bash
+        env:
+          PACK_CACHE_PATH: ~/.cache/tree-sitter-language-pack
         run: |
-          uv run --locked --all-extras python - <<'PY'
+          uv run --locked --all-extras python - <<'PYTHON'
+          import os
+          from pathlib import Path
+          from tree_sitter_language_pack import cache_dir
+          root = Path(os.path.expandvars(os.path.expanduser(os.environ["PACK_CACHE_PATH"]))).resolve()
+          actual = Path(cache_dir()).resolve()
+          print(f"language-pack cache_dir(): {actual}")
+          if not actual.is_relative_to(root):
+              raise SystemExit(f"language-pack cache {actual} is outside cached path {root}")
+          print(f"language-pack path check passed: {root}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"cache-root={root}\n")
+          PYTHON
+
+      - name: Restore language pack
+        id: pack-cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: ${{ steps.pack-path.outputs.cache-root }}
+          key: language-pack-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('uv.lock') }}
+          restore-keys: language-pack-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Prefetch language pack
+        shell: bash
+        run: |
+          uv run --locked --all-extras python - <<'PYTHON'
+          import time
+          from typing import get_args
+          from tree_sitter_language_pack import DownloadError, SupportedLanguage, prefetch
+          for attempt in range(1, 4):
+              print(f"language-pack prefetch attempt {attempt}/3", flush=True)
+              try:
+                  prefetch(list(get_args(SupportedLanguage)))
+              except (DownloadError, RuntimeError) as error:
+                  print(f"language-pack download failed: {error}", flush=True)
+                  if attempt < 3:
+                      delay = (10, 30)[attempt - 1]
+                      print(f"language-pack backoff {delay}s", flush=True)
+                      time.sleep(delay)
+              else:
+                  print("language-pack prefetch succeeded", flush=True)
+                  break
+          else:
+              raise SystemExit("upstream language-pack release unavailable and cache cold")
+          PYTHON
+
+      - name: Save language pack
+        if: steps.pack-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: ${{ steps.pack-path.outputs.cache-root }}
+          key: ${{ steps.pack-cache.outputs.cache-primary-key }}
+
+      - name: Verify exact language pack hit offline
+        if: steps.pack-cache.outputs.cache-hit == 'true'
+        shell: bash
+        env:
+          HTTPS_PROXY: http://127.0.0.1:9
+          HTTP_PROXY: http://127.0.0.1:9
+          ALL_PROXY: http://127.0.0.1:9
+          NO_PROXY: ''
+        run: |
+          uv run --locked --all-extras python - <<'PYTHON'
           from typing import get_args
           from tree_sitter_language_pack import SupportedLanguage, prefetch
           prefetch(list(get_args(SupportedLanguage)))
-          PY
+          print("exact language-pack cache hit: offline whole-pack prefetch passed")
+          PYTHON
 
       - name: Fetch grammars
         run: uv run --locked --all-extras python scripts/fetch_grammars.py
