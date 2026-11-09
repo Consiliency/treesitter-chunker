@@ -14,11 +14,15 @@ through glibc and MinGW ``assert`` and through direct ``__FILE__`` uses in a
 ``.c`` file and a ``src/tree_sitter`` header; it is compiled only, never loaded.
 
 Tests that need the installer's compiler use :func:`_installer_compiler`: a
-missing ``gcc`` fails on CI (or with ``CHUNKER_REQUIRE_INSTALLER_COMPILER``)
+missing ``gcc`` and ``cc`` fails on CI (or with ``CHUNKER_REQUIRE_INSTALLER_COMPILER``)
 and is a typed skip elsewhere.
 
 Named mutations (plan §4.3), each a temporary patch that must fail here:
 
+- ``follow_symlinked_src``: remove the source symlink preflight. Killed by
+  the symlink decline test, before any process can start.
+- ``cc_not_tried``: resolve gcc only. Killed by the cc-only resolution case.
+- ``cc_before_gcc``: prefer cc. Killed by the both-present resolution case.
 - ``absolute_sources``: the recipe emits absolute ``-I``/source paths.
   Killed by the two-path test and the golden argv.
 - ``cwd_output_dir``: relative argv, but cwd = the output directory. Killed by
@@ -62,7 +66,7 @@ from chunker.grammar_management.core import GrammarInstaller, _StagedRunAbortedE
 
 FIXTURE = Path(__file__).parent / "fixtures" / "reproducible_grammar"
 NO_INSTALLER_COMPILER = (
-    "no gcc on PATH: the installer's controlled build route is unavailable"
+    "no gcc or cc on PATH: the installer's controlled build route is unavailable"
 )
 BUILD_TIMEOUT = 300
 
@@ -74,12 +78,12 @@ def _policy_required() -> bool:
 
 
 def _installer_compiler() -> str:
-    """The absolute ``gcc`` the installer resolves; fail on CI, skip elsewhere."""
-    found = shutil.which("gcc")
+    """The absolute ``gcc`` or ``cc`` the installer resolves; fail on CI, skip elsewhere."""
+    found = shutil.which("gcc") or shutil.which("cc")
     if found is None:
         if _policy_required():
             pytest.fail(
-                f"{sys.platform} CI must provide gcc for the installer's "
+                f"{sys.platform} CI must provide gcc or cc for the installer's "
                 "reproducible-build test (treesitter-chunker#621)"
             )
         pytest.skip(NO_INSTALLER_COMPILER)
@@ -121,9 +125,38 @@ ROOTS = (Path("a"), Path("bb") / "c")  # differ in name and length; short for MA
 # --- the controlled route, built for real --------------------------------------
 
 
-def test_installer_builds_are_identical_at_two_paths(tmp_path):
+@pytest.mark.parametrize("compiler_choice", ["default", "cc", "clang-as-cc"])
+def test_installer_builds_are_identical_at_two_paths(
+    tmp_path, monkeypatch, compiler_choice
+):
     """The fixture builds to one SHA-256 at two roots of different name and length."""
     _installer_compiler()
+    if compiler_choice != "default":
+        if compiler_choice == "clang-as-cc" and sys.platform not in ("linux", "darwin"):
+            pytest.skip("clang-as-cc link-flag contract covers Linux and macOS")
+        found = shutil.which("cc" if compiler_choice == "cc" else "clang")
+        if found is None:
+            if _policy_required():
+                pytest.fail(f"CI must provide {compiler_choice}")
+            pytest.skip(f"{compiler_choice} is unavailable on PATH")
+        compiler = Path(os.path.abspath(found))  # noqa: PTH100
+        if compiler_choice == "clang-as-cc":
+            # Invoke clang under the actual name cc, exercising the same driver
+            # and linker flags as the installer's cc fallback on each OS.
+            compiler_dir = tmp_path / "compiler"
+            compiler_dir.mkdir()
+            (compiler_dir / "cc").symlink_to(compiler)
+            compiler = compiler_dir / "cc"
+        real_which = shutil.which
+        monkeypatch.setattr(
+            core_module.shutil,
+            "which",
+            lambda name, *a, **k: (
+                None
+                if name == "gcc"
+                else str(compiler) if name == "cc" else real_which(name, *a, **k)
+            ),
+        )
     built: list[tuple[Path, _transactions.StagingArea]] = []
     stagings: list[_transactions.StagingArea] = []
     try:
@@ -137,6 +170,10 @@ def test_installer_builds_are_identical_at_two_paths(tmp_path):
             assert ok, error
             assert record is not None and record["method"] == "gcc", record
             assert path is not None and path.name == "librepro.so"
+            if compiler_choice == "clang-as-cc":
+                assert record["compiler"]["family"] == "clang"
+                print(f"clang-as-cc flags accepted: {record['compiler']}")
+            print(f"{compiler_choice}: {_sha(path)}")
             built.append((path, staging))
 
         (library_a, staging_a), (library_b, _staging_b) = built
@@ -384,7 +421,11 @@ def test_gcc_route_declines_cxx_scanner_without_compiling(tmp_path, scanner):
     assert calls == []
 
 
-def test_gcc_is_resolved_once_to_an_absolute_path(tmp_path, monkeypatch):
+@pytest.mark.parametrize("gcc_present", [True, False])
+@pytest.mark.parametrize("family", ["gcc", "clang"])
+def test_gcc_is_resolved_once_to_an_absolute_path(
+    tmp_path, monkeypatch, gcc_present, family
+):
     """One ``which``; its absolute path is argv[0] of the build and the probe."""
     root = tmp_path / "cache"
     installer, staging, source = _staged_fixture(root)
@@ -392,7 +433,7 @@ def test_gcc_is_resolved_once_to_an_absolute_path(tmp_path, monkeypatch):
 
     def which(name, *args, **kwargs):
         which_calls.append(name)
-        return "bin/gcc"
+        return f"bin/{name}" if name == "cc" or gcc_present else None
 
     runs: list[tuple[str, list[str]]] = []
 
@@ -401,7 +442,7 @@ def test_gcc_is_resolved_once_to_an_absolute_path(tmp_path, monkeypatch):
         if what == "GCC build":
             Path(argv[argv.index("-o") + 1]).write_bytes(b"dummy library")
             return _transactions.StagedRun(0, "", "", False, True)
-        return _transactions.StagedRun(0, "gcc (Fake 15.2.0) 15.2.0\n", "", False, True)
+        return _transactions.StagedRun(0, f"{family} version 15.2.0\n", "", False, True)
 
     monkeypatch.setattr(core_module.shutil, "which", which)
     installer._run_staged = run_staged  # type: ignore[method-assign]
@@ -413,16 +454,18 @@ def test_gcc_is_resolved_once_to_an_absolute_path(tmp_path, monkeypatch):
         monkeypatch.undo()
         _transactions.discard_staging(staging)
     assert ok, error
-    expected = os.path.abspath("bin/gcc")  # noqa: PTH100 - the installer's rule
+    expected = os.path.abspath(  # noqa: PTH100 - the installer's rule
+        "bin/gcc" if gcc_present else "bin/cc"
+    )
     assert [what for what, _ in runs] == ["GCC build", "Compiler version"]
     assert [argv[0] for _, argv in runs] == [expected, expected]
     assert runs[1][1] == [expected, "--version"]
-    assert which_calls == ["gcc"]
+    assert which_calls == (["gcc"] if gcc_present else ["gcc", "cc"])
     assert record is not None
     assert record["compiler"] == {
-        "family": "gcc",
+        "family": family,
         "version": "15.2.0",
-        "banner": "gcc (Fake 15.2.0) 15.2.0",
+        "banner": f"{family} version 15.2.0",
     }
 
 
@@ -544,3 +587,89 @@ def test_compiler_identity_parses_known_banners(stdout, family, version):
 @pytest.mark.parametrize("stdout", ["", None, "\r\n  \n"])
 def test_compiler_identity_of_no_banner_is_none(stdout):
     assert _build_recipe.compiler_identity(stdout) is None
+
+
+@pytest.mark.parametrize(
+    "linked",
+    [
+        "source root",
+        "src",
+        "src/parser.c",
+        "src/scanner.c",
+        "src/tree_sitter",
+        "src/tree_sitter/parser.h",
+        "src/headers",
+        "src/headers/extra.h",
+    ],
+)
+@pytest.mark.parametrize("dangling", [False, True])
+def test_gcc_route_declines_symlinked_source_before_process(tmp_path, linked, dangling):
+    """Real links, including dangling links and nested headers, never compile."""
+    source = tmp_path / "source"
+    shutil.copytree(FIXTURE, source)
+    _write_grammar(source, {"src/headers/extra.h": "/* header */\n"})
+    path = source if linked == "source root" else source / linked
+    target = tmp_path / "outside"
+    directory = path.is_dir()
+    path.rename(target)
+    if dangling:
+        if directory:
+            shutil.rmtree(target)
+        else:
+            target.unlink()
+    try:
+        path.symlink_to(target, target_is_directory=directory)
+    except OSError as error:
+        if sys.platform == "win32" and error.winerror == 1314:
+            if _policy_required():
+                pytest.fail("Windows CI must permit symlink creation (WinError 1314)")
+            pytest.skip("Windows symlink creation requires privilege (WinError 1314)")
+        raise
+    installer = GrammarInstaller(cache_dir=tmp_path / "cache")
+    calls = []
+
+    def run_staged(staging, argv, **kwargs):
+        calls.append(argv)
+        raise AssertionError("symlinked source started a process")
+
+    installer._run_staged = run_staged  # type: ignore[method-assign]
+    result = installer._build_with_gcc(
+        "repro",
+        source,
+        tmp_path / "librepro.so",
+        staging=object(),
+        compiler="/abs/gcc",  # type: ignore[arg-type]
+    )
+    assert result == (
+        False,
+        f"Symlinked source ({linked}): not built by the controlled route",
+    )
+    assert calls == []
+
+
+def test_symlink_decline_allows_fallback(tmp_path, monkeypatch):
+    """The decline is defence in depth; admission still binds fallback bytes."""
+    installer, staging, source = _staged_fixture(tmp_path / "cache")
+    calls = []
+    monkeypatch.setattr(_build_recipe, "symlinked_source", lambda root: "src")
+    monkeypatch.setattr(core_module.shutil, "which", lambda name: "/abs/gcc")
+
+    def make(*args, **kwargs):
+        calls.append("make")
+        return True, None
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("declined compiler must not run or probe")
+
+    monkeypatch.setattr(installer, "_run_staged", unexpected)
+    monkeypatch.setattr(installer, "_build_with_make", make)
+    try:
+        ok, _, error, record = installer._build_grammar(
+            "repro", source, staging=staging
+        )
+        assert ok, error
+        assert calls == ["make"]
+        assert record["method"] == "make"
+        assert record["compiler"] is None
+    finally:
+        _transactions.discard_staging(staging)

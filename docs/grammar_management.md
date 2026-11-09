@@ -347,14 +347,17 @@ can come from an independent build of the same source with the same recipe.
 
    There is no `-lm` and no `-ffile-prefix-map`.
 2. **The compiler and directory.** Run it with cwd = the source root.
-   `<gcc>` is the `gcc` first on `PATH` (the installer resolves it once, to an
-   absolute path, in its own process; on macOS Xcode's `gcc` is Apple clang).
+   `<gcc>` is the first `gcc` on `PATH`, or the first `cc` if gcc is missing.
+   The installer resolves the selected compiler once to an absolute path in its
+   own process. On macOS Xcode's `gcc` and `cc` are Apple clang. Both names use
+   exactly the same recipe and platform flags; rejected flags fail this route,
+   allowing `make` and then the CLI to run, without changing the recipe.
 3. **The output.** The file must be named `lib<language>.so`, in any
    directory (Windows records the file name in the export directory).
 4. **What must match** for the bytes to be the same:
    - the grammar commit and source bytes (use the same line-ending settings;
      `core.autocrlf=false` on Windows);
-   - the compiler and linker version (the first line of `gcc --version`, also
+   - the compiler and linker version (the first line of the selected compiler's `--version`, also
      recorded in `metadata.build`);
    - the OS and architecture;
    - on macOS, the SDK version and deployment target
@@ -371,6 +374,9 @@ can come from an independent build of the same source with the same recipe.
    `SOURCE_DATE_EPOCH` and `CPATH` were checked and do not affect this recipe.
 5. **Grammars this recipe does not build.** The installer's `gcc` route
    declines, or fails, and the next method runs:
+   - a symlinked source root, `src`, parser, scanner, header directory or any
+     entry below `src`: checked with `lstat` before any process starts,
+     including dangling links (treesitter-chunker#632);
    - grammars with a C++ scanner (`src/scanner.cc` or `src/scanner.cpp`): the
      route declines them before compiling anything;
    - on Linux, grammars that need a symbol the recipe does not link: for
@@ -378,11 +384,19 @@ can come from an independent build of the same source with the same recipe.
      deliberately leaves out, and `-z defs` refuses the link.
 
    These build only through `make` or the `tree-sitter` CLI, in that order.
+   A symlink decline allows these fallbacks just like a C++ decline: it is
+   defence in depth for the controlled recipe, not a source sandbox. It does
+   not prevent concurrent replacement or arbitrary C preprocessor includes.
+   The pin still binds the exact loaded bytes whichever route builds them.
    Those bytes are host-specific, and their pins must come from a review of
    that host's own build. `metadata.build.method` shows which route ran.
 6. **`metadata.build`.** Each installation's metadata records
    `{"method": "gcc" | "make" | "tree-sitter-cli", "compiler": {"family", "version", "banner"} | null, "platform"}`.
-   `compiler` is parsed from the `gcc` route's `--version` output (`null` for
+   The method stays `gcc` even when `cc` was selected. The compiler family is
+   `clang` when the banner contains "clang", otherwise `gcc` as the default
+   label (so compilers such as tcc are labelled `gcc`). This field is
+   informational and is not used for admission.
+   `compiler` is parsed from the selected compiler's `--version` output (`null` for
    the other methods, or when that probe fails, which never fails the
    install); `platform` is `sys.platform` and the machine, such as
    `linux-x86_64`. The record is informational and not part of admission.

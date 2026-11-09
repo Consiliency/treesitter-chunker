@@ -14,13 +14,14 @@ the remaining output-path and link-time inputs:
 - Windows (MinGW): no link timestamp, and an ImageBase that is not a hash of
   the ``-o`` path.
 
-This module performs no I/O beyond checking which scanner files exist; the
+This module checks source paths and scanner presence; the
 installer runs the argv it returns.
 """
 
 from __future__ import annotations
 
 import re
+import stat
 import sys
 from pathlib import Path
 from typing import Any
@@ -54,6 +55,45 @@ def cxx_scanner(source_root: Path) -> str | None:
     for name in CXX_SCANNERS:
         if (source_root / "src" / name).exists():
             return f"src/{name}"
+    return None
+
+
+def symlinked_source(source_root: Path) -> str | None:
+    """Find a linked recipe input without traversing linked directories.
+
+    Check the fixed inputs first (including dangling links), then every entry
+    beneath src: headers can include other headers outside tree_sitter/.
+    This is a preflight, not a sandbox against concurrent source replacement
+    or arbitrary preprocessor includes.
+    """
+    pending = [
+        source_root,
+        *(
+            source_root / name
+            for name in ("src", "src/parser.c", "src/scanner.c", "src/tree_sitter")
+        ),
+    ]
+    for path in pending:
+        try:
+            mode = path.lstat().st_mode
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(mode):
+            relative = path.relative_to(source_root).as_posix()
+            return "source root" if relative == "." else relative
+
+    pending = [source_root / "src"]
+    while pending:
+        path = pending.pop()
+        try:
+            mode = path.lstat().st_mode
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(mode):
+            relative = path.relative_to(source_root).as_posix()
+            return "source root" if relative == "." else relative
+        if stat.S_ISDIR(mode):
+            pending.extend(sorted(path.iterdir(), reverse=True))
     return None
 
 

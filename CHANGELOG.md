@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Decline the controlled installer route before starting any process when
+  `src` or its inputs are symlinks, including linked headers and dangling
+  links. Make and CLI fallbacks remain available, with pin admission unchanged
+  (treesitter-chunker#632).
+- The controlled installer build tries `cc` when `gcc` is missing, using the
+  same recipe and recording the compiler's banner identity. GCC still wins
+  when both are installed (treesitter-chunker#631).
 - On Linux with the forkserver start method, multiprocessing creates its socket
   below TMPDIR. CPython's fallback to `/tmp` under-counts the socket
   name by 4 bytes in verified releases 3.13.15 and 3.14.5, so a TMPDIR of
