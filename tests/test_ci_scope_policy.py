@@ -96,7 +96,7 @@ def test_code_paths(path):
 
 
 @pytest.mark.parametrize(
-    "path,docs",
+    ("path", "docs"),
     [
         ("README.md", True),
         ("CONTRIBUTING.md", True),
@@ -230,7 +230,7 @@ def test_real_pr_graph_and_force_push(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "event,full",
+    ("event", "full"),
     [
         ("schedule", "true"),
         ("workflow_dispatch", "true"),
