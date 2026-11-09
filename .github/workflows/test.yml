@@ -38,6 +38,41 @@ jobs:
     steps:
     - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
 
+    # TEMPORARY Phase A diagnostic (treesitter-chunker#621): find the image's
+    # MinGW-w64 gcc. Removed before the PR leaves draft.
+    - name: "Diagnostic: where.exe gcc"
+      if: matrix.platform-family == 'windows'
+      continue-on-error: true
+      shell: pwsh
+      run: where.exe gcc
+
+    - name: "Diagnostic: list gcc.exe on the Windows image"
+      if: matrix.platform-family == 'windows'
+      continue-on-error: true
+      shell: pwsh
+      run: |
+        $global:LASTEXITCODE = 0
+        Write-Host '--- Get-Command gcc.exe -All'
+        Get-Command gcc.exe -All -ErrorAction SilentlyContinue | Format-Table -AutoSize CommandType, Version, Source | Out-String -Width 400 | Write-Host
+        Write-Host '--- PATH'
+        $env:PATH -split ';' | ForEach-Object { Write-Host $_ }
+        $roots = @('C:\mingw64', 'C:\ProgramData\mingw64', 'C:\msys64', 'C:\Strawberry', 'C:\tools')
+        if ($env:ChocolateyInstall) { $roots += (Join-Path $env:ChocolateyInstall 'lib\mingw') }
+        foreach ($root in $roots) {
+          Write-Host "--- scan $root (exists: $(Test-Path $root))"
+          if (-not (Test-Path $root)) { continue }
+          Get-ChildItem -Path $root -Recurse -Depth 5 -Filter gcc.exe -ErrorAction SilentlyContinue | ForEach-Object {
+            $exe = $_.FullName
+            $machine = (& $exe -dumpmachine 2>&1 | Out-String).Trim()
+            $version = ((& $exe --version 2>&1 | Out-String) -split "`n")[0].Trim()
+            Write-Host "gcc.exe: $exe"
+            Write-Host "  -dumpmachine: $machine"
+            Write-Host "  --version: $version"
+          }
+        }
+        Write-Host '--- scan complete'
+        $global:LASTEXITCODE = 0
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
       with:
