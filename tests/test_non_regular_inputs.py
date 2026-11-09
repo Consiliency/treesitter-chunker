@@ -476,7 +476,7 @@ def test_parallel_chunking_with_tmpdir(
     tmp_path, regular, tmpdir_bytes, expected_method
 ):
     # On Linux with the forkserver start method, multiprocessing creates its socket
-    # below TMPDIR. CPython's fallback to `/tmp` (3.13+/3.14) under-counts the socket
+    # below TMPDIR. CPython's system-temp fallback (3.13+/3.14) under-counts the socket
     # name by 4 bytes on current releases (verified 3.13.15, 3.14.5), so a TMPDIR of
     # 76–79 bytes fails with `AF_UNIX path too long`. Runtimes without the fallback
     # (3.12) fail at every TMPDIR of 76 bytes or more. Parallel chunking now uses a
@@ -485,14 +485,12 @@ def test_parallel_chunking_with_tmpdir(
         base = tmp_path
         if len(os.fsencode(base)) + 2 > tmpdir_bytes:
             try:
-                base = Path(
-                    stack.enter_context(tempfile.TemporaryDirectory(dir="/tmp"))
-                )
+                base = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="")))
             except OSError as exc:
                 pytest.skip(f"Cannot create a short temporary base: {exc}")
         padding = tmpdir_bytes - len(os.fsencode(base)) - 1
         if padding < 1:
-            pytest.skip("Neither temporary base is short enough")
+            pytest.skip("Inherited temporary root is too long for this target length")
         scratch = base / ("x" * padding)
         scratch.mkdir(mode=0o700)
         assert len(os.fsencode(scratch)) == tmpdir_bytes

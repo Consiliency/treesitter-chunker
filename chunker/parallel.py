@@ -26,7 +26,7 @@ _AF_UNIX_PATH_MAX = 108 if sys.platform == "linux" else 104  # includes the NUL
 _SOCKET_NAME_BYTES = 18  # "/sock-" + 12 hex == "/listener-" + 8 hex
 
 
-def _pool_mp_context():
+def _pool_mp_context() -> mp.context.BaseContext:
     context = mp.get_context()
     if context.get_start_method() != "forkserver":
         return context
