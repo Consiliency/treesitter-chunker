@@ -198,8 +198,8 @@ is never an entry. Under amendment A1 they are:
 |---|---|---|
 | `<ns>/.txn-staging/<operation-id>/`, for `<ns>` in `downloads/`, `builds/` | One writer operation | Created at operation start, one per namespace. The owner removes it after the last consumer and after its process group or job is confirmed empty. It is **retained** if the owner dies, or if emptiness cannot be confirmed. No other participant publishes from it or deletes it. |
 | `<dir>/.txn-retired/<operation-id>/<name>`, for `<dir>` in `downloads/`, `builds/`, `grammars/` and `grammars/<priority>/` | The operation that retired the item | Garbage, in the same directory the item was renamed from. The owner deletes it right after retirement. A later prune of `downloads/` or `builds/` may claim and delete that namespace's garbage (see [Retired garbage](#retired-garbage)). |
-| `<root>/.txn/rollback/<operation-id>/` | One installer commit | Created at the start of the commit section and removed after success or a verified restore. It is **retained** after a failed or superseded restore, or a crash. |
-| `<root>/.txn/retired/<operation-id>/` | The discard of a rollback point | Garbage inside the root control area; deleted by its owner right after. |
+| `<root>/.txn/rollback/<operation-id>/` | One installer commit | Created at the start of the commit section and removed after success or a verified restore. It is **retained** after a failed or superseded restore, or a crash. A capture that raises removes its own incomplete directory. |
+| `<root>/.txn/retired/<operation-id>/` | The discard of a rollback point, or of a failed capture | Garbage inside the root control area; deleted by its owner right after. |
 
 The root control area `<root>/.txn/` holds only `rollback/` and `retired/`.
 
@@ -655,7 +655,9 @@ logs a warning, captures its bytes like any previous metadata, and replaces it.
 install replaces it.
 `_save_installation_info` still records any `install_path` (treesitter-chunker#134
 records user and package directories); only a library under `grammars/` gets an
-`artifact_sha256`.
+`artifact_sha256`. It hashes that library in the same lock section that
+publishes the metadata, so no participant can replace the library between the
+hash and the write (treesitter-chunker#618).
 
 **Metadata format.** The metadata keeps today's fields and adds
 `"artifact_sha256"`, the pin record's `sha256` in lower case. That is the
@@ -716,7 +718,12 @@ root-relative with `/` separators:
 placeholder.
 
 A rollback directory **without** `rollback.json` is an incomplete capture.
-Capture precedes every mutation, so such a directory is safe to delete.
+Capture precedes every mutation, so such a directory is safe to delete. If the
+capture raises, for example on an I/O error while copying,
+`create_rollback_point` retires its incomplete directory into
+`.txn/retired/<operation-id>/rollback` under the lock and deletes it before
+the error propagates; only a crash, or a cleanup failure (logged as a
+warning), leaves one behind (treesitter-chunker#619).
 
 ### Installation commit
 
@@ -822,6 +829,18 @@ verified restore removes the rollback point.
 
 Restore never falls back to an unadmitted artifact replacement, and never
 uses a rollback digest as `provenance`.
+
+**Links at installation paths.** Before it observes the pair, and again after
+`restore.before_artifact`, restore `lstat`s the artifact and metadata names. A
+link or other non-regular file at either raises `ContainmentError`
+(containment rule 2): restore never follows it, never replaces it with the
+restored file, and touches neither file, so the point is retained. Replacing
+the link under the lock was rejected: a link there is a change by a
+non-participant, which the restore table leaves to the operator. The message
+names each such path to delete (a link's target is left unchanged), the
+retained `rollback.json` to finish from with the
+[operator procedure](#crash-states-and-operator-recovery), and the installer
+appends the `install_grammar(...)` call to re-run (treesitter-chunker#620).
 
 **Windows.** IF-0-HOTFIX-1 raises `OSError` when Windows refuses to replace a
 library that a process has loaded, and the destination is then unchanged.
@@ -952,7 +971,7 @@ A crash can leave:
 | `<ns>/.txn-staging/<id>/` in `downloads/` or `builds/` | A writer died, was interrupted before its group was confirmed gone, or its descendants could not be confirmed gone | Delete it once no install is running |
 | `<dir>/.txn-retired/**` in `downloads/`, `builds/`, `grammars/` or a priority subdirectory, and `.txn/retired/**` | Garbage, which can include the old generation of a cache entry whose republication was interrupted | Always safe to delete; a prune of `downloads/` or `builds/` claims that namespace's garbage |
 | An absent `downloads/` or `builds/` entry | A republication was interrupted between its two renames | None needed; the next install regenerates it |
-| `.txn/rollback/<id>/` without `rollback.json` | An incomplete capture, before any mutation | Delete it |
+| `.txn/rollback/<id>/` without `rollback.json` | A capture interrupted by a crash, or one whose cleanup failed and was logged, before any mutation (a capture that raises otherwise removes its own) | Delete it |
 | `.txn/rollback/<id>/rollback.json` | An interrupted or failed commit | Follow the procedure below |
 | `<root>/.validation_cache.json.<id>.tmp`, `grammars/.<language>_install_info.json.<id>.tmp` | Primitive 1 temporary files | Delete them once no participant is running |
 | An IF-0-HOTFIX-1 staged sibling in `grammars/` | The probe or replacement was interrupted | Delete it once no install is running; the name is IF-0-HOTFIX-1's |
@@ -960,7 +979,9 @@ A crash can leave:
 **Procedure for a retained rollback point.**
 
 1. Make sure no `grammar` command or other participating process is running
-   on this root.
+   on this root. If the restore refused a link or other non-regular file at
+   `artifact.path` or `metadata.path`, delete that entry first (only the link;
+   its target is not part of the installation) and treat the path as absent.
 2. Read `rollback.json`. Compute the SHA-256 of the current
    `artifact.path` and `metadata.path`.
 3. If the artifact equals `artifact.previous_sha256` (or both are absent),

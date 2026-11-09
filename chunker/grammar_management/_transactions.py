@@ -78,6 +78,13 @@ class NestedRootError(ContainmentError):
     """A cache root overlaps another root's managed namespace."""
 
 
+class _LinkedInstallationError(ContainmentError):
+    """Restore refused a link at an installation name (treesitter-chunker#620).
+
+    Private marker: its message gives the documented recovery procedure.
+    """
+
+
 class _RootMovedError(CacheTransactionError):
     """The root path no longer resolves to the directory that was opened."""
 
@@ -2028,6 +2035,62 @@ def _retained_points(rootdir: _Dir, language: str) -> list[str]:
     return found
 
 
+def _capture(
+    point: _Dir,
+    sources: tuple[_Dir, _Dir],
+    parts: tuple[str, ...],
+    metadata_name: str,
+    intended: bytes,
+    manifest: dict[str, Any],
+    ctx: _LockContext,
+) -> tuple[str | None, str | None, str]:
+    """Write the copies, then the manifest last; return the three digests."""
+    destination_dir, grammars = sources
+    previous_artifact = _copy_into(destination_dir, parts[-1], point, "artifact.prev")
+    previous_metadata = _copy_into(grammars, metadata_name, point, "metadata.prev.json")
+    _write_new(point, "metadata.next.json", intended)
+    intended_metadata = hashlib.sha256(intended).hexdigest()
+    manifest["artifact"].update(
+        previous_sha256=previous_artifact,
+        previous_copy="artifact.prev" if previous_artifact else None,
+    )
+    manifest["metadata"].update(
+        previous_sha256=previous_metadata,
+        previous_copy="metadata.prev.json" if previous_metadata else None,
+        intended_sha256=intended_metadata,
+    )
+    _replace_bytes(
+        point,
+        ROLLBACK_MANIFEST_NAME,
+        (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode(),
+        ctx,
+        before_replace=None,
+    )
+    point.fsync()
+    return previous_artifact, previous_metadata, intended_metadata
+
+
+def _retire_incomplete_capture(rootdir: _Dir, area: _Dir, operation_id: str) -> bool:
+    """Retire a capture folder after a failed capture; ``True`` if it moved.
+
+    Capture precedes every mutation, so the folder is garbage
+    (treesitter-chunker#619). A failure here is logged; the capture's own
+    error is the one reported.
+    """
+    try:
+        if area.lstat(operation_id) is None:
+            return False
+        _retire_rollback_point(rootdir, operation_id)
+    except (OSError, CacheTransactionError) as error:
+        logger.warning(
+            "Incomplete rollback capture %s was not removed: %s",
+            area.path / operation_id,
+            error,
+        )
+        return False
+    return True
+
+
 def create_rollback_point(
     root: Path,
     *,
@@ -2043,7 +2106,8 @@ def create_rollback_point(
     ``metadata.next.json`` into ``.txn/rollback/<operation-id>/``, then the
     manifest last. Before capture, a recorded ``artifact_sha256`` that differs
     from the current artifact is reported, naming any retained rollback point
-    for the language.
+    for the language. If the capture fails, its incomplete folder is retired
+    and deleted before the error propagates.
     """
     metadata_name = _metadata_name(language)
     parts = _grammar_parts(root, artifact)
@@ -2051,74 +2115,69 @@ def create_rollback_point(
     operation_id = _new_operation_id()
     ctx = _LockContext("create_rollback_point", absolute, operation_id)
     intended = _canonical_metadata_bytes(metadata_document)
-    with _locked(root, timeout, ctx) as rootdir:
-        grammars = _grammar_dir(rootdir, (), create=True)
-        assert grammars is not None
-        with grammars:
-            destination_dir = _grammar_dir(rootdir, parts[1:-1], create=True)
-            assert destination_dir is not None
-            with destination_dir:
-                current_artifact = _digest(destination_dir, parts[-1])
-                current = _read_bytes(grammars, metadata_name)
-                if current is not None:
-                    with suppress(ValueError, AttributeError):
-                        recorded = json.loads(current).get("artifact_sha256")
-                        if recorded and recorded != current_artifact:
-                            logger.warning(
-                                "Installed metadata for %s names artifact %s, but %s "
-                                "has %s. Retained rollback points: %s",
-                                language,
-                                recorded,
-                                artifact,
-                                current_artifact,
-                                _retained_points(rootdir, language) or "none",
+    manifest: dict[str, Any] = {
+        "schema": _ROLLBACK_SCHEMA,
+        "operation_id": operation_id,
+        "language": language,
+        "created_ns": time.time_ns(),
+        "artifact": {"path": "/".join(parts), "intended_sha256": artifact_sha256},
+        "metadata": {
+            "path": f"{GRAMMARS_DIR}/{metadata_name}",
+            "intended_copy": "metadata.next.json",
+        },
+    }
+    partial = False
+    try:
+        with _locked(root, timeout, ctx) as rootdir:
+            grammars = _grammar_dir(rootdir, (), create=True)
+            assert grammars is not None
+            with grammars:
+                destination_dir = _grammar_dir(rootdir, parts[1:-1], create=True)
+                assert destination_dir is not None
+                with destination_dir:
+                    current_artifact = _digest(destination_dir, parts[-1])
+                    current = _read_bytes(grammars, metadata_name)
+                    if current is not None:
+                        with suppress(ValueError, AttributeError):
+                            recorded = json.loads(current).get("artifact_sha256")
+                            if recorded and recorded != current_artifact:
+                                logger.warning(
+                                    "Installed metadata for %s names artifact %s, "
+                                    "but %s has %s. Retained rollback points: %s",
+                                    language,
+                                    recorded,
+                                    artifact,
+                                    current_artifact,
+                                    _retained_points(rootdir, language) or "none",
+                                )
+                    with _open_dirs(rootdir, CONTROL_DIR_NAME, "rollback") as area:
+                        try:
+                            with _control_dir(area, operation_id) as point:
+                                (
+                                    previous_artifact,
+                                    previous_metadata,
+                                    intended_metadata,
+                                ) = _capture(
+                                    point,
+                                    (destination_dir, grammars),
+                                    parts,
+                                    metadata_name,
+                                    intended,
+                                    manifest,
+                                    ctx,
+                                )
+                        except BaseException:
+                            partial = _retire_incomplete_capture(
+                                rootdir, area, operation_id
                             )
-                with (
-                    _open_dirs(rootdir, CONTROL_DIR_NAME, "rollback") as area,
-                    _control_dir(area, operation_id) as point,
-                ):
-                    previous_artifact = _copy_into(
-                        destination_dir, parts[-1], point, "artifact.prev"
-                    )
-                    previous_metadata = _copy_into(
-                        grammars, metadata_name, point, "metadata.prev.json"
-                    )
-                    _write_new(point, "metadata.next.json", intended)
-                    intended_metadata = hashlib.sha256(intended).hexdigest()
-                    manifest = {
-                        "schema": _ROLLBACK_SCHEMA,
-                        "operation_id": operation_id,
-                        "language": language,
-                        "created_ns": time.time_ns(),
-                        "artifact": {
-                            "path": "/".join(parts),
-                            "previous_sha256": previous_artifact,
-                            "previous_copy": (
-                                "artifact.prev" if previous_artifact else None
-                            ),
-                            "intended_sha256": artifact_sha256,
-                        },
-                        "metadata": {
-                            "path": f"{GRAMMARS_DIR}/{metadata_name}",
-                            "previous_sha256": previous_metadata,
-                            "previous_copy": (
-                                "metadata.prev.json" if previous_metadata else None
-                            ),
-                            "intended_sha256": intended_metadata,
-                            "intended_copy": "metadata.next.json",
-                        },
-                    }
-                    _replace_bytes(
-                        point,
-                        ROLLBACK_MANIFEST_NAME,
-                        (
-                            json.dumps(manifest, indent=2, sort_keys=True) + "\n"
-                        ).encode(),
-                        ctx,
-                        before_replace=None,
-                    )
-                    point.fsync()
-        ctx.seam("rollback.after_capture")
+                            raise
+            ctx.seam("rollback.after_capture")
+    finally:
+        if partial:
+            tally = _Tally()
+            _delete_retired(root, (CONTROL_DIR_NAME, "retired"), operation_id, tally)
+            for error in tally.errors:
+                logger.warning("Incomplete rollback capture not deleted: %s", error)
     return RollbackPoint(
         root=Path(root),
         operation_id=operation_id,
@@ -2171,6 +2230,37 @@ def _observe(rootdir: _Dir, point: RollbackPoint) -> tuple[str | None, str | Non
                 directory.close()
 
 
+def _refuse_linked_installation(rootdir: _Dir, point: RollbackPoint) -> None:
+    """Refuse a link or other non-regular file at an installation name.
+
+    Containment rule 2: restore never follows or replaces it. The error names
+    each such path and the operator's next steps (treesitter-chunker#620).
+    """
+    parts = _grammar_parts(point.root, point.artifact)
+    found: list[Path] = []
+    for subdirs, name in ((parts[1:-1], parts[-1]), ((), point.metadata.name)):
+        directory = _grammar_dir(rootdir, subdirs, create=False)
+        if directory is None:
+            continue
+        with directory:
+            st = directory.lstat(name)
+            if st is not None and (_is_link(st) or not stat.S_ISREG(st.st_mode)):
+                found.append(directory.path / name)
+    if not found:
+        return
+    paths = " and ".join(str(path) for path in found)
+    each = "it is" if len(found) == 1 else "each is"
+    raise _LinkedInstallationError(
+        f"Restore refused {paths}: {each} a link or other non-regular file, "
+        "which restore never follows or replaces, so neither installation file "
+        f"was touched. Rollback point retained: {point.path}. To recover, with "
+        f"no grammar command running: delete {paths} (a link's target is left "
+        f"unchanged), then finish from {point.path / ROLLBACK_MANIFEST_NAME} "
+        "with the procedure for a retained rollback point in "
+        "docs/development/cache-transaction-contract.md."
+    )
+
+
 def restore(
     point: RollbackPoint,
     *,
@@ -2207,6 +2297,7 @@ def restore(
             rootdir, CONTROL_DIR_NAME, "rollback", point.operation_id
         )
         with point_dir:
+            _refuse_linked_installation(rootdir, point)
             ac, mc = _observe(rootdir, point)
             if (ac, mc) == (ap, mp):
                 artifact_restored = metadata_restored = True
@@ -2232,6 +2323,7 @@ def restore(
                 else:
                     ctx.seam("restore.before_artifact")
                     # Observe again: a non-participant may have changed the pair.
+                    _refuse_linked_installation(rootdir, point)
                     if _observe(rootdir, point) != (ac, mc):
                         superseded = True
                     else:

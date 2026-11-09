@@ -1297,15 +1297,24 @@ class GrammarInstaller:
                 try:
                     outcome = self._perform_rollback(point, pin)
                 except Exception as error:  # keep the original failure
+                    linked = isinstance(error, _transactions._LinkedInstallationError)
+                    # Report the public type, never the private marker.
+                    kind = "ContainmentError" if linked else type(error).__name__
+                    detail = f"restore raised {kind}: {error}"
+                    if str(point.path) not in detail:
+                        detail += f"; rollback point retained: {point.path}"
+                    if linked:
+                        rerun = self._install_call(language, info)
+                        detail = (
+                            f"{detail.rstrip('.')}. After finishing that "
+                            f"procedure, re-run {rerun}"
+                        )
                     outcome = _transactions.RestoreResult(
                         restored=False,
                         artifact_restored=False,
                         metadata_restored=False,
                         superseded=False,
-                        errors=(
-                            f"restore raised {type(error).__name__}: {error}; "
-                            f"rollback point retained: {point.path}",
-                        ),
+                        errors=(detail,),
                         warnings=(),
                     )
         if interrupted is not None:
@@ -1327,6 +1336,16 @@ class GrammarInstaller:
                 f"({error})"
             )
         return True, None
+
+    @staticmethod
+    def _install_call(language: str, info: InstallationInfo) -> str:
+        """The ``install_grammar`` call that repeats this install."""
+        arguments = [repr(language), repr(info.source_url)]
+        if info.version != "latest":
+            arguments.append(repr(info.version))
+        if info.priority != GrammarPriority.USER:
+            arguments.append(f"priority=GrammarPriority.{info.priority.name}")
+        return f"install_grammar({', '.join(arguments)})"
 
     def _check_previous_metadata(self, language: str) -> None:
         """Refuse an install over recorded metadata outside ``grammars/``.
@@ -1423,23 +1442,27 @@ class GrammarInstaller:
         Any ``install_path`` is recorded, as before (treesitter-chunker#134
         records libraries in user and package directories). Only a library
         under ``grammars/`` gets an ``artifact_sha256``; installing over, or
-        removing, a record outside ``grammars/`` is still refused.
+        removing, a record outside ``grammars/`` is still refused. The digest
+        is taken in the same lock section that writes the metadata, so no
+        participant can replace the library in between
+        (treesitter-chunker#618).
         """
         try:
             path = Path(info.install_path)
-            artifact_sha256 = None
-            try:
-                _transactions._grammar_parts(self._base_cache_dir, path)
-            except _transactions.ContainmentError:
-                pass
-            else:
-                if path.is_file():
-                    artifact_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
-            _transactions.publish_installation_metadata(
-                self._base_cache_dir,
-                language,
-                self._installation_document(info, artifact_sha256),
-            )
+            with _transactions.cache_lock(self._base_cache_dir):
+                artifact_sha256 = None
+                try:
+                    _transactions._grammar_parts(self._base_cache_dir, path)
+                except _transactions.ContainmentError:
+                    pass
+                else:
+                    if path.is_file():
+                        artifact_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+                _transactions.publish_installation_metadata(
+                    self._base_cache_dir,
+                    language,
+                    self._installation_document(info, artifact_sha256),
+                )
         except Exception as e:
             logger.warning(f"Failed to save installation info: {e}")
 
