@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1332,14 +1333,13 @@ def test_restore_refuses_linked_metadata_with_recovery_steps(
     message = str(raised.value)
     assert f"delete {point.metadata}" in message, message
     assert str(point.path / "rollback.json") in message
-    assert "docs/development/cache-transaction-contract.md" not in message or (
-        "https://github.com/Consiliency/treesitter-chunker/blob/" in message
-    )
-    assert (
+    recovery_url = re.search(r"https://\S+", message)
+    assert recovery_url is not None
+    assert recovery_url.group() == (
         "https://github.com/Consiliency/treesitter-chunker/blob/"
         "10f122729f3b4bcbcc19bfefe2d18599cbe90eed/"
         "docs/development/cache-transaction-contract.md#crash-states-and-operator-recovery"
-    ) in message
+    )
     assert "neither installation file was touched" in message
     assert metadata.is_symlink() and sentinel.read_bytes() == b"sentinel"
     assert _sha(point.artifact) == pair_b[0]
@@ -1538,6 +1538,7 @@ def test_restore_link_after_publication_has_recovery_steps(
         else:
             assert point.metadata.read_bytes() == pair_b[1]
     else:
+        assert "recreate grammars/ as a real directory" in message
         assert _sha(outside / point.artifact.name) == pair_a[0]
         assert (outside / point.metadata.name).read_bytes() == pair_b[1]
     assert (point.path / "rollback.json").is_file()
@@ -1556,6 +1557,7 @@ def test_restore_linked_grammars_root_has_recovery_steps(tmp_path, revisions):
         _transactions.restore(point, provenance=_pin(rev_a), invalidate=lambda _: None)
     message = str(raised.value)
     assert f"delete {grammars}" in message
+    assert "recreate grammars/ as a real directory" in message
     assert str(point.path / "rollback.json") in message
     assert not isinstance(raised.value, _transactions._LinkedInstallationError)
     assert grammars.is_symlink()
@@ -1582,6 +1584,61 @@ def test_saved_metadata_refuses_linked_library(tmp_path, caplog):
     assert "Refusing to follow link" in caplog.text
     assert library.is_symlink()
     assert outside.read_bytes() == b"external library"
+
+
+def test_saved_metadata_refuses_linked_grammars_root(tmp_path):
+    """The old hash reads through the parent link before publication refuses it.
+
+    Observe real opens in an isolated child (audit hooks cannot be removed).
+    Mutation ``follow_saved_library_link`` must fail even though publication
+    would subsequently refuse the linked root and leave metadata absent.
+    """
+    cache = tmp_path / "cache"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    library = outside / "libbaml.so"
+    library.write_bytes(b"external library")
+    child = Child(
+        r"""
+from pathlib import Path
+from chunker.grammar_management.core import GrammarInstaller, InstallationInfo
+cache = Path(ARGS[0])
+installer = GrammarInstaller(cache_dir=cache, trusted_artifacts={})
+emit("ready")
+wait()
+library = cache / "grammars" / "libbaml.so"
+opened = []
+
+
+def audit(event, args):
+    if event == "open" and args[0] == str(library):
+        opened.append(args[0])
+
+
+sys.addaudithook(audit)
+installer._save_installation_info(
+    "baml", InstallationInfo(version="a", install_date=0,
+                             install_path=library, source_url="https://example.com")
+)
+emit("done", opened=opened)
+""",
+        [cache],
+    )
+    try:
+        child.expect("ready")
+        grammars = cache / "grammars"
+        grammars.rmdir()
+        grammars.symlink_to(outside, target_is_directory=True)
+        child.release()
+        done = child.finish()
+    finally:
+        child.close()
+    assert done["opened"] == []
+    assert not (outside / "baml_install_info.json").exists()
+    assert "Failed to save installation info" in child.stderr
+    assert f"{grammars} is not a real directory" in child.stderr
+    assert grammars.is_symlink()
+    assert library.read_bytes() == b"external library"
 
 
 # --- Windows: a real installer failed update ------------------------------------

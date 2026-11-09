@@ -658,8 +658,8 @@ records user and package directories); only a library under `grammars/` gets an
 `artifact_sha256`. It hashes that library in the same lock section that
 publishes the metadata, so no participant can replace the library between the
 hash and the write (treesitter-chunker#618). It opens the library through the
-transaction helper's no-follow directory traversal and digest reader. A linked
-library or parent raises `ContainmentError` internally; the existing save
+transaction helper's no-follow directory traversal and digest reader. A linked or non-regular
+library, or a linked parent, raises `ContainmentError` internally; the existing save
 wrapper logs the failure and publishes no metadata (treesitter-chunker#628).
 
 **Metadata format.** The metadata keeps today's fields and adds
@@ -857,7 +857,9 @@ file was touched. For a linked root, remove only the link, recreate a real
 `grammars/` directory and recover its contents manually before applying the
 retained-point procedure. Neither case adds the install re-run sentence;
 that advice remains limited to the up-front installation-file refusal
-(treesitter-chunker#627).
+(treesitter-chunker#627). The up-front check also refuses a linked or
+non-directory `grammars/` root with an actionable `ContainmentError` (not the
+private marker), says nothing was touched, and gives no re-run advice.
 
 **Windows.** IF-0-HOTFIX-1 raises `OSError` when Windows refuses to replace a
 library that a process has loaded, and the destination is then unchanged.

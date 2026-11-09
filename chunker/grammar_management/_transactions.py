@@ -2298,7 +2298,7 @@ def _refuse_linked_installation(
         "https://github.com/Consiliency/treesitter-chunker/blob/"
         "10f122729f3b4bcbcc19bfefe2d18599cbe90eed/"
         "docs/development/cache-transaction-contract.md"
-        "#crash-states-and-operator-recovery."
+        "#crash-states-and-operator-recovery"
     )
 
 
