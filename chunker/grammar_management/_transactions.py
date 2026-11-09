@@ -2230,7 +2230,9 @@ def _observe(rootdir: _Dir, point: RollbackPoint) -> tuple[str | None, str | Non
                 directory.close()
 
 
-def _refuse_linked_installation(rootdir: _Dir, point: RollbackPoint) -> None:
+def _refuse_linked_installation(
+    rootdir: _Dir, point: RollbackPoint, *, publication_attempted: bool = False
+) -> None:
     """Refuse a link or other non-regular file at an installation name.
 
     Containment rule 2: restore never follows or replaces it. The error names
@@ -2238,24 +2240,45 @@ def _refuse_linked_installation(rootdir: _Dir, point: RollbackPoint) -> None:
     """
     parts = _grammar_parts(point.root, point.artifact)
     found: list[Path] = []
-    for subdirs, name in ((parts[1:-1], parts[-1]), ((), point.metadata.name)):
-        directory = _grammar_dir(rootdir, subdirs, create=False)
-        if directory is None:
-            continue
-        with directory:
-            st = directory.lstat(name)
-            if st is not None and (_is_link(st) or not stat.S_ISREG(st.st_mode)):
-                found.append(directory.path / name)
+    st = rootdir.lstat(GRAMMARS_DIR)
+    bad_root = st is not None and (_is_link(st) or not stat.S_ISDIR(st.st_mode))
+    if bad_root:
+        found.append(rootdir.path / GRAMMARS_DIR)
+    else:
+        for subdirs, name in ((parts[1:-1], parts[-1]), ((), point.metadata.name)):
+            directory = _grammar_dir(rootdir, subdirs, create=False)
+            if directory is None:
+                continue
+            with directory:
+                st = directory.lstat(name)
+                if st is not None and (_is_link(st) or not stat.S_ISREG(st.st_mode)):
+                    found.append(directory.path / name)
     if not found:
         return
     paths = " and ".join(str(path) for path in found)
     each = "it is" if len(found) == 1 else "each is"
-    raise _LinkedInstallationError(
+    error_type = (
+        ContainmentError
+        if bad_root or publication_attempted
+        else _LinkedInstallationError
+    )
+    progress = (
+        "publication may already have changed the artifact; metadata was not restored. "
+        if publication_attempted
+        else "neither installation file was touched. "
+    )
+    root_recovery = (
+        "recreate grammars/ as a real directory and recover its contents manually, then "
+        if bad_root
+        else ""
+    )
+    raise error_type(
         f"Restore refused {paths}: {each} a link or other non-regular file, "
-        "which restore never follows or replaces, so neither installation file "
-        f"was touched. Rollback point retained: {point.path}. To recover, with "
+        "which restore never follows or replaces; "
+        f"{progress}Rollback point retained: {point.path}. To recover, with "
         f"no grammar command running: delete {paths} (a link's target is left "
-        f"unchanged), then finish from {point.path / ROLLBACK_MANIFEST_NAME} "
+        f"unchanged), then {root_recovery}finish from "
+        f"{point.path / ROLLBACK_MANIFEST_NAME} "
         "with the procedure for a retained rollback point in "
         "https://github.com/Consiliency/treesitter-chunker/blob/"
         "10f122729f3b4bcbcc19bfefe2d18599cbe90eed/"
@@ -2347,6 +2370,9 @@ def restore(
                                     "Artifact was not restored: the previous artifact "
                                     f"was not admitted ({result.reason})"
                                 )
+                        _refuse_linked_installation(
+                            rootdir, point, publication_attempted=True
+                        )
                         artifact_restored = _observe(rootdir, point)[0] == ap
                 if artifact_restored and not superseded:
                     ctx.seam("restore.before_metadata")

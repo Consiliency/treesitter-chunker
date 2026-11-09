@@ -1431,8 +1431,8 @@ def test_installer_omits_rerun_for_a_linked_grammars_root(tmp_path, shim):
     """treesitter-chunker#620 RF1: only the up-front link refusal adds re-run.
 
     A ``grammars/`` root swapped for a link to a real directory is refused by
-    a plain ``ContainmentError``, whose recovery is not the documented
-    procedure. The error names the retained point and offers no re-run.
+    an actionable ``ContainmentError``. Recovery requires repairing the root
+    manually. The error names the retained point and offers no re-run.
     Mutation ``rerun_for_any_containment`` (match any ``ContainmentError``)
     adds the re-run sentence.
     """
@@ -1446,7 +1446,9 @@ def test_installer_omits_rerun_for_a_linked_grammars_root(tmp_path, shim):
     error = done["error"]
     assert "OSError: injected publication failure" in error, error
     assert "restore raised ContainmentError" in error
-    assert f"rollback point retained: {point}" in error
+    assert f"Rollback point retained: {point}" in error
+    assert f"delete {cache / 'grammars'}" in error
+    assert "recreate grammars/ as a real directory" in error
     assert "re-run" not in error
     assert (cache / "grammars").is_symlink() and real.is_dir()
 
@@ -1475,6 +1477,91 @@ def test_install_call_names_a_non_user_priority(priority, expected):
         priority=priority,
     )
     assert GrammarInstaller._install_call("baml", info) == expected.format(url=URL)
+
+
+# --- follow-ups: treesitter-chunker#627, #628 ---------------------------------
+
+
+@pytest.mark.parametrize("target", ["metadata", "artifact", "grammars_root"])
+def test_restore_link_after_publication_has_recovery_steps(
+    tmp_path, revisions, monkeypatch, target
+):
+    """Late links retain the point and never claim publication did not happen.
+
+    Mutation ``bare_root_and_late_refusal`` removes the new refusal checks.
+    The invalidation callback updates validation records; its existing barrier
+    lets a non-participant swap a path after publication, before observation.
+    """
+    rev_a, rev_b = revisions
+    cache = tmp_path / "cache"
+    point, pair_a, pair_b = _published_pair(cache, rev_a, rev_b)
+    linked = []
+
+    def barrier(name, context):
+        if name != "json.after_read":
+            return
+        assert _sha(point.artifact) == pair_a[0]
+        if target == "metadata":
+            linked.extend(_metadata_link(cache, tmp_path))
+        elif target == "artifact":
+            sentinel = tmp_path / "outside.so"
+            sentinel.write_bytes(b"sentinel")
+            point.artifact.unlink()
+            point.artifact.symlink_to(sentinel)
+            linked.extend((point.artifact, sentinel))
+        else:
+            grammars = cache / "grammars"
+            real = tmp_path / "grammars-real"
+            grammars.rename(real)
+            grammars.symlink_to(real, target_is_directory=True)
+            linked.extend((grammars, real))
+
+    def invalidate(_path):
+        _transactions.update_json_records(
+            cache, "validation_cache.json", lambda records: records
+        )
+
+    monkeypatch.setattr(_transactions, "_BARRIER", barrier)
+    with pytest.raises(_transactions.ContainmentError) as raised:
+        _transactions.restore(point, provenance=_pin(rev_a), invalidate=invalidate)
+    link, outside = linked
+    message = str(raised.value)
+    assert f"delete {link}" in message
+    assert str(point.path / "rollback.json") in message
+    assert "neither installation file was touched" not in message
+    assert not isinstance(raised.value, _transactions._LinkedInstallationError)
+    assert link.is_symlink()
+    if target in {"metadata", "artifact"}:
+        assert outside.read_bytes() == b"sentinel"
+        if target == "metadata":
+            assert _sha(point.artifact) == pair_a[0]
+        else:
+            assert point.metadata.read_bytes() == pair_b[1]
+    else:
+        assert _sha(outside / point.artifact.name) == pair_a[0]
+        assert (outside / point.metadata.name).read_bytes() == pair_b[1]
+    assert (point.path / "rollback.json").is_file()
+
+
+def test_restore_linked_grammars_root_has_recovery_steps(tmp_path, revisions):
+    """Mutation ``bare_root_and_late_refusal`` loses the root-specific guidance."""
+    rev_a, rev_b = revisions
+    cache = tmp_path / "cache"
+    point, _, pair_b = _published_pair(cache, rev_a, rev_b)
+    grammars = cache / "grammars"
+    real = tmp_path / "grammars-real"
+    grammars.rename(real)
+    grammars.symlink_to(real, target_is_directory=True)
+    with pytest.raises(_transactions.ContainmentError) as raised:
+        _transactions.restore(point, provenance=_pin(rev_a), invalidate=lambda _: None)
+    message = str(raised.value)
+    assert f"delete {grammars}" in message
+    assert str(point.path / "rollback.json") in message
+    assert not isinstance(raised.value, _transactions._LinkedInstallationError)
+    assert grammars.is_symlink()
+    assert _sha(real / point.artifact.name) == pair_b[0]
+    assert (real / point.metadata.name).read_bytes() == pair_b[1]
+    assert (point.path / "rollback.json").is_file()
 
 
 # --- Windows: a real installer failed update ------------------------------------

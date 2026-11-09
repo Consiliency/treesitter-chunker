@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Restore gives recovery steps for a linked `grammars/` root and links found
+  after artifact publication, without claiming nothing changed or suggesting
+  an unhelpful install re-run (treesitter-chunker#627).
+
 - Restore recovery errors link to a commit-pinned copy of the operator
   procedure, available to wheel-only users (treesitter-chunker#626).
 

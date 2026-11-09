@@ -846,6 +846,16 @@ on GitHub, rather than citing a local documentation file: documentation is not
 in the wheel (treesitter-chunker#626). The pinned copy remains stable across
 subsequent edits; access to it requires network connectivity.
 
+Restore also checks after its publication attempt, before re-hashing. A linked
+`grammars/` root or a linked installation file found at this later check gets
+an actionable `ContainmentError` and retains the point. The late message says
+publication may already have changed the artifact; it does not claim neither
+file was touched. For a linked root, remove only the link, recreate a real
+`grammars/` directory and recover its contents manually before applying the
+retained-point procedure. Neither case adds the install re-run sentence;
+that advice remains limited to the up-front installation-file refusal
+(treesitter-chunker#627).
+
 **Windows.** IF-0-HOTFIX-1 raises `OSError` when Windows refuses to replace a
 library that a process has loaded, and the destination is then unchanged.
 Restore does not retry that call, because each attempt re-runs the probe. A
