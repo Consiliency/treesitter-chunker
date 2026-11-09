@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 import multiprocessing as mp
+import os
 import sqlite3
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FutureTimeout
+from multiprocessing import util as mp_util
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -18,6 +20,31 @@ if TYPE_CHECKING:
     from .types import CodeChunk
 
 logger = logging.getLogger(__name__)
+
+
+_AF_UNIX_PATH_MAX = 108 if sys.platform == "linux" else 104  # includes the NUL
+_SOCKET_NAME_BYTES = 18  # "/sock-" + 12 hex == "/listener-" + 8 hex
+
+
+def _pool_mp_context():
+    context = mp.get_context()
+    if context.get_start_method() != "forkserver":
+        return context
+    try:
+        socket_dir = mp_util.get_temp_dir()
+    except OSError:
+        socket_dir = None
+    if (
+        socket_dir is not None
+        and len(os.fsencode(socket_dir)) + _SOCKET_NAME_BYTES < _AF_UNIX_PATH_MAX
+    ):
+        return context
+    logger.debug(
+        "Using spawn for the process pool: a forkserver socket under %s would "
+        "exceed the AF_UNIX limit; forkserver preloads will not apply",
+        socket_dir,
+    )
+    return mp.get_context("spawn")
 
 
 class ParallelChunker:
@@ -114,10 +141,12 @@ class ParallelChunker:
             time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         )
 
+        context = _pool_mp_context()
+
         # Join completed unbounded batches before another call can fork while
         # this pool's manager is still cleaning up. Deadline calls retain their
         # nonblocking shutdown so worker cleanup cannot exceed the caller budget.
-        executor = ProcessPoolExecutor(max_workers=self.num_workers)
+        executor = ProcessPoolExecutor(max_workers=self.num_workers, mp_context=context)
         completed = False
         try:
             # Submit all tasks
