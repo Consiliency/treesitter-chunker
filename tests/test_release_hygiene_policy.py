@@ -421,7 +421,8 @@ PRIMARY_PYTHON = "3.14"
 # Where the floor interpreter may appear: (workflow, job, platform family or
 # None) -> reason.
 FLOOR_ALLOWED = {
-    ("test.yml", "test", "linux"): "focused minimum: Linux platform-core",
+    ("ci.yml", "platform", "linux"): "focused minimum: Linux platform-core",
+    ("language-pack-cache.yml", "warm", "linux"): "cache uses platform interpreter",
     ("release.yml", "verify-installed-wheel", None): "installed-wheel floor check",
     # The BAML companion is a separate package whose minimum is also 3.12. These
     # jobs check, build and smoke-test it on that minimum. Its cp312-abi3 floor
@@ -824,7 +825,7 @@ def test_workflows_use_no_yaml_anchors_or_aliases():
 
 # Mutation tests. Each edits workflow text in memory and must be rejected with
 # the fix message, attributed to the mutated workflow.
-_CI_PYTEST = '          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then\n'
+_CI_PYTEST = '          if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then\n'
 
 
 def _insert_ci(inserted: str):
@@ -929,12 +930,12 @@ TEXT_MUTATIONS = {
         "    - run: uv run --python 3.12 python -V\n\n  create-release:\n",
     ),
     "M502-text-quoted-job-test": (
-        "test.yml",
+        "ci.yml",
         "    - name: Install dependencies\n",
         None,  # appended job, see _apply
     ),
     "M502-text-family-scope": (
-        "test.yml",
+        "ci.yml",
         "    - name: Install dependencies\n",
         "    - name: floor everywhere\n"
         "      run: uv run --python 3.12 python scripts/run_platform_core.py"
@@ -942,7 +943,7 @@ TEXT_MUTATIONS = {
         "    - name: Install dependencies\n",
     ),
     "M502-text-macos-floor": (
-        "test.yml",
+        "ci.yml",
         "          - python-version: '3.14'\n            platform: macos-latest\n",
         "          - python-version: '3.12'\n            platform: macos-latest\n",
     ),
@@ -989,35 +990,35 @@ TEXT_MUTATIONS = {
     "M502-text-graalpy-at": _insert_ci("          uvx graalpy@3.11 -V\n"),
     # round 2: the floor matrix entry, from parsed values
     "M502-text-windows-line-comment": (
-        "test.yml",
+        "ci.yml",
         "          - python-version: '3.14'\n            platform: windows-2025\n",
         "          - python-version: '3.14'  # uv run -p 3.12 python -V\n"
         "            platform: windows-2025\n",
     ),
     "M502-text-linux-line-comment": (
-        "test.yml",
+        "ci.yml",
         "          - python-version: '3.12'\n",
         "          - python-version: '3.12'  # uv run -p 3.12 python -V\n",
     ),
     "M502-text-flow-include": (
-        "test.yml",
+        "ci.yml",
         "        include:\n",
         None,  # flow-style include with a selector, see _apply
     ),
     "M502-text-linux-on-macos": (
-        "test.yml",
+        "ci.yml",
         "            platform: ubuntu-latest\n",
         "            platform: macos-latest\n",
     ),
     "M502-text-second-linux-entry": (
-        "test.yml",
+        "ci.yml",
         "          - python-version: '3.14'\n            platform: windows-2025\n",
         "          - python-version: '3.12'\n            platform: windows-2025\n"
         "            platform-family: linux\n"
         "          - python-version: '3.14'\n            platform: windows-2025\n",
     ),
     "M502-text-runs-on-not-matrix": (
-        "test.yml",
+        "ci.yml",
         "    runs-on: ${{ matrix.platform }}\n",
         "    runs-on: macos-latest\n",
     ),
@@ -1204,7 +1205,16 @@ def test_primary_python_runs_ci_full_tier_and_release():
     assert floor != PRIMARY_PYTHON
 
     ci = _workflow("ci.yml")["jobs"]
-    assert list(ci) == ["test"]
+    assert set(ci) == {
+        "changes",
+        "policy",
+        "test",
+        "platform",
+        "controlled-linux",
+        "docs",
+        "ci-gate",
+        "nightly-failure",
+    }
     job = ci["test"]
     assert str(job["env"]["UV_PYTHON"]) == PRIMARY_PYTHON
     assert _setup_python_versions(job) == [PRIMARY_PYTHON]
@@ -1223,15 +1233,14 @@ def test_primary_python_runs_ci_full_tier_and_release():
     assert str(build["env"]["UV_PYTHON"]) == PRIMARY_PYTHON
     assert _setup_python_versions(build) == [PRIMARY_PYTHON]
 
-    platform = _workflow("test.yml")["jobs"]
-    assert list(platform) == ["test", "controlled-linux"]
+    platform = _workflow("ci.yml")["jobs"]
     controlled = platform["controlled-linux"]
     assert controlled["runs-on"] == "ubuntu-latest"
     assert str(controlled["env"]["UV_PYTHON"]) == PRIMARY_PYTHON
     assert _setup_python_versions(controlled) == [PRIMARY_PYTHON]
     assert "tests/test_reproducible_grammar_build.py" in str(controlled["steps"])
     assert "tests/test_remaining_builder_contract.py" in str(controlled["steps"])
-    matrix = platform["test"]["strategy"]["matrix"]
+    matrix = platform["platform"]["strategy"]["matrix"]
     assert set(matrix) == {"include"}
     layout = sorted(
         (item["platform-family"], str(item["python-version"]))
@@ -1242,7 +1251,7 @@ def test_primary_python_runs_ci_full_tier_and_release():
         ("macos", PRIMARY_PYTHON),
         ("windows", PRIMARY_PYTHON),
     ]
-    assert platform["test"]["env"]["UV_PYTHON"] == "${{ matrix.python-version }}"
+    assert platform["platform"]["env"]["UV_PYTHON"] == "${{ matrix.python-version }}"
 
     # The lint and type checks run once per CI run, in the ci.yml job on 3.14.
     gate = "scripts/mypy_gate.py"
@@ -1250,7 +1259,7 @@ def test_primary_python_runs_ci_full_tier_and_release():
         (workflow, name)
         for workflow, name, _env, job in _workflow_jobs()
         for step in job.get("steps") or []
-        if gate in str(step.get("run", "")) and workflow in ("ci.yml", "test.yml")
+        if gate in str(step.get("run", "")) and workflow == "ci.yml"
     ]
     assert runs == [("ci.yml", "test")]
 

@@ -105,3 +105,22 @@ Confirm `git status --short` is clean before creating or pushing the release tag
 - tag/version mismatch: fix `pyproject.toml` or retag
 - version already exists: bump version and retry with a new tag
 - build issue: reproduce locally with `uv run --with toml --all-extras python -m build` and `uv run --with toml --all-extras python -m twine check`
+
+
+CI routing (Consiliency/treesitter-chunker#647): the CI workflow owns the
+`test`, three platform checks, `controlled-linux`, `policy`, `docs`, and
+`CI gate` checks. Phase A runs every lane on PRs while validating classification;
+Phase C enables lightweight prose routing after gate-only protection is active.
+Stacked code PRs run the full 3-OS matrix, even when only prose differs from
+their parent. Unknown paths, executable documentation and deleted build inputs
+run all lanes. The gate rejects failed, cancelled or unexpectedly skipped jobs.
+`[skip ci]` leaves the gate pending, which blocks merge.
+
+Nightly and manual full dispatch run tests/ and spec_tests/ on Linux, macOS and
+Windows using primary Python 3.14; Linux platform-core retains the 3.12 floor.
+Interpreters stay fixed across events. Main publication builds its docs artifact
+once for deployment; it does not run another test suite. Publication may coalesce
+pending revisions while an active deploy finishes. A targeted three-OS cache
+warmer and nightly maintain language-pack caches; eviction and a cold new key
+can still require working upstream downloads. Phase C must wait for a green
+full dispatch on main or explicit owner acceptance of tracked failures.

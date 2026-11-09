@@ -21,6 +21,7 @@ WORKFLOWS = sorted([*WORKFLOW_DIR.glob("*.yml"), *WORKFLOW_DIR.glob("*.yaml")])
 
 # (workflow, job, scope) -> the step that needs the write.
 WRITE_GRANTS = {
+    ("ci.yml", "nightly-failure", "issues"): "gh",
     ("baml-grammar-wheels.yml", "publish", "id-token"): "pypa/gh-action-pypi-publish",
     ("docs.yml", "deploy", "contents"): "peaceiris/actions-gh-pages",
     ("release.yml", "create-release", "contents"): "softprops/action-gh-release",
@@ -102,7 +103,9 @@ def test_workflow_and_jobs_declare_least_privilege(path: Path) -> None:
                 continue
             action = WRITE_GRANTS.get((path.name, name, scope))
             assert action, f"{where}: unlisted {scope}: write"
-            assert action in _actions(job), f"{where}: {action} not used"
+            assert action == "gh" or action in _actions(
+                job
+            ), f"{where}: {action} not used"
 
 
 def test_every_write_grant_is_still_needed() -> None:
@@ -169,3 +172,25 @@ def test_docs_build_never_holds_a_write_token() -> None:
         (step.get("with") or {}).get("persist-credentials") is False
         for step in checkouts
     )
+
+
+def test_ci_read_permissions_and_nightly_issue_isolation() -> None:
+    jobs = _load(ROOT / ".github/workflows/ci.yml")["jobs"]
+    for name in (
+        "changes",
+        "ci-gate",
+        "policy",
+        "docs",
+        "test",
+        "platform",
+        "controlled-linux",
+    ):
+        assert jobs[name]["permissions"] == {"contents": "read"}
+    nightly = jobs["nightly-failure"]
+    assert nightly["permissions"] == {"issues": "write"}
+    assert nightly["if"] == "${{ github.event_name == 'schedule' && failure() }}"
+    assert not _actions(nightly)
+    assert "nightly-failure" not in jobs["ci-gate"]["needs"]
+    assert _load(ROOT / ".github/workflows/language-pack-cache.yml")["jobs"]["warm"][
+        "permissions"
+    ] == {"contents": "read"}

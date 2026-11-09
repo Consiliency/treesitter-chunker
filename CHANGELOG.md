@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Consolidate PR validation under a fail-closed `CI gate`, preserve legacy
+  checks during migration, bound smoke workers, and add three-OS full nightly
+  routing and cache warming (Consiliency/treesitter-chunker#647). Main docs
+  publication still builds the artifact required for deployment.
+
 - Saving installation metadata refuses a linked or non-regular library, or a
   linked parent, without hashing their targets or publishing metadata
   (treesitter-chunker#628).
