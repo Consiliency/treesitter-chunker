@@ -1300,11 +1300,11 @@ class GrammarInstaller:
                     detail = f"restore raised {type(error).__name__}: {error}"
                     if str(point.path) not in detail:
                         detail += f"; rollback point retained: {point.path}"
-                    if isinstance(error, _transactions.ContainmentError):
+                    if isinstance(error, _transactions._LinkedInstallationError):
                         rerun = self._install_call(language, info)
                         detail = (
-                            f"{detail.rstrip('.')}. Once both installation paths "
-                            f"are regular files or absent, re-run {rerun}"
+                            f"{detail.rstrip('.')}. After finishing that "
+                            f"procedure, re-run {rerun}"
                         )
                     outcome = _transactions.RestoreResult(
                         restored=False,
@@ -1340,6 +1340,8 @@ class GrammarInstaller:
         arguments = [repr(language), repr(info.source_url)]
         if info.version != "latest":
             arguments.append(repr(info.version))
+        if info.priority != GrammarPriority.USER:
+            arguments.append(f"priority=GrammarPriority.{info.priority.name}")
         return f"install_grammar({', '.join(arguments)})"
 
     def _check_previous_metadata(self, language: str) -> None:

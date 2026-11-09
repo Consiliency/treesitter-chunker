@@ -78,6 +78,13 @@ class NestedRootError(ContainmentError):
     """A cache root overlaps another root's managed namespace."""
 
 
+class _LinkedInstallationError(ContainmentError):
+    """Restore refused a link at an installation name (treesitter-chunker#620).
+
+    Private marker: its message gives the documented recovery procedure.
+    """
+
+
 class _RootMovedError(CacheTransactionError):
     """The root path no longer resolves to the directory that was opened."""
 
@@ -2243,7 +2250,7 @@ def _refuse_linked_installation(rootdir: _Dir, point: RollbackPoint) -> None:
         return
     paths = " and ".join(str(path) for path in found)
     each = "it is" if len(found) == 1 else "each is"
-    raise ContainmentError(
+    raise _LinkedInstallationError(
         f"Restore refused {paths}: {each} a link or other non-regular file, "
         "which restore never follows or replaces, so neither installation file "
         f"was touched. Rollback point retained: {point.path}. To recover, with "

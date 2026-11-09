@@ -48,6 +48,7 @@ from chunker.grammar_management import _transactions
 from chunker.grammar_management.core import (
     GrammarInstaller,
     GrammarManager,
+    GrammarPriority,
     GrammarValidator,
     InstallationInfo,
 )
@@ -1291,21 +1292,41 @@ def _metadata_link(cache: Path, tmp_path: Path) -> tuple[Path, Path]:
     return metadata, sentinel
 
 
-def test_restore_refuses_linked_metadata_with_recovery_steps(tmp_path, revisions):
+@pytest.mark.parametrize("when", ["before_call", "at_barrier"])
+def test_restore_refuses_linked_metadata_with_recovery_steps(
+    tmp_path, revisions, monkeypatch, when
+):
     """treesitter-chunker#620: a linked metadata file is refused, actionably.
 
     Containment rule 2 keeps the refusal: restore never follows or replaces
     the link, and neither file is touched. The error names the link to
     delete, the retained ``rollback.json`` to finish from, and says the
-    link's target is left alone. Mutation ``bare_link_refusal`` (drop the
-    up-front check) raises only "Refusing to follow link".
+    link's target is left alone. ``before_call`` swaps the metadata before
+    ``restore``; ``at_barrier`` swaps it at ``restore.before_artifact``, which
+    ``restore`` checks again. Mutation ``bare_link_refusal`` (drop both checks)
+    fails both; mutation ``M4`` (drop only the check after
+    ``restore.before_artifact``) fails ``at_barrier``. Each raises only
+    "Refusing to follow link".
     """
     rev_a, rev_b = revisions
     cache = tmp_path / "cache"
     point, _, pair_b = _published_pair(cache, rev_a, rev_b)
-    metadata, sentinel = _metadata_link(cache, tmp_path)
+    linked: list[tuple[Path, Path]] = []
+    if when == "before_call":
+        linked.append(_metadata_link(cache, tmp_path))
+    else:
+        monkeypatch.setattr(
+            _transactions,
+            "_BARRIER",
+            lambda p, _c: (
+                linked.append(_metadata_link(cache, tmp_path))
+                if p == "restore.before_artifact"
+                else None
+            ),
+        )
     with pytest.raises(_transactions.ContainmentError) as raised:
         _transactions.restore(point, provenance=_pin(rev_a), invalidate=lambda _: None)
+    ((metadata, sentinel),) = linked
     message = str(raised.value)
     assert f"delete {point.metadata}" in message, message
     assert str(point.path / "rollback.json") in message
@@ -1322,14 +1343,18 @@ import os
 from pathlib import Path
 from chunker._internal import user_grammar_tools
 from chunker.grammar_management.core import GrammarInstaller
-cache, sentinel = Path(ARGS[0]), Path(ARGS[1])
+cache, sentinel, target = Path(ARGS[0]), Path(ARGS[1]), ARGS[2]
 
 
 def publish(*args, **kwargs):
-    # A non-participant swaps the published metadata for a link mid-commit.
-    metadata = cache / "grammars" / "baml_install_info.json"
-    metadata.unlink()
-    os.symlink(sentinel, metadata)
+    # A non-participant swaps an installation path for a link mid-commit.
+    grammars = cache / "grammars"
+    if target == "metadata":
+        (grammars / "baml_install_info.json").unlink()
+        os.symlink(sentinel, grammars / "baml_install_info.json")
+    else:  # the grammars/ root becomes a link to a real directory
+        os.rename(grammars, sentinel)
+        os.symlink(sentinel, grammars, target_is_directory=True)
     raise OSError("injected publication failure")
 
 
@@ -1356,17 +1381,7 @@ def test_installer_names_the_recovery_for_linked_metadata(tmp_path, shim):
     artifact_a = _pair(cache)[0]
     sentinel = tmp_path / "outside.json"
     sentinel.write_bytes(b"sentinel")
-    child = Child(
-        LINK_DURING_COMMIT,
-        [cache, sentinel],
-        env=_env(shim, _repo(tmp_path / "b", minor=2)),
-    )
-    try:
-        child.expect("ready")
-        child.release()
-        done = child.finish()
-    finally:
-        child.close()
+    done = _install_with_link(tmp_path, shim, cache, sentinel, "metadata")
     metadata = cache.absolute() / "grammars" / "baml_install_info.json"
     (operation_id,) = _rollback_points(cache)
     manifest = cache.absolute() / ".txn" / "rollback" / operation_id / "rollback.json"
@@ -1377,11 +1392,78 @@ def test_installer_names_the_recovery_for_linked_metadata(tmp_path, shim):
     assert f"delete {metadata}" in error
     assert str(manifest) in error
     assert (
-        "re-run install_grammar('baml', "
+        "After finishing that procedure, re-run install_grammar('baml', "
         "'https://github.com/example/tree-sitter-baml', 'v2')"
     ) in error
     assert metadata.is_symlink() and sentinel.read_bytes() == b"sentinel"
     assert _pair(cache)[0] == artifact_a
+
+
+def _install_with_link(
+    tmp_path: Path, shim: Path, cache: Path, sentinel: Path, target: str
+) -> dict:
+    child = Child(
+        LINK_DURING_COMMIT,
+        [cache, sentinel, target],
+        env=_env(shim, _repo(tmp_path / "b", minor=2)),
+    )
+    try:
+        child.expect("ready")
+        child.release()
+        return child.finish()
+    finally:
+        child.close()
+
+
+@POSIX_SHIM
+def test_installer_omits_rerun_for_a_linked_grammars_root(tmp_path, shim):
+    """treesitter-chunker#620 RF1: only the up-front link refusal adds re-run.
+
+    A ``grammars/`` root swapped for a link to a real directory is refused by
+    a plain ``ContainmentError``, whose recovery is not the documented
+    procedure. The error names the retained point and offers no re-run.
+    Mutation ``rerun_for_any_containment`` (match any ``ContainmentError``)
+    adds the re-run sentence.
+    """
+    cache = tmp_path / "cache"
+    assert _install(cache, _env(shim, _repo(tmp_path / "a", minor=1)))["success"]
+    real = tmp_path / "grammars-real"
+    done = _install_with_link(tmp_path, shim, cache, real, "grammars_root")
+    (operation_id,) = _rollback_points(cache)
+    point = cache.absolute() / ".txn" / "rollback" / operation_id
+    assert not done["success"]
+    error = done["error"]
+    assert "OSError: injected publication failure" in error, error
+    assert "restore raised ContainmentError" in error
+    assert f"rollback point retained: {point}" in error
+    assert "re-run" not in error
+    assert (cache / "grammars").is_symlink() and real.is_dir()
+
+
+@pytest.mark.parametrize(
+    ("priority", "expected"),
+    [
+        (GrammarPriority.USER, "install_grammar('baml', '{url}', 'v2')"),
+        (
+            GrammarPriority.PACKAGE,
+            "install_grammar('baml', '{url}', 'v2', "
+            "priority=GrammarPriority.PACKAGE)",
+        ),
+    ],
+)
+def test_install_call_names_a_non_user_priority(priority, expected):
+    """treesitter-chunker#620 RF1: the re-run call repeats a non-USER priority.
+
+    Mutation ``rerun_without_priority`` drops ``priority=``.
+    """
+    info = InstallationInfo(
+        version="v2",
+        install_date=0,
+        install_path=Path("libbaml.so"),
+        source_url=URL,
+        priority=priority,
+    )
+    assert GrammarInstaller._install_call("baml", info) == expected.format(url=URL)
 
 
 # --- Windows: a real installer failed update ------------------------------------
