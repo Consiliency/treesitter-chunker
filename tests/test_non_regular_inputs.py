@@ -469,18 +469,19 @@ def test_chunk_file_accepts_symlink_to_regular_file(tmp_path, regular):
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux forkserver regression")
 @pytest.mark.parametrize(
     ("tmpdir_bytes", "expected_method"),
-    [(77, "spawn"), (40, "forkserver")],
+    [(77, "probe"), (40, "forkserver")],
     ids=["window", "short"],
 )
 def test_parallel_chunking_with_tmpdir(
     tmp_path, regular, tmpdir_bytes, expected_method
 ):
     # On Linux with the forkserver start method, multiprocessing creates its socket
-    # below TMPDIR. CPython's system-temp fallback (3.13+/3.14) under-counts the socket
-    # name by 4 bytes on current releases (verified 3.13.15, 3.14.5), so a TMPDIR of
-    # 76–79 bytes fails with `AF_UNIX path too long`. Runtimes without the fallback
-    # (3.12) fail at every TMPDIR of 76 bytes or more. Parallel chunking now uses a
-    # pool-local spawn context only when the forkserver socket would not fit.
+    # below TMPDIR. CPython's system-temp fallback under-counts the socket name by
+    # 4 bytes in verified releases 3.13.15 and 3.14.5, so a TMPDIR of 76–79 bytes
+    # fails with `AF_UNIX path too long`. Newer patch releases fix the miscount
+    # (verified 3.14.10). Runtimes without the fallback (3.12) fail at every TMPDIR
+    # of 76 bytes or more. Parallel chunking now uses a pool-local spawn context
+    # only when the forkserver socket would not fit.
     with ExitStack() as stack:
         base = tmp_path
         if len(os.fsencode(base)) + 2 > tmpdir_bytes:
@@ -496,17 +497,34 @@ def test_parallel_chunking_with_tmpdir(
         assert len(os.fsencode(scratch)) == tmpdir_bytes
         code = """
             import multiprocessing as mp
+            import multiprocessing.util as util
+            import os
+            import socket
             import sys
             from pathlib import Path
             from chunker.parallel import ParallelChunker, _pool_mp_context
             mp.set_start_method("forkserver", force=True)
+            expected = sys.argv[2]
+            if expected == "probe":
+                directory = util.get_temp_dir()
+                address = os.path.join(directory, "sock-" + "0" * 12)
+                with socket.socket(socket.AF_UNIX) as probe:
+                    try:
+                        probe.bind(address)
+                    except OSError as exc:
+                        if "too long" not in str(exc):
+                            raise
+                        expected = "spawn"
+                    else:
+                        expected = "forkserver"
+                        os.unlink(address)
             method = _pool_mp_context().get_start_method()
             path = Path(sys.argv[1])
             result = ParallelChunker(
                 "python", num_workers=2, use_cache=False
             ).chunk_files_parallel([path])
             assert result[path], result
-            assert method == sys.argv[2], method
+            assert method == expected, (method, expected)
         """
         result = _run_python(
             code, str(regular), expected_method, cwd=REPO_ROOT, TMPDIR=str(scratch)
