@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On Linux with the forkserver start method, multiprocessing creates its socket
+  below TMPDIR. CPython's fallback to `/tmp` under-counts the socket
+  name by 4 bytes in verified releases 3.13.15 and 3.14.5, so a TMPDIR of
+  76–79 bytes fails with `AF_UNIX path too long`. Newer patch releases fix
+  the miscount (verified 3.14.10). Runtimes without the
+  fallback (3.12) fail at every TMPDIR of 76 bytes or more. Parallel chunking
+  now uses a pool-local spawn context only when the forkserver socket would not
+  fit (treesitter-chunker#624).
 - `GrammarInstaller._save_installation_info` now hashes the grammar library in
   the same locked section that writes its metadata, so the recorded
   `artifact_sha256` always describes the library on disk when the metadata is
