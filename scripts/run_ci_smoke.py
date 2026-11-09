@@ -111,7 +111,7 @@ def main() -> int:
         "-m",
         "pytest",
         "-n",
-        "auto",
+        "2",
         "--timeout=60",
         "-q",
         *CI_SMOKE_TESTS,

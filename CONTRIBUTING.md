@@ -82,7 +82,7 @@ checks that they match.
 
 The mypy gate blocks new errors against the committed baseline; it does not
 require clearing all existing type debt. Pull-request CI runs the fast smoke
-lane, and the Test Suite workflow confirms platform-core behavior on Linux,
+lane, and the CI platform matrix confirms platform-core behavior on Linux,
 macOS, and Windows. The scheduled CI job and release validation run the full
 `tests/` and `spec_tests/` suite.
 
@@ -127,7 +127,7 @@ A canonical 3.14 setting at the start of a line is allowed: `python-version:`
 or `UV_PYTHON:` set to 3.14, a literal list of only 3.14, or
 `${{ matrix.python-version }}` over a literal matrix. The rest of that line is
 still scanned. The named exclusions each cover only their own token:
-`pytest -p no:`, `mkdir -p`, `tar -cpf`, the `test.yml` cache key
+`pytest -p no:`, `mkdir -p`, `tar -cpf`, the platform cache key
 `}}-py${{ matrix.python-version }}`, and `setup-python@`.
 
 The Linux platform-core floor is narrower than a whole job. It covers exactly
@@ -249,3 +249,22 @@ Start user documentation in [README.md](README.md) and the
 For publication, follow [packaging](docs/packaging.md) and the
 [release checklist](docs/development/RELEASE_CHECKLIST.md). Only the guarded
 release workflow publishes the main package to PyPI.
+
+
+CI routing (Consiliency/treesitter-chunker#647): the CI workflow owns the
+`test`, three platform checks, `controlled-linux`, `policy`, `docs`, and
+`CI gate` checks. Phase A runs every lane on PRs while validating classification;
+Phase C enables lightweight prose routing after gate-only protection is active.
+Stacked code PRs run the full 3-OS matrix, even when only prose differs from
+their parent. Unknown paths, executable documentation and deleted build inputs
+run all lanes. The gate rejects failed, cancelled or unexpectedly skipped jobs.
+`[skip ci]` leaves the gate pending, which blocks merge.
+
+Nightly and manual full dispatch run tests/ and spec_tests/ on Linux, macOS and
+Windows using primary Python 3.14; Linux platform-core retains the 3.12 floor.
+Interpreters stay fixed across events. Main publication builds its docs artifact
+once for deployment; it does not run another test suite. Publication may coalesce
+pending revisions while an active deploy finishes. A targeted three-OS cache
+warmer and nightly maintain language-pack caches; eviction and a cold new key
+can still require working upstream downloads. Phase C must wait for a green
+full dispatch on main or explicit owner acceptance of tracked failures.

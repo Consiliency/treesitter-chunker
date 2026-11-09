@@ -6,26 +6,84 @@ permissions:
 on:
   workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+    types: [checks_requested]
   push:
     branches: [main]
   schedule:
     - cron: "17 3 * * *"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  BLACK_NUM_WORKERS: '2'
+  CMAKE_BUILD_PARALLEL_LEVEL: '2'
+  CARGO_BUILD_JOBS: '2'
+  MAKEFLAGS: '-j2'
+
 jobs:
+  changes:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      schema: ${{ steps.scope.outputs.schema }}
+      code: ${{ steps.scope.outputs.code }}
+      docs: ${{ steps.scope.outputs.docs }}
+      policy: ${{ steps.scope.outputs.policy }}
+      full: ${{ steps.scope.outputs.full }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14'
+      - id: scope
+        run: python scripts/ci_changes.py
+
+  policy:
+    needs: changes
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      UV_PYTHON: '3.14'
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14'
+      - run: python -m pip install uv==0.12.11
+      - run: uv sync --locked --all-extras
+      - name: Routing and repository policies
+        run: uv run --locked --all-extras pytest -q -p no:cacheprovider tests/test_release_hygiene_policy.py tests/test_workflow_permissions_policy.py tests/test_lint_path_policy.py tests/test_type_gate_policy.py tests/test_scratch_root_policy.py tests/test_hygiene_reachability.py tests/test_repo_hygiene.py tests/test_ci_scope_policy.py
+
   test:
+    needs: changes
+    timeout-minutes: ${{ needs.changes.outputs.full == 'true' && 90 || 25 }}
     permissions:
       contents: read
     runs-on: ubuntu-latest
     env:
       # 3.14 is the main version for every CI run, including the scheduled full
       # tier (maintainer decision, treesitter-chunker#502). The 3.12 minimum
-      # keeps only Linux platform-core (test.yml) and the release installed-wheel
+      # keeps only Linux platform-core (platform) and the release installed-wheel
       # check until it is dropped in 7.0 (treesitter-chunker#599).
       UV_PYTHON: '3.14'
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           fetch-depth: 0  # Full history for git operations
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
@@ -176,9 +234,344 @@ jobs:
 
       - name: Pytest
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             uv run --locked --all-extras python scripts/run_full_suite.py
           else
             uv run --locked --all-extras python scripts/run_ci_smoke.py
           fi
-        timeout-minutes: 60
+
+  platform:
+    needs: changes
+    timeout-minutes: ${{ needs.changes.outputs.full == 'true' && 120 || matrix.pr-timeout }}
+    # Keep the job name equal to the branch-protection required check
+    # ("test (3.12, ubuntu-latest, linux)"); the matrix also carries
+    # pack-cache-path, which must not appear in the name.
+    name: test (${{ matrix.python-version }}, ${{ matrix.platform }}, ${{ matrix.platform-family }})
+    permissions:
+      contents: read
+    runs-on: ${{ matrix.platform }}
+    env:
+      # Keep uv on the job's interpreter instead of the .python-version pin.
+      UV_PYTHON: ${{ matrix.python-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # One job per OS, no version-by-OS cross product: Linux keeps the 3.12
+        # floor; macOS and Windows run the 3.14 validation interpreter
+        # (treesitter-chunker#502).
+        include:
+          - python-version: '3.12'
+            platform: ubuntu-latest
+            platform-family: linux
+            pr-timeout: 90
+            pack-cache-path: ~/.cache/tree-sitter-language-pack
+          - python-version: '3.14'
+            platform: windows-2025
+            platform-family: windows
+            pr-timeout: 45
+            pack-cache-path: '%LOCALAPPDATA%\tree-sitter-language-pack'
+          - python-version: '3.14'
+            platform: macos-latest
+            platform-family: macos
+            pr-timeout: 45
+            pack-cache-path: ~/Library/Caches/tree-sitter-language-pack
+
+    steps:
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      with:
+        persist-credentials: false
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache dependencies
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
+      with:
+        path: |
+          ~/.cache/pip
+          ~/.cache/uv
+        key: ${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-py${{ matrix.python-version }}-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install uv==0.12.11
+        uv sync --locked --all-extras
+
+    # Parsers are verified when downloaded; restored libraries are not re-checked.
+    # Warm caches survive an outage; a cold cache during an outage still fails.
+    - name: Check language pack cache path
+      id: pack-path
+      shell: bash
+      env:
+        PACK_CACHE_PATH: ${{ matrix.pack-cache-path }}
+      run: |
+        uv run --locked --all-extras python - <<'PYTHON'
+        import os
+        from pathlib import Path
+        from tree_sitter_language_pack import cache_dir
+        root = Path(os.path.expandvars(os.path.expanduser(os.environ["PACK_CACHE_PATH"]))).resolve()
+        actual = Path(cache_dir()).resolve()
+        print(f"language-pack cache_dir(): {actual}")
+        if not actual.is_relative_to(root):
+            raise SystemExit(f"language-pack cache {actual} is outside cached path {root}")
+        print(f"language-pack path check passed: {root}")
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+            output.write(f"cache-root={root}\n")
+        PYTHON
+
+    - name: Restore language pack
+      id: pack-cache
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+      with:
+        path: ${{ steps.pack-path.outputs.cache-root }}
+        key: language-pack-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('uv.lock') }}
+        restore-keys: language-pack-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: Prefetch language pack
+      shell: bash
+      run: |
+        uv run --locked --all-extras python - <<'PYTHON'
+        import time
+        from typing import get_args
+        from tree_sitter_language_pack import DownloadError, SupportedLanguage, prefetch
+        for attempt in range(1, 4):
+            print(f"language-pack prefetch attempt {attempt}/3", flush=True)
+            try:
+                prefetch(list(get_args(SupportedLanguage)))
+            except (DownloadError, RuntimeError) as error:
+                print(f"language-pack download failed: {error}", flush=True)
+                if attempt < 3:
+                    delay = (10, 30)[attempt - 1]
+                    print(f"language-pack backoff {delay}s", flush=True)
+                    time.sleep(delay)
+            else:
+                print("language-pack prefetch succeeded", flush=True)
+                break
+        else:
+            raise SystemExit("upstream language-pack release unavailable and cache cold")
+        PYTHON
+
+    - name: Save language pack
+      if: steps.pack-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
+      with:
+        path: ${{ steps.pack-path.outputs.cache-root }}
+        key: ${{ steps.pack-cache.outputs.cache-primary-key }}
+
+    - name: Verify exact language pack hit offline
+      if: steps.pack-cache.outputs.cache-hit == 'true'
+      shell: bash
+      env:
+        HTTPS_PROXY: http://127.0.0.1:9
+        HTTP_PROXY: http://127.0.0.1:9
+        ALL_PROXY: http://127.0.0.1:9
+        NO_PROXY: ''
+      run: |
+        uv run --locked --all-extras python - <<'PYTHON'
+        from typing import get_args
+        from tree_sitter_language_pack import SupportedLanguage, prefetch
+        prefetch(list(get_args(SupportedLanguage)))
+        print("exact language-pack cache hit: offline whole-pack prefetch passed")
+        PYTHON
+
+    - name: Fetch grammars
+      run: uv run --locked --all-extras python scripts/fetch_grammars.py
+
+    - name: Build grammars
+      run: uv run --locked --all-extras python scripts/build_lib.py
+
+    # The installer runs the gcc first on PATH (treesitter-chunker#621). On
+    # Windows that must be MinGW-w64: the image's own, found by the Phase A
+    # diagnostic (run 42547736508: C:\mingw64\bin\gcc.exe, target
+    # x86_64-w64-mingw32, gcc 15.2.0), or MSYS2 UCRT64 gcc if it is gone.
+    # Add-Content, and the Target line of gcc -v (the same configured target
+    # machine as its dumpmachine option), keep these lines clear of the
+    # release-hygiene short-option scan.
+    - name: Locate the image's MinGW-w64 gcc
+      id: mingw
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        MINGW_BIN: 'C:\mingw64\bin'
+      run: |
+        if (Test-Path (Join-Path $env:MINGW_BIN 'gcc.exe')) {
+          Add-Content -Path $env:GITHUB_PATH -Value $env:MINGW_BIN -Encoding utf8
+          Add-Content -Path $env:GITHUB_OUTPUT -Value 'found=true' -Encoding utf8
+        } else {
+          Write-Host "::warning::no gcc.exe in $env:MINGW_BIN; installing MSYS2 UCRT64 gcc"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value 'found=false' -Encoding utf8
+        }
+
+    - name: Install MSYS2 UCRT64 gcc (only if the image has no MinGW)
+      id: msys2
+      if: runner.os == 'Windows' && steps.mingw.outputs.found != 'true'
+      uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e  # v2.33.0 (2026-09-27)
+      with:
+        msystem: UCRT64
+        install: mingw-w64-ucrt-x86_64-gcc
+        path-type: inherit
+        update: false
+
+    - name: Put MSYS2 UCRT64 gcc on PATH (fallback)
+      if: runner.os == 'Windows' && steps.mingw.outputs.found != 'true'
+      shell: pwsh
+      run: Add-Content -Path $env:GITHUB_PATH -Value (Join-Path '${{ steps.msys2.outputs.msys2-location }}' 'ucrt64\bin') -Encoding utf8
+
+    - name: Check the installer's gcc is MinGW-w64
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        where.exe gcc
+        gcc --version
+        $target = (gcc -v 2>&1 | Select-String -Pattern '^Target:\s*(\S+)').Matches
+        $machine = if ($target) { $target[0].Groups[1].Value } else { '' }
+        Write-Host "gcc target machine: $machine"
+        if ($machine -notmatch 'w64-mingw32') { throw "gcc on PATH is not MinGW-w64: $machine" }
+
+    - name: Record macOS toolchain
+      if: runner.os == 'macOS'
+      run: |
+        command -v gcc
+        gcc --version
+        xcrun --show-sdk-version
+        xcrun --show-sdk-path
+        echo "MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET-unset}"
+
+    - name: Check controlled grammar recipes
+      env:
+        CHUNKER_REQUIRE_INSTALLER_COMPILER: '1'
+      run: uv run --locked --all-extras python -m pytest -q -s -rs tests/test_reproducible_grammar_build.py tests/test_remaining_builder_contract.py tests/test_release_hygiene_policy.py tests/test_ci_scope_policy.py
+
+    - name: Hosted platform mutations
+      if: runner.os != 'Linux'
+      env:
+        CHUNKER_REQUIRE_INSTALLER_COMPILER: '1'
+      run: uv run --locked --all-extras python scripts/run_builder_mutations.py
+
+    - name: Run platform core tests
+      run: |
+        uv run --locked --all-extras python scripts/run_platform_core.py --platform ${{ matrix.platform-family }}
+
+
+    - name: Full suite on primary Python
+      if: needs.changes.outputs.full == 'true' && matrix.platform-family != 'linux'
+      run: uv run --locked --all-extras python scripts/run_full_suite.py
+
+    - name: Upload coverage
+      if: runner.os == 'Linux'
+      uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
+      with:
+        files: ./coverage.xml
+        fail_ci_if_error: false
+        verbose: true
+
+  controlled-linux:
+    needs: changes
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: '3.14'
+      CHUNKER_REQUIRE_INSTALLER_COMPILER: '1'
+    steps:
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      with:
+        python-version: '3.14'
+    - name: Install locked environment
+      run: |
+        python -m pip install uv==0.12.11
+        uv sync --locked --all-extras
+    - name: Controlled builders on primary Python
+      run: uv run --locked --all-extras python -m pytest -q -s -rs tests/test_reproducible_grammar_build.py tests/test_remaining_builder_contract.py tests/test_release_hygiene_policy.py tests/test_ci_scope_policy.py
+    - name: Hosted Linux mutations
+      run: uv run --locked --all-extras python scripts/run_builder_mutations.py
+
+  docs:
+    needs: changes
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    # Builds repository content in the locked environment: read only.
+    permissions:
+      contents: read
+
+    env:
+      UV_PYTHON: '3.14'
+    steps:
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      with:
+        persist-credentials: false
+
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      with:
+        python-version: '3.14'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install uv==0.12.11
+        uv sync --locked --all-extras
+
+    - name: Build documentation
+      run: |
+        cd docs/sphinx
+        uv run --locked --all-extras sphinx-build -b html . _build/html
+
+    - name: Upload documentation artifacts
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: documentation
+        path: docs/sphinx/_build/html/
+
+
+  ci-gate:
+    name: CI gate
+    needs: [changes, policy, test, platform, controlled-linux, docs]
+    if: ${{ always() }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14'
+      - name: Evaluate required results
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          CI_PHASE: A
+        run: python scripts/ci_gate.py
+
+  nightly-failure:
+    needs: [changes, policy, test, platform, controlled-linux, docs, ci-gate]
+    if: ${{ github.event_name == 'schedule' && failure() }}
+    permissions:
+      issues: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Update nightly tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          label=ci-nightly-failure
+          gh label create "$label" --color B60205 --description 'Nightly CI failures' --force
+          issue=$(gh issue list --label "$label" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "Nightly CI failed: $RUN_URL"
+          else
+            gh issue create --title 'Nightly CI failure' --label "$label" --body "Nightly CI failed: $RUN_URL"
+          fi
