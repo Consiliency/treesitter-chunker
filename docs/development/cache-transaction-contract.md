@@ -657,7 +657,10 @@ install replaces it.
 records user and package directories); only a library under `grammars/` gets an
 `artifact_sha256`. It hashes that library in the same lock section that
 publishes the metadata, so no participant can replace the library between the
-hash and the write (treesitter-chunker#618).
+hash and the write (treesitter-chunker#618). It opens the library through the
+transaction helper's no-follow directory traversal and digest reader. A linked
+library or parent raises `ContainmentError` internally; the existing save
+wrapper logs the failure and publishes no metadata (treesitter-chunker#628).
 
 **Metadata format.** The metadata keeps today's fields and adds
 `"artifact_sha256"`, the pin record's `sha256` in lower case. That is the

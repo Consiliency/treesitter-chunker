@@ -1925,6 +1925,21 @@ def _digest(directory: _Dir | None, name: str) -> str | None:
     return digest.hexdigest()
 
 
+def _installation_artifact_digest(root: Path, artifact: Path) -> str | None:
+    """Hash an installed library under the lock without following any links."""
+    parts = _grammar_parts(root, artifact)
+    ctx = _LockContext(
+        "installation_artifact_digest", _absolute(root), _new_operation_id()
+    )
+    with _locked(root, DEFAULT_LOCK_TIMEOUT, ctx) as rootdir:
+        directory = _grammar_dir(rootdir, parts[1:-1], create=False)
+        try:
+            return _digest(directory, parts[-1])
+        finally:
+            if directory is not None:
+                directory.close()
+
+
 def _copy_into(source: _Dir, name: str, target: _Dir, target_name: str) -> str | None:
     """Copy a regular file (no-follow) to a new ``O_EXCL`` file; return its digest."""
     try:

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Saving installation metadata refuses linked libraries and parent directories
+  without hashing their targets or publishing metadata (treesitter-chunker#628).
+
 - Restore gives recovery steps for a linked `grammars/` root and links found
   after artifact publication, without claiming nothing changed or suggesting
   an unhelpful install re-run (treesitter-chunker#627).

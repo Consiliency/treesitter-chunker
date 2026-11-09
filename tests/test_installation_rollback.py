@@ -1564,6 +1564,26 @@ def test_restore_linked_grammars_root_has_recovery_steps(tmp_path, revisions):
     assert (point.path / "rollback.json").is_file()
 
 
+def test_saved_metadata_refuses_linked_library(tmp_path, caplog):
+    """Mutation ``follow_saved_library_link`` hashes the external target."""
+    cache = tmp_path / "cache"
+    installer = GrammarInstaller(cache_dir=cache, trusted_artifacts={})
+    library = cache / "grammars" / "libbaml.so"
+    outside = tmp_path / "outside.so"
+    outside.write_bytes(b"external library")
+    library.symlink_to(outside)
+    installer._save_installation_info(
+        "baml",
+        InstallationInfo(
+            version="a", install_date=0, install_path=library, source_url=URL
+        ),
+    )
+    assert _transactions.read_installation_metadata(cache, "baml") is None
+    assert "Refusing to follow link" in caplog.text
+    assert library.is_symlink()
+    assert outside.read_bytes() == b"external library"
+
+
 # --- Windows: a real installer failed update ------------------------------------
 
 WINDOWS_TOOLCHAIN = pytest.mark.skipif(
