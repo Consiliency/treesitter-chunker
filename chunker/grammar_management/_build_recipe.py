@@ -164,6 +164,8 @@ def source_chain_error(root: Path, *, base: Path | None = None) -> str | None:
         relative = root.relative_to(base)
     except ValueError:
         return "Source root is outside clone root"
+    if ".." in relative.parts:
+        return "Source root is outside clone root"
     components = [base]
     for part in relative.parts:
         components.append(components[-1] / part)

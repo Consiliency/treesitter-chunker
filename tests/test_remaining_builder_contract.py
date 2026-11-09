@@ -1287,3 +1287,19 @@ def test_scanner_only_keeps_legacy_command(tmp_path, monkeypatch, adapter):
         expected += ["-o", str(output / "tree.so"), str(scanner)]
         assert calls[0][1]["cwd"] == str(root)
     assert len(calls) == 1 and calls[0][0] == expected
+
+
+def test_direct_helper_rejects_escape_before_inspecting_paths(tmp_path, monkeypatch):
+    from chunker.grammar_management import _build_recipe
+
+    clone = tmp_path / "clone"
+    root = clone / ".." / "outside"
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda *a, **kw: pytest.fail("escaping span must not inspect paths"),
+    )
+    with pytest.raises(ValueError, match="outside clone root"):
+        _build_recipe.individual_c_argv(
+            "/compiler", root, tmp_path / "out.so", base=clone
+        )
