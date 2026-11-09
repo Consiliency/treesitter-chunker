@@ -68,13 +68,13 @@ jobs:
         id: pack-path
         shell: bash
         env:
-          PACK_~/.cache/tree-sitter-language-pack: ~/.cache/tree-sitter-language-pack
+          PACK_CACHE_PATH: ~/.cache/tree-sitter-language-pack
         run: |
           uv run --locked --all-extras python - <<'PYTHON'
           import os
           from pathlib import Path
           from tree_sitter_language_pack import cache_dir
-          root = Path(os.path.expandvars(os.path.expanduser(os.environ["PACK_~/.cache/tree-sitter-language-pack"]))).resolve()
+          root = Path(os.path.expandvars(os.path.expanduser(os.environ["PACK_CACHE_PATH"]))).resolve()
           actual = Path(cache_dir()).resolve()
           print(f"language-pack cache_dir(): {actual}")
           if not actual.is_relative_to(root):
