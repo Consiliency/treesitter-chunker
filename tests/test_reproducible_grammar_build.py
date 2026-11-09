@@ -115,7 +115,7 @@ def _pe_time_date_stamp(data: bytes) -> int:
     return int.from_bytes(data[e_lfanew + 8 : e_lfanew + 12], "little")
 
 
-ROOTS = (Path("a"), Path("cache-root-with-a-much-longer-name") / "nested")
+ROOTS = (Path("a"), Path("bb") / "c")  # differ in name and length; short for MAX_PATH
 
 
 # --- the controlled route, built for real --------------------------------------
@@ -434,8 +434,11 @@ def test_build_methods_run_gcc_then_make_then_tree_sitter(tmp_path, monkeypatch)
         _transactions.StagedRun(None, "", "", True, True), "GCC build"
     )
 
-    def run(gcc_outcome):
-        root = tmp_path / f"cache-{gcc_outcome}"
+    def probe_identity(*args, **kwargs):
+        return dict(identity)
+
+    def run(gcc_outcome, probe=probe_identity, label=None):
+        root = tmp_path / f"cache-{label or gcc_outcome}"
         installer = GrammarInstaller(cache_dir=root)
         staging = _transactions.create_staging(root)
         calls: list[str] = []
@@ -456,9 +459,7 @@ def test_build_methods_run_gcc_then_make_then_tree_sitter(tmp_path, monkeypatch)
         monkeypatch.setattr(
             installer, "_build_with_tree_sitter_cli", method("tree-sitter-cli", "fail")
         )
-        monkeypatch.setattr(
-            installer, "_probe_compiler", lambda *a, **k: dict(identity)
-        )
+        monkeypatch.setattr(installer, "_probe_compiler", probe)
         try:
             source = staging.path("downloads") / "tree-sitter-order"
             source.mkdir()
@@ -484,6 +485,29 @@ def test_build_methods_run_gcc_then_make_then_tree_sitter(tmp_path, monkeypatch)
     assert calls == ["gcc"]
     assert (ok, record) == (False, None)
     assert error == "Build aborted: GCC build timed out"
+
+    # gcc succeeds, then its probe aborts: the build aborts, no fallback runs.
+    def probe_aborts(*args, **kwargs):
+        raise _StagedRunAbortedError(
+            _transactions.StagedRun(None, "", "", True, True), "Compiler version"
+        )
+
+    calls, (ok, _path, error, record) = run("ok", probe_aborts, "probe-abort")
+    assert calls == ["gcc"]
+    assert (ok, record) == (False, None)
+    assert error is not None and error.startswith("Build aborted: "), error
+
+    # gcc succeeds, then its probe raises anything else: still the gcc build,
+    # with no compiler identity, and no fallback overwrites the library.
+    def probe_raises(*args, **kwargs):
+        raise RuntimeError("probe broke")
+
+    calls, (ok, _path, error, record) = run("ok", probe_raises, "probe-raises")
+    assert calls == ["gcc"]
+    assert ok, error
+    assert record is not None
+    assert record["method"] == "gcc"
+    assert record["compiler"] is None
 
 
 @pytest.mark.parametrize(

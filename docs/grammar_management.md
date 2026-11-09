@@ -323,6 +323,7 @@ message>)` without loading anything. The legacy combined-library manager
 `chunker.grammar_manager.GrammarManager(..., trusted_artifacts=...)` reports
 only pinned languages whose library bytes pass native admission, and none
 without pins.
+
 #### Producing a pin for `grammar install`
 
 `GrammarInstaller` builds a grammar to the same bytes wherever its source is
