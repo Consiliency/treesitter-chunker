@@ -36,9 +36,6 @@ pytestmark = pytest.mark.integration
 FIXTURE = (
     Path(__file__).resolve().parent / "fixtures/boundary_ir/repos/python/app/service.py"
 )
-GO_FIXTURE = (
-    Path(__file__).resolve().parent / "fixtures/boundary_ir/repos/go/service.go"
-)
 MODES = {"core": False, "streaming": True}
 
 
@@ -330,32 +327,59 @@ def test_unfingerprintable_configuration_bypasses_cache(
     assert cache.get_cache_stats()["total_files"] == 0
 
 
-def test_grammar_without_identity_is_never_served_from_cache(tmp_path):
-    # The language pack resolves its grammar cache from the real home, so this
-    # test confines only the chunk cache (cache_dir) to tmp_path.
-    path = tmp_path / "src" / "service.go"
-    path.parent.mkdir()
-    shutil.copyfile(GO_FIXTURE, path)
-    # The registry records no provenance for Go, so it has no identity.
-    assert chunk_cache_identity("go") is None
+def test_grammar_without_identity_is_never_served_from_cache(
+    tmp_path, source_file, monkeypatch
+):
+    import tree_sitter_language_pack as pack
 
-    fresh = ParallelChunker("go", num_workers=1, use_cache=False).chunk_files_parallel(
-        [path]
-    )[path]
+    def no_pack(*args, **kwargs):
+        pytest.fail("cache-identity test must not load or download pack grammars")
+
+    monkeypatch.setattr(pack, "get_language", no_pack)
+    monkeypatch.setattr(pack, "get_parser", no_pack)
+    monkeypatch.setattr(pack, "prefetch", no_pack)
+    monkeypatch.setattr(pack, "download", no_pack)
+
+    # Python comes from the locked official wheel. Go was only used because its
+    # metadata lacks provenance; model that property without a pack download.
+    assert chunk_cache_identity("python") is not None
+    fresh = chunk_file(source_file, "python")
     assert fresh
     cache_dir = tmp_path / "cache"
     cache = ASTCache(cache_dir=cache_dir)
     stale = [replace(chunk, content="stale") for chunk in fresh]
-    assert cache.cache_chunks(path, "go", stale) is False
+    assert cache.cache_chunks(source_file, "python", stale)
+    assert cache.get_cached_chunks(source_file, "python") == stale
+
+    real_info = parser_module.get_language_info
+
+    def unidentified_grammar_info(language):
+        metadata = real_info(language)
+        return replace(
+            metadata,
+            capabilities={
+                key: value
+                for key, value in metadata.capabilities.items()
+                if key != "grammar_source"
+            },
+        )
+
+    monkeypatch.setattr(parser_module, "get_language_info", unidentified_grammar_info)
+    assert chunk_cache_identity("python") is None
     for _ in range(2):
-        served = ParallelChunker(
-            "go", num_workers=1, cache_dir=cache_dir
-        ).chunk_files_parallel([path])[path]
+        # Exercise the real worker/cache path in-process: the metadata seam must
+        # also work on spawn platforms, where child interpreters lose patches.
+        worker = ParallelChunker("python", num_workers=1, cache_dir=cache_dir)
+        _, served = worker._process_single_file(source_file)
         assert [asdict(chunk) for chunk in served] == [asdict(chunk) for chunk in fresh]
-    assert cache.get_cached_chunks(path, "go") is None
-    assert cache.get_cache_stats()["total_files"] == 0
+    assert cache.get_cached_chunks(source_file, "python") is None
+    assert cache.cache_chunks(source_file, "python", stale) is False
+    # The identified row survives; bypassing must neither serve nor replace it.
+    assert cache.get_cache_stats()["total_files"] == 1
+    monkeypatch.setattr(parser_module, "get_language_info", real_info)
+    assert cache.get_cached_chunks(source_file, "python") == stale
     # A grammar that cannot be loaded is also bypassed rather than raising.
-    assert cache.cache_chunks(path, "no_such_language", fresh) is False
+    assert cache.cache_chunks(source_file, "no_such_language", fresh) is False
 
 
 @dataclass(slots=True)
