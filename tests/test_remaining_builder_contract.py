@@ -470,24 +470,37 @@ def test_controlled_failure_never_retries_legacy(tmp_path, monkeypatch, kind):
 
 
 @pytest.mark.parametrize(
-    "component", ["repository", "grammars", "ocaml", "src", "parser.c"]
+    ("language", "subdir", "component"),
+    [
+        (language, subdir, component)
+        for language, subdir in [
+            ("ocaml", "grammars/ocaml"),
+            ("typescript", "typescript"),
+            ("tsx", "tsx"),
+            ("php", "php"),
+            ("wat", "wat"),
+        ]
+        for component in ("repository", *subdir.split("/"), "src", "parser.c")
+    ],
 )
 @pytest.mark.parametrize("dangling", [False, True])
 def test_individual_mapped_symlink_has_no_process(
-    tmp_path, monkeypatch, component, dangling
+    tmp_path, monkeypatch, language, subdir, component, dangling
 ):
     import shutil
     from tests.test_reproducible_grammar_build import _policy_required
 
     common = tmp_path / "g"
-    repo = common / "tree-sitter-ocaml"
-    root = repo / "grammars" / "ocaml"
+    repo = common / f"tree-sitter-{language}"
+    root = repo / subdir
     (root / "src").mkdir(parents=True)
     (root / "src" / "parser.c").touch()
     target = {
         "repository": repo,
-        "grammars": repo / "grammars",
-        "ocaml": root,
+        **{
+            part: repo.joinpath(*subdir.split("/")[: index + 1])
+            for index, part in enumerate(subdir.split("/"))
+        },
         "src": root / "src",
         "parser.c": root / "src" / "parser.c",
     }[component]
@@ -512,7 +525,7 @@ def test_individual_mapped_symlink_has_no_process(
         "run",
         lambda *args, **kwargs: pytest.fail("symlink must not compile or generate"),
     )
-    assert not tool.build_individual("ocaml")
+    assert not tool.build_individual(language)
 
 
 def test_cli_generation_is_resolved_once(tmp_path, monkeypatch):
@@ -852,3 +865,146 @@ def test_noncanonical_public_route_is_preselected_legacy(
         )
     assert len(calls) == 1
     assert "-Wl,-z,defs" not in calls[0]
+
+
+@pytest.mark.parametrize(
+    ("operation", "missing"),
+    [
+        (operation, missing)
+        for operation in ("install-existing", "install-new", "update")
+        for missing in ("git", "npm", "tree-sitter")
+    ]
+    + [("info", "git"), ("diagnose", "git")],
+)
+@pytest.mark.parametrize("failure_source", ["process", "lookup"])
+def test_missing_tools_keep_public_error_shapes(
+    tmp_path, monkeypatch, operation, missing, failure_source
+):
+    from chunker._internal.user_grammar_tools import UserGrammarTools
+    from chunker.grammar_management import _build_tools
+
+    common = tmp_path / "grammars"
+    root = common / "tree-sitter-repro"
+    root.mkdir(parents=True)
+    (root / "package.json").write_text("{}", encoding="utf-8")
+    tool = UserGrammarTools(tmp_path / "out", common)
+    monkeypatch.setattr(tool, "_refuse_shipped_target", lambda *a: False)
+    if operation != "diagnose":
+        monkeypatch.setattr(
+            tool.manager,
+            "diagnose_grammar_issues",
+            lambda *a: SimpleNamespace(status="healthy"),
+        )
+        monkeypatch.setattr(tool.manager, "get_grammar_compatibility", lambda *a: {})
+    lookups = []
+    calls = []
+
+    def resolve(name):
+        lookups.append(name)
+        return (
+            None
+            if failure_source == "lookup" and name == missing
+            else str(tmp_path / name)
+        )
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        if Path(argv[0]).name == missing:
+            raise FileNotFoundError(f"Executable not found: {missing}")
+        if argv[1] == "clone":
+            root.mkdir(parents=True)
+            (root / "package.json").write_text("{}", encoding="utf-8")
+        stdout = (
+            "https://github.com/example/repro"
+            if argv[1:3] == ["remote", "get-url"]
+            else "old"
+        )
+        if argv[1:] == ["rev-parse", "origin/main"]:
+            stdout = "new"
+        return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(_build_tools, "resolve_tool", resolve)
+    monkeypatch.setattr(subprocess, "run", run)
+    if operation == "install-new":
+        import shutil
+
+        shutil.rmtree(root)
+    if operation.startswith("install"):
+        result = tool.install_grammar("repro", "https://github.com/example/repro")
+        assert result["status"] == "error"
+        assert result["errors"] == [
+            f"Unexpected error: Executable not found: {missing}"
+        ]
+    elif operation == "update":
+        result = tool.update_grammar("repro")
+        assert result["status"] == "error"
+        assert result["errors"] == [
+            f"Unexpected error during update: Executable not found: {missing}"
+        ]
+    elif operation == "info":
+        assert tool.get_grammar_info("repro")["source_info"] == {
+            "error": "Could not retrieve source information"
+        }
+    else:
+        health = tool.manager.diagnose_grammar_issues("repro")
+        assert "Could not verify grammar source repository status" in health.issues
+    assert lookups.count(missing) == 1
+    if failure_source == "lookup":
+        assert all(Path(argv[0]).name != missing for argv in calls)
+
+
+def test_cli_missing_generator_is_actionable_without_process(tmp_path, monkeypatch):
+    from click.testing import CliRunner
+    from chunker.grammar_management.cli import ComprehensiveGrammarCLI
+    from chunker.grammar_management import _build_tools
+
+    tool = ComprehensiveGrammarCLI(tmp_path)
+    (tool.user_grammars_dir / "repro").mkdir(parents=True)
+    monkeypatch.setattr(_build_tools, "resolve_tool", lambda name: None)
+    monkeypatch.setattr(
+        tool,
+        "_run_command",
+        lambda *a, **kw: pytest.fail("missing generator must not start a process"),
+    )
+    with CliRunner().isolation() as streams:
+        assert tool.build_grammar("repro", force=True) != 0
+        output = streams[-1].getvalue().decode()
+    assert "tree-sitter" in output and "PATH" in output
+
+
+@pytest.mark.parametrize(
+    ("label", "suffix"), [("Linux", ".so"), ("Darwin", ".dylib"), ("Windows", ".dll")]
+)
+@pytest.mark.parametrize("host", ["linux", "darwin", "win32"])
+def test_individual_labels_select_names_but_host_selects_flags(
+    tmp_path, monkeypatch, label, suffix, host
+):
+    from chunker.grammar_management import _build_tools
+
+    monkeypatch.setattr("platform.system", lambda: label)
+    monkeypatch.setattr(sys, "platform", host)
+    monkeypatch.setattr(
+        _build_tools, "resolve_tool", lambda name: str(tmp_path / "compiler")
+    )
+    source = tmp_path / "grammars" / "tree-sitter-repro" / "src"
+    source.mkdir(parents=True)
+    (source / "parser.c").touch()
+    tool = TreeSitterGrammarBuilder()
+    tool.set_source_directory(source.parent.parent)
+    tool.set_build_directory(tmp_path / "out")
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        Path(argv[argv.index("-o") + 1]).write_bytes(b"built")
+        return SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert tool.build_individual("repro")
+    argv = calls[0]
+    assert Path(argv[argv.index("-o") + 1]).name == f"repro{suffix}"
+    assert "-std=c11" in argv
+    assert ("-Wl,-z,defs" in argv) == (host == "linux")
+    assert (f"-Wl,-install_name,@rpath/repro{suffix}" in argv) == (host == "darwin")
+    assert ("-Wl,--no-insert-timestamp" in argv) == (host == "win32")
+    assert ("-Wl,--disable-auto-image-base" in argv) == (host == "win32")
