@@ -16,9 +16,6 @@ concurrency:
 jobs:
   warm:
     timeout-minutes: 20
-    # Keep the job name equal to the branch-protection required check
-    # ("test (3.12, ubuntu-latest, linux)"); the matrix also carries
-    # pack-cache-path, which must not appear in the name.
     name: warm (${{ matrix.platform-family }})
     permissions:
       contents: read
@@ -36,17 +33,14 @@ jobs:
           - python-version: '3.12'
             platform: ubuntu-latest
             platform-family: linux
-            pr-timeout: 90
             pack-cache-path: ~/.cache/tree-sitter-language-pack
           - python-version: '3.14'
             platform: windows-2025
             platform-family: windows
-            pr-timeout: 45
             pack-cache-path: '%LOCALAPPDATA%\tree-sitter-language-pack'
           - python-version: '3.14'
             platform: macos-latest
             platform-family: macos
-            pr-timeout: 45
             pack-cache-path: ~/Library/Caches/tree-sitter-language-pack
 
     steps:
