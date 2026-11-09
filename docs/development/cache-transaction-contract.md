@@ -1262,7 +1262,15 @@ in-process so the metadata patch also applies on Windows/macOS spawn platforms.
 Separate tests in the module retain actual process-worker coverage. Pack loading,
 parser creation, prefetch and download entrypoints explicitly fail this test.
 
-Named mutation **`serves_no_identity_from_cache`**: wrap
+Primary production mutation **`read_serves_any_row`**: in
+`ASTCache.get_cached_chunks`, remove the `identity is None` early return and
+remove `AND extraction_identity = ?` (and its bound identity argument) from
+the SQL read. This serves the stale identified row for an unidentified grammar.
+The regression must fail at the fresh-chunk comparison with `content='stale'`.
+This mutates the production identity admission and query, independently of the
+test's metadata seam.
+
+Secondary seam mutation **`serves_no_identity_from_cache`**: wrap
 `ASTCache.get_cached_chunks` so it temporarily restores the original
 `parser.get_language_info` during the read, then restores the test's metadata
 seam in `finally`. This deliberately serves the identified stale row even when
@@ -1298,6 +1306,10 @@ the mutation must fail. The previous Go test fails with `LanguageNotFoundError`
 when the pack's `get_language` raises a simulated HTTP 504 download error.
 
 ### Network audit of platform-core and smoke selectors
+
+Remaining pack-dependent platform-core tests are tracked in
+treesitter-chunker#643; a repo-owned pack mirror is tracked in
+treesitter-chunker#644. Only the two rewritten regressions are hermetic here.
 
 The other incidental dependency fixed here is
 `test_parser.py::TestParserCaching::test_multiple_languages`: checking generic
@@ -1346,10 +1358,17 @@ checks is just a mocked cache key. Go names in configuration tests and
 `test_boundary_cache_key.py` use synthetic state or metadata and do not
 themselves imply grammar downloads.
 
-CI caches the pack's versioned downloaded manifest and extracted archive contents
-under `~/.cache/tree-sitter-language-pack`, keyed by OS, architecture, and lockfile
-without broad restore keys. Prefetch remains fatal: smoke explicitly checks the
-whole pack, so continuing after a failed prefetch only delays the failure.
-Caching avoids repeated downloads on warm runs; cold or evicted caches still
-require the upstream service. Retries cannot solve a sustained outage, and
-making prefetch non-fatal would not make the pack gates hermetic.
+Both CI workflows restore the pack's versioned downloaded manifest and extracted
+archive contents from the native OS cache directory, then prefetch the entire
+pack with three attempts and bounded backoff, then save before running tests
+when there was no exact hit. OS/architecture restore prefixes permit reuse
+across lockfile changes because the pack directory is versioned. The path check
+prints `cache_dir()` and fails if it lies outside the cached directory. Native
+paths avoid a job-wide pack override affecting HOME/cold-cache test isolation.
+Parsers are verified when downloaded; restored libraries are not re-checked.
+Warm caches survive an outage. A cold or evicted cache during an outage still
+fails, with an explicit upstream-unavailable diagnostic. Exact hits additionally
+run whole-pack prefetch with unreachable proxies as an offline reuse check.
+Prefetch remains fatal because real pack smoke gates require these binaries.
+The remaining cold-cache dependencies and mirror work are tracked in
+treesitter-chunker#643 and treesitter-chunker#644 respectively.
