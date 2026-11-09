@@ -70,7 +70,8 @@ def test_downloader_legacy_golden(tmp_path, monkeypatch, suffix, outcome):
     assert result.success == (outcome == 0)
 
 
-def test_individual_legacy_golden(tmp_path, monkeypatch):
+@pytest.mark.parametrize("outcome", [0, 1, "exception"])
+def test_individual_legacy_golden(tmp_path, monkeypatch, outcome):
     builder = TreeSitterGrammarBuilder()
     builder.set_source_directory(tmp_path / "grammars")
     builder.set_build_directory(tmp_path / "out")
@@ -84,11 +85,20 @@ def test_individual_legacy_golden(tmp_path, monkeypatch):
 
     def run(argv, **kwargs):
         calls.append((argv, kwargs))
-        Path(argv[argv.index("-o") + 1]).write_bytes(b"legacy")
-        return SimpleNamespace(returncode=0, stderr="")
+        if outcome == "exception":
+            raise FileNotFoundError("missing legacy compiler")
+        if outcome == 0:
+            Path(argv[argv.index("-o") + 1]).write_bytes(b"legacy")
+        return SimpleNamespace(returncode=outcome, stderr="legacy error")
 
     monkeypatch.setattr(subprocess, "run", run)
-    assert builder.build_individual("repro")
+    if outcome == 1:
+        from chunker.grammar.builder import BuildError
+
+        with pytest.raises(BuildError, match="Compilation failed: legacy error"):
+            builder.build_individual("repro")
+    else:
+        assert builder.build_individual("repro") == (outcome == 0)
     expected = ["clang++", "-shared"]
     if sys.platform != "win32":
         expected.append("-fPIC")
@@ -197,7 +207,8 @@ def test_platform_label_declines_before_detection(tmp_path, monkeypatch, label):
 
 
 @pytest.mark.parametrize("kind", ["manager", "combined", "platform"])
-def test_combined_link_failure_fails_all(tmp_path, monkeypatch, kind):
+@pytest.mark.parametrize("failure", ["nonzero", "exception", "missing-output"])
+def test_combined_link_failure_fails_all(tmp_path, monkeypatch, kind, failure):
     from chunker.grammar_manager import GrammarManager
 
     common = tmp_path / "grammars"
@@ -206,11 +217,16 @@ def test_combined_link_failure_fails_all(tmp_path, monkeypatch, kind):
         src.mkdir(parents=True)
         (src / "parser.c").touch()
     monkeypatch.setattr("shutil.which", lambda name: "tools/gcc")
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda *a, **kw: SimpleNamespace(returncode=1, stderr="duplicate symbol"),
-    )
+
+    def failed_link(*args, **kwargs):
+        if failure == "exception":
+            raise RuntimeError("link exception")
+        return SimpleNamespace(
+            returncode=0 if failure == "missing-output" else 1,
+            stderr="duplicate symbol",
+        )
+
+    monkeypatch.setattr(subprocess, "run", failed_link)
     if kind == "manager":
         assert GrammarManager(tmp_path).compile_grammars(["a", "b"]) == {
             "a": False,
@@ -371,6 +387,8 @@ def test_user_tools_parent_resolution(tmp_path, monkeypatch, operation, package)
         expected_tools.append("tree-sitter")
     assert lookups == expected_tools, "each used tool resolved exactly once"
     for argv, kwargs in calls:
+        assert Path(argv[0]).is_absolute(), "every invocation must be parent-resolved"
+        assert argv[0] == str(Path(f"parent-bin/{Path(argv[0]).name}").absolute())
         if argv[1] != "clone":
             assert kwargs["cwd"] == root
     assert [argv[1:] for argv, _ in calls if Path(argv[0]).name == "npm"] == (
@@ -497,7 +515,8 @@ def test_individual_mapped_symlink_has_no_process(
     assert not tool.build_individual("ocaml")
 
 
-def test_cli_generation_is_resolved_once(tmp_path, monkeypatch, capsys):
+def test_cli_generation_is_resolved_once(tmp_path, monkeypatch):
+    from click.testing import CliRunner
     from chunker.grammar_management.cli import ComprehensiveGrammarCLI
     from chunker.grammar_management import _build_tools
 
@@ -523,7 +542,8 @@ def test_cli_generation_is_resolved_once(tmp_path, monkeypatch, capsys):
         return 0, "", ""
 
     monkeypatch.setattr(tool, "_run_command", run)
-    assert tool.build_grammar("repro", force=True) == 0
+    with CliRunner().isolation():
+        assert tool.build_grammar("repro", force=True) == 0
     assert lookups == ["tree-sitter", "gcc"]
     assert calls[0] == [str(tmp_path / "tree-sitter"), "generate"]
     assert len(calls) == 2

@@ -73,7 +73,7 @@ class StubSubprocess:
 
     @staticmethod
     def run(command, cwd=None, **kwargs):
-        if command[0] == "git":
+        if Path(command[0]).stem == "git":
             if command[1] == "clone":
                 Path(command[-1]).mkdir(parents=True)
                 return subprocess.CompletedProcess(command, 0, "", "")
@@ -84,13 +84,15 @@ class StubSubprocess:
                 commit = "a" * 40 if command[2] == "HEAD" else "b" * 40
                 return subprocess.CompletedProcess(command, 0, commit + "\n", "")
             return subprocess.CompletedProcess(command, 0, "", "")
-        if command[:2] == ["tree-sitter", "generate"]:
+        if Path(command[0]).stem == "tree-sitter" and command[1:] == ["generate"]:
             shutil.copyfile(current["artifact"], Path(cwd) / "baml.so")
             return subprocess.CompletedProcess(command, 0, "", "")
         return real_run(command, cwd=cwd, **kwargs)
 
 
 tools_module.subprocess = StubSubprocess
+real_resolve = tools_module._build_tools.resolve_tool
+tools_module._build_tools.resolve_tool = lambda name: str(root / name) if name in {"git", "tree-sitter"} else real_resolve(name)
 
 
 def pin(path):

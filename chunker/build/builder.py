@@ -473,7 +473,9 @@ class BuildSystem(BuildSystemContract):
         output_dir.mkdir(parents=True, exist_ok=True)
         if platform == "windows":
             build_info["compiler"] = compiler
-            success = self._compile_windows(accepted, output_dir, build_info)
+            success = self._compile_windows(
+                [lang for lang in languages if lang in accepted], output_dir, build_info
+            )
         else:
             if compiler == "cl":
                 build_info["errors"].append(
@@ -542,7 +544,9 @@ class BuildSystem(BuildSystemContract):
             else:
                 preferred = ["python", "javascript", "rust"]
                 available = set(self._get_available_languages())
-                languages = [l for l in preferred if l in available] or sorted(available)[:3]
+                languages = [l for l in preferred if l in available] or sorted(
+                    available
+                )[:3]
 
             if os.environ.get("CHUNKER_BUILD_VERBOSE"):
                 print(f"Building wheel grammars for languages: {languages}")
@@ -765,6 +769,7 @@ Requires-Python: {_WHEEL_REQUIRES_PYTHON}
     ) -> bool:
         """Compile grammars on Unix-like systems"""
         compiler = build_info["compiler"]
+        build_info["libraries"].pop("combined", None)
 
         accepted, sources, includes, errors = _build_recipe.combined_sources(
             self._grammars_dir, languages, "root"
@@ -803,10 +808,12 @@ Requires-Python: {_WHEEL_REQUIRES_PYTHON}
                 )
                 return False
         except subprocess.TimeoutExpired as e:
-            build_info["errors"].append(f"Compilation timed out after {e.timeout}s")
+            build_info["errors"].append(
+                f"Link failed for every requested member: compilation timed out after {e.timeout}s"
+            )
             return False
         except Exception as e:
-            build_info["errors"].append(f"Compilation error: {e}")
+            build_info["errors"].append(f"Link failed for every requested member: {e}")
             return False
 
     def _compile_windows(

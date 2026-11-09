@@ -286,9 +286,10 @@ class GrammarDownloadManager(GrammarDownloadContract):
             for pattern in ("*.cc", "*.cpp")
             for p in directory.glob(pattern)
         )
-        if canonical and not any(
+        controlled = canonical and not any(
             source.endswith((".cc", ".cpp")) for source in sources
-        ):
+        )
+        if controlled:
             selected = (
                 _build_tools.resolve_tool(os.environ["CC"])
                 if "CC" in os.environ
@@ -319,6 +320,10 @@ class GrammarDownloadManager(GrammarDownloadContract):
                     output_path=None,
                     error_message=f"Compilation failed: {result.stderr}",
                     abi_version=None,
+                )
+            if controlled and not output_file.is_file():
+                return CompilationResult(
+                    False, None, "Compiler produced no library", None
                 )
             abi_version = self._get_abi_version()
             return CompilationResult(

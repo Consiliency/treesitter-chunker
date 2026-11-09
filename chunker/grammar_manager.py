@@ -226,7 +226,7 @@ class GrammarManager(GrammarManagerContract):
                 logger.error(
                     "Link failed for every requested member: %s", completed.stderr
                 )
-        except OSError as error:
+        except Exception as error:
             logger.error("Link failed for every requested member: %s", error)
         return results
 

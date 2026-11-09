@@ -75,7 +75,8 @@ class TestTreeSitterGrammarManager:
         # Check git clone was called
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
-        assert args[0] == "git"
+        assert Path(args[0]).is_absolute()
+        assert Path(args[0]).stem.lower() == "git"
         assert args[1] == "clone"
         assert "tree-sitter-go.git" in args[2]
 
@@ -100,16 +101,18 @@ class TestTreeSitterGrammarManager:
 
         assert result is True
 
+        git = mock_run.call_args_list[0].args[0][0]
+        assert Path(git).is_absolute()
         assert [call.args[0] for call in mock_run.call_args_list] == [
             [
-                "git",
+                git,
                 "remote",
                 "set-url",
                 "origin",
                 "--",
                 "https://github.com/tree-sitter/tree-sitter-ruby.git",
             ],
-            ["git", "pull"],
+            [git, "pull"],
         ]
         assert all(
             call.kwargs["cwd"] == grammar_path for call in mock_run.call_args_list

@@ -142,6 +142,12 @@ class TestGrammarDownloadManager:
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value.returncode = 0
                 mock_run.return_value.stderr = ""
+
+                def finish_compile(argv, **kwargs):
+                    Path(argv[argv.index("-o") + 1]).write_bytes(b"built")
+                    return mock_run.return_value
+
+                mock_run.side_effect = finish_compile
                 result = manager.compile_grammar(grammar_dir, cache_dir)
                 assert result.success
                 assert result.output_path == cache_dir / "python.so"

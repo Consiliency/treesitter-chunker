@@ -606,7 +606,7 @@ def _commit(repository, message):
 
 
 def _no_generate(args):
-    if args == ["tree-sitter", "generate"]:
+    if Path(args[0]).stem == "tree-sitter" and args[1:] == ["generate"]:
         # The fixture repository already contains its legacy library; this is
         # not a claim about the external generator's behavior.
         return [sys.executable, "-I", "-c", "pass"]
@@ -662,7 +662,7 @@ def test_shadowed_legacy_copy_refused_before_install_or_changed_update(
         _commit(upstream, "fixture")
 
         def offline(args, **kwargs):
-            if args[:2] == ["git", "clone"]:
+            if Path(args[0]).stem == "git" and args[1] == "clone":
                 args = [*args[:-2], str(upstream), args[-1]]
             return real_run(_no_generate(args), **kwargs)
 
@@ -676,10 +676,27 @@ def test_shadowed_legacy_copy_refused_before_install_or_changed_update(
         _commit(upstream, "changed")
 
         def offline(args, **kwargs):
-            if args == ["git", "fetch", "origin"]:
-                args = ["git", "fetch", str(upstream), "main:refs/remotes/origin/main"]
+            if Path(args[0]).stem == "git" and args[1:] == ["fetch", "origin"]:
+                args = [
+                    args[0],
+                    "fetch",
+                    str(upstream),
+                    "main:refs/remotes/origin/main",
+                ]
             return real_run(_no_generate(args), **kwargs)
 
+    from chunker.grammar_management import _build_tools
+
+    real_resolve = _build_tools.resolve_tool
+    monkeypatch.setattr(
+        _build_tools,
+        "resolve_tool",
+        lambda name: (
+            str(tmp_path / "tree-sitter")
+            if name == "tree-sitter"
+            else real_resolve(name)
+        ),
+    )
     monkeypatch.setattr(user_grammar_tools.subprocess, "run", offline)
     before = _native_snapshot(native)
     probes = _record_probes(monkeypatch)

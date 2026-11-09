@@ -121,7 +121,7 @@ jobs:
         xcrun --show-sdk-path
         echo "MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET-unset}"
 
-    - name: Check controlled installer recipe
+    - name: Check controlled grammar recipes
       env:
         CHUNKER_REQUIRE_INSTALLER_COMPILER: '1'
       run: uv run --locked --all-extras python -m pytest -q -s -rs tests/test_reproducible_grammar_build.py tests/test_remaining_builder_contract.py tests/test_release_hygiene_policy.py

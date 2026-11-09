@@ -1,4 +1,4 @@
-"""Run serial, temporary #630 mutations on their designated hosted platform.
+"""Run serial, temporary Consiliency/treesitter-chunker#630 mutations on their designated hosted platform.
 
 Every source edit is restored in finally. A pytest assertion failure is evidence;
 a collection/import error, interruption, or passing mutant is not a kill.
@@ -41,7 +41,7 @@ if sys.platform.startswith("linux"):
     add(
         "wheel_unstable_language_selection",
         PLATFORM,
-        "sorted(available)[:3]",
+        "sorted(\n                    available\n                )[:3]",
         "list(available)[:3]",
         CONTRACT + "::test_wheel_language_selection_is_sorted",
     )
@@ -72,7 +72,7 @@ if sys.platform.startswith("linux"):
             path,
             old,
             new,
-            CONTRACT + f"::test_combined_link_failure_fails_all[{prefix}]",
+            CONTRACT + f"::test_combined_link_failure_fails_all[nonzero-{prefix}]",
         )
     add(
         "platform_left_out_reported_true",
@@ -93,7 +93,7 @@ if sys.platform.startswith("linux"):
         PLATFORM,
         "if result.returncode == 0 and lib_path.is_file():",
         "if True:",
-        CONTRACT + "::test_combined_link_failure_fails_all[platform]",
+        CONTRACT + "::test_combined_link_failure_fails_all[nonzero-platform]",
     )
     add(
         "manager_unsorted_sources",
@@ -376,32 +376,72 @@ elif sys.platform == "win32":
 
 
 def main() -> int:
+    if sys.version_info[:2] != (3, 14):
+        raise SystemExit("Mutation evidence requires Python 3.14")
     if not os.environ.get("CI"):
         raise SystemExit("Mutation evidence must run on hosted CI (I6)")
     records = []
+    scenarios = []
     for name, filename, old, new, test in MUTATIONS:
+        count = (ROOT / filename).read_text(encoding="utf-8").count(old)
+        if count == 0:
+            raise RuntimeError(f"Mutation anchor missing: {name}")
+        occurrences = list(range(count)) if name.startswith("ugt_") else [None]
+        scenarios.extend(
+            (name, filename, old, new, test, occurrence) for occurrence in occurrences
+        )
+    for name, filename, old, new, test, occurrence in scenarios:
         path = ROOT / filename
         original = path.read_text(encoding="utf-8")
         if old not in original:
             raise RuntimeError(f"Mutation anchor missing: {name}: {old}")
         try:
-            mutated = original.replace(old, new)
+            if occurrence is None:
+                mutated = original.replace(old, new)
+            else:
+                parts = original.split(old)
+                mutated = (
+                    old.join(parts[: occurrence + 1])
+                    + new
+                    + old.join(parts[occurrence + 1 :])
+                )
             compile(mutated, str(path), "exec")
             path.write_text(mutated, encoding="utf-8")
             # Do not reuse bytecode from a prior mutant with equal file size/mtime.
             for cache in path.parent.glob(f"__pycache__/{path.stem}.*.pyc"):
                 cache.unlink()
-            run = subprocess.run(
-                [sys.executable, "-m", "pytest", "-q", "-rs", test],
-                cwd=ROOT,
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=300,
+            outputs = []
+            returncodes = []
+            seeds = (
+                ["1", "42"]
+                if name
+                in {
+                    "manager_unsorted_sources",
+                    "platform_unsorted_includes",
+                    "wheel_unstable_language_selection",
+                }
+                else [None]
             )
-            output = run.stdout + run.stderr
+            for seed in seeds:
+                environment = dict(os.environ)
+                if seed is not None:
+                    environment["PYTHONHASHSEED"] = seed
+                run = subprocess.run(
+                    [sys.executable, "-m", "pytest", "-q", "-rs", test],
+                    cwd=ROOT,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=300,
+                    env=environment,
+                )
+                outputs.append(f"PYTHONHASHSEED={seed}\n" + run.stdout + run.stderr)
+                returncodes.append(run.returncode)
+                if run.returncode < 0:
+                    break
+            output = "\n".join(outputs)
             killed = (
-                run.returncode == 1
+                all(code == 1 for code in returncodes)
                 and (
                     "AssertionError" in output
                     or "Failed:" in output
@@ -411,21 +451,30 @@ def main() -> int:
             )
             record = {
                 "mutation": name,
+                "occurrence": occurrence,
+                "returncodes": returncodes,
                 "test": test,
                 "host": sys.platform,
+                "python": sys.version,
+                "head": os.environ.get("GITHUB_SHA"),
                 "returncode": run.returncode,
                 "killed": killed,
                 "run_url": f"https://github.com/{os.environ.get('GITHUB_REPOSITORY')}/actions/runs/{os.environ.get('GITHUB_RUN_ID')}",
                 "output": output,
             }
-            records.append(record)
-            print(json.dumps(record), flush=True)
-            if run.returncode < 0:
-                break
         finally:
             path.write_text(original, encoding="utf-8")
             for cache in path.parent.glob(f"__pycache__/{path.stem}.*.pyc"):
                 cache.unlink()
+            assert (
+                path.read_text(encoding="utf-8") == original
+            ), "mutation was not restored"
+        record["restored"] = True
+        records.append(record)
+        print(json.dumps(record), flush=True)
+        if run.returncode < 0:
+            break
+    subprocess.run(["git", "diff", "--exit-code"], cwd=ROOT, check=True)
     return 0 if records and all(record["killed"] for record in records) else 1
 
 

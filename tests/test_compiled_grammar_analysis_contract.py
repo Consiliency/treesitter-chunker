@@ -684,8 +684,8 @@ def test_unchanged_real_repository_update_validates_installed_artifact(
         real_run(args, cwd=checkout, check=True, capture_output=True)
 
     def offline_fetch(args, **kwargs):
-        if args == ["git", "fetch", "origin"]:
-            args = ["git", "fetch", str(checkout), "main:refs/remotes/origin/main"]
+        if Path(args[0]).stem == "git" and args[1:] == ["fetch", "origin"]:
+            args = [args[0], "fetch", str(checkout), "main:refs/remotes/origin/main"]
         return real_run(args, **kwargs)
 
     monkeypatch.setattr(

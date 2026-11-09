@@ -756,6 +756,12 @@ def _public_adapter(kind, root, monkeypatch):
             else _build_tools.resolve_tool("cc") or _build_tools.resolve_tool("gcc")
         )
         assert compiler is not None
+        print(f"downloader selected compiler={compiler}")
+        print(
+            subprocess.run(
+                [compiler, "--version"], capture_output=True, text=True, check=True
+            ).stdout
+        )
         if sys.platform == "win32":
             target = subprocess.run(
                 [compiler, "-dumpmachine"], capture_output=True, text=True, check=True
@@ -798,6 +804,9 @@ def test_remaining_public_adapters_two_paths(tmp_path, monkeypatch, adapter):
         _public_adapter(adapter, tmp_path / relative, monkeypatch) for relative in ROOTS
     ]
     blobs = [path.read_bytes() for path in paths]
+    print(
+        f"{adapter} compiler={compiler} raw_sha256={[sha256(blob).hexdigest() for blob in blobs]}"
+    )
     prefix = (
         b"tree-sitter-repro/" if adapter in {"manager", "combined", "platform"} else b""
     )

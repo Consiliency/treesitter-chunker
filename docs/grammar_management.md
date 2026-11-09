@@ -1106,7 +1106,7 @@ normalization, automatic repinning or `native_probe.v1` change is performed.
 | Individual TreeSitterGrammarBuilder | `<language>.so`, `.dylib`, `.dll` | gcc then cc / C11 | Canonical parser plus optional C scanner |
 | Downloader | `<grammar_path.name.split('-')[0]>.so` | explicit CC, otherwise cc then gcc / no added standard | Scanner priority is C, then cc, then cpp |
 | GrammarManager | `my-languages.so` on every host | gcc then cc / no added standard | Sorted `src/*.c` members |
-| Unix BuildSystem (PlatformBuilder in the plan) | `my-languages.so` or `.dylib` | gcc then cc / no added standard | Sorted root and src C inputs |
+| Unix BuildSystem | `my-languages.so` or `.dylib` | gcc then cc / no added standard | Sorted root and src C inputs |
 | Combined TreeSitterGrammarBuilder | `languages.so`, `.dylib`, `.dll` | gcc then cc / no added standard | Each member's parser plus optional C scanner |
 | Manual wheel | embedded combined library | above Unix recipe | Embedded bytes only; whole archive excluded |
 | Installer make, then tree-sitter build | `lib<language>.so` | uncontrolled | Compatibility fallbacks; tree-sitter is last |
@@ -1123,7 +1123,7 @@ require a parent-resolved `tree-sitter generate`; no global npm install occurs.
 Combined members are preflighted before compiler probes or compilation. Missing,
 C++-scanner and symlinked members are omitted and reported; accepted peers still
 build. No accepted members means zero processes. A link failure fails every member.
-GrammarManager keeps requested-but-never-fetched keys absent. PlatformBuilder reports
+GrammarManager keeps requested-but-never-fetched keys absent. BuildSystem reports
 omissions in `errors`, even on success, and preserves requested `languages`.
 Unknown or host-mismatched labels fail before processes. Labels select filenames;
 link flags use host `sys.platform`. macOS install names are `@rpath/<actual basename>`;

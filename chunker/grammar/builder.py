@@ -86,11 +86,15 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
             for lang in accepted:
                 results[lang] = success
                 self._build_logs[lang] = (
-                    "Build successful" if success else f"Link failed: {result.stderr}"
+                    f"Controlled C using {compiler}: build successful"
+                    if success
+                    else f"Controlled C using {compiler}: link failed: {result.stderr}"
                 )
-        except OSError as error:
+        except Exception as error:
             for lang in accepted:
-                self._build_logs[lang] = f"Link failed: {error}"
+                self._build_logs[lang] = (
+                    f"Controlled C using {compiler}: link failed: {error}"
+                )
         return results
 
     def build_individual(self, language: str) -> bool:
@@ -185,13 +189,15 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                     )
                     success = result.returncode == 0 and lib_path.is_file()
                     self._build_logs[language] = (
-                        "Build successful"
+                        f"Controlled C using {compiler}: build successful"
                         if success
-                        else f"Compilation failed: {result.stderr}"
+                        else f"Controlled C using {compiler}: compilation failed: {result.stderr}"
                     )
                     return success
-                except (ValueError, OSError) as error:
-                    self._build_logs[language] = str(error)
+                except Exception as error:
+                    self._build_logs[language] = (
+                        f"Controlled C using {compiler}: {error}"
+                    )
                     return False
             logger.info("Uncontrolled compatibility build for %s", language)
             # Collect C/C++ sources including external scanners from root and src/
