@@ -2257,7 +2257,10 @@ def _refuse_linked_installation(rootdir: _Dir, point: RollbackPoint) -> None:
         f"no grammar command running: delete {paths} (a link's target is left "
         f"unchanged), then finish from {point.path / ROLLBACK_MANIFEST_NAME} "
         "with the procedure for a retained rollback point in "
-        "docs/development/cache-transaction-contract.md."
+        "https://github.com/Consiliency/treesitter-chunker/blob/"
+        "10f122729f3b4bcbcc19bfefe2d18599cbe90eed/"
+        "docs/development/cache-transaction-contract.md"
+        "#crash-states-and-operator-recovery."
     )
 
 

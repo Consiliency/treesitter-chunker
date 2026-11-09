@@ -1332,6 +1332,14 @@ def test_restore_refuses_linked_metadata_with_recovery_steps(
     message = str(raised.value)
     assert f"delete {point.metadata}" in message, message
     assert str(point.path / "rollback.json") in message
+    assert "docs/development/cache-transaction-contract.md" not in message or (
+        "https://github.com/Consiliency/treesitter-chunker/blob/" in message
+    )
+    assert (
+        "https://github.com/Consiliency/treesitter-chunker/blob/"
+        "10f122729f3b4bcbcc19bfefe2d18599cbe90eed/"
+        "docs/development/cache-transaction-contract.md#crash-states-and-operator-recovery"
+    ) in message
     assert "neither installation file was touched" in message
     assert metadata.is_symlink() and sentinel.read_bytes() == b"sentinel"
     assert _sha(point.artifact) == pair_b[0]

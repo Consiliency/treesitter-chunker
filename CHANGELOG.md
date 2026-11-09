@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Restore recovery errors link to a commit-pinned copy of the operator
+  procedure, available to wheel-only users (treesitter-chunker#626).
+
 - `GrammarInstaller._save_installation_info` now hashes the grammar library in
   the same locked section that writes its metadata, so the recorded
   `artifact_sha256` always describes the library on disk when the metadata is

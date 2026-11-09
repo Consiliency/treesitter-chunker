@@ -841,6 +841,10 @@ names each such path to delete (a link's target is left unchanged), the
 retained `rollback.json` to finish from with the
 [operator procedure](#crash-states-and-operator-recovery), and the installer
 appends the `install_grammar(...)` call to re-run (treesitter-chunker#620).
+The runtime message links to the procedure at commit `10f122729f3b4bcbcc19bfefe2d18599cbe90eed`
+on GitHub, rather than citing a local documentation file: documentation is not
+in the wheel (treesitter-chunker#626). The pinned copy remains stable across
+subsequent edits; access to it requires network connectivity.
 
 **Windows.** IF-0-HOTFIX-1 raises `OSError` when Windows refuses to replace a
 library that a process has loaded, and the destination is then unchanged.
