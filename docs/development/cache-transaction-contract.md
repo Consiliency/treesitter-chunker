@@ -1246,3 +1246,110 @@ Execution Notes (`specs/phase-plans-v4.md`):
   treesitter-chunker#363 merges only after ADMIT SL-core's
   `GrammarInstaller(trusted_artifacts=)` change (decision D-a). It rebases on
   treesitter-chunker#323.
+
+## Hermetic no-provenance regression (treesitter-chunker#635)
+
+`test_grammar_without_identity_is_never_served_from_cache` uses the locked
+Python wheel and removes only `grammar_source` through `get_language_info`.
+Go was incidental: the registry records no provenance for it, but loading its
+metadata also downloads its pack grammar on a cold machine. No skip is needed;
+CI must fail on a broken cache contract.
+
+The test seeds a real stale identified entry, removes provenance, and exercises
+`ParallelChunker._process_single_file` twice. It checks fresh fixture chunks,
+read/write bypass, and preservation of the original row. The worker method runs
+in-process so the metadata patch also applies on Windows/macOS spawn platforms.
+Separate tests in the module retain actual process-worker coverage. Pack loading,
+parser creation, prefetch and download entrypoints explicitly fail this test.
+
+Named mutation **`serves_no_identity_from_cache`**: wrap
+`ASTCache.get_cached_chunks` so it temporarily restores the original
+`parser.get_language_info` during the read, then restores the test's metadata
+seam in `finally`. This deliberately serves the identified stale row even when
+the selected grammar has no identity. The regression must fail at the comparison
+of served chunks with fresh chunks (`content='stale'`). A disposable pytest
+plugin can install this mutation without editing production code:
+
+```python
+import chunker.parser as parser
+from chunker._internal.cache import ASTCache
+
+
+def pytest_configure(config):
+    original_info = parser.get_language_info
+    original_read = ASTCache.get_cached_chunks
+
+    def serves_no_identity_from_cache(self, *args, **kwargs):
+        unidentified_info = parser.get_language_info
+        parser.get_language_info = original_info
+        try:
+            return original_read(self, *args, **kwargs)
+        finally:
+            parser.get_language_info = unidentified_info
+
+    ASTCache.get_cached_chunks = serves_no_identity_from_cache
+```
+
+Save as `serves_no_identity_from_cache.py` under private `TMPDIR`, put that
+directory on `PYTHONPATH`, and run the named regression with
+`pytest -p serves_no_identity_from_cache`. The ordinary test must pass with
+`HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` pointing at `http://127.0.0.1:9`;
+the mutation must fail. The previous Go test fails with `LanguageNotFoundError`
+when the pack's `get_language` raises a simulated HTTP 504 download error.
+
+### Network audit of platform-core and smoke selectors
+
+The other incidental dependency fixed here is
+`test_parser.py::TestParserCaching::test_multiple_languages`: checking generic
+parser caching does not require C/C++ pack downloads. It now requires both
+wheel-backed Python and JavaScript grammars to load, rather than accepting just
+one successful language from a larger best-effort list.
+
+Follow-up dependencies retained because they assert specific grammar or binary
+behavior (a cold pack cache can require network):
+
+- `test_language_pack.py::TestLanguagePackProvider::test_get_language_from_pack_typescript`.
+- `test_registry_fallback.py::TestRegistryFallback`: the TypeScript assertion in
+  `test_registry_has_language_with_fallback`, `test_multiple_languages_from_fallback`
+  (TypeScript/Rust/Go; it currently swallows errors), and the real custom-library
+  tests `test_492_real_custom_grammar_takes_priority` and
+  `test_492_invalid_individual_does_not_poison_valid_combined` (direct pack
+  Python/JavaScript binaries, unlike the official-wheel wrapper).
+- `test_boundary_ir_incremental_runtime.py`: the mixed Go-file cases
+  `test_492_provider_failure_preserves_cache_and_mixed_file_continuation`,
+  `test_492_known_version_incompatible_custom_fails_before_cache_identity`, and
+  `test_492_null_custom_export_is_typed_and_preserves_mixed_cache`; the latter
+  two plus `test_492_incremental_tracks_actual_official_and_custom_sources`
+  copy real Python/JavaScript libraries from the pack cache.
+- `test_call_reference_guard.py::CallReferenceGuard`: C/C++ cases
+  `test_c_and_cpp_pointer_members_keep_simple_resolution` and
+  `test_scope_and_multiline_simple_chains_keep_resolution`.
+- The real-parser assertions in `test_go_version_hints_contract.py`,
+  `test_java_version_hints_contract.py`, and `test_cpp_version_hints_contract.py`
+  require Go, Java, and C++ respectively. These include numeric build-constraint,
+  header-placement, declared-standard/feature-macro, and Gradle precedence cases;
+  using another language would remove their parser validity checks.
+- Smoke Boundary IR suites: `test_boundary_ir_golden_snapshots.py`,
+  `test_boundary_ir_determinism.py`, and the fresh-emission cases in
+  `test_boundary_ir_schema.py` cover the supported language set beyond the
+  wheel-backed grammars. Goldens and parser pins remain unchanged.
+- `test_language_smoke.py`: `test_every_pack_language_loads`,
+  `test_prefetched_parser_loads_without_network` (its setup prefetch),
+  `test_coverage_matches_committed_oracle`, and
+  `test_extraction_sampled_languages_nonempty` intentionally require real pack
+  binaries. The explicit offline-cache-miss test is already hermetic.
+
+`test_rust_version_hints_contract.py::test_cargo_rust_version_precedes_source_rustc_hint`
+uses a real Rust parser; Rust is fetched/built by both workflows, with the pack
+as fallback if the local artifact is not admitted. Rust in the factory's LRU
+checks is just a mocked cache key. Go names in configuration tests and
+`test_boundary_cache_key.py` use synthetic state or metadata and do not
+themselves imply grammar downloads.
+
+CI caches the pack's versioned downloaded manifest and extracted archive contents
+under `~/.cache/tree-sitter-language-pack`, keyed by OS, architecture, and lockfile
+without broad restore keys. Prefetch remains fatal: smoke explicitly checks the
+whole pack, so continuing after a failed prefetch only delays the failure.
+Caching avoids repeated downloads on warm runs; cold or evicted caches still
+require the upstream service. Retries cannot solve a sustained outage, and
+making prefetch non-fatal would not make the pack gates hermetic.

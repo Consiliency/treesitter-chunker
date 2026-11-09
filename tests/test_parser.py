@@ -9,7 +9,6 @@ import chunker.parser
 from chunker import (
     LanguageNotFoundError,
     ParserConfig,
-    ParserError,
     clear_cache,
     get_language_info,
     get_parser,
@@ -123,19 +122,10 @@ class TestParserCaching:
 
     @staticmethod
     def test_multiple_languages():
-        """Test caching with multiple languages."""
-        languages = list_languages()
-        successful = []
-        for lang in ["python", "javascript", "rust", "c", "cpp"]:
-            if lang in languages:
-                try:
-                    parser = get_parser(lang)
-                    assert isinstance(parser, Parser)
-                    successful.append(lang)
-                except ParserError:
-                    pass
-        assert "python" in successful
-        assert len(successful) >= 1
+        """Cache multiple wheel-backed grammars without downloading a pack."""
+        for lang in ("python", "javascript"):
+            parser = get_parser(lang)
+            assert isinstance(parser, Parser)
 
 
 class TestBackwardCompatibility:
