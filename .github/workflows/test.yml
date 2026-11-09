@@ -196,10 +196,25 @@ jobs:
         Write-Host "gcc target machine: $machine"
         if ($machine -notmatch 'w64-mingw32') { throw "gcc on PATH is not MinGW-w64: $machine" }
 
-    - name: Check controlled installer recipe
+    - name: Record macOS toolchain
+      if: matrix.platform-family == 'macos'
+      run: |
+        command -v gcc
+        gcc --version
+        xcrun --show-sdk-version
+        xcrun --show-sdk-path
+        echo "MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET-unset}"
+
+    - name: Check controlled grammar recipes
       env:
         CHUNKER_REQUIRE_INSTALLER_COMPILER: '1'
-      run: uv run --locked --all-extras python -m pytest -q -s tests/test_reproducible_grammar_build.py tests/test_release_hygiene_policy.py
+      run: uv run --locked --all-extras python -m pytest -q -s -rs tests/test_reproducible_grammar_build.py tests/test_remaining_builder_contract.py tests/test_release_hygiene_policy.py
+
+    - name: Hosted platform mutations
+      if: matrix.platform-family != 'linux'
+      env:
+        CHUNKER_REQUIRE_INSTALLER_COMPILER: '1'
+      run: uv run --locked --all-extras python scripts/run_builder_mutations.py
 
     - name: Run platform core tests
       run: |
@@ -213,3 +228,24 @@ jobs:
         files: ./coverage.xml
         fail_ci_if_error: false
         verbose: true
+
+  controlled-linux:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: '3.14'
+      CHUNKER_REQUIRE_INSTALLER_COMPILER: '1'
+    steps:
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      with:
+        python-version: '3.14'
+    - name: Install locked environment
+      run: |
+        python -m pip install uv==0.12.11
+        uv sync --locked --all-extras
+    - name: Controlled builders on primary Python
+      run: uv run --locked --all-extras python -m pytest -q -s -rs tests/test_reproducible_grammar_build.py tests/test_remaining_builder_contract.py tests/test_release_hygiene_policy.py
+    - name: Hosted Linux mutations
+      run: uv run --locked --all-extras python scripts/run_builder_mutations.py

@@ -1088,3 +1088,70 @@ removal is a separate operator action outside these APIs.
 The smart grammar management system provides comprehensive tools for managing tree-sitter grammars with intelligent error handling and user guidance. By following the best practices and using the provided tools, you can maintain a healthy and up-to-date grammar ecosystem for optimal code parsing performance.
 
 For additional support or feature requests, please refer to the project documentation or create an issue in the project repository.
+
+
+## Controlled build routes (Consiliency/treesitter-chunker#630)
+
+Reproducibility means equal raw SHA-256 bytes for identical generated sources,
+compiler/linker, architecture, SDK, deployment target, flags and environment.
+It does not promise equality across toolchains. Source includes and inputs use
+relative POSIX paths; output basenames remain stable. Pins that no longer match
+fail closed: review new artifacts and explicitly replace approved pins. No
+normalization, automatic repinning or `native_probe.v1` change is performed.
+
+| Route | Public basename | Controlled compiler / standard | Scope |
+| --- | --- | --- | --- |
+| Installer gcc/cc | `lib<language>.so` | gcc then cc / no added standard | Existing bytes unchanged |
+| `grammar build` | `tree_sitter_<language>.so` | gcc then cc / C99 | Canonical C only; C++ scanners fail before compilation |
+| Individual TreeSitterGrammarBuilder | `<language>.so`, `.dylib`, `.dll` | gcc then cc / C11 | Canonical parser plus optional C scanner |
+| Downloader | `<grammar_path.name.split('-')[0]>.so` | explicit CC, otherwise cc then gcc / no added standard | Scanner priority is C, then cc, then cpp |
+| GrammarManager | `my-languages.so` on every host | gcc then cc / no added standard | Sorted `src/*.c` members |
+| Unix BuildSystem | `my-languages.so` or `.dylib` | gcc then cc / no added standard | Sorted root and src C inputs |
+| Combined TreeSitterGrammarBuilder | `languages.so`, `.dylib`, `.dll` | gcc then cc / no added standard | Each member's parser plus optional C scanner |
+| Manual wheel | embedded combined library | above Unix recipe | Embedded bytes only; whole archive excluded |
+| Installer make, then tree-sitter build | `lib<language>.so` | uncontrolled | Compatibility fallbacks; tree-sitter is last |
+| Windows BuildSystem | `my-languages.dll` | existing MSVC | Excluded from reproducibility guarantee |
+| Individual C++/noncanonical compatibility | existing filenames | existing compiler and command | Uncontrolled; no retry after a controlled failure |
+| UserGrammarTools install/update | existing root `*.so` | generation/publication only | Excluded; does not itself compile a library |
+
+Every controlled route links undefined symbols strictly on Linux (`-Wl,-z,defs`),
+without adding `-lm`. Combined macOS builds no longer use dynamic lookup.
+The CLI no longer inherits distutils/sysconfig `-DNDEBUG`; assertions are active.
+Pre-generated CLI parsers need neither Node nor a generator probe. Missing parsers
+require a parent-resolved `tree-sitter generate`; no global npm install occurs.
+
+Controlled combined members are preflighted before compiler probes or compilation.
+Missing, C++-scanner and symlinked members are omitted and reported; accepted peers still
+build. No accepted members means zero processes. A link failure fails every member.
+GrammarManager keeps requested-but-never-fetched keys absent. BuildSystem reports
+omissions in `errors`, even on success, and preserves requested `languages`.
+The excluded Windows/MSVC route keeps its full requested list and does not use
+controlled-member preflight.
+Unknown or host-mismatched labels fail before processes. Labels select filenames;
+link flags use host `sys.platform`. macOS install names are `@rpath/<actual basename>`;
+MinGW links directly to the stable basename with timestamp and automatic image base disabled.
+
+Single-invocation combined builds retain pre-existing cross-grammar header shadowing:
+an angle-bracket include can select another member's header (the panel's `ab`
+fixture demonstrates this). Sorted includes make selection deterministic, not
+necessarily correct for each grammar's ABI. No duplicate-definition override is used.
+Symlink preflight checks the inclusive clone-to-build span and src inputs;
+directories above the clone root, and the shared grammars directory itself, are
+not inspected. It is not a sandbox against concurrent replacements or includes
+outside src, such as TypeScript `common/`. Installer declines can still reach its existing fallbacks.
+
+Make can copy a pre-existing committed binary via its existing first-result selection.
+Make and tree-sitter fallback bytes are not guaranteed reproducible even across
+rebuilds on one host; a previously approved pin can fail on every rebuild.
+SDK and `MACOSX_DEPLOYMENT_TARGET`, `__DATE__`/`__TIME__`, debug flags, annobin and
+`-frecord-gcc-switches` remain reproducibility inputs or sources of path variance.
+
+Tools are resolved once in the parent per operation, before child cwd dispatch.
+Explicit downloader `CC` is one executable, never shell-split; missing explicit CC
+fails without fallback. Legacy downloader C++ retains its existing command.
+Absolute executable selection does not sandbox Git, Makefiles, or npm lifecycle
+scripts. UserGrammarTools npm behavior is unchanged
+(Consiliency/treesitter-chunker#641); publishing found shared libraries remains
+Consiliency/treesitter-chunker#642. CLI parse/test/validation-only npx calls,
+no-cwd diagnostic version probes, `scripts/run_deadline_load_harness.py`, the BAML
+companion, dependency-distributed wheels and historical archive scripts are excluded.

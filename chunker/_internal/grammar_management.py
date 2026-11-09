@@ -3,6 +3,7 @@
 import logging
 import os
 import subprocess
+from chunker.grammar_management import _build_tools
 import sys
 from dataclasses import dataclass, field
 from collections.abc import Mapping
@@ -133,6 +134,7 @@ class SmartGrammarManager:
         Returns:
             GrammarHealth object with detailed diagnosis
         """
+        selected_tools = _build_tools.ToolSelection()
         native, legacy = self._library_candidates(language)
         health = GrammarHealth(language=language, status="unknown")
 
@@ -211,7 +213,7 @@ class SmartGrammarManager:
             # Check if source is up to date
             try:
                 result = subprocess.run(
-                    ["git", "log", "--oneline", "-1"],
+                    [selected_tools.require("git"), "log", "--oneline", "-1"],
                     cwd=source_dir,
                     capture_output=True,
                     text=True,

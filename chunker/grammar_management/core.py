@@ -50,7 +50,7 @@ from chunker.grammar._native_policy import (
     is_application_control_error,
 )
 from chunker.grammar.source_validation import validate_grammar_source
-from chunker.grammar_management import _build_recipe, _transactions
+from chunker.grammar_management import _build_recipe, _build_tools, _transactions
 
 logger = logging.getLogger(__name__)
 
@@ -805,12 +805,17 @@ class GrammarInstaller:
 
             # Every input stays in this operation's private staging until the
             # installation, its last consumer, has finished.
+            selected_tools = _build_tools.ToolSelection()
             staging = _transactions.create_staging(self._base_cache_dir)
             try:
                 # Download grammar source
                 download_success, download_path, download_error = (
                     self._download_grammar(
-                        language, repository_url, version, staging=staging
+                        language,
+                        repository_url,
+                        version,
+                        staging=staging,
+                        selected_tools=selected_tools,
                     )
                 )
 
@@ -848,7 +853,7 @@ class GrammarInstaller:
                 # runs under the lock); an aborted owned run fails the install.
                 try:
                     source_commit = self._get_commit_hash(
-                        download_path, staging=staging
+                        download_path, staging=staging, selected_tools=selected_tools
                     )
                 except _StagedRunAbortedError as e:
                     return False, f"Commit lookup aborted: {e}", None
@@ -985,8 +990,10 @@ class GrammarInstaller:
         version: str | None = None,
         *,
         staging: _transactions.StagingArea | None = None,
+        selected_tools: _build_tools.ToolSelection | None = None,
     ) -> tuple[bool, Path | None, str | None]:
         """Clone grammar source into the operation's private staging."""
+        selected_tools = selected_tools or _build_tools.ToolSelection()
         if not _valid_language_name(language):
             return False, None, "Invalid grammar language"
         try:
@@ -1002,7 +1009,13 @@ class GrammarInstaller:
 
         try:
             # Clone repository
-            cmd = ["git", "clone", "--", repository_url, str(download_dir)]
+            cmd = [
+                selected_tools.require("git"),
+                "clone",
+                "--",
+                repository_url,
+                str(download_dir),
+            ]
             result = self._run_staged(
                 staging, cmd, cwd=downloads, timeout=300, what="Git clone"
             )
@@ -1012,7 +1025,7 @@ class GrammarInstaller:
 
             # Checkout specific version if requested
             if version:
-                cmd = ["git", "checkout", "--detach", version]
+                cmd = [selected_tools.require("git"), "checkout", "--detach", version]
                 result = self._run_staged(
                     staging, cmd, cwd=download_dir, timeout=60, what="Git checkout"
                 )
@@ -1060,10 +1073,23 @@ class GrammarInstaller:
             # abspath, not resolve(): keep the name the caller's PATH gave.
             gcc = os.path.abspath(found) if found else None  # noqa: PTH100
 
+            selected_tools = _build_tools.ToolSelection()
+            selected_tools.optional("make")
+            selected_tools.optional("tree-sitter")
             build_methods: list[tuple[str, Callable[..., tuple[bool, str | None]]]] = [
                 ("gcc", functools.partial(self._build_with_gcc, compiler=gcc)),
-                ("make", self._build_with_make),
-                ("tree-sitter-cli", self._build_with_tree_sitter_cli),
+                (
+                    "make",
+                    functools.partial(
+                        self._build_with_make, selected_tools=selected_tools
+                    ),
+                ),
+                (
+                    "tree-sitter-cli",
+                    functools.partial(
+                        self._build_with_tree_sitter_cli, selected_tools=selected_tools
+                    ),
+                ),
             ]
 
             last_error = None
@@ -1148,6 +1174,7 @@ class GrammarInstaller:
         output_path: Path,
         *,
         staging: _transactions.StagingArea,
+        selected_tools: _build_tools.ToolSelection | None = None,
     ) -> tuple[bool, str | None]:
         """Build using tree-sitter CLI: the last-resort fallback.
 
@@ -1155,9 +1182,10 @@ class GrammarInstaller:
         flags), so a pin for them comes from a review of that host's build
         (treesitter-chunker#621).
         """
+        selected_tools = selected_tools or _build_tools.ToolSelection()
         try:
             cmd = [
-                "tree-sitter",
+                selected_tools.require("tree-sitter"),
                 "build",
                 "--output",
                 str(output_path),
@@ -1260,12 +1288,14 @@ class GrammarInstaller:
         output_path: Path,
         *,
         staging: _transactions.StagingArea,
+        selected_tools: _build_tools.ToolSelection | None = None,
     ) -> tuple[bool, str | None]:
         """Build using Makefile if available: a fallback after gcc.
 
         The bytes are whatever the grammar's Makefile and the host's tools
         produce, so they are host-specific (treesitter-chunker#621).
         """
+        selected_tools = selected_tools or _build_tools.ToolSelection()
         try:
             makefile = source_path / "Makefile"
             if not makefile.exists():
@@ -1274,7 +1304,7 @@ class GrammarInstaller:
             # Run make in the staged source
             result = self._run_staged(
                 staging,
-                ["make"],
+                [selected_tools.require("make")],
                 cwd=source_path,
                 timeout=self._build_timeout,
                 what="Make",
@@ -1523,6 +1553,7 @@ class GrammarInstaller:
         repo_path: Path,
         *,
         staging: _transactions.StagingArea | None = None,
+        selected_tools: _build_tools.ToolSelection | None = None,
     ) -> str | None:
         """Get the commit hash of a staged repository.
 
@@ -1530,12 +1561,13 @@ class GrammarInstaller:
         timed-out or unconfirmed run raises ``_StagedRunAbortedError``: the
         staging is unpublishable and the operation must fail.
         """
+        selected_tools = selected_tools or _build_tools.ToolSelection()
         if staging is None:
             return None
         try:
             result = self._run_staged(
                 staging,
-                ["git", "rev-parse", "HEAD"],
+                [selected_tools.require("git"), "rev-parse", "HEAD"],
                 cwd=repo_path,
                 timeout=min(30, self._build_timeout),
                 what="Git rev-parse",

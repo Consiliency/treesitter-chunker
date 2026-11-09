@@ -31,6 +31,7 @@ import platform
 import shutil
 import stat
 import subprocess
+from chunker.grammar_management import _build_recipe, _build_tools
 import sys
 import threading
 import time
@@ -1306,6 +1307,7 @@ class ComprehensiveGrammarCLI:
         Returns:
             Exit code
         """
+        selected_tools = _build_tools.ToolSelection()
         repo_url = validate_grammar_source(repo_url)
         if (version or branch).startswith("-"):
             raise ValueError("Grammar branch or version must not start with '-'")
@@ -1329,7 +1331,7 @@ class ComprehensiveGrammarCLI:
 
         try:
             # Prepare git command
-            git_cmd = ["git", "clone"]
+            git_cmd = [selected_tools.require("git"), "clone"]
             if version:
                 # For specific version, we'll clone then checkout
                 git_cmd.extend(["--", repo_url, str(target_dir)])
@@ -1364,7 +1366,12 @@ class ComprehensiveGrammarCLI:
                         f"Refusing unsafe grammar version (leading dash): {version!r}"
                     )
                 progress.update(f"Checking out version {version}...")
-                checkout_cmd = ["git", "checkout", "--detach", version]
+                checkout_cmd = [
+                    selected_tools.require("git"),
+                    "checkout",
+                    "--detach",
+                    version,
+                ]
                 returncode, _stdout, stderr = self._run_command(
                     checkout_cmd,
                     cwd=target_dir,
@@ -1466,79 +1473,39 @@ class ComprehensiveGrammarCLI:
             progress.start()
 
             try:
-                # Check for build requirements
-                progress.update("Checking build requirements...")
-
-                # Check for Node.js (required for tree-sitter)
-                node_check = self._run_command(["node", "--version"])
-                if node_check[0] != 0:
-                    progress.stop(False, "Node.js not found")
-                    click.echo("❌ Node.js is required but not found")
-                    click.echo("💡 Install Node.js: https://nodejs.org/")
-                    return 1
-
-                # Check for tree-sitter CLI
-                ts_check = self._run_command(["npx", "tree-sitter", "--version"])
-                if ts_check[0] != 0:
-                    progress.update("Installing tree-sitter CLI...")
-                    install_cmd = ["npm", "install", "-g", "tree-sitter-cli"]
-                    install_result = self._run_command(install_cmd, timeout=120)
-                    if install_result[0] != 0:
-                        progress.stop(False, "tree-sitter CLI installation failed")
-                        click.echo("❌ Failed to install tree-sitter CLI")
-                        click.echo("💡 Try: npm install -g tree-sitter-cli")
-                        return 1
-
-                # Generate parser files if needed
-                progress.update("Generating parser files...")
-
-                generate_cmd = ["npx", "tree-sitter", "generate"]
-                generate_result = self._run_command(
-                    generate_cmd,
-                    cwd=source_dir,
-                    timeout=60,
-                )
-
-                if generate_result[0] != 0:
-                    progress.stop(False, "parser generation failed")
-                    click.echo(f"❌ Failed to generate parser: {generate_result[2]}")
-
-                    error_result = self._handle_error(
-                        generate_result[2],
-                        language,
-                        {
-                            "operation": "build_generate",
-                            "grammar_path": str(source_dir),
-                        },
+                error = _build_recipe.source_chain_error(source_dir)
+                if error:
+                    raise ValueError(error)
+                if _build_recipe.cxx_scanner(source_dir):
+                    raise ValueError(
+                        "C++ scanner is unsupported by grammar build; use an external C++ build and review its artifact pin"
                     )
-
-                    if error_result.get("quick_fixes"):
-                        click.echo("\n🔧 Quick fixes:")
-                        for fix in error_result["quick_fixes"]:
-                            click.echo(f"  • {fix}")
-
-                    return 1
-
-                # Compile the grammar
-                progress.update("Compiling grammar...")
-
-                # Create compilation script
-                compile_script = self._create_compile_script(
-                    language,
+                if not (source_dir / "src" / "parser.c").is_file():
+                    generator = _build_tools.resolve_tool("tree-sitter")
+                    if not generator:
+                        raise ValueError(
+                            "Parser missing: install tree-sitter on PATH or supply src/parser.c"
+                        )
+                    generate_result = self._run_command(
+                        [generator, "generate"], cwd=source_dir, timeout=60
+                    )
+                    if generate_result[0] != 0:
+                        raise ValueError(
+                            f"Parser generation failed: {generate_result[2]}"
+                        )
+                compiler = _build_tools.c_compiler()
+                if not compiler:
+                    raise ValueError("No gcc or cc found on PATH")
+                progress.update(f"Compiling with {compiler}...")
+                cmd = _build_recipe.individual_c_argv(
+                    compiler,
                     source_dir,
                     compiled_grammar,
+                    base=source_dir,
+                    standard="c99",
                 )
-
-                if not compile_script:
-                    progress.stop(False, "compilation setup failed")
-                    click.echo("❌ Failed to set up compilation")
-                    return 1
-
-                # Execute compilation
                 compile_result = self._run_command(
-                    ["python", str(compile_script)],
-                    cwd=source_dir,
-                    timeout=120,
+                    cmd, cwd=source_dir.absolute(), timeout=120
                 )
 
                 if compile_result[0] != 0:
@@ -1629,87 +1596,6 @@ class ComprehensiveGrammarCLI:
                     click.echo(f"  • {guidance}")
 
             return 1
-
-    def _create_compile_script(
-        self,
-        language: str,
-        source_dir: Path,
-        output_path: Path,
-    ) -> Path | None:
-        """Create compilation script for grammar.
-
-        Args:
-            language: Language name
-            source_dir: Source directory
-            output_path: Output path for compiled grammar
-
-        Returns:
-            Path to compile script if created successfully, None otherwise
-        """
-        try:
-            script_content = f'''#!/usr/bin/env python3
-"""Auto-generated compilation script for {language} grammar."""
-
-import os
-import sys
-from pathlib import Path
-from distutils.core import setup, Extension
-from distutils.command.build_ext import build_ext
-from distutils.util import get_platform
-
-# Grammar source files
-src_dir = Path(__file__).parent / "src"
-parser_c = src_dir / "parser.c"
-scanner_c = src_dir / "scanner.c"  # Optional
-
-sources = [str(parser_c)]
-if scanner_c.exists():
-    sources.append(str(scanner_c))
-
-# Extension definition
-extension = Extension(
-    name="tree_sitter_{language}",
-    sources=sources,
-    include_dirs=[str(src_dir)],
-    extra_compile_args=["-std=c99"],
-)
-
-class BuildExt(build_ext):
-    def build_extension(self, ext):
-        # Build the extension
-        build_ext.build_extension(self, ext)
-
-        # Move to target location
-        built_path = self.get_ext_fullpath(ext.name)
-        target_path = Path("{output_path}")
-
-        # Ensure target directory exists
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Copy built file to target
-        import shutil
-        shutil.copy2(built_path, target_path)
-        print(f"Grammar compiled to: {{target_path}}")
-
-if __name__ == "__main__":
-    setup(
-        name="tree_sitter_{language}",
-        ext_modules=[extension],
-        cmdclass={{"build_ext": BuildExt}},
-        script_args=["build_ext", "--inplace"],
-    )
-'''
-
-            script_path = source_dir / f"compile_{language}.py"
-            with open(script_path, "w") as f:
-                f.write(script_content)
-
-            script_path.chmod(0o755)
-            return script_path
-
-        except Exception as e:
-            logger.error(f"Failed to create compile script: {e}")
-            return None
 
     def remove_grammar(
         self,

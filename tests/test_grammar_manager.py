@@ -137,13 +137,20 @@ class TestGrammarManager:
             stdout="Compilation successful",
             stderr="",
         )
+
+        def finish_compile(argv, **kwargs):
+            Path(argv[argv.index("-o") + 1]).write_bytes(b"built")
+            return mock_run.return_value
+
+        mock_run.side_effect = finish_compile
         results = grammar_manager.compile_grammars()
         assert len(results) == 2
         assert results["python"] is True
         assert results["javascript"] is True
         assert mock_run.call_count == 1
         call_args = mock_run.call_args[0][0]
-        assert call_args[0] == "gcc"
+        assert Path(call_args[0]).is_absolute()
+        assert Path(call_args[0]).stem.lower() in {"gcc", "cc"}
         assert "-shared" in call_args
         assert "-fPIC" in call_args
 

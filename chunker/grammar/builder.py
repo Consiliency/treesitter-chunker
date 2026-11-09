@@ -6,7 +6,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from tree_sitter import Language
+from chunker.grammar_management import _build_recipe, _build_tools
 
 from chunker.exceptions import ChunkerError
 from chunker.interfaces.grammar import GrammarBuilder
@@ -59,45 +59,43 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         Returns:
             Dictionary mapping language to build success
         """
-        results = {}
-        language_paths = []
-        for lang in languages:
-            lang_path = self._source_dir / f"tree-sitter-{lang}"
-            if not lang_path.exists():
-
-                logger.error(
-                    "Source directory for '%s' not found at %s",
-                    lang,
-                    lang_path,
-                )
-                results[lang] = False
-                self._build_logs[lang] = f"Source directory not found: {lang_path}"
-                continue
-            language_paths.append((lang, lang_path))
-        if not language_paths:
+        accepted, sources, includes, errors = _build_recipe.combined_sources(
+            self._source_dir, languages, "canonical"
+        )
+        results = dict.fromkeys(languages, False)
+        self._build_logs.update(errors)
+        if not accepted:
             return results
-        lib_path = self._build_dir / f"languages{self._lib_extension}"
+        self._build_dir.mkdir(parents=True, exist_ok=True)
+        compiler = _build_tools.c_compiler()
+        if not compiler:
+            for lang in accepted:
+                self._build_logs[lang] = "No gcc or cc found"
+            return results
+        lib_path = (self._build_dir / f"languages{self._lib_extension}").absolute()
+        cmd = _build_recipe.controlled_c_argv(compiler, sources, includes, lib_path)
+        logger.info("Controlled C build using %s", compiler)
         try:
-            logger.info("Building %s languages...", len(language_paths))
-            Language.build_library(
-                str(lib_path),
-                [str(path) for _, path in language_paths],
+            result = subprocess.run(
+                cmd,
+                cwd=self._source_dir.absolute(),
+                check=False,
+                capture_output=True,
+                text=True,
             )
-            if lib_path.exists():
-                logger.info("Successfully built library at %s", lib_path)
-                for lang, _ in language_paths:
-                    results[lang] = True
-                    self._build_logs[lang] = "Build successful"
-            else:
-                raise BuildError(
-                    f"Library file_path not created at {lib_path}",
+            success = result.returncode == 0 and lib_path.is_file()
+            for lang in accepted:
+                results[lang] = success
+                self._build_logs[lang] = (
+                    f"Controlled C using {compiler}: build successful"
+                    if success
+                    else f"Controlled C using {compiler}: link failed: {result.stderr}"
                 )
-        except (FileNotFoundError, IndexError, KeyError) as e:
-            logger.error("Build failed: %s", e)
-            for lang, _ in language_paths:
-                if lang not in results:
-                    results[lang] = False
-                    self._build_logs[lang] = str(e)
+        except Exception as error:
+            for lang in accepted:
+                self._build_logs[lang] = (
+                    f"Controlled C using {compiler}: link failed: {error}"
+                )
         return results
 
     def build_individual(self, language: str) -> bool:
@@ -137,13 +135,23 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                     logger.error("Subdir for %s not found: %s", language, lang_root)
                     self._build_logs[language] = f"Subdir not found: {lang_root}"
                     return False
+            error = _build_recipe.source_chain_error(lang_root, base=lang_path)
+            if error:
+                self._build_logs[language] = error
+                return False
             # Check if this grammar needs generation first
             grammar_js = lang_root / "grammar.js"
             parser_c = lang_root / "src" / "parser.c"
             if grammar_js.exists() and not parser_c.exists():
                 logger.info("Grammar needs generation, running tree-sitter generate...")
+                generator = _build_tools.resolve_tool("tree-sitter")
+                if not generator:
+                    self._build_logs[language] = (
+                        "Parser missing: install tree-sitter on PATH or supply src/parser.c"
+                    )
+                    return False
                 result = subprocess.run(
-                    ["npx", "tree-sitter", "generate"],
+                    [generator, "generate"],
                     cwd=lang_root,
                     check=False,
                     capture_output=True,
@@ -153,6 +161,48 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                     logger.warning(f"tree-sitter generate failed: {result.stderr}")
                     # Continue anyway - maybe we can still find source files
 
+            canonical = (
+                parser_c.is_file()
+                and not list(lang_root.glob("*.c"))
+                and not list(lang_root.glob("*.cc"))
+            )
+            canonical = canonical and not list(lang_root.glob("*.cpp"))
+            canonical = canonical and not list((lang_root / "src").glob("*.cc"))
+            canonical = canonical and not list((lang_root / "src").glob("*.cpp"))
+            canonical = canonical and all(
+                p.name in {"parser.c", "scanner.c"}
+                for p in (lang_root / "src").glob("*.c")
+            )
+            if canonical:
+                compiler = _build_tools.c_compiler()
+                if not compiler:
+                    self._build_logs[language] = "No gcc or cc found"
+                    return False
+                try:
+                    cmd = _build_recipe.individual_c_argv(
+                        compiler, lang_root, lib_path, base=lang_path, standard="c11"
+                    )
+                    logger.info("Controlled C build using %s", compiler)
+                    result = subprocess.run(
+                        cmd,
+                        cwd=lang_root.absolute(),
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                    )
+                    success = result.returncode == 0 and lib_path.is_file()
+                    self._build_logs[language] = (
+                        f"Controlled C using {compiler}: build successful"
+                        if success
+                        else f"Controlled C using {compiler}: compilation failed: {result.stderr}"
+                    )
+                    return success
+                except Exception as error:
+                    self._build_logs[language] = (
+                        f"Controlled C using {compiler}: {error}"
+                    )
+                    return False
+            logger.info("Uncontrolled compatibility build for %s", language)
             # Collect C/C++ sources including external scanners from root and src/
             c_files: list[str] = []
             cc_files: list[str] = []

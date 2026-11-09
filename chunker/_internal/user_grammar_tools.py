@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import subprocess
+from chunker.grammar_management import _build_tools
 import sys
 import tempfile
 from collections.abc import Mapping
@@ -243,6 +244,7 @@ class UserGrammarTools:
         Returns:
             Installation result with status and details
         """
+        selected_tools = _build_tools.ToolSelection()
         result = {
             "language": language,
             "status": "unknown",
@@ -267,21 +269,28 @@ class UserGrammarTools:
                     # Re-pin origin to the validated URL before fetching so the
                     # update never trusts a tampered stored remote (SUPPLY hardening).
                     subprocess.run(
-                        ["git", "remote", "set-url", "origin", "--", repo_url],
+                        [
+                            selected_tools.require("git"),
+                            "remote",
+                            "set-url",
+                            "origin",
+                            "--",
+                            repo_url,
+                        ],
                         cwd=target_dir,
                         check=False,
                         capture_output=True,
                         text=True,
                     )
                     subprocess.run(
-                        ["git", "fetch", "origin"],
+                        [selected_tools.require("git"), "fetch", "origin"],
                         cwd=target_dir,
                         check=True,
                         capture_output=True,
                         text=True,
                     )
                     subprocess.run(
-                        ["git", "checkout", "--detach", branch],
+                        [selected_tools.require("git"), "checkout", "--detach", branch],
                         cwd=target_dir,
                         check=True,
                         capture_output=True,
@@ -296,7 +305,7 @@ class UserGrammarTools:
                 try:
                     subprocess.run(
                         [
-                            "git",
+                            selected_tools.require("git"),
                             "clone",
                             "--branch",
                             branch,
@@ -319,7 +328,7 @@ class UserGrammarTools:
             if package_json.exists():
                 try:
                     subprocess.run(
-                        ["npm", "install"],
+                        [selected_tools.require("npm"), "install"],
                         cwd=target_dir,
                         check=True,
                         capture_output=True,
@@ -334,7 +343,7 @@ class UserGrammarTools:
             # Step 3: Generate grammar
             try:
                 subprocess.run(
-                    ["tree-sitter", "generate"],
+                    [selected_tools.require("tree-sitter"), "generate"],
                     cwd=target_dir,
                     check=True,
                     capture_output=True,
@@ -438,6 +447,7 @@ class UserGrammarTools:
         Returns:
             Update result with status and details
         """
+        selected_tools = _build_tools.ToolSelection()
         result = {
             "language": language,
             "status": "unknown",
@@ -461,7 +471,7 @@ class UserGrammarTools:
                 # checkout with a tampered remote cannot pull attacker code
                 # (SUPPLY hardening — codex finding on the update path).
                 stored_origin = subprocess.run(
-                    ["git", "remote", "get-url", "origin"],
+                    [selected_tools.require("git"), "remote", "get-url", "origin"],
                     cwd=source_dir,
                     capture_output=True,
                     text=True,
@@ -469,7 +479,7 @@ class UserGrammarTools:
                 ).stdout.strip()
                 validate_grammar_source(stored_origin)
                 subprocess.run(
-                    ["git", "fetch", "origin"],
+                    [selected_tools.require("git"), "fetch", "origin"],
                     cwd=source_dir,
                     check=True,
                     capture_output=True,
@@ -479,7 +489,7 @@ class UserGrammarTools:
 
                 # Get current and latest commit
                 current = subprocess.run(
-                    ["git", "rev-parse", "HEAD"],
+                    [selected_tools.require("git"), "rev-parse", "HEAD"],
                     cwd=source_dir,
                     capture_output=True,
                     text=True,
@@ -487,7 +497,7 @@ class UserGrammarTools:
                 ).stdout.strip()
 
                 latest = subprocess.run(
-                    ["git", "rev-parse", "origin/main"],
+                    [selected_tools.require("git"), "rev-parse", "origin/main"],
                     cwd=source_dir,
                     capture_output=True,
                     text=True,
@@ -508,7 +518,12 @@ class UserGrammarTools:
 
                 # Checkout latest
                 subprocess.run(
-                    ["git", "checkout", "--detach", "origin/main"],
+                    [
+                        selected_tools.require("git"),
+                        "checkout",
+                        "--detach",
+                        "origin/main",
+                    ],
                     cwd=source_dir,
                     check=True,
                     capture_output=True,
@@ -526,7 +541,7 @@ class UserGrammarTools:
             if package_json.exists():
                 try:
                     subprocess.run(
-                        ["npm", "install"],
+                        [selected_tools.require("npm"), "install"],
                         cwd=source_dir,
                         check=True,
                         capture_output=True,
@@ -539,7 +554,7 @@ class UserGrammarTools:
             # Regenerate grammar
             try:
                 subprocess.run(
-                    ["tree-sitter", "generate"],
+                    [selected_tools.require("tree-sitter"), "generate"],
                     cwd=source_dir,
                     check=True,
                     capture_output=True,
@@ -627,6 +642,7 @@ class UserGrammarTools:
         Returns:
             Detailed grammar information
         """
+        selected_tools = _build_tools.ToolSelection()
         result = {
             "language": language,
             "health": None,
@@ -654,7 +670,7 @@ class UserGrammarTools:
             try:
                 # Get git info
                 git_log = subprocess.run(
-                    ["git", "log", "--oneline", "-1"],
+                    [selected_tools.require("git"), "log", "--oneline", "-1"],
                     cwd=source_dir,
                     capture_output=True,
                     text=True,
@@ -662,7 +678,7 @@ class UserGrammarTools:
                 )
 
                 git_remote = subprocess.run(
-                    ["git", "remote", "get-url", "origin"],
+                    [selected_tools.require("git"), "remote", "get-url", "origin"],
                     cwd=source_dir,
                     capture_output=True,
                     text=True,

@@ -4,6 +4,7 @@ Handles downloading, extracting, and compiling tree-sitter grammars from GitHub.
 """
 
 import json
+import logging
 import os
 import platform
 import shutil
@@ -17,6 +18,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 import tree_sitter
+from chunker.grammar_management import _build_recipe, _build_tools
 
 from chunker.contracts.download_contract import (
     CompilationResult,
@@ -239,6 +241,9 @@ class GrammarDownloadManager(GrammarDownloadContract):
                 error_message="No src directory found in grammar",
                 abi_version=None,
             )
+        source_error = _build_recipe.source_chain_error(grammar_path)
+        if source_error:
+            return CompilationResult(False, None, source_error, None)
         sources = []
         parser_c = src_dir / "parser.c"
         if parser_c.exists():
@@ -272,6 +277,41 @@ class GrammarDownloadManager(GrammarDownloadContract):
             cmd = [cc, "-fPIC", "-shared", "-o", str(output_file), *sources]
         if any(s.endswith((".cc", ".cpp")) for s in sources):
             cmd.extend(["-xc++", "-lstdc++"])
+        canonical = (
+            parser_c.is_file()
+            and not list(grammar_path.glob("*.c"))
+            and all(p.name in {"parser.c", "scanner.c"} for p in src_dir.glob("*.c"))
+        )
+        canonical = canonical and not any(
+            p not in {src_dir / "scanner.cc", src_dir / "scanner.cpp"}
+            for directory in (grammar_path, src_dir)
+            for pattern in ("*.cc", "*.cpp")
+            for p in directory.glob(pattern)
+        )
+        controlled = canonical and not any(
+            source.endswith((".cc", ".cpp")) for source in sources
+        )
+        if controlled:
+            selected = (
+                _build_tools.resolve_tool(os.environ["CC"])
+                if "CC" in os.environ
+                else _build_tools.resolve_tool("cc") or _build_tools.resolve_tool("gcc")
+            )
+            if not selected:
+                return CompilationResult(
+                    False, None, "Selected C compiler not found", None
+                )
+            logging.getLogger(__name__).info("Controlled C build using %s", selected)
+            try:
+                cmd = _build_recipe.individual_c_argv(
+                    selected,
+                    grammar_path,
+                    output_file,
+                    base=grammar_path,
+                    scanner_priority=True,
+                )
+            except ValueError as error:
+                return CompilationResult(False, None, str(error), None)
         try:
             result = subprocess.run(
                 cmd,
@@ -286,6 +326,10 @@ class GrammarDownloadManager(GrammarDownloadContract):
                     output_path=None,
                     error_message=f"Compilation failed: {result.stderr}",
                     abi_version=None,
+                )
+            if controlled and not output_file.is_file():
+                return CompilationResult(
+                    False, None, "Compiler produced no library", None
                 )
             abi_version = self._get_abi_version()
             return CompilationResult(

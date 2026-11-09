@@ -40,6 +40,7 @@ COMMON_TESTS = [
     "tests/test_cache_entry_transactions.py",
     "tests/test_installation_rollback.py",
     "tests/test_reproducible_grammar_build.py",
+    "tests/test_remaining_builder_contract.py",
     "tests/test_grammar_installer_language_safety.py",
     "tests/test_public_grammar_registry.py",
     "tests/test_public_grammar_cli.py",

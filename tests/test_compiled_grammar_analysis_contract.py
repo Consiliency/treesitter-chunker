@@ -579,9 +579,9 @@ def test_real_repository_install_reports_failed_native_admission(
         real_run(args, cwd=repository, check=True, capture_output=True)
 
     def offline_install(args, **kwargs):
-        if args[:2] == ["git", "clone"]:
+        if Path(args[0]).stem == "git" and args[1] == "clone":
             args = [*args[:-2], str(repository), args[-1]]
-        elif args == ["tree-sitter", "generate"]:
+        elif Path(args[0]).stem == "tree-sitter" and args[1:] == ["generate"]:
             # This boundary supplies a precompiled real grammar, not a claim
             # about the external generator's compilation behavior.
             args = [
@@ -592,6 +592,18 @@ def test_real_repository_install_reports_failed_native_admission(
             ]
         return real_run(args, **kwargs)
 
+    from chunker.grammar_management import _build_tools
+
+    real_resolve = _build_tools.resolve_tool
+    monkeypatch.setattr(
+        _build_tools,
+        "resolve_tool",
+        lambda name: (
+            str(tmp_path / "tree-sitter")
+            if name == "tree-sitter"
+            else real_resolve(name)
+        ),
+    )
     monkeypatch.setattr(
         "chunker._internal.user_grammar_tools.subprocess.run", offline_install
     )
@@ -672,8 +684,8 @@ def test_unchanged_real_repository_update_validates_installed_artifact(
         real_run(args, cwd=checkout, check=True, capture_output=True)
 
     def offline_fetch(args, **kwargs):
-        if args == ["git", "fetch", "origin"]:
-            args = ["git", "fetch", str(checkout), "main:refs/remotes/origin/main"]
+        if Path(args[0]).stem == "git" and args[1:] == ["fetch", "origin"]:
+            args = [args[0], "fetch", str(checkout), "main:refs/remotes/origin/main"]
         return real_run(args, **kwargs)
 
     monkeypatch.setattr(
