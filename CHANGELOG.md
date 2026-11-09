@@ -421,8 +421,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
-- Controlled C grammar builds now use reproducible recipes (Consiliency/treesitter-
-  chunker#630). Canonical C routes preserve public filenames but can change bytes and
+- Controlled C grammar builds now use reproducible recipes
+  (Consiliency/treesitter-chunker#630). Canonical C routes preserve public filenames but can change bytes and
   invalidate old pins. Combined builds omit unbuildable members and report those
   omissions; inspect errors even when the remaining library builds successfully. MSVC
   combined builds, C++/noncanonical compatibility routes, and whole-wheel archives are
@@ -431,8 +431,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `grammar build` now rejects `scanner.cc` and `scanner.cpp` before any compiler
   process, with an actionable error; it previously could report success on a parser-only
   library. It also rejects grammars with extra `.c` files. It no longer regenerates an
-  existing `src/parser.c`. When generation is necessary, it uses parent-resolved `tree-
-  sitter` from PATH, not `npx tree-sitter`.
+  existing `src/parser.c`. When generation is necessary, it uses parent-resolved
+  `tree-sitter` from PATH, not `npx tree-sitter`.
 
 - Every new controlled C route uses Linux `-Wl,-z,defs`. Undefined symbols, including
   libm functions when `-lm` is not linked, now cause failure; no `-lm` is added. In a
@@ -462,8 +462,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and label/host-family mismatches before any process. Labels choose artifact names,
   while link flags use the host platform.
 
-- The CLI no longer requires Node independently or installs npm packages globally. Pre-
-  generated parsers build without a Node or generator probe; generation when needed uses
+- The CLI no longer requires Node independently or installs npm packages globally.
+  Pre-generated parsers build without a Node or generator probe; generation when needed uses
   a parent-resolved tree-sitter executable, which may itself need a runtime. Internal
   UserGrammarTools npm install behavior is unchanged and can execute lifecycle scripts
   (Consiliency/treesitter-chunker#641); publishing a found shared library is tracked
