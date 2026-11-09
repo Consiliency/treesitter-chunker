@@ -12,14 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Saving installation metadata refuses a linked or non-regular library, or a
   linked parent, without hashing their targets or publishing metadata
   (treesitter-chunker#628).
-
 - Restore gives recovery steps for a linked `grammars/` root and links found
   after artifact publication, without claiming nothing changed or suggesting
   an unhelpful install re-run (treesitter-chunker#627).
-
 - Restore recovery errors link to a commit-pinned copy of the operator
   procedure, available to wheel-only users (treesitter-chunker#626).
-
+- Decline the controlled installer route before starting any process when
+  `src` or its inputs are symlinks, including linked headers and dangling
+  links. Make and CLI fallbacks remain available, with pin admission unchanged
+  (treesitter-chunker#632).
+- The controlled installer build tries `cc` when `gcc` is missing, using the
+  same recipe and recording the compiler's banner identity. GCC still wins
+  when both are installed (treesitter-chunker#631).
 - On Linux with the forkserver start method, multiprocessing creates its socket
   below TMPDIR. CPython's fallback to `/tmp` under-counts the socket
   name by 4 bytes in verified releases 3.13.15 and 3.14.5, so a TMPDIR of

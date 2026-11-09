@@ -1056,7 +1056,7 @@ class GrammarInstaller:
         try:
             # Resolved once, in this process (never in the clone), and used
             # as argv[0] for both the build and its ``--version`` probe.
-            found = shutil.which("gcc")
+            found = shutil.which("gcc") or shutil.which("cc")
             # abspath, not resolve(): keep the name the caller's PATH gave.
             gcc = os.path.abspath(found) if found else None  # noqa: PTH100
 
@@ -1190,6 +1190,9 @@ class GrammarInstaller:
     ) -> tuple[bool, str | None]:
         """Build with the installer's controlled, path-independent gcc recipe.
 
+        The compiler is absolute gcc, or cc if gcc is missing; the symlink
+        preflight runs before the C++ decline.
+
         The compiler runs with cwd = the grammar source root and sees only the
         relative paths ``src``, ``src/parser.c`` and ``src/scanner.c``, so
         what a C source keeps of its own path (``assert``, ``__FILE__``) is
@@ -1205,11 +1208,17 @@ class GrammarInstaller:
         on Linux and give a scanner-less library.
         """
         try:
+            linked = _build_recipe.symlinked_source(source_path)
+            if linked is not None:
+                return (
+                    False,
+                    f"Symlinked source ({linked}): not built by the controlled route",
+                )
             cxx = _build_recipe.cxx_scanner(source_path)
             if cxx is not None:
                 return False, f"C++ scanner ({cxx}): not built by the controlled route"
             if compiler is None:
-                return False, "GCC not found"
+                return False, "Neither gcc nor cc found"
 
             # Find C source files
             src_dir = source_path / "src"
@@ -1242,7 +1251,7 @@ class GrammarInstaller:
             return False, f"GCC build failed: {result.stderr}"
 
         except FileNotFoundError:
-            return False, "GCC not found"
+            return False, "Neither gcc nor cc found"
 
     def _build_with_make(
         self,
