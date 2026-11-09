@@ -79,7 +79,8 @@ def symlinked_source(source_root: Path) -> str | None:
         except FileNotFoundError:
             continue
         if stat.S_ISLNK(mode):
-            return path.relative_to(source_root).as_posix()
+            relative = path.relative_to(source_root).as_posix()
+            return "source root" if relative == "." else relative
 
     pending = [source_root / "src"]
     while pending:
@@ -89,7 +90,8 @@ def symlinked_source(source_root: Path) -> str | None:
         except FileNotFoundError:
             continue
         if stat.S_ISLNK(mode):
-            return path.relative_to(source_root).as_posix()
+            relative = path.relative_to(source_root).as_posix()
+            return "source root" if relative == "." else relative
         if stat.S_ISDIR(mode):
             pending.extend(sorted(path.iterdir(), reverse=True))
     return None

@@ -1191,6 +1191,9 @@ class GrammarInstaller:
     ) -> tuple[bool, str | None]:
         """Build with the installer's controlled, path-independent gcc recipe.
 
+        The compiler is absolute gcc, or cc if gcc is missing; the symlink
+        preflight runs before the C++ decline.
+
         The compiler runs with cwd = the grammar source root and sees only the
         relative paths ``src``, ``src/parser.c`` and ``src/scanner.c``, so
         what a C source keeps of its own path (``assert``, ``__FILE__``) is

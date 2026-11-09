@@ -392,8 +392,10 @@ can come from an independent build of the same source with the same recipe.
    that host's own build. `metadata.build.method` shows which route ran.
 6. **`metadata.build`.** Each installation's metadata records
    `{"method": "gcc" | "make" | "tree-sitter-cli", "compiler": {"family", "version", "banner"} | null, "platform"}`.
-   The method stays `gcc` even when `cc` was selected. The compiler family
-   comes from the banner (gcc or clang), not the executable name.
+   The method stays `gcc` even when `cc` was selected. The compiler family is
+   `clang` when the banner contains "clang", otherwise `gcc` as the default
+   label (so compilers such as tcc are labelled `gcc`). This field is
+   informational and is not used for admission.
    `compiler` is parsed from the selected compiler's `--version` output (`null` for
    the other methods, or when that probe fails, which never fails the
    install); `platform` is `sys.platform` and the machine, such as

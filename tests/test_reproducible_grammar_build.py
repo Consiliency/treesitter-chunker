@@ -136,7 +136,7 @@ def test_installer_builds_are_identical_at_two_paths(
             pytest.skip("clang-as-cc link-flag contract covers Linux and macOS")
         found = shutil.which("cc" if compiler_choice == "cc" else "clang")
         if found is None:
-            if os.environ.get("CI") and sys.platform in ("linux", "darwin"):
+            if _policy_required():
                 pytest.fail(f"CI must provide {compiler_choice}")
             pytest.skip(f"{compiler_choice} is unavailable on PATH")
         compiler = Path(os.path.abspath(found))  # noqa: PTH100
@@ -592,6 +592,7 @@ def test_compiler_identity_of_no_banner_is_none(stdout):
 @pytest.mark.parametrize(
     "linked",
     [
+        "source root",
         "src",
         "src/parser.c",
         "src/scanner.c",
@@ -607,7 +608,7 @@ def test_gcc_route_declines_symlinked_source_before_process(tmp_path, linked, da
     source = tmp_path / "source"
     shutil.copytree(FIXTURE, source)
     _write_grammar(source, {"src/headers/extra.h": "/* header */\n"})
-    path = source / linked
+    path = source if linked == "source root" else source / linked
     target = tmp_path / "outside"
     directory = path.is_dir()
     path.rename(target)
@@ -620,6 +621,8 @@ def test_gcc_route_declines_symlinked_source_before_process(tmp_path, linked, da
         path.symlink_to(target, target_is_directory=directory)
     except OSError as error:
         if sys.platform == "win32" and error.winerror == 1314:
+            if _policy_required():
+                pytest.fail("Windows CI must permit symlink creation (WinError 1314)")
             pytest.skip("Windows symlink creation requires privilege (WinError 1314)")
         raise
     installer = GrammarInstaller(cache_dir=tmp_path / "cache")
