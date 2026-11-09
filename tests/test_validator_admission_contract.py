@@ -915,3 +915,64 @@ def test_validate_fix_reports_a_pinned_admitted_rebuild_fixed(
     require(result["valid"] is True and result["status"] == "fixed", f"{result}")
     require(result["fixes_applied"] == ["Grammar rebuilt successfully"], f"{result}")
     require(probes and probes[0] == reported.absolute(), f"rebuild probed {probes}")
+
+
+@pytest.mark.parametrize("method", ["make", "tree-sitter"])
+def test_fallback_bytes_still_require_raw_pin(
+    isolated, tmp_path, fixture_bytes, monkeypatch, method
+):
+    from chunker.grammar_management import _build_tools, _transactions
+    from chunker._internal.native_admission import admit_native_candidate
+
+    installer = core_module.GrammarInstaller(cache_dir=tmp_path / "fallback")
+    staging = _transactions.create_staging(tmp_path / "fallback")
+    source = staging.path("downloads") / "grammar"
+    source.mkdir()
+    (source / "Makefile").touch()
+    (source / "committed.so").write_bytes(fixture_bytes)
+    output = staging.path("builds") / LANGUAGE / f"lib{LANGUAGE}.so"
+    calls = []
+    monkeypatch.setattr(_build_tools.shutil, "which", lambda name: f"parent-bin/{name}")
+
+    def run(area, argv, **kwargs):
+        calls.append((argv, kwargs))
+        if method == "tree-sitter":
+            output.write_bytes(fixture_bytes)
+        return _transactions.StagedRun(0, "", "", False, True)
+
+    monkeypatch.setattr(installer, "_run_staged", run)
+    try:
+        monkeypatch.setattr(
+            installer, "_build_with_gcc", lambda *a, **kw: (False, "controlled decline")
+        )
+        if method == "tree-sitter":
+            monkeypatch.setattr(
+                installer, "_build_with_make", lambda *a, **kw: (False, "make decline")
+            )
+        ok, path, error, record = installer._build_grammar(
+            LANGUAGE, source, staging=staging
+        )
+        assert path == output
+        assert record == {
+            "method": "make" if method == "make" else "tree-sitter-cli",
+            "compiler": None,
+            "platform": record["platform"],
+        }, "fallback must never claim controlled compiler metadata"
+        assert ok, error
+        assert output.read_bytes() == fixture_bytes
+        assert calls[0][0][0] == str(
+            Path(f"parent-bin/{method}").absolute()
+        ), "fallback executable must be parent-resolved"
+        assert calls[0][1]["cwd"] == (source if method == "make" else output.parent)
+        accepted, _ = admit_native_candidate(
+            output.absolute(), LANGUAGE, {LANGUAGE: _pin(fixture_bytes)}
+        )
+        assert accepted.supported, accepted.reason
+        output.write_bytes(fixture_bytes + b"changed fallback bytes")
+        rejected, _ = admit_native_candidate(
+            output.absolute(), LANGUAGE, {LANGUAGE: _pin(fixture_bytes)}
+        )
+        assert not rejected.supported, "raw fallback pin mismatch must fail closed"
+        assert rejected.reason == "integrity_mismatch"
+    finally:
+        _transactions.discard_staging(staging)

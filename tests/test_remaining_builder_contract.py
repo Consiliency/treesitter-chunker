@@ -229,13 +229,18 @@ def test_combined_link_failure_fails_all(tmp_path, monkeypatch, kind):
 
 
 @pytest.mark.parametrize("suffix", ["cc", "cpp"])
-def test_direct_controlled_helper_declines_cxx(tmp_path, suffix):
+def test_direct_controlled_helper_declines_cxx(tmp_path, monkeypatch, suffix):
     from chunker.grammar_management import _build_recipe
 
     src = tmp_path / "src"
     src.mkdir()
     (src / "parser.c").touch()
     (src / f"scanner.{suffix}").touch()
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *a, **kw: pytest.fail("controlled C++ must launch zero processes"),
+    )
     with pytest.raises(ValueError, match=r"C\+\+ scanner"):
         _build_recipe.individual_c_argv("/compiler", tmp_path, tmp_path / "out.so")
 
@@ -486,7 +491,7 @@ def test_individual_mapped_symlink_has_no_process(
     assert not tool.build_individual("ocaml")
 
 
-def test_cli_generation_is_resolved_once(tmp_path, monkeypatch):
+def test_cli_generation_is_resolved_once(tmp_path, monkeypatch, capsys):
     from chunker.grammar_management.cli import ComprehensiveGrammarCLI
     from chunker.grammar_management import _build_tools
 
@@ -663,3 +668,63 @@ def test_installer_git_resolved_once_across_clone_checkout_and_commit(
     assert [argv[1] for argv, _ in calls] == ["clone", "checkout", "rev-parse"]
     assert calls[1][1]["cwd"] == source
     assert calls[2][1]["cwd"] == source
+
+
+def test_combined_never_uses_obsolete_binding_api(tmp_path, monkeypatch):
+    import tree_sitter
+
+    src = tmp_path / "g" / "tree-sitter-repro" / "src"
+    src.mkdir(parents=True)
+    (src / "parser.c").touch()
+    monkeypatch.setattr(
+        tree_sitter,
+        "Language",
+        SimpleNamespace(
+            build_library=lambda *a: pytest.fail("obsolete binding API reached")
+        ),
+    )
+    monkeypatch.setattr("shutil.which", lambda name: str(tmp_path / "gcc"))
+
+    def run(argv, **kwargs):
+        Path(argv[argv.index("-o") + 1]).touch()
+        return SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    tool = TreeSitterGrammarBuilder()
+    tool.set_source_directory(src.parent.parent)
+    tool.set_build_directory(tmp_path / "out")
+    assert tool.build(["repro"]) == {"repro": True}
+
+
+def test_missing_compiler_fails_required_policy(monkeypatch):
+    from tests.test_reproducible_grammar_build import _installer_compiler
+
+    monkeypatch.setenv("CI", "true")
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    try:
+        with pytest.raises(pytest.fail.Exception, match="CI must provide"):
+            _installer_compiler()
+    except pytest.skip.Exception:
+        pytest.fail("required compiler policy must fail, never skip")
+
+
+@pytest.mark.parametrize("adapter", ["manager", "download", "platform"])
+def test_host_flags_use_actual_basename(tmp_path, monkeypatch, adapter):
+    from tests.test_reproducible_grammar_build import _public_adapter
+
+    monkeypatch.setattr(sys, "platform", "darwin")
+    commands = []
+
+    def run(argv, **kwargs):
+        if "-o" in argv:
+            output = Path(argv[argv.index("-o") + 1])
+            output.write_bytes(b"built")
+            commands.append(argv)
+        return SimpleNamespace(returncode=0, stdout="compiler", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    path = _public_adapter(adapter, tmp_path / "root", monkeypatch)
+    assert (
+        f"-Wl,-install_name,@rpath/{path.name}" in commands[-1]
+    ), "flags must use host and actual basename"
+    assert "-Wl,-z,defs" not in commands[-1]

@@ -714,7 +714,10 @@ def _public_adapter(kind, root, monkeypatch):
         )
         # The discovery name is intentionally independent of the output name.
         monkeypatch.setattr(tool, "_handle_error", lambda *a, **kw: {})
-        assert tool.build_grammar("tree-sitter-repro", force=True) == 0
+        from click.testing import CliRunner
+
+        with CliRunner().isolation():
+            assert tool.build_grammar("tree-sitter-repro", force=True) == 0
         path = output / "tree_sitter_tree-sitter-repro.so"
     elif kind in {"individual", "combined"}:
         tool = TreeSitterGrammarBuilder()
@@ -781,20 +784,21 @@ def test_remaining_public_adapters_two_paths(tmp_path, monkeypatch, adapter):
         _public_adapter(adapter, tmp_path / relative, monkeypatch) for relative in ROOTS
     ]
     blobs = [path.read_bytes() for path in paths]
-    assert (
-        sha256(blobs[0]).digest() == sha256(blobs[1]).digest()
-    ), "public build is path-dependent"
     prefix = (
         b"tree-sitter-repro/" if adapter in {"manager", "combined", "platform"} else b""
     )
     for path, blob in zip(paths, blobs):
-        assert os.fsencode(tmp_path) not in blob, "absolute source/output root leaked"
-        assert prefix + b"src/scanner.c" in blob
-        assert prefix + b"src/tree_sitter/parser.h" in blob
         if sys.platform == "darwin":
             assert f"@rpath/{path.name}".encode() in blob, "missing stable install name"
         if sys.platform == "win32":
             assert _pe_time_date_stamp(blob) == 0, "PE TimeDateStamp must be zero"
+        assert os.fsencode(tmp_path) not in blob, "absolute source/output root leaked"
+        assert prefix + b"src/scanner.c" in blob
+        assert prefix + b"src/tree_sitter/parser.h" in blob
+
+    assert (
+        sha256(blobs[0]).digest() == sha256(blobs[1]).digest()
+    ), "public build is path-dependent"
 
 
 if sys.platform in ("linux", "darwin"):

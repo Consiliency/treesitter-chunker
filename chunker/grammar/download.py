@@ -280,6 +280,12 @@ class GrammarDownloadManager(GrammarDownloadContract):
         canonical = not list(grammar_path.glob("*.c")) and all(
             p.name in {"parser.c", "scanner.c"} for p in src_dir.glob("*.c")
         )
+        canonical = canonical and not any(
+            p not in {src_dir / "scanner.cc", src_dir / "scanner.cpp"}
+            for directory in (grammar_path, src_dir)
+            for pattern in ("*.cc", "*.cpp")
+            for p in directory.glob(pattern)
+        )
         if canonical and not any(
             source.endswith((".cc", ".cpp")) for source in sources
         ):

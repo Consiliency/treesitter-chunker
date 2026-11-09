@@ -126,6 +126,12 @@ jobs:
         CHUNKER_REQUIRE_INSTALLER_COMPILER: '1'
       run: uv run --locked --all-extras python -m pytest -q -s -rs tests/test_reproducible_grammar_build.py tests/test_remaining_builder_contract.py tests/test_release_hygiene_policy.py
 
+    - name: Hosted platform mutations
+      if: matrix.platform-family != 'linux'
+      env:
+        CHUNKER_REQUIRE_INSTALLER_COMPILER: '1'
+      run: uv run --locked --all-extras python scripts/run_builder_mutations.py
+
     - name: Run platform core tests
       run: |
         uv run --locked --all-extras python scripts/run_platform_core.py --platform ${{ matrix.platform-family }}
@@ -155,3 +161,5 @@ jobs:
         uv sync --locked --all-extras
     - name: Controlled builders on primary Python
       run: uv run --locked --all-extras python -m pytest -q -s -rs tests/test_reproducible_grammar_build.py tests/test_remaining_builder_contract.py tests/test_release_hygiene_policy.py
+    - name: Hosted Linux mutations
+      run: uv run --locked --all-extras python scripts/run_builder_mutations.py

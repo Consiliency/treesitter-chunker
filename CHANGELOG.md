@@ -7,32 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Breaking
-
-Controlled C grammar builds now use reproducible recipes (Consiliency/treesitter-chunker#630).
-Canonical C routes preserve public filenames but can change bytes and invalidate old pins.
-Combined builds omit unbuildable members and report those omissions; inspect errors even
-when the remaining library builds successfully. MSVC combined builds, C++/noncanonical
-compatibility routes, and whole-wheel archives are excluded from this guarantee.
-
-`grammar build` now rejects `scanner.cc` and `scanner.cpp` before any compiler process,
-with an actionable error; it previously could report success on a parser-only library.
-It no longer regenerates an existing `src/parser.c`. When generation is necessary,
-it uses parent-resolved `tree-sitter` from PATH, not `npx tree-sitter`.
-
-Every new controlled C route uses Linux `-Wl,-z,defs`. Undefined symbols, including libm functions when `-lm` is not linked, now cause failure; no `-lm` is added. In a combined build an accepted member's undefined symbol fails the complete link and every requested member is reported failed. macOS controlled combined builds no longer use `-undefined dynamic_lookup`.
-
-`grammar build` now compiles directly rather than through distutils/sysconfig: their implicit `-DNDEBUG` is not retained, so assertions become active. The CLI keeps explicit `-std=c99`; individual TreeSitterGrammarBuilder keeps `-std=c11`. Installer, downloader, GrammarManager, combined TreeSitterGrammarBuilder and PlatformBuilder add no `-std`. Legacy individual C++ still uses its existing `-std=c++17`; downloader's legacy C++ command is unchanged and uncontrolled. Compiler selection follows the documented per-builder table, which can change output bytes.
-
-Combined C++-scanner members are now left out before compilation and reported failed, while valid C peers are still built. Tree-sitter 0.26.0 has no `Language.build_library`; the formerly uncaught AttributeError in TreeSitterGrammarBuilder's combined route is replaced by supported C compilation and explicit failed-member reporting.
-
-Symlinked sources fail closed for each grammar/member on the new controlled routes, with no legacy retry. Installer behavior remains as in treesitter-chunker#636: its controlled decline can still reach make and tree-sitter fallbacks. PlatformBuilder declines unknown labels and label/host-family mismatches before any process. Labels choose artifact names, while link flags use the host platform.
-
-The CLI no longer requires Node independently or installs npm packages globally. Pre-generated parsers build without a Node or generator probe; generation when needed uses a parent-resolved tree-sitter executable, which may itself need a runtime. Internal UserGrammarTools npm install behavior is unchanged and can execute lifecycle scripts (Consiliency/treesitter-chunker#641); publishing a found shared library is tracked separately (Consiliency/treesitter-chunker#642).
-
-Installer controlled gcc/cc recipe bytes are unchanged. Existing pins for other changed builders can stop matching and fail closed; no digest normalization, automatic repinning, native_probe.v1 change, or parser-pin adjustment is introduced. Make can select a committed binary, and neither make nor tree-sitter fallback output carries a reproducibility guarantee.
-
-
 ### Fixed
 
 - Saving installation metadata refuses a linked or non-regular library, or a
@@ -446,6 +420,31 @@ Installer controlled gcc/cc recipe bytes are unchanged. Existing pins for other 
   shorthand object property such as `{ value }` (treesitter-chunker#293).
 
 ### Breaking
+
+Controlled C grammar builds now use reproducible recipes (Consiliency/treesitter-chunker#630).
+Canonical C routes preserve public filenames but can change bytes and invalidate old pins.
+Combined builds omit unbuildable members and report those omissions; inspect errors even
+when the remaining library builds successfully. MSVC combined builds, C++/noncanonical
+compatibility routes, and whole-wheel archives are excluded from this guarantee.
+
+`grammar build` now rejects `scanner.cc` and `scanner.cpp` before any compiler process,
+with an actionable error; it previously could report success on a parser-only library.
+It no longer regenerates an existing `src/parser.c`. When generation is necessary,
+it uses parent-resolved `tree-sitter` from PATH, not `npx tree-sitter`.
+
+Every new controlled C route uses Linux `-Wl,-z,defs`. Undefined symbols, including libm functions when `-lm` is not linked, now cause failure; no `-lm` is added. In a combined build an accepted member's undefined symbol fails the complete link and every requested member is reported failed. macOS controlled combined builds no longer use `-undefined dynamic_lookup`.
+
+`grammar build` now compiles directly rather than through distutils/sysconfig: their implicit `-DNDEBUG` is not retained, so assertions become active. The CLI keeps explicit `-std=c99`; individual TreeSitterGrammarBuilder keeps `-std=c11`. Installer, downloader, GrammarManager, combined TreeSitterGrammarBuilder and PlatformBuilder add no `-std`. Legacy individual C++ still uses its existing `-std=c++17`; downloader's legacy C++ command is unchanged and uncontrolled. Compiler selection follows the documented per-builder table, which can change output bytes.
+
+Combined C++-scanner members are now left out before compilation and reported failed, while valid C peers are still built. Tree-sitter 0.26.0 has no `Language.build_library`; the formerly uncaught AttributeError in TreeSitterGrammarBuilder's combined route is replaced by supported C compilation and explicit failed-member reporting.
+
+Symlinked sources fail closed for each grammar/member on the new controlled routes, with no legacy retry. Installer behavior remains as in treesitter-chunker#636: its controlled decline can still reach make and tree-sitter fallbacks. PlatformBuilder declines unknown labels and label/host-family mismatches before any process. Labels choose artifact names, while link flags use the host platform.
+
+The CLI no longer requires Node independently or installs npm packages globally. Pre-generated parsers build without a Node or generator probe; generation when needed uses a parent-resolved tree-sitter executable, which may itself need a runtime. Internal UserGrammarTools npm install behavior is unchanged and can execute lifecycle scripts (Consiliency/treesitter-chunker#641); publishing a found shared library is tracked separately (Consiliency/treesitter-chunker#642).
+
+Installer controlled gcc/cc recipe bytes are unchanged. Existing pins for other changed builders can stop matching and fail closed; no digest normalization, automatic repinning, native_probe.v1 change, or parser-pin adjustment is introduced. Make can select a committed binary, and neither make nor tree-sitter fallback output carries a reproducibility guarantee.
+
+
 
 - `GrammarInstaller` builds a grammar to the same bytes wherever the source is
   cloned or built (treesitter-chunker#621, treesitter-chunker#607). It runs the
