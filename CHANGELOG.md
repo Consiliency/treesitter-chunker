@@ -398,6 +398,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- `GrammarInstaller` builds a grammar to the same bytes wherever the source is
+  cloned or built (treesitter-chunker#621, treesitter-chunker#607). It runs the
+  `gcc` found on `PATH` from the grammar's source root with relative `src/…`
+  paths. On macOS it sets the install name to `@rpath/lib<language>.so`. On
+  Windows (MinGW) it links with `--no-insert-timestamp` and
+  `--disable-auto-image-base`. On Linux it links with `-z defs`. `gcc` now
+  runs first, then `make`; the `tree-sitter build` CLI is the last fallback.
+
+  Pins computed from earlier installer builds stop matching and fail closed
+  with `integrity_mismatch`:
+  - **macOS:** every grammar. The install name recorded the random staging
+    path. The `assert` macro there records only the file name.
+  - **Windows:** every grammar (link timestamp and image base). This includes
+    grammars whose C sources keep their source path through a reachable
+    `assert` or a direct `__FILE__`.
+  - **Linux:** grammars whose C sources keep their source path the same way
+    (such as bash, cpp, c-sharp and ruby), and grammars the `tree-sitter` CLI
+    built on a host that also has `gcc`.
+
+  Reproduce such a pin with the documented recipe ("Producing a pin for
+  `grammar install`" in `docs/grammar_management.md`). Linux pins for other
+  gcc-built grammars are unchanged.
+
+  The `gcc` route no longer reports success for a grammar it cannot build
+  completely. Grammars with a C++ scanner (`scanner.cc` or `.cpp`), and on
+  Linux grammars that need an unlinked library such as `libm`, build only
+  through `make` or the CLI, whose bytes are host-specific. Each
+  installation's metadata records the build method and compiler
+  (`metadata.build`).
+
 - `SmartSelector.select_multiple_grammars` no longer accepts
   `global_constraints` and silently ignores them (treesitter-chunker#344). No
   cross-language constraint is supported, so a nonempty mapping now raises

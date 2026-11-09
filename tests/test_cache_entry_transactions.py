@@ -14,11 +14,12 @@ ADMIT (treesitter-chunker#362) admits an installed grammar only under its
 approved pin. Each install child pins ``baml`` through the public
 ``trusted_artifacts=`` argument with ``TXN_PIN_SHA256``: the digest of the
 parent's own build of that fixture, computed before the install, independent
-of what the installer builds. The shim directory also holds a ``gcc`` wrapper
-and a failing ``tree-sitter`` stub (so the installer's gcc builder runs). On
-macOS the linker records the output path as the library's install name, which
-for the installer is a random staging path; the wrapper and the parent's build
-both add ``MACOS_LINK_FLAGS`` so the output is path-independent there too.
+of what the installer builds. The parent builds with the installer's own
+documented recipe (``_build_recipe.gcc_build_argv``, cwd = the fixture
+repository), which gives the same bytes at any path on every platform
+(treesitter-chunker#621, #607), so the installer runs the real ``gcc`` on
+``PATH`` with no wrapper. The shim directory also holds a failing
+``tree-sitter`` stub, so a host CLI can never be the fallback that runs.
 A fixture that neither builds nor carries an explicit pin fails the test.
 """
 
@@ -26,7 +27,6 @@ from __future__ import annotations
 
 import json
 import os
-import shlex
 import shutil
 import stat
 import subprocess
@@ -39,7 +39,7 @@ from pathlib import Path
 import psutil
 import pytest
 
-from chunker.grammar_management import _transactions
+from chunker.grammar_management import _build_recipe, _transactions
 from tests.test_compiled_grammar_analysis_contract import SOURCE, _compile_probe_fixture
 from tests.test_user_grammar_publication import LOAD
 from tests.txn_barrier import (
@@ -113,11 +113,6 @@ if args[:2] == ["rev-parse", "HEAD"]:
 sys.exit(0)
 """
 
-#: Removes the build path from a macOS library (see the module docstring).
-MACOS_LINK_FLAGS = (
-    ["-Wl,-install_name,@rpath/libbaml.so"] if sys.platform == "darwin" else []
-)
-
 PINS = r"""
 import os
 pins = {"baml": {"sha256": os.environ["TXN_PIN_SHA256"]}} if "TXN_PIN_SHA256" in os.environ else None
@@ -146,13 +141,20 @@ logging.getLogger().setLevel(logging.WARNING)
 installer = GrammarInstaller(
     cache_dir=cache, build_timeout=build_timeout, trusted_artifacts=pins
 )
-if commit_timeout is not None:
+fail_probe = os.environ.get("TXN_FAIL_COMPILER_PROBE") == "1"
+if commit_timeout is not None or fail_probe:
     # Only the commit lookup gets the short limit; the build steps before it
     # keep ``build_timeout``, so a slow ``make`` cannot reach the deadline.
+    # ``TXN_FAIL_COMPILER_PROBE=1`` makes the compiler's ``--version`` probe
+    # exit nonzero (treesitter-chunker#621: a failed probe still installs).
+    from chunker.grammar_management._transactions import StagedRun
+
     run_staged = installer._run_staged
 
     def _run_staged(staging, argv, *, what, **kwargs):
-        if what == "Git rev-parse":
+        if what == "Compiler version" and fail_probe:
+            return StagedRun(1, "", "probe patched to fail", False, True)
+        if what == "Git rev-parse" and commit_timeout is not None:
             kwargs["timeout"] = commit_timeout
             commit_limits.append(commit_timeout)
         return run_staged(staging, argv, what=what, **kwargs)
@@ -160,8 +162,16 @@ if commit_timeout is not None:
     installer._run_staged = _run_staged
 emit("ready")
 wait()
-ok, error, _info = installer.install_grammar("baml", "https://github.com/example/tree-sitter-baml")
-emit("done", success=ok, error=error, warnings=messages, commit_limits=commit_limits)
+ok, error, info = installer.install_grammar("baml", "https://github.com/example/tree-sitter-baml")
+build = info.metadata.get("build") if info is not None else None
+emit(
+    "done",
+    success=ok,
+    error=error,
+    warnings=messages,
+    commit_limits=commit_limits,
+    build=build,
+)
 """
 )
 
@@ -212,28 +222,17 @@ def shim(tmp_path: Path) -> Path:
 
 
 def _make_shim(tmp_path: Path) -> Path:
-    """The ``git`` shim, a failing ``tree-sitter`` stub and the ``gcc`` wrapper."""
+    """The ``git`` shim and a failing ``tree-sitter`` stub."""
     directory = tmp_path / "shim"
     directory.mkdir()
     git = directory / "git"
     git.write_text(SHIM.format(python=sys.executable), encoding="utf-8")
     git.chmod(0o755)
-    # The installer tries the tree-sitter CLI first; a failing stub makes its
-    # gcc builder (whose output the pins are computed from) the one that runs.
+    # The CLI is the installer's last fallback; a failing stub keeps a host
+    # ``tree-sitter`` from ever being the method that runs.
     cli = directory / "tree-sitter"
     cli.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
     cli.chmod(0o755)
-    # The installer runs ``gcc`` by name; on macOS the wrapper adds the flags
-    # that keep the staging output path out of the library.
-    real_gcc = shutil.which("gcc")
-    if real_gcc is not None:
-        compiler = directory / "gcc"
-        extra = " ".join(shlex.quote(flag) for flag in MACOS_LINK_FLAGS)
-        compiler.write_text(
-            f'#!/bin/sh\nexec {shlex.quote(real_gcc)} "$@" {extra}\n',
-            encoding="utf-8",
-        )
-        compiler.chmod(0o755)
     return directory
 
 
@@ -241,12 +240,12 @@ _FIXTURE_DIGESTS: dict[Path, str | None] = {}
 
 
 def _fixture_digest(repo: Path) -> str | None:
-    """SHA-256 of ``repo``'s build with the installer's own gcc command.
+    """SHA-256 of ``repo``'s build with the installer's own gcc recipe.
 
-    With ``MACOS_LINK_FLAGS`` (macOS only; the children's gcc wrapper adds the
-    same flags) the output depends on neither the source nor the output path,
-    so this equals the digest of what the installer builds from its staged
-    copy, on every platform. A fixture without
+    The recipe (cwd = ``repo``, relative sources, the platform link flags and
+    the output name ``libbaml.so``) depends on neither the source nor the
+    output path, so this equals the digest of what the installer builds from
+    its staged copy, on every platform. A fixture without
     sources ships a prebuilt ``libbaml.so`` that the make fallback copies, so its
     digest is that file's. ``None`` when the fixture does not build (for example
     the FIFO-hang fixture).
@@ -257,23 +256,20 @@ def _fixture_digest(repo: Path) -> str | None:
             sha256(prebuilt.read_bytes()).hexdigest() if prebuilt.is_file() else None
         )
     if repo not in _FIXTURE_DIGESTS:
-        src = repo / "src"
-        output = repo.parent / f".{repo.name}-pin.so"
+        found = shutil.which("gcc")
+        assert found is not None, "the fixture pin is built with the installer's gcc"
+        out_dir = repo.parent / f".{repo.name}-pin"
+        out_dir.mkdir(exist_ok=True)
+        output = out_dir / "libbaml.so"  # the installer's output name
         completed = subprocess.run(
-            [
-                "gcc",
-                "-shared",
-                "-fPIC",
-                "-O2",
-                "-I",
-                str(src),
-                str(src / "parser.c"),
+            _build_recipe.gcc_build_argv(
+                os.path.abspath(found),  # noqa: PTH100 - as the installer
+                "baml",
+                output,
                 # The installer adds scanner.c when the grammar has one.
-                *([str(src / "scanner.c")] if (src / "scanner.c").exists() else []),
-                "-o",
-                str(output),
-                *MACOS_LINK_FLAGS,
-            ],
+                has_scanner=(repo / "src" / "scanner.c").exists(),
+            ),
+            cwd=repo,
             capture_output=True,
             timeout=300,
             check=False,
@@ -283,7 +279,7 @@ def _fixture_digest(repo: Path) -> str | None:
             if completed.returncode == 0
             else None
         )
-        output.unlink(missing_ok=True)
+        shutil.rmtree(out_dir, ignore_errors=True)
     return _FIXTURE_DIGESTS[repo]
 
 
@@ -519,6 +515,12 @@ def test_grandchild_is_gone_before_publication(tmp_path, shim):
             child.release()
             done = child.finish()
         assert done["success"], done
+        # The installation records how it was built (treesitter-chunker#621).
+        build = done["build"]
+        assert build["method"] == "gcc", build
+        assert build["compiler"]["family"] in {"gcc", "clang"}, build
+        assert build["compiler"]["banner"], build
+        assert build["platform"].startswith(sys.platform), build
         events = [
             e["event"] + ":" + e.get("program", e.get("name", "")) for e in child.seen
         ]
@@ -535,6 +537,24 @@ def test_grandchild_is_gone_before_publication(tmp_path, shim):
         assert written.read_bytes() == first
     finally:
         _kill_pidfile(pidfile)
+
+
+@POSIX_SHIM
+def test_failed_compiler_probe_still_installs(tmp_path, shim):
+    """A failed ``gcc --version`` probe never fails the install.
+
+    ``TXN_FAIL_COMPILER_PROBE=1`` makes the probe exit nonzero; the installed
+    grammar records ``metadata.build.compiler`` as ``None``
+    (treesitter-chunker#621). Mutation ``probe_failure_fails_install`` fails
+    the install.
+    """
+    cache = tmp_path / "cache"
+    repo = _repo(tmp_path / "repo")
+    done = _install(cache, _env(shim, repo, TXN_FAIL_COMPILER_PROBE="1"))
+    assert done["success"], done
+    assert done["build"]["method"] == "gcc", done
+    assert done["build"]["compiler"] is None, done
+    assert (cache / "grammars" / "libbaml.so").is_file()
 
 
 @pytest.mark.skipif(

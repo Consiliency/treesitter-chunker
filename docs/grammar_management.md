@@ -298,6 +298,10 @@ directory, `CHUNKER_GRAMMAR_BUILD_DIR` or the combined library's directory is
 rejected. `chunker.config.*` and `~/.chunker/config.*` files are never pin
 sources.
 
+For a grammar built by `grammar install` (`GrammarInstaller`), compute the pin
+from your own build with the installer's recipe: see
+[Producing a pin for `grammar install`](#producing-a-pin-for-grammar-install).
+
 **One trust rule for package-supplied grammars** (maintainer decision,
 2026-11-01). The grammar commands use the same RECORD check as parsing: a
 grammar shipped in our wheel's `chunker/data/grammars/build/` whose bytes match
@@ -319,6 +323,79 @@ message>)` without loading anything. The legacy combined-library manager
 `chunker.grammar_manager.GrammarManager(..., trusted_artifacts=...)` reports
 only pinned languages whose library bytes pass native admission, and none
 without pins.
+#### Producing a pin for `grammar install`
+
+`GrammarInstaller` builds a grammar to the same bytes wherever its source is
+cloned and built (treesitter-chunker#621, treesitter-chunker#607), so a pin
+can come from an independent build of the same source with the same recipe.
+
+1. **The recipe.** From the grammar's source root (the directory that holds
+   `src/`), with relative paths and forward slashes on every platform
+   (`src/scanner.c` only when the grammar has one):
+
+   ```text
+   <gcc> -shared -fPIC -O2 -I src src/parser.c src/scanner.c -o <out>/lib<language>.so <platform flags>
+   ```
+
+   | Platform | Platform flags |
+   |---|---|
+   | Linux | `-Wl,-z,defs` |
+   | macOS | `-Wl,-install_name,@rpath/lib<language>.so` |
+   | Windows (MinGW-w64) | `-Wl,--no-insert-timestamp -Wl,--disable-auto-image-base` |
+   | other platforms | none |
+
+   There is no `-lm` and no `-ffile-prefix-map`.
+2. **The compiler and directory.** Run it with cwd = the source root.
+   `<gcc>` is the `gcc` first on `PATH` (the installer resolves it once, to an
+   absolute path, in its own process; on macOS Xcode's `gcc` is Apple clang).
+3. **The output.** The file must be named `lib<language>.so`, in any
+   directory (Windows records the file name in the export directory).
+4. **What must match** for the bytes to be the same:
+   - the grammar commit and source bytes (use the same line-ending settings;
+     `core.autocrlf=false` on Windows);
+   - the compiler and linker version (the first line of `gcc --version`, also
+     recorded in `metadata.build`);
+   - the OS and architecture;
+   - on macOS, the SDK version and deployment target
+     (`MACOSX_DEPLOYMENT_TARGET`). Both are recorded in `LC_BUILD_VERSION`, so
+     a different Xcode or Command Line Tools SDK, or a different target, gives
+     different bytes;
+   - no switch recording: a toolchain or specs file that enables
+     `-frecord-gcc-switches` or the annobin plugin records the argv, including
+     the absolute `-o` path, so its builds cannot be reproduced at another
+     path;
+   - no `__DATE__` or `__TIME__` in the grammar sources.
+
+   Each of these differences fails closed with `integrity_mismatch`.
+   `SOURCE_DATE_EPOCH` and `CPATH` were checked and do not affect this recipe.
+5. **Grammars this recipe does not build.** The installer's `gcc` route
+   declines, or fails, and the next method runs:
+   - grammars with a C++ scanner (`src/scanner.cc` or `src/scanner.cpp`): the
+     route declines them before compiling anything;
+   - on Linux, grammars that need a symbol the recipe does not link: for
+     example `libm` functions such as `pow` need `-lm`, which the recipe
+     deliberately leaves out, and `-z defs` refuses the link.
+
+   These build only through `make` or the `tree-sitter` CLI, in that order.
+   Those bytes are host-specific, and their pins must come from a review of
+   that host's own build. `metadata.build.method` shows which route ran.
+6. **`metadata.build`.** Each installation's metadata records
+   `{"method": "gcc" | "make" | "tree-sitter-cli", "compiler": {"family", "version", "banner"} | null, "platform"}`.
+   `compiler` is parsed from the `gcc` route's `--version` output (`null` for
+   the other methods, or when that probe fails, which never fails the
+   install); `platform` is `sys.platform` and the machine, such as
+   `linux-x86_64`. The record is informational and not part of admission.
+7. **Migration.** Pins computed from earlier installer builds stop matching
+   and fail closed with `integrity_mismatch`: on macOS every grammar (the
+   install name recorded the random staging path; the `assert` macro there
+   records only the file name); on Windows every grammar (link timestamp and
+   image base), including grammars whose C sources keep their source path
+   through a reachable `assert` or a direct `__FILE__`; on Linux, grammars
+   whose C sources keep their source path the same way (such as bash, cpp,
+   c-sharp and ruby), and grammars the `tree-sitter` CLI built on a host that
+   also has `gcc`. Reproduce such a pin with this recipe. Linux pins for other
+   gcc-built grammars are unchanged.
+
 #### Pins for the click group and embedding code
 
 The click group `chunker.grammar_management.cli.grammar_cli` takes the same
@@ -667,7 +744,10 @@ The system automatically generates recovery plans for problematic grammars:
 - **tree-sitter CLI**: `npm install -g tree-sitter-cli`
 - **Node.js and npm**: For grammar compilation
 - **Git**: For managing grammar repositories
-- **C Compiler**: gcc or clang for building grammars
+- **C compiler**: the installer runs the `gcc` found on `PATH` (on macOS,
+  Xcode's `gcc` is Apple clang; on Windows, MinGW-w64 gcc). `make` and the
+  tree-sitter CLI are fallbacks for grammars the controlled route does not
+  build.
 - **Python tree-sitter**: `pip install tree-sitter`
 
 ### Directory Structure

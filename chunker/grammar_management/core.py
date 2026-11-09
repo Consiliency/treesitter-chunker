@@ -26,13 +26,16 @@ Phase 1.8 Compliance:
 from __future__ import annotations
 
 import ctypes
+import functools
 import hashlib
 import logging
 import os
+import platform
 import re
 import shutil
+import sys
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -48,7 +51,7 @@ from chunker.grammar._native_policy import (
     is_application_control_error,
 )
 from chunker.grammar.source_validation import validate_grammar_source
-from chunker.grammar_management import _transactions
+from chunker.grammar_management import _build_recipe, _transactions
 
 logger = logging.getLogger(__name__)
 
@@ -816,10 +819,12 @@ class GrammarInstaller:
                     return False, f"Download failed: {download_error}", None
 
                 # Build grammar
-                build_success, grammar_path, build_error = self._build_grammar(
-                    language,
-                    download_path,
-                    staging=staging,
+                build_success, grammar_path, build_error, build_record = (
+                    self._build_grammar(
+                        language,
+                        download_path,
+                        staging=staging,
+                    )
                 )
 
                 if not build_success:
@@ -859,6 +864,7 @@ class GrammarInstaller:
                     metadata={
                         "validation": validation_result.metadata,
                         "performance": validation_result.performance_metrics,
+                        "build": build_record,
                     },
                 )
 
@@ -1028,44 +1034,113 @@ class GrammarInstaller:
         source_path: Path,
         *,
         staging: _transactions.StagingArea | None = None,
-    ) -> tuple[bool, Path | None, str | None]:
-        """Build grammar from staged source into the same staging."""
+    ) -> tuple[bool, Path | None, str | None, dict[str, Any] | None]:
+        """Build grammar from staged source into the same staging.
+
+        Methods run in order: the controlled ``gcc`` route first, then
+        ``make``, then the ``tree-sitter`` CLI as the last fallback
+        (treesitter-chunker#621). The next method runs only when the previous
+        one failed; an aborted staged run stops the build with no fallback.
+
+        Returns ``(ok, library, error, build_record)``. On success the record
+        is ``{"method", "compiler", "platform"}``; ``compiler`` is the gcc
+        route's ``--version`` identity, or ``None`` (other methods, or a failed
+        probe, which never fails the build).
+        """
         if staging is None:
-            return False, None, "Builds need an operation staging area"
+            return False, None, "Builds need an operation staging area", None
         build_dir = staging.path("builds") / language
         build_dir.mkdir(exist_ok=True)
 
-        output_path = build_dir / f"lib{language}.so"
+        output_path = build_dir / _build_recipe.library_name(language)
 
         try:
-            # Try different build methods
-            build_methods = [
-                self._build_with_tree_sitter_cli,
-                self._build_with_gcc,
-                self._build_with_make,
+            # Resolved once, in this process (never in the clone), and used
+            # as argv[0] for both the build and its ``--version`` probe.
+            found = shutil.which("gcc")
+            # abspath, not resolve(): keep the name the caller's PATH gave.
+            gcc = os.path.abspath(found) if found else None  # noqa: PTH100
+
+            build_methods: list[tuple[str, Callable[..., tuple[bool, str | None]]]] = [
+                ("gcc", functools.partial(self._build_with_gcc, compiler=gcc)),
+                ("make", self._build_with_make),
+                ("tree-sitter-cli", self._build_with_tree_sitter_cli),
             ]
 
             last_error = None
 
-            for build_method in build_methods:
+            for name, build_method in build_methods:
                 try:
                     success, error = build_method(
                         language, source_path, output_path, staging=staging
                     )
-                    if success:
-                        return True, output_path, None
-                    last_error = error
                 except _StagedRunAbortedError as e:
                     # The staging is unpublishable now; no fallback runs in it.
-                    return False, None, f"Build aborted: {e}"
+                    return False, None, f"Build aborted: {e}", None
                 except Exception as e:
                     last_error = str(e)
                     continue
+                if not success:
+                    last_error = error
+                    continue
 
-            return False, None, f"All build methods failed. Last error: {last_error}"
+                # Only after a method has succeeded. The probe can abort the
+                # operation like any staged run, but nothing else from it may
+                # reach a fallback, which would overwrite ``output_path``.
+                identity: dict[str, Any] | None = None
+                if name == "gcc" and gcc is not None:
+                    try:
+                        identity = self._probe_compiler(staging, gcc, cwd=build_dir)
+                    except _StagedRunAbortedError as e:
+                        return False, None, f"Build aborted: {e}", None
+                    except Exception as e:
+                        logger.warning(f"Could not identify the compiler: {e}")
+                        identity = None
+                record = {
+                    "method": name,
+                    "compiler": identity,
+                    "platform": f"{sys.platform}-{platform.machine().lower()}",
+                }
+                banner = identity["banner"] if identity else "compiler unknown"
+                logger.info(f"Built {language} with {name} ({banner})")
+                return True, output_path, None, record
+
+            return (
+                False,
+                None,
+                f"All build methods failed. Last error: {last_error}",
+                None,
+            )
 
         except Exception as e:
-            return False, None, str(e)
+            return False, None, str(e), None
+
+    def _probe_compiler(
+        self,
+        staging: _transactions.StagingArea,
+        compiler: str,
+        *,
+        cwd: Path,
+    ) -> dict[str, Any] | None:
+        """The compiler's identity from ``<compiler> --version`` (stdout only).
+
+        ``None`` on a nonzero exit, a launch error or empty stdout; a failed
+        probe never fails the build. An aborted run (timeout or survivor)
+        propagates, as for every staged run.
+        """
+        try:
+            run = self._run_staged(
+                staging,
+                [compiler, "--version"],
+                cwd=cwd,
+                timeout=self._build_timeout,
+                what="Compiler version",
+            )
+        except OSError:
+            return None
+        if run.returncode != 0 or not run.stdout:
+            return None
+        return _build_recipe.compiler_identity(run.stdout)
 
     def _build_with_tree_sitter_cli(
         self,
@@ -1075,7 +1150,12 @@ class GrammarInstaller:
         *,
         staging: _transactions.StagingArea,
     ) -> tuple[bool, str | None]:
-        """Build using tree-sitter CLI."""
+        """Build using tree-sitter CLI: the last-resort fallback.
+
+        Its bytes are host-specific (the CLI picks its own compiler and
+        flags), so a pin for them comes from a review of that host's build
+        (treesitter-chunker#621).
+        """
         try:
             cmd = [
                 "tree-sitter",
@@ -1107,9 +1187,31 @@ class GrammarInstaller:
         output_path: Path,
         *,
         staging: _transactions.StagingArea,
+        compiler: str | None,
     ) -> tuple[bool, str | None]:
-        """Build using GCC directly."""
+        """Build with the installer's controlled, path-independent gcc recipe.
+
+        The compiler runs with cwd = the grammar source root and sees only the
+        relative paths ``src``, ``src/parser.c`` and ``src/scanner.c``, so
+        what a C source keeps of its own path (``assert``, ``__FILE__``) is
+        the same wherever the clone lives (treesitter-chunker#621, #607). The
+        platform link flags keep the output path and link time out of the
+        library. ``compiler`` is the absolute path resolved by the caller:
+        a bare ``gcc`` run with cwd in the untrusted clone could resolve to a
+        ``gcc`` inside it (Windows ``CreateProcess`` searches the current
+        directory first).
+
+        A grammar with a C++ scanner is declined before anything runs: this
+        route compiles C only, and a link without the scanner could succeed
+        on Linux and give a scanner-less library.
+        """
         try:
+            cxx = _build_recipe.cxx_scanner(source_path)
+            if cxx is not None:
+                return False, f"C++ scanner ({cxx}): not built by the controlled route"
+            if compiler is None:
+                return False, "GCC not found"
+
             # Find C source files
             src_dir = source_path / "src"
             if not src_dir.exists():
@@ -1121,22 +1223,20 @@ class GrammarInstaller:
             if not parser_c.exists():
                 return False, "parser.c not found"
 
-            # Build command
-            cmd = ["gcc", "-shared", "-fPIC", "-O2", "-I", str(src_dir), str(parser_c)]
-
-            # Add scanner if it exists
-            if scanner_c.exists():
-                cmd.append(str(scanner_c))
-
-            cmd.extend(["-o", str(output_path)])
+            cmd = _build_recipe.gcc_build_argv(
+                compiler, language, output_path, has_scanner=scanner_c.exists()
+            )
 
             result = self._run_staged(
                 staging,
                 cmd,
-                cwd=output_path.parent,
+                cwd=source_path,
                 timeout=self._build_timeout,
                 what="GCC build",
             )
+
+            # The file name is part of the bytes (the PE export name).
+            assert output_path.name == _build_recipe.library_name(language)
 
             if result.returncode == 0:
                 return True, None
@@ -1153,7 +1253,11 @@ class GrammarInstaller:
         *,
         staging: _transactions.StagingArea,
     ) -> tuple[bool, str | None]:
-        """Build using Makefile if available."""
+        """Build using Makefile if available: a fallback after gcc.
+
+        The bytes are whatever the grammar's Makefile and the host's tools
+        produce, so they are host-specific (treesitter-chunker#621).
+        """
         try:
             makefile = source_path / "Makefile"
             if not makefile.exists():

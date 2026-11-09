@@ -1,0 +1,522 @@
+"""Path-independent installer grammar builds (treesitter-chunker#621, #607).
+
+``GrammarInstaller``'s controlled gcc route runs the ``gcc`` first on ``PATH``
+(resolved once, to an absolute path) with cwd = the grammar source root, the
+relative paths ``src``, ``src/parser.c`` and ``src/scanner.c``, and per-platform
+link flags (``_build_recipe``). The same grammar source then builds to the same
+bytes wherever it is cloned and built, on Linux, macOS and Windows (MinGW).
+The route declines C++ scanners before compiling, and on Linux refuses
+undefined symbols (``-Wl,-z,defs``), so it never reports success for a partial
+library. Methods run gcc, then ``make``, then the ``tree-sitter`` CLI.
+
+The fixture (``tests/fixtures/reproducible_grammar``) keeps its source path
+through glibc and MinGW ``assert`` and through direct ``__FILE__`` uses in a
+``.c`` file and a ``src/tree_sitter`` header; it is compiled only, never loaded.
+
+Tests that need the installer's compiler use :func:`_installer_compiler`: a
+missing ``gcc`` fails on CI (or with ``CHUNKER_REQUIRE_INSTALLER_COMPILER``)
+and is a typed skip elsewhere.
+
+Named mutations (plan §4.3), each a temporary patch that must fail here:
+
+- ``absolute_sources``: the recipe emits absolute ``-I``/source paths.
+  Killed by the two-path test and the golden argv.
+- ``cwd_output_dir``: relative argv, but cwd = the output directory. Killed by
+  the two-path test (the build fails).
+- ``drop_install_name``: no darwin flag. Golden ``[darwin]``; real effect in the
+  two-path test on macOS.
+- ``drop_no_insert_timestamp``: golden ``[win32]``; real effect
+  ``TimeDateStamp == 0`` on Windows.
+- ``drop_disable_auto_image_base``: golden ``[win32]``; real effect the
+  two-path digest on Windows.
+- ``drop_z_defs``: golden ``[linux]``; real effect
+  ``test_gcc_route_refuses_undefined_symbols`` on Linux.
+- ``gcc_ignores_cxx_scanner``: no C++ decline. Killed by
+  ``test_gcc_route_declines_cxx_scanner_without_compiling`` on any host.
+- ``bare_gcc_name``: ``argv[0] = "gcc"``. Killed by
+  ``test_gcc_is_resolved_once_to_an_absolute_path``.
+- ``probe_failure_fails_install``: a failed probe fails ``_build_grammar``.
+  Killed by ``test_compiler_probe_failure_still_builds`` and the install-level
+  test in ``tests/test_cache_entry_transactions.py``.
+- ``banner_from_stderr``: the probe parses stderr too. Killed by
+  ``test_compiler_probe_failure_still_builds[stderr_only]``.
+- ``tree_sitter_first``: the old method order. Killed by the order test.
+- ``fallback_after_timeout``: continue after an abort. Killed by the order
+  test (and ``test_build_timeout_fails_without_fallback_or_publication``).
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+from hashlib import sha256
+from pathlib import Path
+
+import pytest
+
+from chunker.grammar_management import _build_recipe, _transactions
+from chunker.grammar_management import core as core_module
+from chunker.grammar_management.core import GrammarInstaller, _StagedRunAbortedError
+
+FIXTURE = Path(__file__).parent / "fixtures" / "reproducible_grammar"
+NO_INSTALLER_COMPILER = (
+    "no gcc on PATH: the installer's controlled build route is unavailable"
+)
+BUILD_TIMEOUT = 300
+
+
+def _policy_required() -> bool:
+    return bool(
+        os.environ.get("CI") or os.environ.get("CHUNKER_REQUIRE_INSTALLER_COMPILER")
+    )
+
+
+def _installer_compiler() -> str:
+    """The absolute ``gcc`` the installer resolves; fail on CI, skip elsewhere."""
+    found = shutil.which("gcc")
+    if found is None:
+        if _policy_required():
+            pytest.fail(
+                f"{sys.platform} CI must provide gcc for the installer's "
+                "reproducible-build test (treesitter-chunker#621)"
+            )
+        pytest.skip(NO_INSTALLER_COMPILER)
+    return os.path.abspath(found)  # noqa: PTH100 - as the installer resolves it
+
+
+def _sha(path: Path) -> str:
+    return sha256(path.read_bytes()).hexdigest()
+
+
+def _staged_fixture(
+    root: Path,
+) -> tuple[GrammarInstaller, _transactions.StagingArea, Path]:
+    """An installer on ``root``, a real staging area and the fixture copied in."""
+    installer = GrammarInstaller(cache_dir=root, build_timeout=BUILD_TIMEOUT)
+    staging = _transactions.create_staging(root)
+    source = staging.path("downloads") / "tree-sitter-repro"
+    shutil.copytree(FIXTURE, source)
+    return installer, staging, source
+
+
+def _write_grammar(source: Path, files: dict[str, str]) -> Path:
+    for name, text in files.items():
+        target = source / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+    return source
+
+
+def _pe_time_date_stamp(data: bytes) -> int:
+    e_lfanew = int.from_bytes(data[0x3C:0x40], "little")
+    assert data[e_lfanew : e_lfanew + 4] == b"PE\0\0"
+    return int.from_bytes(data[e_lfanew + 8 : e_lfanew + 12], "little")
+
+
+ROOTS = (Path("a"), Path("cache-root-with-a-much-longer-name") / "nested")
+
+
+# --- the controlled route, built for real --------------------------------------
+
+
+def test_installer_builds_are_identical_at_two_paths(tmp_path):
+    """The fixture builds to one SHA-256 at two roots of different name and length."""
+    _installer_compiler()
+    built: list[tuple[Path, _transactions.StagingArea]] = []
+    stagings: list[_transactions.StagingArea] = []
+    try:
+        for relative in ROOTS:
+            root = tmp_path / relative
+            installer, staging, source = _staged_fixture(root)
+            stagings.append(staging)
+            ok, path, error, record = installer._build_grammar(
+                "repro", source, staging=staging
+            )
+            assert ok, error
+            assert record is not None and record["method"] == "gcc", record
+            assert path is not None and path.name == "librepro.so"
+            built.append((path, staging))
+
+        (library_a, staging_a), (library_b, _staging_b) = built
+        assert str(library_a) != str(library_b)
+        assert len(str(library_a)) != len(str(library_b))
+        assert _sha(library_a) == _sha(library_b), "the build is path-dependent"
+
+        data = library_a.read_bytes()
+        assert b"src/scanner.c" in data
+        assert b"src/tree_sitter/parser.h" in data
+        for namespace in ("downloads", "builds"):
+            assert os.fsencode(str(staging_a.path(namespace))) not in data, namespace
+        if sys.platform == "darwin":
+            assert b"@rpath/librepro.so" in data
+            assert os.fsencode(str(library_a.parent)) not in data
+        if sys.platform == "win32":
+            assert _pe_time_date_stamp(data) == 0
+    finally:
+        for staging in stagings:
+            _transactions.discard_staging(staging)
+
+
+def test_legacy_command_differs_at_two_paths(tmp_path):
+    """Negative control: the old absolute-path command is path-dependent."""
+    gcc = _installer_compiler()
+    digests = []
+    scanner_a = None
+    library_a = None
+    stagings: list[_transactions.StagingArea] = []
+    try:
+        for relative in ROOTS:
+            root = tmp_path / relative
+            _installer, staging, source = _staged_fixture(root)
+            stagings.append(staging)
+            out_dir = staging.path("builds") / "repro"
+            out_dir.mkdir()
+            out = out_dir / "librepro.so"
+            src = source / "src"
+            scanner = str(src / "scanner.c")
+            if not scanner.isascii():
+                message = f"the legacy scanner argument is not ASCII: {scanner!r}"
+                if _policy_required():
+                    pytest.fail(message)
+                pytest.skip(message)
+            legacy_argv = [
+                gcc,
+                "-shared",
+                "-fPIC",
+                "-O2",
+                "-I",
+                str(src),
+                str(src / "parser.c"),
+                scanner,
+                "-o",
+                str(out),
+            ]
+            completed = subprocess.run(
+                legacy_argv,
+                cwd=out_dir,
+                capture_output=True,
+                text=True,
+                timeout=BUILD_TIMEOUT,
+                check=False,
+            )
+            assert completed.returncode == 0, completed.stderr[-4000:]
+            digests.append(_sha(out))
+            if scanner_a is None:
+                scanner_a, library_a = scanner, out
+        assert digests[0] != digests[1]
+        assert library_a is not None and scanner_a is not None
+        assert os.fsencode(scanner_a) in library_a.read_bytes()
+    finally:
+        for staging in stagings:
+            _transactions.discard_staging(staging)
+
+
+def test_gcc_route_refuses_undefined_symbols(tmp_path):
+    """An undefined symbol fails the gcc route (Linux through ``-z defs``)."""
+    gcc = _installer_compiler()
+    installer = GrammarInstaller(
+        cache_dir=tmp_path / "cache", build_timeout=BUILD_TIMEOUT
+    )
+    staging = _transactions.create_staging(tmp_path / "cache")
+    try:
+        source = _write_grammar(
+            staging.path("downloads") / "tree-sitter-undef",
+            {
+                "src/parser.c": (
+                    "int tree_sitter_undef_missing(int);\n"
+                    "int tree_sitter_undef(int v) "
+                    "{ return tree_sitter_undef_missing(v); }\n"
+                )
+            },
+        )
+        out_dir = staging.path("builds") / "undef"
+        out_dir.mkdir()
+        success, error = installer._build_with_gcc(
+            "undef", source, out_dir / "libundef.so", staging=staging, compiler=gcc
+        )
+        assert success is False, error
+        assert error is not None and error.startswith("GCC build failed"), error
+    finally:
+        _transactions.discard_staging(staging)
+
+
+def test_cxx_scanner_grammar_is_not_built_by_gcc(tmp_path, monkeypatch):
+    """End to end: a ``scanner.cc``-only grammar never becomes a gcc build."""
+    _installer_compiler()
+    installer = GrammarInstaller(
+        cache_dir=tmp_path / "cache", build_timeout=BUILD_TIMEOUT
+    )
+    staging = _transactions.create_staging(tmp_path / "cache")
+    calls: list[str] = []
+
+    def fail(name):
+        def method(*args, **kwargs):
+            calls.append(name)
+            return False, f"{name} patched to fail"
+
+        return method
+
+    monkeypatch.setattr(installer, "_build_with_make", fail("make"))
+    monkeypatch.setattr(
+        installer, "_build_with_tree_sitter_cli", fail("tree-sitter-cli")
+    )
+    try:
+        source = _write_grammar(
+            staging.path("downloads") / "tree-sitter-cxx",
+            {
+                "src/parser.c": (
+                    "void *tree_sitter_cxx_external_scanner_create(void);\n"
+                    "void tree_sitter_cxx_external_scanner_destroy(void *);\n"
+                    "void *tree_sitter_cxx(void) {\n"
+                    "  void *s = tree_sitter_cxx_external_scanner_create();\n"
+                    "  tree_sitter_cxx_external_scanner_destroy(s);\n"
+                    "  return s;\n"
+                    "}\n"
+                ),
+                "src/scanner.cc": (
+                    'extern "C" void *tree_sitter_cxx_external_scanner_create() '
+                    "{ return 0; }\n"
+                    'extern "C" void tree_sitter_cxx_external_scanner_destroy(void *) {}\n'
+                ),
+            },
+        )
+        ok, path, error, record = installer._build_grammar(
+            "cxx", source, staging=staging
+        )
+        assert (ok, path, record) == (False, None, None), (error, record)
+        assert error == (
+            "All build methods failed. Last error: tree-sitter-cli patched to fail"
+        )
+        assert calls == ["make", "tree-sitter-cli"]
+        assert not (staging.path("builds") / "cxx" / "libcxx.so").exists()
+    finally:
+        _transactions.discard_staging(staging)
+
+
+@pytest.mark.parametrize("fault", ["nonzero", "missing", "stderr_only"])
+def test_compiler_probe_failure_still_builds(tmp_path, fault):
+    """A failed ``--version`` probe records ``compiler: None`` and still builds."""
+    _installer_compiler()
+    installer, staging, source = _staged_fixture(tmp_path / "cache")
+    real = installer._run_staged
+    probes: list[list[str]] = []
+
+    def run_staged(staging_area, argv, *, what, **kwargs):
+        if what != "Compiler version":
+            return real(staging_area, argv, what=what, **kwargs)
+        probes.append(argv)
+        banner = "gcc (Probe 15.2.0) 15.2.0\n"
+        if fault == "missing":
+            raise FileNotFoundError(argv[0])
+        if fault == "nonzero":
+            return _transactions.StagedRun(1, banner, "", False, True)
+        return _transactions.StagedRun(0, "", banner, False, True)
+
+    installer._run_staged = run_staged  # type: ignore[method-assign]
+    try:
+        ok, path, error, record = installer._build_grammar(
+            "repro", source, staging=staging
+        )
+        assert ok, error
+        assert path is not None and path.is_file()
+        assert record is not None
+        assert record["method"] == "gcc"
+        assert record["compiler"] is None
+        assert len(probes) == 1
+    finally:
+        _transactions.discard_staging(staging)
+
+
+# --- no compiler needed --------------------------------------------------------
+
+
+GOLDEN_TAILS = {
+    "linux": ["-Wl,-z,defs"],
+    "darwin": ["-Wl,-install_name,@rpath/librepro.so"],
+    "win32": ["-Wl,--no-insert-timestamp", "-Wl,--disable-auto-image-base"],
+    "freebsd": [],
+}
+
+
+@pytest.mark.parametrize("platform", sorted(GOLDEN_TAILS))
+def test_build_argv_matches_the_documented_recipe(platform):
+    """The golden copies of the recipe in docs/grammar_management.md."""
+    head = ["/abs/gcc", "-shared", "-fPIC", "-O2", "-I", "src", "src/parser.c"]
+    tail = ["-o", "/o/librepro.so", *GOLDEN_TAILS[platform]]
+    with_scanner = _build_recipe.gcc_build_argv(
+        "/abs/gcc", "repro", "/o/librepro.so", has_scanner=True, platform=platform
+    )
+    without = _build_recipe.gcc_build_argv(
+        "/abs/gcc", "repro", "/o/librepro.so", has_scanner=False, platform=platform
+    )
+    assert with_scanner == [*head, "src/scanner.c", *tail]
+    assert without == [*head, *tail]
+
+
+@pytest.mark.parametrize("scanner", ["scanner.cc", "scanner.cpp"])
+def test_gcc_route_declines_cxx_scanner_without_compiling(tmp_path, scanner):
+    """A C++ scanner is declined before any process starts."""
+    files = {"src/parser.c": "int x;\n", f"src/{scanner}": "// C++\n"}
+    if scanner == "scanner.cc":
+        files["src/scanner.c"] = "int y;\n"  # a C scanner beside it changes nothing
+    source = _write_grammar(tmp_path / "tree-sitter-cxx", files)
+    installer = GrammarInstaller(cache_dir=tmp_path / "cache")
+    calls: list[list[str]] = []
+
+    def run_staged(staging, argv, **kwargs):
+        calls.append(argv)
+        raise AssertionError("the gcc route started a process for a C++ scanner")
+
+    installer._run_staged = run_staged  # type: ignore[method-assign]
+    result = installer._build_with_gcc(
+        "cxx",
+        source,
+        tmp_path / "libcxx.so",
+        staging=object(),  # type: ignore[arg-type]
+        compiler="/abs/gcc",
+    )
+    assert result == (
+        False,
+        f"C++ scanner (src/{scanner}): not built by the controlled route",
+    )
+    assert calls == []
+
+
+def test_gcc_is_resolved_once_to_an_absolute_path(tmp_path, monkeypatch):
+    """One ``which``; its absolute path is argv[0] of the build and the probe."""
+    root = tmp_path / "cache"
+    installer, staging, source = _staged_fixture(root)
+    which_calls: list[str] = []
+
+    def which(name, *args, **kwargs):
+        which_calls.append(name)
+        return "bin/gcc"
+
+    runs: list[tuple[str, list[str]]] = []
+
+    def run_staged(staging_area, argv, *, what, **kwargs):
+        runs.append((what, list(argv)))
+        if what == "GCC build":
+            Path(argv[argv.index("-o") + 1]).write_bytes(b"dummy library")
+            return _transactions.StagedRun(0, "", "", False, True)
+        return _transactions.StagedRun(0, "gcc (Fake 15.2.0) 15.2.0\n", "", False, True)
+
+    monkeypatch.setattr(core_module.shutil, "which", which)
+    installer._run_staged = run_staged  # type: ignore[method-assign]
+    try:
+        ok, _path, error, record = installer._build_grammar(
+            "repro", source, staging=staging
+        )
+    finally:
+        monkeypatch.undo()
+        _transactions.discard_staging(staging)
+    assert ok, error
+    expected = os.path.abspath("bin/gcc")  # noqa: PTH100 - the installer's rule
+    assert [what for what, _ in runs] == ["GCC build", "Compiler version"]
+    assert [argv[0] for _, argv in runs] == [expected, expected]
+    assert runs[1][1] == [expected, "--version"]
+    assert which_calls == ["gcc"]
+    assert record is not None
+    assert record["compiler"] == {
+        "family": "gcc",
+        "version": "15.2.0",
+        "banner": "gcc (Fake 15.2.0) 15.2.0",
+    }
+
+
+def test_build_methods_run_gcc_then_make_then_tree_sitter(tmp_path, monkeypatch):
+    """Order gcc, make, CLI; a success or an abort stops the loop."""
+    identity = {"family": "gcc", "version": "1.2.3", "banner": "gcc (Fixed) 1.2.3"}
+    monkeypatch.setattr(core_module.shutil, "which", lambda name, *a, **k: "/abs/gcc")
+    abort = _StagedRunAbortedError(
+        _transactions.StagedRun(None, "", "", True, True), "GCC build"
+    )
+
+    def run(gcc_outcome):
+        root = tmp_path / f"cache-{gcc_outcome}"
+        installer = GrammarInstaller(cache_dir=root)
+        staging = _transactions.create_staging(root)
+        calls: list[str] = []
+
+        def method(name, outcome):
+            def build(language, source_path, output_path, *, staging, **kwargs):
+                calls.append(name)
+                if outcome == "abort":
+                    raise abort
+                return (outcome == "ok"), (
+                    None if outcome == "ok" else f"{name} failed"
+                )
+
+            return build
+
+        monkeypatch.setattr(installer, "_build_with_gcc", method("gcc", gcc_outcome))
+        monkeypatch.setattr(installer, "_build_with_make", method("make", "fail"))
+        monkeypatch.setattr(
+            installer, "_build_with_tree_sitter_cli", method("tree-sitter-cli", "fail")
+        )
+        monkeypatch.setattr(
+            installer, "_probe_compiler", lambda *a, **k: dict(identity)
+        )
+        try:
+            source = staging.path("downloads") / "tree-sitter-order"
+            source.mkdir()
+            result = installer._build_grammar("order", source, staging=staging)
+        finally:
+            _transactions.discard_staging(staging)
+        return calls, result
+
+    calls, (ok, _path, error, record) = run("fail")
+    assert calls == ["gcc", "make", "tree-sitter-cli"]
+    assert (ok, record) == (False, None)
+    assert error == "All build methods failed. Last error: tree-sitter-cli failed"
+
+    calls, (ok, _path, error, record) = run("ok")
+    assert calls == ["gcc"]
+    assert ok, error
+    assert record is not None
+    assert record["method"] == "gcc"
+    assert record["compiler"] == identity
+    assert record["platform"].startswith(sys.platform + "-")
+
+    calls, (ok, _path, error, record) = run("abort")
+    assert calls == ["gcc"]
+    assert (ok, record) == (False, None)
+    assert error == "Build aborted: GCC build timed out"
+
+
+@pytest.mark.parametrize(
+    ("stdout", "family", "version"),
+    [
+        ("gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0\n", "gcc", "15.2.0"),
+        ("gcc (Debian 12.2.0-14) 12.2.0 20220819\n", "gcc", "12.2.0"),
+        (
+            "gcc.exe (Rev2, Built by MSYS2 project) 15.2.0\r\nCopyright\r\n",
+            "gcc",
+            "15.2.0",
+        ),
+        (
+            "gcc.exe (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r1) 16.2.0\n",
+            "gcc",
+            "16.2.0",
+        ),
+        ("gcc-14 (Homebrew GCC 14.2.0) 14.2.0\n", "gcc", "14.2.0"),
+        (
+            "Apple clang version 17.0.0 (clang-1700.0.13.5)\nTarget: arm64\n",
+            "clang",
+            "17.0.0",
+        ),
+        ("x86_64-w64-mingw32-gcc (GCC) 13-win32\n", "gcc", None),
+    ],
+)
+def test_compiler_identity_parses_known_banners(stdout, family, version):
+    identity = _build_recipe.compiler_identity(stdout)
+    assert identity is not None
+    banner = stdout.replace("\r", "").split("\n")[0].strip()
+    assert identity == {"family": family, "version": version, "banner": banner}
+
+
+@pytest.mark.parametrize("stdout", ["", None, "\r\n  \n"])
+def test_compiler_identity_of_no_banner_is_none(stdout):
+    assert _build_recipe.compiler_identity(stdout) is None
