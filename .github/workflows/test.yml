@@ -98,13 +98,16 @@ jobs:
         import time
         from typing import get_args
         from tree_sitter_language_pack import DownloadError, SupportedLanguage, prefetch
-        for attempt, delay in enumerate((10, 30, 60), start=1):
+        for attempt in range(1, 4):
             print(f"language-pack prefetch attempt {attempt}/3", flush=True)
             try:
                 prefetch(list(get_args(SupportedLanguage)))
-            except DownloadError as error:
-                print(f"language-pack download failed: {error}; backoff {delay}s", flush=True)
-                time.sleep(delay)
+            except (DownloadError, RuntimeError) as error:
+                print(f"language-pack download failed: {error}", flush=True)
+                if attempt < 3:
+                    delay = (10, 30)[attempt - 1]
+                    print(f"language-pack backoff {delay}s", flush=True)
+                    time.sleep(delay)
             else:
                 print("language-pack prefetch succeeded", flush=True)
                 break
