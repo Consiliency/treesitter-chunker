@@ -5,13 +5,14 @@ revisions (0.1.0 and 0.2.0); every admission is a real
 ``probe_native_grammar`` run through IF-0-HOTFIX-1 ``publish_native_grammar``.
 
 Installer cases use the integrated ADMIT setup of
-``tests/test_cache_entry_transactions.py``: the ``git`` shim, a failing
-``tree-sitter`` stub and a ``gcc`` wrapper, so the installer's real ``gcc``
-builder compiles each fixture's sources. Each install child gets its pin
-through ADMIT's ``GrammarInstaller(*, trusted_artifacts=)`` from
-``TXN_PIN_SHA256``: the digest of the parent's own build of that fixture,
-computed independently of what the installer builds. The Windows variant
-builds the same way with MinGW ``gcc`` and executable shims (see
+``tests/test_cache_entry_transactions.py``: the ``git`` shim and a failing
+``tree-sitter`` stub, so the installer's real ``gcc`` builder compiles each
+fixture's sources with its path-independent recipe (treesitter-chunker#621).
+Each install child gets its pin through ADMIT's
+``GrammarInstaller(*, trusted_artifacts=)`` from ``TXN_PIN_SHA256``: the
+digest of the parent's own build of that fixture with the same documented
+recipe, computed independently of what the installer builds. The Windows
+variant builds the same way with MinGW ``gcc`` and executable shims (see
 :func:`_windows_shim`).
 
 A restored revision is parsed in a fresh process through an admitted private
@@ -44,7 +45,7 @@ import pytest
 from chunker._internal import user_grammar_tools
 from chunker._internal.user_grammar_tools import publish_native_grammar
 from chunker.grammar import integrity
-from chunker.grammar_management import _transactions
+from chunker.grammar_management import _build_recipe, _transactions
 from chunker.grammar_management.core import (
     GrammarInstaller,
     GrammarManager,
@@ -67,6 +68,7 @@ from tests.test_cache_entry_transactions import (
     _repo,
 )
 from tests.test_compiled_grammar_analysis_contract import SOURCE, _compile_probe_fixture
+from tests.test_reproducible_grammar_build import _installer_compiler
 from tests.txn_barrier import (
     ROOT,
     SAFETY_TIMEOUT,
@@ -85,7 +87,7 @@ COMMIT_PAUSE = pause_at("lock.before_acquire", primitive="cache_lock", section="
 
 @pytest.fixture
 def shim(tmp_path: Path) -> Path:
-    """The integrated shim directory (``git``, ``tree-sitter`` stub, ``gcc``)."""
+    """The integrated shim directory (``git`` and a ``tree-sitter`` stub)."""
     return _make_shim(tmp_path)
 
 
@@ -1470,14 +1472,8 @@ def test_install_call_names_a_non_user_priority(priority, expected):
 # --- Windows: a real installer failed update ------------------------------------
 
 WINDOWS_TOOLCHAIN = pytest.mark.skipif(
-    sys.platform != "win32" or shutil.which("gcc") is None,
-    reason="the Windows installer fixture needs MinGW gcc on PATH",
+    sys.platform != "win32", reason="Windows installer fixture"
 )
-#: Without these, MinGW ld writes the link time into the PE header and picks
-#: the DLL's ImageBase from a hash of its output path, so the installer's
-#: staging build and the independent pin build could never match. The gcc shim
-#: passes the same flags to every installer build.
-PE_LINK_FLAGS = ["-Wl,--no-insert-timestamp", "-Wl,--disable-auto-image-base"]
 
 #: A console launcher: runs ``<its name>.cmdline`` (UTF-16-LE) followed by its
 #: own arguments, verbatim, with inherited standard handles, and returns the
@@ -1558,11 +1554,15 @@ def _quote(path: Path | str) -> str:
 
 
 def _windows_shim(tmp_path: Path) -> tuple[Path, str]:
-    """Executable ``git``, ``tree-sitter`` and ``gcc`` shims; the real gcc path."""
+    """Executable ``git`` and ``tree-sitter`` shims; the installer's gcc path.
+
+    The installer runs the MinGW ``gcc`` first on ``PATH`` itself, with its
+    PE link flags (treesitter-chunker#621); no ``gcc`` shim is needed. A
+    missing gcc fails on CI and is a typed skip elsewhere.
+    """
     from tests.native_policy import skip_policy_error
 
-    real_gcc = shutil.which("gcc")
-    assert real_gcc is not None
+    real_gcc = _installer_compiler()
     directory = tmp_path / "shim"
     directory.mkdir()
     source = tmp_path / "launcher.c"
@@ -1581,7 +1581,6 @@ def _windows_shim(tmp_path: Path) -> tuple[Path, str]:
     commands = {
         "git": f"{_quote(sys.executable)} {_quote(git_script)}",
         "tree-sitter": f'{_quote(sys.executable)} -c "raise SystemExit(1)"',
-        "gcc": " ".join([_quote(real_gcc), *PE_LINK_FLAGS]),
     }
     for name, command in commands.items():
         shutil.copyfile(launcher, directory / f"{name}.exe")
@@ -1601,25 +1600,18 @@ def _windows_shim(tmp_path: Path) -> tuple[Path, str]:
 
 
 def _windows_pin(real_gcc: str, repo: Path, work: Path) -> str:
-    """Build ``repo`` with the installer's gcc command, the wrapper's flags and
-    the installer's output basename; return the digest."""
-    src = repo / "src"
+    """Build ``repo`` with the installer's documented recipe (cwd = ``repo``)
+    and output basename; return the digest."""
     work.mkdir()
     output = work / "libbaml.so"  # the PE export name is the output basename
     completed = subprocess.run(
-        [
+        _build_recipe.gcc_build_argv(
             real_gcc,
-            *PE_LINK_FLAGS,
-            "-shared",
-            "-fPIC",
-            "-O2",
-            "-I",
-            str(src),
-            str(src / "parser.c"),
-            *([str(src / "scanner.c")] if (src / "scanner.c").exists() else []),
-            "-o",
-            str(output),
-        ],
+            "baml",
+            output,
+            has_scanner=(repo / "src" / "scanner.c").exists(),
+        ),
+        cwd=repo,
         capture_output=True,
         text=True,
         timeout=SAFETY_TIMEOUT,
@@ -1653,9 +1645,9 @@ def _skip_on_policy_probe(child: Child) -> None:
 def test_windows_installer_failed_update_restores_previous_pair(tmp_path, failure):
     """EC-TXN-3 on Windows with the real installer; nothing in it is patched.
 
-    Builds run through the installer's own gcc builder (MinGW, deterministic
-    PE flags through the wrapper), and the pins are independent builds with
-    the same command, flags and output basename. Before the fault, the staged
+    Builds run through the installer's own gcc builder (MinGW, with the
+    recipe's deterministic PE flags), and the pins are independent builds with
+    the same documented recipe and output basename. Before the fault, the staged
     build must equal B's pin. The failed update then restores A's pair. The
     destination library is never displaced here (the restore returns only the
     metadata); handle release for the library is shown by
@@ -1680,6 +1672,8 @@ def test_windows_installer_failed_update_restores_previous_pair(tmp_path, failur
         first.close()
     _skip_on_policy_probe(first)
     assert installed["success"], installed
+    assert installed["build"]["method"] == "gcc", installed
+    assert installed["build"]["compiler"]["family"] == "gcc", installed
     pair_a = _pair(cache)
     assert pair_a[0] == digest_a
 

@@ -64,6 +64,54 @@ jobs:
     - name: Build grammars
       run: uv run --locked --all-extras python scripts/build_lib.py
 
+    # The installer runs the gcc first on PATH (treesitter-chunker#621). On
+    # Windows that must be MinGW-w64: the image's own, found by the Phase A
+    # diagnostic (run 42547736508: C:\mingw64\bin\gcc.exe, target
+    # x86_64-w64-mingw32, gcc 15.2.0), or MSYS2 UCRT64 gcc if it is gone.
+    # Add-Content, and the Target line of gcc -v (the same configured target
+    # machine as its dumpmachine option), keep these lines clear of the
+    # release-hygiene short-option scan.
+    - name: Locate the image's MinGW-w64 gcc
+      id: mingw
+      if: matrix.platform-family == 'windows'
+      shell: pwsh
+      env:
+        MINGW_BIN: 'C:\mingw64\bin'
+      run: |
+        if (Test-Path (Join-Path $env:MINGW_BIN 'gcc.exe')) {
+          Add-Content -Path $env:GITHUB_PATH -Value $env:MINGW_BIN -Encoding utf8
+          Add-Content -Path $env:GITHUB_OUTPUT -Value 'found=true' -Encoding utf8
+        } else {
+          Write-Host "::warning::no gcc.exe in $env:MINGW_BIN; installing MSYS2 UCRT64 gcc"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value 'found=false' -Encoding utf8
+        }
+
+    - name: Install MSYS2 UCRT64 gcc (only if the image has no MinGW)
+      id: msys2
+      if: matrix.platform-family == 'windows' && steps.mingw.outputs.found != 'true'
+      uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e  # v2.33.0 (2026-09-27)
+      with:
+        msystem: UCRT64
+        install: mingw-w64-ucrt-x86_64-gcc
+        path-type: inherit
+        update: false
+
+    - name: Put MSYS2 UCRT64 gcc on PATH (fallback)
+      if: matrix.platform-family == 'windows' && steps.mingw.outputs.found != 'true'
+      shell: pwsh
+      run: Add-Content -Path $env:GITHUB_PATH -Value (Join-Path '${{ steps.msys2.outputs.msys2-location }}' 'ucrt64\bin') -Encoding utf8
+
+    - name: Check the installer's gcc is MinGW-w64
+      if: matrix.platform-family == 'windows'
+      shell: pwsh
+      run: |
+        where.exe gcc
+        gcc --version
+        $target = (gcc -v 2>&1 | Select-String -Pattern '^Target:\s*(\S+)').Matches
+        $machine = if ($target) { $target[0].Groups[1].Value } else { '' }
+        Write-Host "gcc target machine: $machine"
+        if ($machine -notmatch 'w64-mingw32') { throw "gcc on PATH is not MinGW-w64: $machine" }
+
     - name: Run platform core tests
       run: |
         uv run --locked --all-extras python scripts/run_platform_core.py --platform ${{ matrix.platform-family }}
