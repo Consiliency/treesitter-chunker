@@ -108,7 +108,8 @@ def test_individual_legacy_golden(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("builder_kind", ["manager", "combined", "platform"])
 @pytest.mark.parametrize(
-    "excluded", ["missing", "no-parser", "cc", "cpp", "symlink", "dangling"]
+    "excluded",
+    ["missing", "no-src", "no-c", "no-parser", "cc", "cpp", "symlink", "dangling"],
 )
 def test_combined_membership(tmp_path, monkeypatch, builder_kind, excluded):
     from chunker.grammar_manager import GrammarManager
@@ -119,11 +120,16 @@ def test_combined_membership(tmp_path, monkeypatch, builder_kind, excluded):
     good.mkdir(parents=True)
     (good / "parser.c").write_text("int good;", encoding="utf-8")
     bad = common / "tree-sitter-bad"
-    if excluded != "missing":
+    if excluded == "no-src":
+        bad.mkdir()
+    elif excluded != "missing":
         (bad / "src").mkdir(parents=True)
-        if excluded != "no-parser":
+        if excluded == "no-parser":
+            (bad / "src" / "scanner.c").touch()
+        if excluded not in {"no-parser", "no-c"}:
             (bad / "src" / "parser.c").write_text("int bad;", encoding="utf-8")
         if excluded in {"cc", "cpp"}:
+            (bad / "src" / "scanner.c").touch()
             (bad / "src" / f"scanner.{excluded}").touch()
         if excluded in {"symlink", "dangling"}:
             link = bad / "src" / "parser.c"
@@ -712,6 +718,11 @@ def test_missing_compiler_fails_required_policy(monkeypatch):
 def test_host_flags_use_actual_basename(tmp_path, monkeypatch, adapter):
     from tests.test_reproducible_grammar_build import _public_adapter
 
+    from chunker.grammar_management import _build_tools
+
+    monkeypatch.setattr(
+        _build_tools, "resolve_tool", lambda name: str(tmp_path / "compiler")
+    )
     monkeypatch.setattr(sys, "platform", "darwin")
     commands = []
 
@@ -728,3 +739,96 @@ def test_host_flags_use_actual_basename(tmp_path, monkeypatch, adapter):
         f"-Wl,-install_name,@rpath/{path.name}" in commands[-1]
     ), "flags must use host and actual basename"
     assert "-Wl,-z,defs" not in commands[-1]
+
+
+@pytest.mark.parametrize("detector", ["unknown", "cl"])
+def test_platform_detector_failure_shapes(tmp_path, monkeypatch, detector):
+    monkeypatch.setattr(sys, "platform", "linux")
+    src = tmp_path / "g" / "tree-sitter-repro" / "src"
+    src.mkdir(parents=True)
+    (src / "parser.c").touch()
+    tool = BuildSystem()
+    tool._grammars_dir = src.parent.parent
+    monkeypatch.setattr(
+        tool.platform_support, "detect_platform", lambda: {"compiler": detector}
+    )
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *a, **kw: pytest.fail("unsupported detector must not compile"),
+    )
+    ok, info = tool.compile_grammars(["repro"], "linux", tmp_path / "out")
+    assert not ok
+    if detector == "unknown":
+        assert info == {"error": "No suitable C compiler found"}
+    else:
+        assert info["compiler"] is None
+        assert info["libraries"] == {}
+        assert info["errors"]
+
+
+def test_matching_windows_keeps_msvc_dispatch(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    src = tmp_path / "g" / "tree-sitter-repro" / "src"
+    src.mkdir(parents=True)
+    (src / "parser.c").touch()
+    tool = BuildSystem()
+    tool._grammars_dir = src.parent.parent
+    monkeypatch.setattr(
+        tool.platform_support, "detect_platform", lambda: {"compiler": "cl"}
+    )
+    calls = []
+    monkeypatch.setattr(
+        tool,
+        "_compile_windows",
+        lambda languages, output, info: calls.append((languages, info["compiler"]))
+        or True,
+    )
+    monkeypatch.setattr(
+        tool, "_compile_unix", lambda *a: pytest.fail("MSVC must not reach GNU recipe")
+    )
+    assert tool.compile_grammars(["repro"], "windows", tmp_path / "out")[0]
+    assert calls == [(["repro"], "cl")]
+
+
+@pytest.mark.parametrize(
+    "extra", ["extra.c", "src/extra.c", "unused.cpp", "src/unused.cpp"]
+)
+@pytest.mark.parametrize("kind", ["individual", "download"])
+def test_noncanonical_public_route_is_preselected_legacy(
+    tmp_path, monkeypatch, extra, kind
+):
+    from chunker.grammar_management import _build_recipe
+
+    root = tmp_path / "g" / "tree-sitter-repro"
+    (root / "src").mkdir(parents=True)
+    (root / "src" / "parser.c").touch()
+    (root / extra).touch()
+    with pytest.raises(ValueError, match="Noncanonical"):
+        _build_recipe.individual_c_argv("/compiler", root, tmp_path / "out.so")
+    monkeypatch.setattr(
+        _build_recipe,
+        "individual_c_argv",
+        lambda *a, **kw: pytest.fail("noncanonical input must preselect legacy"),
+    )
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        Path(argv[argv.index("-o") + 1]).write_bytes(b"legacy")
+        return SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    if kind == "individual":
+        tool = TreeSitterGrammarBuilder()
+        tool.set_source_directory(root.parent)
+        tool.set_build_directory(tmp_path / "out")
+        assert tool.build_individual("repro")
+    else:
+        assert (
+            GrammarDownloadManager(tmp_path / "cache")
+            .compile_grammar(root, tmp_path / "out")
+            .success
+        )
+    assert len(calls) == 1
+    assert "-Wl,-z,defs" not in calls[0]

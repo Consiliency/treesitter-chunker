@@ -114,7 +114,7 @@ if sys.platform.startswith("linux"):
         BUILDER,
         "cwd=lang_root.absolute(),",
         "cwd=self._source_dir.absolute(),",
-        DIGEST + "::test_remaining_public_adapters_two_paths[individual]",
+        DIGEST + "::test_remaining_public_adapters_two_paths[individual-mapped]",
     )
     add(
         "cli_wrong_cwd",
@@ -402,7 +402,11 @@ def main() -> int:
             output = run.stdout + run.stderr
             killed = (
                 run.returncode == 1
-                and ("AssertionError" in output or "Failed:" in output)
+                and (
+                    "AssertionError" in output
+                    or "Failed:" in output
+                    or "\nE   assert " in output
+                )
                 and "ERROR collecting" not in output
             )
             record = {

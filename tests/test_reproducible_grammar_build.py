@@ -678,7 +678,15 @@ def test_symlink_decline_allows_fallback(tmp_path, monkeypatch):
         _transactions.discard_staging(staging)
 
 
-_ADAPTERS = ["cli", "individual", "download", "download-cc", "manager", "combined"]
+_ADAPTERS = [
+    "cli",
+    "individual",
+    "individual-mapped",
+    "download",
+    "download-cc",
+    "manager",
+    "combined",
+]
 if sys.platform in ("linux", "darwin"):
     _ADAPTERS.append("platform")
 
@@ -719,17 +727,23 @@ def _public_adapter(kind, root, monkeypatch):
         with CliRunner().isolation():
             assert tool.build_grammar("tree-sitter-repro", force=True) == 0
         path = output / "tree_sitter_tree-sitter-repro.so"
-    elif kind in {"individual", "combined"}:
+    elif kind in {"individual", "individual-mapped", "combined"}:
         tool = TreeSitterGrammarBuilder()
         tool.set_source_directory(common)
         tool.set_build_directory(output)
-        if kind == "individual":
-            assert tool.build_individual("repro"), tool.get_build_log("repro")
-            path = output / f"repro{tool._lib_extension}"
+        if kind in {"individual", "individual-mapped"}:
+            language = "ocaml" if kind == "individual-mapped" else "repro"
+            if kind == "individual-mapped":
+                shutil.copytree(
+                    source, common / "tree-sitter-ocaml" / "grammars" / "ocaml"
+                )
+            assert tool.build_individual(language), tool.get_build_log(language)
+            path = output / f"{language}{tool._lib_extension}"
         else:
             assert tool.build(["zeta", "repro"]) == {"repro": True, "zeta": True}
             path = output / f"languages{tool._lib_extension}"
     elif kind.startswith("download"):
+        (source / "src" / "scanner.cc").write_text("ignored sibling", encoding="utf-8")
         if kind == "download-cc":
             monkeypatch.setenv("CC", _installer_compiler())
         else:
@@ -831,3 +845,39 @@ if sys.platform in ("linux", "darwin"):
         assert sha256(blobs[0]).digest() == sha256(blobs[1]).digest()
         assert b"tree-sitter-repro/src/scanner.c" in blobs[0]
         assert os.fsencode(tmp_path) not in blobs[0]
+
+
+@pytest.mark.parametrize(
+    "adapter", [a for a in _ADAPTERS if a in {"manager", "combined", "platform"}]
+)
+def test_combined_duplicate_symbols_fail_all(tmp_path, adapter):
+    from chunker.build.builder import BuildSystem
+    from chunker.grammar.builder import TreeSitterGrammarBuilder
+    from chunker.grammar_manager import GrammarManager
+
+    _installer_compiler()
+    common = tmp_path / "g"
+    for language in ("repro", "duplicate"):
+        shutil.copytree(FIXTURE, common / f"tree-sitter-{language}")
+    languages = ["repro", "duplicate"]
+    output = tmp_path / "o"
+    output.mkdir()
+    if adapter == "manager":
+        tool = GrammarManager(tmp_path)
+        tool._grammars_dir = common
+        tool._lib_path = output / "my-languages.so"
+        assert tool.compile_grammars(languages) == dict.fromkeys(languages, False)
+    elif adapter == "combined":
+        tool = TreeSitterGrammarBuilder()
+        tool.set_source_directory(common)
+        tool.set_build_directory(output)
+        assert tool.build(languages) == dict.fromkeys(languages, False)
+    else:
+        tool = BuildSystem()
+        tool._grammars_dir = common
+        ok, info = tool.compile_grammars(
+            languages, "macos" if sys.platform == "darwin" else "linux", output
+        )
+        assert not ok
+        assert info["libraries"] == {}
+        assert any("every requested member" in error for error in info["errors"])
