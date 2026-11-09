@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Decline the controlled installer route before starting any process when
+  `src` or its inputs are symlinks, including linked headers and dangling
+  links. Make and CLI fallbacks remain available, with pin admission unchanged
+  (treesitter-chunker#632).
+
 - The controlled installer build tries `cc` when `gcc` is missing, using the
   same recipe and recording the compiler's banner identity. GCC still wins
   when both are installed (treesitter-chunker#631).

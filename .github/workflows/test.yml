@@ -112,6 +112,11 @@ jobs:
         Write-Host "gcc target machine: $machine"
         if ($machine -notmatch 'w64-mingw32') { throw "gcc on PATH is not MinGW-w64: $machine" }
 
+    - name: Check controlled installer recipe
+      env:
+        CHUNKER_REQUIRE_INSTALLER_COMPILER: '1'
+      run: uv run --locked --all-extras python -m pytest -q -s tests/test_reproducible_grammar_build.py tests/test_release_hygiene_policy.py
+
     - name: Run platform core tests
       run: |
         uv run --locked --all-extras python scripts/run_platform_core.py --platform ${{ matrix.platform-family }}

@@ -374,6 +374,9 @@ can come from an independent build of the same source with the same recipe.
    `SOURCE_DATE_EPOCH` and `CPATH` were checked and do not affect this recipe.
 5. **Grammars this recipe does not build.** The installer's `gcc` route
    declines, or fails, and the next method runs:
+   - a symlinked source root, `src`, parser, scanner, header directory or any
+     entry below `src`: checked with `lstat` before any process starts,
+     including dangling links (treesitter-chunker#632);
    - grammars with a C++ scanner (`src/scanner.cc` or `src/scanner.cpp`): the
      route declines them before compiling anything;
    - on Linux, grammars that need a symbol the recipe does not link: for
@@ -381,6 +384,10 @@ can come from an independent build of the same source with the same recipe.
      deliberately leaves out, and `-z defs` refuses the link.
 
    These build only through `make` or the `tree-sitter` CLI, in that order.
+   A symlink decline allows these fallbacks just like a C++ decline: it is
+   defence in depth for the controlled recipe, not a source sandbox. It does
+   not prevent concurrent replacement or arbitrary C preprocessor includes.
+   The pin still binds the exact loaded bytes whichever route builds them.
    Those bytes are host-specific, and their pins must come from a review of
    that host's own build. `metadata.build.method` shows which route ran.
 6. **`metadata.build`.** Each installation's metadata records

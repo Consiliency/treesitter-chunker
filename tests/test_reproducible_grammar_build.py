@@ -19,6 +19,8 @@ and is a typed skip elsewhere.
 
 Named mutations (plan §4.3), each a temporary patch that must fail here:
 
+- ``follow_symlinked_src``: remove the source symlink preflight. Killed by
+  the symlink decline test, before any process can start.
 - ``cc_not_tried``: resolve gcc only. Killed by the cc-only resolution case.
 - ``cc_before_gcc``: prefer cc. Killed by the both-present resolution case.
 - ``absolute_sources``: the recipe emits absolute ``-I``/source paths.
@@ -134,7 +136,7 @@ def test_installer_builds_are_identical_at_two_paths(
             pytest.skip("clang-as-cc link-flag contract covers Linux and macOS")
         found = shutil.which("cc" if compiler_choice == "cc" else "clang")
         if found is None:
-            if _policy_required() and sys.platform in ("linux", "darwin"):
+            if os.environ.get("CI") and sys.platform in ("linux", "darwin"):
                 pytest.fail(f"CI must provide {compiler_choice}")
             pytest.skip(f"{compiler_choice} is unavailable on PATH")
         compiler = Path(os.path.abspath(found))  # noqa: PTH100
@@ -585,3 +587,86 @@ def test_compiler_identity_parses_known_banners(stdout, family, version):
 @pytest.mark.parametrize("stdout", ["", None, "\r\n  \n"])
 def test_compiler_identity_of_no_banner_is_none(stdout):
     assert _build_recipe.compiler_identity(stdout) is None
+
+
+@pytest.mark.parametrize(
+    "linked",
+    [
+        "src",
+        "src/parser.c",
+        "src/scanner.c",
+        "src/tree_sitter",
+        "src/tree_sitter/parser.h",
+        "src/headers",
+        "src/headers/extra.h",
+    ],
+)
+@pytest.mark.parametrize("dangling", [False, True])
+def test_gcc_route_declines_symlinked_source_before_process(tmp_path, linked, dangling):
+    """Real links, including dangling links and nested headers, never compile."""
+    source = tmp_path / "source"
+    shutil.copytree(FIXTURE, source)
+    _write_grammar(source, {"src/headers/extra.h": "/* header */\n"})
+    path = source / linked
+    target = tmp_path / "outside"
+    directory = path.is_dir()
+    path.rename(target)
+    if dangling:
+        if directory:
+            shutil.rmtree(target)
+        else:
+            target.unlink()
+    try:
+        path.symlink_to(target, target_is_directory=directory)
+    except OSError as error:
+        if sys.platform == "win32" and error.winerror == 1314:
+            pytest.skip("Windows symlink creation requires privilege (WinError 1314)")
+        raise
+    installer = GrammarInstaller(cache_dir=tmp_path / "cache")
+    calls = []
+
+    def run_staged(staging, argv, **kwargs):
+        calls.append(argv)
+        raise AssertionError("symlinked source started a process")
+
+    installer._run_staged = run_staged  # type: ignore[method-assign]
+    result = installer._build_with_gcc(
+        "repro",
+        source,
+        tmp_path / "librepro.so",
+        staging=object(),
+        compiler="/abs/gcc",  # type: ignore[arg-type]
+    )
+    assert result == (
+        False,
+        f"Symlinked source ({linked}): not built by the controlled route",
+    )
+    assert calls == []
+
+
+def test_symlink_decline_allows_fallback(tmp_path, monkeypatch):
+    """The decline is defence in depth; admission still binds fallback bytes."""
+    installer, staging, source = _staged_fixture(tmp_path / "cache")
+    calls = []
+    monkeypatch.setattr(_build_recipe, "symlinked_source", lambda root: "src")
+    monkeypatch.setattr(core_module.shutil, "which", lambda name: "/abs/gcc")
+
+    def make(*args, **kwargs):
+        calls.append("make")
+        return True, None
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("declined compiler must not run or probe")
+
+    monkeypatch.setattr(installer, "_run_staged", unexpected)
+    monkeypatch.setattr(installer, "_build_with_make", make)
+    try:
+        ok, _, error, record = installer._build_grammar(
+            "repro", source, staging=staging
+        )
+        assert ok, error
+        assert calls == ["make"]
+        assert record["method"] == "make"
+        assert record["compiler"] is None
+    finally:
+        _transactions.discard_staging(staging)

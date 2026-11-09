@@ -1206,6 +1206,12 @@ class GrammarInstaller:
         on Linux and give a scanner-less library.
         """
         try:
+            linked = _build_recipe.symlinked_source(source_path)
+            if linked is not None:
+                return (
+                    False,
+                    f"Symlinked source ({linked}): not built by the controlled route",
+                )
             cxx = _build_recipe.cxx_scanner(source_path)
             if cxx is not None:
                 return False, f"C++ scanner ({cxx}): not built by the controlled route"
