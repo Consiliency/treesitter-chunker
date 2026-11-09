@@ -13,11 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `src` or its inputs are symlinks, including linked headers and dangling
   links. Make and CLI fallbacks remain available, with pin admission unchanged
   (treesitter-chunker#632).
-
 - The controlled installer build tries `cc` when `gcc` is missing, using the
   same recipe and recording the compiler's banner identity. GCC still wins
   when both are installed (treesitter-chunker#631).
-
+- On Linux with the forkserver start method, multiprocessing creates its socket
+  below TMPDIR. CPython's fallback to `/tmp` under-counts the socket
+  name by 4 bytes in verified releases 3.13.15 and 3.14.5, so a TMPDIR of
+  76–79 bytes fails with `AF_UNIX path too long`. Newer patch releases fix
+  the miscount (verified 3.14.10). Runtimes without the
+  fallback (3.12) fail at every TMPDIR of 76 bytes or more. Parallel chunking
+  now uses a pool-local spawn context only when the forkserver socket would not
+  fit (treesitter-chunker#624).
 - `GrammarInstaller._save_installation_info` now hashes the grammar library in
   the same locked section that writes its metadata, so the recorded
   `artifact_sha256` always describes the library on disk when the metadata is
