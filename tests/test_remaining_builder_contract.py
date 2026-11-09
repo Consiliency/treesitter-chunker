@@ -1074,7 +1074,7 @@ if sys.platform == "darwin":
         digests = [sha256(path.read_bytes()).hexdigest() for path in paths]
         assert (
             digests[0] == digests[1]
-        ), "macOS /var or /tmp alias must build equal bytes"
+        ), "macOS unresolved private-root alias must build equal bytes"
         print(f"macOS unresolved alias={alias} raw_sha256={digests}")
 
 

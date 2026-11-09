@@ -146,6 +146,8 @@ jobs:
         verbose: true
 
   controlled-linux:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     env:
       UV_PYTHON: '3.14'
