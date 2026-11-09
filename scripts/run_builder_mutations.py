@@ -380,6 +380,9 @@ def main() -> int:
         raise SystemExit("Mutation evidence requires Python 3.14")
     if not os.environ.get("CI"):
         raise SystemExit("Mutation evidence must run on hosted CI (I6)")
+    baseline_diff = subprocess.run(
+        ["git", "diff", "--binary"], cwd=ROOT, capture_output=True, check=True
+    ).stdout
     records = []
     scenarios = []
     for name, filename, old, new, test in MUTATIONS:
@@ -474,7 +477,10 @@ def main() -> int:
         print(json.dumps(record), flush=True)
         if run.returncode < 0:
             break
-    subprocess.run(["git", "diff", "--exit-code"], cwd=ROOT, check=True)
+    final_diff = subprocess.run(
+        ["git", "diff", "--binary"], cwd=ROOT, capture_output=True, check=True
+    ).stdout
+    assert final_diff == baseline_diff, "mutations changed the initial worktree diff"
     return 0 if records and all(record["killed"] for record in records) else 1
 
 
