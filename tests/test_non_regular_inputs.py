@@ -369,7 +369,10 @@ def test_debug_repl_load_rejects_fifo(tmp_path, fifo):
         assert repl.current_code is None or repl.current_code == "", repl.current_code
         assert repl.current_file is None
     """
-    result = _run_python(code, str(fifo), cwd=REPO_ROOT)
+    # Rich wraps at the console width and the message embeds the full temp
+    # path, so give the child a console wide enough that a long TMPDIR cannot
+    # split the phrase across lines (treesitter-chunker#622).
+    result = _run_python(code, str(fifo), cwd=REPO_ROOT, COLUMNS="2000")
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert MESSAGE in result.stdout
 
