@@ -1498,7 +1498,11 @@ class ComprehensiveGrammarCLI:
                     raise ValueError("No gcc or cc found on PATH")
                 progress.update(f"Compiling with {compiler}...")
                 cmd = _build_recipe.individual_c_argv(
-                    compiler, source_dir, compiled_grammar, standard="c99"
+                    compiler,
+                    source_dir,
+                    compiled_grammar,
+                    base=source_dir,
+                    standard="c99",
                 )
                 compile_result = self._run_command(
                     cmd, cwd=source_dir.absolute(), timeout=120

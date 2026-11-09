@@ -277,8 +277,10 @@ class GrammarDownloadManager(GrammarDownloadContract):
             cmd = [cc, "-fPIC", "-shared", "-o", str(output_file), *sources]
         if any(s.endswith((".cc", ".cpp")) for s in sources):
             cmd.extend(["-xc++", "-lstdc++"])
-        canonical = not list(grammar_path.glob("*.c")) and all(
-            p.name in {"parser.c", "scanner.c"} for p in src_dir.glob("*.c")
+        canonical = (
+            parser_c.is_file()
+            and not list(grammar_path.glob("*.c"))
+            and all(p.name in {"parser.c", "scanner.c"} for p in src_dir.glob("*.c"))
         )
         canonical = canonical and not any(
             p not in {src_dir / "scanner.cc", src_dir / "scanner.cpp"}
@@ -302,7 +304,11 @@ class GrammarDownloadManager(GrammarDownloadContract):
             logging.getLogger(__name__).info("Controlled C build using %s", selected)
             try:
                 cmd = _build_recipe.individual_c_argv(
-                    selected, grammar_path, output_file, scanner_priority=True
+                    selected,
+                    grammar_path,
+                    output_file,
+                    base=grammar_path,
+                    scanner_priority=True,
                 )
             except ValueError as error:
                 return CompilationResult(False, None, str(error), None)

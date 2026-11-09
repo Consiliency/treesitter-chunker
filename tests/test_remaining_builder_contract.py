@@ -13,6 +13,7 @@ from chunker.grammar.download import GrammarDownloadManager
 
 
 def test_platform_all_excluded_never_detects(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, "platform", "linux")
     builder = BuildSystem()
     builder._grammars_dir = tmp_path / "grammars"
     builder._grammars_dir.mkdir()
@@ -480,7 +481,7 @@ def test_controlled_failure_never_retries_legacy(tmp_path, monkeypatch, kind):
             ("php", "php"),
             ("wat", "wat"),
         ]
-        for component in ("repository", *subdir.split("/"), "src", "parser.c")
+        for component in ("repository", *subdir.split("/"), "src", "parser.c", "root.c")
     ],
 )
 @pytest.mark.parametrize("dangling", [False, True])
@@ -495,6 +496,8 @@ def test_individual_mapped_symlink_has_no_process(
     root = repo / subdir
     (root / "src").mkdir(parents=True)
     (root / "src" / "parser.c").touch()
+    if component == "root.c":
+        (root / "extra.c").touch()
     target = {
         "repository": repo,
         **{
@@ -503,6 +506,7 @@ def test_individual_mapped_symlink_has_no_process(
         },
         "src": root / "src",
         "parser.c": root / "src" / "parser.c",
+        "root.c": root / "extra.c",
     }[component]
     backing = tmp_path / "backing"
     target.rename(backing)
@@ -512,7 +516,9 @@ def test_individual_mapped_symlink_has_no_process(
         else:
             backing.unlink()
     try:
-        target.symlink_to(backing, target_is_directory=component != "parser.c")
+        target.symlink_to(
+            backing, target_is_directory=component not in {"parser.c", "root.c"}
+        )
     except OSError as error:
         if _policy_required():
             pytest.fail(f"Required symlink unavailable: {error}")
@@ -1008,3 +1014,276 @@ def test_individual_labels_select_names_but_host_selects_flags(
     assert (f"-Wl,-install_name,@rpath/repro{suffix}" in argv) == (host == "darwin")
     assert ("-Wl,--no-insert-timestamp" in argv) == (host == "win32")
     assert ("-Wl,--disable-auto-image-base" in argv) == (host == "win32")
+
+
+def _required_symlink(link, target, *, directory=True):
+    from tests.test_reproducible_grammar_build import _policy_required
+
+    try:
+        link.symlink_to(target, target_is_directory=directory)
+    except OSError as error:
+        if _policy_required():
+            pytest.fail(f"Required symlink unavailable: {error}")
+        pytest.skip(f"Symlink unavailable: {error}")
+
+
+_SCOPE_ADAPTERS = [
+    "individual",
+    "individual-mapped",
+    "download",
+    "cli",
+    "manager",
+    "combined",
+]
+if sys.platform in {"linux", "darwin"}:
+    _SCOPE_ADAPTERS.append("platform")
+
+
+@pytest.mark.parametrize("adapter", _SCOPE_ADAPTERS)
+def test_symlinked_ancestor_builds_equal_bytes(tmp_path, monkeypatch, adapter):
+    from hashlib import sha256
+    from tests.test_reproducible_grammar_build import _public_adapter
+
+    real = tmp_path.resolve() / "real"
+    real.mkdir()
+    link = tmp_path.resolve() / "link"
+    _required_symlink(link, real)
+    paths = [
+        _public_adapter(adapter, root, monkeypatch)
+        for root in (real / "a", link / "bb" / "c")
+    ]
+    digests = [sha256(path.read_bytes()).hexdigest() for path in paths]
+    assert digests[0] == digests[1], "ancestor alias must preserve raw SHA-256"
+    print(f"ancestor {adapter} raw_sha256={digests}")
+
+
+if sys.platform == "darwin":
+
+    def test_macos_unresolved_system_alias_builds(tmp_path, monkeypatch):
+        from hashlib import sha256
+        from tests.test_reproducible_grammar_build import _public_adapter
+
+        real = tmp_path.resolve()
+        assert str(real).startswith(("/private/var/", "/private/tmp/"))
+        alias = Path(str(real).removeprefix("/private"))
+        assert alias != real and alias.resolve() == real
+        paths = [
+            _public_adapter("individual", root, monkeypatch)
+            for root in (real / "a", alias / "bb" / "c")
+        ]
+        digests = [sha256(path.read_bytes()).hexdigest() for path in paths]
+        assert (
+            digests[0] == digests[1]
+        ), "macOS /var or /tmp alias must build equal bytes"
+        print(f"macOS unresolved alias={alias} raw_sha256={digests}")
+
+
+@pytest.mark.parametrize(
+    "adapter", ["cli", "download", "individual", "manager", "combined", "platform"]
+)
+@pytest.mark.parametrize("position", ["clone", "src", "parser.c", "root.c"])
+@pytest.mark.parametrize("dangling", [False, True])
+def test_in_span_link_never_starts_process(
+    tmp_path, monkeypatch, adapter, position, dangling
+):
+    import shutil
+    from click.testing import CliRunner
+    from chunker.grammar_management.cli import ComprehensiveGrammarCLI
+    from chunker.grammar_manager import GrammarManager
+
+    root = tmp_path / "g" / "tree-sitter-repro"
+    (root / "src").mkdir(parents=True)
+    (root / "src" / "parser.c").touch()
+    if position == "root.c":
+        (root / "extra.c").touch()
+    target = {
+        "clone": root,
+        "src": root / "src",
+        "parser.c": root / "src" / "parser.c",
+        "root.c": root / "extra.c",
+    }[position]
+    backing = tmp_path / "backing"
+    target.rename(backing)
+    directory = backing.is_dir()
+    if dangling:
+        if directory:
+            shutil.rmtree(backing)
+        else:
+            backing.unlink()
+    _required_symlink(target, backing, directory=directory)
+    calls = []
+
+    def unexpected(*args, **kwargs):
+        calls.append(args)
+        pytest.fail("in-span link must not probe, compile, generate, or retry legacy")
+
+    monkeypatch.setattr(subprocess, "run", unexpected)
+    output = tmp_path / "out"
+    if adapter == "individual":
+        tool = TreeSitterGrammarBuilder()
+        tool.set_source_directory(root.parent)
+        tool.set_build_directory(output)
+        assert not tool.build_individual("repro")
+    elif adapter == "download":
+        assert (
+            not GrammarDownloadManager(tmp_path / "cache")
+            .compile_grammar(root, output)
+            .success
+        )
+    elif adapter == "cli":
+        tool = ComprehensiveGrammarCLI(tmp_path / "cache")
+        monkeypatch.setattr(
+            tool, "_get_grammar_priority_order", lambda: [(root.parent, None, None)]
+        )
+        monkeypatch.setattr(tool, "_run_command", unexpected)
+        with CliRunner().isolation():
+            assert tool.build_grammar(root.name, force=True) != 0
+    elif adapter == "manager":
+        tool = GrammarManager(tmp_path)
+        tool._grammars_dir = root.parent
+        assert tool.compile_grammars(["repro"]) == {"repro": False}
+    elif adapter == "combined":
+        tool = TreeSitterGrammarBuilder()
+        tool.set_source_directory(root.parent)
+        assert tool.build(["repro"]) == {"repro": False}
+    else:
+        # This is the controlled Unix preflight, also tested without processes on Windows.
+        monkeypatch.setattr(sys, "platform", "linux")
+        tool = BuildSystem()
+        tool._grammars_dir = root.parent
+        monkeypatch.setattr(tool.platform_support, "detect_platform", unexpected)
+        ok, info = tool.compile_grammars(["repro"], "linux", output)
+        assert not ok and not info["libraries"] and info["errors"]
+    assert not calls, "in-span links must fail before any process"
+
+
+@pytest.mark.parametrize("component", ["clone", "grammars", "lang"])
+@pytest.mark.parametrize("dangling", [False, True])
+def test_direct_helper_checks_explicit_clone_span(tmp_path, component, dangling):
+    import shutil
+    from chunker.grammar_management import _build_recipe
+
+    clone = tmp_path / "clone"
+    root = clone / "grammars" / "ocaml"
+    (root / "src").mkdir(parents=True)
+    (root / "src" / "parser.c").touch()
+    target = {"clone": clone, "grammars": clone / "grammars", "lang": root}[component]
+    backing = tmp_path / "backing"
+    target.rename(backing)
+    if dangling:
+        shutil.rmtree(backing)
+    _required_symlink(target, backing)
+    with pytest.raises(ValueError, match="Symlinked|not found"):
+        _build_recipe.individual_c_argv(
+            "/compiler", root, tmp_path / "out.so", base=clone
+        )
+
+
+@pytest.mark.parametrize("detector", ["cl", "unknown"])
+def test_msvc_receives_full_requested_list_without_preflight(
+    tmp_path, monkeypatch, detector
+):
+    from chunker.grammar_management import _build_recipe
+
+    common = tmp_path / "grammars"
+    (common / "tree-sitter-cpp" / "src").mkdir(parents=True)
+    (common / "tree-sitter-cpp" / "src" / "scanner.cc").touch()
+    _required_symlink(common / "tree-sitter-linked", common / "tree-sitter-cpp")
+    ancestor = tmp_path / "linked-common"
+    _required_symlink(ancestor, common)
+    requested = ["cpp", "linked", "missing", "cpp"]
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(
+        _build_recipe,
+        "combined_sources",
+        lambda *a: pytest.fail("MSVC must not use GNU preflight"),
+    )
+    tool = BuildSystem()
+    tool._grammars_dir = ancestor
+    monkeypatch.setattr(
+        tool.platform_support, "detect_platform", lambda: {"compiler": detector}
+    )
+    calls = []
+
+    def compile_windows(languages, output, info):
+        assert languages is requested
+        assert info["errors"] == []
+        calls.append(languages)
+        return True
+
+    monkeypatch.setattr(tool, "_compile_windows", compile_windows)
+    ok, info = tool.compile_grammars(requested, "windows", tmp_path / "out")
+    if detector == "unknown":
+        assert not ok and info == {"error": "No suitable C compiler found"}
+        assert calls == []
+    else:
+        assert ok and calls == [requested]
+
+
+def test_combined_creates_default_build_directory(tmp_path, monkeypatch):
+    from tests.test_reproducible_grammar_build import _installer_compiler
+
+    _installer_compiler()
+    monkeypatch.chdir(tmp_path.resolve())
+    src = Path("grammars/tree-sitter-repro/src")
+    src.mkdir(parents=True)
+    (src / "parser.c").write_text(
+        "int tree_sitter_repro(void) { return 1; }", encoding="utf-8"
+    )
+    tool = TreeSitterGrammarBuilder()
+    assert tool.build(["missing"]) == {"missing": False}
+    assert not Path("build").exists()
+    assert tool.build(["repro"]) == {"repro": True}
+    assert (Path("build") / f"languages{tool._lib_extension}").is_file()
+
+
+@pytest.mark.parametrize("adapter", ["individual", "download"])
+def test_scanner_only_keeps_legacy_command(tmp_path, monkeypatch, adapter):
+    from chunker.grammar_management import _build_recipe
+
+    root = tmp_path / "g" / "tree-sitter-repro"
+    (root / "src").mkdir(parents=True)
+    scanner = root / "src" / "scanner.c"
+    scanner.touch()
+    monkeypatch.setattr(
+        _build_recipe,
+        "individual_c_argv",
+        lambda *a, **kw: pytest.fail("scanner-only must preselect legacy"),
+    )
+    monkeypatch.setattr("shutil.which", lambda name: str(tmp_path / name))
+    monkeypatch.setenv("CC", "legacy-cc")
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        Path(argv[argv.index("-o") + 1]).write_bytes(b"legacy")
+        return SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    output = tmp_path / "out"
+    if adapter == "individual":
+        tool = TreeSitterGrammarBuilder()
+        tool.set_source_directory(root.parent)
+        tool.set_build_directory(output)
+        assert tool.build_individual("repro")
+        expected = ["clang", "-shared"] + ([] if sys.platform == "win32" else ["-fPIC"])
+        expected += [
+            "-O2",
+            "-o",
+            str(output / f"repro{tool._lib_extension}"),
+            str(scanner),
+            "-std=c11",
+        ]
+        assert "cwd" not in calls[0][1]
+    else:
+        assert (
+            GrammarDownloadManager(tmp_path / "cache")
+            .compile_grammar(root, output)
+            .success
+        )
+        expected = ["legacy-cc", "-fPIC", "-shared"] + (
+            ["-dynamiclib"] if sys.platform == "darwin" else []
+        )
+        expected += ["-o", str(output / "tree.so"), str(scanner)]
+        assert calls[0][1]["cwd"] == str(root)
+    assert len(calls) == 1 and calls[0][0] == expected

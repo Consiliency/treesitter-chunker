@@ -458,14 +458,15 @@ class BuildSystem(BuildSystemContract):
                 "Unknown or mismatched platform label/host family"
             )
             return False, build_info
-        accepted, _, _, errors = _build_recipe.combined_sources(
-            self._grammars_dir, languages, "root"
-        )
-        build_info["errors"].extend(
-            f"{lang}: {error}" for lang, error in errors.items()
-        )
-        if not accepted:
-            return False, build_info
+        if platform != "windows":
+            accepted, _, _, errors = _build_recipe.combined_sources(
+                self._grammars_dir, languages, "root"
+            )
+            build_info["errors"].extend(
+                f"{lang}: {error}" for lang, error in errors.items()
+            )
+            if not accepted:
+                return False, build_info
         platform_info = self.platform_support.detect_platform()
         compiler = platform_info["compiler"]
         if compiler == "unknown":
@@ -473,9 +474,7 @@ class BuildSystem(BuildSystemContract):
         output_dir.mkdir(parents=True, exist_ok=True)
         if platform == "windows":
             build_info["compiler"] = compiler
-            success = self._compile_windows(
-                [lang for lang in languages if lang in accepted], output_dir, build_info
-            )
+            success = self._compile_windows(languages, output_dir, build_info)
         else:
             if compiler == "cl":
                 build_info["errors"].append(

@@ -1120,11 +1120,13 @@ The CLI no longer inherits distutils/sysconfig `-DNDEBUG`; assertions are active
 Pre-generated CLI parsers need neither Node nor a generator probe. Missing parsers
 require a parent-resolved `tree-sitter generate`; no global npm install occurs.
 
-Combined members are preflighted before compiler probes or compilation. Missing,
-C++-scanner and symlinked members are omitted and reported; accepted peers still
+Controlled combined members are preflighted before compiler probes or compilation.
+Missing, C++-scanner and symlinked members are omitted and reported; accepted peers still
 build. No accepted members means zero processes. A link failure fails every member.
 GrammarManager keeps requested-but-never-fetched keys absent. BuildSystem reports
 omissions in `errors`, even on success, and preserves requested `languages`.
+The excluded Windows/MSVC route keeps its full requested list and does not use
+controlled-member preflight.
 Unknown or host-mismatched labels fail before processes. Labels select filenames;
 link flags use host `sys.platform`. macOS install names are `@rpath/<actual basename>`;
 MinGW links directly to the stable basename with timestamp and automatic image base disabled.
@@ -1133,9 +1135,10 @@ Single-invocation combined builds retain pre-existing cross-grammar header shado
 an angle-bracket include can select another member's header (the panel's `ab`
 fixture demonstrates this). Sorted includes make selection deterministic, not
 necessarily correct for each grammar's ABI. No duplicate-definition override is used.
-Symlink preflight checks repository/subdirectory components and src inputs; it is
-not a sandbox against concurrent replacements or includes outside src, such as
-TypeScript `common/`. Installer declines can still reach its existing fallbacks.
+Symlink preflight checks the inclusive clone-to-build span and src inputs;
+directories above the clone root, and the shared grammars directory itself, are
+not inspected. It is not a sandbox against concurrent replacements or includes
+outside src, such as TypeScript `common/`. Installer declines can still reach its existing fallbacks.
 
 Make can copy a pre-existing committed binary via its existing first-result selection.
 Make and tree-sitter fallback bytes are not guaranteed reproducible even across

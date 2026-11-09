@@ -156,10 +156,18 @@ def artifact_link_flags(basename: str, platform: str) -> list[str]:
     return []
 
 
-def source_chain_error(root: Path) -> str | None:
-    """Inspect every ancestor without resolving away symlink evidence."""
+def source_chain_error(root: Path, *, base: Path | None = None) -> str | None:
+    """Inspect the inclusive clone-to-build span, never its ancestors."""
     root = root.absolute()
-    for path in reversed((root, *root.parents)):
+    base = (base or root).absolute()
+    try:
+        relative = root.relative_to(base)
+    except ValueError:
+        return "Source root is outside clone root"
+    components = [base]
+    for part in relative.parts:
+        components.append(components[-1] / part)
+    for path in components:
         try:
             if stat.S_ISLNK(path.lstat().st_mode):
                 return f"Symlinked source component: {path}"
@@ -248,11 +256,12 @@ def individual_c_argv(
     root: Path,
     output: Path,
     *,
+    base: Path | None = None,
     standard: str | None = None,
     scanner_priority: bool = False,
 ) -> list[str]:
     """Validate canonical C inputs, then build argv; no subprocess or fallback."""
-    error = source_chain_error(root)
+    error = source_chain_error(root, base=base)
     if error:
         raise ValueError(error)
     scanner = root / "src" / "scanner.c"

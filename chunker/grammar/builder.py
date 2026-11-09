@@ -66,6 +66,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         self._build_logs.update(errors)
         if not accepted:
             return results
+        self._build_dir.mkdir(parents=True, exist_ok=True)
         compiler = _build_tools.c_compiler()
         if not compiler:
             for lang in accepted:
@@ -134,7 +135,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                     logger.error("Subdir for %s not found: %s", language, lang_root)
                     self._build_logs[language] = f"Subdir not found: {lang_root}"
                     return False
-            error = _build_recipe.source_chain_error(lang_root)
+            error = _build_recipe.source_chain_error(lang_root, base=lang_path)
             if error:
                 self._build_logs[language] = error
                 return False
@@ -160,8 +161,10 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                     logger.warning(f"tree-sitter generate failed: {result.stderr}")
                     # Continue anyway - maybe we can still find source files
 
-            canonical = not list(lang_root.glob("*.c")) and not list(
-                lang_root.glob("*.cc")
+            canonical = (
+                parser_c.is_file()
+                and not list(lang_root.glob("*.c"))
+                and not list(lang_root.glob("*.cc"))
             )
             canonical = canonical and not list(lang_root.glob("*.cpp"))
             canonical = canonical and not list((lang_root / "src").glob("*.cc"))
@@ -177,7 +180,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                     return False
                 try:
                     cmd = _build_recipe.individual_c_argv(
-                        compiler, lang_root, lib_path, standard="c11"
+                        compiler, lang_root, lib_path, base=lang_path, standard="c11"
                     )
                     logger.info("Controlled C build using %s", compiler)
                     result = subprocess.run(

@@ -23,10 +23,10 @@ TOOLS = "chunker/grammar_management/_build_tools.py"
 DIGEST = "tests/test_reproducible_grammar_build.py"
 CONTRACT = "tests/test_remaining_builder_contract.py"
 # name, path, old text, replacement, pytest selector
-MUTATIONS: list[tuple[str, str, str, str, str]] = []
+MUTATIONS: list[tuple[str, str, str, str, str | list[str]]] = []
 
 
-def add(name: str, path: str, old: str, new: str, test: str) -> None:
+def add(name: str, path: str, old: str, new: str, test: str | list[str]) -> None:
     MUTATIONS.append((name, path, old, new, test))
 
 
@@ -126,8 +126,8 @@ if sys.platform.startswith("linux"):
     add(
         "download_bare_cc",
         "chunker/grammar/download.py",
-        "selected, grammar_path, output_file, scanner_priority=True",
-        '"cc", grammar_path, output_file, scanner_priority=True',
+        "                    selected,\n                    grammar_path,",
+        '                    "cc",\n                    grammar_path,',
         CONTRACT + "::test_controlled_failure_never_retries_legacy[download]",
     )
     for name, tool in (
@@ -190,15 +190,15 @@ if sys.platform.startswith("linux"):
         add(
             prefix + "_controlled_cxx_process",
             RECIPE,
-            "    error = source_chain_error(root)\n    if error:\n        raise ValueError(error)",
-            '    __import__("subprocess").run(["cc", "--version"], check=False)\n    error = source_chain_error(root)\n    if error:\n        raise ValueError(error)',
+            "    error = source_chain_error(root, base=base)\n    if error:\n        raise ValueError(error)",
+            '    __import__("subprocess").run(["cc", "--version"], check=False)\n    error = source_chain_error(root, base=base)\n    if error:\n        raise ValueError(error)',
             CONTRACT + "::test_direct_controlled_helper_declines_cxx",
         )
     add(
         "individual_follow_symlink",
         RECIPE,
-        "    root = root.absolute()\n    for path in reversed",
-        "    return None\n    root = root.absolute()\n    for path in reversed",
+        "    root = root.absolute()\n    base = (base or root).absolute()",
+        "    return None\n    root = root.absolute()\n    base = (base or root).absolute()",
         CONTRACT + "::test_individual_mapped_symlink_has_no_process",
     )
     for prefix, path, root in (
@@ -338,19 +338,39 @@ if sys.platform.startswith("linux"):
         '            if result.returncode != 0:\n                subprocess.run(["cc", "-shared"], check=False)\n                return CompilationResult(',
         CONTRACT + "::test_controlled_failure_never_retries_legacy[download]",
     )
+    add(
+        "scope_walk_to_root",
+        RECIPE,
+        "    for path in components:",
+        "    for path in reversed((root, *root.parents)):",
+        CONTRACT + "::test_symlinked_ancestor_builds_equal_bytes",
+    )
+    add(
+        "scope_skip_clone_root",
+        RECIPE,
+        "    base = (base or root).absolute()",
+        "    base = root",
+        CONTRACT + "::test_individual_mapped_symlink_has_no_process",
+    )
+    add(
+        "scope_skip_member_root",
+        RECIPE,
+        "    error = source_chain_error(root)\n    if error:\n        return [], error",
+        '    error = source_chain_error(root / "src")\n    if error:\n        return [], error',
+        CONTRACT + "::test_in_span_link_never_starts_process",
+    )
 elif sys.platform == "darwin":
-    for name in (
+    # N3: one source mutation, with three independent adapter assertions.
+    add(
         "drop_install_name",
-        "download_wrong_install_name",
-        "platform_drop_install_name",
-    ):
-        add(
-            name,
-            RECIPE,
-            'return [f"-Wl,-install_name,@rpath/{basename}"]',
-            "return []",
-            DIGEST + "::test_remaining_public_adapters_two_paths",
-        )
+        RECIPE,
+        'return [f"-Wl,-install_name,@rpath/{basename}"]',
+        "return []",
+        [
+            DIGEST + "::test_remaining_public_adapters_two_paths[" + adapter + "]"
+            for adapter in ("individual", "download", "platform")
+        ],
+    )
     add(
         "flags_from_label",
         RECIPE,
@@ -430,7 +450,14 @@ def main() -> int:
                 if seed is not None:
                     environment["PYTHONHASHSEED"] = seed
                 run = subprocess.run(
-                    [sys.executable, "-m", "pytest", "-q", "-rs", test],
+                    [
+                        sys.executable,
+                        "-m",
+                        "pytest",
+                        "-q",
+                        "-rs",
+                        *([test] if isinstance(test, str) else test),
+                    ],
                     cwd=ROOT,
                     capture_output=True,
                     text=True,
