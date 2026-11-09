@@ -722,8 +722,8 @@ Capture precedes every mutation, so such a directory is safe to delete. If the
 capture raises, for example on an I/O error while copying,
 `create_rollback_point` retires its incomplete directory into
 `.txn/retired/<operation-id>/rollback` under the lock and deletes it before
-the error propagates; only a crash leaves one behind
-(treesitter-chunker#619).
+the error propagates; only a crash, or a cleanup failure (logged as a
+warning), leaves one behind (treesitter-chunker#619).
 
 ### Installation commit
 
@@ -971,7 +971,7 @@ A crash can leave:
 | `<ns>/.txn-staging/<id>/` in `downloads/` or `builds/` | A writer died, was interrupted before its group was confirmed gone, or its descendants could not be confirmed gone | Delete it once no install is running |
 | `<dir>/.txn-retired/**` in `downloads/`, `builds/`, `grammars/` or a priority subdirectory, and `.txn/retired/**` | Garbage, which can include the old generation of a cache entry whose republication was interrupted | Always safe to delete; a prune of `downloads/` or `builds/` claims that namespace's garbage |
 | An absent `downloads/` or `builds/` entry | A republication was interrupted between its two renames | None needed; the next install regenerates it |
-| `.txn/rollback/<id>/` without `rollback.json` | A capture interrupted by a crash, before any mutation (a capture that raises removes its own) | Delete it |
+| `.txn/rollback/<id>/` without `rollback.json` | A capture interrupted by a crash, or one whose cleanup failed and was logged, before any mutation (a capture that raises otherwise removes its own) | Delete it |
 | `.txn/rollback/<id>/rollback.json` | An interrupted or failed commit | Follow the procedure below |
 | `<root>/.validation_cache.json.<id>.tmp`, `grammars/.<language>_install_info.json.<id>.tmp` | Primitive 1 temporary files | Delete them once no participant is running |
 | An IF-0-HOTFIX-1 staged sibling in `grammars/` | The probe or replacement was interrupted | Delete it once no install is running; the name is IF-0-HOTFIX-1's |
