@@ -460,7 +460,10 @@ def test_gcc_is_resolved_once_to_an_absolute_path(
     assert [what for what, _ in runs] == ["GCC build", "Compiler version"]
     assert [argv[0] for _, argv in runs] == [expected, expected]
     assert runs[1][1] == [expected, "--version"]
-    assert which_calls == (["gcc"] if gcc_present else ["gcc", "cc"])
+    assert which_calls == (["gcc"] if gcc_present else ["gcc", "cc"]) + [
+        "make",
+        "tree-sitter",
+    ]
     assert record is not None
     assert record["compiler"] == {
         "family": family,
@@ -673,3 +676,154 @@ def test_symlink_decline_allows_fallback(tmp_path, monkeypatch):
         assert record["compiler"] is None
     finally:
         _transactions.discard_staging(staging)
+
+
+_ADAPTERS = ["cli", "individual", "download", "download-cc", "manager", "combined"]
+if sys.platform in ("linux", "darwin"):
+    _ADAPTERS.append("platform")
+
+
+def _public_adapter(kind, root, monkeypatch):
+    from chunker.build.builder import BuildSystem
+    from chunker.grammar.builder import TreeSitterGrammarBuilder
+    from chunker.grammar.download import GrammarDownloadManager
+    from chunker.grammar_management.cli import ComprehensiveGrammarCLI
+    from chunker.grammar_manager import GrammarManager
+
+    common = root / "g"
+    source = common / "tree-sitter-repro"
+    shutil.copytree(FIXTURE, source)
+    output = root / "o"
+    output.mkdir()
+    if kind in {"manager", "combined", "platform"}:
+        zeta = common / "tree-sitter-zeta"
+        shutil.copytree(FIXTURE, zeta)
+        for path in zeta.rglob("*"):
+            if path.is_file():
+                path.write_text(
+                    path.read_text(encoding="utf-8").replace(
+                        "tree_sitter_repro_", "tree_sitter_zeta_"
+                    ),
+                    encoding="utf-8",
+                )
+    if kind == "cli":
+        tool = ComprehensiveGrammarCLI(root / "cache")
+        tool.build_dir = output
+        monkeypatch.setattr(
+            tool, "_get_grammar_priority_order", lambda: [(common, None, None)]
+        )
+        # The discovery name is intentionally independent of the output name.
+        monkeypatch.setattr(tool, "_handle_error", lambda *a, **kw: {})
+        assert tool.build_grammar("tree-sitter-repro", force=True) == 0
+        path = output / "tree_sitter_tree-sitter-repro.so"
+    elif kind in {"individual", "combined"}:
+        tool = TreeSitterGrammarBuilder()
+        tool.set_source_directory(common)
+        tool.set_build_directory(output)
+        if kind == "individual":
+            assert tool.build_individual("repro"), tool.get_build_log("repro")
+            path = output / f"repro{tool._lib_extension}"
+        else:
+            assert tool.build(["zeta", "repro"]) == {"repro": True, "zeta": True}
+            path = output / f"languages{tool._lib_extension}"
+    elif kind.startswith("download"):
+        if kind == "download-cc":
+            monkeypatch.setenv("CC", _installer_compiler())
+        else:
+            monkeypatch.delenv("CC", raising=False)
+        from chunker.grammar_management import _build_tools
+
+        compiler = (
+            _build_tools.resolve_tool(os.environ["CC"])
+            if "CC" in os.environ
+            else _build_tools.resolve_tool("cc") or _build_tools.resolve_tool("gcc")
+        )
+        assert compiler is not None
+        if sys.platform == "win32":
+            target = subprocess.run(
+                [compiler, "-dumpmachine"], capture_output=True, text=True, check=True
+            ).stdout.strip()
+            print(f"downloader {compiler} -dumpmachine: {target}")
+            assert "w64-mingw32" in target
+        result = GrammarDownloadManager(root / "cache").compile_grammar(source, output)
+        assert result.success, result.error_message
+        path = result.output_path
+    elif kind == "manager":
+        tool = GrammarManager(root)
+        tool._grammars_dir = common
+        tool._lib_path = output / "my-languages.so"
+        assert tool.compile_grammars(["zeta", "repro"]) == {"repro": True, "zeta": True}
+        path = tool._lib_path
+    else:
+        tool = BuildSystem()
+        tool._grammars_dir = common
+        ok, info = tool.compile_grammars(
+            ["zeta", "repro"],
+            "linux" if sys.platform.startswith("linux") else "macos",
+            output,
+        )
+        assert ok, info
+        path = Path(info["libraries"]["combined"])
+    assert path.is_file()
+    return path
+
+
+@pytest.mark.parametrize("adapter", _ADAPTERS)
+def test_remaining_public_adapters_two_paths(tmp_path, monkeypatch, adapter):
+    """Real public builds retain source strings without absolute source/output roots."""
+    compiler = _installer_compiler()
+    print(
+        subprocess.run(
+            [compiler, "--version"], capture_output=True, text=True, check=True
+        ).stdout
+    )
+    paths = [
+        _public_adapter(adapter, tmp_path / relative, monkeypatch) for relative in ROOTS
+    ]
+    blobs = [path.read_bytes() for path in paths]
+    assert (
+        sha256(blobs[0]).digest() == sha256(blobs[1]).digest()
+    ), "public build is path-dependent"
+    prefix = (
+        b"tree-sitter-repro/" if adapter in {"manager", "combined", "platform"} else b""
+    )
+    for path, blob in zip(paths, blobs):
+        assert os.fsencode(tmp_path) not in blob, "absolute source/output root leaked"
+        assert prefix + b"src/scanner.c" in blob
+        assert prefix + b"src/tree_sitter/parser.h" in blob
+        if sys.platform == "darwin":
+            assert f"@rpath/{path.name}".encode() in blob, "missing stable install name"
+        if sys.platform == "win32":
+            assert _pe_time_date_stamp(blob) == 0, "PE TimeDateStamp must be zero"
+
+
+if sys.platform in ("linux", "darwin"):
+
+    def test_wheel_embedded_library_two_paths(tmp_path, monkeypatch):
+        import zipfile
+        from chunker.build.builder import BuildSystem
+
+        _installer_compiler()
+        monkeypatch.setenv("CHUNKER_WHEEL_LANGS", "repro")
+        blobs = []
+        for relative in ROOTS:
+            root = tmp_path / relative
+            common = root / "g"
+            shutil.copytree(FIXTURE, common / "tree-sitter-repro")
+            tool = BuildSystem()
+            tool._grammars_dir = common
+            ok, wheel = tool.build_wheel(
+                "macos" if sys.platform == "darwin" else "linux", "cp314", root / "o"
+            )
+            assert ok
+            with zipfile.ZipFile(wheel) as archive:
+                names = [
+                    n
+                    for n in archive.namelist()
+                    if n.endswith(("my-languages.so", "my-languages.dylib"))
+                ]
+                assert len(names) == 1
+                blobs.append(archive.read(names[0]))
+        assert sha256(blobs[0]).digest() == sha256(blobs[1]).digest()
+        assert b"tree-sitter-repro/src/scanner.c" in blobs[0]
+        assert os.fsencode(tmp_path) not in blobs[0]

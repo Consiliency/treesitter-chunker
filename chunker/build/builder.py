@@ -8,6 +8,8 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
+from chunker.grammar_management import _build_recipe, _build_tools
 import tarfile
 import tempfile
 import zipfile
@@ -188,6 +190,7 @@ _REQUIRED_WHEEL_PAYLOAD = frozenset(
         "chunker/grammar/validator.py",
         "chunker/grammar_management/__init__.py",
         "chunker/grammar_management/_build_recipe.py",
+        "chunker/grammar_management/_build_tools.py",
         "chunker/grammar_management/_transactions.py",
         "chunker/grammar_management/cli.py",
         "chunker/grammar_management/compatibility.py",
@@ -440,31 +443,48 @@ class BuildSystem(BuildSystemContract):
         Returns:
             Tuple of (success, build_info) with paths and metadata
         """
-        # Ensure output directory exists
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Detect compiler
-        platform_info = self.platform_support.detect_platform()
-        compiler = platform_info["compiler"]
-
-        if compiler == "unknown":
-            return False, {"error": "No suitable C compiler found"}
-
-        # Prepare build info
-        build_info = {
+        build_info: dict[str, Any] = {
             "platform": platform,
-            "compiler": compiler,
+            "compiler": None,
             "languages": languages,
             "libraries": {},
             "errors": [],
         }
-
-        # Compile based on platform
+        family = "linux" if sys.platform.startswith("linux") else sys.platform
+        if {"linux": "linux", "macos": "darwin", "windows": "win32"}.get(
+            platform
+        ) != family or family not in {"linux", "darwin", "win32"}:
+            build_info["errors"].append(
+                "Unknown or mismatched platform label/host family"
+            )
+            return False, build_info
+        accepted, _, _, errors = _build_recipe.combined_sources(
+            self._grammars_dir, languages, "root"
+        )
+        build_info["errors"].extend(
+            f"{lang}: {error}" for lang, error in errors.items()
+        )
+        if not accepted:
+            return False, build_info
+        platform_info = self.platform_support.detect_platform()
+        compiler = platform_info["compiler"]
+        if compiler == "unknown":
+            return False, {"error": "No suitable C compiler found"}
+        output_dir.mkdir(parents=True, exist_ok=True)
         if platform == "windows":
-            success = self._compile_windows(languages, output_dir, build_info)
+            build_info["compiler"] = compiler
+            success = self._compile_windows(accepted, output_dir, build_info)
         else:
-            success = self._compile_unix(languages, output_dir, build_info, platform)
-
+            if compiler == "cl":
+                build_info["errors"].append(
+                    "MSVC cl is unsupported on the controlled Unix route"
+                )
+                return False, build_info
+            build_info["compiler"] = _build_tools.c_compiler()
+            if not build_info["compiler"]:
+                build_info["errors"].append("No gcc or cc found")
+                return False, build_info
+            success = self._compile_unix(accepted, output_dir, build_info, platform)
         return success, build_info
 
     def build_wheel(
@@ -522,9 +542,7 @@ class BuildSystem(BuildSystemContract):
             else:
                 preferred = ["python", "javascript", "rust"]
                 available = set(self._get_available_languages())
-                languages = [l for l in preferred if l in available] or list(available)[
-                    :3
-                ]
+                languages = [l for l in preferred if l in available] or sorted(available)[:3]
 
             if os.environ.get("CHUNKER_BUILD_VERBOSE"):
                 print(f"Building wheel grammars for languages: {languages}")
@@ -748,48 +766,17 @@ Requires-Python: {_WHEEL_REQUIRES_PYTHON}
         """Compile grammars on Unix-like systems"""
         compiler = build_info["compiler"]
 
-        # Collect source files
-        all_c_files = []
-        include_dirs = set()
-
-        for lang in languages:
-            grammar_dir = self._grammars_dir / f"tree-sitter-{lang}"
-            if not grammar_dir.exists():
-                build_info["errors"].append(f"Grammar not found: {lang}")
-                continue
-
-            # Include both root-level and src/ C sources (to pick up scanners)
-            src_dir = grammar_dir / "src"
-            root_c = list(grammar_dir.glob("*.c"))
-            if root_c:
-                include_dirs.add(str(grammar_dir))
-                all_c_files.extend(str(f) for f in root_c)
-            if src_dir.exists():
-                include_dirs.add(str(src_dir))
-                c_files = list(src_dir.glob("*.c"))
-                if c_files:
-                    all_c_files.extend(str(f) for f in c_files)
-
-        if not all_c_files:
-            build_info["errors"].append("No C source files found")
+        accepted, sources, includes, errors = _build_recipe.combined_sources(
+            self._grammars_dir, languages, "root"
+        )
+        build_info["errors"].extend(
+            f"{lang}: {error}" for lang, error in errors.items()
+        )
+        if not accepted:
             return False
-
-        # Compile shared library
         lib_name = "my-languages.so" if platform == "linux" else "my-languages.dylib"
-        lib_path = output_dir / lib_name
-
-        cmd = [compiler, "-shared", "-fPIC"]
-
-        # Platform-specific flags
-        if platform == "macos":
-            cmd.extend(["-dynamiclib", "-undefined", "dynamic_lookup"])
-
-        # Add include directories
-        for inc in include_dirs:
-            cmd.extend(["-I", inc])
-
-        # Add output and source files
-        cmd.extend(["-o", str(lib_path)] + all_c_files)
+        lib_path = (output_dir / lib_name).absolute()
+        cmd = _build_recipe.controlled_c_argv(compiler, sources, includes, lib_path)
 
         try:
             timeout_s = None
@@ -801,16 +788,19 @@ Requires-Python: {_WHEEL_REQUIRES_PYTHON}
                 timeout_s = None
             result = subprocess.run(
                 cmd,
+                cwd=self._grammars_dir.absolute(),
                 capture_output=True,
                 text=True,
                 check=False,
                 timeout=timeout_s,
             )
-            if result.returncode == 0:
+            if result.returncode == 0 and lib_path.is_file():
                 build_info["libraries"]["combined"] = str(lib_path)
                 return True
             else:
-                build_info["errors"].append(f"Compilation failed: {result.stderr}")
+                build_info["errors"].append(
+                    f"Link failed for every requested member: {result.stderr}"
+                )
                 return False
         except subprocess.TimeoutExpired as e:
             build_info["errors"].append(f"Compilation timed out after {e.timeout}s")

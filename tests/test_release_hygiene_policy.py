@@ -1224,7 +1224,13 @@ def test_primary_python_runs_ci_full_tier_and_release():
     assert _setup_python_versions(build) == [PRIMARY_PYTHON]
 
     platform = _workflow("test.yml")["jobs"]
-    assert list(platform) == ["test"]
+    assert list(platform) == ["test", "controlled-linux"]
+    controlled = platform["controlled-linux"]
+    assert controlled["runs-on"] == "ubuntu-latest"
+    assert str(controlled["env"]["UV_PYTHON"]) == PRIMARY_PYTHON
+    assert _setup_python_versions(controlled) == [PRIMARY_PYTHON]
+    assert "tests/test_reproducible_grammar_build.py" in str(controlled["steps"])
+    assert "tests/test_remaining_builder_contract.py" in str(controlled["steps"])
     matrix = platform["test"]["strategy"]["matrix"]
     assert set(matrix) == {"include"}
     layout = sorted(

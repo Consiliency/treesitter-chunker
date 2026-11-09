@@ -1168,7 +1168,7 @@ def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -
     sys.platform != "linux", reason="Local shared-library build is Linux-only"
 )
 @pytest.mark.parametrize(
-    "force", [False, True], ids=["decline-rebuild", "forced-rebuild-missing-node"]
+    "force", [False, True], ids=["decline-rebuild", "forced-rebuild-missing-compiler"]
 )
 def test_click_build_preserves_compiled_local_grammar_without_build_tools(
     tmp_path: Path, monkeypatch, force: bool
@@ -1223,7 +1223,7 @@ def test_click_build_preserves_compiled_local_grammar_without_build_tools(
     )
     if force:
         assert result.exit_code == 1, result.output
-        assert "Node.js is required but not found" in result.output
+        assert "No gcc or cc found on PATH" in result.output
         assert "Rebuild anyway?" not in result.output
     else:
         assert result.exit_code == 0, result.output

@@ -4,6 +4,7 @@ import json
 import logging
 import shutil
 import subprocess
+from chunker.grammar_management import _build_tools
 from pathlib import Path
 
 from chunker.exceptions import ChunkerError
@@ -105,6 +106,7 @@ class TreeSitterGrammarManager(GrammarManager):
         Returns:
             True if successful
         """
+        selected_tools = _build_tools.ToolSelection()
         if name not in self._grammars:
             logger.error("Grammar '%s' not found", name)
             return False
@@ -129,7 +131,13 @@ class TreeSitterGrammarManager(GrammarManager):
                     )
                     shutil.rmtree(grammar_path)
                     result = subprocess.run(
-                        ["git", "clone", repository_url, "--", str(grammar_path)],
+                        [
+                            selected_tools.require("git"),
+                            "clone",
+                            repository_url,
+                            "--",
+                            str(grammar_path),
+                        ],
                         check=False,
                         capture_output=True,
                         text=True,
@@ -143,7 +151,14 @@ class TreeSitterGrammarManager(GrammarManager):
                     # Re-pin origin to the validated URL so the update never
                     # trusts a possibly-tampered stored remote (SUPPLY hardening).
                     remote_result = subprocess.run(
-                        ["git", "remote", "set-url", "origin", "--", repository_url],
+                        [
+                            selected_tools.require("git"),
+                            "remote",
+                            "set-url",
+                            "origin",
+                            "--",
+                            repository_url,
+                        ],
                         check=False,
                         cwd=grammar_path,
                         capture_output=True,
@@ -154,7 +169,7 @@ class TreeSitterGrammarManager(GrammarManager):
                             f"Cannot set validated grammar remote: {remote_result.stderr}"
                         )
                     result = subprocess.run(
-                        ["git", "pull"],
+                        [selected_tools.require("git"), "pull"],
                         check=False,
                         cwd=grammar_path,
                         capture_output=True,
@@ -175,7 +190,7 @@ class TreeSitterGrammarManager(GrammarManager):
                             shutil.rmtree(grammar_path)
                             result = subprocess.run(
                                 [
-                                    "git",
+                                    selected_tools.require("git"),
                                     "clone",
                                     repository_url,
                                     "--",
@@ -193,7 +208,13 @@ class TreeSitterGrammarManager(GrammarManager):
                 # Clone new repository
                 logger.info("Cloning grammar '%s'...", name)
                 result = subprocess.run(
-                    ["git", "clone", repository_url, "--", str(grammar_path)],
+                    [
+                        selected_tools.require("git"),
+                        "clone",
+                        repository_url,
+                        "--",
+                        str(grammar_path),
+                    ],
                     check=False,
                     capture_output=True,
                     text=True,
@@ -205,7 +226,12 @@ class TreeSitterGrammarManager(GrammarManager):
             if grammar.commit_hash:
                 logger.info("Checking out commit %s", grammar.commit_hash)
                 result = subprocess.run(
-                    ["git", "checkout", "--detach", grammar.commit_hash],
+                    [
+                        selected_tools.require("git"),
+                        "checkout",
+                        "--detach",
+                        grammar.commit_hash,
+                    ],
                     check=False,
                     cwd=grammar_path,
                     capture_output=True,

@@ -583,14 +583,17 @@ def test_build_without_pin_is_not_admitted_and_with_pin_is_probed(
     """
     cache = tmp_path / "cache"
     source = cache / "grammars" / "user" / LANGUAGE
-    source.mkdir(parents=True)
+    (source / "src").mkdir(parents=True)
+    (source / "src" / "parser.c").write_text(
+        "/* reviewed fixture stub */", encoding="utf-8"
+    )
 
     def build(pins):
         tool = ComprehensiveGrammarCLI(cache, trusted_artifacts=pins)
         target = tool.build_dir / f"tree_sitter_{LANGUAGE}.so"
 
         def run_command(command, cwd=None, timeout=30):
-            if command[0] == "python":
+            if "-shared" in command:
                 target.write_bytes(fixture_bytes)
             return 0, "", ""
 
@@ -854,12 +857,14 @@ def test_validate_fix_never_reports_an_unadmitted_rebuild_valid(
 ):
     cache = tmp_path / "cache"
     library = _installed(cache, fixture_bytes)
-    (cache / "grammars" / "user" / LANGUAGE).mkdir(parents=True)
+    source = cache / "grammars" / "user" / LANGUAGE / "src"
+    source.mkdir(parents=True)
+    (source / "parser.c").write_text("/* fixture */", encoding="utf-8")
     tool = ComprehensiveGrammarCLI(cache)
     target = tool.build_dir / f"tree_sitter_{LANGUAGE}.so"
 
     def run_command(command, cwd=None, timeout=30):
-        if command[0] == "python":
+        if "-shared" in command:
             target.write_bytes(fixture_bytes)
         return 0, "", ""
 
@@ -885,7 +890,9 @@ def test_validate_fix_reports_a_pinned_admitted_rebuild_fixed(
 ):
     """The rebuilt file is the reported grammar; it fails first, then admits."""
     cache = tmp_path / "cache"
-    (cache / "grammars" / "user" / LANGUAGE).mkdir(parents=True)
+    source = cache / "grammars" / "user" / LANGUAGE / "src"
+    source.mkdir(parents=True)
+    (source / "parser.c").write_text("/* fixture */", encoding="utf-8")
     tool = ComprehensiveGrammarCLI(
         cache, trusted_artifacts={LANGUAGE: _pin(fixture_bytes)}
     )
@@ -893,7 +900,7 @@ def test_validate_fix_reports_a_pinned_admitted_rebuild_fixed(
     reported.write_bytes(b"stale bytes that do not match the pin")
 
     def run_command(command, cwd=None, timeout=30):
-        if command[0] == "python":
+        if "-shared" in command:
             reported.write_bytes(fixture_bytes)
         return 0, "", ""
 

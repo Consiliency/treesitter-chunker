@@ -4,6 +4,7 @@ Handles downloading, extracting, and compiling tree-sitter grammars from GitHub.
 """
 
 import json
+import logging
 import os
 import platform
 import shutil
@@ -17,6 +18,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 import tree_sitter
+from chunker.grammar_management import _build_recipe, _build_tools
 
 from chunker.contracts.download_contract import (
     CompilationResult,
@@ -239,6 +241,9 @@ class GrammarDownloadManager(GrammarDownloadContract):
                 error_message="No src directory found in grammar",
                 abi_version=None,
             )
+        source_error = _build_recipe.source_chain_error(grammar_path)
+        if source_error:
+            return CompilationResult(False, None, source_error, None)
         sources = []
         parser_c = src_dir / "parser.c"
         if parser_c.exists():
@@ -272,6 +277,28 @@ class GrammarDownloadManager(GrammarDownloadContract):
             cmd = [cc, "-fPIC", "-shared", "-o", str(output_file), *sources]
         if any(s.endswith((".cc", ".cpp")) for s in sources):
             cmd.extend(["-xc++", "-lstdc++"])
+        canonical = not list(grammar_path.glob("*.c")) and all(
+            p.name in {"parser.c", "scanner.c"} for p in src_dir.glob("*.c")
+        )
+        if canonical and not any(
+            source.endswith((".cc", ".cpp")) for source in sources
+        ):
+            selected = (
+                _build_tools.resolve_tool(os.environ["CC"])
+                if "CC" in os.environ
+                else _build_tools.resolve_tool("cc") or _build_tools.resolve_tool("gcc")
+            )
+            if not selected:
+                return CompilationResult(
+                    False, None, "Selected C compiler not found", None
+                )
+            logging.getLogger(__name__).info("Controlled C build using %s", selected)
+            try:
+                cmd = _build_recipe.individual_c_argv(
+                    selected, grammar_path, output_file, scanner_priority=True
+                )
+            except ValueError as error:
+                return CompilationResult(False, None, str(error), None)
         try:
             result = subprocess.run(
                 cmd,

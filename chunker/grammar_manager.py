@@ -10,6 +10,7 @@ from pathlib import Path
 
 from ._internal.trusted_artifacts import copy_trusted_artifacts
 from .contracts.grammar_manager_contract import GrammarManagerContract
+from chunker.grammar_management import _build_recipe, _build_tools
 from .exceptions import ChunkerError
 from .grammar.source_validation import validate_grammar_source
 
@@ -129,6 +130,8 @@ class GrammarManager(GrammarManagerContract):
             return {}
         results = {}
 
+        git = _build_tools.resolve_tool("git")
+
         def fetch_single(lang: str) -> tuple[str, bool]:
             """Fetch a single grammar repository."""
             repo_url = validate_grammar_source(self._grammar_sources[lang])
@@ -142,7 +145,9 @@ class GrammarManager(GrammarManagerContract):
                 return lang, True
             try:
                 logger.info("[clone] %s from %s", lang, repo_url)
-                cmd = ["git", "clone", "--depth=1", "--", repo_url, str(target_dir)]
+                if git is None:
+                    raise FileNotFoundError("git not found")
+                cmd = [git, "clone", "--depth=1", "--", repo_url, str(target_dir)]
                 result = subprocess.run(cmd, capture_output=True, text=True, check=True)
                 logger.debug("Clone output for %s: %s", lang, result.stdout)
                 return lang, True
@@ -175,7 +180,7 @@ class GrammarManager(GrammarManagerContract):
         """
         available_grammars = {}
         for gram_dir in self._grammars_dir.glob("tree-sitter-*"):
-            if gram_dir.is_dir():
+            if gram_dir.is_dir() or gram_dir.is_symlink():
                 lang_name = gram_dir.name.replace("tree-sitter-", "")
                 available_grammars[lang_name] = gram_dir
         if languages is None:
@@ -190,67 +195,40 @@ class GrammarManager(GrammarManagerContract):
         if not languages_to_compile:
             logger.warning("No languages to compile")
             return {}
-        c_files = []
-        include_dirs = set()
-        results = {}
-        for lang in languages_to_compile:
-            gram_dir = available_grammars[lang]
-            src_dir = gram_dir / "src"
-            if not src_dir.exists():
-                logger.warning("No src directory for %s at %s", lang, src_dir)
-                results[lang] = False
-                continue
-            include_dirs.add(str(src_dir))
-            lang_c_files = list(src_dir.glob("*.c"))
-            if not lang_c_files:
-                logger.warning("No C files found for %s in %s", lang, src_dir)
-                results[lang] = False
-            else:
-                c_files.extend(str(f) for f in lang_c_files)
-                results[lang] = True
-        if not c_files:
-            logger.error("No C source files found to compile")
+        accepted, sources, includes, errors = _build_recipe.combined_sources(
+            self._grammars_dir, languages_to_compile, "src"
+        )
+        results = dict.fromkeys(languages_to_compile, False)
+        for lang, error in errors.items():
+            logger.warning("%s: %s", lang, error)
+        if not accepted:
             return results
-        cmd = ["gcc", "-shared", "-fPIC"]
-        for inc in sorted(include_dirs):
-            cmd.extend(["-I", inc])
-        cmd += ["-o", str(self._lib_path), *c_files]
+        compiler = _build_tools.c_compiler()
+        if not compiler:
+            logger.error("No gcc or cc found")
+            return results
+        cmd = _build_recipe.controlled_c_argv(
+            compiler, sources, includes, self._lib_path
+        )
+        logger.info("Controlled C build using %s", compiler)
         try:
-            logger.info(
-                "Compiling %d C files from %d languages",
-                len(c_files),
-                len(languages_to_compile),
-            )
-            logger.debug(
-                "Compilation command: %s... (%d args total)",
-                " ".join(cmd[:10]),
-                len(cmd),
-            )
-
             completed = subprocess.run(
                 cmd,
+                cwd=self._grammars_dir.absolute(),
                 capture_output=True,
                 text=True,
                 check=False,
             )
-            if completed.returncode != 0:
-                logger.error("Compilation failed: %s", completed.stderr)
-                for lang in languages_to_compile:
-                    results[lang] = False
-                return results
-            logger.info("✅ Successfully compiled to %s", self._lib_path)
-            return results
-        except (
-            subprocess.CalledProcessError,
-            OSError,
-            FileNotFoundError,
-            IndexError,
-            Exception,
-        ) as e:
-            logger.error("Compilation error: %s", e)
-            for lang in languages_to_compile:
-                results[lang] = False
-            return results
+            if completed.returncode == 0 and self._lib_path.is_file():
+                for lang in accepted:
+                    results[lang] = True
+            else:
+                logger.error(
+                    "Link failed for every requested member: %s", completed.stderr
+                )
+        except OSError as error:
+            logger.error("Link failed for every requested member: %s", error)
+        return results
 
     def get_available_languages(self) -> set[str]:
         """Get the languages whose combined-library bytes are admitted (inventory M1).
