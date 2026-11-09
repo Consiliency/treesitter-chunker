@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The controlled installer build tries `cc` when `gcc` is missing, using the
+  same recipe and recording the compiler's banner identity. GCC still wins
+  when both are installed (treesitter-chunker#631).
+
 - `GrammarInstaller._save_installation_info` now hashes the grammar library in
   the same locked section that writes its metadata, so the recorded
   `artifact_sha256` always describes the library on disk when the metadata is

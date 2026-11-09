@@ -1057,7 +1057,7 @@ class GrammarInstaller:
         try:
             # Resolved once, in this process (never in the clone), and used
             # as argv[0] for both the build and its ``--version`` probe.
-            found = shutil.which("gcc")
+            found = shutil.which("gcc") or shutil.which("cc")
             # abspath, not resolve(): keep the name the caller's PATH gave.
             gcc = os.path.abspath(found) if found else None  # noqa: PTH100
 
@@ -1210,7 +1210,7 @@ class GrammarInstaller:
             if cxx is not None:
                 return False, f"C++ scanner ({cxx}): not built by the controlled route"
             if compiler is None:
-                return False, "GCC not found"
+                return False, "Neither gcc nor cc found"
 
             # Find C source files
             src_dir = source_path / "src"
@@ -1243,7 +1243,7 @@ class GrammarInstaller:
             return False, f"GCC build failed: {result.stderr}"
 
         except FileNotFoundError:
-            return False, "GCC not found"
+            return False, "Neither gcc nor cc found"
 
     def _build_with_make(
         self,

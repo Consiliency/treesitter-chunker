@@ -347,14 +347,17 @@ can come from an independent build of the same source with the same recipe.
 
    There is no `-lm` and no `-ffile-prefix-map`.
 2. **The compiler and directory.** Run it with cwd = the source root.
-   `<gcc>` is the `gcc` first on `PATH` (the installer resolves it once, to an
-   absolute path, in its own process; on macOS Xcode's `gcc` is Apple clang).
+   `<gcc>` is the first `gcc` on `PATH`, or the first `cc` if gcc is missing.
+   The installer resolves the selected compiler once to an absolute path in its
+   own process. On macOS Xcode's `gcc` and `cc` are Apple clang. Both names use
+   exactly the same recipe and platform flags; rejected flags fail this route,
+   allowing `make` and then the CLI to run, without changing the recipe.
 3. **The output.** The file must be named `lib<language>.so`, in any
    directory (Windows records the file name in the export directory).
 4. **What must match** for the bytes to be the same:
    - the grammar commit and source bytes (use the same line-ending settings;
      `core.autocrlf=false` on Windows);
-   - the compiler and linker version (the first line of `gcc --version`, also
+   - the compiler and linker version (the first line of the selected compiler's `--version`, also
      recorded in `metadata.build`);
    - the OS and architecture;
    - on macOS, the SDK version and deployment target
@@ -382,7 +385,9 @@ can come from an independent build of the same source with the same recipe.
    that host's own build. `metadata.build.method` shows which route ran.
 6. **`metadata.build`.** Each installation's metadata records
    `{"method": "gcc" | "make" | "tree-sitter-cli", "compiler": {"family", "version", "banner"} | null, "platform"}`.
-   `compiler` is parsed from the `gcc` route's `--version` output (`null` for
+   The method stays `gcc` even when `cc` was selected. The compiler family
+   comes from the banner (gcc or clang), not the executable name.
+   `compiler` is parsed from the selected compiler's `--version` output (`null` for
    the other methods, or when that probe fails, which never fails the
    install); `platform` is `sys.platform` and the machine, such as
    `linux-x86_64`. The record is informational and not part of admission.
