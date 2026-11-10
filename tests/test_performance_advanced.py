@@ -84,48 +84,55 @@ class TestClass:
 
     @staticmethod
     def test_multiprocess_scaling(tmp_path):
-        """Test scaling with multiple processes."""
-        num_files = 50
-        for i in range(num_files):
-            test_file = tmp_path / f"file_{i}.py"
-            test_file.write_text(
-                f"""
-def function_{i}_a():
-    '''Function A in file {i}'''
-    result = 0
-    for x in range(100):
-        result += x
-    return result
+        """Real parsing work speeds up with more worker processes.
 
-def function_{i}_b():
-    '''Function B in file {i}'''
-    data = [i * 2 for i in range(50)]    return data
+        The cache is off so every run does the same parsing; otherwise the
+        first (1-worker) run fills the cache and later runs only look faster
+        (Consiliency/treesitter-chunker#660). One untimed warm-up loads the
+        grammar, then each worker count keeps the best of three runs so that
+        hosted-runner noise cannot decide the result.
+        """
+        num_files, units = 50, 120
+        unit = """
+def function_{i}_{j}(a, b):
+    \"\"\"Function {j} in file {i}.\"\"\"
+    total = 0
+    for x in range(a):
+        if x % 3 == 0:
+            total += x * b
+        else:
+            total -= x
+    return total
 
-class Module_{i}:
+class Module_{i}_{j}:
     def __init__(self):
-        self.value = {i}
+        self.value = {j}
 
-    def process(self):
-        return self.value * 2
-
-    def transform(self):
-        return str(self.value)
-""",
+    def process(self, items):
+        return [item * self.value for item in items if item]
+"""
+        for i in range(num_files):
+            (tmp_path / f"file_{i}.py").write_text(
+                "".join(unit.format(i=i, j=j) for j in range(units))
             )
-        file_paths = list(tmp_path.glob("*.py"))
-        worker_counts = [1, 2, 4, mp.cpu_count()]
-        times = {}
-        for num_workers in worker_counts:
-            start_time = time.time()
+        file_paths = sorted(tmp_path.glob("*.py"))
+
+        def run(num_workers):
+            start = time.perf_counter()
             results = chunk_files_parallel(
                 file_paths,
                 language="python",
                 num_workers=num_workers,
+                use_cache=False,
             )
-            elapsed = time.time() - start_time
-            times[num_workers] = elapsed
+            elapsed = time.perf_counter() - start
             total_chunks = sum(len(chunks) for chunks in results.values())
-            assert total_chunks >= num_files * 3
+            assert total_chunks >= num_files * units * 3
+            return elapsed
+
+        run(1)  # warm-up: imports, grammar load, first pool start
+        worker_counts = sorted({1, 2, 4, mp.cpu_count()})
+        times = {n: min(run(n) for _ in range(3)) for n in worker_counts}
         if mp.cpu_count() >= 4:
             speedup = times[1] / times[4]
             assert speedup > 2.0
@@ -330,16 +337,18 @@ class Class_{i}:
 """,
             )
             test_files.append(test_file)
-        start_time = time.time()
+        start_time = time.perf_counter()
         for test_file in test_files:
             for _ in range(10):
                 chunk_file(test_file, language="python")
-        no_reuse_time = time.time() - start_time
-        start_time = time.time()
+        no_reuse_time = time.perf_counter() - start_time
+        # The same 100 chunking calls through one worker pool. Starting a pool
+        # per round measured process start-up (slow on Windows), not reuse.
+        start_time = time.perf_counter()
         chunker = ParallelChunker(language="python", num_workers=1)
-        for _ in range(10):
-            chunker.chunk_files_parallel(test_files)
-        reuse_time = time.time() - start_time
+        results = chunker.chunk_files_parallel(test_files * 10)
+        reuse_time = time.perf_counter() - start_time
+        assert set(results) == set(test_files)
         assert no_reuse_time < 5.0
         assert reuse_time < 5.0
 
