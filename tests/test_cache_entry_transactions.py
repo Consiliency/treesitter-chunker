@@ -1274,3 +1274,653 @@ def test_prune_stops_on_a_lock_timeout_with_truthful_partial_counts(
     assert "Timed out" in result.errors[0]
     remaining = [p.name for p in (root / "builds").iterdir() if p.name[0] != "."]
     assert len(remaining) == 1
+
+
+# treesitter-chunker#577: policy reservations, not measured runtime guarantees.
+_READER_G = _transactions._GROUP_CONFIRM_DEADLINE
+_READER_J = _transactions._READER_JOIN
+_READER_FAULT = 2 * _READER_G + 2 * _READER_J
+_READER_RUN = 4 * _READER_G + 2 * _READER_J
+_READER_TEARDOWN = (1, 1, 2, 1, 1, 1)
+_READER_STEPS = {
+    "single": (1, 1, 1, "observe", 1, 1, 2, 1, 1, 1),
+    "sticky": (1, 1, 1, "observe", 1, 1, "observe", 2, 1, 1, 1),
+    "capture": (1, 1, "observe", 1, "observe", 2, 1, 1, 1),
+}
+_READER_ABORT = {
+    "single": ((1, 7), (2, 7), (3, 7), (4, 7)),
+    "sticky": ((1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 7), (7, 5)),
+    "capture": ((1, 5), (2, 5), (3, 5), (4, 5), (5, 5)),
+}
+
+
+def _reader_steps(kind, fault=False):
+    return tuple(
+        (
+            (_READER_FAULT if fault else _READER_RUN)
+            if step == "observe"
+            else step * _READER_G
+        )
+        for step in _READER_STEPS[kind]
+    )
+
+
+_READER_N = {kind: sum(_reader_steps(kind)) + _READER_G for kind in _READER_STEPS}
+for _kind, _ceiling in _READER_N.items():
+    _steps = _reader_steps(_kind)
+    assert (
+        max(
+            sum(_steps),
+            *(
+                sum(_steps[:index]) + tail * _READER_G
+                for index, tail in _READER_ABORT[_kind]
+            ),
+        )
+        < _ceiling
+        < SAFETY_TIMEOUT
+    )
+
+
+_READER_NATIVE = r"""
+from multiprocessing.connection import Client, Listener
+from multiprocessing.reduction import send_handle, recv_handle
+from pathlib import Path
+import psutil
+import stat
+
+
+def pipe_identity(handle):
+    if os.name == "nt":
+        import _winapi
+        assert handle and _winapi.GetFileType(handle) == _winapi.FILE_TYPE_PIPE
+        return [_winapi.FILE_TYPE_PIPE]
+    value = os.fstat(handle)
+    assert stat.S_ISFIFO(value.st_mode)
+    return [value.st_dev, value.st_ino]
+
+
+def close_duplicate(handle):
+    if os.name == "nt":
+        import _winapi
+        _winapi.CloseHandle(handle)
+    else:
+        os.close(handle)
+
+
+def command(expected):
+    line = sys.stdin.readline()
+    if not line or json.loads(line) == "abort":
+        raise SystemExit(2)
+    assert json.loads(line) == expected, (line, expected)
+
+
+def identity():
+    return {"pid": os.getpid(), "created": psutil.Process().create_time()}
+"""
+
+_READER_HOLDER = (
+    _READER_NATIVE
+    + r"""
+address, family = json.loads(ARGS[0])
+handle = None
+try:
+    with Listener(address, family=family) as listener:
+        emit("holder-ready", **identity())
+        with listener.accept() as connection:
+            receipt = connection.recv()
+            emit("writer", **receipt)
+            handle = recv_handle(connection)
+            assert pipe_identity(handle) == receipt["pipe"]
+            emit("held", pipe=pipe_identity(handle))
+            connection.send("held")
+            command("revalidate")
+            assert pipe_identity(handle) == receipt["pipe"]
+            emit("still-holding", pipe=pipe_identity(handle))
+            command("release")
+finally:
+    if handle is not None:
+        close_duplicate(handle)
+        handle = None
+emit("closed")
+"""
+)
+
+_READER_WRITER = (
+    r"""
+import json, os, sys
+"""
+    + _READER_NATIVE
+    + r"""
+config = json.loads(sys.argv[1])
+sentinel = Path(config["sentinel"])
+sentinel.write_text("writer-sentinel", encoding="utf-8")
+fd = config["fd"]
+handle = fd
+if os.name == "nt":
+    import msvcrt
+    handle = msvcrt.get_osfhandle(fd)
+with Client(config["address"], family=config["family"]) as connection:
+    connection.send({**identity(), "sentinel": str(sentinel),
+                     "pipe": pipe_identity(handle)})
+    if config["holder"]:
+        send_handle(connection, handle, config["holder"])
+    assert connection.recv() == "held"
+if config["capture"]:
+    for stream, label in ((sys.stdout, "stdout"), (sys.stderr, "stderr")):
+        stream.buffer.write((label + "-λ-" + "x" * 70000).encode("utf-8"))
+        stream.buffer.flush()
+"""
+)
+
+_READER_RUNNER = (
+    _READER_NATIVE
+    + r"""
+root = Path(ARGS[0])
+root.mkdir()
+staging = _transactions.create_staging(root)
+configs = json.loads(ARGS[1])
+writer = ARGS[2]
+G = float(ARGS[3])
+recorded = []
+real_start = threading.Thread.start
+selected = 0
+mode = "none"
+count = 0
+fired = False
+
+
+def start(thread, *args, **kwargs):
+    global count, fired
+    if getattr(thread, "_target", None) is not _transactions._read_stream:
+        return real_start(thread, *args, **kwargs)
+    count += 1
+    inject = not fired and mode != "none" and count == selected
+    if inject and mode == "before":
+        fired = True
+        emit("paused", reader=count, timing=mode)
+        command("fault")
+        raise KeyboardInterrupt
+    recorded.append(thread)  # before invoking real start, even if it raises
+    result = real_start(thread, *args, **kwargs)
+    if inject:
+        fired = True
+        emit("paused", reader=count, timing=mode)
+        command("fault")
+        raise KeyboardInterrupt
+    return result
+
+
+original_emit = emit
+def emit(event, **fields):
+    original_emit(event, emitted_at=time.monotonic(), **fields)
+
+threading.Thread.start = start
+emit("runner-ready", **identity())
+for phase, config in enumerate(configs):
+    command("start" if phase == 0 else "continue")
+    recorded.clear()
+    count = 0
+    fired = False
+    selected, mode = config["selected"], config["mode"]
+    sentinel = staging.path("builds") / "writer-sentinel"
+    config["sentinel"] = str(sentinel)
+    result = None
+    exception = None
+    try:
+        result = _transactions.run_in_staging(
+            staging, [sys.executable, "-c", writer, json.dumps(config)],
+            cwd=staging.path("builds"), timeout=G,
+        )
+    except KeyboardInterrupt:
+        exception = "KeyboardInterrupt"
+    fields = {"phase": phase, "exception": exception}
+    if result is not None:
+        fields.update(timed_out=result.timed_out, group_empty=result.group_empty,
+                      returncode=result.returncode)
+        if config["capture"]:
+            fields["capture_exact"] = all(
+                getattr(result, stream) == stream + "-λ-" + "x" * 70000
+                for stream in ("stdout", "stderr")
+            )
+    if not config["capture"] or phase == len(configs) - 1:
+        if config["capture"]:
+            published = _transactions.publish_entry(staging, "builds", "writer-sentinel")
+            fields["published"] = published.read_text(encoding="utf-8") == "writer-sentinel"
+        disposal = _transactions.discard_staging(staging)
+        fields.update(skipped=list(map(str, disposal.skipped)), errors=list(disposal.errors),
+                      paths=[str(staging.path(ns)) for ns in ("downloads", "builds")],
+                      exists=[staging.path(ns).is_dir() for ns in ("downloads", "builds")],
+                      sentinel=sentinel.exists())
+    emit("snapshot", **fields)
+    command("released")
+    deadline = time.monotonic() + G
+    failures = []
+    for thread in recorded:
+        try:
+            thread.join(max(0, deadline - time.monotonic()))
+        except RuntimeError as error:
+            failures.append(repr(error))
+        else:
+            if thread.is_alive():
+                failures.append("reader still alive")
+    emit("joined", phase=phase, count=len(recorded), failures=failures)
+    assert not failures, failures
+emit("done")
+"""
+)
+
+
+def _expect_event_until(child, event, deadline):
+    import queue
+
+    while True:
+        remaining = deadline - time.monotonic()
+        assert remaining > 0, f"no {event} within local budget; {child.seen}"
+        try:
+            item = child._events.get(timeout=remaining)
+        except queue.Empty:
+            raise AssertionError(
+                f"no {event} within local budget; {child.seen}; {child.stderr}"
+            ) from None
+        assert item is not None, f"EOF before {event}; {child.seen}; {child.stderr}"
+        item["observed_at"] = time.monotonic()
+        child.seen.append(item)
+        if item["event"] == event:
+            return item
+
+
+def _wait_exit_until(process, deadline):
+    return process.wait(timeout=max(0, deadline - time.monotonic()))
+
+
+def _reader_command(child, command):
+    assert child.process.stdin is not None
+    child.seen.append({"command": command, "sent_at": time.monotonic()})
+    child.process.stdin.write(json.dumps(command) + "\n")
+    child.process.stdin.flush()
+
+
+def _reader_address(directories):
+    from multiprocessing.connection import arbitrary_address
+    from uuid import uuid4
+
+    family = "AF_PIPE" if os.name == "nt" else "AF_UNIX"
+    address = arbitrary_address(family)
+    if family == "AF_UNIX" and len(os.fsencode(address)) + 1 > (
+        108 if sys.platform == "linux" else 104
+    ):
+        if sys.platform == "linux":
+            address = "\0txn-reader-" + uuid4().hex
+        else:
+            import tempfile
+
+            directory = Path(tempfile.mkdtemp(prefix="r-"))
+            directories.append(directory)
+            assert stat.S_IMODE(directory.stat().st_mode) == 0o700
+            address = str(directory / "p")
+            assert (
+                len(os.fsencode(address)) + 1 <= 104
+            ), "AF_UNIX address exceeds sun_path"
+    return address, family
+
+
+class _ReaderReceipt:
+    """Controller-hosted no-holder endpoint, listening before R starts."""
+
+    def __init__(self):
+        import queue
+        from multiprocessing.connection import Listener
+
+        self.directories = []
+        self.address, self.family = _reader_address(self.directories)
+        self.listener = Listener(self.address, family=self.family)
+        self._events = queue.Queue()
+        self.seen = []
+        self.stderr = ""
+        self.connection = None
+        self.thread = threading.Thread(target=self._receive, daemon=True)
+        self.thread.start()
+
+    def _receive(self):
+        try:
+            with self.listener.accept() as connection:
+                self.connection = connection
+                self._events.put({"event": "writer", **connection.recv()})
+                connection.send("held")
+        except (OSError, EOFError) as error:
+            self.stderr = repr(error)
+        finally:
+            self._events.put(None)
+
+    def close(self, deadline):
+        # Wake an accept with no writer on an abort, then close the endpoint.
+        from multiprocessing.connection import Client
+
+        if self.thread.is_alive() and self.connection is None:
+            with Client(self.address, family=self.family):
+                pass
+        self.listener.close()
+        if self.connection is not None:
+            self.connection.close()
+        self.thread.join(max(0, deadline - time.monotonic()))
+        assert not self.thread.is_alive(), "controller receipt thread still live"
+        for directory in self.directories:
+            directory.rmdir()
+
+
+def _reader_writer_stopped(receipt):
+    try:
+        process = psutil.Process(receipt["pid"])
+        assert process.create_time() != receipt["created"], "W not reaped by R"
+    except psutil.NoSuchProcess:
+        pass
+    if os.name != "nt":
+        for process in psutil.process_iter():
+            try:
+                assert not (
+                    os.getpgid(process.pid) == receipt["pid"]
+                    and process.status() != psutil.STATUS_ZOMBIE
+                ), "live W group member"
+            except (ProcessLookupError, psutil.NoSuchProcess):
+                pass
+
+
+def _reader_case(
+    tmp_path,
+    request,
+    *,
+    selected=0,
+    mode="none",
+    hold=False,
+    stream="stdout",
+    kind="single",
+    retain=True,
+):
+    """Real H/R/W; all public oracles execute in persistent R.
+
+    The contract explicitly permits an R-only Thread.start wrapper, targeted
+    only at _read_stream. It records every invoked real start in every phase;
+    faults pause before start or after its return, then raise KeyboardInterrupt.
+    This does not exercise Thread.start's native bootstrap window.
+    """
+    ceiling = _READER_N[kind]
+    assert request.node.get_closest_marker("timeout").args == (ceiling,)
+    steps = _reader_steps(kind, mode != "none")
+    children, endpoints, receipts, snapshots = [], [], [], []
+    address_directories = []
+    holder = runner = None
+    holder_closed = False
+    holder_revalidation_sent = False
+    holder_ack_attempted = False
+    holder_reap_attempted = False
+    runner_completion_attempted = False
+    failed = False
+    try:
+        if hold:
+            address, family = _reader_address(address_directories)
+            holder = Child(_READER_HOLDER, [json.dumps([address, family])])
+            children.append(holder)
+            ready = _expect_event_until(
+                holder, "holder-ready", time.monotonic() + steps[0]
+            )
+            holder_pid = ready["pid"]
+        else:
+            holder_pid = 0
+        configs = []
+        for phase in range(2 if kind != "single" else 1):
+            if not hold or phase:
+                endpoint = _ReaderReceipt()
+                endpoints.append(endpoint)
+                address, family = endpoint.address, endpoint.family
+            configs.append(
+                {
+                    "address": address,
+                    "family": family,
+                    "holder": holder_pid if phase == 0 else 0,
+                    "fd": 1 if stream == "stdout" else 2,
+                    "capture": kind == "capture",
+                    "selected": selected,
+                    "mode": mode if phase == 0 else "none",
+                }
+            )
+        runner = Child(
+            _READER_RUNNER,
+            [tmp_path / "cache", json.dumps(configs), _READER_WRITER, str(_READER_G)],
+        )
+        children.append(runner)
+        _expect_event_until(runner, "runner-ready", time.monotonic() + _READER_G)
+        for phase, config in enumerate(configs):
+            observation = time.monotonic() + (
+                _READER_FAULT if mode != "none" else _READER_RUN
+            )
+            _reader_command(runner, "start" if phase == 0 else "continue")
+            readiness = min(observation, time.monotonic() + _READER_G)
+            source = holder if config["holder"] else endpoints[phase - int(hold)]
+            receipt = _expect_event_until(source, "writer", readiness)
+            receipts.append(receipt)
+            assert (
+                Path(receipt["sentinel"]).read_text(encoding="utf-8")
+                == "writer-sentinel"
+            )
+            if config["holder"]:
+                _expect_event_until(holder, "held", readiness)
+            if mode != "none" and phase == 0:
+                _expect_event_until(runner, "paused", readiness)
+                observation = time.monotonic() + _READER_FAULT
+                _reader_command(runner, "fault")
+            try:
+                snapshot = _expect_event_until(runner, "snapshot", observation)
+            except AssertionError as error:
+                raise AssertionError("no pre-release snapshot") from error
+            snapshots.append(snapshot)
+            assert snapshot["exception"] == (
+                "KeyboardInterrupt" if config["mode"] != "none" else None
+            )
+            if config["mode"] == "none":
+                assert snapshot["timed_out"] is False
+                assert snapshot["group_empty"] is (not bool(config["holder"]))
+                assert snapshot["returncode"] == 0
+            if kind == "capture":
+                assert snapshot["capture_exact"]
+                if phase == len(configs) - 1:
+                    assert snapshot["published"]
+            if "skipped" in snapshot:
+                assert snapshot["exists"] == [retain, retain]
+                assert snapshot["sentinel"] is retain
+                assert set(snapshot["skipped"]) == (
+                    set(snapshot["paths"]) if retain else set()
+                )
+                if not retain:
+                    assert not snapshot["errors"]
+                for path, exists in zip(
+                    snapshot["paths"], snapshot["exists"], strict=True
+                ):
+                    assert Path(path).is_dir() is exists
+            if config["holder"]:
+                holder_revalidation_sent = True
+                _reader_command(holder, "revalidate")
+                _expect_event_until(holder, "still-holding", observation)
+                holder_ack_attempted = True
+                _reader_command(holder, "release")
+                _expect_event_until(holder, "closed", time.monotonic() + _READER_G)
+                holder_closed = True
+            barrier = time.monotonic() + (
+                _READER_G if phase + 1 < len(configs) else 2 * _READER_G
+            )
+            runner_completion_attempted = True
+            _reader_command(runner, "released")
+            if config["holder"]:
+                holder_reap_attempted = True
+                assert _wait_exit_until(holder.process, barrier) == 0
+            joined = _expect_event_until(runner, "joined", barrier)
+            assert not joined["failures"]
+            expected_readers = (
+                config["selected"] - int(config["mode"] == "before")
+                if config["mode"] != "none"
+                else 2
+            )
+            assert joined["count"] == expected_readers
+            _reader_writer_stopped(receipt)
+            assert time.monotonic() < barrier
+            runner_completion_attempted = False
+        runner_completion_attempted = True
+        _expect_event_until(runner, "done", barrier)
+        assert _wait_exit_until(runner.process, barrier) == 0
+    except BaseException:
+        failed = True
+        raise
+    finally:
+        # Abort order: H closure/reap, R completion/fallback, W identity,
+        # controller drainage. Never use Child's hidden 240-second waits.
+        teardown_errors = []
+        if holder is not None and holder.process.poll() is None:
+            if not holder_closed and not holder_ack_attempted:
+                deadline = time.monotonic() + _READER_G
+                try:
+                    if not holder_revalidation_sent:
+                        _reader_command(holder, "revalidate")
+                        _expect_event_until(holder, "still-holding", deadline)
+                    _reader_command(holder, "release")
+                    _expect_event_until(holder, "closed", deadline)
+                    holder_closed = True
+                except (OSError, AssertionError) as error:
+                    teardown_errors.append(str(error))
+            deadline = time.monotonic() + _READER_G
+            if not holder_closed or holder_reap_attempted:
+                holder.process.terminate()
+                teardown_errors.append("forced H termination")
+            try:
+                _wait_exit_until(holder.process, time.monotonic() + _READER_G / 2)
+            except subprocess.TimeoutExpired:
+                holder.process.kill()
+                teardown_errors.append("forced H kill")
+                _wait_exit_until(holder.process, deadline)
+        if runner is not None and runner.process.poll() is None:
+            try:
+                # Never re-wait a failed shared barrier or final completion slot.
+                if runner_completion_attempted:
+                    raise subprocess.TimeoutExpired("R completion already attempted", 0)
+                # Baseline may only return after H closure; collect its diagnosis.
+                _reader_command(runner, "released")
+                _wait_exit_until(runner.process, time.monotonic() + 2 * _READER_G)
+            except (OSError, subprocess.TimeoutExpired):
+                runner.process.terminate()
+                try:
+                    _wait_exit_until(runner.process, time.monotonic() + _READER_G / 2)
+                except subprocess.TimeoutExpired:
+                    runner.process.kill()
+                    _wait_exit_until(runner.process, time.monotonic() + _READER_G / 2)
+                teardown_errors.append("forced R termination")
+        writer_deadline = time.monotonic() + _READER_G
+        for receipt in receipts:
+            try:
+                _reader_writer_stopped(receipt)
+            except AssertionError as error:
+                # Only the positively matched process, never a reaped PGID.
+                process = psutil.Process(receipt["pid"])
+                if process.create_time() == receipt["created"]:
+                    process.kill()
+                    process.wait(timeout=max(0, writer_deadline - time.monotonic()))
+                teardown_errors.append(str(error))
+        deadline = time.monotonic() + _READER_G
+        for endpoint in endpoints:
+            endpoint.close(deadline)
+        for child in children:
+            for reader in child._readers:
+                reader.join(max(0, deadline - time.monotonic()))
+                if reader.is_alive():
+                    teardown_errors.append("live controller reader")
+            if not any(reader.is_alive() for reader in child._readers):
+                for pipe in (
+                    child.process.stdin,
+                    child.process.stdout,
+                    child.process.stderr,
+                ):
+                    pipe.close()
+            if child.process.returncode != 0:
+                teardown_errors.append(
+                    f"child exit {child.process.returncode}: {child.stderr}"
+                )
+        for directory in address_directories:
+            directory.rmdir()
+        import queue
+
+        for child in children:
+            while True:
+                try:
+                    item = child._events.get_nowait()
+                except queue.Empty:
+                    break
+                if item is not None:
+                    item["drained_at"] = time.monotonic()
+                    child.seen.append(item)
+        report = {
+            "ceiling": ceiling,
+            "steps": steps,
+            "snapshots": snapshots,
+            "writers": receipts,
+            "failed": failed,
+            "teardown_errors": teardown_errors,
+            "children": [
+                {
+                    "pid": c.process.pid,
+                    "returncode": c.process.returncode,
+                    "events": c.seen,
+                    "stderr": c.stderr,
+                    "readers_alive": [r.is_alive() for r in c._readers],
+                }
+                for c in children
+            ],
+        }
+        print("READER_LIFECYCLE " + json.dumps(report))
+        assert not teardown_errors, teardown_errors
+
+
+@pytest.mark.timeout(_READER_N["single"])
+@pytest.mark.parametrize(
+    ("selected", "stream"),
+    [(1, "stdout"), (2, "stderr")],
+    ids=["reader1-stdout", "reader2-stderr"],
+)
+def test_reader_start_interrupt_retains_staging(tmp_path, request, selected, stream):
+    """Retention is correct with H; never change this to require deletion."""
+    _reader_case(
+        tmp_path, request, selected=selected, mode="after", hold=True, stream=stream
+    )
+
+
+@pytest.mark.timeout(_READER_N["single"])
+def test_reader_start_interrupt_after_both_starts_confirms_and_discards(
+    tmp_path, request
+):
+    """Fresh no-holder key distinguishes real registry ownership from blanket retention."""
+    _reader_case(tmp_path, request, selected=2, mode="after", retain=False)
+
+
+@pytest.mark.timeout(_READER_N["single"])
+def test_reader_start_interrupt_after_first_start_retains_staging(tmp_path, request):
+    """Retention is correct: stderr was never attempted; deletion is not a fix."""
+    _reader_case(tmp_path, request, selected=1, mode="after")
+
+
+@pytest.mark.timeout(_READER_N["single"])
+@pytest.mark.parametrize("selected", [1, 2], ids=["reader1", "reader2"])
+def test_registered_unstarted_reader_preserves_interrupt(tmp_path, request, selected):
+    _reader_case(tmp_path, request, selected=selected, mode="before")
+
+
+@pytest.mark.timeout(_READER_N["capture"])
+def test_staged_run_captures_both_streams_after_reader_registration(tmp_path, request):
+    _reader_case(tmp_path, request, kind="capture", retain=False)
+
+
+@pytest.mark.timeout(_READER_N["single"])
+@pytest.mark.parametrize("stream", ["stdout", "stderr"])
+def test_outside_pipe_holder_prevents_safe_staging_discard(tmp_path, request, stream):
+    """Retention is correct while H holds a pipe, even though W exited."""
+    _reader_case(tmp_path, request, hold=True, stream=stream)
+
+
+@pytest.mark.timeout(_READER_N["sticky"])
+def test_confirmed_later_run_does_not_clear_prior_staging_marks(tmp_path, request):
+    _reader_case(tmp_path, request, hold=True, kind="sticky")
