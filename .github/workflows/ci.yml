@@ -243,9 +243,9 @@ jobs:
     if: ${{ needs.changes.outputs.code == 'true' }}
     needs: changes
     timeout-minutes: ${{ needs.changes.outputs.full == 'true' && 120 || matrix.pr-timeout }}
-    # Keep the job name equal to the branch-protection required check
-    # ("test (3.12, ubuntu-latest, linux)"); the matrix also carries
-    # pack-cache-path, which must not appear in the name.
+    # Branch protection requires only "CI gate", which reads this job's
+    # aggregate result. The explicit name keeps the familiar per-OS check
+    # names, and keeps pack-cache-path (also in the matrix) out of them.
     name: test (${{ matrix.python-version }}, ${{ matrix.platform }}, ${{ matrix.platform-family }})
     permissions:
       contents: read
