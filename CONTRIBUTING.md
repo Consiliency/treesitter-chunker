@@ -253,8 +253,9 @@ release workflow publishes the main package to PyPI.
 
 CI routing (Consiliency/treesitter-chunker#647): the CI workflow owns the
 `test`, three platform checks, `controlled-linux`, `policy`, `docs`, and
-`CI gate` checks. Phase A runs every lane on PRs while validating classification;
-Phase C enables lightweight prose routing after gate-only protection is active.
+`CI gate` checks. Branch protection requires only `CI gate`. PRs that change only
+lightweight prose skip the test, platform and `controlled-linux` lanes; every
+other PR runs them all.
 Stacked code PRs run the full 3-OS matrix, even when only prose differs from
 their parent. Unknown paths, executable documentation and deleted build inputs
 run all lanes. The gate rejects failed, cancelled or unexpectedly skipped jobs.
@@ -266,5 +267,11 @@ Interpreters stay fixed across events. Main publication builds its docs artifact
 once for deployment; it does not run another test suite. Publication may coalesce
 pending revisions while an active deploy finishes. A targeted three-OS cache
 warmer and nightly maintain language-pack caches; eviction and a cold new key
-can still require working upstream downloads. Phase C must wait for a green
-full dispatch on main or explicit owner acceptance of tracked failures.
+can still require working upstream downloads.
+
+The nightly is the only full run after merge. A failed nightly opens or updates a
+`ci-nightly-failure` issue, but it cannot report a run that never started (for
+example after a workflow edit GitHub rejects). GitHub also disables scheduled
+workflows after 60 days without repository activity. After editing workflows,
+or after a quiet period, check that the scheduled CI run still appears under
+Actions, and run a manual full dispatch when in doubt.
