@@ -1,5 +1,7 @@
 """Comprehensive tests for Dockerfile language support."""
 
+import pytest
+
 from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.dockerfile import DockerfilePlugin
@@ -266,3 +268,31 @@ def test_crlf_continuation_preserves_physical_spans(tmp_path):
     assert "python3" in run.content
     assert run.content.encode("utf-8") == source[run.byte_start : run.byte_end]
     assert (run.start_line, run.end_line) == (2, 4)
+
+
+@pytest.mark.parametrize(
+    "lf_source",
+    [
+        "FROM alpine\nENV A=b\nCMD x\n",
+        "FROM alpine\n# note\nRUN apk add \\\n    python3 \\\n    git\n\nENV X=é ✓ 日本\n",
+        "FROM alpine\nRUN echo done",
+    ],
+)
+def test_crlf_chunks_match_lf_chunks(lf_source):
+    """CRLF only adds the CR bytes; it must not move chunk boundaries."""
+    from chunker.core import chunk_text
+
+    crlf_source = lf_source.replace("\n", "\r\n")
+    lf = chunk_text(lf_source, "dockerfile")
+    crlf = chunk_text(crlf_source, "dockerfile")
+    raw = crlf_source.encode("utf-8")
+    assert [(c.node_type, c.start_line, c.end_line) for c in crlf] == [
+        (c.node_type, c.start_line, c.end_line) for c in lf
+    ]
+    for lf_chunk, crlf_chunk in zip(lf, crlf, strict=True):
+        assert not crlf_chunk.content.endswith("\r"), crlf_chunk.content
+        assert crlf_chunk.content.replace("\r\n", "\n") == lf_chunk.content
+        assert (
+            crlf_chunk.content.encode("utf-8")
+            == raw[crlf_chunk.byte_start : crlf_chunk.byte_end]
+        )

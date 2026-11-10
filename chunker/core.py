@@ -1227,13 +1227,16 @@ def chunk_text(
             row += src.count(b"\n", previous, offset)
             column = offset - (src.rfind(b"\n", 0, offset) + 1)
             previous = offset
+            # Replace the LF with CRLF rather than inserting a CR before it:
+            # a pure insertion is absorbed by the node ending at the LF, so
+            # every instruction would gain a trailing CR.
             tree.edit(
                 start_byte=offset,
-                old_end_byte=offset,
-                new_end_byte=offset + 1,
+                old_end_byte=offset + 1,
+                new_end_byte=offset + 2,
                 start_point=(row, column),
-                old_end_point=(row, column),
-                new_end_point=(row, column + 1),
+                old_end_point=(row + 1, 0),
+                new_end_point=(row + 1, 0),
             )
     else:
         tree = parser.parse(src if parse_copy is None else parse_copy)
