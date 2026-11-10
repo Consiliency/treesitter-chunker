@@ -45,6 +45,13 @@ def main():
         Path(f.name).unlink()
 
     @classmethod
+    def test_visualize_ast_png_is_binary(cls, sample_python_file):
+        """PNG output is the image bytes that dot produced."""
+        result = DebugVisualization().visualize_ast(sample_python_file, "python", "png")
+        assert isinstance(result, bytes)
+        assert result.startswith(b"\x89PNG\r\n\x1a\n")
+
+    @classmethod
     def test_visualize_ast_produces_valid_output(cls, sample_python_file):
         """AST visualization should produce valid SVG/PNG output"""
         debug_tools = DebugVisualization()

@@ -117,12 +117,13 @@ def problematic_function():
                     [
                         sys.executable,
                         "-c",
-                        f"""
+                        """
 import sys
-if "file2" in "{file_path}":
+if "file2" in sys.argv[1]:
     sys.exit(-11)  # Simulate segfault
 print("processed")
 """,
+                        file_path,
                     ],
                     check=False,
                     capture_output=True,

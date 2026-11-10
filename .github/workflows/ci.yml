@@ -281,6 +281,29 @@ jobs:
       with:
         persist-credentials: false
 
+    # Pin Graphviz and the installer; dot must be present for the full contract.
+    - name: Install Graphviz for hosted macOS and Windows full suites
+      if: needs.changes.outputs.full == 'true' && runner.os != 'Linux'
+      id: graphviz
+      uses: mamba-org/setup-micromamba@add3a49764cedee8ee24e82dfde87f5bc2914462
+      with:
+        micromamba-version: 2.3.3-0
+        environment-name: graphviz
+        create-args: >-
+          graphviz=12.2.1
+        init-shell: none
+        post-cleanup: all
+
+    - name: Expose Graphviz executable (macOS)
+      if: needs.changes.outputs.full == 'true' && runner.os == 'macOS'
+      run: echo "${{ steps.graphviz.outputs.environment-path }}/bin" >> "$GITHUB_PATH"
+
+    - name: Expose Graphviz executable (Windows)
+      if: needs.changes.outputs.full == 'true' && runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        "${{ steps.graphviz.outputs.environment-path }}\Library\bin" >> $env:GITHUB_PATH
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
       with:

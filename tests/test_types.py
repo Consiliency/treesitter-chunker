@@ -635,7 +635,7 @@ class TestTypeCompatibility:
             parent_context="module",
             content="def test(): pass",
         )
-        assert chunk.file_path == "/test/file.py"
+        assert chunk.file_path == str(path)
 
     @classmethod
     def test_type_flexibility(cls):

@@ -34,7 +34,7 @@ class TestLanguageRegistry:
     @staticmethod
     def test_init_with_missing_library():
         """Test initialization tolerates a missing combined library."""
-        fake_path = Path("/nonexistent/library.so")
+        fake_path = Path("/nonexistent/library.so").resolve()
         registry = LanguageRegistry(fake_path)
         assert registry._library_path == fake_path
         assert registry._library is None
