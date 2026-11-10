@@ -1321,7 +1321,49 @@ for _kind, _ceiling in _READER_N.items():
             < SAFETY_TIMEOUT
         )
 
-_READER_NATIVE = r"""
+# Shared verbatim by the controller and child scripts; no product introspection.
+_READER_WINDOWS_API = r"""
+def reader_windows_api():
+    import ctypes
+    from ctypes import wintypes
+    api = ctypes.WinDLL("kernel32", use_last_error=True)
+    declarations = {
+        "GetCurrentProcess": ([], wintypes.HANDLE),
+        "OpenProcess": ([wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.HANDLE),
+        "GetProcessTimes": ([wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4,
+                            wintypes.BOOL),
+        "WaitForSingleObject": ([wintypes.HANDLE, wintypes.DWORD], wintypes.DWORD),
+        "GetExitCodeProcess": ([wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)],
+                               wintypes.BOOL),
+        "CloseHandle": ([wintypes.HANDLE], wintypes.BOOL),
+    }
+    for name, (arguments, result) in declarations.items():
+        function = getattr(api, name)
+        function.argtypes, function.restype = arguments, result
+    return api
+
+
+def reader_windows_creation(api, handle):
+    import ctypes
+    from ctypes import wintypes
+    values = [wintypes.FILETIME() for _ in range(4)]
+    if not api.GetProcessTimes(handle, *(ctypes.byref(value) for value in values)):
+        error = ctypes.get_last_error()
+        raise ctypes.WinError(error)
+    value = (values[0].dwHighDateTime << 32) | values[0].dwLowDateTime
+    if not 0 < value < 2**64:
+        raise OSError("invalid native process creation identity")
+    return value
+"""
+
+_READER_WINDOWS_FUNCTIONS = {}
+if os.name == "nt":
+    # Execute only this fixed test-owned source, also used by isolated children.
+    exec(_READER_WINDOWS_API, _READER_WINDOWS_FUNCTIONS)  # noqa: S102
+
+_READER_NATIVE = (
+    _READER_WINDOWS_API
+    + r"""
 from multiprocessing.connection import Client, Listener
 from multiprocessing.reduction import send_handle, recv_handle
 from pathlib import Path
@@ -1355,8 +1397,14 @@ def command(expected):
 
 
 def identity():
-    return {"pid": os.getpid(), "created": psutil.Process().create_time()}
+    result = {"pid": os.getpid(), "created": psutil.Process().create_time()}
+    if os.name == "nt":
+        api = reader_windows_api()
+        # GetCurrentProcess is a pseudo handle: never close it.
+        result["created_filetime"] = reader_windows_creation(api, api.GetCurrentProcess())
+    return result
 """
+)
 
 _READER_HOLDER = (
     _READER_NATIVE
@@ -1671,7 +1719,121 @@ class _ReaderReceipt:
         return errors
 
 
-def _reader_writer_stopped(receipt):
+def _reader_windows_stopped(receipt, observation):
+    """Sample cessation once on an identity-pinned Windows process handle.
+
+    Object visibility is not liveness. A zero-time sample is not a second
+    blocking wait. Unknown identity/state and incomplete diagnostics fail.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    pid, expected = receipt.get("pid"), receipt.get("created_filetime")
+    if type(pid) is not int or not 0 < pid < 2**32:
+        raise OSError("invalid owned writer PID")
+    if type(expected) is not int or not 0 < expected < 2**64:
+        raise OSError("missing or invalid native writer creation identity")
+    api = _READER_WINDOWS_FUNCTIONS["reader_windows_api"]()
+    creation = _READER_WINDOWS_FUNCTIONS["reader_windows_creation"]
+    # SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION; non-inheritable.
+    handle = api.OpenProcess(0x00100000 | 0x1000, False, pid)
+    if not handle:
+        error = ctypes.get_last_error()
+        observation["open"] = {"error": error}
+        if error == 87:
+            # A positive valid PID may have vanished. No handle means no
+            # kernel-state proof: only independent absence is accepted here.
+            try:
+                process = psutil.Process(pid)
+                observation["absence"] = {
+                    "result": "identity still observable",
+                    "created": process.create_time(),
+                }
+            except psutil.NoSuchProcess:
+                observation.update(
+                    absence={"result": "NoSuchProcess"}, decision="absent"
+                )
+                return
+        raise ctypes.WinError(error)
+    observation["open"] = {"success": True, "at": time.monotonic()}
+    try:
+        observed = creation(api, handle)
+        observation["observed_filetime"] = observed
+        observation["identity"] = "matched" if observed == expected else "different"
+        if observed == expected:
+            state = api.WaitForSingleObject(handle, 0)
+            state_error = ctypes.get_last_error() if state == 0xFFFFFFFF else None
+            observation["state"] = {
+                "result": state,
+                "error": state_error,
+                "at": time.monotonic(),
+            }
+        else:
+            state = None
+        code = wintypes.DWORD()
+        if not api.GetExitCodeProcess(handle, ctypes.byref(code)):
+            error = ctypes.get_last_error()
+            observation["exit_code"] = {"error": error}
+            raise ctypes.WinError(error)
+        observation["exit_code"] = {"value": code.value}
+        if observed != expected:
+            observation["decision"] = "different identity"
+            return
+        if state == 0:
+            # 259 can be a genuine terminal code; state alone establishes exit.
+            observation["decision"] = "signaled"
+            return
+        if state == 258:
+            observation["decision"] = "not stopped"
+            raise AssertionError("identity-matched W still live")
+        if state == 0xFFFFFFFF:
+            raise ctypes.WinError(state_error)
+        raise OSError(f"unexpected native process state {state}")
+    finally:
+        primary = sys.exc_info()[1]
+        if api.CloseHandle(handle):
+            observation["close"] = {"success": True}
+        else:
+            error = ctypes.get_last_error()
+            observation["close"] = {"error": error}
+            observation["decision"] = "observation failed"
+            close_error = ctypes.WinError(error)
+            if primary is not None:
+                primary.add_note(f"process handle close failed: {close_error!r}")
+            else:
+                raise close_error
+
+
+def _reader_writer_stopped(receipt, observations=None, *, phase=None, reason="body"):
+    if os.name == "nt":
+        observation = {
+            "pid": receipt.get("pid"),
+            "receipt_filetime": receipt.get("created_filetime"),
+            "phase": phase,
+            "reason": reason,
+            "started_at": time.monotonic(),
+            "open": "not attempted",
+            "observed_filetime": "not applicable",
+            "identity": "unknown",
+            "absence": "not applicable",
+            "state": "not applicable",
+            "exit_code": "not applicable",
+            "close": "not applicable",
+            "decision": "observation failed",
+        }
+        if observations is not None:
+            observations.append(observation)
+        try:
+            _reader_windows_stopped(receipt, observation)
+        except (OSError, psutil.Error, AssertionError) as error:
+            observation["error"] = repr(error)
+            observation["native_error"] = getattr(error, "winerror", None)
+            if observation["decision"] != "not stopped":
+                observation["decision"] = "observation failed"
+            raise
+        finally:
+            observation["finished_at"] = time.monotonic()
+        return
     try:
         process = psutil.Process(receipt["pid"])
         assert process.create_time() != receipt["created"], "W not reaped by R"
@@ -1714,6 +1876,7 @@ def _reader_case(
     assert request.node.get_closest_marker("timeout").args == (ceiling,)
     steps = _reader_steps(kind, mode != "none")
     children, endpoints, receipts, snapshots = [], [], [], []
+    writer_observations = []
     address_directories = []
     holder = runner = None
     holder_closed = False
@@ -1828,7 +1991,7 @@ def _reader_case(
                 else 2
             )
             assert joined["count"] == expected_readers
-            _reader_writer_stopped(receipt)
+            _reader_writer_stopped(receipt, writer_observations, phase=phase)
             assert time.monotonic() < barrier
             runner_completion_attempted = False
         runner_completion_attempted = True
@@ -1899,9 +2062,14 @@ def _reader_case(
                 except OSError as error:
                     teardown_errors.append(f"R terminate/reap: {error!r}")
         writer_deadline = time.monotonic() + _READER_G
-        for receipt in receipts:
+        for phase, receipt in enumerate(receipts):
             try:
-                _reader_writer_stopped(receipt)
+                _reader_writer_stopped(
+                    receipt,
+                    writer_observations,
+                    phase=phase,
+                    reason="abort cleanup" if failed else "final cleanup",
+                )
             except AssertionError as error:
                 teardown_errors.append(str(error))
                 # Only the positively matched leader, never a reaped PGID.
@@ -1958,11 +2126,21 @@ def _reader_case(
             "steps": steps,
             "snapshots": snapshots,
             "writers": receipts,
+            "writer_observations": writer_observations,
             "failed": failed,
             "teardown_errors": teardown_errors,
             "children": [
                 {
                     "pid": c.process.pid,
+                    "launcher_pid": c.process.pid,
+                    "interpreter_identity": next(
+                        (
+                            event
+                            for event in c.seen
+                            if event["event"] in ("runner-ready", "holder-ready")
+                        ),
+                        None,
+                    ),
                     "returncode": c.process.returncode,
                     "events": c.seen,
                     "stderr": c.stderr,
