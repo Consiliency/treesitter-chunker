@@ -13,6 +13,7 @@ import sys
 import threading
 import time
 
+import psutil
 import pytest
 
 from chunker import chunk_file
@@ -133,7 +134,11 @@ class Module_{i}_{j}:
         run(1)  # warm-up: imports, grammar load, first pool start
         worker_counts = sorted({1, 2, 4, mp.cpu_count()})
         times = {n: min(run(n) for _ in range(3)) for n in worker_counts}
-        if mp.cpu_count() >= 4:
+        # Four workers can only double throughput on four real cores; hosted
+        # Windows runners expose 4 vCPUs on 2 physical cores (owner decision on
+        # Consiliency/treesitter-chunker#660).
+        physical_cores = psutil.cpu_count(logical=False) or 0
+        if physical_cores >= 4:
             speedup = times[1] / times[4]
             assert speedup > 2.0
         assert times[2] < times[1] * 0.7
