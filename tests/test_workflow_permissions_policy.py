@@ -110,6 +110,71 @@ def test_workflow_and_jobs_declare_least_privilege(path: Path) -> None:
                 assert action in _actions(job), f"{where}: {action} not used"
 
 
+def _assert_write_checkouts_do_not_persist(workflow: dict, where: str) -> None:
+    for name, job in workflow["jobs"].items():
+        # A job mapping replaces the workflow mapping, including an empty one.
+        permissions = job.get("permissions", workflow.get("permissions", {}))
+        holds_write = permissions == "write-all" or (
+            isinstance(permissions, dict) and "write" in permissions.values()
+        )
+        if not holds_write:
+            continue
+        for step in job.get("steps", []):
+            if step.get("uses", "").split("@", 1)[0] == "actions/checkout":
+                assert (step.get("with") or {}).get(
+                    "persist-credentials"
+                ) is False, (
+                    f"{where}:{name}: checkout must set persist-credentials: false"
+                )
+
+
+@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda path: path.name)
+def test_write_jobs_do_not_persist_checkout_credentials(path: Path) -> None:
+    _assert_write_checkouts_do_not_persist(_load(path), path.name)
+
+
+@pytest.mark.parametrize("inherited", [False, True])
+@pytest.mark.parametrize(
+    "permissions", [{"contents": "write"}, {"issues": "write"}, "write-all"]
+)
+@pytest.mark.parametrize(
+    "setting", [{}, {"persist-credentials": True}, {"persist-credentials": "false"}]
+)
+def test_write_checkout_policy_rejects_persisted_credentials(
+    inherited: bool, permissions: object, setting: dict
+) -> None:
+    workflow = {
+        "permissions": permissions if inherited else {},
+        "jobs": {
+            "publish": {
+                "steps": [{"uses": "actions/checkout@pin", "with": setting}],
+            }
+        },
+    }
+    if not inherited:
+        workflow["jobs"]["publish"]["permissions"] = permissions
+    with pytest.raises(AssertionError, match="checkout must set persist-credentials"):
+        _assert_write_checkouts_do_not_persist(workflow, "fixture.yml")
+
+
+@pytest.mark.parametrize("job_permissions", [None, {}, {"contents": "read"}])
+def test_write_checkout_policy_accepts_safe_checkout(
+    job_permissions: dict | None,
+) -> None:
+    job = {
+        "steps": [
+            {"uses": "actions/checkout@pin", "with": {"persist-credentials": False}}
+        ]
+    }
+    if job_permissions is not None:
+        job["permissions"] = job_permissions
+        # Explicit read/empty job permissions override workflow write scopes.
+        job["steps"][0].pop("with")
+    _assert_write_checkouts_do_not_persist(
+        {"permissions": {"contents": "write"}, "jobs": {"publish": job}}, "fixture.yml"
+    )
+
+
 def test_every_write_grant_is_still_needed() -> None:
     granted = {
         (path.name, name, scope)
