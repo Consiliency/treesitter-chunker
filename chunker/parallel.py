@@ -286,3 +286,4 @@ def chunk_directory_parallel(
         language, num_workers, use_cache, use_streaming, cache_dir=cache_dir
     )
     return chunker.chunk_directory_parallel(Path(directory), extensions)
+# Scratch line for the Consiliency/treesitter-chunker#647 code-route proof.
