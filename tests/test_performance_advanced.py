@@ -342,13 +342,15 @@ class Class_{i}:
             for _ in range(10):
                 chunk_file(test_file, language="python")
         no_reuse_time = time.perf_counter() - start_time
-        # The same 100 chunking calls through one worker pool. Starting a pool
-        # per round measured process start-up (slow on Windows), not reuse.
+        # The same 100 chunking calls through one worker pool, with the cache
+        # off so each call parses. Starting a pool per round measured process
+        # start-up (slow on Windows), not reuse.
         start_time = time.perf_counter()
-        chunker = ParallelChunker(language="python", num_workers=1)
+        chunker = ParallelChunker(language="python", num_workers=1, use_cache=False)
         results = chunker.chunk_files_parallel(test_files * 10)
         reuse_time = time.perf_counter() - start_time
         assert set(results) == set(test_files)
+        assert all(results[path] for path in test_files)
         assert no_reuse_time < 5.0
         assert reuse_time < 5.0
 
