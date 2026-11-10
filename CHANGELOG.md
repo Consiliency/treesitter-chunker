@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retaining the required gate, nightly full validation and main docs publication;
   remove duplicate main-push validation (Consiliency/treesitter-chunker#647).
 
+- Preserve Dockerfile CRLF continuation chunks and physical byte spans, collect
+  fallback process metrics on Windows, and repair full-suite platform fixtures
+  and Graphviz provisioning (Consiliency/treesitter-chunker#647). CRLF
+  Dockerfile chunks now match their LF chunks apart from the CR bytes. Without
+  psutil, macOS `process_memory_peak` is now reported in bytes (it was 1024
+  times too large), and the POSIX CPU fallback reads `os.times()`.
+
 - Consolidate PR validation under a fail-closed `CI gate`, preserve legacy
   checks during migration, bound smoke workers, and add three-OS full nightly
   routing and cache warming (Consiliency/treesitter-chunker#647). Main docs

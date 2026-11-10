@@ -23,7 +23,7 @@ CANDIDATES = (
 def _imports(path: Path) -> list[ast.ImportFrom]:
     return [
         node
-        for node in ast.walk(ast.parse(path.read_text()))
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8")))
         if isinstance(node, ast.ImportFrom)
     ]
 
@@ -43,7 +43,7 @@ def test_false_reachability_edges_are_absent() -> None:
 
 
 def test_audit_matches_deleted_packages_and_retained_error_handling() -> None:
-    audit = (ROOT / "plans/hygiene-reachability-audit.txt").read_text()
+    audit = (ROOT / "plans/hygiene-reachability-audit.txt").read_text(encoding="utf-8")
     for candidate in CANDIDATES:
         assert f"{candidate}: deleted" in audit
         tracked = subprocess.run(

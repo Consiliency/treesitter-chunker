@@ -227,3 +227,9 @@ min_chunk_size = 1
 max_chunk_size = 100
 chunk_types = ["function_definition", "class_definition"]
 ```
+
+## Dockerfile line endings
+
+`chunk_file(path, "dockerfile")` and `chunk_text(text, "dockerfile")` support
+backslash continuations with LF or CRLF line endings. Returned content and
+byte spans refer to the original source, including its physical CRLF bytes.

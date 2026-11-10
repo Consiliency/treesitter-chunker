@@ -3,7 +3,6 @@ Debug visualization implementation
 """
 
 import json
-import tempfile
 import time
 import tracemalloc
 from pathlib import Path
@@ -71,20 +70,12 @@ class DebugVisualization(DebugVisualizationContract):
             if output_format == "dot":
                 return graph_source
             try:
+                # Pipe through dot instead of rendering to a temporary file:
+                # Windows cannot let dot write a file Python still holds open.
                 dot = graphviz.Source(graph_source)
-                dot.format = output_format
-                with tempfile.NamedTemporaryFile(
-                    delete=False,
-                    suffix=f".{output_format}",
-                ) as tmp:
-                    dot.render(tmp.name.replace(f".{output_format}", ""), cleanup=True)
-                    result_path = tmp.name
-                with Path(result_path).open(
-                    "rb" if output_format == "png" else "r",
-                ) as f:
-                    result = f.read()
-                Path(result_path).unlink()
-                return result
+                if output_format == "png":
+                    return dot.pipe(format="png")
+                return dot.pipe(format=output_format, encoding="utf-8")
             except ImportError:
                 return graph_source
         raise ValueError(f"Unsupported format: {output_format}")

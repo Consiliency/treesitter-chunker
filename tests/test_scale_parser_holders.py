@@ -261,7 +261,13 @@ def test_parallel_timeout_stops_hung_worker(monkeypatch):
     """
     import chunker.parallel as par
 
-    monkeypatch.setattr(par, "ProcessPoolExecutor", ThreadPoolExecutor)
+    class _ThreadPool(ThreadPoolExecutor):
+        # chunk_files_parallel passes mp_context (treesitter-chunker#624), which
+        # a thread pool does not take.
+        def __init__(self, max_workers=None, mp_context=None):
+            super().__init__(max_workers=max_workers)
+
+    monkeypatch.setattr(par, "ProcessPoolExecutor", _ThreadPool)
 
     pc = par.ParallelChunker(
         "python",

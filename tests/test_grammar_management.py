@@ -322,6 +322,19 @@ class TestSmartGrammarManager:
 class TestUserGrammarTools:
     """Test UserGrammarTools class."""
 
+    @pytest.fixture(autouse=True)
+    def _tools_on_path(self, monkeypatch):
+        """Resolve git, npm and tree-sitter as bare names.
+
+        UserGrammarTools resolves every executable in the parent before it runs
+        (treesitter-chunker#630). These tests mock ``subprocess.run`` and match
+        commands by tool name, so they must not depend on which tools the host
+        has on PATH.
+        """
+        from chunker.grammar_management import _build_tools
+
+        monkeypatch.setattr(_build_tools, "resolve_tool", lambda name: name)
+
     @pytest.fixture
     def temp_dirs(self):
         """Create temporary directories for testing."""

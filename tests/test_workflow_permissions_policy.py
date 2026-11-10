@@ -103,9 +103,11 @@ def test_workflow_and_jobs_declare_least_privilege(path: Path) -> None:
                 continue
             action = WRITE_GRANTS.get((path.name, name, scope))
             assert action, f"{where}: unlisted {scope}: write"
-            assert action == "gh" or action in _actions(
-                job
-            ), f"{where}: {action} not used"
+            if action == "gh":
+                runs = " ".join(str(s.get("run", "")) for s in job.get("steps", []))
+                assert "gh " in runs, f"{where}: gh not used"
+            else:
+                assert action in _actions(job), f"{where}: {action} not used"
 
 
 def test_every_write_grant_is_still_needed() -> None:

@@ -220,13 +220,55 @@ def test_real_pr_graph_and_force_push(tmp_path, monkeypatch):
     control = commit("docs/index.md", "control")
     event["pull_request"]["head"]["sha"] = control
     event["before"] = head  # never use old head / last push
-    assert changes.detect("pull_request", event)["code"] == "false"
+    routed = changes.detect("pull_request", event)
+    assert (routed["code"], routed["docs"]) == ("false", "true")
     event["repository"]["default_branch"] = "unreachable"
     with pytest.raises(subprocess.CalledProcessError):
         changes.detect("pull_request", event)
     event["pull_request"]["head"]["sha"] = "bad"
     with pytest.raises(ValueError):
         changes.detect("pull_request", event)
+
+
+def test_non_default_base_diff_joins_the_union(tmp_path, monkeypatch):
+    """A1 step 2: code that reaches the head only through newer main counts.
+
+    The head merged a main that gained code after its non-default base
+    branched. Against the main tip the PR is docs-only; against its own base
+    it carries that code, so the union must route to code.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init", "-b", "main")
+    git(repo, "config", "user.email", "fixture@example.test")
+    git(repo, "config", "user.name", "fixture")
+
+    def commit(path, text):
+        target = repo / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+        git(repo, "add", ".")
+        git(repo, "commit", "-m", "fixture")
+        return git(repo, "rev-parse", "HEAD")
+
+    commit("README.md", "base")
+    git(repo, "switch", "-c", "older")
+    older = commit("docs/older.md", "older docs")
+    git(repo, "switch", "main")
+    commit("chunker/x.py", "code on main")
+    git(repo, "switch", "-c", "child", "older")
+    git(repo, "merge", "--no-edit", "main")
+    head = commit("docs/index.md", "docs")
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(changes, "repo_url", lambda _repo: str(repo))
+    event = {
+        "repository": {"default_branch": "main"},
+        "pull_request": {
+            "base": {"sha": older, "ref": "older", "repo": {}},
+            "head": {"sha": head, "repo": {}},
+        },
+    }
+    assert changes.detect("pull_request", event)["code"] == "true"
 
 
 @pytest.mark.parametrize(

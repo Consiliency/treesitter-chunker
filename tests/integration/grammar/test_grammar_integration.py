@@ -2,6 +2,7 @@
 
 import shutil
 import socket
+import stat
 import tempfile
 from pathlib import Path
 
@@ -33,7 +34,12 @@ class TestGrammarIntegration:
     def teardown_method(self):
         """Clean up test environment."""
         if self.temp_dir.exists():
-            shutil.rmtree(self.temp_dir)
+
+            def remove_readonly(function, path, _exc):
+                Path(path).chmod(stat.S_IWRITE | stat.S_IREAD)
+                function(path)
+
+            shutil.rmtree(self.temp_dir, onexc=remove_readonly)
 
     @pytest.mark.integration
     @pytest.mark.slow

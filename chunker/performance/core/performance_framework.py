@@ -3,6 +3,8 @@
 import functools
 import gc
 import logging
+import os
+import sys
 import threading
 import time
 import tracemalloc
@@ -10,6 +12,51 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+
+
+if sys.platform == "win32":
+
+    def _windows_peak_working_set() -> int:
+        """Read the process peak working set in bytes without psutil."""
+        import ctypes
+        from ctypes import wintypes
+
+        class ProcessMemoryCounters(ctypes.Structure):
+            _fields_ = [
+                ("cb", wintypes.DWORD),
+                ("PageFaultCount", wintypes.DWORD),
+                ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t),
+                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                ("PagefileUsage", ctypes.c_size_t),
+                ("PeakPagefileUsage", ctypes.c_size_t),
+            ]
+
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        psapi = ctypes.WinDLL("psapi", use_last_error=True)
+        kernel.GetCurrentProcess.restype = wintypes.HANDLE
+        psapi.GetProcessMemoryInfo.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(ProcessMemoryCounters),
+            wintypes.DWORD,
+        ]
+        psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+        counters = ProcessMemoryCounters()
+        counters.cb = ctypes.sizeof(counters)
+        if not psapi.GetProcessMemoryInfo(
+            kernel.GetCurrentProcess(), ctypes.byref(counters), counters.cb
+        ):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return int(counters.PeakWorkingSetSize)
+
+else:
+
+    def _windows_peak_working_set() -> int:
+        raise OSError("Peak working-set API is available only on Windows")
+
 
 # Conditional imports
 try:
@@ -656,27 +703,21 @@ class MetricsCollector:
                 except (AttributeError, OSError):
                     pass
 
-            # Fallback: basic CPU monitoring using resource module
-            elif HAS_RESOURCE:
-                try:
-                    # Get process CPU time
-                    cpu_time = resource.getrusage(resource.RUSAGE_SELF)
-                    metrics["process_cpu_time"] = cpu_time.ru_utime + cpu_time.ru_stime
-
-                    # Estimate CPU usage (basic approximation)
-                    if hasattr(self, "_last_cpu_time"):
-                        time_delta = time.time() - self._last_cpu_check
-                        cpu_delta = metrics["process_cpu_time"] - self._last_cpu_time
-                        if time_delta > 0:
-                            metrics["cpu_percent_estimate"] = (
-                                cpu_delta / time_delta
-                            ) * 100
-
-                    self._last_cpu_time = metrics["process_cpu_time"]
-                    self._last_cpu_check = time.time()
-
-                except Exception:
-                    metrics["cpu_percent_estimate"] = 0.0
+            else:
+                # os.times exposes process user/system CPU time on every OS.
+                cpu_time = os.times()
+                metrics["process_cpu_time"] = cpu_time.user + cpu_time.system
+                now = time.monotonic()
+                if hasattr(self, "_last_cpu_time"):
+                    elapsed = now - self._last_cpu_check
+                    if elapsed > 0:
+                        metrics["cpu_percent_estimate"] = (
+                            (metrics["process_cpu_time"] - self._last_cpu_time)
+                            / elapsed
+                            * 100
+                        )
+                self._last_cpu_time = metrics["process_cpu_time"]
+                self._last_cpu_check = now
 
         except Exception as e:
             self.logger.error(f"Error collecting CPU metrics: {e}")
@@ -716,8 +757,8 @@ class MetricsCollector:
             elif HAS_RESOURCE:
                 try:
                     mem_usage = resource.getrusage(resource.RUSAGE_SELF)
-                    metrics["process_memory_peak"] = (
-                        mem_usage.ru_maxrss * 1024
+                    metrics["process_memory_peak"] = mem_usage.ru_maxrss * (
+                        1 if sys.platform == "darwin" else 1024
                     )  # Convert to bytes
 
                     # Use tracemalloc if available
@@ -728,6 +769,8 @@ class MetricsCollector:
 
                 except Exception:
                     pass
+            elif sys.platform == "win32":
+                metrics["process_memory_peak"] = _windows_peak_working_set()
 
         except Exception as e:
             self.logger.error(f"Error collecting memory metrics: {e}")

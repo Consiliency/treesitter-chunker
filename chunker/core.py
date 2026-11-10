@@ -1216,7 +1216,30 @@ def chunk_text(
     src = text.encode()
     # Parse a CR->LF copy for CR-only Python; walk and slice the raw bytes.
     parse_copy = _lone_cr_parse_copy(src, language)
-    tree = parser.parse(src if parse_copy is None else parse_copy)
+    if language == "dockerfile" and b"\r\n" in src:
+        # The Dockerfile grammar treats CR as part of a backslash continuation.
+        # Parse LF, then restore the physical offsets before extracting chunks.
+        tree = parser.parse(src.replace(b"\r\n", b"\n"))
+        row = 0
+        previous = 0
+        for match in re.finditer(b"\r\n", src):
+            offset = match.start()
+            row += src.count(b"\n", previous, offset)
+            column = offset - (src.rfind(b"\n", 0, offset) + 1)
+            previous = offset
+            # Replace the LF with CRLF rather than inserting a CR before it:
+            # a pure insertion is absorbed by the node ending at the LF, so
+            # every instruction would gain a trailing CR.
+            tree.edit(
+                start_byte=offset,
+                old_end_byte=offset + 1,
+                new_end_byte=offset + 2,
+                start_point=(row, column),
+                old_end_point=(row + 1, 0),
+                new_end_point=(row + 1, 0),
+            )
+    else:
+        tree = parser.parse(src if parse_copy is None else parse_copy)
 
     config = language_config_registry.get(language)
     if config and config.strict_parse and tree.root_node.has_error:
