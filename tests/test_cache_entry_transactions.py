@@ -1307,19 +1307,19 @@ def _reader_steps(kind, fault=False):
 
 _READER_N = {kind: sum(_reader_steps(kind)) + _READER_G for kind in _READER_STEPS}
 for _kind, _ceiling in _READER_N.items():
-    _steps = _reader_steps(_kind)
-    assert (
-        max(
-            sum(_steps),
-            *(
-                sum(_steps[:index]) + tail * _READER_G
-                for index, tail in _READER_ABORT[_kind]
-            ),
+    for _fault in (False, True):
+        _steps = _reader_steps(_kind, _fault)
+        assert (
+            max(
+                sum(_steps),
+                *(
+                    sum(_steps[:index]) + tail * _READER_G
+                    for index, tail in _READER_ABORT[_kind]
+                ),
+            )
+            < _ceiling
+            < SAFETY_TIMEOUT
         )
-        < _ceiling
-        < SAFETY_TIMEOUT
-    )
-
 
 _READER_NATIVE = r"""
 from multiprocessing.connection import Client, Listener
@@ -1466,14 +1466,17 @@ for phase, config in enumerate(configs):
     config["sentinel"] = str(sentinel)
     result = None
     exception = None
+    run_error = None
     try:
         result = _transactions.run_in_staging(
             staging, [sys.executable, "-c", writer, json.dumps(config)],
             cwd=staging.path("builds"), timeout=G,
         )
-    except KeyboardInterrupt:
-        exception = "KeyboardInterrupt"
-    fields = {"phase": phase, "exception": exception}
+    except BaseException as error:
+        run_error = error
+        exception = type(error).__name__
+    fields = {"phase": phase, "exception": exception,
+              "exception_detail": None if run_error is None else repr(run_error)}
     if result is not None:
         fields.update(timed_out=result.timed_out, group_empty=result.group_empty,
                       returncode=result.returncode)
@@ -1482,8 +1485,8 @@ for phase, config in enumerate(configs):
                 getattr(result, stream) == stream + "-λ-" + "x" * 70000
                 for stream in ("stdout", "stderr")
             )
-    if not config["capture"] or phase == len(configs) - 1:
-        if config["capture"]:
+    if run_error is not None or not config["capture"] or phase == len(configs) - 1:
+        if config["capture"] and run_error is None:
             published = _transactions.publish_entry(staging, "builds", "writer-sentinel")
             fields["published"] = published.read_text(encoding="utf-8") == "writer-sentinel"
         disposal = _transactions.discard_staging(staging)
@@ -1505,6 +1508,8 @@ for phase, config in enumerate(configs):
                 failures.append("reader still alive")
     emit("joined", phase=phase, count=len(recorded), failures=failures)
     assert not failures, failures
+    if run_error is not None and not (isinstance(run_error, KeyboardInterrupt) and fired):
+        raise run_error
 emit("done")
 """
 )
@@ -1592,20 +1597,78 @@ class _ReaderReceipt:
         finally:
             self._events.put(None)
 
-    def close(self, deadline):
-        # Wake an accept with no writer on an abort, then close the endpoint.
-        from multiprocessing.connection import Client
+    def _wake(self, deadline):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("receipt wake deadline expired")
+        if self.family == "AF_UNIX":
+            import socket
 
-        if self.thread.is_alive() and self.connection is None:
-            with Client(self.address, family=self.family):
-                pass
-        self.listener.close()
-        if self.connection is not None:
-            self.connection.close()
-        self.thread.join(max(0, deadline - time.monotonic()))
-        assert not self.thread.is_alive(), "controller receipt thread still live"
+            with socket.socket(socket.AF_UNIX) as wake:
+                wake.settimeout(remaining)
+                wake.connect(self.address)
+            return
+
+        import _winapi
+
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("receipt wake deadline expired")
+            try:
+                # Zero uses the listener's default infinite wait, not a poll.
+                _winapi.WaitNamedPipe(self.address, max(1, int(remaining * 1000)))
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("receipt wake deadline expired")
+                handle = _winapi.CreateFile(
+                    self.address,
+                    _winapi.GENERIC_READ | _winapi.GENERIC_WRITE,
+                    0,
+                    _winapi.NULL,
+                    _winapi.OPEN_EXISTING,
+                    0,
+                    _winapi.NULL,
+                )
+            except OSError as error:
+                if getattr(error, "winerror", None) not in (
+                    _winapi.ERROR_PIPE_BUSY,
+                    _winapi.ERROR_SEM_TIMEOUT,
+                ):
+                    raise
+            else:
+                _winapi.CloseHandle(handle)
+                return
+
+    def close(self, deadline):
+        # Capture only the writer connection; the wake's connection owns itself.
+        errors = []
+        connection = self.connection
+        if self.thread.is_alive() and connection is None:
+            try:
+                self._wake(deadline)
+            except OSError as error:
+                errors.append(f"receipt wake: {error!r}")
+        try:
+            self.listener.close()
+        except OSError as error:
+            errors.append(f"receipt listener close: {error!r}")
+        if connection is not None:
+            try:
+                connection.close()
+            except OSError as error:
+                errors.append(f"receipt connection close: {error!r}")
+        try:
+            self.thread.join(max(0, deadline - time.monotonic()))
+        except RuntimeError as error:
+            errors.append(f"receipt join: {error!r}")
+        if self.thread.is_alive():
+            errors.append("controller receipt thread still live")
         for directory in self.directories:
-            directory.rmdir()
+            try:
+                directory.rmdir()
+            except OSError as error:
+                errors.append(f"receipt directory {directory}: {error!r}")
+        return errors
 
 
 def _reader_writer_stopped(receipt):
@@ -1620,7 +1683,7 @@ def _reader_writer_stopped(receipt):
                 assert not (
                     os.getpgid(process.pid) == receipt["pid"]
                     and process.status() != psutil.STATUS_ZOMBIE
-                ), "live W group member"
+                ), f"live W group member {process.pid}"
             except (ProcessLookupError, psutil.NoSuchProcess):
                 pass
 
@@ -1642,6 +1705,10 @@ def _reader_case(
     only at _read_stream. It records every invoked real start in every phase;
     faults pause before start or after its return, then raise KeyboardInterrupt.
     This does not exercise Thread.start's native bootstrap window.
+    The selected stream is identified by its _read_stream start ordinal
+    (1 = stdout, 2 = stderr), which equals the stream argument because
+    _start_readers starts stdout before stderr; any start-order change
+    invalidates the parameter IDs and requires re-review.
     """
     ceiling = _READER_N[kind]
     assert request.node.get_closest_marker("timeout").args == (ceiling,)
@@ -1655,6 +1722,7 @@ def _reader_case(
     holder_reap_attempted = False
     runner_completion_attempted = False
     failed = False
+    body_error = None
     try:
         if hold:
             address, family = _reader_address(address_directories)
@@ -1766,8 +1834,9 @@ def _reader_case(
         runner_completion_attempted = True
         _expect_event_until(runner, "done", barrier)
         assert _wait_exit_until(runner.process, barrier) == 0
-    except BaseException:
+    except BaseException as error:
         failed = True
+        body_error = error
         raise
     finally:
         # Abort order: H closure/reap, R completion/fallback, W identity,
@@ -1787,14 +1856,24 @@ def _reader_case(
                     teardown_errors.append(str(error))
             deadline = time.monotonic() + _READER_G
             if not holder_closed or holder_reap_attempted:
-                holder.process.terminate()
                 teardown_errors.append("forced H termination")
+                try:
+                    holder.process.terminate()
+                except OSError as error:
+                    teardown_errors.append(f"H terminate: {error!r}")
             try:
                 _wait_exit_until(holder.process, time.monotonic() + _READER_G / 2)
             except subprocess.TimeoutExpired:
-                holder.process.kill()
                 teardown_errors.append("forced H kill")
-                _wait_exit_until(holder.process, deadline)
+                try:
+                    holder.process.kill()
+                    _wait_exit_until(holder.process, deadline)
+                except subprocess.TimeoutExpired:
+                    teardown_errors.append("H not reaped after kill")
+                except OSError as error:
+                    teardown_errors.append(f"H kill/reap: {error!r}")
+            except OSError as error:
+                teardown_errors.append(f"H reap: {error!r}")
         if runner is not None and runner.process.poll() is None:
             try:
                 # Never re-wait a failed shared barrier or final completion slot.
@@ -1804,27 +1883,44 @@ def _reader_case(
                 _reader_command(runner, "released")
                 _wait_exit_until(runner.process, time.monotonic() + 2 * _READER_G)
             except (OSError, subprocess.TimeoutExpired):
-                runner.process.terminate()
+                teardown_errors.append("forced R termination")
+                deadline = time.monotonic() + _READER_G
                 try:
+                    runner.process.terminate()
                     _wait_exit_until(runner.process, time.monotonic() + _READER_G / 2)
                 except subprocess.TimeoutExpired:
-                    runner.process.kill()
-                    _wait_exit_until(runner.process, time.monotonic() + _READER_G / 2)
-                teardown_errors.append("forced R termination")
+                    try:
+                        runner.process.kill()
+                        _wait_exit_until(runner.process, deadline)
+                    except subprocess.TimeoutExpired:
+                        teardown_errors.append("R not reaped after kill")
+                    except OSError as error:
+                        teardown_errors.append(f"R kill/reap: {error!r}")
+                except OSError as error:
+                    teardown_errors.append(f"R terminate/reap: {error!r}")
         writer_deadline = time.monotonic() + _READER_G
         for receipt in receipts:
             try:
                 _reader_writer_stopped(receipt)
             except AssertionError as error:
-                # Only the positively matched process, never a reaped PGID.
-                process = psutil.Process(receipt["pid"])
-                if process.create_time() == receipt["created"]:
-                    process.kill()
-                    process.wait(timeout=max(0, writer_deadline - time.monotonic()))
                 teardown_errors.append(str(error))
+                # Only the positively matched leader, never a reaped PGID.
+                try:
+                    process = psutil.Process(receipt["pid"])
+                    if process.create_time() == receipt["created"]:
+                        process.kill()
+                        process.wait(timeout=max(0, writer_deadline - time.monotonic()))
+                except psutil.NoSuchProcess:
+                    pass
+                except psutil.TimeoutExpired:
+                    teardown_errors.append("identity-matched W survived kill")
+                except (psutil.Error, OSError) as cleanup_error:
+                    teardown_errors.append(f"W kill/reap: {cleanup_error!r}")
+            except (psutil.Error, OSError) as error:
+                teardown_errors.append(f"W identity scan: {error!r}")
         deadline = time.monotonic() + _READER_G
         for endpoint in endpoints:
-            endpoint.close(deadline)
+            teardown_errors.extend(endpoint.close(deadline))
         for child in children:
             for reader in child._readers:
                 reader.join(max(0, deadline - time.monotonic()))
@@ -1842,7 +1938,10 @@ def _reader_case(
                     f"child exit {child.process.returncode}: {child.stderr}"
                 )
         for directory in address_directories:
-            directory.rmdir()
+            try:
+                directory.rmdir()
+            except OSError as error:
+                teardown_errors.append(f"holder directory {directory}: {error!r}")
         import queue
 
         for child in children:
@@ -1873,7 +1972,11 @@ def _reader_case(
             ],
         }
         print("READER_LIFECYCLE " + json.dumps(report))
-        assert not teardown_errors, teardown_errors
+        if body_error is not None:
+            if teardown_errors:
+                body_error.add_note("Reader teardown errors: " + repr(teardown_errors))
+        else:
+            assert not teardown_errors, teardown_errors
 
 
 @pytest.mark.timeout(_READER_N["single"])
@@ -1883,7 +1986,11 @@ def _reader_case(
     ids=["reader1-stdout", "reader2-stderr"],
 )
 def test_reader_start_interrupt_retains_staging(tmp_path, request, selected, stream):
-    """Retention is correct with H; never change this to require deletion."""
+    """Retention with H is correct; never fix it into confirmation or deletion.
+
+    [reader2-stderr] is an exact kill for unfinished_reader_reports_safe_cleanup.
+    [reader1-stdout] is not: stderr is never start-attempted, so both retain.
+    """
     _reader_case(
         tmp_path, request, selected=selected, mode="after", hold=True, stream=stream
     )
@@ -1899,7 +2006,11 @@ def test_reader_start_interrupt_after_both_starts_confirms_and_discards(
 
 @pytest.mark.timeout(_READER_N["single"])
 def test_reader_start_interrupt_after_first_start_retains_staging(tmp_path, request):
-    """Retention is correct: stderr was never attempted; deletion is not a fix."""
+    """Retention is correct: stderr was never attempted; deletion is not a fix.
+
+    Not a kill node for unfinished_reader_reports_safe_cleanup: stderr is never
+    start-attempted, so fixed and mutant both retain.
+    """
     _reader_case(tmp_path, request, selected=1, mode="after")
 
 
@@ -1917,7 +2028,11 @@ def test_staged_run_captures_both_streams_after_reader_registration(tmp_path, re
 @pytest.mark.timeout(_READER_N["single"])
 @pytest.mark.parametrize("stream", ["stdout", "stderr"])
 def test_outside_pipe_holder_prevents_safe_staging_discard(tmp_path, request, stream):
-    """Retention is correct while H holds a pipe, even though W exited."""
+    """Retention is correct while H holds a pipe, even though W exited.
+
+    This retention must not be fixed into confirmation. Both parameters are
+    kill nodes for unfinished_reader_reports_safe_cleanup.
+    """
     _reader_case(tmp_path, request, hold=True, stream=stream)
 
 
