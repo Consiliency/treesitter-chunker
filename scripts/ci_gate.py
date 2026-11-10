@@ -20,6 +20,8 @@ def evaluate(needs: dict, event: str, phase: str) -> tuple[bool, list[str]]:
             "merge_group",
         }:
             raise ValueError("invalid phase/event")
+        if phase == "C" and event == "push":
+            raise ValueError("phase C has no push trigger")
         if not isinstance(needs, dict) or set(needs) != JOBS:
             raise ValueError("missing or unexpected needs entry")
         if needs["changes"]["result"] != "success":

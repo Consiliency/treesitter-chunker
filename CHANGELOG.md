@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Route lightweight prose PRs through the policy and docs lanes as needed,
+  retaining the required gate, nightly full validation and main docs publication;
+  remove duplicate main-push validation (Consiliency/treesitter-chunker#647).
+
 ### Fixed
 
 - Preserve Dockerfile CRLF continuation chunks and physical byte spans, collect

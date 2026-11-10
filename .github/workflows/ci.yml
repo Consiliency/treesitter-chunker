@@ -9,8 +9,6 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
     types: [checks_requested]
-  push:
-    branches: [main]
   schedule:
     - cron: "17 3 * * *"
 
@@ -68,6 +66,7 @@ jobs:
         run: uv run --locked --all-extras pytest -q -p no:cacheprovider tests/test_release_hygiene_policy.py tests/test_workflow_permissions_policy.py tests/test_lint_path_policy.py tests/test_type_gate_policy.py tests/test_scratch_root_policy.py tests/test_hygiene_reachability.py tests/test_repo_hygiene.py tests/test_ci_scope_policy.py
 
   test:
+    if: ${{ needs.changes.outputs.code == 'true' }}
     needs: changes
     timeout-minutes: ${{ needs.changes.outputs.full == 'true' && 90 || 25 }}
     permissions:
@@ -241,11 +240,12 @@ jobs:
           fi
 
   platform:
+    if: ${{ needs.changes.outputs.code == 'true' }}
     needs: changes
     timeout-minutes: ${{ needs.changes.outputs.full == 'true' && 120 || matrix.pr-timeout }}
-    # Keep the job name equal to the branch-protection required check
-    # ("test (3.12, ubuntu-latest, linux)"); the matrix also carries
-    # pack-cache-path, which must not appear in the name.
+    # Branch protection requires only "CI gate", which reads this job's
+    # aggregate result. The explicit name keeps the familiar per-OS check
+    # names, and keeps pack-cache-path (also in the matrix) out of them.
     name: test (${{ matrix.python-version }}, ${{ matrix.platform }}, ${{ matrix.platform-family }})
     permissions:
       contents: read
@@ -493,6 +493,7 @@ jobs:
         verbose: true
 
   controlled-linux:
+    if: ${{ needs.changes.outputs.code == 'true' }}
     needs: changes
     timeout-minutes: 15
     permissions:
@@ -518,6 +519,7 @@ jobs:
       run: uv run --locked --all-extras python scripts/run_builder_mutations.py
 
   docs:
+    if: ${{ needs.changes.outputs.docs == 'true' }}
     needs: changes
     timeout-minutes: 20
     runs-on: ubuntu-latest
@@ -572,7 +574,7 @@ jobs:
       - name: Evaluate required results
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
-          CI_PHASE: A
+          CI_PHASE: C
         run: python scripts/ci_gate.py
 
   nightly-failure:

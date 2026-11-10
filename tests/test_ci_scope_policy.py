@@ -322,6 +322,20 @@ def test_gate_skip_contract_and_mutations():
         bad = copy.deepcopy(data)
         bad[job]["result"] = "skipped"
         assert not gate.evaluate(bad, "pull_request", "C")[0]
+    # Docs-only: heavy lanes may skip, but the required docs lane may not.
+    docs_only = needs("false", "true")
+    for job in ("test", "platform", "controlled-linux"):
+        docs_only[job]["result"] = "skipped"
+    assert gate.evaluate(docs_only, "pull_request", "C")[0]
+    assert not gate.evaluate(docs_only, "pull_request", "A")[0]
+    bad = copy.deepcopy(docs_only)
+    bad["docs"]["result"] = "skipped"
+    assert not gate.evaluate(bad, "pull_request", "C")[0]
+    # Merge-queue runs need every lane; push runs no longer exist in phase C.
+    assert gate.evaluate(needs(), "merge_group", "C")[0]
+    assert not gate.evaluate(docs_only, "merge_group", "C")[0]
+    assert gate.evaluate(needs(), "push", "A")[0]
+    assert not gate.evaluate(needs(), "push", "C")[0]
     for flag in ("schema", "policy", "code", "docs", "full"):
         bad = needs()
         del bad["changes"]["outputs"][flag]
