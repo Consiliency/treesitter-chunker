@@ -2137,7 +2137,7 @@ def _reader_case(
                         (
                             event
                             for event in c.seen
-                            if event["event"] in ("runner-ready", "holder-ready")
+                            if event.get("event") in ("runner-ready", "holder-ready")
                         ),
                         None,
                     ),
