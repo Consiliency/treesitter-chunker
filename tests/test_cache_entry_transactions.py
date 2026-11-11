@@ -1719,11 +1719,12 @@ class _ReaderReceipt:
         return errors
 
 
-def _reader_windows_stopped(receipt, observation):
+def _reader_windows_stopped(receipt, observation, *, deadline=None):
     """Sample cessation once on an identity-pinned Windows process handle.
 
-    Object visibility is not liveness. A zero-time sample is not a second
-    blocking wait. Unknown identity/state and incomplete diagnostics fail.
+    Object visibility is not liveness. Body callers supply their existing
+    absolute barrier deadline for one wait; cleanup callers sample at zero.
+    Unknown identity/state and incomplete diagnostics fail.
     """
     import ctypes
     from ctypes import wintypes
@@ -1761,13 +1762,23 @@ def _reader_windows_stopped(receipt, observation):
         observation["observed_filetime"] = observed
         observation["identity"] = "matched" if observed == expected else "different"
         if observed == expected:
-            state = api.WaitForSingleObject(handle, 0)
-            state_error = ctypes.get_last_error() if state == 0xFFFFFFFF else None
+            started = time.monotonic()
+            timeout_ms = 0
+            if deadline is not None:
+                remaining = deadline - started
+                if remaining <= 0:
+                    raise AssertionError("W cessation barrier budget expired")
+                # Floor to whole milliseconds; never round up or use INFINITE.
+                timeout_ms = min(int(remaining * 1000), 0xFFFFFFFE)
             observation["state"] = {
-                "result": state,
-                "error": state_error,
-                "at": time.monotonic(),
+                "started_at": started,
+                "timeout_ms": timeout_ms,
             }
+            state = api.WaitForSingleObject(handle, timeout_ms)
+            state_error = ctypes.get_last_error() if state == 0xFFFFFFFF else None
+            observation["state"].update(
+                result=state, error=state_error, ended_at=time.monotonic()
+            )
         else:
             state = None
         code = wintypes.DWORD()
@@ -1779,6 +1790,8 @@ def _reader_windows_stopped(receipt, observation):
         if observed != expected:
             observation["decision"] = "different identity"
             return
+        if deadline is not None and time.monotonic() >= deadline:
+            raise AssertionError("W cessation barrier budget expired")
         if state == 0:
             # 259 can be a genuine terminal code; state alone establishes exit.
             observation["decision"] = "signaled"
@@ -1804,13 +1817,17 @@ def _reader_windows_stopped(receipt, observation):
                 raise close_error
 
 
-def _reader_writer_stopped(receipt, observations=None, *, phase=None, reason="body"):
+def _reader_writer_stopped(
+    receipt, observations=None, *, phase=None, reason="body", deadline=None
+):
     if os.name == "nt":
         observation = {
             "pid": receipt.get("pid"),
             "receipt_filetime": receipt.get("created_filetime"),
+            "receipt_created": receipt.get("created"),
             "phase": phase,
             "reason": reason,
+            "deadline": deadline,
             "started_at": time.monotonic(),
             "open": "not attempted",
             "observed_filetime": "not applicable",
@@ -1824,7 +1841,11 @@ def _reader_writer_stopped(receipt, observations=None, *, phase=None, reason="bo
         if observations is not None:
             observations.append(observation)
         try:
-            _reader_windows_stopped(receipt, observation)
+            if deadline is not None and time.monotonic() >= deadline:
+                raise AssertionError("W cessation barrier budget expired")
+            _reader_windows_stopped(receipt, observation, deadline=deadline)
+            if deadline is not None and time.monotonic() >= deadline:
+                raise AssertionError("W cessation barrier budget expired")
         except (OSError, psutil.Error, AssertionError) as error:
             observation["error"] = repr(error)
             observation["native_error"] = getattr(error, "winerror", None)
@@ -1991,7 +2012,9 @@ def _reader_case(
                 else 2
             )
             assert joined["count"] == expected_readers
-            _reader_writer_stopped(receipt, writer_observations, phase=phase)
+            _reader_writer_stopped(
+                receipt, writer_observations, phase=phase, deadline=barrier
+            )
             assert time.monotonic() < barrier
             runner_completion_attempted = False
         runner_completion_attempted = True
