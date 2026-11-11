@@ -1505,7 +1505,8 @@ def emit(event, **fields):
 threading.Thread.start = start
 emit("runner-ready", **identity())
 for phase, config in enumerate(configs):
-    command("start" if phase == 0 else "continue")
+    if phase == 0:
+        command("start")
     recorded.clear()
     count = 0
     fired = False
@@ -1558,7 +1559,18 @@ for phase, config in enumerate(configs):
     assert not failures, failures
     if run_error is not None and not (isinstance(run_error, KeyboardInterrupt) and fired):
         raise run_error
-emit("done")
+    if phase + 1 < len(configs):
+        # Only this released, joined, error-checked boundary accepts a stop.
+        line = sys.stdin.readline()
+        if not line:
+            raise SystemExit(2)
+        decision = json.loads(line)
+        if decision == "stop":
+            emit("aborted", phase=phase, reason="controller-stop")
+            break
+        assert decision == "continue", (line, "continue or stop")
+else:
+    emit("done")
 """
 )
 
@@ -1905,6 +1917,8 @@ def _reader_case(
     holder_ack_attempted = False
     holder_reap_attempted = False
     runner_completion_attempted = False
+    runner_phase = None
+    runner_released = False
     failed = False
     body_error = None
     try:
@@ -1945,6 +1959,8 @@ def _reader_case(
             observation = time.monotonic() + (
                 _READER_FAULT if mode != "none" else _READER_RUN
             )
+            runner_phase = phase
+            runner_released = False
             _reader_command(runner, "start" if phase == 0 else "continue")
             readiness = min(observation, time.monotonic() + _READER_G)
             source = holder if config["holder"] else endpoints[phase - int(hold)]
@@ -2000,6 +2016,7 @@ def _reader_case(
                 _READER_G if phase + 1 < len(configs) else 2 * _READER_G
             )
             runner_completion_attempted = True
+            runner_released = True
             _reader_command(runner, "released")
             if config["holder"]:
                 holder_reap_attempted = True
@@ -2066,7 +2083,12 @@ def _reader_case(
                 if runner_completion_attempted:
                     raise subprocess.TimeoutExpired("R completion already attempted", 0)
                 # Baseline may only return after H closure; collect its diagnosis.
-                _reader_command(runner, "released")
+                # A completed body barrier already sent released; do not repeat it.
+                if not runner_released:
+                    _reader_command(runner, "released")
+                if runner_phase == 0 and len(configs) > 1:
+                    # FIFO: released first, then stop only after joins/errors.
+                    _reader_command(runner, "stop")
                 _wait_exit_until(runner.process, time.monotonic() + 2 * _READER_G)
             except (OSError, subprocess.TimeoutExpired):
                 teardown_errors.append("forced R termination")
