@@ -450,11 +450,17 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
     def test_memory_leak_detection(cls, resource_monitor, temp_workspace):
         """Test memory leak detection in parallel processing."""
         process = psutil.Process(os.getpid())
+        # Start the start method's long-lived helpers (forkserver, resource
+        # tracker) before the baseline, so they are not counted as leaked
+        # children when this test runs first. Descendants are counted because
+        # forkserver workers are not direct children of this process.
+        with ProcessPoolExecutor(max_workers=1) as executor:
+            assert executor.submit(abs, -1).result(timeout=30.0) == 1
         gc.collect()
         time.sleep(0.1)
         initial_memory = process.memory_info().rss / 1024 / 1024
         initial_handles = len(process.open_files())
-        initial_children = len(process.children())
+        initial_children = len(process.children(recursive=True))
         memory_samples = [initial_memory]
         worker_errors = 0
         test_files = []
@@ -479,7 +485,10 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                     futures.append(future)
                 for future in futures:
                     try:
-                        assert future.result(timeout=1.0) == 100
+                        # Hang guard only. Each iteration starts a fresh pool,
+                        # so the first result also waits for a spawned worker
+                        # to start, which can exceed 1 s on a loaded runner.
+                        assert future.result(timeout=30.0) == 100
                         assert iteration % 3 != 0
                     except RuntimeError as exc:
                         assert iteration % 3 == 0
@@ -494,7 +503,7 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
         memory_growth = memory_samples[-1] - memory_samples[0]
         average_growth_per_iteration = memory_growth / len(memory_samples)
         current_handles = len(process.open_files())
-        current_children = len(process.children())
+        current_children = len(process.children(recursive=True))
         assert (
             memory_growth < 10.0
         ), f"Memory grew by {memory_growth:.2f}MB, possible leak"
