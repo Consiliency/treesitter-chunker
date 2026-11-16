@@ -57,8 +57,8 @@ The 4-worker check needs four workers to be more than twice as fast as one, and
 it applies that bar only when psutil reports at least four physical cores.
 It runs only when an admitted run sets `CHUNKER_PERF_ADMITTED_SCALING=1`;
 otherwise pytest reports it as skipped. A high core count is not admission. CI
-sets the variable for the nightly and manual full tier, which run on dedicated
-hosted runners. On a shared host, set it only for a run that has confirmed
+sets the variable for the nightly and manual full tier, and release validation
+sets it for its full tier. All of these run on dedicated hosted runners. On a shared host, set it only for a run that has confirmed
 headroom, and run that test serially:
 
 ```bash

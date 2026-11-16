@@ -9,6 +9,7 @@ admission adds the 4-worker measurement, and that the owner-approved bars from
 Consiliency/treesitter-chunker#660 still decide its outcome.
 """
 
+import ast
 import multiprocessing as mp
 import os
 from pathlib import Path
@@ -23,7 +24,9 @@ from tests import test_performance_advanced as perf
 ROOT = Path(__file__).resolve().parents[1]
 ENV = perf.ADMITTED_SCALING_ENV
 
-# Every test body in the module that starts a process pool.
+# Test bodies whose requested pool sizes are captured at run time. The
+# remaining pools use fixed literals, which
+# test_every_pool_size_in_the_module_is_bounded checks statically.
 POOL_TESTS = [
     ("TestConcurrentPerformance", "test_multiprocess_scaling"),
     ("TestConcurrentPerformance", "test_multiprocess_scaling_four_workers"),
@@ -281,3 +284,36 @@ def test_only_ci_full_tier_admits_four_workers():
     ]:
         if path.name not in {"ci.yml", "release.yml"}:
             assert ENV not in path.read_text(encoding="utf-8"), path
+
+
+def test_every_pool_size_in_the_module_is_bounded():
+    """Every num_workers argument is at most 2, a named bound or the scaling helper's.
+
+    This also covers pools that the run-time capture above does not execute,
+    so a later edit to any pool size in the module cannot bypass the bound.
+    """
+    source = Path(perf.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    helper = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == "best_scaling_times"
+    )
+    helper_nodes = {id(node) for node in ast.walk(helper)}
+    seen = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.keyword) and node.arg == "num_workers"):
+            continue
+        value = node.value
+        seen.append(ast.unparse(value))
+        if isinstance(value, ast.Constant):
+            assert isinstance(value.value, int), ast.unparse(value)
+            assert 1 <= value.value <= perf.ORDINARY_MAX_WORKERS, ast.unparse(value)
+        elif isinstance(value, ast.Name) and value.id == "ORDINARY_MAX_WORKERS":
+            pass
+        else:
+            # Only the scaling helper forwards its own count; its requests
+            # are captured by the run-time tests above.
+            assert id(node) in helper_nodes, ast.unparse(value)
+            assert isinstance(value, ast.Name) and value.id == "num_workers"
+    assert len(seen) >= 5, seen
