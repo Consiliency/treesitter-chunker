@@ -244,7 +244,10 @@ def test_named_mutations_break_the_contract(name, cores, monkeypatch, tmp_path):
 
 
 def test_only_ci_full_tier_admits_four_workers():
-    """CI admits the measurement on its full-tier steps only; scripts never do."""
+    """Only full-tier steps on hosted runners admit the measurement.
+
+    That is the CI full-tier steps and release validation; scripts never do.
+    """
     ci = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())
     admitted = {
         (job_name, step.get("name")): step["env"][ENV]
@@ -258,11 +261,23 @@ def test_only_ci_full_tier_admits_four_workers():
     }
     assert all(ENV not in (job.get("env") or {}) for job in ci["jobs"].values())
     assert ENV not in str(ci.get("env"))
+    release = yaml.safe_load((ROOT / ".github/workflows/release.yml").read_text())
+    release_admitted = {
+        (job_name, step.get("name")): step["env"][ENV]
+        for job_name, job in release["jobs"].items()
+        for step in job.get("steps", [])
+        if ENV in (step.get("env") or {})
+    }
+    assert release_admitted == {
+        ("release-validation", "Validate source and full test tier"): "1",
+    }
+    assert all(ENV not in (job.get("env") or {}) for job in release["jobs"].values())
+    assert ENV not in str(release.get("env"))
     for path in [
         *(ROOT / ".github/workflows").glob("*.y*ml"),
         ROOT / "scripts/run_full_suite.py",
         ROOT / "scripts/run_ci_smoke.py",
         ROOT / "scripts/run_platform_core.py",
     ]:
-        if path.name != "ci.yml":
+        if path.name not in {"ci.yml", "release.yml"}:
             assert ENV not in path.read_text(encoding="utf-8"), path
