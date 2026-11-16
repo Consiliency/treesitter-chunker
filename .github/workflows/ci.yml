@@ -232,6 +232,11 @@ jobs:
           uv run --locked --all-extras mypy --follow-imports=silent --allow-untyped-defs --allow-incomplete-defs --allow-untyped-calls --check-untyped-defs --no-pretty --no-error-summary --show-error-codes tools/sync_governed_test_transport.py
 
       - name: Pytest
+        env:
+          # The full tier runs on dedicated hosted runners, so it admits the
+          # 4-worker scaling measurement; the smoke tier and local runs do not
+          # (treesitter-chunker#669).
+          CHUNKER_PERF_ADMITTED_SCALING: ${{ needs.changes.outputs.full == 'true' && '1' || '0' }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             uv run --locked --all-extras python scripts/run_full_suite.py
@@ -482,6 +487,10 @@ jobs:
 
     - name: Full suite on primary Python
       if: needs.changes.outputs.full == 'true' && matrix.platform-family != 'linux'
+      env:
+        # Dedicated hosted runner: admit the 4-worker scaling measurement
+        # (treesitter-chunker#669).
+        CHUNKER_PERF_ADMITTED_SCALING: '1'
       run: uv run --locked --all-extras python scripts/run_full_suite.py
 
     - name: Upload coverage
