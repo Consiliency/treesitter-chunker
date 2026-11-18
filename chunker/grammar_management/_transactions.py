@@ -1107,33 +1107,51 @@ def _read_stream(stream: Any, sink: list[bytes]) -> None:
         sink.extend(iter(lambda: stream.read(65536), b""))
 
 
+@dataclass
+class _Reader:
+    """Caller-owned pipe state, registered before attempting a thread start."""
+
+    stream: Any
+    thread: threading.Thread | None = None
+    start_attempted: bool = False
+
+
 def _start_readers(
-    process: subprocess.Popen[bytes],
-) -> tuple[list[bytes], list[bytes], list[threading.Thread]]:
+    process: subprocess.Popen[bytes], readers: list[_Reader]
+) -> tuple[list[bytes], list[bytes]]:
     out: list[bytes] = []
     err: list[bytes] = []
-    readers = [
-        threading.Thread(target=_read_stream, args=(process.stdout, out), daemon=True),
-        threading.Thread(target=_read_stream, args=(process.stderr, err), daemon=True),
-    ]
-    for reader in readers:
-        reader.start()
-    return out, err, readers
+    # Prebuild both records: partial setup must not lose either pipe's state.
+    readers.extend((_Reader(process.stdout), _Reader(process.stderr)))
+    for record, sink in zip(readers, (out, err), strict=True):
+        record.thread = threading.Thread(
+            target=_read_stream, args=(record.stream, sink), daemon=True
+        )
+        record.start_attempted = True
+        record.thread.start()
+    return out, err
 
 
-def _finish_readers(
-    process: subprocess.Popen[bytes], readers: list[threading.Thread]
-) -> bool:
-    """Join the output readers; return False if one is still blocked.
+def _finish_readers(process: subprocess.Popen[bytes], readers: list[_Reader]) -> bool:
+    """Close only streams whose attempted reader was successfully joined.
 
-    A reader still running means a process outside the group holds the pipe.
-    Its stream is left open (closing it would block on the reader), and the
-    run is treated as not confirmed empty.
+    Missing, never-attempted and unknown-start states cannot prove completion.
+    In particular, closing a stream after an interrupted start can block on a
+    live reader's buffer lock. Leave uncertain streams open and retain staging.
     """
     finished = True
-    for reader, stream in zip(readers, (process.stdout, process.stderr), strict=True):
-        reader.join(_READER_JOIN)
-        if reader.is_alive():
+    for stream in (process.stdout, process.stderr):
+        record = next((record for record in readers if record.stream is stream), None)
+        if record is None or not record.start_attempted or record.thread is None:
+            finished = False
+            continue
+        try:
+            record.thread.join(_READER_JOIN)
+        except RuntimeError:
+            # start() may have been interrupted before the native thread began.
+            finished = False
+            continue
+        if record.thread.is_alive():
             finished = False
         elif stream is not None:
             with suppress(OSError):
@@ -1215,7 +1233,7 @@ def _run_posix(
         raise
     out: list[bytes] = []
     err: list[bytes] = []
-    readers: list[threading.Thread] = []
+    readers: list[_Reader] = []
     exited = threading.Event()
     waiter_started = False
     timed_out = True
@@ -1225,7 +1243,7 @@ def _run_posix(
         # Guarded from the first statement after Popen: the child exists now.
         outcome["launched"] = True
         ctx.seam("run.after_launch")
-        out, err, readers = _start_readers(process)
+        out, err = _start_readers(process, readers)
         waitid = getattr(os, "waitid", None)
         nowait = getattr(os, "WNOWAIT", None)
 
@@ -1267,14 +1285,8 @@ def _run_posix(
         if waiter_started:
             exited.wait(_GROUP_CONFIRM_DEADLINE)
         returncode = process.wait()
-        if readers:
-            if not _finish_readers(process, readers):
-                group_empty = False
-        else:
-            for stream in (process.stdout, process.stderr):
-                if stream is not None:
-                    with suppress(OSError):
-                        stream.close()
+        if not _finish_readers(process, readers):
+            group_empty = False
         outcome["group_empty"] = group_empty
     if group_empty:
         ctx.seam("run.after_group_empty")
@@ -1399,7 +1411,7 @@ def _run_windows(
             raise
         out: list[bytes] = []
         err: list[bytes] = []
-        readers: list[threading.Thread] = []
+        readers: list[_Reader] = []
         assigned = False
         timed_out = True
         group_empty = False
@@ -1413,7 +1425,7 @@ def _run_windows(
                 raise CacheTransactionError("Could not assign the process to its job")
             assigned = True
             ntdll.NtResumeProcess(handle)
-            out, err, readers = _start_readers(process)
+            out, err = _start_readers(process, readers)
             ctx.seam("run.waiting")
             try:
                 process.wait(timeout)
@@ -1453,14 +1465,8 @@ def _run_windows(
                     process.kill()
                 group_empty = True
             returncode = process.wait()
-            if readers:
-                if not _finish_readers(process, readers):
-                    group_empty = False
-            else:
-                for stream in (process.stdout, process.stderr):
-                    if stream is not None:
-                        with suppress(OSError):
-                            stream.close()
+            if not _finish_readers(process, readers):
+                group_empty = False
             outcome["group_empty"] = group_empty
     finally:
         kernel32.CloseHandle(job)
@@ -1491,7 +1497,14 @@ def run_in_staging(
     which is re-raised afterwards). A timeout, an unconfirmed group, a reader
     still blocked on the output, or an interruption makes the staging
     unpublishable; an unconfirmed or interrupted-before-confirmation run also
-    makes it retained, so ``discard_staging`` never deletes it.
+    makes it retained, so ``discard_staging`` never deletes it. Missing,
+    never-attempted or unknown reader state prevents confirmation even after
+    owned-child death. Preexisting retention and unpublishability stay set.
+
+    The caller must serialize each staging area's runs through cleanup and
+    mark updates. Sequential runs are supported; publish/discard only after
+    the final consuming run. Other threads/processes must not share this
+    operation for run/publish/discard.
     """
     if not any(_inside(cwd, staging.path(ns)) for ns in _NAMESPACES):
         raise ContainmentError(f"Working directory {cwd} is outside the staging")
