@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Preserve interrupted output-reader ownership during staged subprocess
+  cleanup. Uncertain readers retain staging without blocking on pipe closure;
+  fully stopped readers allow confirmed cleanup while preserving the original
+  interruption (Consiliency/treesitter-chunker#577).
+
 - Preserve Dockerfile CRLF continuation chunks and physical byte spans, collect
   fallback process metrics on Windows, and repair full-suite platform fixtures
   and Graphviz provisioning (Consiliency/treesitter-chunker#647). CRLF

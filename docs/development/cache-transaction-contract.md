@@ -417,10 +417,14 @@ inside `staging.path(namespace)` for `downloads` or `builds`.
 
    Seam points: `run.after_exit` after step 2, `run.after_group_empty` after
    step 4.
-5. **Drain the output.** The output readers are joined with a bounded wait. A
-   reader still blocked means a process outside the group (an escapee) holds
-   the pipe: its stream is left open, and the run counts as `group_empty=False`,
-   so the call returns instead of blocking.
+5. **Drain the output.** Each stream is registered before its reader starts.
+   Confirmation requires group/job shutdown, direct-child reap **and both
+   readers complete**. Join each attempted reader with a bounded wait; close
+   its stream only after a successful join proves it stopped. Missing,
+   never-attempted, unknown-start (including a join `RuntimeError`) or still
+   live readers leave their streams open and make `group_empty=False`.
+   This avoids blocking on a live reader's buffer lock when an outside writer
+   holds the pipe. A pre-join nonalive check is not proof of completion.
 6. **Return.** The call returns `StagedRun(returncode, stdout, stderr,
    timed_out, group_empty)`.
 
@@ -433,7 +437,19 @@ propagates. The marks are cleared only by confirmed shutdown (retention) or a
 completed, confirmed, untimed run (both), or by a launch that started nothing
 (an `OSError` from `Popen`, or a job object that could not be set up). So
 `discard_staging`, which the installer runs on every exit, never deletes
-staging under a live writer.
+staging under a live writer. Here confirmation includes both readers, not
+just group/job shutdown. An interruption at POSIX `run.after_launch` with an
+empty reader registry, or Windows pre-assignment kill/assignment failure,
+therefore retains staging. Proven-no-launch restoration remains distinct:
+it restores the previous marks rather than introducing retention. No later
+run or holder release clears marks that predate that run.
+
+**Sequential ownership.** The caller serializes an entire run, including
+cleanup and mark updates, for each staging key. Sequential runs are allowed;
+publish/discard only after the last consuming run (a retained-discard probe
+is non-destructive). Other threads or processes must not share that operation
+for run/publish/discard. Independent operations may share a cache root under
+the existing locking rules.
 
 **Publishability.**
 
@@ -1057,6 +1073,30 @@ Tests install the seam inside a subprocess, filter on the context, and block on
 a pipe or event file, never on sleeps. The seam only pauses execution (or, in
 crash tests, calls `os._exit`); it never replaces behavior.
 
+**Reader-start fault exception (treesitter-chunker#577).** The targeted reader
+lifecycle tests may wrap `threading.Thread.start` only inside the isolated
+transaction-runner subprocess R, never in pytest or an xdist worker. The wrapper
+selects a thread only when its target is `_transactions._read_stream` and its
+stream argument is the selected stdout or stderr stream. It fires once. An
+after-return fault invokes the real start, waits for that call to return, then
+pauses on a controller event and raises `KeyboardInterrupt` directly before
+returning to `_start_readers`. A pre-start fault pauses after registration and
+the start-attempted write, then raises without invoking the real start. Every
+fault release requires the pause acknowledgement and the writer's
+sentinel-plus-PID/creation-time receipt; holder cases also require validated
+ownership of the transferred pipe. Signals are not a substitute for this fault.
+
+The wrapper is installed in every node and phase. Without a fault it only
+records reader threads whose real start it invokes, including an invocation
+that raises. Each phase bounded-joins those recorded threads after holder
+release; a join `RuntimeError`, a live reader or unproven termination fails the
+fixture. This exception permits no replacement of launch, read, kill, join,
+confirmation, mark or discard behavior, and no production-registry or frame
+introspection. Public run, discard and publish oracles execute inside R, where
+the process-local marks live. Retention with a held pipe or a never-attempted
+second reader is correct. The native `Thread.start` bootstrap window remains
+analytic coverage only; these faults do not exercise it empirically.
+
 | Point | Where |
 |---|---|
 | `lock.before_acquire` | Before the first acquisition attempt |
@@ -1391,3 +1431,30 @@ run whole-pack prefetch with unreachable proxies as an offline reuse check.
 Prefetch remains fatal because real pack smoke gates require these binaries.
 The remaining cold-cache dependencies and mirror work are tracked in
 treesitter-chunker#643 and treesitter-chunker#644 respectively.
+
+
+### Reader-start interruption regression coverage
+
+The additional real H/R/W tests in `test_cache_entry_transactions.py` keep
+public run/discard/publish oracles inside persistent R. H validates the real
+transferred pipe, revalidates after the snapshot, and certifies closure before
+R joins every wrapper-recorded reader. The existing POSIX escaped-holder test
+remains unchanged. Conservative retention in holder, first-reader and
+registered-unstarted cases is correct. These tests do not exercise the native
+bootstrap window within `Thread.start`; that window has a fail-closed rule,
+not an empirical coverage claim.
+
+| Targeted behavior | Regression mutation |
+| --- | --- |
+| Fresh no-holder second-start interruption discards; normal sequential runs capture exact output | `register_reader_after_start`, `drop_reader_registration` |
+| Second-reader stderr holder and both no-fault holder streams retain before release | `unfinished_reader_reports_safe_cleanup` |
+| Registered-unstarted readers preserve `KeyboardInterrupt` | `join_registered_unstarted_reader` |
+| Confirmed later run retains prior marks in the same R | `clear_preexisting_retention` |
+
+Both stream records are prebuilt, so `strict_zip_partial_readers` is not
+applicable to this layout. First-reader stdout holder and no-holder
+first-reader cases are conservative-retention coverage, not kills for
+`unfinished_reader_reports_safe_cleanup`. Sticky mutation validity requires
+phase 1 untimed/unconfirmed with a retain snapshot and held revalidation,
+then phase 2 untimed/confirmed. These are test obligations, not claims that
+all native/platform or mutation validation has already passed.

@@ -1274,3 +1274,991 @@ def test_prune_stops_on_a_lock_timeout_with_truthful_partial_counts(
     assert "Timed out" in result.errors[0]
     remaining = [p.name for p in (root / "builds").iterdir() if p.name[0] != "."]
     assert len(remaining) == 1
+
+
+# treesitter-chunker#577: policy reservations, not measured runtime guarantees.
+_READER_G = _transactions._GROUP_CONFIRM_DEADLINE
+_READER_J = _transactions._READER_JOIN
+_READER_FAULT = 2 * _READER_G + 2 * _READER_J
+_READER_RUN = 4 * _READER_G + 2 * _READER_J
+_READER_TEARDOWN = (1, 1, 2, 1, 1, 1)
+_READER_STEPS = {
+    "single": (1, 1, 1, "observe", 1, 1, 2, 1, 1, 1),
+    "sticky": (1, 1, 1, "observe", 1, 1, "observe", 2, 1, 1, 1),
+    "capture": (1, 1, "observe", 1, "observe", 2, 1, 1, 1),
+}
+_READER_ABORT = {
+    "single": ((1, 7), (2, 7), (3, 7), (4, 7)),
+    "sticky": ((1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 7), (7, 5)),
+    "capture": ((1, 5), (2, 5), (3, 5), (4, 5), (5, 5)),
+}
+
+
+def _reader_steps(kind, fault=False):
+    return tuple(
+        (
+            (_READER_FAULT if fault else _READER_RUN)
+            if step == "observe"
+            else step * _READER_G
+        )
+        for step in _READER_STEPS[kind]
+    )
+
+
+_READER_N = {kind: sum(_reader_steps(kind)) + _READER_G for kind in _READER_STEPS}
+for _kind, _ceiling in _READER_N.items():
+    for _fault in (False, True):
+        _steps = _reader_steps(_kind, _fault)
+        assert (
+            max(
+                sum(_steps),
+                *(
+                    sum(_steps[:index]) + tail * _READER_G
+                    for index, tail in _READER_ABORT[_kind]
+                ),
+            )
+            < _ceiling
+            < SAFETY_TIMEOUT
+        )
+
+# Shared verbatim by the controller and child scripts; no product introspection.
+_READER_WINDOWS_API = r"""
+def reader_windows_api():
+    import ctypes
+    from ctypes import wintypes
+    api = ctypes.WinDLL("kernel32", use_last_error=True)
+    declarations = {
+        "GetCurrentProcess": ([], wintypes.HANDLE),
+        "OpenProcess": ([wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.HANDLE),
+        "GetProcessTimes": ([wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4,
+                            wintypes.BOOL),
+        "WaitForSingleObject": ([wintypes.HANDLE, wintypes.DWORD], wintypes.DWORD),
+        "GetExitCodeProcess": ([wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)],
+                               wintypes.BOOL),
+        "CloseHandle": ([wintypes.HANDLE], wintypes.BOOL),
+    }
+    for name, (arguments, result) in declarations.items():
+        function = getattr(api, name)
+        function.argtypes, function.restype = arguments, result
+    return api
+
+
+def reader_windows_creation(api, handle):
+    import ctypes
+    from ctypes import wintypes
+    values = [wintypes.FILETIME() for _ in range(4)]
+    if not api.GetProcessTimes(handle, *(ctypes.byref(value) for value in values)):
+        error = ctypes.get_last_error()
+        raise ctypes.WinError(error)
+    value = (values[0].dwHighDateTime << 32) | values[0].dwLowDateTime
+    if not 0 < value < 2**64:
+        raise OSError("invalid native process creation identity")
+    return value
+"""
+
+_READER_WINDOWS_FUNCTIONS = {}
+if os.name == "nt":
+    # Execute only this fixed test-owned source, also used by isolated children.
+    exec(_READER_WINDOWS_API, _READER_WINDOWS_FUNCTIONS)  # noqa: S102
+
+_READER_NATIVE = (
+    _READER_WINDOWS_API
+    + r"""
+from multiprocessing.connection import Client, Listener
+from multiprocessing.reduction import send_handle, recv_handle
+from pathlib import Path
+import psutil
+import stat
+
+
+def pipe_identity(handle):
+    if os.name == "nt":
+        import _winapi
+        assert handle and _winapi.GetFileType(handle) == _winapi.FILE_TYPE_PIPE
+        return [_winapi.FILE_TYPE_PIPE]
+    value = os.fstat(handle)
+    assert stat.S_ISFIFO(value.st_mode)
+    return [value.st_dev, value.st_ino]
+
+
+def close_duplicate(handle):
+    if os.name == "nt":
+        import _winapi
+        _winapi.CloseHandle(handle)
+    else:
+        os.close(handle)
+
+
+def command(expected):
+    line = sys.stdin.readline()
+    if not line or json.loads(line) == "abort":
+        raise SystemExit(2)
+    assert json.loads(line) == expected, (line, expected)
+
+
+def identity():
+    result = {"pid": os.getpid(), "created": psutil.Process().create_time()}
+    if os.name == "nt":
+        api = reader_windows_api()
+        # GetCurrentProcess is a pseudo handle: never close it.
+        result["created_filetime"] = reader_windows_creation(api, api.GetCurrentProcess())
+    return result
+"""
+)
+
+_READER_HOLDER = (
+    _READER_NATIVE
+    + r"""
+address, family = json.loads(ARGS[0])
+handle = None
+try:
+    with Listener(address, family=family) as listener:
+        emit("holder-ready", **identity())
+        with listener.accept() as connection:
+            receipt = connection.recv()
+            emit("writer", **receipt)
+            handle = recv_handle(connection)
+            assert pipe_identity(handle) == receipt["pipe"]
+            emit("held", pipe=pipe_identity(handle))
+            connection.send("held")
+            command("revalidate")
+            assert pipe_identity(handle) == receipt["pipe"]
+            emit("still-holding", pipe=pipe_identity(handle))
+            command("release")
+finally:
+    if handle is not None:
+        close_duplicate(handle)
+        handle = None
+emit("closed")
+"""
+)
+
+_READER_WRITER = (
+    r"""
+import json, os, sys
+"""
+    + _READER_NATIVE
+    + r"""
+config = json.loads(sys.argv[1])
+sentinel = Path(config["sentinel"])
+sentinel.write_text("writer-sentinel", encoding="utf-8")
+fd = config["fd"]
+handle = fd
+if os.name == "nt":
+    import msvcrt
+    handle = msvcrt.get_osfhandle(fd)
+with Client(config["address"], family=config["family"]) as connection:
+    connection.send({**identity(), "sentinel": str(sentinel),
+                     "pipe": pipe_identity(handle)})
+    if config["holder"]:
+        send_handle(connection, handle, config["holder"])
+    assert connection.recv() == "held"
+if config["capture"]:
+    for stream, label in ((sys.stdout, "stdout"), (sys.stderr, "stderr")):
+        stream.buffer.write((label + "-λ-" + "x" * 70000).encode("utf-8"))
+        stream.buffer.flush()
+"""
+)
+
+_READER_RUNNER = (
+    _READER_NATIVE
+    + r"""
+root = Path(ARGS[0])
+root.mkdir()
+staging = _transactions.create_staging(root)
+configs = json.loads(ARGS[1])
+writer = ARGS[2]
+G = float(ARGS[3])
+recorded = []
+real_start = threading.Thread.start
+selected = 0
+mode = "none"
+count = 0
+fired = False
+
+
+def start(thread, *args, **kwargs):
+    global count, fired
+    if getattr(thread, "_target", None) is not _transactions._read_stream:
+        return real_start(thread, *args, **kwargs)
+    count += 1
+    inject = not fired and mode != "none" and count == selected
+    if inject and mode == "before":
+        fired = True
+        emit("paused", reader=count, timing=mode)
+        command("fault")
+        raise KeyboardInterrupt
+    recorded.append(thread)  # before invoking real start, even if it raises
+    result = real_start(thread, *args, **kwargs)
+    if inject:
+        fired = True
+        emit("paused", reader=count, timing=mode)
+        command("fault")
+        raise KeyboardInterrupt
+    return result
+
+
+original_emit = emit
+def emit(event, **fields):
+    original_emit(event, emitted_at=time.monotonic(), **fields)
+
+threading.Thread.start = start
+emit("runner-ready", **identity())
+for phase, config in enumerate(configs):
+    if phase == 0:
+        command("start")
+    recorded.clear()
+    count = 0
+    fired = False
+    selected, mode = config["selected"], config["mode"]
+    sentinel = staging.path("builds") / "writer-sentinel"
+    config["sentinel"] = str(sentinel)
+    result = None
+    exception = None
+    run_error = None
+    try:
+        result = _transactions.run_in_staging(
+            staging, [sys.executable, "-c", writer, json.dumps(config)],
+            cwd=staging.path("builds"), timeout=G,
+        )
+    except BaseException as error:
+        run_error = error
+        exception = type(error).__name__
+    fields = {"phase": phase, "exception": exception,
+              "exception_detail": None if run_error is None else repr(run_error)}
+    if result is not None:
+        fields.update(timed_out=result.timed_out, group_empty=result.group_empty,
+                      returncode=result.returncode)
+        if config["capture"]:
+            fields["capture_exact"] = all(
+                getattr(result, stream) == stream + "-λ-" + "x" * 70000
+                for stream in ("stdout", "stderr")
+            )
+    if run_error is not None or not config["capture"] or phase == len(configs) - 1:
+        if config["capture"] and run_error is None:
+            published = _transactions.publish_entry(staging, "builds", "writer-sentinel")
+            fields["published"] = published.read_text(encoding="utf-8") == "writer-sentinel"
+        disposal = _transactions.discard_staging(staging)
+        fields.update(skipped=list(map(str, disposal.skipped)), errors=list(disposal.errors),
+                      paths=[str(staging.path(ns)) for ns in ("downloads", "builds")],
+                      exists=[staging.path(ns).is_dir() for ns in ("downloads", "builds")],
+                      sentinel=sentinel.exists())
+    emit("snapshot", **fields)
+    command("released")
+    deadline = time.monotonic() + G
+    failures = []
+    for thread in recorded:
+        try:
+            thread.join(max(0, deadline - time.monotonic()))
+        except RuntimeError as error:
+            failures.append(repr(error))
+        else:
+            if thread.is_alive():
+                failures.append("reader still alive")
+    emit("joined", phase=phase, count=len(recorded), failures=failures)
+    assert not failures, failures
+    if run_error is not None and not (isinstance(run_error, KeyboardInterrupt) and fired):
+        raise run_error
+    if phase + 1 < len(configs):
+        # Only this released, joined, error-checked boundary accepts a stop.
+        line = sys.stdin.readline()
+        if not line:
+            raise SystemExit(2)
+        decision = json.loads(line)
+        if decision == "stop":
+            emit("aborted", phase=phase, reason="controller-stop")
+            break
+        assert decision == "continue", (line, "continue or stop")
+else:
+    emit("done")
+"""
+)
+
+
+def _expect_event_until(child, event, deadline):
+    import queue
+
+    while True:
+        remaining = deadline - time.monotonic()
+        assert remaining > 0, f"no {event} within local budget; {child.seen}"
+        try:
+            item = child._events.get(timeout=remaining)
+        except queue.Empty:
+            raise AssertionError(
+                f"no {event} within local budget; {child.seen}; {child.stderr}"
+            ) from None
+        assert item is not None, f"EOF before {event}; {child.seen}; {child.stderr}"
+        item["observed_at"] = time.monotonic()
+        child.seen.append(item)
+        if item["event"] == event:
+            return item
+
+
+def _wait_exit_until(process, deadline):
+    return process.wait(timeout=max(0, deadline - time.monotonic()))
+
+
+def _reader_command(child, command):
+    assert child.process.stdin is not None
+    child.seen.append({"command": command, "sent_at": time.monotonic()})
+    child.process.stdin.write(json.dumps(command) + "\n")
+    child.process.stdin.flush()
+
+
+def _reader_address(directories):
+    from multiprocessing.connection import arbitrary_address
+    from uuid import uuid4
+
+    family = "AF_PIPE" if os.name == "nt" else "AF_UNIX"
+    address = arbitrary_address(family)
+    if family == "AF_UNIX" and len(os.fsencode(address)) + 1 > (
+        108 if sys.platform == "linux" else 104
+    ):
+        if sys.platform == "linux":
+            address = "\0txn-reader-" + uuid4().hex
+        else:
+            import tempfile
+
+            directory = Path(tempfile.mkdtemp(prefix="r-"))
+            directories.append(directory)
+            assert stat.S_IMODE(directory.stat().st_mode) == 0o700
+            address = str(directory / "p")
+            assert (
+                len(os.fsencode(address)) + 1 <= 104
+            ), "AF_UNIX address exceeds sun_path"
+    return address, family
+
+
+class _ReaderReceipt:
+    """Controller-hosted no-holder endpoint, listening before R starts."""
+
+    def __init__(self):
+        import queue
+        from multiprocessing.connection import Listener
+
+        self.directories = []
+        self.address, self.family = _reader_address(self.directories)
+        self.listener = Listener(self.address, family=self.family)
+        self._events = queue.Queue()
+        self.seen = []
+        self.stderr = ""
+        self.connection = None
+        self.thread = threading.Thread(target=self._receive, daemon=True)
+        self.thread.start()
+
+    def _receive(self):
+        try:
+            with self.listener.accept() as connection:
+                self.connection = connection
+                self._events.put({"event": "writer", **connection.recv()})
+                connection.send("held")
+        except (OSError, EOFError) as error:
+            self.stderr = repr(error)
+        finally:
+            self._events.put(None)
+
+    def _wake(self, deadline):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("receipt wake deadline expired")
+        if self.family == "AF_UNIX":
+            import socket
+
+            with socket.socket(socket.AF_UNIX) as wake:
+                wake.settimeout(remaining)
+                wake.connect(self.address)
+            return
+
+        import _winapi
+
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("receipt wake deadline expired")
+            try:
+                # Zero uses the listener's default infinite wait, not a poll.
+                _winapi.WaitNamedPipe(self.address, max(1, int(remaining * 1000)))
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("receipt wake deadline expired")
+                handle = _winapi.CreateFile(
+                    self.address,
+                    _winapi.GENERIC_READ | _winapi.GENERIC_WRITE,
+                    0,
+                    _winapi.NULL,
+                    _winapi.OPEN_EXISTING,
+                    0,
+                    _winapi.NULL,
+                )
+            except OSError as error:
+                if getattr(error, "winerror", None) not in (
+                    _winapi.ERROR_PIPE_BUSY,
+                    _winapi.ERROR_SEM_TIMEOUT,
+                ):
+                    raise
+            else:
+                _winapi.CloseHandle(handle)
+                return
+
+    def close(self, deadline):
+        # Capture only the writer connection; the wake's connection owns itself.
+        errors = []
+        connection = self.connection
+        if self.thread.is_alive() and connection is None:
+            try:
+                self._wake(deadline)
+            except OSError as error:
+                errors.append(f"receipt wake: {error!r}")
+        try:
+            self.listener.close()
+        except OSError as error:
+            errors.append(f"receipt listener close: {error!r}")
+        if connection is not None:
+            try:
+                connection.close()
+            except OSError as error:
+                errors.append(f"receipt connection close: {error!r}")
+        try:
+            self.thread.join(max(0, deadline - time.monotonic()))
+        except RuntimeError as error:
+            errors.append(f"receipt join: {error!r}")
+        if self.thread.is_alive():
+            errors.append("controller receipt thread still live")
+        for directory in self.directories:
+            try:
+                directory.rmdir()
+            except OSError as error:
+                errors.append(f"receipt directory {directory}: {error!r}")
+        return errors
+
+
+def _reader_windows_stopped(receipt, observation, *, deadline=None):
+    """Sample cessation once on an identity-pinned Windows process handle.
+
+    Object visibility is not liveness. Body callers supply their existing
+    absolute barrier deadline for one wait; cleanup callers sample at zero.
+    Unknown identity/state and incomplete diagnostics fail.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    pid, expected = receipt.get("pid"), receipt.get("created_filetime")
+    if type(pid) is not int or not 0 < pid < 2**32:
+        raise OSError("invalid owned writer PID")
+    if type(expected) is not int or not 0 < expected < 2**64:
+        raise OSError("missing or invalid native writer creation identity")
+    api = _READER_WINDOWS_FUNCTIONS["reader_windows_api"]()
+    creation = _READER_WINDOWS_FUNCTIONS["reader_windows_creation"]
+    # SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION; non-inheritable.
+    handle = api.OpenProcess(0x00100000 | 0x1000, False, pid)
+    if not handle:
+        error = ctypes.get_last_error()
+        observation["open"] = {"error": error}
+        if error == 87:
+            # A positive valid PID may have vanished. No handle means no
+            # kernel-state proof: only independent absence is accepted here.
+            try:
+                process = psutil.Process(pid)
+                observation["absence"] = {
+                    "result": "identity still observable",
+                    "created": process.create_time(),
+                }
+            except psutil.NoSuchProcess:
+                observation.update(
+                    absence={"result": "NoSuchProcess"}, decision="absent"
+                )
+                return
+        raise ctypes.WinError(error)
+    observation["open"] = {"success": True, "at": time.monotonic()}
+    try:
+        observed = creation(api, handle)
+        observation["observed_filetime"] = observed
+        observation["identity"] = "matched" if observed == expected else "different"
+        if observed == expected:
+            started = time.monotonic()
+            timeout_ms = 0
+            if deadline is not None:
+                remaining = deadline - started
+                if remaining <= 0:
+                    raise AssertionError("W cessation barrier budget expired")
+                # Floor to whole milliseconds; never round up or use INFINITE.
+                timeout_ms = min(int(remaining * 1000), 0xFFFFFFFE)
+            observation["state"] = {
+                "started_at": started,
+                "timeout_ms": timeout_ms,
+            }
+            state = api.WaitForSingleObject(handle, timeout_ms)
+            state_error = ctypes.get_last_error() if state == 0xFFFFFFFF else None
+            observation["state"].update(
+                result=state, error=state_error, ended_at=time.monotonic()
+            )
+        else:
+            state = None
+        code = wintypes.DWORD()
+        if not api.GetExitCodeProcess(handle, ctypes.byref(code)):
+            error = ctypes.get_last_error()
+            observation["exit_code"] = {"error": error}
+            raise ctypes.WinError(error)
+        observation["exit_code"] = {"value": code.value}
+        if observed != expected:
+            observation["decision"] = "different identity"
+            return
+        if deadline is not None and time.monotonic() >= deadline:
+            raise AssertionError("W cessation barrier budget expired")
+        if state == 0:
+            # 259 can be a genuine terminal code; state alone establishes exit.
+            observation["decision"] = "signaled"
+            return
+        if state == 258:
+            observation["decision"] = "not stopped"
+            raise AssertionError("identity-matched W still live")
+        if state == 0xFFFFFFFF:
+            raise ctypes.WinError(state_error)
+        raise OSError(f"unexpected native process state {state}")
+    finally:
+        primary = sys.exc_info()[1]
+        if api.CloseHandle(handle):
+            observation["close"] = {"success": True}
+        else:
+            error = ctypes.get_last_error()
+            observation["close"] = {"error": error}
+            observation["decision"] = "observation failed"
+            close_error = ctypes.WinError(error)
+            if primary is not None:
+                primary.add_note(f"process handle close failed: {close_error!r}")
+            else:
+                raise close_error
+
+
+def _reader_writer_stopped(
+    receipt, observations=None, *, phase=None, reason="body", deadline=None
+):
+    if os.name == "nt":
+        observation = {
+            "pid": receipt.get("pid"),
+            "receipt_filetime": receipt.get("created_filetime"),
+            "receipt_created": receipt.get("created"),
+            "phase": phase,
+            "reason": reason,
+            "deadline": deadline,
+            "started_at": time.monotonic(),
+            "open": "not attempted",
+            "observed_filetime": "not applicable",
+            "identity": "unknown",
+            "absence": "not applicable",
+            "state": "not applicable",
+            "exit_code": "not applicable",
+            "close": "not applicable",
+            "decision": "observation failed",
+        }
+        if observations is not None:
+            observations.append(observation)
+        try:
+            if deadline is not None and time.monotonic() >= deadline:
+                raise AssertionError("W cessation barrier budget expired")
+            _reader_windows_stopped(receipt, observation, deadline=deadline)
+            if deadline is not None and time.monotonic() >= deadline:
+                raise AssertionError("W cessation barrier budget expired")
+        except (OSError, psutil.Error, AssertionError) as error:
+            observation["error"] = repr(error)
+            observation["native_error"] = getattr(error, "winerror", None)
+            if observation["decision"] != "not stopped":
+                observation["decision"] = "observation failed"
+            raise
+        finally:
+            observation["finished_at"] = time.monotonic()
+        return
+    try:
+        process = psutil.Process(receipt["pid"])
+        assert process.create_time() != receipt["created"], "W not reaped by R"
+    except psutil.NoSuchProcess:
+        pass
+    if os.name != "nt":
+        for process in psutil.process_iter():
+            try:
+                assert not (
+                    os.getpgid(process.pid) == receipt["pid"]
+                    and process.status() != psutil.STATUS_ZOMBIE
+                ), f"live W group member {process.pid}"
+            except (ProcessLookupError, psutil.NoSuchProcess):
+                pass
+
+
+def _reader_case(
+    tmp_path,
+    request,
+    *,
+    selected=0,
+    mode="none",
+    hold=False,
+    stream="stdout",
+    kind="single",
+    retain=True,
+):
+    """Real H/R/W; all public oracles execute in persistent R.
+
+    The contract explicitly permits an R-only Thread.start wrapper, targeted
+    only at _read_stream. It records every invoked real start in every phase;
+    faults pause before start or after its return, then raise KeyboardInterrupt.
+    This does not exercise Thread.start's native bootstrap window.
+    The selected stream is identified by its _read_stream start ordinal
+    (1 = stdout, 2 = stderr), which equals the stream argument because
+    _start_readers starts stdout before stderr; any start-order change
+    invalidates the parameter IDs and requires re-review.
+    """
+    ceiling = _READER_N[kind]
+    assert request.node.get_closest_marker("timeout").args == (ceiling,)
+    steps = _reader_steps(kind, mode != "none")
+    children, endpoints, receipts, snapshots = [], [], [], []
+    writer_observations = []
+    address_directories = []
+    holder = runner = None
+    holder_closed = False
+    holder_revalidation_sent = False
+    holder_ack_attempted = False
+    holder_reap_attempted = False
+    runner_completion_attempted = False
+    runner_phase = None
+    runner_released = False
+    failed = False
+    body_error = None
+    try:
+        if hold:
+            address, family = _reader_address(address_directories)
+            holder = Child(_READER_HOLDER, [json.dumps([address, family])])
+            children.append(holder)
+            ready = _expect_event_until(
+                holder, "holder-ready", time.monotonic() + steps[0]
+            )
+            holder_pid = ready["pid"]
+        else:
+            holder_pid = 0
+        configs = []
+        for phase in range(2 if kind != "single" else 1):
+            if not hold or phase:
+                endpoint = _ReaderReceipt()
+                endpoints.append(endpoint)
+                address, family = endpoint.address, endpoint.family
+            configs.append(
+                {
+                    "address": address,
+                    "family": family,
+                    "holder": holder_pid if phase == 0 else 0,
+                    "fd": 1 if stream == "stdout" else 2,
+                    "capture": kind == "capture",
+                    "selected": selected,
+                    "mode": mode if phase == 0 else "none",
+                }
+            )
+        runner = Child(
+            _READER_RUNNER,
+            [tmp_path / "cache", json.dumps(configs), _READER_WRITER, str(_READER_G)],
+        )
+        children.append(runner)
+        _expect_event_until(runner, "runner-ready", time.monotonic() + _READER_G)
+        for phase, config in enumerate(configs):
+            observation = time.monotonic() + (
+                _READER_FAULT if mode != "none" else _READER_RUN
+            )
+            runner_phase = phase
+            runner_released = False
+            _reader_command(runner, "start" if phase == 0 else "continue")
+            readiness = min(observation, time.monotonic() + _READER_G)
+            source = holder if config["holder"] else endpoints[phase - int(hold)]
+            receipt = _expect_event_until(source, "writer", readiness)
+            receipts.append(receipt)
+            assert (
+                Path(receipt["sentinel"]).read_text(encoding="utf-8")
+                == "writer-sentinel"
+            )
+            if config["holder"]:
+                _expect_event_until(holder, "held", readiness)
+            if mode != "none" and phase == 0:
+                _expect_event_until(runner, "paused", readiness)
+                observation = time.monotonic() + _READER_FAULT
+                _reader_command(runner, "fault")
+            try:
+                snapshot = _expect_event_until(runner, "snapshot", observation)
+            except AssertionError as error:
+                raise AssertionError("no pre-release snapshot") from error
+            snapshots.append(snapshot)
+            assert snapshot["exception"] == (
+                "KeyboardInterrupt" if config["mode"] != "none" else None
+            )
+            if config["mode"] == "none":
+                assert snapshot["timed_out"] is False
+                assert snapshot["group_empty"] is (not bool(config["holder"]))
+                assert snapshot["returncode"] == 0
+            if kind == "capture":
+                assert snapshot["capture_exact"]
+                if phase == len(configs) - 1:
+                    assert snapshot["published"]
+            if "skipped" in snapshot:
+                assert snapshot["exists"] == [retain, retain]
+                assert snapshot["sentinel"] is retain
+                assert set(snapshot["skipped"]) == (
+                    set(snapshot["paths"]) if retain else set()
+                )
+                if not retain:
+                    assert not snapshot["errors"]
+                for path, exists in zip(
+                    snapshot["paths"], snapshot["exists"], strict=True
+                ):
+                    assert Path(path).is_dir() is exists
+            if config["holder"]:
+                holder_revalidation_sent = True
+                _reader_command(holder, "revalidate")
+                _expect_event_until(holder, "still-holding", observation)
+                holder_ack_attempted = True
+                _reader_command(holder, "release")
+                _expect_event_until(holder, "closed", time.monotonic() + _READER_G)
+                holder_closed = True
+            barrier = time.monotonic() + (
+                _READER_G if phase + 1 < len(configs) else 2 * _READER_G
+            )
+            runner_completion_attempted = True
+            runner_released = True
+            _reader_command(runner, "released")
+            if config["holder"]:
+                holder_reap_attempted = True
+                assert _wait_exit_until(holder.process, barrier) == 0
+            joined = _expect_event_until(runner, "joined", barrier)
+            assert not joined["failures"]
+            expected_readers = (
+                config["selected"] - int(config["mode"] == "before")
+                if config["mode"] != "none"
+                else 2
+            )
+            assert joined["count"] == expected_readers
+            _reader_writer_stopped(
+                receipt, writer_observations, phase=phase, deadline=barrier
+            )
+            assert time.monotonic() < barrier
+            runner_completion_attempted = False
+        runner_completion_attempted = True
+        _expect_event_until(runner, "done", barrier)
+        assert _wait_exit_until(runner.process, barrier) == 0
+    except BaseException as error:
+        failed = True
+        body_error = error
+        raise
+    finally:
+        # Abort order: H closure/reap, R completion/fallback, W identity,
+        # controller drainage. Never use Child's hidden 240-second waits.
+        teardown_errors = []
+        if holder is not None and holder.process.poll() is None:
+            if not holder_closed and not holder_ack_attempted:
+                deadline = time.monotonic() + _READER_G
+                try:
+                    if not holder_revalidation_sent:
+                        _reader_command(holder, "revalidate")
+                        _expect_event_until(holder, "still-holding", deadline)
+                    _reader_command(holder, "release")
+                    _expect_event_until(holder, "closed", deadline)
+                    holder_closed = True
+                except (OSError, AssertionError) as error:
+                    teardown_errors.append(str(error))
+            deadline = time.monotonic() + _READER_G
+            if not holder_closed or holder_reap_attempted:
+                teardown_errors.append("forced H termination")
+                try:
+                    holder.process.terminate()
+                except OSError as error:
+                    teardown_errors.append(f"H terminate: {error!r}")
+            try:
+                _wait_exit_until(holder.process, time.monotonic() + _READER_G / 2)
+            except subprocess.TimeoutExpired:
+                teardown_errors.append("forced H kill")
+                try:
+                    holder.process.kill()
+                    _wait_exit_until(holder.process, deadline)
+                except subprocess.TimeoutExpired:
+                    teardown_errors.append("H not reaped after kill")
+                except OSError as error:
+                    teardown_errors.append(f"H kill/reap: {error!r}")
+            except OSError as error:
+                teardown_errors.append(f"H reap: {error!r}")
+        if runner is not None and runner.process.poll() is None:
+            try:
+                # Never re-wait a failed shared barrier or final completion slot.
+                if runner_completion_attempted:
+                    raise subprocess.TimeoutExpired("R completion already attempted", 0)
+                # Baseline may only return after H closure; collect its diagnosis.
+                # A completed body barrier already sent released; do not repeat it.
+                if not runner_released:
+                    _reader_command(runner, "released")
+                if runner_phase == 0 and len(configs) > 1:
+                    # FIFO: released first, then stop only after joins/errors.
+                    _reader_command(runner, "stop")
+                _wait_exit_until(runner.process, time.monotonic() + 2 * _READER_G)
+            except (OSError, subprocess.TimeoutExpired):
+                teardown_errors.append("forced R termination")
+                deadline = time.monotonic() + _READER_G
+                try:
+                    runner.process.terminate()
+                    _wait_exit_until(runner.process, time.monotonic() + _READER_G / 2)
+                except subprocess.TimeoutExpired:
+                    try:
+                        runner.process.kill()
+                        _wait_exit_until(runner.process, deadline)
+                    except subprocess.TimeoutExpired:
+                        teardown_errors.append("R not reaped after kill")
+                    except OSError as error:
+                        teardown_errors.append(f"R kill/reap: {error!r}")
+                except OSError as error:
+                    teardown_errors.append(f"R terminate/reap: {error!r}")
+        writer_deadline = time.monotonic() + _READER_G
+        for phase, receipt in enumerate(receipts):
+            try:
+                _reader_writer_stopped(
+                    receipt,
+                    writer_observations,
+                    phase=phase,
+                    reason="abort cleanup" if failed else "final cleanup",
+                )
+            except AssertionError as error:
+                teardown_errors.append(str(error))
+                # Only the positively matched leader, never a reaped PGID.
+                try:
+                    process = psutil.Process(receipt["pid"])
+                    if process.create_time() == receipt["created"]:
+                        process.kill()
+                        process.wait(timeout=max(0, writer_deadline - time.monotonic()))
+                except psutil.NoSuchProcess:
+                    pass
+                except psutil.TimeoutExpired:
+                    teardown_errors.append("identity-matched W survived kill")
+                except (psutil.Error, OSError) as cleanup_error:
+                    teardown_errors.append(f"W kill/reap: {cleanup_error!r}")
+            except (psutil.Error, OSError) as error:
+                teardown_errors.append(f"W identity scan: {error!r}")
+        deadline = time.monotonic() + _READER_G
+        for endpoint in endpoints:
+            teardown_errors.extend(endpoint.close(deadline))
+        for child in children:
+            for reader in child._readers:
+                reader.join(max(0, deadline - time.monotonic()))
+                if reader.is_alive():
+                    teardown_errors.append("live controller reader")
+            if not any(reader.is_alive() for reader in child._readers):
+                for pipe in (
+                    child.process.stdin,
+                    child.process.stdout,
+                    child.process.stderr,
+                ):
+                    pipe.close()
+            if child.process.returncode != 0:
+                teardown_errors.append(
+                    f"child exit {child.process.returncode}: {child.stderr}"
+                )
+        for directory in address_directories:
+            try:
+                directory.rmdir()
+            except OSError as error:
+                teardown_errors.append(f"holder directory {directory}: {error!r}")
+        import queue
+
+        for child in children:
+            while True:
+                try:
+                    item = child._events.get_nowait()
+                except queue.Empty:
+                    break
+                if item is not None:
+                    item["drained_at"] = time.monotonic()
+                    child.seen.append(item)
+        report = {
+            "ceiling": ceiling,
+            "steps": steps,
+            "snapshots": snapshots,
+            "writers": receipts,
+            "writer_observations": writer_observations,
+            "failed": failed,
+            "teardown_errors": teardown_errors,
+            "children": [
+                {
+                    "pid": c.process.pid,
+                    "launcher_pid": c.process.pid,
+                    "interpreter_identity": next(
+                        (
+                            event
+                            for event in c.seen
+                            if event.get("event") in ("runner-ready", "holder-ready")
+                        ),
+                        None,
+                    ),
+                    "returncode": c.process.returncode,
+                    "events": c.seen,
+                    "stderr": c.stderr,
+                    "readers_alive": [r.is_alive() for r in c._readers],
+                }
+                for c in children
+            ],
+        }
+        print("READER_LIFECYCLE " + json.dumps(report))
+        if body_error is not None:
+            if teardown_errors:
+                body_error.add_note("Reader teardown errors: " + repr(teardown_errors))
+        else:
+            assert not teardown_errors, teardown_errors
+
+
+@pytest.mark.timeout(_READER_N["single"])
+@pytest.mark.parametrize(
+    ("selected", "stream"),
+    [(1, "stdout"), (2, "stderr")],
+    ids=["reader1-stdout", "reader2-stderr"],
+)
+def test_reader_start_interrupt_retains_staging(tmp_path, request, selected, stream):
+    """Retention with H is correct; never fix it into confirmation or deletion.
+
+    [reader2-stderr] is an exact kill for unfinished_reader_reports_safe_cleanup.
+    [reader1-stdout] is not: stderr is never start-attempted, so both retain.
+    """
+    _reader_case(
+        tmp_path, request, selected=selected, mode="after", hold=True, stream=stream
+    )
+
+
+@pytest.mark.timeout(_READER_N["single"])
+def test_reader_start_interrupt_after_both_starts_confirms_and_discards(
+    tmp_path, request
+):
+    """Fresh no-holder key distinguishes real registry ownership from blanket retention."""
+    _reader_case(tmp_path, request, selected=2, mode="after", retain=False)
+
+
+@pytest.mark.timeout(_READER_N["single"])
+def test_reader_start_interrupt_after_first_start_retains_staging(tmp_path, request):
+    """Retention is correct: stderr was never attempted; deletion is not a fix.
+
+    Not a kill node for unfinished_reader_reports_safe_cleanup: stderr is never
+    start-attempted, so fixed and mutant both retain.
+    """
+    _reader_case(tmp_path, request, selected=1, mode="after")
+
+
+@pytest.mark.timeout(_READER_N["single"])
+@pytest.mark.parametrize("selected", [1, 2], ids=["reader1", "reader2"])
+def test_registered_unstarted_reader_preserves_interrupt(tmp_path, request, selected):
+    _reader_case(tmp_path, request, selected=selected, mode="before")
+
+
+@pytest.mark.timeout(_READER_N["capture"])
+def test_staged_run_captures_both_streams_after_reader_registration(tmp_path, request):
+    _reader_case(tmp_path, request, kind="capture", retain=False)
+
+
+@pytest.mark.timeout(_READER_N["single"])
+@pytest.mark.parametrize("stream", ["stdout", "stderr"])
+def test_outside_pipe_holder_prevents_safe_staging_discard(tmp_path, request, stream):
+    """Retention is correct while H holds a pipe, even though W exited.
+
+    This retention must not be fixed into confirmation. Both parameters are
+    kill nodes for unfinished_reader_reports_safe_cleanup.
+    """
+    _reader_case(tmp_path, request, hold=True, stream=stream)
+
+
+@pytest.mark.timeout(_READER_N["sticky"])
+def test_confirmed_later_run_does_not_clear_prior_staging_marks(tmp_path, request):
+    _reader_case(tmp_path, request, hold=True, kind="sticky")
