@@ -45,6 +45,26 @@ Measurements include host CPU use before the workload; retain them with the
 source/environment snapshot. Passing this workload is not a throughput
 guarantee for other inputs or machines.
 
+## Multiprocess scaling check
+
+pytest's `-n` option bounds only the test processes, not the worker pools the
+performance tests start. Those tests therefore never size a pool from the
+host's core count: ordinary runs request at most two workers. The scaling test
+requires two workers to be more than 30% faster than one, using uncached parsing
+and the best of three runs.
+
+The 4-worker check needs four workers to be more than twice as fast as one, and
+it applies that bar only when psutil reports at least four physical cores.
+It runs only when an admitted run sets `CHUNKER_PERF_ADMITTED_SCALING=1`;
+otherwise pytest reports it as skipped. A high core count is not admission. CI
+sets the variable for the nightly and manual full tier, and release validation
+sets it for its full tier. All of these run on dedicated hosted runners. On a shared host, set it only for a run that has confirmed
+headroom, and run that test serially:
+
+```bash
+CHUNKER_PERF_ADMITTED_SCALING=1 uv run --locked --all-extras pytest tests/test_performance_advanced.py::TestConcurrentPerformance::test_multiprocess_scaling_four_workers -q -rs
+```
+
 ## Parser reuse
 
 `get_parser(language)` reuses a parser owned by the calling thread. It does not

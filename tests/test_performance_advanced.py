@@ -6,7 +6,6 @@ identifies optimization opportunities.
 
 import gc
 import json
-import multiprocessing as mp
 import os
 import subprocess
 import sys
@@ -23,6 +22,73 @@ from chunker.parallel import ParallelChunker, chunk_files_parallel
 
 # Mark all tests in this module as integration tests
 pytestmark = pytest.mark.integration
+
+# Worker contract (Consiliency/treesitter-chunker#669). pytest -n bounds only
+# the test processes, not the pools these tests start, so no test sizes a pool
+# from the host's core count. Ordinary runs request at most two workers. The
+# 4-worker scaling measurement runs only when an admitted run (one with
+# confirmed headroom, or CI's dedicated full-tier runners) sets
+# CHUNKER_PERF_ADMITTED_SCALING=1. A high physical-core count does not admit it.
+# tests/test_performance_worker_contract.py checks the requested counts.
+ORDINARY_MAX_WORKERS = 2
+ADMITTED_SCALING_WORKERS = 4
+ADMITTED_SCALING_ENV = "CHUNKER_PERF_ADMITTED_SCALING"
+
+
+def scaling_admitted():
+    """Whether this run admits the 4-worker scaling measurement."""
+    return os.environ.get(ADMITTED_SCALING_ENV) == "1"
+
+
+def best_scaling_times(tmp_path, worker_counts):
+    """Best-of-three uncached parse times for each worker count.
+
+    The cache is off so every run does the same parsing; otherwise the first
+    (1-worker) run fills the cache and later runs only look faster
+    (Consiliency/treesitter-chunker#660). One untimed warm-up loads the
+    grammar, then each worker count keeps the best of three runs so that
+    hosted-runner noise cannot decide the result.
+    """
+    num_files, units = 50, 120
+    unit = """
+def function_{i}_{j}(a, b):
+    \"\"\"Function {j} in file {i}.\"\"\"
+    total = 0
+    for x in range(a):
+        if x % 3 == 0:
+            total += x * b
+        else:
+            total -= x
+    return total
+
+class Module_{i}_{j}:
+    def __init__(self):
+        self.value = {j}
+
+    def process(self, items):
+        return [item * self.value for item in items if item]
+"""
+    for i in range(num_files):
+        (tmp_path / f"file_{i}.py").write_text(
+            "".join(unit.format(i=i, j=j) for j in range(units))
+        )
+    file_paths = sorted(tmp_path.glob("*.py"))
+
+    def run(num_workers):
+        start = time.perf_counter()
+        results = chunk_files_parallel(
+            file_paths,
+            language="python",
+            num_workers=num_workers,
+            use_cache=False,
+        )
+        elapsed = time.perf_counter() - start
+        total_chunks = sum(len(chunks) for chunks in results.values())
+        assert total_chunks >= num_files * units * 3
+        return elapsed
+
+    run(1)  # warm-up: imports, grammar load, first pool start
+    return {n: min(run(n) for _ in range(3)) for n in worker_counts}
 
 
 class TestConcurrentPerformance:
@@ -85,63 +151,39 @@ class TestClass:
 
     @staticmethod
     def test_multiprocess_scaling(tmp_path):
-        """Real parsing work speeds up with more worker processes.
+        """Real parsing work speeds up with two worker processes.
 
-        The cache is off so every run does the same parsing; otherwise the
-        first (1-worker) run fills the cache and later runs only look faster
-        (Consiliency/treesitter-chunker#660). One untimed warm-up loads the
-        grammar, then each worker count keeps the best of three runs so that
-        hosted-runner noise cannot decide the result.
+        See best_scaling_times for the measurement. Two workers must be more
+        than 30% faster than one.
         """
-        num_files, units = 50, 120
-        unit = """
-def function_{i}_{j}(a, b):
-    \"\"\"Function {j} in file {i}.\"\"\"
-    total = 0
-    for x in range(a):
-        if x % 3 == 0:
-            total += x * b
-        else:
-            total -= x
-    return total
-
-class Module_{i}_{j}:
-    def __init__(self):
-        self.value = {j}
-
-    def process(self, items):
-        return [item * self.value for item in items if item]
-"""
-        for i in range(num_files):
-            (tmp_path / f"file_{i}.py").write_text(
-                "".join(unit.format(i=i, j=j) for j in range(units))
-            )
-        file_paths = sorted(tmp_path.glob("*.py"))
-
-        def run(num_workers):
-            start = time.perf_counter()
-            results = chunk_files_parallel(
-                file_paths,
-                language="python",
-                num_workers=num_workers,
-                use_cache=False,
-            )
-            elapsed = time.perf_counter() - start
-            total_chunks = sum(len(chunks) for chunks in results.values())
-            assert total_chunks >= num_files * units * 3
-            return elapsed
-
-        run(1)  # warm-up: imports, grammar load, first pool start
-        worker_counts = sorted({1, 2, 4, mp.cpu_count()})
-        times = {n: min(run(n) for _ in range(3)) for n in worker_counts}
-        # Four workers can only double throughput on four real cores; hosted
-        # Windows runners expose 4 vCPUs on 2 physical cores (owner decision on
-        # Consiliency/treesitter-chunker#660).
-        physical_cores = psutil.cpu_count(logical=False) or 0
-        if physical_cores >= 4:
-            speedup = times[1] / times[4]
-            assert speedup > 2.0
+        times = best_scaling_times(tmp_path, [1, 2])
         assert times[2] < times[1] * 0.7
+
+    @staticmethod
+    def test_multiprocess_scaling_four_workers(tmp_path):
+        """Four workers double real parsing throughput on four physical cores.
+
+        Runs only in an admitted run (see ADMITTED_SCALING_ENV); ordinary runs
+        report it as skipped. Four workers can only double throughput on four
+        real cores; hosted Windows runners expose 4 vCPUs on 2 physical cores
+        (owner decision on Consiliency/treesitter-chunker#660). On such hosts
+        the 4-worker runs still check their chunk counts, and the unapplied 2x
+        bar is reported as a skip with the measured speedup.
+        """
+        if not scaling_admitted():
+            pytest.skip(
+                f"4-worker scaling not exercised: set {ADMITTED_SCALING_ENV}=1 "
+                "only in an admitted run (Consiliency/treesitter-chunker#669)"
+            )
+        times = best_scaling_times(tmp_path, [1, ADMITTED_SCALING_WORKERS])
+        speedup = times[1] / times[ADMITTED_SCALING_WORKERS]
+        physical_cores = psutil.cpu_count(logical=False) or 0
+        if physical_cores < 4:
+            pytest.skip(
+                f"4-worker 2x bar not applied: {physical_cores} physical cores "
+                f"(< 4); measured speedup {speedup:.2f}x"
+            )
+        assert speedup > 2.0
 
 
 class TestMemoryOptimization:
@@ -316,7 +358,7 @@ print(json.dumps({'chunks': len(chunks), 'chunk_time': chunk_time,
         results = chunk_files_parallel(
             file_paths,
             language="python",
-            num_workers=mp.cpu_count(),
+            num_workers=ORDINARY_MAX_WORKERS,
         )
         assert len(results) == 1000
         total_chunks = sum(len(chunks) for chunks in results.values())
@@ -441,7 +483,7 @@ class TestRealWorldScenarios:
         results = chunk_files_parallel(
             all_files,
             language="python",
-            num_workers=mp.cpu_count(),
+            num_workers=ORDINARY_MAX_WORKERS,
         )
         elapsed = time.time() - start_time
         assert len(results) == 35
