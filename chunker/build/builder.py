@@ -29,7 +29,7 @@ from chunker.contracts.build_contract import BuildSystemContract
 from .platform import PlatformSupport
 
 
-_WHEEL_PAYLOAD_VERSION = "6.0.0"
+_WHEEL_PAYLOAD_VERSION = "7.0.0"
 # Shared by both wheel-building paths; keep in step with pyproject requires-python.
 _WHEEL_REQUIRES_PYTHON = ">=3.14"
 _REQUIRED_WHEEL_PAYLOAD = frozenset(

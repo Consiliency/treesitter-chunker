@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [7.0.0] - 2026-11-19
+
+This major release requires Python 3.14 (treesitter-chunker#599) and includes
+the accumulated changes below. Published 6.0.0 keeps its original `>=3.11`
+metadata, so environments on Python 3.12 or 3.13 stay on 6.x.
+
+Before upgrading, read **Breaking**: grammar pins computed from earlier
+controlled or installer builds can stop matching and fail closed with
+`integrity_mismatch`; `grammar build` rejects C++ scanners and extra `.c`
+files; `SmartSelector.select_multiple_grammars` rejects a nonempty
+`global_constraints`; and GraphML readers that map by `attr.name` should read
+caller `label` metadata as `caller_label`. Controlled C builds link with
+`-z defs` on Linux, and `grammar build` no longer adds an implicit `-DNDEBUG`,
+so grammar assertions are active.
 
 ### Breaking
 
@@ -18,8 +31,117 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is removed; no jobs are added. `unicodedata2==16.0.0`
   stays a dependency for interpreters other than CPython 3.14, such as PyPy.
   The separate BAML companion keeps its own 3.12 minimum. This supersedes the
-  3.12-floor entries further down this section (treesitter-chunker#493,
-  treesitter-chunker#502): the next main release requires 3.14, not 3.12.
+  interim 3.12-floor entries below (treesitter-chunker#493,
+  treesitter-chunker#502): 7.0.0 requires 3.14, not 3.12.
+
+- Controlled C grammar builds now use reproducible recipes
+  (Consiliency/treesitter-chunker#630). Canonical C routes preserve public filenames but can change bytes and
+  invalidate old pins. Combined builds omit unbuildable members and report those
+  omissions; inspect errors even when the remaining library builds successfully. MSVC
+  combined builds, C++/noncanonical compatibility routes, and whole-wheel archives are
+  excluded from this guarantee.
+
+- `grammar build` now rejects `scanner.cc` and `scanner.cpp` before any compiler
+  process, with an actionable error; it previously could report success on a parser-only
+  library. It also rejects grammars with extra `.c` files. It no longer regenerates an
+  existing `src/parser.c`. When generation is necessary, it uses parent-resolved
+  `tree-sitter` from PATH, not `npx tree-sitter`.
+
+- Every new controlled C route uses Linux `-Wl,-z,defs`. Undefined symbols, including
+  libm functions when `-lm` is not linked, now cause failure; no `-lm` is added. In a
+  combined build an accepted member's undefined symbol fails the complete link and every
+  requested member is reported failed. macOS controlled combined builds no longer use
+  `-undefined dynamic_lookup`.
+
+- `grammar build` now compiles directly rather than through distutils/sysconfig: their
+  implicit `-DNDEBUG` is not retained, so assertions become active. The CLI keeps
+  explicit `-std=c99`; individual TreeSitterGrammarBuilder keeps `-std=c11`. Installer,
+  downloader, GrammarManager, combined TreeSitterGrammarBuilder and PlatformBuilder add
+  no `-std`. Legacy individual C++ still uses its existing `-std=c++17`; downloader's
+  legacy C++ command is unchanged and uncontrolled. Compiler selection follows the
+  documented per-builder table, which can change output bytes.
+
+- Combined C++-scanner members are now left out before compilation and reported failed,
+  while valid C peers are still built. Tree-sitter 0.26.0 has no
+  `Language.build_library`; the formerly uncaught AttributeError in
+  TreeSitterGrammarBuilder's combined route is replaced by supported C compilation and
+  explicit failed-member reporting.
+
+- Symlinked sources within the inclusive clone-to-build span fail closed for each
+  grammar/member on the new controlled routes, with no legacy retry. Directories above
+  the clone root, including the shared grammars directory itself, are not inspected.
+  Installer behavior remains as in treesitter-chunker#636: its controlled decline can
+  still reach make and tree-sitter fallbacks. PlatformBuilder declines unknown labels
+  and label/host-family mismatches before any process. Labels choose artifact names,
+  while link flags use the host platform.
+
+- The CLI no longer requires Node independently or installs npm packages globally.
+  Pre-generated parsers build without a Node or generator probe; generation when needed uses
+  a parent-resolved tree-sitter executable, which may itself need a runtime. Internal
+  UserGrammarTools npm install behavior is unchanged and can execute lifecycle scripts
+  (Consiliency/treesitter-chunker#641); publishing a found shared library is tracked
+  separately (Consiliency/treesitter-chunker#642).
+
+- Installer controlled gcc/cc recipe bytes are unchanged. Existing pins for other
+  changed builders can stop matching and fail closed; no digest normalization, automatic
+  repinning, native_probe.v1 change, or parser-pin adjustment is introduced. Make can
+  select a committed binary, and neither make nor tree-sitter fallback output carries a
+  reproducibility guarantee.
+
+- `GrammarInstaller` builds a grammar to the same bytes wherever the source is
+  cloned or built (treesitter-chunker#621, treesitter-chunker#607). It runs the
+  `gcc` found on `PATH` from the grammar's source root with relative `src/…`
+  paths. On macOS it sets the install name to `@rpath/lib<language>.so`. On
+  Windows (MinGW) it links with `--no-insert-timestamp` and
+  `--disable-auto-image-base`. On Linux it links with `-z defs`. `gcc` now
+  runs first, then `make`; the `tree-sitter build` CLI is the last fallback.
+
+  Pins computed from earlier installer builds stop matching and fail closed
+  with `integrity_mismatch`:
+  - **macOS:** every grammar. The install name recorded the random staging
+    path. The `assert` macro there records only the file name.
+  - **Windows:** every grammar (link timestamp and image base). This includes
+    grammars whose C sources keep their source path through a reachable
+    `assert` or a direct `__FILE__`.
+  - **Linux:** grammars whose C sources keep their source path the same way
+    (such as bash, cpp, c-sharp and ruby), and grammars the `tree-sitter` CLI
+    built on a host that also has `gcc`.
+
+  Reproduce such a pin with the documented recipe ("Producing a pin for
+  `grammar install`" in `docs/grammar_management.md`). Linux pins for other
+  gcc-built grammars are unchanged.
+
+  The `gcc` route no longer reports success for a grammar it cannot build
+  completely. Grammars with a C++ scanner (`scanner.cc` or `.cpp`), and on
+  Linux grammars that need an unlinked library such as `libm`, build only
+  through `make` or the CLI, whose bytes are host-specific. Each
+  installation's metadata records the build method and compiler
+  (`metadata.build`).
+
+- `SmartSelector.select_multiple_grammars` no longer accepts
+  `global_constraints` and silently ignores them (treesitter-chunker#344). No
+  cross-language constraint is supported, so a nonempty mapping now raises
+  `ValueError`, naming its keys, before any selection runs. `None` and `{}` behave as
+  before. Use `select_best_grammar(language, constraints=...)` for
+  per-language constraints.
+- The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter`
+  modules declare caller metadata named `label` with
+  `attr.name="caller_label"`, so readers that map GraphML data by `attr.name`,
+  such as NetworkX, see both labels (treesitter-chunker#453). `label` now holds
+  only the structural label; before, a NetworkX import replaced the structural
+  label with the caller value. To keep declared names distinct, a caller name
+  such as `caller_label` is declared as `caller_caller_label`. Key IDs and
+  values are unchanged, so consumers that select by key ID are unaffected.
+  In a yEd import NetworkX still replaces `label` with the yEd graphics text,
+  and `caller_label` is kept beside it. Name-keyed consumers should read
+  caller `label` metadata as `caller_label` and regenerate GraphML output. See
+  [caller label names](docs/graphml_export.md#caller-label-names-for-name-keyed-readers).
+- *(Interim; superseded by treesitter-chunker#599.)* Require Python 3.12 or newer for the next main and BAML companion releases
+  (treesitter-chunker#493). Published 6.0.0 and companion 0.1.0 keep their original
+  metadata. CI uses Python 3.12 with installed-wheel checks on 3.12 and 3.14,
+  retaining the existing platform coverage. Remove duplicate
+  lint/type work, obsolete 3.11/3.13 jobs and duplicate main tag artifact builds.
+  The companion source moves to `cp312-abi3`; its new release remains separate.
 
 ### Changed
 
@@ -449,117 +571,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   array-pattern identifiers as bindings, and finds the reference in a
   shorthand object property such as `{ value }` (treesitter-chunker#293).
 
-### Breaking
-
-- Controlled C grammar builds now use reproducible recipes
-  (Consiliency/treesitter-chunker#630). Canonical C routes preserve public filenames but can change bytes and
-  invalidate old pins. Combined builds omit unbuildable members and report those
-  omissions; inspect errors even when the remaining library builds successfully. MSVC
-  combined builds, C++/noncanonical compatibility routes, and whole-wheel archives are
-  excluded from this guarantee.
-
-- `grammar build` now rejects `scanner.cc` and `scanner.cpp` before any compiler
-  process, with an actionable error; it previously could report success on a parser-only
-  library. It also rejects grammars with extra `.c` files. It no longer regenerates an
-  existing `src/parser.c`. When generation is necessary, it uses parent-resolved
-  `tree-sitter` from PATH, not `npx tree-sitter`.
-
-- Every new controlled C route uses Linux `-Wl,-z,defs`. Undefined symbols, including
-  libm functions when `-lm` is not linked, now cause failure; no `-lm` is added. In a
-  combined build an accepted member's undefined symbol fails the complete link and every
-  requested member is reported failed. macOS controlled combined builds no longer use
-  `-undefined dynamic_lookup`.
-
-- `grammar build` now compiles directly rather than through distutils/sysconfig: their
-  implicit `-DNDEBUG` is not retained, so assertions become active. The CLI keeps
-  explicit `-std=c99`; individual TreeSitterGrammarBuilder keeps `-std=c11`. Installer,
-  downloader, GrammarManager, combined TreeSitterGrammarBuilder and PlatformBuilder add
-  no `-std`. Legacy individual C++ still uses its existing `-std=c++17`; downloader's
-  legacy C++ command is unchanged and uncontrolled. Compiler selection follows the
-  documented per-builder table, which can change output bytes.
-
-- Combined C++-scanner members are now left out before compilation and reported failed,
-  while valid C peers are still built. Tree-sitter 0.26.0 has no
-  `Language.build_library`; the formerly uncaught AttributeError in
-  TreeSitterGrammarBuilder's combined route is replaced by supported C compilation and
-  explicit failed-member reporting.
-
-- Symlinked sources within the inclusive clone-to-build span fail closed for each
-  grammar/member on the new controlled routes, with no legacy retry. Directories above
-  the clone root, including the shared grammars directory itself, are not inspected.
-  Installer behavior remains as in treesitter-chunker#636: its controlled decline can
-  still reach make and tree-sitter fallbacks. PlatformBuilder declines unknown labels
-  and label/host-family mismatches before any process. Labels choose artifact names,
-  while link flags use the host platform.
-
-- The CLI no longer requires Node independently or installs npm packages globally.
-  Pre-generated parsers build without a Node or generator probe; generation when needed uses
-  a parent-resolved tree-sitter executable, which may itself need a runtime. Internal
-  UserGrammarTools npm install behavior is unchanged and can execute lifecycle scripts
-  (Consiliency/treesitter-chunker#641); publishing a found shared library is tracked
-  separately (Consiliency/treesitter-chunker#642).
-
-- Installer controlled gcc/cc recipe bytes are unchanged. Existing pins for other
-  changed builders can stop matching and fail closed; no digest normalization, automatic
-  repinning, native_probe.v1 change, or parser-pin adjustment is introduced. Make can
-  select a committed binary, and neither make nor tree-sitter fallback output carries a
-  reproducibility guarantee.
-
-- `GrammarInstaller` builds a grammar to the same bytes wherever the source is
-  cloned or built (treesitter-chunker#621, treesitter-chunker#607). It runs the
-  `gcc` found on `PATH` from the grammar's source root with relative `src/…`
-  paths. On macOS it sets the install name to `@rpath/lib<language>.so`. On
-  Windows (MinGW) it links with `--no-insert-timestamp` and
-  `--disable-auto-image-base`. On Linux it links with `-z defs`. `gcc` now
-  runs first, then `make`; the `tree-sitter build` CLI is the last fallback.
-
-  Pins computed from earlier installer builds stop matching and fail closed
-  with `integrity_mismatch`:
-  - **macOS:** every grammar. The install name recorded the random staging
-    path. The `assert` macro there records only the file name.
-  - **Windows:** every grammar (link timestamp and image base). This includes
-    grammars whose C sources keep their source path through a reachable
-    `assert` or a direct `__FILE__`.
-  - **Linux:** grammars whose C sources keep their source path the same way
-    (such as bash, cpp, c-sharp and ruby), and grammars the `tree-sitter` CLI
-    built on a host that also has `gcc`.
-
-  Reproduce such a pin with the documented recipe ("Producing a pin for
-  `grammar install`" in `docs/grammar_management.md`). Linux pins for other
-  gcc-built grammars are unchanged.
-
-  The `gcc` route no longer reports success for a grammar it cannot build
-  completely. Grammars with a C++ scanner (`scanner.cc` or `.cpp`), and on
-  Linux grammars that need an unlinked library such as `libm`, build only
-  through `make` or the CLI, whose bytes are host-specific. Each
-  installation's metadata records the build method and compiler
-  (`metadata.build`).
-
-- `SmartSelector.select_multiple_grammars` no longer accepts
-  `global_constraints` and silently ignores them (treesitter-chunker#344). No
-  cross-language constraint is supported, so a nonempty mapping now raises
-  `ValueError`, naming its keys, before any selection runs. `None` and `{}` behave as
-  before. Use `select_best_grammar(language, constraints=...)` for
-  per-language constraints.
-- The direct `chunker.export.graphml_exporter` and `graphml_yed_exporter`
-  modules declare caller metadata named `label` with
-  `attr.name="caller_label"`, so readers that map GraphML data by `attr.name`,
-  such as NetworkX, see both labels (treesitter-chunker#453). `label` now holds
-  only the structural label; before, a NetworkX import replaced the structural
-  label with the caller value. To keep declared names distinct, a caller name
-  such as `caller_label` is declared as `caller_caller_label`. Key IDs and
-  values are unchanged, so consumers that select by key ID are unaffected.
-  In a yEd import NetworkX still replaces `label` with the yEd graphics text,
-  and `caller_label` is kept beside it. Name-keyed consumers should read
-  caller `label` metadata as `caller_label` and regenerate GraphML output. See
-  [caller label names](docs/graphml_export.md#caller-label-names-for-name-keyed-readers).
-- Require Python 3.12 or newer for the next main and BAML companion releases
-  (treesitter-chunker#493). Published 6.0.0 and companion 0.1.0 keep their original
-  metadata. CI uses Python 3.12 with installed-wheel checks on 3.12 and 3.14,
-  retaining the existing platform coverage. Remove duplicate
-  lint/type work, obsolete 3.11/3.13 jobs and duplicate main tag artifact builds.
-  The companion source moves to `cp312-abi3`; its new release remains separate.
-
 ### Changed
 
 - **Retired (treesitter-chunker#362):**
@@ -674,7 +685,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   workflow's `source` and `wheel` jobs on the companion's own 3.12 minimum, with
   no extra CI jobs. `requires-python` stays
   `>=3.12`, and `.python-version` keeps 3.12 as the default development
-  interpreter.
+  interpreter (interim; 7.0.0 requires 3.14, treesitter-chunker#599).
 - On Python 3.14, Linux starts multiprocessing workers with `forkserver` by
   default. Scripts that call `chunk_files_parallel`, `chunk_directory_parallel`
   or `ParallelChunker` need the `if __name__ == "__main__":` guard there, as on
@@ -690,7 +701,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that CI runs. Type-only annotations in `cli/` and 5 stale entries shrink the
   baseline from 1,353 to 1,340 signatures; CLI behavior is unchanged
   (treesitter-chunker#587).
-- Align the remaining Python version declarations with the 3.12 floor from
+- *(Interim; superseded by treesitter-chunker#599.)* Align the remaining Python version declarations with the 3.12 floor from
   treesitter-chunker#493: the release-process spec, getting-started, user guide,
   deployment, performance-core and VS Code docs, the conda recipe, all three
   Homebrew formulas (the stale `packaging/homebrew` formula is bumped rather than

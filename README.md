@@ -12,7 +12,7 @@ Chunker returns source content, line and byte spans, and context metadata.
 
 ## Install
 
-Development and the next major release (7.0) require Python 3.14 or newer.
+Development and 7.0.0 require Python 3.14 or newer.
 Python 3.12 and 3.13 are no longer supported (treesitter-chunker#599). CI,
 platform checks and release validation run on 3.14.
 

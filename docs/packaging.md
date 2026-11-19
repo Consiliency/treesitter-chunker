@@ -2,7 +2,7 @@
 
 This document is the source of truth for packaging and PyPI publishing.
 
-Development and the next major release (7.0) require Python >=3.14; Python 3.12
+Development and 7.0.0 require Python >=3.14; Python 3.12
 and 3.13 are no longer supported (treesitter-chunker#599). CI, the platform
 checks, the scheduled full tier, release validation and installed-wheel checks
 run on 3.14, and the locked development environment installs from wheels on it
@@ -45,7 +45,7 @@ before offline BAML parsing, which then needs no network or compiler.
 ### Native package status
 
 The owner approved **PyPI-only v5 distribution on 2026-09-11**. Debian, RPM and
-Homebrew distribution remains suspended for 6.0.0. `.github/workflows/packages.yml` has no tag
+Homebrew distribution remains suspended for 7.0.0. `.github/workflows/packages.yml` has no tag
 trigger, build, artifact upload or release job. Manual dispatch fails with an
 explicit suspension notice. The recipes under `packaging/` are retained for
 future repair, but are not supported installation methods. This decision does
@@ -114,7 +114,7 @@ source-build/runtime paths have not been accepted for the current parser stack.
 ## Public wheel structural verification
 
 `chunker.build.BuildSystem.verify_build` and `BuildSystemImpl.verify_build` check
-the current unreleased `treesitter-chunker` 6.0.0 source profile: Python >=3.14,
+the `treesitter-chunker` 7.0.0 source profile: Python >=3.14,
 the paired Tree-sitter runtime/language-pack ranges, and the exact official
 Python/JavaScript grammar dependencies. The embedded required-minimum inventory
 contains 332 Python modules/resources, including `py.typed` and the Boundary IR
@@ -180,7 +180,7 @@ See `docs/development/RELEASE_CHECKLIST.md` for the maintainer checklist.
 Local package building is still useful for validation and troubleshooting.
 
 ```bash
-TARGET_VERSION=6.0.0  # Use the version in pyproject.toml
+TARGET_VERSION=7.0.0  # Use the version in pyproject.toml
 OUTDIR="dist/phase9-release-check-${TARGET_VERSION}"
 uv run --locked --all-extras --python 3.14 python -m build --outdir "$OUTDIR"
 uv run --locked --all-extras --python 3.14 python -m twine check "$OUTDIR"/*
