@@ -60,7 +60,7 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 - the wheel installs from hashed locked requirements outside the source checkout
   on Python 3.14
 - uploaded distribution checksums are present and verified before publication
-- the main package remains PyPI-only in 6.0.0: native package tag/build/upload paths are absent and
+- the main package remains PyPI-only in 7.0.0: native package tag/build/upload paths are absent and
   manual native dispatch fails with the suspension notice; re-enablement requires
   every native rebuild gate in `docs/packaging.md`
 - wheel artifact workflow uploads artifacts only and does not publish to PyPI

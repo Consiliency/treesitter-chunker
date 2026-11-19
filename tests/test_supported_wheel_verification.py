@@ -333,7 +333,7 @@ def test_payload_inventory_matches_trusted_source():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))[
         "project"
     ]
-    assert project["version"] == _WHEEL_PAYLOAD_VERSION == "6.0.0"
+    assert project["version"] == _WHEEL_PAYLOAD_VERSION == "7.0.0"
     assert SpecifierSet(project["requires-python"]) == SpecifierSet(">=3.14")
     requirements = {
         canonicalize_name(r.name): r
@@ -349,7 +349,7 @@ def test_real_wheel_matches_trusted_source(artifacts):
     expected = _source_inventory()
     for key in ("wheel", "sdist_wheel"):
         wheel = artifacts[key]
-        assert wheel.name == "treesitter_chunker-6.0.0-py3-none-any.whl"
+        assert wheel.name == "treesitter_chunker-7.0.0-py3-none-any.whl"
         with ZipFile(wheel) as archive:
             for name in expected:
                 assert name in archive.namelist(), name
@@ -359,7 +359,7 @@ def test_real_wheel_matches_trusted_source(artifacts):
             prefix, contents = _metadata_paths(wheel)
             metadata = Parser().parsestr(contents["METADATA"].decode())
             assert metadata["Name"] == "treesitter-chunker"
-            assert metadata["Version"] == "6.0.0"
+            assert metadata["Version"] == _WHEEL_PAYLOAD_VERSION
             assert metadata["Requires-Python"] == ">=3.14"
             for name, (_, pins) in PARSER_PINS.items():
                 matches = [
@@ -622,7 +622,7 @@ def test_universal_native_name_variants_rejected(
         "chunker/../evil.py",
         "chunker/./evil.py",
         "chunker//evil.py",
-        "treesitter_chunker-6.0.0.data/purelib/C:/evil.py",
+        f"treesitter_chunker-{_WHEEL_PAYLOAD_VERSION}.data/purelib/C:/evil.py",
     ],
 )
 def test_noncanonical_paths_rejected(artifacts, tmp_path, name):
@@ -1089,12 +1089,14 @@ def test_metadata_and_parser_contract_mutations(header_wheel, tmp_path, case):
     if case == "name":
         metadata = metadata.replace(b"Name: treesitter-chunker", b"Name: other-project")
     elif case == "version":
-        metadata = metadata.replace(b"Version: 6.0.0", b"Version: 9.0.0")
+        metadata = metadata.replace(
+            f"Version: {_WHEEL_PAYLOAD_VERSION}".encode(), b"Version: 9.0.0"
+        )
     elif case in ("consistent-name", "unknown-version"):
         old, new = (
             ("treesitter_chunker", "other_project")
             if case == "consistent-name"
-            else ("6.0.0", "9.0.0")
+            else (_WHEEL_PAYLOAD_VERSION, "9.0.0")
         )
         filename = filename.replace(old, new)
         with ZipFile(source) as archive:
