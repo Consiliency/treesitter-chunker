@@ -2,7 +2,7 @@
 
 This document is the source of truth for packaging and PyPI publishing.
 
-Development and the next major release (7.0) require Python >=3.14; Python 3.12
+Development and 7.0.0 require Python >=3.14; Python 3.12
 and 3.13 are no longer supported (treesitter-chunker#599). CI, the platform
 checks, the scheduled full tier, release validation and installed-wheel checks
 run on 3.14, and the locked development environment installs from wheels on it

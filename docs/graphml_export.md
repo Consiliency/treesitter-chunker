@@ -169,8 +169,7 @@ also exposes `caller_label`, but NetworkX replaces `label` with the yEd
 The node graphics text currently contains a literal backslash-`n` separator
 (treesitter-chunker#603).
 
-This is a BREAKING change for name-keyed consumers in the next release after
-6.0.0: read the caller `label` metadata as `caller_label` (and `caller_label` as
+This is a BREAKING change for name-keyed consumers in 7.0.0: read the caller `label` metadata as `caller_label` (and `caller_label` as
 `caller_caller_label`) and regenerate GraphML output. Consumers that select by
 key ID are unaffected.
 

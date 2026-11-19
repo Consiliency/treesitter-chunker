@@ -27,6 +27,8 @@ from chunker.build.builder import _REQUIRED_WHEEL_PAYLOAD, _WHEEL_PAYLOAD_VERSIO
 from chunker.grammar_management.core import load_compiled_grammar
 
 ROOT = Path(__file__).resolve().parents[1]
+# A version one major above the release, so version mutations always change it.
+_OTHER_VERSION = f"{int(_WHEEL_PAYLOAD_VERSION.split('.')[0]) + 1}.0.0"
 RESOURCES = {"chunker/py.typed", "chunker/boundary/boundary_ir.schema.json"}
 PARSER_PINS = {
     "tree-sitter": ("tree_sitter_runtime_dependency", ">=0.26,<0.27"),
@@ -528,7 +530,7 @@ def test_noncolliding_payload_relocation(artifacts, tmp_path, scheme):
     wrong = _mutate_wheel_with_valid_record(
         source,
         tmp_path / "wrong-data" / source.name,
-        move={name: f"wrong-6.0.0.data/{scheme}/{name}"},
+        move={name: f"wrong-{_WHEEL_PAYLOAD_VERSION}.data/{scheme}/{name}"},
     )
     report = _check(wrong, valid=False, missing="package")
     assert report["components"]["missing_payload"] == [name]
@@ -1090,13 +1092,14 @@ def test_metadata_and_parser_contract_mutations(header_wheel, tmp_path, case):
         metadata = metadata.replace(b"Name: treesitter-chunker", b"Name: other-project")
     elif case == "version":
         metadata = metadata.replace(
-            f"Version: {_WHEEL_PAYLOAD_VERSION}".encode(), b"Version: 9.0.0"
+            f"Version: {_WHEEL_PAYLOAD_VERSION}".encode(),
+            f"Version: {_OTHER_VERSION}".encode(),
         )
     elif case in ("consistent-name", "unknown-version"):
         old, new = (
             ("treesitter_chunker", "other_project")
             if case == "consistent-name"
-            else (_WHEEL_PAYLOAD_VERSION, "9.0.0")
+            else (_WHEEL_PAYLOAD_VERSION, _OTHER_VERSION)
         )
         filename = filename.replace(old, new)
         with ZipFile(source) as archive:
@@ -1135,7 +1138,7 @@ def test_metadata_and_parser_contract_mutations(header_wheel, tmp_path, case):
     assert (
         metadata != contents["METADATA"]
         or wheel_info != contents["WHEEL"]
-        or move
+        or any(old != new for old, new in move.items())
         or add
     )
     wheel = _mutate_wheel_with_valid_record(

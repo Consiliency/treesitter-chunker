@@ -16,7 +16,9 @@ controlled or installer builds can stop matching and fail closed with
 `integrity_mismatch`; `grammar build` rejects C++ scanners and extra `.c`
 files; `SmartSelector.select_multiple_grammars` rejects a nonempty
 `global_constraints`; and GraphML readers that map by `attr.name` should read
-caller `label` metadata as `caller_label`.
+caller `label` metadata as `caller_label`. Controlled C builds link with
+`-z defs` on Linux, and `grammar build` no longer adds an implicit `-DNDEBUG`,
+so grammar assertions are active.
 
 ### Breaking
 
@@ -134,7 +136,7 @@ caller `label` metadata as `caller_label`.
   and `caller_label` is kept beside it. Name-keyed consumers should read
   caller `label` metadata as `caller_label` and regenerate GraphML output. See
   [caller label names](docs/graphml_export.md#caller-label-names-for-name-keyed-readers).
-- Require Python 3.12 or newer for the next main and BAML companion releases
+- *(Interim; superseded by treesitter-chunker#599.)* Require Python 3.12 or newer for the next main and BAML companion releases
   (treesitter-chunker#493). Published 6.0.0 and companion 0.1.0 keep their original
   metadata. CI uses Python 3.12 with installed-wheel checks on 3.12 and 3.14,
   retaining the existing platform coverage. Remove duplicate
@@ -683,7 +685,7 @@ caller `label` metadata as `caller_label`.
   workflow's `source` and `wheel` jobs on the companion's own 3.12 minimum, with
   no extra CI jobs. `requires-python` stays
   `>=3.12`, and `.python-version` keeps 3.12 as the default development
-  interpreter.
+  interpreter (interim; 7.0.0 requires 3.14, treesitter-chunker#599).
 - On Python 3.14, Linux starts multiprocessing workers with `forkserver` by
   default. Scripts that call `chunk_files_parallel`, `chunk_directory_parallel`
   or `ParallelChunker` need the `if __name__ == "__main__":` guard there, as on
@@ -699,7 +701,7 @@ caller `label` metadata as `caller_label`.
   that CI runs. Type-only annotations in `cli/` and 5 stale entries shrink the
   baseline from 1,353 to 1,340 signatures; CLI behavior is unchanged
   (treesitter-chunker#587).
-- Align the remaining Python version declarations with the 3.12 floor from
+- *(Interim; superseded by treesitter-chunker#599.)* Align the remaining Python version declarations with the 3.12 floor from
   treesitter-chunker#493: the release-process spec, getting-started, user guide,
   deployment, performance-core and VS Code docs, the conda recipe, all three
   Homebrew formulas (the stale `packaging/homebrew` formula is bumped rather than
