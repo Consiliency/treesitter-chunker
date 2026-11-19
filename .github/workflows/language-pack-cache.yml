@@ -26,11 +26,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # One job per OS, no version-by-OS cross product: Linux keeps the 3.12
-        # floor; macOS and Windows run the 3.14 validation interpreter
-        # (treesitter-chunker#502).
+        # One job per OS, all on 3.14, mirroring the ci.yml platform matrix.
+        # The pack cache key is interpreter-independent, so the Linux entry
+        # also warms the test job's cache (treesitter-chunker#599).
         include:
-          - python-version: '3.12'
+          - python-version: '3.14'
             platform: ubuntu-latest
             platform-family: linux
             pack-cache-path: ~/.cache/tree-sitter-language-pack

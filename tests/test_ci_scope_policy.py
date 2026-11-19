@@ -478,7 +478,7 @@ def test_no_duplicate_pr_contexts():
         "test",
         "docs",
         "controlled-linux",
-        "test (3.12, ubuntu-latest, linux)",
+        "test (3.14, ubuntu-latest, linux)",
         "CI gate",
     ):
         assert contexts.count(name) == 1

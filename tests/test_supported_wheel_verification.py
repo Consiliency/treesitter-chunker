@@ -334,7 +334,7 @@ def test_payload_inventory_matches_trusted_source():
         "project"
     ]
     assert project["version"] == _WHEEL_PAYLOAD_VERSION == "6.0.0"
-    assert SpecifierSet(project["requires-python"]) == SpecifierSet(">=3.12")
+    assert SpecifierSet(project["requires-python"]) == SpecifierSet(">=3.14")
     requirements = {
         canonicalize_name(r.name): r
         for value in project["dependencies"]
@@ -360,7 +360,7 @@ def test_real_wheel_matches_trusted_source(artifacts):
             metadata = Parser().parsestr(contents["METADATA"].decode())
             assert metadata["Name"] == "treesitter-chunker"
             assert metadata["Version"] == "6.0.0"
-            assert metadata["Requires-Python"] == ">=3.12"
+            assert metadata["Requires-Python"] == ">=3.14"
             for name, (_, pins) in PARSER_PINS.items():
                 matches = [
                     r
@@ -1112,8 +1112,8 @@ def test_metadata_and_parser_contract_mutations(header_wheel, tmp_path, case):
         error = "Wheel metadata directories do not match"
     elif case.startswith("python-"):
         metadata = metadata.replace(
-            b"Requires-Python: >=3.12\n",
-            b"" if case == "python-missing" else b"Requires-Python: >=3.11\n",
+            b"Requires-Python: >=3.14\n",
+            b"" if case == "python-missing" else b"Requires-Python: >=3.13\n",
         )
         error = "Unsupported source Requires-Python"
     elif case == "tag-mismatch":

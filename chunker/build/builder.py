@@ -31,7 +31,7 @@ from .platform import PlatformSupport
 
 _WHEEL_PAYLOAD_VERSION = "6.0.0"
 # Shared by both wheel-building paths; keep in step with pyproject requires-python.
-_WHEEL_REQUIRES_PYTHON = ">=3.12"
+_WHEEL_REQUIRES_PYTHON = ">=3.14"
 _REQUIRED_WHEEL_PAYLOAD = frozenset(
     {
         "chunker/__init__.py",
@@ -1126,7 +1126,7 @@ Requires-Python: {_WHEEL_REQUIRES_PYTHON}
                     ) == 1 and SpecifierSet(
                         metadata["Requires-Python"]
                     ) == SpecifierSet(
-                        ">=3.12"
+                        _WHEEL_REQUIRES_PYTHON
                     )
                     if not components["python_requirement"]:
                         report["errors"].append("Unsupported source Requires-Python")

@@ -2,10 +2,11 @@
 
 ## Setup
 
-Python 3.14 is the main version: CI and release validation run on it. Python
-3.12 stays the supported minimum until the next major release (7.0) drops it
-(treesitter-chunker#599). Keep source syntax compatible with 3.12 and check
-changes on both. `.python-version` pins 3.12, so a plain sync uses it:
+Python 3.14 is the supported minimum and the only development, CI and release
+interpreter; Python 3.12 and 3.13 are no longer supported
+(treesitter-chunker#599). `.python-version` pins 3.14, so a plain sync uses it.
+The locked environment installs from wheels; it needs no compiler, libffi or
+Rust toolchain:
 
 ```bash
 git clone https://github.com/Consiliency/treesitter-chunker.git
@@ -13,16 +14,8 @@ cd treesitter-chunker
 uv sync --locked --all-extras
 ```
 
-For 3.14, select the interpreter explicitly and keep its environment separate
-from the 3.12 `.venv`. The locked environment installs from wheels on both
-interpreters; it needs no compiler, libffi or Rust toolchain:
-
-```bash
-export UV_PROJECT_ENVIRONMENT="$PWD/.venv-3.14" UV_PYTHON=3.14
-uv sync --locked --all-extras
-```
-
-Run the validation commands below in that shell to repeat them on 3.14.
+An older checkout may still have a 3.12 `.venv`; `uv sync` recreates it for
+3.14.
 
 The lock pairs Tree-sitter 0.26 with language-pack 1.20 and the official
 `tree-sitter-python==0.25.0` and `tree-sitter-javascript==0.25.0` wheels. Those
@@ -95,21 +88,22 @@ governed tools. The body-type check covers only
 tracked under treesitter-chunker#514.
 
 CI runs lint, the type gate and the smoke tier once, on Linux 3.14. The
-scheduled full tier and release full validation also run on 3.14. The 3.12
-minimum keeps only two main-package checks: the Linux platform-core job (macOS
-and Windows run 3.14) and the release installed-wheel check (3.12 and 3.14).
-Separately, the BAML companion workflow's `source` and `wheel` jobs run on 3.12,
-the companion's own minimum. No interpreter is chosen by event. Each step that
+platform-core jobs (Linux, macOS and Windows), the scheduled full tier, release
+full validation and the release installed-wheel check also run on 3.14, the
+supported minimum. No main-package job uses an older interpreter
+(treesitter-chunker#599). Only the separate BAML companion workflow's `source`
+and `wheel` jobs run on 3.12, the companion's own minimum. No interpreter is
+chosen by event. Each step that
 runs `uv` must have `UV_PYTHON` in its own effective env (the workflow, job or
 that step's `env:`), unless its job uses setup-python. A `UV_PYTHON` on a
 different step does not count. A job whose setup-python version is not the
 floor must also set `UV_PYTHON` for its uv steps. Without these, uv would fall
-back to the `.python-version` pin (3.12).
+back to the `.python-version` pin.
 
 Workflow text (`.yml` and `.yaml`, comments and `echo` output included) is
 checked by a plain-text scan. Quotes and backslashes are removed before
 matching, so `-"p"`, `--pyth''on` and `\-p` count as their plain spellings.
-Outside the floor jobs, these fail:
+Outside the BAML companion jobs, these fail:
 
 - `--python`;
 - a `-p` option: a single `-` not preceded by a letter, digit or `-`, then
@@ -130,16 +124,11 @@ still scanned. The named exclusions each cover only their own token:
 `pytest -p no:`, `mkdir -p`, `tar -cpf`, the platform cache key
 `}}-py${{ matrix.python-version }}`, and `setup-python@`.
 
-The Linux platform-core floor is narrower than a whole job. It covers exactly
-one literal include entry whose platform matches `linux`, in a job that runs on
-`${{ matrix.platform }}`, and only that entry's own `python-version` line, when
-the line holds nothing else.
-
 YAML anchors and aliases are not allowed in workflows. This is a text scan: it
 catches plain spellings and these common quoting tricks, not arbitrary shell
 obfuscation, which review has to catch.
 `tests/test_release_hygiene_policy.py` checks this layout
-(treesitter-chunker#502).
+(treesitter-chunker#502, treesitter-chunker#599).
 
 The type gate compares complete messages and error codes, normalizing only
 leading file locations. Literal values, numeric colons and backslashes inside
@@ -150,9 +139,9 @@ removes cleared signatures: when mypy reports a signature absent from the
 baseline, it fails and leaves the file unchanged, so new errors cannot be
 absorbed (treesitter-chunker#587).
 
-`[tool.mypy] python_version` stays at the 3.12 floor, so the gate checks the
-same target whichever interpreter runs it. On unchanged main its output was
-identical under 3.12 and 3.14. Release validation runs the same lint, format
+`[tool.mypy] python_version` follows the 3.14 floor, so the gate checks the
+same target whichever interpreter runs it. Moving it from 3.12 to 3.14 added no
+gate errors (treesitter-chunker#599). Release validation runs the same lint, format
 and type commands as CI; `tests/test_type_gate_policy.py` checks the type
 commands in `ci.yml`, `release.yml`, this file and the release checklist.
 
@@ -262,7 +251,7 @@ run all lanes. The gate rejects failed, cancelled or unexpectedly skipped jobs.
 `[skip ci]` leaves the gate pending, which blocks merge.
 
 Nightly and manual full dispatch run tests/ and spec_tests/ on Linux, macOS and
-Windows using primary Python 3.14; Linux platform-core retains the 3.12 floor.
+Windows using Python 3.14, the supported minimum; every platform check runs 3.14.
 Interpreters stay fixed across events. Main publication builds its docs artifact
 once for deployment; it does not run another test suite. Publication may coalesce
 pending revisions while an active deploy finishes. A targeted three-OS cache

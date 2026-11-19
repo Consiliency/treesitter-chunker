@@ -58,7 +58,7 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 - build and package checks succeed
 - the release workflow's Python 3.14 full validation succeeds
 - the wheel installs from hashed locked requirements outside the source checkout
-  on Python 3.12 and 3.14
+  on Python 3.14
 - uploaded distribution checksums are present and verified before publication
 - the main package remains PyPI-only in 6.0.0: native package tag/build/upload paths are absent and
   manual native dispatch fails with the suspension notice; re-enablement requires
@@ -117,7 +117,7 @@ run all lanes. The gate rejects failed, cancelled or unexpectedly skipped jobs.
 `[skip ci]` leaves the gate pending, which blocks merge.
 
 Nightly and manual full dispatch run tests/ and spec_tests/ on Linux, macOS and
-Windows using primary Python 3.14; Linux platform-core retains the 3.12 floor.
+Windows using Python 3.14, the supported minimum; every platform check runs 3.14.
 Interpreters stay fixed across events. Main publication builds its docs artifact
 once for deployment; it does not run another test suite. Publication may coalesce
 pending revisions while an active deploy finishes. A targeted three-OS cache

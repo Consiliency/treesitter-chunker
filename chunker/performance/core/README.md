@@ -217,7 +217,7 @@ with context:
 ## Dependencies
 
 ### Required
-- Python 3.12+
+- Python 3.14+
 - Standard library modules: `time`, `threading`, `gc`, `tracemalloc`, `resource`
 
 ### Optional

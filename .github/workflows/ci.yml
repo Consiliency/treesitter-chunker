@@ -73,10 +73,8 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     env:
-      # 3.14 is the main version for every CI run, including the scheduled full
-      # tier (maintainer decision, treesitter-chunker#502). The 3.12 minimum
-      # keeps only Linux platform-core (platform) and the release installed-wheel
-      # check until it is dropped in 7.0 (treesitter-chunker#599).
+      # 3.14 is the supported minimum and the only CI interpreter, including the
+      # scheduled full tier (treesitter-chunker#502, treesitter-chunker#599).
       UV_PYTHON: '3.14'
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
@@ -261,11 +259,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # One job per OS, no version-by-OS cross product: Linux keeps the 3.12
-        # floor; macOS and Windows run the 3.14 validation interpreter
-        # (treesitter-chunker#502).
+        # One job per OS, no version-by-OS cross product, all on 3.14. Linux
+        # stays: the test job does not run Linux platform-core or the required
+        # grammar fetch/build (treesitter-chunker#599).
         include:
-          - python-version: '3.12'
+          - python-version: '3.14'
             platform: ubuntu-latest
             platform-family: linux
             pr-timeout: 90

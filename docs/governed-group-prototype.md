@@ -4,7 +4,7 @@
 `ClusteringEngine`, weight calculator, hierarchy builder and metrics calculator.
 It does not discover source, parse files, implement a new clustering algorithm,
 write a consumer fixture, or modify the public Boundary IR API. Use a pinned,
-quiescent producer checkout and its locked Python 3.12 environment. An editable
+quiescent producer checkout and its locked Python 3.14 environment. An editable
 checkout reporting distribution metadata `6.0.0` is an unpublished source overlay,
 not a replacement release of published 6.0.0.
 

@@ -1,7 +1,7 @@
 # Tree-sitter Chunker
 
 [![PyPI](https://img.shields.io/pypi/v/treesitter-chunker.svg)](https://pypi.org/project/treesitter-chunker/)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.14+](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/downloads/)
 [![Test Suite](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml/badge.svg)](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/Consiliency/treesitter-chunker/branch/main/graph/badge.svg)](https://codecov.io/gh/Consiliency/treesitter-chunker)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -12,12 +12,9 @@ Chunker returns source content, line and byte spans, and context metadata.
 
 ## Install
 
-Development and the next release require Python 3.12 or newer. Python 3.14 is
-the main supported version: CI and release validation run on it. Linux platform
-checks and installed-wheel checks keep covering 3.12.
-
-> **Deprecation:** Python 3.12 support ends at the next major release (7.0).
-> Plan to move to Python 3.14 (treesitter-chunker#599).
+Development and the next major release (7.0) require Python 3.14 or newer.
+Python 3.12 and 3.13 are no longer supported (treesitter-chunker#599). CI,
+platform checks and release validation run on 3.14.
 
 Published 6.0.0 retains Python 3.11 support.
 The main package is a universal Python wheel.

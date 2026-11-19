@@ -75,7 +75,7 @@ rejects this scope, decision S-TXN applies.
   groups.
 - Windows on NTFS: `msvcrt.locking`, reparse-point checks, job objects.
 
-Python 3.12 is the floor. Release checks also cover 3.14.
+Python 3.14 is the floor (treesitter-chunker#599). Release checks run on 3.14.
 
 The cache root must be writable. Every reader takes the exclusive lock, so a
 read-only root (for example, a pre-populated image) loads no records; the

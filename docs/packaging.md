@@ -2,12 +2,11 @@
 
 This document is the source of truth for packaging and PyPI publishing.
 
-Development and the next release require Python >=3.12. Python 3.14 is the main
-version: CI, the scheduled full tier and release validation run on it, and the
-locked development environment installs from wheels on it
-(treesitter-chunker#502). The 3.12 minimum keeps Linux platform-core and
-installed-wheel checks until the next major release (7.0) drops it
-(treesitter-chunker#599). Already published 6.0.0 keeps its original >=3.11
+Development and the next major release (7.0) require Python >=3.14; Python 3.12
+and 3.13 are no longer supported (treesitter-chunker#599). CI, the platform
+checks, the scheduled full tier, release validation and installed-wheel checks
+run on 3.14, and the locked development environment installs from wheels on it
+(treesitter-chunker#502). Already published 6.0.0 keeps its original >=3.11
 metadata.
 
 ## Current Release Model
@@ -36,12 +35,12 @@ before offline BAML parsing, which then needs no network or compiler.
 - A release tag must match the version in `pyproject.toml`
 - The PyPI release workflow requires the full `tests/` and `spec_tests/` tier,
   lint, formatting, the baseline type gate and the governed-tools type check on
-  Python 3.14. Installed-wheel checks below cover the 3.12 floor.
+  Python 3.14.
   A failing or timed-out validation job blocks its build and publication jobs.
 - The built wheel is installed in a fresh environment using hashed, locked runtime
   dependencies and exercised outside the source checkout. Distribution checksums
   are retained with the artifacts and verified before publication. Installed-wheel
-  verification runs on both Python 3.12 and 3.14.
+  verification runs on Python 3.14.
 
 ### Native package status
 
@@ -80,7 +79,7 @@ for published versions.
 The main package requires the exact official
 `tree-sitter-python==0.25.0` and `tree-sitter-javascript==0.25.0` distributions
 for default Python and JavaScript parsing. Their `cp310-abi3` wheels cover the
-supported CPython 3.12–3.14 range on Linux glibc/musl x86_64 and aarch64,
+supported CPython 3.14 on Linux glibc/musl x86_64 and aarch64,
 macOS x86_64/arm64, and Windows x86_64/arm64. These installed wheel grammars
 take precedence over `tree-sitter-language-pack` for the two languages because
 the standalone pack 1.20 grammars remain affected by treesitter-chunker#492.
@@ -115,7 +114,7 @@ source-build/runtime paths have not been accepted for the current parser stack.
 ## Public wheel structural verification
 
 `chunker.build.BuildSystem.verify_build` and `BuildSystemImpl.verify_build` check
-the current unreleased `treesitter-chunker` 6.0.0 source profile: Python >=3.12,
+the current unreleased `treesitter-chunker` 6.0.0 source profile: Python >=3.14,
 the paired Tree-sitter runtime/language-pack ranges, and the exact official
 Python/JavaScript grammar dependencies. The embedded required-minimum inventory
 contains 332 Python modules/resources, including `py.typed` and the Boundary IR
@@ -183,8 +182,8 @@ Local package building is still useful for validation and troubleshooting.
 ```bash
 TARGET_VERSION=6.0.0  # Use the version in pyproject.toml
 OUTDIR="dist/phase9-release-check-${TARGET_VERSION}"
-uv run --locked --all-extras --python 3.12 python -m build --outdir "$OUTDIR"
-uv run --locked --all-extras --python 3.12 python -m twine check "$OUTDIR"/*
+uv run --locked --all-extras --python 3.14 python -m build --outdir "$OUTDIR"
+uv run --locked --all-extras --python 3.14 python -m twine check "$OUTDIR"/*
 ```
 
 The main package uses the standard build command above for its universal
