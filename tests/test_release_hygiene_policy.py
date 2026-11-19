@@ -179,6 +179,15 @@ def _floor_text() -> str:
     return "{}.{}".format(*_python_floor())
 
 
+def _baml_companion_floor() -> tuple[int, int]:
+    """The separate BAML companion's own minimum, from its ``requires-python``."""
+    path = ROOT / "packages/baml-grammar/pyproject.toml"
+    project = tomllib.loads(path.read_text(encoding="utf-8"))["project"]
+    match = re.fullmatch(r">=\s*3\.(\d+)", project["requires-python"])
+    assert match, "the companion requires-python must be a simple '>=3.X' floor"
+    return (3, int(match.group(1)))
+
+
 def test_python_floor_declarations_agree():
     """Project, tool, interpreter-pin and CI declarations share the floor."""
     floor = _floor_text()
@@ -237,6 +246,15 @@ def test_homebrew_formulas_respect_python_floor(formula):
     assert set(site_packages) <= {floor}
 
 
+@pytest.mark.parametrize("dockerfile", ["Dockerfile", "Dockerfile.alpine"])
+def test_dockerfiles_use_the_floor_python_image(dockerfile):
+    """Both Docker stages build and run on the floor Python image."""
+    text = (ROOT / dockerfile).read_text(encoding="utf-8")
+    images = re.findall(r"^FROM\s+python:(\d+\.\d+)-", text, re.MULTILINE)
+    assert len(images) == 2, images
+    assert set(images) == {_floor_text()}
+
+
 def test_wheel_builder_requires_python_matches_floor():
     """The builder's shared Requires-Python constant feeds both wheel paths."""
     from chunker.build import builder
@@ -258,7 +276,8 @@ def _build_wheel_metadata(tmp_path, monkeypatch) -> str:
     )
     monkeypatch.setattr(system, "_get_available_languages", lambda: ["python"])
     monkeypatch.setattr(system, "compile_grammars", lambda *_args: (True, {}))
-    success, wheel_path = system.build_wheel("linux", "cp312", tmp_path)
+    python_tag = "cp" + _floor_text().replace(".", "")
+    success, wheel_path = system.build_wheel("linux", python_tag, tmp_path)
     assert success, "wheel build failed"
     with zipfile.ZipFile(wheel_path) as wheel:
         [metadata] = [n for n in wheel.namelist() if n.endswith(".dist-info/METADATA")]
@@ -355,8 +374,12 @@ def _resolve(job: dict, value: str) -> list[str]:
 
 
 def test_workflow_setup_python_versions_respect_floor():
-    """Every setup-python version, including matrix values, is at least the floor."""
+    """Every setup-python version, including matrix values, is at least the floor.
+
+    The only exception is a BELOW_FLOOR_ALLOWED BAML companion job, which runs
+    exactly the companion's own minimum."""
     floor = _python_floor()
+    companion = _baml_companion_floor()
     checked = 0
     for workflow, name, _env, job in _workflow_jobs():
         for value in _setup_python_versions(job):
@@ -364,7 +387,10 @@ def test_workflow_setup_python_versions_respect_floor():
             assert resolved, f"{workflow}:{name} has no values for {value}"
             for version in resolved:
                 assert re.fullmatch(r"\d+\.\d+", version), (workflow, name, version)
-                assert _version(version) >= floor, (workflow, name, version)
+                if (workflow, name, None) in BELOW_FLOOR_ALLOWED:
+                    assert _version(version) == companion, (workflow, name, version)
+                else:
+                    assert _version(version) >= floor, (workflow, name, version)
                 checked += 1
     assert checked
 
@@ -394,41 +420,81 @@ def test_workflow_uv_jobs_pin_uv_python_to_job_interpreter():
                 ), f"{workflow}:{name} runs uv on Python {value} without UV_PYTHON"
 
 
-_OLD_PYTHON = re.compile(
-    r"(?i)(python[\s@-]*(>=\s*)?|>=\s*|requires-python\D*)3\.(8|9|10|11)(?!\d)"
-)
+def _old_python() -> re.Pattern[str]:
+    """Any Python 3.8 up to, but excluding, the requires-python floor."""
+    minors = "|".join(str(minor) for minor in range(8, _python_floor()[1]))
+    return re.compile(
+        rf"(?i)(python[\s@-]*(>=\s*)?|>=\s*|requires-python\D*)3\.({minors})(?!\d)"
+    )
+
+
 _HISTORICAL = re.compile(r"6\.0\.0|0\.1\.0|[Pp]ublished|[\w-]+#\d+")
+
+# Docs paragraphs that name a below-floor Python as recorded evidence or sample
+# data, not as a supported version: (path, text unique to the paragraph).
+_RECORDED_OLD_PYTHON = {
+    ("docs/development/native-validation-contract.md", ".venv/lib/python3.12/"),
+    ("docs/development/safeload-verification.md", "SL-1 public focused run"),
+    ("docs/development/safeload-verification.md", "locked Python 3.12 checks"),
+    ("docs/development/safeload-verification.md", "genuine CPython"),
+    ("docs/governed-scope-prototype.md", "on CPython 3.12,"),
+    ("docs/grammar_management.md", "Update Python 3.12 support"),
+}
+
+
+def _old_python_offenders() -> tuple[list[str], set[tuple[str, str]]]:
+    old_python = _old_python()
+    offenders, used = [], set()
+    for path in sorted(DOCS.rglob("*.md")):
+        relative = path.relative_to(ROOT).as_posix()
+        text = path.read_text(encoding="utf-8")
+        for paragraph in re.split(r"\n\s*\n", text):
+            if not old_python.search(paragraph) or _HISTORICAL.search(paragraph):
+                continue
+            recorded = {
+                entry
+                for entry in _RECORDED_OLD_PYTHON
+                if entry[0] == relative and entry[1] in paragraph
+            }
+            if recorded:
+                used |= recorded
+            else:
+                offenders.append(f"{relative}: {paragraph.strip()[:120]}")
+    return offenders, used
 
 
 def test_docs_do_not_advertise_python_below_floor():
-    """Docs paragraphs naming an old Python must be about a published release."""
-    offenders = []
-    for path in sorted(DOCS.rglob("*.md")):
-        text = path.read_text(encoding="utf-8")
-        for paragraph in re.split(r"\n\s*\n", text):
-            if _OLD_PYTHON.search(paragraph) and not _HISTORICAL.search(paragraph):
-                offenders.append(f"{path.relative_to(ROOT)}: {paragraph.strip()[:120]}")
+    """Docs naming a below-floor Python must be about a release or recorded."""
+    offenders, used = _old_python_offenders()
     assert not offenders, "\n".join(offenders)
+    assert used == _RECORDED_OLD_PYTHON, sorted(_RECORDED_OLD_PYTHON - used)
 
 
-# treesitter-chunker#502, maintainer decision (2026-11-01): 3.14 is the main
-# version for every CI and release run, including the scheduled full tier. The
-# 3.12 minimum (requires-python, .python-version) keeps only Linux platform-core
-# and the release installed-wheel check until 7.0 drops it
-# (treesitter-chunker#599).
+def test_old_python_scan_covers_versions_just_below_the_floor():
+    floor_minor = _python_floor()[1]
+    old_python = _old_python()
+    assert old_python.search(f"requires Python 3.{floor_minor - 1} or newer")
+    assert old_python.search("python-3.8+")
+    assert not old_python.search(f"Python 3.{floor_minor}")
+    assert not old_python.search(f"Python 3.{floor_minor - 1}0")
+
+
+# treesitter-chunker#599 (7.0): 3.14 is the supported minimum (requires-python,
+# .python-version) and the only interpreter of every main-package CI and release
+# job, including the scheduled full tier (treesitter-chunker#502). The 3.12
+# Linux platform-core entry moved to 3.14 and the 3.12 installed-wheel check was
+# removed; no job replaced them.
 PRIMARY_PYTHON = "3.14"
 
-# Where the floor interpreter may appear: (workflow, job, platform family or
-# None) -> reason.
-FLOOR_ALLOWED = {
-    ("ci.yml", "platform", "linux"): "focused minimum: Linux platform-core",
-    ("language-pack-cache.yml", "warm", "linux"): "cache uses platform interpreter",
-    ("release.yml", "verify-installed-wheel", None): "installed-wheel floor check",
-    # The BAML companion is a separate package whose minimum is also 3.12. These
-    # jobs check, build and smoke-test it on that minimum. Its cp312-abi3 floor
-    # comes from packages/baml-grammar/setup.py and CIBW_BUILD, asserted below.
-    ("baml-grammar-wheels.yml", "source", None): "BAML companion on its 3.12 minimum",
-    ("baml-grammar-wheels.yml", "wheel", None): "BAML companion on its 3.12 minimum",
+# The only jobs that may use an interpreter below the floor: (workflow, job,
+# platform family or None) -> reason. Each entry exempts its whole job.
+BELOW_FLOOR_ALLOWED = {
+    # The BAML companion is a separate distribution with its own, lower minimum
+    # (packages/baml-grammar/pyproject.toml). These jobs check, build and
+    # smoke-test it on exactly that minimum. Its cp312-abi3 floor comes from
+    # packages/baml-grammar/setup.py and CIBW_BUILD, asserted below.
+    ("baml-grammar-wheels.yml", "source", None): "BAML companion on its own minimum",
+    ("baml-grammar-wheels.yml", "wheel", None): "BAML companion on its own minimum",
 }
 
 
@@ -448,16 +514,21 @@ def _interpreter_fields(workflow_env: dict, job: dict) -> list[str]:
     return values
 
 
-def _floor_uses(
+def _below_floor(value: str) -> bool:
+    """A resolved interpreter value below the floor, or not a plain ``X.Y``."""
+    return not re.fullmatch(r"\d+\.\d+", value) or _version(value) < _python_floor()
+
+
+def _below_floor_uses(
     docs: dict[str, dict] | None = None,
 ) -> set[tuple[str, str, str | None]]:
-    floor = _floor_text()
     uses = set()
     for workflow, name, workflow_env, job in _workflow_jobs(docs):
         for value in _interpreter_fields(workflow_env, job):
-            if floor not in _resolve(job, value):
+            if not any(_below_floor(version) for version in _resolve(job, value)):
                 continue
-            include = ((job.get("strategy") or {}).get("matrix") or {}).get("include")
+            matrix = (job.get("strategy") or {}).get("matrix") or {}
+            include = matrix.get("include")
             if (
                 value == "${{ matrix.python-version }}"
                 and include
@@ -466,8 +537,14 @@ def _floor_uses(
                 uses |= {
                     (workflow, name, item["platform-family"])
                     for item in include
-                    if str(item.get("python-version")) == floor
+                    if "python-version" in item
+                    and _below_floor(str(item["python-version"]))
                 }
+                if any(
+                    _below_floor(str(version))
+                    for version in matrix.get("python-version") or []
+                ):
+                    uses.add((workflow, name, None))
             else:
                 uses.add((workflow, name, None))
     return uses
@@ -484,9 +561,10 @@ def test_no_workflow_selects_its_interpreter_by_event():
     assert offenders == []
 
 
-def test_floor_interpreter_appears_only_in_floor_checks():
-    """3.12 runs only Linux platform-core, the installed-wheel check and BAML."""
-    assert _floor_uses() == set(FLOOR_ALLOWED)
+def test_only_the_baml_companion_runs_below_the_floor():
+    """No main-package job uses an interpreter older than the 3.14 floor; only
+    the BAML companion's own-minimum jobs do (treesitter-chunker#599)."""
+    assert _below_floor_uses() == set(BELOW_FLOOR_ALLOWED)
 
 
 # Plain-text interpreter scan (maintainer decision, 2026-11-01): flag broadly,
@@ -498,15 +576,14 @@ def test_floor_interpreter_appears_only_in_floor_checks():
 # common quoting tricks, not arbitrary shell obfuscation, which review has to
 # catch. Lines are attributed to jobs from the parsed YAML node positions.
 #
-# Exempt: whole jobs whose FLOOR_ALLOWED family is None. For a family-scoped
-# entry, only the floor `python-version` line of that family's single literal
-# matrix include entry, when it holds nothing else, after its runner is checked
-# against the family. Accepted without a hit: a canonical 3.14 setting at the
-# start of a line (`python-version:`/`UV_PYTHON:` set to 3.14, a literal list of
-# only 3.14, or `${{ matrix.python-version }}` over a literal matrix whose
-# non-3.14 values are allowed floor entries); the rest of that line is still
-# scanned. Named exclusions: `pytest -p no:`, `mkdir -p`, `tar -cpf`, the cache
-# key shape `}}-py${{ matrix.python-version }}`, and `setup-python@`.
+# Exempt: only the whole BELOW_FLOOR_ALLOWED jobs (the BAML companion). Since
+# treesitter-chunker#599 no main-package matrix entry is exempt. Accepted
+# without a hit: a canonical 3.14 setting at the start of a line
+# (`python-version:`/`UV_PYTHON:` set to 3.14, a literal list of only 3.14, or
+# `${{ matrix.python-version }}` over a literal matrix of only 3.14); the rest of
+# that line is still scanned. Named exclusions: `pytest -p no:`, `mkdir -p`,
+# `tar -cpf`, the cache key shape `}}-py${{ matrix.python-version }}`, and
+# `setup-python@`.
 _TEXT_RULES = (
     ("--python", re.compile(r"--python")),
     ("python3.N", re.compile(r"python3\.\d+")),
@@ -538,25 +615,22 @@ _CANONICAL_SETTING = re.compile(
     r"""(?P<value>'3\.14'|"3\.14"|3\.14(?![\w.])|\[\s*['"]?3\.14['"]?\s*\]|"""
     r"""\$\{\{\s*matrix\.python-version\s*\}\})"""
 )
-_FAMILY_RUNNERS = {
-    "linux": re.compile(r"^ubuntu-"),
-    "macos": re.compile(r"^macos-"),
-    "windows": re.compile(r"windows"),
-}
 _UV_COMMAND = re.compile(
     r"(^|[\s;&|(])uvx?\s+(run|sync|pip|export|build|tool|venv|lock)\b"
 )
 _TEXT_FIX = (
-    "Each line above mentions switching the Python version outside the 3.12 floor "
-    "jobs. To fix it, either (a) reword the text (comments and echo output count; "
-    "quotes and backslashes are ignored when matching) so it no longer names "
+    "Each line above mentions switching the Python version outside the BAML "
+    "companion jobs. To fix it, either (a) reword the text (comments and echo "
+    "output count; quotes and backslashes are ignored when matching) so it no "
+    "longer names "
     "--python, a -p option, UV_PYTHON, PYENV_VERSION, python3.N, python@N, "
     "pypy@/graalpy@, Python3NN, py -3.N, uv python pin|install|find, a "
     ".python-version write or a non-3.14 python-version, and give every uv step "
     "UV_PYTHON in its workflow, job or step env (or its job setup-python), or (b) "
-    "if the job is a "
-    "deliberate 3.12 floor check, add (workflow, job, platform family or None) to "
-    "FLOOR_ALLOWED in tests/test_release_hygiene_policy.py with a reason."
+    "if the job deliberately checks a separate distribution on its own lower "
+    "minimum, add (workflow, job, None) to BELOW_FLOOR_ALLOWED in "
+    "tests/test_release_hygiene_policy.py with a reason. Main-package jobs run "
+    "only on the requires-python floor (treesitter-chunker#599)."
 )
 
 
@@ -636,71 +710,6 @@ def _job_spans(text: str) -> dict[str, tuple[int, int]]:
     return spans
 
 
-def _floor_entry_lines(text: str, workflow: str) -> tuple[set[int], list[str]]:
-    """Exempt line indexes for family-scoped floor entries, plus problems.
-
-    For each family-scoped FLOOR_ALLOWED entry: exactly one literal include
-    entry with that platform-family, its platform matching the family, the
-    job's runs-on being ${{ matrix.platform }}, and only that entry's own
-    floor python-version line exempt, when the line holds nothing else."""
-    floor = _floor_text()
-    jobs = (yaml.safe_load(text) or {}).get("jobs") or {}
-    root = yaml.compose(text)
-    lines = text.splitlines()
-    exempt: set[int] = set()
-    problems: list[str] = []
-    for allowed_workflow, job_name, family in FLOOR_ALLOWED:
-        if allowed_workflow != workflow or family is None:
-            continue
-        job = jobs.get(job_name) or {}
-        include = ((job.get("strategy") or {}).get("matrix") or {}).get("include")
-        entries = [
-            item
-            for item in (include if isinstance(include, list) else [])
-            if isinstance(item, dict) and item.get("platform-family") == family
-        ]
-        if len(entries) != 1:
-            problems.append(
-                f"{workflow}: [{job_name}] needs exactly one literal include entry with "
-                f"platform-family {family}, found {len(entries)}"
-            )
-            continue
-        platform = str(entries[0].get("platform", ""))
-        if not _FAMILY_RUNNERS[family].search(platform):
-            problems.append(
-                f"{workflow}: [{job_name}] platform-family {family} entry runs on {platform!r}"
-            )
-            continue
-        if str(job.get("runs-on")) != "${{ matrix.platform }}":
-            problems.append(
-                f"{workflow}: [{job_name}] runs-on must be ${{{{ matrix.platform }}}}"
-            )
-            continue
-        for key, value in root.value:
-            if key.value != "jobs":
-                continue
-            for job_key, job_node in value.value:
-                if job_key.value != job_name:
-                    continue
-                node = job_node
-                for part in ("strategy", "matrix", "include"):
-                    node = next((v for k, v in node.value if k.value == part), None)
-                for item in node.value:
-                    fields = {k.value: v for k, v in item.value}
-                    if (
-                        "platform-family" in fields
-                        and fields["platform-family"].value == family
-                    ):
-                        version = fields.get("python-version")
-                        if version is None or version.value != floor:
-                            continue
-                        index = version.start_mark.line
-                        pattern = rf"""\s*(?:-\s+)?python-version:\s*(['"]?){re.escape(floor)}\1\s*"""
-                        if re.fullmatch(pattern, lines[index]):
-                            exempt.add(index)
-    return exempt, problems
-
-
 def _uv_interpreter_problems(workflow: str, text: str) -> list[str]:
     """Each step that runs uv has UV_PYTHON in its own effective env (workflow,
     job or that step), unless its job uses setup-python. A UV_PYTHON on a
@@ -721,7 +730,7 @@ def _uv_interpreter_problems(workflow: str, text: str) -> list[str]:
                 problems.append(
                     f"{workflow}: [{name}] step {number} runs uv without setup-python "
                     "or UV_PYTHON in its workflow, job or step env, so it would fall "
-                    "back to .python-version (3.12)"
+                    "back to the .python-version pin"
                 )
     return problems
 
@@ -761,14 +770,12 @@ def _text_offenders(texts: dict[str, str] | None = None) -> list[str]:
                 f"the parsed jobs {sorted(parsed_jobs)}"
             )
         offenders += _uv_interpreter_problems(workflow, text)
-        exempt_lines, problems = _floor_entry_lines(text, workflow)
-        offenders += problems
         owner: list[str | None] = [None] * len(lines)
-        exempt = [index in exempt_lines for index in range(len(lines))]
+        exempt = [False] * len(lines)
         for job, (start, end) in spans.items():
             for index in range(start, min(end, len(lines))):
                 owner[index] = job
-                if (workflow, job, None) in FLOOR_ALLOWED:
+                if (workflow, job, None) in BELOW_FLOOR_ALLOWED:
                     exempt[index] = True
         for index, line in enumerate(lines):
             if exempt[index]:
@@ -781,9 +788,7 @@ def _text_offenders(texts: dict[str, str] | None = None) -> list[str]:
                 if "matrix.python-version" in canonical.group("value"):
                     pairs = _literal_matrix_versions(parsed_jobs.get(job) or {})
                     accepted = pairs is not None and all(
-                        version == PRIMARY_PYTHON
-                        or (workflow, job, family) in FLOOR_ALLOWED
-                        for version, family in pairs
+                        version == PRIMARY_PYTHON for version, _family in pairs
                     )
                     if not accepted:
                         hits.append("computed or non-3.14 matrix python-version")
@@ -802,7 +807,7 @@ def _assert_no_text_offenders(texts: dict[str, str] | None = None) -> None:
     assert not offenders, "\n".join([*offenders, "", _TEXT_FIX])
 
 
-def test_workflow_text_mentions_no_interpreter_switch_outside_floor_jobs():
+def test_workflow_text_mentions_no_interpreter_switch_outside_baml_jobs():
     _assert_no_text_offenders()
 
 
@@ -997,18 +1002,38 @@ TEXT_MUTATIONS = {
     ),
     "M502-text-linux-line-comment": (
         "ci.yml",
-        "          - python-version: '3.12'\n",
-        "          - python-version: '3.12'  # uv run -p 3.12 python -V\n",
+        "          - python-version: '3.14'\n            platform: ubuntu-latest\n",
+        "          - python-version: '3.14'  # uv run -p 3.12 python -V\n"
+        "            platform: ubuntu-latest\n",
     ),
     "M502-text-flow-include": (
         "ci.yml",
         "        include:\n",
         None,  # flow-style include with a selector, see _apply
     ),
-    "M502-text-linux-on-macos": (
+    # treesitter-chunker#599: the removed 3.12 entries must not come back.
+    "M599-text-linux-platform-floor": (
         "ci.yml",
-        "            platform: ubuntu-latest\n",
-        "            platform: macos-latest\n",
+        "          - python-version: '3.14'\n            platform: ubuntu-latest\n",
+        "          - python-version: '3.12'\n            platform: ubuntu-latest\n",
+    ),
+    "M599-text-linux-cache-floor": (
+        "language-pack-cache.yml",
+        "          - python-version: '3.14'\n            platform: ubuntu-latest\n",
+        "          - python-version: '3.12'\n            platform: ubuntu-latest\n",
+    ),
+    "M599-text-installed-wheel-floor": (
+        "release.yml",
+        "        python-version: ['3.14']\n    steps:\n"
+        "    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10\n"
+        "    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1\n"
+        "      with:\n        python-version: ${{ matrix.python-version }}\n"
+        "    - name: Install uv for locked requirement export\n",
+        "        python-version: ['3.12', '3.14']\n    steps:\n"
+        "    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10\n"
+        "    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1\n"
+        "      with:\n        python-version: ${{ matrix.python-version }}\n"
+        "    - name: Install uv for locked requirement export\n",
     ),
     "M502-text-second-linux-entry": (
         "ci.yml",
@@ -1016,11 +1041,6 @@ TEXT_MUTATIONS = {
         "          - python-version: '3.12'\n            platform: windows-2025\n"
         "            platform-family: linux\n"
         "          - python-version: '3.14'\n            platform: windows-2025\n",
-    ),
-    "M502-text-runs-on-not-matrix": (
-        "ci.yml",
-        "    runs-on: ${{ matrix.platform }}\n",
-        "    runs-on: macos-latest\n",
     ),
     # round 2: uv without an explicit interpreter, and .python-version writes
     "M502-text-uv-job-without-interpreter": (
@@ -1142,7 +1162,7 @@ def test_yaml_workflow_extension_is_scanned(tmp_path, monkeypatch):
     assert "extra.yaml" in _workflow_texts() and "extra.yaml" in _workflow_docs()
     offenders = _text_offenders()
     assert offenders and all(o.startswith("extra.yaml:") for o in offenders), offenders
-    assert ("extra.yaml", "extra", None) in _floor_uses()
+    assert ("extra.yaml", "extra", None) in _below_floor_uses()
 
 
 # Text that must not be reported: the three named -p exclusions.
@@ -1173,20 +1193,36 @@ def test_named_exclusions_do_not_hide_a_second_p():
     assert _text_offenders(texts)
 
 
-def test_text_scan_allows_anything_in_named_floor_jobs():
+def test_text_scan_allows_anything_only_in_named_below_floor_jobs():
+    """The BAML companion jobs stay whole-job exempt; the release installed-wheel
+    check no longer is (treesitter-chunker#599)."""
+    comment = "# floor check: uv run --python 3.12, python3.12, UV_PYTHON\n"
+    texts = _workflow_texts()
+    anchor = "      - name: Build and smoke-test cp312-abi3 wheel on Python 3.12\n"
+    assert anchor in texts["baml-grammar-wheels.yml"]
+    texts["baml-grammar-wheels.yml"] = texts["baml-grammar-wheels.yml"].replace(
+        anchor, "      " + comment + anchor, 1
+    )
+    assert _text_offenders(texts) == []
+
     texts = _workflow_texts()
     anchor = "    - name: Verify complete wheel-only locked installation and CLI\n"
     assert anchor in texts["release.yml"]
     texts["release.yml"] = texts["release.yml"].replace(
-        anchor,
-        "    # floor check: uv run --python 3.12, python3.12, UV_PYTHON\n" + anchor,
-        1,
+        anchor, "    " + comment + anchor, 1
     )
-    assert _text_offenders(texts) == []
+    offenders = _text_offenders(texts)
+    assert offenders and all(o.startswith("release.yml:") for o in offenders)
+    assert any("[verify-installed-wheel] --python" in o for o in offenders)
 
 
 def test_baml_companion_abi_floor_comes_from_its_build_config():
-    """The companion's cp312-abi3 floor is set by setup.py and CIBW_BUILD."""
+    """The companion's cp312-abi3 floor is set by setup.py and CIBW_BUILD, and
+    matches its own requires-python, which its below-floor jobs run."""
+    assert _baml_companion_floor() == (3, 12)
+    for name in ("source", "wheel"):
+        job = _workflow("baml-grammar-wheels.yml")["jobs"][name]
+        assert _setup_python_versions(job) == ["3.12"], name
     setup = (ROOT / "packages/baml-grammar/setup.py").read_text(encoding="utf-8")
     assert '("Py_LIMITED_API", "0x030C0000")' in setup
     assert '"py_limited_api": "cp312"' in setup
@@ -1200,9 +1236,10 @@ def test_baml_companion_abi_floor_comes_from_its_build_config():
 
 
 def test_primary_python_runs_ci_full_tier_and_release():
-    """CI (smoke and scheduled full tier) and release run on 3.14; no new jobs."""
+    """CI (smoke and scheduled full tier), platform checks and release run on the
+    3.14 floor; no new jobs (treesitter-chunker#599)."""
     floor = _floor_text()
-    assert floor != PRIMARY_PYTHON
+    assert floor == PRIMARY_PYTHON
 
     ci = _workflow("ci.yml")["jobs"]
     assert set(ci) == {
@@ -1247,11 +1284,20 @@ def test_primary_python_runs_ci_full_tier_and_release():
         for item in matrix["include"]
     )
     assert layout == [
-        ("linux", floor),
+        ("linux", PRIMARY_PYTHON),
         ("macos", PRIMARY_PYTHON),
         ("windows", PRIMARY_PYTHON),
     ]
     assert platform["platform"]["env"]["UV_PYTHON"] == "${{ matrix.python-version }}"
+    warm = _workflow("language-pack-cache.yml")["jobs"]["warm"]
+    assert set(warm["strategy"]["matrix"]) == {"include"}
+    assert (
+        sorted(
+            (item["platform-family"], str(item["python-version"]))
+            for item in warm["strategy"]["matrix"]["include"]
+        )
+        == layout
+    )
 
     # The lint and type checks run once per CI run, in the ci.yml job on 3.14.
     gate = "scripts/mypy_gate.py"
@@ -1283,7 +1329,7 @@ def test_publication_requires_full_validation_and_verified_artifacts():
     assert "dist/checksums.txt" in uploads[0]["with"]["path"].splitlines()
     wheel_check = jobs["verify-installed-wheel"]
     assert wheel_check["needs"] == "build-distributions"
-    assert wheel_check["strategy"]["matrix"]["python-version"] == ["3.12", "3.14"]
+    assert wheel_check["strategy"]["matrix"]["python-version"] == [PRIMARY_PYTHON]
     assert any(
         "--only-binary=:all:" in step.get("run", "")
         and "--require-hashes" in step.get("run", "")

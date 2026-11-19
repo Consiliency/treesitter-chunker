@@ -42,7 +42,7 @@ What actually happened
 
 **Environment**
 - OS: [e.g., Ubuntu 22.04, macOS 14.0, Windows 11]
-- Python Version: [e.g., 3.11.5]
+- Python Version: [e.g., 3.14.10]
 - Tree-sitter Chunker Version: [e.g., 1.0.9]
 - Installation Method: [e.g., pip, uv, development]
 

@@ -3,7 +3,7 @@ name            = "treesitter-chunker"
 version = "6.0.0"
 description     = "Semantic code chunker using Tree-sitter for intelligent code analysis"
 readme          = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 license         = { text = "MIT" }
 authors         = [{ name = "ViperJuice", email = "jenner@consiliency.io" }]
 maintainers     = [{ name = "ViperJuice", email = "jenner@consiliency.io" }]
@@ -18,8 +18,6 @@ classifiers     = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Operating System :: POSIX :: Linux",
@@ -58,7 +56,8 @@ dependencies = [
     "leidenalg>=0.10.0",
     "igraph>=0.11.0",  # Required by leidenalg
     # canon v1 requires exact Unicode 16.0.0 tables. CPython 3.14's stdlib passes
-    # the runtime version gate; other interpreters retain the pinned backport.
+    # the runtime version gate; other interpreters (PyPy, later CPython versions
+    # whose stdlib tables move past 16.0.0) retain the pinned backport.
     "unicodedata2==16.0.0; python_version != '3.14' or platform_python_implementation != 'CPython'",
 ]
 
@@ -174,7 +173,7 @@ exclude_lines = [
 
 [tool.black]
 line-length = 88
-target-version = ['py312']
+target-version = ['py314']
 include = '\.pyi?$'
 # force-exclude applies even when a path is passed explicitly on the CLI. The
 # vendored canon serializer (chunker/boundary/_canon.py) is copied verbatim from
@@ -211,7 +210,7 @@ ensure_newline_before_comments = true
 skip_glob = ["*/grammars/*", "*/build/*"]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py314"
 line-length = 88
 fix = false  # CI should only check, not fix; run `ruff check --fix` locally
 unsafe-fixes = false
@@ -354,6 +353,12 @@ ignore = [
     "G201",    # logging .exception in exception handler - that's the point
     "S314",    # XML parsing - we use defusedxml where needed
     "TC003",   # type annotation import - auto-fix can break code
+    # TC001/TC002 fire across ~90 modules once the py314 target makes ruff treat
+    # every annotation as deferred. Moving those runtime imports under
+    # TYPE_CHECKING would drop public module attributes, so it is left to
+    # treesitter-chunker#678, like TC003.
+    "TC001",   # first-party typing-only import
+    "TC002",   # third-party typing-only import
     "SIM103",  # return bool directly - sometimes clearer with explicit if
     "RUF012",  # mutable class attribute - often intentional
     "PLR1714", # consider using in - sometimes clearer as explicit comparison
@@ -438,7 +443,7 @@ max-returns = 6
 max-statements = 50
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 strict = true
 warn_return_any = true
 warn_unused_configs = true

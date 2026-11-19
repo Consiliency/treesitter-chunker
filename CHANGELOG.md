@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- Python 3.14 is now required (`requires-python = ">=3.14"`); Python 3.12 and
+  3.13 are no longer supported (treesitter-chunker#599). Published 6.0.0 keeps
+  its original `>=3.11` metadata. The classifiers, `.python-version`, the wheel
+  builder's `Requires-Python`, the conda recipe, the Homebrew formulas, the
+  Dockerfiles and the macOS build script move to 3.14. The Linux platform-core
+  CI entry moves from 3.12 to 3.14, and the 3.12 installed-wheel release check
+  is removed; no jobs are added. `unicodedata2==16.0.0`
+  stays a dependency for interpreters other than CPython 3.14, such as PyPy.
+  The separate BAML companion keeps its own 3.12 minimum. This supersedes the
+  3.12-floor entries further down this section (treesitter-chunker#493,
+  treesitter-chunker#502): the next main release requires 3.14, not 3.12.
+
 ### Changed
 
 - Route lightweight prose PRs through the policy and docs lanes as needed,
@@ -100,13 +114,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fact accounting. Groups remain proposals and grant no architectural authority.
 - Add an experimental stdlib snapshot selector for opt-in governed extraction. Excluded repositories, dependencies and symlinks remain opaque. Published parser APIs and Boundary IR bytes are unchanged.
 - Keep unexpected selector failures on setup exit 2; test actual canonical bytes and receipt digests for Unicode and escaped paths.
-
-### Deprecated
-
-- Python 3.12 support is deprecated and ends at the next major release (7.0).
-  Python 3.14 is the main supported version. `requires-python` stays `>=3.12`
-  until then. The drop waits until downstream consumers run on 3.14
-  (treesitter-chunker#599).
 
 ### Fixed
 

@@ -478,7 +478,7 @@ def test_no_duplicate_pr_contexts():
         "test",
         "docs",
         "controlled-linux",
-        "test (3.12, ubuntu-latest, linux)",
+        "test (3.14, ubuntu-latest, linux)",
         "CI gate",
     ):
         assert contexts.count(name) == 1
@@ -520,6 +520,10 @@ def test_cache_recipe_and_event_scope():
 
 
 def test_scripts_compile_and_gate_env_only(tmp_path):
+    # Parse with the supported floor's grammar, from requires-python.
+    requires = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    floor = requires["project"]["requires-python"].removeprefix(">=")
+    major, minor = (int(part) for part in floor.split("."))
     for name in ("ci_changes", "ci_gate"):
         py_compile.compile(
             str(ROOT / "scripts" / f"{name}.py"),
@@ -527,7 +531,8 @@ def test_scripts_compile_and_gate_env_only(tmp_path):
             doraise=True,
         )
         ast.parse(
-            (ROOT / "scripts" / f"{name}.py").read_text(), feature_version=(3, 12)
+            (ROOT / "scripts" / f"{name}.py").read_text(),
+            feature_version=(major, minor),
         )
     source = (ROOT / "scripts/ci_gate.py").read_text()
     assert 'os.environ["NEEDS_JSON"]' in source
