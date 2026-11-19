@@ -29,7 +29,9 @@ jobs:
       contents: read
     name: Validate release on Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Lint, the type gates and the full tier (tests/ and spec_tests/) on one
+    # runner; the nightly full tier alone takes about 21 minutes.
+    timeout-minutes: 60
     env:
       UV_PYTHON: ${{ matrix.python-version }}
     strategy:

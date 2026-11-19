@@ -5,8 +5,8 @@
 It does not discover source, parse files, implement a new clustering algorithm,
 write a consumer fixture, or modify the public Boundary IR API. Use a pinned,
 quiescent producer checkout and its locked Python 3.14 environment. An editable
-checkout reporting distribution metadata `6.0.0` is an unpublished source overlay,
-not a replacement release of published 6.0.0.
+checkout reporting distribution metadata `7.0.0` is a source overlay, not the
+published 7.0.0 release.
 
 ```sh
 python tools/governed_group.py --request request.json \
