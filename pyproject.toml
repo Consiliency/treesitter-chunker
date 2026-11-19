@@ -354,9 +354,9 @@ ignore = [
     "S314",    # XML parsing - we use defusedxml where needed
     "TC003",   # type annotation import - auto-fix can break code
     # TC001/TC002 fire across ~90 modules once the py314 target makes ruff treat
-    # every annotation as deferred (treesitter-chunker#599). Moving those runtime
-    # imports under TYPE_CHECKING would drop public module attributes, so it is
-    # left to a separate change, like TC003.
+    # every annotation as deferred. Moving those runtime imports under
+    # TYPE_CHECKING would drop public module attributes, so it is left to
+    # treesitter-chunker#678, like TC003.
     "TC001",   # first-party typing-only import
     "TC002",   # third-party typing-only import
     "SIM103",  # return bool directly - sometimes clearer with explicit if

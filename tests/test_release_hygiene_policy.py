@@ -246,6 +246,15 @@ def test_homebrew_formulas_respect_python_floor(formula):
     assert set(site_packages) <= {floor}
 
 
+@pytest.mark.parametrize("dockerfile", ["Dockerfile", "Dockerfile.alpine"])
+def test_dockerfiles_use_the_floor_python_image(dockerfile):
+    """Both Docker stages build and run on the floor Python image."""
+    text = (ROOT / dockerfile).read_text(encoding="utf-8")
+    images = re.findall(r"^FROM\s+python:(\d+\.\d+)-", text, re.MULTILINE)
+    assert len(images) == 2, images
+    assert set(images) == {_floor_text()}
+
+
 def test_wheel_builder_requires_python_matches_floor():
     """The builder's shared Requires-Python constant feeds both wheel paths."""
     from chunker.build import builder
@@ -411,21 +420,63 @@ def test_workflow_uv_jobs_pin_uv_python_to_job_interpreter():
                 ), f"{workflow}:{name} runs uv on Python {value} without UV_PYTHON"
 
 
-_OLD_PYTHON = re.compile(
-    r"(?i)(python[\s@-]*(>=\s*)?|>=\s*|requires-python\D*)3\.(8|9|10|11)(?!\d)"
-)
+def _old_python() -> re.Pattern[str]:
+    """Any Python 3.8 up to, but excluding, the requires-python floor."""
+    minors = "|".join(str(minor) for minor in range(8, _python_floor()[1]))
+    return re.compile(
+        rf"(?i)(python[\s@-]*(>=\s*)?|>=\s*|requires-python\D*)3\.({minors})(?!\d)"
+    )
+
+
 _HISTORICAL = re.compile(r"6\.0\.0|0\.1\.0|[Pp]ublished|[\w-]+#\d+")
+
+# Docs paragraphs that name a below-floor Python as recorded evidence or sample
+# data, not as a supported version: (path, text unique to the paragraph).
+_RECORDED_OLD_PYTHON = {
+    ("docs/development/native-validation-contract.md", ".venv/lib/python3.12/"),
+    ("docs/development/safeload-verification.md", "SL-1 public focused run"),
+    ("docs/development/safeload-verification.md", "locked Python 3.12 checks"),
+    ("docs/development/safeload-verification.md", "genuine CPython"),
+    ("docs/governed-scope-prototype.md", "on CPython 3.12,"),
+    ("docs/grammar_management.md", "Update Python 3.12 support"),
+}
+
+
+def _old_python_offenders() -> tuple[list[str], set[tuple[str, str]]]:
+    old_python = _old_python()
+    offenders, used = [], set()
+    for path in sorted(DOCS.rglob("*.md")):
+        relative = path.relative_to(ROOT).as_posix()
+        text = path.read_text(encoding="utf-8")
+        for paragraph in re.split(r"\n\s*\n", text):
+            if not old_python.search(paragraph) or _HISTORICAL.search(paragraph):
+                continue
+            recorded = {
+                entry
+                for entry in _RECORDED_OLD_PYTHON
+                if entry[0] == relative and entry[1] in paragraph
+            }
+            if recorded:
+                used |= recorded
+            else:
+                offenders.append(f"{relative}: {paragraph.strip()[:120]}")
+    return offenders, used
 
 
 def test_docs_do_not_advertise_python_below_floor():
-    """Docs paragraphs naming an old Python must be about a published release."""
-    offenders = []
-    for path in sorted(DOCS.rglob("*.md")):
-        text = path.read_text(encoding="utf-8")
-        for paragraph in re.split(r"\n\s*\n", text):
-            if _OLD_PYTHON.search(paragraph) and not _HISTORICAL.search(paragraph):
-                offenders.append(f"{path.relative_to(ROOT)}: {paragraph.strip()[:120]}")
+    """Docs naming a below-floor Python must be about a release or recorded."""
+    offenders, used = _old_python_offenders()
     assert not offenders, "\n".join(offenders)
+    assert used == _RECORDED_OLD_PYTHON, sorted(_RECORDED_OLD_PYTHON - used)
+
+
+def test_old_python_scan_covers_versions_just_below_the_floor():
+    floor_minor = _python_floor()[1]
+    old_python = _old_python()
+    assert old_python.search(f"requires Python 3.{floor_minor - 1} or newer")
+    assert old_python.search("python-3.8+")
+    assert not old_python.search(f"Python 3.{floor_minor}")
+    assert not old_python.search(f"Python 3.{floor_minor - 1}0")
 
 
 # treesitter-chunker#599 (7.0): 3.14 is the supported minimum (requires-python,

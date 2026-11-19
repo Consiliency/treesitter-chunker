@@ -13,11 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   3.13 are no longer supported (treesitter-chunker#599). Published 6.0.0 keeps
   its original `>=3.11` metadata. The classifiers, `.python-version`, the wheel
   builder's `Requires-Python`, the conda recipe, the Homebrew formulas, the
-  Dockerfiles and the macOS build script move to 3.14. CI drops the 3.12 Linux
-  platform-core entry (Linux platform-core now runs on 3.14) and the 3.12
-  installed-wheel release check, without adding jobs. `unicodedata2==16.0.0`
+  Dockerfiles and the macOS build script move to 3.14. The Linux platform-core
+  CI entry moves from 3.12 to 3.14, and the 3.12 installed-wheel release check
+  is removed; no jobs are added. `unicodedata2==16.0.0`
   stays a dependency for interpreters other than CPython 3.14, such as PyPy.
-  The separate BAML companion keeps its own 3.12 minimum.
+  The separate BAML companion keeps its own 3.12 minimum. This supersedes the
+  3.12-floor entries further down this section (treesitter-chunker#493,
+  treesitter-chunker#502): the next main release requires 3.14, not 3.12.
 
 ### Changed
 
