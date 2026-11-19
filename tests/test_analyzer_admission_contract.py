@@ -22,6 +22,7 @@ from chunker.languages.compatibility.grammar_analyzer import (
     GrammarAnalyzer,
     GrammarMetadataExtractor,
 )
+from tests.language_smoke import LOAD_TOLERANT_DEADLINE_SECONDS
 from tests.test_compiled_grammar_analysis_contract import SOURCE, _compile_probe_fixture
 
 pytestmark = pytest.mark.usefixtures("native_policy_environment")
@@ -79,7 +80,7 @@ def test_analyzer_forwards_only_one_field_record(tmp_path, baml_bytes, probes):
 
 
 def test_analyzer_metadata_is_reused_only_under_its_own_inspector(
-    tmp_path, baml_bytes, probes
+    tmp_path, baml_bytes, probes, monkeypatch
 ):
     directory = _grammars(tmp_path, baml_bytes)
     pins = {"baml": {"sha256": sha256(baml_bytes).hexdigest()}}
@@ -89,8 +90,24 @@ def test_analyzer_metadata_is_reused_only_under_its_own_inspector(
     )
     require(manager.diagnose_grammar_issues("baml").status == "healthy", "manager ok")
     analyzer = GrammarAnalyzer(directory, trusted_artifacts=pins)
+    # Reuse needs a settled first analysis: an nm run killed at the default
+    # five-second deadline is transient and is re-inspected by design
+    # (test_transient_symbol_analysis_is_not_reused). On a loaded host that
+    # expiry made this test fail (v7.0.0 release validation, run 44507478347),
+    # so the real nm runs here under the load-tolerant bound; the default
+    # deadline itself is covered by tests/test_symbol_analysis_deadline.py.
+    analyze_symbols = analyzer.analyze_grammar_symbols
+    statuses: list[str] = []
+
+    def load_tolerant(path: Path, **kwargs) -> dict:
+        symbols = analyze_symbols(path, timeout=LOAD_TOLERANT_DEADLINE_SECONDS)
+        statuses.append(symbols["analysis"]["status"])
+        return symbols
+
+    monkeypatch.setattr(analyzer, "analyze_grammar_symbols", load_tolerant)
     first = analyzer.analyze_grammar_file("baml")
     require(first is not None, "analyzer ran its own inspector")
+    require(statuses in (["complete"], ["unavailable"]), f"settled once: {statuses}")
     capabilities = analyzer._capabilities["baml"]
     # The manager's metadata holds only file_size; the analyzer's own
     # inspector also supplies version and symbols (symbol counts depend on
@@ -101,6 +118,7 @@ def test_analyzer_metadata_is_reused_only_under_its_own_inspector(
     probe_count = len(probes)
     second = analyzer.analyze_grammar_file("baml")
     require(second is not None and len(probes) == probe_count, "reused in-process")
+    require(len(statuses) == 1, f"no second inspection: {statuses}")
     require(analyzer._capabilities["baml"] == capabilities, "same admitted metadata")
 
 
