@@ -22,7 +22,12 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures" / "call_resolution"
-PROVENANCE = json.loads((FIXTURES / "provenance.json").read_text(encoding="utf-8"))
+PROVENANCE_PATH = FIXTURES / "provenance.json"
+PROVENANCE = json.loads(PROVENANCE_PATH.read_text(encoding="utf-8"))
+# sha256 of provenance.json. It holds Greenfield's manifest lines and every
+# recorded file hash, so pinning it keeps the checks below from being
+# self-referential: editing a fixture and its record together still fails.
+PROVENANCE_SHA256 = "b4a8746a437486d2c976ef4d443f289d3b442d803725dfd6cb67715ce0dbe885"
 TREE_ROOTS = ("greenfield-r1", "probe-r9", "authored")
 
 GREENFIELD_MANIFEST_SHA256 = (
@@ -80,6 +85,10 @@ def _fixture_files() -> dict[str, Path]:
         for path in sorted((FIXTURES / top).rglob("*"))
         if path.is_file()
     }
+
+
+def test_provenance_sha256_is_pinned() -> None:
+    assert hashlib.sha256(PROVENANCE_PATH.read_bytes()).hexdigest() == PROVENANCE_SHA256
 
 
 def test_every_fixture_file_matches_its_recorded_sha256() -> None:
@@ -153,11 +162,23 @@ def test_no_generated_files_inside_fixture_trees() -> None:
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git is not installed")
 def test_no_fixture_file_is_git_ignored() -> None:
-    """``ts-skipped-dir/dist/`` must not fall under the repository's ``dist/`` rule."""
+    """No file under the fixture directory is ignored, trees and generated pins alike.
+
+    ``ts-skipped-dir/dist/`` must not fall under the repository's ``dist/`` rule,
+    and ``expected/`` and ``off_mode_baseline/`` must be committed in full.
+    """
     if not (ROOT / ".git").exists():
         pytest.skip("not a Git checkout")
-    names = [f"tests/fixtures/call_resolution/{name}" for name in _fixture_files()]
-    assert "tests/fixtures/call_resolution/authored/ts-skipped-dir/dist/t.ts" in names
+    names = [
+        path.relative_to(ROOT).as_posix()
+        for path in sorted(FIXTURES.rglob("*"))
+        if path.is_file()
+    ]
+    prefix = "tests/fixtures/call_resolution"
+    assert f"{prefix}/authored/ts-skipped-dir/dist/t.ts" in names
+    for directory in ("expected", "off_mode_baseline", *TREE_ROOTS):
+        assert any(name.startswith(f"{prefix}/{directory}/") for name in names)
+    assert f"{prefix}/off_mode_baseline/MANIFEST.sha256" in names
     result = subprocess.run(
         ["git", "check-ignore", "--no-index", "--stdin"],
         input="\n".join(names) + "\n",

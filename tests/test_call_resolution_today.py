@@ -20,6 +20,7 @@ import hashlib
 import importlib.util
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -50,6 +51,48 @@ capture = _load_capture()
 RUNS = capture.discover_runs()
 TREES = sorted({run.tree for run in RUNS})
 EXPECTED = capture.FIXTURES / "expected"
+
+# The keys PR 0 pins. Later PRs add per-mode fields and ``pr`` to the same
+# records by hand; the ``today`` check compares only this projection, so those
+# additions never touch the PR 0 pin.
+PR0_CALL_KEYS = (
+    "file",
+    "line",
+    "call_span",
+    "callee_span",
+    "caller",
+    "reference",
+    "call_site_id",
+    "today",
+)
+PR0_TODAY_KEYS = ("resolution", "candidates", "candidate_ids")
+# Trees whose runs emit no call edges at all on main: Java, Kotlin and C# emit
+# none (plan section 10.5), and the Greenfield Kotlin trees have none either.
+ZERO_CALL_TREES = {
+    "clo-kotlin",
+    "ctl-csharp",
+    "ctl-java",
+    "ctl-kotlin",
+    "rt-java",
+    "rt-kotlin",
+}
+# treesitter-chunker#687: collect_source_files sorts Path objects, and WindowsPath
+# sorts case-insensitively, so py-namespace-dir (D.py, D/sub.py, app.py, other.py)
+# emits its symbol-graph lists in another order on Windows. Parity views,
+# digests, cache keys and ``today`` still match. Never regenerate for this
+# (plan section 11.2).
+WINDOWS_PATH_ORDER = pytest.mark.xfail(
+    sys.platform == "win32",
+    strict=True,
+    reason=(
+        "treesitter-chunker#687: case-insensitive WindowsPath sort in "
+        "collect_source_files"
+    ),
+)
+WINDOWS_PATH_ORDER_RUNS = {"py-namespace-dir/default"}
+# Product code whose change must never land together with a baseline change.
+PRODUCT_PREFIXES = ("chunker/", "cli/")
+BASELINE_MANIFEST = "tests/fixtures/call_resolution/off_mode_baseline/MANIFEST.sha256"
 
 
 def _today_calls(graph: dict[str, Any]) -> list[dict[str, Any]]:
@@ -92,7 +135,15 @@ def _table(tree: str) -> dict[str, Any]:
     return json.loads((EXPECTED / f"{tree}.json").read_text(encoding="utf-8"))
 
 
+def _pr0_projection(call: dict[str, Any]) -> dict[str, Any]:
+    """The PR 0 keys of one expected-table record."""
+    projected = {key: call[key] for key in PR0_CALL_KEYS}
+    projected["today"] = {key: call["today"][key] for key in PR0_TODAY_KEYS}
+    return projected
+
+
 def test_manifest_sha256_is_pinned() -> None:
+    assert capture.MANIFEST.relative_to(ROOT).as_posix() == BASELINE_MANIFEST
     assert hashlib.sha256(capture.MANIFEST.read_bytes()).hexdigest() == MANIFEST_SHA256
 
 
@@ -120,6 +171,15 @@ def test_expected_tables_cover_every_tree_and_run() -> None:
             assert table["runs"][label]["language"] == run.language
 
 
+def test_zero_call_trees_are_exactly_the_empty_tables() -> None:
+    empty = {
+        tree
+        for tree in TREES
+        if not any(run["calls"] for run in _table(tree)["runs"].values())
+    }
+    assert empty == ZERO_CALL_TREES
+
+
 @pytest.mark.parametrize("tree", TREES)
 def test_today_matches_off_mode_output(tree: str) -> None:
     """Each call's ``today`` edge equals the live off-mode symbol graph."""
@@ -127,10 +187,20 @@ def test_today_matches_off_mode_output(tree: str) -> None:
     for run in (run for run in RUNS if run.tree == tree):
         graph = extract_symbol_graph(run.path, run.language)
         assert graph["errors"] == []
-        assert _today_calls(graph) == table["runs"][run.label]["calls"], run.run_id
+        expected = [_pr0_projection(call) for call in table["runs"][run.label]["calls"]]
+        assert _today_calls(graph) == expected, run.run_id
 
 
-@pytest.mark.parametrize("run_id", [run.run_id for run in RUNS])
+@pytest.mark.parametrize(
+    "run_id",
+    [
+        pytest.param(
+            run.run_id,
+            marks=WINDOWS_PATH_ORDER if run.run_id in WINDOWS_PATH_ORDER_RUNS else (),
+        )
+        for run in RUNS
+    ],
+)
 def test_off_mode_matches_the_baseline(run_id: str) -> None:
     """Cold and warm-incremental off-mode documents equal the committed baseline."""
     (run,) = (run for run in RUNS if run.run_id == run_id)
@@ -192,15 +262,91 @@ def test_cache_key_comparison_tolerates_only_version_fields() -> None:
         assert "call_resolution" not in payload
         assert "scope_facts" not in payload
 
+    from chunker.boundary.cache import build_boundary_cache_key
+
+    def rekeyed(document: dict[str, Any]) -> dict[str, Any]:
+        for entry in document["files"].values():
+            entry["cache_key"] = build_boundary_cache_key(entry["key_payload"])
+        return document
+
     bumped = json.loads(json.dumps(recorded))
     for entry in bumped["files"].values():
         entry["key_payload"]["tool_version"] = "0.0.0-test"
-        entry["cache_key"] = "boundary:changed"
-    assert capture.compare_cache_keys(recorded, bumped) == []
+    assert capture.compare_cache_keys(recorded, rekeyed(bumped)) == []
 
+    first = next(iter(recorded["files"]))
     changed = json.loads(json.dumps(recorded))
-    first = next(iter(changed["files"]))
     changed["files"][first]["key_payload"]["resolution_mode"] = "strict"
-    assert capture.compare_cache_keys(recorded, changed) == [
-        f"{first}: payload field resolution_mode differs"
+    assert capture.compare_cache_keys(recorded, rekeyed(changed)) == [
+        f"{first}: payload field resolution_mode differs",
+        f"{first}: cache key differs at unchanged versions",
     ]
+
+    added = json.loads(json.dumps(recorded))
+    added["files"][first]["key_payload"]["call_resolution"] = "name"
+    assert capture.compare_cache_keys(recorded, rekeyed(added)) == [
+        f"{first}: payload fields differ (added ['call_resolution'], removed [])"
+    ]
+
+    underived = json.loads(json.dumps(recorded))
+    underived["files"][first]["cache_key"] = "boundary:not-derived"
+    assert capture.compare_cache_keys(recorded, underived) == [
+        f"{first}: current key does not derive from its payload",
+        f"{first}: cache key differs at unchanged versions",
+    ]
+
+
+def test_today_projection_ignores_later_fields() -> None:
+    """PRs 1-6 may add fields to expected records without editing the pin."""
+    call = _table("r9-ts")["runs"]["default"]["calls"][0]
+    extended = json.loads(json.dumps(call))
+    extended["pr"] = 2
+    extended["structural"] = {"outcome": "local", "edge": "resolved"}
+    extended["today"]["note"] = "added later"
+    assert _pr0_projection(extended) == _pr0_projection(call)
+    assert set(_pr0_projection(call)) == set(call)
+
+
+def _git(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *args],
+        capture_output=True,
+        check=False,
+        cwd=ROOT,
+        text=True,
+        timeout=60,
+    )
+
+
+def test_baseline_manifest_never_changes_with_product_code() -> None:
+    """A baseline change and a product change never share one diff (plan 11.2).
+
+    Compares HEAD with its merge base against ``origin/main``. CI checks out
+    with full history, so the ref exists there; elsewhere the test skips.
+    """
+    if shutil.which("git") is None or not (ROOT / ".git").exists():
+        pytest.skip("not a Git checkout")
+    base = _git("merge-base", "origin/main", "HEAD")
+    if base.returncode != 0 or not base.stdout.strip():
+        pytest.skip("origin/main is not available for a merge base")
+    diff = _git("diff", "--name-only", "--no-renames", base.stdout.strip(), "HEAD")
+    assert diff.returncode == 0, diff.stderr
+    product = _product_paths_changed_with_baseline(set(diff.stdout.splitlines()))
+    assert product == [], (
+        f"{BASELINE_MANIFEST} changed together with product code {product}; "
+        "regenerate the baseline only in its own pull request with no product change"
+    )
+
+
+def _product_paths_changed_with_baseline(changed: set[str]) -> list[str]:
+    if BASELINE_MANIFEST not in changed:
+        return []
+    return sorted(path for path in changed if path.startswith(PRODUCT_PREFIXES))
+
+
+def test_baseline_policy_flags_only_mixed_diffs() -> None:
+    assert _product_paths_changed_with_baseline({BASELINE_MANIFEST}) == []
+    assert _product_paths_changed_with_baseline({"chunker/symbol_graph.py"}) == []
+    assert _product_paths_changed_with_baseline(
+        {BASELINE_MANIFEST, "chunker/symbol_graph.py", "cli/main.py", "tests/x.py"}
+    ) == ["chunker/symbol_graph.py", "cli/main.py"]

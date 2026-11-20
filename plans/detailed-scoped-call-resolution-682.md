@@ -829,7 +829,9 @@ For name `x` in target module M:
 - **`greenfield-r1/<tree>/`**: all 16 round-1 trees, byte-for-byte. Greenfield
   confirmed them synthetic and safe to commit.
 - **`probe-r9/`**: the probe tree, original layout.
-- **`authored/<case>/`**: 106 trees (sections 10.3–10.5).
+- **`authored/<case>/`**: 108 trees (sections 10.3–10.5): the 106 that the
+  president's re-check verified, plus `py-nonlocal-rebind` and
+  `py-ancestor-module-shadow` from the Codex review of #683.
 - **`expected/<tree>.json`**: per call (file, call span, reference):
   - `today`: the off-mode edge (resolution and candidates as
     `file:line:qualified_name`);
@@ -862,7 +864,10 @@ Tool exclusions, all in PR 0:
 
 - pytest `addopts += --ignore=tests/fixtures/call_resolution`.
   `greenfield-r1/r9-py/tests/test_svc.py` would otherwise be collected and fail.
-- Black `extend-exclude` and Ruff `exclude` entries for the directory.
+- Black `extend-exclude` and Ruff `extend-exclude` entries for the directory.
+  Ruff needs `extend-exclude`, not `exclude`: the canonical CI command's
+  `--exclude archive --exclude logs --exclude site` flags replace the
+  configured `exclude` list, so an `exclude` entry would be ignored in CI.
 - `tests/test_call_resolution_fixture_collection.py` asserts that collecting
   `tests/fixtures` yields no tests. `test_lint_path_policy.py` stays green.
 - `.gitattributes`: `tests/fixtures/call_resolution/** -text`.

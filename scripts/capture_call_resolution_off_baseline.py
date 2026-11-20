@@ -237,14 +237,21 @@ def compare_cache_keys(recorded: dict[str, Any], current: dict[str, Any]) -> lis
     for path in sorted(set(old) & set(new)):
         old_payload = old[path]["key_payload"]
         new_payload = new[path]["key_payload"]
-        stable = sorted(set(old_payload) | set(new_payload))
-        for field in stable:
+        if set(old_payload) != set(new_payload):
+            added = sorted(set(new_payload) - set(old_payload))
+            removed = sorted(set(old_payload) - set(new_payload))
+            problems.append(
+                f"{path}: payload fields differ (added {added}, removed {removed})"
+            )
+        for field in sorted(set(old_payload) & set(new_payload)):
             if field in VOLATILE_PAYLOAD_FIELDS:
                 continue
-            if old_payload.get(field) != new_payload.get(field):
+            if old_payload[field] != new_payload[field]:
                 problems.append(f"{path}: payload field {field} differs")
         if build_boundary_cache_key(old_payload) != old[path]["cache_key"]:
             problems.append(f"{path}: recorded key does not derive from its payload")
+        if build_boundary_cache_key(new_payload) != new[path]["cache_key"]:
+            problems.append(f"{path}: current key does not derive from its payload")
         versions_same = all(
             old_payload.get(field) == new_payload.get(field)
             for field in VOLATILE_PAYLOAD_FIELDS
