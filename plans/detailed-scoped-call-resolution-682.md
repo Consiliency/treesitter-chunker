@@ -521,6 +521,15 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
   `wildcard_import` gives `none(star-import)` for module-scope lookups.
 - A function that declares `global name` and binds it adds a non-definition
   binding at module scope (`none(mixed-bindings)`).
+- **`nonlocal` writes (Codex review of #683).** A nested function that declares
+  `nonlocal name` and binds it (assignment, augmented assignment, `del`, a
+  `for`/`with`/`except` target, walrus, or a `def`/`class` of that name) adds a
+  non-definition binding to the enclosing function scope that owns `name`, the
+  same way `global` does for module scope. Any lookup that reaches that
+  binding scope then gives `none(mixed-bindings)`. Example:
+  `def outer(): def helper(): …; def swap(): nonlocal helper; helper = other;
+  swap(); helper()` must not resolve to `outer.helper`. Fixture:
+  `py-nonlocal-rebind` (near-miss).
 - **Conditional.** A definition is conditional if an `if`, `elif`, `else`,
   `try`, `except`, `finally`, `while`, `for`, `with` or `match` statement lies
   between it and its scope body. `decorated_definition` is transparent.
@@ -760,6 +769,16 @@ For name `x` in target module M:
   - `D.py` beats a namespace directory `D/` (A14), so `from D.sub` gives
     `none(module-not-found)` when D is a module;
   - a namespace directory alone is usable only as a path to submodules.
+- **Dotted names resolve one component at a time (Codex review of #683).** For
+  `a.b.c`, resolve `a`, then `a.b` inside `a`, then `a.b.c` inside `a.b`, applying
+  the package-versus-module precedence above at every component. If any
+  intermediate component resolves to a module (a `.py` file) rather than a
+  package or namespace directory, the result is `none(module-not-found)`; never
+  test only the final `D/__init__.py` or `D.py` path. Example: with `a.py` and
+  `a/b.py` but no `a/__init__.py`, `from a.b import helper` gives
+  `none(module-not-found)`, because Python loads `a.py` and `a` is not a
+  package. The same applies to relative imports after the leading dots.
+  Fixture: `py-ancestor-module-shadow` (near-miss).
 - **Script-directory rule (A11, simplified).** An absolute import gives
   `none(script-dir-shadow)` when its first component resolves inside the
   importer's own directory and that directory is not the root. A script run
@@ -1007,6 +1026,7 @@ without proof):
 | py-overload | a.py:13 use → f | {f@5, f@7, f@8} | group = C0 | 4 |
 | py-module-positional | a.py:13 caller → d | {d@1, d@8} | group = C0 | 4 |
 | py-scopes | comprehension, walrus, nonlocal, del, with, for and match callers → helper; lambda → helper | {a.py, b.py} each | local-variable; parameter | 4 |
+| py-nonlocal-rebind | a.py:14 outer → helper (outer defines `helper`; nested `swap` does `nonlocal helper; helper = other`); b.py:5 f → helper (f's own nested `helper`). No top-level `helper` exists, so both nested defs are candidates | {a.py outer.helper, b.py f.helper} each | outer → helper: mixed-bindings (nonlocal write); f → helper: **resolved b.py f.helper** (t1.lexical) | 4 |
 | py-dynamic-scope | a1–a4 go → helper (exec, globals, vars, sys.modules) | {a1, a2, a3, a4} | dynamic-scope | 4 |
 | py-star-import | c.py:5 → helper | {a.py, b.py} | star-import | 4 |
 | py-dynamic-import | app.py:6 → m.helper | {a.py, b.py} | local-variable | 4 |
@@ -1019,6 +1039,7 @@ without proof):
 | py-script-dir-import | tools/run.py:5 → helper | {util.py, tools/util.py} | script-dir-shadow | 6 |
 | py-attr-vs-submodule | app.py:5 → helper | {pkg/impl.py, pkg/helper.py} | attr-submodule-conflict | 6 |
 | py-namespace-dir | app.py:5 → helper | {D/sub.py, other.py, D.py} | module-not-found (D is `D.py`) | 6 |
+| py-ancestor-module-shadow | app.py: `from a.b import helper` then `helper()`, with `a.py`, `a/b.py` (no `a/__init__.py`) and `other.py` each defining `helper` | {a.py, a/b.py, other.py} | module-not-found (intermediate `a` is a module) | 6 |
 | py-reexport-4hop | app.py:5 → helper | {impl.py, other.py} | hop-limit | 6 |
 
 ### 10.5 Controls
@@ -1061,7 +1082,7 @@ compares the analyzer's output with them.
 | reassigned | ts-reassign |
 | block-function | js-block-fn, js-annexb-overwrite |
 | conditional | py-cond-e (inner), py-type-checking, py-local-cond-import |
-| mixed-bindings | ts-two-imports, py-global-rebind |
+| mixed-bindings | ts-two-imports, py-global-rebind, py-nonlocal-rebind |
 | class-scope-bound | py-class-default |
 | star-import | py-star-import |
 | dynamic-scope | js-eval-with, py-dynamic-scope |
@@ -1076,7 +1097,7 @@ compares the analyzer's output with them.
 | stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2) |
 | external-module | ts-bare-specifier, ts-external-import-kind |
 | outside-root | py-relative-root |
-| module-not-found | js-importer-ext-order (use3), py-namespace-dir |
+| module-not-found | js-importer-ext-order (use3), py-namespace-dir, py-ancestor-module-shadow |
 | unknown-variant | ts-skipped-dir, ts-mjs-specifier, ts-language-filter (filtered) |
 | ambiguous-extension | probe use.ts, ts-ext-collision-*, js-importer-ext-order (use2), ts-dts |
 | dts-target | ts-dts-only |
@@ -1499,3 +1520,12 @@ for name in sys.argv[3:]:
 | RC-43 issue numbers | §6.3 and §12 (treesitter-chunker#685); §14; §15 Q1 (treesitter-chunker#684) and Q8 (treesitter-chunker#685). No placeholder remains. |
 | N-1: exported-declaration join (PR 2 panel note) | §13.1 PR 2 row; §5.4 |
 | N-2: rt-tsclass cited correctly | §8 table (rt-tsclass is a control with no `K.m` calls) |
+
+### Codex review of #683 at d486c029 (executive fold)
+
+| Finding | Applied in |
+| --- | --- |
+| `nonlocal` writes rebind the enclosing function's binding | §7.3 "`nonlocal` writes"; §10.4 py-nonlocal-rebind (near-miss plus an f → f.helper positive); §10.6 mixed-bindings row |
+| Dotted Python module paths resolve one component at a time | §9.5 "Dotted names resolve one component at a time"; §10.4 py-ancestor-module-shadow; §10.6 module-not-found row |
+
+Both tighten the rules (fail closed); neither departs from a ruling. Today cells for both fixtures were derived on main f213f1c2.
