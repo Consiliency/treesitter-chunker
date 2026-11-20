@@ -66,7 +66,17 @@
      "caller": "K.n",
      "file": "k.ts",
      "line": 10,
+     "pr": 1,
      "reference": "this.m",
+     "structural": {
+      "candidates": [
+       "k.ts:4:K.m",
+       "k.ts:7:K.m"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "815dc5bc1455bdd0dea2e8be2b867041c292f204",
@@ -116,7 +126,14 @@
      "caller": "use",
      "file": "k.ts",
      "line": 12,
+     "pr": 1,
      "reference": "new K().m",
+     "structural": {
+      "candidates": [],
+      "outcome": "none(stub)",
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],

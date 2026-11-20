@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from chunker.call_resolution.facts import valid_scope_facts
+
 from .types import (
     BOUNDARY_CACHE_KEY_FIELDS,
     BOUNDARY_CACHE_KEY_PREFIX,
@@ -74,6 +76,21 @@ def _valid_symbol_facts(symbol_facts: object) -> bool:
     call_facts = symbol_facts.get("call_facts")
     return isinstance(call_facts, list) and all(
         _valid_call_fact(fact) for fact in call_facts
+    )
+
+
+def _valid_call_resolution_facts(
+    key_payload: object, symbol_facts: dict[str, Any]
+) -> bool:
+    """On-mode records must carry well-formed scope facts (#682, plan 4.4).
+
+    Only on-mode payloads name ``call_resolution``; off-mode records are
+    checked exactly as before.
+    """
+    if not isinstance(key_payload, dict) or "call_resolution" not in key_payload:
+        return True
+    return valid_scope_facts(
+        symbol_facts.get("scope_facts"), symbol_facts.get("language")
     )
 
 
@@ -153,6 +170,9 @@ class BoundaryCacheRecord:
             raise ValueError(msg)
         if not _valid_symbol_facts(data["symbol_facts"]):
             msg = "Boundary cache record has malformed call facts"
+            raise ValueError(msg)
+        if not _valid_call_resolution_facts(data["key_payload"], data["symbol_facts"]):
+            msg = "Boundary cache record has missing or malformed scope facts"
             raise ValueError(msg)
         return cls(
             path=str(data["path"]),

@@ -13,8 +13,21 @@ from typing import Any
 
 from .auto import ZeroConfigAPI
 from ._internal.registry import baml_companion_available
+from .call_resolution import engine as call_resolution_engine
+from .call_resolution.facts import (
+    compute_scope_facts,
+    unsupported_scope_facts,
+    valid_scope_facts,
+    valid_symbol_entry,
+)
 from .core import _line_ending_offsets, chunk_file
-from .types import RESOLUTION_MODES, ResolutionMode, ResolutionStatus
+from .types import (
+    CALL_RESOLUTION_MODES,
+    RESOLUTION_MODES,
+    CallResolution,
+    ResolutionMode,
+    ResolutionStatus,
+)
 
 SKIP_PARTS = {
     "__pycache__",
@@ -55,6 +68,13 @@ def _candidate_extensions(language: str | None) -> set[str]:
         return extensions
     normalized = language.lower()
     return {ext for ext, lang in extension_map.items() if lang == normalized}
+
+
+def validate_call_resolution(call_resolution: object) -> None:
+    """Raise ``ValueError`` for an unknown ``call_resolution`` value."""
+    if call_resolution not in CALL_RESOLUTION_MODES:
+        msg = f"Unsupported call_resolution: {call_resolution}"
+        raise ValueError(msg)
 
 
 def _should_skip_path(path: Path) -> bool:
@@ -476,8 +496,16 @@ def extract_symbol_facts_for_file(
     language: str | None = None,
     *,
     fail_fast: bool = False,
+    call_resolution: CallResolution = "name",
 ) -> dict[str, Any]:
-    """Extract deterministic per-file symbol facts used by graph assembly."""
+    """Extract deterministic per-file symbol facts used by graph assembly.
+
+    With ``call_resolution`` other than ``"name"`` (experimental), the facts
+    also carry ``scope_facts`` from a re-parse of the bytes already read.
+    They are never emitted; off-mode facts are unchanged.
+    """
+    validate_call_resolution(call_resolution)
+    call_resolution_on = call_resolution != "name"
     detected_language = _detect_language(file_path, language)
     display_file = _display_file(file_path, root)
     module_name = _module_name(file_path, root)
@@ -493,6 +521,8 @@ def extract_symbol_facts_for_file(
         "call_facts": [],
         "errors": [],
     }
+    if call_resolution_on:
+        facts["scope_facts"] = unsupported_scope_facts(detected_language)
     if not detected_language:
         return facts
     try:
@@ -515,6 +545,7 @@ def extract_symbol_facts_for_file(
     imports_output: list[dict[str, Any]] = []
     chunk_records: list[dict[str, Any]] = []
     owners: list[dict[str, Any]] = []
+    symbol_spans: list[list[Any]] = []
     identity_occurrences: defaultdict[str, int] = defaultdict(int)
     for order, chunk in enumerate(chunks):
         metadata = chunk.metadata or {}
@@ -548,6 +579,12 @@ def extract_symbol_facts_for_file(
             "node_id": chunk.node_id or None,
         }
         symbol_lookup[symbol_id] = symbol_record
+        symbol_span = [chunk.node_type, chunk.byte_start, chunk.byte_end, symbol_id]
+        if call_resolution_on and valid_symbol_entry(symbol_span):
+            # A malformed span (for example zero width) is left out rather
+            # than failing the run; a proof that needs it fails closed as
+            # ``unmapped``.
+            symbol_spans.append(symbol_span)
         owners.append(
             {
                 "id": symbol_id,
@@ -590,6 +627,13 @@ def extract_symbol_facts_for_file(
     facts["imports"] = imports_output
     facts["chunk_records"] = chunk_records
     facts["call_facts"] = _call_facts_for_chunks(chunks, owners, source, display_file)
+    if call_resolution_on:
+        facts["scope_facts"] = compute_scope_facts(
+            language=detected_language,
+            source=source,
+            call_facts=facts["call_facts"],
+            symbols=symbol_spans,
+        )
     return facts
 
 
@@ -599,24 +643,51 @@ def assemble_symbol_graph(
     total_files: int | None = None,
     no_source_error: str | None = None,
     resolution_mode: ResolutionMode = "permissive",
+    call_resolution: CallResolution = "name",
+    language_filter: str | None = None,
 ) -> dict[str, Any]:
-    """Assemble public symbol graph output from per-file facts."""
+    """Assemble public symbol graph output from per-file facts.
+
+    ``call_resolution`` (experimental) narrows ambiguous call edges with the
+    per-file ``scope_facts``, which every fact must then carry.
+    ``language_filter`` is the run's ``language`` argument; the run's file
+    set comes from the facts, so assembly does no filesystem access.
+    """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"
         raise ValueError(msg)
+    validate_call_resolution(call_resolution)
+    filter_value: object = language_filter
+    if filter_value is not None and not isinstance(filter_value, str):
+        msg = f"Unsupported language_filter: {filter_value!r}"
+        raise ValueError(msg)
+    call_resolution_on = call_resolution != "name"
+    if call_resolution_on:
+        for file_facts in facts:
+            if not valid_scope_facts(
+                file_facts.get("scope_facts"), file_facts.get("language")
+            ):
+                msg = (
+                    f"call_resolution={call_resolution!r} requires valid "
+                    f"scope_facts for {file_facts.get('path')!r}"
+                )
+                raise ValueError(msg)
     if total_files == 0 and no_source_error:
+        empty_metadata: dict[str, Any] = {
+            "files_processed": 0,
+            "total_classes": 0,
+            "total_functions": 0,
+            "total_imports": 0,
+            "total_relationships": 0,
+            "errors": [no_source_error],
+        }
+        if call_resolution_on:
+            empty_metadata["call_resolution"] = call_resolution
         return {
             "symbols": {"classes": [], "functions": [], "imports": []},
             "relationships": [],
             "call_facts": [],
-            "metadata": {
-                "files_processed": 0,
-                "total_classes": 0,
-                "total_functions": 0,
-                "total_imports": 0,
-                "total_relationships": 0,
-                "errors": [no_source_error],
-            },
+            "metadata": empty_metadata,
             "symbol_lookup": {},
             "errors": [no_source_error],
         }
@@ -726,6 +797,17 @@ def assemble_symbol_graph(
             }
         )
 
+    if call_resolution_on:
+        call_resolution_engine.narrow_relationships(
+            relationships,
+            call_resolution_engine.build_run_context(
+                facts,
+                symbol_lookup,
+                call_resolution,
+                language_filter=language_filter,
+            ),
+        )
+
     class_symbols = [
         symbol for symbol in symbol_lookup.values() if symbol["kind"] in CLASS_KINDS
     ]
@@ -741,6 +823,8 @@ def assemble_symbol_graph(
         "total_relationships": len(relationships),
         "errors": errors,
     }
+    if call_resolution_on:
+        metadata["call_resolution"] = call_resolution
     return {
         "symbols": {
             "classes": class_symbols,
@@ -760,26 +844,39 @@ def extract_symbol_graph(
     language: str | None = None,
     resolution_mode: ResolutionMode = "permissive",
     fail_fast: bool = False,
+    *,
+    call_resolution: CallResolution = "name",
 ) -> dict[str, Any]:
-    """Extract a language-agnostic symbol graph from chunk metadata."""
+    """Extract a language-agnostic symbol graph from chunk metadata.
+
+    ``call_resolution`` is experimental. ``"name"`` (the default) is today's
+    name-only resolution. ``"structural"`` narrows ambiguous call edges whose
+    callee is a bare identifier in a Python, JavaScript, TypeScript or TSX
+    file. At this head it applies only the kind and family filters
+    (``t1.kind``, ``t1.family``) and resolves nothing.
+    """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"
         raise ValueError(msg)
+    validate_call_resolution(call_resolution)
     root = Path(path)
     files = collect_source_files(root, language)
     if not files:
+        no_files_metadata: dict[str, Any] = {
+            "files_processed": 0,
+            "total_classes": 0,
+            "total_functions": 0,
+            "total_imports": 0,
+            "total_relationships": 0,
+            "errors": [f"No source files found in {root}"],
+        }
+        if call_resolution != "name":
+            no_files_metadata["call_resolution"] = call_resolution
         return {
             "symbols": {"classes": [], "functions": [], "imports": []},
             "relationships": [],
             "call_facts": [],
-            "metadata": {
-                "files_processed": 0,
-                "total_classes": 0,
-                "total_functions": 0,
-                "total_imports": 0,
-                "total_relationships": 0,
-                "errors": [f"No source files found in {root}"],
-            },
+            "metadata": no_files_metadata,
             "symbol_lookup": {},
             "errors": [f"No source files found in {root}"],
         }
@@ -790,6 +887,7 @@ def extract_symbol_graph(
             root,
             language,
             fail_fast=fail_fast,
+            call_resolution=call_resolution,
         )
         for file_path in files
     ]
@@ -797,6 +895,8 @@ def extract_symbol_graph(
         facts,
         total_files=len(files),
         resolution_mode=resolution_mode,
+        call_resolution=call_resolution,
+        language_filter=language,
     )
 
 

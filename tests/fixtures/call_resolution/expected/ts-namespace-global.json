@@ -44,7 +44,17 @@
      "caller": "useN",
      "file": "c.ts",
      "line": 2,
+     "pr": 1,
      "reference": "N.f",
+     "structural": {
+      "candidates": [
+       "b.ts:1:N.f",
+       "a.ts:1:N.f"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "58017555b176ee877afad02b47ba5fe940bcea7c",

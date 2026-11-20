@@ -18,7 +18,16 @@
      "caller": "K.m",
      "file": "k.ts",
      "line": 5,
+     "pr": 1,
      "reference": "onlyA",
+     "structural": {
+      "candidates": [
+       "k.ts:1:onlyA"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "8806ae5f47e00dee3f50d6d14b0685e646fbca5a"
@@ -42,7 +51,16 @@
      "caller": "K.m",
      "file": "k.ts",
      "line": 8,
+     "pr": 1,
      "reference": "onlyB",
+     "structural": {
+      "candidates": [
+       "k.ts:2:onlyB"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "ff538aedcc8f3576aefa3de4e4e0af71ed5e9451"

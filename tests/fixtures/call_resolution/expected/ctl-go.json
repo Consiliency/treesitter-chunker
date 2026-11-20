@@ -18,7 +18,18 @@
      "caller": "use",
      "file": "a/a.go",
      "line": 5,
+     "pr": 1,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a/a.go:3:helper",
+       "c/c.go:3:helper",
+       "b/b.go:3:helper"
+      ],
+      "outcome": null,
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "09690ea7cb664e9d5047f0c12a07f5d846c201fe",

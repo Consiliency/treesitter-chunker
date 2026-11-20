@@ -18,7 +18,19 @@
      "caller": "use",
      "file": "x.ts",
      "line": 1,
+     "pr": 1,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "c.ts:1:t",
+       "b.ts:1:t"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "ambiguous",
+      "rules": [
+       "t1.kind"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "9aac27b61348e281e0ca9a48e6ce5ed7163db9c0",

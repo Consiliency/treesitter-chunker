@@ -19,7 +19,16 @@
      "caller": "m",
      "file": "k.rs",
      "line": 6,
+     "pr": 1,
      "reference": "only_a",
+     "structural": {
+      "candidates": [
+       "k.rs:1:only_a"
+      ],
+      "outcome": null,
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "23eebfe00359aa5af1a17f400cd599af465fe581"
@@ -43,7 +52,16 @@
      "caller": "n",
      "file": "k.rs",
      "line": 11,
+     "pr": 1,
      "reference": "only_b",
+     "structural": {
+      "candidates": [
+       "k.rs:2:only_b"
+      ],
+      "outcome": null,
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "ab531746a5283e46f3888f4ec7890e506015a202"
@@ -67,7 +85,16 @@
      "caller": "inner.m",
      "file": "k.rs",
      "line": 15,
+     "pr": 1,
      "reference": "super::only_b",
+     "structural": {
+      "candidates": [
+       "k.rs:2:only_b"
+      ],
+      "outcome": null,
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "ab531746a5283e46f3888f4ec7890e506015a202"

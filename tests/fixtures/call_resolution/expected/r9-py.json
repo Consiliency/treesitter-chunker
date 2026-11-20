@@ -18,7 +18,16 @@
      "caller": "C.a",
      "file": "pkg/sub/svc.py",
      "line": 11,
+     "pr": 1,
      "reference": "target",
+     "structural": {
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
@@ -68,7 +77,16 @@
      "caller": "d",
      "file": "pkg/sub/svc.py",
      "line": 20,
+     "pr": 1,
      "reference": "target",
+     "structural": {
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
@@ -92,7 +110,16 @@
      "caller": "d",
      "file": "pkg/sub/svc.py",
      "line": 21,
+     "pr": 1,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "pkg/sub/svc.py:1:helper"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "8022e90f0ba72577afb290db40f2abc929aae58e"
@@ -116,7 +143,16 @@
      "caller": "d",
      "file": "pkg/sub/svc.py",
      "line": 25,
+     "pr": 1,
      "reference": "target",
+     "structural": {
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
@@ -140,7 +176,16 @@
      "caller": "d",
      "file": "pkg/sub/svc.py",
      "line": 26,
+     "pr": 1,
      "reference": "target",
+     "structural": {
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
@@ -164,7 +209,16 @@
      "caller": "d",
      "file": "pkg/sub/svc.py",
      "line": 27,
+     "pr": 1,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "pkg/sub/svc.py:1:helper"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "8022e90f0ba72577afb290db40f2abc929aae58e"
@@ -214,7 +268,14 @@
      "caller": "caller",
      "file": "pkg/sub/svc.py",
      "line": 32,
+     "pr": 1,
      "reference": "unknown_thing",
+     "structural": {
+      "candidates": [],
+      "outcome": "none(stub)",
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],
@@ -234,7 +295,16 @@
      "caller": "caller",
      "file": "pkg/sub/svc.py",
      "line": 33,
+     "pr": 1,
      "reference": "target",
+     "structural": {
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
@@ -258,7 +328,16 @@
      "caller": "caller",
      "file": "pkg/sub/svc.py",
      "line": 33,
+     "pr": 1,
      "reference": "target",
+     "structural": {
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
@@ -282,7 +361,16 @@
      "caller": "test_target",
      "file": "tests/test_svc.py",
      "line": 5,
+     "pr": 1,
      "reference": "target",
+     "structural": {
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "64a291ed2522bdb26a3e959cb12b11ed30b9342a"

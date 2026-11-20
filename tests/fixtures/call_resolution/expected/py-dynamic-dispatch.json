@@ -18,7 +18,17 @@
      "caller": "A.go",
      "file": "a.py",
      "line": 6,
+     "pr": 1,
      "reference": "self.run",
+     "structural": {
+      "candidates": [
+       "a.py:10:B.run",
+       "a.py:2:A.run"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "38e669aee00ce6300093172569c358b9b07b3169",
@@ -44,7 +54,17 @@
      "caller": "go",
      "file": "a.py",
      "line": 15,
+     "pr": 1,
      "reference": "x.run",
+     "structural": {
+      "candidates": [
+       "a.py:10:B.run",
+       "a.py:2:A.run"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "38e669aee00ce6300093172569c358b9b07b3169",

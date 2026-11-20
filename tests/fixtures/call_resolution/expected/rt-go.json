@@ -19,7 +19,16 @@
      "caller": "M",
      "file": "k.go",
      "line": 9,
+     "pr": 1,
      "reference": "onlyA",
+     "structural": {
+      "candidates": [
+       "k.go:3:onlyA"
+      ],
+      "outcome": null,
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "18ff64e7832922aceb552a77a04ba2a86cc31d44"
@@ -43,7 +52,16 @@
      "caller": "M",
      "file": "k.go",
      "line": 15,
+     "pr": 1,
      "reference": "onlyB",
+     "structural": {
+      "candidates": [
+       "k.go:4:onlyB"
+      ],
+      "outcome": null,
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "dcccf699dc681405a1b0c0cdd03fbd81d3e973df"

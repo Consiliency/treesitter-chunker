@@ -19,7 +19,16 @@
      "caller": "f",
      "file": "k.cpp",
      "line": 4,
+     "pr": 1,
      "reference": "only_a",
+     "structural": {
+      "candidates": [
+       "k.cpp:1:only_a"
+      ],
+      "outcome": null,
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5"
@@ -43,7 +52,16 @@
      "caller": "f",
      "file": "k.cpp",
      "line": 7,
+     "pr": 1,
      "reference": "only_b",
+     "structural": {
+      "candidates": [
+       "k.cpp:2:only_b"
+      ],
+      "outcome": null,
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "b60ecc558c883f50552528ccb54aa2f1d2e94c9b"
@@ -67,7 +85,17 @@
      "caller": "g",
      "file": "k.cpp",
      "line": 9,
+     "pr": 1,
      "reference": "f",
+     "structural": {
+      "candidates": [
+       "k.cpp:3:f",
+       "k.cpp:6:f"
+      ],
+      "outcome": null,
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",

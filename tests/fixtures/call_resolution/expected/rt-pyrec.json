@@ -18,7 +18,16 @@
      "caller": "C.b",
      "file": "svc.py",
      "line": 12,
+     "pr": 1,
      "reference": "self.c",
+     "structural": {
+      "candidates": [
+       "svc.py:14:C.c"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "e166968e86022d3720ff9a96fb5bef95958ef980"
@@ -118,7 +127,14 @@
      "caller": "uses_c2",
      "file": "svc.py",
      "line": 27,
+     "pr": 1,
      "reference": "C().c",
+     "structural": {
+      "candidates": [],
+      "outcome": "none(stub)",
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],

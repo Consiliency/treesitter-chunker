@@ -1,0 +1,342 @@
+"""The call-resolution rule engine (plan sections 6 and 7.1).
+
+Pure functions over per-file facts and the assembled symbol lookup; no
+filesystem access. The engine narrows call relationships in place:
+
+1. **Eligibility (6.1).** The mode is not ``"name"``; the caller's file is
+   Python, JavaScript, TypeScript or TSX and its scope facts are supported;
+   today's candidate set C0 has two or more members; and the reference is a
+   bare identifier.
+2. **Binding proof (6.3, ruling 2.1).** ``P`` is the set of symbols the
+   lookup outcome proves. A ``local`` outcome proves its group-rule result,
+   joined to symbol IDs by ``(node_type, byte_start, byte_end)``; a
+   declaration that maps to no symbol, or to more than one, fails closed as
+   ``none(unmapped)`` (5.4). A call with no binding entry is
+   ``none(no-binding-fact)``. In ``structural`` mode an ``import`` outcome
+   proves nothing.
+3. **Filters (7.1).** ``t1.family`` then ``t1.kind`` remove candidates of
+   another language family or of a non-callable kind. They apply only when two
+   or more candidates remain, or when the single survivor is proven by ``P``.
+   A filter alone therefore never resolves an edge.
+
+Every step only removes candidates and a step that would empty the set is
+skipped. An edge is ``resolved`` only when its one remaining candidate is in
+``P``. If a result ever broke these invariants the edge is left unchanged.
+"""
+
+from __future__ import annotations
+
+import re
+from collections import defaultdict
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
+from typing import Any
+
+RULE_LEXICAL = "t1.lexical"
+RULE_KIND = "t1.kind"
+RULE_FAMILY = "t1.family"
+RULE_TS_OVERLOAD = "t1.ts_overload"
+RULE_JS_HOIST = "t1.js_hoist"
+RULE_IMPORT = "t2.import"
+RULE_NAMESPACE = "t2.namespace"
+KNOWN_RULE_IDS = (
+    RULE_LEXICAL,
+    RULE_KIND,
+    RULE_FAMILY,
+    RULE_TS_OVERLOAD,
+    RULE_JS_HOIST,
+    RULE_IMPORT,
+    RULE_NAMESPACE,
+)
+# Rules that prove a binding; every resolved edge names one of them.
+BINDING_RULE_IDS = frozenset({RULE_LEXICAL, RULE_IMPORT, RULE_NAMESPACE})
+# Group rules (7.4) refine a binding's group; they never apply alone.
+GROUP_RULE_IDS = frozenset({RULE_TS_OVERLOAD, RULE_JS_HOIST})
+FILTER_RULE_IDS = frozenset({RULE_KIND, RULE_FAMILY})
+# t1.kind removes these symbol kinds (7.1).
+NON_CALLABLE_KINDS = frozenset(
+    {"interface", "type", "enum", "module", "struct", "trait"}
+)
+_JS_FAMILY_LANGUAGES = frozenset({"javascript", "typescript", "tsx"})
+_ANALYZED_LANGUAGES = _JS_FAMILY_LANGUAGES | {"python"}
+_BARE_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+Declaration = tuple[str, int, int]
+
+
+def language_family(language: str | None) -> str | None:
+    """``"js"`` for JavaScript, TypeScript and TSX; otherwise the language."""
+    if not language:
+        return None
+    normalized = language.lower()
+    return "js" if normalized in _JS_FAMILY_LANGUAGES else normalized
+
+
+def is_bare_identifier(reference: str) -> bool:
+    """Whether a call reference is a plain identifier (Tier 1 eligible)."""
+    return _BARE_IDENTIFIER.fullmatch(reference) is not None
+
+
+def _none(reason: str) -> dict[str, Any]:
+    return {"outcome": "none", "reason": reason}
+
+
+@dataclass(frozen=True)
+class FileContext:
+    """One file's scope facts, indexed for the join."""
+
+    language: str | None
+    supported: bool
+    bindings: Mapping[str, Any]
+    declarations: Mapping[Declaration, tuple[str, ...]]
+    path: str = ""
+
+
+@dataclass(frozen=True)
+class RunContext:
+    """Everything the engine reads for one run."""
+
+    mode: str
+    files: Mapping[str, FileContext]
+    symbol_lookup: Mapping[str, Mapping[str, Any]]
+    # Tier 2 input (plan 4.2): the run's language filter. The run's file set
+    # is ``files``; assembly never touches the filesystem.
+    language_filter: str | None = None
+
+
+@dataclass(frozen=True)
+class Decision:
+    """The engine's decision for one call relationship."""
+
+    call_site_id: str
+    eligible: bool
+    outcome: Mapping[str, Any] | None
+    before: tuple[str, ...]
+    after: tuple[str, ...]
+    proven: frozenset[str] = field(default_factory=frozenset)
+    rules: tuple[str, ...] = ()
+
+    @property
+    def changed(self) -> bool:
+        return self.after != self.before
+
+    @property
+    def resolution(self) -> str:
+        if len(self.after) == 1:
+            return "resolved"
+        return "ambiguous" if self.after else "unresolved"
+
+
+def build_run_context(
+    facts: Iterable[Mapping[str, Any]],
+    symbol_lookup: Mapping[str, Mapping[str, Any]],
+    mode: str,
+    *,
+    language_filter: str | None = None,
+) -> RunContext:
+    """Index every file's scope facts by its display path."""
+    files: dict[str, FileContext] = {}
+    for file_facts in facts:
+        scope_facts = file_facts["scope_facts"]
+        declarations: defaultdict[Declaration, list[str]] = defaultdict(list)
+        for node_type, byte_start, byte_end, symbol_id in scope_facts["symbols"]:
+            declarations[(str(node_type), int(byte_start), int(byte_end))].append(
+                str(symbol_id)
+            )
+        path = str(file_facts.get("path") or "")
+        files[path] = FileContext(
+            path=path,
+            language=scope_facts.get("language"),
+            supported=bool(scope_facts.get("supported")),
+            bindings=scope_facts.get("bindings") or {},
+            declarations={key: tuple(ids) for key, ids in declarations.items()},
+        )
+    return RunContext(
+        mode=mode,
+        files=files,
+        symbol_lookup=symbol_lookup,
+        language_filter=language_filter,
+    )
+
+
+def _join(
+    outcome: Mapping[str, Any],
+    file_context: FileContext,
+    symbol_lookup: Mapping[str, Mapping[str, Any]],
+) -> tuple[frozenset[str], Mapping[str, Any], tuple[str, ...]]:
+    """Map a ``local`` outcome's proof to symbol IDs; fail closed (5.4).
+
+    Each declaration must map to exactly one symbol record, and that record
+    must belong to the caller's file.
+    """
+    proven: set[str] = set()
+    for node_type, byte_start, byte_end in outcome["proof"]:
+        ids = file_context.declarations.get(
+            (str(node_type), int(byte_start), int(byte_end)), ()
+        )
+        symbol = symbol_lookup.get(ids[0]) if len(ids) == 1 else None
+        if symbol is None or symbol.get("file") != file_context.path:
+            return frozenset(), _none("unmapped"), ()
+        proven.add(ids[0])
+    return frozenset(proven), outcome, tuple(str(rule) for rule in outcome["rules"])
+
+
+def proof(
+    outcome: Mapping[str, Any] | None,
+    mode: str,
+    file_context: FileContext,
+    symbol_lookup: Mapping[str, Mapping[str, Any]],
+) -> tuple[frozenset[str], Mapping[str, Any], tuple[str, ...]]:
+    """``(P, final outcome, binding rule IDs)`` for one call (6.3)."""
+    if outcome is None:
+        return frozenset(), _none("no-binding-fact"), ()
+    kind = outcome.get("outcome")
+    if kind == "local":
+        proven, joined, group_rules = _join(outcome, file_context, symbol_lookup)
+        if not proven:
+            return proven, joined, ()
+        # The engine enforces what the group rules promise (7.4): a proof
+        # names only callable symbols of the caller's family. Anything else
+        # fails closed, so a filter can never turn it into a resolution.
+        family = language_family(file_context.language)
+        if any(
+            not _symbol_callable(symbol_lookup.get(symbol_id))
+            or _symbol_family(symbol_lookup.get(symbol_id)) != family
+            for symbol_id in proven
+        ):
+            return frozenset(), _none("non-callable"), ()
+        extra = tuple(rule for rule in group_rules if rule in GROUP_RULE_IDS)
+        return proven, joined, (RULE_LEXICAL, *extra)
+    # An import outcome proves nothing in structural mode (6.3); the imports
+    # mode that resolves it is introduced by a later change.
+    return frozenset(), outcome, ()
+
+
+def _symbol_family(symbol: Mapping[str, Any] | None) -> str | None:
+    return language_family(symbol.get("language")) if symbol else None
+
+
+def _symbol_callable(symbol: Mapping[str, Any] | None) -> bool:
+    return symbol is not None and str(symbol.get("kind")) not in NON_CALLABLE_KINDS
+
+
+def narrow(
+    candidates: Sequence[str],
+    proven: frozenset[str],
+    binding_rules: Sequence[str],
+    caller_family: str | None,
+    symbol_lookup: Mapping[str, Mapping[str, Any]],
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The binding-proof algorithm over C0 (6.3): ``(C, rule IDs)``."""
+    before = tuple(candidates)
+    if any(candidate not in symbol_lookup for candidate in before):
+        # A candidate without a symbol record cannot be classified.
+        return before, ()
+    current = before
+    rules: list[str] = []
+    # 1. Binding: intersect with the proof when that removes something.
+    if proven:
+        kept = tuple(candidate for candidate in current if candidate in proven)
+        if kept and kept != current:
+            current = kept
+            rules.extend(binding_rules)
+    # 2. Filters: same family, then callable kinds. Applied together, and only
+    # when two or more remain or the single survivor is proven.
+    same_family = tuple(
+        candidate
+        for candidate in current
+        if _symbol_family(symbol_lookup.get(candidate)) == caller_family
+    )
+    callable_ = tuple(
+        candidate
+        for candidate in same_family
+        if _symbol_callable(symbol_lookup.get(candidate))
+    )
+    if callable_ != current and (
+        len(callable_) >= 2 or (len(callable_) == 1 and callable_[0] in proven)
+    ):
+        if same_family != current:
+            rules.append(RULE_FAMILY)
+        if callable_ != same_family:
+            rules.append(RULE_KIND)
+        current = callable_
+    # 3. Invariants: a subset of C0, never empty, resolved only when proven
+    # and only through a binding rule.
+    if (
+        not current
+        or not set(current) <= set(before)
+        or (len(current) == 1 and current[0] not in proven)
+        or (len(current) == 1 and not BINDING_RULE_IDS & set(rules))
+        or (current != before and not rules)
+    ):
+        return before, ()
+    return current, tuple(rules)
+
+
+def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
+    """The decision for one ``calls`` relationship in its off-mode form."""
+    call_site_id = str(relationship.get("call_site_id") or "")
+    before = tuple(str(candidate) for candidate in relationship.get("candidates", []))
+    not_eligible = Decision(call_site_id, False, None, before, before)
+    if context.mode == "name" or relationship.get("type") != "calls":
+        return not_eligible
+    file_context = context.files.get(str(relationship.get("file") or ""))
+    if (
+        file_context is None
+        or file_context.language not in _ANALYZED_LANGUAGES
+        or not file_context.supported
+    ):
+        return not_eligible
+    if relationship.get("resolution") != "ambiguous" or len(before) < 2:
+        return not_eligible
+    if not is_bare_identifier(str(relationship.get("reference") or "")):
+        return not_eligible
+    raw = file_context.bindings.get(
+        f"{relationship.get('callee_byte_start')}:{relationship.get('callee_byte_end')}"
+    )
+    proven, outcome, binding_rules = proof(
+        raw, context.mode, file_context, context.symbol_lookup
+    )
+    after, rules = narrow(
+        before,
+        proven,
+        binding_rules,
+        language_family(file_context.language),
+        context.symbol_lookup,
+    )
+    return Decision(call_site_id, True, outcome, before, after, proven, rules)
+
+
+def apply_decision(relationship: dict[str, Any], decision: Decision, mode: str) -> None:
+    """Rewrite a changed relationship (4.3); an unchanged one is untouched."""
+    if not decision.changed:
+        return
+    resolved = decision.resolution == "resolved"
+    relationship["to"] = (
+        decision.after[0] if resolved else str(relationship.get("reference"))
+    )
+    relationship["resolution"] = decision.resolution
+    relationship["candidates"] = list(decision.after)
+    relationship["is_internal"] = resolved
+    relationship["provenance"] = {
+        **relationship.get("provenance", {}),
+        "call_resolution": mode,
+        "call_rules": list(decision.rules),
+    }
+
+
+def narrow_relationships(
+    relationships: Sequence[dict[str, Any]],
+    context: RunContext,
+) -> dict[str, Decision]:
+    """Narrow every eligible call relationship in place; return the decisions."""
+    decisions: dict[str, Decision] = {}
+    if context.mode == "name":
+        return decisions
+    for relationship in relationships:
+        if relationship.get("type") != "calls":
+            continue
+        decision = decide(context, relationship)
+        decisions[decision.call_site_id] = decision
+        apply_decision(relationship, decision, context.mode)
+    return decisions

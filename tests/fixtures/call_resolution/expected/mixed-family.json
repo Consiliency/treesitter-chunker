@@ -19,7 +19,19 @@
      "caller": "use2",
      "file": "c.go",
      "line": 5,
+     "pr": 1,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "b.py:1:helper",
+       "c.go:3:helper",
+       "d.ts:1:helper",
+       "a.ts:1:helper"
+      ],
+      "outcome": null,
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "6aaa93ccf7af52ba054b2c63e2223607d6449855",
@@ -49,7 +61,19 @@
      "caller": "use",
      "file": "x.ts",
      "line": 1,
+     "pr": 1,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "d.ts:1:helper",
+       "a.ts:1:helper"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "ambiguous",
+      "rules": [
+       "t1.family"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "6aaa93ccf7af52ba054b2c63e2223607d6449855",

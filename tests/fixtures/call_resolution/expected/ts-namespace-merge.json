@@ -18,7 +18,20 @@
      "caller": "use",
      "file": "a.ts",
      "line": 3,
+     "pr": 2,
      "reference": "NS",
+     "structural": {
+      "candidates": [
+       "b.ts:1:NS",
+       "a.ts:1:NS"
+      ],
+      "interim": "PR 1 interim (plan 10.3): t1.kind drops the a.ts:2 namespace; PR 2 resolves to a.ts:1 NS by t1.lexical",
+      "outcome": "none(stub)",
+      "resolution": "ambiguous",
+      "rules": [
+       "t1.kind"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "5ab041e3519584e4bf92c2a061717349834776e7",

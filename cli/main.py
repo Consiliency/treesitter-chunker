@@ -52,6 +52,11 @@ class ResolutionModeOption(str, Enum):
     permissive = "permissive"
 
 
+class CallResolutionOption(str, Enum):
+    name = "name"
+    structural = "structural"
+
+
 if HAS_DEBUG:
     app.add_typer(
         debug_commands.app, name="debug", help="Debug and visualization tools"
@@ -107,6 +112,16 @@ def boundary(
         "--resolution-mode",
         help="Relationship resolution policy",
     ),
+    call_resolution: CallResolutionOption = typer.Option(
+        CallResolutionOption.name,
+        "--call-resolution",
+        help=(
+            "Experimental: call-edge resolution. 'structural' narrows ambiguous "
+            "calls to bare names in Python, JavaScript, TypeScript and TSX "
+            "files; it currently applies only the kind and family filters and "
+            "resolves nothing"
+        ),
+    ),
     quiet: bool = typer.Option(
         False,
         "--quiet",
@@ -157,6 +172,7 @@ def boundary(
         language,
         canonical=True,
         resolution_mode=resolution_mode.value,
+        call_resolution=call_resolution.value,
         fail_fast=fail_fast,
         include_timings=include_timings,
         incremental=incremental,

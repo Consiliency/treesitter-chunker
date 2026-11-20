@@ -552,6 +552,13 @@ result is `none(non-callable)`. Then:
 | Python | Two or more definitions in one scope | The group, `ambiguous` | `t1.lexical` |
 | Any | Definitions mixed with non-definition bindings | `none(mixed-bindings)` | — |
 
+**Open for PR 2 (#688 panel, B7).** This section and R-1 item 2 (7.6) conflict
+on an ambient enum called as a function, `declare enum E {}` then `E()`. Here
+the non-callable kinds are dropped first, giving `none(non-callable)`; R-1 item
+2 puts `ambient` first, giving `none(ambient)`. PR 2 must fix the order and add
+a fixture for it. Either way the edge is unchanged; only the recorded reason
+differs.
+
 ### 7.5 Binding allow-list (A5)
 
 `chunker/call_resolution/allowlist.py` classifies every named node kind of each
@@ -560,7 +567,16 @@ binding. Each kind is either:
 
 - **handled**: with its binding class;
 - **ignored**: with a reason (labels, for example);
-- **fail-closed**: gives `none(unmapped)`.
+- **fail-closed**: gives `none(unmapped)`;
+- **non-binding**: the kind cannot introduce a binding (expressions, literals
+  and the like). The completeness check needs every named kind classified,
+  so this class records the review of kinds outside the binding forms.
+
+An unclassified kind is treated as fail-closed. The check applies to the
+grammars listed in `REVIEWED_LANGUAGES`: PR 2 adds javascript, typescript and
+tsx, and PR 4 adds python. A test (PR 1) fails if a family's analyzer emits any
+outcome other than `none(stub)` on the fixtures while one of its grammars is
+unreviewed.
 
 These are named explicitly:
 

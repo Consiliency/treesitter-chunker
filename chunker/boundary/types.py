@@ -5,13 +5,17 @@ from __future__ import annotations
 from typing import Any, Literal, TypeAlias
 
 from chunker.types import (
+    CALL_RESOLUTION_MODES,
     RESOLUTION_MODES,
     RESOLUTION_STATUSES,
+    CallResolution,
     ResolutionMode,
     ResolutionStatus,
 )
 
 __all__ = [
+    "CALL_RESOLUTION_MODES",
+    "CallResolution",
     "RESOLUTION_MODES",
     "RESOLUTION_STATUSES",
     "ResolutionMode",
