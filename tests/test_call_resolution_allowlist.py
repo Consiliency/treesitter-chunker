@@ -3,8 +3,8 @@
 Node kinds come from the loaded ``Language``, so this runs in CI without
 grammar sources. Every named kind of a reviewed grammar must be classified,
 so a grammar bump cannot add an unreviewed binding form. At this head the
-analyzers are stubs and no grammar is reviewed yet; the checks below prove
-the scaffold works and fails closed.
+JavaScript, TypeScript and TSX grammars are reviewed (the JS/TS analyzer);
+Python is reviewed with its analyzer.
 """
 
 from __future__ import annotations
@@ -54,7 +54,8 @@ def test_entries_name_real_kinds_with_valid_classifications(language: str) -> No
 
 
 def test_reviewed_grammars_classify_every_named_kind() -> None:
-    """Empty at this head; each analyzer change lists its grammars."""
+    """Each analyzer change lists its grammars; JS/TS at this head."""
+    assert {"javascript", "typescript", "tsx"} <= REVIEWED_LANGUAGES
     for language in sorted(REVIEWED_LANGUAGES):
         kinds = allowlist.named_node_kinds(language)
         assert allowlist.unclassified_kinds(kinds, ALLOWLIST[language]) == [], language

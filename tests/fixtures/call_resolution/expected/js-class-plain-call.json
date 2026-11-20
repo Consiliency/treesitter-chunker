@@ -18,7 +18,18 @@
      "caller": "mk",
      "file": "a.js",
      "line": 2,
+     "pr": 2,
      "reference": "Foo",
+     "structural": {
+      "candidates": [
+       "a.js:1:Foo"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "0e7cc18a57dac34b0234f85b9cb0e45e021cbe5c",

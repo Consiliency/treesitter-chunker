@@ -852,8 +852,10 @@ def extract_symbol_graph(
     ``call_resolution`` is experimental. ``"name"`` (the default) is today's
     name-only resolution. ``"structural"`` narrows ambiguous call edges whose
     callee is a bare identifier in a Python, JavaScript, TypeScript or TSX
-    file. At this head it applies only the kind and family filters
-    (``t1.kind``, ``t1.family``) and resolves nothing.
+    file. At this head it resolves JavaScript, TypeScript and TSX calls whose
+    target a lexical binding proves (``t1.lexical``, ``t1.ts_overload``);
+    Python calls are not resolved yet, so only the kind and family filters
+    (``t1.kind``, ``t1.family``) narrow them.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"

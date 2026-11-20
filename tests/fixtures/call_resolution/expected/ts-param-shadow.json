@@ -19,7 +19,17 @@
      "caller": "run",
      "file": "a.ts",
      "line": 2,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "a.ts:1:t",
+       "b.ts:1:t"
+      ],
+      "outcome": "none(parameter)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "a6ec565ebf998845ef692f97091959a974bbe63b",
@@ -45,7 +55,21 @@
      "caller": "loc",
      "file": "a.ts",
      "line": 3,
+     "pr": 2,
      "reference": "make",
+     "structural": {
+      "candidate_ids": [
+       "ed4e8ee8066c2396d375f12e35ad6da4db38f967"
+      ],
+      "candidates": [
+       "a.ts:4:make"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "3d13d6056a8ced237e687c7705983db3f68deebf",
@@ -71,7 +95,17 @@
      "caller": "loc",
      "file": "a.ts",
      "line": 3,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "a.ts:1:t",
+       "b.ts:1:t"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "a6ec565ebf998845ef692f97091959a974bbe63b",

@@ -13,9 +13,11 @@ Modules:
 - :mod:`.js_scope` and :mod:`.py_scope`: the per-language analyzers;
 - :mod:`.allowlist`: the binding allow-list.
 
-At this head the analyzers are stubs: every call in a supported file has the
-outcome ``none(stub)``, so only the kind and family filters can narrow an edge
-and nothing resolves.
+At this head the JS/TS analyzer implements the Tier 1 core (plan section
+13.1, PR 2): the scope chain, ``t1.lexical`` and ``t1.ts_overload``.
+Script-goal top levels and namespace bodies give interim ``none`` reasons.
+The Python analyzer is still a stub: every Python call has the outcome
+``none(stub)``, so only the kind and family filters can narrow a Python edge.
 """
 
 from __future__ import annotations

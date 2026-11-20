@@ -326,7 +326,9 @@ def test_experimental_label_and_spec_text() -> None:
     unreleased = changelog.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
     assert "**Experimental:**" in unreleased
     assert "call_resolution" in unreleased
-    assert "resolves nothing" in unreleased
+    # The per-head statement (plan 4.5) at PR 2.
+    assert "Python calls are not resolved yet" in unreleased
+    assert "t1.ts_overload" in unreleased
     spec = (ROOT / "docs" / "interface-boundary-spec.md").read_text(encoding="utf-8")
     assert "### Call resolution extension (experimental)" in spec
     assert "Resolution remains heuristic and does not\nestablish" not in spec

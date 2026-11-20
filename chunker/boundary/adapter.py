@@ -1101,8 +1101,9 @@ def extract_boundary_ir(
     is a bare identifier in a Python, JavaScript, TypeScript or TSX file;
     narrowed edges carry ``provenance.call_resolution`` and
     ``provenance.call_rules``, and ``run.options.call_resolution`` is set. At
-    this head ``"structural"`` applies only the kind and family filters and
-    resolves nothing.
+    this head ``"structural"`` resolves JavaScript, TypeScript and TSX calls
+    whose target a lexical binding proves; Python calls are not resolved yet,
+    so only the kind and family filters narrow them.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"

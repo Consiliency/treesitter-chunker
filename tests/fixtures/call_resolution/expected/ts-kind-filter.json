@@ -25,7 +25,7 @@
        "c.ts:1:t",
        "b.ts:1:t"
       ],
-      "outcome": "none(stub)",
+      "outcome": "none(unbound)",
       "resolution": "ambiguous",
       "rules": [
        "t1.kind"

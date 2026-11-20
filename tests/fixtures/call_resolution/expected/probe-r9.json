@@ -18,7 +18,19 @@
      "caller": "g",
      "file": "pkg/over.ts",
      "line": 6,
+     "pr": 2,
      "reference": "f",
+     "structural": {
+      "candidates": [
+       "pkg/over.ts:3:f"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical",
+       "t1.ts_overload"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "3781c6a05965860ce40b1db576aba9b2815a4d87",
@@ -46,7 +58,18 @@
      "caller": "g",
      "file": "pkg/over.ts",
      "line": 6,
+     "pr": 2,
      "reference": "Box",
+     "structural": {
+      "candidates": [
+       "pkg/over.ts:5:Box"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "5171768923b38fee5fd7c6f03db8f1abba4cea68",
@@ -72,7 +95,18 @@
      "caller": "caller",
      "file": "pkg/svc.ts",
      "line": 2,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "pkg/svc.ts:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "54c73e075dccfd28cd8ec216c59a018d2be4260d",
@@ -98,7 +132,18 @@
      "caller": "caller",
      "file": "pkg/svc.ts",
      "line": 2,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "pkg/svc.ts:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "54c73e075dccfd28cd8ec216c59a018d2be4260d",

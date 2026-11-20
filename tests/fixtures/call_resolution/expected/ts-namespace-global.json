@@ -18,7 +18,18 @@
      "caller": "N.g",
      "file": "c.ts",
      "line": 1,
+     "pr": 3,
      "reference": "f",
+     "structural": {
+      "candidates": [
+       "b.ts:1:N.f",
+       "a.ts:1:N.f"
+      ],
+      "interim": "PR 2 interim (plan 7.6): the lookup passes through a namespace body; PR 3 gives none(namespace-merged)",
+      "outcome": "none(namespace-deferred)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "58017555b176ee877afad02b47ba5fe940bcea7c",
@@ -51,7 +62,7 @@
        "b.ts:1:N.f",
        "a.ts:1:N.f"
       ],
-      "outcome": "none(stub)",
+      "outcome": "none(non-callable)",
       "resolution": "ambiguous",
       "rules": []
      },

@@ -62,8 +62,8 @@ def setup_symbol_parser(subparsers: argparse._SubParsersAction) -> None:
         help=(
             "Experimental: call-edge resolution (default: name). 'structural' "
             "narrows ambiguous calls to bare names in Python, JavaScript, "
-            "TypeScript and TSX files; it currently applies only the kind and "
-            "family filters and resolves nothing"
+            "TypeScript and TSX files; it currently resolves JS/TS calls whose "
+            "target a lexical binding proves, and does not resolve Python calls"
         ),
     )
     extract_parser.set_defaults(func=cmd_extract_symbols)

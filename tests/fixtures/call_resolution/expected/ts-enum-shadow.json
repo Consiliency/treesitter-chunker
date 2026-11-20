@@ -18,7 +18,17 @@
      "caller": "f",
      "file": "a.ts",
      "line": 2,
+     "pr": 2,
      "reference": "E",
+     "structural": {
+      "candidates": [
+       "a.ts:1:E",
+       "b.ts:1:E"
+      ],
+      "outcome": "none(non-callable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "952cb2f5cafab092ffa18875e0aabc2e3bd0cbe0",

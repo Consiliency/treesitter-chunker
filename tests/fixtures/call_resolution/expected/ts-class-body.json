@@ -18,7 +18,18 @@
      "caller": "A.m",
      "file": "svc.ts",
      "line": 4,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "svc.ts:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "8e8ae04d155120e4ce7dc9383990e5f6921af32a",

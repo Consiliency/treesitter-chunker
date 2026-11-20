@@ -552,12 +552,24 @@ result is `none(non-callable)`. Then:
 | Python | Two or more definitions in one scope | The group, `ambiguous` | `t1.lexical` |
 | Any | Definitions mixed with non-definition bindings | `none(mixed-bindings)` | — |
 
-**Open for PR 2 (#688 panel, B7).** This section and R-1 item 2 (7.6) conflict
-on an ambient enum called as a function, `declare enum E {}` then `E()`. Here
-the non-callable kinds are dropped first, giving `none(non-callable)`; R-1 item
-2 puts `ambient` first, giving `none(ambient)`. PR 2 must fix the order and add
-a fixture for it. Either way the edge is unchanged; only the recorded reason
-differs.
+**Settled in PR 2 (treesitter-chunker#688 panel, B7).** An ambient enum called
+as a function, `declare enum E {}` then `E()`, gives `none(non-callable)`:
+non-callable kinds are dropped first, as this section says, and `ambient` and
+`bodyless` then apply only to the callable members left. The rulings support
+this order:
+
+- R-1(iii) of the plan ruling orders only `ambient` before `bodyless`
+  (ts-declare-ambient) and says nothing about enums or namespaces;
+- the treesitter-chunker#688 president's ruling (note 1) restates this
+  section's drop-first order as the analyzer contract;
+- the engine already rejects any proof that names a non-callable symbol.
+
+The edge is unchanged either way; only the recorded reason differs. A function
+merged with an ambient namespace (`declare function g(): void;` plus
+`declare namespace g {}`) drops the namespace and gives `none(ambient)`. Both
+cases are pinned by `test_b7_*` in `tests/test_call_resolution_tier1_js.py` on
+trees the test writes, because a committed tree would change the off-mode
+baseline (11.2).
 
 ### 7.5 Binding allow-list (A5)
 
@@ -627,9 +639,12 @@ per call, decided in this order:
    `type-only`, `unmapped`, `no-binding-fact`) wins over `script-goal-deferred`,
    `script-global`, `namespace-deferred` and `namespace-merged`. Those apply
    only when the lookup would otherwise prove a group.
-2. In a definition group, `ambient` wins over `bodyless`: `declare function
-   amb(): void;` is both, and ts-declare-ambient expects `ambient`. Then come
-   `non-callable` and `conditional`.
+2. In a definition group, non-callable kinds are dropped first (7.4), so a
+   group of only enums and namespaces gives `non-callable`, even when it is
+   ambient (`declare enum E {}`; B7, settled in PR 2). Among the callable
+   members left, `ambient` wins over `bodyless`: `declare function amb():
+   void;` is both, and ts-declare-ambient expects `ambient`. Then comes
+   `conditional`.
 3. Tier 2 reasons (9.8) are checked in the order 9.2, 9.5 and 9.6 list them.
    For Python, `script-dir-shadow` is checked before `module-not-found`.
 
@@ -1109,7 +1124,7 @@ compares the analyzer's output with them.
 | dynamic-scope | js-eval-with, py-dynamic-scope |
 | ambient | ts-declare-ambient |
 | bodyless | ts-signature-only |
-| non-callable | ts-enum-shadow |
+| non-callable | ts-enum-shadow; B7 `declare enum` (`test_b7_*`, written by the test) |
 | namespace-merged | ts-declare-namespace, ts-namespace-global |
 | script-global | js-script-global, js-implicit-global |
 | type-only | ts-type-only-import |
@@ -1550,3 +1565,9 @@ for name in sys.argv[3:]:
 | Dotted Python module paths resolve one component at a time | §9.5 "Dotted names resolve one component at a time"; §10.4 py-ancestor-module-shadow; §10.6 module-not-found row |
 
 Both tighten the rules (fail closed); neither departs from a ruling. Today cells for both fixtures were derived on main f213f1c2.
+
+### PR 2: treesitter-chunker#688 panel item B7
+
+| Item | Applied in |
+| --- | --- |
+| B7: `declare enum E {}` then `E()` | §7.4 (settled: `non-callable`, non-callable kinds dropped first); §7.6 precedence item 2; §10.6 non-callable row |

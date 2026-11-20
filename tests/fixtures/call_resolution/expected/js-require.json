@@ -18,7 +18,17 @@
      "caller": "u",
      "file": "use.js",
      "line": 3,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "svc.js:1:t",
+       "other.js:1:t"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "e6cb587af6c5ea2919398f1e126531dd8d9b327a",
@@ -44,7 +54,17 @@
      "caller": "u",
      "file": "use.js",
      "line": 3,
+     "pr": 2,
      "reference": "m.t",
+     "structural": {
+      "candidates": [
+       "svc.js:1:t",
+       "other.js:1:t"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "e6cb587af6c5ea2919398f1e126531dd8d9b327a",

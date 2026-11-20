@@ -18,7 +18,18 @@
      "caller": "outer",
      "file": "a.ts",
      "line": 3,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "a.ts:2:outer.t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "6f6df41c5c5d081f92f6e4a0d52b4be5a0cee122",

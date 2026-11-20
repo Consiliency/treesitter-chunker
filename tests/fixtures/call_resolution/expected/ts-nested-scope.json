@@ -18,7 +18,17 @@
      "caller": "outer",
      "file": "a.ts",
      "line": 4,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "a.ts:1:t",
+       "b.ts:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "a6ec565ebf998845ef692f97091959a974bbe63b",
@@ -44,7 +54,17 @@
      "caller": "blk",
      "file": "a.ts",
      "line": 7,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "a.ts:1:t",
+       "b.ts:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "a6ec565ebf998845ef692f97091959a974bbe63b",

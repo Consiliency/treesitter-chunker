@@ -18,7 +18,18 @@
      "caller": "f",
      "file": "a.ts",
      "line": 2,
+     "pr": 2,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.ts:1:helper"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "1a7fb99a10f52f0de5dadac95ec61c751ce18f9a",

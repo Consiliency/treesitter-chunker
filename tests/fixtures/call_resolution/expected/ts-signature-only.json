@@ -18,7 +18,17 @@
      "caller": "use",
      "file": "a.ts",
      "line": 2,
+     "pr": 2,
      "reference": "s",
+     "structural": {
+      "candidates": [
+       "a.ts:1:s",
+       "b.ts:1:s"
+      ],
+      "outcome": "none(bodyless)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "b2465dd164a1e840b230fdde2bb1108893910c3a",

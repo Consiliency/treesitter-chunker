@@ -20,9 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `"name"` (the default) is today's name-only resolution. Output, cache keys
     and cache records are byte-identical to omitting the option.
   - `"structural"` narrows `ambiguous` call edges whose callee is a bare
-    identifier in a Python, JavaScript, TypeScript or TSX file. It currently
-    applies only the kind and family filters (`t1.kind`, `t1.family`), only
-    when two or more candidates remain, so it **resolves nothing**. Narrowed
+    identifier in a Python, JavaScript, TypeScript or TSX file. In
+    JavaScript, TypeScript and TSX files a per-file scope pass looks the
+    callee up through the lexical scope chain (class bodies skipped,
+    parameter scopes, function-expression self names, `let`/`const` across
+    their whole block). An edge resolves only when that lookup proves one
+    remaining candidate: a single definition (`t1.lexical`), or the body of a
+    TS overload set (`t1.ts_overload`); duplicate bodies narrow to the group
+    and stay ambiguous. Parameters, locals, reassigned names, block-level
+    functions, `eval`/`with`, ambient and bodyless declarations, enums and
+    namespaces never resolve. Script-goal top levels and TS namespace bodies
+    are not resolved yet, and **Python calls are not resolved yet**: for them,
+    and wherever no binding proves a candidate, only the kind and family
+    filters (`t1.kind`, `t1.family`) narrow, and only when two or more
+    candidates remain. Narrowed
     edges carry `provenance.call_resolution` and `provenance.call_rules`, and
     `run.options.call_resolution` and symbol-graph `metadata.call_resolution`
     record the mode. On-mode `parity_digest` changes, and on-mode cache keys add

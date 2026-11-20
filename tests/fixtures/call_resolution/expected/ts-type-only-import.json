@@ -18,7 +18,17 @@
      "caller": "u",
      "file": "use.ts",
      "line": 2,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "other.ts:1:t",
+       "svc.ts:1:t"
+      ],
+      "outcome": "none(type-only)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "8e8ae04d155120e4ce7dc9383990e5f6921af32a",

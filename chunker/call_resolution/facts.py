@@ -5,7 +5,8 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"1"`` for both families):
+Schema (fact version ``"2"`` for the ``js`` family, whose analyzer is real,
+and ``"1"`` for ``python``, still the stub):
 
 ``version``
     :data:`CALL_RESOLUTION_FACT_VERSIONS` for the file's language family, or
@@ -28,6 +29,10 @@ Schema (fact version ``"1"`` for both families):
     ``{"outcome": "local", "proof": [[node_type, byte_start, byte_end], ...],
     "rules": [<group rule id>, ...]}`` (the declarations the group rule
     proves, section 7.4), or ``{"outcome": "import", "binding": {...}}``.
+    The JS/TS import binding is ``{"source": <specifier>, "name": <imported
+    name, "default" or "*">, "form": "named" | "default" | "namespace"}``.
+    A call whose callee span matches no node has no entry
+    (``no-binding-fact``).
 ``script_globals``, ``exports``, ``module_bindings``
     Cross-file facts for later tiers; empty until an analyzer fills them.
 ``symbols``
@@ -51,7 +56,8 @@ logger = logging.getLogger(__name__)
 # per-file facts bumps only that family's version;
 # tests/fixtures/call_resolution/scope_facts_digests.json pins a digest of the
 # fixtures' facts per family, so a change without a bump fails.
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "1", "python": "1"}
+# js "2": the JS/TS scope analyzer replaces the stub (plan PR 2).
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "2", "python": "1"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 

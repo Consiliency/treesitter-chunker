@@ -18,7 +18,18 @@
      "caller": "g",
      "file": "a.js",
      "line": 2,
+     "pr": 3,
      "reference": "d",
+     "structural": {
+      "candidates": [
+       "c.js:1:d",
+       "a.js:1:d"
+      ],
+      "interim": "PR 2 interim (plan 7.6): a.js is a script; PR 3 gives none(script-global)",
+      "outcome": "none(script-goal-deferred)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "223a62803fb6d8df31be6e655db7ca5c9343c679",

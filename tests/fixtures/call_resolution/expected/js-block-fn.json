@@ -18,7 +18,17 @@
      "caller": "g",
      "file": "a.js",
      "line": 2,
+     "pr": 2,
      "reference": "d",
+     "structural": {
+      "candidates": [
+       "a.js:1:d",
+       "a.js:1:d"
+      ],
+      "outcome": "none(block-function)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "cd79f8d960be58c49f9666e61b64dd44d9d25015",

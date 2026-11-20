@@ -73,7 +73,7 @@
        "k.ts:4:K.m",
        "k.ts:7:K.m"
       ],
-      "outcome": "none(stub)",
+      "outcome": "none(unbound)",
       "resolution": "ambiguous",
       "rules": []
      },
@@ -130,7 +130,7 @@
      "reference": "new K().m",
      "structural": {
       "candidates": [],
-      "outcome": "none(stub)",
+      "outcome": "none(unbound)",
       "resolution": "unresolved",
       "rules": []
      },

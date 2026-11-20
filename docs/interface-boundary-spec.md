@@ -258,8 +258,11 @@ never empty the set, so an ambiguous edge keeps two or more candidates, all from
 today's set. An edge becomes `resolved` only when its one remaining candidate is
 proven by a lexical binding; filtering by symbol kind (`t1.kind`) or language
 family (`t1.family`) never resolves an edge by itself. Resolved, unresolved and
-member-call edges are never changed. Currently `"structural"` applies
-only the kind and family filters and resolves nothing.
+member-call edges are never changed. Currently `"structural"` proves
+bindings for JavaScript, TypeScript and TSX callers (`t1.lexical`, and
+`t1.ts_overload` for a TS overload set), except at script-goal top levels and
+in TS namespace bodies; Python callers are not resolved yet, so only the kind
+and family filters narrow them.
 
 A narrowed edge changes only `target`, `resolution`, `candidates` and
 `metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and
