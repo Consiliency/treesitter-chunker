@@ -61,6 +61,24 @@ def test_reviewed_grammars_classify_every_named_kind() -> None:
         assert allowlist.unclassified_kinds(kinds, ALLOWLIST[language]) == [], language
 
 
+# ``node_kind_count`` of each reviewed grammar at its review (#689 panel B5).
+# A grammar bump changes it and forces a re-review of the allow-list.
+REVIEWED_NODE_KIND_COUNTS = {"javascript": 265, "typescript": 383, "tsx": 400}
+
+
+def test_reviewed_grammars_are_pinned_by_node_kind_count() -> None:
+    from chunker.parser import get_parser
+
+    assert set(REVIEWED_NODE_KIND_COUNTS) == set(REVIEWED_LANGUAGES)
+    for language, count in sorted(REVIEWED_NODE_KIND_COUNTS.items()):
+        loaded = get_parser(language).language
+        assert loaded is not None
+        assert loaded.node_kind_count == count, (
+            f"{language} grammar changed: re-review ALLOWLIST[{language!r}] "
+            "and update the pin"
+        )
+
+
 def test_reviewed_languages_are_pinned_grammars() -> None:
     assert set(ALLOWLIST) == set(PINNED_GRAMMARS)
     assert set(PINNED_GRAMMARS) >= REVIEWED_LANGUAGES

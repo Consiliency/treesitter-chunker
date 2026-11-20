@@ -316,6 +316,23 @@ def test_unsupported_deep_nesting_js(tmp_path: Path) -> None:
     _assert_unsupported_and_on_equals_off(root, "svc.ts", fail_fast=True)
 
 
+def test_unsupported_deep_blocks_js(tmp_path: Path) -> None:
+    """Deeply nested blocks, not only arrays, make the analyzer give up (C3)."""
+    depth = 400
+    root = _copy(tmp_path, "authored/ts-class-body")
+    _append(
+        root / "svc.ts",
+        b"\nexport function deep() { "
+        + b"{ " * depth
+        + b"t();"
+        + b" }" * depth
+        + b" }\n",
+    )
+    (target,) = (item for item in _facts(root) if item["path"] == "svc.ts")
+    assert target["symbol_lookup"], "the chunker must still emit the symbols"
+    _assert_unsupported_and_on_equals_off(root, "svc.ts", fail_fast=True)
+
+
 def test_unsupported_analyzer_exception(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

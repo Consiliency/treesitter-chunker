@@ -146,16 +146,45 @@ def test_block_function_gives_none_inside_and_outside_its_block() -> None:
     assert reason(unbraced, "d", language="javascript") == "block-function"
 
 
-@pytest.mark.parametrize(
-    "write",
-    ["t = other;", "t += 1;", "t++;", "[t] = [other];", "({ t } = { t: other });"],
-)
+REASSIGNMENTS = [
+    "t = other;",
+    "t += 1;",
+    "t++;",
+    "[t] = [other];",
+    "({ t } = { t: other });",
+    # Wrapped targets (#689 panel A1, Codex P2): parentheses and TS wrappers.
+    "(t)++;",
+    "--(t);",
+    "++(t);",
+    "(t as any) = other;",
+    "(<any>t) = other;",
+    "(t satisfies any) = other;",
+    "t! = other;",
+    "t!++;",
+    "(t as any) ||= other;",
+    "(t as any) += 1;",
+    "[t!] = [other];",
+    "({ x: t! } = { x: other });",
+    "for ((t as any) of [other]) {}",
+    "[{ y: [t] }] = [{ y: [other] }];",
+]
+
+
+@pytest.mark.parametrize("write", REASSIGNMENTS)
 def test_reassignment_forms(write: str) -> None:
     source = (
         MODULE
         + f"function t() {{}}\nfunction other() {{}}\nfunction g() {{ {write} return t(); }}"
     )
     assert reason(source, "t") == "reassigned"
+
+
+@pytest.mark.parametrize(
+    "write", ["t.x = 1;", "t.x++;", "t[0] = 1;", "(t as any).x = 1;", "t!.x += 1;"]
+)
+def test_property_writes_are_not_reassignments(write: str) -> None:
+    source = MODULE + f"function t() {{}}\nfunction g() {{ {write} return t(); }}"
+    assert proof_text(source, "t") == ["function t() {}"]
 
 
 def test_reassignment_in_a_nested_function_unless_shadowed() -> None:
@@ -170,16 +199,76 @@ def test_reassignment_in_a_nested_function_unless_shadowed() -> None:
     assert proof_text(shadowed, "t") == ["function t() {}"]
 
 
-def test_eval_and_with_fail_closed() -> None:
-    top_eval = MODULE + "function t() {}\neval('x');\nfunction g() { return t(); }"
-    assert reason(top_eval, "t") == "dynamic-scope"
-    inner_eval = (
-        MODULE
-        + "function t() {}\nfunction g() { function t() {} eval('x'); }\nfunction h() { return t(); }"
-    )
-    assert proof_text(inner_eval, "t") == ["function t() {}"]
+@pytest.mark.parametrize(
+    "site",
+    [
+        # A direct eval anywhere can assign every binding visible from its
+        # site, so every scope out to ``program`` is dynamic (#689 panel A3).
+        "eval('x');",
+        "function f(s) { eval(s); }",
+        "const f = (s) => eval(s);",
+        "class K { static { eval('t = 1'); } }",
+        "function f() { function t() {} eval('x'); }",
+        # Wrapped callees are still direct eval (Codex P2).
+        "(eval)('t = 1');",
+        "function f(s) { eval!(s); }",
+        "function f(s) { (eval as any)(s); }",
+        "function f(s) { (<any>eval)(s); }",
+    ],
+)
+def test_direct_eval_makes_every_enclosing_scope_dynamic(site: str) -> None:
+    source = MODULE + f"function t() {{}}\n{site}\nfunction g() {{ return t(); }}"
+    assert reason(source, "t") == "dynamic-scope"
+
+
+def test_eval_does_not_reach_unrelated_inner_scopes() -> None:
+    source = MODULE + "eval('x');\nfunction g() { function t() {} return t(); }"
+    # g's own body binds ``t`` before the lookup reaches the dynamic program.
+    assert proof_text(source, "t") == ["function t() {}"]
+    indirect = MODULE + "function t() {}\n(0, eval)('x');\nfunction g() { return t(); }"
+    assert proof_text(indirect, "t") == ["function t() {}"]
+
+
+def test_with_fails_closed() -> None:
     with_body = "function t() {}\nfunction w(o) { with (o) { t(); } }"
     assert reason(with_body, "t", language="javascript") == "dynamic-scope"
+
+
+@pytest.mark.parametrize(
+    "member",
+    [
+        # Computed method and property names are evaluated (#689 panel A2).
+        "class K { [(t = 1, 'm')]() {} }",
+        "const o = { [(t = 1, 'm')]() {} };",
+        "class K { get [(t = 1, 'm')]() { return 1; } }",
+        "const o = { [(t = 1, 'm')]: 1 };",
+        "class K { [(t = 1, 'm')] = 1; }",
+    ],
+)
+def test_writes_in_computed_names_are_seen(member: str) -> None:
+    source = MODULE + f"function t() {{}}\n{member}\nfunction g() {{ return t(); }}"
+    assert reason(source, "t") == "reassigned"
+
+
+def test_eval_in_a_computed_name_is_seen() -> None:
+    source = (
+        MODULE
+        + "function t() {}\nclass K { [eval('t = 1')]() {} }\nfunction g() { return t(); }"
+    )
+    assert reason(source, "t") == "dynamic-scope"
+
+
+@pytest.mark.parametrize(
+    ("member", "expected"),
+    [
+        ("class K { [((t: any) => t())(x)]() {} }", "parameter"),
+        ("class K { [(() => { const t = 1; return t(); })()]() {} }", "local-variable"),
+        ("class K { [(function t() { return t(); })()]() {} }", "self-binding"),
+    ],
+)
+def test_lookups_inside_computed_names(member: str, expected: str) -> None:
+    source = MODULE + f"function t() {{}}\nconst x = 1;\n{member}"
+    assert reason(source, "t") == expected
 
 
 def test_member_callees_look_up_their_head() -> None:
@@ -248,6 +337,31 @@ def test_using_declarations() -> None:
     assert reason(ts, "u") == "unmapped"
 
 
+def test_mixed_ambient_groups_fail_closed() -> None:
+    """#689 panel C2: any ambient member gives ``none(ambient)``."""
+    for source in (
+        "declare function g(): void;\nfunction g() {}\ng();",
+        "function g() {}\ndeclare function g(): void;\ng();",
+        "declare function g(): void;\nfunction g(x: number): void;\nfunction g(x?: number) {}\ng();",
+    ):
+        assert reason(MODULE + source, "g") == "ambient", source
+    module_block = "declare module 'm' { function g(): void; }\nfunction g() {}\ng();"
+    assert proof_text(MODULE + module_block, "g") == ["function g() {}"]
+
+
+def test_overload_shape_requires_signatures_then_a_function_body() -> None:
+    """#689 panel A4: otherwise every member is proved and nothing resolves."""
+    body_first = (
+        "export function f(x: any): any { return x; }\nexport function f(x: string): string;\n"
+        "export function g() { return f(1); }"
+    )
+    result = outcome(body_first, "f")
+    assert (result["rules"], len(result["proof"])) == ([], 2)
+    const_body = "function f(x: string): string;\nconst f = (x: any) => x;\nexport function g() { return f(1); }"
+    result = outcome(const_body, "f")
+    assert (result["rules"], len(result["proof"])) == ([], 2)
+
+
 def test_overload_rules() -> None:
     contiguous = (
         "export function f(x: string): string;\nexport function f(x: number): number;\n"
@@ -308,6 +422,16 @@ def test_group_rule_order_b7() -> None:
 
 # ---------------------------------------------------------------------------
 # Fail closed (5.3, 5.4, 7.5)
+
+
+def test_nested_blocks_raise_recursion_error() -> None:
+    """Deep nesting of any construct fails closed, not only arrays (C3)."""
+    depth = 400
+    data = ("function g() { " + "{ " * depth + "g();" + " }" * depth + " }").encode()
+    root = get_parser("javascript").parse(data).root_node
+    assert not root.has_error
+    with pytest.raises(RecursionError):
+        js_scope.analyze(root, data, "javascript", [])
 
 
 def test_depth_cap_raises_recursion_error() -> None:
@@ -491,3 +615,75 @@ def test_b7_outcomes_in_the_scope_facts(tmp_path: Path) -> None:
         "a.ts": {"outcome": "none", "reason": "non-callable"},
         "c.ts": {"outcome": "none", "reason": "ambient"},
     }
+
+
+def test_using_near_miss_end_to_end(tmp_path: Path) -> None:
+    """#689 panel B3: TS ``using``/``await using`` fail closed; on equals off.
+
+    Written by the test, like the B7 trees: a committed tree would change the
+    off-mode baseline (plan 10.6, 11.2).
+    """
+    root = _write(
+        tmp_path,
+        {
+            "a.ts": (
+                "function u() { return 1; }\n"
+                "export function g() { using u = f(); return u(); }\n"
+                "export async function h() { await using u = f(); return u(); }\n"
+            ),
+            "b.ts": "export function u() { return 2; }\n",
+        },
+    )
+    off = extract_symbol_graph(root)
+    on = extract_symbol_graph(root, call_resolution=MODE)
+    calls = [
+        edge
+        for edge in off["relationships"]
+        if edge["type"] == "calls" and edge["reference"] == "u"
+    ]
+    assert len(calls) == 2
+    assert all(edge["resolution"] == "ambiguous" for edge in calls)
+    assert on["relationships"] == off["relationships"]
+
+
+def test_member_call_on_a_local_function_is_unchanged(tmp_path: Path) -> None:
+    """#689 panel A5: ``m.m()`` is never eligible, even when ``m`` is proven."""
+    root = _write(
+        tmp_path,
+        {
+            "a.ts": "function m() { return 1; }\nexport function g() { return m.m(); }\n",
+            "b.ts": "export function m() { return 2; }\n",
+        },
+    )
+    off = _calls(extract_symbol_graph(root))
+    on = _calls(extract_symbol_graph(root, call_resolution=MODE))
+    assert off["a.ts:m.m"]["resolution"] == "ambiguous"
+    assert on["a.ts:m.m"] == off["a.ts:m.m"]
+
+
+def test_wrapped_reassignment_end_to_end(tmp_path: Path) -> None:
+    """#689 panel A1: ``(t as any) = other`` keeps the edge as off."""
+    root = _write(
+        tmp_path,
+        {
+            "a.ts": (
+                "export function t() { return 1; }\nfunction other() { return 3; }\n"
+                "export function g() { (t as any) = other; return t(); }\n"
+                "export function h(o: any) { o.t = 1; return t(); }\n"
+            ),
+            "b.ts": "export function t() { return 2; }\n",
+        },
+    )
+    off = extract_symbol_graph(root)
+    on = extract_symbol_graph(root, call_resolution=MODE)
+    edges = {
+        (edge["file"], edge["line"]): (off_edge, edge)
+        for off_edge, edge in zip(off["relationships"], on["relationships"])
+        if edge["type"] == "calls" and edge["reference"] == "t"
+    }
+    off_g, on_g = edges[("a.ts", 3)]
+    assert off_g["resolution"] == "ambiguous"
+    assert on_g == off_g
+    # A file-wide fail-closed write: h's call reaches the same binding.
+    off_h, on_h = edges[("a.ts", 4)]
+    assert on_h == off_h

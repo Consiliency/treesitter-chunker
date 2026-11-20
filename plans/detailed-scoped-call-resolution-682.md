@@ -452,10 +452,19 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
 - **Reassignment.** Any assignment, update or compound assignment to the name
   anywhere in the binding's scope subtree turns off narrowing
   (`none(reassigned)`). That includes nested functions that do not shadow the
-  name.
-- **Fail closed** with `none(dynamic-scope)` on a direct `eval(...)` or a
-  `with` on the lookup chain, and with `none(unmapped)` on an unclassified
-  declaration node (7.5).
+  name. Targets are read fail-closed (PR 2, treesitter-chunker#689 panel):
+  every identifier under an assignment target, an update argument or a bare
+  `for … of/in` target counts as a write, through parentheses and TS wrappers
+  (`(t)++`, `(t as any) = x`, `t! = x`, `<any>t`, `satisfies`) and patterns.
+  The one exception is the object of a member or subscript access
+  (`t.x = 1`). Computed method and property names are evaluated, so they are
+  read too.
+- **Fail closed** with `none(dynamic-scope)` when a direct `eval(...)`
+  encloses the lookup, or a `with` lies on the lookup chain. A direct eval can
+  assign any binding visible from its site, so every scope from the eval out
+  to `program` is dynamic. Parenthesized and TS-wrapped callees (`(eval)(s)`,
+  `eval!(s)`, `(eval as any)(s)`) are direct eval. Also fail closed with
+  `none(unmapped)` on an unclassified declaration node (7.5).
 - **Script goal and `script_globals`:**
   - `script_globals` holds the `var`, `let`, `const`, `class` and `function`
     top-level names of every script-goal JS/TS file.
@@ -545,7 +554,7 @@ result is `none(non-callable)`. Then:
 | --- | --- | --- | --- |
 | Any | Any group with **no body** (signatures only, or all ambient; ambient is inherited) | `none(ambient)` if every member is ambient (ambient wins over bodyless, R-1(iii)); otherwise `none(bodyless)` | — |
 | Any | One definition | That definition (Python: only if unconditional; a single conditional definition gives `none(conditional)`) | `t1.lexical` |
-| TS/TSX | k ≥ 1 bodyless `function_signature` plus exactly one body, contiguous, in one scope | The body | `t1.ts_overload` |
+| TS/TSX | k ≥ 1 bodyless `function_signature` plus exactly one body, contiguous, in one scope, the body last and a `function_declaration` (PR 2). Any other shape, such as a body before a signature or a `const` arrow body, proves every member, which can narrow but never resolve | The body | `t1.ts_overload` |
 | TS/TSX | Two or more bodies | The bodies, `ambiguous` | `t1.lexical` |
 | JS | Two or more `function_declaration`/`generator_function_declaration` directly in one function body or one script-goal `program`; no block-level declaration, expression binding or other binding of the name in that scope | The last one | `t1.js_hoist` (PR 3) |
 | JS | The same at an ES-module top level (an early error) | The group, `ambiguous` | `t1.lexical` |
@@ -1130,6 +1139,7 @@ compares the analyzer's output with them.
 | type-only | ts-type-only-import |
 | no-binding-fact, unmapped | named synthetic-facts tests (R-3; listed below the table) |
 | unsupported file | named end-to-end failure-mode tests (R-3; listed below the table) |
+| TS `using` / `await using` (fail closed, 7.5) | `test_using_near_miss_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on a tree the test writes (a committed tree would change the off-mode baseline, 11.2) |
 | stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2) |
 | external-module | ts-bare-specifier, ts-external-import-kind |
 | outside-root | py-relative-root |

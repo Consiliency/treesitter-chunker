@@ -75,6 +75,15 @@ NAMED_FAILURE_MODE_TESTS = (
     "test_unmapped_unclassified_node",
     "test_unsupported_deep_nesting_js",
 )
+# Named end-to-end near-misses on trees the test writes, because a committed
+# tree would change the off-mode baseline (plan 10.6, 11.2): B7 and ``using``.
+NAMED_TIER1_JS_TESTS = (
+    "test_b7_declare_enum_is_non_callable_end_to_end",
+    "test_b7_outcomes_in_the_scope_facts",
+    "test_using_near_miss_end_to_end",
+    "test_wrapped_reassignment_end_to_end",
+    "test_member_call_on_a_local_function_is_unchanged",
+)
 # Named tests the plan assigns to later heads (panel C2). Each moves to the
 # live list when its analyzer lands.
 DEFERRED_FAILURE_MODE_TESTS = {
@@ -615,6 +624,21 @@ def test_live_rules_and_reasons_have_cases() -> None:
 
     for name in NAMED_FAILURE_MODE_TESTS:
         assert callable(getattr(failure_modes, name, None)), name
+    from tests import test_call_resolution_tier1_js as tier1_js
+
+    for name in NAMED_TIER1_JS_TESTS:
+        assert callable(getattr(tier1_js, name, None)), name
+    # Every reason the analyzers emit on the fixtures is a live reason; the
+    # two the engine itself produces are covered by the named tests.
+    emitted = {
+        str(outcome["reason"])
+        for _, item in harness.fixture_scope_facts()
+        for outcome in item["scope_facts"]["bindings"].values()
+        if outcome["outcome"] == "none"
+    }
+    assert emitted <= LIVE_REASONS | {"unmapped", "no-binding-fact"}, sorted(
+        emitted - LIVE_REASONS
+    )
     assert not set(NAMED_FAILURE_MODE_TESTS) & set(DEFERRED_FAILURE_MODE_TESTS)
     assert set(DEFERRED_FAILURE_MODE_TESTS.values()) <= {"PR 2", "PR 4"}
     for name in DEFERRED_FAILURE_MODE_TESTS:

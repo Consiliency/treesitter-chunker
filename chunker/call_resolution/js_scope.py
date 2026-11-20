@@ -27,8 +27,9 @@ proves (section 7.4), ``import`` for a value import (it proves nothing in
 ``structural`` mode), or ``none`` with one reason (section 7.6, with R-1's
 precedence):
 
-1. a ``none`` the lookup meets on the way (``dynamic-scope`` for a direct
-   ``eval`` in a var scope on the chain or a ``with`` around the call;
+1. a ``none`` the lookup meets on the way (``dynamic-scope`` for a scope
+   that encloses a direct ``eval``, also ``(eval)(s)``, ``eval!(s)`` or
+   ``(eval as any)(s)``, or for a ``with`` around the call;
    ``unmapped`` for a scope holding a fail-closed node kind);
 2. the binding's own reason: ``type-only``, ``block-function``,
    ``unmapped``, a non-symbol binding's class (``parameter``,
@@ -36,10 +37,12 @@ precedence):
    ``mixed-bindings``, ``reassigned``;
 3. the group rule for a set of symbol declarations: non-callable kinds
    (enums, namespaces) are dropped first (``non-callable`` if nothing is
-   left, B7), then ``ambient``, then ``bodyless``; one body proves itself
-   (``t1.lexical``); in TS, k >= 1 contiguous bodyless signatures plus one
-   body prove the body (``t1.ts_overload``); two or more bodies prove the
-   bodies as an ambiguous group;
+   left, B7), then ``ambient`` (any ambient member), then ``bodyless``; one
+   body proves itself (``t1.lexical``); in TS, k >= 1 bodyless signatures
+   directly followed by one ``function_declaration`` body, contiguous, prove
+   the body (``t1.ts_overload``); signatures with any other body shape prove
+   every member, which narrows but never resolves; two or more bodies prove
+   the bodies as an ambiguous group;
 4. only when the lookup would otherwise prove something, the interim
    deferrals of this head: ``namespace-deferred`` for a lookup through a
    namespace body (also when it ends unbound there), and
@@ -55,8 +58,12 @@ never eligible in Tier 1, so their outcome is recorded only.
 Every named node the pass visits is classified through the allow-list
 (section 7.5). A fail-closed kind, including an unclassified one, marks the
 scopes it appears in, and any lookup reaching them gives ``none(unmapped)``.
-The pass is recursive; a tree deeper than :data:`MAX_DEPTH` raises
-``RecursionError``, which the caller turns into ``supported: false``
+Writes are collected fail-closed: every identifier under an assignment
+``left``, update ``argument`` or bare ``for ... of/in`` target counts, through
+parentheses and TS wrappers, except the object of a member access. A
+computed method name is visited in the enclosing scope. The pass is
+recursive; a tree too deep for it raises ``RecursionError`` (see
+:data:`MAX_DEPTH`), which the caller turns into ``supported: false``
 (section 5.3).
 
 Proof declarations are the nodes the chunker emits as symbols: the
@@ -73,9 +80,13 @@ from typing import Any
 
 from . import allowlist
 
-# Deeper trees fail closed with RecursionError (section 5.3). The chunker
-# itself stops at depth 900, so this cap keeps the analyzer's own recursion
-# well inside Python's default limit.
+# Deep trees fail closed with RecursionError (section 5.3). This counter
+# grows by one or two per tree level, and the pass uses up to three Python
+# frames per level, so Python's own recursion limit (1000 by default) can
+# stop deeply nested blocks, ``else if`` chains, calls or functions first, at
+# roughly 200 to 500 levels depending on the construct. Either way the error
+# is the same, and the file keeps its off-mode edges. (The chunker itself
+# stops at depth 900.)
 MAX_DEPTH = 500
 
 RULE_TS_OVERLOAD = "t1.ts_overload"
@@ -224,6 +235,71 @@ def pattern_names(node: Any) -> list[Any]:
     return names
 
 
+# Expressions that wrap a callee or an assignment target without changing
+# what it refers to: ``(t)``, ``t!``, ``t as T``, ``t satisfies T``, ``<T>t``.
+_TRANSPARENT_WRAPPERS = frozenset(
+    {
+        "parenthesized_expression",
+        "non_null_expression",
+        "as_expression",
+        "satisfies_expression",
+        "type_assertion",
+    }
+)
+# Property names that hold no expression; any other method name (a
+# ``computed_property_name``) is evaluated and must be visited.
+_PLAIN_NAMES = frozenset(
+    {
+        "identifier",
+        "property_identifier",
+        "private_property_identifier",
+        "type_identifier",
+        "string",
+        "number",
+    }
+)
+_MEMBER_ACCESS = frozenset({"member_expression", "subscript_expression"})
+
+
+def write_targets(node: Any) -> list[Any]:
+    """Identifiers an assignment ``left`` or update ``argument`` may write.
+
+    Fail closed: every identifier below the target counts as a write, through
+    parentheses, TS wrappers (``as``, ``satisfies``, ``!``, ``<T>``),
+    patterns and their defaults, except the object of a member or subscript
+    access (``t.x = 1`` writes a property, not ``t``). Over-marking only adds
+    ``none(reassigned)``.
+    """
+    names: list[Any] = []
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        if current.type in ("identifier", "shorthand_property_identifier_pattern"):
+            names.append(current)
+        elif current.type in _MEMBER_ACCESS:
+            obj = current.child_by_field_name("object")
+            stack.extend(
+                child
+                for child in reversed(current.named_children)
+                if not _same(child, obj)
+            )
+        else:
+            stack.extend(reversed(current.named_children))
+    return names
+
+
+def unwrap(node: Any) -> Any:
+    """``node`` without transparent wrappers (``(eval)`` and ``eval!`` -> ``eval``)."""
+    current = node
+    while current is not None and current.type in _TRANSPARENT_WRAPPERS:
+        named = current.named_children
+        if not named:
+            return current
+        # ``<T>x``: the expression follows the type arguments.
+        current = named[-1] if current.type == "type_assertion" else named[0]
+    return current
+
+
 class _Analysis:
     """Scopes and bindings of one file, and lookups through them."""
 
@@ -235,6 +311,7 @@ class _Analysis:
         self.goal = program_goal(root)
         self.scopes: dict[tuple[int, str], _Scope] = {}
         self.assignment_targets: list[Any] = []
+        self.eval_calls: list[Any] = []
         self.handlers: dict[str, Callable[[Any, _Scope, _Scope, int], None]] = {
             "function_declaration": self._function,
             "generator_function_declaration": self._function,
@@ -272,6 +349,12 @@ class _Analysis:
             scope = self._binding_scope(target, _text(target, source))
             if scope is not None:
                 scope.reassigned.add(_text(target, source))
+        for call in self.eval_calls:
+            # A direct eval can declare or assign any binding visible from its
+            # site, so every scope from there out to ``program`` is dynamic.
+            for _, _, scope in self._chain(call):
+                if scope is not None:
+                    scope.dynamic = True
 
     # -- building -----------------------------------------------------------
 
@@ -374,7 +457,9 @@ class _Analysis:
                 self._statements(body, function_scope, function_scope, depth + 1)
             else:
                 self.visit(body, params_scope, params_scope, depth + 1)
-        self._visit_except(node, (name, parameters, body), var, lex, depth)
+        # A computed method name is evaluated in the enclosing scope.
+        plain_name = name if name is not None and name.type in _PLAIN_NAMES else None
+        self._visit_except(node, (plain_name, parameters, body), var, lex, depth)
 
     def _class(self, node: Any, var: _Scope, lex: _Scope, depth: int) -> None:
         name = node.child_by_field_name("name")
@@ -431,7 +516,7 @@ class _Analysis:
                 for ident in names:
                     var.bind(_text(ident, self.source), _Binding(LOCAL_VARIABLE))
             elif kind is None:
-                self.assignment_targets.extend(names)
+                self.assignment_targets.extend(write_targets(left))
             else:
                 block.poisoned = True
         self._statements(node, var, block, depth + 1)
@@ -578,32 +663,29 @@ class _Analysis:
         self._statements(node, var, lex, depth + 1)
 
     def _assignment(self, node: Any, var: _Scope, lex: _Scope, depth: int) -> None:
-        if node.type == "update_expression":
-            argument = node.child_by_field_name("argument")
-            if argument is not None and argument.type == "identifier":
-                self.assignment_targets.append(argument)
-        else:
-            left = node.child_by_field_name("left")
-            if left is not None:
-                names = pattern_names(left) if left.type != "member_expression" else []
-                if _has_token(node, "using"):
-                    # TS lacks ``using`` declarations and parses them as an
-                    # assignment: fail closed (7.5).
-                    for ident in names:
-                        lex.bind(_text(ident, self.source), _Binding(UNMAPPED))
-                else:
-                    self.assignment_targets.extend(names)
+        field = "argument" if node.type == "update_expression" else "left"
+        target = node.child_by_field_name(field)
+        if target is not None:
+            names = write_targets(target)
+            if _has_token(node, "using"):
+                # TS lacks ``using`` declarations and parses them as an
+                # assignment: fail closed (7.5).
+                for ident in names:
+                    lex.bind(_text(ident, self.source), _Binding(UNMAPPED))
+            else:
+                self.assignment_targets.extend(names)
         self._statements(node, var, lex, depth + 1)
 
     def _call(self, node: Any, var: _Scope, lex: _Scope, depth: int) -> None:
-        function = node.child_by_field_name("function")
+        function = unwrap(node.child_by_field_name("function"))
         if (
             function is not None
             and function.type == "identifier"
             and _text(function, self.source) == "eval"
         ):
-            # A direct eval can add var bindings to its var scope.
-            var.dynamic = True
+            # A direct eval, also ``(eval)(s)``, ``eval!(s)`` or
+            # ``(eval as any)(s)``; its scopes are marked after the pass.
+            self.eval_calls.append(node)
         self._statements(node, var, lex, depth + 1)
 
     # -- lookup -------------------------------------------------------------
@@ -731,9 +813,11 @@ class _Analysis:
         rules: list[str] = []
         group: Sequence[_Binding] = bodies
         if len(bodies) == 1 and signatures:
-            if self.typescript and self._contiguous(scope, [*signatures, *bodies]):
+            if self.typescript and self._overload_set(scope, signatures, bodies[0]):
                 rules = [RULE_TS_OVERLOAD]
             else:
+                # Not an overload set: prove every member, which narrows
+                # but can never resolve.
                 group = callable_
         proof = sorted(
             [binding.decl.type, binding.decl.start_byte, binding.decl.end_byte]
@@ -741,19 +825,28 @@ class _Analysis:
         )
         return {"outcome": "local", "proof": proof, "rules": rules}
 
-    def _contiguous(self, scope: _Scope, members: Sequence[_Binding]) -> bool:
+    def _overload_set(
+        self, scope: _Scope, signatures: Sequence[_Binding], body: _Binding
+    ) -> bool:
+        """k >= 1 signatures then one ``function_declaration``, contiguous."""
+        if body.decl.type != "function_declaration":
+            return False
         statements = [
             child for child in scope.node.named_children if child.type != "comment"
         ]
         index = {
             statement.id: position for position, statement in enumerate(statements)
         }
-        positions = sorted(
-            index.get(member.statement.id, -1) if member.statement is not None else -1
-            for member in members
-        )
-        return positions[0] >= 0 and positions == list(
-            range(positions[0], positions[0] + len(positions))
+
+        def position(member: _Binding) -> int:
+            if member.statement is None:
+                return -1
+            return index.get(member.statement.id, -1)
+
+        positions = sorted(position(member) for member in signatures)
+        last = position(body)
+        return positions[0] >= 0 and [*positions, last] == list(
+            range(positions[0], positions[0] + len(positions) + 1)
         )
 
 

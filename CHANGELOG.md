@@ -33,10 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     are not resolved yet, and **Python calls are not resolved yet**: for them,
     and wherever no binding proves a candidate, only the kind and family
     filters (`t1.kind`, `t1.family`) narrow, and only when two or more
-    candidates remain. Narrowed
-    edges carry `provenance.call_resolution` and `provenance.call_rules`, and
-    `run.options.call_resolution` and symbol-graph `metadata.call_resolution`
-    record the mode. On-mode `parity_digest` changes, and on-mode cache keys add
+    candidates remain. A file whose tree has syntax errors or is too deeply
+    nested for the scope pass, or whose analysis fails, keeps exactly its
+    off-mode edges. Narrowed edges carry `provenance.call_resolution` and
+    `provenance.call_rules`, and `run.options.call_resolution` and
+    symbol-graph `metadata.call_resolution` record the mode. On-mode `parity_digest` changes, and on-mode cache keys add
     the mode and a per-language-family fact version.
   - `"imports"` is not available yet and raises `ValueError`, like any unknown
     value.
