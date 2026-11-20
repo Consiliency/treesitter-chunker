@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.3"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:866173b508081d79f129cf3a408c0a18eb5c5846",
+     "call_span": [
+      60,
+      68
+     ],
+     "callee_span": [
+      60,
+      66
+     ],
+     "caller": "outer",
+     "file": "a.py",
+     "line": 5,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "16e4c90fb6553aa53e7b55b3a6da10e3cd7bf06e",
+       "e77892e36c77e46143243406b9aaeb9646850ef9"
+      ],
+      "candidates": [
+       "b.py:2:other.helper",
+       "a.py:2:outer.helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-nested-only"
+  }
+ },
+ "source": "authored",
+ "tree": "py-nested-only"
+}

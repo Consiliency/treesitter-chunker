@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.3"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:5cec969d22481576a1620ba5cf729bb17d506a0d",
+     "call_span": [
+      43,
+      46
+     ],
+     "callee_span": [
+      43,
+      44
+     ],
+     "caller": "make",
+     "file": "a.py",
+     "line": 6,
+     "reference": "C",
+     "today": {
+      "candidate_ids": [
+       "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c",
+       "a589b0496029e5b93b238d40f9b6cf63e43247ff"
+      ],
+      "candidates": [
+       "b.py:1:C",
+       "a.py:1:C"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-class-call"
+  }
+ },
+ "source": "authored",
+ "tree": "py-class-call"
+}

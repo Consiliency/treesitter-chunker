@@ -1,0 +1,357 @@
+{
+ "plan_sections": [
+  "10.2"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:502db3d0074cc4bea4b5c3bb5cda4c697fe7ddac",
+     "call_span": [
+      233,
+      237
+     ],
+     "callee_span": [
+      233,
+      234
+     ],
+     "caller": "g",
+     "file": "pkg/over.ts",
+     "line": 6,
+     "reference": "f",
+     "today": {
+      "candidate_ids": [
+       "3781c6a05965860ce40b1db576aba9b2815a4d87",
+       "7d1a9a3f20551c6ee83f3ceaafeae6e92dc7a655",
+       "ba8d5a3a8a6788603cc174d700a392e2de48d22e"
+      ],
+      "candidates": [
+       "pkg/over.ts:2:f",
+       "pkg/over.ts:1:f",
+       "pkg/over.ts:3:f"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:eb6231085c79624ef8deefa14969c0c6c2d40442",
+     "call_span": [
+      240,
+      250
+     ],
+     "callee_span": [
+      244,
+      247
+     ],
+     "caller": "g",
+     "file": "pkg/over.ts",
+     "line": 6,
+     "reference": "Box",
+     "today": {
+      "candidate_ids": [
+       "5171768923b38fee5fd7c6f03db8f1abba4cea68",
+       "6da196e7e36d1706b08189602c995c3de1ca01f9"
+      ],
+      "candidates": [
+       "pkg/over.ts:5:Box",
+       "pkg/over.ts:4:Box"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:fee501c7bf416a373174ef3647469278ab52124c",
+     "call_span": [
+      97,
+      101
+     ],
+     "callee_span": [
+      97,
+      98
+     ],
+     "caller": "caller",
+     "file": "pkg/svc.ts",
+     "line": 2,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "54c73e075dccfd28cd8ec216c59a018d2be4260d",
+       "9e7fa28119c6e278eb7503d10d2d5e705e76293f"
+      ],
+      "candidates": [
+       "pkg/svc.ts:1:t",
+       "pkg/svc.tsx:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:374740bc921638922099c480f355d818e3596de8",
+     "call_span": [
+      104,
+      108
+     ],
+     "callee_span": [
+      104,
+      105
+     ],
+     "caller": "caller",
+     "file": "pkg/svc.ts",
+     "line": 2,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "54c73e075dccfd28cd8ec216c59a018d2be4260d",
+       "9e7fa28119c6e278eb7503d10d2d5e705e76293f"
+      ],
+      "candidates": [
+       "pkg/svc.ts:1:t",
+       "pkg/svc.tsx:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:3a128dde09a94ff5311a0640a34682d573d0aa64",
+     "call_span": [
+      67,
+      71
+     ],
+     "callee_span": [
+      67,
+      68
+     ],
+     "caller": "user",
+     "file": "pkg/use.ts",
+     "line": 2,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "54c73e075dccfd28cd8ec216c59a018d2be4260d",
+       "9e7fa28119c6e278eb7503d10d2d5e705e76293f"
+      ],
+      "candidates": [
+       "pkg/svc.ts:1:t",
+       "pkg/svc.tsx:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:38daf0338c9429d02e8a7ca8fc3f95e775835313",
+     "call_span": [
+      44,
+      52
+     ],
+     "callee_span": [
+      44,
+      50
+     ],
+     "caller": "use",
+     "file": "py/c.py",
+     "line": 4,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "1e2593527e3e30501fce7e6cbfb1bac5c2705b24",
+       "570a96f791e025185fb4f503d95bb32d99699ed4"
+      ],
+      "candidates": [
+       "py/a.py:1:helper",
+       "py/b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:a23051088a3d8be050c2dab8001317bc0f469cd2",
+     "call_span": [
+      48,
+      51
+     ],
+     "callee_span": [
+      48,
+      49
+     ],
+     "caller": "call_k",
+     "file": "py/pkg/__init__.py",
+     "line": 5,
+     "reference": "k",
+     "today": {
+      "candidate_ids": [
+       "4c84213a2c1821bfc2781842a86023543375be3f",
+       "528f66754c663f4197c283f400d666df9467b3ca"
+      ],
+      "candidates": [
+       "py/pkg/__init__.py:1:k",
+       "py/pkg.py:1:k"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:1daae578e5d3f94787ff392bf0af22e811886899",
+     "call_span": [
+      43,
+      51
+     ],
+     "callee_span": [
+      43,
+      49
+     ],
+     "caller": "d",
+     "file": "py/redef.py",
+     "line": 5,
+     "reference": "only_b",
+     "today": {
+      "candidate_ids": [
+       "2bbbb3f707986bc6ca8ede2e2e6fd3270d8705d2"
+      ],
+      "candidates": [
+       "py/redef.py:7:only_b"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:ffe9932588db31560f929a018a44f017fd8a0391",
+     "call_span": [
+      106,
+      109
+     ],
+     "callee_span": [
+      106,
+      107
+     ],
+     "caller": "caller",
+     "file": "py/redef.py",
+     "line": 11,
+     "reference": "d",
+     "today": {
+      "candidate_ids": [
+       "3cea486b314a1211942722d9c00ff970110bc7c3",
+       "3cea486b314a1211942722d9c00ff970110bc7c3#1"
+      ],
+      "candidates": [
+       "py/redef.py:1:d",
+       "py/redef.py:4:d"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "probe-r9"
+  },
+  "py": {
+   "calls": [
+    {
+     "call_site_id": "call:c2c3ab2ba9413221727cc870727a31e102dadeb1",
+     "call_span": [
+      44,
+      52
+     ],
+     "callee_span": [
+      44,
+      50
+     ],
+     "caller": "use",
+     "file": "c.py",
+     "line": 4,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:79637941d3eb3ebabdbd3e49a5ccb10302984443",
+     "call_span": [
+      48,
+      51
+     ],
+     "callee_span": [
+      48,
+      49
+     ],
+     "caller": "call_k",
+     "file": "pkg/__init__.py",
+     "line": 5,
+     "reference": "k",
+     "today": {
+      "candidate_ids": [
+       "860df25f131fbaab91b025d617d80d063ba6c9e4",
+       "915f5c90ed057eeb684b9036f720099fe22dab6d"
+      ],
+      "candidates": [
+       "pkg.py:1:k",
+       "pkg/__init__.py:1:k"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:1c14fef10d421003f3d2e4d8d7137ceddbd229be",
+     "call_span": [
+      43,
+      51
+     ],
+     "callee_span": [
+      43,
+      49
+     ],
+     "caller": "d",
+     "file": "redef.py",
+     "line": 5,
+     "reference": "only_b",
+     "today": {
+      "candidate_ids": [
+       "8289b37b267724cea9161cf1205e928030324433"
+      ],
+      "candidates": [
+       "redef.py:7:only_b"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:deba7d44aad865923dd5ef3d322f3fc5a1c45a96",
+     "call_span": [
+      106,
+      109
+     ],
+     "callee_span": [
+      106,
+      107
+     ],
+     "caller": "caller",
+     "file": "redef.py",
+     "line": 11,
+     "reference": "d",
+     "today": {
+      "candidate_ids": [
+       "b1efaf3948a2007ef3c5eae7c59656c96c2b9e53",
+       "b1efaf3948a2007ef3c5eae7c59656c96c2b9e53#1"
+      ],
+      "candidates": [
+       "redef.py:1:d",
+       "redef.py:4:d"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "probe-r9/py"
+  }
+ },
+ "source": "probe-r9",
+ "tree": "probe-r9"
+}

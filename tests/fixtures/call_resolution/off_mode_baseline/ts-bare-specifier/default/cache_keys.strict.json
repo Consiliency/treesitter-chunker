@@ -1,0 +1,63 @@
+{
+ "files": {
+  "a.ts": {
+   "cache_key": "boundary:v3:331bca8dcd4bde7b0c7b546f74e35b770c178183ae14dac61fa8a5456deb74f1",
+   "key_payload": {
+    "content_hash": "sha1:f1ef9f57f71f13cd1dd235eda52d75c0864961f5",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "a.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "b.ts": {
+   "cache_key": "boundary:v3:eb6657cd66447f61f0439ff558781b757cb6d0f9cc66504f604973d44cb985ad",
+   "key_payload": {
+    "content_hash": "sha1:780e69b2d79bb493b37c8483ed50bdd673747db2",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "b.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "use.ts": {
+   "cache_key": "boundary:v3:32fb10554c2011f12fb3e52179f4e78b1cb355c26a96d516df6d91b91bbef1d2",
+   "key_payload": {
+    "content_hash": "sha1:ff9de4320a3426daa5bb502466e87fb697f37669",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "use.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

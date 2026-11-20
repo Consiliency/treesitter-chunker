@@ -1,0 +1,224 @@
+{
+ "plan_sections": [
+  "10.3",
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:611b74b9eba3cd2d4340bfd41c50a3601858c890",
+     "call_span": [
+      94,
+      97
+     ],
+     "callee_span": [
+      94,
+      95
+     ],
+     "caller": "c1",
+     "file": "a.js",
+     "line": 2,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "5fbd2e65170896256895ccf75fd4d3efa5f5e70c",
+       "68e34674aef67ea3c811dec5a1856703f0398c2a"
+      ],
+      "candidates": [
+       "a.js:1:t",
+       "b.js:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:631e0d2b1a0ef36a6ffcd9f0bf1bd6aaa3ea6bbb",
+     "call_span": [
+      150,
+      153
+     ],
+     "callee_span": [
+      150,
+      151
+     ],
+     "caller": "c2",
+     "file": "a.js",
+     "line": 3,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "5fbd2e65170896256895ccf75fd4d3efa5f5e70c",
+       "68e34674aef67ea3c811dec5a1856703f0398c2a"
+      ],
+      "candidates": [
+       "a.js:1:t",
+       "b.js:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:e0041db64c219af7487a0fbf17405dad493487b1",
+     "call_span": [
+      194,
+      197
+     ],
+     "callee_span": [
+      194,
+      195
+     ],
+     "caller": "c3",
+     "file": "a.js",
+     "line": 4,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "5fbd2e65170896256895ccf75fd4d3efa5f5e70c",
+       "68e34674aef67ea3c811dec5a1856703f0398c2a"
+      ],
+      "candidates": [
+       "a.js:1:t",
+       "b.js:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:5e549759b2a299a20c15c88654501da63342af03",
+     "call_span": [
+      232,
+      236
+     ],
+     "callee_span": [
+      232,
+      234
+     ],
+     "caller": "c4",
+     "file": "a.js",
+     "line": 5,
+     "reference": "mk",
+     "today": {
+      "candidate_ids": [
+       "22138f124f5890a3aaf79ab6a36ab6c058557dc2",
+       "606e58ec3aea25f4fa4d424562364cc8e3f5b966"
+      ],
+      "candidates": [
+       "a.js:7:mk",
+       "a.js:7:mk"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:30e72d35a7f871377b3aad7cfcabc4427eae76df",
+     "call_span": [
+      245,
+      248
+     ],
+     "callee_span": [
+      245,
+      246
+     ],
+     "caller": "c4",
+     "file": "a.js",
+     "line": 5,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "5fbd2e65170896256895ccf75fd4d3efa5f5e70c",
+       "68e34674aef67ea3c811dec5a1856703f0398c2a"
+      ],
+      "candidates": [
+       "a.js:1:t",
+       "b.js:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:49f87142f10e6893dc59dfdf191206d0eecd6fe2",
+     "call_span": [
+      283,
+      287
+     ],
+     "callee_span": [
+      283,
+      285
+     ],
+     "caller": "c6",
+     "file": "a.js",
+     "line": 6,
+     "reference": "mk",
+     "today": {
+      "candidate_ids": [
+       "22138f124f5890a3aaf79ab6a36ab6c058557dc2",
+       "606e58ec3aea25f4fa4d424562364cc8e3f5b966"
+      ],
+      "candidates": [
+       "a.js:7:mk",
+       "a.js:7:mk"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:fb8d9a631799284ad51fff889f38a54c7990fa0b",
+     "call_span": [
+      296,
+      299
+     ],
+     "callee_span": [
+      296,
+      297
+     ],
+     "caller": "c6",
+     "file": "a.js",
+     "line": 6,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "5fbd2e65170896256895ccf75fd4d3efa5f5e70c",
+       "68e34674aef67ea3c811dec5a1856703f0398c2a"
+      ],
+      "candidates": [
+       "a.js:1:t",
+       "b.js:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:b8a88227aa7def543d2a7b344b58f0e058ac35c1",
+     "call_span": [
+      58,
+      69
+     ],
+     "callee_span": [
+      58,
+      67
+     ],
+     "caller": "c5",
+     "file": "args.js",
+     "line": 2,
+     "reference": "arguments",
+     "today": {
+      "candidate_ids": [
+       "6321bcbbb25dbb5fa4920a0f1a83bee8f88e4e36",
+       "dd8fad30aa34b2fe9b8be55f5d18c80043528c8a"
+      ],
+      "candidates": [
+       "args2.js:1:arguments",
+       "args.js:1:arguments"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/js-locals"
+  }
+ },
+ "source": "authored",
+ "tree": "js-locals"
+}

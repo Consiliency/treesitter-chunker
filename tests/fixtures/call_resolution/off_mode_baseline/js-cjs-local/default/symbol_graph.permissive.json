@@ -1,0 +1,177 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 57,
+   "callee_byte_start": 56,
+   "file": "a.js",
+   "from": "b1c276fe5a8f5a44237585cc49c8cd10faa876c8",
+   "id": "call:ccf27a3a8e6fa9d9598e804518a23c417f784367",
+   "location": {
+    "byte_end": 59,
+    "byte_start": 56,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "t",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 3,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "222d82fb2ca3c883cac152ce92ec3b26da16a821",
+    "e6ffcca218f13c5ca117ae59dde66e0a99e73047"
+   ],
+   "file": "a.js",
+   "from": "b1c276fe5a8f5a44237585cc49c8cd10faa876c8",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:ccf27a3a8e6fa9d9598e804518a23c417f784367",
+   "callee_byte_end": 57,
+   "callee_byte_start": 56,
+   "candidates": [
+    "222d82fb2ca3c883cac152ce92ec3b26da16a821",
+    "e6ffcca218f13c5ca117ae59dde66e0a99e73047"
+   ],
+   "file": "a.js",
+   "from": "b1c276fe5a8f5a44237585cc49c8cd10faa876c8",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 59,
+    "byte_start": 56,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "222d82fb2ca3c883cac152ce92ec3b26da16a821": {
+   "definition_id": "222d82fb2ca3c883cac152ce92ec3b26da16a821",
+   "end_line": 1,
+   "file": "lib.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "lib",
+   "name": "t",
+   "node_id": "4d0d83e64c4385ddd3f0d0909fb84c6d7878cc68",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "lib.js::t",
+   "signature": "t()"
+  },
+  "b1c276fe5a8f5a44237585cc49c8cd10faa876c8": {
+   "definition_id": "b1c276fe5a8f5a44237585cc49c8cd10faa876c8",
+   "end_line": 2,
+   "file": "a.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 2,
+   "module": "a",
+   "name": "use",
+   "node_id": "c932c7113755c6a363b809a3d60bb46c10a0516f",
+   "parent_class": "",
+   "qualified_name": "use",
+   "semantic_path": "a.js::use",
+   "signature": "use()"
+  },
+  "e6ffcca218f13c5ca117ae59dde66e0a99e73047": {
+   "definition_id": "e6ffcca218f13c5ca117ae59dde66e0a99e73047",
+   "end_line": 1,
+   "file": "other.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "other",
+   "name": "t",
+   "node_id": "6cd3e449c5e69760bf6de43c817e481938f726a4",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "other.js::t",
+   "signature": "t()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "b1c276fe5a8f5a44237585cc49c8cd10faa876c8",
+    "end_line": 2,
+    "file": "a.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 2,
+    "module": "a",
+    "name": "use",
+    "node_id": "c932c7113755c6a363b809a3d60bb46c10a0516f",
+    "parent_class": "",
+    "qualified_name": "use",
+    "semantic_path": "a.js::use",
+    "signature": "use()"
+   },
+   {
+    "definition_id": "222d82fb2ca3c883cac152ce92ec3b26da16a821",
+    "end_line": 1,
+    "file": "lib.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "lib",
+    "name": "t",
+    "node_id": "4d0d83e64c4385ddd3f0d0909fb84c6d7878cc68",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "lib.js::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "e6ffcca218f13c5ca117ae59dde66e0a99e73047",
+    "end_line": 1,
+    "file": "other.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "other",
+    "name": "t",
+    "node_id": "6cd3e449c5e69760bf6de43c817e481938f726a4",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "other.js::t",
+    "signature": "t()"
+   }
+  ],
+  "imports": []
+ }
+}

@@ -1,0 +1,170 @@
+{
+ "diagnostics": [],
+ "edges": [],
+ "files": [
+  {
+   "content_hash": "sha1:71d701922c43889be0e1eb20716ef711cb981251",
+   "diagnostics": [],
+   "id": "5edbd048f70eca0ca7c8d3016e43b28775653b3f",
+   "language": "kotlin",
+   "parser": "tree-sitter-kotlin",
+   "path": "A.kt",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:30630e75552369239661eeac414774b34f02c4f8",
+   "diagnostics": [],
+   "id": "18fdbd39c70ad18a9443b50d5f176daef34ed059",
+   "language": "kotlin",
+   "parser": "tree-sitter-kotlin",
+   "path": "B.kt",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 0,
+  "diagnostics_total": 0,
+  "edges_total": 0,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 2,
+  "files_processed": 2,
+  "files_skipped": 0,
+  "files_total": 2,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 3,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "4da203e3f720a98a24b4163c35ed03ef34f9fbc5",
+   "file_id": "5edbd048f70eca0ca7c8d3016e43b28775653b3f",
+   "id": "4da203e3f720a98a24b4163c35ed03ef34f9fbc5",
+   "identity": {
+    "source": "definition_id",
+    "value": "4da203e3f720a98a24b4163c35ed03ef34f9fbc5"
+   },
+   "kind": "function",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: A.kt\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: A.kt::helper\nsignature text: helper() -> Int\ncontent:\nfun helper(): Int = 1"
+   },
+   "node_id": "358d234f980da6bf09c4ee047e5fa7ab1bd8c064",
+   "parent": null,
+   "path": "A.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "A.kt::helper",
+   "signature": "helper() -> Int",
+   "span": {
+    "byte_end": 21,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "4b1003d993bada3a897a045aacf8bc82e697295c"
+  },
+  {
+   "definition_id": "61bb31940b9893aa767066a2c70c563a42cd687a",
+   "file_id": "5edbd048f70eca0ca7c8d3016e43b28775653b3f",
+   "id": "61bb31940b9893aa767066a2c70c563a42cd687a",
+   "identity": {
+    "source": "definition_id",
+    "value": "61bb31940b9893aa767066a2c70c563a42cd687a"
+   },
+   "kind": "function",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: A.kt\nkind: function\nsymbol: use\nqualified name: use\nsemantic path: A.kt::use\nsignature text: use() -> Int\ncontent:\nfun use(): Int = helper()"
+   },
+   "node_id": "1f1a77d7eab4781b2b52ed8d9450221ddbd8c5ed",
+   "parent": null,
+   "path": "A.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "use",
+   "relationships": [],
+   "semantic_path": "A.kt::use",
+   "signature": "use() -> Int",
+   "span": {
+    "byte_end": 47,
+    "byte_start": 22,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "use",
+   "symbol_id": "6372827f3522a06ab52ba7b98e1a78385aea3eb9"
+  },
+  {
+   "definition_id": "eb798561eddca7c3044d7c39c3a990dd64ad8318",
+   "file_id": "18fdbd39c70ad18a9443b50d5f176daef34ed059",
+   "id": "eb798561eddca7c3044d7c39c3a990dd64ad8318",
+   "identity": {
+    "source": "definition_id",
+    "value": "eb798561eddca7c3044d7c39c3a990dd64ad8318"
+   },
+   "kind": "function",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: B.kt\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: B.kt::helper\nsignature text: helper() -> Int\ncontent:\nfun helper(): Int = 2"
+   },
+   "node_id": "975a66b97dd5f129ba71f3d2a69810266b077141",
+   "parent": null,
+   "path": "B.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "B.kt::helper",
+   "signature": "helper() -> Int",
+   "span": {
+    "byte_end": 21,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "78e87995fb4c86d4aeb9bdf7c70efd3299531cd9"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

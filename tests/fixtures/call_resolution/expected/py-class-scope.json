@@ -1,0 +1,39 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:884a8ad70ca990e59d9aaa2a5eeeaa8b0aae42ff",
+     "call_span": [
+      113,
+      121
+     ],
+     "callee_span": [
+      113,
+      119
+     ],
+     "caller": "K.meth",
+     "file": "a.py",
+     "line": 10,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8"
+      ],
+      "candidates": [
+       "a.py:1:helper"
+      ],
+      "resolution": "resolved"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-class-scope"
+  }
+ },
+ "source": "authored",
+ "tree": "py-class-scope"
+}

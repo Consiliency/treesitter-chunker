@@ -1,0 +1,394 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 168,
+   "callee_byte_start": 167,
+   "file": "k.go",
+   "from": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "id": "call:f602e865b42376c85eccb53b43cba1d2aa8c39c1",
+   "location": {
+    "byte_end": 171,
+    "byte_start": 167,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "reference": "h",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 184,
+   "callee_byte_start": 183,
+   "file": "k.go",
+   "from": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "id": "call:13c62f7ad8a33ddbbd6188193783f69f4495ec97",
+   "location": {
+    "byte_end": 194,
+    "byte_start": 183,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "reference": "f",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 186,
+   "callee_byte_start": 185,
+   "file": "k.go",
+   "from": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "id": "call:35da998c60e026faf778667cdd1f81f6701a9090",
+   "location": {
+    "byte_end": 193,
+    "byte_start": 185,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "reference": "g",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 279,
+   "callee_byte_start": 277,
+   "file": "k.go",
+   "from": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "id": "call:35ad7fc99cb0b32d5141777fe1706c69fdb2fc46",
+   "location": {
+    "byte_end": 286,
+    "byte_start": 277,
+    "end_line": 16,
+    "start_line": 16
+   },
+   "reference": "cb",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 1,
+  "total_classes": 1,
+  "total_functions": 2,
+  "total_imports": 0,
+  "total_relationships": 11
+ },
+ "relationships": [
+  {
+   "candidates": [],
+   "file": "k.go",
+   "from": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "w",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "w",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "k.go",
+   "from": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "xs",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "k.go",
+   "from": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "y",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "y",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "k.go",
+   "from": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "z",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "z",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "k.go",
+   "from": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "is_internal": false,
+   "line": 14,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "i",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "i",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "k.go",
+   "from": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "is_internal": false,
+   "line": 14,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "k",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "k",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "k.go",
+   "from": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "is_internal": false,
+   "line": 14,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "xs",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:f602e865b42376c85eccb53b43cba1d2aa8c39c1",
+   "callee_byte_end": 168,
+   "callee_byte_start": 167,
+   "candidates": [],
+   "file": "k.go",
+   "from": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "is_internal": false,
+   "line": 9,
+   "location": {
+    "byte_end": 171,
+    "byte_start": 167,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "h",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "h",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:13c62f7ad8a33ddbbd6188193783f69f4495ec97",
+   "callee_byte_end": 184,
+   "callee_byte_start": 183,
+   "candidates": [],
+   "file": "k.go",
+   "from": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "is_internal": false,
+   "line": 11,
+   "location": {
+    "byte_end": 194,
+    "byte_start": 183,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "f",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:35da998c60e026faf778667cdd1f81f6701a9090",
+   "callee_byte_end": 186,
+   "callee_byte_start": 185,
+   "candidates": [],
+   "file": "k.go",
+   "from": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "is_internal": false,
+   "line": 11,
+   "location": {
+    "byte_end": 193,
+    "byte_start": 185,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "g",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "g",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:35ad7fc99cb0b32d5141777fe1706c69fdb2fc46",
+   "callee_byte_end": 279,
+   "callee_byte_start": 277,
+   "candidates": [],
+   "file": "k.go",
+   "from": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "is_internal": false,
+   "line": 16,
+   "location": {
+    "byte_end": 286,
+    "byte_start": 277,
+    "end_line": 16,
+    "start_line": 16
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "cb",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "cb",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "9b8701ea1b4a62009104082dd6ed4466746baa25": {
+   "definition_id": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "end_line": 17,
+   "file": "k.go",
+   "kind": "method",
+   "language": "go",
+   "line": 14,
+   "module": "k",
+   "name": "Run",
+   "node_id": "53241a27efa5ffa1ad5eecec50c21286df7ed60d",
+   "parent_class": "",
+   "qualified_name": "Run",
+   "semantic_path": "k.go::Run",
+   "signature": "Run(xs []int) -> int"
+  },
+  "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10": {
+   "definition_id": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "end_line": 12,
+   "file": "k.go",
+   "kind": "function",
+   "language": "go",
+   "line": 5,
+   "module": "k",
+   "name": "Outer",
+   "node_id": "c6f248ff519f731fc4a5431edd088277b6741b50",
+   "parent_class": "",
+   "qualified_name": "Outer",
+   "semantic_path": "k.go::Outer",
+   "signature": "Outer(xs []int) -> int"
+  },
+  "fe2d678e1577476e99194f0c56ad1698421d206e": {
+   "definition_id": "fe2d678e1577476e99194f0c56ad1698421d206e",
+   "end_line": 3,
+   "file": "k.go",
+   "kind": "type",
+   "language": "go",
+   "line": 3,
+   "module": "k",
+   "name": "K",
+   "node_id": "7ac646fb3ee7969e840a348480e7d5eb6d432cf8",
+   "parent_class": "",
+   "qualified_name": "K",
+   "semantic_path": "k.go::K",
+   "signature": null
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "fe2d678e1577476e99194f0c56ad1698421d206e",
+    "end_line": 3,
+    "file": "k.go",
+    "kind": "type",
+    "language": "go",
+    "line": 3,
+    "module": "k",
+    "name": "K",
+    "node_id": "7ac646fb3ee7969e840a348480e7d5eb6d432cf8",
+    "parent_class": "",
+    "qualified_name": "K",
+    "semantic_path": "k.go::K",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+    "end_line": 12,
+    "file": "k.go",
+    "kind": "function",
+    "language": "go",
+    "line": 5,
+    "module": "k",
+    "name": "Outer",
+    "node_id": "c6f248ff519f731fc4a5431edd088277b6741b50",
+    "parent_class": "",
+    "qualified_name": "Outer",
+    "semantic_path": "k.go::Outer",
+    "signature": "Outer(xs []int) -> int"
+   },
+   {
+    "definition_id": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+    "end_line": 17,
+    "file": "k.go",
+    "kind": "method",
+    "language": "go",
+    "line": 14,
+    "module": "k",
+    "name": "Run",
+    "node_id": "53241a27efa5ffa1ad5eecec50c21286df7ed60d",
+    "parent_class": "",
+    "qualified_name": "Run",
+    "semantic_path": "k.go::Run",
+    "signature": "Run(xs []int) -> int"
+   }
+  ],
+  "imports": []
+ }
+}

@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:6a4596a9c065a73ec4e474d1ff0ee2a43e93ce76",
+     "call_span": [
+      67,
+      75
+     ],
+     "callee_span": [
+      67,
+      73
+     ],
+     "caller": "go",
+     "file": "app.py",
+     "line": 4,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-local-cond-import"
+  }
+ },
+ "source": "authored",
+ "tree": "py-local-cond-import"
+}

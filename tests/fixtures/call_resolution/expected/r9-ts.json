@@ -1,0 +1,249 @@
+{
+ "plan_sections": [
+  "10.2"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:3bf1247436a0431fa203b5e4fddfd9ec7cb721dc",
+     "call_span": [
+      101,
+      105
+     ],
+     "callee_span": [
+      101,
+      102
+     ],
+     "caller": "A.m",
+     "file": "web/svc.ts",
+     "line": 4,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "24ab644144b8abb52389efc2487b1ab5dde4f811",
+       "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+      ],
+      "candidates": [
+       "web/svc.ts:1:t",
+       "web/svc.tsx:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:973f15a9a0e20b94a0feacf077f2c4f711683eb2",
+     "call_span": [
+      135,
+      139
+     ],
+     "callee_span": [
+      135,
+      136
+     ],
+     "caller": "A.m2",
+     "file": "web/svc.ts",
+     "line": 5,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "24ab644144b8abb52389efc2487b1ab5dde4f811",
+       "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+      ],
+      "candidates": [
+       "web/svc.ts:1:t",
+       "web/svc.tsx:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:4a06197ad7bf5d4ab8e7957a7887c7d6918eb685",
+     "call_span": [
+      148,
+      156
+     ],
+     "callee_span": [
+      148,
+      149
+     ],
+     "caller": "A.m2",
+     "file": "web/svc.ts",
+     "line": 5,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "24ab644144b8abb52389efc2487b1ab5dde4f811",
+       "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+      ],
+      "candidates": [
+       "web/svc.ts:1:t",
+       "web/svc.tsx:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:31c1ef0ac420b7bbd59cf093f1163f7ad3e56576",
+     "call_span": [
+      252,
+      256
+     ],
+     "callee_span": [
+      252,
+      253
+     ],
+     "caller": "d",
+     "file": "web/svc.ts",
+     "line": 9,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "24ab644144b8abb52389efc2487b1ab5dde4f811",
+       "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+      ],
+      "candidates": [
+       "web/svc.ts:1:t",
+       "web/svc.tsx:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:6f2e59fff1587949bd4ca371a11c6cb04b219ad0",
+     "call_span": [
+      265,
+      274
+     ],
+     "callee_span": [
+      265,
+      266
+     ],
+     "caller": "d",
+     "file": "web/svc.ts",
+     "line": 9,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "24ab644144b8abb52389efc2487b1ab5dde4f811",
+       "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+      ],
+      "candidates": [
+       "web/svc.ts:1:t",
+       "web/svc.tsx:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:acb98f8203c9ff9531e05bf1956202b4cf306787",
+     "call_span": [
+      316,
+      320
+     ],
+     "callee_span": [
+      316,
+      317
+     ],
+     "caller": "caller",
+     "file": "web/svc.ts",
+     "line": 12,
+     "reference": "d",
+     "today": {
+      "candidate_ids": [
+       "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+       "e7638304889e916fac8b421b2f875bae0f18f24c"
+      ],
+      "candidates": [
+       "web/svc.ts:9:d",
+       "web/svc.ts:8:d"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:58bab791dfd3670750f5d9dc456bffe5d60b1df7",
+     "call_span": [
+      324,
+      328
+     ],
+     "callee_span": [
+      324,
+      325
+     ],
+     "caller": "caller",
+     "file": "web/svc.ts",
+     "line": 13,
+     "reference": "d",
+     "today": {
+      "candidate_ids": [
+       "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+       "e7638304889e916fac8b421b2f875bae0f18f24c"
+      ],
+      "candidates": [
+       "web/svc.ts:9:d",
+       "web/svc.ts:8:d"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:e1ea3e3745108863810743571f3eba021cd01c4c",
+     "call_span": [
+      339,
+      343
+     ],
+     "callee_span": [
+      339,
+      340
+     ],
+     "caller": "caller",
+     "file": "web/svc.ts",
+     "line": 14,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "24ab644144b8abb52389efc2487b1ab5dde4f811",
+       "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+      ],
+      "candidates": [
+       "web/svc.ts:1:t",
+       "web/svc.tsx:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:ee856a48c3d3f5f1d5f3809891ffc841ca6ce048",
+     "call_span": [
+      77,
+      81
+     ],
+     "callee_span": [
+      77,
+      78
+     ],
+     "caller": "View",
+     "file": "web/svc.tsx",
+     "line": 2,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "24ab644144b8abb52389efc2487b1ab5dde4f811",
+       "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+      ],
+      "candidates": [
+       "web/svc.ts:1:t",
+       "web/svc.tsx:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "greenfield-r1/r9-ts"
+  }
+ },
+ "source": "greenfield-r1",
+ "tree": "r9-ts"
+}

@@ -1,0 +1,43 @@
+{
+ "plan_sections": [
+  "10.3"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:1d9c68c263b94f74569daa55cd835de7667cd28d",
+     "call_span": [
+      104,
+      112
+     ],
+     "callee_span": [
+      104,
+      110
+     ],
+     "caller": "go",
+     "file": "app.py",
+     "line": 8,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "73add198c41bef6ef7c9378d77740836222ee506",
+       "8ec5fa5ddcc4f566f18df07e34263e74df81ad67",
+       "969c7a10d07776913d7042e8fa406ee60039df24"
+      ],
+      "candidates": [
+       "fast.py:1:helper",
+       "slow.py:1:helper",
+       "other.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-try-import"
+  }
+ },
+ "source": "authored",
+ "tree": "py-try-import"
+}

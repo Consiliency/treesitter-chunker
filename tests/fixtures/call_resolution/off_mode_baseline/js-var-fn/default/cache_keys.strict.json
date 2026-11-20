@@ -1,0 +1,45 @@
+{
+ "files": {
+  "a.js": {
+   "cache_key": "boundary:v3:69ad5f23afdfee1266f6c6c12fb03a3ace61c9f4068f63426732f9553a0163dd",
+   "key_payload": {
+    "content_hash": "sha1:c3efc5c8d4d5e6a2073810cd5d6d85067fbde379",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-javascript:source=official:tree-sitter-javascript@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "javascript",
+    "path": "a.js",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "b.js": {
+   "cache_key": "boundary:v3:9f1dc9ef603f838418ad7918913446dcbd7484a68b7ed431952ce0326ed38d3b",
+   "key_payload": {
+    "content_hash": "sha1:9c921f3a70efb51da5bc7ea6e6e6337634ebf6ba",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-javascript:source=official:tree-sitter-javascript@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "javascript",
+    "path": "b.js",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

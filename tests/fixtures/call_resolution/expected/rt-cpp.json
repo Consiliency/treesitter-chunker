@@ -1,0 +1,90 @@
+{
+ "plan_sections": [
+  "10.2",
+  "10.5"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:e331bd82ddb0e8aa0e0fc1bdb5213f7209a77955",
+     "call_span": [
+      80,
+      88
+     ],
+     "callee_span": [
+      80,
+      86
+     ],
+     "caller": "f",
+     "file": "k.cpp",
+     "line": 4,
+     "reference": "only_a",
+     "today": {
+      "candidate_ids": [
+       "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5"
+      ],
+      "candidates": [
+       "k.cpp:1:only_a"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:b7b05d245ad3dd3a7c3bff1990777cf27368f27b",
+     "call_span": [
+      121,
+      129
+     ],
+     "callee_span": [
+      121,
+      127
+     ],
+     "caller": "f",
+     "file": "k.cpp",
+     "line": 7,
+     "reference": "only_b",
+     "today": {
+      "candidate_ids": [
+       "b60ecc558c883f50552528ccb54aa2f1d2e94c9b"
+      ],
+      "candidates": [
+       "k.cpp:2:only_b"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:99c230f6ab8746a247f8ae41b28fe1605b6b6c45",
+     "call_span": [
+      150,
+      154
+     ],
+     "callee_span": [
+      150,
+      151
+     ],
+     "caller": "g",
+     "file": "k.cpp",
+     "line": 9,
+     "reference": "f",
+     "today": {
+      "candidate_ids": [
+       "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+       "d1ed0db740dd9d5918a0b5bd71808700b46beca0"
+      ],
+      "candidates": [
+       "k.cpp:3:f",
+       "k.cpp:6:f"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "greenfield-r1/rt-cpp"
+  }
+ },
+ "source": "greenfield-r1",
+ "tree": "rt-cpp"
+}

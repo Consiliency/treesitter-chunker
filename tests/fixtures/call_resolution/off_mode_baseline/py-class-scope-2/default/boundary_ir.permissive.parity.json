@@ -1,0 +1,321 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:884a8ad70ca990e59d9aaa2a5eeeaa8b0aae42ff",
+   "candidates": [
+    "5d97167e581b853d48d3108e0a7c011a58a605d8",
+    "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+   ],
+   "file": "a.py",
+   "id": "call:884a8ad70ca990e59d9aaa2a5eeeaa8b0aae42ff",
+   "location": {
+    "byte_end": 121,
+    "byte_start": 113,
+    "end_line": 10,
+    "start_line": 10
+   },
+   "metadata": {
+    "file": "a.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "source": "b99d9121565e50bb82c38652c68318532f0153e1",
+   "target": "helper",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "5d97167e581b853d48d3108e0a7c011a58a605d8",
+    "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+   ],
+   "id": "edge:fc1bf0b0f1f6da10",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "a.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "source": "b99d9121565e50bb82c38652c68318532f0153e1",
+   "target": "helper",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:eeeaca5ffec5b5e68500f78428c7cbe94a8410db",
+   "diagnostics": [],
+   "id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "a.py",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:0e49ccb5a0486ab74255876701252bc3c0ffd26f",
+   "diagnostics": [],
+   "id": "3a2ae268733a0ca8142c1c6bb39d91e619c48999",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "b.py",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 2,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 2,
+  "files_processed": 2,
+  "files_skipped": 0,
+  "files_total": 2,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 5,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "5d97167e581b853d48d3108e0a7c011a58a605d8",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "5d97167e581b853d48d3108e0a7c011a58a605d8",
+   "identity": {
+    "source": "definition_id",
+    "value": "5d97167e581b853d48d3108e0a7c011a58a605d8"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "helper"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: a.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: a.py::helper\nsignature text: helper()\nexports: helper\ncontent:\ndef helper():\n    return 1"
+   },
+   "node_id": "d1ac426919f231073fa6c9a4eeeaa83e57709e70",
+   "parent": null,
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "a.py::helper",
+   "signature": "helper()",
+   "span": {
+    "byte_end": 26,
+    "byte_start": 0,
+    "end_line": 2,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "77a45cb1c9bae36f4e9be3718f9a0315200cf7bf"
+  },
+  {
+   "definition_id": "602c7eb83b5064bb1a48abf183f2406f2cb24987",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "602c7eb83b5064bb1a48abf183f2406f2cb24987",
+   "identity": {
+    "source": "definition_id",
+    "value": "602c7eb83b5064bb1a48abf183f2406f2cb24987"
+   },
+   "kind": "class",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "K",
+     "helper",
+     "meth",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: a.py\nkind: class\nsymbol: K\nqualified name: K\nsemantic path: a.py::K\nexports: K, helper, meth, self\ncontent:\nclass K:\n    def helper(self):\n        return 2\n\n    def meth(self):\n        return helper()"
+   },
+   "node_id": "49e298002dffc94d2585dbf5bf33ece8f8f433c2",
+   "parent": null,
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "K",
+   "relationships": [],
+   "semantic_path": "a.py::K",
+   "signature": null,
+   "span": {
+    "byte_end": 121,
+    "byte_start": 29,
+    "end_line": 10,
+    "start_line": 5
+   },
+   "symbol": "K",
+   "symbol_id": "c65dce08b1b771468882873366ede1283474a957"
+  },
+  {
+   "definition_id": "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+   "file_id": "3a2ae268733a0ca8142c1c6bb39d91e619c48999",
+   "id": "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+   "identity": {
+    "source": "definition_id",
+    "value": "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "helper"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: b.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: b.py::helper\nsignature text: helper()\nexports: helper\ncontent:\ndef helper():\n    return 3"
+   },
+   "node_id": "bcf8ed6af91e196cff190514418ea2ef4504d133",
+   "parent": null,
+   "path": "b.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "b.py::helper",
+   "signature": "helper()",
+   "span": {
+    "byte_end": 26,
+    "byte_start": 0,
+    "end_line": 2,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "c36e66544462236dcf420a7609dada53f7513510"
+  },
+  {
+   "definition_id": "b99d9121565e50bb82c38652c68318532f0153e1",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "b99d9121565e50bb82c38652c68318532f0153e1",
+   "identity": {
+    "source": "definition_id",
+    "value": "b99d9121565e50bb82c38652c68318532f0153e1"
+   },
+   "kind": "method",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "helper"
+    ],
+    "exports": [
+     "meth",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": "K",
+    "semantic_text": "language: python\nfile: a.py\nkind: method\nsymbol: meth\nqualified name: K.meth\nparent symbol: K\nsemantic path: a.py::K.meth\nsignature text: meth(self)\nexports: meth, self\ndependencies: helper\ncontent:\ndef meth(self):\n        return helper()"
+   },
+   "node_id": "d9959bcc9da5e70125496f97fac701bba032c5a9",
+   "parent": "49e298002dffc94d2585dbf5bf33ece8f8f433c2",
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "K.meth",
+   "relationships": [
+    "call:884a8ad70ca990e59d9aaa2a5eeeaa8b0aae42ff",
+    "edge:fc1bf0b0f1f6da10"
+   ],
+   "semantic_path": "a.py::K.meth",
+   "signature": "meth(self)",
+   "span": {
+    "byte_end": 121,
+    "byte_start": 82,
+    "end_line": 10,
+    "start_line": 9
+   },
+   "symbol": "meth",
+   "symbol_id": "cda3b7e922e1336617481b720834155c944a28b3"
+  },
+  {
+   "definition_id": "ff71dda6e3a8c63d1aedcb7c045db55e3e3113ab",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "ff71dda6e3a8c63d1aedcb7c045db55e3e3113ab",
+   "identity": {
+    "source": "definition_id",
+    "value": "ff71dda6e3a8c63d1aedcb7c045db55e3e3113ab"
+   },
+   "kind": "method",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "helper",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": "K",
+    "semantic_text": "language: python\nfile: a.py\nkind: method\nsymbol: helper\nqualified name: K.helper\nparent symbol: K\nsemantic path: a.py::K.helper\nsignature text: helper(self)\nexports: helper, self\ncontent:\ndef helper(self):\n        return 2"
+   },
+   "node_id": "44b84fbf5eb0700c9439601588d4a128ddafb08f",
+   "parent": "49e298002dffc94d2585dbf5bf33ece8f8f433c2",
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "K.helper",
+   "relationships": [],
+   "semantic_path": "a.py::K.helper",
+   "signature": "helper(self)",
+   "span": {
+    "byte_end": 76,
+    "byte_start": 42,
+    "end_line": 7,
+    "start_line": 6
+   },
+   "symbol": "helper",
+   "symbol_id": "77a45cb1c9bae36f4e9be3718f9a0315200cf7bf"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

@@ -1,0 +1,549 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:35ad7fc99cb0b32d5141777fe1706c69fdb2fc46",
+   "candidates": [],
+   "file": "k.go",
+   "id": "call:35ad7fc99cb0b32d5141777fe1706c69fdb2fc46",
+   "location": {
+    "byte_end": 286,
+    "byte_start": 277,
+    "end_line": 16,
+    "start_line": 16
+   },
+   "metadata": {
+    "file": "k.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "cb",
+   "resolution": "unresolved",
+   "source": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "target": "cb",
+   "type": "calls"
+  },
+  {
+   "candidates": [],
+   "id": "edge:df3c5a8d3ebba172",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "metadata": {
+    "file": "k.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "i",
+   "resolution": "unresolved",
+   "source": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "target": "i",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:29d9d3f68ca727e3",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "metadata": {
+    "file": "k.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "k",
+   "resolution": "unresolved",
+   "source": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "target": "k",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:32e73151807b7253",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "metadata": {
+    "file": "k.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs",
+   "resolution": "unresolved",
+   "source": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "target": "xs",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:13c62f7ad8a33ddbbd6188193783f69f4495ec97",
+   "candidates": [],
+   "file": "k.go",
+   "id": "call:13c62f7ad8a33ddbbd6188193783f69f4495ec97",
+   "location": {
+    "byte_end": 194,
+    "byte_start": 183,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "metadata": {
+    "file": "k.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "unresolved",
+   "source": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "target": "f",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:35da998c60e026faf778667cdd1f81f6701a9090",
+   "candidates": [],
+   "file": "k.go",
+   "id": "call:35da998c60e026faf778667cdd1f81f6701a9090",
+   "location": {
+    "byte_end": 193,
+    "byte_start": 185,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "metadata": {
+    "file": "k.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "g",
+   "resolution": "unresolved",
+   "source": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "target": "g",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:f602e865b42376c85eccb53b43cba1d2aa8c39c1",
+   "candidates": [],
+   "file": "k.go",
+   "id": "call:f602e865b42376c85eccb53b43cba1d2aa8c39c1",
+   "location": {
+    "byte_end": 171,
+    "byte_start": 167,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "k.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "h",
+   "resolution": "unresolved",
+   "source": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "target": "h",
+   "type": "calls"
+  },
+  {
+   "candidates": [],
+   "id": "edge:07c41f493da1e307",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "k.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "w",
+   "resolution": "unresolved",
+   "source": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "target": "w",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:a9412ed6d4074d91",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "k.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs",
+   "resolution": "unresolved",
+   "source": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "target": "xs",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:7f567de6b434507f",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "k.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "y",
+   "resolution": "unresolved",
+   "source": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "target": "y",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:9e8366ed73cf292a",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "k.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "z",
+   "resolution": "unresolved",
+   "source": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "target": "z",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:5e70544e1b907a57b0274cd2bab7191157d2f77e",
+   "diagnostics": [],
+   "id": "0132acd1240a5c3a01b6e284e7051683d5afb9a0",
+   "language": "go",
+   "parser": "tree-sitter-go",
+   "path": "k.go",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 0,
+  "diagnostics_total": 0,
+  "edges_total": 11,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 1,
+  "files_processed": 1,
+  "files_skipped": 0,
+  "files_total": 1,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 5,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 11
+ },
+ "nodes": [
+  {
+   "definition_id": "8f912ebd0f59baa962e26ac70b54000227e1a96f",
+   "file_id": "0132acd1240a5c3a01b6e284e7051683d5afb9a0",
+   "id": "8f912ebd0f59baa962e26ac70b54000227e1a96f",
+   "identity": {
+    "source": "definition_id",
+    "value": "8f912ebd0f59baa962e26ac70b54000227e1a96f"
+   },
+   "kind": "type",
+   "language": "go",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "K"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: go\nfile: k.go\nkind: type\nsemantic path: k.go\nexports: K\ncontent:\ntype K struct{}"
+   },
+   "node_id": "4c75ce6cb803c98e2eb6050eabfc73edc1985939",
+   "parent": null,
+   "path": "k.go",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "k.go",
+   "signature": null,
+   "span": {
+    "byte_end": 26,
+    "byte_start": 11,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "file_id": "0132acd1240a5c3a01b6e284e7051683d5afb9a0",
+   "id": "9b8701ea1b4a62009104082dd6ed4466746baa25",
+   "identity": {
+    "source": "definition_id",
+    "value": "9b8701ea1b4a62009104082dd6ed4466746baa25"
+   },
+   "kind": "method",
+   "language": "go",
+   "metadata": {
+    "dependencies": [
+     "i",
+     "k",
+     "xs"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: go\nfile: k.go\nkind: method\nsymbol: Run\nqualified name: Run\nsemantic path: k.go::Run\nsignature text: Run(xs []int) -> int\ndependencies: i, k, xs\ncontent:\nfunc (k K) Run(xs []int) int {\n\tcb := func(i int) int { return i + 1 }\n\treturn cb(xs[0])\n}"
+   },
+   "node_id": "53241a27efa5ffa1ad5eecec50c21286df7ed60d",
+   "parent": null,
+   "path": "k.go",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "Run",
+   "relationships": [
+    "call:35ad7fc99cb0b32d5141777fe1706c69fdb2fc46",
+    "edge:29d9d3f68ca727e3",
+    "edge:32e73151807b7253",
+    "edge:df3c5a8d3ebba172"
+   ],
+   "semantic_path": "k.go::Run",
+   "signature": "Run(xs []int) -> int",
+   "span": {
+    "byte_end": 288,
+    "byte_start": 198,
+    "end_line": 17,
+    "start_line": 14
+   },
+   "symbol": "Run",
+   "symbol_id": "e4a3f291b94ae7a0812e2eaa3cce715beba04af7"
+  },
+  {
+   "definition_id": "a4863fb83ea77908c708502c07cf338c5d1f8122",
+   "file_id": "0132acd1240a5c3a01b6e284e7051683d5afb9a0",
+   "id": "a4863fb83ea77908c708502c07cf338c5d1f8122",
+   "identity": {
+    "source": "definition_id",
+    "value": "a4863fb83ea77908c708502c07cf338c5d1f8122"
+   },
+   "kind": "var_declaration",
+   "language": "go",
+   "metadata": {
+    "dependencies": [
+     "a"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: go\nfile: k.go\nkind: var_declaration\nsemantic path: k.go\ndependencies: a\ncontent:\nvar Top = func(a int) int { return a }"
+   },
+   "node_id": "004d10b329ec9d5990ff5f41772f888e2aa7b6b8",
+   "parent": null,
+   "path": "k.go",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "k.go",
+   "signature": null,
+   "span": {
+    "byte_end": 328,
+    "byte_start": 290,
+    "end_line": 19,
+    "start_line": 19
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "file_id": "0132acd1240a5c3a01b6e284e7051683d5afb9a0",
+   "id": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10",
+   "identity": {
+    "source": "definition_id",
+    "value": "b7e9d47c91c89d3f58b5cc5e1a0054f89c0c5a10"
+   },
+   "kind": "function",
+   "language": "go",
+   "metadata": {
+    "dependencies": [
+     "w",
+     "xs",
+     "y",
+     "z"
+    ],
+    "exports": [
+     "Outer"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: go\nfile: k.go\nkind: function\nsymbol: Outer\nqualified name: Outer\nsemantic path: k.go::Outer\nsignature text: Outer(xs []int) -> int\nexports: Outer\ndependencies: w, xs, y, z\ncontent:\nfunc Outer(xs []int) int {\n\tf := func(y int) int { return y + 1 }\n\tg := func(z int) int {\n\t\th := func(w int) int { return w * z }\n\t\treturn h(z)\n\t}\n\treturn f(g(xs[0]))\n}"
+   },
+   "node_id": "c6f248ff519f731fc4a5431edd088277b6741b50",
+   "parent": null,
+   "path": "k.go",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "Outer",
+   "relationships": [
+    "call:13c62f7ad8a33ddbbd6188193783f69f4495ec97",
+    "call:35da998c60e026faf778667cdd1f81f6701a9090",
+    "call:f602e865b42376c85eccb53b43cba1d2aa8c39c1",
+    "edge:07c41f493da1e307",
+    "edge:7f567de6b434507f",
+    "edge:9e8366ed73cf292a",
+    "edge:a9412ed6d4074d91"
+   ],
+   "semantic_path": "k.go::Outer",
+   "signature": "Outer(xs []int) -> int",
+   "span": {
+    "byte_end": 196,
+    "byte_start": 28,
+    "end_line": 12,
+    "start_line": 5
+   },
+   "symbol": "Outer",
+   "symbol_id": "82724c3c7755b01c728fcb118b425ecca057e99c"
+  },
+  {
+   "definition_id": "fe2d678e1577476e99194f0c56ad1698421d206e",
+   "file_id": "0132acd1240a5c3a01b6e284e7051683d5afb9a0",
+   "id": "fe2d678e1577476e99194f0c56ad1698421d206e",
+   "identity": {
+    "source": "definition_id",
+    "value": "fe2d678e1577476e99194f0c56ad1698421d206e"
+   },
+   "kind": "type",
+   "language": "go",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "K"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: go\nfile: k.go\nkind: type\nsymbol: K\nqualified name: K\nsemantic path: k.go::K\nexports: K\ncontent:\nK struct{}"
+   },
+   "node_id": "7ac646fb3ee7969e840a348480e7d5eb6d432cf8",
+   "parent": "4c75ce6cb803c98e2eb6050eabfc73edc1985939",
+   "path": "k.go",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "K",
+   "relationships": [],
+   "semantic_path": "k.go::K",
+   "signature": null,
+   "span": {
+    "byte_end": 26,
+    "byte_start": 16,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": "K",
+   "symbol_id": "a1873b758e44ab2897527eb2fc86cdf6063b6ed8"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "strict"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

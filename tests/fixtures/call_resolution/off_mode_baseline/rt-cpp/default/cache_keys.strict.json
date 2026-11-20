@@ -1,0 +1,27 @@
+{
+ "files": {
+  "k.cpp": {
+   "cache_key": "boundary:v3:40ab683c76ea0a522b995156ffc5f8b67d72819a38260f63c6c5263c7d1477ce",
+   "key_payload": {
+    "content_hash": "sha1:a420cebeb9963a14cac864847f4495b4fd2c97ee",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-cpp:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "cpp",
+    "path": "k.cpp",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

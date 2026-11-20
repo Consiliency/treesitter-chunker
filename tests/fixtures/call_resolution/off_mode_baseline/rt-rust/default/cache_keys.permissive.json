@@ -1,0 +1,27 @@
+{
+ "files": {
+  "k.rs": {
+   "cache_key": "boundary:v3:766029892c8db2fe1523a67ea7860ad9f49fd3bbd66597e5e513c2b39f1af3bd",
+   "key_payload": {
+    "content_hash": "sha1:4de79a86bcdf80a4c2a0a70467e6c40087beeb84",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-rust:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "rust",
+    "path": "k.rs",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

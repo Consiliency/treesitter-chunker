@@ -1,0 +1,256 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:0e2e85bb5d25dbd249da0b5ed51442ba5be78a68",
+   "candidates": [
+    "835dc2f2db433d5673704d475aa3e5b1055dd747",
+    "d49be7c5e6a7f6f2f2c0fd997e7d997afbce9780"
+   ],
+   "file": "app.py",
+   "id": "call:0e2e85bb5d25dbd249da0b5ed51442ba5be78a68",
+   "location": {
+    "byte_end": 54,
+    "byte_start": 46,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "app.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "source": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "target": "helper",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "835dc2f2db433d5673704d475aa3e5b1055dd747",
+    "d49be7c5e6a7f6f2f2c0fd997e7d997afbce9780"
+   ],
+   "id": "edge:3293472c36a252a7",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "metadata": {
+    "file": "app.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "source": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "target": "helper",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:e02e1e53465b79f699baeebbe6bc7a37f72929b4",
+   "diagnostics": [],
+   "id": "067d26106d0031d707c8f417f490e0a582eb748e",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "app.py",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:2e40e88eeefcbe2ccb9a3060f7b11f6e1147e557",
+   "diagnostics": [],
+   "id": "0bb8ea0140bafce056ffc664c511a2337def4dc2",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "pkg/__init__.py",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:3c78b1ad29239996a6615d2171455f49e57f6c42",
+   "diagnostics": [],
+   "id": "9ad68b532735b0a84f5387f8c3bd0ae669a2e9b9",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "pkg/helper.py",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:d6681868b74db5405c622ffab8246d63c9c62cb1",
+   "diagnostics": [],
+   "id": "e04b7adfc7ef12e461e86d308d89b7ba09fd9d32",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "pkg/impl.py",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 2,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 4,
+  "files_processed": 4,
+  "files_skipped": 0,
+  "files_total": 4,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 3,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "835dc2f2db433d5673704d475aa3e5b1055dd747",
+   "file_id": "e04b7adfc7ef12e461e86d308d89b7ba09fd9d32",
+   "id": "835dc2f2db433d5673704d475aa3e5b1055dd747",
+   "identity": {
+    "source": "definition_id",
+    "value": "835dc2f2db433d5673704d475aa3e5b1055dd747"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "helper"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/impl.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: pkg/impl.py::helper\nsignature text: helper()\nexports: helper\ncontent:\ndef helper():\n    return 1"
+   },
+   "node_id": "0f1e0fa7bc441896976dd9f47104f82748db25f9",
+   "parent": null,
+   "path": "pkg/impl.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "pkg/impl.py::helper",
+   "signature": "helper()",
+   "span": {
+    "byte_end": 26,
+    "byte_start": 0,
+    "end_line": 2,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "f54a813d263220cef9b49398fc41a0a6c464961c"
+  },
+  {
+   "definition_id": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "file_id": "067d26106d0031d707c8f417f490e0a582eb748e",
+   "id": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "identity": {
+    "source": "definition_id",
+    "value": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "helper"
+    ],
+    "exports": [
+     "go"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: app.py\nkind: function\nsymbol: go\nqualified name: go\nsemantic path: app.py::go\nsignature text: go()\nexports: go\ndependencies: helper\ncontent:\ndef go():\n    return helper()"
+   },
+   "node_id": "a3a262b0dc7480f3d2611c70b24f7200b7f51896",
+   "parent": null,
+   "path": "app.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "go",
+   "relationships": [
+    "call:0e2e85bb5d25dbd249da0b5ed51442ba5be78a68",
+    "edge:3293472c36a252a7"
+   ],
+   "semantic_path": "app.py::go",
+   "signature": "go()",
+   "span": {
+    "byte_end": 54,
+    "byte_start": 25,
+    "end_line": 5,
+    "start_line": 4
+   },
+   "symbol": "go",
+   "symbol_id": "6f2075864cfff106b795b83eea92eb94c77a43fc"
+  },
+  {
+   "definition_id": "d49be7c5e6a7f6f2f2c0fd997e7d997afbce9780",
+   "file_id": "9ad68b532735b0a84f5387f8c3bd0ae669a2e9b9",
+   "id": "d49be7c5e6a7f6f2f2c0fd997e7d997afbce9780",
+   "identity": {
+    "source": "definition_id",
+    "value": "d49be7c5e6a7f6f2f2c0fd997e7d997afbce9780"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "helper"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/helper.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: pkg/helper.py::helper\nsignature text: helper()\nexports: helper\ncontent:\ndef helper():\n    return 2"
+   },
+   "node_id": "03094479d4cbd99c730043c796f766c3ed98ae96",
+   "parent": null,
+   "path": "pkg/helper.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "pkg/helper.py::helper",
+   "signature": "helper()",
+   "span": {
+    "byte_end": 26,
+    "byte_start": 0,
+    "end_line": 2,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "0fe56a18ff6b8771606365298980e941a79d13fc"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

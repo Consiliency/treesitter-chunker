@@ -1,0 +1,63 @@
+{
+ "files": {
+  "p.js": {
+   "cache_key": "boundary:v3:b782a3a1eb8d8c65bbe68bceede3a5d5ea95e7f8651375ceddc05b2c73b832bf",
+   "key_payload": {
+    "content_hash": "sha1:f1ef9f57f71f13cd1dd235eda52d75c0864961f5",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-javascript:source=official:tree-sitter-javascript@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "javascript",
+    "path": "p.js",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "p/index.ts": {
+   "cache_key": "boundary:v3:5345cb879fd0ccd65e5693dd8274d6f48068ca77eefcb766661d81e7e6d33023",
+   "key_payload": {
+    "content_hash": "sha1:780e69b2d79bb493b37c8483ed50bdd673747db2",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "p/index.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "use.ts": {
+   "cache_key": "boundary:v3:3ede5a4394bc7e9dc8e81ddf0c6d71f6540827f4d3fba1e63ca7dbd7b7894c66",
+   "key_payload": {
+    "content_hash": "sha1:b4402ad6ad07bc020f85a4a69f25eb897f6c028e",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "use.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

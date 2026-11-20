@@ -1,0 +1,210 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 73,
+   "callee_byte_start": 67,
+   "file": "a/a.go",
+   "from": "b90e05864305d0b21784171b97f042bfb7c90e4b",
+   "id": "call:a0b898da5ce81a5adc77ffeeeae5f7d5406ced4e",
+   "location": {
+    "byte_end": 75,
+    "byte_start": 67,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "reference": "helper",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 3,
+  "total_classes": 1,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "09690ea7cb664e9d5047f0c12a07f5d846c201fe",
+    "b0598b40e01ff7530acadbcaea13ce4dfe8faf3f",
+    "e27b5441aa1138142a84f736ef0799cff5d57b9a"
+   ],
+   "file": "a/a.go",
+   "from": "b90e05864305d0b21784171b97f042bfb7c90e4b",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "helper",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:a0b898da5ce81a5adc77ffeeeae5f7d5406ced4e",
+   "callee_byte_end": 73,
+   "callee_byte_start": 67,
+   "candidates": [
+    "09690ea7cb664e9d5047f0c12a07f5d846c201fe",
+    "b0598b40e01ff7530acadbcaea13ce4dfe8faf3f",
+    "e27b5441aa1138142a84f736ef0799cff5d57b9a"
+   ],
+   "file": "a/a.go",
+   "from": "b90e05864305d0b21784171b97f042bfb7c90e4b",
+   "is_internal": false,
+   "line": 5,
+   "location": {
+    "byte_end": 75,
+    "byte_start": 67,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "helper",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "09690ea7cb664e9d5047f0c12a07f5d846c201fe": {
+   "definition_id": "09690ea7cb664e9d5047f0c12a07f5d846c201fe",
+   "end_line": 3,
+   "file": "a/a.go",
+   "kind": "function",
+   "language": "go",
+   "line": 3,
+   "module": "a.a",
+   "name": "helper",
+   "node_id": "ff29cc72182e49a8c4bf5465f99ba9ad8ee913cb",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "a/a.go::helper",
+   "signature": "helper() -> int"
+  },
+  "b0598b40e01ff7530acadbcaea13ce4dfe8faf3f": {
+   "definition_id": "b0598b40e01ff7530acadbcaea13ce4dfe8faf3f",
+   "end_line": 3,
+   "file": "c/c.go",
+   "kind": "type",
+   "language": "go",
+   "line": 3,
+   "module": "c.c",
+   "name": "helper",
+   "node_id": "e3230f9ba346d1578bde3af847736952bde78b13",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "c/c.go::helper",
+   "signature": null
+  },
+  "b90e05864305d0b21784171b97f042bfb7c90e4b": {
+   "definition_id": "b90e05864305d0b21784171b97f042bfb7c90e4b",
+   "end_line": 5,
+   "file": "a/a.go",
+   "kind": "function",
+   "language": "go",
+   "line": 5,
+   "module": "a.a",
+   "name": "use",
+   "node_id": "08daadd185df56f030238c682feef2edeb2ce0c1",
+   "parent_class": "",
+   "qualified_name": "use",
+   "semantic_path": "a/a.go::use",
+   "signature": "use() -> int"
+  },
+  "e27b5441aa1138142a84f736ef0799cff5d57b9a": {
+   "definition_id": "e27b5441aa1138142a84f736ef0799cff5d57b9a",
+   "end_line": 3,
+   "file": "b/b.go",
+   "kind": "function",
+   "language": "go",
+   "line": 3,
+   "module": "b.b",
+   "name": "helper",
+   "node_id": "4d5a22bc5d44128ba6aa1f5cb5ccb59b677e9119",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "b/b.go::helper",
+   "signature": "helper() -> int"
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "b0598b40e01ff7530acadbcaea13ce4dfe8faf3f",
+    "end_line": 3,
+    "file": "c/c.go",
+    "kind": "type",
+    "language": "go",
+    "line": 3,
+    "module": "c.c",
+    "name": "helper",
+    "node_id": "e3230f9ba346d1578bde3af847736952bde78b13",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "c/c.go::helper",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "09690ea7cb664e9d5047f0c12a07f5d846c201fe",
+    "end_line": 3,
+    "file": "a/a.go",
+    "kind": "function",
+    "language": "go",
+    "line": 3,
+    "module": "a.a",
+    "name": "helper",
+    "node_id": "ff29cc72182e49a8c4bf5465f99ba9ad8ee913cb",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "a/a.go::helper",
+    "signature": "helper() -> int"
+   },
+   {
+    "definition_id": "b90e05864305d0b21784171b97f042bfb7c90e4b",
+    "end_line": 5,
+    "file": "a/a.go",
+    "kind": "function",
+    "language": "go",
+    "line": 5,
+    "module": "a.a",
+    "name": "use",
+    "node_id": "08daadd185df56f030238c682feef2edeb2ce0c1",
+    "parent_class": "",
+    "qualified_name": "use",
+    "semantic_path": "a/a.go::use",
+    "signature": "use() -> int"
+   },
+   {
+    "definition_id": "e27b5441aa1138142a84f736ef0799cff5d57b9a",
+    "end_line": 3,
+    "file": "b/b.go",
+    "kind": "function",
+    "language": "go",
+    "line": 3,
+    "module": "b.b",
+    "name": "helper",
+    "node_id": "4d5a22bc5d44128ba6aa1f5cb5ccb59b677e9119",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "b/b.go::helper",
+    "signature": "helper() -> int"
+   }
+  ],
+  "imports": []
+ }
+}

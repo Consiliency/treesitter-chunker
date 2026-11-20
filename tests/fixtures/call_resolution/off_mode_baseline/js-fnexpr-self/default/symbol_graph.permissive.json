@@ -1,0 +1,177 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 76,
+   "callee_byte_start": 75,
+   "file": "a.js",
+   "from": "4e36552579613f06ae23187285751b9485ebf230",
+   "id": "call:badcc7ff8a421fccc2e30d1a2f6f06d27f7df952",
+   "location": {
+    "byte_end": 83,
+    "byte_start": 75,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "reference": "t",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "93f8ef326bbc292d05fddff073d21ea4f3cf8997",
+    "943a9f80b17cacf2d4968fca407d01f5061ec551"
+   ],
+   "file": "a.js",
+   "from": "4e36552579613f06ae23187285751b9485ebf230",
+   "is_internal": false,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:badcc7ff8a421fccc2e30d1a2f6f06d27f7df952",
+   "callee_byte_end": 76,
+   "callee_byte_start": 75,
+   "candidates": [
+    "93f8ef326bbc292d05fddff073d21ea4f3cf8997",
+    "943a9f80b17cacf2d4968fca407d01f5061ec551"
+   ],
+   "file": "a.js",
+   "from": "4e36552579613f06ae23187285751b9485ebf230",
+   "is_internal": false,
+   "line": 3,
+   "location": {
+    "byte_end": 83,
+    "byte_start": 75,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "4e36552579613f06ae23187285751b9485ebf230": {
+   "definition_id": "4e36552579613f06ae23187285751b9485ebf230",
+   "end_line": 3,
+   "file": "a.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 3,
+   "module": "a",
+   "name": "t",
+   "node_id": "75ff152e4aa0ec7217a7d113ac1ad398d2915c36",
+   "parent_class": "g",
+   "qualified_name": "g.t",
+   "semantic_path": "a.js::g.t",
+   "signature": "t(n)"
+  },
+  "93f8ef326bbc292d05fddff073d21ea4f3cf8997": {
+   "definition_id": "93f8ef326bbc292d05fddff073d21ea4f3cf8997",
+   "end_line": 1,
+   "file": "b.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "b",
+   "name": "t",
+   "node_id": "8bd24392158bc6edd7696c8f51238a8fee313a5d",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "b.js::t",
+   "signature": "t()"
+  },
+  "943a9f80b17cacf2d4968fca407d01f5061ec551": {
+   "definition_id": "943a9f80b17cacf2d4968fca407d01f5061ec551",
+   "end_line": 2,
+   "file": "a.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 2,
+   "module": "a",
+   "name": "t",
+   "node_id": "058e7bf932150c6b54aa9a5987eb3c9af98e61eb",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "a.js::t",
+   "signature": "t()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "943a9f80b17cacf2d4968fca407d01f5061ec551",
+    "end_line": 2,
+    "file": "a.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 2,
+    "module": "a",
+    "name": "t",
+    "node_id": "058e7bf932150c6b54aa9a5987eb3c9af98e61eb",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "a.js::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "4e36552579613f06ae23187285751b9485ebf230",
+    "end_line": 3,
+    "file": "a.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 3,
+    "module": "a",
+    "name": "t",
+    "node_id": "75ff152e4aa0ec7217a7d113ac1ad398d2915c36",
+    "parent_class": "g",
+    "qualified_name": "g.t",
+    "semantic_path": "a.js::g.t",
+    "signature": "t(n)"
+   },
+   {
+    "definition_id": "93f8ef326bbc292d05fddff073d21ea4f3cf8997",
+    "end_line": 1,
+    "file": "b.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "b",
+    "name": "t",
+    "node_id": "8bd24392158bc6edd7696c8f51238a8fee313a5d",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "b.js::t",
+    "signature": "t()"
+   }
+  ],
+  "imports": []
+ }
+}

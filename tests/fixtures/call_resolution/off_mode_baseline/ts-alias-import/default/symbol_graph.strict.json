@@ -1,0 +1,207 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 72,
+   "callee_byte_start": 66,
+   "file": "use.ts",
+   "from": "ad017b314fd2936de0c1040d1fbd62ecf83c332d",
+   "id": "call:4a05a948743480b6f60289dff2a0eb3c1b14670a",
+   "location": {
+    "byte_end": 74,
+    "byte_start": 66,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "helper",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 4,
+  "total_classes": 0,
+  "total_functions": 4,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "06ff3f35347e49d754f8f794cec9abd0085dee50",
+    "31fdc029e06075f380d5611ca474d91df9de060e"
+   ],
+   "file": "use.ts",
+   "from": "ad017b314fd2936de0c1040d1fbd62ecf83c332d",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "helper",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:4a05a948743480b6f60289dff2a0eb3c1b14670a",
+   "callee_byte_end": 72,
+   "callee_byte_start": 66,
+   "candidates": [
+    "06ff3f35347e49d754f8f794cec9abd0085dee50",
+    "31fdc029e06075f380d5611ca474d91df9de060e"
+   ],
+   "file": "use.ts",
+   "from": "ad017b314fd2936de0c1040d1fbd62ecf83c332d",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 74,
+    "byte_start": 66,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "helper",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "06ff3f35347e49d754f8f794cec9abd0085dee50": {
+   "definition_id": "06ff3f35347e49d754f8f794cec9abd0085dee50",
+   "end_line": 1,
+   "file": "h1.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "h1",
+   "name": "helper",
+   "node_id": "3ee4d8e48f4b70d4052df45916466788fbed29be",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "h1.ts::helper",
+   "signature": "helper()"
+  },
+  "31fdc029e06075f380d5611ca474d91df9de060e": {
+   "definition_id": "31fdc029e06075f380d5611ca474d91df9de060e",
+   "end_line": 1,
+   "file": "h2.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "h2",
+   "name": "helper",
+   "node_id": "fa8bc6a6afbfd84efa2c9a68b1577c035e554035",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "h2.ts::helper",
+   "signature": "helper()"
+  },
+  "ad017b314fd2936de0c1040d1fbd62ecf83c332d": {
+   "definition_id": "ad017b314fd2936de0c1040d1fbd62ecf83c332d",
+   "end_line": 2,
+   "file": "use.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 2,
+   "module": "use",
+   "name": "u",
+   "node_id": "80c332fdd9f95fb6b27ff3f900ad309056701daa",
+   "parent_class": "",
+   "qualified_name": "u",
+   "semantic_path": "use.ts::u",
+   "signature": "u()"
+  },
+  "fbdf891b11906e5bbf43b9232b427edc1375cf5a": {
+   "definition_id": "fbdf891b11906e5bbf43b9232b427edc1375cf5a",
+   "end_line": 1,
+   "file": "svc.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "svc",
+   "name": "t",
+   "node_id": "fb5d967a67452dd37d35c308e77737f0b2828026",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "svc.ts::t",
+   "signature": "t()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "06ff3f35347e49d754f8f794cec9abd0085dee50",
+    "end_line": 1,
+    "file": "h1.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "h1",
+    "name": "helper",
+    "node_id": "3ee4d8e48f4b70d4052df45916466788fbed29be",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "h1.ts::helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "31fdc029e06075f380d5611ca474d91df9de060e",
+    "end_line": 1,
+    "file": "h2.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "h2",
+    "name": "helper",
+    "node_id": "fa8bc6a6afbfd84efa2c9a68b1577c035e554035",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "h2.ts::helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "fbdf891b11906e5bbf43b9232b427edc1375cf5a",
+    "end_line": 1,
+    "file": "svc.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "svc",
+    "name": "t",
+    "node_id": "fb5d967a67452dd37d35c308e77737f0b2828026",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "svc.ts::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "ad017b314fd2936de0c1040d1fbd62ecf83c332d",
+    "end_line": 2,
+    "file": "use.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 2,
+    "module": "use",
+    "name": "u",
+    "node_id": "80c332fdd9f95fb6b27ff3f900ad309056701daa",
+    "parent_class": "",
+    "qualified_name": "u",
+    "semantic_path": "use.ts::u",
+    "signature": "u()"
+   }
+  ],
+  "imports": []
+ }
+}

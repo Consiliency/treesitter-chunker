@@ -1,0 +1,462 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 141,
+   "callee_byte_start": 140,
+   "file": "src/lib.rs",
+   "from": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "id": "call:10b5fcdba16903746c49779b92e81902f3803eee",
+   "location": {
+    "byte_end": 144,
+    "byte_start": 140,
+    "end_line": 7,
+    "start_line": 7
+   },
+   "reference": "h",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 157,
+   "callee_byte_start": 156,
+   "file": "src/lib.rs",
+   "from": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "id": "call:82b0269871d8673eb078a796f2d4403103f9565c",
+   "location": {
+    "byte_end": 167,
+    "byte_start": 156,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "reference": "f",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 159,
+   "callee_byte_start": 158,
+   "file": "src/lib.rs",
+   "from": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "id": "call:f71b804e4cbc5cf56ac2881c7491358708ff2ea4",
+   "location": {
+    "byte_end": 166,
+    "byte_start": 158,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "reference": "g",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 238,
+   "callee_byte_start": 231,
+   "file": "src/lib.rs",
+   "from": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "id": "call:8a3b08b27827408f009ea7bc0d31cd494141be1f",
+   "location": {
+    "byte_end": 240,
+    "byte_start": 231,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "reference": "xs.iter",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 244,
+   "callee_byte_start": 231,
+   "file": "src/lib.rs",
+   "from": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "id": "call:c69d626bbdd60e54decbc76b8b54523c8be9b27b",
+   "location": {
+    "byte_end": 255,
+    "byte_start": 231,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "reference": "xs.iter().map",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 259,
+   "callee_byte_start": 231,
+   "file": "src/lib.rs",
+   "from": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "id": "call:b06cc26926083f59c40b69b968b8c493cce98eca",
+   "location": {
+    "byte_end": 261,
+    "byte_start": 231,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "reference": "xs.iter().map(|i| i + 1).sum",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 1,
+  "total_classes": 1,
+  "total_functions": 2,
+  "total_imports": 0,
+  "total_relationships": 12
+ },
+ "relationships": [
+  {
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "is_internal": false,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "w",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "w",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "is_internal": false,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "xs",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "is_internal": false,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "y",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "y",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "is_internal": false,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "z",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "z",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "is_internal": false,
+   "line": 13,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "i",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "i",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "is_internal": false,
+   "line": 13,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "xs",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:10b5fcdba16903746c49779b92e81902f3803eee",
+   "callee_byte_end": 141,
+   "callee_byte_start": 140,
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "is_internal": false,
+   "line": 7,
+   "location": {
+    "byte_end": 144,
+    "byte_start": 140,
+    "end_line": 7,
+    "start_line": 7
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "h",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "h",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:82b0269871d8673eb078a796f2d4403103f9565c",
+   "callee_byte_end": 157,
+   "callee_byte_start": 156,
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "is_internal": false,
+   "line": 9,
+   "location": {
+    "byte_end": 167,
+    "byte_start": 156,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "f",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:f71b804e4cbc5cf56ac2881c7491358708ff2ea4",
+   "callee_byte_end": 159,
+   "callee_byte_start": 158,
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "is_internal": false,
+   "line": 9,
+   "location": {
+    "byte_end": 166,
+    "byte_start": 158,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "g",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "g",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:8a3b08b27827408f009ea7bc0d31cd494141be1f",
+   "callee_byte_end": 238,
+   "callee_byte_start": 231,
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "is_internal": false,
+   "line": 14,
+   "location": {
+    "byte_end": 240,
+    "byte_start": 231,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs.iter",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "xs.iter",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:c69d626bbdd60e54decbc76b8b54523c8be9b27b",
+   "callee_byte_end": 244,
+   "callee_byte_start": 231,
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "is_internal": false,
+   "line": 14,
+   "location": {
+    "byte_end": 255,
+    "byte_start": 231,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs.iter().map",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "xs.iter().map",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:b06cc26926083f59c40b69b968b8c493cce98eca",
+   "callee_byte_end": 259,
+   "callee_byte_start": 231,
+   "candidates": [],
+   "file": "src/lib.rs",
+   "from": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "is_internal": false,
+   "line": 14,
+   "location": {
+    "byte_end": 261,
+    "byte_start": 231,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs.iter().map(|i| i + 1).sum",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "xs.iter().map(|i| i + 1).sum",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "10e39fc7bb6e32792281bb409c7acc9218beb5a6": {
+   "definition_id": "10e39fc7bb6e32792281bb409c7acc9218beb5a6",
+   "end_line": 1,
+   "file": "src/lib.rs",
+   "kind": "struct",
+   "language": "rust",
+   "line": 1,
+   "module": "src.lib",
+   "name": "K",
+   "node_id": "230154b486ecc9b7bfb8acef8a7c23a2c03dccdb",
+   "parent_class": "",
+   "qualified_name": "K",
+   "semantic_path": "src/lib.rs::K",
+   "signature": null
+  },
+  "172edeec9aee8ba81abf565a60715e0a8489caa8": {
+   "definition_id": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "end_line": 15,
+   "file": "src/lib.rs",
+   "kind": "function",
+   "language": "rust",
+   "line": 13,
+   "module": "src.lib",
+   "name": "run",
+   "node_id": "a03d9f75a92c0b9ff47ae9a32e07f146fbe67eea",
+   "parent_class": "",
+   "qualified_name": "run",
+   "semantic_path": "src/lib.rs::run",
+   "signature": "run(&self, xs: &[i32]) -> i32"
+  },
+  "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5": {
+   "definition_id": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "end_line": 10,
+   "file": "src/lib.rs",
+   "kind": "function",
+   "language": "rust",
+   "line": 3,
+   "module": "src.lib",
+   "name": "outer",
+   "node_id": "ad363345bf0c374b52ab5b0fcbea71d5f202292b",
+   "parent_class": "",
+   "qualified_name": "outer",
+   "semantic_path": "src/lib.rs::outer",
+   "signature": "outer(xs: &[i32]) -> i32"
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "10e39fc7bb6e32792281bb409c7acc9218beb5a6",
+    "end_line": 1,
+    "file": "src/lib.rs",
+    "kind": "struct",
+    "language": "rust",
+    "line": 1,
+    "module": "src.lib",
+    "name": "K",
+    "node_id": "230154b486ecc9b7bfb8acef8a7c23a2c03dccdb",
+    "parent_class": "",
+    "qualified_name": "K",
+    "semantic_path": "src/lib.rs::K",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+    "end_line": 10,
+    "file": "src/lib.rs",
+    "kind": "function",
+    "language": "rust",
+    "line": 3,
+    "module": "src.lib",
+    "name": "outer",
+    "node_id": "ad363345bf0c374b52ab5b0fcbea71d5f202292b",
+    "parent_class": "",
+    "qualified_name": "outer",
+    "semantic_path": "src/lib.rs::outer",
+    "signature": "outer(xs: &[i32]) -> i32"
+   },
+   {
+    "definition_id": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+    "end_line": 15,
+    "file": "src/lib.rs",
+    "kind": "function",
+    "language": "rust",
+    "line": 13,
+    "module": "src.lib",
+    "name": "run",
+    "node_id": "a03d9f75a92c0b9ff47ae9a32e07f146fbe67eea",
+    "parent_class": "",
+    "qualified_name": "run",
+    "semantic_path": "src/lib.rs::run",
+    "signature": "run(&self, xs: &[i32]) -> i32"
+   }
+  ],
+  "imports": []
+ }
+}

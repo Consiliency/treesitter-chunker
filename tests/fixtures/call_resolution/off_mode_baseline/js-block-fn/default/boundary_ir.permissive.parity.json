@@ -1,0 +1,230 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:22fc55a70dd45bce7c61a459331bed5997696204",
+   "candidates": [
+    "cd79f8d960be58c49f9666e61b64dd44d9d25015",
+    "cd79f8d960be58c49f9666e61b64dd44d9d25015#1"
+   ],
+   "file": "a.js",
+   "id": "call:22fc55a70dd45bce7c61a459331bed5997696204",
+   "location": {
+    "byte_end": 99,
+    "byte_start": 96,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "metadata": {
+    "file": "a.js",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "5110f3e49f9abf1f841b3363421ab8ca7bfe31f6",
+   "target": "d",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "cd79f8d960be58c49f9666e61b64dd44d9d25015",
+    "cd79f8d960be58c49f9666e61b64dd44d9d25015#1"
+   ],
+   "id": "edge:18e2ced0206bb2e5",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "metadata": {
+    "file": "a.js",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "5110f3e49f9abf1f841b3363421ab8ca7bfe31f6",
+   "target": "d",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:635bedb781b086205d6dffa2ee215c6bf34f00a1",
+   "diagnostics": [],
+   "id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "language": "javascript",
+   "parser": "tree-sitter-javascript",
+   "path": "a.js",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 2,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 1,
+  "files_processed": 1,
+  "files_skipped": 0,
+  "files_total": 1,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 3,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "5110f3e49f9abf1f841b3363421ab8ca7bfe31f6",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "5110f3e49f9abf1f841b3363421ab8ca7bfe31f6",
+   "identity": {
+    "source": "definition_id",
+    "value": "5110f3e49f9abf1f841b3363421ab8ca7bfe31f6"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [
+     "d"
+    ],
+    "exports": [
+     "g"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: function\nsymbol: g\nqualified name: g\nsemantic path: a.js::g\nsignature text: g()\nexports: g\ndependencies: d\ncontent:\nfunction g() { return d(); }"
+   },
+   "node_id": "15b5c92c9bea05a8349baeae07e1ad266c8c3699",
+   "parent": null,
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "g",
+   "relationships": [
+    "call:22fc55a70dd45bce7c61a459331bed5997696204",
+    "edge:18e2ced0206bb2e5"
+   ],
+   "semantic_path": "a.js::g",
+   "signature": "g()",
+   "span": {
+    "byte_end": 102,
+    "byte_start": 74,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "g",
+   "symbol_id": "cb416a5ca23fc8976b4f17d326f999f5e69630e4"
+  },
+  {
+   "definition_id": "cd79f8d960be58c49f9666e61b64dd44d9d25015",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "cd79f8d960be58c49f9666e61b64dd44d9d25015",
+   "identity": {
+    "source": "definition_id",
+    "value": "cd79f8d960be58c49f9666e61b64dd44d9d25015"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: a.js::d\nsignature text: d()\nexports: d\ncontent:\nfunction d() { return 1; }"
+   },
+   "node_id": "d19d81aa83362fb893c72abc19b6fc855d068a05",
+   "parent": null,
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [],
+   "semantic_path": "a.js::d",
+   "signature": "d()",
+   "span": {
+    "byte_end": 35,
+    "byte_start": 9,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "d",
+   "symbol_id": "ca36dc9198bf98f18da2ab0275fb52372550356e"
+  },
+  {
+   "definition_id": "cd79f8d960be58c49f9666e61b64dd44d9d25015",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "cd79f8d960be58c49f9666e61b64dd44d9d25015#1",
+   "identity": {
+    "disambiguated_from": "cd79f8d960be58c49f9666e61b64dd44d9d25015",
+    "source": "definition_id",
+    "value": "cd79f8d960be58c49f9666e61b64dd44d9d25015#1"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: a.js::d\nsignature text: d()\nexports: d\ncontent:\nfunction d() { return 2; }"
+   },
+   "node_id": "3ffe172d916186ec206b344dc570b178a241fb58",
+   "parent": null,
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [],
+   "semantic_path": "a.js::d",
+   "signature": "d()",
+   "span": {
+    "byte_end": 71,
+    "byte_start": 45,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "d",
+   "symbol_id": "ca36dc9198bf98f18da2ab0275fb52372550356e"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

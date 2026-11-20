@@ -1,0 +1,111 @@
+{
+ "call_facts": [],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 0
+ },
+ "relationships": [],
+ "symbol_lookup": {
+  "4da203e3f720a98a24b4163c35ed03ef34f9fbc5": {
+   "definition_id": "4da203e3f720a98a24b4163c35ed03ef34f9fbc5",
+   "end_line": 1,
+   "file": "A.kt",
+   "kind": "function",
+   "language": "kotlin",
+   "line": 1,
+   "module": "A",
+   "name": "helper",
+   "node_id": "358d234f980da6bf09c4ee047e5fa7ab1bd8c064",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "A.kt::helper",
+   "signature": "helper() -> Int"
+  },
+  "61bb31940b9893aa767066a2c70c563a42cd687a": {
+   "definition_id": "61bb31940b9893aa767066a2c70c563a42cd687a",
+   "end_line": 2,
+   "file": "A.kt",
+   "kind": "function",
+   "language": "kotlin",
+   "line": 2,
+   "module": "A",
+   "name": "use",
+   "node_id": "1f1a77d7eab4781b2b52ed8d9450221ddbd8c5ed",
+   "parent_class": "",
+   "qualified_name": "use",
+   "semantic_path": "A.kt::use",
+   "signature": "use() -> Int"
+  },
+  "eb798561eddca7c3044d7c39c3a990dd64ad8318": {
+   "definition_id": "eb798561eddca7c3044d7c39c3a990dd64ad8318",
+   "end_line": 1,
+   "file": "B.kt",
+   "kind": "function",
+   "language": "kotlin",
+   "line": 1,
+   "module": "B",
+   "name": "helper",
+   "node_id": "975a66b97dd5f129ba71f3d2a69810266b077141",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "B.kt::helper",
+   "signature": "helper() -> Int"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "4da203e3f720a98a24b4163c35ed03ef34f9fbc5",
+    "end_line": 1,
+    "file": "A.kt",
+    "kind": "function",
+    "language": "kotlin",
+    "line": 1,
+    "module": "A",
+    "name": "helper",
+    "node_id": "358d234f980da6bf09c4ee047e5fa7ab1bd8c064",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "A.kt::helper",
+    "signature": "helper() -> Int"
+   },
+   {
+    "definition_id": "61bb31940b9893aa767066a2c70c563a42cd687a",
+    "end_line": 2,
+    "file": "A.kt",
+    "kind": "function",
+    "language": "kotlin",
+    "line": 2,
+    "module": "A",
+    "name": "use",
+    "node_id": "1f1a77d7eab4781b2b52ed8d9450221ddbd8c5ed",
+    "parent_class": "",
+    "qualified_name": "use",
+    "semantic_path": "A.kt::use",
+    "signature": "use() -> Int"
+   },
+   {
+    "definition_id": "eb798561eddca7c3044d7c39c3a990dd64ad8318",
+    "end_line": 1,
+    "file": "B.kt",
+    "kind": "function",
+    "language": "kotlin",
+    "line": 1,
+    "module": "B",
+    "name": "helper",
+    "node_id": "975a66b97dd5f129ba71f3d2a69810266b077141",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "B.kt::helper",
+    "signature": "helper() -> Int"
+   }
+  ],
+  "imports": []
+ }
+}

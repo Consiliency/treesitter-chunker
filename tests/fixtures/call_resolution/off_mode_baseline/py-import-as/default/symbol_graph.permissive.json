@@ -1,0 +1,270 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 68,
+   "callee_byte_start": 60,
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "id": "call:574c2a1869f0b60a21990d56710040d0cc8db08d",
+   "location": {
+    "byte_end": 70,
+    "byte_start": 60,
+    "end_line": 6,
+    "start_line": 6
+   },
+   "reference": "u.helper",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 88,
+   "callee_byte_start": 73,
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "id": "call:7465bd6906a1aa9c4b8327fd17bd774e27c8dd77",
+   "location": {
+    "byte_end": 90,
+    "byte_start": 73,
+    "end_line": 6,
+    "start_line": 6
+   },
+   "reference": "pkg.util.helper",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 4,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 6
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "0bc3516dcc453f9e9039142b671e4bc146670255",
+    "969c7a10d07776913d7042e8fa406ee60039df24"
+   ],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "helper",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "pkg",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "pkg",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "u",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "u",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "util",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "util",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:574c2a1869f0b60a21990d56710040d0cc8db08d",
+   "callee_byte_end": 68,
+   "callee_byte_start": 60,
+   "candidates": [
+    "0bc3516dcc453f9e9039142b671e4bc146670255",
+    "969c7a10d07776913d7042e8fa406ee60039df24"
+   ],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 6,
+   "location": {
+    "byte_end": 70,
+    "byte_start": 60,
+    "end_line": 6,
+    "start_line": 6
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "u.helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "u.helper",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:7465bd6906a1aa9c4b8327fd17bd774e27c8dd77",
+   "callee_byte_end": 88,
+   "callee_byte_start": 73,
+   "candidates": [
+    "0bc3516dcc453f9e9039142b671e4bc146670255",
+    "969c7a10d07776913d7042e8fa406ee60039df24"
+   ],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 6,
+   "location": {
+    "byte_end": 90,
+    "byte_start": 73,
+    "end_line": 6,
+    "start_line": 6
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "pkg.util.helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "pkg.util.helper",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "0bc3516dcc453f9e9039142b671e4bc146670255": {
+   "definition_id": "0bc3516dcc453f9e9039142b671e4bc146670255",
+   "end_line": 2,
+   "file": "pkg/util.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "pkg.util",
+   "name": "helper",
+   "node_id": "daece924499e47ebe597a8ffeeba2f6f40d41d52",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "pkg/util.py::helper",
+   "signature": "helper()"
+  },
+  "969c7a10d07776913d7042e8fa406ee60039df24": {
+   "definition_id": "969c7a10d07776913d7042e8fa406ee60039df24",
+   "end_line": 2,
+   "file": "other.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "other",
+   "name": "helper",
+   "node_id": "04b7968bae48050886c8be70a9afe36286edf8bd",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "other.py::helper",
+   "signature": "helper()"
+  },
+  "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6": {
+   "definition_id": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "end_line": 6,
+   "file": "app.py",
+   "kind": "function",
+   "language": "python",
+   "line": 5,
+   "module": "app",
+   "name": "go",
+   "node_id": "c0bf8e65842e5ac7cda4c381e40e127797d8f10c",
+   "parent_class": "",
+   "qualified_name": "go",
+   "semantic_path": "app.py::go",
+   "signature": "go()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+    "end_line": 6,
+    "file": "app.py",
+    "kind": "function",
+    "language": "python",
+    "line": 5,
+    "module": "app",
+    "name": "go",
+    "node_id": "c0bf8e65842e5ac7cda4c381e40e127797d8f10c",
+    "parent_class": "",
+    "qualified_name": "go",
+    "semantic_path": "app.py::go",
+    "signature": "go()"
+   },
+   {
+    "definition_id": "969c7a10d07776913d7042e8fa406ee60039df24",
+    "end_line": 2,
+    "file": "other.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "other",
+    "name": "helper",
+    "node_id": "04b7968bae48050886c8be70a9afe36286edf8bd",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "other.py::helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "0bc3516dcc453f9e9039142b671e4bc146670255",
+    "end_line": 2,
+    "file": "pkg/util.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "pkg.util",
+    "name": "helper",
+    "node_id": "daece924499e47ebe597a8ffeeba2f6f40d41d52",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "pkg/util.py::helper",
+    "signature": "helper()"
+   }
+  ],
+  "imports": []
+ }
+}

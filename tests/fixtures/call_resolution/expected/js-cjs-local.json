@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:ccf27a3a8e6fa9d9598e804518a23c417f784367",
+     "call_span": [
+      56,
+      59
+     ],
+     "callee_span": [
+      56,
+      57
+     ],
+     "caller": "use",
+     "file": "a.js",
+     "line": 2,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "222d82fb2ca3c883cac152ce92ec3b26da16a821",
+       "e6ffcca218f13c5ca117ae59dde66e0a99e73047"
+      ],
+      "candidates": [
+       "lib.js:1:t",
+       "other.js:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/js-cjs-local"
+  }
+ },
+ "source": "authored",
+ "tree": "js-cjs-local"
+}

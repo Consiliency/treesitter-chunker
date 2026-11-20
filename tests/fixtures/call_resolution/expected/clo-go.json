@@ -1,0 +1,96 @@
+{
+ "plan_sections": [
+  "10.2",
+  "10.5"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:f602e865b42376c85eccb53b43cba1d2aa8c39c1",
+     "call_span": [
+      167,
+      171
+     ],
+     "callee_span": [
+      167,
+      168
+     ],
+     "caller": "Outer",
+     "file": "k.go",
+     "line": 9,
+     "reference": "h",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    },
+    {
+     "call_site_id": "call:13c62f7ad8a33ddbbd6188193783f69f4495ec97",
+     "call_span": [
+      183,
+      194
+     ],
+     "callee_span": [
+      183,
+      184
+     ],
+     "caller": "Outer",
+     "file": "k.go",
+     "line": 11,
+     "reference": "f",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    },
+    {
+     "call_site_id": "call:35da998c60e026faf778667cdd1f81f6701a9090",
+     "call_span": [
+      185,
+      193
+     ],
+     "callee_span": [
+      185,
+      186
+     ],
+     "caller": "Outer",
+     "file": "k.go",
+     "line": 11,
+     "reference": "g",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    },
+    {
+     "call_site_id": "call:35ad7fc99cb0b32d5141777fe1706c69fdb2fc46",
+     "call_span": [
+      277,
+      286
+     ],
+     "callee_span": [
+      277,
+      279
+     ],
+     "caller": "Run",
+     "file": "k.go",
+     "line": 16,
+     "reference": "cb",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    }
+   ],
+   "language": null,
+   "root": "greenfield-r1/clo-go"
+  }
+ },
+ "source": "greenfield-r1",
+ "tree": "clo-go"
+}

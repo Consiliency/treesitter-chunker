@@ -1,0 +1,303 @@
+{
+ "plan_sections": [
+  "10.2"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:96e16ab32bdbccb5d21d93fb8f427986f4b06d67",
+     "call_span": [
+      101,
+      110
+     ],
+     "callee_span": [
+      101,
+      107
+     ],
+     "caller": "C.a",
+     "file": "pkg/sub/svc.py",
+     "line": 11,
+     "reference": "target",
+     "today": {
+      "candidate_ids": [
+       "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+      ],
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:834619d83e82df8b423d5d574bfc53de9ae9d5fc",
+     "call_span": [
+      154,
+      157
+     ],
+     "callee_span": [
+      154,
+      155
+     ],
+     "caller": "C.b",
+     "file": "pkg/sub/svc.py",
+     "line": 16,
+     "reference": "C",
+     "today": {
+      "candidate_ids": [
+       "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+       "219cfa7e0bd9e7b1284997c116104a144444a0cc#1"
+      ],
+      "candidates": [
+       "pkg/sub/svc.py:9:C",
+       "pkg/sub/svc.py:14:C"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:9a8775a861c404221772bab9fae8a654a6e31096",
+     "call_span": [
+      174,
+      183
+     ],
+     "callee_span": [
+      174,
+      180
+     ],
+     "caller": "d",
+     "file": "pkg/sub/svc.py",
+     "line": 20,
+     "reference": "target",
+     "today": {
+      "candidate_ids": [
+       "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+      ],
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:bf9c07c10f0c51b68c8ebc5d233dc4684361b440",
+     "call_span": [
+      195,
+      204
+     ],
+     "callee_span": [
+      195,
+      201
+     ],
+     "caller": "d",
+     "file": "pkg/sub/svc.py",
+     "line": 21,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "8022e90f0ba72577afb290db40f2abc929aae58e"
+      ],
+      "candidates": [
+       "pkg/sub/svc.py:1:helper"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:1cda4240e16cbeb3bba8970d2339172e66bb6bf2",
+     "call_span": [
+      224,
+      233
+     ],
+     "callee_span": [
+      224,
+      230
+     ],
+     "caller": "d",
+     "file": "pkg/sub/svc.py",
+     "line": 25,
+     "reference": "target",
+     "today": {
+      "candidate_ids": [
+       "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+      ],
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:ee681cc9aa0b886a746d444ce617e9b278e7d6e9",
+     "call_span": [
+      238,
+      247
+     ],
+     "callee_span": [
+      238,
+      244
+     ],
+     "caller": "d",
+     "file": "pkg/sub/svc.py",
+     "line": 26,
+     "reference": "target",
+     "today": {
+      "candidate_ids": [
+       "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+      ],
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:8a8c778c43217f5964870192d1822478dd2ab807",
+     "call_span": [
+      259,
+      268
+     ],
+     "callee_span": [
+      259,
+      265
+     ],
+     "caller": "d",
+     "file": "pkg/sub/svc.py",
+     "line": 27,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "8022e90f0ba72577afb290db40f2abc929aae58e"
+      ],
+      "candidates": [
+       "pkg/sub/svc.py:1:helper"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:4ac0328f92fc2c58688cc033ed1b2644532a6334",
+     "call_span": [
+      289,
+      293
+     ],
+     "callee_span": [
+      289,
+      290
+     ],
+     "caller": "caller",
+     "file": "pkg/sub/svc.py",
+     "line": 31,
+     "reference": "d",
+     "today": {
+      "candidate_ids": [
+       "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+       "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1"
+      ],
+      "candidates": [
+       "pkg/sub/svc.py:19:d",
+       "pkg/sub/svc.py:24:d"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:72f73724679f239a8c359e524b8043158317901a",
+     "call_span": [
+      298,
+      314
+     ],
+     "callee_span": [
+      298,
+      311
+     ],
+     "caller": "caller",
+     "file": "pkg/sub/svc.py",
+     "line": 32,
+     "reference": "unknown_thing",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    },
+    {
+     "call_site_id": "call:c91576e34b56b4197d51274a8d588efda5e82e15",
+     "call_span": [
+      326,
+      335
+     ],
+     "callee_span": [
+      326,
+      332
+     ],
+     "caller": "caller",
+     "file": "pkg/sub/svc.py",
+     "line": 33,
+     "reference": "target",
+     "today": {
+      "candidate_ids": [
+       "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+      ],
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:6448c8db464fbe4a541c02c7e4182f1dbf8b9843",
+     "call_span": [
+      338,
+      347
+     ],
+     "callee_span": [
+      338,
+      344
+     ],
+     "caller": "caller",
+     "file": "pkg/sub/svc.py",
+     "line": 33,
+     "reference": "target",
+     "today": {
+      "candidate_ids": [
+       "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+      ],
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:5ad9b257f7410b02505cd06e3727399229db8f4b",
+     "call_span": [
+      63,
+      72
+     ],
+     "callee_span": [
+      63,
+      69
+     ],
+     "caller": "test_target",
+     "file": "tests/test_svc.py",
+     "line": 5,
+     "reference": "target",
+     "today": {
+      "candidate_ids": [
+       "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+      ],
+      "candidates": [
+       "pkg/sub/svc.py:5:target"
+      ],
+      "resolution": "resolved"
+     }
+    }
+   ],
+   "language": null,
+   "root": "greenfield-r1/r9-py"
+  }
+ },
+ "source": "greenfield-r1",
+ "tree": "r9-py"
+}

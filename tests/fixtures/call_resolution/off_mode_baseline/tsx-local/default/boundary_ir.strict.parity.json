@@ -1,0 +1,359 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:77f3edd841ab685830f437f13db0d4f4566675ce",
+   "candidates": [
+    "6eb619dd367185804e443b991e590311c7229307",
+    "d55cf3620cd25d29563ab257cbb2d2e21b198c44"
+   ],
+   "file": "a.tsx",
+   "id": "call:77f3edd841ab685830f437f13db0d4f4566675ce",
+   "location": {
+    "byte_end": 72,
+    "byte_start": 67,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "metadata": {
+    "file": "a.tsx",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "Foo",
+   "resolution": "ambiguous",
+   "source": "401b0bd1345dbc2ce10734db130b2eb24f3bdf9a",
+   "target": "Foo",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "6eb619dd367185804e443b991e590311c7229307",
+    "d55cf3620cd25d29563ab257cbb2d2e21b198c44"
+   ],
+   "id": "edge:c98676030cb5e995",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "metadata": {
+    "file": "a.tsx",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "Foo",
+   "resolution": "ambiguous",
+   "source": "401b0bd1345dbc2ce10734db130b2eb24f3bdf9a",
+   "target": "Foo",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:7346c3512f599f585faa5c861e91c42c725ba74d",
+   "diagnostics": [],
+   "id": "ff8b90e4419d76dbcb1e496a8b1df74f3f10948f",
+   "language": "tsx",
+   "parser": "tree-sitter-tsx",
+   "path": "a.tsx",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:c0c82929d026ae28846b245a596220166b6cdf48",
+   "diagnostics": [],
+   "id": "91701ad5b6b5ad23f8a47cd243c2695cb278534e",
+   "language": "tsx",
+   "parser": "tree-sitter-tsx",
+   "path": "b.tsx",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 2,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 2,
+  "files_processed": 2,
+  "files_skipped": 0,
+  "files_total": 2,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 6,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "401b0bd1345dbc2ce10734db130b2eb24f3bdf9a",
+   "file_id": "ff8b90e4419d76dbcb1e496a8b1df74f3f10948f",
+   "id": "401b0bd1345dbc2ce10734db130b2eb24f3bdf9a",
+   "identity": {
+    "source": "definition_id",
+    "value": "401b0bd1345dbc2ce10734db130b2eb24f3bdf9a"
+   },
+   "kind": "function",
+   "language": "tsx",
+   "metadata": {
+    "dependencies": [
+     "Foo"
+    ],
+    "exports": [
+     "App"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: tsx\nfile: a.tsx\nkind: function\nsymbol: App\nqualified name: App\nsemantic path: a.tsx::App\nsignature text: App()\nexports: App\ndependencies: Foo\ncontent:\nfunction App() { return Foo(); }"
+   },
+   "node_id": "702672b77f79a029500085553d32528e40cc6383",
+   "parent": "a114f3251dfe358d3e3d67b09b054dde22cbde0d",
+   "path": "a.tsx",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "App",
+   "relationships": [
+    "call:77f3edd841ab685830f437f13db0d4f4566675ce",
+    "edge:c98676030cb5e995"
+   ],
+   "semantic_path": "a.tsx::App",
+   "signature": "App()",
+   "span": {
+    "byte_end": 75,
+    "byte_start": 43,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "App",
+   "symbol_id": "6d427e0a33170c1a90841bea2810bcb9342c6fef"
+  },
+  {
+   "definition_id": "426873a298cebca321c08df53fe7c4266aab6c59",
+   "file_id": "ff8b90e4419d76dbcb1e496a8b1df74f3f10948f",
+   "id": "426873a298cebca321c08df53fe7c4266aab6c59",
+   "identity": {
+    "source": "definition_id",
+    "value": "426873a298cebca321c08df53fe7c4266aab6c59"
+   },
+   "kind": "export_statement",
+   "language": "tsx",
+   "metadata": {
+    "dependencies": [
+     "Foo"
+    ],
+    "exports": [
+     "App"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: tsx\nfile: a.tsx\nkind: export_statement\nsemantic path: a.tsx\nexports: App\ndependencies: Foo\ncontent:\nexport function App() { return Foo(); }"
+   },
+   "node_id": "a114f3251dfe358d3e3d67b09b054dde22cbde0d",
+   "parent": null,
+   "path": "a.tsx",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "a.tsx",
+   "signature": null,
+   "span": {
+    "byte_end": 75,
+    "byte_start": 36,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "4a2871b12fda0ecd4eabe7664a87bce25b3e2fb8",
+   "file_id": "91701ad5b6b5ad23f8a47cd243c2695cb278534e",
+   "id": "4a2871b12fda0ecd4eabe7664a87bce25b3e2fb8",
+   "identity": {
+    "source": "definition_id",
+    "value": "4a2871b12fda0ecd4eabe7664a87bce25b3e2fb8"
+   },
+   "kind": "export_statement",
+   "language": "tsx",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "Foo"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: tsx\nfile: b.tsx\nkind: export_statement\nsemantic path: b.tsx\nexports: Foo\ncontent:\nexport function Foo() { return 2; }"
+   },
+   "node_id": "9bd90277fd2f3a57d866bff696ac1fec9d258d47",
+   "parent": null,
+   "path": "b.tsx",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "b.tsx",
+   "signature": null,
+   "span": {
+    "byte_end": 35,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "6eb619dd367185804e443b991e590311c7229307",
+   "file_id": "ff8b90e4419d76dbcb1e496a8b1df74f3f10948f",
+   "id": "6eb619dd367185804e443b991e590311c7229307",
+   "identity": {
+    "source": "definition_id",
+    "value": "6eb619dd367185804e443b991e590311c7229307"
+   },
+   "kind": "function",
+   "language": "tsx",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "Foo"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: tsx\nfile: a.tsx\nkind: function\nsymbol: Foo\nqualified name: Foo\nsemantic path: a.tsx::Foo\nsignature text: Foo()\nexports: Foo\ncontent:\nfunction Foo() { return 1; }"
+   },
+   "node_id": "f6c14e423f69d5829a6f164194e2d6dbabf0e086",
+   "parent": "c968e88f98a0617f3be846cf56c0068486e0dac8",
+   "path": "a.tsx",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "Foo",
+   "relationships": [],
+   "semantic_path": "a.tsx::Foo",
+   "signature": "Foo()",
+   "span": {
+    "byte_end": 35,
+    "byte_start": 7,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "Foo",
+   "symbol_id": "ff78c861b3a6b06417393bcda4bcdb4fc4e8c0db"
+  },
+  {
+   "definition_id": "c89985d744a4b651552661eb27b467ede390a8b2",
+   "file_id": "ff8b90e4419d76dbcb1e496a8b1df74f3f10948f",
+   "id": "c89985d744a4b651552661eb27b467ede390a8b2",
+   "identity": {
+    "source": "definition_id",
+    "value": "c89985d744a4b651552661eb27b467ede390a8b2"
+   },
+   "kind": "export_statement",
+   "language": "tsx",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "Foo"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: tsx\nfile: a.tsx\nkind: export_statement\nsemantic path: a.tsx\nexports: Foo\ncontent:\nexport function Foo() { return 1; }"
+   },
+   "node_id": "c968e88f98a0617f3be846cf56c0068486e0dac8",
+   "parent": null,
+   "path": "a.tsx",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "a.tsx",
+   "signature": null,
+   "span": {
+    "byte_end": 35,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "d55cf3620cd25d29563ab257cbb2d2e21b198c44",
+   "file_id": "91701ad5b6b5ad23f8a47cd243c2695cb278534e",
+   "id": "d55cf3620cd25d29563ab257cbb2d2e21b198c44",
+   "identity": {
+    "source": "definition_id",
+    "value": "d55cf3620cd25d29563ab257cbb2d2e21b198c44"
+   },
+   "kind": "function",
+   "language": "tsx",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "Foo"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: tsx\nfile: b.tsx\nkind: function\nsymbol: Foo\nqualified name: Foo\nsemantic path: b.tsx::Foo\nsignature text: Foo()\nexports: Foo\ncontent:\nfunction Foo() { return 2; }"
+   },
+   "node_id": "771004f6351794c5363d52ac0649b7fb63f8175c",
+   "parent": "9bd90277fd2f3a57d866bff696ac1fec9d258d47",
+   "path": "b.tsx",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "Foo",
+   "relationships": [],
+   "semantic_path": "b.tsx::Foo",
+   "signature": "Foo()",
+   "span": {
+    "byte_end": 35,
+    "byte_start": 7,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "Foo",
+   "symbol_id": "0f79394918e6ac3284cfe0b6d5ace934ff9d7f62"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "strict"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

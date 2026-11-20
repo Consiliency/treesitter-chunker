@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:2d07bc80d3ed8a0c6972b396d442f3e22aea18d3",
+     "call_span": [
+      58,
+      61
+     ],
+     "callee_span": [
+      58,
+      59
+     ],
+     "caller": "u",
+     "file": "use.ts",
+     "line": 2,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "a6ec565ebf998845ef692f97091959a974bbe63b",
+       "aeff2fb2308e710c2fea292ea24530413d05a84d"
+      ],
+      "candidates": [
+       "a.ts:1:t",
+       "b.ts:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-star-conflict"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-star-conflict"
+}

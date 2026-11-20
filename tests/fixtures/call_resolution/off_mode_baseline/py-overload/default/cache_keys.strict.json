@@ -1,0 +1,27 @@
+{
+ "files": {
+  "a.py": {
+   "cache_key": "boundary:v3:3399e53c1d7303b025c90737ec2e0774498eec2ae434802274744be4808862e3",
+   "key_payload": {
+    "content_hash": "sha1:14320764042a7ef3fea04d922140b92ee97960be",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "a.py",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

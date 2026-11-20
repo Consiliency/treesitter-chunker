@@ -137,6 +137,10 @@ python_classes = "Test*"
 python_functions = "test_*"
 addopts = [
     "--ignore=grammars/",
+    # Call-resolution fixture trees contain test_*.py files of their own
+    # (treesitter-chunker#682); tests/test_call_resolution_fixture_collection.py
+    # checks that collecting tests/fixtures yields nothing.
+    "--ignore=tests/fixtures/call_resolution",
     "--strict-markers",
     "--tb=short",
     # "--cov=chunker",
@@ -196,6 +200,8 @@ extend-exclude = '''
   | archive
   | worktrees
   | node_modules
+  # call-resolution fixture trees are byte-pinned (treesitter-chunker#682)
+  | tests/fixtures/call_resolution
 )/
 '''
 
@@ -234,6 +240,10 @@ exclude = [
     "ide",
     "node_modules",
 ]
+# Byte-pinned call-resolution fixture trees (treesitter-chunker#682). This is
+# extend-exclude, not exclude, because the canonical CI command's --exclude
+# flags replace the exclude list; see tests/test_lint_path_policy.py.
+extend-exclude = ["tests/fixtures/call_resolution"]
 
 [tool.ruff.lint]
 select = [

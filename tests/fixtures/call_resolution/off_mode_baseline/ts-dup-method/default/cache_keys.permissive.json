@@ -1,0 +1,27 @@
+{
+ "files": {
+  "k.ts": {
+   "cache_key": "boundary:v3:b34ef2fdd2bd0eb4e7b0808b2666e7823beb508d3d0ff868dc2285aa3dab2224",
+   "key_payload": {
+    "content_hash": "sha1:49fb0726e63d8aec0c5088604921a8350de96263",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "k.ts",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

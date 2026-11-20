@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:4a38e14f916615ffc8a447b5fe04316c8935fced",
+     "call_span": [
+      56,
+      59
+     ],
+     "callee_span": [
+      56,
+      57
+     ],
+     "caller": "a",
+     "file": "use.ts",
+     "line": 2,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "597fc0957ea76990020aeff1376edf5219c5ccf9",
+       "fbdf891b11906e5bbf43b9232b427edc1375cf5a"
+      ],
+      "candidates": [
+       "svc.tsx:1:t",
+       "svc.ts:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-ext-collision-tsx"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-ext-collision-tsx"
+}

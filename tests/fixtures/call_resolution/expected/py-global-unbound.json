@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:7b855ed19c076229580d0742eb377ddcb0bd54a0",
+     "call_span": [
+      22,
+      30
+     ],
+     "callee_span": [
+      22,
+      28
+     ],
+     "caller": "use",
+     "file": "c.py",
+     "line": 2,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-global-unbound"
+  }
+ },
+ "source": "authored",
+ "tree": "py-global-unbound"
+}

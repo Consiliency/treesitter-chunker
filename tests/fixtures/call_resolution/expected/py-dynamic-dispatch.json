@@ -1,0 +1,67 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:340d1f36d2afdeb71795e9e67450d57cfcaeab41",
+     "call_span": [
+      79,
+      89
+     ],
+     "callee_span": [
+      79,
+      87
+     ],
+     "caller": "A.go",
+     "file": "a.py",
+     "line": 6,
+     "reference": "self.run",
+     "today": {
+      "candidate_ids": [
+       "38e669aee00ce6300093172569c358b9b07b3169",
+       "b8726884c02786dffcb3f8d81656a3155e589df0"
+      ],
+      "candidates": [
+       "a.py:10:B.run",
+       "a.py:2:A.run"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:1a09e502da03a045852ef7c2f2a047eee77dacc5",
+     "call_span": [
+      161,
+      168
+     ],
+     "callee_span": [
+      161,
+      166
+     ],
+     "caller": "go",
+     "file": "a.py",
+     "line": 15,
+     "reference": "x.run",
+     "today": {
+      "candidate_ids": [
+       "38e669aee00ce6300093172569c358b9b07b3169",
+       "b8726884c02786dffcb3f8d81656a3155e589df0"
+      ],
+      "candidates": [
+       "a.py:10:B.run",
+       "a.py:2:A.run"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-dynamic-dispatch"
+  }
+ },
+ "source": "authored",
+ "tree": "py-dynamic-dispatch"
+}

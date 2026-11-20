@@ -1,0 +1,177 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 70,
+   "callee_byte_start": 67,
+   "file": "a.tsx",
+   "from": "401b0bd1345dbc2ce10734db130b2eb24f3bdf9a",
+   "id": "call:77f3edd841ab685830f437f13db0d4f4566675ce",
+   "location": {
+    "byte_end": 72,
+    "byte_start": 67,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "Foo",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "6eb619dd367185804e443b991e590311c7229307",
+    "d55cf3620cd25d29563ab257cbb2d2e21b198c44"
+   ],
+   "file": "a.tsx",
+   "from": "401b0bd1345dbc2ce10734db130b2eb24f3bdf9a",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "Foo",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "Foo",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:77f3edd841ab685830f437f13db0d4f4566675ce",
+   "callee_byte_end": 70,
+   "callee_byte_start": 67,
+   "candidates": [
+    "6eb619dd367185804e443b991e590311c7229307",
+    "d55cf3620cd25d29563ab257cbb2d2e21b198c44"
+   ],
+   "file": "a.tsx",
+   "from": "401b0bd1345dbc2ce10734db130b2eb24f3bdf9a",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 72,
+    "byte_start": 67,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "Foo",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "Foo",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "401b0bd1345dbc2ce10734db130b2eb24f3bdf9a": {
+   "definition_id": "401b0bd1345dbc2ce10734db130b2eb24f3bdf9a",
+   "end_line": 2,
+   "file": "a.tsx",
+   "kind": "function",
+   "language": "tsx",
+   "line": 2,
+   "module": "a",
+   "name": "App",
+   "node_id": "702672b77f79a029500085553d32528e40cc6383",
+   "parent_class": "",
+   "qualified_name": "App",
+   "semantic_path": "a.tsx::App",
+   "signature": "App()"
+  },
+  "6eb619dd367185804e443b991e590311c7229307": {
+   "definition_id": "6eb619dd367185804e443b991e590311c7229307",
+   "end_line": 1,
+   "file": "a.tsx",
+   "kind": "function",
+   "language": "tsx",
+   "line": 1,
+   "module": "a",
+   "name": "Foo",
+   "node_id": "f6c14e423f69d5829a6f164194e2d6dbabf0e086",
+   "parent_class": "",
+   "qualified_name": "Foo",
+   "semantic_path": "a.tsx::Foo",
+   "signature": "Foo()"
+  },
+  "d55cf3620cd25d29563ab257cbb2d2e21b198c44": {
+   "definition_id": "d55cf3620cd25d29563ab257cbb2d2e21b198c44",
+   "end_line": 1,
+   "file": "b.tsx",
+   "kind": "function",
+   "language": "tsx",
+   "line": 1,
+   "module": "b",
+   "name": "Foo",
+   "node_id": "771004f6351794c5363d52ac0649b7fb63f8175c",
+   "parent_class": "",
+   "qualified_name": "Foo",
+   "semantic_path": "b.tsx::Foo",
+   "signature": "Foo()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "6eb619dd367185804e443b991e590311c7229307",
+    "end_line": 1,
+    "file": "a.tsx",
+    "kind": "function",
+    "language": "tsx",
+    "line": 1,
+    "module": "a",
+    "name": "Foo",
+    "node_id": "f6c14e423f69d5829a6f164194e2d6dbabf0e086",
+    "parent_class": "",
+    "qualified_name": "Foo",
+    "semantic_path": "a.tsx::Foo",
+    "signature": "Foo()"
+   },
+   {
+    "definition_id": "401b0bd1345dbc2ce10734db130b2eb24f3bdf9a",
+    "end_line": 2,
+    "file": "a.tsx",
+    "kind": "function",
+    "language": "tsx",
+    "line": 2,
+    "module": "a",
+    "name": "App",
+    "node_id": "702672b77f79a029500085553d32528e40cc6383",
+    "parent_class": "",
+    "qualified_name": "App",
+    "semantic_path": "a.tsx::App",
+    "signature": "App()"
+   },
+   {
+    "definition_id": "d55cf3620cd25d29563ab257cbb2d2e21b198c44",
+    "end_line": 1,
+    "file": "b.tsx",
+    "kind": "function",
+    "language": "tsx",
+    "line": 1,
+    "module": "b",
+    "name": "Foo",
+    "node_id": "771004f6351794c5363d52ac0649b7fb63f8175c",
+    "parent_class": "",
+    "qualified_name": "Foo",
+    "semantic_path": "b.tsx::Foo",
+    "signature": "Foo()"
+   }
+  ],
+  "imports": []
+ }
+}

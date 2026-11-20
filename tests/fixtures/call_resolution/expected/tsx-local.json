@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.3"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:77f3edd841ab685830f437f13db0d4f4566675ce",
+     "call_span": [
+      67,
+      72
+     ],
+     "callee_span": [
+      67,
+      70
+     ],
+     "caller": "App",
+     "file": "a.tsx",
+     "line": 2,
+     "reference": "Foo",
+     "today": {
+      "candidate_ids": [
+       "6eb619dd367185804e443b991e590311c7229307",
+       "d55cf3620cd25d29563ab257cbb2d2e21b198c44"
+      ],
+      "candidates": [
+       "a.tsx:1:Foo",
+       "b.tsx:1:Foo"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/tsx-local"
+  }
+ },
+ "source": "authored",
+ "tree": "tsx-local"
+}

@@ -1,0 +1,135 @@
+{
+ "plan_sections": [
+  "10.2"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:daaad6eb52b7f3495c40776de336c789c3e8e1f7",
+     "call_span": [
+      115,
+      123
+     ],
+     "callee_span": [
+      115,
+      121
+     ],
+     "caller": "C.b",
+     "file": "svc.py",
+     "line": 12,
+     "reference": "self.c",
+     "today": {
+      "candidate_ids": [
+       "e166968e86022d3720ff9a96fb5bef95958ef980"
+      ],
+      "candidates": [
+       "svc.py:14:C.c"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:94a4d8bbfaaf45d1245c48af206c0637d364ac99",
+     "call_span": [
+      157,
+      165
+     ],
+     "callee_span": [
+      157,
+      163
+     ],
+     "caller": "C.c",
+     "file": "svc.py",
+     "line": 15,
+     "reference": "only_b",
+     "today": {
+      "candidate_ids": [
+       "569463d08618124fc8d6e338020f588bc03a422e"
+      ],
+      "candidates": [
+       "svc.py:1:only_b"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:a02ce5a66050713616b21cc3aba67c367d41c5ef",
+     "call_span": [
+      217,
+      221
+     ],
+     "callee_span": [
+      217,
+      218
+     ],
+     "caller": "d",
+     "file": "svc.py",
+     "line": 23,
+     "reference": "d",
+     "today": {
+      "candidate_ids": [
+       "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+       "0de792bed499be0d05b2d0ee621b71ffea7755cc#1"
+      ],
+      "candidates": [
+       "svc.py:18:d",
+       "svc.py:22:d"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:3ecea44b016fe52648d182acb89b0e82e3d12f7a",
+     "call_span": [
+      250,
+      253
+     ],
+     "callee_span": [
+      250,
+      251
+     ],
+     "caller": "uses_c2",
+     "file": "svc.py",
+     "line": 27,
+     "reference": "C",
+     "today": {
+      "candidate_ids": [
+       "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+       "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83#1"
+      ],
+      "candidates": [
+       "svc.py:5:C",
+       "svc.py:10:C"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:cbcf4d03fe6c7961d2414c877ecff5933568a6d0",
+     "call_span": [
+      250,
+      257
+     ],
+     "callee_span": [
+      250,
+      255
+     ],
+     "caller": "uses_c2",
+     "file": "svc.py",
+     "line": 27,
+     "reference": "C().c",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    }
+   ],
+   "language": null,
+   "root": "greenfield-r1/rt-pyrec"
+  }
+ },
+ "source": "greenfield-r1",
+ "tree": "rt-pyrec"
+}

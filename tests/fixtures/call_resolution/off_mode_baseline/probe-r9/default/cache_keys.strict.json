@@ -1,0 +1,189 @@
+{
+ "files": {
+  "pkg/over.ts": {
+   "cache_key": "boundary:v3:62c6c62be956687b7879819acbbaa27e62f5b2036b748c0807a0172d4ca5af48",
+   "key_payload": {
+    "content_hash": "sha1:47d9d2bfd12941b7b778d96fef1c8c2636902e29",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "pkg/over.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "pkg/svc.ts": {
+   "cache_key": "boundary:v3:9df3cd06f8ac88a0a5bef14e95120e602876d743c0b28549a2351e55012c3b0b",
+   "key_payload": {
+    "content_hash": "sha1:7d235157b0df27c76cd3057f4170e5e6dbff6430",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "pkg/svc.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "pkg/svc.tsx": {
+   "cache_key": "boundary:v3:9da958c1eeb84d445f16824549cf4caf6f8090a560c9dff6ac8c6e9088c95348",
+   "key_payload": {
+    "content_hash": "sha1:18e27fec291c10b82007a01f6bec6eac69db07e8",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-tsx:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "tsx",
+    "path": "pkg/svc.tsx",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "pkg/use.ts": {
+   "cache_key": "boundary:v3:1e7e2717d4d5ae1bed7de4f1b24dcb9eedd8e7b41e613de584141753646edbdf",
+   "key_payload": {
+    "content_hash": "sha1:f4c25c9cd2bc1da1edc24d026f5d1a6dc9ac11c6",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "pkg/use.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "py/a.py": {
+   "cache_key": "boundary:v3:dc025656a9b32ef7827d5baf7cae8573ee1c367a1c2a71e8372891ba52f356ac",
+   "key_payload": {
+    "content_hash": "sha1:d6681868b74db5405c622ffab8246d63c9c62cb1",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "py/a.py",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "py/b.py": {
+   "cache_key": "boundary:v3:1c4eb54b3ec2ae7cead4bdae9fcc87e115b7a768262f1b75d725f542da555ede",
+   "key_payload": {
+    "content_hash": "sha1:3c78b1ad29239996a6615d2171455f49e57f6c42",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "py/b.py",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "py/c.py": {
+   "cache_key": "boundary:v3:b9b22c6ee4518d496cd61d36e07fa13f01c1ac74efd73d079e59fbef593e0363",
+   "key_payload": {
+    "content_hash": "sha1:adf29b8de316ec19585ad612c435a227174d9314",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "py/c.py",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "py/pkg.py": {
+   "cache_key": "boundary:v3:cb7a24c6cd125838c3637cfd819d76207e3da055bd87c6066a990ee0ec68990d",
+   "key_payload": {
+    "content_hash": "sha1:b394cacc2499cacc7dae29efbe2a272e7bd3115d",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "py/pkg.py",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "py/pkg/__init__.py": {
+   "cache_key": "boundary:v3:21a91bc5478d10f0f6ccb70619adc62bf357db651bef0342c229e617dc5a1e6d",
+   "key_payload": {
+    "content_hash": "sha1:648bf919af94d0747b7b4b84462560cd76e64a70",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "py/pkg/__init__.py",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "py/redef.py": {
+   "cache_key": "boundary:v3:26b1b09c626c87e88b0fbd57632e73c0fc3bab1a4b2d61b227a0fb4628381810",
+   "key_payload": {
+    "content_hash": "sha1:4e3c8d8cd5789634cf4e21e6e382405d81193a6d",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "py/redef.py",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

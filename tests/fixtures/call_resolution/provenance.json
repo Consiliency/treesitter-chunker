@@ -1,0 +1,1764 @@
+{
+ "description": "Provenance of every copied or authored fixture file (treesitter-chunker#682, plan section 10.1). See PROVENANCE.md.",
+ "files": {
+  "authored/ctl-c/a.c": {
+   "sha256": "4765e7ffffd457541b1eaf38bcebbd8d9da79d5e1406f4dd0828844fd3a63fd9",
+   "source": "authored",
+   "source_path": "authored/ctl-c/a.c"
+  },
+  "authored/ctl-c/b.c": {
+   "sha256": "67e9c1555047562e89b1bc311bdf382add4f4d6f226e92f68d116ccecd4f8b5f",
+   "source": "authored",
+   "source_path": "authored/ctl-c/b.c"
+  },
+  "authored/ctl-c/c.c": {
+   "sha256": "bd13be484477007a7455243c6d79ab10c1285e4e42d332acf1fbdc074c76127b",
+   "source": "authored",
+   "source_path": "authored/ctl-c/c.c"
+  },
+  "authored/ctl-cpp/a.cpp": {
+   "sha256": "17ed72d9d3f5aab49f45d9c54115937fd6849a66d572c4f04369cf07e5162d39",
+   "source": "authored",
+   "source_path": "authored/ctl-cpp/a.cpp"
+  },
+  "authored/ctl-cpp/b.cpp": {
+   "sha256": "2575a571e7c1a890fc9efb50aefae5875390b6dd75cce2b965c86ad6e89da0c8",
+   "source": "authored",
+   "source_path": "authored/ctl-cpp/b.cpp"
+  },
+  "authored/ctl-cpp/c.cpp": {
+   "sha256": "bd13be484477007a7455243c6d79ab10c1285e4e42d332acf1fbdc074c76127b",
+   "source": "authored",
+   "source_path": "authored/ctl-cpp/c.cpp"
+  },
+  "authored/ctl-csharp/A.cs": {
+   "sha256": "1d8f2c3623b637dc7aa9952ee4ae5dc009eb75d1243340dcae3ea25b3373bf40",
+   "source": "authored",
+   "source_path": "authored/ctl-csharp/A.cs"
+  },
+  "authored/ctl-csharp/B.cs": {
+   "sha256": "8f40301c848fccd38159f6675411b7ee7ec8aca073b863c083e4a2229a8a6982",
+   "source": "authored",
+   "source_path": "authored/ctl-csharp/B.cs"
+  },
+  "authored/ctl-go/a/a.go": {
+   "sha256": "60cc33ce2f08a1364bcfcd98dbef23c2e4ced5a8f3efd25075877765a6c05a46",
+   "source": "authored",
+   "source_path": "authored/ctl-go/a/a.go"
+  },
+  "authored/ctl-go/b/b.go": {
+   "sha256": "a14d10bf0af7d3a8fbdcda3f11fd393ac3905fa403347c19addca6bf368751b0",
+   "source": "authored",
+   "source_path": "authored/ctl-go/b/b.go"
+  },
+  "authored/ctl-go/c/c.go": {
+   "sha256": "c1f020bef2ee27f70999b29b42aa35be855d9905eb6412b8db64479f07846ecf",
+   "source": "authored",
+   "source_path": "authored/ctl-go/c/c.go"
+  },
+  "authored/ctl-java/A.java": {
+   "sha256": "bc736f86dd7da7382bae3d9905dc0dc038e439b69af221824206f3ef46413209",
+   "source": "authored",
+   "source_path": "authored/ctl-java/A.java"
+  },
+  "authored/ctl-java/B.java": {
+   "sha256": "f60904ddedb9e81f32e3f235a8b2f50a3b394e4e3af143fc003b884c595b9429",
+   "source": "authored",
+   "source_path": "authored/ctl-java/B.java"
+  },
+  "authored/ctl-kotlin/A.kt": {
+   "sha256": "faaecd478f76e6a8a4ac91ed0cb61ce52f91d838f0ba3551b7f3072c0649271d",
+   "source": "authored",
+   "source_path": "authored/ctl-kotlin/A.kt"
+  },
+  "authored/ctl-kotlin/B.kt": {
+   "sha256": "d81ab0f844faa0540e58e416b124a8203dbf10aa00d8d107690b18595360ec52",
+   "source": "authored",
+   "source_path": "authored/ctl-kotlin/B.kt"
+  },
+  "authored/ctl-rust/a.rs": {
+   "sha256": "ddd002bd0cacc4772a397effe282e60ab7c78a5d79ead2eba2f3813e0d0be8a3",
+   "source": "authored",
+   "source_path": "authored/ctl-rust/a.rs"
+  },
+  "authored/ctl-rust/b.rs": {
+   "sha256": "c95107895d0833b2c6d9e2dd0af1d6e030b4206d1291e1d227523cf86dd6eff6",
+   "source": "authored",
+   "source_path": "authored/ctl-rust/b.rs"
+  },
+  "authored/ctl-rust/c.rs": {
+   "sha256": "582eecb6bdb270606bf73b5375f1196ebaebdbc427a1f47ab67926a741f8100c",
+   "source": "authored",
+   "source_path": "authored/ctl-rust/c.rs"
+  },
+  "authored/js-annexb-overwrite/a.js": {
+   "sha256": "12534b1183e1eebb0ab7d33509994b5dcba7041eba4353d096aecafcf22a7a3f",
+   "source": "authored",
+   "source_path": "authored/js-annexb-overwrite/a.js"
+  },
+  "authored/js-block-fn/a.js": {
+   "sha256": "a9b8541cbeb769df54ca91f88de0160198711da69bcab0f89a7328523e3dbb22",
+   "source": "authored",
+   "source_path": "authored/js-block-fn/a.js"
+  },
+  "authored/js-cjs-local/a.js": {
+   "sha256": "134c4e765c4889494f829aa3169b0c3ac3b51dd4c898618891bb05a61dce9728",
+   "source": "authored",
+   "source_path": "authored/js-cjs-local/a.js"
+  },
+  "authored/js-cjs-local/lib.js": {
+   "sha256": "96beca724a53439c96525cac2d3fc4e10b64ade7bf9f7ea284a9290d3fa5ad93",
+   "source": "authored",
+   "source_path": "authored/js-cjs-local/lib.js"
+  },
+  "authored/js-cjs-local/other.js": {
+   "sha256": "9b9215b1bafba5101b95f55d76e8a2cbccf9f16b5d2b3d9ccb1fff8827c2803b",
+   "source": "authored",
+   "source_path": "authored/js-cjs-local/other.js"
+  },
+  "authored/js-class-expr-self/a.js": {
+   "sha256": "12360025f5124ed4e91b5788dd4b66957f0f76d861afe8223d5331ed0dba64b9",
+   "source": "authored",
+   "source_path": "authored/js-class-expr-self/a.js"
+  },
+  "authored/js-class-expr-self/b.js": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/js-class-expr-self/b.js"
+  },
+  "authored/js-class-plain-call/a.js": {
+   "sha256": "f6e580a27b166fea65b746c54e837055bd21d246668c7d40ffdc58ff7658a439",
+   "source": "authored",
+   "source_path": "authored/js-class-plain-call/a.js"
+  },
+  "authored/js-class-plain-call/b.js": {
+   "sha256": "3f419887b5f21504d0c327a04a81cdfd4f92c3869ee687f8eb20da563a8e3d86",
+   "source": "authored",
+   "source_path": "authored/js-class-plain-call/b.js"
+  },
+  "authored/js-default-param/a.js": {
+   "sha256": "479cdf1e43a9f392e558e214402065e0824e687fca77b6ccb4bb7a0fa3d4e117",
+   "source": "authored",
+   "source_path": "authored/js-default-param/a.js"
+  },
+  "authored/js-default-param/b.js": {
+   "sha256": "525b1d0fc11623e062521d0b451edbe4e75b53d9377c6698ac7cbf3a8209c4b6",
+   "source": "authored",
+   "source_path": "authored/js-default-param/b.js"
+  },
+  "authored/js-esm-dup/a.js": {
+   "sha256": "26ddb0d7846de576c00fc0147a83016ce9ca7c8d193b4db8bad663a8080b53a6",
+   "source": "authored",
+   "source_path": "authored/js-esm-dup/a.js"
+  },
+  "authored/js-esm-dup/other.js": {
+   "sha256": "2401aae1d10ae469b465cd341e06d4660396b1edcaf5ea9b1e3b5892d91cfbbf",
+   "source": "authored",
+   "source_path": "authored/js-esm-dup/other.js"
+  },
+  "authored/js-eval-with/a.js": {
+   "sha256": "0e2fc8872f9307b3c12e6ec8555d5e2893dee5d7985b5311fbfd37d9aeac35c4",
+   "source": "authored",
+   "source_path": "authored/js-eval-with/a.js"
+  },
+  "authored/js-eval-with/b.js": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/js-eval-with/b.js"
+  },
+  "authored/js-fnexpr-self/a.js": {
+   "sha256": "9a60899f1f81a93d4378a36da2bb80b094d8c7bc859ed4854896b34353babc5a",
+   "source": "authored",
+   "source_path": "authored/js-fnexpr-self/a.js"
+  },
+  "authored/js-fnexpr-self/b.js": {
+   "sha256": "9b9215b1bafba5101b95f55d76e8a2cbccf9f16b5d2b3d9ccb1fff8827c2803b",
+   "source": "authored",
+   "source_path": "authored/js-fnexpr-self/b.js"
+  },
+  "authored/js-hoist-fnbody/a.js": {
+   "sha256": "24d3e5e4ce4fcb038c6dc55b59d659cabd1e79c039b61e9f6c438d75242a47a3",
+   "source": "authored",
+   "source_path": "authored/js-hoist-fnbody/a.js"
+  },
+  "authored/js-hoist-fnbody/b.js": {
+   "sha256": "2ffc084f153f8ca3b4bd526706755b6e353ebdf46abb3678db0e1a15f3a26110",
+   "source": "authored",
+   "source_path": "authored/js-hoist-fnbody/b.js"
+  },
+  "authored/js-implicit-global/a.js": {
+   "sha256": "8e8e312fc0c7270780e379f922f7f109949a465eb2ae2eaf1231c8924ce4e734",
+   "source": "authored",
+   "source_path": "authored/js-implicit-global/a.js"
+  },
+  "authored/js-implicit-global/b.js": {
+   "sha256": "fbcd58e40a641d6ae315e5151f0589cbaffdc0ca9f5f10b55e121b21b3cf51c8",
+   "source": "authored",
+   "source_path": "authored/js-implicit-global/b.js"
+  },
+  "authored/js-implicit-global/c.js": {
+   "sha256": "2401aae1d10ae469b465cd341e06d4660396b1edcaf5ea9b1e3b5892d91cfbbf",
+   "source": "authored",
+   "source_path": "authored/js-implicit-global/c.js"
+  },
+  "authored/js-importer-ext-order/only.ts": {
+   "sha256": "f19c812d94925ffcc2ca5fa850bd2a54bd0e2b9b7b50cc93a0050d8cf1961aa5",
+   "source": "authored",
+   "source_path": "authored/js-importer-ext-order/only.ts"
+  },
+  "authored/js-importer-ext-order/other.js": {
+   "sha256": "3169f53be69dfe257e15741f1d26815664690f49c82413717bd2fbedbd61a787",
+   "source": "authored",
+   "source_path": "authored/js-importer-ext-order/other.js"
+  },
+  "authored/js-importer-ext-order/svc.js": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/js-importer-ext-order/svc.js"
+  },
+  "authored/js-importer-ext-order/svc.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/js-importer-ext-order/svc.ts"
+  },
+  "authored/js-importer-ext-order/use.js": {
+   "sha256": "e3438cc3d3d69a61e653551e6665806fb7b5fc1579c38b2fb7b0c880b7369151",
+   "source": "authored",
+   "source_path": "authored/js-importer-ext-order/use.js"
+  },
+  "authored/js-importer-ext-order/use2.js": {
+   "sha256": "32e3d8bd2eb962d09cdd485b878a1e90596670a402006119b8c4969897b6c97b",
+   "source": "authored",
+   "source_path": "authored/js-importer-ext-order/use2.js"
+  },
+  "authored/js-importer-ext-order/use3.js": {
+   "sha256": "68459084aabf3964da2a49bd8b6b1454f0dd819b7a2a8454309d330066b3a447",
+   "source": "authored",
+   "source_path": "authored/js-importer-ext-order/use3.js"
+  },
+  "authored/js-locals/a.js": {
+   "sha256": "e584aa86c480a290bd986d72ec8f7966f0198db393614f2d48ad4c49f7f33ac7",
+   "source": "authored",
+   "source_path": "authored/js-locals/a.js"
+  },
+  "authored/js-locals/args.js": {
+   "sha256": "5b66a7e8e02012e6bb3c758f6c347a07bf381dd0f1342ca1045f1ea65e74be5f",
+   "source": "authored",
+   "source_path": "authored/js-locals/args.js"
+  },
+  "authored/js-locals/args2.js": {
+   "sha256": "811a90bc53e227fe82bcad3b847ed1e0d1defdb20ff938e4b0125d926d6203ed",
+   "source": "authored",
+   "source_path": "authored/js-locals/args2.js"
+  },
+  "authored/js-locals/b.js": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/js-locals/b.js"
+  },
+  "authored/js-require/other.js": {
+   "sha256": "9b9215b1bafba5101b95f55d76e8a2cbccf9f16b5d2b3d9ccb1fff8827c2803b",
+   "source": "authored",
+   "source_path": "authored/js-require/other.js"
+  },
+  "authored/js-require/svc.js": {
+   "sha256": "96beca724a53439c96525cac2d3fc4e10b64ade7bf9f7ea284a9290d3fa5ad93",
+   "source": "authored",
+   "source_path": "authored/js-require/svc.js"
+  },
+  "authored/js-require/use.js": {
+   "sha256": "7c06e17a31dc550ad45376a764ba7b2c28c0f48c9626751cefca6b81535f95d0",
+   "source": "authored",
+   "source_path": "authored/js-require/use.js"
+  },
+  "authored/js-script-global/s1.js": {
+   "sha256": "d1b21bee15ae38182ad48dd0a8c70e554437f5d949f621e671c23c3b04545e38",
+   "source": "authored",
+   "source_path": "authored/js-script-global/s1.js"
+  },
+  "authored/js-script-global/s2.js": {
+   "sha256": "0b46843242671619bceead23d33b6b61abe1ceb86d80b8864ac0717c2375a742",
+   "source": "authored",
+   "source_path": "authored/js-script-global/s2.js"
+  },
+  "authored/js-tdz/a.js": {
+   "sha256": "f5e1a799014f8720f8e09b53a7f239e3fad09c1768eca76b2640b9d0471e1478",
+   "source": "authored",
+   "source_path": "authored/js-tdz/a.js"
+  },
+  "authored/js-tdz/b.js": {
+   "sha256": "dbf48cbd8b98d218ee15ca0eadd0e55c0c6fe4686ab7338de74eb63c5d3d2954",
+   "source": "authored",
+   "source_path": "authored/js-tdz/b.js"
+  },
+  "authored/js-template-call/a.js": {
+   "sha256": "b50690757687d8747648d8c78b7c37e5c8437c4184e2662938af2ece6a60d82b",
+   "source": "authored",
+   "source_path": "authored/js-template-call/a.js"
+  },
+  "authored/js-template-call/b.js": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/js-template-call/b.js"
+  },
+  "authored/js-var-fn/a.js": {
+   "sha256": "c5e1b8373218c80d9e7f936ce81add84118702485419d8f1f6099b8c5e65e638",
+   "source": "authored",
+   "source_path": "authored/js-var-fn/a.js"
+  },
+  "authored/js-var-fn/b.js": {
+   "sha256": "a44f2561fa5d2baaf3c340a63a5c2271a117adc36f19befb9db0f277147e6e04",
+   "source": "authored",
+   "source_path": "authored/js-var-fn/b.js"
+  },
+  "authored/mixed-family/a.ts": {
+   "sha256": "a121ba58499f7017075c53d358b653d5a94af5e20f480363289ab96a04400091",
+   "source": "authored",
+   "source_path": "authored/mixed-family/a.ts"
+  },
+  "authored/mixed-family/b.py": {
+   "sha256": "394202111a05faba950b2dcc4c3c41ea4fb59317bc49f3485ac146eaf2b4bdf9",
+   "source": "authored",
+   "source_path": "authored/mixed-family/b.py"
+  },
+  "authored/mixed-family/c.go": {
+   "sha256": "3dc689c8ce873a53921aa81207ec7547a651049938b71c48d5c8065ed2caf20a",
+   "source": "authored",
+   "source_path": "authored/mixed-family/c.go"
+  },
+  "authored/mixed-family/d.ts": {
+   "sha256": "4a29d952b50bfb7939bdb66192664e063d979bc670412622ab7c5494e36901f9",
+   "source": "authored",
+   "source_path": "authored/mixed-family/d.ts"
+  },
+  "authored/mixed-family/x.ts": {
+   "sha256": "2e163e1590a82f8d260d9f3ed514627a82b7b512f166790accf75165e80bb04e",
+   "source": "authored",
+   "source_path": "authored/mixed-family/x.ts"
+  },
+  "authored/py-ancestor-module-shadow/a.py": {
+   "sha256": "ae4832cd0ed4d806f53a28f0fd84eabcf90a6d285a01e3c581cfac471f7bfcce",
+   "source": "authored-pr0",
+   "source_path": null
+  },
+  "authored/py-ancestor-module-shadow/a/b.py": {
+   "sha256": "f7d73966a3d13a7fc1216d6b9f5372bc0bd6678f0301c456306d2bceffb1b605",
+   "source": "authored-pr0",
+   "source_path": null
+  },
+  "authored/py-ancestor-module-shadow/app.py": {
+   "sha256": "d6fc77a6bced62c974225ac2ae4fe781ab8c0d8b04744ee257fe04d07927e1ff",
+   "source": "authored-pr0",
+   "source_path": null
+  },
+  "authored/py-ancestor-module-shadow/other.py": {
+   "sha256": "bfd9e934a9b47fd8c1d2bbd8250cdf59b2cbb4b73efef7bd46403b6761a8c4cc",
+   "source": "authored-pr0",
+   "source_path": null
+  },
+  "authored/py-attr-vs-submodule/app.py": {
+   "sha256": "055f5d3a75637198ef40e31c48c01a9300429b0c2f5671fd53b810fe6028f51e",
+   "source": "authored",
+   "source_path": "authored/py-attr-vs-submodule/app.py"
+  },
+  "authored/py-attr-vs-submodule/pkg/__init__.py": {
+   "sha256": "9ad0aa0e42b3e143bfc34a020a6941d15e5720de849edd16578a193b6371f69c",
+   "source": "authored",
+   "source_path": "authored/py-attr-vs-submodule/pkg/__init__.py"
+  },
+  "authored/py-attr-vs-submodule/pkg/helper.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-attr-vs-submodule/pkg/helper.py"
+  },
+  "authored/py-attr-vs-submodule/pkg/impl.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-attr-vs-submodule/pkg/impl.py"
+  },
+  "authored/py-builtin-family/a.py": {
+   "sha256": "0e11a41c7f01c75989089ef9f45a8cedcfcc5c72a622184abc423fcd76f9b6fc",
+   "source": "authored",
+   "source_path": "authored/py-builtin-family/a.py"
+  },
+  "authored/py-builtin-family/c.py": {
+   "sha256": "ebc7d0bd75b981bee928eb276f12305360f6686d799a0a8827ed52cd3f5e5056",
+   "source": "authored",
+   "source_path": "authored/py-builtin-family/c.py"
+  },
+  "authored/py-builtin-family/x.js": {
+   "sha256": "2a852f574a07cbfb93a5941980278d7e69090a6eed57f31ab4825528f03acbdd",
+   "source": "authored",
+   "source_path": "authored/py-builtin-family/x.js"
+  },
+  "authored/py-class-call/a.py": {
+   "sha256": "d7bcd2aa795a99ea5de610460dadc35fb47e17ffb2ff96e018a583c177188ab5",
+   "source": "authored",
+   "source_path": "authored/py-class-call/a.py"
+  },
+  "authored/py-class-call/b.py": {
+   "sha256": "3fcc48c2c87d7bc720f41de449eee41812ed9f211383f8f96686c00889bb3f91",
+   "source": "authored",
+   "source_path": "authored/py-class-call/b.py"
+  },
+  "authored/py-class-default/a.py": {
+   "sha256": "8ae91259b118114be0271f2a66a8805986ef5022da52cfbe3b4622cb8008eeef",
+   "source": "authored",
+   "source_path": "authored/py-class-default/a.py"
+  },
+  "authored/py-class-default/b.py": {
+   "sha256": "394202111a05faba950b2dcc4c3c41ea4fb59317bc49f3485ac146eaf2b4bdf9",
+   "source": "authored",
+   "source_path": "authored/py-class-default/b.py"
+  },
+  "authored/py-class-free-var/a.py": {
+   "sha256": "16c1cf5f010b4254c7840056fad92bb239751e059fcad42ec186a2c33b3fafdd",
+   "source": "authored",
+   "source_path": "authored/py-class-free-var/a.py"
+  },
+  "authored/py-class-free-var/b.py": {
+   "sha256": "394202111a05faba950b2dcc4c3c41ea4fb59317bc49f3485ac146eaf2b4bdf9",
+   "source": "authored",
+   "source_path": "authored/py-class-free-var/b.py"
+  },
+  "authored/py-class-scope-2/a.py": {
+   "sha256": "4b691c85b02c1ad2f82458db6a5abb7bb03268a07f94b30e8766dd50724ddaf8",
+   "source": "authored",
+   "source_path": "authored/py-class-scope-2/a.py"
+  },
+  "authored/py-class-scope-2/b.py": {
+   "sha256": "394202111a05faba950b2dcc4c3c41ea4fb59317bc49f3485ac146eaf2b4bdf9",
+   "source": "authored",
+   "source_path": "authored/py-class-scope-2/b.py"
+  },
+  "authored/py-class-scope/a.py": {
+   "sha256": "4b691c85b02c1ad2f82458db6a5abb7bb03268a07f94b30e8766dd50724ddaf8",
+   "source": "authored",
+   "source_path": "authored/py-class-scope/a.py"
+  },
+  "authored/py-closure-2/a.py": {
+   "sha256": "bea947f2d4636637f9e5ab4fbd86a10654991930acdc6dde62462fd9ced2098c",
+   "source": "authored",
+   "source_path": "authored/py-closure-2/a.py"
+  },
+  "authored/py-closure-2/b.py": {
+   "sha256": "394202111a05faba950b2dcc4c3c41ea4fb59317bc49f3485ac146eaf2b4bdf9",
+   "source": "authored",
+   "source_path": "authored/py-closure-2/b.py"
+  },
+  "authored/py-closure/a.py": {
+   "sha256": "bea947f2d4636637f9e5ab4fbd86a10654991930acdc6dde62462fd9ced2098c",
+   "source": "authored",
+   "source_path": "authored/py-closure/a.py"
+  },
+  "authored/py-cond-e/svc.py": {
+   "sha256": "69cc98e98227742c6e1fbb512d9255623d51915122a675f60655b2421c85ce35",
+   "source": "authored",
+   "source_path": "authored/py-cond-e/svc.py"
+  },
+  "authored/py-decorated/a.py": {
+   "sha256": "3b2f4a16717403c900ddd6e111e798c030e455713b31dd9117ea91962d22dd11",
+   "source": "authored",
+   "source_path": "authored/py-decorated/a.py"
+  },
+  "authored/py-decorated/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-decorated/b.py"
+  },
+  "authored/py-dynamic-dispatch/a.py": {
+   "sha256": "88508401742bda92b315830f2a67ccc44e22381849132c39649c8675b10ae730",
+   "source": "authored",
+   "source_path": "authored/py-dynamic-dispatch/a.py"
+  },
+  "authored/py-dynamic-import/a.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-dynamic-import/a.py"
+  },
+  "authored/py-dynamic-import/app.py": {
+   "sha256": "df5caeeb68e5f977d2af6f8bf5d7c3ab995e3dc62dd33bdc26ec920746d479e6",
+   "source": "authored",
+   "source_path": "authored/py-dynamic-import/app.py"
+  },
+  "authored/py-dynamic-import/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-dynamic-import/b.py"
+  },
+  "authored/py-dynamic-scope/a1.py": {
+   "sha256": "85b3f9f79c327b368715aca265ed92984ea6171ba72c460970864814d7c0706e",
+   "source": "authored",
+   "source_path": "authored/py-dynamic-scope/a1.py"
+  },
+  "authored/py-dynamic-scope/a2.py": {
+   "sha256": "71fe97535a99bd56312af1d7c3ca76bd609f296f2cd7ab932fd625d1073a3513",
+   "source": "authored",
+   "source_path": "authored/py-dynamic-scope/a2.py"
+  },
+  "authored/py-dynamic-scope/a3.py": {
+   "sha256": "c68c71f59dc8cc0d386c4812dc7638f83931044422efcb3df6d5e33ec9f75013",
+   "source": "authored",
+   "source_path": "authored/py-dynamic-scope/a3.py"
+  },
+  "authored/py-dynamic-scope/a4.py": {
+   "sha256": "d9c329afdc63559ddb77c0ed5c8cf953f07df4ada75e5b13cca834dff8cabc59",
+   "source": "authored",
+   "source_path": "authored/py-dynamic-scope/a4.py"
+  },
+  "authored/py-global-rebind/a.py": {
+   "sha256": "8fd9d0b7e9401464ffca3b4f083defd536a7c34e19aa16b97be4269786304a0c",
+   "source": "authored",
+   "source_path": "authored/py-global-rebind/a.py"
+  },
+  "authored/py-global-rebind/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-global-rebind/b.py"
+  },
+  "authored/py-global-unbound/a.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-global-unbound/a.py"
+  },
+  "authored/py-global-unbound/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-global-unbound/b.py"
+  },
+  "authored/py-global-unbound/c.py": {
+   "sha256": "90eed6d6bc6539cacbb8e338920eda252e9976fa71835f3d63197f81817b3134",
+   "source": "authored",
+   "source_path": "authored/py-global-unbound/c.py"
+  },
+  "authored/py-import-as/app.py": {
+   "sha256": "89800200372144b25a9b35a54238bc4bec78c47c56d884e8a0607bd281cdfc8f",
+   "source": "authored",
+   "source_path": "authored/py-import-as/app.py"
+  },
+  "authored/py-import-as/other.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-import-as/other.py"
+  },
+  "authored/py-import-as/pkg/__init__.py": {
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "source": "authored",
+   "source_path": "authored/py-import-as/pkg/__init__.py"
+  },
+  "authored/py-import-as/pkg/util.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-import-as/pkg/util.py"
+  },
+  "authored/py-init-reexport/app.py": {
+   "sha256": "055f5d3a75637198ef40e31c48c01a9300429b0c2f5671fd53b810fe6028f51e",
+   "source": "authored",
+   "source_path": "authored/py-init-reexport/app.py"
+  },
+  "authored/py-init-reexport/other.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-init-reexport/other.py"
+  },
+  "authored/py-init-reexport/pkg/__init__.py": {
+   "sha256": "9ad0aa0e42b3e143bfc34a020a6941d15e5720de849edd16578a193b6371f69c",
+   "source": "authored",
+   "source_path": "authored/py-init-reexport/pkg/__init__.py"
+  },
+  "authored/py-init-reexport/pkg/impl.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-init-reexport/pkg/impl.py"
+  },
+  "authored/py-local-cond-import/a.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-local-cond-import/a.py"
+  },
+  "authored/py-local-cond-import/app.py": {
+   "sha256": "5b70b39335f472c3762fb09dca49f69e5ff754a0f10b7695aa108074e5c06e5f",
+   "source": "authored",
+   "source_path": "authored/py-local-cond-import/app.py"
+  },
+  "authored/py-local-cond-import/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-local-cond-import/b.py"
+  },
+  "authored/py-local-import/a.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-local-import/a.py"
+  },
+  "authored/py-local-import/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-local-import/b.py"
+  },
+  "authored/py-local-import/c.py": {
+   "sha256": "4b914063db4ddd35457f369ec0c7435a06f04616fa851b910ac688e779015671",
+   "source": "authored",
+   "source_path": "authored/py-local-import/c.py"
+  },
+  "authored/py-module-positional/a.py": {
+   "sha256": "6d1897a9be2b912103453fc233c0adf8949534c716f0b12ecad1835eb9b8593f",
+   "source": "authored",
+   "source_path": "authored/py-module-positional/a.py"
+  },
+  "authored/py-namespace-dir/D.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-namespace-dir/D.py"
+  },
+  "authored/py-namespace-dir/D/sub.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-namespace-dir/D/sub.py"
+  },
+  "authored/py-namespace-dir/app.py": {
+   "sha256": "5ae122da7eb334f2088940b7fa2ac25504bab41cb2460dce349b06a29e4e6c90",
+   "source": "authored",
+   "source_path": "authored/py-namespace-dir/app.py"
+  },
+  "authored/py-namespace-dir/other.py": {
+   "sha256": "394202111a05faba950b2dcc4c3c41ea4fb59317bc49f3485ac146eaf2b4bdf9",
+   "source": "authored",
+   "source_path": "authored/py-namespace-dir/other.py"
+  },
+  "authored/py-nested-only/a.py": {
+   "sha256": "389958fae107eeb82837d81131f78c1241dfd68632daf9b20c6460f53a3fcae1",
+   "source": "authored",
+   "source_path": "authored/py-nested-only/a.py"
+  },
+  "authored/py-nested-only/b.py": {
+   "sha256": "68f3f6a00240f1d04542dc0c430f88bf8f815c1dd204def727b756d06cfd3073",
+   "source": "authored",
+   "source_path": "authored/py-nested-only/b.py"
+  },
+  "authored/py-nonlocal-rebind/a.py": {
+   "sha256": "e3f4454976a69b510b8e6e6991807d83fa9cbdff4f6ce04909596762605b5843",
+   "source": "authored-pr0",
+   "source_path": null
+  },
+  "authored/py-nonlocal-rebind/b.py": {
+   "sha256": "60ed1a5b9b8899cf258fd6d07c5a36042f13caaf8324b00d1bcfcfd422c5623b",
+   "source": "authored-pr0",
+   "source_path": null
+  },
+  "authored/py-overload/a.py": {
+   "sha256": "732420b48a44edbc31e21e6e33f6f4302cfc0e7c316c8ebe9a89137f07c16156",
+   "source": "authored",
+   "source_path": "authored/py-overload/a.py"
+  },
+  "authored/py-param-shadow/a.py": {
+   "sha256": "0bfec42e4bc29780e8307e3669097516c7509847cd8d6f03e391050e2ffe2f98",
+   "source": "authored",
+   "source_path": "authored/py-param-shadow/a.py"
+  },
+  "authored/py-param-shadow/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-param-shadow/b.py"
+  },
+  "authored/py-redef-narrow/a.py": {
+   "sha256": "c6830650ee9a34a4d15bde29d089bcfad22b213145ad18a76eb0eb8e38e344df",
+   "source": "authored",
+   "source_path": "authored/py-redef-narrow/a.py"
+  },
+  "authored/py-redef-narrow/b.py": {
+   "sha256": "813dabda408acfdd09fdcd2442b4196832b92252dda5d82a9f123aceb8927e36",
+   "source": "authored",
+   "source_path": "authored/py-redef-narrow/b.py"
+  },
+  "authored/py-reexport-3hop/app.py": {
+   "sha256": "a9b94385af05287189471de2f00f43afc9a3a686f60276ffbb987baea9fa1256",
+   "source": "authored",
+   "source_path": "authored/py-reexport-3hop/app.py"
+  },
+  "authored/py-reexport-3hop/impl.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-reexport-3hop/impl.py"
+  },
+  "authored/py-reexport-3hop/other.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-reexport-3hop/other.py"
+  },
+  "authored/py-reexport-3hop/p1/__init__.py": {
+   "sha256": "5857bf677555b43e297d673f0a2ace07f7e4de7a988f1a4eb88e5b436b01a82a",
+   "source": "authored",
+   "source_path": "authored/py-reexport-3hop/p1/__init__.py"
+  },
+  "authored/py-reexport-3hop/p2/__init__.py": {
+   "sha256": "9a77e84e712a80bff9b008bdefe8971f179fea879758df284a2530f29c949324",
+   "source": "authored",
+   "source_path": "authored/py-reexport-3hop/p2/__init__.py"
+  },
+  "authored/py-reexport-3hop/p3/__init__.py": {
+   "sha256": "74a4f3c52f5c6c05386b549a4e8b37eab3227fb1609f4024d7c9feda70340983",
+   "source": "authored",
+   "source_path": "authored/py-reexport-3hop/p3/__init__.py"
+  },
+  "authored/py-reexport-4hop/app.py": {
+   "sha256": "a9b94385af05287189471de2f00f43afc9a3a686f60276ffbb987baea9fa1256",
+   "source": "authored",
+   "source_path": "authored/py-reexport-4hop/app.py"
+  },
+  "authored/py-reexport-4hop/impl.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-reexport-4hop/impl.py"
+  },
+  "authored/py-reexport-4hop/other.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-reexport-4hop/other.py"
+  },
+  "authored/py-reexport-4hop/p1/__init__.py": {
+   "sha256": "5857bf677555b43e297d673f0a2ace07f7e4de7a988f1a4eb88e5b436b01a82a",
+   "source": "authored",
+   "source_path": "authored/py-reexport-4hop/p1/__init__.py"
+  },
+  "authored/py-reexport-4hop/p2/__init__.py": {
+   "sha256": "9a77e84e712a80bff9b008bdefe8971f179fea879758df284a2530f29c949324",
+   "source": "authored",
+   "source_path": "authored/py-reexport-4hop/p2/__init__.py"
+  },
+  "authored/py-reexport-4hop/p3/__init__.py": {
+   "sha256": "dac3e0026e8cf2798e37f4f45958cd6ef37d234a6b2d1c3bbc4325bf58f2e1cf",
+   "source": "authored",
+   "source_path": "authored/py-reexport-4hop/p3/__init__.py"
+  },
+  "authored/py-reexport-4hop/p4/__init__.py": {
+   "sha256": "74a4f3c52f5c6c05386b549a4e8b37eab3227fb1609f4024d7c9feda70340983",
+   "source": "authored",
+   "source_path": "authored/py-reexport-4hop/p4/__init__.py"
+  },
+  "authored/py-relative-root/a.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-relative-root/a.py"
+  },
+  "authored/py-relative-root/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-relative-root/b.py"
+  },
+  "authored/py-relative-root/x.py": {
+   "sha256": "7ce315caf93569f6177b52537f521f4052f622a6e34426ce99f3f53c38067b5b",
+   "source": "authored",
+   "source_path": "authored/py-relative-root/x.py"
+  },
+  "authored/py-relative/pkg/__init__.py": {
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "source": "authored",
+   "source_path": "authored/py-relative/pkg/__init__.py"
+  },
+  "authored/py-relative/pkg/other.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-relative/pkg/other.py"
+  },
+  "authored/py-relative/pkg/sub/__init__.py": {
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "source": "authored",
+   "source_path": "authored/py-relative/pkg/sub/__init__.py"
+  },
+  "authored/py-relative/pkg/sub/x.py": {
+   "sha256": "7ce315caf93569f6177b52537f521f4052f622a6e34426ce99f3f53c38067b5b",
+   "source": "authored",
+   "source_path": "authored/py-relative/pkg/sub/x.py"
+  },
+  "authored/py-relative/pkg/util.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-relative/pkg/util.py"
+  },
+  "authored/py-scopes/a.py": {
+   "sha256": "82527644dfafb6d411d724aacf7db1c590cd51be083c118cf284c7c71e9b7fdc",
+   "source": "authored",
+   "source_path": "authored/py-scopes/a.py"
+  },
+  "authored/py-scopes/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-scopes/b.py"
+  },
+  "authored/py-script-dir-import/tools/run.py": {
+   "sha256": "e5ebddacdff2fce94a56811ef09637614dcdd6c298b52941e217daafcfdbfbf8",
+   "source": "authored",
+   "source_path": "authored/py-script-dir-import/tools/run.py"
+  },
+  "authored/py-script-dir-import/tools/util.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-script-dir-import/tools/util.py"
+  },
+  "authored/py-script-dir-import/util.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-script-dir-import/util.py"
+  },
+  "authored/py-star-import/a.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-star-import/a.py"
+  },
+  "authored/py-star-import/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-star-import/b.py"
+  },
+  "authored/py-star-import/c.py": {
+   "sha256": "5e0ba5d5b1e6d9677557e0da6f10363941a408e8a775c2b8dccdd14099d0c2ad",
+   "source": "authored",
+   "source_path": "authored/py-star-import/c.py"
+  },
+  "authored/py-try-import/app.py": {
+   "sha256": "d100f02d9030dd7beb71840f9fbe99b49e4440fd38c66b415703b6812757ef6d",
+   "source": "authored",
+   "source_path": "authored/py-try-import/app.py"
+  },
+  "authored/py-try-import/fast.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-try-import/fast.py"
+  },
+  "authored/py-try-import/other.py": {
+   "sha256": "394202111a05faba950b2dcc4c3c41ea4fb59317bc49f3485ac146eaf2b4bdf9",
+   "source": "authored",
+   "source_path": "authored/py-try-import/other.py"
+  },
+  "authored/py-try-import/slow.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-try-import/slow.py"
+  },
+  "authored/py-two-imports/a.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-two-imports/a.py"
+  },
+  "authored/py-two-imports/app.py": {
+   "sha256": "2ee243352cd481530c3f6c364302c62ef4533de99dc123747d757a37d941e1ae",
+   "source": "authored",
+   "source_path": "authored/py-two-imports/app.py"
+  },
+  "authored/py-two-imports/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-two-imports/b.py"
+  },
+  "authored/py-two-imports/c.py": {
+   "sha256": "394202111a05faba950b2dcc4c3c41ea4fb59317bc49f3485ac146eaf2b4bdf9",
+   "source": "authored",
+   "source_path": "authored/py-two-imports/c.py"
+  },
+  "authored/py-type-checking/a.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "authored",
+   "source_path": "authored/py-type-checking/a.py"
+  },
+  "authored/py-type-checking/app.py": {
+   "sha256": "895c49204f008cd8afe4377310f171b83db920c775b0bd4c91dee839c9adb6ba",
+   "source": "authored",
+   "source_path": "authored/py-type-checking/app.py"
+  },
+  "authored/py-type-checking/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "authored",
+   "source_path": "authored/py-type-checking/b.py"
+  },
+  "authored/ts-alias-import/h1.ts": {
+   "sha256": "4a29d952b50bfb7939bdb66192664e063d979bc670412622ab7c5494e36901f9",
+   "source": "authored",
+   "source_path": "authored/ts-alias-import/h1.ts"
+  },
+  "authored/ts-alias-import/h2.ts": {
+   "sha256": "81d69a532c752e3c75e9a0d0ef2ece959a939c611446ce92b53b0ef9e98bf631",
+   "source": "authored",
+   "source_path": "authored/ts-alias-import/h2.ts"
+  },
+  "authored/ts-alias-import/svc.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-alias-import/svc.ts"
+  },
+  "authored/ts-alias-import/use.ts": {
+   "sha256": "760edc3f4d14f4ed861c559f1e918669572dd4105b05d10df8629ae016850eb1",
+   "source": "authored",
+   "source_path": "authored/ts-alias-import/use.ts"
+  },
+  "authored/ts-arrow-const/a.ts": {
+   "sha256": "fc398166036f6944efa9b270e0e3519590ab7e803112fd241effbf61f15930d7",
+   "source": "authored",
+   "source_path": "authored/ts-arrow-const/a.ts"
+  },
+  "authored/ts-arrow-const/b.ts": {
+   "sha256": "4a29d952b50bfb7939bdb66192664e063d979bc670412622ab7c5494e36901f9",
+   "source": "authored",
+   "source_path": "authored/ts-arrow-const/b.ts"
+  },
+  "authored/ts-bare-specifier/a.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-bare-specifier/a.ts"
+  },
+  "authored/ts-bare-specifier/b.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-bare-specifier/b.ts"
+  },
+  "authored/ts-bare-specifier/use.ts": {
+   "sha256": "bc56b89fab8d49fb4eb3fa21af78c84af335ed8fb24003a3c83cab864cd48500",
+   "source": "authored",
+   "source_path": "authored/ts-bare-specifier/use.ts"
+  },
+  "authored/ts-barrel/a.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-barrel/a.ts"
+  },
+  "authored/ts-barrel/b.ts": {
+   "sha256": "b37076bbb9ad6bf3aa37d2b248f83764d8b873db4133c5b4e5fd8eeed2f1d1d9",
+   "source": "authored",
+   "source_path": "authored/ts-barrel/b.ts"
+  },
+  "authored/ts-barrel/index.ts": {
+   "sha256": "02e6767955b67e0e5e0eed5b3b3c57f9bd3d621a244cc7f44f81990b2c192dbc",
+   "source": "authored",
+   "source_path": "authored/ts-barrel/index.ts"
+  },
+  "authored/ts-barrel/other.ts": {
+   "sha256": "9c2c43a1493bf87257f0a95f6999aa782fddd84de120d815d9c62006f81ba5ac",
+   "source": "authored",
+   "source_path": "authored/ts-barrel/other.ts"
+  },
+  "authored/ts-barrel/use.ts": {
+   "sha256": "234a72076c6bff461404479e16e3c2c6caff6a514f264b6a32500cf0ac00cbbd",
+   "source": "authored",
+   "source_path": "authored/ts-barrel/use.ts"
+  },
+  "authored/ts-class-body/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-class-body/other.ts"
+  },
+  "authored/ts-class-body/svc.ts": {
+   "sha256": "fe15f252448fd048217ab72ff90e6d9404040c8bf5e32bfef041be7612bd87b5",
+   "source": "authored",
+   "source_path": "authored/ts-class-body/svc.ts"
+  },
+  "authored/ts-declare-ambient/a.ts": {
+   "sha256": "9e33567d58b94a89f6791ec73a4c3b634afc64ba55820fc28e3f3afdfb7b6764",
+   "source": "authored",
+   "source_path": "authored/ts-declare-ambient/a.ts"
+  },
+  "authored/ts-declare-ambient/b.js": {
+   "sha256": "4b735c9410e1218fa823382a8591382b326348c6c1600a546f5621720bb312bc",
+   "source": "authored",
+   "source_path": "authored/ts-declare-ambient/b.js"
+  },
+  "authored/ts-declare-namespace/a.ts": {
+   "sha256": "ce11be70289082fb58b2f376977f29142f5c7fb5a0dacb1769f2804b338f3869",
+   "source": "authored",
+   "source_path": "authored/ts-declare-namespace/a.ts"
+  },
+  "authored/ts-declare-namespace/b.ts": {
+   "sha256": "5c85621db5b969d9acad48bad3215de6e6e47a76d62ed6a1582cf5b7b071cce1",
+   "source": "authored",
+   "source_path": "authored/ts-declare-namespace/b.ts"
+  },
+  "authored/ts-declare-namespace/c.ts": {
+   "sha256": "770232e1b80c68fb6799475102df4913f37fbd5c5b1eb47126d6063ea1927b96",
+   "source": "authored",
+   "source_path": "authored/ts-declare-namespace/c.ts"
+  },
+  "authored/ts-default-import/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-default-import/other.ts"
+  },
+  "authored/ts-default-import/svc.ts": {
+   "sha256": "f1b32e67fe0ff47f904d209cd716ff1bdc7723957caedc4b8cd8be15c8cfc748",
+   "source": "authored",
+   "source_path": "authored/ts-default-import/svc.ts"
+  },
+  "authored/ts-default-import/use.ts": {
+   "sha256": "5f585dd10dad888febe6582a3f851810e7c71d449eaa5a59651dc194714e4abf",
+   "source": "authored",
+   "source_path": "authored/ts-default-import/use.ts"
+  },
+  "authored/ts-dts-only/lib.d.ts": {
+   "sha256": "1f3b4e220c19a6d006c6d1d09d1ada6d0049863d7bbd2ec8ad8d9b7f11065be9",
+   "source": "authored",
+   "source_path": "authored/ts-dts-only/lib.d.ts"
+  },
+  "authored/ts-dts-only/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-dts-only/other.ts"
+  },
+  "authored/ts-dts-only/use.ts": {
+   "sha256": "a872246a3ebb6ce95c326867fd6817f203b2ba2b4846f059044d483a695e1511",
+   "source": "authored",
+   "source_path": "authored/ts-dts-only/use.ts"
+  },
+  "authored/ts-dts/lib.d.ts": {
+   "sha256": "1f3b4e220c19a6d006c6d1d09d1ada6d0049863d7bbd2ec8ad8d9b7f11065be9",
+   "source": "authored",
+   "source_path": "authored/ts-dts/lib.d.ts"
+  },
+  "authored/ts-dts/lib.js": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-dts/lib.js"
+  },
+  "authored/ts-dts/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-dts/other.ts"
+  },
+  "authored/ts-dts/use.ts": {
+   "sha256": "a872246a3ebb6ce95c326867fd6817f203b2ba2b4846f059044d483a695e1511",
+   "source": "authored",
+   "source_path": "authored/ts-dts/use.ts"
+  },
+  "authored/ts-dup-impl/a.ts": {
+   "sha256": "d7cfa64a7f9bfe778fecce2773eb9ed9c8a0307e638aa0f67e03158d2c1d1caf",
+   "source": "authored",
+   "source_path": "authored/ts-dup-impl/a.ts"
+  },
+  "authored/ts-dup-impl/other.ts": {
+   "sha256": "ffa6af1b785c5b7b2005356b9eb352400fd6516a88e24b48c0f4fd4829321864",
+   "source": "authored",
+   "source_path": "authored/ts-dup-impl/other.ts"
+  },
+  "authored/ts-dup-method/k.ts": {
+   "sha256": "e1b609717e15fa3e0bd3ca6641b2482aeb6de8e849b163690f672d924d19c751",
+   "source": "authored",
+   "source_path": "authored/ts-dup-method/k.ts"
+  },
+  "authored/ts-dynamic-import/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-dynamic-import/other.ts"
+  },
+  "authored/ts-dynamic-import/svc.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-dynamic-import/svc.ts"
+  },
+  "authored/ts-dynamic-import/use.ts": {
+   "sha256": "1b8caa863a78e989c6317553aa8f0cb17823ba272b956e18cdf487a588b0e8e3",
+   "source": "authored",
+   "source_path": "authored/ts-dynamic-import/use.ts"
+  },
+  "authored/ts-enum-shadow/a.ts": {
+   "sha256": "182a8e27a53a426f54d26dbced96397b9bfc8c006731bc569242dad633ece2fb",
+   "source": "authored",
+   "source_path": "authored/ts-enum-shadow/a.ts"
+  },
+  "authored/ts-enum-shadow/b.ts": {
+   "sha256": "3e5719b1205b86ed17c38c3a9cf0799ae7ccb3a2592b39bb9c2929f0f9845cdb",
+   "source": "authored",
+   "source_path": "authored/ts-enum-shadow/b.ts"
+  },
+  "authored/ts-export-default-ident/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-export-default-ident/other.ts"
+  },
+  "authored/ts-export-default-ident/svc.ts": {
+   "sha256": "8e2273dc97d888d2bedf8c569fd1cf4e9b4638db4de1b4359fe95622ff0b21ed",
+   "source": "authored",
+   "source_path": "authored/ts-export-default-ident/svc.ts"
+  },
+  "authored/ts-export-default-ident/use.ts": {
+   "sha256": "5f585dd10dad888febe6582a3f851810e7c71d449eaa5a59651dc194714e4abf",
+   "source": "authored",
+   "source_path": "authored/ts-export-default-ident/use.ts"
+  },
+  "authored/ts-export-missing/a.ts": {
+   "sha256": "be9d505bb7878509d9bf1581874421c8c1c93c528a790c49dc3ea21d8785270a",
+   "source": "authored",
+   "source_path": "authored/ts-export-missing/a.ts"
+  },
+  "authored/ts-export-missing/b.ts": {
+   "sha256": "f19c812d94925ffcc2ca5fa850bd2a54bd0e2b9b7b50cc93a0050d8cf1961aa5",
+   "source": "authored",
+   "source_path": "authored/ts-export-missing/b.ts"
+  },
+  "authored/ts-export-missing/svc.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-export-missing/svc.ts"
+  },
+  "authored/ts-export-missing/use.ts": {
+   "sha256": "c966e14d018fe2ad3f3e9973b2e558dd5eecfa9a430e3c9fa58912b696bd9791",
+   "source": "authored",
+   "source_path": "authored/ts-export-missing/use.ts"
+  },
+  "authored/ts-export-star-as/impl.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-export-star-as/impl.ts"
+  },
+  "authored/ts-export-star-as/index.ts": {
+   "sha256": "9ac227c0c098f3fc67839f1a62a2c317d736f0b4e78ce16ba66b60618a27eb31",
+   "source": "authored",
+   "source_path": "authored/ts-export-star-as/index.ts"
+  },
+  "authored/ts-export-star-as/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-export-star-as/other.ts"
+  },
+  "authored/ts-export-star-as/use.ts": {
+   "sha256": "3b565acef0949bcec97225041f0adfa157c7ebf622503a9036d28279e203ac4f",
+   "source": "authored",
+   "source_path": "authored/ts-export-star-as/use.ts"
+  },
+  "authored/ts-ext-collision-index/p.js": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-ext-collision-index/p.js"
+  },
+  "authored/ts-ext-collision-index/p/index.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-ext-collision-index/p/index.ts"
+  },
+  "authored/ts-ext-collision-index/use.ts": {
+   "sha256": "f3caae127d56098db0abe28e7ea6455bd07d6e7b6e0bd23a9db466dfbff30b06",
+   "source": "authored",
+   "source_path": "authored/ts-ext-collision-index/use.ts"
+  },
+  "authored/ts-ext-collision-js/svc.js": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-ext-collision-js/svc.js"
+  },
+  "authored/ts-ext-collision-js/svc.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-ext-collision-js/svc.ts"
+  },
+  "authored/ts-ext-collision-js/use.ts": {
+   "sha256": "b468e3c9c7ab06c9b957749113d861f20ba6a9ed6261bee309e0e55e47a783da",
+   "source": "authored",
+   "source_path": "authored/ts-ext-collision-js/use.ts"
+  },
+  "authored/ts-ext-collision-tsx/svc.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-ext-collision-tsx/svc.ts"
+  },
+  "authored/ts-ext-collision-tsx/svc.tsx": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-ext-collision-tsx/svc.tsx"
+  },
+  "authored/ts-ext-collision-tsx/use.ts": {
+   "sha256": "b468e3c9c7ab06c9b957749113d861f20ba6a9ed6261bee309e0e55e47a783da",
+   "source": "authored",
+   "source_path": "authored/ts-ext-collision-tsx/use.ts"
+  },
+  "authored/ts-ext-order/lib/index.ts": {
+   "sha256": "f19c812d94925ffcc2ca5fa850bd2a54bd0e2b9b7b50cc93a0050d8cf1961aa5",
+   "source": "authored",
+   "source_path": "authored/ts-ext-order/lib/index.ts"
+  },
+  "authored/ts-ext-order/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-ext-order/other.ts"
+  },
+  "authored/ts-ext-order/other2.ts": {
+   "sha256": "3169f53be69dfe257e15741f1d26815664690f49c82413717bd2fbedbd61a787",
+   "source": "authored",
+   "source_path": "authored/ts-ext-order/other2.ts"
+  },
+  "authored/ts-ext-order/svc.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-ext-order/svc.ts"
+  },
+  "authored/ts-ext-order/use.ts": {
+   "sha256": "f607654c64f64e7f9d5847d8a462285dc8264aa7c2a90a577adcd5bbaeb55a0c",
+   "source": "authored",
+   "source_path": "authored/ts-ext-order/use.ts"
+  },
+  "authored/ts-external-import-kind/j.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-external-import-kind/j.ts"
+  },
+  "authored/ts-external-import-kind/k.ts": {
+   "sha256": "3178fb52e87f3e9507023584521ad53291af4b6f6ce506e0655046e91689f041",
+   "source": "authored",
+   "source_path": "authored/ts-external-import-kind/k.ts"
+  },
+  "authored/ts-external-import-kind/u.ts": {
+   "sha256": "4e3f34ccd09975538a868c62850382d9a460d0c39ab368170d9ff3863e3bc2b2",
+   "source": "authored",
+   "source_path": "authored/ts-external-import-kind/u.ts"
+  },
+  "authored/ts-globalThis/a.ts": {
+   "sha256": "84bbeead35bc74ecc03dee22a607e0f816a926c99b0d7f4c554d2d9271b5fa01",
+   "source": "authored",
+   "source_path": "authored/ts-globalThis/a.ts"
+  },
+  "authored/ts-globalThis/b.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-globalThis/b.ts"
+  },
+  "authored/ts-import-cjs/eq.ts": {
+   "sha256": "c268ecc692f2da63cb98c85cfa88be90d14ad7750dc1149bf22e7cc07e887209",
+   "source": "authored",
+   "source_path": "authored/ts-import-cjs/eq.ts"
+  },
+  "authored/ts-import-cjs/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-import-cjs/other.ts"
+  },
+  "authored/ts-import-cjs/svc.js": {
+   "sha256": "96beca724a53439c96525cac2d3fc4e10b64ade7bf9f7ea284a9290d3fa5ad93",
+   "source": "authored",
+   "source_path": "authored/ts-import-cjs/svc.js"
+  },
+  "authored/ts-import-cjs/use.ts": {
+   "sha256": "b313c47b353d5e3d870bf81a73527f66ae4f6974a9aa6ac67f74c792d65afad7",
+   "source": "authored",
+   "source_path": "authored/ts-import-cjs/use.ts"
+  },
+  "authored/ts-import-cjs/use2.ts": {
+   "sha256": "6055e1147c09d9ecd6c30d9e342658aaf30726f1156aaa6f430d7fa820a624cd",
+   "source": "authored",
+   "source_path": "authored/ts-import-cjs/use2.ts"
+  },
+  "authored/ts-kind-filter/a.ts": {
+   "sha256": "931daebef8ce8251efa7bc534fa95488169e7f0594e5c5ebd1b6731535255fda",
+   "source": "authored",
+   "source_path": "authored/ts-kind-filter/a.ts"
+  },
+  "authored/ts-kind-filter/b.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-kind-filter/b.ts"
+  },
+  "authored/ts-kind-filter/c.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-kind-filter/c.ts"
+  },
+  "authored/ts-kind-filter/e.ts": {
+   "sha256": "be3c4c2e0b16e6e525fd8e09f804e7fa4037327a6eccc3c8419fdc1542a914c2",
+   "source": "authored",
+   "source_path": "authored/ts-kind-filter/e.ts"
+  },
+  "authored/ts-kind-filter/x.ts": {
+   "sha256": "9b076403d739a6efca5fbb2d48771fb674a6fec760aad49b62fdfab8056e5969",
+   "source": "authored",
+   "source_path": "authored/ts-kind-filter/x.ts"
+  },
+  "authored/ts-language-filter/a.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-language-filter/a.ts"
+  },
+  "authored/ts-language-filter/b.ts": {
+   "sha256": "dbf48cbd8b98d218ee15ca0eadd0e55c0c6fe4686ab7338de74eb63c5d3d2954",
+   "source": "authored",
+   "source_path": "authored/ts-language-filter/b.ts"
+  },
+  "authored/ts-language-filter/svc.tsx": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-language-filter/svc.tsx"
+  },
+  "authored/ts-language-filter/use.ts": {
+   "sha256": "7ade3f477bcd5fcbe55910ea88a1c0076bb08647cc92d6636e05389e2eef899e",
+   "source": "authored",
+   "source_path": "authored/ts-language-filter/use.ts"
+  },
+  "authored/ts-mjs-specifier/a.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-mjs-specifier/a.ts"
+  },
+  "authored/ts-mjs-specifier/b.ts": {
+   "sha256": "dbf48cbd8b98d218ee15ca0eadd0e55c0c6fe4686ab7338de74eb63c5d3d2954",
+   "source": "authored",
+   "source_path": "authored/ts-mjs-specifier/b.ts"
+  },
+  "authored/ts-mjs-specifier/use.ts": {
+   "sha256": "1c328037d39c9c9c8bc7f61f2f99e52265c39222d14f7b9dd0014113678a75dc",
+   "source": "authored",
+   "source_path": "authored/ts-mjs-specifier/use.ts"
+  },
+  "authored/ts-namespace-global/a.ts": {
+   "sha256": "3606c50c1ea5fa97fb6f3b64d3764fb4f0a6193dc33e2713c5045a6a0dafbb10",
+   "source": "authored",
+   "source_path": "authored/ts-namespace-global/a.ts"
+  },
+  "authored/ts-namespace-global/b.ts": {
+   "sha256": "6293599eb7d003e4aa2385941705c72f9656f5898bd67b325140e332ee42b1a1",
+   "source": "authored",
+   "source_path": "authored/ts-namespace-global/b.ts"
+  },
+  "authored/ts-namespace-global/c.ts": {
+   "sha256": "eca495c02b97cfcf65761879b8f6fbefb54c0d027ed06ade83d54b882c2cac2f",
+   "source": "authored",
+   "source_path": "authored/ts-namespace-global/c.ts"
+  },
+  "authored/ts-namespace-import/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-namespace-import/other.ts"
+  },
+  "authored/ts-namespace-import/svc.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-namespace-import/svc.ts"
+  },
+  "authored/ts-namespace-import/use.ts": {
+   "sha256": "83f02ac312dfa88c1b523f3f6bb3e1e08983b1c8fad1ce3fddce998a5bf341bf",
+   "source": "authored",
+   "source_path": "authored/ts-namespace-import/use.ts"
+  },
+  "authored/ts-namespace-merge/a.ts": {
+   "sha256": "b35bda5aac43170c72708d6b9bb344412a08719176e25acfc2dc1176768e11f2",
+   "source": "authored",
+   "source_path": "authored/ts-namespace-merge/a.ts"
+  },
+  "authored/ts-namespace-merge/b.ts": {
+   "sha256": "e910d2eac3db5a35db2df0d953a1784ee114a9901d22c2c8a665dff9433c75c1",
+   "source": "authored",
+   "source_path": "authored/ts-namespace-merge/b.ts"
+  },
+  "authored/ts-nested-only/a.ts": {
+   "sha256": "682be93616eaeed82a0c75168002b9e1fd482f2f05fff670a87397e4f8e8c957",
+   "source": "authored",
+   "source_path": "authored/ts-nested-only/a.ts"
+  },
+  "authored/ts-nested-only/b.ts": {
+   "sha256": "a03a2facd313ff69e449539d530fd0708b7c94b31a1281a695756b6868f465e4",
+   "source": "authored",
+   "source_path": "authored/ts-nested-only/b.ts"
+  },
+  "authored/ts-nested-scope/a.ts": {
+   "sha256": "073e3ca8d3d24f63af25a445ebb466c2e254ebc250d538d5282b776aee6a609c",
+   "source": "authored",
+   "source_path": "authored/ts-nested-scope/a.ts"
+  },
+  "authored/ts-nested-scope/b.ts": {
+   "sha256": "edc49f8dff761663c8f5ea6eb289bbe56381e1ea2c1e15263c694d1a11bd30a9",
+   "source": "authored",
+   "source_path": "authored/ts-nested-scope/b.ts"
+  },
+  "authored/ts-param-kind/j.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-param-kind/j.ts"
+  },
+  "authored/ts-param-kind/k.ts": {
+   "sha256": "3178fb52e87f3e9507023584521ad53291af4b6f6ce506e0655046e91689f041",
+   "source": "authored",
+   "source_path": "authored/ts-param-kind/k.ts"
+  },
+  "authored/ts-param-kind/u.ts": {
+   "sha256": "44a1826f205e58dd445696a10dcc770f5dbfcb7aa5c587348f22f5b93a437ef8",
+   "source": "authored",
+   "source_path": "authored/ts-param-kind/u.ts"
+  },
+  "authored/ts-param-shadow/a.ts": {
+   "sha256": "d6362e94665807bf4c1ad6ed74c7c73cec959b206fd7fe8aef5a3f7d960edb6c",
+   "source": "authored",
+   "source_path": "authored/ts-param-shadow/a.ts"
+  },
+  "authored/ts-param-shadow/b.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-param-shadow/b.ts"
+  },
+  "authored/ts-reassign/a.ts": {
+   "sha256": "c529391dd84b73ecfcd33037e5c125daa7b2bbbfb044689537b672a4772fe68a",
+   "source": "authored",
+   "source_path": "authored/ts-reassign/a.ts"
+  },
+  "authored/ts-reassign/b.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-reassign/b.ts"
+  },
+  "authored/ts-reexport-3hop/i1.ts": {
+   "sha256": "133c7100669b9f5ed5d029a0d595c1c229cb0917a214fe67e182f2d74e0b3a84",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-3hop/i1.ts"
+  },
+  "authored/ts-reexport-3hop/i2.ts": {
+   "sha256": "dee8da1d85a70a4f837283c75c2339721cdf201b5cb682f77fa427ddcbd50cd5",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-3hop/i2.ts"
+  },
+  "authored/ts-reexport-3hop/i3.ts": {
+   "sha256": "92136e760b0a2db93b7485b86fb2cfbc8e197c9da3d5dc0f5c5a0c7074cd996e",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-3hop/i3.ts"
+  },
+  "authored/ts-reexport-3hop/impl.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-3hop/impl.ts"
+  },
+  "authored/ts-reexport-3hop/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-3hop/other.ts"
+  },
+  "authored/ts-reexport-3hop/use.ts": {
+   "sha256": "d1d5f906b990ce1627da1ea738feaeba93316c734ae0a702c4479bc2d6a0d313",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-3hop/use.ts"
+  },
+  "authored/ts-reexport-4hop/i1.ts": {
+   "sha256": "133c7100669b9f5ed5d029a0d595c1c229cb0917a214fe67e182f2d74e0b3a84",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-4hop/i1.ts"
+  },
+  "authored/ts-reexport-4hop/i2.ts": {
+   "sha256": "dee8da1d85a70a4f837283c75c2339721cdf201b5cb682f77fa427ddcbd50cd5",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-4hop/i2.ts"
+  },
+  "authored/ts-reexport-4hop/i3.ts": {
+   "sha256": "406a56c5ec338465e29e5fe594b7053c4e91db4dc12c890dcb3c7995dce1e73c",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-4hop/i3.ts"
+  },
+  "authored/ts-reexport-4hop/i4.ts": {
+   "sha256": "92136e760b0a2db93b7485b86fb2cfbc8e197c9da3d5dc0f5c5a0c7074cd996e",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-4hop/i4.ts"
+  },
+  "authored/ts-reexport-4hop/impl.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-4hop/impl.ts"
+  },
+  "authored/ts-reexport-4hop/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-4hop/other.ts"
+  },
+  "authored/ts-reexport-4hop/use.ts": {
+   "sha256": "d1d5f906b990ce1627da1ea738feaeba93316c734ae0a702c4479bc2d6a0d313",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-4hop/use.ts"
+  },
+  "authored/ts-reexport-cycle/a.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-cycle/a.ts"
+  },
+  "authored/ts-reexport-cycle/b.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-cycle/b.ts"
+  },
+  "authored/ts-reexport-cycle/i1.ts": {
+   "sha256": "133c7100669b9f5ed5d029a0d595c1c229cb0917a214fe67e182f2d74e0b3a84",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-cycle/i1.ts"
+  },
+  "authored/ts-reexport-cycle/i2.ts": {
+   "sha256": "bf5115e7f21eed1364e45f27bd590bd6d2fd1154aef1c7d074805b175315fdf9",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-cycle/i2.ts"
+  },
+  "authored/ts-reexport-cycle/use.ts": {
+   "sha256": "d1d5f906b990ce1627da1ea738feaeba93316c734ae0a702c4479bc2d6a0d313",
+   "source": "authored",
+   "source_path": "authored/ts-reexport-cycle/use.ts"
+  },
+  "authored/ts-signature-only/a.ts": {
+   "sha256": "9c1c2c1d01e0bc76fe8e0b6248d210f6258dc4d8a9aa989eafdbcc322e86adfb",
+   "source": "authored",
+   "source_path": "authored/ts-signature-only/a.ts"
+  },
+  "authored/ts-signature-only/b.ts": {
+   "sha256": "00af172c34330f2d8d160fbc036d63fd195ea99daa8290996906a5a4c58ab552",
+   "source": "authored",
+   "source_path": "authored/ts-signature-only/b.ts"
+  },
+  "authored/ts-skipped-dir/a.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-skipped-dir/a.ts"
+  },
+  "authored/ts-skipped-dir/b.ts": {
+   "sha256": "dbf48cbd8b98d218ee15ca0eadd0e55c0c6fe4686ab7338de74eb63c5d3d2954",
+   "source": "authored",
+   "source_path": "authored/ts-skipped-dir/b.ts"
+  },
+  "authored/ts-skipped-dir/dist/t.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-skipped-dir/dist/t.ts"
+  },
+  "authored/ts-skipped-dir/use.ts": {
+   "sha256": "03ae517220b1e1bed5815cc6c25c25f325f6a872c3e659f09c349d1962baad68",
+   "source": "authored",
+   "source_path": "authored/ts-skipped-dir/use.ts"
+  },
+  "authored/ts-star-conflict/a.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-star-conflict/a.ts"
+  },
+  "authored/ts-star-conflict/b.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-star-conflict/b.ts"
+  },
+  "authored/ts-star-conflict/index.ts": {
+   "sha256": "257ea6e88458db03524ee45f5f076daf6f32f402f1dc5ea44515b72a47d27189",
+   "source": "authored",
+   "source_path": "authored/ts-star-conflict/index.ts"
+  },
+  "authored/ts-star-conflict/use.ts": {
+   "sha256": "3b565acef0949bcec97225041f0adfa157c7ebf622503a9036d28279e203ac4f",
+   "source": "authored",
+   "source_path": "authored/ts-star-conflict/use.ts"
+  },
+  "authored/ts-two-imports/a.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-two-imports/a.ts"
+  },
+  "authored/ts-two-imports/b.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-two-imports/b.ts"
+  },
+  "authored/ts-two-imports/use.ts": {
+   "sha256": "2f67447520c8e3bb3f1859e0a28012dd15a1f4d17dd97abdbff5d81c196caa57",
+   "source": "authored",
+   "source_path": "authored/ts-two-imports/use.ts"
+  },
+  "authored/ts-type-only-import/other.ts": {
+   "sha256": "fc4221cd82f7c941368fb17a5285fd2c68c65c40801364d3e36ebf30ebb6b512",
+   "source": "authored",
+   "source_path": "authored/ts-type-only-import/other.ts"
+  },
+  "authored/ts-type-only-import/svc.ts": {
+   "sha256": "cfe580d52d6555374348abffa5ece7dce57e8810cd052773a3a6fa4dc7fc3c52",
+   "source": "authored",
+   "source_path": "authored/ts-type-only-import/svc.ts"
+  },
+  "authored/ts-type-only-import/use.ts": {
+   "sha256": "23d5ad0111100b41e35d17233faecadb41999861f23816fc72660357f151f352",
+   "source": "authored",
+   "source_path": "authored/ts-type-only-import/use.ts"
+  },
+  "authored/tsx-local/a.tsx": {
+   "sha256": "2356c69d1386b8e6fd42318f43c99c54b1c1fd3f7693a27c7c7f1bde292c22db",
+   "source": "authored",
+   "source_path": "authored/tsx-local/a.tsx"
+  },
+  "authored/tsx-local/b.tsx": {
+   "sha256": "7d9a92273c69375b9cd85fc7dbf2295ce5552d4e6feef62a0718281e53ee3092",
+   "source": "authored",
+   "source_path": "authored/tsx-local/b.tsx"
+  },
+  "greenfield-r1/clo-go/k.go": {
+   "sha256": "950956cedfefedb302c5da13cb93e5380fe6e68cc396fc1156de1c6fea8c656d",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/clo-go/k.go"
+  },
+  "greenfield-r1/clo-kotlin/K.kt": {
+   "sha256": "58b3222b831fbc24deb2cad84e5b41d280092ae5dfe1de6b31c03f03094e4e91",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/clo-kotlin/K.kt"
+  },
+  "greenfield-r1/clo-rust/src/lib.rs": {
+   "sha256": "51b8ca53654b5e954d70c90e71378eff0cba51e85936988995c84a1358251afb",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/clo-rust/src/lib.rs"
+  },
+  "greenfield-r1/py-sameline/svc.py": {
+   "sha256": "55ba8b710e7b33e8b0620934cc8828697dd2ce07b64d545a727309cca24adc5b",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/py-sameline/svc.py"
+  },
+  "greenfield-r1/r9-py/pkg/sub/svc.py": {
+   "sha256": "04d132a61ec010d8c0239b7ae6392dcee489e9cbc293acd6b73c462fd05f55ae",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/r9-py/pkg/sub/svc.py"
+  },
+  "greenfield-r1/r9-py/tests/test_svc.py": {
+   "sha256": "360e2cc481edf44cd1e9a0e9e170ec1ea835f75e7ca4313b291f57ed7a894739",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/r9-py/tests/test_svc.py"
+  },
+  "greenfield-r1/r9-ts/web/svc.ts": {
+   "sha256": "4fdc748f2dd7b3b04d00d94c456608ae6c96966319211ea5e2b26bc3f89bbf47",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/r9-ts/web/svc.ts"
+  },
+  "greenfield-r1/r9-ts/web/svc.tsx": {
+   "sha256": "c1c7b11d9d5eb24f855f1fa3276b08adce4da96dd25f8e67453ce6a20c442409",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/r9-ts/web/svc.tsx"
+  },
+  "greenfield-r1/r9b-py/pkg/svc.py": {
+   "sha256": "1979e49d5c60cc52369a0239a504b3ea53d0bf7b74b24e4fb20903959a9f69ae",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/r9b-py/pkg/svc.py"
+  },
+  "greenfield-r1/rt-cpp/k.cpp": {
+   "sha256": "33ec8643c746c8c583ba6bf280bd15152587f46628b44b2406d6851edc20cb17",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/rt-cpp/k.cpp"
+  },
+  "greenfield-r1/rt-go/k.go": {
+   "sha256": "9c5d5bba4f16a9336ed1062ac49e678a1a1687d6a1e2f5d164fc625287392d2b",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/rt-go/k.go"
+  },
+  "greenfield-r1/rt-java/K.java": {
+   "sha256": "2d9504b4f14ac4e2e15319c1eebcc3f7e3a41b56c3d81ce67fbf61b2a93a19f2",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/rt-java/K.java"
+  },
+  "greenfield-r1/rt-js/k.js": {
+   "sha256": "32eb7922d0b8697a89bf9aab1a1ac4d08c7e78a199b73c31a433fd2ba7662a96",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/rt-js/k.js"
+  },
+  "greenfield-r1/rt-kotlin/K.kt": {
+   "sha256": "89e78f95a4cc88a75a8ea4b2bf3582199b7acd71cf801d05033860354d1179f2",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/rt-kotlin/K.kt"
+  },
+  "greenfield-r1/rt-pycond/svc.py": {
+   "sha256": "dacdfefd62b3b597570a583186ef4ffe620070d2dee071815f5ade4fee00f9e7",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/rt-pycond/svc.py"
+  },
+  "greenfield-r1/rt-pyrec/svc.py": {
+   "sha256": "e00d1f8818d738dec9fb844a4df640b65d98b60f3dd24efebd372ea8becaa7f0",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/rt-pyrec/svc.py"
+  },
+  "greenfield-r1/rt-rust/k.rs": {
+   "sha256": "143e23db62b93049cc895b7aba404d97fbcc56dbeb217357f3f9b37f60b46e2a",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/rt-rust/k.rs"
+  },
+  "greenfield-r1/rt-tsclass/k.ts": {
+   "sha256": "061d6d65e17fd03f047e5bf60aa7bf295545c4dd50e6991a83bb1bfdc577202d",
+   "source": "greenfield-r1",
+   "source_path": "r1/trees/rt-tsclass/k.ts"
+  },
+  "probe-r9/pkg/over.ts": {
+   "sha256": "251c363f322d24c867a41c94def6dce86cf2fe2468eda7422d388623928c9446",
+   "source": "probe-r9",
+   "source_path": "r9probe/pkg/over.ts"
+  },
+  "probe-r9/pkg/svc.ts": {
+   "sha256": "a373e3684282efc21a9005b1f9a543f3b78811bb0366159559e2667a274f58eb",
+   "source": "probe-r9",
+   "source_path": "r9probe/pkg/svc.ts"
+  },
+  "probe-r9/pkg/svc.tsx": {
+   "sha256": "2906c06b6c7bdc8388a58b6718a1f0533c3afa37768ef8dc0af5b30e9b5dbf8f",
+   "source": "probe-r9",
+   "source_path": "r9probe/pkg/svc.tsx"
+  },
+  "probe-r9/pkg/use.ts": {
+   "sha256": "c7af3463aeef0a153d9638a251bc6a0e0b7147ec554c1ea03d6f4802658a354c",
+   "source": "probe-r9",
+   "source_path": "r9probe/pkg/use.ts"
+  },
+  "probe-r9/py/a.py": {
+   "sha256": "b6631639de17fb869c43278f858c465cc5b71c8ec51c8c25d803905361f8a544",
+   "source": "probe-r9",
+   "source_path": "r9probe/py/a.py"
+  },
+  "probe-r9/py/b.py": {
+   "sha256": "80db5c431a8c630a959c421fba66ac80327fae4b813ada82ba2deae5c8d4532c",
+   "source": "probe-r9",
+   "source_path": "r9probe/py/b.py"
+  },
+  "probe-r9/py/c.py": {
+   "sha256": "bd7c3914703ec6fa39ca98113d2534841181032b80820ebc7c9d66cb8bcdb382",
+   "source": "probe-r9",
+   "source_path": "r9probe/py/c.py"
+  },
+  "probe-r9/py/pkg.py": {
+   "sha256": "76adf090c7316f6da950398ec0da093577f5fce1e621fdc21c29fd41a307fccd",
+   "source": "probe-r9",
+   "source_path": "r9probe/py/pkg.py"
+  },
+  "probe-r9/py/pkg/__init__.py": {
+   "sha256": "11a2d0ad935bd347586d68821e82c9dc8bbd0f324f9ed572ea7c732490b9241b",
+   "source": "probe-r9",
+   "source_path": "r9probe/py/pkg/__init__.py"
+  },
+  "probe-r9/py/redef.py": {
+   "sha256": "98a171ca61216a4f8d23b864733e4ce8f169744319cc37b11715ebe60d44ae66",
+   "source": "probe-r9",
+   "source_path": "r9probe/py/redef.py"
+  }
+ },
+ "sources": {
+  "authored": {
+   "note": "Copied byte-for-byte; sha256 recorded here at copy time.",
+   "origin": "the plan author's scratch directory (authored/<case>), the 106 trees the president's re-check of plans/detailed-scoped-call-resolution-682.md verified",
+   "source_manifest": null
+  },
+  "authored-pr0": {
+   "note": "py-nonlocal-rebind and py-ancestor-module-shadow; their Today cells were re-derived on main 901e58f1 and match the plan.",
+   "origin": "authored in PR 0 from the plan's section 10.4 descriptions (Codex review of #683)",
+   "source_manifest": null
+  },
+  "greenfield-r1": {
+   "manifest_lines": {
+    "r1/trees/clo-go/k.go": "950956cedfefedb302c5da13cb93e5380fe6e68cc396fc1156de1c6fea8c656d",
+    "r1/trees/clo-kotlin/K.kt": "58b3222b831fbc24deb2cad84e5b41d280092ae5dfe1de6b31c03f03094e4e91",
+    "r1/trees/clo-rust/src/lib.rs": "51b8ca53654b5e954d70c90e71378eff0cba51e85936988995c84a1358251afb",
+    "r1/trees/py-sameline/svc.py": "55ba8b710e7b33e8b0620934cc8828697dd2ce07b64d545a727309cca24adc5b",
+    "r1/trees/r9-py/pkg/sub/svc.py": "04d132a61ec010d8c0239b7ae6392dcee489e9cbc293acd6b73c462fd05f55ae",
+    "r1/trees/r9-py/tests/test_svc.py": "360e2cc481edf44cd1e9a0e9e170ec1ea835f75e7ca4313b291f57ed7a894739",
+    "r1/trees/r9-ts/web/svc.ts": "4fdc748f2dd7b3b04d00d94c456608ae6c96966319211ea5e2b26bc3f89bbf47",
+    "r1/trees/r9-ts/web/svc.tsx": "c1c7b11d9d5eb24f855f1fa3276b08adce4da96dd25f8e67453ce6a20c442409",
+    "r1/trees/r9b-py/pkg/svc.py": "1979e49d5c60cc52369a0239a504b3ea53d0bf7b74b24e4fb20903959a9f69ae",
+    "r1/trees/rt-cpp/k.cpp": "33ec8643c746c8c583ba6bf280bd15152587f46628b44b2406d6851edc20cb17",
+    "r1/trees/rt-go/k.go": "9c5d5bba4f16a9336ed1062ac49e678a1a1687d6a1e2f5d164fc625287392d2b",
+    "r1/trees/rt-java/K.java": "2d9504b4f14ac4e2e15319c1eebcc3f7e3a41b56c3d81ce67fbf61b2a93a19f2",
+    "r1/trees/rt-js/k.js": "32eb7922d0b8697a89bf9aab1a1ac4d08c7e78a199b73c31a433fd2ba7662a96",
+    "r1/trees/rt-kotlin/K.kt": "89e78f95a4cc88a75a8ea4b2bf3582199b7acd71cf801d05033860354d1179f2",
+    "r1/trees/rt-pycond/svc.py": "dacdfefd62b3b597570a583186ef4ffe620070d2dee071815f5ade4fee00f9e7",
+    "r1/trees/rt-pyrec/svc.py": "e00d1f8818d738dec9fb844a4df640b65d98b60f3dd24efebd372ea8becaa7f0",
+    "r1/trees/rt-rust/k.rs": "143e23db62b93049cc895b7aba404d97fbcc56dbeb217357f3f9b37f60b46e2a",
+    "r1/trees/rt-tsclass/k.ts": "061d6d65e17fd03f047e5bf60aa7bf295545c4dd50e6991a83bb1bfdc577202d"
+   },
+   "note": "Copied byte-for-byte and verified against the manifest lines below. Greenfield confirmed the trees are synthetic and safe to commit publicly.",
+   "origin": "gf48-probes/r1/trees (Greenfield round-1 probe trees, ViperJuice/greenfield#48)",
+   "source_manifest": "gf48-probes/evidence-manifest.sha256",
+   "source_manifest_sha256": "40575a9bd9612fd1d307dda1e8e94f0ca7af5dff19659ca45cbb7fad649a1e46"
+  },
+  "probe-r9": {
+   "evidence_sha256sums_sha256": "e1e0b01cba9771440c3b9b462c276838b3f6a6f9b1769962adf553d9f6aa250e",
+   "note": "The evidence SHA256SUMS covers only the outputs and r9probe_run.py, so the file hashes are the ones computed for plan section 10.1.",
+   "origin": "evidence/treesitter-chunker/ambiguity-scope-20261119/r9probe (the executive's probe tree)",
+   "source_manifest": null
+  }
+ }
+}

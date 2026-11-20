@@ -1,0 +1,45 @@
+{
+ "files": {
+  "A.cs": {
+   "cache_key": "boundary:v3:4bd1fb78f5a556b409a0618d2ee418486bc5c19c92035371e42481c99cda0391",
+   "key_payload": {
+    "content_hash": "sha1:e678145ef53554c9047953e13c2fd25e836290ce",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-csharp:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "csharp",
+    "path": "A.cs",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "B.cs": {
+   "cache_key": "boundary:v3:bf5b9d66ee10c38ca29dd6880fa549357ddc991fd8a47e7db0ee3e286e799495",
+   "key_payload": {
+    "content_hash": "sha1:b266516ccf298a73f7587b29aa139fd9ff3e92f2",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-csharp:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "csharp",
+    "path": "B.cs",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

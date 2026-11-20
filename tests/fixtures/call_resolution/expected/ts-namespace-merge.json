@@ -1,0 +1,43 @@
+{
+ "plan_sections": [
+  "10.3"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:08f45382b229f212c805e486072f1fa83bc97ef4",
+     "call_span": [
+      128,
+      132
+     ],
+     "callee_span": [
+      128,
+      130
+     ],
+     "caller": "use",
+     "file": "a.ts",
+     "line": 3,
+     "reference": "NS",
+     "today": {
+      "candidate_ids": [
+       "5ab041e3519584e4bf92c2a061717349834776e7",
+       "84192dca1da3bb8e989536626d8a870b8be5a66b",
+       "f0f79b99848ae0142b1eced506be0f026570a71d"
+      ],
+      "candidates": [
+       "b.ts:1:NS",
+       "a.ts:1:NS",
+       "a.ts:2:NS"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-namespace-merge"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-namespace-merge"
+}

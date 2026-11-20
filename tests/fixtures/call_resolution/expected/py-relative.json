@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.3"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:d7974871961184883201c8e7f98a7313a4abfc53",
+     "call_span": [
+      49,
+      57
+     ],
+     "callee_span": [
+      49,
+      55
+     ],
+     "caller": "go",
+     "file": "pkg/sub/x.py",
+     "line": 5,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "0bc3516dcc453f9e9039142b671e4bc146670255",
+       "f5f2790ff098ef3728c537c029d2973569ac5403"
+      ],
+      "candidates": [
+       "pkg/util.py:1:helper",
+       "pkg/other.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-relative"
+  }
+ },
+ "source": "authored",
+ "tree": "py-relative"
+}

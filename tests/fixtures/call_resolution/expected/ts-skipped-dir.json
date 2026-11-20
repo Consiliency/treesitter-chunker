@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:51251e5b1d59b44efa9f5607a62e0e63684023a2",
+     "call_span": [
+      59,
+      62
+     ],
+     "callee_span": [
+      59,
+      60
+     ],
+     "caller": "u",
+     "file": "use.ts",
+     "line": 2,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "a6ec565ebf998845ef692f97091959a974bbe63b",
+       "aeff2fb2308e710c2fea292ea24530413d05a84d"
+      ],
+      "candidates": [
+       "a.ts:1:t",
+       "b.ts:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-skipped-dir"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-skipped-dir"
+}

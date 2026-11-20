@@ -1,0 +1,135 @@
+{
+ "files": {
+  "i1.ts": {
+   "cache_key": "boundary:v3:a7427bfbcaa4ce7da14c50c39e6d48985c545cc3d1f5ecef766406bd1ef9956a",
+   "key_payload": {
+    "content_hash": "sha1:a538cfc8a6d11aa0b24e2e4868205757b98ce7b7",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "i1.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "i2.ts": {
+   "cache_key": "boundary:v3:b95316e1a13ed1abf6f1f2ea6510dc1b04bf60ef5f2fe3d1fdf4fbd286f79a40",
+   "key_payload": {
+    "content_hash": "sha1:235d85055f64acaa9fd3c7027fcd671fa6c5ca47",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "i2.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "i3.ts": {
+   "cache_key": "boundary:v3:b166249a1d66dd041aae3d55377d36a885bdeb6fc03a42ed9fdd30455674110d",
+   "key_payload": {
+    "content_hash": "sha1:cd5bf950260c77358eed1d8ce071523ada5d0a2e",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "i3.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "i4.ts": {
+   "cache_key": "boundary:v3:63154a4d5613833c9dc804136ae68719cb91279ff687bb17053cf345d210e52d",
+   "key_payload": {
+    "content_hash": "sha1:48701665a96b33ca52dd3a0255e7ff84bfdb780b",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "i4.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "impl.ts": {
+   "cache_key": "boundary:v3:fd2f440e75b32b56fb4e0ed56a726b47d62c0ace951cc4b30b7e8fabecff9a65",
+   "key_payload": {
+    "content_hash": "sha1:f1ef9f57f71f13cd1dd235eda52d75c0864961f5",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "impl.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "other.ts": {
+   "cache_key": "boundary:v3:ba4adff68abe0bdcb8cec61e1d8faea7a3c24203736945ed906b249db91a1814",
+   "key_payload": {
+    "content_hash": "sha1:780e69b2d79bb493b37c8483ed50bdd673747db2",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "other.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "use.ts": {
+   "cache_key": "boundary:v3:c153111a919c01ca6be98fe4655ec528348c77241f5d1b94c6538928a4b26139",
+   "key_payload": {
+    "content_hash": "sha1:0ec223e512f0d4f1ced9b68e7a1fabb649c786c8",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "use.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

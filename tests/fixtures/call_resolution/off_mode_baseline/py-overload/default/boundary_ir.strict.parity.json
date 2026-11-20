@@ -1,0 +1,359 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:33649163c80177c644d9d99a6defb380c18f1018",
+   "candidates": [
+    "4d4cd9d7f3fd6e82443194cd97630678d117be81",
+    "8cf15f1b225a23d30d6d181029a4edc8469f5bfb",
+    "91f65f3c6a4968f1142f1c766dd43def82edfd62"
+   ],
+   "file": "a.py",
+   "id": "call:33649163c80177c644d9d99a6defb380c18f1018",
+   "location": {
+    "byte_end": 153,
+    "byte_start": 149,
+    "end_line": 13,
+    "start_line": 13
+   },
+   "metadata": {
+    "file": "a.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "ambiguous",
+   "source": "cc0e0b32f4c6191c861c87adc5781be27a2fc7f9",
+   "target": "f",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "4d4cd9d7f3fd6e82443194cd97630678d117be81",
+    "8cf15f1b225a23d30d6d181029a4edc8469f5bfb",
+    "91f65f3c6a4968f1142f1c766dd43def82edfd62"
+   ],
+   "id": "edge:ac74a7adc55d01d9",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 12,
+    "start_line": 12
+   },
+   "metadata": {
+    "file": "a.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "ambiguous",
+   "source": "cc0e0b32f4c6191c861c87adc5781be27a2fc7f9",
+   "target": "f",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:14320764042a7ef3fea04d922140b92ee97960be",
+   "diagnostics": [],
+   "id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "a.py",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 2,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 1,
+  "files_processed": 1,
+  "files_skipped": 0,
+  "files_total": 1,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 6,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "1514997487e009299c11ac7cc741acdec943d387",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "1514997487e009299c11ac7cc741acdec943d387",
+   "identity": {
+    "source": "definition_id",
+    "value": "1514997487e009299c11ac7cc741acdec943d387"
+   },
+   "kind": "decorated_definition",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "overload"
+    ],
+    "exports": [
+     "f",
+     "x"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: a.py\nkind: decorated_definition\nsemantic path: a.py\nexports: f, x\ndependencies: overload\ncontent:\n@overload\ndef f(x: str) -> str: ..."
+   },
+   "node_id": "1440de0ba2bdc4ef79884986df37023509fe68e8",
+   "parent": null,
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "a.py",
+   "signature": null,
+   "span": {
+    "byte_end": 101,
+    "byte_start": 66,
+    "end_line": 7,
+    "start_line": 6
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "283eb4be325d4fd7b1710dc2b1d8c96c52b5af0d",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "283eb4be325d4fd7b1710dc2b1d8c96c52b5af0d",
+   "identity": {
+    "source": "definition_id",
+    "value": "283eb4be325d4fd7b1710dc2b1d8c96c52b5af0d"
+   },
+   "kind": "decorated_definition",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "overload"
+    ],
+    "exports": [
+     "f",
+     "x"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: a.py\nkind: decorated_definition\nsemantic path: a.py\nexports: f, x\ndependencies: overload\ncontent:\n@overload\ndef f(x: int) -> int: ..."
+   },
+   "node_id": "e3c3159a7d35c6022132a43afd69609de1c8808b",
+   "parent": null,
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "a.py",
+   "signature": null,
+   "span": {
+    "byte_end": 65,
+    "byte_start": 30,
+    "end_line": 5,
+    "start_line": 4
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "4d4cd9d7f3fd6e82443194cd97630678d117be81",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "4d4cd9d7f3fd6e82443194cd97630678d117be81",
+   "identity": {
+    "source": "definition_id",
+    "value": "4d4cd9d7f3fd6e82443194cd97630678d117be81"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "f",
+     "x"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: a.py\nkind: function\nsymbol: f\nqualified name: f\nsemantic path: a.py::f\nsignature text: f(x: str) -> str\nexports: f, x\ncontent:\ndef f(x: str) -> str: ..."
+   },
+   "node_id": "cdea79158d5880569d4034aac26a96713e425504",
+   "parent": "1440de0ba2bdc4ef79884986df37023509fe68e8",
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "f",
+   "relationships": [],
+   "semantic_path": "a.py::f",
+   "signature": "f(x: str) -> str",
+   "span": {
+    "byte_end": 101,
+    "byte_start": 76,
+    "end_line": 7,
+    "start_line": 7
+   },
+   "symbol": "f",
+   "symbol_id": "fb08529d1a744a442ea4e24a4389992c80d5f949"
+  },
+  {
+   "definition_id": "8cf15f1b225a23d30d6d181029a4edc8469f5bfb",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "8cf15f1b225a23d30d6d181029a4edc8469f5bfb",
+   "identity": {
+    "source": "definition_id",
+    "value": "8cf15f1b225a23d30d6d181029a4edc8469f5bfb"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "f",
+     "x"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: a.py\nkind: function\nsymbol: f\nqualified name: f\nsemantic path: a.py::f\nsignature text: f(x: int) -> int\nexports: f, x\ncontent:\ndef f(x: int) -> int: ..."
+   },
+   "node_id": "a573d39dfa067967fdedae82cf90130d16e81bc8",
+   "parent": "e3c3159a7d35c6022132a43afd69609de1c8808b",
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "f",
+   "relationships": [],
+   "semantic_path": "a.py::f",
+   "signature": "f(x: int) -> int",
+   "span": {
+    "byte_end": 65,
+    "byte_start": 40,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "symbol": "f",
+   "symbol_id": "fb08529d1a744a442ea4e24a4389992c80d5f949"
+  },
+  {
+   "definition_id": "91f65f3c6a4968f1142f1c766dd43def82edfd62",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "91f65f3c6a4968f1142f1c766dd43def82edfd62",
+   "identity": {
+    "source": "definition_id",
+    "value": "91f65f3c6a4968f1142f1c766dd43def82edfd62"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "f",
+     "x"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: a.py\nkind: function\nsymbol: f\nqualified name: f\nsemantic path: a.py::f\nsignature text: f(x)\nexports: f, x\ncontent:\ndef f(x):\n    return x"
+   },
+   "node_id": "e9287d530b0e8a13258e7a72341ab8512568d70c",
+   "parent": null,
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "f",
+   "relationships": [],
+   "semantic_path": "a.py::f",
+   "signature": "f(x)",
+   "span": {
+    "byte_end": 124,
+    "byte_start": 102,
+    "end_line": 9,
+    "start_line": 8
+   },
+   "symbol": "f",
+   "symbol_id": "fb08529d1a744a442ea4e24a4389992c80d5f949"
+  },
+  {
+   "definition_id": "cc0e0b32f4c6191c861c87adc5781be27a2fc7f9",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "cc0e0b32f4c6191c861c87adc5781be27a2fc7f9",
+   "identity": {
+    "source": "definition_id",
+    "value": "cc0e0b32f4c6191c861c87adc5781be27a2fc7f9"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "f"
+    ],
+    "exports": [
+     "use"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: a.py\nkind: function\nsymbol: use\nqualified name: use\nsemantic path: a.py::use\nsignature text: use()\nexports: use\ndependencies: f\ncontent:\ndef use():\n    return f(1)"
+   },
+   "node_id": "40a47cf549e373ce5a07e44a9713c0547c872c0d",
+   "parent": null,
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "use",
+   "relationships": [
+    "call:33649163c80177c644d9d99a6defb380c18f1018",
+    "edge:ac74a7adc55d01d9"
+   ],
+   "semantic_path": "a.py::use",
+   "signature": "use()",
+   "span": {
+    "byte_end": 153,
+    "byte_start": 127,
+    "end_line": 13,
+    "start_line": 12
+   },
+   "symbol": "use",
+   "symbol_id": "5a372d8adaff1ac49363068f97599e6d7be30bd9"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "strict"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

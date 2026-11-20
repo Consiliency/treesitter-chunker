@@ -1,0 +1,1133 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:96e16ab32bdbccb5d21d93fb8f427986f4b06d67",
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "id": "call:96e16ab32bdbccb5d21d93fb8f427986f4b06d67",
+   "location": {
+    "byte_end": 110,
+    "byte_start": 101,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "10402dcf0728c9896d21c0367550927615f2628d",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "id": "edge:bb6d7f9e6d5c84b5",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 10,
+    "start_line": 10
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "10402dcf0728c9896d21c0367550927615f2628d",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "id": "edge:cdb2b579ba8a2172",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:6448c8db464fbe4a541c02c7e4182f1dbf8b9843",
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "id": "call:6448c8db464fbe4a541c02c7e4182f1dbf8b9843",
+   "location": {
+    "byte_end": 347,
+    "byte_start": 338,
+    "end_line": 33,
+    "start_line": 33
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "481200ee6990a136f442a506101f3940f538398e",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:c91576e34b56b4197d51274a8d588efda5e82e15",
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "id": "call:c91576e34b56b4197d51274a8d588efda5e82e15",
+   "location": {
+    "byte_end": 335,
+    "byte_start": 326,
+    "end_line": 33,
+    "start_line": 33
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "481200ee6990a136f442a506101f3940f538398e",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "id": "edge:95e1eeddd0782200",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 30,
+    "start_line": 30
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "481200ee6990a136f442a506101f3940f538398e",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:4ac0328f92fc2c58688cc033ed1b2644532a6334",
+   "candidates": [
+    "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+    "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1"
+   ],
+   "file": "pkg/sub/svc.py",
+   "id": "call:4ac0328f92fc2c58688cc033ed1b2644532a6334",
+   "location": {
+    "byte_end": 293,
+    "byte_start": 289,
+    "end_line": 31,
+    "start_line": 31
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "481200ee6990a136f442a506101f3940f538398e",
+   "target": "d",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+    "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1"
+   ],
+   "id": "edge:6d21c09e481384ff",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 30,
+    "start_line": 30
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "481200ee6990a136f442a506101f3940f538398e",
+   "target": "d",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:72f73724679f239a8c359e524b8043158317901a",
+   "candidates": [],
+   "file": "pkg/sub/svc.py",
+   "id": "call:72f73724679f239a8c359e524b8043158317901a",
+   "location": {
+    "byte_end": 314,
+    "byte_start": 298,
+    "end_line": 32,
+    "start_line": 32
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "unknown_thing",
+   "resolution": "unresolved",
+   "source": "481200ee6990a136f442a506101f3940f538398e",
+   "target": "unknown_thing",
+   "type": "calls"
+  },
+  {
+   "candidates": [],
+   "id": "edge:aa58b53fa6b12b36",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 30,
+    "start_line": 30
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "unknown_thing",
+   "resolution": "unresolved",
+   "source": "481200ee6990a136f442a506101f3940f538398e",
+   "target": "unknown_thing",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:5ad9b257f7410b02505cd06e3727399229db8f4b",
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "tests/test_svc.py",
+   "id": "call:5ad9b257f7410b02505cd06e3727399229db8f4b",
+   "location": {
+    "byte_end": 72,
+    "byte_start": 63,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "tests/test_svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "672058f9892185b2caf2e1742ff98cc08a3575dc",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "id": "edge:2e31f8524e73c1b6",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "metadata": {
+    "file": "tests/test_svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "672058f9892185b2caf2e1742ff98cc08a3575dc",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:9a8775a861c404221772bab9fae8a654a6e31096",
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "id": "call:9a8775a861c404221772bab9fae8a654a6e31096",
+   "location": {
+    "byte_end": 183,
+    "byte_start": 174,
+    "end_line": 20,
+    "start_line": 20
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "id": "edge:55e6d241b1492d75",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 19,
+    "start_line": 19
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:bf9c07c10f0c51b68c8ebc5d233dc4684361b440",
+   "candidates": [
+    "8022e90f0ba72577afb290db40f2abc929aae58e"
+   ],
+   "file": "pkg/sub/svc.py",
+   "id": "call:bf9c07c10f0c51b68c8ebc5d233dc4684361b440",
+   "location": {
+    "byte_end": 204,
+    "byte_start": 195,
+    "end_line": 21,
+    "start_line": 21
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "resolved",
+   "source": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "target": "8022e90f0ba72577afb290db40f2abc929aae58e",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "8022e90f0ba72577afb290db40f2abc929aae58e"
+   ],
+   "id": "edge:1ae9eb86d76d67e2",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 19,
+    "start_line": 19
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "resolved",
+   "source": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "target": "8022e90f0ba72577afb290db40f2abc929aae58e",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:1cda4240e16cbeb3bba8970d2339172e66bb6bf2",
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "id": "call:1cda4240e16cbeb3bba8970d2339172e66bb6bf2",
+   "location": {
+    "byte_end": 233,
+    "byte_start": 224,
+    "end_line": 25,
+    "start_line": 25
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:ee681cc9aa0b886a746d444ce617e9b278e7d6e9",
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "id": "call:ee681cc9aa0b886a746d444ce617e9b278e7d6e9",
+   "location": {
+    "byte_end": 247,
+    "byte_start": 238,
+    "end_line": 26,
+    "start_line": 26
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "id": "edge:55f01cb5f25601f9",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 24,
+    "start_line": 24
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "source": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "target": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:8a8c778c43217f5964870192d1822478dd2ab807",
+   "candidates": [
+    "8022e90f0ba72577afb290db40f2abc929aae58e"
+   ],
+   "file": "pkg/sub/svc.py",
+   "id": "call:8a8c778c43217f5964870192d1822478dd2ab807",
+   "location": {
+    "byte_end": 268,
+    "byte_start": 259,
+    "end_line": 27,
+    "start_line": 27
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "resolved",
+   "source": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "target": "8022e90f0ba72577afb290db40f2abc929aae58e",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "8022e90f0ba72577afb290db40f2abc929aae58e"
+   ],
+   "id": "edge:03f42d05c858e84c",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 24,
+    "start_line": 24
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "resolved",
+   "source": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "target": "8022e90f0ba72577afb290db40f2abc929aae58e",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:834619d83e82df8b423d5d574bfc53de9ae9d5fc",
+   "candidates": [
+    "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+    "219cfa7e0bd9e7b1284997c116104a144444a0cc#1"
+   ],
+   "file": "pkg/sub/svc.py",
+   "id": "call:834619d83e82df8b423d5d574bfc53de9ae9d5fc",
+   "location": {
+    "byte_end": 157,
+    "byte_start": 154,
+    "end_line": 16,
+    "start_line": 16
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "source": "f8af96ca8ac1cd8f71aa5b6279f0c00485dcc1b0",
+   "target": "C",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+    "219cfa7e0bd9e7b1284997c116104a144444a0cc#1"
+   ],
+   "id": "edge:aefb279031e63032",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 15,
+    "start_line": 15
+   },
+   "metadata": {
+    "file": "pkg/sub/svc.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "source": "f8af96ca8ac1cd8f71aa5b6279f0c00485dcc1b0",
+   "target": "C",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:08dabf2d8befebd6e7966f3a81c285d80205f843",
+   "diagnostics": [],
+   "id": "12de8e297f13b5dd137b69d080d417746d5e6856",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "pkg/sub/svc.py",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:b18ad7919857f83ff6733da44a321847ca9c57c7",
+   "diagnostics": [],
+   "id": "88251bff003a182a52cefc4cf41931c5704626bf",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "tests/test_svc.py",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 4,
+  "diagnostics_total": 0,
+  "edges_total": 23,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 2,
+  "files_processed": 2,
+  "files_skipped": 0,
+  "files_total": 2,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 10,
+  "parse_failures": 0,
+  "resolved_edges": 17,
+  "serialization_failures": 0,
+  "unresolved_edges": 2
+ },
+ "nodes": [
+  {
+   "definition_id": "10402dcf0728c9896d21c0367550927615f2628d",
+   "file_id": "12de8e297f13b5dd137b69d080d417746d5e6856",
+   "id": "10402dcf0728c9896d21c0367550927615f2628d",
+   "identity": {
+    "source": "definition_id",
+    "value": "10402dcf0728c9896d21c0367550927615f2628d"
+   },
+   "kind": "method",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "target"
+    ],
+    "exports": [
+     "a",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": "C",
+    "semantic_text": "language: python\nfile: pkg/sub/svc.py\nkind: method\nsymbol: a\nqualified name: C.a\nparent symbol: C\nsemantic path: pkg/sub/svc.py::C.a\nsignature text: a(self)\nexports: a, self\ndependencies: target\ncontent:\ndef a(self):\n        return target(1)"
+   },
+   "node_id": "f654da9fec61813034db56dc4be8190d30dbe2dd",
+   "parent": "90a7f6d961e72f98f1fa95f656d812dfc26b1702",
+   "path": "pkg/sub/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "C.a",
+   "relationships": [
+    "call:96e16ab32bdbccb5d21d93fb8f427986f4b06d67",
+    "edge:bb6d7f9e6d5c84b5"
+   ],
+   "semantic_path": "pkg/sub/svc.py::C.a",
+   "signature": "a(self)",
+   "span": {
+    "byte_end": 110,
+    "byte_start": 73,
+    "end_line": 11,
+    "start_line": 10
+   },
+   "symbol": "a",
+   "symbol_id": "b8b1fac1d034e52826a12259b5b4ad76882e1c8d"
+  },
+  {
+   "definition_id": "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+   "file_id": "12de8e297f13b5dd137b69d080d417746d5e6856",
+   "id": "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+   "identity": {
+    "source": "definition_id",
+    "value": "219cfa7e0bd9e7b1284997c116104a144444a0cc"
+   },
+   "kind": "class",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "target"
+    ],
+    "exports": [
+     "C",
+     "a",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/sub/svc.py\nkind: class\nsymbol: C\nqualified name: C\nsemantic path: pkg/sub/svc.py::C\nexports: C, a, self\ndependencies: target\ncontent:\nclass C:\n    def a(self):\n        return target(1)"
+   },
+   "node_id": "90a7f6d961e72f98f1fa95f656d812dfc26b1702",
+   "parent": null,
+   "path": "pkg/sub/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "C",
+   "relationships": [
+    "edge:cdb2b579ba8a2172"
+   ],
+   "semantic_path": "pkg/sub/svc.py::C",
+   "signature": null,
+   "span": {
+    "byte_end": 110,
+    "byte_start": 60,
+    "end_line": 11,
+    "start_line": 9
+   },
+   "symbol": "C",
+   "symbol_id": "2b4c34352cab432074c08dad80a3d1b1fc68363d"
+  },
+  {
+   "definition_id": "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+   "file_id": "12de8e297f13b5dd137b69d080d417746d5e6856",
+   "id": "219cfa7e0bd9e7b1284997c116104a144444a0cc#1",
+   "identity": {
+    "disambiguated_from": "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+    "source": "definition_id",
+    "value": "219cfa7e0bd9e7b1284997c116104a144444a0cc#1"
+   },
+   "kind": "class",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "C",
+     "b",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/sub/svc.py\nkind: class\nsymbol: C\nqualified name: C\nsemantic path: pkg/sub/svc.py::C\nexports: C, b, self\ncontent:\nclass C:\n    def b(self):\n        return C()"
+   },
+   "node_id": "cd614532891d40401c5c2bb0778355e681ca0e0a",
+   "parent": null,
+   "path": "pkg/sub/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "C",
+   "relationships": [],
+   "semantic_path": "pkg/sub/svc.py::C",
+   "signature": null,
+   "span": {
+    "byte_end": 157,
+    "byte_start": 113,
+    "end_line": 16,
+    "start_line": 14
+   },
+   "symbol": "C",
+   "symbol_id": "2b4c34352cab432074c08dad80a3d1b1fc68363d"
+  },
+  {
+   "definition_id": "481200ee6990a136f442a506101f3940f538398e",
+   "file_id": "12de8e297f13b5dd137b69d080d417746d5e6856",
+   "id": "481200ee6990a136f442a506101f3940f538398e",
+   "identity": {
+    "source": "definition_id",
+    "value": "481200ee6990a136f442a506101f3940f538398e"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "d",
+     "target",
+     "unknown_thing"
+    ],
+    "exports": [
+     "caller"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/sub/svc.py\nkind: function\nsymbol: caller\nqualified name: caller\nsemantic path: pkg/sub/svc.py::caller\nsignature text: caller()\nexports: caller\ndependencies: d, target, unknown_thing\ncontent:\ndef caller():\n    d(1)\n    unknown_thing(2)\n    return target(3) + target(4)"
+   },
+   "node_id": "f91cf6c8f8ed3a96b8178da38872de51c0d0515d",
+   "parent": null,
+   "path": "pkg/sub/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "caller",
+   "relationships": [
+    "call:4ac0328f92fc2c58688cc033ed1b2644532a6334",
+    "call:6448c8db464fbe4a541c02c7e4182f1dbf8b9843",
+    "call:72f73724679f239a8c359e524b8043158317901a",
+    "call:c91576e34b56b4197d51274a8d588efda5e82e15",
+    "edge:6d21c09e481384ff",
+    "edge:95e1eeddd0782200",
+    "edge:aa58b53fa6b12b36"
+   ],
+   "semantic_path": "pkg/sub/svc.py::caller",
+   "signature": "caller()",
+   "span": {
+    "byte_end": 347,
+    "byte_start": 271,
+    "end_line": 33,
+    "start_line": 30
+   },
+   "symbol": "caller",
+   "symbol_id": "fcd72b2597015618fa214af92b1d2022b10f7653"
+  },
+  {
+   "definition_id": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "file_id": "12de8e297f13b5dd137b69d080d417746d5e6856",
+   "id": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "identity": {
+    "source": "definition_id",
+    "value": "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "target",
+     "v"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/sub/svc.py\nkind: function\nsymbol: target\nqualified name: target\nsemantic path: pkg/sub/svc.py::target\nsignature text: target(v)\nexports: target, v\ncontent:\ndef target(v):\n    return v"
+   },
+   "node_id": "b240b2bfd340e100641853ec34586632b0bf2abe",
+   "parent": null,
+   "path": "pkg/sub/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "target",
+   "relationships": [],
+   "semantic_path": "pkg/sub/svc.py::target",
+   "signature": "target(v)",
+   "span": {
+    "byte_end": 57,
+    "byte_start": 30,
+    "end_line": 6,
+    "start_line": 5
+   },
+   "symbol": "target",
+   "symbol_id": "346ab831bbbedabf471a480c0e9b254bf9be4105"
+  },
+  {
+   "definition_id": "672058f9892185b2caf2e1742ff98cc08a3575dc",
+   "file_id": "88251bff003a182a52cefc4cf41931c5704626bf",
+   "id": "672058f9892185b2caf2e1742ff98cc08a3575dc",
+   "identity": {
+    "source": "definition_id",
+    "value": "672058f9892185b2caf2e1742ff98cc08a3575dc"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "target"
+    ],
+    "exports": [
+     "test_target"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: tests/test_svc.py\nkind: function\nsymbol: test_target\nqualified name: test_target\nsemantic path: tests/test_svc.py::test_target\nsignature text: test_target()\nexports: test_target\ndependencies: target\ncontent:\ndef test_target():\n    assert target(1) == 1"
+   },
+   "node_id": "6be1e432e9e7a6569fe2cf4c7e5805f4448b17af",
+   "parent": null,
+   "path": "tests/test_svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "test_target",
+   "relationships": [
+    "call:5ad9b257f7410b02505cd06e3727399229db8f4b",
+    "edge:2e31f8524e73c1b6"
+   ],
+   "semantic_path": "tests/test_svc.py::test_target",
+   "signature": "test_target()",
+   "span": {
+    "byte_end": 77,
+    "byte_start": 33,
+    "end_line": 5,
+    "start_line": 4
+   },
+   "symbol": "test_target",
+   "symbol_id": "4fd219d099d501b5c548a8e2a52bb076720e0a30"
+  },
+  {
+   "definition_id": "8022e90f0ba72577afb290db40f2abc929aae58e",
+   "file_id": "12de8e297f13b5dd137b69d080d417746d5e6856",
+   "id": "8022e90f0ba72577afb290db40f2abc929aae58e",
+   "identity": {
+    "source": "definition_id",
+    "value": "8022e90f0ba72577afb290db40f2abc929aae58e"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "helper",
+     "v"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/sub/svc.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: pkg/sub/svc.py::helper\nsignature text: helper(v)\nexports: helper, v\ncontent:\ndef helper(v):\n    return v"
+   },
+   "node_id": "22c1a5e58e91d110e3e038f1e899f78b62261be0",
+   "parent": null,
+   "path": "pkg/sub/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "pkg/sub/svc.py::helper",
+   "signature": "helper(v)",
+   "span": {
+    "byte_end": 27,
+    "byte_start": 0,
+    "end_line": 2,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "f1245c20293c659bcb62892deccb36d54648a842"
+  },
+  {
+   "definition_id": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "file_id": "12de8e297f13b5dd137b69d080d417746d5e6856",
+   "id": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "identity": {
+    "source": "definition_id",
+    "value": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "helper",
+     "target"
+    ],
+    "exports": [
+     "d",
+     "x"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/sub/svc.py\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: pkg/sub/svc.py::d\nsignature text: d(x)\nexports: d, x\ndependencies: helper, target\ncontent:\ndef d(x):\n    target(x)\n    return helper(x)"
+   },
+   "node_id": "fa7fd9e01b60cf93a346e9e7d574f378f39ef854",
+   "parent": null,
+   "path": "pkg/sub/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [
+    "call:9a8775a861c404221772bab9fae8a654a6e31096",
+    "call:bf9c07c10f0c51b68c8ebc5d233dc4684361b440",
+    "edge:1ae9eb86d76d67e2",
+    "edge:55e6d241b1492d75"
+   ],
+   "semantic_path": "pkg/sub/svc.py::d",
+   "signature": "d(x)",
+   "span": {
+    "byte_end": 204,
+    "byte_start": 160,
+    "end_line": 21,
+    "start_line": 19
+   },
+   "symbol": "d",
+   "symbol_id": "7153d89dc45625343dc20029220a7ee45becb921"
+  },
+  {
+   "definition_id": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "file_id": "12de8e297f13b5dd137b69d080d417746d5e6856",
+   "id": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "identity": {
+    "disambiguated_from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+    "source": "definition_id",
+    "value": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "helper",
+     "target"
+    ],
+    "exports": [
+     "d",
+     "x",
+     "y"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/sub/svc.py\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: pkg/sub/svc.py::d\nsignature text: d(x, y)\nexports: d, x, y\ndependencies: helper, target\ncontent:\ndef d(x, y):\n    target(x)\n    target(y)\n    return helper(y)"
+   },
+   "node_id": "458da026bdb05d09e681ea8a13ebca1c12e66603",
+   "parent": null,
+   "path": "pkg/sub/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [
+    "call:1cda4240e16cbeb3bba8970d2339172e66bb6bf2",
+    "call:8a8c778c43217f5964870192d1822478dd2ab807",
+    "call:ee681cc9aa0b886a746d444ce617e9b278e7d6e9",
+    "edge:03f42d05c858e84c",
+    "edge:55f01cb5f25601f9"
+   ],
+   "semantic_path": "pkg/sub/svc.py::d",
+   "signature": "d(x, y)",
+   "span": {
+    "byte_end": 268,
+    "byte_start": 207,
+    "end_line": 27,
+    "start_line": 24
+   },
+   "symbol": "d",
+   "symbol_id": "7153d89dc45625343dc20029220a7ee45becb921"
+  },
+  {
+   "definition_id": "f8af96ca8ac1cd8f71aa5b6279f0c00485dcc1b0",
+   "file_id": "12de8e297f13b5dd137b69d080d417746d5e6856",
+   "id": "f8af96ca8ac1cd8f71aa5b6279f0c00485dcc1b0",
+   "identity": {
+    "source": "definition_id",
+    "value": "f8af96ca8ac1cd8f71aa5b6279f0c00485dcc1b0"
+   },
+   "kind": "method",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "C"
+    ],
+    "exports": [
+     "b",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": "C",
+    "semantic_text": "language: python\nfile: pkg/sub/svc.py\nkind: method\nsymbol: b\nqualified name: C.b\nparent symbol: C\nsemantic path: pkg/sub/svc.py::C.b\nsignature text: b(self)\nexports: b, self\ndependencies: C\ncontent:\ndef b(self):\n        return C()"
+   },
+   "node_id": "67c0f853185c218d9650361fb5a810b2e707336d",
+   "parent": "cd614532891d40401c5c2bb0778355e681ca0e0a",
+   "path": "pkg/sub/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "C.b",
+   "relationships": [
+    "call:834619d83e82df8b423d5d574bfc53de9ae9d5fc",
+    "edge:aefb279031e63032"
+   ],
+   "semantic_path": "pkg/sub/svc.py::C.b",
+   "signature": "b(self)",
+   "span": {
+    "byte_end": 157,
+    "byte_start": 126,
+    "end_line": 16,
+    "start_line": 15
+   },
+   "symbol": "b",
+   "symbol_id": "af75b9ed2467aa7f08bf2a1afc25fc96f32247b5"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

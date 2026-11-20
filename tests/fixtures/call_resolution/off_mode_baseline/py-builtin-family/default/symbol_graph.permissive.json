@@ -1,0 +1,158 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 26,
+   "callee_byte_start": 22,
+   "file": "c.py",
+   "from": "12421c37ce122ae07f644475e3da40ef532d19b4",
+   "id": "call:8551ac7a39871481e555950b14465d8bd7d093bf",
+   "location": {
+    "byte_end": 31,
+    "byte_start": 22,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "open",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 3,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 1
+ },
+ "relationships": [
+  {
+   "call_kind": "call",
+   "call_site_id": "call:8551ac7a39871481e555950b14465d8bd7d093bf",
+   "callee_byte_end": 26,
+   "callee_byte_start": 22,
+   "candidates": [
+    "074474905b6a074770baf5b810f4821186886c78",
+    "f1f554cf3f4e4b85e5adebd8a8f55713fc0c90a8"
+   ],
+   "file": "c.py",
+   "from": "12421c37ce122ae07f644475e3da40ef532d19b4",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 31,
+    "byte_start": 22,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "open",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "open",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "074474905b6a074770baf5b810f4821186886c78": {
+   "definition_id": "074474905b6a074770baf5b810f4821186886c78",
+   "end_line": 2,
+   "file": "a.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "a",
+   "name": "open",
+   "node_id": "73a106b9535ad0cbb1217d19c336e49384c649b3",
+   "parent_class": "",
+   "qualified_name": "open",
+   "semantic_path": "a.py::open",
+   "signature": "open()"
+  },
+  "12421c37ce122ae07f644475e3da40ef532d19b4": {
+   "definition_id": "12421c37ce122ae07f644475e3da40ef532d19b4",
+   "end_line": 2,
+   "file": "c.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "c",
+   "name": "use",
+   "node_id": "156cc4075bfd95fd1d94e0d4af0207d3d443bdff",
+   "parent_class": "",
+   "qualified_name": "use",
+   "semantic_path": "c.py::use",
+   "signature": "use()"
+  },
+  "f1f554cf3f4e4b85e5adebd8a8f55713fc0c90a8": {
+   "definition_id": "f1f554cf3f4e4b85e5adebd8a8f55713fc0c90a8",
+   "end_line": 1,
+   "file": "x.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "x",
+   "name": "open",
+   "node_id": "bc9755e261ec3f15fd9423ac674504489073f071",
+   "parent_class": "",
+   "qualified_name": "open",
+   "semantic_path": "x.js::open",
+   "signature": "open()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "074474905b6a074770baf5b810f4821186886c78",
+    "end_line": 2,
+    "file": "a.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "a",
+    "name": "open",
+    "node_id": "73a106b9535ad0cbb1217d19c336e49384c649b3",
+    "parent_class": "",
+    "qualified_name": "open",
+    "semantic_path": "a.py::open",
+    "signature": "open()"
+   },
+   {
+    "definition_id": "12421c37ce122ae07f644475e3da40ef532d19b4",
+    "end_line": 2,
+    "file": "c.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "c",
+    "name": "use",
+    "node_id": "156cc4075bfd95fd1d94e0d4af0207d3d443bdff",
+    "parent_class": "",
+    "qualified_name": "use",
+    "semantic_path": "c.py::use",
+    "signature": "use()"
+   },
+   {
+    "definition_id": "f1f554cf3f4e4b85e5adebd8a8f55713fc0c90a8",
+    "end_line": 1,
+    "file": "x.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "x",
+    "name": "open",
+    "node_id": "bc9755e261ec3f15fd9423ac674504489073f071",
+    "parent_class": "",
+    "qualified_name": "open",
+    "semantic_path": "x.js::open",
+    "signature": "open()"
+   }
+  ],
+  "imports": []
+ }
+}

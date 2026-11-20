@@ -1,0 +1,67 @@
+{
+ "plan_sections": [
+  "10.3"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:025f5ddefba17090afe049a863f22f8371443cd3",
+     "call_span": [
+      61,
+      64
+     ],
+     "callee_span": [
+      61,
+      62
+     ],
+     "caller": "u",
+     "file": "use.ts",
+     "line": 2,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "8e8ae04d155120e4ce7dc9383990e5f6921af32a",
+       "a6ec565ebf998845ef692f97091959a974bbe63b"
+      ],
+      "candidates": [
+       "other.ts:1:t",
+       "a.ts:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:0bec97d439d96fd7015cd38bd053012c6ac97d23",
+     "call_span": [
+      67,
+      70
+     ],
+     "callee_span": [
+      67,
+      68
+     ],
+     "caller": "u",
+     "file": "use.ts",
+     "line": 2,
+     "reference": "v",
+     "today": {
+      "candidate_ids": [
+       "11526085b52bb79a2f69780b626a60652b1db8eb",
+       "1faaee7eed54e777376fbde5ca62a977be298600"
+      ],
+      "candidates": [
+       "b.ts:1:v",
+       "other.ts:2:v"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-barrel"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-barrel"
+}

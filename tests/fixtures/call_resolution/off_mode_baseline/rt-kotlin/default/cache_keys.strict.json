@@ -1,0 +1,27 @@
+{
+ "files": {
+  "K.kt": {
+   "cache_key": "boundary:v3:5145ce2b69ff9beb2a848a43d5360b712f92846f788f5b740803e5f3881bc029",
+   "key_payload": {
+    "content_hash": "sha1:da63dd93d009d90e792274533696b7864a43202d",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-kotlin:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "kotlin",
+    "path": "K.kt",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

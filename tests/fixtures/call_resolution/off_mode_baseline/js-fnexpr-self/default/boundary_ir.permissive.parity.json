@@ -1,0 +1,312 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:badcc7ff8a421fccc2e30d1a2f6f06d27f7df952",
+   "candidates": [
+    "93f8ef326bbc292d05fddff073d21ea4f3cf8997",
+    "943a9f80b17cacf2d4968fca407d01f5061ec551"
+   ],
+   "file": "a.js",
+   "id": "call:badcc7ff8a421fccc2e30d1a2f6f06d27f7df952",
+   "location": {
+    "byte_end": 83,
+    "byte_start": 75,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "a.js",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "4e36552579613f06ae23187285751b9485ebf230",
+   "target": "t",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "93f8ef326bbc292d05fddff073d21ea4f3cf8997",
+    "943a9f80b17cacf2d4968fca407d01f5061ec551"
+   ],
+   "id": "edge:aac9b29e3d58023a",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "a.js",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "4e36552579613f06ae23187285751b9485ebf230",
+   "target": "t",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:c99b27c0bafa4e35dd4468f12ce35956cbffd2f0",
+   "diagnostics": [],
+   "id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "language": "javascript",
+   "parser": "tree-sitter-javascript",
+   "path": "a.js",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:dc5052f3c618cbba94b76a956841464a12290a4d",
+   "diagnostics": [],
+   "id": "5c1dcbf65eadde3f3ed48380645b8c140e9016c3",
+   "language": "javascript",
+   "parser": "tree-sitter-javascript",
+   "path": "b.js",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 2,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 2,
+  "files_processed": 2,
+  "files_skipped": 0,
+  "files_total": 2,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 5,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "19d592aaec226b0608867e0033f0cb25aec0c2e5",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "19d592aaec226b0608867e0033f0cb25aec0c2e5",
+   "identity": {
+    "source": "definition_id",
+    "value": "19d592aaec226b0608867e0033f0cb25aec0c2e5"
+   },
+   "kind": "export_statement",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: export_statement\nsemantic path: a.js\ncontent:\nexport {};"
+   },
+   "node_id": "8536aed06edf228c0aa881612e910bdaff0c9371",
+   "parent": null,
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "a.js",
+   "signature": null,
+   "span": {
+    "byte_end": 10,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "4e36552579613f06ae23187285751b9485ebf230",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "4e36552579613f06ae23187285751b9485ebf230",
+   "identity": {
+    "source": "definition_id",
+    "value": "4e36552579613f06ae23187285751b9485ebf230"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [
+     "t"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": "g",
+    "semantic_text": "language: javascript\nfile: a.js\nkind: function\nsymbol: t\nqualified name: g.t\nparent symbol: g\nsemantic path: a.js::g.t\nsignature text: t(n)\ndependencies: t\ncontent:\nfunction t(n) { return n ? t(n - 1) : 0; }"
+   },
+   "node_id": "75ff152e4aa0ec7217a7d113ac1ad398d2915c36",
+   "parent": "2ee47a2ce893c34c956a01e285490a27ee6494f9",
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "g.t",
+   "relationships": [
+    "call:badcc7ff8a421fccc2e30d1a2f6f06d27f7df952",
+    "edge:aac9b29e3d58023a"
+   ],
+   "semantic_path": "a.js::g.t",
+   "signature": "t(n)",
+   "span": {
+    "byte_end": 90,
+    "byte_start": 48,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": "t",
+   "symbol_id": "6cb20405bbc198f55c2a0058b2a8a6c26d2e1472"
+  },
+  {
+   "definition_id": "93f8ef326bbc292d05fddff073d21ea4f3cf8997",
+   "file_id": "5c1dcbf65eadde3f3ed48380645b8c140e9016c3",
+   "id": "93f8ef326bbc292d05fddff073d21ea4f3cf8997",
+   "identity": {
+    "source": "definition_id",
+    "value": "93f8ef326bbc292d05fddff073d21ea4f3cf8997"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "t"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: b.js\nkind: function\nsymbol: t\nqualified name: t\nsemantic path: b.js::t\nsignature text: t()\nexports: t\ncontent:\nfunction t() { return 2; }"
+   },
+   "node_id": "8bd24392158bc6edd7696c8f51238a8fee313a5d",
+   "parent": null,
+   "path": "b.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "t",
+   "relationships": [],
+   "semantic_path": "b.js::t",
+   "signature": "t()",
+   "span": {
+    "byte_end": 26,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "t",
+   "symbol_id": "6544db4463ccb71422e4d05725272e9e0bc0567d"
+  },
+  {
+   "definition_id": "943a9f80b17cacf2d4968fca407d01f5061ec551",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "943a9f80b17cacf2d4968fca407d01f5061ec551",
+   "identity": {
+    "source": "definition_id",
+    "value": "943a9f80b17cacf2d4968fca407d01f5061ec551"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "t"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: function\nsymbol: t\nqualified name: t\nsemantic path: a.js::t\nsignature text: t()\nexports: t\ncontent:\nfunction t() { return 1; }"
+   },
+   "node_id": "058e7bf932150c6b54aa9a5987eb3c9af98e61eb",
+   "parent": null,
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "t",
+   "relationships": [],
+   "semantic_path": "a.js::t",
+   "signature": "t()",
+   "span": {
+    "byte_end": 37,
+    "byte_start": 11,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "t",
+   "symbol_id": "6cb20405bbc198f55c2a0058b2a8a6c26d2e1472"
+  },
+  {
+   "definition_id": "a98c9f4a38fb448beb6b021271f3e70d1daf4fb9",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "a98c9f4a38fb448beb6b021271f3e70d1daf4fb9",
+   "identity": {
+    "source": "definition_id",
+    "value": "a98c9f4a38fb448beb6b021271f3e70d1daf4fb9"
+   },
+   "kind": "variable_declarator",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [
+     "t"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: variable_declarator\nsymbol: g\nqualified name: g\nsemantic path: a.js::g\ndependencies: t\ncontent:\ng = function t(n) { return n ? t(n - 1) : 0; }"
+   },
+   "node_id": "2ee47a2ce893c34c956a01e285490a27ee6494f9",
+   "parent": null,
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "g",
+   "relationships": [],
+   "semantic_path": "a.js::g",
+   "signature": null,
+   "span": {
+    "byte_end": 90,
+    "byte_start": 44,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": "g",
+   "symbol_id": "cb416a5ca23fc8976b4f17d326f999f5e69630e4"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

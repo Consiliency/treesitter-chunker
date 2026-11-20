@@ -1,0 +1,45 @@
+{
+ "files": {
+  "a.tsx": {
+   "cache_key": "boundary:v3:1b38c16c201f189d0179f53ffeece4f5b1fd7dede8b842ec3b8b75dc10065d65",
+   "key_payload": {
+    "content_hash": "sha1:7346c3512f599f585faa5c861e91c42c725ba74d",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-tsx:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "tsx",
+    "path": "a.tsx",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "b.tsx": {
+   "cache_key": "boundary:v3:c9cda2db36ea708a27242786533387b5c2c15b657cbbba09e2b804685bc1c9ca",
+   "key_payload": {
+    "content_hash": "sha1:c0c82929d026ae28846b245a596220166b6cdf48",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-tsx:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "tsx",
+    "path": "b.tsx",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

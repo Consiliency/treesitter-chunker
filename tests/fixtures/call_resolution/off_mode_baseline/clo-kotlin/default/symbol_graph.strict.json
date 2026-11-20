@@ -1,0 +1,81 @@
+{
+ "call_facts": [],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 1,
+  "total_classes": 0,
+  "total_functions": 2,
+  "total_imports": 0,
+  "total_relationships": 0
+ },
+ "relationships": [],
+ "symbol_lookup": {
+  "4c581a47c44677f5ae158e3a7f8b8bf91744279a": {
+   "definition_id": "4c581a47c44677f5ae158e3a7f8b8bf91744279a",
+   "end_line": 12,
+   "file": "K.kt",
+   "kind": "function",
+   "language": "kotlin",
+   "line": 8,
+   "module": "K",
+   "name": "outer",
+   "node_id": "bc4734798091d664117e1dcf14ba1dfa1c694f2d",
+   "parent_class": "",
+   "qualified_name": "outer",
+   "semantic_path": "K.kt::outer",
+   "signature": "outer(xs: List<Int>) -> Int"
+  },
+  "803063b62324b810fc372704f792fbbf0b650709": {
+   "definition_id": "803063b62324b810fc372704f792fbbf0b650709",
+   "end_line": 4,
+   "file": "K.kt",
+   "kind": "method",
+   "language": "kotlin",
+   "line": 4,
+   "module": "K",
+   "name": "run",
+   "node_id": "36de2a7d8b59a9743cdbc6a72dfcb79d5239096f",
+   "parent_class": "",
+   "qualified_name": "run",
+   "semantic_path": "K.kt::run",
+   "signature": "run(xs: List<Int>) -> List<Int>"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "803063b62324b810fc372704f792fbbf0b650709",
+    "end_line": 4,
+    "file": "K.kt",
+    "kind": "method",
+    "language": "kotlin",
+    "line": 4,
+    "module": "K",
+    "name": "run",
+    "node_id": "36de2a7d8b59a9743cdbc6a72dfcb79d5239096f",
+    "parent_class": "",
+    "qualified_name": "run",
+    "semantic_path": "K.kt::run",
+    "signature": "run(xs: List<Int>) -> List<Int>"
+   },
+   {
+    "definition_id": "4c581a47c44677f5ae158e3a7f8b8bf91744279a",
+    "end_line": 12,
+    "file": "K.kt",
+    "kind": "function",
+    "language": "kotlin",
+    "line": 8,
+    "module": "K",
+    "name": "outer",
+    "node_id": "bc4734798091d664117e1dcf14ba1dfa1c694f2d",
+    "parent_class": "",
+    "qualified_name": "outer",
+    "semantic_path": "K.kt::outer",
+    "signature": "outer(xs: List<Int>) -> Int"
+   }
+  ],
+  "imports": []
+ }
+}

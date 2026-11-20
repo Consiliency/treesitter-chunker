@@ -1,0 +1,177 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 52,
+   "callee_byte_start": 46,
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "id": "call:0e2e85bb5d25dbd249da0b5ed51442ba5be78a68",
+   "location": {
+    "byte_end": 54,
+    "byte_start": 46,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "reference": "helper",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 4,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "835dc2f2db433d5673704d475aa3e5b1055dd747",
+    "d49be7c5e6a7f6f2f2c0fd997e7d997afbce9780"
+   ],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 4,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "helper",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:0e2e85bb5d25dbd249da0b5ed51442ba5be78a68",
+   "callee_byte_end": 52,
+   "callee_byte_start": 46,
+   "candidates": [
+    "835dc2f2db433d5673704d475aa3e5b1055dd747",
+    "d49be7c5e6a7f6f2f2c0fd997e7d997afbce9780"
+   ],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 5,
+   "location": {
+    "byte_end": 54,
+    "byte_start": 46,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "helper",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "835dc2f2db433d5673704d475aa3e5b1055dd747": {
+   "definition_id": "835dc2f2db433d5673704d475aa3e5b1055dd747",
+   "end_line": 2,
+   "file": "pkg/impl.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "pkg.impl",
+   "name": "helper",
+   "node_id": "0f1e0fa7bc441896976dd9f47104f82748db25f9",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "pkg/impl.py::helper",
+   "signature": "helper()"
+  },
+  "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6": {
+   "definition_id": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "end_line": 5,
+   "file": "app.py",
+   "kind": "function",
+   "language": "python",
+   "line": 4,
+   "module": "app",
+   "name": "go",
+   "node_id": "a3a262b0dc7480f3d2611c70b24f7200b7f51896",
+   "parent_class": "",
+   "qualified_name": "go",
+   "semantic_path": "app.py::go",
+   "signature": "go()"
+  },
+  "d49be7c5e6a7f6f2f2c0fd997e7d997afbce9780": {
+   "definition_id": "d49be7c5e6a7f6f2f2c0fd997e7d997afbce9780",
+   "end_line": 2,
+   "file": "pkg/helper.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "pkg.helper",
+   "name": "helper",
+   "node_id": "03094479d4cbd99c730043c796f766c3ed98ae96",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "pkg/helper.py::helper",
+   "signature": "helper()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+    "end_line": 5,
+    "file": "app.py",
+    "kind": "function",
+    "language": "python",
+    "line": 4,
+    "module": "app",
+    "name": "go",
+    "node_id": "a3a262b0dc7480f3d2611c70b24f7200b7f51896",
+    "parent_class": "",
+    "qualified_name": "go",
+    "semantic_path": "app.py::go",
+    "signature": "go()"
+   },
+   {
+    "definition_id": "d49be7c5e6a7f6f2f2c0fd997e7d997afbce9780",
+    "end_line": 2,
+    "file": "pkg/helper.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "pkg.helper",
+    "name": "helper",
+    "node_id": "03094479d4cbd99c730043c796f766c3ed98ae96",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "pkg/helper.py::helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "835dc2f2db433d5673704d475aa3e5b1055dd747",
+    "end_line": 2,
+    "file": "pkg/impl.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "pkg.impl",
+    "name": "helper",
+    "node_id": "0f1e0fa7bc441896976dd9f47104f82748db25f9",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "pkg/impl.py::helper",
+    "signature": "helper()"
+   }
+  ],
+  "imports": []
+ }
+}

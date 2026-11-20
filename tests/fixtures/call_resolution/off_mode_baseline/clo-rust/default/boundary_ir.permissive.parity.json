@@ -1,0 +1,528 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "candidates": [],
+   "id": "edge:5725a7deaf289cdc",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 13,
+    "start_line": 13
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "i",
+   "resolution": "unresolved",
+   "source": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "target": "i",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:76977adf1fb63392",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 13,
+    "start_line": 13
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs",
+   "resolution": "unresolved",
+   "source": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "target": "xs",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:8a3b08b27827408f009ea7bc0d31cd494141be1f",
+   "candidates": [],
+   "file": "src/lib.rs",
+   "id": "call:8a3b08b27827408f009ea7bc0d31cd494141be1f",
+   "location": {
+    "byte_end": 240,
+    "byte_start": 231,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs.iter",
+   "resolution": "unresolved",
+   "source": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "target": "xs.iter",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:c69d626bbdd60e54decbc76b8b54523c8be9b27b",
+   "candidates": [],
+   "file": "src/lib.rs",
+   "id": "call:c69d626bbdd60e54decbc76b8b54523c8be9b27b",
+   "location": {
+    "byte_end": 255,
+    "byte_start": 231,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs.iter().map",
+   "resolution": "unresolved",
+   "source": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "target": "xs.iter().map",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:b06cc26926083f59c40b69b968b8c493cce98eca",
+   "candidates": [],
+   "file": "src/lib.rs",
+   "id": "call:b06cc26926083f59c40b69b968b8c493cce98eca",
+   "location": {
+    "byte_end": 261,
+    "byte_start": 231,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs.iter().map(|i| i + 1).sum",
+   "resolution": "unresolved",
+   "source": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "target": "xs.iter().map(|i| i + 1).sum",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:82b0269871d8673eb078a796f2d4403103f9565c",
+   "candidates": [],
+   "file": "src/lib.rs",
+   "id": "call:82b0269871d8673eb078a796f2d4403103f9565c",
+   "location": {
+    "byte_end": 167,
+    "byte_start": 156,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "unresolved",
+   "source": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "target": "f",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:f71b804e4cbc5cf56ac2881c7491358708ff2ea4",
+   "candidates": [],
+   "file": "src/lib.rs",
+   "id": "call:f71b804e4cbc5cf56ac2881c7491358708ff2ea4",
+   "location": {
+    "byte_end": 166,
+    "byte_start": 158,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "g",
+   "resolution": "unresolved",
+   "source": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "target": "g",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:10b5fcdba16903746c49779b92e81902f3803eee",
+   "candidates": [],
+   "file": "src/lib.rs",
+   "id": "call:10b5fcdba16903746c49779b92e81902f3803eee",
+   "location": {
+    "byte_end": 144,
+    "byte_start": 140,
+    "end_line": 7,
+    "start_line": 7
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "h",
+   "resolution": "unresolved",
+   "source": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "target": "h",
+   "type": "calls"
+  },
+  {
+   "candidates": [],
+   "id": "edge:fa2a3ba5b8270185",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "w",
+   "resolution": "unresolved",
+   "source": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "target": "w",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:662d279b939cba0a",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "xs",
+   "resolution": "unresolved",
+   "source": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "target": "xs",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:f2a7b5ad1b29397a",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "y",
+   "resolution": "unresolved",
+   "source": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "target": "y",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:7e6302fb53f5d053",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "src/lib.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "z",
+   "resolution": "unresolved",
+   "source": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "target": "z",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:57aec2a7bc5e37fc6ba5c657bb5cca08b8357aaf",
+   "diagnostics": [],
+   "id": "1ec5a09a3e51f785f764775775413c143129fddd",
+   "language": "rust",
+   "parser": "tree-sitter-rust",
+   "path": "src/lib.rs",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 0,
+  "diagnostics_total": 0,
+  "edges_total": 12,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 1,
+  "files_processed": 1,
+  "files_skipped": 0,
+  "files_total": 1,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 4,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 12
+ },
+ "nodes": [
+  {
+   "definition_id": "10e39fc7bb6e32792281bb409c7acc9218beb5a6",
+   "file_id": "1ec5a09a3e51f785f764775775413c143129fddd",
+   "id": "10e39fc7bb6e32792281bb409c7acc9218beb5a6",
+   "identity": {
+    "source": "definition_id",
+    "value": "10e39fc7bb6e32792281bb409c7acc9218beb5a6"
+   },
+   "kind": "struct",
+   "language": "rust",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: rust\nfile: src/lib.rs\nkind: struct\nsymbol: K\nqualified name: K\nsemantic path: src/lib.rs::K\ncontent:\npub struct K;"
+   },
+   "node_id": "230154b486ecc9b7bfb8acef8a7c23a2c03dccdb",
+   "parent": null,
+   "path": "src/lib.rs",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "K",
+   "relationships": [],
+   "semantic_path": "src/lib.rs::K",
+   "signature": null,
+   "span": {
+    "byte_end": 13,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "K",
+   "symbol_id": "50c6108126c101644bbe757c503d83be960b1366"
+  },
+  {
+   "definition_id": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "file_id": "1ec5a09a3e51f785f764775775413c143129fddd",
+   "id": "172edeec9aee8ba81abf565a60715e0a8489caa8",
+   "identity": {
+    "source": "definition_id",
+    "value": "172edeec9aee8ba81abf565a60715e0a8489caa8"
+   },
+   "kind": "function",
+   "language": "rust",
+   "metadata": {
+    "dependencies": [
+     "i",
+     "xs"
+    ],
+    "exports": [
+     "run"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: rust\nfile: src/lib.rs\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: src/lib.rs::run\nsignature text: run(&self, xs: &[i32]) -> i32\nexports: run\ndependencies: i, xs\ncontent:\npub fn run(&self, xs: &[i32]) -> i32 {\n        xs.iter().map(|i| i + 1).sum()\n    }"
+   },
+   "node_id": "a03d9f75a92c0b9ff47ae9a32e07f146fbe67eea",
+   "parent": "6bf7b56a5f785c5fdee4cafa590f489e8f61cac8",
+   "path": "src/lib.rs",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "run",
+   "relationships": [
+    "call:8a3b08b27827408f009ea7bc0d31cd494141be1f",
+    "call:b06cc26926083f59c40b69b968b8c493cce98eca",
+    "call:c69d626bbdd60e54decbc76b8b54523c8be9b27b",
+    "edge:5725a7deaf289cdc",
+    "edge:76977adf1fb63392"
+   ],
+   "semantic_path": "src/lib.rs::run",
+   "signature": "run(&self, xs: &[i32]) -> i32",
+   "span": {
+    "byte_end": 267,
+    "byte_start": 184,
+    "end_line": 15,
+    "start_line": 13
+   },
+   "symbol": "run",
+   "symbol_id": "9f95eb0ac9a5abbe56e5ce761d3c1905ec3c9aae"
+  },
+  {
+   "definition_id": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "file_id": "1ec5a09a3e51f785f764775775413c143129fddd",
+   "id": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5",
+   "identity": {
+    "source": "definition_id",
+    "value": "1df6ceebb8ba4011ac732e431ab4a92ca0ec42f5"
+   },
+   "kind": "function",
+   "language": "rust",
+   "metadata": {
+    "dependencies": [
+     "w",
+     "xs",
+     "y",
+     "z"
+    ],
+    "exports": [
+     "outer"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: rust\nfile: src/lib.rs\nkind: function\nsymbol: outer\nqualified name: outer\nsemantic path: src/lib.rs::outer\nsignature text: outer(xs: &[i32]) -> i32\nexports: outer\ndependencies: w, xs, y, z\ncontent:\npub fn outer(xs: &[i32]) -> i32 {\n    let f = |y: i32| y + 1;\n    let g = |z: i32| {\n        let h = |w: i32| w * z;\n        h(z)\n    };\n    f(g(xs[0]))\n}"
+   },
+   "node_id": "ad363345bf0c374b52ab5b0fcbea71d5f202292b",
+   "parent": null,
+   "path": "src/lib.rs",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "outer",
+   "relationships": [
+    "call:10b5fcdba16903746c49779b92e81902f3803eee",
+    "call:82b0269871d8673eb078a796f2d4403103f9565c",
+    "call:f71b804e4cbc5cf56ac2881c7491358708ff2ea4",
+    "edge:662d279b939cba0a",
+    "edge:7e6302fb53f5d053",
+    "edge:f2a7b5ad1b29397a",
+    "edge:fa2a3ba5b8270185"
+   ],
+   "semantic_path": "src/lib.rs::outer",
+   "signature": "outer(xs: &[i32]) -> i32",
+   "span": {
+    "byte_end": 169,
+    "byte_start": 15,
+    "end_line": 10,
+    "start_line": 3
+   },
+   "symbol": "outer",
+   "symbol_id": "08ea2e59c739468f8e2e3f41658143bc8d13d514"
+  },
+  {
+   "definition_id": "43791fdd07086fc3ff034c3b2032d470946e6900",
+   "file_id": "1ec5a09a3e51f785f764775775413c143129fddd",
+   "id": "43791fdd07086fc3ff034c3b2032d470946e6900",
+   "identity": {
+    "source": "definition_id",
+    "value": "43791fdd07086fc3ff034c3b2032d470946e6900"
+   },
+   "kind": "impl_item",
+   "language": "rust",
+   "metadata": {
+    "dependencies": [
+     "i",
+     "xs"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: rust\nfile: src/lib.rs\nkind: impl_item\nsemantic path: src/lib.rs\ndependencies: i, xs\ncontent:\nimpl K {\n    pub fn run(&self, xs: &[i32]) -> i32 {\n        xs.iter().map(|i| i + 1).sum()\n    }\n}"
+   },
+   "node_id": "6bf7b56a5f785c5fdee4cafa590f489e8f61cac8",
+   "parent": null,
+   "path": "src/lib.rs",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "src/lib.rs",
+   "signature": null,
+   "span": {
+    "byte_end": 269,
+    "byte_start": 171,
+    "end_line": 16,
+    "start_line": 12
+   },
+   "symbol": null,
+   "symbol_id": null
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

@@ -1,0 +1,177 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 50,
+   "callee_byte_start": 49,
+   "file": "s2.js",
+   "from": "a0a3ac755abb69ba464b8351e76f89ce34744a44",
+   "id": "call:cec1a4f9b1fb5fa1ae3b7ae1c1f50f9f4454d1ac",
+   "location": {
+    "byte_end": 52,
+    "byte_start": 49,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "d",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "01a83e349236ce0c0de265738c066e940f503d0f",
+    "0f5837b8c15b6de479cfa41feed73a7abdcc99ae"
+   ],
+   "file": "s2.js",
+   "from": "a0a3ac755abb69ba464b8351e76f89ce34744a44",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "d",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:cec1a4f9b1fb5fa1ae3b7ae1c1f50f9f4454d1ac",
+   "callee_byte_end": 50,
+   "callee_byte_start": 49,
+   "candidates": [
+    "01a83e349236ce0c0de265738c066e940f503d0f",
+    "0f5837b8c15b6de479cfa41feed73a7abdcc99ae"
+   ],
+   "file": "s2.js",
+   "from": "a0a3ac755abb69ba464b8351e76f89ce34744a44",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 52,
+    "byte_start": 49,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "d",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "01a83e349236ce0c0de265738c066e940f503d0f": {
+   "definition_id": "01a83e349236ce0c0de265738c066e940f503d0f",
+   "end_line": 1,
+   "file": "s2.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "s2",
+   "name": "d",
+   "node_id": "900e368f8e4b96cacb124d3295863d89331ed695",
+   "parent_class": "",
+   "qualified_name": "d",
+   "semantic_path": "s2.js::d",
+   "signature": "d()"
+  },
+  "0f5837b8c15b6de479cfa41feed73a7abdcc99ae": {
+   "definition_id": "0f5837b8c15b6de479cfa41feed73a7abdcc99ae",
+   "end_line": 1,
+   "file": "s1.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "s1",
+   "name": "d",
+   "node_id": "29e2f25145ff4a29a535a806a5d0ff2952b71d16",
+   "parent_class": "",
+   "qualified_name": "d",
+   "semantic_path": "s1.js::d",
+   "signature": "d()"
+  },
+  "a0a3ac755abb69ba464b8351e76f89ce34744a44": {
+   "definition_id": "a0a3ac755abb69ba464b8351e76f89ce34744a44",
+   "end_line": 2,
+   "file": "s2.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 2,
+   "module": "s2",
+   "name": "g",
+   "node_id": "a87739143157e1de25958485b01176d968519c95",
+   "parent_class": "",
+   "qualified_name": "g",
+   "semantic_path": "s2.js::g",
+   "signature": "g()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "0f5837b8c15b6de479cfa41feed73a7abdcc99ae",
+    "end_line": 1,
+    "file": "s1.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "s1",
+    "name": "d",
+    "node_id": "29e2f25145ff4a29a535a806a5d0ff2952b71d16",
+    "parent_class": "",
+    "qualified_name": "d",
+    "semantic_path": "s1.js::d",
+    "signature": "d()"
+   },
+   {
+    "definition_id": "01a83e349236ce0c0de265738c066e940f503d0f",
+    "end_line": 1,
+    "file": "s2.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "s2",
+    "name": "d",
+    "node_id": "900e368f8e4b96cacb124d3295863d89331ed695",
+    "parent_class": "",
+    "qualified_name": "d",
+    "semantic_path": "s2.js::d",
+    "signature": "d()"
+   },
+   {
+    "definition_id": "a0a3ac755abb69ba464b8351e76f89ce34744a44",
+    "end_line": 2,
+    "file": "s2.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 2,
+    "module": "s2",
+    "name": "g",
+    "node_id": "a87739143157e1de25958485b01176d968519c95",
+    "parent_class": "",
+    "qualified_name": "g",
+    "semantic_path": "s2.js::g",
+    "signature": "g()"
+   }
+  ],
+  "imports": []
+ }
+}

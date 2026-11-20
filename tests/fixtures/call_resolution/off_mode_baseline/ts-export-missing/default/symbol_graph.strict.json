@@ -1,0 +1,207 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 57,
+   "callee_byte_start": 56,
+   "file": "use.ts",
+   "from": "e64293b234e9d489575625659d02fc4d6e109421",
+   "id": "call:878dd929df864089694a596b45ff87df4f9e60cb",
+   "location": {
+    "byte_end": 59,
+    "byte_start": 56,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "u",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 4,
+  "total_classes": 0,
+  "total_functions": 4,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "0671a194114b403bd9ce3e05b7e1b6faed088aa6",
+    "cefd0952ebb8b7d4a164fb614bcf3b9fecbc4bd6"
+   ],
+   "file": "use.ts",
+   "from": "e64293b234e9d489575625659d02fc4d6e109421",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "u",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "u",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:878dd929df864089694a596b45ff87df4f9e60cb",
+   "callee_byte_end": 57,
+   "callee_byte_start": 56,
+   "candidates": [
+    "0671a194114b403bd9ce3e05b7e1b6faed088aa6",
+    "cefd0952ebb8b7d4a164fb614bcf3b9fecbc4bd6"
+   ],
+   "file": "use.ts",
+   "from": "e64293b234e9d489575625659d02fc4d6e109421",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 59,
+    "byte_start": 56,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "u",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "u",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "0671a194114b403bd9ce3e05b7e1b6faed088aa6": {
+   "definition_id": "0671a194114b403bd9ce3e05b7e1b6faed088aa6",
+   "end_line": 1,
+   "file": "a.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "a",
+   "name": "u",
+   "node_id": "f1bfcf4ce15de6aca127d36cbcb5620de18c6c29",
+   "parent_class": "",
+   "qualified_name": "u",
+   "semantic_path": "a.ts::u",
+   "signature": "u()"
+  },
+  "cefd0952ebb8b7d4a164fb614bcf3b9fecbc4bd6": {
+   "definition_id": "cefd0952ebb8b7d4a164fb614bcf3b9fecbc4bd6",
+   "end_line": 1,
+   "file": "b.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "b",
+   "name": "u",
+   "node_id": "128558f067c8e1c2bbf999f4ecfa3e59d682c5cb",
+   "parent_class": "",
+   "qualified_name": "u",
+   "semantic_path": "b.ts::u",
+   "signature": "u()"
+  },
+  "e64293b234e9d489575625659d02fc4d6e109421": {
+   "definition_id": "e64293b234e9d489575625659d02fc4d6e109421",
+   "end_line": 2,
+   "file": "use.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 2,
+   "module": "use",
+   "name": "f",
+   "node_id": "f0ef39ad52e4b249add01841f4ca2974eaa14abf",
+   "parent_class": "",
+   "qualified_name": "f",
+   "semantic_path": "use.ts::f",
+   "signature": "f()"
+  },
+  "fbdf891b11906e5bbf43b9232b427edc1375cf5a": {
+   "definition_id": "fbdf891b11906e5bbf43b9232b427edc1375cf5a",
+   "end_line": 1,
+   "file": "svc.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "svc",
+   "name": "t",
+   "node_id": "fb5d967a67452dd37d35c308e77737f0b2828026",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "svc.ts::t",
+   "signature": "t()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "0671a194114b403bd9ce3e05b7e1b6faed088aa6",
+    "end_line": 1,
+    "file": "a.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "a",
+    "name": "u",
+    "node_id": "f1bfcf4ce15de6aca127d36cbcb5620de18c6c29",
+    "parent_class": "",
+    "qualified_name": "u",
+    "semantic_path": "a.ts::u",
+    "signature": "u()"
+   },
+   {
+    "definition_id": "cefd0952ebb8b7d4a164fb614bcf3b9fecbc4bd6",
+    "end_line": 1,
+    "file": "b.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "b",
+    "name": "u",
+    "node_id": "128558f067c8e1c2bbf999f4ecfa3e59d682c5cb",
+    "parent_class": "",
+    "qualified_name": "u",
+    "semantic_path": "b.ts::u",
+    "signature": "u()"
+   },
+   {
+    "definition_id": "fbdf891b11906e5bbf43b9232b427edc1375cf5a",
+    "end_line": 1,
+    "file": "svc.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "svc",
+    "name": "t",
+    "node_id": "fb5d967a67452dd37d35c308e77737f0b2828026",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "svc.ts::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "e64293b234e9d489575625659d02fc4d6e109421",
+    "end_line": 2,
+    "file": "use.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 2,
+    "module": "use",
+    "name": "f",
+    "node_id": "f0ef39ad52e4b249add01841f4ca2974eaa14abf",
+    "parent_class": "",
+    "qualified_name": "f",
+    "semantic_path": "use.ts::f",
+    "signature": "f()"
+   }
+  ],
+  "imports": []
+ }
+}

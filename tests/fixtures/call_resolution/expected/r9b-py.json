@@ -1,0 +1,63 @@
+{
+ "plan_sections": [
+  "10.2"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:5184b4f21d1d23c4daae3794b18de6d61455e85d",
+     "call_span": [
+      79,
+      87
+     ],
+     "callee_span": [
+      79,
+      85
+     ],
+     "caller": "d",
+     "file": "pkg/svc.py",
+     "line": 10,
+     "reference": "only_a",
+     "today": {
+      "candidate_ids": [
+       "594720218a973a844884c1773fae913f06925282"
+      ],
+      "candidates": [
+       "pkg/svc.py:1:only_a"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:fa873506bc4ceb2c1b80b71484adf50a115341eb",
+     "call_span": [
+      114,
+      122
+     ],
+     "callee_span": [
+      114,
+      120
+     ],
+     "caller": "d",
+     "file": "pkg/svc.py",
+     "line": 14,
+     "reference": "only_b",
+     "today": {
+      "candidate_ids": [
+       "1b1688e174b8ba7506b4d078aee0bf9b3ad39289"
+      ],
+      "candidates": [
+       "pkg/svc.py:5:only_b"
+      ],
+      "resolution": "resolved"
+     }
+    }
+   ],
+   "language": null,
+   "root": "greenfield-r1/r9b-py"
+  }
+ },
+ "source": "greenfield-r1",
+ "tree": "r9b-py"
+}

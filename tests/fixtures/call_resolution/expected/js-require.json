@@ -1,0 +1,67 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:c535f64ec9a5d3a23fe1445c725054a3bad83b24",
+     "call_span": [
+      87,
+      90
+     ],
+     "callee_span": [
+      87,
+      88
+     ],
+     "caller": "u",
+     "file": "use.js",
+     "line": 3,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "e6cb587af6c5ea2919398f1e126531dd8d9b327a",
+       "e6ffcca218f13c5ca117ae59dde66e0a99e73047"
+      ],
+      "candidates": [
+       "svc.js:1:t",
+       "other.js:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:f6dab232d376e997e64ab502a7d8460eb71b48f4",
+     "call_span": [
+      93,
+      98
+     ],
+     "callee_span": [
+      93,
+      96
+     ],
+     "caller": "u",
+     "file": "use.js",
+     "line": 3,
+     "reference": "m.t",
+     "today": {
+      "candidate_ids": [
+       "e6cb587af6c5ea2919398f1e126531dd8d9b327a",
+       "e6ffcca218f13c5ca117ae59dde66e0a99e73047"
+      ],
+      "candidates": [
+       "svc.js:1:t",
+       "other.js:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/js-require"
+  }
+ },
+ "source": "authored",
+ "tree": "js-require"
+}

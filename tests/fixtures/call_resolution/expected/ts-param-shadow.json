@@ -1,0 +1,94 @@
+{
+ "plan_sections": [
+  "10.3",
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:06affcfef9a6f9b9eac933a84e672de64148da9a",
+     "call_span": [
+      80,
+      83
+     ],
+     "callee_span": [
+      80,
+      81
+     ],
+     "caller": "run",
+     "file": "a.ts",
+     "line": 2,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "a6ec565ebf998845ef692f97091959a974bbe63b",
+       "aeff2fb2308e710c2fea292ea24530413d05a84d"
+      ],
+      "candidates": [
+       "a.ts:1:t",
+       "b.ts:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:2dbc5bfb5e8a1ba69dfcc7b61bf8e1d28e813595",
+     "call_span": [
+      121,
+      127
+     ],
+     "callee_span": [
+      121,
+      125
+     ],
+     "caller": "loc",
+     "file": "a.ts",
+     "line": 3,
+     "reference": "make",
+     "today": {
+      "candidate_ids": [
+       "3d13d6056a8ced237e687c7705983db3f68deebf",
+       "ed4e8ee8066c2396d375f12e35ad6da4db38f967"
+      ],
+      "candidates": [
+       "a.ts:4:make",
+       "a.ts:4:make"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:26118cec710df0da26a8ab6d7b9dc9fba411c25e",
+     "call_span": [
+      136,
+      139
+     ],
+     "callee_span": [
+      136,
+      137
+     ],
+     "caller": "loc",
+     "file": "a.ts",
+     "line": 3,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "a6ec565ebf998845ef692f97091959a974bbe63b",
+       "aeff2fb2308e710c2fea292ea24530413d05a84d"
+      ],
+      "candidates": [
+       "a.ts:1:t",
+       "b.ts:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-param-shadow"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-param-shadow"
+}

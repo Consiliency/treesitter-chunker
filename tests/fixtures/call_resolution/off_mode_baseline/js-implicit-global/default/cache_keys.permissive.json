@@ -1,0 +1,63 @@
+{
+ "files": {
+  "a.js": {
+   "cache_key": "boundary:v3:ab343772d2e311a932133f038db5b60e44365a8fb83d310d6f4fc78cfde0979c",
+   "key_payload": {
+    "content_hash": "sha1:7bbd78250b2046b43bd1c2176c69b9e71c300077",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-javascript:source=official:tree-sitter-javascript@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "javascript",
+    "path": "a.js",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "b.js": {
+   "cache_key": "boundary:v3:b78382eca1ce04ef7254432e7e268847eaab870195d03c2f9c9ccbc262fef172",
+   "key_payload": {
+    "content_hash": "sha1:7cbac3ea26fa9e6738307007e2094e88a09db81c",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-javascript:source=official:tree-sitter-javascript@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "javascript",
+    "path": "b.js",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "c.js": {
+   "cache_key": "boundary:v3:f8c6e8e9de7b92a5aac10451dbeebf0816c53384d996951f8d091b1e9c4d2d7a",
+   "key_payload": {
+    "content_hash": "sha1:de0fdf30cd10dc5ea66c41d4b32a369e0e6dacb6",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-javascript:source=official:tree-sitter-javascript@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "javascript",
+    "path": "c.js",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

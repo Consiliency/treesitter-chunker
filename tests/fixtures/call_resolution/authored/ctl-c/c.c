@@ -1,0 +1,1 @@
+struct helper { int x; };

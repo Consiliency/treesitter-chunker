@@ -1,0 +1,188 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 66,
+   "callee_byte_start": 60,
+   "file": "a.py",
+   "from": "6764c35d4a6ca4ab6be0120c1fcd70e972d840ac",
+   "id": "call:866173b508081d79f129cf3a408c0a18eb5c5846",
+   "location": {
+    "byte_end": 68,
+    "byte_start": 60,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "reference": "helper",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 0,
+  "total_functions": 4,
+  "total_imports": 0,
+  "total_relationships": 1
+ },
+ "relationships": [
+  {
+   "call_kind": "call",
+   "call_site_id": "call:866173b508081d79f129cf3a408c0a18eb5c5846",
+   "callee_byte_end": 66,
+   "callee_byte_start": 60,
+   "candidates": [
+    "16e4c90fb6553aa53e7b55b3a6da10e3cd7bf06e",
+    "e77892e36c77e46143243406b9aaeb9646850ef9"
+   ],
+   "file": "a.py",
+   "from": "6764c35d4a6ca4ab6be0120c1fcd70e972d840ac",
+   "is_internal": false,
+   "line": 5,
+   "location": {
+    "byte_end": 68,
+    "byte_start": 60,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "helper",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "16e4c90fb6553aa53e7b55b3a6da10e3cd7bf06e": {
+   "definition_id": "16e4c90fb6553aa53e7b55b3a6da10e3cd7bf06e",
+   "end_line": 3,
+   "file": "b.py",
+   "kind": "function",
+   "language": "python",
+   "line": 2,
+   "module": "b",
+   "name": "helper",
+   "node_id": "ab87b7821179aaa90523e8cf0a5b339f196721a2",
+   "parent_class": "other",
+   "qualified_name": "other.helper",
+   "semantic_path": "b.py::other.helper",
+   "signature": "helper()"
+  },
+  "2679e7b0fc4ccd97388f1888c4f7dd3070f8b8a3": {
+   "definition_id": "2679e7b0fc4ccd97388f1888c4f7dd3070f8b8a3",
+   "end_line": 5,
+   "file": "b.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "b",
+   "name": "other",
+   "node_id": "515378bb23d8bdbf92089ae9f2d86aa54adccbad",
+   "parent_class": "",
+   "qualified_name": "other",
+   "semantic_path": "b.py::other",
+   "signature": "other()"
+  },
+  "6764c35d4a6ca4ab6be0120c1fcd70e972d840ac": {
+   "definition_id": "6764c35d4a6ca4ab6be0120c1fcd70e972d840ac",
+   "end_line": 5,
+   "file": "a.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "a",
+   "name": "outer",
+   "node_id": "4f4209ef8e1cd1c07a4397f4ec691c0a2fcf6649",
+   "parent_class": "",
+   "qualified_name": "outer",
+   "semantic_path": "a.py::outer",
+   "signature": "outer()"
+  },
+  "e77892e36c77e46143243406b9aaeb9646850ef9": {
+   "definition_id": "e77892e36c77e46143243406b9aaeb9646850ef9",
+   "end_line": 3,
+   "file": "a.py",
+   "kind": "function",
+   "language": "python",
+   "line": 2,
+   "module": "a",
+   "name": "helper",
+   "node_id": "a3cc116c4e0f2071395cfeb47569a4502d7e0583",
+   "parent_class": "outer",
+   "qualified_name": "outer.helper",
+   "semantic_path": "a.py::outer.helper",
+   "signature": "helper()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "6764c35d4a6ca4ab6be0120c1fcd70e972d840ac",
+    "end_line": 5,
+    "file": "a.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "a",
+    "name": "outer",
+    "node_id": "4f4209ef8e1cd1c07a4397f4ec691c0a2fcf6649",
+    "parent_class": "",
+    "qualified_name": "outer",
+    "semantic_path": "a.py::outer",
+    "signature": "outer()"
+   },
+   {
+    "definition_id": "e77892e36c77e46143243406b9aaeb9646850ef9",
+    "end_line": 3,
+    "file": "a.py",
+    "kind": "function",
+    "language": "python",
+    "line": 2,
+    "module": "a",
+    "name": "helper",
+    "node_id": "a3cc116c4e0f2071395cfeb47569a4502d7e0583",
+    "parent_class": "outer",
+    "qualified_name": "outer.helper",
+    "semantic_path": "a.py::outer.helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "2679e7b0fc4ccd97388f1888c4f7dd3070f8b8a3",
+    "end_line": 5,
+    "file": "b.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "b",
+    "name": "other",
+    "node_id": "515378bb23d8bdbf92089ae9f2d86aa54adccbad",
+    "parent_class": "",
+    "qualified_name": "other",
+    "semantic_path": "b.py::other",
+    "signature": "other()"
+   },
+   {
+    "definition_id": "16e4c90fb6553aa53e7b55b3a6da10e3cd7bf06e",
+    "end_line": 3,
+    "file": "b.py",
+    "kind": "function",
+    "language": "python",
+    "line": 2,
+    "module": "b",
+    "name": "helper",
+    "node_id": "ab87b7821179aaa90523e8cf0a5b339f196721a2",
+    "parent_class": "other",
+    "qualified_name": "other.helper",
+    "semantic_path": "b.py::other.helper",
+    "signature": "helper()"
+   }
+  ],
+  "imports": []
+ }
+}

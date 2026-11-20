@@ -1,0 +1,65 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:2e47355708e3474a85ba257e52b38c2b11f24025",
+     "call_span": [
+      110,
+      118
+     ],
+     "callee_span": [
+      110,
+      116
+     ],
+     "caller": "outer.inner",
+     "file": "a.py",
+     "line": 10,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:add94f07297259dad5c707ac16fd5e488c9fbac8",
+     "call_span": [
+      131,
+      138
+     ],
+     "callee_span": [
+      131,
+      136
+     ],
+     "caller": "outer",
+     "file": "a.py",
+     "line": 12,
+     "reference": "inner",
+     "today": {
+      "candidate_ids": [
+       "f741156caa6a3527b4a52c524f2e312a002b675e"
+      ],
+      "candidates": [
+       "a.py:9:outer.inner"
+      ],
+      "resolution": "resolved"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-closure-2"
+  }
+ },
+ "source": "authored",
+ "tree": "py-closure-2"
+}

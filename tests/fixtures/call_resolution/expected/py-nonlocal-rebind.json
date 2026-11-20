@@ -1,0 +1,91 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:cb6593541dc199444773818b75c344c8a8246754",
+     "call_span": [
+      152,
+      158
+     ],
+     "callee_span": [
+      152,
+      156
+     ],
+     "caller": "outer",
+     "file": "a.py",
+     "line": 12,
+     "reference": "swap",
+     "today": {
+      "candidate_ids": [
+       "59567fa27c9b0429a30851a2e01d2ff6f6419913"
+      ],
+      "candidates": [
+       "a.py:8:outer.swap"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:641728957d9282e2cd3f70643043489ff74a9923",
+     "call_span": [
+      171,
+      179
+     ],
+     "callee_span": [
+      171,
+      177
+     ],
+     "caller": "outer",
+     "file": "a.py",
+     "line": 14,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "3eec569010d2d94dd264c6c0fa77c5de52a3c38b",
+       "e77892e36c77e46143243406b9aaeb9646850ef9"
+      ],
+      "candidates": [
+       "b.py:2:f.helper",
+       "a.py:2:outer.helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:b324327f97089980a1bc170988ce000af5556d37",
+     "call_span": [
+      56,
+      64
+     ],
+     "callee_span": [
+      56,
+      62
+     ],
+     "caller": "f",
+     "file": "b.py",
+     "line": 5,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "3eec569010d2d94dd264c6c0fa77c5de52a3c38b",
+       "e77892e36c77e46143243406b9aaeb9646850ef9"
+      ],
+      "candidates": [
+       "b.py:2:f.helper",
+       "a.py:2:outer.helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-nonlocal-rebind"
+  }
+ },
+ "source": "authored",
+ "tree": "py-nonlocal-rebind"
+}

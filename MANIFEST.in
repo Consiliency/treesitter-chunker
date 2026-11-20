@@ -29,6 +29,8 @@ recursive-include chunker *.pyi
 
 # Include test fixtures for development
 recursive-include tests/fixtures *.py *.js *.rs *.c *.cpp *.java *.go *.rb
+# Call-resolution fixtures and baseline, every extension (treesitter-chunker#682)
+recursive-include tests/fixtures/call_resolution *
 
 # Exclude unnecessary files
 global-exclude *.pyc

@@ -1,0 +1,250 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 37,
+   "callee_byte_start": 36,
+   "file": "a.js",
+   "from": "a91785a960d3f411f706045c564655ed8f0495c6",
+   "id": "call:6e5ca696a6341e78640aa7b9c04a511dc419b108",
+   "location": {
+    "byte_end": 39,
+    "byte_start": 36,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "t",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 0,
+  "total_functions": 5,
+  "total_imports": 0,
+  "total_relationships": 3
+ },
+ "relationships": [
+  {
+   "candidates": [],
+   "file": "a.js",
+   "from": "3e01dc86f17b0ab1e7992b2e484bc0ae6b24bfc5",
+   "is_internal": false,
+   "line": 1,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "x",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "x",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "a.js",
+   "from": "a91785a960d3f411f706045c564655ed8f0495c6",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "x",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "x",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:6e5ca696a6341e78640aa7b9c04a511dc419b108",
+   "callee_byte_end": 37,
+   "callee_byte_start": 36,
+   "candidates": [
+    "16490056ff4613bda497f63f916118b1b604efbb",
+    "f4cd116d2466236c1a7ea3e9f83d29633a6a827b"
+   ],
+   "file": "a.js",
+   "from": "a91785a960d3f411f706045c564655ed8f0495c6",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 39,
+    "byte_start": 36,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "16490056ff4613bda497f63f916118b1b604efbb": {
+   "definition_id": "16490056ff4613bda497f63f916118b1b604efbb",
+   "end_line": 2,
+   "file": "b.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 2,
+   "module": "b",
+   "name": "t",
+   "node_id": "1802c40fb10baa87b655e474ad1e5c411d207f14",
+   "parent_class": "h",
+   "qualified_name": "h.t",
+   "semantic_path": "b.js::h.t",
+   "signature": "t()"
+  },
+  "3e01dc86f17b0ab1e7992b2e484bc0ae6b24bfc5": {
+   "definition_id": "3e01dc86f17b0ab1e7992b2e484bc0ae6b24bfc5",
+   "end_line": 7,
+   "file": "a.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "a",
+   "name": "wrap",
+   "node_id": "5cd6b539e8981fa19ffa6a5959dbf89bb7ec61b2",
+   "parent_class": "",
+   "qualified_name": "wrap",
+   "semantic_path": "a.js::wrap",
+   "signature": "wrap(t)"
+  },
+  "4da99ef5ce50b75b8b4d629570c2129aed54f668": {
+   "definition_id": "4da99ef5ce50b75b8b4d629570c2129aed54f668",
+   "end_line": 4,
+   "file": "b.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "b",
+   "name": "h",
+   "node_id": "4f83b33a97bebe66aa81c39e42ff08671501c198",
+   "parent_class": "",
+   "qualified_name": "h",
+   "semantic_path": "b.js::h",
+   "signature": "h()"
+  },
+  "a91785a960d3f411f706045c564655ed8f0495c6": {
+   "definition_id": "a91785a960d3f411f706045c564655ed8f0495c6",
+   "end_line": 5,
+   "file": "a.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 2,
+   "module": "a",
+   "name": "f",
+   "node_id": "51b1d54bda0fd85300847f2146717c43fdada9ee",
+   "parent_class": "wrap",
+   "qualified_name": "wrap.f",
+   "semantic_path": "a.js::wrap.f",
+   "signature": "f(x = t())"
+  },
+  "f4cd116d2466236c1a7ea3e9f83d29633a6a827b": {
+   "definition_id": "f4cd116d2466236c1a7ea3e9f83d29633a6a827b",
+   "end_line": 3,
+   "file": "a.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 3,
+   "module": "a",
+   "name": "t",
+   "node_id": "ec521d5269b601575f6fa1c3b881da3e486ff904",
+   "parent_class": "f",
+   "qualified_name": "wrap.f.t",
+   "semantic_path": "a.js::wrap.f.t",
+   "signature": "t()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "3e01dc86f17b0ab1e7992b2e484bc0ae6b24bfc5",
+    "end_line": 7,
+    "file": "a.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "a",
+    "name": "wrap",
+    "node_id": "5cd6b539e8981fa19ffa6a5959dbf89bb7ec61b2",
+    "parent_class": "",
+    "qualified_name": "wrap",
+    "semantic_path": "a.js::wrap",
+    "signature": "wrap(t)"
+   },
+   {
+    "definition_id": "a91785a960d3f411f706045c564655ed8f0495c6",
+    "end_line": 5,
+    "file": "a.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 2,
+    "module": "a",
+    "name": "f",
+    "node_id": "51b1d54bda0fd85300847f2146717c43fdada9ee",
+    "parent_class": "wrap",
+    "qualified_name": "wrap.f",
+    "semantic_path": "a.js::wrap.f",
+    "signature": "f(x = t())"
+   },
+   {
+    "definition_id": "f4cd116d2466236c1a7ea3e9f83d29633a6a827b",
+    "end_line": 3,
+    "file": "a.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 3,
+    "module": "a",
+    "name": "t",
+    "node_id": "ec521d5269b601575f6fa1c3b881da3e486ff904",
+    "parent_class": "f",
+    "qualified_name": "wrap.f.t",
+    "semantic_path": "a.js::wrap.f.t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "4da99ef5ce50b75b8b4d629570c2129aed54f668",
+    "end_line": 4,
+    "file": "b.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "b",
+    "name": "h",
+    "node_id": "4f83b33a97bebe66aa81c39e42ff08671501c198",
+    "parent_class": "",
+    "qualified_name": "h",
+    "semantic_path": "b.js::h",
+    "signature": "h()"
+   },
+   {
+    "definition_id": "16490056ff4613bda497f63f916118b1b604efbb",
+    "end_line": 2,
+    "file": "b.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 2,
+    "module": "b",
+    "name": "t",
+    "node_id": "1802c40fb10baa87b655e474ad1e5c411d207f14",
+    "parent_class": "h",
+    "qualified_name": "h.t",
+    "semantic_path": "b.js::h.t",
+    "signature": "t()"
+   }
+  ],
+  "imports": []
+ }
+}

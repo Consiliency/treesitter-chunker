@@ -98,3 +98,6 @@ logs/
 # so it wins (git applies the last matching pattern).
 !tests/fixtures/boundary_ir/repos/
 !tests/fixtures/boundary_ir/repos/**
+
+# ts-skipped-dir needs a dist/ directory inside the tree (treesitter-chunker#682).
+!tests/fixtures/call_resolution/authored/ts-skipped-dir/dist/

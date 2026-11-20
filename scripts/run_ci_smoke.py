@@ -102,6 +102,11 @@ CI_SMOKE_TESTS = [
     "tests/test_release_hygiene_policy.py",
     "tests/test_scratch_root_policy.py",
     "tests/test_fork_terminal_scratch.py",
+    # Call-resolution fixtures, provenance and off-mode baseline
+    # (treesitter-chunker#682, PR 0).
+    "tests/test_call_resolution_fixture_collection.py",
+    "tests/test_call_resolution_fixture_provenance.py",
+    "tests/test_call_resolution_today.py",
 ]
 
 

@@ -1,0 +1,61 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:23c364db0c412021c920c9a8a5b8070bae594aa2",
+     "call_span": [
+      37,
+      65
+     ],
+     "callee_span": [
+      37,
+      60
+     ],
+     "caller": "go",
+     "file": "app.py",
+     "line": 5,
+     "reference": "importlib.import_module",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    },
+    {
+     "call_site_id": "call:594e0d9d48d3b74175b5946acac25b68a6af55bb",
+     "call_span": [
+      77,
+      87
+     ],
+     "callee_span": [
+      77,
+      85
+     ],
+     "caller": "go",
+     "file": "app.py",
+     "line": 6,
+     "reference": "m.helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-dynamic-import"
+  }
+ },
+ "source": "authored",
+ "tree": "py-dynamic-import"
+}

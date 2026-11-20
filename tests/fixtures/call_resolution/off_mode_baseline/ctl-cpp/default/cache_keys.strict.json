@@ -1,0 +1,63 @@
+{
+ "files": {
+  "a.cpp": {
+   "cache_key": "boundary:v3:503c842a065be692fd50069654bc88b66c0be4620c0ac8ed9b70f008e6b5d339",
+   "key_payload": {
+    "content_hash": "sha1:a7f03d8fc09f69b51c9e14bfda26f71fd0d2be51",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-cpp:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "cpp",
+    "path": "a.cpp",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "b.cpp": {
+   "cache_key": "boundary:v3:ec45b1fb4d5049aa5a426f9dd5ef6cf49edf7d3d5b7b3b803d61ff8740c5cc09",
+   "key_payload": {
+    "content_hash": "sha1:e3f657d814e08cacce0366c4a36def2a877e1809",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-cpp:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "cpp",
+    "path": "b.cpp",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "c.cpp": {
+   "cache_key": "boundary:v3:49aeb4f7bba2a4153e63b467624684a17a92eac30d052ec6120e11dc9a9358ed",
+   "key_payload": {
+    "content_hash": "sha1:1fd7bf98dc977fb97f19f9807712a3905078f956",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-cpp:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "cpp",
+    "path": "c.cpp",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

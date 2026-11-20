@@ -1,0 +1,238 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 88,
+   "callee_byte_start": 87,
+   "file": "use.js",
+   "from": "11c7229ed29a5934718e054c43110cc40365887a",
+   "id": "call:c535f64ec9a5d3a23fe1445c725054a3bad83b24",
+   "location": {
+    "byte_end": 90,
+    "byte_start": 87,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "reference": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "method",
+   "callee_byte_end": 96,
+   "callee_byte_start": 93,
+   "file": "use.js",
+   "from": "11c7229ed29a5934718e054c43110cc40365887a",
+   "id": "call:f6dab232d376e997e64ab502a7d8460eb71b48f4",
+   "location": {
+    "byte_end": 98,
+    "byte_start": 93,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "reference": "m.t",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 3,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 4
+ },
+ "relationships": [
+  {
+   "candidates": [],
+   "file": "use.js",
+   "from": "11c7229ed29a5934718e054c43110cc40365887a",
+   "is_internal": false,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "m",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "m",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "e6cb587af6c5ea2919398f1e126531dd8d9b327a",
+    "e6ffcca218f13c5ca117ae59dde66e0a99e73047"
+   ],
+   "file": "use.js",
+   "from": "11c7229ed29a5934718e054c43110cc40365887a",
+   "is_internal": false,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:c535f64ec9a5d3a23fe1445c725054a3bad83b24",
+   "callee_byte_end": 88,
+   "callee_byte_start": 87,
+   "candidates": [
+    "e6cb587af6c5ea2919398f1e126531dd8d9b327a",
+    "e6ffcca218f13c5ca117ae59dde66e0a99e73047"
+   ],
+   "file": "use.js",
+   "from": "11c7229ed29a5934718e054c43110cc40365887a",
+   "is_internal": false,
+   "line": 3,
+   "location": {
+    "byte_end": 90,
+    "byte_start": 87,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "method",
+   "call_site_id": "call:f6dab232d376e997e64ab502a7d8460eb71b48f4",
+   "callee_byte_end": 96,
+   "callee_byte_start": 93,
+   "candidates": [
+    "e6cb587af6c5ea2919398f1e126531dd8d9b327a",
+    "e6ffcca218f13c5ca117ae59dde66e0a99e73047"
+   ],
+   "file": "use.js",
+   "from": "11c7229ed29a5934718e054c43110cc40365887a",
+   "is_internal": false,
+   "line": 3,
+   "location": {
+    "byte_end": 98,
+    "byte_start": 93,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "m.t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "m.t",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "11c7229ed29a5934718e054c43110cc40365887a": {
+   "definition_id": "11c7229ed29a5934718e054c43110cc40365887a",
+   "end_line": 3,
+   "file": "use.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 3,
+   "module": "use",
+   "name": "u",
+   "node_id": "f860eebea45b4978ae41253423f7a47bf68282cb",
+   "parent_class": "",
+   "qualified_name": "u",
+   "semantic_path": "use.js::u",
+   "signature": "u()"
+  },
+  "e6cb587af6c5ea2919398f1e126531dd8d9b327a": {
+   "definition_id": "e6cb587af6c5ea2919398f1e126531dd8d9b327a",
+   "end_line": 1,
+   "file": "svc.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "svc",
+   "name": "t",
+   "node_id": "68a335e508b0faea44ddfc9aead97f0912fa4fa6",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "svc.js::t",
+   "signature": "t()"
+  },
+  "e6ffcca218f13c5ca117ae59dde66e0a99e73047": {
+   "definition_id": "e6ffcca218f13c5ca117ae59dde66e0a99e73047",
+   "end_line": 1,
+   "file": "other.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "other",
+   "name": "t",
+   "node_id": "6cd3e449c5e69760bf6de43c817e481938f726a4",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "other.js::t",
+   "signature": "t()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "e6ffcca218f13c5ca117ae59dde66e0a99e73047",
+    "end_line": 1,
+    "file": "other.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "other",
+    "name": "t",
+    "node_id": "6cd3e449c5e69760bf6de43c817e481938f726a4",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "other.js::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "e6cb587af6c5ea2919398f1e126531dd8d9b327a",
+    "end_line": 1,
+    "file": "svc.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "svc",
+    "name": "t",
+    "node_id": "68a335e508b0faea44ddfc9aead97f0912fa4fa6",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "svc.js::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "11c7229ed29a5934718e054c43110cc40365887a",
+    "end_line": 3,
+    "file": "use.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 3,
+    "module": "use",
+    "name": "u",
+    "node_id": "f860eebea45b4978ae41253423f7a47bf68282cb",
+    "parent_class": "",
+    "qualified_name": "u",
+    "semantic_path": "use.js::u",
+    "signature": "u()"
+   }
+  ],
+  "imports": []
+ }
+}

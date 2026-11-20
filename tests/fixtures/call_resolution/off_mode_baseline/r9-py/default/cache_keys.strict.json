@@ -1,0 +1,45 @@
+{
+ "files": {
+  "pkg/sub/svc.py": {
+   "cache_key": "boundary:v3:31a74df93b27b0c17d3341b9e7ddd6c00b6f815f26a6be9f7d383c5abf186f84",
+   "key_payload": {
+    "content_hash": "sha1:08dabf2d8befebd6e7966f3a81c285d80205f843",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "pkg/sub/svc.py",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "tests/test_svc.py": {
+   "cache_key": "boundary:v3:c8f331140b4e6a7a1f494dc51696d6c123c1f5cbd9e363069eadb0762a6aba97",
+   "key_payload": {
+    "content_hash": "sha1:b18ad7919857f83ff6733da44a321847ca9c57c7",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "tests/test_svc.py",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

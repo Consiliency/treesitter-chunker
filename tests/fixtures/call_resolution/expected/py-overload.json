@@ -1,0 +1,43 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:33649163c80177c644d9d99a6defb380c18f1018",
+     "call_span": [
+      149,
+      153
+     ],
+     "callee_span": [
+      149,
+      150
+     ],
+     "caller": "use",
+     "file": "a.py",
+     "line": 13,
+     "reference": "f",
+     "today": {
+      "candidate_ids": [
+       "4d4cd9d7f3fd6e82443194cd97630678d117be81",
+       "8cf15f1b225a23d30d6d181029a4edc8469f5bfb",
+       "91f65f3c6a4968f1142f1c766dd43def82edfd62"
+      ],
+      "candidates": [
+       "a.py:7:f",
+       "a.py:5:f",
+       "a.py:8:f"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-overload"
+  }
+ },
+ "source": "authored",
+ "tree": "py-overload"
+}

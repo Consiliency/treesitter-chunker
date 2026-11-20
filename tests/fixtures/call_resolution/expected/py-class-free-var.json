@@ -1,0 +1,68 @@
+{
+ "plan_sections": [
+  "10.3",
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:997822ab549c15efadad295f5659ac3115a4cf5d",
+     "call_span": [
+      99,
+      107
+     ],
+     "callee_span": [
+      99,
+      105
+     ],
+     "caller": "f",
+     "file": "a.py",
+     "line": 10,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:716165cdbcf48302c27707aa8874295be20a7975",
+     "call_span": [
+      141,
+      149
+     ],
+     "callee_span": [
+      141,
+      147
+     ],
+     "caller": "J",
+     "file": "a.py",
+     "line": 16,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-class-free-var"
+  }
+ },
+ "source": "authored",
+ "tree": "py-class-free-var"
+}

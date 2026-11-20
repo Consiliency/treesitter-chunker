@@ -1,0 +1,196 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 64,
+   "callee_byte_start": 61,
+   "file": "a.ts",
+   "from": "4ab50acd5f53bfdec7ca44bf01891d9894b4e3b3",
+   "id": "call:944e3375c7c90cede46d6c288591a9849d041b24",
+   "location": {
+    "byte_end": 66,
+    "byte_start": 61,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "amb",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 3
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "563d294cd0052277f67391ae4df73c2963e7f0a3",
+    "ff915f9cfdda338cc67e6feaeba0e7d911d1ceeb"
+   ],
+   "file": "a.ts",
+   "from": "ff915f9cfdda338cc67e6feaeba0e7d911d1ceeb",
+   "is_internal": false,
+   "line": 1,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "amb",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "amb",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "563d294cd0052277f67391ae4df73c2963e7f0a3",
+    "ff915f9cfdda338cc67e6feaeba0e7d911d1ceeb"
+   ],
+   "file": "a.ts",
+   "from": "4ab50acd5f53bfdec7ca44bf01891d9894b4e3b3",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "amb",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "amb",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:944e3375c7c90cede46d6c288591a9849d041b24",
+   "callee_byte_end": 64,
+   "callee_byte_start": 61,
+   "candidates": [
+    "563d294cd0052277f67391ae4df73c2963e7f0a3",
+    "ff915f9cfdda338cc67e6feaeba0e7d911d1ceeb"
+   ],
+   "file": "a.ts",
+   "from": "4ab50acd5f53bfdec7ca44bf01891d9894b4e3b3",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 66,
+    "byte_start": 61,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "amb",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "amb",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "4ab50acd5f53bfdec7ca44bf01891d9894b4e3b3": {
+   "definition_id": "4ab50acd5f53bfdec7ca44bf01891d9894b4e3b3",
+   "end_line": 2,
+   "file": "a.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 2,
+   "module": "a",
+   "name": "use",
+   "node_id": "41d38637deb50037cc0e3f8d0e61ecc6f83db451",
+   "parent_class": "",
+   "qualified_name": "use",
+   "semantic_path": "a.ts::use",
+   "signature": "use()"
+  },
+  "563d294cd0052277f67391ae4df73c2963e7f0a3": {
+   "definition_id": "563d294cd0052277f67391ae4df73c2963e7f0a3",
+   "end_line": 1,
+   "file": "b.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "b",
+   "name": "amb",
+   "node_id": "b58b00fda56821675bb0e12ceeb49bfb1a31a8a1",
+   "parent_class": "",
+   "qualified_name": "amb",
+   "semantic_path": "b.js::amb",
+   "signature": "amb()"
+  },
+  "ff915f9cfdda338cc67e6feaeba0e7d911d1ceeb": {
+   "definition_id": "ff915f9cfdda338cc67e6feaeba0e7d911d1ceeb",
+   "end_line": 1,
+   "file": "a.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "a",
+   "name": "amb",
+   "node_id": "e1b3c45a010f805d4397b3530a2860f932237117",
+   "parent_class": "",
+   "qualified_name": "amb",
+   "semantic_path": "a.ts::amb",
+   "signature": null
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "ff915f9cfdda338cc67e6feaeba0e7d911d1ceeb",
+    "end_line": 1,
+    "file": "a.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "a",
+    "name": "amb",
+    "node_id": "e1b3c45a010f805d4397b3530a2860f932237117",
+    "parent_class": "",
+    "qualified_name": "amb",
+    "semantic_path": "a.ts::amb",
+    "signature": null
+   },
+   {
+    "definition_id": "4ab50acd5f53bfdec7ca44bf01891d9894b4e3b3",
+    "end_line": 2,
+    "file": "a.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 2,
+    "module": "a",
+    "name": "use",
+    "node_id": "41d38637deb50037cc0e3f8d0e61ecc6f83db451",
+    "parent_class": "",
+    "qualified_name": "use",
+    "semantic_path": "a.ts::use",
+    "signature": "use()"
+   },
+   {
+    "definition_id": "563d294cd0052277f67391ae4df73c2963e7f0a3",
+    "end_line": 1,
+    "file": "b.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "b",
+    "name": "amb",
+    "node_id": "b58b00fda56821675bb0e12ceeb49bfb1a31a8a1",
+    "parent_class": "",
+    "qualified_name": "amb",
+    "semantic_path": "b.js::amb",
+    "signature": "amb()"
+   }
+  ],
+  "imports": []
+ }
+}
