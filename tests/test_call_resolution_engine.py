@@ -47,15 +47,29 @@ NAMED_FAILURE_MODE_TESTS = (
     "test_unsupported_syntax_error",
     "test_unsupported_recursion_error",
     "test_unsupported_analyzer_exception",
+    "test_unmapped_injected_missing_declaration",
 )
+# Named tests the plan assigns to later heads (panel C2). Each moves to the
+# live list when its analyzer lands.
+DEFERRED_FAILURE_MODE_TESTS = {
+    "test_unmapped_missing_symbol": "PR 2",
+    "test_unmapped_unclassified_node": "PR 2",
+    "test_unsupported_deep_nesting_js": "PR 2",
+    "test_unmapped_duplicate_key": "PR 4",
+    "test_unsupported_deep_nesting": "PR 4",
+}
+# Grammars per analyzer family, for the allow-list review rule.
+FAMILY_GRAMMARS = {"js": ("javascript", "typescript", "tsx"), "python": ("python",)}
 
 
 # ---------------------------------------------------------------------------
 # Engine unit tests (6.3, 7.1)
 
 
-def _symbol(language: str, kind: str = "function") -> dict[str, Any]:
-    return {"language": language, "kind": kind}
+def _symbol(
+    language: str, kind: str = "function", file: str = "x.ts"
+) -> dict[str, Any]:
+    return {"language": language, "kind": kind, "file": file}
 
 
 SYMBOLS = {
@@ -71,6 +85,7 @@ SYMBOLS = {
     "py_class": _symbol("python", "class"),
     "go_fn": _symbol("go"),
     "rs_struct": _symbol("rust", "struct"),
+    "other_file_fn": _symbol("typescript", file="other.ts"),
 }
 
 
@@ -219,6 +234,92 @@ def test_join_fails_closed_as_unmapped(symbols: list[list[Any]]) -> None:
     assert proven == frozenset()
     assert joined == {"outcome": "none", "reason": "unmapped"}
     assert rules == ()
+
+
+def test_join_fails_closed_for_a_symbol_of_another_file() -> None:
+    outcome = {
+        "outcome": "local",
+        "proof": [["function_declaration", 0, 9]],
+        "rules": [],
+    }
+    symbols = [["function_declaration", 0, 9, "other_file_fn"]]
+    proven, joined, _ = engine.proof(outcome, MODE, _file({}, symbols), SYMBOLS)
+    assert proven == frozenset()
+    assert joined == {"outcome": "none", "reason": "unmapped"}
+
+
+@pytest.mark.parametrize(
+    ("proof_symbols", "language"),
+    [
+        (["ts_enum"], "typescript"),  # probe (a): ts-enum-shadow, P = {enum E}
+        (["ts_fn_a", "ts_iface"], "typescript"),  # probe (b): P holds an interface
+        (["py_fn"], "typescript"),  # a cross-family proof
+    ],
+)
+def test_a_non_callable_or_cross_family_proof_fails_closed(
+    proof_symbols: list[str], language: str
+) -> None:
+    """The engine enforces the binding-proof invariant itself (panel B2)."""
+    symbols = [
+        ["function_declaration", index * 10, index * 10 + 9, symbol_id]
+        for index, symbol_id in enumerate(proof_symbols)
+    ]
+    file_symbols = {
+        symbol_id: {**SYMBOLS[symbol_id], "file": "x.ts"} for symbol_id in SYMBOLS
+    }
+    outcome = {
+        "outcome": "local",
+        "proof": [entry[:3] for entry in symbols],
+        "rules": [],
+    }
+    proven, joined, rules = engine.proof(
+        outcome, MODE, _file({}, symbols, language=language), file_symbols
+    )
+    assert (proven, joined, rules) == (
+        frozenset(),
+        {"outcome": "none", "reason": "non-callable"},
+        (),
+    )
+
+
+def test_ts_enum_shadow_probe_does_not_resolve_end_to_end() -> None:
+    """Probe (a): C0 = {local enum E, other-file function E}, P = {enum E}."""
+    context = engine.build_run_context(
+        [
+            {
+                "path": "x.ts",
+                "scope_facts": {
+                    "language": "typescript",
+                    "supported": True,
+                    "bindings": {
+                        "3:4": {
+                            "outcome": "local",
+                            "proof": [["enum_declaration", 0, 9]],
+                            "rules": [],
+                        }
+                    },
+                    "symbols": [["enum_declaration", 0, 9, "ts_enum"]],
+                },
+            }
+        ],
+        SYMBOLS,
+        MODE,
+    )
+    relationship = _relationship(candidates=["other_file_fn", "ts_enum"])
+    decision = engine.decide(context, relationship)
+    assert decision.outcome == {"outcome": "none", "reason": "non-callable"}
+    assert not decision.changed
+
+
+def test_a_filter_cannot_resolve_without_a_binding_rule() -> None:
+    """Probe (b): P covers C0 including an interface; t1.kind alone never resolves."""
+    candidates = ["ts_fn_a", "ts_iface"]
+    assert _narrow(candidates, proven=set(candidates)) == (tuple(candidates), ())
+
+
+def test_a_candidate_without_a_symbol_record_leaves_the_edge_unchanged() -> None:
+    candidates = ["missing_symbol", "ts_fn_a", "ts_type", "ts_fn_b"]
+    assert _narrow(candidates) == (tuple(sorted(candidates)), ())
 
 
 def test_missing_binding_is_no_binding_fact() -> None:
@@ -477,10 +578,70 @@ def test_live_rules_and_reasons_have_cases() -> None:
 
     for name in NAMED_FAILURE_MODE_TESTS:
         assert callable(getattr(failure_modes, name, None)), name
+    assert not set(NAMED_FAILURE_MODE_TESTS) & set(DEFERRED_FAILURE_MODE_TESTS)
+    assert set(DEFERRED_FAILURE_MODE_TESTS.values()) <= {"PR 2", "PR 4"}
+    for name in DEFERRED_FAILURE_MODE_TESTS:
+        assert (
+            getattr(failure_modes, name, None) is None
+        ), f"{name} exists: move it to NAMED_FAILURE_MODE_TESTS"
+
+
+def test_proving_families_have_reviewed_allowlists() -> None:
+    """A family whose analyzer proves anything has reviewed grammars (7.5).
+
+    The stubs emit only ``none(stub)``, so no family needs a review yet; once
+    an analyzer emits another outcome, its grammars must be classified in
+    full.
+    """
+    from chunker.call_resolution.allowlist import REVIEWED_LANGUAGES
+
+    assert set(FAMILY_GRAMMARS) == set(CALL_RESOLUTION_FACT_VERSIONS)
+    proving: set[str] = set()
+    for _, item in harness.fixture_scope_facts():
+        family = engine.language_family(item["language"])
+        for outcome in item["scope_facts"]["bindings"].values():
+            if outcome != {"outcome": "none", "reason": "stub"}:
+                assert family is not None
+                proving.add(family)
+    for family in sorted(proving):
+        missing = set(FAMILY_GRAMMARS[family]) - REVIEWED_LANGUAGES
+        assert not missing, f"{family} proves bindings; review {sorted(missing)}"
 
 
 # ---------------------------------------------------------------------------
 # Scope-fact digests (4.6)
+
+
+def digest_problems(
+    pinned: dict[str, Any], current: dict[str, Any]
+) -> list[tuple[str, str]]:
+    """``(kind, message)`` problems between pinned and current digests.
+
+    ``unbumped`` is the hard rule: a file present on both sides whose facts
+    changed while its family's version did not. Every other difference
+    (families, versions, files added or removed) is ``regenerate``.
+    """
+    problems: list[tuple[str, str]] = []
+    if sorted(pinned) != sorted(current):
+        problems.append(("regenerate", "families differ"))
+    for family in sorted(set(pinned) & set(current)):
+        old, new = pinned[family], current[family]
+        shared = set(old["files"]) & set(new["files"])
+        changed = sorted(
+            key for key in shared if old["files"][key] != new["files"][key]
+        )
+        if changed and old["version"] == new["version"]:
+            problems.append(
+                (
+                    "unbumped",
+                    f"{family} facts changed without a version bump: {changed[:5]}",
+                )
+            )
+        if old["version"] != new["version"] or set(old["files"]) != set(new["files"]):
+            problems.append(("regenerate", f"{family} digests are stale"))
+        if not new["files"]:
+            problems.append(("regenerate", f"{family} has no fixture files"))
+    return problems
 
 
 def test_scope_fact_digests_are_pinned_per_family() -> None:
@@ -488,18 +649,24 @@ def test_scope_fact_digests_are_pinned_per_family() -> None:
 
     Regenerate with
     ``python -m tests.call_resolution_harness --write-scope-fact-digests``
-    after bumping the family's version in ``CALL_RESOLUTION_FACT_VERSIONS``.
+    after bumping the family's version in ``CALL_RESOLUTION_FACT_VERSIONS``,
+    or after adding or removing fixture files.
     """
     pinned = json.loads(harness.SCOPE_FACTS_DIGESTS.read_text(encoding="utf-8"))
-    current = harness.scope_fact_digests()
-    assert sorted(pinned) == sorted(current)
-    for family, entry in current.items():
-        if pinned[family]["files"] != entry["files"]:
-            assert (
-                pinned[family]["version"] != entry["version"]
-            ), f"{family} scope facts changed without a fact-version bump"
-            pytest.fail(f"{family} fact version bumped; regenerate the digests")
-        assert (
-            pinned[family]["version"] == entry["version"]
-        ), f"{family} fact version changed; regenerate the digests"
-        assert entry["files"], family
+    assert digest_problems(pinned, harness.scope_fact_digests()) == []
+
+
+def test_digest_rule_applies_only_to_shared_files() -> None:
+    pinned = {"js": {"version": "1", "files": {"a": "1", "b": "2"}}}
+
+    def current(version: str, files: dict[str, str]) -> dict[str, Any]:
+        return {"js": {"version": version, "files": files}}
+
+    def kinds(value: dict[str, Any]) -> set[str]:
+        return {kind for kind, _ in digest_problems(pinned, value)}
+
+    assert kinds(current("1", {"a": "1", "b": "2"})) == set()
+    assert kinds(current("1", {"a": "1", "b": "X"})) == {"unbumped"}
+    assert kinds(current("2", {"a": "1", "b": "X"})) == {"regenerate"}
+    assert kinds(current("1", {"a": "1", "b": "2", "c": "3"})) == {"regenerate"}
+    assert kinds(current("1", {"a": "1"})) == {"regenerate"}

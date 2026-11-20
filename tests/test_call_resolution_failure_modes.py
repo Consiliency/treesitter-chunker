@@ -107,6 +107,66 @@ def test_no_binding_fact_does_not_block_the_filters() -> None:
     assert on_edge["provenance"]["call_rules"] == ["t1.kind"]
 
 
+def test_unmapped_injected_missing_declaration() -> None:
+    """A proof whose declaration maps to no symbol fails closed (5.4).
+
+    Injects a ``local`` binding pointing at a declaration span no chunk has
+    into real ts-kind-filter facts, then runs the real assembly. The proof
+    is dropped (``none(unmapped)``), so only the kind filter narrows and
+    nothing resolves.
+    """
+    file_facts = _facts(FIXTURES / "authored" / "ts-kind-filter")
+    off_edge = _call(assemble_symbol_graph(copy.deepcopy(file_facts)), "x.ts", 1, "t")
+    (target,) = (item for item in file_facts if item["path"] == "x.ts")
+    key = f"{off_edge['callee_byte_start']}:{off_edge['callee_byte_end']}"
+    target["scope_facts"]["bindings"][key] = {
+        "outcome": "local",
+        "proof": [["function_declaration", 9000, 9001]],
+        "rules": [],
+    }
+    assert facts.valid_scope_facts(target["scope_facts"], target["language"])
+    on_graph = assemble_symbol_graph(file_facts, call_resolution=MODE)
+    on_edge = _call(on_graph, "x.ts", 1, "t")
+    context = engine.build_run_context(file_facts, on_graph["symbol_lookup"], MODE)
+    decision = engine.decide(context, off_edge)
+    assert decision.outcome == {"outcome": "none", "reason": "unmapped"}
+    assert decision.proven == frozenset()
+    assert on_edge["resolution"] == "ambiguous"
+    assert len(on_edge["candidates"]) == 2
+    assert on_edge["provenance"]["call_rules"] == ["t1.kind"]
+
+
+def test_a_malformed_symbol_span_is_skipped_not_fatal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A zero-width symbol chunk is left out of ``symbols`` (panel A6)."""
+    import chunker.symbol_graph as symbol_graph_module
+
+    original = symbol_graph_module.chunk_file
+
+    def zero_width(*args: Any, **kwargs: Any) -> Any:
+        chunks = original(*args, **kwargs)
+        for chunk in chunks:
+            if (chunk.metadata or {}).get("symbol"):
+                chunk.byte_end = chunk.byte_start
+                break
+        return chunks
+
+    monkeypatch.setattr(symbol_graph_module, "chunk_file", zero_width)
+    root = FIXTURES / "authored" / "ts-kind-filter"
+    file_facts = _facts(root)
+    for item in file_facts:
+        assert facts.valid_scope_facts(item["scope_facts"], item["language"])
+    # The wrapper zeroes one symbol chunk per file; each is left out.
+    for item in file_facts:
+        assert len(item["scope_facts"]["symbols"]) == len(item["symbol_lookup"]) - 1
+    graph = assemble_symbol_graph(file_facts, call_resolution=MODE)
+    assert graph["metadata"]["call_resolution"] == MODE
+    assert not facts.valid_symbol_entry(["function_declaration", 5, 5, "id"])
+    assert not facts.valid_symbol_entry(["", 0, 5, "id"])
+    assert facts.valid_symbol_entry(["function_declaration", 0, 5, "id"])
+
+
 # ---------------------------------------------------------------------------
 # Unsupported files (5.3)
 
@@ -190,15 +250,32 @@ def test_unsupported_parser_initialization_failure(
     _assert_unsupported_and_on_equals_off(root, "x.ts", fail_fast=True)
 
 
+MALFORMED_OUTPUTS = {
+    "unknown-outcome": {"goal": "module", "bindings": {"1:2": {"outcome": "guess"}}},
+    "not-a-dict": ["goal", "module"],
+    "mixed-script-globals": {"goal": "module", "script_globals": ["a", 1]},
+    "bindings-not-a-mapping": {"goal": "module", "bindings": 5},
+    "unhashable-reason": {
+        "goal": "module",
+        "bindings": {"1:2": {"outcome": "none", "reason": ["stub"]}},
+    },
+    "unhashable-script-global": {"goal": "module", "script_globals": [["a"]]},
+    "unhashable-outcome-kind": {"goal": "module", "bindings": {"1:2": {"outcome": []}}},
+}
+
+
+@pytest.mark.parametrize("shape", sorted(MALFORMED_OUTPUTS))
 def test_unsupported_malformed_analyzer_output(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, shape: str
 ) -> None:
-    def malformed(*args: object) -> dict[str, Any]:
-        return {"goal": "module", "bindings": {"1:2": {"outcome": "guess"}}}
+    """Malformed analyzer output fails closed and never raises (5.3)."""
+
+    def malformed(*args: object) -> Any:
+        return MALFORMED_OUTPUTS[shape]
 
     monkeypatch.setitem(facts._ANALYZERS, "js", malformed)
     root = _copy(tmp_path, "authored/ts-kind-filter")
-    _assert_unsupported_and_on_equals_off(root, "x.ts")
+    _assert_unsupported_and_on_equals_off(root, "x.ts", fail_fast=True)
 
 
 @pytest.mark.parametrize("failure", ["syntax", "exception"])

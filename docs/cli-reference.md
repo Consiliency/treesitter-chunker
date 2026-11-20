@@ -89,6 +89,9 @@ treesitter-chunker boundary src/ --lang python --incremental --cache-dir .cache/
 
 # Ignore valid cache records and refresh the incremental cache
 treesitter-chunker boundary src/ --lang python --incremental --force-rebuild
+
+# Experimental: narrow ambiguous call edges (auto-detected languages, no filter)
+treesitter-chunker boundary src/ --call-resolution structural
 ```
 
 When `--output` is used, the boundary command prints the output path and summary
@@ -99,6 +102,15 @@ uses stderr so stdout remains parseable JSON.
 `--cache-dir` selects the persistent Boundary IR cache directory. `--force-rebuild`
 bypasses cache reads and refreshes records for the current snapshot.
 
+`--call-resolution` is experimental (treesitter-chunker#682). `name`, the
+default, is the usual name-only resolution. `structural` narrows `ambiguous`
+call edges whose callee is a bare identifier in a Python, JavaScript, TypeScript
+or TSX file. It currently applies only the symbol-kind and language-family
+filters and resolves nothing. Narrowed edges carry `provenance.call_resolution`
+and `provenance.call_rules`, and `run.options.call_resolution` records the mode.
+Use a separate `--cache-dir` per mode: switching modes on one cache directory is a
+cold run.
+
 ### Symbol graph extraction
 
 ```bash
@@ -107,7 +119,13 @@ python -m chunker.cli symbols extract src/ --language python --output symbols.js
 
 # Request strict relationship classification in symbol JSON
 python -m chunker.cli symbols extract src/ --language python --resolution-mode strict
+
+# Experimental: narrow ambiguous call edges, as for `boundary` above
+python -m chunker.cli symbols extract src/ --language python --call-resolution structural
 ```
+
+`symbols extract` always applies its `--language` (default `python`) to every
+file, so it cannot run unfiltered.
 
 ### Debug and visualization
 

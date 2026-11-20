@@ -507,6 +507,23 @@ def first(
 # Scope-fact digests (section 4.6)
 
 
+def fixture_scope_facts() -> list[tuple[str, dict[str, Any]]]:
+    """``(run_id, on-mode facts)`` for every analyzed fixture file."""
+    from chunker.call_resolution.facts import ANALYZED_LANGUAGES
+    from chunker.symbol_graph import collect_source_files, extract_symbol_facts_for_file
+
+    capture = load_capture()
+    found: list[tuple[str, dict[str, Any]]] = []
+    for run in capture.discover_runs():
+        for file_path in collect_source_files(run.path, run.language):
+            facts = extract_symbol_facts_for_file(
+                file_path, run.path, run.language, call_resolution="structural"
+            )
+            if facts["language"] in ANALYZED_LANGUAGES:
+                found.append((run.run_id, facts))
+    return found
+
+
 def scope_fact_digests() -> dict[str, dict[str, Any]]:
     """Per family, the fact version and a digest of each fixture file's facts.
 
@@ -516,30 +533,19 @@ def scope_fact_digests() -> dict[str, dict[str, Any]]:
     import hashlib
 
     from chunker.call_resolution.engine import language_family
-    from chunker.call_resolution.facts import (
-        ANALYZED_LANGUAGES,
-        CALL_RESOLUTION_FACT_VERSIONS,
-    )
-    from chunker.symbol_graph import collect_source_files, extract_symbol_facts_for_file
+    from chunker.call_resolution.facts import CALL_RESOLUTION_FACT_VERSIONS
 
-    capture = load_capture()
     digests: dict[str, dict[str, Any]] = {
         family: {"version": version, "files": {}}
         for family, version in sorted(CALL_RESOLUTION_FACT_VERSIONS.items())
     }
-    for run in capture.discover_runs():
-        for file_path in collect_source_files(run.path, run.language):
-            facts = extract_symbol_facts_for_file(
-                file_path, run.path, run.language, call_resolution="structural"
-            )
-            if facts["language"] not in ANALYZED_LANGUAGES:
-                continue
-            family = language_family(facts["language"])
-            assert family is not None
-            data = canonical(facts["scope_facts"]).encode("utf-8")
-            digests[family]["files"][f"{run.run_id}:{facts['path']}"] = hashlib.sha256(
-                data
-            ).hexdigest()
+    for run_id, facts in fixture_scope_facts():
+        family = language_family(facts["language"])
+        assert family is not None
+        data = canonical(facts["scope_facts"]).encode("utf-8")
+        digests[family]["files"][f"{run_id}:{facts['path']}"] = hashlib.sha256(
+            data
+        ).hexdigest()
     for entry in digests.values():
         entry["files"] = dict(sorted(entry["files"].items()))
     return digests

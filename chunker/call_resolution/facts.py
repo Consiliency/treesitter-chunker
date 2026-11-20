@@ -183,23 +183,27 @@ def compute_scope_facts(
             logger.debug("call resolution: %s tree has errors", language)
             return fallback
         partial = analyzer(root, source, language, call_facts)
+        # Normalizing and validating the analyzer's output is inside the
+        # guard too: malformed output fails closed instead of raising.
+        facts = {
+            **fallback,
+            "supported": True,
+            "goal": partial.get("goal"),
+            "bindings": dict(partial.get("bindings", {})),
+            "script_globals": sorted(set(partial.get("script_globals", ()))),
+            "exports": dict(partial.get("exports", {})),
+            "module_bindings": dict(partial.get("module_bindings", {})),
+        }
+        if not valid_scope_facts(facts, language):
+            logger.debug(
+                "call resolution: %s analyzer returned malformed facts", language
+            )
+            return fallback
     except RecursionError:
         logger.debug("call resolution: %s analyzer hit RecursionError", language)
         return fallback
     except Exception as exc:  # noqa: BLE001 - fail closed (section 5.3)
         logger.debug("call resolution: %s analyzer failed: %r", language, exc)
-        return fallback
-    facts = {
-        **fallback,
-        "supported": True,
-        "goal": partial.get("goal"),
-        "bindings": dict(partial.get("bindings", {})),
-        "script_globals": sorted(set(partial.get("script_globals", ()))),
-        "exports": dict(partial.get("exports", {})),
-        "module_bindings": dict(partial.get("module_bindings", {})),
-    }
-    if not valid_scope_facts(facts, language):
-        logger.debug("call resolution: %s analyzer returned malformed facts", language)
         return fallback
     return facts
 
@@ -228,9 +232,14 @@ def valid_outcome(value: object) -> bool:
     if not isinstance(value, dict):
         return False
     kind = value.get("outcome")
+    if not isinstance(kind, str):
+        return False
     if kind == "none":
-        return set(value) == {"outcome", "reason"} and (
-            value.get("reason") in KNOWN_NONE_REASONS
+        reason = value.get("reason")
+        return (
+            set(value) == {"outcome", "reason"}
+            and isinstance(reason, str)
+            and reason in KNOWN_NONE_REASONS
         )
     if kind == "local":
         proof = value.get("proof")
@@ -250,7 +259,8 @@ def valid_outcome(value: object) -> bool:
     return False
 
 
-def _valid_symbol_entry(value: object) -> bool:
+def valid_symbol_entry(value: object) -> bool:
+    """Whether ``value`` is a well-formed ``symbols`` table entry."""
     return (
         isinstance(value, list)
         and len(value) == 4
@@ -297,5 +307,5 @@ def valid_scope_facts(value: object, language: str | None) -> bool:
         return False
     symbols = value["symbols"]
     return isinstance(symbols, list) and all(
-        _valid_symbol_entry(entry) for entry in symbols
+        valid_symbol_entry(entry) for entry in symbols
     )

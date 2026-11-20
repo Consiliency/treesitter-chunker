@@ -18,6 +18,7 @@ from .call_resolution.facts import (
     compute_scope_facts,
     unsupported_scope_facts,
     valid_scope_facts,
+    valid_symbol_entry,
 )
 from .core import _line_ending_offsets, chunk_file
 from .types import (
@@ -578,9 +579,12 @@ def extract_symbol_facts_for_file(
             "node_id": chunk.node_id or None,
         }
         symbol_lookup[symbol_id] = symbol_record
-        symbol_spans.append(
-            [chunk.node_type, chunk.byte_start, chunk.byte_end, symbol_id]
-        )
+        symbol_span = [chunk.node_type, chunk.byte_start, chunk.byte_end, symbol_id]
+        if call_resolution_on and valid_symbol_entry(symbol_span):
+            # A malformed span (for example zero width) is left out rather
+            # than failing the run; a proof that needs it fails closed as
+            # ``unmapped``.
+            symbol_spans.append(symbol_span)
         owners.append(
             {
                 "id": symbol_id,

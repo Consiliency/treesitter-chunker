@@ -15,6 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, get_args
 
+import click
 import jsonschema
 import pytest
 from typer.testing import CliRunner
@@ -238,22 +239,23 @@ def test_schema_documents_the_additive_keys() -> None:
     ir = extract_boundary_ir(KIND_FILTER, call_resolution=MODE)
     assert ir["schema_version"] == "3.0"
     validator.validate(ir)
-    for path, value in (
-        (("run", "options", "call_resolution"), "imports"),
-        (("run", "options", "call_resolution"), "name"),
+    # The schema already documents "imports" (Tier 2); the API and CLI reject
+    # it until Tier 2 lands.
+    for value, valid in (("imports", True), ("name", False), ("bogus", False)):
+        changed = json.loads(json.dumps(ir))
+        changed["run"]["options"]["call_resolution"] = value
+        assert (not list(validator.iter_errors(changed))) is valid, value
+    for key, value, valid in (
+        ("call_resolution", "imports", True),
+        ("call_resolution", "name", False),
+        ("call_resolution", "bogus", False),
+        ("call_rules", [], False),
+        ("call_rules", "t1.kind", False),
     ):
-        broken = json.loads(json.dumps(ir))
-        broken[path[0]][path[1]][path[2]] = value
-        assert list(validator.iter_errors(broken))
-    for key, value in (
-        ("call_resolution", "bogus"),
-        ("call_rules", []),
-        ("call_rules", "t1.kind"),
-    ):
-        broken = json.loads(json.dumps(ir))
-        edge = next(edge for edge in broken["edges"] if edge["type"] == "calls")
+        changed = json.loads(json.dumps(ir))
+        edge = next(edge for edge in changed["edges"] if edge["type"] == "calls")
         edge["provenance"][key] = value
-        assert list(validator.iter_errors(broken)), (key, value)
+        assert (not list(validator.iter_errors(changed))) is valid, (key, value)
 
 
 def test_cli_symbols_extract_flag(tmp_path: Path) -> None:
@@ -295,8 +297,11 @@ def test_cli_boundary_flag(tmp_path: Path) -> None:
     runner = CliRunner()
     result = runner.invoke(app, ["boundary", "--help"])
     assert result.exit_code == 0
-    assert "--call-resolution" in result.output
-    assert "Experimental" in result.output
+    # Rich help can be styled when colour is forced (FORCE_COLOR); compare the
+    # unstyled text.
+    help_text = click.unstyle(result.output)
+    assert "--call-resolution" in help_text
+    assert "Experimental" in help_text
     root = tmp_path / "tree"
     shutil.copytree(KIND_FILTER, root)
     outputs = {}

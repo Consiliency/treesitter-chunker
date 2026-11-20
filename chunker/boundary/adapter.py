@@ -12,7 +12,7 @@ from typing import Any
 
 from chunker.auto import ZeroConfigAPI
 from chunker._internal.registry import baml_companion_available
-from chunker.call_resolution.facts import fact_version
+from chunker.call_resolution.facts import fact_version, valid_scope_facts
 from chunker.core import chunk_file
 from chunker.exceptions import ParserInitError
 from chunker.parser import get_language_info
@@ -1456,7 +1456,18 @@ def _extract_boundary_ir_incremental(
         previous_key = index.records.get(display_path)
         if previous_key == cache_key and not force_rebuild:
             record = load_cache_record(cache_root, cache_key)
-            if record is None or record.file_record.get("status") == "error":
+            if (
+                record is None
+                or record.file_record.get("status") == "error"
+                or (
+                    call_resolution != "name"
+                    and not valid_scope_facts(
+                        record.symbol_facts.get("scope_facts"),
+                        record.symbol_facts.get("language"),
+                    )
+                )
+            ):
+                # A damaged on-mode record is a safe miss (#682, plan 4.4).
                 invalid_paths.add(display_path)
             else:
                 cached_records[display_path] = record

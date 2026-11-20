@@ -55,12 +55,14 @@ def _payload(language: str | None = "typescript", **kwargs: Any) -> dict[str, An
 
 @pytest.mark.parametrize("semantic", [False, True])
 def test_keys_differ_per_mode_in_both_branches(semantic: bool) -> None:
+    # "imports" is rejected by the public API until Tier 2, but the key
+    # function already separates it.
     extra: dict[str, Any] = {"semantic_resolvers": (_Resolver(),)} if semantic else {}
     keys = {
         mode: adapter._build_boundary_cache_key(_payload(call_resolution=mode, **extra))
-        for mode in ("name", MODE)
+        for mode in ("name", MODE, "imports")
     }
-    assert len(set(keys.values())) == 2
+    assert len(set(keys.values())) == 3
     on_payload = _payload(call_resolution=MODE, **extra)
     bumped = {**on_payload, "call_resolution_version": "999"}
     assert adapter._build_boundary_cache_key(bumped) != keys[MODE]
@@ -178,7 +180,14 @@ def _spy(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 
 @pytest.mark.parametrize(
     "corruption",
-    ["missing", "not-an-object", "bad-version", "bad-outcome", "supported-go"],
+    [
+        "missing",
+        "not-an-object",
+        "bad-version",
+        "bad-outcome",
+        "supported-go",
+        "payload-stripped",
+    ],
 )
 def test_malformed_on_mode_scope_facts_are_a_safe_miss(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corruption: str
@@ -203,10 +212,19 @@ def test_malformed_on_mode_scope_facts_are_a_safe_miss(
     elif corruption == "bad-outcome":
         key = next(iter(scope_facts["bindings"]))
         scope_facts["bindings"][key] = {"outcome": "resolved"}
-    else:
+    elif corruption == "supported-go":
         scope_facts["supported"] = True
-    with pytest.raises(ValueError, match="scope facts"):
+    else:
+        # The record keeps its on-mode key but no longer names the mode, so
+        # ``from_json`` cannot tell it needs scope facts; the adapter must.
+        del record["key_payload"]["call_resolution"]
+        del record["key_payload"]["call_resolution_version"]
+        del record["symbol_facts"]["scope_facts"]
+    if corruption == "payload-stripped":
         BoundaryCacheRecord.from_json(record)
+    else:
+        with pytest.raises(ValueError, match="scope facts"):
+            BoundaryCacheRecord.from_json(record)
     record_path.write_text(json.dumps(record), encoding="utf-8")
     calls = _spy(monkeypatch)
     warm = extract_boundary_ir(

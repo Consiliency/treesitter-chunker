@@ -89,6 +89,7 @@ class FileContext:
     supported: bool
     bindings: Mapping[str, Any]
     declarations: Mapping[Declaration, tuple[str, ...]]
+    path: str = ""
 
 
 @dataclass(frozen=True)
@@ -142,7 +143,9 @@ def build_run_context(
             declarations[(str(node_type), int(byte_start), int(byte_end))].append(
                 str(symbol_id)
             )
-        files[str(file_facts.get("path") or "")] = FileContext(
+        path = str(file_facts.get("path") or "")
+        files[path] = FileContext(
+            path=path,
             language=scope_facts.get("language"),
             supported=bool(scope_facts.get("supported")),
             bindings=scope_facts.get("bindings") or {},
@@ -161,13 +164,18 @@ def _join(
     file_context: FileContext,
     symbol_lookup: Mapping[str, Mapping[str, Any]],
 ) -> tuple[frozenset[str], Mapping[str, Any], tuple[str, ...]]:
-    """Map a ``local`` outcome's proof to symbol IDs; fail closed (5.4)."""
+    """Map a ``local`` outcome's proof to symbol IDs; fail closed (5.4).
+
+    Each declaration must map to exactly one symbol record, and that record
+    must belong to the caller's file.
+    """
     proven: set[str] = set()
     for node_type, byte_start, byte_end in outcome["proof"]:
         ids = file_context.declarations.get(
             (str(node_type), int(byte_start), int(byte_end)), ()
         )
-        if len(ids) != 1 or ids[0] not in symbol_lookup:
+        symbol = symbol_lookup.get(ids[0]) if len(ids) == 1 else None
+        if symbol is None or symbol.get("file") != file_context.path:
             return frozenset(), _none("unmapped"), ()
         proven.add(ids[0])
     return frozenset(proven), outcome, tuple(str(rule) for rule in outcome["rules"])
@@ -187,6 +195,16 @@ def proof(
         proven, joined, group_rules = _join(outcome, file_context, symbol_lookup)
         if not proven:
             return proven, joined, ()
+        # The engine enforces what the group rules promise (7.4): a proof
+        # names only callable symbols of the caller's family. Anything else
+        # fails closed, so a filter can never turn it into a resolution.
+        family = language_family(file_context.language)
+        if any(
+            not _symbol_callable(symbol_lookup.get(symbol_id))
+            or _symbol_family(symbol_lookup.get(symbol_id)) != family
+            for symbol_id in proven
+        ):
+            return frozenset(), _none("non-callable"), ()
         extra = tuple(rule for rule in group_rules if rule in GROUP_RULE_IDS)
         return proven, joined, (RULE_LEXICAL, *extra)
     # An import outcome proves nothing in structural mode (6.3); the imports
@@ -211,6 +229,9 @@ def narrow(
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """The binding-proof algorithm over C0 (6.3): ``(C, rule IDs)``."""
     before = tuple(candidates)
+    if any(candidate not in symbol_lookup for candidate in before):
+        # A candidate without a symbol record cannot be classified.
+        return before, ()
     current = before
     rules: list[str] = []
     # 1. Binding: intersect with the proof when that removes something.
@@ -239,11 +260,13 @@ def narrow(
         if callable_ != same_family:
             rules.append(RULE_KIND)
         current = callable_
-    # 3. Invariants: a subset of C0, never empty, resolved only when proven.
+    # 3. Invariants: a subset of C0, never empty, resolved only when proven
+    # and only through a binding rule.
     if (
         not current
         or not set(current) <= set(before)
         or (len(current) == 1 and current[0] not in proven)
+        or (len(current) == 1 and not BINDING_RULE_IDS & set(rules))
         or (current != before and not rules)
     ):
         return before, ()

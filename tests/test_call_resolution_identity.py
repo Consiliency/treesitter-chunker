@@ -71,11 +71,12 @@ def test_boundary_identity(run_id: str, mode: str, resolution_mode: str) -> None
     assert violations == [], _describe(violations)
 
 
+@pytest.mark.parametrize("resolution_mode", harness.RESOLUTION_MODES)
 @pytest.mark.parametrize("mode", harness.ON_MODES)
 @pytest.mark.parametrize("run_id", RUN_IDS)
-def test_on_mode_is_deterministic(run_id: str, mode: str) -> None:
+def test_on_mode_is_deterministic(run_id: str, mode: str, resolution_mode: str) -> None:
     """Check 12: cold, repeated cold and cold/warm incremental runs agree."""
-    documents = harness.on_mode_documents(RUNS_BY_ID[run_id], mode, "strict")
+    documents = harness.on_mode_documents(RUNS_BY_ID[run_id], mode, resolution_mode)
     violations = harness.determinism_violations(documents)
     assert violations == [], _describe(violations)
 
@@ -372,6 +373,84 @@ def test_mutation_fails_its_checks(
     )
     violations = compare(off, harness.mutated(on, mutation), "structural")
     assert must_fail <= failed_checks(violations), (name, _describe(violations))
+
+
+# Isolated variants (panel C1): each breaks exactly one rule, so the check
+# cannot pass for an incidental reason. The narrowed edge keeps valid
+# provenance keys, so only the mutated property is wrong.
+
+
+def _narrowed(edge: dict[str, Any]) -> bool:
+    return "call_rules" in edge["provenance"]
+
+
+def _sg_iso_change_definition_id(graph: dict[str, Any]) -> None:
+    lookup = graph["symbol_lookup"]
+    key = next(iter(lookup))
+    lookup[key] = {**lookup[key], "definition_id": "0" * 40}
+
+
+def _sg_iso_empty_narrowed(graph: dict[str, Any]) -> None:
+    harness.first(_calls(graph), _narrowed)["candidates"] = []
+
+
+def _bir_iso_empty_narrowed(document: dict[str, Any]) -> None:
+    harness.first(_syntax_calls(document), _narrowed)["candidates"] = []
+
+
+def _sg_iso_one_candidate(graph: dict[str, Any]) -> None:
+    edge = harness.first(_calls(graph), _narrowed)
+    edge["candidates"] = edge["candidates"][:1]
+
+
+def _bir_iso_one_candidate(document: dict[str, Any]) -> None:
+    edge = harness.first(_syntax_calls(document), _narrowed)
+    edge["candidates"] = edge["candidates"][:1]
+
+
+def _sg_iso_add_candidate(graph: dict[str, Any]) -> None:
+    edge = harness.first(_calls(graph), _narrowed)
+    edge["candidates"] = sorted([*edge["candidates"], "f" * 40])
+
+
+def _bir_iso_add_candidate(document: dict[str, Any]) -> None:
+    edge = harness.first(_syntax_calls(document), _narrowed)
+    edge["candidates"] = sorted([*edge["candidates"], "f" * 40])
+
+
+ISOLATED = [
+    ("M1", "rt-pyrec/default", SG, _sg_iso_change_definition_id, 1),
+    ("M3", "r9-py/default", BIR, _bir_change_call_site_id, 6),
+    ("M5", "mixed-family/default", SG, _sg_iso_empty_narrowed, 3),
+    ("M5", "mixed-family/default", BIR, _bir_iso_empty_narrowed, 7),
+    ("M5", "mixed-family/default", SG, _sg_iso_one_candidate, 3),
+    ("M5", "mixed-family/default", BIR, _bir_iso_one_candidate, 7),
+    ("M6", "mixed-family/default", SG, _sg_iso_add_candidate, 3),
+    ("M6", "mixed-family/default", BIR, _bir_iso_add_candidate, 7),
+]
+
+
+@pytest.mark.parametrize(
+    ("name", "run_id", "representation", "mutation", "check"),
+    ISOLATED,
+    ids=[f"{item[0]}-{item[2]}-{item[3].__name__}" for item in ISOLATED],
+)
+def test_isolated_mutation_fails_exactly_one_rule(
+    name: str,
+    run_id: str,
+    representation: str,
+    mutation: harness.Mutation,
+    check: int,
+) -> None:
+    off, on = _pair(run_id)[representation]
+    compare = (
+        harness.symbol_graph_violations
+        if representation == SG
+        else harness.boundary_violations
+    )
+    violations = compare(off, harness.mutated(on, mutation), "structural")
+    assert len(violations) == 1, (name, _describe(violations))
+    assert violations[0].check == check, (name, _describe(violations))
 
 
 def test_mutation_m13_off_mode_byte_fails_check_10() -> None:
