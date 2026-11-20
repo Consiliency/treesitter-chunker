@@ -29,11 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     TS overload set (`t1.ts_overload`); duplicate bodies narrow to the group
     and stay ambiguous. Parameters, locals, reassigned names, block-level
     functions, `eval`/`with`, ambient and bodyless declarations, enums and
-    namespaces never resolve. Script-goal top levels and TS namespace bodies
-    are not resolved yet, and **Python calls are not resolved yet**: for them,
-    and wherever no binding proves a candidate, only the kind and family
-    filters (`t1.kind`, `t1.family`) narrow, and only when two or more
-    candidates remain. A file whose tree has syntax errors or is too deeply
+    namespaces, and calls inside TS enum bodies never resolve. Script-goal
+    top levels and TS namespace bodies are not resolved yet, and
+    **Python calls are not resolved yet**: for them, and wherever no binding
+    proves a candidate, only the kind and family filters (`t1.kind`,
+    `t1.family`) narrow, and only when two or more candidates remain. A file whose tree has syntax errors or is too deeply
     nested for the scope pass, or whose analysis fails, keeps exactly its
     off-mode edges. Narrowed edges carry `provenance.call_resolution` and
     `provenance.call_rules`, and `run.options.call_resolution` and

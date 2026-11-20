@@ -15,6 +15,10 @@ fact's callee is looked up through the scope chain, innermost first:
   expression's, **self scope**: its own name, bound as a non-symbol
   (``self-binding``);
 - TS namespace bodies (``internal_module``, ``module``, ``declare global``);
+- TS enum bodies: the members of every declaration of the enum shadow outer
+  names in its initializers, and merged declarations make that set
+  non-local, so every lookup that reaches an enum body fails closed
+  (``enum-scope``);
 - ``program``.
 
 ``class_body`` binds no bare names, so method bodies and field initializers
@@ -29,7 +33,8 @@ precedence):
 
 1. a ``none`` the lookup meets on the way (``dynamic-scope`` for a scope
    that encloses a direct ``eval``, also ``(eval)(s)``, ``eval!(s)`` or
-   ``(eval as any)(s)``, or for a ``with`` around the call;
+   ``(eval as any)(s)``, or for a ``with`` around the call; ``enum-scope``
+   for an enum body;
    ``unmapped`` for a scope holding a fail-closed node kind);
 2. the binding's own reason: ``type-only``, ``block-function``,
    ``unmapped``, a non-symbol binding's class (``parameter``,
@@ -151,6 +156,8 @@ _SELF = "self"
 _BLOCK = "block"
 _NAMESPACE_SCOPE = "namespace"
 _STATIC = "static"
+_ENUM_SCOPE = "enum"
+ENUM_SCOPE_REASON = "enum-scope"
 
 
 def program_goal(root: Any) -> str:
@@ -641,7 +648,15 @@ class _Analysis:
         name = node.child_by_field_name("name")
         if name is not None:
             self._symbol(lex, _text(name, self.source), node, _ENUM)
-        self._visit_except(node, (name,), var, lex, depth)
+        body = node.child_by_field_name("body")
+        if body is not None:
+            # Inside an enum body the members of every declaration of the enum
+            # (merged ones too, possibly in other files) are in scope for the
+            # initializers and shadow outer names. That member set is not
+            # local, so every lookup that reaches the body fails closed.
+            scope = self._scope(_ENUM_SCOPE, body, body, "scope")
+            self._statements(body, var, scope, depth + 1)
+        self._visit_except(node, (name, body), var, lex, depth)
 
     def _namespace(self, node: Any, var: _Scope, lex: _Scope, depth: int) -> None:
         name = node.child_by_field_name("name")
@@ -692,7 +707,10 @@ class _Analysis:
 
     def _scopes_at(self, node: Any, child: Any) -> Iterator[_Scope]:
         kind = node.type
-        if kind == "program" or kind == "statement_block" or kind in _BLOCK_SCOPE_NODES:
+        if (
+            kind in ("program", "statement_block", "enum_body")
+            or kind in _BLOCK_SCOPE_NODES
+        ):
             scope = self.scopes.get((node.id, "scope"))
             if scope is not None:
                 yield scope
@@ -749,6 +767,8 @@ class _Analysis:
                 return _none("dynamic-scope")
             if scope.poisoned:
                 return _none(UNMAPPED)
+            if scope.kind == _ENUM_SCOPE:
+                return _none(ENUM_SCOPE_REASON)
             if scope.kind == _NAMESPACE_SCOPE:
                 through_namespace = True
             bindings = scope.bindings.get(name)

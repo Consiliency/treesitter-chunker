@@ -83,7 +83,11 @@ NAMED_TIER1_JS_TESTS = (
     "test_using_near_miss_end_to_end",
     "test_wrapped_reassignment_end_to_end",
     "test_member_call_on_a_local_function_is_unchanged",
+    "test_enum_scope_end_to_end",
 )
+# Live reasons no committed fixture produces, each covered by a named test on
+# a tree the test writes (the president's #689 ruling, B-1).
+TEST_WRITTEN_REASONS = {"enum-scope": "test_enum_scope_end_to_end"}
 # Named tests the plan assigns to later heads (panel C2). Each moves to the
 # live list when its analyzer lands.
 DEFERRED_FAILURE_MODE_TESTS = {
@@ -636,9 +640,12 @@ def test_live_rules_and_reasons_have_cases() -> None:
         for outcome in item["scope_facts"]["bindings"].values()
         if outcome["outcome"] == "none"
     }
-    assert emitted <= LIVE_REASONS | {"unmapped", "no-binding-fact"}, sorted(
-        emitted - LIVE_REASONS
+    covered = LIVE_REASONS | set(TEST_WRITTEN_REASONS)
+    assert emitted <= covered | {"unmapped", "no-binding-fact"}, sorted(
+        emitted - covered
     )
+    assert set(TEST_WRITTEN_REASONS) <= KNOWN_NONE_REASONS
+    assert set(TEST_WRITTEN_REASONS.values()) <= set(NAMED_TIER1_JS_TESTS)
     assert not set(NAMED_FAILURE_MODE_TESTS) & set(DEFERRED_FAILURE_MODE_TESTS)
     assert set(DEFERRED_FAILURE_MODE_TESTS.values()) <= {"PR 2", "PR 4"}
     for name in DEFERRED_FAILURE_MODE_TESTS:

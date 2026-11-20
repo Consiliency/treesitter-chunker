@@ -420,6 +420,15 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     bound as a non-symbol (`none(self-binding)`). A class expression's own name
     works the same way;
   - TS namespace body (`internal_module`, `module`);
+  - **TS enum body** (`enum_body`; PR 2, the president's treesitter-chunker#689
+    ruling, B-1). Inside it the member names of every declaration of that
+    enum are in scope for the initializers and shadow outer bindings: tsc
+    emits `E.t()` for `enum E { t = 1, B = (t as any)() }`, also across merged
+    declarations. Merged declarations, possibly in other files, make that
+    member set non-local, so Tier 1 fails closed for every bare-name lookup
+    that reaches an enum body, member or not: `none(enum-scope)`. A binding
+    found before the body (a parameter of an arrow in an initializer, say)
+    still decides. Lookups outside the enum are unaffected;
   - `program`.
 - **`class_body` binds no bare names.** Method bodies skip the class and
   continue in the scope enclosing it.
@@ -459,8 +468,9 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
   The one exception is the object of a member or subscript access
   (`t.x = 1`). Computed method and property names are evaluated, so they are
   read too.
-- **Fail closed** with `none(dynamic-scope)` when a direct `eval(...)`
-  encloses the lookup, or a `with` lies on the lookup chain. A direct eval can
+- **Fail closed** with `none(dynamic-scope)` when the lookup chain meets a
+  scope that contains a direct `eval(...)`, or a `with` lies on the lookup
+  chain. A direct eval can
   assign any binding visible from its site, so every scope from the eval out
   to `program` is dynamic. Parenthesized and TS-wrapped callees (`(eval)(s)`,
   `eval!(s)`, `(eval as any)(s)`) are direct eval. Also fail closed with
@@ -554,7 +564,8 @@ result is `none(non-callable)`. Then:
 | --- | --- | --- | --- |
 | Any | Any group with **no body** (signatures only, or all ambient; ambient is inherited) | `none(ambient)` if every member is ambient (ambient wins over bodyless, R-1(iii)); otherwise `none(bodyless)` | — |
 | Any | One definition | That definition (Python: only if unconditional; a single conditional definition gives `none(conditional)`) | `t1.lexical` |
-| TS/TSX | k ≥ 1 bodyless `function_signature` plus exactly one body, contiguous, in one scope, the body last and a `function_declaration` (PR 2). Any other shape, such as a body before a signature or a `const` arrow body, proves every member, which can narrow but never resolve | The body | `t1.ts_overload` |
+| TS/TSX | k ≥ 1 bodyless `function_signature` immediately followed by exactly one body that is a `function_declaration`, contiguous, in one scope (PR 2) | The body | `t1.ts_overload` |
+| TS/TSX | Signatures with one body in any other shape (a body before a signature, a `const` arrow body, not contiguous) | Every member; narrows, never resolves | `t1.lexical` |
 | TS/TSX | Two or more bodies | The bodies, `ambiguous` | `t1.lexical` |
 | JS | Two or more `function_declaration`/`generator_function_declaration` directly in one function body or one script-goal `program`; no block-level declaration, expression binding or other binding of the name in that scope | The last one | `t1.js_hoist` (PR 3) |
 | JS | The same at an ES-module top level (an early error) | The group, `ambiguous` | `t1.lexical` |
@@ -632,6 +643,7 @@ an unreviewed binding form.
 | `namespace-merged` | The lookup passes through a merged or script-goal namespace |
 | `script-global` | Another file declares the name as a script global |
 | `type-only` | Only a type-only import binds the name |
+| `enum-scope` | The lookup reaches a TS enum body, where the members of every declaration of the enum shadow outer names (7.2) |
 | `unmapped` | A declaration with no symbol, a duplicate span, or an unclassified node |
 | `no-binding-fact` | The call has no binding entry |
 | `stub` | PR 1 only |
@@ -644,8 +656,9 @@ per call, decided in this order:
 
 1. The outcome's own reason (`parameter`, `local-variable`,
    `expression-bound`, `self-binding`, `reassigned`, `block-function`,
-   `dynamic-scope`, `star-import`, `class-scope-bound`, `mixed-bindings`,
-   `type-only`, `unmapped`, `no-binding-fact`) wins over `script-goal-deferred`,
+   `dynamic-scope`, `enum-scope`, `star-import`, `class-scope-bound`,
+   `mixed-bindings`, `type-only`, `unmapped`, `no-binding-fact`) wins over
+   `script-goal-deferred`,
    `script-global`, `namespace-deferred` and `namespace-merged`. Those apply
    only when the lookup would otherwise prove a group.
 2. In a definition group, non-callable kinds are dropped first (7.4), so a
@@ -1137,6 +1150,7 @@ compares the analyzer's output with them.
 | namespace-merged | ts-declare-namespace, ts-namespace-global |
 | script-global | js-script-global, js-implicit-global |
 | type-only | ts-type-only-import |
+| enum-scope | `test_enum_scope_end_to_end` and `test_lookups_inside_an_enum_body_fail_closed` in `tests/test_call_resolution_tier1_js.py`, on trees the tests write (a committed tree would change the off-mode baseline, 11.2) |
 | no-binding-fact, unmapped | named synthetic-facts tests (R-3; listed below the table) |
 | unsupported file | named end-to-end failure-mode tests (R-3; listed below the table) |
 | TS `using` / `await using` (fail closed, 7.5) | `test_using_near_miss_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on a tree the test writes (a committed tree would change the off-mode baseline, 11.2) |
@@ -1581,3 +1595,11 @@ Both tighten the rules (fail closed); neither departs from a ruling. Today cells
 | Item | Applied in |
 | --- | --- |
 | B7: `declare enum E {}` then `E()` | §7.4 (settled: `non-callable`, non-callable kinds dropped first); §7.6 precedence item 2; §10.6 non-callable row |
+
+### PR 2: the president's treesitter-chunker#689 ruling
+
+| Item | Applied in |
+| --- | --- |
+| B-1: lookups inside a TS enum body | §7.2 scope list (enum body, `none(enum-scope)`); §7.6 reason table and precedence item 1; §10.6 enum-scope row |
+| Nit: eval wording | §7.2 fail-closed bullet ("the lookup chain meets a scope that contains a direct `eval(...)`") |
+| Nit: overload row layout | §7.4 table (the fallback has its own row) |

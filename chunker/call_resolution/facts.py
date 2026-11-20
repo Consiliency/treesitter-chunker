@@ -80,6 +80,7 @@ TIER1_NONE_REASONS = (
     "namespace-merged",
     "script-global",
     "type-only",
+    "enum-scope",
     "unmapped",
     "no-binding-fact",
 )

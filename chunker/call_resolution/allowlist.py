@@ -59,7 +59,11 @@ _TYPE_SPACE = Entry(IGNORED, "type space: binds no value")
 _TYPE_MEMBER = Entry(IGNORED, "type-space member: binds no bare name")
 _CLASS_MEMBER = Entry(IGNORED, "class member: a property, not a bare-name binding")
 _LABEL = Entry(IGNORED, "labels bind no value")
-_ENUM_MEMBER = Entry(IGNORED, "enum members are properties of the enum")
+_ENUM_MEMBER = Entry(
+    IGNORED,
+    "an enum member binds its name only inside the enum body, whose lookups "
+    "fail closed (enum-scope)",
+)
 _PATTERN = Entry(HANDLED, "pattern: binds as its declaration or assignment")
 _IMPORT = Entry(HANDLED, "import: value import or type-only")
 _SCOPE = Entry(HANDLED, "scope")
@@ -212,7 +216,11 @@ _TS_COMMON: dict[str, Entry] = {
     "constructor_type": _NB,
     "default_type": _NB,
     "enum_assignment": _ENUM_MEMBER,
-    "enum_body": _ENUM_MEMBER,
+    "enum_body": Entry(
+        HANDLED,
+        "scope: members shadow outer names in initializers; lookups through it "
+        "give none(enum-scope)",
+    ),
     "enum_declaration": _SYMBOL,
     "existential_type": _NB,
     "extends_clause": _NB,

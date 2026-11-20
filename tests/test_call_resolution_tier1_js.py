@@ -408,6 +408,44 @@ def test_script_goal_and_namespace_deferrals_follow_r1() -> None:
     assert reason(inside_param, "t") == "parameter"
 
 
+ENUM_CASES = {
+    # B-1 (president's #689 ruling): enum members shadow outer names inside
+    # the enum body, so every lookup reaching it fails closed.
+    "member": "export enum E { t = 1, B = t() }",
+    "const": "export const enum E { t = 1, B = t() }",
+    "declare": "declare enum E { t = 1, B = t() }",
+    "string-member": "enum E { 't' = 1, B = t() }",
+    "computed-member": "enum E { ['t'] = 1, B = t() }",
+    "merged": "enum E { t = 1 }\nenum E { B = t() }",
+    "non-member": "enum E { a = 1, B = t() }",
+    "in-function": "export function g() { enum E { t = 1, B = t() } }",
+    "nested-arrow": "enum E { t = 1, B = (() => t())() }",
+}
+
+
+@pytest.mark.parametrize("case", sorted(ENUM_CASES))
+def test_lookups_inside_an_enum_body_fail_closed(case: str) -> None:
+    source = MODULE + "export function t() { return 1; }\n" + ENUM_CASES[case]
+    assert reason(source, "t") == "enum-scope"
+
+
+def test_enum_scope_keeps_inner_bindings_and_outer_lookups() -> None:
+    # A binding inside the initializer is found before the enum body.
+    inner = (
+        MODULE + "function t() {}\nenum E { B = ((t: () => number) => t())(() => 1) }"
+    )
+    assert reason(inner, "t") == "parameter"
+    # Positive control: outside the enum, ``t`` still proves the function.
+    outside = MODULE + "export function t() { return 1; }\nenum E { t = 1 }\nt();"
+    assert proof_text(outside, "t") == ["function t() { return 1; }"]
+    after = (
+        MODULE
+        + "export function t() { return 1; }\nenum E { t = 1, B = 2 }\n"
+        + "export function g() { return t(); }"
+    )
+    assert proof_text(after, "t") == ["function t() { return 1; }"]
+
+
 def test_group_rule_order_b7() -> None:
     """Non-callable kinds drop first; then ambient beats bodyless (7.4, R-1)."""
     assert reason(MODULE + "declare enum E { A }\nE();", "E") == "non-callable"
@@ -462,6 +500,8 @@ def test_a_fail_closed_kind_poisons_only_its_scopes(
 
 
 HANDLED_BY_PARENT = {
+    # Opened as a scope by its enum_declaration.
+    "enum_body",
     # Bound by the declaration, parameter list or import that contains them;
     # the pass itself only descends into them.
     "array_pattern",
@@ -687,3 +727,49 @@ def test_wrapped_reassignment_end_to_end(tmp_path: Path) -> None:
     # A file-wide fail-closed write: h's call reaches the same binding.
     off_h, on_h = edges[("a.ts", 4)]
     assert on_h == off_h
+
+
+def test_enum_scope_end_to_end(tmp_path: Path) -> None:
+    """B-1: calls in enum initializers keep their off-mode edge.
+
+    Written by the test, like the B7 and ``using`` trees: a committed tree
+    would change the off-mode baseline (plan 10.6, 11.2).
+    """
+    root = _write(
+        tmp_path,
+        {
+            "a.ts": (
+                "export function t() { return 1; }\n"
+                "export enum E { t = 1, B = t() }\n"
+                "export const enum C { 't' = 1, B = t() }\n"
+                "enum M { t = 1 }\nenum M { B = t() }\n"
+                "export function g() { enum L { a = 1, B = t() } return t(); }\n"
+            ),
+            "b.ts": "export function t() { return 2; }\n",
+        },
+    )
+    off = extract_symbol_graph(root)
+    on = extract_symbol_graph(root, call_resolution=MODE)
+    pairs = [
+        (off_edge, on_edge)
+        for off_edge, on_edge in zip(off["relationships"], on["relationships"])
+        if on_edge["type"] == "calls" and on_edge["reference"] == "t"
+    ]
+    by_line = {on_edge["line"]: (off_edge, on_edge) for off_edge, on_edge in pairs}
+    assert sorted(by_line) == [2, 3, 5, 6]
+    for line in (2, 3, 5):
+        off_edge, on_edge = by_line[line]
+        assert off_edge["resolution"] == "ambiguous", line
+        assert on_edge == off_edge, line
+    # Line 6 has two calls: the enum initializer stays as off, and the
+    # ``return t()`` outside the enum resolves to a.ts's own ``t``.
+    line6 = [(a, b) for a, b in pairs if b["line"] == 6]
+    assert len(line6) == 2
+    (inside_off, inside_on), (outside_off, outside_on) = sorted(
+        line6, key=lambda pair: pair[1]["callee_byte_start"]
+    )
+    assert inside_on == inside_off
+    assert outside_off["resolution"] == "ambiguous"
+    assert outside_on["resolution"] == "resolved"
+    assert outside_on["provenance"]["call_rules"] == ["t1.lexical"]
+    assert on["symbol_lookup"][outside_on["to"]]["file"] == "a.ts"
