@@ -312,7 +312,13 @@ equals off.
   binding (`none(unmapped)`).
 - Fixtures cover a call inside a template string (`js-template-call`) and a
   decorator call re-owned to the decorated function (`py-decorated`).
-  Synthetic-facts tests cover `no-binding-fact` and `unmapped`.
+  The named synthetic-facts tests in 10.6 cover `no-binding-fact` and
+  `unmapped`.
+- **Exported declarations (N-1).** On main, `export function t()` produces two
+  chunks: an `export_statement` at [0, 33) and the inner `function_declaration`
+  at [7, 33). The join must use the chunk that carries the symbol, the inner
+  declaration. Otherwise every exported definition fails closed as `unmapped`,
+  and every positive fails.
 
 ## 6. Rule engine
 
@@ -378,10 +384,13 @@ P := proven(outcome, mode)                # local(G) -> group_rule(G)
   are kept as fixtures: a parameter `t` (`ts-param-kind`), the builtin `open`
   (`py-builtin-family`), an external import (`ts-external-import-kind`) and a
   local enum (`ts-enum-shadow`).
-- **A proof whose binding is not in C0** (`X` empty) leaves the edge unchanged,
-  even though its candidates are then known to be wrong. Examples:
-  ts-nested-scope, py-closure-2, js-tdz, ts-alias-import. Repairing such edges
-  is the Q8 follow-up.
+- **A proof whose binding is not in C0** (`X` empty): the binding step has no
+  effect and P proves no candidate, so the edge is **never resolved**. The
+  filters may still narrow it to two or more candidates under the step-2
+  condition. Its remaining candidates are then known to be wrong. In the
+  current examples (ts-nested-scope, py-closure-2, js-tdz, ts-alias-import)
+  nothing is filterable, so their rows stay as Today. Repairing such edges is
+  treesitter-chunker#685.
 - Tier 1 and Tier 2 never compete: the innermost binding decides. In
   `structural` mode an `import(b)` outcome proves nothing.
 
@@ -458,6 +467,14 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
   - A lookup that lands on a script-goal top level narrows only if no other
     file in the run declares that name in `script_globals`. Otherwise it gives
     `none(script-global)`.
+  - **Precedence (R-1(i)).** `script-goal-deferred` (PR 2) and
+    `script-global` (PR 3) apply only when the lookup would otherwise prove a
+    group. When the lookup meets an outcome that proves nothing, that
+    outcome's own reason is reported. Such outcomes include a non-symbol
+    binding (`parameter`, `local-variable`, `expression-bound`),
+    `block-function` and `dynamic-scope`. js-require, js-cjs-local, js-var-fn,
+    js-block-fn and js-eval-with therefore keep their own reasons and stay in
+    PR 2.
   - Files outside the run are not scanned (risk R9): HTML-included scripts,
     `dist/`, `node_modules`, and scripts loaded by other means.
 - **CommonJS files stay script goal** (R2). That is conservative: the
@@ -517,7 +534,7 @@ result is `none(non-callable)`. Then:
 
 | Language | Group | Result | Rule ID |
 | --- | --- | --- | --- |
-| Any | Any group with **no body** (signatures only, or all ambient; ambient is inherited) | `none(bodyless)` or `none(ambient)` | — |
+| Any | Any group with **no body** (signatures only, or all ambient; ambient is inherited) | `none(ambient)` if every member is ambient (ambient wins over bodyless, R-1(iii)); otherwise `none(bodyless)` | — |
 | Any | One definition | That definition (Python: only if unconditional; a single conditional definition gives `none(conditional)`) | `t1.lexical` |
 | TS/TSX | k ≥ 1 bodyless `function_signature` plus exactly one body, contiguous, in one scope | The body | `t1.ts_overload` |
 | TS/TSX | Two or more bodies | The bodies, `ambiguous` | `t1.lexical` |
@@ -576,6 +593,21 @@ an unreviewed binding form.
 
 Unsupported files (5.3) produce no outcomes at all.
 
+**Precedence when two reasons apply (R-1).** Exactly one reason is recorded
+per call, decided in this order:
+
+1. The outcome's own reason (`parameter`, `local-variable`,
+   `expression-bound`, `self-binding`, `reassigned`, `block-function`,
+   `dynamic-scope`, `star-import`, `class-scope-bound`, `mixed-bindings`,
+   `type-only`, `unmapped`, `no-binding-fact`) wins over `script-goal-deferred`,
+   `script-global`, `namespace-deferred` and `namespace-merged`. Those apply
+   only when the lookup would otherwise prove a group.
+2. In a definition group, `ambient` wins over `bodyless`: `declare function
+   amb(): void;` is both, and ts-declare-ambient expects `ambient`. Then come
+   `non-callable` and `conditional`.
+3. Tier 2 reasons (9.8) are checked in the order 9.2, 9.5 and 9.6 list them.
+   For Python, `script-dir-shadow` is checked before `module-not-found`.
+
 ## 8. Sequential redefinition policy
 
 **Attribution.** This policy is an **executive decision** (the executive's
@@ -619,7 +651,7 @@ exactly what it meant):
 | JS `var`/`let` function bindings | unchanged | js-var-fn |
 | JS duplicates at an ES-module top level | `ambiguous` group | js-esm-dup |
 | The same JS global in two script files, or an implicit global | unchanged | js-script-global; js-implicit-global |
-| TS duplicate bodies | `ambiguous` group | ts-dup-impl; rt-tsclass and ts-dup-method (member calls, not eligible) |
+| TS duplicate bodies | `ambiguous` group | ts-dup-impl; ts-dup-method (member calls, not eligible); rt-tsclass has no calls to `K.m` and is only a control (N-2) |
 | TS overload set | **resolved to the body** | r9-ts `d`; probe `f` |
 
 **Why Python does not use "last wins".** A function can be called at module
@@ -732,7 +764,11 @@ For name `x` in target module M:
   `none(script-dir-shadow)` when its first component resolves inside the
   importer's own directory and that directory is not the root. A script run
   directly, or under pytest's rootdir insertion, would import the sibling.
-  Scripts that import siblings therefore stay ambiguous (Q5).
+  Scripts that import siblings therefore stay ambiguous (Q5). **This rule is
+  checked before `module-not-found`** (R-1(ii)). So the probe one-root case
+  (`py/c.py: from a import helper` with root `probe-r9/`, where `a` resolves to
+  `py/a.py` inside the importer's non-root directory) gives
+  `none(script-dir-shadow)`.
 - **Relative imports** start at the importer's package directory. Leaving the
   root gives `none(outside-root)`.
 - A module not found in the run gives `none(module-not-found)` (external). No
@@ -850,7 +886,7 @@ final expectation. Every Today cell is from main.
 | probe (py root) | c.py:4 use → helper | amb {a.py helper, b.py helper} | = (import) | **resolved a.py helper** | t2.import | 6 |
 | probe (py root) | pkg/__init__.py:5 call_k → k | amb {pkg.py k, pkg/__init__.py k} | **resolved pkg/__init__.py k** | = | t1.lexical | 4 |
 | probe (py root) | redef.py:11 caller → d | amb {d@1, d@4} | = | = | group = C0 | 4 |
-| probe (one root) | py/c.py:4 use → helper | amb {py/a, py/b} | = | = | module-not-found (`a` is `py.a` here) | 6 |
+| probe (one root) | py/c.py:4 use → helper | amb {py/a, py/b} | = | = | script-dir-shadow (`a` resolves inside the non-root directory `py/`; 9.5) | 6 |
 
 ### 10.3 Authored positives
 
@@ -1035,11 +1071,12 @@ compares the analyzer's output with them.
 | namespace-merged | ts-declare-namespace, ts-namespace-global |
 | script-global | js-script-global, js-implicit-global |
 | type-only | ts-type-only-import |
-| unmapped, no-binding-fact, unsupported file | synthetic-facts and failure-mode tests (5.3, 5.4), generated per test |
+| no-binding-fact, unmapped | named synthetic-facts tests (R-3; listed below the table) |
+| unsupported file | named end-to-end failure-mode tests (R-3; listed below the table) |
 | stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2) |
 | external-module | ts-bare-specifier, ts-external-import-kind |
 | outside-root | py-relative-root |
-| module-not-found | js-importer-ext-order (use3), py-namespace-dir, probe one-root |
+| module-not-found | js-importer-ext-order (use3), py-namespace-dir |
 | unknown-variant | ts-skipped-dir, ts-mjs-specifier, ts-language-filter (filtered) |
 | ambiguous-extension | probe use.ts, ts-ext-collision-*, js-importer-ext-order (use2), ts-dts |
 | dts-target | ts-dts-only |
@@ -1049,8 +1086,38 @@ compares the analyzer's output with them.
 | commonjs | ts-import-cjs |
 | hop-limit | ts-reexport-4hop, py-reexport-4hop |
 | cycle | ts-reexport-cycle |
-| script-dir-shadow | py-script-dir-import |
+| script-dir-shadow | py-script-dir-import, probe one-root (`probe-r9/` as root) |
 | attr-submodule-conflict | py-attr-vs-submodule |
+
+**Generated coverage for the three reasons no valid tree produces (R-3).**
+
+- **Synthetic-facts tests** start from a committed tree's real facts, apply one
+  mutation, run the real `assemble_symbol_graph`, and assert two things: the
+  recorded reason, and that the edge equals its off-mode form. They live in
+  `tests/test_call_resolution_failure_modes.py`:
+
+  | Test | Base tree (committed) | Mutation | Expected |
+  | --- | --- | --- | --- |
+  | `test_no_binding_fact_dropped_entry_js` | `authored/ts-class-body` | drop the binding entry for `svc.ts:4` `t` | `none(no-binding-fact)`; edge = off |
+  | `test_no_binding_fact_dropped_entry_py` | `authored/py-class-scope-2` | drop the binding entry for `a.py:10` `helper` | `none(no-binding-fact)`; edge = off |
+  | `test_unmapped_missing_symbol` | `authored/tsx-local` | drop the symbol record that `a.tsx:1` `Foo` maps to | `none(unmapped)`; edge = off |
+  | `test_unmapped_duplicate_key` | `authored/py-class-call` | duplicate the `(node_type, span)` key of `a.py` class `C` | `none(unmapped)`; edge = off |
+  | `test_unmapped_unclassified_node` | `authored/ts-nested-only` | remove `function_declaration` from the allow-list (monkeypatched) | `none(unmapped)`; edge = off |
+
+- **End-to-end failure-mode tests** run `extract_symbol_graph` on a temporary
+  copy of a committed tree with one change, and assert `supported: false` for
+  the file and on equals off for every edge. Also in
+  `tests/test_call_resolution_failure_modes.py`:
+
+  | Test | Base tree (committed) | Change |
+  | --- | --- | --- |
+  | `test_unsupported_syntax_error` | `authored/ts-class-body` | append a syntax error to `svc.ts` |
+  | `test_unsupported_deep_nesting` | `authored/py-class-scope-2` | append a deeply nested expression that triggers `RecursionError` in the analyzer |
+  | `test_unsupported_analyzer_exception` | `greenfield-r1/r9-ts` | monkeypatch the JS analyzer to raise |
+
+- The traceability test asserts that each named test exists, so coverage
+  cannot pass vacuously. If PR 2 or PR 4 finds a natural form that produces
+  `unmapped`, it is added as a committed near-miss.
 
 ## 11. Identity stability proof
 
@@ -1170,8 +1237,9 @@ byte-identical.
 - **Every resolved edge is binding-proven.** It has today's resolved shape plus
   the two provenance keys (4.3).
 - Ambiguous edges keep two or more candidates, always a subset of today's.
-- An edge whose proven binding is not in C0 is left unchanged, even though its
-  candidates are known to be wrong (Q8 follow-up).
+- An edge whose proven binding is not in C0 is never resolved. The filters may
+  still narrow it to two or more candidates, which are then known to be wrong
+  (treesitter-chunker#685).
 - `parity_digest` changes for on-mode documents. Derived counts (`metrics`,
   clustering weights) change, so recompute them.
 - Boundary edge positions can move; key on `id`.
@@ -1214,7 +1282,7 @@ treesitter-chunker#682; **only PR 6 closes it**. The executive sizes each panel.
 | --- | --- | --- |
 | **0** | **Test-only.** Fixture trees and provenance; `.gitattributes`; pytest, Black, Ruff and `MANIFEST.in` entries and the collection test; the off-mode baseline with its guarded script; the `today` fields of the expected tables, with their test. | Today cells |
 | **1** | **Surface and engine.** Types, parameters (including `language_filter` and the fallback path), CLI flags, `run.options`, provenance copy, schema and spec text, cache keys in both branches. Engine with the binding-proof invariant, `t1.kind`, `t1.family`, per-family fact versions and the scope-facts schema. Stub analyzers. Allow-list scaffold. Identity harness and mutation self-tests. Experimental label. | PR 1 rows: filters narrow; nothing resolves |
-| **2** | **Tier 1 TS/JS core:** scope chain, class-body skip, parameter scope, self-binding, position independence, block functions → `none`, reassignment, module-goal lookups, `t1.ts_overload`, duplicate-body groups, the JS/TS allow-list. Script-goal top levels, namespace bodies and ambient handling give interim `none`. | PR 2 rows (r9-ts) |
+| **2** | **Tier 1 TS/JS core:** scope chain, class-body skip, parameter scope, self-binding, position independence, block functions → `none`, reassignment, module-goal lookups, `t1.ts_overload`, duplicate-body groups, the JS/TS allow-list. Script-goal top levels, namespace bodies and ambient handling give interim `none`. **Panel note (N-1):** an exported function yields both an `export_statement` chunk and the inner function chunk; the join must pick the one that carries the symbol (5.4), or every exported positive fails closed as `unmapped`. | PR 2 rows (r9-ts) |
 | **3** | **`t1.js_hoist` and globals:** hoisting with Annex B, `script_globals` including implicit globals, script-goal lookups, TS namespace merging, inherited ambient status. | PR 3 rows (rt-js) |
 | **4** | **Tier 1 Python.** | PR 4 rows |
 | **5** | **Tier 2 TS/JS.** Introduces `imports`. Applies the O-1 decision (default (a)). | PR 5 rows |
@@ -1276,21 +1344,21 @@ the wording of gates 5 and 7 and to the parity-digest change.
 - Nested namespace re-exports.
 - Python roots other than the extraction root.
 - Python positional resolution and `@overload` grouping.
-- Binding substitution for renamed imports (Q1), and demotion of wrong single
-  candidates (Q8).
+- Binding substitution for renamed imports (Q1, treesitter-chunker#684), and
+  demotion of wrong single candidates (Q8, treesitter-chunker#685).
 
 ## 15. Risks, open questions and owner question
 
 | # | Item | Status and recommendation |
 | --- | --- | --- |
-| Q1 | Remove-only: renamed imports stay unchanged; the option fixes collisions, not missing edges | **Settled:** remove-only. Follow-up issue "binding substitution for renamed imports": the executive files it before PR 1 merges, and its number is cited here when filed (treesitter-chunker#TBD-Q1). |
+| Q1 | Remove-only: renamed imports stay unchanged; the option fixes collisions, not missing edges | **Settled:** remove-only. Follow-up issue "binding substitution for renamed imports": filed by the executive as treesitter-chunker#684 ("Call resolution: binding substitution for renamed imports"). |
 | Q2 | Provenance keys on changed edges | **Settled:** kept, under the 2.4 gate wording that Greenfield agreed. |
 | Q3 | Kind-only resolution | **Settled (ruling 2.1):** resolution needs a binding proof. Filters only narrow. |
 | Q4 | Python redefinition | **Settled:** an executive decision Greenfield accepted (section 8). Positional resolution and `@overload` stay deferred. |
 | Q5 | Python roots | Accept: root-relative only, plus the script-directory rule. Scripts importing siblings stay ambiguous. |
 | Q6 | `.d.ts` targets | Accept: `none(dts-target)`. |
 | Q7 | Hop limit | 3 hops, pinned by the 3- and 4-hop fixtures for TS and Python. Not part of the fact version. |
-| Q8 | Wrong single-candidate edges, and proofs whose binding is not in C0 | Out of scope. Follow-up issue "demotion": the executive files it before PR 1 merges (treesitter-chunker#TBD-Q8). |
+| Q8 | Wrong single-candidate edges, and proofs whose binding is not in C0 | Out of scope. Follow-up issue filed by the executive as treesitter-chunker#685 ("Call resolution: demote wrong single-candidate edges caused by qualified-name-first matching"). |
 | **O-1** | **Owner question, non-blocking; answer before PR 5 merges.** When `./svc` matches more than one file (for example `svc.ts` and `svc.tsx`), toolchains disagree: tsc and Vite pick `svc.ts`, esbuild and Bun pick `svc.tsx`. **(a) default, applied:** leave the edge unchanged; the probe `use.ts` call stays ambiguous. (b) Pick `svc.ts` by TypeScript's order. (c) Pick as in (b), but tag the edge `t2.import_ext_order`. | **Default (a) is in effect** unless the owner overrides it before PR 5 merges. If (b) or (c) is chosen, PR 5 changes the probe `use.ts` row and the ts-ext-collision rows accordingly. |
 | R1 | The analyzer misses a binding form | Fail closed; the allow-list test (7.5). |
 | R2 | JS goal detection. CommonJS files stay script goal (a top-level `require(` also occurs in AMD browser scripts). | Accept. Misclassification only adds `none` through the script-global check; hoisting behaves the same inside a CommonJS wrapper. |
@@ -1415,6 +1483,19 @@ for name in sys.argv[3:]:
 | RC-40 | §13.3 renamed; no version named anywhere |
 | RC-41 | Front matter `automation.suite_command` |
 | RC-42 | §15 R6, R9, R10 |
-| RC-43 | §15 Q1 and Q8 (numbers cited when filed) |
+| RC-43 | §15 Q1 (treesitter-chunker#684) and Q8 (treesitter-chunker#685); §14; §6.3; §12 |
 | RC-44 | §15 O-1 and owner notice; §1; §9.2 |
 | RC-45 | Appendix A (6.0.0 comparison script); §9.2 note on `.d.ts`, `.mjs`, `.cjs`, `.mts` and `.cts` |
+
+**Re-check edits (president's re-check of head 2cd08564):**
+
+| Item | Applied in |
+| --- | --- |
+| R-1(i): own reason beats script-goal reasons | §7.2 "Precedence (R-1(i))"; §7.6 "Precedence when two reasons apply", item 1. js-require, js-cjs-local, js-var-fn, js-block-fn and js-eval-with keep PR 2 (§10.4). |
+| R-1(ii): `script-dir-shadow` before `module-not-found` | §9.5 script-directory rule; §7.6 precedence item 3; §10.2 probe one-root row (now `script-dir-shadow`); §10.6 reason rows |
+| R-1(iii): `ambient` wins over `bodyless` | §7.4 no-body row; §7.6 precedence item 2 |
+| R-2: a proof not in C0 is never resolved, though filters may still narrow | §6.3; §12 |
+| R-3: named generated tests | §10.6 "Generated coverage …" tables; §5.4 |
+| RC-43 issue numbers | §6.3 and §12 (treesitter-chunker#685); §14; §15 Q1 (treesitter-chunker#684) and Q8 (treesitter-chunker#685). No placeholder remains. |
+| N-1: exported-declaration join (PR 2 panel note) | §13.1 PR 2 row; §5.4 |
+| N-2: rt-tsclass cited correctly | §8 table (rt-tsclass is a control with no `K.m` calls) |
