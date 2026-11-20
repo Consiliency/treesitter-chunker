@@ -19,7 +19,14 @@
      "caller": "outer",
      "file": "src/lib.rs",
      "line": 7,
+     "pr": 1,
      "reference": "h",
+     "structural": {
+      "candidates": [],
+      "outcome": null,
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],
@@ -39,7 +46,14 @@
      "caller": "outer",
      "file": "src/lib.rs",
      "line": 9,
+     "pr": 1,
      "reference": "f",
+     "structural": {
+      "candidates": [],
+      "outcome": null,
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],
@@ -59,7 +73,14 @@
      "caller": "outer",
      "file": "src/lib.rs",
      "line": 9,
+     "pr": 1,
      "reference": "g",
+     "structural": {
+      "candidates": [],
+      "outcome": null,
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],
@@ -79,7 +100,14 @@
      "caller": "run",
      "file": "src/lib.rs",
      "line": 14,
+     "pr": 1,
      "reference": "xs.iter",
+     "structural": {
+      "candidates": [],
+      "outcome": null,
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],
@@ -99,7 +127,14 @@
      "caller": "run",
      "file": "src/lib.rs",
      "line": 14,
+     "pr": 1,
      "reference": "xs.iter().map",
+     "structural": {
+      "candidates": [],
+      "outcome": null,
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],
@@ -119,7 +154,14 @@
      "caller": "run",
      "file": "src/lib.rs",
      "line": 14,
+     "pr": 1,
      "reference": "xs.iter().map(|i| i + 1).sum",
+     "structural": {
+      "candidates": [],
+      "outcome": null,
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],

@@ -21,11 +21,18 @@ _CALL_RESOLUTION_FIXTURES = (
 
 
 def pytest_ignore_collect(collection_path: Path) -> bool | None:
-    """Never collect inside the call-resolution fixtures, even if named directly.
+    """Never collect directories inside the call-resolution fixtures.
 
     ``collect_ignore`` and ``--ignore`` skip only exact paths found while
-    walking a directory; this hook also covers an explicit argument such as
-    ``pytest fixtures/call_resolution`` and anything below it.
+    walking a directory; this hook also covers an explicit directory argument
+    such as ``pytest fixtures/call_resolution`` and every directory below it.
+    It does not stop collection of a fixture **file** named explicitly on the
+    command line (for example
+    ``pytest fixtures/call_resolution/greenfield-r1/r9-py/tests/test_svc.py``).
+    Such a file is still imported and can write a ``__pycache__`` into the
+    fixtures (treesitter-chunker#686 review, nit N2).
+    The provenance tests then fail until it is removed, so the pollution is
+    never silent.
     """
     path = collection_path.resolve()
     if path == _CALL_RESOLUTION_FIXTURES or _CALL_RESOLUTION_FIXTURES in path.parents:

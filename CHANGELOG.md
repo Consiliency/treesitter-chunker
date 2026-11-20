@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Experimental:** opt-in scope-aware call resolution, `call_resolution`
+  (treesitter-chunker#682, in progress). It is a keyword-only option on
+  `extract_symbol_graph`, `extract_symbol_facts_for_file`,
+  `assemble_symbol_graph` and `extract_boundary_ir`, and the
+  `--call-resolution` flag on `symbols extract` and `boundary`. It is
+  orthogonal to `resolution_mode`. `assemble_symbol_graph` also gains
+  `language_filter`, the run's `language` argument. What each value does at
+  this head:
+  - `"name"` (the default) is today's name-only resolution. Output, cache keys
+    and cache records are byte-identical to omitting the option.
+  - `"structural"` narrows `ambiguous` call edges whose callee is a bare
+    identifier in a Python, JavaScript, TypeScript or TSX file. It currently
+    applies only the kind and family filters (`t1.kind`, `t1.family`), only
+    when two or more candidates remain, so it **resolves nothing**. Narrowed
+    edges carry `provenance.call_resolution` and `provenance.call_rules`, and
+    `run.options.call_resolution` and symbol-graph `metadata.call_resolution`
+    record the mode. On-mode `parity_digest` changes, and on-mode cache keys add
+    the mode and a per-language-family fact version.
+  - `"imports"` is not available yet and raises `ValueError`, like any unknown
+    value.
+
+  IDs (`definition_id`, node IDs, `#N` suffixes and `call_site_id`) are
+  identical with the option on and off. The option and its behavior may change
+  until treesitter-chunker#682 is complete.
+
 ## [7.0.0] - 2026-11-19
 
 This major release requires Python 3.14 (treesitter-chunker#599) and includes

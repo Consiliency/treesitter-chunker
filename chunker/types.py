@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
 
 __all__ = [
+    "CALL_RESOLUTION_MODES",
+    "CallResolution",
     "CodeChunk",
     "RESOLUTION_MODES",
     "RESOLUTION_STATUSES",
@@ -27,6 +29,12 @@ RESOLUTION_STATUSES: tuple[ResolutionStatus, ...] = (
     "unresolved",
 )
 RESOLUTION_MODES: tuple[ResolutionMode, ...] = ("strict", "permissive")
+# Opt-in scope-aware call resolution (treesitter-chunker#682), experimental.
+# ``"name"`` is today's name-only resolution and the default. The values are
+# cumulative. ``"imports"`` (Tier 2) is added by a later change; until then it
+# is rejected like any other unknown value.
+CallResolution: TypeAlias = Literal["name", "structural"]
+CALL_RESOLUTION_MODES: tuple[CallResolution, ...] = ("name", "structural")
 
 
 def compute_text_hash16(text: str) -> str:

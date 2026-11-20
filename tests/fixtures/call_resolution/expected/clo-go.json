@@ -19,7 +19,14 @@
      "caller": "Outer",
      "file": "k.go",
      "line": 9,
+     "pr": 1,
      "reference": "h",
+     "structural": {
+      "candidates": [],
+      "outcome": null,
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],
@@ -39,7 +46,14 @@
      "caller": "Outer",
      "file": "k.go",
      "line": 11,
+     "pr": 1,
      "reference": "f",
+     "structural": {
+      "candidates": [],
+      "outcome": null,
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],
@@ -59,7 +73,14 @@
      "caller": "Outer",
      "file": "k.go",
      "line": 11,
+     "pr": 1,
      "reference": "g",
+     "structural": {
+      "candidates": [],
+      "outcome": null,
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],
@@ -79,7 +100,14 @@
      "caller": "Run",
      "file": "k.go",
      "line": 16,
+     "pr": 1,
      "reference": "cb",
+     "structural": {
+      "candidates": [],
+      "outcome": null,
+      "resolution": "unresolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [],
       "candidates": [],

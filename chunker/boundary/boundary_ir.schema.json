@@ -220,6 +220,17 @@
               "enum": ["strict", "permissive"]
             },
             "enforcement_grade": { "type": "string" },
+            "call_resolution": {
+              "description": "Experimental opt-in call resolution (treesitter-chunker#682): the mode that narrowed this syntax call edge. Present only on narrowed edges.",
+              "type": "string",
+              "enum": ["structural"]
+            },
+            "call_rules": {
+              "description": "Rule IDs that removed candidates from this call edge, in application order. Present only on narrowed edges.",
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string" }
+            },
             "confidence": {
               "description": "Semantic-edge confidence (semantic enrichment only). Pre-represented as a string in the parity hash view.",
               "type": ["number", "string", "null"]
@@ -322,7 +333,16 @@
           "description": "Wall-clock timestamp; volatile; excluded from the parity hash view.",
           "type": ["string", "null"]
         },
-        "options": { "type": "object" },
+        "options": {
+          "type": "object",
+          "properties": {
+            "call_resolution": {
+              "description": "Experimental opt-in call resolution mode (treesitter-chunker#682). Omitted for the default name-only resolution.",
+              "type": "string",
+              "enum": ["structural"]
+            }
+          }
+        },
         "timings": {
           "type": "object",
           "description": "Fixed timing keys, null unless include_timings=True. Excluded from the parity hash view.",

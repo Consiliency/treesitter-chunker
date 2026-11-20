@@ -198,9 +198,10 @@ Each syntax `calls` Boundary edge reuses the raw fact ID as both `id` and
 `call_site_id`, preserves the exact reference and location, and carries the
 canonical source path in both top-level `file` and `metadata.file`. These fields
 are required only for syntax call edges; non-call syntax edges and semantic call
-edges keep their existing shapes. Resolution remains heuristic and does not
-establish language-level binding. Parser forms that an extractor does not
-recognize are not manufactured as facts.
+edges keep their existing shapes. Default resolution remains heuristic and does
+not establish language-level binding; the experimental opt-in call resolution
+below narrows only call edges that are already ambiguous. Parser forms that an
+extractor does not recognize are not manufactured as facts.
 
 Call-target lookup accepts only complete `[A-Za-z_][A-Za-z0-9_]*` identifier/member
 chains (including whitespace-separated `.`, `?.`, `::` and `->` members) for the existing
@@ -240,6 +241,49 @@ and dependency aggregates. Regenerate affected graph/IR outputs and their
 derived aggregates for 6.0.0. Incremental caches persist the raw facts and
 reassemble resolution annotations on each run, so adding an unrelated callee
 definition can change resolution without changing call-site IDs.
+
+### Call resolution extension (experimental)
+
+`call_resolution` is an opt-in, experimental option on `extract_symbol_graph`,
+`extract_boundary_ir` and the `symbols extract` and `boundary` CLI commands
+(`--call-resolution`), orthogonal to `resolution_mode`
+(treesitter-chunker#682). `"name"`, the default, is the heuristic above, and
+its output, cache keys and cache records are byte-identical to runs that omit
+the option. Unknown values raise `ValueError`.
+
+With `"structural"`, a per-file scope pass narrows syntax `calls` edges that are
+`ambiguous` today, when the caller's file is Python, JavaScript, TypeScript or
+TSX and the callee is a bare identifier. The rules only remove candidates and
+never empty the set, so an ambiguous edge keeps two or more candidates, all from
+today's set. An edge becomes `resolved` only when its one remaining candidate is
+proven by a lexical binding; filtering by symbol kind (`t1.kind`) or language
+family (`t1.family`) never resolves an edge by itself. Resolved, unresolved and
+member-call edges are never changed. In the current release `"structural"`
+applies only the kind and family filters and resolves nothing.
+
+A narrowed edge changes only `target`, `resolution`, `candidates` and
+`metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and
+`provenance.call_rules` (the rule IDs that removed candidates, in application
+order). A narrowed resolved edge has every field of a natively resolved edge
+with its usual meaning. Unchanged edges keep their provenance exactly.
+`run.options.call_resolution` records the mode. These keys are additive, so
+`schema_version` stays `"3.0"` (`"3.1"` with semantic resolvers), and no key
+appears when the mode is `"name"`.
+
+Node IDs, `definition_id`s, `#N` suffixes, edge `id`s and `call_site_id`s are
+byte-identical with the option on and off. Because `target` is a sort key, a
+narrowed edge can move within `edges`; consumers key edges on `id`.
+`metrics.resolved_edges` and `metrics.ambiguous_edges` can change, but not their
+sum, `unresolved_edges` or `edges_total`. `parity_digest` changes for every
+on-mode document, because `run.options` is part of the parity view. Semantic
+resolvers run after syntax edges are built, so they see the narrowed edges.
+
+On-mode cache keys add `call_resolution` and `call_resolution_version`, the
+per-file scope-fact version of the file's language family, and on-mode records
+store the scope facts. A missing or malformed scope-fact record is a safe miss.
+`BOUNDARY_CACHE_VERSION` and `BOUNDARY_CACHE_KEY_FIELDS` are unchanged. Switching
+modes on one cache directory is a cold run in both directions and orphans the
+other mode's records, so use one cache directory per mode.
 
 ### Observability extension
 

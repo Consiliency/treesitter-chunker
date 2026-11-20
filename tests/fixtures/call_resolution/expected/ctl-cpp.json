@@ -18,7 +18,18 @@
      "caller": "use",
      "file": "a.cpp",
      "line": 2,
+     "pr": 1,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.cpp:1:helper",
+       "c.cpp:1:helper",
+       "b.cpp:1:helper"
+      ],
+      "outcome": null,
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "87b93cf159ac67cff8662ca4ddc7c4cc63e343d7",

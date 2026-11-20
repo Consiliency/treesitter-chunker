@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from chunker.symbol_graph import extract_symbol_graph
+from chunker.types import CALL_RESOLUTION_MODES
 
 
 def setup_symbol_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -54,6 +55,17 @@ def setup_symbol_parser(subparsers: argparse._SubParsersAction) -> None:
         default="permissive",
         help="Relationship resolution policy (default: permissive)",
     )
+    extract_parser.add_argument(
+        "--call-resolution",
+        choices=list(CALL_RESOLUTION_MODES),
+        default="name",
+        help=(
+            "Experimental: call-edge resolution (default: name). 'structural' "
+            "narrows ambiguous calls to bare names in Python, JavaScript, "
+            "TypeScript and TSX files; it currently applies only the kind and "
+            "family filters and resolves nothing"
+        ),
+    )
     extract_parser.set_defaults(func=cmd_extract_symbols)
 
 
@@ -69,6 +81,7 @@ def cmd_extract_symbols(args: argparse.Namespace) -> int:
         path,
         args.language,
         resolution_mode=args.resolution_mode,
+        call_resolution=args.call_resolution,
     )
     if output["metadata"]["files_processed"] == 0:
         print(

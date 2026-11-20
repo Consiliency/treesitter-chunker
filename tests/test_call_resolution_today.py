@@ -304,7 +304,10 @@ def test_today_projection_ignores_later_fields() -> None:
     extended["structural"] = {"outcome": "local", "edge": "resolved"}
     extended["today"]["note"] = "added later"
     assert _pr0_projection(extended) == _pr0_projection(call)
-    assert set(_pr0_projection(call)) == set(call)
+    # Later PRs add fields to the live records, so require only that the PR 0
+    # keys are present (treesitter-chunker#686 review, nit N1).
+    assert set(PR0_CALL_KEYS) <= set(call)
+    assert set(PR0_TODAY_KEYS) <= set(call["today"])
 
 
 def _git(*args: str) -> subprocess.CompletedProcess[str]:
@@ -342,6 +345,38 @@ def _product_paths_changed_with_baseline(changed: set[str]) -> list[str]:
     if BASELINE_MANIFEST not in changed:
         return []
     return sorted(path for path in changed if path.startswith(PRODUCT_PREFIXES))
+
+
+def test_merge_base_policy_runs_with_full_history_in_ci() -> None:
+    """The Linux ``test`` job keeps ``fetch-depth: 0`` and runs this module.
+
+    ``test_baseline_manifest_never_changes_with_product_code`` skips without
+    ``origin/main``; a shallow checkout in that job would skip it silently on
+    every pull request (treesitter-chunker#686 review, nit N3).
+    """
+    import yaml
+
+    workflow = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    )
+    steps = workflow["jobs"]["test"]["steps"]
+    checkouts = [
+        step
+        for step in steps
+        if str(step.get("uses", "")).startswith("actions/checkout@")
+    ]
+    assert checkouts, "the test job has no checkout step"
+    assert all(step.get("with", {}).get("fetch-depth") == 0 for step in checkouts)
+    run_text = "\n".join(str(step.get("run", "")) for step in steps)
+    assert "scripts/run_ci_smoke.py" in run_text
+
+    smoke = importlib.util.spec_from_file_location(
+        "run_ci_smoke", ROOT / "scripts" / "run_ci_smoke.py"
+    )
+    assert smoke is not None and smoke.loader is not None
+    module = importlib.util.module_from_spec(smoke)
+    smoke.loader.exec_module(module)
+    assert "tests/test_call_resolution_today.py" in module.CI_SMOKE_TESTS
 
 
 def test_baseline_policy_flags_only_mixed_diffs() -> None:

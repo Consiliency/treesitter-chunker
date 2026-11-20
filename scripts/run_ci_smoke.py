@@ -107,6 +107,14 @@ CI_SMOKE_TESTS = [
     "tests/test_call_resolution_fixture_collection.py",
     "tests/test_call_resolution_fixture_provenance.py",
     "tests/test_call_resolution_today.py",
+    # Call-resolution surface, engine, identity harness and failure modes
+    # (treesitter-chunker#682, PR 1).
+    "tests/test_call_resolution_surface.py",
+    "tests/test_call_resolution_engine.py",
+    "tests/test_call_resolution_identity.py",
+    "tests/test_call_resolution_allowlist.py",
+    "tests/test_call_resolution_cache.py",
+    "tests/test_call_resolution_failure_modes.py",
 ]
 
 

@@ -18,7 +18,16 @@
      "caller": "d",
      "file": "svc.py",
      "line": 8,
+     "pr": 1,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "svc.py:4:t"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "4a6777286f461d6ed6926bb16394c966727bdd7d"
@@ -42,7 +51,16 @@
      "caller": "d",
      "file": "svc.py",
      "line": 9,
+     "pr": 1,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "svc.py:4:t"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "4a6777286f461d6ed6926bb16394c966727bdd7d"
@@ -66,7 +84,16 @@
      "caller": "e.e",
      "file": "svc.py",
      "line": 15,
+     "pr": 1,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "svc.py:4:t"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "4a6777286f461d6ed6926bb16394c966727bdd7d"
@@ -90,7 +117,16 @@
      "caller": "e",
      "file": "svc.py",
      "line": 16,
+     "pr": 1,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "svc.py:4:t"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "4a6777286f461d6ed6926bb16394c966727bdd7d"
@@ -114,7 +150,16 @@
      "caller": "e",
      "file": "svc.py",
      "line": 18,
+     "pr": 1,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "svc.py:4:t"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "4a6777286f461d6ed6926bb16394c966727bdd7d"

@@ -18,7 +18,18 @@
      "caller": "use",
      "file": "a.c",
      "line": 2,
+     "pr": 1,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.c:1:helper",
+       "b.c:1:helper",
+       "c.c:1:helper"
+      ],
+      "outcome": null,
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "31a8cb8b2010e4556e28125cf610eb3dfd41ba77",

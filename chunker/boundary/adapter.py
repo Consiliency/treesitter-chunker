@@ -12,6 +12,7 @@ from typing import Any
 
 from chunker.auto import ZeroConfigAPI
 from chunker._internal.registry import baml_companion_available
+from chunker.call_resolution.facts import fact_version
 from chunker.core import chunk_file
 from chunker.exceptions import ParserInitError
 from chunker.parser import get_language_info
@@ -20,8 +21,14 @@ from chunker.symbol_graph import (
     collect_source_files,
     extract_symbol_facts_for_file,
     extract_symbol_graph,
+    validate_call_resolution,
 )
-from chunker.types import CodeChunk, compute_definition_id, compute_file_id
+from chunker.types import (
+    CallResolution,
+    CodeChunk,
+    compute_definition_id,
+    compute_file_id,
+)
 
 from .cache import (
     BoundaryCacheRecord,
@@ -287,13 +294,22 @@ def _edge_record(
             )[:16]
         )
     )
-    provenance = {
+    provenance: dict[str, Any] = {
         "resolver": "extract_symbol_graph",
         "source": "syntax",
         "resolution_mode": resolution_mode,
     }
     if resolution_mode == "strict":
         provenance["enforcement_grade"] = "strict"
+    # Opt-in call resolution (treesitter-chunker#682): a narrowed call edge
+    # carries the mode and the rule IDs that removed candidates. Unchanged
+    # edges never carry them.
+    relationship_provenance = relationship.get("provenance")
+    if isinstance(relationship_provenance, dict):
+        for key in ("call_resolution", "call_rules"):
+            if key in relationship_provenance:
+                value = relationship_provenance[key]
+                provenance[key] = list(value) if isinstance(value, list) else value
     record: dict[str, Any] = {
         "id": edge_id,
         "source": source,
@@ -407,9 +423,10 @@ def _cache_key_payload(
     fail_fast: bool,
     semantic_resolvers: tuple[SemanticResolver, ...] | None = None,
     semantic_min_confidence: float = 0.0,
+    call_resolution: CallResolution = "name",
 ) -> dict[str, Any]:
     semantic_requested = semantic_resolvers is not None
-    return {
+    payload = {
         "path": normalize_boundary_path(display_path),
         "content_hash": content_hash,
         "language": language,
@@ -436,19 +453,37 @@ def _cache_key_payload(
             semantic_min_confidence if semantic_requested else None
         ),
     }
+    # Off mode omits these fields, so off-mode payloads and keys are unchanged
+    # and still reused (treesitter-chunker#682, plan 4.4).
+    if call_resolution != "name":
+        payload["call_resolution"] = call_resolution
+        payload["call_resolution_version"] = fact_version(language)
+    return payload
+
+
+# Cache-key fields for opt-in call resolution. They are present only when the
+# mode is not "name", and both key branches hash them.
+_CALL_RESOLUTION_KEY_FIELDS = ("call_resolution", "call_resolution_version")
 
 
 def _build_boundary_cache_key(payload: dict[str, Any]) -> str:
-    if payload.get("semantic_schema_version") is None:
+    call_resolution_fields = {
+        field: payload.get(field)
+        for field in _CALL_RESOLUTION_KEY_FIELDS
+        if field in payload
+    }
+    if payload.get("semantic_schema_version") is None and not call_resolution_fields:
         return build_boundary_cache_key(payload)
     key_payload = {field: payload.get(field) for field in BOUNDARY_CACHE_KEY_FIELDS}
-    key_payload.update(
-        {
-            "semantic_min_confidence": payload.get("semantic_min_confidence"),
-            "semantic_resolvers": payload.get("semantic_resolvers"),
-            "semantic_schema_version": payload.get("semantic_schema_version"),
-        }
-    )
+    if payload.get("semantic_schema_version") is not None:
+        key_payload.update(
+            {
+                "semantic_min_confidence": payload.get("semantic_min_confidence"),
+                "semantic_resolvers": payload.get("semantic_resolvers"),
+                "semantic_schema_version": payload.get("semantic_schema_version"),
+            }
+        )
+    key_payload.update(call_resolution_fields)
     encoded = json.dumps(
         key_payload,
         sort_keys=True,
@@ -693,6 +728,7 @@ def _extract_file_cache_record(
     cache_key: str,
     key_payload: dict[str, Any],
     timing_spans: dict[str, float],
+    call_resolution: CallResolution = "name",
 ) -> tuple[BoundaryCacheRecord, int, int]:
     display_path = normalize_boundary_path(_display_path(file_path, root))
     detected_language = _detect_language(file_path, language)
@@ -708,6 +744,7 @@ def _extract_file_cache_record(
         root,
         language,
         fail_fast=fail_fast,
+        call_resolution=call_resolution,
     )
     if detected_language:
         try:
@@ -867,6 +904,7 @@ def _assemble_boundary_ir(
     semantic_min_confidence: float,
     timing_spans: dict[str, float],
     total_started_at: float,
+    call_resolution: CallResolution = "name",
 ) -> dict[str, Any]:
     started_at = time.perf_counter()
     graph = assemble_symbol_graph(
@@ -876,6 +914,8 @@ def _assemble_boundary_ir(
             f"No source files found in {root}" if not file_records else None
         ),
         resolution_mode=resolution_mode,
+        call_resolution=call_resolution,
+        language_filter=language,
     )
     _add_duration(timing_spans, "graph_assembly_ms", started_at)
     diagnostics.extend(
@@ -951,6 +991,8 @@ def _assemble_boundary_ir(
         "fail_fast": fail_fast,
         "include_timings": include_timings,
     }
+    if call_resolution != "name":
+        run_options["call_resolution"] = call_resolution
     if semantic_requested:
         run_options["semantic_min_confidence"] = semantic_min_confidence
         run_options["semantic_resolvers"] = list(
@@ -1049,11 +1091,23 @@ def extract_boundary_ir(
     force_rebuild: bool = False,
     semantic_resolvers: tuple[SemanticResolver, ...] | None = None,
     semantic_min_confidence: float = 0.0,
+    call_resolution: CallResolution = "name",
 ) -> dict[str, Any]:
-    """Extract Boundary IR for a source file or repository."""
+    """Extract Boundary IR for a source file or repository.
+
+    ``call_resolution`` is experimental (treesitter-chunker#682). ``"name"``,
+    the default, is today's name-only resolution and leaves the output
+    byte-identical. ``"structural"`` narrows ambiguous call edges whose callee
+    is a bare identifier in a Python, JavaScript, TypeScript or TSX file;
+    narrowed edges carry ``provenance.call_resolution`` and
+    ``provenance.call_rules``, and ``run.options.call_resolution`` is set. At
+    this head ``"structural"`` applies only the kind and family filters and
+    resolves nothing.
+    """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"
         raise ValueError(msg)
+    validate_call_resolution(call_resolution)
     _validate_semantic_min_confidence(semantic_min_confidence)
     semantic_resolvers = (
         None if semantic_resolvers is None else tuple(semantic_resolvers)
@@ -1076,6 +1130,7 @@ def extract_boundary_ir(
             semantic_min_confidence=semantic_min_confidence,
             timing_spans=timing_spans,
             total_started_at=total_started_at,
+            call_resolution=call_resolution,
         )
     started_at = time.perf_counter()
     files = collect_source_files(root, language)
@@ -1086,6 +1141,7 @@ def extract_boundary_ir(
         language,
         resolution_mode=resolution_mode,
         fail_fast=fail_fast,
+        call_resolution=call_resolution,
     )
     _add_duration(timing_spans, "graph_assembly_ms", started_at)
     file_records: list[dict[str, Any]] = []
@@ -1247,6 +1303,8 @@ def extract_boundary_ir(
         "fail_fast": fail_fast,
         "include_timings": include_timings,
     }
+    if call_resolution != "name":
+        run_options["call_resolution"] = call_resolution
     if semantic_requested:
         run_options["semantic_min_confidence"] = semantic_min_confidence
         run_options["semantic_resolvers"] = list(
@@ -1347,6 +1405,7 @@ def _extract_boundary_ir_incremental(
     semantic_min_confidence: float,
     timing_spans: dict[str, float],
     total_started_at: float,
+    call_resolution: CallResolution = "name",
 ) -> dict[str, Any]:
     started_at = time.perf_counter()
     files = collect_source_files(root, language)
@@ -1372,6 +1431,7 @@ def _extract_boundary_ir_incremental(
                 fail_fast=fail_fast,
                 semantic_resolvers=semantic_resolvers,
                 semantic_min_confidence=semantic_min_confidence,
+                call_resolution=call_resolution,
             )
         except ParserInitError:
             if fail_fast:
@@ -1387,6 +1447,7 @@ def _extract_boundary_ir_incremental(
                 incremental=False,
                 semantic_resolvers=semantic_resolvers,
                 semantic_min_confidence=semantic_min_confidence,
+                call_resolution=call_resolution,
             )
         cache_key = _build_boundary_cache_key(payload)
         current_payloads[display_path] = payload
@@ -1435,6 +1496,7 @@ def _extract_boundary_ir_incremental(
             cache_key=current_keys[display_path],
             key_payload=current_payloads[display_path],
             timing_spans=timing_spans,
+            call_resolution=call_resolution,
         )
         recomputed[display_path] = record
         current_summaries[display_path] = record.dependency_summary
@@ -1463,6 +1525,7 @@ def _extract_boundary_ir_incremental(
             cache_key=current_keys[display_path],
             key_payload=current_payloads[display_path],
             timing_spans=timing_spans,
+            call_resolution=call_resolution,
         )
         recomputed[display_path] = record
         parse_failures += parse_count
@@ -1482,6 +1545,7 @@ def _extract_boundary_ir_incremental(
                 cache_key=current_keys[display_path],
                 key_payload=current_payloads[display_path],
                 timing_spans=timing_spans,
+                call_resolution=call_resolution,
             )
             recomputed[display_path] = record
             parse_failures += parse_count
@@ -1514,4 +1578,5 @@ def _extract_boundary_ir_incremental(
         semantic_min_confidence=semantic_min_confidence,
         timing_spans=timing_spans,
         total_started_at=total_started_at,
+        call_resolution=call_resolution,
     )

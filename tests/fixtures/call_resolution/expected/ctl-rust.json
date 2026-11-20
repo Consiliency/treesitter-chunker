@@ -18,7 +18,18 @@
      "caller": "use_it",
      "file": "a.rs",
      "line": 2,
+     "pr": 1,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "c.rs:1:helper",
+       "a.rs:1:helper",
+       "b.rs:1:helper"
+      ],
+      "outcome": null,
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "09615fa81b4602d5435e48154642977238008653",

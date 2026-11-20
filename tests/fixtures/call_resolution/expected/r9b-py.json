@@ -18,7 +18,16 @@
      "caller": "d",
      "file": "pkg/svc.py",
      "line": 10,
+     "pr": 1,
      "reference": "only_a",
+     "structural": {
+      "candidates": [
+       "pkg/svc.py:1:only_a"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "594720218a973a844884c1773fae913f06925282"
@@ -42,7 +51,16 @@
      "caller": "d",
      "file": "pkg/svc.py",
      "line": 14,
+     "pr": 1,
      "reference": "only_b",
+     "structural": {
+      "candidates": [
+       "pkg/svc.py:5:only_b"
+      ],
+      "outcome": "none(stub)",
+      "resolution": "resolved",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "1b1688e174b8ba7506b4d078aee0bf9b3ad39289"
