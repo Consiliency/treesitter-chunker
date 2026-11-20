@@ -1725,7 +1725,7 @@
   },
   "authored-pr0": {
    "note": "py-nonlocal-rebind and py-ancestor-module-shadow; their Today cells were re-derived on main 901e58f1 and match the plan.",
-   "origin": "authored in PR 0 from the plan's section 10.4 descriptions (Codex review of #683)",
+   "origin": "authored in PR 0 from the plan's section 10.4 descriptions (Codex review of treesitter-chunker#683)",
    "source_manifest": null
   },
   "greenfield-r1": {

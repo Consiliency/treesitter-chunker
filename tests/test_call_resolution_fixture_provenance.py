@@ -27,7 +27,7 @@ PROVENANCE = json.loads(PROVENANCE_PATH.read_text(encoding="utf-8"))
 # sha256 of provenance.json. It holds Greenfield's manifest lines and every
 # recorded file hash, so pinning it keeps the checks below from being
 # self-referential: editing a fixture and its record together still fails.
-PROVENANCE_SHA256 = "b4a8746a437486d2c976ef4d443f289d3b442d803725dfd6cb67715ce0dbe885"
+PROVENANCE_SHA256 = "a3a01ab2ac7ae59ddf2948873dba8021f2623a25b4a8c976dee24e8d5bf632c4"
 TREE_ROOTS = ("greenfield-r1", "probe-r9", "authored")
 
 GREENFIELD_MANIFEST_SHA256 = (
@@ -69,7 +69,7 @@ GREENFIELD_TREES = {
     "rt-rust",
     "rt-tsclass",
 }
-# The two trees the final plan revision added (Codex review of #683).
+# The two trees the final plan revision added (Codex review of treesitter-chunker#683).
 PR0_AUTHORED_TREES = {"py-ancestor-module-shadow", "py-nonlocal-rebind"}
 AUTHORED_TREE_COUNT = 106 + len(PR0_AUTHORED_TREES)
 

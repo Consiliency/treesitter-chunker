@@ -11,7 +11,7 @@ of every copied or authored file, and
 | `greenfield-r1/<tree>/` | Greenfield's 16 round-1 probe trees (`gf48-probes/r1/trees`, ViperJuice/greenfield#48) | Copied byte-for-byte, then checked against the 18 `r1/trees/` lines of `gf48-probes/evidence-manifest.sha256` (sha256 `40575a9bd9612fd1d307dda1e8e94f0ca7af5dff19659ca45cbb7fad649a1e46`). Those lines are kept in `provenance.json`. Greenfield confirmed the trees are synthetic and safe to commit publicly. |
 | `probe-r9/` | The executive's probe tree (`evidence/treesitter-chunker/ambiguity-scope-20261119/r9probe`), original layout | All ten files match the hashes in plan section 10.1. The evidence `SHA256SUMS` (sha256 `e1e0b01cba9771440c3b9b462c276838b3f6a6f9b1769962adf553d9f6aa250e`) covers only the outputs and `r9probe_run.py`, so the plan computed the file hashes itself. |
 | `authored/<case>/` (106 trees) | The plan author's scratch directory | Copied byte-for-byte. The president's re-check ran main on this same set of trees and confirmed every Today cell. |
-| `authored/py-nonlocal-rebind/`, `authored/py-ancestor-module-shadow/` | Written in PR 0 from the plan's section 10.4 descriptions (the Codex review of #683 added them) | No earlier copy existed. Their Today cells were derived on main and match the plan. |
+| `authored/py-nonlocal-rebind/`, `authored/py-ancestor-module-shadow/` | Written in PR 0 from the plan's section 10.4 descriptions (the Codex review of treesitter-chunker#683 added them) | No earlier copy existed. Their Today cells were derived on main and match the plan. |
 
 Other files:
 

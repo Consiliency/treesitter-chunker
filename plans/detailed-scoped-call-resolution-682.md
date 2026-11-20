@@ -521,7 +521,7 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
   `wildcard_import` gives `none(star-import)` for module-scope lookups.
 - A function that declares `global name` and binds it adds a non-definition
   binding at module scope (`none(mixed-bindings)`).
-- **`nonlocal` writes (Codex review of #683).** A nested function that declares
+- **`nonlocal` writes (Codex review of treesitter-chunker#683).** A nested function that declares
   `nonlocal name` and binds it (assignment, augmented assignment, `del`, a
   `for`/`with`/`except` target, walrus, or a `def`/`class` of that name) adds a
   non-definition binding to the enclosing function scope that owns `name`, the
@@ -769,7 +769,7 @@ For name `x` in target module M:
   - `D.py` beats a namespace directory `D/` (A14), so `from D.sub` gives
     `none(module-not-found)` when D is a module;
   - a namespace directory alone is usable only as a path to submodules.
-- **Dotted names resolve one component at a time (Codex review of #683).** For
+- **Dotted names resolve one component at a time (Codex review of treesitter-chunker#683).** For
   `a.b.c`, resolve `a`, then `a.b` inside `a`, then `a.b.c` inside `a.b`, applying
   the package-versus-module precedence above at every component. If any
   intermediate component resolves to a module (a `.py` file) rather than a
@@ -831,7 +831,7 @@ For name `x` in target module M:
 - **`probe-r9/`**: the probe tree, original layout.
 - **`authored/<case>/`**: 108 trees (sections 10.3–10.5): the 106 that the
   president's re-check verified, plus `py-nonlocal-rebind` and
-  `py-ancestor-module-shadow` from the Codex review of #683.
+  `py-ancestor-module-shadow` from the Codex review of treesitter-chunker#683.
 - **`expected/<tree>.json`**: per call (file, call span, reference):
   - `today`: the off-mode edge (resolution and candidates as
     `file:line:qualified_name`);
@@ -1333,7 +1333,7 @@ treesitter-chunker#682; **only PR 6 closes it**. The executive sizes each panel.
 
 ### 13.3 Release gates for any release the owner approves
 
-These gates are not part of #682's delivery. Gates 1–7 are automated tests from
+These gates are not part of treesitter-chunker#682's delivery. Gates 1–7 are automated tests from
 PR 1 onward (11.1); gates 8–9 apply at release time. **Greenfield agreed in
 writing on 2026-11-20 (Greenfield Exec thread, relayed by the executive)** to
 the wording of gates 5 and 7 and to the parity-digest change.
@@ -1526,7 +1526,7 @@ for name in sys.argv[3:]:
 | N-1: exported-declaration join (PR 2 panel note) | §13.1 PR 2 row; §5.4 |
 | N-2: rt-tsclass cited correctly | §8 table (rt-tsclass is a control with no `K.m` calls) |
 
-### Codex review of #683 at d486c029 (executive fold)
+### Codex review of treesitter-chunker#683 at d486c029 (executive fold)
 
 | Finding | Applied in |
 | --- | --- |
