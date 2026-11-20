@@ -1,0 +1,400 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:8adf2066d8eb4c882a74e947ad3bef489ad78a75",
+   "candidates": [
+    "95248a02eed000549b0d1d4c4fafc399ad22e8d7",
+    "cd79f8d960be58c49f9666e61b64dd44d9d25015",
+    "f5fc40989213dcdc2d4310b4690e232553e3849d"
+   ],
+   "file": "a.js",
+   "id": "call:8adf2066d8eb4c882a74e947ad3bef489ad78a75",
+   "location": {
+    "byte_end": 93,
+    "byte_start": 90,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "a.js",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "5dbd452e86ecb4aa7adcdc5918a1c72ef7544319",
+   "target": "d",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "95248a02eed000549b0d1d4c4fafc399ad22e8d7",
+    "cd79f8d960be58c49f9666e61b64dd44d9d25015",
+    "f5fc40989213dcdc2d4310b4690e232553e3849d"
+   ],
+   "id": "edge:92f49057b8f01378",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "a.js",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "5dbd452e86ecb4aa7adcdc5918a1c72ef7544319",
+   "target": "d",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:c3671a4cccc07707701d6a5b0baed0e2eeb4aa4e",
+   "diagnostics": [],
+   "id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "language": "javascript",
+   "parser": "tree-sitter-javascript",
+   "path": "a.js",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:de0fdf30cd10dc5ea66c41d4b32a369e0e6dacb6",
+   "diagnostics": [],
+   "id": "89375ae8c5644b9c08b49368bb0c5a32d1e2cf2d",
+   "language": "javascript",
+   "parser": "tree-sitter-javascript",
+   "path": "other.js",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 2,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 2,
+  "files_processed": 2,
+  "files_skipped": 0,
+  "files_total": 2,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 7,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "0e0ece6de0eb8d1b892b59d72431e584fec237bd",
+   "file_id": "89375ae8c5644b9c08b49368bb0c5a32d1e2cf2d",
+   "id": "0e0ece6de0eb8d1b892b59d72431e584fec237bd",
+   "identity": {
+    "source": "definition_id",
+    "value": "0e0ece6de0eb8d1b892b59d72431e584fec237bd"
+   },
+   "kind": "export_statement",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: other.js\nkind: export_statement\nsemantic path: other.js\nexports: d\ncontent:\nexport function d() { return 3; }"
+   },
+   "node_id": "72befe59c3259a981c3bf390df9c459c1d302c34",
+   "parent": null,
+   "path": "other.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "other.js",
+   "signature": null,
+   "span": {
+    "byte_end": 33,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "19d592aaec226b0608867e0033f0cb25aec0c2e5",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "19d592aaec226b0608867e0033f0cb25aec0c2e5",
+   "identity": {
+    "source": "definition_id",
+    "value": "19d592aaec226b0608867e0033f0cb25aec0c2e5"
+   },
+   "kind": "export_statement",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: export_statement\nsemantic path: a.js\nexports: d\ncontent:\nexport function d() { return 1; }"
+   },
+   "node_id": "4edf953646c67fcb9ceb6095e4c4a3b00e8afafb",
+   "parent": null,
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "a.js",
+   "signature": null,
+   "span": {
+    "byte_end": 33,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "56ddb78cfcc9a9fded8cda1afaf697c420afdabc",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "56ddb78cfcc9a9fded8cda1afaf697c420afdabc",
+   "identity": {
+    "source": "definition_id",
+    "value": "56ddb78cfcc9a9fded8cda1afaf697c420afdabc"
+   },
+   "kind": "export_statement",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [
+     "d"
+    ],
+    "exports": [
+     "g"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: export_statement\nsemantic path: a.js\nexports: g\ndependencies: d\ncontent:\nexport function g() { return d(); }"
+   },
+   "node_id": "873f9733f9117e544568c4e1092c8a348d5bfdd9",
+   "parent": null,
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "a.js",
+   "signature": null,
+   "span": {
+    "byte_end": 96,
+    "byte_start": 61,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "5dbd452e86ecb4aa7adcdc5918a1c72ef7544319",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "5dbd452e86ecb4aa7adcdc5918a1c72ef7544319",
+   "identity": {
+    "source": "definition_id",
+    "value": "5dbd452e86ecb4aa7adcdc5918a1c72ef7544319"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [
+     "d"
+    ],
+    "exports": [
+     "g"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: function\nsymbol: g\nqualified name: g\nsemantic path: a.js::g\nsignature text: g()\nexports: g\ndependencies: d\ncontent:\nfunction g() { return d(); }"
+   },
+   "node_id": "e48d86e18fe405d752ffe3ab4198f502e4a3488d",
+   "parent": "873f9733f9117e544568c4e1092c8a348d5bfdd9",
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "g",
+   "relationships": [
+    "call:8adf2066d8eb4c882a74e947ad3bef489ad78a75",
+    "edge:92f49057b8f01378"
+   ],
+   "semantic_path": "a.js::g",
+   "signature": "g()",
+   "span": {
+    "byte_end": 96,
+    "byte_start": 68,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": "g",
+   "symbol_id": "cb416a5ca23fc8976b4f17d326f999f5e69630e4"
+  },
+  {
+   "definition_id": "95248a02eed000549b0d1d4c4fafc399ad22e8d7",
+   "file_id": "89375ae8c5644b9c08b49368bb0c5a32d1e2cf2d",
+   "id": "95248a02eed000549b0d1d4c4fafc399ad22e8d7",
+   "identity": {
+    "source": "definition_id",
+    "value": "95248a02eed000549b0d1d4c4fafc399ad22e8d7"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: other.js\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: other.js::d\nsignature text: d()\nexports: d\ncontent:\nfunction d() { return 3; }"
+   },
+   "node_id": "e4c3492e4312781f69877e18382935fd854c9a6c",
+   "parent": "72befe59c3259a981c3bf390df9c459c1d302c34",
+   "path": "other.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [],
+   "semantic_path": "other.js::d",
+   "signature": "d()",
+   "span": {
+    "byte_end": 33,
+    "byte_start": 7,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "d",
+   "symbol_id": "5e2e9056f769e921352dd7d316cb1a3f820c9814"
+  },
+  {
+   "definition_id": "cd79f8d960be58c49f9666e61b64dd44d9d25015",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "cd79f8d960be58c49f9666e61b64dd44d9d25015",
+   "identity": {
+    "source": "definition_id",
+    "value": "cd79f8d960be58c49f9666e61b64dd44d9d25015"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: a.js::d\nsignature text: d()\nexports: d\ncontent:\nfunction d() { return 2; }"
+   },
+   "node_id": "94513960f2c660f6b366bff3ba50d57e8b11ce62",
+   "parent": null,
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [],
+   "semantic_path": "a.js::d",
+   "signature": "d()",
+   "span": {
+    "byte_end": 60,
+    "byte_start": 34,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "d",
+   "symbol_id": "ca36dc9198bf98f18da2ab0275fb52372550356e"
+  },
+  {
+   "definition_id": "f5fc40989213dcdc2d4310b4690e232553e3849d",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "f5fc40989213dcdc2d4310b4690e232553e3849d",
+   "identity": {
+    "source": "definition_id",
+    "value": "f5fc40989213dcdc2d4310b4690e232553e3849d"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: a.js::d\nsignature text: d()\nexports: d\ncontent:\nfunction d() { return 1; }"
+   },
+   "node_id": "3dd4f494e070b230ec3ceb043f4099e8fd3fed81",
+   "parent": "4edf953646c67fcb9ceb6095e4c4a3b00e8afafb",
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [],
+   "semantic_path": "a.js::d",
+   "signature": "d()",
+   "span": {
+    "byte_end": 33,
+    "byte_start": 7,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "d",
+   "symbol_id": "ca36dc9198bf98f18da2ab0275fb52372550356e"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "strict"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

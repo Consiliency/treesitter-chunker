@@ -1,0 +1,979 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 102,
+   "callee_byte_start": 101,
+   "file": "web/svc.ts",
+   "from": "b89843234938e348303bf11178b7f4417de80c0e",
+   "id": "call:3bf1247436a0431fa203b5e4fddfd9ec7cb721dc",
+   "location": {
+    "byte_end": 105,
+    "byte_start": 101,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "reference": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 136,
+   "callee_byte_start": 135,
+   "file": "web/svc.ts",
+   "from": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "id": "call:973f15a9a0e20b94a0feacf077f2c4f711683eb2",
+   "location": {
+    "byte_end": 139,
+    "byte_start": 135,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "reference": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 149,
+   "callee_byte_start": 148,
+   "file": "web/svc.ts",
+   "from": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "id": "call:4a06197ad7bf5d4ab8e7957a7887c7d6918eb685",
+   "location": {
+    "byte_end": 156,
+    "byte_start": 148,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "reference": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 253,
+   "callee_byte_start": 252,
+   "file": "web/svc.ts",
+   "from": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "id": "call:31c1ef0ac420b7bbd59cf093f1163f7ad3e56576",
+   "location": {
+    "byte_end": 256,
+    "byte_start": 252,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "reference": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 266,
+   "callee_byte_start": 265,
+   "file": "web/svc.ts",
+   "from": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "id": "call:6f2e59fff1587949bd4ca371a11c6cb04b219ad0",
+   "location": {
+    "byte_end": 274,
+    "byte_start": 265,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "reference": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 317,
+   "callee_byte_start": 316,
+   "file": "web/svc.ts",
+   "from": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "id": "call:acb98f8203c9ff9531e05bf1956202b4cf306787",
+   "location": {
+    "byte_end": 320,
+    "byte_start": 316,
+    "end_line": 12,
+    "start_line": 12
+   },
+   "reference": "d",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 325,
+   "callee_byte_start": 324,
+   "file": "web/svc.ts",
+   "from": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "id": "call:58bab791dfd3670750f5d9dc456bffe5d60b1df7",
+   "location": {
+    "byte_end": 328,
+    "byte_start": 324,
+    "end_line": 13,
+    "start_line": 13
+   },
+   "reference": "d",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 340,
+   "callee_byte_start": 339,
+   "file": "web/svc.ts",
+   "from": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "id": "call:e1ea3e3745108863810743571f3eba021cd01c4c",
+   "location": {
+    "byte_end": 343,
+    "byte_start": 339,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "reference": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 78,
+   "callee_byte_start": 77,
+   "file": "web/svc.tsx",
+   "from": "8f28dfbd4c972d5c7e0f20f236df2967a35220a2",
+   "id": "call:ee856a48c3d3f5f1d5f3809891ffc841ca6ce048",
+   "location": {
+    "byte_end": 81,
+    "byte_start": 77,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "t",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 1,
+  "total_functions": 8,
+  "total_imports": 0,
+  "total_relationships": 25
+ },
+ "relationships": [
+  {
+   "candidates": [],
+   "file": "web/svc.ts",
+   "from": "24ab644144b8abb52389efc2487b1ab5dde4f811",
+   "is_internal": false,
+   "line": 1,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "v",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "v",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "from": "756d54bbd6c24ce9d8b71ad308c01d93418b4013",
+   "is_internal": false,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "web/svc.ts",
+   "from": "756d54bbd6c24ce9d8b71ad308c01d93418b4013",
+   "is_internal": false,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "v",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "v",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "from": "b89843234938e348303bf11178b7f4417de80c0e",
+   "is_internal": false,
+   "line": 4,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "web/svc.ts",
+   "from": "b89843234938e348303bf11178b7f4417de80c0e",
+   "is_internal": false,
+   "line": 4,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "v",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "v",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "from": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "web/svc.ts",
+   "from": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "v",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "v",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+    "e7638304889e916fac8b421b2f875bae0f18f24c"
+   ],
+   "file": "web/svc.ts",
+   "from": "e7638304889e916fac8b421b2f875bae0f18f24c",
+   "is_internal": false,
+   "line": 8,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "d",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "web/svc.ts",
+   "from": "e7638304889e916fac8b421b2f875bae0f18f24c",
+   "is_internal": false,
+   "line": 8,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "x",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "x",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "from": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "is_internal": false,
+   "line": 9,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "web/svc.ts",
+   "from": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "is_internal": false,
+   "line": 9,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "x",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "x",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "web/svc.ts",
+   "from": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "is_internal": false,
+   "line": 9,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "y",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "y",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+    "e7638304889e916fac8b421b2f875bae0f18f24c"
+   ],
+   "file": "web/svc.ts",
+   "from": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "is_internal": false,
+   "line": 11,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "d",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "from": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "is_internal": false,
+   "line": 11,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "web/svc.tsx",
+   "from": "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4",
+   "is_internal": false,
+   "line": 1,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "v",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "v",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.tsx",
+   "from": "8f28dfbd4c972d5c7e0f20f236df2967a35220a2",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:3bf1247436a0431fa203b5e4fddfd9ec7cb721dc",
+   "callee_byte_end": 102,
+   "callee_byte_start": 101,
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "from": "b89843234938e348303bf11178b7f4417de80c0e",
+   "is_internal": false,
+   "line": 4,
+   "location": {
+    "byte_end": 105,
+    "byte_start": 101,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:973f15a9a0e20b94a0feacf077f2c4f711683eb2",
+   "callee_byte_end": 136,
+   "callee_byte_start": 135,
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "from": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "is_internal": false,
+   "line": 5,
+   "location": {
+    "byte_end": 139,
+    "byte_start": 135,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:4a06197ad7bf5d4ab8e7957a7887c7d6918eb685",
+   "callee_byte_end": 149,
+   "callee_byte_start": 148,
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "from": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "is_internal": false,
+   "line": 5,
+   "location": {
+    "byte_end": 156,
+    "byte_start": 148,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:31c1ef0ac420b7bbd59cf093f1163f7ad3e56576",
+   "callee_byte_end": 253,
+   "callee_byte_start": 252,
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "from": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "is_internal": false,
+   "line": 9,
+   "location": {
+    "byte_end": 256,
+    "byte_start": 252,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:6f2e59fff1587949bd4ca371a11c6cb04b219ad0",
+   "callee_byte_end": 266,
+   "callee_byte_start": 265,
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "from": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "is_internal": false,
+   "line": 9,
+   "location": {
+    "byte_end": 274,
+    "byte_start": 265,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:acb98f8203c9ff9531e05bf1956202b4cf306787",
+   "callee_byte_end": 317,
+   "callee_byte_start": 316,
+   "candidates": [
+    "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+    "e7638304889e916fac8b421b2f875bae0f18f24c"
+   ],
+   "file": "web/svc.ts",
+   "from": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "is_internal": false,
+   "line": 12,
+   "location": {
+    "byte_end": 320,
+    "byte_start": 316,
+    "end_line": 12,
+    "start_line": 12
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "d",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:58bab791dfd3670750f5d9dc456bffe5d60b1df7",
+   "callee_byte_end": 325,
+   "callee_byte_start": 324,
+   "candidates": [
+    "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+    "e7638304889e916fac8b421b2f875bae0f18f24c"
+   ],
+   "file": "web/svc.ts",
+   "from": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "is_internal": false,
+   "line": 13,
+   "location": {
+    "byte_end": 328,
+    "byte_start": 324,
+    "end_line": 13,
+    "start_line": 13
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "d",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:e1ea3e3745108863810743571f3eba021cd01c4c",
+   "callee_byte_end": 340,
+   "callee_byte_start": 339,
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "from": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "is_internal": false,
+   "line": 14,
+   "location": {
+    "byte_end": 343,
+    "byte_start": 339,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:ee856a48c3d3f5f1d5f3809891ffc841ca6ce048",
+   "callee_byte_end": 78,
+   "callee_byte_start": 77,
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.tsx",
+   "from": "8f28dfbd4c972d5c7e0f20f236df2967a35220a2",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 81,
+    "byte_start": 77,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "0d780dd8b26cca90131335b0851a3ebe59a927cd": {
+   "definition_id": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "end_line": 15,
+   "file": "web/svc.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 11,
+   "module": "web.svc",
+   "name": "caller",
+   "node_id": "e79849a550f659c7a707b2c75a94c67b3446782e",
+   "parent_class": "",
+   "qualified_name": "caller",
+   "semantic_path": "web/svc.ts::caller",
+   "signature": "caller() -> number"
+  },
+  "24ab644144b8abb52389efc2487b1ab5dde4f811": {
+   "definition_id": "24ab644144b8abb52389efc2487b1ab5dde4f811",
+   "end_line": 1,
+   "file": "web/svc.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "web.svc",
+   "name": "t",
+   "node_id": "09be345c84364c7e3f664b0dd7cddb2947b1418c",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "web/svc.ts::t",
+   "signature": "t(v: number) -> number"
+  },
+  "3c6580169dd9c1fbba4c05b386b3b2f334f7392e": {
+   "definition_id": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "end_line": 5,
+   "file": "web/svc.ts",
+   "kind": "method",
+   "language": "typescript",
+   "line": 5,
+   "module": "web.svc",
+   "name": "m2",
+   "node_id": "0bb98da6d8506e540d6c55896d23621d032fb0e6",
+   "parent_class": "A",
+   "qualified_name": "A.m2",
+   "semantic_path": "web/svc.ts::A.m2",
+   "signature": "m2(v: number) -> number"
+  },
+  "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4": {
+   "definition_id": "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4",
+   "end_line": 1,
+   "file": "web/svc.tsx",
+   "kind": "function",
+   "language": "tsx",
+   "line": 1,
+   "module": "web.svc",
+   "name": "t",
+   "node_id": "7f680f2d66ed54fa087745be8918002d9b9371c8",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "web/svc.tsx::t",
+   "signature": "t(v: number) -> number"
+  },
+  "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1": {
+   "definition_id": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "end_line": 9,
+   "file": "web/svc.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 9,
+   "module": "web.svc",
+   "name": "d",
+   "node_id": "d7978992aab16f93ce99dc4f4c53c70008e823c4",
+   "parent_class": "",
+   "qualified_name": "d",
+   "semantic_path": "web/svc.ts::d",
+   "signature": "d(x: number, y?: number) -> number"
+  },
+  "756d54bbd6c24ce9d8b71ad308c01d93418b4013": {
+   "definition_id": "756d54bbd6c24ce9d8b71ad308c01d93418b4013",
+   "end_line": 6,
+   "file": "web/svc.ts",
+   "kind": "class",
+   "language": "typescript",
+   "line": 3,
+   "module": "web.svc",
+   "name": "A",
+   "node_id": "9745ccdbdab499837306b3591c9d9d4204e208e7",
+   "parent_class": "",
+   "qualified_name": "A",
+   "semantic_path": "web/svc.ts::A",
+   "signature": null
+  },
+  "8f28dfbd4c972d5c7e0f20f236df2967a35220a2": {
+   "definition_id": "8f28dfbd4c972d5c7e0f20f236df2967a35220a2",
+   "end_line": 2,
+   "file": "web/svc.tsx",
+   "kind": "function",
+   "language": "tsx",
+   "line": 2,
+   "module": "web.svc",
+   "name": "<anonymous>",
+   "node_id": "4d8b72531e0dddc83ddd5199bf0080de240c06d4",
+   "parent_class": "",
+   "qualified_name": "View",
+   "semantic_path": "web/svc.tsx::View",
+   "signature": "<anonymous>()"
+  },
+  "b89843234938e348303bf11178b7f4417de80c0e": {
+   "definition_id": "b89843234938e348303bf11178b7f4417de80c0e",
+   "end_line": 4,
+   "file": "web/svc.ts",
+   "kind": "method",
+   "language": "typescript",
+   "line": 4,
+   "module": "web.svc",
+   "name": "m",
+   "node_id": "2e92eccd95712da855dc962725d531529c320674",
+   "parent_class": "A",
+   "qualified_name": "A.m",
+   "semantic_path": "web/svc.ts::A.m",
+   "signature": "m(v: number) -> number"
+  },
+  "e7638304889e916fac8b421b2f875bae0f18f24c": {
+   "definition_id": "e7638304889e916fac8b421b2f875bae0f18f24c",
+   "end_line": 8,
+   "file": "web/svc.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 8,
+   "module": "web.svc",
+   "name": "d",
+   "node_id": "0485938785112a5371764ba5ce701fd15984f925",
+   "parent_class": "",
+   "qualified_name": "d",
+   "semantic_path": "web/svc.ts::d",
+   "signature": null
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "756d54bbd6c24ce9d8b71ad308c01d93418b4013",
+    "end_line": 6,
+    "file": "web/svc.ts",
+    "kind": "class",
+    "language": "typescript",
+    "line": 3,
+    "module": "web.svc",
+    "name": "A",
+    "node_id": "9745ccdbdab499837306b3591c9d9d4204e208e7",
+    "parent_class": "",
+    "qualified_name": "A",
+    "semantic_path": "web/svc.ts::A",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "end_line": 1,
+    "file": "web/svc.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "web.svc",
+    "name": "t",
+    "node_id": "09be345c84364c7e3f664b0dd7cddb2947b1418c",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "web/svc.ts::t",
+    "signature": "t(v: number) -> number"
+   },
+   {
+    "definition_id": "b89843234938e348303bf11178b7f4417de80c0e",
+    "end_line": 4,
+    "file": "web/svc.ts",
+    "kind": "method",
+    "language": "typescript",
+    "line": 4,
+    "module": "web.svc",
+    "name": "m",
+    "node_id": "2e92eccd95712da855dc962725d531529c320674",
+    "parent_class": "A",
+    "qualified_name": "A.m",
+    "semantic_path": "web/svc.ts::A.m",
+    "signature": "m(v: number) -> number"
+   },
+   {
+    "definition_id": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+    "end_line": 5,
+    "file": "web/svc.ts",
+    "kind": "method",
+    "language": "typescript",
+    "line": 5,
+    "module": "web.svc",
+    "name": "m2",
+    "node_id": "0bb98da6d8506e540d6c55896d23621d032fb0e6",
+    "parent_class": "A",
+    "qualified_name": "A.m2",
+    "semantic_path": "web/svc.ts::A.m2",
+    "signature": "m2(v: number) -> number"
+   },
+   {
+    "definition_id": "e7638304889e916fac8b421b2f875bae0f18f24c",
+    "end_line": 8,
+    "file": "web/svc.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 8,
+    "module": "web.svc",
+    "name": "d",
+    "node_id": "0485938785112a5371764ba5ce701fd15984f925",
+    "parent_class": "",
+    "qualified_name": "d",
+    "semantic_path": "web/svc.ts::d",
+    "signature": null
+   },
+   {
+    "definition_id": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+    "end_line": 9,
+    "file": "web/svc.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 9,
+    "module": "web.svc",
+    "name": "d",
+    "node_id": "d7978992aab16f93ce99dc4f4c53c70008e823c4",
+    "parent_class": "",
+    "qualified_name": "d",
+    "semantic_path": "web/svc.ts::d",
+    "signature": "d(x: number, y?: number) -> number"
+   },
+   {
+    "definition_id": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+    "end_line": 15,
+    "file": "web/svc.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 11,
+    "module": "web.svc",
+    "name": "caller",
+    "node_id": "e79849a550f659c7a707b2c75a94c67b3446782e",
+    "parent_class": "",
+    "qualified_name": "caller",
+    "semantic_path": "web/svc.ts::caller",
+    "signature": "caller() -> number"
+   },
+   {
+    "definition_id": "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4",
+    "end_line": 1,
+    "file": "web/svc.tsx",
+    "kind": "function",
+    "language": "tsx",
+    "line": 1,
+    "module": "web.svc",
+    "name": "t",
+    "node_id": "7f680f2d66ed54fa087745be8918002d9b9371c8",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "web/svc.tsx::t",
+    "signature": "t(v: number) -> number"
+   },
+   {
+    "definition_id": "8f28dfbd4c972d5c7e0f20f236df2967a35220a2",
+    "end_line": 2,
+    "file": "web/svc.tsx",
+    "kind": "function",
+    "language": "tsx",
+    "line": 2,
+    "module": "web.svc",
+    "name": "<anonymous>",
+    "node_id": "4d8b72531e0dddc83ddd5199bf0080de240c06d4",
+    "parent_class": "",
+    "qualified_name": "View",
+    "semantic_path": "web/svc.tsx::View",
+    "signature": "<anonymous>()"
+   }
+  ],
+  "imports": []
+ }
+}

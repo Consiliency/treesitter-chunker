@@ -1,0 +1,397 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "candidates": [
+    "1720f154eff4e9809745839fba0bb72d5faa2e1b",
+    "70af991e3df55db40037ba57dcd344d87414bf33"
+   ],
+   "id": "edge:83cf334ffdd2ad22",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "metadata": {
+    "file": "k.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "1720f154eff4e9809745839fba0bb72d5faa2e1b",
+   "target": "t",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:142536136c82cb69711bec5e7a5d3ba4d924f225",
+   "candidates": [
+    "1720f154eff4e9809745839fba0bb72d5faa2e1b",
+    "70af991e3df55db40037ba57dcd344d87414bf33"
+   ],
+   "file": "u.ts",
+   "id": "call:142536136c82cb69711bec5e7a5d3ba4d924f225",
+   "location": {
+    "byte_end": 49,
+    "byte_start": 46,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "metadata": {
+    "file": "u.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "e1eb33421e1be08b66781a53a306566701ba9eee",
+   "target": "t",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "1720f154eff4e9809745839fba0bb72d5faa2e1b",
+    "70af991e3df55db40037ba57dcd344d87414bf33"
+   ],
+   "id": "edge:bc25de1360be5a9c",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "metadata": {
+    "file": "u.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "e1eb33421e1be08b66781a53a306566701ba9eee",
+   "target": "t",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:f1ef9f57f71f13cd1dd235eda52d75c0864961f5",
+   "diagnostics": [],
+   "id": "5595be3999df82bfa09bbdd5bd2f38b49c4c5dce",
+   "language": "typescript",
+   "parser": "tree-sitter-typescript",
+   "path": "j.ts",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:e393d25c7ff47d681cc29834f1b0a83ac15803a5",
+   "diagnostics": [],
+   "id": "51b3f1057eb781ad744beefcb9220736eeb22e59",
+   "language": "typescript",
+   "parser": "tree-sitter-typescript",
+   "path": "k.ts",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:d7ce963f0c1639cbb8f2c5e72fab7350c5a7d306",
+   "diagnostics": [],
+   "id": "48f3b1d81c243f1d1c1d8844f9b279ece5bfd546",
+   "language": "typescript",
+   "parser": "tree-sitter-typescript",
+   "path": "u.ts",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 3,
+  "diagnostics_total": 0,
+  "edges_total": 3,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 3,
+  "files_processed": 3,
+  "files_skipped": 0,
+  "files_total": 3,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 6,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "1720f154eff4e9809745839fba0bb72d5faa2e1b",
+   "file_id": "51b3f1057eb781ad744beefcb9220736eeb22e59",
+   "id": "1720f154eff4e9809745839fba0bb72d5faa2e1b",
+   "identity": {
+    "source": "definition_id",
+    "value": "1720f154eff4e9809745839fba0bb72d5faa2e1b"
+   },
+   "kind": "interface",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "t"
+    ],
+    "exports": [
+     "t"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: k.ts\nkind: interface\nsymbol: t\nqualified name: t\nsemantic path: k.ts::t\nexports: t\ndependencies: t\ncontent:\ninterface t {}"
+   },
+   "node_id": "d5fa14e2b35af6ddbcf7ec374df641122b974b6a",
+   "parent": "0ed30d8d7cbca5f901d65f2c822b24436b2ea676",
+   "path": "k.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "t",
+   "relationships": [
+    "edge:83cf334ffdd2ad22"
+   ],
+   "semantic_path": "k.ts::t",
+   "signature": null,
+   "span": {
+    "byte_end": 21,
+    "byte_start": 7,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "t",
+   "symbol_id": "685a00ba368621c41fca8e88acedd454efa0c41c"
+  },
+  {
+   "definition_id": "25ee7b0129762c89fa7625aa276420b2017c2240",
+   "file_id": "5595be3999df82bfa09bbdd5bd2f38b49c4c5dce",
+   "id": "25ee7b0129762c89fa7625aa276420b2017c2240",
+   "identity": {
+    "source": "definition_id",
+    "value": "25ee7b0129762c89fa7625aa276420b2017c2240"
+   },
+   "kind": "export_statement",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "t"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: j.ts\nkind: export_statement\nsemantic path: j.ts\nexports: t\ncontent:\nexport function t() { return 1; }"
+   },
+   "node_id": "fd763d7a2b097f4dfe1c92ef48e73438dc788cbe",
+   "parent": null,
+   "path": "j.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "j.ts",
+   "signature": null,
+   "span": {
+    "byte_end": 33,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "29b85fa555923f312d28122b87f8a76c62764fe2",
+   "file_id": "48f3b1d81c243f1d1c1d8844f9b279ece5bfd546",
+   "id": "29b85fa555923f312d28122b87f8a76c62764fe2",
+   "identity": {
+    "source": "definition_id",
+    "value": "29b85fa555923f312d28122b87f8a76c62764fe2"
+   },
+   "kind": "export_statement",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "t"
+    ],
+    "exports": [
+     "run"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: u.ts\nkind: export_statement\nsemantic path: u.ts\nexports: run\ndependencies: t\ncontent:\nexport function run(t: () => number) { return t(); }"
+   },
+   "node_id": "479683479c9c119f87458ed81fe4f95bb9389f62",
+   "parent": null,
+   "path": "u.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "u.ts",
+   "signature": null,
+   "span": {
+    "byte_end": 52,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "70af991e3df55db40037ba57dcd344d87414bf33",
+   "file_id": "5595be3999df82bfa09bbdd5bd2f38b49c4c5dce",
+   "id": "70af991e3df55db40037ba57dcd344d87414bf33",
+   "identity": {
+    "source": "definition_id",
+    "value": "70af991e3df55db40037ba57dcd344d87414bf33"
+   },
+   "kind": "function",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "t"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: j.ts\nkind: function\nsymbol: t\nqualified name: t\nsemantic path: j.ts::t\nsignature text: t()\nexports: t\ncontent:\nfunction t() { return 1; }"
+   },
+   "node_id": "a5c3dfe1fd4c0924092a419898d2a85e9d5d600d",
+   "parent": "fd763d7a2b097f4dfe1c92ef48e73438dc788cbe",
+   "path": "j.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "t",
+   "relationships": [],
+   "semantic_path": "j.ts::t",
+   "signature": "t()",
+   "span": {
+    "byte_end": 33,
+    "byte_start": 7,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "t",
+   "symbol_id": "c73adc7f017214959a5882bbb0516d3d92d8a17d"
+  },
+  {
+   "definition_id": "e1eb33421e1be08b66781a53a306566701ba9eee",
+   "file_id": "48f3b1d81c243f1d1c1d8844f9b279ece5bfd546",
+   "id": "e1eb33421e1be08b66781a53a306566701ba9eee",
+   "identity": {
+    "source": "definition_id",
+    "value": "e1eb33421e1be08b66781a53a306566701ba9eee"
+   },
+   "kind": "function",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "t"
+    ],
+    "exports": [
+     "run"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: u.ts\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: u.ts::run\nsignature text: run(t: () => number)\nexports: run\ndependencies: t\ncontent:\nfunction run(t: () => number) { return t(); }"
+   },
+   "node_id": "c6f6df510f592f3d34e1909d3c667e9babac25ae",
+   "parent": "479683479c9c119f87458ed81fe4f95bb9389f62",
+   "path": "u.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "run",
+   "relationships": [
+    "call:142536136c82cb69711bec5e7a5d3ba4d924f225",
+    "edge:bc25de1360be5a9c"
+   ],
+   "semantic_path": "u.ts::run",
+   "signature": "run(t: () => number)",
+   "span": {
+    "byte_end": 52,
+    "byte_start": 7,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "run",
+   "symbol_id": "da5df0ff77fc846018144cfbd80cab9a16c5dfb2"
+  },
+  {
+   "definition_id": "f48652b725d528a0073ea1bad8bc012b825844ac",
+   "file_id": "51b3f1057eb781ad744beefcb9220736eeb22e59",
+   "id": "f48652b725d528a0073ea1bad8bc012b825844ac",
+   "identity": {
+    "source": "definition_id",
+    "value": "f48652b725d528a0073ea1bad8bc012b825844ac"
+   },
+   "kind": "export_statement",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "t"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: k.ts\nkind: export_statement\nsemantic path: k.ts\ndependencies: t\ncontent:\nexport interface t {}"
+   },
+   "node_id": "0ed30d8d7cbca5f901d65f2c822b24436b2ea676",
+   "parent": null,
+   "path": "k.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "k.ts",
+   "signature": null,
+   "span": {
+    "byte_end": 21,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": null,
+   "symbol_id": null
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

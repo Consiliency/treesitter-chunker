@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.3"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:9c62fed50a59f278476205b4ae6db02764bc990e",
+     "call_span": [
+      64,
+      67
+     ],
+     "callee_span": [
+      64,
+      65
+     ],
+     "caller": "outer",
+     "file": "a.ts",
+     "line": 3,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "6f6df41c5c5d081f92f6e4a0d52b4be5a0cee122",
+       "a8140dfc3127f2e9c5aee8fe3190a013016d1e03"
+      ],
+      "candidates": [
+       "a.ts:2:outer.t",
+       "b.ts:2:other.t"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-nested-only"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-nested-only"
+}

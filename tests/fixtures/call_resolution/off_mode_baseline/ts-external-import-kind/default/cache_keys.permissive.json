@@ -1,0 +1,63 @@
+{
+ "files": {
+  "j.ts": {
+   "cache_key": "boundary:v3:53d87d490432f63dcfd67f4f1ceb70ec36bf0808c27307a42eafa2e45fc9f8f8",
+   "key_payload": {
+    "content_hash": "sha1:f1ef9f57f71f13cd1dd235eda52d75c0864961f5",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "j.ts",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "k.ts": {
+   "cache_key": "boundary:v3:56fca59fca7e4af4a38a1faa63803f4febba8e1ab16c37e49dd038b6eeffd784",
+   "key_payload": {
+    "content_hash": "sha1:e393d25c7ff47d681cc29834f1b0a83ac15803a5",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "k.ts",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "u.ts": {
+   "cache_key": "boundary:v3:a206a3e8b6f2136a98e29f0fa57559e15149d445e1d8d01c2b1e8da6d3d25f8a",
+   "key_payload": {
+    "content_hash": "sha1:5330688b1d926509c7187df701dcc61970dfbd56",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "u.ts",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

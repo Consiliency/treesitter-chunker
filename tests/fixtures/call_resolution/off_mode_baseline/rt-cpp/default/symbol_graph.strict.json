@@ -1,0 +1,393 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 86,
+   "callee_byte_start": 80,
+   "file": "k.cpp",
+   "from": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+   "id": "call:e331bd82ddb0e8aa0e0fc1bdb5213f7209a77955",
+   "location": {
+    "byte_end": 88,
+    "byte_start": 80,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "reference": "only_a",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 127,
+   "callee_byte_start": 121,
+   "file": "k.cpp",
+   "from": "d1ed0db740dd9d5918a0b5bd71808700b46beca0",
+   "id": "call:b7b05d245ad3dd3a7c3bff1990777cf27368f27b",
+   "location": {
+    "byte_end": 129,
+    "byte_start": 121,
+    "end_line": 7,
+    "start_line": 7
+   },
+   "reference": "only_b",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 151,
+   "callee_byte_start": 150,
+   "file": "k.cpp",
+   "from": "1fdcff116e26c4a40652f09421324dd80fa31b22",
+   "id": "call:99c230f6ab8746a247f8ae41b28fe1605b6b6c45",
+   "location": {
+    "byte_end": 154,
+    "byte_start": 150,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "reference": "f",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 1,
+  "total_classes": 0,
+  "total_functions": 5,
+  "total_imports": 0,
+  "total_relationships": 8
+ },
+ "relationships": [
+  {
+   "candidates": [],
+   "file": "k.cpp",
+   "from": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+   "is_internal": false,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "a",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "a",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5"
+   ],
+   "file": "k.cpp",
+   "from": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+   "is_internal": true,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_a",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "b60ecc558c883f50552528ccb54aa2f1d2e94c9b"
+   ],
+   "file": "k.cpp",
+   "from": "d1ed0db740dd9d5918a0b5bd71808700b46beca0",
+   "is_internal": true,
+   "line": 6,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "b60ecc558c883f50552528ccb54aa2f1d2e94c9b",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "k.cpp",
+   "from": "d1ed0db740dd9d5918a0b5bd71808700b46beca0",
+   "is_internal": false,
+   "line": 6,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "s",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "s",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+    "d1ed0db740dd9d5918a0b5bd71808700b46beca0"
+   ],
+   "file": "k.cpp",
+   "from": "1fdcff116e26c4a40652f09421324dd80fa31b22",
+   "is_internal": false,
+   "line": 9,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "f",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:e331bd82ddb0e8aa0e0fc1bdb5213f7209a77955",
+   "callee_byte_end": 86,
+   "callee_byte_start": 80,
+   "candidates": [
+    "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5"
+   ],
+   "file": "k.cpp",
+   "from": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+   "is_internal": true,
+   "line": 4,
+   "location": {
+    "byte_end": 88,
+    "byte_start": 80,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_a",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:b7b05d245ad3dd3a7c3bff1990777cf27368f27b",
+   "callee_byte_end": 127,
+   "callee_byte_start": 121,
+   "candidates": [
+    "b60ecc558c883f50552528ccb54aa2f1d2e94c9b"
+   ],
+   "file": "k.cpp",
+   "from": "d1ed0db740dd9d5918a0b5bd71808700b46beca0",
+   "is_internal": true,
+   "line": 7,
+   "location": {
+    "byte_end": 129,
+    "byte_start": 121,
+    "end_line": 7,
+    "start_line": 7
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "b60ecc558c883f50552528ccb54aa2f1d2e94c9b",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:99c230f6ab8746a247f8ae41b28fe1605b6b6c45",
+   "callee_byte_end": 151,
+   "callee_byte_start": 150,
+   "candidates": [
+    "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+    "d1ed0db740dd9d5918a0b5bd71808700b46beca0"
+   ],
+   "file": "k.cpp",
+   "from": "1fdcff116e26c4a40652f09421324dd80fa31b22",
+   "is_internal": false,
+   "line": 9,
+   "location": {
+    "byte_end": 154,
+    "byte_start": 150,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "f",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "1fdcff116e26c4a40652f09421324dd80fa31b22": {
+   "definition_id": "1fdcff116e26c4a40652f09421324dd80fa31b22",
+   "end_line": 9,
+   "file": "k.cpp",
+   "kind": "function",
+   "language": "cpp",
+   "line": 9,
+   "module": "k",
+   "name": "g",
+   "node_id": "ec09edac9358204cfdef1af34fffd80e8650b0a1",
+   "parent_class": "",
+   "qualified_name": "g",
+   "semantic_path": "k.cpp::g",
+   "signature": "g() -> int"
+  },
+  "b60ecc558c883f50552528ccb54aa2f1d2e94c9b": {
+   "definition_id": "b60ecc558c883f50552528ccb54aa2f1d2e94c9b",
+   "end_line": 2,
+   "file": "k.cpp",
+   "kind": "function",
+   "language": "cpp",
+   "line": 2,
+   "module": "k",
+   "name": "only_b",
+   "node_id": "bd8d7fcce33dc6763232a2650e8379222480f65b",
+   "parent_class": "",
+   "qualified_name": "only_b",
+   "semantic_path": "k.cpp::only_b",
+   "signature": "only_b() -> int"
+  },
+  "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a": {
+   "definition_id": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+   "end_line": 5,
+   "file": "k.cpp",
+   "kind": "function",
+   "language": "cpp",
+   "line": 3,
+   "module": "k",
+   "name": "f",
+   "node_id": "f66eaa7de692dfc44605dd7445849dcad8eb5a5a",
+   "parent_class": "",
+   "qualified_name": "f",
+   "semantic_path": "k.cpp::f",
+   "signature": "f(int a) -> int"
+  },
+  "d1ed0db740dd9d5918a0b5bd71808700b46beca0": {
+   "definition_id": "d1ed0db740dd9d5918a0b5bd71808700b46beca0",
+   "end_line": 8,
+   "file": "k.cpp",
+   "kind": "function",
+   "language": "cpp",
+   "line": 6,
+   "module": "k",
+   "name": "f",
+   "node_id": "0eaec5bc8d22d7a132902ff64ee896d08e576c70",
+   "parent_class": "",
+   "qualified_name": "f",
+   "semantic_path": "k.cpp::f",
+   "signature": "f(double s) -> int"
+  },
+  "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5": {
+   "definition_id": "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5",
+   "end_line": 1,
+   "file": "k.cpp",
+   "kind": "function",
+   "language": "cpp",
+   "line": 1,
+   "module": "k",
+   "name": "only_a",
+   "node_id": "b73ccc13c2a260edd697d2b1ecb705654ea2343b",
+   "parent_class": "",
+   "qualified_name": "only_a",
+   "semantic_path": "k.cpp::only_a",
+   "signature": "only_a() -> int"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5",
+    "end_line": 1,
+    "file": "k.cpp",
+    "kind": "function",
+    "language": "cpp",
+    "line": 1,
+    "module": "k",
+    "name": "only_a",
+    "node_id": "b73ccc13c2a260edd697d2b1ecb705654ea2343b",
+    "parent_class": "",
+    "qualified_name": "only_a",
+    "semantic_path": "k.cpp::only_a",
+    "signature": "only_a() -> int"
+   },
+   {
+    "definition_id": "b60ecc558c883f50552528ccb54aa2f1d2e94c9b",
+    "end_line": 2,
+    "file": "k.cpp",
+    "kind": "function",
+    "language": "cpp",
+    "line": 2,
+    "module": "k",
+    "name": "only_b",
+    "node_id": "bd8d7fcce33dc6763232a2650e8379222480f65b",
+    "parent_class": "",
+    "qualified_name": "only_b",
+    "semantic_path": "k.cpp::only_b",
+    "signature": "only_b() -> int"
+   },
+   {
+    "definition_id": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+    "end_line": 5,
+    "file": "k.cpp",
+    "kind": "function",
+    "language": "cpp",
+    "line": 3,
+    "module": "k",
+    "name": "f",
+    "node_id": "f66eaa7de692dfc44605dd7445849dcad8eb5a5a",
+    "parent_class": "",
+    "qualified_name": "f",
+    "semantic_path": "k.cpp::f",
+    "signature": "f(int a) -> int"
+   },
+   {
+    "definition_id": "d1ed0db740dd9d5918a0b5bd71808700b46beca0",
+    "end_line": 8,
+    "file": "k.cpp",
+    "kind": "function",
+    "language": "cpp",
+    "line": 6,
+    "module": "k",
+    "name": "f",
+    "node_id": "0eaec5bc8d22d7a132902ff64ee896d08e576c70",
+    "parent_class": "",
+    "qualified_name": "f",
+    "semantic_path": "k.cpp::f",
+    "signature": "f(double s) -> int"
+   },
+   {
+    "definition_id": "1fdcff116e26c4a40652f09421324dd80fa31b22",
+    "end_line": 9,
+    "file": "k.cpp",
+    "kind": "function",
+    "language": "cpp",
+    "line": 9,
+    "module": "k",
+    "name": "g",
+    "node_id": "ec09edac9358204cfdef1af34fffd80e8650b0a1",
+    "parent_class": "",
+    "qualified_name": "g",
+    "semantic_path": "k.cpp::g",
+    "signature": "g() -> int"
+   }
+  ],
+  "imports": []
+ }
+}

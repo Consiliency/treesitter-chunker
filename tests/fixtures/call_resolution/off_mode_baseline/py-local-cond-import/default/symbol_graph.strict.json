@@ -1,0 +1,224 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 73,
+   "callee_byte_start": 67,
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "id": "call:6a4596a9c065a73ec4e474d1ff0ee2a43e93ce76",
+   "location": {
+    "byte_end": 75,
+    "byte_start": 67,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "reference": "helper",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 3,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 1,
+  "total_relationships": 4
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "5d97167e581b853d48d3108e0a7c011a58a605d8",
+    "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+   ],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 1,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "from a import helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "from a import helper",
+   "type": "imports"
+  },
+  {
+   "candidates": [],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 1,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "a",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "a",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "5d97167e581b853d48d3108e0a7c011a58a605d8",
+    "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+   ],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 1,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "helper",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:6a4596a9c065a73ec4e474d1ff0ee2a43e93ce76",
+   "callee_byte_end": 73,
+   "callee_byte_start": 67,
+   "candidates": [
+    "5d97167e581b853d48d3108e0a7c011a58a605d8",
+    "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+   ],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 4,
+   "location": {
+    "byte_end": 75,
+    "byte_start": 67,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "helper",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "5d97167e581b853d48d3108e0a7c011a58a605d8": {
+   "definition_id": "5d97167e581b853d48d3108e0a7c011a58a605d8",
+   "end_line": 2,
+   "file": "a.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "a",
+   "name": "helper",
+   "node_id": "d1ac426919f231073fa6c9a4eeeaa83e57709e70",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "a.py::helper",
+   "signature": "helper()"
+  },
+  "6aaa93ccf7af52ba054b2c63e2223607d6449855": {
+   "definition_id": "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+   "end_line": 2,
+   "file": "b.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "b",
+   "name": "helper",
+   "node_id": "265ff361c260516e7be20a7089b93aea0d6ab22d",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "b.py::helper",
+   "signature": "helper()"
+  },
+  "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6": {
+   "definition_id": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "end_line": 4,
+   "file": "app.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "app",
+   "name": "go",
+   "node_id": "b03f193962c4cd45ede1fdbfb449ccc8cb88ed70",
+   "parent_class": "",
+   "qualified_name": "go",
+   "semantic_path": "app.py::go",
+   "signature": "go(flag)"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "5d97167e581b853d48d3108e0a7c011a58a605d8",
+    "end_line": 2,
+    "file": "a.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "a",
+    "name": "helper",
+    "node_id": "d1ac426919f231073fa6c9a4eeeaa83e57709e70",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "a.py::helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+    "end_line": 4,
+    "file": "app.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "app",
+    "name": "go",
+    "node_id": "b03f193962c4cd45ede1fdbfb449ccc8cb88ed70",
+    "parent_class": "",
+    "qualified_name": "go",
+    "semantic_path": "app.py::go",
+    "signature": "go(flag)"
+   },
+   {
+    "definition_id": "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+    "end_line": 2,
+    "file": "b.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "b",
+    "name": "helper",
+    "node_id": "265ff361c260516e7be20a7089b93aea0d6ab22d",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "b.py::helper",
+    "signature": "helper()"
+   }
+  ],
+  "imports": [
+   {
+    "alias": "",
+    "is_from_import": true,
+    "line": 1,
+    "module": "from a import helper",
+    "names": [
+     "a",
+     "helper",
+     "from a import helper"
+    ]
+   }
+  ]
+ }
+}

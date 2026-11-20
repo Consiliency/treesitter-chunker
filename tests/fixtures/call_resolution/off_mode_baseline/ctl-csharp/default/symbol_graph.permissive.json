@@ -1,0 +1,172 @@
+{
+ "call_facts": [],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 2,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 0
+ },
+ "relationships": [],
+ "symbol_lookup": {
+  "331f63e8f81f5a440b5d525b9fd42a926a9be552": {
+   "definition_id": "331f63e8f81f5a440b5d525b9fd42a926a9be552",
+   "end_line": 1,
+   "file": "A.cs",
+   "kind": "class",
+   "language": "csharp",
+   "line": 1,
+   "module": "A",
+   "name": "A",
+   "node_id": "27ba9e508084590cbcf48d3592475429c51473a5",
+   "parent_class": "",
+   "qualified_name": "A",
+   "semantic_path": "A.cs::A",
+   "signature": null
+  },
+  "52d710fd7760b4223bf65a024199dbb8cabf05d1": {
+   "definition_id": "52d710fd7760b4223bf65a024199dbb8cabf05d1",
+   "end_line": 1,
+   "file": "B.cs",
+   "kind": "method",
+   "language": "csharp",
+   "line": 1,
+   "module": "B",
+   "name": "Helper",
+   "node_id": "376d9ca41ccb1f02842fb476c085cbbf21f21c1a",
+   "parent_class": "B",
+   "qualified_name": "B.Helper",
+   "semantic_path": "B.cs::B.Helper",
+   "signature": "Helper() -> int"
+  },
+  "60be4dd09cbe3056fe7b7292a7393ea94803bc07": {
+   "definition_id": "60be4dd09cbe3056fe7b7292a7393ea94803bc07",
+   "end_line": 1,
+   "file": "A.cs",
+   "kind": "method",
+   "language": "csharp",
+   "line": 1,
+   "module": "A",
+   "name": "Helper",
+   "node_id": "ee82fd89fc85608c33d2f2e23110cc68a39c4f54",
+   "parent_class": "A",
+   "qualified_name": "A.Helper",
+   "semantic_path": "A.cs::A.Helper",
+   "signature": "Helper() -> int"
+  },
+  "7083e848f5571b18d20ae82bbcb117c739ceb8d9": {
+   "definition_id": "7083e848f5571b18d20ae82bbcb117c739ceb8d9",
+   "end_line": 1,
+   "file": "A.cs",
+   "kind": "method",
+   "language": "csharp",
+   "line": 1,
+   "module": "A",
+   "name": "Use",
+   "node_id": "0f8d10aecc6fdbb435e44514409e88236abc9b73",
+   "parent_class": "A",
+   "qualified_name": "A.Use",
+   "semantic_path": "A.cs::A.Use",
+   "signature": "Use() -> int"
+  },
+  "a9c0ad6bb063f30c2d55edc8032b1be6da7ee1ba": {
+   "definition_id": "a9c0ad6bb063f30c2d55edc8032b1be6da7ee1ba",
+   "end_line": 1,
+   "file": "B.cs",
+   "kind": "class",
+   "language": "csharp",
+   "line": 1,
+   "module": "B",
+   "name": "B",
+   "node_id": "8c5974eb4692d249dda881c5c4b945287a3d880a",
+   "parent_class": "",
+   "qualified_name": "B",
+   "semantic_path": "B.cs::B",
+   "signature": null
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "331f63e8f81f5a440b5d525b9fd42a926a9be552",
+    "end_line": 1,
+    "file": "A.cs",
+    "kind": "class",
+    "language": "csharp",
+    "line": 1,
+    "module": "A",
+    "name": "A",
+    "node_id": "27ba9e508084590cbcf48d3592475429c51473a5",
+    "parent_class": "",
+    "qualified_name": "A",
+    "semantic_path": "A.cs::A",
+    "signature": null
+   },
+   {
+    "definition_id": "a9c0ad6bb063f30c2d55edc8032b1be6da7ee1ba",
+    "end_line": 1,
+    "file": "B.cs",
+    "kind": "class",
+    "language": "csharp",
+    "line": 1,
+    "module": "B",
+    "name": "B",
+    "node_id": "8c5974eb4692d249dda881c5c4b945287a3d880a",
+    "parent_class": "",
+    "qualified_name": "B",
+    "semantic_path": "B.cs::B",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "60be4dd09cbe3056fe7b7292a7393ea94803bc07",
+    "end_line": 1,
+    "file": "A.cs",
+    "kind": "method",
+    "language": "csharp",
+    "line": 1,
+    "module": "A",
+    "name": "Helper",
+    "node_id": "ee82fd89fc85608c33d2f2e23110cc68a39c4f54",
+    "parent_class": "A",
+    "qualified_name": "A.Helper",
+    "semantic_path": "A.cs::A.Helper",
+    "signature": "Helper() -> int"
+   },
+   {
+    "definition_id": "7083e848f5571b18d20ae82bbcb117c739ceb8d9",
+    "end_line": 1,
+    "file": "A.cs",
+    "kind": "method",
+    "language": "csharp",
+    "line": 1,
+    "module": "A",
+    "name": "Use",
+    "node_id": "0f8d10aecc6fdbb435e44514409e88236abc9b73",
+    "parent_class": "A",
+    "qualified_name": "A.Use",
+    "semantic_path": "A.cs::A.Use",
+    "signature": "Use() -> int"
+   },
+   {
+    "definition_id": "52d710fd7760b4223bf65a024199dbb8cabf05d1",
+    "end_line": 1,
+    "file": "B.cs",
+    "kind": "method",
+    "language": "csharp",
+    "line": 1,
+    "module": "B",
+    "name": "Helper",
+    "node_id": "376d9ca41ccb1f02842fb476c085cbbf21f21c1a",
+    "parent_class": "B",
+    "qualified_name": "B.Helper",
+    "semantic_path": "B.cs::B.Helper",
+    "signature": "Helper() -> int"
+   }
+  ],
+  "imports": []
+ }
+}

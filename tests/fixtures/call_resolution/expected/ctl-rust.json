@@ -1,0 +1,43 @@
+{
+ "plan_sections": [
+  "10.5"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:b7966d80bf5d3f7df37b5af227ad1d324b486aca",
+     "call_span": [
+      46,
+      54
+     ],
+     "callee_span": [
+      46,
+      52
+     ],
+     "caller": "use_it",
+     "file": "a.rs",
+     "line": 2,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "09615fa81b4602d5435e48154642977238008653",
+       "1032a44c24150f5be5a2129a2abd241fb8bb446a",
+       "ced1160ef0f343fe4faceb9045034022fa85c7f8"
+      ],
+      "candidates": [
+       "c.rs:1:helper",
+       "a.rs:1:helper",
+       "b.rs:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ctl-rust"
+  }
+ },
+ "source": "authored",
+ "tree": "ctl-rust"
+}

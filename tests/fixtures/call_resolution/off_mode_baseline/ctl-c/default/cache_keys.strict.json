@@ -1,0 +1,63 @@
+{
+ "files": {
+  "a.c": {
+   "cache_key": "boundary:v3:5125ec97c8016d833807ebc63ece1982dfda0f038bca4e6f8097585f8d2d6d16",
+   "key_payload": {
+    "content_hash": "sha1:b9f7659767b6b6dc9900674a61074f2c1f8fba59",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-c:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "c",
+    "path": "a.c",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "b.c": {
+   "cache_key": "boundary:v3:9f3f8abf6c1e479b51ace1962240aa4dd0e28f952c051fce883a6c6f968aaa60",
+   "key_payload": {
+    "content_hash": "sha1:ada38da485c72fc901db511146015fb19304d944",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-c:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "c",
+    "path": "b.c",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "c.c": {
+   "cache_key": "boundary:v3:0d7365bd44af5520eaee1b8cdb6f339c0ed6f32ab40969606e854cf955d7eaed",
+   "key_payload": {
+    "content_hash": "sha1:1fd7bf98dc977fb97f19f9807712a3905078f956",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-c:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "c",
+    "path": "c.c",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

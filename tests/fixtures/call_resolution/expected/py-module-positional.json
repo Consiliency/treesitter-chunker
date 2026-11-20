@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:415650fa99ca0f1e751d10c250cdfccfd958d27d",
+     "call_span": [
+      79,
+      82
+     ],
+     "callee_span": [
+      79,
+      80
+     ],
+     "caller": "caller",
+     "file": "a.py",
+     "line": 13,
+     "reference": "d",
+     "today": {
+      "candidate_ids": [
+       "bc8832146bfbdfeaf34d71cf2927b224b6f29445",
+       "bc8832146bfbdfeaf34d71cf2927b224b6f29445#1"
+      ],
+      "candidates": [
+       "a.py:1:d",
+       "a.py:8:d"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-module-positional"
+  }
+ },
+ "source": "authored",
+ "tree": "py-module-positional"
+}

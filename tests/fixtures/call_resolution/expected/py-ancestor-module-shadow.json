@@ -1,0 +1,43 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:0e2e85bb5d25dbd249da0b5ed51442ba5be78a68",
+     "call_span": [
+      46,
+      54
+     ],
+     "callee_span": [
+      46,
+      52
+     ],
+     "caller": "go",
+     "file": "app.py",
+     "line": 5,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "7c41bd07aa87798714e4f76e2a3457246ce5363d",
+       "969c7a10d07776913d7042e8fa406ee60039df24"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "a/b.py:1:helper",
+       "other.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-ancestor-module-shadow"
+  }
+ },
+ "source": "authored",
+ "tree": "py-ancestor-module-shadow"
+}

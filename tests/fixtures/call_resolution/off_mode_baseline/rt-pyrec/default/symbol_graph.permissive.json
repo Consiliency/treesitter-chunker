@@ -1,0 +1,605 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 121,
+   "callee_byte_start": 115,
+   "file": "svc.py",
+   "from": "e0fe8a0139fba5c8ccc71e40a685170f38e0512e",
+   "id": "call:daaad6eb52b7f3495c40776de336c789c3e8e1f7",
+   "location": {
+    "byte_end": 123,
+    "byte_start": 115,
+    "end_line": 12,
+    "start_line": 12
+   },
+   "reference": "self.c",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 163,
+   "callee_byte_start": 157,
+   "file": "svc.py",
+   "from": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "id": "call:94a4d8bbfaaf45d1245c48af206c0637d364ac99",
+   "location": {
+    "byte_end": 165,
+    "byte_start": 157,
+    "end_line": 15,
+    "start_line": 15
+   },
+   "reference": "only_b",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 218,
+   "callee_byte_start": 217,
+   "file": "svc.py",
+   "from": "0de792bed499be0d05b2d0ee621b71ffea7755cc#1",
+   "id": "call:a02ce5a66050713616b21cc3aba67c367d41c5ef",
+   "location": {
+    "byte_end": 221,
+    "byte_start": 217,
+    "end_line": 23,
+    "start_line": 23
+   },
+   "reference": "d",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 251,
+   "callee_byte_start": 250,
+   "file": "svc.py",
+   "from": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "id": "call:3ecea44b016fe52648d182acb89b0e82e3d12f7a",
+   "location": {
+    "byte_end": 253,
+    "byte_start": 250,
+    "end_line": 27,
+    "start_line": 27
+   },
+   "reference": "C",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 255,
+   "callee_byte_start": 250,
+   "file": "svc.py",
+   "from": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "id": "call:cbcf4d03fe6c7961d2414c877ecff5933568a6d0",
+   "location": {
+    "byte_end": 257,
+    "byte_start": 250,
+    "end_line": 27,
+    "start_line": 27
+   },
+   "reference": "C().c",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 1,
+  "total_classes": 2,
+  "total_functions": 7,
+  "total_imports": 0,
+  "total_relationships": 10
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "569463d08618124fc8d6e338020f588bc03a422e"
+   ],
+   "file": "svc.py",
+   "from": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83#1",
+   "is_internal": true,
+   "line": 10,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "569463d08618124fc8d6e338020f588bc03a422e",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "e166968e86022d3720ff9a96fb5bef95958ef980"
+   ],
+   "file": "svc.py",
+   "from": "e0fe8a0139fba5c8ccc71e40a685170f38e0512e",
+   "is_internal": true,
+   "line": 11,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "c",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "569463d08618124fc8d6e338020f588bc03a422e"
+   ],
+   "file": "svc.py",
+   "from": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "is_internal": true,
+   "line": 14,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "569463d08618124fc8d6e338020f588bc03a422e",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+    "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83#1"
+   ],
+   "file": "svc.py",
+   "from": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "is_internal": false,
+   "line": 26,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "C",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "e166968e86022d3720ff9a96fb5bef95958ef980"
+   ],
+   "file": "svc.py",
+   "from": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "is_internal": true,
+   "line": 26,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "c",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:daaad6eb52b7f3495c40776de336c789c3e8e1f7",
+   "callee_byte_end": 121,
+   "callee_byte_start": 115,
+   "candidates": [
+    "e166968e86022d3720ff9a96fb5bef95958ef980"
+   ],
+   "file": "svc.py",
+   "from": "e0fe8a0139fba5c8ccc71e40a685170f38e0512e",
+   "is_internal": true,
+   "line": 12,
+   "location": {
+    "byte_end": 123,
+    "byte_start": 115,
+    "end_line": 12,
+    "start_line": 12
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "self.c",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:94a4d8bbfaaf45d1245c48af206c0637d364ac99",
+   "callee_byte_end": 163,
+   "callee_byte_start": 157,
+   "candidates": [
+    "569463d08618124fc8d6e338020f588bc03a422e"
+   ],
+   "file": "svc.py",
+   "from": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "is_internal": true,
+   "line": 15,
+   "location": {
+    "byte_end": 165,
+    "byte_start": 157,
+    "end_line": 15,
+    "start_line": 15
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "569463d08618124fc8d6e338020f588bc03a422e",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:a02ce5a66050713616b21cc3aba67c367d41c5ef",
+   "callee_byte_end": 218,
+   "callee_byte_start": 217,
+   "candidates": [
+    "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+    "0de792bed499be0d05b2d0ee621b71ffea7755cc#1"
+   ],
+   "file": "svc.py",
+   "from": "0de792bed499be0d05b2d0ee621b71ffea7755cc#1",
+   "is_internal": false,
+   "line": 23,
+   "location": {
+    "byte_end": 221,
+    "byte_start": 217,
+    "end_line": 23,
+    "start_line": 23
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "d",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:3ecea44b016fe52648d182acb89b0e82e3d12f7a",
+   "callee_byte_end": 251,
+   "callee_byte_start": 250,
+   "candidates": [
+    "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+    "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83#1"
+   ],
+   "file": "svc.py",
+   "from": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "is_internal": false,
+   "line": 27,
+   "location": {
+    "byte_end": 253,
+    "byte_start": 250,
+    "end_line": 27,
+    "start_line": 27
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "C",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:cbcf4d03fe6c7961d2414c877ecff5933568a6d0",
+   "callee_byte_end": 255,
+   "callee_byte_start": 250,
+   "candidates": [],
+   "file": "svc.py",
+   "from": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "is_internal": false,
+   "line": 27,
+   "location": {
+    "byte_end": 257,
+    "byte_start": 250,
+    "end_line": 27,
+    "start_line": 27
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C().c",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "C().c",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "0de792bed499be0d05b2d0ee621b71ffea7755cc": {
+   "definition_id": "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+   "end_line": 19,
+   "file": "svc.py",
+   "kind": "function",
+   "language": "python",
+   "line": 18,
+   "module": "svc",
+   "name": "d",
+   "node_id": "d610a972c06e448143be2fedface2850a7182994",
+   "parent_class": "",
+   "qualified_name": "d",
+   "semantic_path": "svc.py::d",
+   "signature": "d(x)"
+  },
+  "0de792bed499be0d05b2d0ee621b71ffea7755cc#1": {
+   "definition_id": "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+   "end_line": 23,
+   "file": "svc.py",
+   "kind": "function",
+   "language": "python",
+   "line": 22,
+   "module": "svc",
+   "name": "d",
+   "node_id": "45c5031fb8598bc29cf4eec85b2daeb23065ef90",
+   "parent_class": "",
+   "qualified_name": "d",
+   "semantic_path": "svc.py::d",
+   "signature": "d(x, y)"
+  },
+  "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83": {
+   "definition_id": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+   "end_line": 7,
+   "file": "svc.py",
+   "kind": "class",
+   "language": "python",
+   "line": 5,
+   "module": "svc",
+   "name": "C",
+   "node_id": "fb03ee744ea57475dc890e04f152da0a948b0e46",
+   "parent_class": "",
+   "qualified_name": "C",
+   "semantic_path": "svc.py::C",
+   "signature": null
+  },
+  "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83#1": {
+   "definition_id": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+   "end_line": 15,
+   "file": "svc.py",
+   "kind": "class",
+   "language": "python",
+   "line": 10,
+   "module": "svc",
+   "name": "C",
+   "node_id": "9490dd660fd9dbe7bbd5f37d78de8f79999123ec",
+   "parent_class": "",
+   "qualified_name": "C",
+   "semantic_path": "svc.py::C",
+   "signature": null
+  },
+  "569463d08618124fc8d6e338020f588bc03a422e": {
+   "definition_id": "569463d08618124fc8d6e338020f588bc03a422e",
+   "end_line": 2,
+   "file": "svc.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "svc",
+   "name": "only_b",
+   "node_id": "8a4af85948fc18d84779aef36f807cbeb1ba9923",
+   "parent_class": "",
+   "qualified_name": "only_b",
+   "semantic_path": "svc.py::only_b",
+   "signature": "only_b()"
+  },
+  "e0fe8a0139fba5c8ccc71e40a685170f38e0512e": {
+   "definition_id": "e0fe8a0139fba5c8ccc71e40a685170f38e0512e",
+   "end_line": 12,
+   "file": "svc.py",
+   "kind": "method",
+   "language": "python",
+   "line": 11,
+   "module": "svc",
+   "name": "b",
+   "node_id": "2d2c355cbfca06590dfc5d2daa696800423cfc3f",
+   "parent_class": "C",
+   "qualified_name": "C.b",
+   "semantic_path": "svc.py::C.b",
+   "signature": "b(self)"
+  },
+  "e166968e86022d3720ff9a96fb5bef95958ef980": {
+   "definition_id": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "end_line": 15,
+   "file": "svc.py",
+   "kind": "method",
+   "language": "python",
+   "line": 14,
+   "module": "svc",
+   "name": "c",
+   "node_id": "cb98bd0b887715f1c3b38ee5ec77938ab325e145",
+   "parent_class": "C",
+   "qualified_name": "C.c",
+   "semantic_path": "svc.py::C.c",
+   "signature": "c(self)"
+  },
+  "e2c9541590240344519e9e3a36d63f19aed45615": {
+   "definition_id": "e2c9541590240344519e9e3a36d63f19aed45615",
+   "end_line": 7,
+   "file": "svc.py",
+   "kind": "method",
+   "language": "python",
+   "line": 6,
+   "module": "svc",
+   "name": "a",
+   "node_id": "da7dbd381680802acb5e58dacbd36a6a4d4f1093",
+   "parent_class": "C",
+   "qualified_name": "C.a",
+   "semantic_path": "svc.py::C.a",
+   "signature": "a(self)"
+  },
+  "edd2a0677cb1754459ceacf3262f7813e71a806e": {
+   "definition_id": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "end_line": 27,
+   "file": "svc.py",
+   "kind": "function",
+   "language": "python",
+   "line": 26,
+   "module": "svc",
+   "name": "uses_c2",
+   "node_id": "3839cb85ff66c8e51dc5b52b0e3d1fa081d79834",
+   "parent_class": "",
+   "qualified_name": "uses_c2",
+   "semantic_path": "svc.py::uses_c2",
+   "signature": "uses_c2()"
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+    "end_line": 7,
+    "file": "svc.py",
+    "kind": "class",
+    "language": "python",
+    "line": 5,
+    "module": "svc",
+    "name": "C",
+    "node_id": "fb03ee744ea57475dc890e04f152da0a948b0e46",
+    "parent_class": "",
+    "qualified_name": "C",
+    "semantic_path": "svc.py::C",
+    "signature": null
+   },
+   {
+    "definition_id": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+    "end_line": 15,
+    "file": "svc.py",
+    "kind": "class",
+    "language": "python",
+    "line": 10,
+    "module": "svc",
+    "name": "C",
+    "node_id": "9490dd660fd9dbe7bbd5f37d78de8f79999123ec",
+    "parent_class": "",
+    "qualified_name": "C",
+    "semantic_path": "svc.py::C",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "569463d08618124fc8d6e338020f588bc03a422e",
+    "end_line": 2,
+    "file": "svc.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "svc",
+    "name": "only_b",
+    "node_id": "8a4af85948fc18d84779aef36f807cbeb1ba9923",
+    "parent_class": "",
+    "qualified_name": "only_b",
+    "semantic_path": "svc.py::only_b",
+    "signature": "only_b()"
+   },
+   {
+    "definition_id": "e2c9541590240344519e9e3a36d63f19aed45615",
+    "end_line": 7,
+    "file": "svc.py",
+    "kind": "method",
+    "language": "python",
+    "line": 6,
+    "module": "svc",
+    "name": "a",
+    "node_id": "da7dbd381680802acb5e58dacbd36a6a4d4f1093",
+    "parent_class": "C",
+    "qualified_name": "C.a",
+    "semantic_path": "svc.py::C.a",
+    "signature": "a(self)"
+   },
+   {
+    "definition_id": "e0fe8a0139fba5c8ccc71e40a685170f38e0512e",
+    "end_line": 12,
+    "file": "svc.py",
+    "kind": "method",
+    "language": "python",
+    "line": 11,
+    "module": "svc",
+    "name": "b",
+    "node_id": "2d2c355cbfca06590dfc5d2daa696800423cfc3f",
+    "parent_class": "C",
+    "qualified_name": "C.b",
+    "semantic_path": "svc.py::C.b",
+    "signature": "b(self)"
+   },
+   {
+    "definition_id": "e166968e86022d3720ff9a96fb5bef95958ef980",
+    "end_line": 15,
+    "file": "svc.py",
+    "kind": "method",
+    "language": "python",
+    "line": 14,
+    "module": "svc",
+    "name": "c",
+    "node_id": "cb98bd0b887715f1c3b38ee5ec77938ab325e145",
+    "parent_class": "C",
+    "qualified_name": "C.c",
+    "semantic_path": "svc.py::C.c",
+    "signature": "c(self)"
+   },
+   {
+    "definition_id": "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+    "end_line": 19,
+    "file": "svc.py",
+    "kind": "function",
+    "language": "python",
+    "line": 18,
+    "module": "svc",
+    "name": "d",
+    "node_id": "d610a972c06e448143be2fedface2850a7182994",
+    "parent_class": "",
+    "qualified_name": "d",
+    "semantic_path": "svc.py::d",
+    "signature": "d(x)"
+   },
+   {
+    "definition_id": "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+    "end_line": 23,
+    "file": "svc.py",
+    "kind": "function",
+    "language": "python",
+    "line": 22,
+    "module": "svc",
+    "name": "d",
+    "node_id": "45c5031fb8598bc29cf4eec85b2daeb23065ef90",
+    "parent_class": "",
+    "qualified_name": "d",
+    "semantic_path": "svc.py::d",
+    "signature": "d(x, y)"
+   },
+   {
+    "definition_id": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+    "end_line": 27,
+    "file": "svc.py",
+    "kind": "function",
+    "language": "python",
+    "line": 26,
+    "module": "svc",
+    "name": "uses_c2",
+    "node_id": "3839cb85ff66c8e51dc5b52b0e3d1fa081d79834",
+    "parent_class": "",
+    "qualified_name": "uses_c2",
+    "semantic_path": "svc.py::uses_c2",
+    "signature": "uses_c2()"
+   }
+  ],
+  "imports": []
+ }
+}

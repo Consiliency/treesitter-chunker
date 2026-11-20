@@ -1,0 +1,27 @@
+{
+ "files": {
+  "svc.py": {
+   "cache_key": "boundary:v3:4d5249fbe2b97ed166e91af819ff1209b7e01bb31e0144cb32734359110a1213",
+   "key_payload": {
+    "content_hash": "sha1:944ee5ef996eb1849f911ec8977ad49ff53f6886",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "svc.py",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

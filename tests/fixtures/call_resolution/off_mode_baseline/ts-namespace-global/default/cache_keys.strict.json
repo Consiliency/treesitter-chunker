@@ -1,0 +1,63 @@
+{
+ "files": {
+  "a.ts": {
+   "cache_key": "boundary:v3:3878a561826176d20faebbc46c6dcbb6e1276b1e455e1c54560c7533894c9061",
+   "key_payload": {
+    "content_hash": "sha1:afbf531d0fefcb92b8e88292fd0fe93350638d4a",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "a.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "b.ts": {
+   "cache_key": "boundary:v3:36f17166343eccf8a6f5af0ce198387f867eec89cb622062a03a760098128981",
+   "key_payload": {
+    "content_hash": "sha1:6ff026d062c4c9feff01d95a46b1362bdc6f63b6",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "b.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "c.ts": {
+   "cache_key": "boundary:v3:cb6bbf34f1dca4ca70323c540a8bcbcf67548215a07f35926e64cb6b97c9ce52",
+   "key_payload": {
+    "content_hash": "sha1:31f5cdc3011c17d6221c274dd3fcac3609a9d41b",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "c.ts",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

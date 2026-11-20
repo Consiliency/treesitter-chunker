@@ -1,0 +1,43 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:8adf2066d8eb4c882a74e947ad3bef489ad78a75",
+     "call_span": [
+      90,
+      93
+     ],
+     "callee_span": [
+      90,
+      91
+     ],
+     "caller": "g",
+     "file": "a.js",
+     "line": 3,
+     "reference": "d",
+     "today": {
+      "candidate_ids": [
+       "95248a02eed000549b0d1d4c4fafc399ad22e8d7",
+       "cd79f8d960be58c49f9666e61b64dd44d9d25015",
+       "f5fc40989213dcdc2d4310b4690e232553e3849d"
+      ],
+      "candidates": [
+       "other.js:1:d",
+       "a.js:2:d",
+       "a.js:1:d"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/js-esm-dup"
+  }
+ },
+ "source": "authored",
+ "tree": "js-esm-dup"
+}

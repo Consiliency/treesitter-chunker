@@ -1,0 +1,329 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:5184b4f21d1d23c4daae3794b18de6d61455e85d",
+   "candidates": [
+    "594720218a973a844884c1773fae913f06925282"
+   ],
+   "file": "pkg/svc.py",
+   "id": "call:5184b4f21d1d23c4daae3794b18de6d61455e85d",
+   "location": {
+    "byte_end": 87,
+    "byte_start": 79,
+    "end_line": 10,
+    "start_line": 10
+   },
+   "metadata": {
+    "file": "pkg/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_a",
+   "resolution": "resolved",
+   "source": "5e2531b3fd2cd913c12ebb7110cc377b46eb830e",
+   "target": "594720218a973a844884c1773fae913f06925282",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "594720218a973a844884c1773fae913f06925282"
+   ],
+   "id": "edge:712480ad90526b44",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "pkg/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_a",
+   "resolution": "resolved",
+   "source": "5e2531b3fd2cd913c12ebb7110cc377b46eb830e",
+   "target": "594720218a973a844884c1773fae913f06925282",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:fa873506bc4ceb2c1b80b71484adf50a115341eb",
+   "candidates": [
+    "1b1688e174b8ba7506b4d078aee0bf9b3ad39289"
+   ],
+   "file": "pkg/svc.py",
+   "id": "call:fa873506bc4ceb2c1b80b71484adf50a115341eb",
+   "location": {
+    "byte_end": 122,
+    "byte_start": 114,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "metadata": {
+    "file": "pkg/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "source": "5e2531b3fd2cd913c12ebb7110cc377b46eb830e#1",
+   "target": "1b1688e174b8ba7506b4d078aee0bf9b3ad39289",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "1b1688e174b8ba7506b4d078aee0bf9b3ad39289"
+   ],
+   "id": "edge:5bbe684f8db658ab",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 13,
+    "start_line": 13
+   },
+   "metadata": {
+    "file": "pkg/svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "source": "5e2531b3fd2cd913c12ebb7110cc377b46eb830e#1",
+   "target": "1b1688e174b8ba7506b4d078aee0bf9b3ad39289",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:e2dd7b02c7606331e7b68f81ca277bd3e5290a62",
+   "diagnostics": [],
+   "id": "8d10be58c40f457c7be0477e9501a8e1add81037",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "pkg/svc.py",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 0,
+  "diagnostics_total": 0,
+  "edges_total": 4,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 1,
+  "files_processed": 1,
+  "files_skipped": 0,
+  "files_total": 1,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 4,
+  "parse_failures": 0,
+  "resolved_edges": 4,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "1b1688e174b8ba7506b4d078aee0bf9b3ad39289",
+   "file_id": "8d10be58c40f457c7be0477e9501a8e1add81037",
+   "id": "1b1688e174b8ba7506b4d078aee0bf9b3ad39289",
+   "identity": {
+    "source": "definition_id",
+    "value": "1b1688e174b8ba7506b4d078aee0bf9b3ad39289"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "only_b"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/svc.py\nkind: function\nsymbol: only_b\nqualified name: only_b\nsemantic path: pkg/svc.py::only_b\nsignature text: only_b()\nexports: only_b\ncontent:\ndef only_b():\n    return 2"
+   },
+   "node_id": "14badce66ebaf3d78e1549f51ecfaa7079b1846e",
+   "parent": null,
+   "path": "pkg/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "only_b",
+   "relationships": [],
+   "semantic_path": "pkg/svc.py::only_b",
+   "signature": "only_b()",
+   "span": {
+    "byte_end": 55,
+    "byte_start": 29,
+    "end_line": 6,
+    "start_line": 5
+   },
+   "symbol": "only_b",
+   "symbol_id": "63e0cd2d2b8f7414b91e6e9de1f01794903a2b60"
+  },
+  {
+   "definition_id": "594720218a973a844884c1773fae913f06925282",
+   "file_id": "8d10be58c40f457c7be0477e9501a8e1add81037",
+   "id": "594720218a973a844884c1773fae913f06925282",
+   "identity": {
+    "source": "definition_id",
+    "value": "594720218a973a844884c1773fae913f06925282"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "only_a"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/svc.py\nkind: function\nsymbol: only_a\nqualified name: only_a\nsemantic path: pkg/svc.py::only_a\nsignature text: only_a()\nexports: only_a\ncontent:\ndef only_a():\n    return 1"
+   },
+   "node_id": "f3332e8f05e3b114aef71ba2bdb7ec631b3a0ef5",
+   "parent": null,
+   "path": "pkg/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "only_a",
+   "relationships": [],
+   "semantic_path": "pkg/svc.py::only_a",
+   "signature": "only_a()",
+   "span": {
+    "byte_end": 26,
+    "byte_start": 0,
+    "end_line": 2,
+    "start_line": 1
+   },
+   "symbol": "only_a",
+   "symbol_id": "13f4cbdd2340bed0fa5cae4cd5c2aa8294db06f6"
+  },
+  {
+   "definition_id": "5e2531b3fd2cd913c12ebb7110cc377b46eb830e",
+   "file_id": "8d10be58c40f457c7be0477e9501a8e1add81037",
+   "id": "5e2531b3fd2cd913c12ebb7110cc377b46eb830e",
+   "identity": {
+    "source": "definition_id",
+    "value": "5e2531b3fd2cd913c12ebb7110cc377b46eb830e"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "only_a"
+    ],
+    "exports": [
+     "d",
+     "x"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/svc.py\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: pkg/svc.py::d\nsignature text: d(x)\nexports: d, x\ndependencies: only_a\ncontent:\ndef d(x):\n    return only_a()"
+   },
+   "node_id": "713da0e810b93d34cc1a6c9fc43045c3d7558f34",
+   "parent": null,
+   "path": "pkg/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [
+    "call:5184b4f21d1d23c4daae3794b18de6d61455e85d",
+    "edge:712480ad90526b44"
+   ],
+   "semantic_path": "pkg/svc.py::d",
+   "signature": "d(x)",
+   "span": {
+    "byte_end": 87,
+    "byte_start": 58,
+    "end_line": 10,
+    "start_line": 9
+   },
+   "symbol": "d",
+   "symbol_id": "ed0d50fe3f73b787568b4e0246754c56c017d5f4"
+  },
+  {
+   "definition_id": "5e2531b3fd2cd913c12ebb7110cc377b46eb830e",
+   "file_id": "8d10be58c40f457c7be0477e9501a8e1add81037",
+   "id": "5e2531b3fd2cd913c12ebb7110cc377b46eb830e#1",
+   "identity": {
+    "disambiguated_from": "5e2531b3fd2cd913c12ebb7110cc377b46eb830e",
+    "source": "definition_id",
+    "value": "5e2531b3fd2cd913c12ebb7110cc377b46eb830e#1"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "only_b"
+    ],
+    "exports": [
+     "d",
+     "x",
+     "y"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: pkg/svc.py\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: pkg/svc.py::d\nsignature text: d(x, y)\nexports: d, x, y\ndependencies: only_b\ncontent:\ndef d(x, y):\n    return only_b()"
+   },
+   "node_id": "3ae9930826a47ec626488776e7ccb2b7a4478027",
+   "parent": null,
+   "path": "pkg/svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [
+    "call:fa873506bc4ceb2c1b80b71484adf50a115341eb",
+    "edge:5bbe684f8db658ab"
+   ],
+   "semantic_path": "pkg/svc.py::d",
+   "signature": "d(x, y)",
+   "span": {
+    "byte_end": 122,
+    "byte_start": 90,
+    "end_line": 14,
+    "start_line": 13
+   },
+   "symbol": "d",
+   "symbol_id": "ed0d50fe3f73b787568b4e0246754c56c017d5f4"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

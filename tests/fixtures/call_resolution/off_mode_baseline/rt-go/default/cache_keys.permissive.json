@@ -1,0 +1,27 @@
+{
+ "files": {
+  "k.go": {
+   "cache_key": "boundary:v3:c39ce6e59b2dd5605b23e2fc4cf03c9003bae44f80f6394b126d91060198f137",
+   "key_payload": {
+    "content_hash": "sha1:f515111055871e44fe4de6feaa64a63a704541b1",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-go:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "go",
+    "path": "k.go",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

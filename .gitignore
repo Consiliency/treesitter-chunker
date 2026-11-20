@@ -98,3 +98,10 @@ logs/
 # so it wins (git applies the last matching pattern).
 !tests/fixtures/boundary_ir/repos/
 !tests/fixtures/boundary_ir/repos/**
+
+# ts-skipped-dir needs a dist/ directory inside the tree (treesitter-chunker#682).
+!tests/fixtures/call_resolution/authored/ts-skipped-dir/dist/
+# The language-filtered baseline run lives in a `typescript/` directory. On
+# case-insensitive Git (macOS and Windows default core.ignorecase=true) the
+# "Test repositories" rule `TypeScript/` above would ignore it (treesitter-chunker#682).
+!tests/fixtures/call_resolution/off_mode_baseline/*/typescript/

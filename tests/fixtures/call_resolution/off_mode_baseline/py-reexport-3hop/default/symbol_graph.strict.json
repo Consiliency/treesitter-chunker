@@ -1,0 +1,177 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 51,
+   "callee_byte_start": 45,
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "id": "call:205910e5fe9cedd3967b9f4e3edc30827c4debe8",
+   "location": {
+    "byte_end": 53,
+    "byte_start": 45,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "reference": "helper",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 6,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "969c7a10d07776913d7042e8fa406ee60039df24",
+    "d3cb897991b20481f19abb9a67bf7a7378ef23cc"
+   ],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 4,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "helper",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:205910e5fe9cedd3967b9f4e3edc30827c4debe8",
+   "callee_byte_end": 51,
+   "callee_byte_start": 45,
+   "candidates": [
+    "969c7a10d07776913d7042e8fa406ee60039df24",
+    "d3cb897991b20481f19abb9a67bf7a7378ef23cc"
+   ],
+   "file": "app.py",
+   "from": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "is_internal": false,
+   "line": 5,
+   "location": {
+    "byte_end": 53,
+    "byte_start": 45,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "helper",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "969c7a10d07776913d7042e8fa406ee60039df24": {
+   "definition_id": "969c7a10d07776913d7042e8fa406ee60039df24",
+   "end_line": 2,
+   "file": "other.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "other",
+   "name": "helper",
+   "node_id": "04b7968bae48050886c8be70a9afe36286edf8bd",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "other.py::helper",
+   "signature": "helper()"
+  },
+  "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6": {
+   "definition_id": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+   "end_line": 5,
+   "file": "app.py",
+   "kind": "function",
+   "language": "python",
+   "line": 4,
+   "module": "app",
+   "name": "go",
+   "node_id": "a02f19a6fee453d57da338c14f3fecb894bb963b",
+   "parent_class": "",
+   "qualified_name": "go",
+   "semantic_path": "app.py::go",
+   "signature": "go()"
+  },
+  "d3cb897991b20481f19abb9a67bf7a7378ef23cc": {
+   "definition_id": "d3cb897991b20481f19abb9a67bf7a7378ef23cc",
+   "end_line": 2,
+   "file": "impl.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "impl",
+   "name": "helper",
+   "node_id": "30e420f88a0b2fc76bc9221f668c89a0fe94ff8b",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "impl.py::helper",
+   "signature": "helper()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "be10b2f0f4dd3bcf36c9687bbb9432243ba076d6",
+    "end_line": 5,
+    "file": "app.py",
+    "kind": "function",
+    "language": "python",
+    "line": 4,
+    "module": "app",
+    "name": "go",
+    "node_id": "a02f19a6fee453d57da338c14f3fecb894bb963b",
+    "parent_class": "",
+    "qualified_name": "go",
+    "semantic_path": "app.py::go",
+    "signature": "go()"
+   },
+   {
+    "definition_id": "d3cb897991b20481f19abb9a67bf7a7378ef23cc",
+    "end_line": 2,
+    "file": "impl.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "impl",
+    "name": "helper",
+    "node_id": "30e420f88a0b2fc76bc9221f668c89a0fe94ff8b",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "impl.py::helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "969c7a10d07776913d7042e8fa406ee60039df24",
+    "end_line": 2,
+    "file": "other.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "other",
+    "name": "helper",
+    "node_id": "04b7968bae48050886c8be70a9afe36286edf8bd",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "other.py::helper",
+    "signature": "helper()"
+   }
+  ],
+  "imports": []
+ }
+}

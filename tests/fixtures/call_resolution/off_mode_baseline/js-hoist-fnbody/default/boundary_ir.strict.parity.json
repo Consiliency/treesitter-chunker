@@ -1,0 +1,289 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:5a3466886af7ca2365fc4f4f88518a554fb06e40",
+   "candidates": [
+    "470018ad4567de538b2174af53f399566b73cff5",
+    "470018ad4567de538b2174af53f399566b73cff5#1",
+    "9601d33d5074d75c0a91cee4876fad980ecddb17"
+   ],
+   "file": "a.js",
+   "id": "call:5a3466886af7ca2365fc4f4f88518a554fb06e40",
+   "location": {
+    "byte_end": 85,
+    "byte_start": 82,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "metadata": {
+    "file": "a.js",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "5110f3e49f9abf1f841b3363421ab8ca7bfe31f6",
+   "target": "d",
+   "type": "calls"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:4cb80d58f4dbed900e1d3d95fa94056e3b585f3f",
+   "diagnostics": [],
+   "id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "language": "javascript",
+   "parser": "tree-sitter-javascript",
+   "path": "a.js",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:eb1cff64dca6229d93fe51414bef36c7296e49d4",
+   "diagnostics": [],
+   "id": "5c1dcbf65eadde3f3ed48380645b8c140e9016c3",
+   "language": "javascript",
+   "parser": "tree-sitter-javascript",
+   "path": "b.js",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 1,
+  "diagnostics_total": 0,
+  "edges_total": 1,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 2,
+  "files_processed": 2,
+  "files_skipped": 0,
+  "files_total": 2,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 5,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "470018ad4567de538b2174af53f399566b73cff5",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "470018ad4567de538b2174af53f399566b73cff5",
+   "identity": {
+    "source": "definition_id",
+    "value": "470018ad4567de538b2174af53f399566b73cff5"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": "g",
+    "semantic_text": "language: javascript\nfile: a.js\nkind: function\nsymbol: d\nqualified name: g.d\nparent symbol: g\nsemantic path: a.js::g.d\nsignature text: d()\nexports: d\ncontent:\nfunction d() { return 1; }"
+   },
+   "node_id": "cb3e07ed5475ca6ce25d7df649f8ac18643809b4",
+   "parent": "57d248449ddba7b13d9402d404c49973333851df",
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "g.d",
+   "relationships": [],
+   "semantic_path": "a.js::g.d",
+   "signature": "d()",
+   "span": {
+    "byte_end": 43,
+    "byte_start": 17,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "d",
+   "symbol_id": "ca36dc9198bf98f18da2ab0275fb52372550356e"
+  },
+  {
+   "definition_id": "470018ad4567de538b2174af53f399566b73cff5",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "470018ad4567de538b2174af53f399566b73cff5#1",
+   "identity": {
+    "disambiguated_from": "470018ad4567de538b2174af53f399566b73cff5",
+    "source": "definition_id",
+    "value": "470018ad4567de538b2174af53f399566b73cff5#1"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": "g",
+    "semantic_text": "language: javascript\nfile: a.js\nkind: function\nsymbol: d\nqualified name: g.d\nparent symbol: g\nsemantic path: a.js::g.d\nsignature text: d()\nexports: d\ncontent:\nfunction d() { return 2; }"
+   },
+   "node_id": "67ff5b46ec7ed6f2c29c36a1a4cfb3793088ea0c",
+   "parent": "57d248449ddba7b13d9402d404c49973333851df",
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "g.d",
+   "relationships": [],
+   "semantic_path": "a.js::g.d",
+   "signature": "d()",
+   "span": {
+    "byte_end": 72,
+    "byte_start": 46,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": "d",
+   "symbol_id": "ca36dc9198bf98f18da2ab0275fb52372550356e"
+  },
+  {
+   "definition_id": "4da99ef5ce50b75b8b4d629570c2129aed54f668",
+   "file_id": "5c1dcbf65eadde3f3ed48380645b8c140e9016c3",
+   "id": "4da99ef5ce50b75b8b4d629570c2129aed54f668",
+   "identity": {
+    "source": "definition_id",
+    "value": "4da99ef5ce50b75b8b4d629570c2129aed54f668"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "h"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: b.js\nkind: function\nsymbol: h\nqualified name: h\nsemantic path: b.js::h\nsignature text: h()\nexports: h\ncontent:\nfunction h() {\n  function d() { return 3; }\n  return 0;\n}"
+   },
+   "node_id": "fb379ab3e42cc8f51eab1e2de2ee14a0fe243d1e",
+   "parent": null,
+   "path": "b.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "h",
+   "relationships": [],
+   "semantic_path": "b.js::h",
+   "signature": "h()",
+   "span": {
+    "byte_end": 57,
+    "byte_start": 0,
+    "end_line": 4,
+    "start_line": 1
+   },
+   "symbol": "h",
+   "symbol_id": "b26602667c6f216ef53e921ec75c19c4f8dd1770"
+  },
+  {
+   "definition_id": "5110f3e49f9abf1f841b3363421ab8ca7bfe31f6",
+   "file_id": "1e2c8841e0e2995a39075956e300bd707738f0a4",
+   "id": "5110f3e49f9abf1f841b3363421ab8ca7bfe31f6",
+   "identity": {
+    "source": "definition_id",
+    "value": "5110f3e49f9abf1f841b3363421ab8ca7bfe31f6"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "g"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: javascript\nfile: a.js\nkind: function\nsymbol: g\nqualified name: g\nsemantic path: a.js::g\nsignature text: g()\nexports: g\ncontent:\nfunction g() {\n  function d() { return 1; }\n  function d() { return 2; }\n  return d();\n}"
+   },
+   "node_id": "57d248449ddba7b13d9402d404c49973333851df",
+   "parent": null,
+   "path": "a.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "g",
+   "relationships": [
+    "call:5a3466886af7ca2365fc4f4f88518a554fb06e40"
+   ],
+   "semantic_path": "a.js::g",
+   "signature": "g()",
+   "span": {
+    "byte_end": 88,
+    "byte_start": 0,
+    "end_line": 5,
+    "start_line": 1
+   },
+   "symbol": "g",
+   "symbol_id": "cb416a5ca23fc8976b4f17d326f999f5e69630e4"
+  },
+  {
+   "definition_id": "9601d33d5074d75c0a91cee4876fad980ecddb17",
+   "file_id": "5c1dcbf65eadde3f3ed48380645b8c140e9016c3",
+   "id": "9601d33d5074d75c0a91cee4876fad980ecddb17",
+   "identity": {
+    "source": "definition_id",
+    "value": "9601d33d5074d75c0a91cee4876fad980ecddb17"
+   },
+   "kind": "function",
+   "language": "javascript",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": "h",
+    "semantic_text": "language: javascript\nfile: b.js\nkind: function\nsymbol: d\nqualified name: h.d\nparent symbol: h\nsemantic path: b.js::h.d\nsignature text: d()\nexports: d\ncontent:\nfunction d() { return 3; }"
+   },
+   "node_id": "9b15e5971dfb88dda73d48cad995a94bfc219751",
+   "parent": "fb379ab3e42cc8f51eab1e2de2ee14a0fe243d1e",
+   "path": "b.js",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "h.d",
+   "relationships": [],
+   "semantic_path": "b.js::h.d",
+   "signature": "d()",
+   "span": {
+    "byte_end": 43,
+    "byte_start": 17,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "d",
+   "symbol_id": "c4c54a25d6e852b06ff09f24c92f5aaa9d851f8a"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "strict"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

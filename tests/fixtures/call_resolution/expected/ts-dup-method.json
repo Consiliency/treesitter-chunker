@@ -1,0 +1,133 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:fcc4e06318b63422a04f645df72d045ba54032f0",
+     "call_span": [
+      145,
+      152
+     ],
+     "callee_span": [
+      145,
+      150
+     ],
+     "caller": "K.m",
+     "file": "k.ts",
+     "line": 5,
+     "reference": "onlyA",
+     "today": {
+      "candidate_ids": [
+       "8806ae5f47e00dee3f50d6d14b0685e646fbca5a"
+      ],
+      "candidates": [
+       "k.ts:1:onlyA"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:eda5a480d4acdde4b9b1f867a4f046a2fb4b434f",
+     "call_span": [
+      194,
+      201
+     ],
+     "callee_span": [
+      194,
+      199
+     ],
+     "caller": "K.m",
+     "file": "k.ts",
+     "line": 8,
+     "reference": "onlyB",
+     "today": {
+      "candidate_ids": [
+       "ff538aedcc8f3576aefa3de4e4e0af71ed5e9451"
+      ],
+      "candidates": [
+       "k.ts:2:onlyB"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:3faa97a8a5e3e060e816c832f0966ec1217aa38a",
+     "call_span": [
+      222,
+      231
+     ],
+     "callee_span": [
+      222,
+      228
+     ],
+     "caller": "K.n",
+     "file": "k.ts",
+     "line": 10,
+     "reference": "this.m",
+     "today": {
+      "candidate_ids": [
+       "815dc5bc1455bdd0dea2e8be2b867041c292f204",
+       "815dc5bc1455bdd0dea2e8be2b867041c292f204#1"
+      ],
+      "candidates": [
+       "k.ts:4:K.m",
+       "k.ts:7:K.m"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:1fb76266083eece3d3de4e85898d0505863292ac",
+     "call_span": [
+      268,
+      275
+     ],
+     "callee_span": [
+      272,
+      273
+     ],
+     "caller": "use",
+     "file": "k.ts",
+     "line": 12,
+     "reference": "K",
+     "today": {
+      "candidate_ids": [
+       "5d46d146af38cd8d3ee9b5fdcfa82556b9dd9be9"
+      ],
+      "candidates": [
+       "k.ts:3:K"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:21427d784379165e44f95b3c752727f3c0920b3d",
+     "call_span": [
+      268,
+      280
+     ],
+     "callee_span": [
+      268,
+      277
+     ],
+     "caller": "use",
+     "file": "k.ts",
+     "line": 12,
+     "reference": "new K().m",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-dup-method"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-dup-method"
+}

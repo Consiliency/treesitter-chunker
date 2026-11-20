@@ -1,0 +1,136 @@
+{
+ "plan_sections": [
+  "10.2",
+  "10.5"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:10b5fcdba16903746c49779b92e81902f3803eee",
+     "call_span": [
+      140,
+      144
+     ],
+     "callee_span": [
+      140,
+      141
+     ],
+     "caller": "outer",
+     "file": "src/lib.rs",
+     "line": 7,
+     "reference": "h",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    },
+    {
+     "call_site_id": "call:82b0269871d8673eb078a796f2d4403103f9565c",
+     "call_span": [
+      156,
+      167
+     ],
+     "callee_span": [
+      156,
+      157
+     ],
+     "caller": "outer",
+     "file": "src/lib.rs",
+     "line": 9,
+     "reference": "f",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    },
+    {
+     "call_site_id": "call:f71b804e4cbc5cf56ac2881c7491358708ff2ea4",
+     "call_span": [
+      158,
+      166
+     ],
+     "callee_span": [
+      158,
+      159
+     ],
+     "caller": "outer",
+     "file": "src/lib.rs",
+     "line": 9,
+     "reference": "g",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    },
+    {
+     "call_site_id": "call:8a3b08b27827408f009ea7bc0d31cd494141be1f",
+     "call_span": [
+      231,
+      240
+     ],
+     "callee_span": [
+      231,
+      238
+     ],
+     "caller": "run",
+     "file": "src/lib.rs",
+     "line": 14,
+     "reference": "xs.iter",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    },
+    {
+     "call_site_id": "call:c69d626bbdd60e54decbc76b8b54523c8be9b27b",
+     "call_span": [
+      231,
+      255
+     ],
+     "callee_span": [
+      231,
+      244
+     ],
+     "caller": "run",
+     "file": "src/lib.rs",
+     "line": 14,
+     "reference": "xs.iter().map",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    },
+    {
+     "call_site_id": "call:b06cc26926083f59c40b69b968b8c493cce98eca",
+     "call_span": [
+      231,
+      261
+     ],
+     "callee_span": [
+      231,
+      259
+     ],
+     "caller": "run",
+     "file": "src/lib.rs",
+     "line": 14,
+     "reference": "xs.iter().map(|i| i + 1).sum",
+     "today": {
+      "candidate_ids": [],
+      "candidates": [],
+      "resolution": "unresolved"
+     }
+    }
+   ],
+   "language": null,
+   "root": "greenfield-r1/clo-rust"
+  }
+ },
+ "source": "greenfield-r1",
+ "tree": "clo-rust"
+}

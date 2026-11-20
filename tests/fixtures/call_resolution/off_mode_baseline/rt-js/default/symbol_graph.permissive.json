@@ -1,0 +1,361 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 95,
+   "callee_byte_start": 89,
+   "file": "k.js",
+   "from": "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5",
+   "id": "call:bbc0bcb0c9fe441c7921643add2f0b0203b3fb73",
+   "location": {
+    "byte_end": 97,
+    "byte_start": 89,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "reference": "only_a",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 135,
+   "callee_byte_start": 129,
+   "file": "k.js",
+   "from": "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5#1",
+   "id": "call:aa87397b75165e80587d997786409eab0a2828d5",
+   "location": {
+    "byte_end": 137,
+    "byte_start": 129,
+    "end_line": 7,
+    "start_line": 7
+   },
+   "reference": "only_b",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 164,
+   "callee_byte_start": 163,
+   "file": "k.js",
+   "from": "c0c82897b4343d399d8e59a93931967c69bc1d97",
+   "id": "call:9aaf8958e03d817ab0045a6c1b69f3f5bedbf4ee",
+   "location": {
+    "byte_end": 167,
+    "byte_start": 163,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "reference": "d",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 1,
+  "total_classes": 0,
+  "total_functions": 5,
+  "total_imports": 0,
+  "total_relationships": 6
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "3dbf24a5365521cb7203f7c23fd03d2993690a7b"
+   ],
+   "file": "k.js",
+   "from": "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5",
+   "is_internal": true,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_a",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "3dbf24a5365521cb7203f7c23fd03d2993690a7b",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "8fa410b7011fc67692b0d3679895581fa2e63958"
+   ],
+   "file": "k.js",
+   "from": "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5#1",
+   "is_internal": true,
+   "line": 6,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "8fa410b7011fc67692b0d3679895581fa2e63958",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5",
+    "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5#1"
+   ],
+   "file": "k.js",
+   "from": "c0c82897b4343d399d8e59a93931967c69bc1d97",
+   "is_internal": false,
+   "line": 9,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "d",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:bbc0bcb0c9fe441c7921643add2f0b0203b3fb73",
+   "callee_byte_end": 95,
+   "callee_byte_start": 89,
+   "candidates": [
+    "3dbf24a5365521cb7203f7c23fd03d2993690a7b"
+   ],
+   "file": "k.js",
+   "from": "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5",
+   "is_internal": true,
+   "line": 4,
+   "location": {
+    "byte_end": 97,
+    "byte_start": 89,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_a",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "3dbf24a5365521cb7203f7c23fd03d2993690a7b",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:aa87397b75165e80587d997786409eab0a2828d5",
+   "callee_byte_end": 135,
+   "callee_byte_start": 129,
+   "candidates": [
+    "8fa410b7011fc67692b0d3679895581fa2e63958"
+   ],
+   "file": "k.js",
+   "from": "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5#1",
+   "is_internal": true,
+   "line": 7,
+   "location": {
+    "byte_end": 137,
+    "byte_start": 129,
+    "end_line": 7,
+    "start_line": 7
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "8fa410b7011fc67692b0d3679895581fa2e63958",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:9aaf8958e03d817ab0045a6c1b69f3f5bedbf4ee",
+   "callee_byte_end": 164,
+   "callee_byte_start": 163,
+   "candidates": [
+    "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5",
+    "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5#1"
+   ],
+   "file": "k.js",
+   "from": "c0c82897b4343d399d8e59a93931967c69bc1d97",
+   "is_internal": false,
+   "line": 9,
+   "location": {
+    "byte_end": 167,
+    "byte_start": 163,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "d",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5": {
+   "definition_id": "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5",
+   "end_line": 5,
+   "file": "k.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 3,
+   "module": "k",
+   "name": "d",
+   "node_id": "3ec61c7e392d5cc1c03b3a61f8744d567cbe643f",
+   "parent_class": "",
+   "qualified_name": "d",
+   "semantic_path": "k.js::d",
+   "signature": "d(x)"
+  },
+  "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5#1": {
+   "definition_id": "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5",
+   "end_line": 8,
+   "file": "k.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 6,
+   "module": "k",
+   "name": "d",
+   "node_id": "d5284abbe65b86c59091bb9f675bf3b40f0ac144",
+   "parent_class": "",
+   "qualified_name": "d",
+   "semantic_path": "k.js::d",
+   "signature": "d(x, y)"
+  },
+  "3dbf24a5365521cb7203f7c23fd03d2993690a7b": {
+   "definition_id": "3dbf24a5365521cb7203f7c23fd03d2993690a7b",
+   "end_line": 1,
+   "file": "k.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "k",
+   "name": "only_a",
+   "node_id": "2fd0f40dbc66a4b179f75504875ba4b6234b3598",
+   "parent_class": "",
+   "qualified_name": "only_a",
+   "semantic_path": "k.js::only_a",
+   "signature": "only_a()"
+  },
+  "8fa410b7011fc67692b0d3679895581fa2e63958": {
+   "definition_id": "8fa410b7011fc67692b0d3679895581fa2e63958",
+   "end_line": 2,
+   "file": "k.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 2,
+   "module": "k",
+   "name": "only_b",
+   "node_id": "873977e1356e4ba6101864ebbc64d30dfef900cf",
+   "parent_class": "",
+   "qualified_name": "only_b",
+   "semantic_path": "k.js::only_b",
+   "signature": "only_b()"
+  },
+  "c0c82897b4343d399d8e59a93931967c69bc1d97": {
+   "definition_id": "c0c82897b4343d399d8e59a93931967c69bc1d97",
+   "end_line": 9,
+   "file": "k.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 9,
+   "module": "k",
+   "name": "g",
+   "node_id": "af22dd7ff5b8134e402080e3528300cd452fe415",
+   "parent_class": "",
+   "qualified_name": "g",
+   "semantic_path": "k.js::g",
+   "signature": "g()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "3dbf24a5365521cb7203f7c23fd03d2993690a7b",
+    "end_line": 1,
+    "file": "k.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "k",
+    "name": "only_a",
+    "node_id": "2fd0f40dbc66a4b179f75504875ba4b6234b3598",
+    "parent_class": "",
+    "qualified_name": "only_a",
+    "semantic_path": "k.js::only_a",
+    "signature": "only_a()"
+   },
+   {
+    "definition_id": "8fa410b7011fc67692b0d3679895581fa2e63958",
+    "end_line": 2,
+    "file": "k.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 2,
+    "module": "k",
+    "name": "only_b",
+    "node_id": "873977e1356e4ba6101864ebbc64d30dfef900cf",
+    "parent_class": "",
+    "qualified_name": "only_b",
+    "semantic_path": "k.js::only_b",
+    "signature": "only_b()"
+   },
+   {
+    "definition_id": "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5",
+    "end_line": 5,
+    "file": "k.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 3,
+    "module": "k",
+    "name": "d",
+    "node_id": "3ec61c7e392d5cc1c03b3a61f8744d567cbe643f",
+    "parent_class": "",
+    "qualified_name": "d",
+    "semantic_path": "k.js::d",
+    "signature": "d(x)"
+   },
+   {
+    "definition_id": "0f871cc830b295d7ee29d183d4986c5fb9d8c7e5",
+    "end_line": 8,
+    "file": "k.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 6,
+    "module": "k",
+    "name": "d",
+    "node_id": "d5284abbe65b86c59091bb9f675bf3b40f0ac144",
+    "parent_class": "",
+    "qualified_name": "d",
+    "semantic_path": "k.js::d",
+    "signature": "d(x, y)"
+   },
+   {
+    "definition_id": "c0c82897b4343d399d8e59a93931967c69bc1d97",
+    "end_line": 9,
+    "file": "k.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 9,
+    "module": "k",
+    "name": "g",
+    "node_id": "af22dd7ff5b8134e402080e3528300cd452fe415",
+    "parent_class": "",
+    "qualified_name": "g",
+    "semantic_path": "k.js::g",
+    "signature": "g()"
+   }
+  ],
+  "imports": []
+ }
+}

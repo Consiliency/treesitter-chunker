@@ -1,0 +1,115 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:c79cf0314f04972cbfb951b436b6e1ae4a714a10",
+     "call_span": [
+      114,
+      118
+     ],
+     "callee_span": [
+      114,
+      115
+     ],
+     "caller": "e.e",
+     "file": "svc.py",
+     "line": 11,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "4a6777286f461d6ed6926bb16394c966727bdd7d"
+      ],
+      "candidates": [
+       "svc.py:4:t"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:d599c372fd99764d8de129e9d4a785368151c737",
+     "call_span": [
+      134,
+      138
+     ],
+     "callee_span": [
+      134,
+      135
+     ],
+     "caller": "e",
+     "file": "svc.py",
+     "line": 12,
+     "reference": "e",
+     "today": {
+      "candidate_ids": [
+       "9746a333f37a17780471d5ea852953d0d26ff048",
+       "9746a333f37a17780471d5ea852953d0d26ff048#1"
+      ],
+      "candidates": [
+       "svc.py:9:e",
+       "svc.py:14:e"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:4bf479d40431ff83927a423b1f1cc72887eb2360",
+     "call_span": [
+      166,
+      174
+     ],
+     "callee_span": [
+      166,
+      167
+     ],
+     "caller": "e",
+     "file": "svc.py",
+     "line": 14,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "4a6777286f461d6ed6926bb16394c966727bdd7d"
+      ],
+      "candidates": [
+       "svc.py:4:t"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:90d518273e45d374b71ca6f7c92d4822c09f0c54",
+     "call_span": [
+      202,
+      206
+     ],
+     "callee_span": [
+      202,
+      203
+     ],
+     "caller": "caller",
+     "file": "svc.py",
+     "line": 18,
+     "reference": "e",
+     "today": {
+      "candidate_ids": [
+       "9746a333f37a17780471d5ea852953d0d26ff048",
+       "9746a333f37a17780471d5ea852953d0d26ff048#1"
+      ],
+      "candidates": [
+       "svc.py:9:e",
+       "svc.py:14:e"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-cond-e"
+  }
+ },
+ "source": "authored",
+ "tree": "py-cond-e"
+}

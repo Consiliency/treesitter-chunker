@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:0e2e85bb5d25dbd249da0b5ed51442ba5be78a68",
+     "call_span": [
+      46,
+      54
+     ],
+     "callee_span": [
+      46,
+      52
+     ],
+     "caller": "go",
+     "file": "app.py",
+     "line": 5,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "835dc2f2db433d5673704d475aa3e5b1055dd747",
+       "d49be7c5e6a7f6f2f2c0fd997e7d997afbce9780"
+      ],
+      "candidates": [
+       "pkg/impl.py:1:helper",
+       "pkg/helper.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-attr-vs-submodule"
+  }
+ },
+ "source": "authored",
+ "tree": "py-attr-vs-submodule"
+}

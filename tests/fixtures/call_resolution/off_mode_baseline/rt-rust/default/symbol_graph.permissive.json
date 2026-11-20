@@ -1,0 +1,390 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 108,
+   "callee_byte_start": 102,
+   "file": "k.rs",
+   "from": "3d2fef15a73f2b6817fa17149168b5caaab14c20",
+   "id": "call:5878f93a4fecbc90ed14058429e1131422360c5a",
+   "location": {
+    "byte_end": 110,
+    "byte_start": 102,
+    "end_line": 6,
+    "start_line": 6
+   },
+   "reference": "only_a",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 167,
+   "callee_byte_start": 161,
+   "file": "k.rs",
+   "from": "b1c88876906676e7cc3190e996bd554e5c7e28b8",
+   "id": "call:a5b9d1850241f2c1c68230e6c3064213b7d48010",
+   "location": {
+    "byte_end": 169,
+    "byte_start": 161,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "reference": "only_b",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 223,
+   "callee_byte_start": 210,
+   "file": "k.rs",
+   "from": "dc6af57dbe61747a1e4a87c4c07a248f324c63b8",
+   "id": "call:59d5834275131d9d81d8e529f88a19ba2b95809b",
+   "location": {
+    "byte_end": 225,
+    "byte_start": 210,
+    "end_line": 15,
+    "start_line": 15
+   },
+   "reference": "super::only_b",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 1,
+  "total_classes": 1,
+  "total_functions": 5,
+  "total_imports": 0,
+  "total_relationships": 6
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "23eebfe00359aa5af1a17f400cd599af465fe581"
+   ],
+   "file": "k.rs",
+   "from": "3d2fef15a73f2b6817fa17149168b5caaab14c20",
+   "is_internal": true,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_a",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "23eebfe00359aa5af1a17f400cd599af465fe581",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "ab531746a5283e46f3888f4ec7890e506015a202"
+   ],
+   "file": "k.rs",
+   "from": "b1c88876906676e7cc3190e996bd554e5c7e28b8",
+   "is_internal": true,
+   "line": 10,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "ab531746a5283e46f3888f4ec7890e506015a202",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "ab531746a5283e46f3888f4ec7890e506015a202"
+   ],
+   "file": "k.rs",
+   "from": "dc6af57dbe61747a1e4a87c4c07a248f324c63b8",
+   "is_internal": true,
+   "line": 15,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "ab531746a5283e46f3888f4ec7890e506015a202",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:5878f93a4fecbc90ed14058429e1131422360c5a",
+   "callee_byte_end": 108,
+   "callee_byte_start": 102,
+   "candidates": [
+    "23eebfe00359aa5af1a17f400cd599af465fe581"
+   ],
+   "file": "k.rs",
+   "from": "3d2fef15a73f2b6817fa17149168b5caaab14c20",
+   "is_internal": true,
+   "line": 6,
+   "location": {
+    "byte_end": 110,
+    "byte_start": 102,
+    "end_line": 6,
+    "start_line": 6
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_a",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "23eebfe00359aa5af1a17f400cd599af465fe581",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:a5b9d1850241f2c1c68230e6c3064213b7d48010",
+   "callee_byte_end": 167,
+   "callee_byte_start": 161,
+   "candidates": [
+    "ab531746a5283e46f3888f4ec7890e506015a202"
+   ],
+   "file": "k.rs",
+   "from": "b1c88876906676e7cc3190e996bd554e5c7e28b8",
+   "is_internal": true,
+   "line": 11,
+   "location": {
+    "byte_end": 169,
+    "byte_start": 161,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "ab531746a5283e46f3888f4ec7890e506015a202",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:59d5834275131d9d81d8e529f88a19ba2b95809b",
+   "callee_byte_end": 223,
+   "callee_byte_start": 210,
+   "candidates": [
+    "ab531746a5283e46f3888f4ec7890e506015a202"
+   ],
+   "file": "k.rs",
+   "from": "dc6af57dbe61747a1e4a87c4c07a248f324c63b8",
+   "is_internal": true,
+   "line": 15,
+   "location": {
+    "byte_end": 225,
+    "byte_start": 210,
+    "end_line": 15,
+    "start_line": 15
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "super::only_b",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "ab531746a5283e46f3888f4ec7890e506015a202",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "23eebfe00359aa5af1a17f400cd599af465fe581": {
+   "definition_id": "23eebfe00359aa5af1a17f400cd599af465fe581",
+   "end_line": 1,
+   "file": "k.rs",
+   "kind": "function",
+   "language": "rust",
+   "line": 1,
+   "module": "k",
+   "name": "only_a",
+   "node_id": "fc79f5cff1f6581d40620b7b296d4b59967e3709",
+   "parent_class": "",
+   "qualified_name": "only_a",
+   "semantic_path": "k.rs::only_a",
+   "signature": "only_a() -> i32"
+  },
+  "35ff951fc0254213ff7eaecfad8659cb6f1bcaef": {
+   "definition_id": "35ff951fc0254213ff7eaecfad8659cb6f1bcaef",
+   "end_line": 3,
+   "file": "k.rs",
+   "kind": "struct",
+   "language": "rust",
+   "line": 3,
+   "module": "k",
+   "name": "T",
+   "node_id": "1fa723eb7da77a8fe359822a897669495dadab4a",
+   "parent_class": "",
+   "qualified_name": "T",
+   "semantic_path": "k.rs::T",
+   "signature": null
+  },
+  "3d2fef15a73f2b6817fa17149168b5caaab14c20": {
+   "definition_id": "3d2fef15a73f2b6817fa17149168b5caaab14c20",
+   "end_line": 7,
+   "file": "k.rs",
+   "kind": "function",
+   "language": "rust",
+   "line": 5,
+   "module": "k",
+   "name": "m",
+   "node_id": "f8daf5e0fc5136d7236d6e63c69f498f3fcc7ea3",
+   "parent_class": "",
+   "qualified_name": "m",
+   "semantic_path": "k.rs::m",
+   "signature": "m(&self) -> i32"
+  },
+  "ab531746a5283e46f3888f4ec7890e506015a202": {
+   "definition_id": "ab531746a5283e46f3888f4ec7890e506015a202",
+   "end_line": 2,
+   "file": "k.rs",
+   "kind": "function",
+   "language": "rust",
+   "line": 2,
+   "module": "k",
+   "name": "only_b",
+   "node_id": "89d0dac9ee92bac52355ffe8e378b77aeefc9d58",
+   "parent_class": "",
+   "qualified_name": "only_b",
+   "semantic_path": "k.rs::only_b",
+   "signature": "only_b() -> i32"
+  },
+  "b1c88876906676e7cc3190e996bd554e5c7e28b8": {
+   "definition_id": "b1c88876906676e7cc3190e996bd554e5c7e28b8",
+   "end_line": 12,
+   "file": "k.rs",
+   "kind": "function",
+   "language": "rust",
+   "line": 10,
+   "module": "k",
+   "name": "n",
+   "node_id": "ce7a46129a79935695564dff4361c549185d1014",
+   "parent_class": "",
+   "qualified_name": "n",
+   "semantic_path": "k.rs::n",
+   "signature": "n(&self) -> i32"
+  },
+  "dc6af57dbe61747a1e4a87c4c07a248f324c63b8": {
+   "definition_id": "dc6af57dbe61747a1e4a87c4c07a248f324c63b8",
+   "end_line": 15,
+   "file": "k.rs",
+   "kind": "function",
+   "language": "rust",
+   "line": 15,
+   "module": "k",
+   "name": "m",
+   "node_id": "c36509f4b9b4e8ff9c0d4784b67aa29f2d573b9d",
+   "parent_class": "inner",
+   "qualified_name": "inner.m",
+   "semantic_path": "k.rs::inner.m",
+   "signature": "m() -> i32"
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "35ff951fc0254213ff7eaecfad8659cb6f1bcaef",
+    "end_line": 3,
+    "file": "k.rs",
+    "kind": "struct",
+    "language": "rust",
+    "line": 3,
+    "module": "k",
+    "name": "T",
+    "node_id": "1fa723eb7da77a8fe359822a897669495dadab4a",
+    "parent_class": "",
+    "qualified_name": "T",
+    "semantic_path": "k.rs::T",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "23eebfe00359aa5af1a17f400cd599af465fe581",
+    "end_line": 1,
+    "file": "k.rs",
+    "kind": "function",
+    "language": "rust",
+    "line": 1,
+    "module": "k",
+    "name": "only_a",
+    "node_id": "fc79f5cff1f6581d40620b7b296d4b59967e3709",
+    "parent_class": "",
+    "qualified_name": "only_a",
+    "semantic_path": "k.rs::only_a",
+    "signature": "only_a() -> i32"
+   },
+   {
+    "definition_id": "ab531746a5283e46f3888f4ec7890e506015a202",
+    "end_line": 2,
+    "file": "k.rs",
+    "kind": "function",
+    "language": "rust",
+    "line": 2,
+    "module": "k",
+    "name": "only_b",
+    "node_id": "89d0dac9ee92bac52355ffe8e378b77aeefc9d58",
+    "parent_class": "",
+    "qualified_name": "only_b",
+    "semantic_path": "k.rs::only_b",
+    "signature": "only_b() -> i32"
+   },
+   {
+    "definition_id": "3d2fef15a73f2b6817fa17149168b5caaab14c20",
+    "end_line": 7,
+    "file": "k.rs",
+    "kind": "function",
+    "language": "rust",
+    "line": 5,
+    "module": "k",
+    "name": "m",
+    "node_id": "f8daf5e0fc5136d7236d6e63c69f498f3fcc7ea3",
+    "parent_class": "",
+    "qualified_name": "m",
+    "semantic_path": "k.rs::m",
+    "signature": "m(&self) -> i32"
+   },
+   {
+    "definition_id": "b1c88876906676e7cc3190e996bd554e5c7e28b8",
+    "end_line": 12,
+    "file": "k.rs",
+    "kind": "function",
+    "language": "rust",
+    "line": 10,
+    "module": "k",
+    "name": "n",
+    "node_id": "ce7a46129a79935695564dff4361c549185d1014",
+    "parent_class": "",
+    "qualified_name": "n",
+    "semantic_path": "k.rs::n",
+    "signature": "n(&self) -> i32"
+   },
+   {
+    "definition_id": "dc6af57dbe61747a1e4a87c4c07a248f324c63b8",
+    "end_line": 15,
+    "file": "k.rs",
+    "kind": "function",
+    "language": "rust",
+    "line": 15,
+    "module": "k",
+    "name": "m",
+    "node_id": "c36509f4b9b4e8ff9c0d4784b67aa29f2d573b9d",
+    "parent_class": "inner",
+    "qualified_name": "inner.m",
+    "semantic_path": "k.rs::inner.m",
+    "signature": "m() -> i32"
+   }
+  ],
+  "imports": []
+ }
+}

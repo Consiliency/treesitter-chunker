@@ -1,0 +1,1050 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 107,
+   "callee_byte_start": 101,
+   "file": "pkg/sub/svc.py",
+   "from": "10402dcf0728c9896d21c0367550927615f2628d",
+   "id": "call:96e16ab32bdbccb5d21d93fb8f427986f4b06d67",
+   "location": {
+    "byte_end": 110,
+    "byte_start": 101,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "reference": "target",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 155,
+   "callee_byte_start": 154,
+   "file": "pkg/sub/svc.py",
+   "from": "f8af96ca8ac1cd8f71aa5b6279f0c00485dcc1b0",
+   "id": "call:834619d83e82df8b423d5d574bfc53de9ae9d5fc",
+   "location": {
+    "byte_end": 157,
+    "byte_start": 154,
+    "end_line": 16,
+    "start_line": 16
+   },
+   "reference": "C",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 180,
+   "callee_byte_start": 174,
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "id": "call:9a8775a861c404221772bab9fae8a654a6e31096",
+   "location": {
+    "byte_end": 183,
+    "byte_start": 174,
+    "end_line": 20,
+    "start_line": 20
+   },
+   "reference": "target",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 201,
+   "callee_byte_start": 195,
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "id": "call:bf9c07c10f0c51b68c8ebc5d233dc4684361b440",
+   "location": {
+    "byte_end": 204,
+    "byte_start": 195,
+    "end_line": 21,
+    "start_line": 21
+   },
+   "reference": "helper",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 230,
+   "callee_byte_start": 224,
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "id": "call:1cda4240e16cbeb3bba8970d2339172e66bb6bf2",
+   "location": {
+    "byte_end": 233,
+    "byte_start": 224,
+    "end_line": 25,
+    "start_line": 25
+   },
+   "reference": "target",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 244,
+   "callee_byte_start": 238,
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "id": "call:ee681cc9aa0b886a746d444ce617e9b278e7d6e9",
+   "location": {
+    "byte_end": 247,
+    "byte_start": 238,
+    "end_line": 26,
+    "start_line": 26
+   },
+   "reference": "target",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 265,
+   "callee_byte_start": 259,
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "id": "call:8a8c778c43217f5964870192d1822478dd2ab807",
+   "location": {
+    "byte_end": 268,
+    "byte_start": 259,
+    "end_line": 27,
+    "start_line": 27
+   },
+   "reference": "helper",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 290,
+   "callee_byte_start": 289,
+   "file": "pkg/sub/svc.py",
+   "from": "481200ee6990a136f442a506101f3940f538398e",
+   "id": "call:4ac0328f92fc2c58688cc033ed1b2644532a6334",
+   "location": {
+    "byte_end": 293,
+    "byte_start": 289,
+    "end_line": 31,
+    "start_line": 31
+   },
+   "reference": "d",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 311,
+   "callee_byte_start": 298,
+   "file": "pkg/sub/svc.py",
+   "from": "481200ee6990a136f442a506101f3940f538398e",
+   "id": "call:72f73724679f239a8c359e524b8043158317901a",
+   "location": {
+    "byte_end": 314,
+    "byte_start": 298,
+    "end_line": 32,
+    "start_line": 32
+   },
+   "reference": "unknown_thing",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 332,
+   "callee_byte_start": 326,
+   "file": "pkg/sub/svc.py",
+   "from": "481200ee6990a136f442a506101f3940f538398e",
+   "id": "call:c91576e34b56b4197d51274a8d588efda5e82e15",
+   "location": {
+    "byte_end": 335,
+    "byte_start": 326,
+    "end_line": 33,
+    "start_line": 33
+   },
+   "reference": "target",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 344,
+   "callee_byte_start": 338,
+   "file": "pkg/sub/svc.py",
+   "from": "481200ee6990a136f442a506101f3940f538398e",
+   "id": "call:6448c8db464fbe4a541c02c7e4182f1dbf8b9843",
+   "location": {
+    "byte_end": 347,
+    "byte_start": 338,
+    "end_line": 33,
+    "start_line": 33
+   },
+   "reference": "target",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 69,
+   "callee_byte_start": 63,
+   "file": "tests/test_svc.py",
+   "from": "672058f9892185b2caf2e1742ff98cc08a3575dc",
+   "id": "call:5ad9b257f7410b02505cd06e3727399229db8f4b",
+   "location": {
+    "byte_end": 72,
+    "byte_start": 63,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "reference": "target",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 2,
+  "total_functions": 8,
+  "total_imports": 0,
+  "total_relationships": 23
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+   "is_internal": true,
+   "line": 9,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "10402dcf0728c9896d21c0367550927615f2628d",
+   "is_internal": true,
+   "line": 10,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+    "219cfa7e0bd9e7b1284997c116104a144444a0cc#1"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "f8af96ca8ac1cd8f71aa5b6279f0c00485dcc1b0",
+   "is_internal": false,
+   "line": 15,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "C",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "8022e90f0ba72577afb290db40f2abc929aae58e"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "is_internal": true,
+   "line": 19,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "8022e90f0ba72577afb290db40f2abc929aae58e",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "is_internal": true,
+   "line": 19,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "8022e90f0ba72577afb290db40f2abc929aae58e"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "is_internal": true,
+   "line": 24,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "8022e90f0ba72577afb290db40f2abc929aae58e",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "is_internal": true,
+   "line": 24,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+    "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "481200ee6990a136f442a506101f3940f538398e",
+   "is_internal": false,
+   "line": 30,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "d",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "481200ee6990a136f442a506101f3940f538398e",
+   "is_internal": true,
+   "line": 30,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "pkg/sub/svc.py",
+   "from": "481200ee6990a136f442a506101f3940f538398e",
+   "is_internal": false,
+   "line": 30,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "unknown_thing",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "unknown_thing",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "tests/test_svc.py",
+   "from": "672058f9892185b2caf2e1742ff98cc08a3575dc",
+   "is_internal": true,
+   "line": 4,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:96e16ab32bdbccb5d21d93fb8f427986f4b06d67",
+   "callee_byte_end": 107,
+   "callee_byte_start": 101,
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "10402dcf0728c9896d21c0367550927615f2628d",
+   "is_internal": true,
+   "line": 11,
+   "location": {
+    "byte_end": 110,
+    "byte_start": 101,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:834619d83e82df8b423d5d574bfc53de9ae9d5fc",
+   "callee_byte_end": 155,
+   "callee_byte_start": 154,
+   "candidates": [
+    "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+    "219cfa7e0bd9e7b1284997c116104a144444a0cc#1"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "f8af96ca8ac1cd8f71aa5b6279f0c00485dcc1b0",
+   "is_internal": false,
+   "line": 16,
+   "location": {
+    "byte_end": 157,
+    "byte_start": 154,
+    "end_line": 16,
+    "start_line": 16
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "C",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:9a8775a861c404221772bab9fae8a654a6e31096",
+   "callee_byte_end": 180,
+   "callee_byte_start": 174,
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "is_internal": true,
+   "line": 20,
+   "location": {
+    "byte_end": 183,
+    "byte_start": 174,
+    "end_line": 20,
+    "start_line": 20
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:bf9c07c10f0c51b68c8ebc5d233dc4684361b440",
+   "callee_byte_end": 201,
+   "callee_byte_start": 195,
+   "candidates": [
+    "8022e90f0ba72577afb290db40f2abc929aae58e"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "is_internal": true,
+   "line": 21,
+   "location": {
+    "byte_end": 204,
+    "byte_start": 195,
+    "end_line": 21,
+    "start_line": 21
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "8022e90f0ba72577afb290db40f2abc929aae58e",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:1cda4240e16cbeb3bba8970d2339172e66bb6bf2",
+   "callee_byte_end": 230,
+   "callee_byte_start": 224,
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "is_internal": true,
+   "line": 25,
+   "location": {
+    "byte_end": 233,
+    "byte_start": 224,
+    "end_line": 25,
+    "start_line": 25
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:ee681cc9aa0b886a746d444ce617e9b278e7d6e9",
+   "callee_byte_end": 244,
+   "callee_byte_start": 238,
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "is_internal": true,
+   "line": 26,
+   "location": {
+    "byte_end": 247,
+    "byte_start": 238,
+    "end_line": 26,
+    "start_line": 26
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:8a8c778c43217f5964870192d1822478dd2ab807",
+   "callee_byte_end": 265,
+   "callee_byte_start": 259,
+   "candidates": [
+    "8022e90f0ba72577afb290db40f2abc929aae58e"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1",
+   "is_internal": true,
+   "line": 27,
+   "location": {
+    "byte_end": 268,
+    "byte_start": 259,
+    "end_line": 27,
+    "start_line": 27
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "8022e90f0ba72577afb290db40f2abc929aae58e",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:4ac0328f92fc2c58688cc033ed1b2644532a6334",
+   "callee_byte_end": 290,
+   "callee_byte_start": 289,
+   "candidates": [
+    "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+    "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "481200ee6990a136f442a506101f3940f538398e",
+   "is_internal": false,
+   "line": 31,
+   "location": {
+    "byte_end": 293,
+    "byte_start": 289,
+    "end_line": 31,
+    "start_line": 31
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "d",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:72f73724679f239a8c359e524b8043158317901a",
+   "callee_byte_end": 311,
+   "callee_byte_start": 298,
+   "candidates": [],
+   "file": "pkg/sub/svc.py",
+   "from": "481200ee6990a136f442a506101f3940f538398e",
+   "is_internal": false,
+   "line": 32,
+   "location": {
+    "byte_end": 314,
+    "byte_start": 298,
+    "end_line": 32,
+    "start_line": 32
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "unknown_thing",
+   "resolution": "unresolved",
+   "resolution_mode": "strict",
+   "to": "unknown_thing",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:c91576e34b56b4197d51274a8d588efda5e82e15",
+   "callee_byte_end": 332,
+   "callee_byte_start": 326,
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "481200ee6990a136f442a506101f3940f538398e",
+   "is_internal": true,
+   "line": 33,
+   "location": {
+    "byte_end": 335,
+    "byte_start": 326,
+    "end_line": 33,
+    "start_line": 33
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:6448c8db464fbe4a541c02c7e4182f1dbf8b9843",
+   "callee_byte_end": 344,
+   "callee_byte_start": 338,
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "pkg/sub/svc.py",
+   "from": "481200ee6990a136f442a506101f3940f538398e",
+   "is_internal": true,
+   "line": 33,
+   "location": {
+    "byte_end": 347,
+    "byte_start": 338,
+    "end_line": 33,
+    "start_line": 33
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:5ad9b257f7410b02505cd06e3727399229db8f4b",
+   "callee_byte_end": 69,
+   "callee_byte_start": 63,
+   "candidates": [
+    "64a291ed2522bdb26a3e959cb12b11ed30b9342a"
+   ],
+   "file": "tests/test_svc.py",
+   "from": "672058f9892185b2caf2e1742ff98cc08a3575dc",
+   "is_internal": true,
+   "line": 5,
+   "location": {
+    "byte_end": 72,
+    "byte_start": 63,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "target",
+   "resolution": "resolved",
+   "resolution_mode": "strict",
+   "to": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "10402dcf0728c9896d21c0367550927615f2628d": {
+   "definition_id": "10402dcf0728c9896d21c0367550927615f2628d",
+   "end_line": 11,
+   "file": "pkg/sub/svc.py",
+   "kind": "method",
+   "language": "python",
+   "line": 10,
+   "module": "pkg.sub.svc",
+   "name": "a",
+   "node_id": "f654da9fec61813034db56dc4be8190d30dbe2dd",
+   "parent_class": "C",
+   "qualified_name": "C.a",
+   "semantic_path": "pkg/sub/svc.py::C.a",
+   "signature": "a(self)"
+  },
+  "219cfa7e0bd9e7b1284997c116104a144444a0cc": {
+   "definition_id": "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+   "end_line": 11,
+   "file": "pkg/sub/svc.py",
+   "kind": "class",
+   "language": "python",
+   "line": 9,
+   "module": "pkg.sub.svc",
+   "name": "C",
+   "node_id": "90a7f6d961e72f98f1fa95f656d812dfc26b1702",
+   "parent_class": "",
+   "qualified_name": "C",
+   "semantic_path": "pkg/sub/svc.py::C",
+   "signature": null
+  },
+  "219cfa7e0bd9e7b1284997c116104a144444a0cc#1": {
+   "definition_id": "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+   "end_line": 16,
+   "file": "pkg/sub/svc.py",
+   "kind": "class",
+   "language": "python",
+   "line": 14,
+   "module": "pkg.sub.svc",
+   "name": "C",
+   "node_id": "cd614532891d40401c5c2bb0778355e681ca0e0a",
+   "parent_class": "",
+   "qualified_name": "C",
+   "semantic_path": "pkg/sub/svc.py::C",
+   "signature": null
+  },
+  "481200ee6990a136f442a506101f3940f538398e": {
+   "definition_id": "481200ee6990a136f442a506101f3940f538398e",
+   "end_line": 33,
+   "file": "pkg/sub/svc.py",
+   "kind": "function",
+   "language": "python",
+   "line": 30,
+   "module": "pkg.sub.svc",
+   "name": "caller",
+   "node_id": "f91cf6c8f8ed3a96b8178da38872de51c0d0515d",
+   "parent_class": "",
+   "qualified_name": "caller",
+   "semantic_path": "pkg/sub/svc.py::caller",
+   "signature": "caller()"
+  },
+  "64a291ed2522bdb26a3e959cb12b11ed30b9342a": {
+   "definition_id": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+   "end_line": 6,
+   "file": "pkg/sub/svc.py",
+   "kind": "function",
+   "language": "python",
+   "line": 5,
+   "module": "pkg.sub.svc",
+   "name": "target",
+   "node_id": "b240b2bfd340e100641853ec34586632b0bf2abe",
+   "parent_class": "",
+   "qualified_name": "target",
+   "semantic_path": "pkg/sub/svc.py::target",
+   "signature": "target(v)"
+  },
+  "672058f9892185b2caf2e1742ff98cc08a3575dc": {
+   "definition_id": "672058f9892185b2caf2e1742ff98cc08a3575dc",
+   "end_line": 5,
+   "file": "tests/test_svc.py",
+   "kind": "function",
+   "language": "python",
+   "line": 4,
+   "module": "tests.test_svc",
+   "name": "test_target",
+   "node_id": "6be1e432e9e7a6569fe2cf4c7e5805f4448b17af",
+   "parent_class": "",
+   "qualified_name": "test_target",
+   "semantic_path": "tests/test_svc.py::test_target",
+   "signature": "test_target()"
+  },
+  "8022e90f0ba72577afb290db40f2abc929aae58e": {
+   "definition_id": "8022e90f0ba72577afb290db40f2abc929aae58e",
+   "end_line": 2,
+   "file": "pkg/sub/svc.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "pkg.sub.svc",
+   "name": "helper",
+   "node_id": "22c1a5e58e91d110e3e038f1e899f78b62261be0",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "pkg/sub/svc.py::helper",
+   "signature": "helper(v)"
+  },
+  "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed": {
+   "definition_id": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "end_line": 21,
+   "file": "pkg/sub/svc.py",
+   "kind": "function",
+   "language": "python",
+   "line": 19,
+   "module": "pkg.sub.svc",
+   "name": "d",
+   "node_id": "fa7fd9e01b60cf93a346e9e7d574f378f39ef854",
+   "parent_class": "",
+   "qualified_name": "d",
+   "semantic_path": "pkg/sub/svc.py::d",
+   "signature": "d(x)"
+  },
+  "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed#1": {
+   "definition_id": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+   "end_line": 27,
+   "file": "pkg/sub/svc.py",
+   "kind": "function",
+   "language": "python",
+   "line": 24,
+   "module": "pkg.sub.svc",
+   "name": "d",
+   "node_id": "458da026bdb05d09e681ea8a13ebca1c12e66603",
+   "parent_class": "",
+   "qualified_name": "d",
+   "semantic_path": "pkg/sub/svc.py::d",
+   "signature": "d(x, y)"
+  },
+  "f8af96ca8ac1cd8f71aa5b6279f0c00485dcc1b0": {
+   "definition_id": "f8af96ca8ac1cd8f71aa5b6279f0c00485dcc1b0",
+   "end_line": 16,
+   "file": "pkg/sub/svc.py",
+   "kind": "method",
+   "language": "python",
+   "line": 15,
+   "module": "pkg.sub.svc",
+   "name": "b",
+   "node_id": "67c0f853185c218d9650361fb5a810b2e707336d",
+   "parent_class": "C",
+   "qualified_name": "C.b",
+   "semantic_path": "pkg/sub/svc.py::C.b",
+   "signature": "b(self)"
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+    "end_line": 11,
+    "file": "pkg/sub/svc.py",
+    "kind": "class",
+    "language": "python",
+    "line": 9,
+    "module": "pkg.sub.svc",
+    "name": "C",
+    "node_id": "90a7f6d961e72f98f1fa95f656d812dfc26b1702",
+    "parent_class": "",
+    "qualified_name": "C",
+    "semantic_path": "pkg/sub/svc.py::C",
+    "signature": null
+   },
+   {
+    "definition_id": "219cfa7e0bd9e7b1284997c116104a144444a0cc",
+    "end_line": 16,
+    "file": "pkg/sub/svc.py",
+    "kind": "class",
+    "language": "python",
+    "line": 14,
+    "module": "pkg.sub.svc",
+    "name": "C",
+    "node_id": "cd614532891d40401c5c2bb0778355e681ca0e0a",
+    "parent_class": "",
+    "qualified_name": "C",
+    "semantic_path": "pkg/sub/svc.py::C",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "8022e90f0ba72577afb290db40f2abc929aae58e",
+    "end_line": 2,
+    "file": "pkg/sub/svc.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "pkg.sub.svc",
+    "name": "helper",
+    "node_id": "22c1a5e58e91d110e3e038f1e899f78b62261be0",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "pkg/sub/svc.py::helper",
+    "signature": "helper(v)"
+   },
+   {
+    "definition_id": "64a291ed2522bdb26a3e959cb12b11ed30b9342a",
+    "end_line": 6,
+    "file": "pkg/sub/svc.py",
+    "kind": "function",
+    "language": "python",
+    "line": 5,
+    "module": "pkg.sub.svc",
+    "name": "target",
+    "node_id": "b240b2bfd340e100641853ec34586632b0bf2abe",
+    "parent_class": "",
+    "qualified_name": "target",
+    "semantic_path": "pkg/sub/svc.py::target",
+    "signature": "target(v)"
+   },
+   {
+    "definition_id": "10402dcf0728c9896d21c0367550927615f2628d",
+    "end_line": 11,
+    "file": "pkg/sub/svc.py",
+    "kind": "method",
+    "language": "python",
+    "line": 10,
+    "module": "pkg.sub.svc",
+    "name": "a",
+    "node_id": "f654da9fec61813034db56dc4be8190d30dbe2dd",
+    "parent_class": "C",
+    "qualified_name": "C.a",
+    "semantic_path": "pkg/sub/svc.py::C.a",
+    "signature": "a(self)"
+   },
+   {
+    "definition_id": "f8af96ca8ac1cd8f71aa5b6279f0c00485dcc1b0",
+    "end_line": 16,
+    "file": "pkg/sub/svc.py",
+    "kind": "method",
+    "language": "python",
+    "line": 15,
+    "module": "pkg.sub.svc",
+    "name": "b",
+    "node_id": "67c0f853185c218d9650361fb5a810b2e707336d",
+    "parent_class": "C",
+    "qualified_name": "C.b",
+    "semantic_path": "pkg/sub/svc.py::C.b",
+    "signature": "b(self)"
+   },
+   {
+    "definition_id": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+    "end_line": 21,
+    "file": "pkg/sub/svc.py",
+    "kind": "function",
+    "language": "python",
+    "line": 19,
+    "module": "pkg.sub.svc",
+    "name": "d",
+    "node_id": "fa7fd9e01b60cf93a346e9e7d574f378f39ef854",
+    "parent_class": "",
+    "qualified_name": "d",
+    "semantic_path": "pkg/sub/svc.py::d",
+    "signature": "d(x)"
+   },
+   {
+    "definition_id": "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
+    "end_line": 27,
+    "file": "pkg/sub/svc.py",
+    "kind": "function",
+    "language": "python",
+    "line": 24,
+    "module": "pkg.sub.svc",
+    "name": "d",
+    "node_id": "458da026bdb05d09e681ea8a13ebca1c12e66603",
+    "parent_class": "",
+    "qualified_name": "d",
+    "semantic_path": "pkg/sub/svc.py::d",
+    "signature": "d(x, y)"
+   },
+   {
+    "definition_id": "481200ee6990a136f442a506101f3940f538398e",
+    "end_line": 33,
+    "file": "pkg/sub/svc.py",
+    "kind": "function",
+    "language": "python",
+    "line": 30,
+    "module": "pkg.sub.svc",
+    "name": "caller",
+    "node_id": "f91cf6c8f8ed3a96b8178da38872de51c0d0515d",
+    "parent_class": "",
+    "qualified_name": "caller",
+    "semantic_path": "pkg/sub/svc.py::caller",
+    "signature": "caller()"
+   },
+   {
+    "definition_id": "672058f9892185b2caf2e1742ff98cc08a3575dc",
+    "end_line": 5,
+    "file": "tests/test_svc.py",
+    "kind": "function",
+    "language": "python",
+    "line": 4,
+    "module": "tests.test_svc",
+    "name": "test_target",
+    "node_id": "6be1e432e9e7a6569fe2cf4c7e5805f4448b17af",
+    "parent_class": "",
+    "qualified_name": "test_target",
+    "semantic_path": "tests/test_svc.py::test_target",
+    "signature": "test_target()"
+   }
+  ],
+  "imports": []
+ }
+}

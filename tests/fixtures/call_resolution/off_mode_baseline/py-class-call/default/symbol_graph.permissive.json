@@ -1,0 +1,178 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 44,
+   "callee_byte_start": 43,
+   "file": "a.py",
+   "from": "e9a14df56b5ad4bdf6c1010993de28343b2b8de4",
+   "id": "call:5cec969d22481576a1620ba5cf729bb17d506a0d",
+   "location": {
+    "byte_end": 46,
+    "byte_start": 43,
+    "end_line": 6,
+    "start_line": 6
+   },
+   "reference": "C",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 1,
+  "total_functions": 2,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c",
+    "a589b0496029e5b93b238d40f9b6cf63e43247ff"
+   ],
+   "file": "a.py",
+   "from": "e9a14df56b5ad4bdf6c1010993de28343b2b8de4",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "C",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:5cec969d22481576a1620ba5cf729bb17d506a0d",
+   "callee_byte_end": 44,
+   "callee_byte_start": 43,
+   "candidates": [
+    "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c",
+    "a589b0496029e5b93b238d40f9b6cf63e43247ff"
+   ],
+   "file": "a.py",
+   "from": "e9a14df56b5ad4bdf6c1010993de28343b2b8de4",
+   "is_internal": false,
+   "line": 6,
+   "location": {
+    "byte_end": 46,
+    "byte_start": 43,
+    "end_line": 6,
+    "start_line": 6
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "C",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c": {
+   "definition_id": "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c",
+   "end_line": 2,
+   "file": "b.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "b",
+   "name": "C",
+   "node_id": "d3d75808baa62a86048581495578fad155e7d59a",
+   "parent_class": "",
+   "qualified_name": "C",
+   "semantic_path": "b.py::C",
+   "signature": "C()"
+  },
+  "a589b0496029e5b93b238d40f9b6cf63e43247ff": {
+   "definition_id": "a589b0496029e5b93b238d40f9b6cf63e43247ff",
+   "end_line": 2,
+   "file": "a.py",
+   "kind": "class",
+   "language": "python",
+   "line": 1,
+   "module": "a",
+   "name": "C",
+   "node_id": "6f69205705ddfced6f1976e74cd370ecfaf2bdc0",
+   "parent_class": "",
+   "qualified_name": "C",
+   "semantic_path": "a.py::C",
+   "signature": null
+  },
+  "e9a14df56b5ad4bdf6c1010993de28343b2b8de4": {
+   "definition_id": "e9a14df56b5ad4bdf6c1010993de28343b2b8de4",
+   "end_line": 6,
+   "file": "a.py",
+   "kind": "function",
+   "language": "python",
+   "line": 5,
+   "module": "a",
+   "name": "make",
+   "node_id": "5cd05e5d728c8c4fa9c44918f1c7e5fe927e8dec",
+   "parent_class": "",
+   "qualified_name": "make",
+   "semantic_path": "a.py::make",
+   "signature": "make()"
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "a589b0496029e5b93b238d40f9b6cf63e43247ff",
+    "end_line": 2,
+    "file": "a.py",
+    "kind": "class",
+    "language": "python",
+    "line": 1,
+    "module": "a",
+    "name": "C",
+    "node_id": "6f69205705ddfced6f1976e74cd370ecfaf2bdc0",
+    "parent_class": "",
+    "qualified_name": "C",
+    "semantic_path": "a.py::C",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "e9a14df56b5ad4bdf6c1010993de28343b2b8de4",
+    "end_line": 6,
+    "file": "a.py",
+    "kind": "function",
+    "language": "python",
+    "line": 5,
+    "module": "a",
+    "name": "make",
+    "node_id": "5cd05e5d728c8c4fa9c44918f1c7e5fe927e8dec",
+    "parent_class": "",
+    "qualified_name": "make",
+    "semantic_path": "a.py::make",
+    "signature": "make()"
+   },
+   {
+    "definition_id": "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c",
+    "end_line": 2,
+    "file": "b.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "b",
+    "name": "C",
+    "node_id": "d3d75808baa62a86048581495578fad155e7d59a",
+    "parent_class": "",
+    "qualified_name": "C",
+    "semantic_path": "b.py::C",
+    "signature": "C()"
+   }
+  ],
+  "imports": []
+ }
+}

@@ -1,0 +1,172 @@
+{
+ "call_facts": [],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 2,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 0
+ },
+ "relationships": [],
+ "symbol_lookup": {
+  "2a666d76bc9e4f568b2defb9116359fc45005f78": {
+   "definition_id": "2a666d76bc9e4f568b2defb9116359fc45005f78",
+   "end_line": 1,
+   "file": "B.java",
+   "kind": "method",
+   "language": "java",
+   "line": 1,
+   "module": "B",
+   "name": "helper",
+   "node_id": "26270d13a951e300188c874cea263488862a94bd",
+   "parent_class": "B",
+   "qualified_name": "B.helper",
+   "semantic_path": "B.java::B.helper",
+   "signature": "helper() -> int"
+  },
+  "59770d4dcae90f18b97e51df2a2fbb4ae0af4b6d": {
+   "definition_id": "59770d4dcae90f18b97e51df2a2fbb4ae0af4b6d",
+   "end_line": 1,
+   "file": "B.java",
+   "kind": "class",
+   "language": "java",
+   "line": 1,
+   "module": "B",
+   "name": "B",
+   "node_id": "8439fe3fffd0bc5c81f9af7fc7973c6be747a5ef",
+   "parent_class": "",
+   "qualified_name": "B",
+   "semantic_path": "B.java::B",
+   "signature": null
+  },
+  "6d2cfe1fa89229297286b03d54701648ce2ba330": {
+   "definition_id": "6d2cfe1fa89229297286b03d54701648ce2ba330",
+   "end_line": 1,
+   "file": "A.java",
+   "kind": "class",
+   "language": "java",
+   "line": 1,
+   "module": "A",
+   "name": "A",
+   "node_id": "be17a2ecc8aba265649d2a10a79abb469466dc00",
+   "parent_class": "",
+   "qualified_name": "A",
+   "semantic_path": "A.java::A",
+   "signature": null
+  },
+  "7eaeaf8cf0520c624955e4272f4fa22d4dfeed2d": {
+   "definition_id": "7eaeaf8cf0520c624955e4272f4fa22d4dfeed2d",
+   "end_line": 1,
+   "file": "A.java",
+   "kind": "method",
+   "language": "java",
+   "line": 1,
+   "module": "A",
+   "name": "helper",
+   "node_id": "774bc6f71530e9f72c13c2b04d1ec148cfe0b956",
+   "parent_class": "A",
+   "qualified_name": "A.helper",
+   "semantic_path": "A.java::A.helper",
+   "signature": "helper() -> int"
+  },
+  "916f191d245ea1a6641d4b0a9acfd503edc67317": {
+   "definition_id": "916f191d245ea1a6641d4b0a9acfd503edc67317",
+   "end_line": 1,
+   "file": "A.java",
+   "kind": "method",
+   "language": "java",
+   "line": 1,
+   "module": "A",
+   "name": "use",
+   "node_id": "9fc08e1c15617a2b122b1d65607f92c59dd061e2",
+   "parent_class": "A",
+   "qualified_name": "A.use",
+   "semantic_path": "A.java::A.use",
+   "signature": "use() -> int"
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "6d2cfe1fa89229297286b03d54701648ce2ba330",
+    "end_line": 1,
+    "file": "A.java",
+    "kind": "class",
+    "language": "java",
+    "line": 1,
+    "module": "A",
+    "name": "A",
+    "node_id": "be17a2ecc8aba265649d2a10a79abb469466dc00",
+    "parent_class": "",
+    "qualified_name": "A",
+    "semantic_path": "A.java::A",
+    "signature": null
+   },
+   {
+    "definition_id": "59770d4dcae90f18b97e51df2a2fbb4ae0af4b6d",
+    "end_line": 1,
+    "file": "B.java",
+    "kind": "class",
+    "language": "java",
+    "line": 1,
+    "module": "B",
+    "name": "B",
+    "node_id": "8439fe3fffd0bc5c81f9af7fc7973c6be747a5ef",
+    "parent_class": "",
+    "qualified_name": "B",
+    "semantic_path": "B.java::B",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "7eaeaf8cf0520c624955e4272f4fa22d4dfeed2d",
+    "end_line": 1,
+    "file": "A.java",
+    "kind": "method",
+    "language": "java",
+    "line": 1,
+    "module": "A",
+    "name": "helper",
+    "node_id": "774bc6f71530e9f72c13c2b04d1ec148cfe0b956",
+    "parent_class": "A",
+    "qualified_name": "A.helper",
+    "semantic_path": "A.java::A.helper",
+    "signature": "helper() -> int"
+   },
+   {
+    "definition_id": "916f191d245ea1a6641d4b0a9acfd503edc67317",
+    "end_line": 1,
+    "file": "A.java",
+    "kind": "method",
+    "language": "java",
+    "line": 1,
+    "module": "A",
+    "name": "use",
+    "node_id": "9fc08e1c15617a2b122b1d65607f92c59dd061e2",
+    "parent_class": "A",
+    "qualified_name": "A.use",
+    "semantic_path": "A.java::A.use",
+    "signature": "use() -> int"
+   },
+   {
+    "definition_id": "2a666d76bc9e4f568b2defb9116359fc45005f78",
+    "end_line": 1,
+    "file": "B.java",
+    "kind": "method",
+    "language": "java",
+    "line": 1,
+    "module": "B",
+    "name": "helper",
+    "node_id": "26270d13a951e300188c874cea263488862a94bd",
+    "parent_class": "B",
+    "qualified_name": "B.helper",
+    "semantic_path": "B.java::B.helper",
+    "signature": "helper() -> int"
+   }
+  ],
+  "imports": []
+ }
+}

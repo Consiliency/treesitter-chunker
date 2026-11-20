@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:55dd988a8441eb9e08c6fa25e7716ab1d80a28e4",
+     "call_span": [
+      100,
+      108
+     ],
+     "callee_span": [
+      100,
+      106
+     ],
+     "caller": "go",
+     "file": "app.py",
+     "line": 8,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-type-checking"
+  }
+ },
+ "source": "authored",
+ "tree": "py-type-checking"
+}

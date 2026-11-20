@@ -1,0 +1,339 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 77,
+   "callee_byte_start": 71,
+   "file": "c.go",
+   "from": "00a7d290703bc04b86e0f35696ff6f8ea2a519ac",
+   "id": "call:466c95ac7b32cb31a4bfa9806c13ca6bb5dfe570",
+   "location": {
+    "byte_end": 79,
+    "byte_start": 71,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "reference": "helper",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 37,
+   "callee_byte_start": 31,
+   "file": "x.ts",
+   "from": "d1aac4f9be3e8d9cf42788bec84ff452ee5b71cc",
+   "id": "call:8ad64a887fb737c49adf2a51a63ef8a50830b4ad",
+   "location": {
+    "byte_end": 39,
+    "byte_start": 31,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "reference": "helper",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 5,
+  "total_classes": 0,
+  "total_functions": 6,
+  "total_imports": 0,
+  "total_relationships": 4
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+    "8928a88f3719d8fcc2059218e6116210b5e8fafc",
+    "d863111925e70aaaaba83433e60fea8fcc91ca6a",
+    "ecc02047dc2440411d68ed540d234c52240969bc"
+   ],
+   "file": "c.go",
+   "from": "00a7d290703bc04b86e0f35696ff6f8ea2a519ac",
+   "is_internal": false,
+   "line": 5,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "helper",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+    "8928a88f3719d8fcc2059218e6116210b5e8fafc",
+    "d863111925e70aaaaba83433e60fea8fcc91ca6a",
+    "ecc02047dc2440411d68ed540d234c52240969bc"
+   ],
+   "file": "x.ts",
+   "from": "d1aac4f9be3e8d9cf42788bec84ff452ee5b71cc",
+   "is_internal": false,
+   "line": 1,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "helper",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:466c95ac7b32cb31a4bfa9806c13ca6bb5dfe570",
+   "callee_byte_end": 77,
+   "callee_byte_start": 71,
+   "candidates": [
+    "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+    "8928a88f3719d8fcc2059218e6116210b5e8fafc",
+    "d863111925e70aaaaba83433e60fea8fcc91ca6a",
+    "ecc02047dc2440411d68ed540d234c52240969bc"
+   ],
+   "file": "c.go",
+   "from": "00a7d290703bc04b86e0f35696ff6f8ea2a519ac",
+   "is_internal": false,
+   "line": 5,
+   "location": {
+    "byte_end": 79,
+    "byte_start": 71,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "helper",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:8ad64a887fb737c49adf2a51a63ef8a50830b4ad",
+   "callee_byte_end": 37,
+   "callee_byte_start": 31,
+   "candidates": [
+    "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+    "8928a88f3719d8fcc2059218e6116210b5e8fafc",
+    "d863111925e70aaaaba83433e60fea8fcc91ca6a",
+    "ecc02047dc2440411d68ed540d234c52240969bc"
+   ],
+   "file": "x.ts",
+   "from": "d1aac4f9be3e8d9cf42788bec84ff452ee5b71cc",
+   "is_internal": false,
+   "line": 1,
+   "location": {
+    "byte_end": 39,
+    "byte_start": 31,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "helper",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "00a7d290703bc04b86e0f35696ff6f8ea2a519ac": {
+   "definition_id": "00a7d290703bc04b86e0f35696ff6f8ea2a519ac",
+   "end_line": 5,
+   "file": "c.go",
+   "kind": "function",
+   "language": "go",
+   "line": 5,
+   "module": "c",
+   "name": "use2",
+   "node_id": "d81fb5c6a548eae448f059c8e5cd4c07eeb05734",
+   "parent_class": "",
+   "qualified_name": "use2",
+   "semantic_path": "c.go::use2",
+   "signature": "use2() -> int"
+  },
+  "6aaa93ccf7af52ba054b2c63e2223607d6449855": {
+   "definition_id": "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+   "end_line": 2,
+   "file": "b.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "b",
+   "name": "helper",
+   "node_id": "bcf8ed6af91e196cff190514418ea2ef4504d133",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "b.py::helper",
+   "signature": "helper()"
+  },
+  "8928a88f3719d8fcc2059218e6116210b5e8fafc": {
+   "definition_id": "8928a88f3719d8fcc2059218e6116210b5e8fafc",
+   "end_line": 3,
+   "file": "c.go",
+   "kind": "function",
+   "language": "go",
+   "line": 3,
+   "module": "c",
+   "name": "helper",
+   "node_id": "83965eefb2d23c047413f381fe48a946faa7a1e1",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "c.go::helper",
+   "signature": "helper() -> int"
+  },
+  "d1aac4f9be3e8d9cf42788bec84ff452ee5b71cc": {
+   "definition_id": "d1aac4f9be3e8d9cf42788bec84ff452ee5b71cc",
+   "end_line": 1,
+   "file": "x.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "x",
+   "name": "use",
+   "node_id": "a504e3541dd16fda45d2acab98afa3acc21d9595",
+   "parent_class": "",
+   "qualified_name": "use",
+   "semantic_path": "x.ts::use",
+   "signature": "use()"
+  },
+  "d863111925e70aaaaba83433e60fea8fcc91ca6a": {
+   "definition_id": "d863111925e70aaaaba83433e60fea8fcc91ca6a",
+   "end_line": 1,
+   "file": "d.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "d",
+   "name": "helper",
+   "node_id": "c2a91ed68e9ad4291ada5aace16ab3c56238d428",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "d.ts::helper",
+   "signature": "helper()"
+  },
+  "ecc02047dc2440411d68ed540d234c52240969bc": {
+   "definition_id": "ecc02047dc2440411d68ed540d234c52240969bc",
+   "end_line": 1,
+   "file": "a.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "a",
+   "name": "helper",
+   "node_id": "f5da83f4ed570a919110f0b55df70475be5e35cc",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "a.ts::helper",
+   "signature": "helper()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "ecc02047dc2440411d68ed540d234c52240969bc",
+    "end_line": 1,
+    "file": "a.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "a",
+    "name": "helper",
+    "node_id": "f5da83f4ed570a919110f0b55df70475be5e35cc",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "a.ts::helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+    "end_line": 2,
+    "file": "b.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "b",
+    "name": "helper",
+    "node_id": "bcf8ed6af91e196cff190514418ea2ef4504d133",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "b.py::helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "8928a88f3719d8fcc2059218e6116210b5e8fafc",
+    "end_line": 3,
+    "file": "c.go",
+    "kind": "function",
+    "language": "go",
+    "line": 3,
+    "module": "c",
+    "name": "helper",
+    "node_id": "83965eefb2d23c047413f381fe48a946faa7a1e1",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "c.go::helper",
+    "signature": "helper() -> int"
+   },
+   {
+    "definition_id": "00a7d290703bc04b86e0f35696ff6f8ea2a519ac",
+    "end_line": 5,
+    "file": "c.go",
+    "kind": "function",
+    "language": "go",
+    "line": 5,
+    "module": "c",
+    "name": "use2",
+    "node_id": "d81fb5c6a548eae448f059c8e5cd4c07eeb05734",
+    "parent_class": "",
+    "qualified_name": "use2",
+    "semantic_path": "c.go::use2",
+    "signature": "use2() -> int"
+   },
+   {
+    "definition_id": "d863111925e70aaaaba83433e60fea8fcc91ca6a",
+    "end_line": 1,
+    "file": "d.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "d",
+    "name": "helper",
+    "node_id": "c2a91ed68e9ad4291ada5aace16ab3c56238d428",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "d.ts::helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "d1aac4f9be3e8d9cf42788bec84ff452ee5b71cc",
+    "end_line": 1,
+    "file": "x.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "x",
+    "name": "use",
+    "node_id": "a504e3541dd16fda45d2acab98afa3acc21d9595",
+    "parent_class": "",
+    "qualified_name": "use",
+    "semantic_path": "x.ts::use",
+    "signature": "use()"
+   }
+  ],
+  "imports": []
+ }
+}

@@ -1,0 +1,1487 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:58bab791dfd3670750f5d9dc456bffe5d60b1df7",
+   "candidates": [
+    "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+    "e7638304889e916fac8b421b2f875bae0f18f24c"
+   ],
+   "file": "web/svc.ts",
+   "id": "call:58bab791dfd3670750f5d9dc456bffe5d60b1df7",
+   "location": {
+    "byte_end": 328,
+    "byte_start": 324,
+    "end_line": 13,
+    "start_line": 13
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "target": "d",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:acb98f8203c9ff9531e05bf1956202b4cf306787",
+   "candidates": [
+    "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+    "e7638304889e916fac8b421b2f875bae0f18f24c"
+   ],
+   "file": "web/svc.ts",
+   "id": "call:acb98f8203c9ff9531e05bf1956202b4cf306787",
+   "location": {
+    "byte_end": 320,
+    "byte_start": 316,
+    "end_line": 12,
+    "start_line": 12
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "target": "d",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+    "e7638304889e916fac8b421b2f875bae0f18f24c"
+   ],
+   "id": "edge:f46298d17cc7d437",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "target": "d",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:e1ea3e3745108863810743571f3eba021cd01c4c",
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "id": "call:e1ea3e3745108863810743571f3eba021cd01c4c",
+   "location": {
+    "byte_end": 343,
+    "byte_start": 339,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "target": "t",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "id": "edge:e36c92da97a56085",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "target": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:212083c36d79f6b5",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "v",
+   "resolution": "unresolved",
+   "source": "24ab644144b8abb52389efc2487b1ab5dde4f811",
+   "target": "v",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:4a06197ad7bf5d4ab8e7957a7887c7d6918eb685",
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "id": "call:4a06197ad7bf5d4ab8e7957a7887c7d6918eb685",
+   "location": {
+    "byte_end": 156,
+    "byte_start": 148,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "target": "t",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:973f15a9a0e20b94a0feacf077f2c4f711683eb2",
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "id": "call:973f15a9a0e20b94a0feacf077f2c4f711683eb2",
+   "location": {
+    "byte_end": 139,
+    "byte_start": 135,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "target": "t",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "id": "edge:13e3965dd4e804a8",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "target": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:8ba61d9623ace46f",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "v",
+   "resolution": "unresolved",
+   "source": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "target": "v",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:5cc023878af64aa0",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "metadata": {
+    "file": "web/svc.tsx",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "v",
+   "resolution": "unresolved",
+   "source": "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4",
+   "target": "v",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:31c1ef0ac420b7bbd59cf093f1163f7ad3e56576",
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "id": "call:31c1ef0ac420b7bbd59cf093f1163f7ad3e56576",
+   "location": {
+    "byte_end": 256,
+    "byte_start": 252,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "target": "t",
+   "type": "calls"
+  },
+  {
+   "call_site_id": "call:6f2e59fff1587949bd4ca371a11c6cb04b219ad0",
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "id": "call:6f2e59fff1587949bd4ca371a11c6cb04b219ad0",
+   "location": {
+    "byte_end": 274,
+    "byte_start": 265,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "target": "t",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "id": "edge:6d987b4f0e4e0af4",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "target": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:410cdec59c4e5480",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "x",
+   "resolution": "unresolved",
+   "source": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "target": "x",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:2e0eba7f3615879c",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "y",
+   "resolution": "unresolved",
+   "source": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "target": "y",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "id": "edge:a8043f3caaca0409",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "756d54bbd6c24ce9d8b71ad308c01d93418b4013",
+   "target": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:d72270abaa44a9b9",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "v",
+   "resolution": "unresolved",
+   "source": "756d54bbd6c24ce9d8b71ad308c01d93418b4013",
+   "target": "v",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:ee856a48c3d3f5f1d5f3809891ffc841ca6ce048",
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.tsx",
+   "id": "call:ee856a48c3d3f5f1d5f3809891ffc841ca6ce048",
+   "location": {
+    "byte_end": 81,
+    "byte_start": 77,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "metadata": {
+    "file": "web/svc.tsx",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "8f28dfbd4c972d5c7e0f20f236df2967a35220a2",
+   "target": "t",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "id": "edge:aa86e6cc9bdeca18",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "metadata": {
+    "file": "web/svc.tsx",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "8f28dfbd4c972d5c7e0f20f236df2967a35220a2",
+   "target": "t",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:3bf1247436a0431fa203b5e4fddfd9ec7cb721dc",
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "file": "web/svc.ts",
+   "id": "call:3bf1247436a0431fa203b5e4fddfd9ec7cb721dc",
+   "location": {
+    "byte_end": 105,
+    "byte_start": 101,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "b89843234938e348303bf11178b7f4417de80c0e",
+   "target": "t",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "24ab644144b8abb52389efc2487b1ab5dde4f811",
+    "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   ],
+   "id": "edge:9a7fc4fd93a6934b",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "source": "b89843234938e348303bf11178b7f4417de80c0e",
+   "target": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:f9d4239f097d74f5",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "v",
+   "resolution": "unresolved",
+   "source": "b89843234938e348303bf11178b7f4417de80c0e",
+   "target": "v",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+    "e7638304889e916fac8b421b2f875bae0f18f24c"
+   ],
+   "id": "edge:a5b285f0aac2a991",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 8,
+    "start_line": 8
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "e7638304889e916fac8b421b2f875bae0f18f24c",
+   "target": "d",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:5c413746d7f45a32",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 8,
+    "start_line": 8
+   },
+   "metadata": {
+    "file": "web/svc.ts",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "x",
+   "resolution": "unresolved",
+   "source": "e7638304889e916fac8b421b2f875bae0f18f24c",
+   "target": "x",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:3fbae3d9aacf755ec33a4f0351a0684970df3d70",
+   "diagnostics": [],
+   "id": "6001e7917c791411d233326f8da0ac5270943630",
+   "language": "typescript",
+   "parser": "tree-sitter-typescript",
+   "path": "web/svc.ts",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:40399697e8d8d2ba06cd0ca7c0cd58def2c2dd7e",
+   "diagnostics": [],
+   "id": "8c13148d741914dac52ec8329c9e708058618985",
+   "language": "tsx",
+   "parser": "tree-sitter-tsx",
+   "path": "web/svc.tsx",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 17,
+  "diagnostics_total": 0,
+  "edges_total": 25,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 2,
+  "files_processed": 2,
+  "files_skipped": 0,
+  "files_total": 2,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 17,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 8
+ },
+ "nodes": [
+  {
+   "definition_id": "099332c98625a32fcc1c29d1b7dc4770277f9835",
+   "file_id": "8c13148d741914dac52ec8329c9e708058618985",
+   "id": "099332c98625a32fcc1c29d1b7dc4770277f9835",
+   "identity": {
+    "source": "definition_id",
+    "value": "099332c98625a32fcc1c29d1b7dc4770277f9835"
+   },
+   "kind": "variable_declarator",
+   "language": "tsx",
+   "metadata": {
+    "dependencies": [
+     "t"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: tsx\nfile: web/svc.tsx\nkind: variable_declarator\nsymbol: View\nqualified name: View\nsemantic path: web/svc.tsx::View\ndependencies: t\ncontent:\nView = () => t(1)"
+   },
+   "node_id": "d4af8c6cc178142d485685393221c23d8088d46c",
+   "parent": "ef90778b48c3de97b07f3ba15686df55aba0f0b4",
+   "path": "web/svc.tsx",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "View",
+   "relationships": [],
+   "semantic_path": "web/svc.tsx::View",
+   "signature": null,
+   "span": {
+    "byte_end": 81,
+    "byte_start": 64,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "View",
+   "symbol_id": "6657a1b7707985b576ab3673c934b4a10a3ca5b2"
+  },
+  {
+   "definition_id": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "0d780dd8b26cca90131335b0851a3ebe59a927cd",
+   "identity": {
+    "source": "definition_id",
+    "value": "0d780dd8b26cca90131335b0851a3ebe59a927cd"
+   },
+   "kind": "function",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "d",
+     "t"
+    ],
+    "exports": [
+     "caller"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: function\nsymbol: caller\nqualified name: caller\nsemantic path: web/svc.ts::caller\nsignature text: caller() -> number\nexports: caller\ndependencies: d, t\ncontent:\nfunction caller(): number {\n  d(1);\n  d(2);\n  return t(3);\n}"
+   },
+   "node_id": "e79849a550f659c7a707b2c75a94c67b3446782e",
+   "parent": "f0252f40d5cb8327742745e50f01ee09d8d97f4f",
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "caller",
+   "relationships": [
+    "call:58bab791dfd3670750f5d9dc456bffe5d60b1df7",
+    "call:acb98f8203c9ff9531e05bf1956202b4cf306787",
+    "call:e1ea3e3745108863810743571f3eba021cd01c4c",
+    "edge:e36c92da97a56085",
+    "edge:f46298d17cc7d437"
+   ],
+   "semantic_path": "web/svc.ts::caller",
+   "signature": "caller() -> number",
+   "span": {
+    "byte_end": 346,
+    "byte_start": 286,
+    "end_line": 15,
+    "start_line": 11
+   },
+   "symbol": "caller",
+   "symbol_id": "5cdafcaea4cd91dff54386d3c514924b8f327534"
+  },
+  {
+   "definition_id": "24ab644144b8abb52389efc2487b1ab5dde4f811",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "24ab644144b8abb52389efc2487b1ab5dde4f811",
+   "identity": {
+    "source": "definition_id",
+    "value": "24ab644144b8abb52389efc2487b1ab5dde4f811"
+   },
+   "kind": "function",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "v"
+    ],
+    "exports": [
+     "t"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: function\nsymbol: t\nqualified name: t\nsemantic path: web/svc.ts::t\nsignature text: t(v: number) -> number\nexports: t\ndependencies: v\ncontent:\nfunction t(v: number): number { return v; }"
+   },
+   "node_id": "09be345c84364c7e3f664b0dd7cddb2947b1418c",
+   "parent": "4508c4e94b39b651772c5cd312e5fa0a5fc8d142",
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "t",
+   "relationships": [
+    "edge:212083c36d79f6b5"
+   ],
+   "semantic_path": "web/svc.ts::t",
+   "signature": "t(v: number) -> number",
+   "span": {
+    "byte_end": 50,
+    "byte_start": 7,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "t",
+   "symbol_id": "b3af4600af92a2456412236bde0c50989e1dab2c"
+  },
+  {
+   "definition_id": "2cd85535161720370911549d3c97419fd137f787",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "2cd85535161720370911549d3c97419fd137f787",
+   "identity": {
+    "source": "definition_id",
+    "value": "2cd85535161720370911549d3c97419fd137f787"
+   },
+   "kind": "export_statement",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "d",
+     "t"
+    ],
+    "exports": [
+     "caller"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: export_statement\nsemantic path: web/svc.ts\nexports: caller\ndependencies: d, t\ncontent:\nexport function caller(): number {\n  d(1);\n  d(2);\n  return t(3);\n}"
+   },
+   "node_id": "f0252f40d5cb8327742745e50f01ee09d8d97f4f",
+   "parent": null,
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "web/svc.ts",
+   "signature": null,
+   "span": {
+    "byte_end": 346,
+    "byte_start": 279,
+    "end_line": 15,
+    "start_line": 11
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e",
+   "identity": {
+    "source": "definition_id",
+    "value": "3c6580169dd9c1fbba4c05b386b3b2f334f7392e"
+   },
+   "kind": "method",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "t",
+     "v"
+    ],
+    "exports": [
+     "m2"
+    ],
+    "imports": [],
+    "parent_symbol": "A",
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: method\nsymbol: m2\nqualified name: A.m2\nparent symbol: A\nsemantic path: web/svc.ts::A.m2\nsignature text: m2(v: number) -> number\nexports: m2\ndependencies: t, v\ncontent:\nm2(v: number): number { t(v); return t(v + 1); }"
+   },
+   "node_id": "0bb98da6d8506e540d6c55896d23621d032fb0e6",
+   "parent": "9745ccdbdab499837306b3591c9d9d4204e208e7",
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "A.m2",
+   "relationships": [
+    "call:4a06197ad7bf5d4ab8e7957a7887c7d6918eb685",
+    "call:973f15a9a0e20b94a0feacf077f2c4f711683eb2",
+    "edge:13e3965dd4e804a8",
+    "edge:8ba61d9623ace46f"
+   ],
+   "semantic_path": "web/svc.ts::A.m2",
+   "signature": "m2(v: number) -> number",
+   "span": {
+    "byte_end": 159,
+    "byte_start": 111,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "symbol": "m2",
+   "symbol_id": "48eef64eb9553a4dfb318e37685a5dcb9f1a3ad7"
+  },
+  {
+   "definition_id": "40aa1faac70161282883eb328f799dfd1bc3ffbb",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "40aa1faac70161282883eb328f799dfd1bc3ffbb",
+   "identity": {
+    "source": "definition_id",
+    "value": "40aa1faac70161282883eb328f799dfd1bc3ffbb"
+   },
+   "kind": "export_statement",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "t",
+     "x",
+     "y"
+    ],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: export_statement\nsemantic path: web/svc.ts\nexports: d\ndependencies: t, x, y\ncontent:\nexport function d(x: number, y?: number): number { t(x); return t(y ?? 0); }"
+   },
+   "node_id": "ad7e6e2adbc3642c2a8ffde64854dcc113925217",
+   "parent": null,
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "web/svc.ts",
+   "signature": null,
+   "span": {
+    "byte_end": 277,
+    "byte_start": 201,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4",
+   "file_id": "8c13148d741914dac52ec8329c9e708058618985",
+   "id": "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4",
+   "identity": {
+    "source": "definition_id",
+    "value": "44dbd9950abd55dbc08bd0d20d2a2dd87110dfb4"
+   },
+   "kind": "function",
+   "language": "tsx",
+   "metadata": {
+    "dependencies": [
+     "v"
+    ],
+    "exports": [
+     "t"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: tsx\nfile: web/svc.tsx\nkind: function\nsymbol: t\nqualified name: t\nsemantic path: web/svc.tsx::t\nsignature text: t(v: number) -> number\nexports: t\ndependencies: v\ncontent:\nfunction t(v: number): number { return v; }"
+   },
+   "node_id": "7f680f2d66ed54fa087745be8918002d9b9371c8",
+   "parent": "afe8f82ecebd477489f0b728b1b57bf7281ae245",
+   "path": "web/svc.tsx",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "t",
+   "relationships": [
+    "edge:5cc023878af64aa0"
+   ],
+   "semantic_path": "web/svc.tsx::t",
+   "signature": "t(v: number) -> number",
+   "span": {
+    "byte_end": 50,
+    "byte_start": 7,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "t",
+   "symbol_id": "1e06b2805c9f9d02a0481243a8e34c55d47a1b64"
+  },
+  {
+   "definition_id": "4ed525c9f9ed9a19637fca04e206d9096eb97f42",
+   "file_id": "8c13148d741914dac52ec8329c9e708058618985",
+   "id": "4ed525c9f9ed9a19637fca04e206d9096eb97f42",
+   "identity": {
+    "source": "definition_id",
+    "value": "4ed525c9f9ed9a19637fca04e206d9096eb97f42"
+   },
+   "kind": "export_statement",
+   "language": "tsx",
+   "metadata": {
+    "dependencies": [
+     "t"
+    ],
+    "exports": [
+     "View"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: tsx\nfile: web/svc.tsx\nkind: export_statement\nsemantic path: web/svc.tsx\nexports: View\ndependencies: t\ncontent:\nexport const View = () => t(1);"
+   },
+   "node_id": "ef90778b48c3de97b07f3ba15686df55aba0f0b4",
+   "parent": null,
+   "path": "web/svc.tsx",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "web/svc.tsx",
+   "signature": null,
+   "span": {
+    "byte_end": 82,
+    "byte_start": 51,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
+   "identity": {
+    "source": "definition_id",
+    "value": "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1"
+   },
+   "kind": "function",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "t",
+     "x",
+     "y"
+    ],
+    "exports": [
+     "d"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: web/svc.ts::d\nsignature text: d(x: number, y?: number) -> number\nexports: d\ndependencies: t, x, y\ncontent:\nfunction d(x: number, y?: number): number { t(x); return t(y ?? 0); }"
+   },
+   "node_id": "d7978992aab16f93ce99dc4f4c53c70008e823c4",
+   "parent": "ad7e6e2adbc3642c2a8ffde64854dcc113925217",
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [
+    "call:31c1ef0ac420b7bbd59cf093f1163f7ad3e56576",
+    "call:6f2e59fff1587949bd4ca371a11c6cb04b219ad0",
+    "edge:2e0eba7f3615879c",
+    "edge:410cdec59c4e5480",
+    "edge:6d987b4f0e4e0af4"
+   ],
+   "semantic_path": "web/svc.ts::d",
+   "signature": "d(x: number, y?: number) -> number",
+   "span": {
+    "byte_end": 277,
+    "byte_start": 208,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "symbol": "d",
+   "symbol_id": "983f36359f49cdaf79c8e49aed47e51953a1a70b"
+  },
+  {
+   "definition_id": "6a17b88a6a55c44fa585bded61bc62404612c5a7",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "6a17b88a6a55c44fa585bded61bc62404612c5a7",
+   "identity": {
+    "source": "definition_id",
+    "value": "6a17b88a6a55c44fa585bded61bc62404612c5a7"
+   },
+   "kind": "export_statement",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "d",
+     "x"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: export_statement\nsemantic path: web/svc.ts\ndependencies: d, x\ncontent:\nexport function d(x: number): number;"
+   },
+   "node_id": "183435ef597902e4ac7014697c7cdf0eb9c89eec",
+   "parent": null,
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "web/svc.ts",
+   "signature": null,
+   "span": {
+    "byte_end": 200,
+    "byte_start": 163,
+    "end_line": 8,
+    "start_line": 8
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "756d54bbd6c24ce9d8b71ad308c01d93418b4013",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "756d54bbd6c24ce9d8b71ad308c01d93418b4013",
+   "identity": {
+    "source": "definition_id",
+    "value": "756d54bbd6c24ce9d8b71ad308c01d93418b4013"
+   },
+   "kind": "class",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "A",
+     "t",
+     "v"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: class\nsymbol: A\nqualified name: A\nsemantic path: web/svc.ts::A\ndependencies: A, t, v\ncontent:\nclass A {\n  m(v: number): number { return t(v); }\n  m2(v: number): number { t(v); return t(v + 1); }\n}"
+   },
+   "node_id": "9745ccdbdab499837306b3591c9d9d4204e208e7",
+   "parent": "a6b057780a431e46f68c150f603b9f2afe0cb940",
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "A",
+   "relationships": [
+    "edge:a8043f3caaca0409",
+    "edge:d72270abaa44a9b9"
+   ],
+   "semantic_path": "web/svc.ts::A",
+   "signature": null,
+   "span": {
+    "byte_end": 161,
+    "byte_start": 59,
+    "end_line": 6,
+    "start_line": 3
+   },
+   "symbol": "A",
+   "symbol_id": "d4a1287b68f83babadfafa2635a290e4c41423b3"
+  },
+  {
+   "definition_id": "790c94aedcc93a1f234322f1a5520fa4c1d6d425",
+   "file_id": "8c13148d741914dac52ec8329c9e708058618985",
+   "id": "790c94aedcc93a1f234322f1a5520fa4c1d6d425",
+   "identity": {
+    "source": "definition_id",
+    "value": "790c94aedcc93a1f234322f1a5520fa4c1d6d425"
+   },
+   "kind": "export_statement",
+   "language": "tsx",
+   "metadata": {
+    "dependencies": [
+     "v"
+    ],
+    "exports": [
+     "t"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: tsx\nfile: web/svc.tsx\nkind: export_statement\nsemantic path: web/svc.tsx\nexports: t\ndependencies: v\ncontent:\nexport function t(v: number): number { return v; }"
+   },
+   "node_id": "afe8f82ecebd477489f0b728b1b57bf7281ae245",
+   "parent": null,
+   "path": "web/svc.tsx",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "web/svc.tsx",
+   "signature": null,
+   "span": {
+    "byte_end": 50,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "8f28dfbd4c972d5c7e0f20f236df2967a35220a2",
+   "file_id": "8c13148d741914dac52ec8329c9e708058618985",
+   "id": "8f28dfbd4c972d5c7e0f20f236df2967a35220a2",
+   "identity": {
+    "source": "definition_id",
+    "value": "8f28dfbd4c972d5c7e0f20f236df2967a35220a2"
+   },
+   "kind": "function",
+   "language": "tsx",
+   "metadata": {
+    "dependencies": [
+     "t"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: tsx\nfile: web/svc.tsx\nkind: function\nsymbol: <anonymous>\nqualified name: View\nsemantic path: web/svc.tsx::View\nsignature text: <anonymous>()\ndependencies: t\ncontent:\n() => t(1)"
+   },
+   "node_id": "4d8b72531e0dddc83ddd5199bf0080de240c06d4",
+   "parent": "d4af8c6cc178142d485685393221c23d8088d46c",
+   "path": "web/svc.tsx",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "View",
+   "relationships": [
+    "call:ee856a48c3d3f5f1d5f3809891ffc841ca6ce048",
+    "edge:aa86e6cc9bdeca18"
+   ],
+   "semantic_path": "web/svc.tsx::View",
+   "signature": "<anonymous>()",
+   "span": {
+    "byte_end": 81,
+    "byte_start": 71,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "<anonymous>",
+   "symbol_id": "1b387d419037fd5e94c88fab9c43bc5d45efba2f"
+  },
+  {
+   "definition_id": "9aed292398c086b19ef9cc4151094ed85104ad36",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "9aed292398c086b19ef9cc4151094ed85104ad36",
+   "identity": {
+    "source": "definition_id",
+    "value": "9aed292398c086b19ef9cc4151094ed85104ad36"
+   },
+   "kind": "export_statement",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "v"
+    ],
+    "exports": [
+     "t"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: export_statement\nsemantic path: web/svc.ts\nexports: t\ndependencies: v\ncontent:\nexport function t(v: number): number { return v; }"
+   },
+   "node_id": "4508c4e94b39b651772c5cd312e5fa0a5fc8d142",
+   "parent": null,
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "web/svc.ts",
+   "signature": null,
+   "span": {
+    "byte_end": 50,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "a8ec75cda75b91e40de398714a3621203035e710",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "a8ec75cda75b91e40de398714a3621203035e710",
+   "identity": {
+    "source": "definition_id",
+    "value": "a8ec75cda75b91e40de398714a3621203035e710"
+   },
+   "kind": "export_statement",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "A",
+     "t",
+     "v"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: export_statement\nsemantic path: web/svc.ts\ndependencies: A, t, v\ncontent:\nexport class A {\n  m(v: number): number { return t(v); }\n  m2(v: number): number { t(v); return t(v + 1); }\n}"
+   },
+   "node_id": "a6b057780a431e46f68c150f603b9f2afe0cb940",
+   "parent": null,
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "web/svc.ts",
+   "signature": null,
+   "span": {
+    "byte_end": 161,
+    "byte_start": 52,
+    "end_line": 6,
+    "start_line": 3
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "b89843234938e348303bf11178b7f4417de80c0e",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "b89843234938e348303bf11178b7f4417de80c0e",
+   "identity": {
+    "source": "definition_id",
+    "value": "b89843234938e348303bf11178b7f4417de80c0e"
+   },
+   "kind": "method",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "t",
+     "v"
+    ],
+    "exports": [
+     "m"
+    ],
+    "imports": [],
+    "parent_symbol": "A",
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: method\nsymbol: m\nqualified name: A.m\nparent symbol: A\nsemantic path: web/svc.ts::A.m\nsignature text: m(v: number) -> number\nexports: m\ndependencies: t, v\ncontent:\nm(v: number): number { return t(v); }"
+   },
+   "node_id": "2e92eccd95712da855dc962725d531529c320674",
+   "parent": "9745ccdbdab499837306b3591c9d9d4204e208e7",
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "A.m",
+   "relationships": [
+    "call:3bf1247436a0431fa203b5e4fddfd9ec7cb721dc",
+    "edge:9a7fc4fd93a6934b",
+    "edge:f9d4239f097d74f5"
+   ],
+   "semantic_path": "web/svc.ts::A.m",
+   "signature": "m(v: number) -> number",
+   "span": {
+    "byte_end": 108,
+    "byte_start": 71,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "symbol": "m",
+   "symbol_id": "c51ff6a75d6fa35d32ec759551781521deffaaef"
+  },
+  {
+   "definition_id": "e7638304889e916fac8b421b2f875bae0f18f24c",
+   "file_id": "6001e7917c791411d233326f8da0ac5270943630",
+   "id": "e7638304889e916fac8b421b2f875bae0f18f24c",
+   "identity": {
+    "source": "definition_id",
+    "value": "e7638304889e916fac8b421b2f875bae0f18f24c"
+   },
+   "kind": "function",
+   "language": "typescript",
+   "metadata": {
+    "dependencies": [
+     "d",
+     "x"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: typescript\nfile: web/svc.ts\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: web/svc.ts::d\ndependencies: d, x\ncontent:\nfunction d(x: number): number;"
+   },
+   "node_id": "0485938785112a5371764ba5ce701fd15984f925",
+   "parent": "183435ef597902e4ac7014697c7cdf0eb9c89eec",
+   "path": "web/svc.ts",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [
+    "edge:5c413746d7f45a32",
+    "edge:a5b285f0aac2a991"
+   ],
+   "semantic_path": "web/svc.ts::d",
+   "signature": null,
+   "span": {
+    "byte_end": 200,
+    "byte_start": 170,
+    "end_line": 8,
+    "start_line": 8
+   },
+   "symbol": "d",
+   "symbol_id": "983f36359f49cdaf79c8e49aed47e51953a1a70b"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "strict"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

@@ -1,0 +1,91 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:41c8444d897d901a3fac1af7786a34aef5215c34",
+     "call_span": [
+      57,
+      65
+     ],
+     "callee_span": [
+      57,
+      63
+     ],
+     "caller": "use",
+     "file": "a.py",
+     "line": 6,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:0acce1f8182345f7266d5c05bf6aa5591a287dda",
+     "call_span": [
+      92,
+      98
+     ],
+     "callee_span": [
+      92,
+      96
+     ],
+     "caller": "loc",
+     "file": "a.py",
+     "line": 10,
+     "reference": "make",
+     "today": {
+      "candidate_ids": [
+       "e9a14df56b5ad4bdf6c1010993de28343b2b8de4"
+      ],
+      "candidates": [
+       "a.py:14:make"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:36c1c701fcd797017f52e669169b496c8365d500",
+     "call_span": [
+      110,
+      118
+     ],
+     "callee_span": [
+      110,
+      116
+     ],
+     "caller": "loc",
+     "file": "a.py",
+     "line": 11,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-param-shadow"
+  }
+ },
+ "source": "authored",
+ "tree": "py-param-shadow"
+}

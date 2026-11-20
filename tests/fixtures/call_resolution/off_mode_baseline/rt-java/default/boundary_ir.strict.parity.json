@@ -1,0 +1,273 @@
+{
+ "diagnostics": [],
+ "edges": [],
+ "files": [
+  {
+   "content_hash": "sha1:3f52ae2804dea5946de4abc7d1cc8a802bbf6bc0",
+   "diagnostics": [],
+   "id": "1a8ab8be65d3d9b42432b820bd0e65434dc50c34",
+   "language": "java",
+   "parser": "tree-sitter-java",
+   "path": "K.java",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 0,
+  "diagnostics_total": 0,
+  "edges_total": 0,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 1,
+  "files_processed": 1,
+  "files_skipped": 0,
+  "files_total": 1,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 6,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "34e3da7932d0868ef512f79b28e8adcf53cedb55",
+   "file_id": "1a8ab8be65d3d9b42432b820bd0e65434dc50c34",
+   "id": "34e3da7932d0868ef512f79b28e8adcf53cedb55",
+   "identity": {
+    "source": "definition_id",
+    "value": "34e3da7932d0868ef512f79b28e8adcf53cedb55"
+   },
+   "kind": "method",
+   "language": "java",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": "K",
+    "semantic_text": "language: java\nfile: K.java\nkind: method\nsymbol: only_b\nqualified name: K.only_b\nparent symbol: K\nsemantic path: K.java::K.only_b\nsignature text: only_b() -> int\ncontent:\nint only_b() { return 2; }"
+   },
+   "node_id": "efb989d05cd746387115d0e275450435e15da0c2",
+   "parent": "1a1a8a1d304facb0a97e678e60cf44d4de4b422e",
+   "path": "K.java",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "K.only_b",
+   "relationships": [],
+   "semantic_path": "K.java::K.only_b",
+   "signature": "only_b() -> int",
+   "span": {
+    "byte_end": 78,
+    "byte_start": 52,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": "only_b",
+   "symbol_id": "cc96509c61dbccdd00a23e5884654f8b52d36e1d"
+  },
+  {
+   "definition_id": "66a772e312f1d2be5138ab98e43780b8d960700a",
+   "file_id": "1a8ab8be65d3d9b42432b820bd0e65434dc50c34",
+   "id": "66a772e312f1d2be5138ab98e43780b8d960700a",
+   "identity": {
+    "source": "definition_id",
+    "value": "66a772e312f1d2be5138ab98e43780b8d960700a"
+   },
+   "kind": "class",
+   "language": "java",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: java\nfile: K.java\nkind: class\nsymbol: K\nqualified name: K\nsemantic path: K.java::K\ncontent:\npublic class K {\n    int only_a() { return 1; }\n    int only_b() { return 2; }\n    int f(int a) {\n        return only_a();\n    }\n    int f(String s) {\n        return only_b();\n    }\n    int g() { return f(1); }\n}"
+   },
+   "node_id": "1a1a8a1d304facb0a97e678e60cf44d4de4b422e",
+   "parent": null,
+   "path": "K.java",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "K",
+   "relationships": [],
+   "semantic_path": "K.java::K",
+   "signature": null,
+   "span": {
+    "byte_end": 212,
+    "byte_start": 0,
+    "end_line": 11,
+    "start_line": 1
+   },
+   "symbol": "K",
+   "symbol_id": "da2c9c3cd50253b93a623d5988aaabb223091da0"
+  },
+  {
+   "definition_id": "68bea0a81fb90e64e5e6365347a414446616a0e7",
+   "file_id": "1a8ab8be65d3d9b42432b820bd0e65434dc50c34",
+   "id": "68bea0a81fb90e64e5e6365347a414446616a0e7",
+   "identity": {
+    "source": "definition_id",
+    "value": "68bea0a81fb90e64e5e6365347a414446616a0e7"
+   },
+   "kind": "method",
+   "language": "java",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": "K",
+    "semantic_text": "language: java\nfile: K.java\nkind: method\nsymbol: g\nqualified name: K.g\nparent symbol: K\nsemantic path: K.java::K.g\nsignature text: g() -> int\ncontent:\nint g() { return f(1); }"
+   },
+   "node_id": "0063f01ce90c360e777a0019eee3652e9cdc468d",
+   "parent": "1a1a8a1d304facb0a97e678e60cf44d4de4b422e",
+   "path": "K.java",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "K.g",
+   "relationships": [],
+   "semantic_path": "K.java::K.g",
+   "signature": "g() -> int",
+   "span": {
+    "byte_end": 210,
+    "byte_start": 186,
+    "end_line": 10,
+    "start_line": 10
+   },
+   "symbol": "g",
+   "symbol_id": "cb27f6197ea48a8cdd0b846a2367bbd3180a35b1"
+  },
+  {
+   "definition_id": "7dcec9ae7be63d4591e48f54220072bfe0e08b9f",
+   "file_id": "1a8ab8be65d3d9b42432b820bd0e65434dc50c34",
+   "id": "7dcec9ae7be63d4591e48f54220072bfe0e08b9f",
+   "identity": {
+    "source": "definition_id",
+    "value": "7dcec9ae7be63d4591e48f54220072bfe0e08b9f"
+   },
+   "kind": "method",
+   "language": "java",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": "K",
+    "semantic_text": "language: java\nfile: K.java\nkind: method\nsymbol: f\nqualified name: K.f\nparent symbol: K\nsemantic path: K.java::K.f\nsignature text: f(int a) -> int\ncontent:\nint f(int a) {\n        return only_a();\n    }"
+   },
+   "node_id": "6d2fa8ae6b9bdeb97255345ee1fd7a781a2be07c",
+   "parent": "1a1a8a1d304facb0a97e678e60cf44d4de4b422e",
+   "path": "K.java",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "K.f",
+   "relationships": [],
+   "semantic_path": "K.java::K.f",
+   "signature": "f(int a) -> int",
+   "span": {
+    "byte_end": 128,
+    "byte_start": 83,
+    "end_line": 6,
+    "start_line": 4
+   },
+   "symbol": "f",
+   "symbol_id": "2025dcccc93ec2f3a12c7bdf3e7393a95e339fd8"
+  },
+  {
+   "definition_id": "7dcec9ae7be63d4591e48f54220072bfe0e08b9f",
+   "file_id": "1a8ab8be65d3d9b42432b820bd0e65434dc50c34",
+   "id": "7dcec9ae7be63d4591e48f54220072bfe0e08b9f#1",
+   "identity": {
+    "disambiguated_from": "7dcec9ae7be63d4591e48f54220072bfe0e08b9f",
+    "source": "definition_id",
+    "value": "7dcec9ae7be63d4591e48f54220072bfe0e08b9f#1"
+   },
+   "kind": "method",
+   "language": "java",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": "K",
+    "semantic_text": "language: java\nfile: K.java\nkind: method\nsymbol: f\nqualified name: K.f\nparent symbol: K\nsemantic path: K.java::K.f\nsignature text: f(String s) -> int\ncontent:\nint f(String s) {\n        return only_b();\n    }"
+   },
+   "node_id": "f061888f3631375956b79a98d863fc44c24466d6",
+   "parent": "1a1a8a1d304facb0a97e678e60cf44d4de4b422e",
+   "path": "K.java",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "K.f",
+   "relationships": [],
+   "semantic_path": "K.java::K.f",
+   "signature": "f(String s) -> int",
+   "span": {
+    "byte_end": 181,
+    "byte_start": 133,
+    "end_line": 9,
+    "start_line": 7
+   },
+   "symbol": "f",
+   "symbol_id": "2025dcccc93ec2f3a12c7bdf3e7393a95e339fd8"
+  },
+  {
+   "definition_id": "a8827c0cc79c3840412f2458622673c14ea08dc5",
+   "file_id": "1a8ab8be65d3d9b42432b820bd0e65434dc50c34",
+   "id": "a8827c0cc79c3840412f2458622673c14ea08dc5",
+   "identity": {
+    "source": "definition_id",
+    "value": "a8827c0cc79c3840412f2458622673c14ea08dc5"
+   },
+   "kind": "method",
+   "language": "java",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": "K",
+    "semantic_text": "language: java\nfile: K.java\nkind: method\nsymbol: only_a\nqualified name: K.only_a\nparent symbol: K\nsemantic path: K.java::K.only_a\nsignature text: only_a() -> int\ncontent:\nint only_a() { return 1; }"
+   },
+   "node_id": "8ba27d0fdd4447ea2daf89f925f3cb70d069d3ea",
+   "parent": "1a1a8a1d304facb0a97e678e60cf44d4de4b422e",
+   "path": "K.java",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "K.only_a",
+   "relationships": [],
+   "semantic_path": "K.java::K.only_a",
+   "signature": "only_a() -> int",
+   "span": {
+    "byte_end": 47,
+    "byte_start": 21,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "only_a",
+   "symbol_id": "f3ed3c1931847700a7c6c0bd97beacb1359cd76b"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "strict"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

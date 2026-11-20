@@ -6,8 +6,31 @@ pytest_plugins = [
 import gc
 import multiprocessing
 import tracemalloc
+from pathlib import Path
 
 import pytest
+
+
+# Byte-pinned call-resolution fixture trees contain test_*.py files of their
+# own (treesitter-chunker#682). pyproject's addopts --ignore is resolved against
+# the invocation directory, so ignore them here as well for runs from tests/.
+collect_ignore = ["fixtures/call_resolution"]
+_CALL_RESOLUTION_FIXTURES = (
+    Path(__file__).resolve().parent / "fixtures" / "call_resolution"
+)
+
+
+def pytest_ignore_collect(collection_path: Path) -> bool | None:
+    """Never collect inside the call-resolution fixtures, even if named directly.
+
+    ``collect_ignore`` and ``--ignore`` skip only exact paths found while
+    walking a directory; this hook also covers an explicit argument such as
+    ``pytest fixtures/call_resolution`` and anything below it.
+    """
+    path = collection_path.resolve()
+    if path == _CALL_RESOLUTION_FIXTURES or _CALL_RESOLUTION_FIXTURES in path.parents:
+        return True
+    return None
 
 
 def _forkserver_in_use() -> bool:

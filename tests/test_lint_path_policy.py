@@ -18,6 +18,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -41,6 +42,9 @@ RUFF_ARGS = (
     "site",
 )
 BLACK_PATHS = ("chunker/", "cli/", "tests/", "scripts/", *GOVERNED_TOOLS)
+# Byte-pinned fixture trees that [tool.ruff] excludes on purpose: they are
+# inputs, not project code (treesitter-chunker#682).
+RUFF_EXCLUDED_FIXTURE_ROOTS = ("tests/fixtures/call_resolution",)
 
 CANONICAL_RUFF = f"{UV_PREFIX} ruff check {' '.join(RUFF_ARGS)}"
 CANONICAL_BLACK = f"{UV_PREFIX} black --check {' '.join(BLACK_PATHS)}"
@@ -99,7 +103,12 @@ def _tracked(*pathspecs: str, cwd: Path = ROOT) -> list[str]:
 def test_every_tracked_python_source_under_listed_roots_reaches_ruff() -> None:
     """The canonical Ruff command discovers each tracked file it is meant to see."""
     roots = [path.rstrip("/") for path in RUFF_PATHS if path.endswith("/")]
-    tracked = {path for path in _tracked(*roots) if path.endswith((".py", ".pyi"))}
+    excluded = tuple(f"{root}/" for root in RUFF_EXCLUDED_FIXTURE_ROOTS)
+    tracked = {
+        path
+        for path in _tracked(*roots)
+        if path.endswith((".py", ".pyi")) and not path.startswith(excluded)
+    }
     assert {
         path for path in tracked if path.startswith("chunker/build/")
     }, "expected tracked chunker/build sources"
@@ -112,6 +121,21 @@ def test_every_tracked_python_source_under_listed_roots_reaches_ruff() -> None:
         if line.strip()
     }
     assert sorted(tracked - shown) == []
+    # The exempt fixture roots never reach Ruff.
+    assert sorted(path for path in shown if path.startswith(excluded)) == []
+
+
+def test_ruff_excluded_fixture_roots_are_configured() -> None:
+    """Each exempt fixture root is in [tool.ruff] extend-exclude.
+
+    Not ``exclude``: the canonical command's ``--exclude`` flags replace that
+    list, while ``extend-exclude`` still applies.
+    """
+    config = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    excludes = config["tool"]["ruff"]["extend-exclude"]
+    for root in RUFF_EXCLUDED_FIXTURE_ROOTS:
+        assert root in excludes
+        assert (ROOT / root).is_dir()
 
 
 def _git(root: Path, *args: str) -> None:

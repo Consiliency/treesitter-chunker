@@ -1,0 +1,329 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 46,
+   "callee_byte_start": 42,
+   "file": "a.js",
+   "from": "f8ed68ee0b3543045b42e10719604e7cf4e72516",
+   "id": "call:57afda355a0f02b6ed1e29fe70349a1871b3a6a8",
+   "location": {
+    "byte_end": 59,
+    "byte_start": 42,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "eval",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 69,
+   "callee_byte_start": 68,
+   "file": "a.js",
+   "from": "f8ed68ee0b3543045b42e10719604e7cf4e72516",
+   "id": "call:ca95c0c12d47caef8734d26db6e15e8dfdf2174c",
+   "location": {
+    "byte_end": 71,
+    "byte_start": 68,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 110,
+   "callee_byte_start": 109,
+   "file": "a.js",
+   "from": "623a66412ee53860c13a828a630eb30a537907e3",
+   "id": "call:2db68afd2a717aa947acf7dcd1aa0225b3ad9948",
+   "location": {
+    "byte_end": 112,
+    "byte_start": 109,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "reference": "t",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 0,
+  "total_functions": 4,
+  "total_imports": 0,
+  "total_relationships": 6
+ },
+ "relationships": [
+  {
+   "candidates": [],
+   "file": "a.js",
+   "from": "f8ed68ee0b3543045b42e10719604e7cf4e72516",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "eval",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "eval",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "68e34674aef67ea3c811dec5a1856703f0398c2a",
+    "943a9f80b17cacf2d4968fca407d01f5061ec551"
+   ],
+   "file": "a.js",
+   "from": "f8ed68ee0b3543045b42e10719604e7cf4e72516",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "68e34674aef67ea3c811dec5a1856703f0398c2a",
+    "943a9f80b17cacf2d4968fca407d01f5061ec551"
+   ],
+   "file": "a.js",
+   "from": "623a66412ee53860c13a828a630eb30a537907e3",
+   "is_internal": false,
+   "line": 3,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:57afda355a0f02b6ed1e29fe70349a1871b3a6a8",
+   "callee_byte_end": 46,
+   "callee_byte_start": 42,
+   "candidates": [],
+   "file": "a.js",
+   "from": "f8ed68ee0b3543045b42e10719604e7cf4e72516",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 59,
+    "byte_start": 42,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "eval",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "eval",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:ca95c0c12d47caef8734d26db6e15e8dfdf2174c",
+   "callee_byte_end": 69,
+   "callee_byte_start": 68,
+   "candidates": [
+    "68e34674aef67ea3c811dec5a1856703f0398c2a",
+    "943a9f80b17cacf2d4968fca407d01f5061ec551"
+   ],
+   "file": "a.js",
+   "from": "f8ed68ee0b3543045b42e10719604e7cf4e72516",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 71,
+    "byte_start": 68,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:2db68afd2a717aa947acf7dcd1aa0225b3ad9948",
+   "callee_byte_end": 110,
+   "callee_byte_start": 109,
+   "candidates": [
+    "68e34674aef67ea3c811dec5a1856703f0398c2a",
+    "943a9f80b17cacf2d4968fca407d01f5061ec551"
+   ],
+   "file": "a.js",
+   "from": "623a66412ee53860c13a828a630eb30a537907e3",
+   "is_internal": false,
+   "line": 3,
+   "location": {
+    "byte_end": 112,
+    "byte_start": 109,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "623a66412ee53860c13a828a630eb30a537907e3": {
+   "definition_id": "623a66412ee53860c13a828a630eb30a537907e3",
+   "end_line": 3,
+   "file": "a.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 3,
+   "module": "a",
+   "name": "w",
+   "node_id": "e68e997ed964188857a14777f15da00b9232df56",
+   "parent_class": "",
+   "qualified_name": "w",
+   "semantic_path": "a.js::w",
+   "signature": "w(o)"
+  },
+  "68e34674aef67ea3c811dec5a1856703f0398c2a": {
+   "definition_id": "68e34674aef67ea3c811dec5a1856703f0398c2a",
+   "end_line": 1,
+   "file": "b.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "b",
+   "name": "t",
+   "node_id": "fc2894a3ebea4f40e792ec441627222d35470b72",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "b.js::t",
+   "signature": "t()"
+  },
+  "943a9f80b17cacf2d4968fca407d01f5061ec551": {
+   "definition_id": "943a9f80b17cacf2d4968fca407d01f5061ec551",
+   "end_line": 1,
+   "file": "a.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "a",
+   "name": "t",
+   "node_id": "a65466c30f259b6ef159765c62a609891a6a7a80",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "a.js::t",
+   "signature": "t()"
+  },
+  "f8ed68ee0b3543045b42e10719604e7cf4e72516": {
+   "definition_id": "f8ed68ee0b3543045b42e10719604e7cf4e72516",
+   "end_line": 2,
+   "file": "a.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 2,
+   "module": "a",
+   "name": "e",
+   "node_id": "6e6127df54f4fa3149b7121bc6a69dd2877329c5",
+   "parent_class": "",
+   "qualified_name": "e",
+   "semantic_path": "a.js::e",
+   "signature": "e()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "943a9f80b17cacf2d4968fca407d01f5061ec551",
+    "end_line": 1,
+    "file": "a.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "a",
+    "name": "t",
+    "node_id": "a65466c30f259b6ef159765c62a609891a6a7a80",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "a.js::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "f8ed68ee0b3543045b42e10719604e7cf4e72516",
+    "end_line": 2,
+    "file": "a.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 2,
+    "module": "a",
+    "name": "e",
+    "node_id": "6e6127df54f4fa3149b7121bc6a69dd2877329c5",
+    "parent_class": "",
+    "qualified_name": "e",
+    "semantic_path": "a.js::e",
+    "signature": "e()"
+   },
+   {
+    "definition_id": "623a66412ee53860c13a828a630eb30a537907e3",
+    "end_line": 3,
+    "file": "a.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 3,
+    "module": "a",
+    "name": "w",
+    "node_id": "e68e997ed964188857a14777f15da00b9232df56",
+    "parent_class": "",
+    "qualified_name": "w",
+    "semantic_path": "a.js::w",
+    "signature": "w(o)"
+   },
+   {
+    "definition_id": "68e34674aef67ea3c811dec5a1856703f0398c2a",
+    "end_line": 1,
+    "file": "b.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "b",
+    "name": "t",
+    "node_id": "fc2894a3ebea4f40e792ec441627222d35470b72",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "b.js::t",
+    "signature": "t()"
+   }
+  ],
+  "imports": []
+ }
+}

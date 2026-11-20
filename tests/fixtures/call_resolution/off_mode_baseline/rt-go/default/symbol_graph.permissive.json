@@ -1,0 +1,360 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 123,
+   "callee_byte_start": 118,
+   "file": "k.go",
+   "from": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88",
+   "id": "call:a99278e22103a5fafc82e0c1c4cd16a626c62d81",
+   "location": {
+    "byte_end": 125,
+    "byte_start": 118,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "reference": "onlyA",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "callee_byte_end": 180,
+   "callee_byte_start": 175,
+   "file": "k.go",
+   "from": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88#1",
+   "id": "call:c51faf79c17ee0eff9e456ca14e8cd509eb9e862",
+   "location": {
+    "byte_end": 182,
+    "byte_start": 175,
+    "end_line": 15,
+    "start_line": 15
+   },
+   "reference": "onlyB",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 1,
+  "total_classes": 2,
+  "total_functions": 4,
+  "total_imports": 0,
+  "total_relationships": 6
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "18ff64e7832922aceb552a77a04ba2a86cc31d44"
+   ],
+   "file": "k.go",
+   "from": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88",
+   "is_internal": true,
+   "line": 8,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "onlyA",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "18ff64e7832922aceb552a77a04ba2a86cc31d44",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "k.go",
+   "from": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88",
+   "is_internal": false,
+   "line": 8,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "dcccf699dc681405a1b0c0cdd03fbd81d3e973df"
+   ],
+   "file": "k.go",
+   "from": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88#1",
+   "is_internal": true,
+   "line": 14,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "onlyB",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "dcccf699dc681405a1b0c0cdd03fbd81d3e973df",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "file": "k.go",
+   "from": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88#1",
+   "is_internal": false,
+   "line": 14,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "u",
+   "resolution": "unresolved",
+   "resolution_mode": "permissive",
+   "to": "u",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:a99278e22103a5fafc82e0c1c4cd16a626c62d81",
+   "callee_byte_end": 123,
+   "callee_byte_start": 118,
+   "candidates": [
+    "18ff64e7832922aceb552a77a04ba2a86cc31d44"
+   ],
+   "file": "k.go",
+   "from": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88",
+   "is_internal": true,
+   "line": 9,
+   "location": {
+    "byte_end": 125,
+    "byte_start": 118,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "onlyA",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "18ff64e7832922aceb552a77a04ba2a86cc31d44",
+   "type": "calls"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:c51faf79c17ee0eff9e456ca14e8cd509eb9e862",
+   "callee_byte_end": 180,
+   "callee_byte_start": 175,
+   "candidates": [
+    "dcccf699dc681405a1b0c0cdd03fbd81d3e973df"
+   ],
+   "file": "k.go",
+   "from": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88#1",
+   "is_internal": true,
+   "line": 15,
+   "location": {
+    "byte_end": 182,
+    "byte_start": 175,
+    "end_line": 15,
+    "start_line": 15
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "onlyB",
+   "resolution": "resolved",
+   "resolution_mode": "permissive",
+   "to": "dcccf699dc681405a1b0c0cdd03fbd81d3e973df",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "18ff64e7832922aceb552a77a04ba2a86cc31d44": {
+   "definition_id": "18ff64e7832922aceb552a77a04ba2a86cc31d44",
+   "end_line": 3,
+   "file": "k.go",
+   "kind": "function",
+   "language": "go",
+   "line": 3,
+   "module": "k",
+   "name": "onlyA",
+   "node_id": "4c1a4fe83b1ea8677b906c88dbaa1d14f6123bc4",
+   "parent_class": "",
+   "qualified_name": "onlyA",
+   "semantic_path": "k.go::onlyA",
+   "signature": "onlyA() -> int"
+  },
+  "2effda93302f6cff7b011f4d70b9ac416c593407": {
+   "definition_id": "2effda93302f6cff7b011f4d70b9ac416c593407",
+   "end_line": 6,
+   "file": "k.go",
+   "kind": "type",
+   "language": "go",
+   "line": 6,
+   "module": "k",
+   "name": "T",
+   "node_id": "5c71fdeea4221ebb03ce69f02d95f0f1dba55e2d",
+   "parent_class": "",
+   "qualified_name": "T",
+   "semantic_path": "k.go::T",
+   "signature": null
+  },
+  "367e1966fd30a7ca600bd73de1e19f0b51596570": {
+   "definition_id": "367e1966fd30a7ca600bd73de1e19f0b51596570",
+   "end_line": 12,
+   "file": "k.go",
+   "kind": "type",
+   "language": "go",
+   "line": 12,
+   "module": "k",
+   "name": "U",
+   "node_id": "c641d37225ad54032361cea4c3c03fac04766d93",
+   "parent_class": "",
+   "qualified_name": "U",
+   "semantic_path": "k.go::U",
+   "signature": null
+  },
+  "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88": {
+   "definition_id": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88",
+   "end_line": 10,
+   "file": "k.go",
+   "kind": "method",
+   "language": "go",
+   "line": 8,
+   "module": "k",
+   "name": "M",
+   "node_id": "98d47c4f8b461cf93fe540a3b64984d4fa927736",
+   "parent_class": "",
+   "qualified_name": "M",
+   "semantic_path": "k.go::M",
+   "signature": "M() -> int"
+  },
+  "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88#1": {
+   "definition_id": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88",
+   "end_line": 16,
+   "file": "k.go",
+   "kind": "method",
+   "language": "go",
+   "line": 14,
+   "module": "k",
+   "name": "M",
+   "node_id": "6a4ca1056c5972806d5a8109f5f0647a3e49658a",
+   "parent_class": "",
+   "qualified_name": "M",
+   "semantic_path": "k.go::M",
+   "signature": "M() -> int"
+  },
+  "dcccf699dc681405a1b0c0cdd03fbd81d3e973df": {
+   "definition_id": "dcccf699dc681405a1b0c0cdd03fbd81d3e973df",
+   "end_line": 4,
+   "file": "k.go",
+   "kind": "function",
+   "language": "go",
+   "line": 4,
+   "module": "k",
+   "name": "onlyB",
+   "node_id": "d50b696eec51226332831e7c0b6bb04953dd6353",
+   "parent_class": "",
+   "qualified_name": "onlyB",
+   "semantic_path": "k.go::onlyB",
+   "signature": "onlyB() -> int"
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "2effda93302f6cff7b011f4d70b9ac416c593407",
+    "end_line": 6,
+    "file": "k.go",
+    "kind": "type",
+    "language": "go",
+    "line": 6,
+    "module": "k",
+    "name": "T",
+    "node_id": "5c71fdeea4221ebb03ce69f02d95f0f1dba55e2d",
+    "parent_class": "",
+    "qualified_name": "T",
+    "semantic_path": "k.go::T",
+    "signature": null
+   },
+   {
+    "definition_id": "367e1966fd30a7ca600bd73de1e19f0b51596570",
+    "end_line": 12,
+    "file": "k.go",
+    "kind": "type",
+    "language": "go",
+    "line": 12,
+    "module": "k",
+    "name": "U",
+    "node_id": "c641d37225ad54032361cea4c3c03fac04766d93",
+    "parent_class": "",
+    "qualified_name": "U",
+    "semantic_path": "k.go::U",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "18ff64e7832922aceb552a77a04ba2a86cc31d44",
+    "end_line": 3,
+    "file": "k.go",
+    "kind": "function",
+    "language": "go",
+    "line": 3,
+    "module": "k",
+    "name": "onlyA",
+    "node_id": "4c1a4fe83b1ea8677b906c88dbaa1d14f6123bc4",
+    "parent_class": "",
+    "qualified_name": "onlyA",
+    "semantic_path": "k.go::onlyA",
+    "signature": "onlyA() -> int"
+   },
+   {
+    "definition_id": "dcccf699dc681405a1b0c0cdd03fbd81d3e973df",
+    "end_line": 4,
+    "file": "k.go",
+    "kind": "function",
+    "language": "go",
+    "line": 4,
+    "module": "k",
+    "name": "onlyB",
+    "node_id": "d50b696eec51226332831e7c0b6bb04953dd6353",
+    "parent_class": "",
+    "qualified_name": "onlyB",
+    "semantic_path": "k.go::onlyB",
+    "signature": "onlyB() -> int"
+   },
+   {
+    "definition_id": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88",
+    "end_line": 10,
+    "file": "k.go",
+    "kind": "method",
+    "language": "go",
+    "line": 8,
+    "module": "k",
+    "name": "M",
+    "node_id": "98d47c4f8b461cf93fe540a3b64984d4fa927736",
+    "parent_class": "",
+    "qualified_name": "M",
+    "semantic_path": "k.go::M",
+    "signature": "M() -> int"
+   },
+   {
+    "definition_id": "c3e9e8a4abd50a72a518b796abc38a6e8eaa1b88",
+    "end_line": 16,
+    "file": "k.go",
+    "kind": "method",
+    "language": "go",
+    "line": 14,
+    "module": "k",
+    "name": "M",
+    "node_id": "6a4ca1056c5972806d5a8109f5f0647a3e49658a",
+    "parent_class": "",
+    "qualified_name": "M",
+    "semantic_path": "k.go::M",
+    "signature": "M() -> int"
+   }
+  ],
+  "imports": []
+ }
+}

@@ -1,0 +1,293 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 99,
+   "callee_byte_start": 98,
+   "file": "a.ts",
+   "from": "a587ce4dc9c387ac1a203589bbdade218020e217",
+   "id": "call:3875d958d9a8e4a97ed8ce7ab6a52c2bdaf313ea",
+   "location": {
+    "byte_end": 101,
+    "byte_start": 98,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "reference": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "callee_byte_end": 160,
+   "callee_byte_start": 159,
+   "file": "a.ts",
+   "from": "a8d4a2bd4046ce990a75d58e2f76e25aa17ae1b7",
+   "id": "call:b340f33606befa54ab854d86197914bd05449d64",
+   "location": {
+    "byte_end": 162,
+    "byte_start": 159,
+    "end_line": 7,
+    "start_line": 7
+   },
+   "reference": "t",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 0,
+  "total_functions": 6,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "call_kind": "function",
+   "call_site_id": "call:3875d958d9a8e4a97ed8ce7ab6a52c2bdaf313ea",
+   "callee_byte_end": 99,
+   "callee_byte_start": 98,
+   "candidates": [
+    "a6ec565ebf998845ef692f97091959a974bbe63b",
+    "aeff2fb2308e710c2fea292ea24530413d05a84d"
+   ],
+   "file": "a.ts",
+   "from": "a587ce4dc9c387ac1a203589bbdade218020e217",
+   "is_internal": false,
+   "line": 4,
+   "location": {
+    "byte_end": 101,
+    "byte_start": 98,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "calls"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:b340f33606befa54ab854d86197914bd05449d64",
+   "callee_byte_end": 160,
+   "callee_byte_start": 159,
+   "candidates": [
+    "a6ec565ebf998845ef692f97091959a974bbe63b",
+    "aeff2fb2308e710c2fea292ea24530413d05a84d"
+   ],
+   "file": "a.ts",
+   "from": "a8d4a2bd4046ce990a75d58e2f76e25aa17ae1b7",
+   "is_internal": false,
+   "line": 7,
+   "location": {
+    "byte_end": 162,
+    "byte_start": 159,
+    "end_line": 7,
+    "start_line": 7
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "a587ce4dc9c387ac1a203589bbdade218020e217": {
+   "definition_id": "a587ce4dc9c387ac1a203589bbdade218020e217",
+   "end_line": 5,
+   "file": "a.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 2,
+   "module": "a",
+   "name": "outer",
+   "node_id": "d21959ae642f81c935c98ccf01fc515ad618d3a3",
+   "parent_class": "",
+   "qualified_name": "outer",
+   "semantic_path": "a.ts::outer",
+   "signature": "outer()"
+  },
+  "a6ec565ebf998845ef692f97091959a974bbe63b": {
+   "definition_id": "a6ec565ebf998845ef692f97091959a974bbe63b",
+   "end_line": 1,
+   "file": "a.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "a",
+   "name": "t",
+   "node_id": "a0555eeb8fa14f988fbc94fad3085bd451652b6a",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "a.ts::t",
+   "signature": "t()"
+  },
+  "a8d4a2bd4046ce990a75d58e2f76e25aa17ae1b7": {
+   "definition_id": "a8d4a2bd4046ce990a75d58e2f76e25aa17ae1b7",
+   "end_line": 8,
+   "file": "a.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 6,
+   "module": "a",
+   "name": "blk",
+   "node_id": "2314ebc3e3a0c8ea4bbf5cee54e5462c74d540ab",
+   "parent_class": "",
+   "qualified_name": "blk",
+   "semantic_path": "a.ts::blk",
+   "signature": "blk()"
+  },
+  "ab43f1099c66fd57eeddc420aa31d4ba812cdfab": {
+   "definition_id": "ab43f1099c66fd57eeddc420aa31d4ba812cdfab",
+   "end_line": 3,
+   "file": "a.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 3,
+   "module": "a",
+   "name": "t",
+   "node_id": "c89835af5f690c2a94027a688d3db2a7d8fe4b92",
+   "parent_class": "outer",
+   "qualified_name": "outer.t",
+   "semantic_path": "a.ts::outer.t",
+   "signature": "t()"
+  },
+  "aeff2fb2308e710c2fea292ea24530413d05a84d": {
+   "definition_id": "aeff2fb2308e710c2fea292ea24530413d05a84d",
+   "end_line": 1,
+   "file": "b.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "b",
+   "name": "t",
+   "node_id": "4871dfade2baa49b7137aa12505e3accb03d294a",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "b.ts::t",
+   "signature": "t()"
+  },
+  "e04b3972b8a63c748c9bd28875042ee4045ccbca": {
+   "definition_id": "e04b3972b8a63c748c9bd28875042ee4045ccbca",
+   "end_line": 7,
+   "file": "a.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 7,
+   "module": "a",
+   "name": "<anonymous>",
+   "node_id": "9c4e74a31db1a36c085a7eee31db4c028013e082",
+   "parent_class": "blk",
+   "qualified_name": "blk.t",
+   "semantic_path": "a.ts::blk.t",
+   "signature": "<anonymous>()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "a6ec565ebf998845ef692f97091959a974bbe63b",
+    "end_line": 1,
+    "file": "a.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "a",
+    "name": "t",
+    "node_id": "a0555eeb8fa14f988fbc94fad3085bd451652b6a",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "a.ts::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "a587ce4dc9c387ac1a203589bbdade218020e217",
+    "end_line": 5,
+    "file": "a.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 2,
+    "module": "a",
+    "name": "outer",
+    "node_id": "d21959ae642f81c935c98ccf01fc515ad618d3a3",
+    "parent_class": "",
+    "qualified_name": "outer",
+    "semantic_path": "a.ts::outer",
+    "signature": "outer()"
+   },
+   {
+    "definition_id": "ab43f1099c66fd57eeddc420aa31d4ba812cdfab",
+    "end_line": 3,
+    "file": "a.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 3,
+    "module": "a",
+    "name": "t",
+    "node_id": "c89835af5f690c2a94027a688d3db2a7d8fe4b92",
+    "parent_class": "outer",
+    "qualified_name": "outer.t",
+    "semantic_path": "a.ts::outer.t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "a8d4a2bd4046ce990a75d58e2f76e25aa17ae1b7",
+    "end_line": 8,
+    "file": "a.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 6,
+    "module": "a",
+    "name": "blk",
+    "node_id": "2314ebc3e3a0c8ea4bbf5cee54e5462c74d540ab",
+    "parent_class": "",
+    "qualified_name": "blk",
+    "semantic_path": "a.ts::blk",
+    "signature": "blk()"
+   },
+   {
+    "definition_id": "e04b3972b8a63c748c9bd28875042ee4045ccbca",
+    "end_line": 7,
+    "file": "a.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 7,
+    "module": "a",
+    "name": "<anonymous>",
+    "node_id": "9c4e74a31db1a36c085a7eee31db4c028013e082",
+    "parent_class": "blk",
+    "qualified_name": "blk.t",
+    "semantic_path": "a.ts::blk.t",
+    "signature": "<anonymous>()"
+   },
+   {
+    "definition_id": "aeff2fb2308e710c2fea292ea24530413d05a84d",
+    "end_line": 1,
+    "file": "b.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "b",
+    "name": "t",
+    "node_id": "4871dfade2baa49b7137aa12505e3accb03d294a",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "b.ts::t",
+    "signature": "t()"
+   }
+  ],
+  "imports": []
+ }
+}

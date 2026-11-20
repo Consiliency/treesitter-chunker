@@ -1,0 +1,494 @@
+{
+ "diagnostics": [],
+ "edges": [],
+ "files": [
+  {
+   "content_hash": "sha1:867f867fd7269f3a34cfe2d28a6e169cd460d1b9",
+   "diagnostics": [],
+   "id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "language": "kotlin",
+   "parser": "tree-sitter-kotlin",
+   "path": "K.kt",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 0,
+  "diagnostics_total": 0,
+  "edges_total": 0,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 1,
+  "files_processed": 1,
+  "files_skipped": 0,
+  "files_total": 1,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 12,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "000024a0a4e0a1ea33d8e6cbd3fd6309bce63afe",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "000024a0a4e0a1ea33d8e6cbd3fd6309bce63afe",
+   "identity": {
+    "source": "definition_id",
+    "value": "000024a0a4e0a1ea33d8e6cbd3fd6309bce63afe"
+   },
+   "kind": "class",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: class\nsemantic path: K.kt\ncontent:\nclass K {\n    fun run(xs: List<Int>): List<Int> = xs.map { it + 1 }\n    val h: (Int) -> Int = { d -> d * 2 }\n}"
+   },
+   "node_id": "698b1249df6319df61bdb691b2868ca3479db1f2",
+   "parent": null,
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "K.kt",
+   "signature": null,
+   "span": {
+    "byte_end": 121,
+    "byte_start": 11,
+    "end_line": 6,
+    "start_line": 3
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "4c581a47c44677f5ae158e3a7f8b8bf91744279a",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "4c581a47c44677f5ae158e3a7f8b8bf91744279a",
+   "identity": {
+    "source": "definition_id",
+    "value": "4c581a47c44677f5ae158e3a7f8b8bf91744279a"
+   },
+   "kind": "function",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: function\nsymbol: outer\nqualified name: outer\nsemantic path: K.kt::outer\nsignature text: outer(xs: List<Int>) -> Int\ncontent:\nfun outer(xs: List<Int>): Int {\n    val f = { y: Int -> y + 1 }\n    val g = fun(z: Int): Int { return listOf(z).map { w -> w * z }.first() }\n    return f(g(xs[0]))\n}"
+   },
+   "node_id": "bc4734798091d664117e1dcf14ba1dfa1c694f2d",
+   "parent": null,
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "outer",
+   "relationships": [],
+   "semantic_path": "K.kt::outer",
+   "signature": "outer(xs: List<Int>) -> Int",
+   "span": {
+    "byte_end": 288,
+    "byte_start": 123,
+    "end_line": 12,
+    "start_line": 8
+   },
+   "symbol": "outer",
+   "symbol_id": "c23e5b73116adca761037731e6ffef2aad6e0718"
+  },
+  {
+   "definition_id": "7b6f895e177e0a1acc930823e5e5a8393866da2c",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "7b6f895e177e0a1acc930823e5e5a8393866da2c",
+   "identity": {
+    "source": "definition_id",
+    "value": "7b6f895e177e0a1acc930823e5e5a8393866da2c"
+   },
+   "kind": "property_declaration",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: property_declaration\nsemantic path: K.kt\ncontent:\nval top = { a: Int -> a }"
+   },
+   "node_id": "3c8a858053f6f07b335612dc35f62253144cb30c",
+   "parent": null,
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "K.kt",
+   "signature": null,
+   "span": {
+    "byte_end": 315,
+    "byte_start": 290,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "7c4eb1ae7745b9974ada9137d1e880aaa52b7a82",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "7c4eb1ae7745b9974ada9137d1e880aaa52b7a82",
+   "identity": {
+    "source": "definition_id",
+    "value": "7c4eb1ae7745b9974ada9137d1e880aaa52b7a82"
+   },
+   "kind": "property_declaration",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: property_declaration\nsymbol: function_declaration\nqualified name: function_declaration\nsemantic path: K.kt::function_declaration\ncontent:\nval f = { y: Int -> y + 1 }"
+   },
+   "node_id": "29bae48018b13984612f03e2fdaec054d4b74a40",
+   "parent": "bc4734798091d664117e1dcf14ba1dfa1c694f2d",
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "function_declaration",
+   "relationships": [],
+   "semantic_path": "K.kt::function_declaration",
+   "signature": null,
+   "span": {
+    "byte_end": 186,
+    "byte_start": 159,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "symbol": "function_declaration",
+   "symbol_id": "0376306327399b9ae34a486f5d8a630265b41bd9"
+  },
+  {
+   "definition_id": "803063b62324b810fc372704f792fbbf0b650709",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "803063b62324b810fc372704f792fbbf0b650709",
+   "identity": {
+    "source": "definition_id",
+    "value": "803063b62324b810fc372704f792fbbf0b650709"
+   },
+   "kind": "method",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: method\nsymbol: run\nqualified name: run\nsemantic path: K.kt::run\nsignature text: run(xs: List<Int>) -> List<Int>\ncontent:\nfun run(xs: List<Int>): List<Int> = xs.map { it + 1 }"
+   },
+   "node_id": "36de2a7d8b59a9743cdbc6a72dfcb79d5239096f",
+   "parent": "698b1249df6319df61bdb691b2868ca3479db1f2",
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "run",
+   "relationships": [],
+   "semantic_path": "K.kt::run",
+   "signature": "run(xs: List<Int>) -> List<Int>",
+   "span": {
+    "byte_end": 78,
+    "byte_start": 25,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "symbol": "run",
+   "symbol_id": "8fa36a5f0b307407f549cc03e5cd82754c154f91"
+  },
+  {
+   "definition_id": "90a6f561755a4ef1dc89003e109a3bfc5d10d050",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "90a6f561755a4ef1dc89003e109a3bfc5d10d050",
+   "identity": {
+    "source": "definition_id",
+    "value": "90a6f561755a4ef1dc89003e109a3bfc5d10d050"
+   },
+   "kind": "lambda_literal",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: lambda_literal\nsymbol: function_declaration\nqualified name: function_declaration\nsemantic path: K.kt::function_declaration\ncontent:\n{ it + 1 }"
+   },
+   "node_id": "381768f43d71ded65fab97687ad8fefd18d5fa12",
+   "parent": "36de2a7d8b59a9743cdbc6a72dfcb79d5239096f",
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "function_declaration",
+   "relationships": [],
+   "semantic_path": "K.kt::function_declaration",
+   "signature": null,
+   "span": {
+    "byte_end": 78,
+    "byte_start": 68,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "symbol": "function_declaration",
+   "symbol_id": "0376306327399b9ae34a486f5d8a630265b41bd9"
+  },
+  {
+   "definition_id": "c8d65fb6f48b707d333a375b1b2e6ebfb6f646c6",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "c8d65fb6f48b707d333a375b1b2e6ebfb6f646c6",
+   "identity": {
+    "source": "definition_id",
+    "value": "c8d65fb6f48b707d333a375b1b2e6ebfb6f646c6"
+   },
+   "kind": "property_declaration",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: property_declaration\nsymbol: class_declaration\nqualified name: class_declaration\nsemantic path: K.kt::class_declaration\ncontent:\nval h: (Int) -> Int = { d -> d * 2 }"
+   },
+   "node_id": "c2c48ca30e6c8d2bda79c68462d9d4a8386456cc",
+   "parent": "698b1249df6319df61bdb691b2868ca3479db1f2",
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "class_declaration",
+   "relationships": [],
+   "semantic_path": "K.kt::class_declaration",
+   "signature": null,
+   "span": {
+    "byte_end": 119,
+    "byte_start": 83,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "symbol": "class_declaration",
+   "symbol_id": "ac5baeb3254df90369875b01c4c74cc89cd46467"
+  },
+  {
+   "definition_id": "d1f0b7cd7c3daed8a92fa4ad106b410b6490d52d",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "d1f0b7cd7c3daed8a92fa4ad106b410b6490d52d",
+   "identity": {
+    "source": "definition_id",
+    "value": "d1f0b7cd7c3daed8a92fa4ad106b410b6490d52d"
+   },
+   "kind": "lambda_literal",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: lambda_literal\nsymbol: property_declaration\nqualified name: property_declaration\nsemantic path: K.kt::property_declaration\ncontent:\n{ d -> d * 2 }"
+   },
+   "node_id": "7303cfdd13ff381b4bc909bf5ccad55fe24acc7e",
+   "parent": "c2c48ca30e6c8d2bda79c68462d9d4a8386456cc",
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "property_declaration",
+   "relationships": [],
+   "semantic_path": "K.kt::property_declaration",
+   "signature": null,
+   "span": {
+    "byte_end": 119,
+    "byte_start": 105,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "symbol": "property_declaration",
+   "symbol_id": "2781e8962ec0e3f375b3e4faf4b504a4d11660f8"
+  },
+  {
+   "definition_id": "d52ca8f46e30c087b0d1355eef84a89c2c8b2f6f",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "d52ca8f46e30c087b0d1355eef84a89c2c8b2f6f",
+   "identity": {
+    "source": "definition_id",
+    "value": "d52ca8f46e30c087b0d1355eef84a89c2c8b2f6f"
+   },
+   "kind": "property_declaration",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: property_declaration\nsymbol: function_declaration\nqualified name: function_declaration\nsemantic path: K.kt::function_declaration\ncontent:\nval g = fun(z: Int): Int { return listOf(z).map { w -> w * z }.first() }"
+   },
+   "node_id": "cf4e6ee785facbf961262a74e0146af6df49f710",
+   "parent": "bc4734798091d664117e1dcf14ba1dfa1c694f2d",
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "function_declaration",
+   "relationships": [],
+   "semantic_path": "K.kt::function_declaration",
+   "signature": null,
+   "span": {
+    "byte_end": 263,
+    "byte_start": 191,
+    "end_line": 10,
+    "start_line": 10
+   },
+   "symbol": "function_declaration",
+   "symbol_id": "0376306327399b9ae34a486f5d8a630265b41bd9"
+  },
+  {
+   "definition_id": "edaa2935f80832f153e93197264b8335c9f8f0cd",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "edaa2935f80832f153e93197264b8335c9f8f0cd",
+   "identity": {
+    "source": "definition_id",
+    "value": "edaa2935f80832f153e93197264b8335c9f8f0cd"
+   },
+   "kind": "lambda_literal",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: lambda_literal\nsymbol: property_declaration\nqualified name: property_declaration\nsemantic path: K.kt::property_declaration\ncontent:\n{ w -> w * z }"
+   },
+   "node_id": "10db59923823df4534cd8502795c70869a3df64b",
+   "parent": "cf4e6ee785facbf961262a74e0146af6df49f710",
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "property_declaration",
+   "relationships": [],
+   "semantic_path": "K.kt::property_declaration",
+   "signature": null,
+   "span": {
+    "byte_end": 253,
+    "byte_start": 239,
+    "end_line": 10,
+    "start_line": 10
+   },
+   "symbol": "property_declaration",
+   "symbol_id": "2781e8962ec0e3f375b3e4faf4b504a4d11660f8"
+  },
+  {
+   "definition_id": "ee9ae6fb1de8c611432809171f1b2ad401957b01",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "ee9ae6fb1de8c611432809171f1b2ad401957b01",
+   "identity": {
+    "source": "definition_id",
+    "value": "ee9ae6fb1de8c611432809171f1b2ad401957b01"
+   },
+   "kind": "lambda_literal",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: lambda_literal\nsymbol: property_declaration\nqualified name: property_declaration\nsemantic path: K.kt::property_declaration\ncontent:\n{ y: Int -> y + 1 }"
+   },
+   "node_id": "2e6ad44ed7bc55b820b39077ba7860375af36556",
+   "parent": "29bae48018b13984612f03e2fdaec054d4b74a40",
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "property_declaration",
+   "relationships": [],
+   "semantic_path": "K.kt::property_declaration",
+   "signature": null,
+   "span": {
+    "byte_end": 186,
+    "byte_start": 167,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "symbol": "property_declaration",
+   "symbol_id": "2781e8962ec0e3f375b3e4faf4b504a4d11660f8"
+  },
+  {
+   "definition_id": "ef6af7400969c79ceb1673c5ff1d647b274edae4",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "ef6af7400969c79ceb1673c5ff1d647b274edae4",
+   "identity": {
+    "source": "definition_id",
+    "value": "ef6af7400969c79ceb1673c5ff1d647b274edae4"
+   },
+   "kind": "lambda_literal",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: lambda_literal\nsymbol: property_declaration\nqualified name: property_declaration\nsemantic path: K.kt::property_declaration\ncontent:\n{ a: Int -> a }"
+   },
+   "node_id": "1f5af34f8afe7d1b84af8e003dc4d524e074321c",
+   "parent": "3c8a858053f6f07b335612dc35f62253144cb30c",
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "property_declaration",
+   "relationships": [],
+   "semantic_path": "K.kt::property_declaration",
+   "signature": null,
+   "span": {
+    "byte_end": 315,
+    "byte_start": 300,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "symbol": "property_declaration",
+   "symbol_id": "2781e8962ec0e3f375b3e4faf4b504a4d11660f8"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "strict"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

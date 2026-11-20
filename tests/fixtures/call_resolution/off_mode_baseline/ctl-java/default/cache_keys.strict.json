@@ -1,0 +1,45 @@
+{
+ "files": {
+  "A.java": {
+   "cache_key": "boundary:v3:a633bfd1ee43a20b493e087a3fa6d910cde138db7e552645fd126f5a7ac61d25",
+   "key_payload": {
+    "content_hash": "sha1:bb1ecd7a322b115d8d37f98a33081cd8255c7d2b",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-java:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "java",
+    "path": "A.java",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "B.java": {
+   "cache_key": "boundary:v3:13e73f1b890524d9b86aabb51fa4c0f7c11d0d536a68700746f022eb47efa4b6",
+   "key_payload": {
+    "content_hash": "sha1:44d7b9499c88d44f5d52e5df26b402d919518c33",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-java:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "java",
+    "path": "B.java",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "files": {
+  "a.js": {
+   "cache_key": "boundary:v3:93f939a2de8a9bb600148aa8d76a568c5b0fda5ad7f14d7ba5b5e4198321e53d",
+   "key_payload": {
+    "content_hash": "sha1:e2771fa56f6006fcba7ae37f6c649898cf61f85f",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-javascript:source=official:tree-sitter-javascript@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "javascript",
+    "path": "a.js",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

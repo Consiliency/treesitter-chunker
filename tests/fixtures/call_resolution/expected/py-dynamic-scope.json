@@ -1,0 +1,135 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:573e0599fcdfef99b067526f0374884cd3e31584",
+     "call_span": [
+      50,
+      58
+     ],
+     "callee_span": [
+      50,
+      56
+     ],
+     "caller": "go",
+     "file": "a1.py",
+     "line": 6,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "1fda38f714a36163bfd3f964d68dfbda812d3bf9",
+       "895dcfcad2cd534ee11cabaf6d7b98580b71579c",
+       "a29e94f18cb45a0e387125a4cb12ddf02154d89d",
+       "dbeb15c2ed8c56e82c6bae722bfa046e3412526d"
+      ],
+      "candidates": [
+       "a1.py:1:helper",
+       "a4.py:4:helper",
+       "a3.py:1:helper",
+       "a2.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:cc3ef0a110ecea8ba27ffcda51ec77b9fcf60e95",
+     "call_span": [
+      50,
+      58
+     ],
+     "callee_span": [
+      50,
+      56
+     ],
+     "caller": "go",
+     "file": "a2.py",
+     "line": 6,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "1fda38f714a36163bfd3f964d68dfbda812d3bf9",
+       "895dcfcad2cd534ee11cabaf6d7b98580b71579c",
+       "a29e94f18cb45a0e387125a4cb12ddf02154d89d",
+       "dbeb15c2ed8c56e82c6bae722bfa046e3412526d"
+      ],
+      "candidates": [
+       "a1.py:1:helper",
+       "a4.py:4:helper",
+       "a3.py:1:helper",
+       "a2.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:8e256862221a5532743bbd5398c4eebb6881e1f6",
+     "call_span": [
+      50,
+      58
+     ],
+     "callee_span": [
+      50,
+      56
+     ],
+     "caller": "go",
+     "file": "a3.py",
+     "line": 6,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "1fda38f714a36163bfd3f964d68dfbda812d3bf9",
+       "895dcfcad2cd534ee11cabaf6d7b98580b71579c",
+       "a29e94f18cb45a0e387125a4cb12ddf02154d89d",
+       "dbeb15c2ed8c56e82c6bae722bfa046e3412526d"
+      ],
+      "candidates": [
+       "a1.py:1:helper",
+       "a4.py:4:helper",
+       "a3.py:1:helper",
+       "a2.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:ad5a3d9e6000bd6572b6f7f4725fb7aaec71e369",
+     "call_span": [
+      63,
+      71
+     ],
+     "callee_span": [
+      63,
+      69
+     ],
+     "caller": "go",
+     "file": "a4.py",
+     "line": 9,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "1fda38f714a36163bfd3f964d68dfbda812d3bf9",
+       "895dcfcad2cd534ee11cabaf6d7b98580b71579c",
+       "a29e94f18cb45a0e387125a4cb12ddf02154d89d",
+       "dbeb15c2ed8c56e82c6bae722bfa046e3412526d"
+      ],
+      "candidates": [
+       "a1.py:1:helper",
+       "a4.py:4:helper",
+       "a3.py:1:helper",
+       "a2.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-dynamic-scope"
+  }
+ },
+ "source": "authored",
+ "tree": "py-dynamic-scope"
+}

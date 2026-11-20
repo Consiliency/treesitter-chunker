@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:f72a491feb5c0336659e52988e5c57f53d26d397",
+     "call_span": [
+      42,
+      45
+     ],
+     "callee_span": [
+      42,
+      43
+     ],
+     "caller": "f",
+     "file": "a.ts",
+     "line": 2,
+     "reference": "E",
+     "today": {
+      "candidate_ids": [
+       "952cb2f5cafab092ffa18875e0aabc2e3bd0cbe0",
+       "cd88abe853c27a8be4cdef340d9c1fb19fdb4192"
+      ],
+      "candidates": [
+       "a.ts:1:E",
+       "b.ts:1:E"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-enum-shadow"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-enum-shadow"
+}

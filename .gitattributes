@@ -3,3 +3,7 @@ tests/fixtures/boundary_ir/repos/** -text
 
 # The type gate validates sorted signatures as exact LF-delimited bytes.
 docs/development/mypy-baseline.txt text eol=lf
+
+# Call-resolution fixtures and their off-mode baseline are pinned by sha256
+# (treesitter-chunker#682); never convert their line endings.
+tests/fixtures/call_resolution/** -text

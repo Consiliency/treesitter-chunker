@@ -1,0 +1,63 @@
+{
+ "files": {
+  "a.py": {
+   "cache_key": "boundary:v3:71b2269a898b3c95b5eebb1c013f4f99a28c4f20f28ee79c0d91525d7b2c77e9",
+   "key_payload": {
+    "content_hash": "sha1:f022251acf674bd1c1a04995a42d3d996e61e46b",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "a.py",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "c.py": {
+   "cache_key": "boundary:v3:611104a932a27c2347e9b56881ae4591640f925afba302256f0667fac2ede811",
+   "key_payload": {
+    "content_hash": "sha1:4bf3c3c5e17fb98d717c01ff76d26c4e696844da",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "c.py",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "x.js": {
+   "cache_key": "boundary:v3:1e7001be0a65c818d071ed747ee78836988a378ad3909de093bcf01f21c5f3fa",
+   "key_payload": {
+    "content_hash": "sha1:8553b9fcf7a9f39c54ae920f47d1c76cb684dcf4",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-javascript:source=official:tree-sitter-javascript@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "javascript",
+    "path": "x.js",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

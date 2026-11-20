@@ -1,0 +1,177 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 57,
+   "callee_byte_start": 56,
+   "file": "use.ts",
+   "from": "9953f622abb2baaecb6be22ed56441a450f1b478",
+   "id": "call:4a38e14f916615ffc8a447b5fe04316c8935fced",
+   "location": {
+    "byte_end": 59,
+    "byte_start": 56,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "t",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 3,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "29e80baff9876a18a0fb0d97e90dfe64fceb83c8",
+    "fbdf891b11906e5bbf43b9232b427edc1375cf5a"
+   ],
+   "file": "use.ts",
+   "from": "9953f622abb2baaecb6be22ed56441a450f1b478",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:4a38e14f916615ffc8a447b5fe04316c8935fced",
+   "callee_byte_end": 57,
+   "callee_byte_start": 56,
+   "candidates": [
+    "29e80baff9876a18a0fb0d97e90dfe64fceb83c8",
+    "fbdf891b11906e5bbf43b9232b427edc1375cf5a"
+   ],
+   "file": "use.ts",
+   "from": "9953f622abb2baaecb6be22ed56441a450f1b478",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 59,
+    "byte_start": 56,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "29e80baff9876a18a0fb0d97e90dfe64fceb83c8": {
+   "definition_id": "29e80baff9876a18a0fb0d97e90dfe64fceb83c8",
+   "end_line": 1,
+   "file": "svc.js",
+   "kind": "function",
+   "language": "javascript",
+   "line": 1,
+   "module": "svc",
+   "name": "t",
+   "node_id": "7da953c6125e7af5b3defa90f12a97424f59d896",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "svc.js::t",
+   "signature": "t()"
+  },
+  "9953f622abb2baaecb6be22ed56441a450f1b478": {
+   "definition_id": "9953f622abb2baaecb6be22ed56441a450f1b478",
+   "end_line": 2,
+   "file": "use.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 2,
+   "module": "use",
+   "name": "a",
+   "node_id": "759da450de40444a2e9a6b2251acce9a2e676579",
+   "parent_class": "",
+   "qualified_name": "a",
+   "semantic_path": "use.ts::a",
+   "signature": "a()"
+  },
+  "fbdf891b11906e5bbf43b9232b427edc1375cf5a": {
+   "definition_id": "fbdf891b11906e5bbf43b9232b427edc1375cf5a",
+   "end_line": 1,
+   "file": "svc.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "svc",
+   "name": "t",
+   "node_id": "fb5d967a67452dd37d35c308e77737f0b2828026",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "svc.ts::t",
+   "signature": "t()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "29e80baff9876a18a0fb0d97e90dfe64fceb83c8",
+    "end_line": 1,
+    "file": "svc.js",
+    "kind": "function",
+    "language": "javascript",
+    "line": 1,
+    "module": "svc",
+    "name": "t",
+    "node_id": "7da953c6125e7af5b3defa90f12a97424f59d896",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "svc.js::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "fbdf891b11906e5bbf43b9232b427edc1375cf5a",
+    "end_line": 1,
+    "file": "svc.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "svc",
+    "name": "t",
+    "node_id": "fb5d967a67452dd37d35c308e77737f0b2828026",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "svc.ts::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "9953f622abb2baaecb6be22ed56441a450f1b478",
+    "end_line": 2,
+    "file": "use.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 2,
+    "module": "use",
+    "name": "a",
+    "node_id": "759da450de40444a2e9a6b2251acce9a2e676579",
+    "parent_class": "",
+    "qualified_name": "a",
+    "semantic_path": "use.ts::a",
+    "signature": "a()"
+   }
+  ],
+  "imports": []
+ }
+}

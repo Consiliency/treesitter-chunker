@@ -1,0 +1,89 @@
+{
+ "plan_sections": [
+  "10.2"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:b873c7566d47550855d60bc47fb7d4416b988f5a",
+     "call_span": [
+      124,
+      132
+     ],
+     "callee_span": [
+      124,
+      130
+     ],
+     "caller": "d",
+     "file": "svc.py",
+     "line": 14,
+     "reference": "only_a",
+     "today": {
+      "candidate_ids": [
+       "ff8a971986f73ed82ad3f154c7ccb709928b6e94"
+      ],
+      "candidates": [
+       "svc.py:4:only_a"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:4acdcadd7e6cc40e02fe25cf14b88476be03c458",
+     "call_span": [
+      168,
+      176
+     ],
+     "callee_span": [
+      168,
+      174
+     ],
+     "caller": "d",
+     "file": "svc.py",
+     "line": 17,
+     "reference": "only_b",
+     "today": {
+      "candidate_ids": [
+       "569463d08618124fc8d6e338020f588bc03a422e"
+      ],
+      "candidates": [
+       "svc.py:8:only_b"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:50e29566142474e2feac05206eee0bb76d5992d7",
+     "call_span": [
+      204,
+      208
+     ],
+     "callee_span": [
+      204,
+      205
+     ],
+     "caller": "caller",
+     "file": "svc.py",
+     "line": 21,
+     "reference": "d",
+     "today": {
+      "candidate_ids": [
+       "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+       "0de792bed499be0d05b2d0ee621b71ffea7755cc#1"
+      ],
+      "candidates": [
+       "svc.py:13:d",
+       "svc.py:16:d"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "greenfield-r1/rt-pycond"
+  }
+ },
+ "source": "greenfield-r1",
+ "tree": "rt-pycond"
+}

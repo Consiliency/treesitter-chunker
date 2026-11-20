@@ -1,0 +1,99 @@
+{
+ "files": {
+  "a.ts": {
+   "cache_key": "boundary:v3:90012e61feecebca353207c72e843682c37ee2b339bd5d67c26646e78595686c",
+   "key_payload": {
+    "content_hash": "sha1:fba6972cb5e188847965234665d281a939bdc635",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "a.ts",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "b.py": {
+   "cache_key": "boundary:v3:20e5078de469f96f443cbd36d989971925d4a2c6db529623544ec020a66a37cb",
+   "key_payload": {
+    "content_hash": "sha1:0e49ccb5a0486ab74255876701252bc3c0ffd26f",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-python:source=official:tree-sitter-python@0.25.0:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "python",
+    "path": "b.py",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "c.go": {
+   "cache_key": "boundary:v3:97c8fc9a05c1c9b0a22941d0bc4a2ee945977f21c2ee1576d53e7eb7d22ce4c0",
+   "key_payload": {
+    "content_hash": "sha1:6039f790011d9ebd9ccc2a480e4dd840c79e59f5",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-go:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "go",
+    "path": "c.go",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "d.ts": {
+   "cache_key": "boundary:v3:81e3b3a33fce5aef9acd6cec403bad273224d988780fb66ce76474e45b4e7642",
+   "key_payload": {
+    "content_hash": "sha1:3e836fec4b278ffe5c2a2ae9016af92a2dd2f348",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "d.ts",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "x.ts": {
+   "cache_key": "boundary:v3:0d6c8bf4fd66558482235466e1e032ede571ee3e324610932fa03cfd5a04ffa3",
+   "key_payload": {
+    "content_hash": "sha1:a16646af30b6c67abd5a5c720e33255d4235345d",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "x.ts",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

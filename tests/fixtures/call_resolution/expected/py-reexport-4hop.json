@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:205910e5fe9cedd3967b9f4e3edc30827c4debe8",
+     "call_span": [
+      45,
+      53
+     ],
+     "callee_span": [
+      45,
+      51
+     ],
+     "caller": "go",
+     "file": "app.py",
+     "line": 5,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "969c7a10d07776913d7042e8fa406ee60039df24",
+       "d3cb897991b20481f19abb9a67bf7a7378ef23cc"
+      ],
+      "candidates": [
+       "other.py:1:helper",
+       "impl.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-reexport-4hop"
+  }
+ },
+ "source": "authored",
+ "tree": "py-reexport-4hop"
+}

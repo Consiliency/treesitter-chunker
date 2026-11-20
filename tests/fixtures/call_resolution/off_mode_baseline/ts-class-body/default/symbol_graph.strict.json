@@ -1,0 +1,257 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "function",
+   "callee_byte_end": 87,
+   "callee_byte_start": 86,
+   "file": "svc.ts",
+   "from": "066cd98ac33cc7443fe28671466e4c0963147c9d",
+   "id": "call:ff3114bd007a749f6e68f12dd0c9e28f10e551fc",
+   "location": {
+    "byte_end": 89,
+    "byte_start": 86,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "reference": "t",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 2,
+  "total_classes": 1,
+  "total_functions": 4,
+  "total_imports": 0,
+  "total_relationships": 3
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "8e8ae04d155120e4ce7dc9383990e5f6921af32a",
+    "fbdf891b11906e5bbf43b9232b427edc1375cf5a"
+   ],
+   "file": "svc.ts",
+   "from": "ab8aa79f983c91de8fc201a94b5850af4bd14ddc",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [
+    "8e8ae04d155120e4ce7dc9383990e5f6921af32a",
+    "fbdf891b11906e5bbf43b9232b427edc1375cf5a"
+   ],
+   "file": "svc.ts",
+   "from": "066cd98ac33cc7443fe28671466e4c0963147c9d",
+   "is_internal": false,
+   "line": 4,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "function",
+   "call_site_id": "call:ff3114bd007a749f6e68f12dd0c9e28f10e551fc",
+   "callee_byte_end": 87,
+   "callee_byte_start": 86,
+   "candidates": [
+    "8e8ae04d155120e4ce7dc9383990e5f6921af32a",
+    "fbdf891b11906e5bbf43b9232b427edc1375cf5a"
+   ],
+   "file": "svc.ts",
+   "from": "066cd98ac33cc7443fe28671466e4c0963147c9d",
+   "is_internal": false,
+   "line": 4,
+   "location": {
+    "byte_end": 89,
+    "byte_start": 86,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "t",
+   "resolution": "ambiguous",
+   "resolution_mode": "strict",
+   "to": "t",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "066cd98ac33cc7443fe28671466e4c0963147c9d": {
+   "definition_id": "066cd98ac33cc7443fe28671466e4c0963147c9d",
+   "end_line": 4,
+   "file": "svc.ts",
+   "kind": "method",
+   "language": "typescript",
+   "line": 4,
+   "module": "svc",
+   "name": "m",
+   "node_id": "357403ae22faeecf69941ba278398e72492c833e",
+   "parent_class": "A",
+   "qualified_name": "A.m",
+   "semantic_path": "svc.ts::A.m",
+   "signature": "m()"
+  },
+  "8e8ae04d155120e4ce7dc9383990e5f6921af32a": {
+   "definition_id": "8e8ae04d155120e4ce7dc9383990e5f6921af32a",
+   "end_line": 1,
+   "file": "other.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "other",
+   "name": "t",
+   "node_id": "b88df38f04e8c00e819cc1a4d144681cc1283093",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "other.ts::t",
+   "signature": "t()"
+  },
+  "9f8384ce51036c05a99cb4d21805d91cb6b43564": {
+   "definition_id": "9f8384ce51036c05a99cb4d21805d91cb6b43564",
+   "end_line": 3,
+   "file": "svc.ts",
+   "kind": "method",
+   "language": "typescript",
+   "line": 3,
+   "module": "svc",
+   "name": "t",
+   "node_id": "f6ce62bbe6e7605b5a88d892438cc5af28d68a17",
+   "parent_class": "A",
+   "qualified_name": "A.t",
+   "semantic_path": "svc.ts::A.t",
+   "signature": "t()"
+  },
+  "ab8aa79f983c91de8fc201a94b5850af4bd14ddc": {
+   "definition_id": "ab8aa79f983c91de8fc201a94b5850af4bd14ddc",
+   "end_line": 5,
+   "file": "svc.ts",
+   "kind": "class",
+   "language": "typescript",
+   "line": 2,
+   "module": "svc",
+   "name": "A",
+   "node_id": "4f15839e52fa39acc3359b8ef4ea77a6345e08f4",
+   "parent_class": "",
+   "qualified_name": "A",
+   "semantic_path": "svc.ts::A",
+   "signature": null
+  },
+  "fbdf891b11906e5bbf43b9232b427edc1375cf5a": {
+   "definition_id": "fbdf891b11906e5bbf43b9232b427edc1375cf5a",
+   "end_line": 1,
+   "file": "svc.ts",
+   "kind": "function",
+   "language": "typescript",
+   "line": 1,
+   "module": "svc",
+   "name": "t",
+   "node_id": "fb5d967a67452dd37d35c308e77737f0b2828026",
+   "parent_class": "",
+   "qualified_name": "t",
+   "semantic_path": "svc.ts::t",
+   "signature": "t()"
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "ab8aa79f983c91de8fc201a94b5850af4bd14ddc",
+    "end_line": 5,
+    "file": "svc.ts",
+    "kind": "class",
+    "language": "typescript",
+    "line": 2,
+    "module": "svc",
+    "name": "A",
+    "node_id": "4f15839e52fa39acc3359b8ef4ea77a6345e08f4",
+    "parent_class": "",
+    "qualified_name": "A",
+    "semantic_path": "svc.ts::A",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "8e8ae04d155120e4ce7dc9383990e5f6921af32a",
+    "end_line": 1,
+    "file": "other.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "other",
+    "name": "t",
+    "node_id": "b88df38f04e8c00e819cc1a4d144681cc1283093",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "other.ts::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "fbdf891b11906e5bbf43b9232b427edc1375cf5a",
+    "end_line": 1,
+    "file": "svc.ts",
+    "kind": "function",
+    "language": "typescript",
+    "line": 1,
+    "module": "svc",
+    "name": "t",
+    "node_id": "fb5d967a67452dd37d35c308e77737f0b2828026",
+    "parent_class": "",
+    "qualified_name": "t",
+    "semantic_path": "svc.ts::t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "9f8384ce51036c05a99cb4d21805d91cb6b43564",
+    "end_line": 3,
+    "file": "svc.ts",
+    "kind": "method",
+    "language": "typescript",
+    "line": 3,
+    "module": "svc",
+    "name": "t",
+    "node_id": "f6ce62bbe6e7605b5a88d892438cc5af28d68a17",
+    "parent_class": "A",
+    "qualified_name": "A.t",
+    "semantic_path": "svc.ts::A.t",
+    "signature": "t()"
+   },
+   {
+    "definition_id": "066cd98ac33cc7443fe28671466e4c0963147c9d",
+    "end_line": 4,
+    "file": "svc.ts",
+    "kind": "method",
+    "language": "typescript",
+    "line": 4,
+    "module": "svc",
+    "name": "m",
+    "node_id": "357403ae22faeecf69941ba278398e72492c833e",
+    "parent_class": "A",
+    "qualified_name": "A.m",
+    "semantic_path": "svc.ts::A.m",
+    "signature": "m()"
+   }
+  ],
+  "imports": []
+ }
+}

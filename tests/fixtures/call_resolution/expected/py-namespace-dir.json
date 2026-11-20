@@ -1,0 +1,43 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:e46b702f37ebfe1afeda298181639ceb8b742ca3",
+     "call_span": [
+      48,
+      56
+     ],
+     "callee_span": [
+      48,
+      54
+     ],
+     "caller": "go",
+     "file": "app.py",
+     "line": 5,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "8ad53b894978a2203fa65e638e6062c9f1f7c917",
+       "969c7a10d07776913d7042e8fa406ee60039df24",
+       "ffa3acd1f1ee062a2ac2f836e5e6976f2959f676"
+      ],
+      "candidates": [
+       "D/sub.py:1:helper",
+       "other.py:1:helper",
+       "D.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-namespace-dir"
+  }
+ },
+ "source": "authored",
+ "tree": "py-namespace-dir"
+}

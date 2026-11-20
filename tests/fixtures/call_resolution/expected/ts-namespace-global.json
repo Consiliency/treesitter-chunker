@@ -1,0 +1,67 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:cedb1036df7c78c6e0aafa117497f734ec042791",
+     "call_span": [
+      43,
+      46
+     ],
+     "callee_span": [
+      43,
+      44
+     ],
+     "caller": "N.g",
+     "file": "c.ts",
+     "line": 1,
+     "reference": "f",
+     "today": {
+      "candidate_ids": [
+       "58017555b176ee877afad02b47ba5fe940bcea7c",
+       "b6973615c0c920e92f6124dca2b85b7b62159b3a"
+      ],
+      "candidates": [
+       "b.ts:1:N.f",
+       "a.ts:1:N.f"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:40253c4f5b2622fc69b72dcae17e3805798560cf",
+     "call_span": [
+      77,
+      82
+     ],
+     "callee_span": [
+      77,
+      80
+     ],
+     "caller": "useN",
+     "file": "c.ts",
+     "line": 2,
+     "reference": "N.f",
+     "today": {
+      "candidate_ids": [
+       "58017555b176ee877afad02b47ba5fe940bcea7c",
+       "b6973615c0c920e92f6124dca2b85b7b62159b3a"
+      ],
+      "candidates": [
+       "b.ts:1:N.f",
+       "a.ts:1:N.f"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-namespace-global"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-namespace-global"
+}

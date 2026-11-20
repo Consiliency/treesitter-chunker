@@ -1,0 +1,43 @@
+{
+ "plan_sections": [
+  "10.3"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:5a3466886af7ca2365fc4f4f88518a554fb06e40",
+     "call_span": [
+      82,
+      85
+     ],
+     "callee_span": [
+      82,
+      83
+     ],
+     "caller": "g",
+     "file": "a.js",
+     "line": 4,
+     "reference": "d",
+     "today": {
+      "candidate_ids": [
+       "470018ad4567de538b2174af53f399566b73cff5",
+       "470018ad4567de538b2174af53f399566b73cff5#1",
+       "9601d33d5074d75c0a91cee4876fad980ecddb17"
+      ],
+      "candidates": [
+       "a.js:2:g.d",
+       "a.js:3:g.d",
+       "b.js:2:h.d"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/js-hoist-fnbody"
+  }
+ },
+ "source": "authored",
+ "tree": "js-hoist-fnbody"
+}

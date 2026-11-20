@@ -1,0 +1,63 @@
+{
+ "files": {
+  "a.rs": {
+   "cache_key": "boundary:v3:4c8f80c8a7a871b7946daf72ba8d30f5a3033eb11a5e5ee64db129aaab5edf2c",
+   "key_payload": {
+    "content_hash": "sha1:9a84dd8f2e2a8db31395174180b594b5f74c6602",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-rust:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "rust",
+    "path": "a.rs",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "b.rs": {
+   "cache_key": "boundary:v3:e5255f6bcefc8ec8002ddc0657997649484baa0b22cdc7dd9aff92f5f10a06d6",
+   "key_payload": {
+    "content_hash": "sha1:bf437687a5547a54a5a228cc292902471e776d32",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-rust:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "rust",
+    "path": "b.rs",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "c.rs": {
+   "cache_key": "boundary:v3:ed96374325a6c1a256014d7ceb196feb21a1a2c51aa3442849c9774f442c0032",
+   "key_payload": {
+    "content_hash": "sha1:551d01cdf8cb359a98bdaa96cfade697e5fc24a6",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-rust:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "rust",
+    "path": "c.rs",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

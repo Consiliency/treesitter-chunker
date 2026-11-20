@@ -1,0 +1,67 @@
+{
+ "plan_sections": [
+  "10.3"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:5993b05ca80d4e808ba5a91cc76d0d287a546305",
+     "call_span": [
+      86,
+      89
+     ],
+     "callee_span": [
+      86,
+      87
+     ],
+     "caller": "a",
+     "file": "use.ts",
+     "line": 3,
+     "reference": "t",
+     "today": {
+      "candidate_ids": [
+       "8e8ae04d155120e4ce7dc9383990e5f6921af32a",
+       "fbdf891b11906e5bbf43b9232b427edc1375cf5a"
+      ],
+      "candidates": [
+       "other.ts:1:t",
+       "svc.ts:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:27651d53c31aad9fd4261659b7244622363d98ad",
+     "call_span": [
+      92,
+      95
+     ],
+     "callee_span": [
+      92,
+      93
+     ],
+     "caller": "a",
+     "file": "use.ts",
+     "line": 3,
+     "reference": "u",
+     "today": {
+      "candidate_ids": [
+       "73d9dbf3503183561207ec0526f053cc52237bd6",
+       "80eb4fb8041ff2c51503d8c7148d3210faf66f60"
+      ],
+      "candidates": [
+       "lib/index.ts:1:u",
+       "other2.ts:1:u"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-ext-order"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-ext-order"
+}

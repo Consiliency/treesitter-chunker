@@ -1,0 +1,63 @@
+{
+ "files": {
+  "a/a.go": {
+   "cache_key": "boundary:v3:a808f4ea4e921ec4778f3ce1d5a9f7e2061f566f1cbd7b325282044765d55186",
+   "key_payload": {
+    "content_hash": "sha1:c14ee8022b9ff69b432e630cf7b7742779e603bd",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-go:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "go",
+    "path": "a/a.go",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "b/b.go": {
+   "cache_key": "boundary:v3:d9b7c7457615de1baf7d83f4eaf86d3c16c7577921c24e05a65e49dd6ad44a58",
+   "key_payload": {
+    "content_hash": "sha1:4ca025e8444ea3b8c02555d095b59e18ec02da2b",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-go:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "go",
+    "path": "b/b.go",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "c/c.go": {
+   "cache_key": "boundary:v3:10e62227e8647b07bc1975ed65c483dc176d678ae058863956a414e54fe809ea",
+   "key_payload": {
+    "content_hash": "sha1:b9d46cd1be02c63fb39762887cd219cecc0279ba",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-go:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "go",
+    "path": "c/c.go",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

@@ -1,0 +1,45 @@
+{
+ "files": {
+  "A.kt": {
+   "cache_key": "boundary:v3:37db0b3f434ede3a931817bae2694a8c644bab1921e87c97b19c6d27ee004838",
+   "key_payload": {
+    "content_hash": "sha1:71d701922c43889be0e1eb20716ef711cb981251",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-kotlin:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "kotlin",
+    "path": "A.kt",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "B.kt": {
+   "cache_key": "boundary:v3:d73d4668e7296aa536d16e13bb385d1a528cd85924ed776cc45734cf18f40425",
+   "key_payload": {
+    "content_hash": "sha1:30630e75552369239661eeac414774b34f02c4f8",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-kotlin:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "kotlin",
+    "path": "B.kt",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

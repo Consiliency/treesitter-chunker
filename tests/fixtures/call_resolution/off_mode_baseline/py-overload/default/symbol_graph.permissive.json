@@ -1,0 +1,209 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 150,
+   "callee_byte_start": 149,
+   "file": "a.py",
+   "from": "cc0e0b32f4c6191c861c87adc5781be27a2fc7f9",
+   "id": "call:33649163c80177c644d9d99a6defb380c18f1018",
+   "location": {
+    "byte_end": 153,
+    "byte_start": 149,
+    "end_line": 13,
+    "start_line": 13
+   },
+   "reference": "f",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 1,
+  "total_classes": 0,
+  "total_functions": 4,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "4d4cd9d7f3fd6e82443194cd97630678d117be81",
+    "8cf15f1b225a23d30d6d181029a4edc8469f5bfb",
+    "91f65f3c6a4968f1142f1c766dd43def82edfd62"
+   ],
+   "file": "a.py",
+   "from": "cc0e0b32f4c6191c861c87adc5781be27a2fc7f9",
+   "is_internal": false,
+   "line": 12,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "f",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:33649163c80177c644d9d99a6defb380c18f1018",
+   "callee_byte_end": 150,
+   "callee_byte_start": 149,
+   "candidates": [
+    "4d4cd9d7f3fd6e82443194cd97630678d117be81",
+    "8cf15f1b225a23d30d6d181029a4edc8469f5bfb",
+    "91f65f3c6a4968f1142f1c766dd43def82edfd62"
+   ],
+   "file": "a.py",
+   "from": "cc0e0b32f4c6191c861c87adc5781be27a2fc7f9",
+   "is_internal": false,
+   "line": 13,
+   "location": {
+    "byte_end": 153,
+    "byte_start": 149,
+    "end_line": 13,
+    "start_line": 13
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "f",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "4d4cd9d7f3fd6e82443194cd97630678d117be81": {
+   "definition_id": "4d4cd9d7f3fd6e82443194cd97630678d117be81",
+   "end_line": 7,
+   "file": "a.py",
+   "kind": "function",
+   "language": "python",
+   "line": 7,
+   "module": "a",
+   "name": "f",
+   "node_id": "cdea79158d5880569d4034aac26a96713e425504",
+   "parent_class": "",
+   "qualified_name": "f",
+   "semantic_path": "a.py::f",
+   "signature": "f(x: str) -> str"
+  },
+  "8cf15f1b225a23d30d6d181029a4edc8469f5bfb": {
+   "definition_id": "8cf15f1b225a23d30d6d181029a4edc8469f5bfb",
+   "end_line": 5,
+   "file": "a.py",
+   "kind": "function",
+   "language": "python",
+   "line": 5,
+   "module": "a",
+   "name": "f",
+   "node_id": "a573d39dfa067967fdedae82cf90130d16e81bc8",
+   "parent_class": "",
+   "qualified_name": "f",
+   "semantic_path": "a.py::f",
+   "signature": "f(x: int) -> int"
+  },
+  "91f65f3c6a4968f1142f1c766dd43def82edfd62": {
+   "definition_id": "91f65f3c6a4968f1142f1c766dd43def82edfd62",
+   "end_line": 9,
+   "file": "a.py",
+   "kind": "function",
+   "language": "python",
+   "line": 8,
+   "module": "a",
+   "name": "f",
+   "node_id": "e9287d530b0e8a13258e7a72341ab8512568d70c",
+   "parent_class": "",
+   "qualified_name": "f",
+   "semantic_path": "a.py::f",
+   "signature": "f(x)"
+  },
+  "cc0e0b32f4c6191c861c87adc5781be27a2fc7f9": {
+   "definition_id": "cc0e0b32f4c6191c861c87adc5781be27a2fc7f9",
+   "end_line": 13,
+   "file": "a.py",
+   "kind": "function",
+   "language": "python",
+   "line": 12,
+   "module": "a",
+   "name": "use",
+   "node_id": "40a47cf549e373ce5a07e44a9713c0547c872c0d",
+   "parent_class": "",
+   "qualified_name": "use",
+   "semantic_path": "a.py::use",
+   "signature": "use()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "8cf15f1b225a23d30d6d181029a4edc8469f5bfb",
+    "end_line": 5,
+    "file": "a.py",
+    "kind": "function",
+    "language": "python",
+    "line": 5,
+    "module": "a",
+    "name": "f",
+    "node_id": "a573d39dfa067967fdedae82cf90130d16e81bc8",
+    "parent_class": "",
+    "qualified_name": "f",
+    "semantic_path": "a.py::f",
+    "signature": "f(x: int) -> int"
+   },
+   {
+    "definition_id": "4d4cd9d7f3fd6e82443194cd97630678d117be81",
+    "end_line": 7,
+    "file": "a.py",
+    "kind": "function",
+    "language": "python",
+    "line": 7,
+    "module": "a",
+    "name": "f",
+    "node_id": "cdea79158d5880569d4034aac26a96713e425504",
+    "parent_class": "",
+    "qualified_name": "f",
+    "semantic_path": "a.py::f",
+    "signature": "f(x: str) -> str"
+   },
+   {
+    "definition_id": "91f65f3c6a4968f1142f1c766dd43def82edfd62",
+    "end_line": 9,
+    "file": "a.py",
+    "kind": "function",
+    "language": "python",
+    "line": 8,
+    "module": "a",
+    "name": "f",
+    "node_id": "e9287d530b0e8a13258e7a72341ab8512568d70c",
+    "parent_class": "",
+    "qualified_name": "f",
+    "semantic_path": "a.py::f",
+    "signature": "f(x)"
+   },
+   {
+    "definition_id": "cc0e0b32f4c6191c861c87adc5781be27a2fc7f9",
+    "end_line": 13,
+    "file": "a.py",
+    "kind": "function",
+    "language": "python",
+    "line": 12,
+    "module": "a",
+    "name": "use",
+    "node_id": "40a47cf549e373ce5a07e44a9713c0547c872c0d",
+    "parent_class": "",
+    "qualified_name": "use",
+    "semantic_path": "a.py::use",
+    "signature": "use()"
+   }
+  ],
+  "imports": []
+ }
+}

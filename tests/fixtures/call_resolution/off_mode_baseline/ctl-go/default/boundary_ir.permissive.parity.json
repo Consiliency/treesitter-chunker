@@ -1,0 +1,317 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:a0b898da5ce81a5adc77ffeeeae5f7d5406ced4e",
+   "candidates": [
+    "09690ea7cb664e9d5047f0c12a07f5d846c201fe",
+    "b0598b40e01ff7530acadbcaea13ce4dfe8faf3f",
+    "e27b5441aa1138142a84f736ef0799cff5d57b9a"
+   ],
+   "file": "a/a.go",
+   "id": "call:a0b898da5ce81a5adc77ffeeeae5f7d5406ced4e",
+   "location": {
+    "byte_end": 75,
+    "byte_start": 67,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "a/a.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "source": "b90e05864305d0b21784171b97f042bfb7c90e4b",
+   "target": "helper",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "09690ea7cb664e9d5047f0c12a07f5d846c201fe",
+    "b0598b40e01ff7530acadbcaea13ce4dfe8faf3f",
+    "e27b5441aa1138142a84f736ef0799cff5d57b9a"
+   ],
+   "id": "edge:81eb9cf7a8ffbb14",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "a/a.go",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "source": "b90e05864305d0b21784171b97f042bfb7c90e4b",
+   "target": "helper",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:c14ee8022b9ff69b432e630cf7b7742779e603bd",
+   "diagnostics": [],
+   "id": "61a443c64af1d4e865b97957775ae1ba197277dd",
+   "language": "go",
+   "parser": "tree-sitter-go",
+   "path": "a/a.go",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:4ca025e8444ea3b8c02555d095b59e18ec02da2b",
+   "diagnostics": [],
+   "id": "7c2caa5826d8e8393004a910092f297fb55b023b",
+   "language": "go",
+   "parser": "tree-sitter-go",
+   "path": "b/b.go",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:b9d46cd1be02c63fb39762887cd219cecc0279ba",
+   "diagnostics": [],
+   "id": "5109d1fbdd64d2cc648e36808dd68c62601adffd",
+   "language": "go",
+   "parser": "tree-sitter-go",
+   "path": "c/c.go",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 2,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 3,
+  "files_processed": 3,
+  "files_skipped": 0,
+  "files_total": 3,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 5,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "05832cb30266677e8edb0af2bf32432a9a189598",
+   "file_id": "5109d1fbdd64d2cc648e36808dd68c62601adffd",
+   "id": "05832cb30266677e8edb0af2bf32432a9a189598",
+   "identity": {
+    "source": "definition_id",
+    "value": "05832cb30266677e8edb0af2bf32432a9a189598"
+   },
+   "kind": "type",
+   "language": "go",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: go\nfile: c/c.go\nkind: type\nsemantic path: c/c.go\ncontent:\ntype helper struct{}"
+   },
+   "node_id": "3e8763065f898ab2e03a2e2450c552ffc728b8c1",
+   "parent": null,
+   "path": "c/c.go",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": null,
+   "relationships": [],
+   "semantic_path": "c/c.go",
+   "signature": null,
+   "span": {
+    "byte_end": 31,
+    "byte_start": 11,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": null,
+   "symbol_id": null
+  },
+  {
+   "definition_id": "09690ea7cb664e9d5047f0c12a07f5d846c201fe",
+   "file_id": "61a443c64af1d4e865b97957775ae1ba197277dd",
+   "id": "09690ea7cb664e9d5047f0c12a07f5d846c201fe",
+   "identity": {
+    "source": "definition_id",
+    "value": "09690ea7cb664e9d5047f0c12a07f5d846c201fe"
+   },
+   "kind": "function",
+   "language": "go",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: go\nfile: a/a.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: a/a.go::helper\nsignature text: helper() -> int\ncontent:\nfunc helper() int { return 1 }"
+   },
+   "node_id": "ff29cc72182e49a8c4bf5465f99ba9ad8ee913cb",
+   "parent": null,
+   "path": "a/a.go",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "a/a.go::helper",
+   "signature": "helper() -> int",
+   "span": {
+    "byte_end": 41,
+    "byte_start": 11,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": "helper",
+   "symbol_id": "736bab3dc6dc0a460ec55ce724b1078fe5301b70"
+  },
+  {
+   "definition_id": "b0598b40e01ff7530acadbcaea13ce4dfe8faf3f",
+   "file_id": "5109d1fbdd64d2cc648e36808dd68c62601adffd",
+   "id": "b0598b40e01ff7530acadbcaea13ce4dfe8faf3f",
+   "identity": {
+    "source": "definition_id",
+    "value": "b0598b40e01ff7530acadbcaea13ce4dfe8faf3f"
+   },
+   "kind": "type",
+   "language": "go",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: go\nfile: c/c.go\nkind: type\nsymbol: helper\nqualified name: helper\nsemantic path: c/c.go::helper\ncontent:\nhelper struct{}"
+   },
+   "node_id": "e3230f9ba346d1578bde3af847736952bde78b13",
+   "parent": "3e8763065f898ab2e03a2e2450c552ffc728b8c1",
+   "path": "c/c.go",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "c/c.go::helper",
+   "signature": null,
+   "span": {
+    "byte_end": 31,
+    "byte_start": 16,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": "helper",
+   "symbol_id": "9ea1e242e456458bde4460bd35ff1bd66909e809"
+  },
+  {
+   "definition_id": "b90e05864305d0b21784171b97f042bfb7c90e4b",
+   "file_id": "61a443c64af1d4e865b97957775ae1ba197277dd",
+   "id": "b90e05864305d0b21784171b97f042bfb7c90e4b",
+   "identity": {
+    "source": "definition_id",
+    "value": "b90e05864305d0b21784171b97f042bfb7c90e4b"
+   },
+   "kind": "function",
+   "language": "go",
+   "metadata": {
+    "dependencies": [
+     "helper"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: go\nfile: a/a.go\nkind: function\nsymbol: use\nqualified name: use\nsemantic path: a/a.go::use\nsignature text: use() -> int\ndependencies: helper\ncontent:\nfunc use() int { return helper() }"
+   },
+   "node_id": "08daadd185df56f030238c682feef2edeb2ce0c1",
+   "parent": null,
+   "path": "a/a.go",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "use",
+   "relationships": [
+    "call:a0b898da5ce81a5adc77ffeeeae5f7d5406ced4e",
+    "edge:81eb9cf7a8ffbb14"
+   ],
+   "semantic_path": "a/a.go::use",
+   "signature": "use() -> int",
+   "span": {
+    "byte_end": 77,
+    "byte_start": 43,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "symbol": "use",
+   "symbol_id": "93eff2551c51b483e02fe1c62c4cb89168fad352"
+  },
+  {
+   "definition_id": "e27b5441aa1138142a84f736ef0799cff5d57b9a",
+   "file_id": "7c2caa5826d8e8393004a910092f297fb55b023b",
+   "id": "e27b5441aa1138142a84f736ef0799cff5d57b9a",
+   "identity": {
+    "source": "definition_id",
+    "value": "e27b5441aa1138142a84f736ef0799cff5d57b9a"
+   },
+   "kind": "function",
+   "language": "go",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: go\nfile: b/b.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: b/b.go::helper\nsignature text: helper() -> int\ncontent:\nfunc helper() int { return 2 }"
+   },
+   "node_id": "4d5a22bc5d44128ba6aa1f5cb5ccb59b677e9119",
+   "parent": null,
+   "path": "b/b.go",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "b/b.go::helper",
+   "signature": "helper() -> int",
+   "span": {
+    "byte_end": 41,
+    "byte_start": 11,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "symbol": "helper",
+   "symbol_id": "daae1c472ae39fa1f45e403c251fcaebcdb807ef"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

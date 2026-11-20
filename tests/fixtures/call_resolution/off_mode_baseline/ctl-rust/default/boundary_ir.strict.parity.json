@@ -1,0 +1,282 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:b7966d80bf5d3f7df37b5af227ad1d324b486aca",
+   "candidates": [
+    "09615fa81b4602d5435e48154642977238008653",
+    "1032a44c24150f5be5a2129a2abd241fb8bb446a",
+    "ced1160ef0f343fe4faceb9045034022fa85c7f8"
+   ],
+   "file": "a.rs",
+   "id": "call:b7966d80bf5d3f7df37b5af227ad1d324b486aca",
+   "location": {
+    "byte_end": 54,
+    "byte_start": 46,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "metadata": {
+    "file": "a.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "source": "1349361eb4b1d3da6e45a33446e31f5d09cea898",
+   "target": "helper",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "09615fa81b4602d5435e48154642977238008653",
+    "1032a44c24150f5be5a2129a2abd241fb8bb446a",
+    "ced1160ef0f343fe4faceb9045034022fa85c7f8"
+   ],
+   "id": "edge:4d73a49bb929bb2c",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "metadata": {
+    "file": "a.rs",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "source": "1349361eb4b1d3da6e45a33446e31f5d09cea898",
+   "target": "helper",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:9a84dd8f2e2a8db31395174180b594b5f74c6602",
+   "diagnostics": [],
+   "id": "84ccb013b571a52e08cc92ef72ccb1e5cf178732",
+   "language": "rust",
+   "parser": "tree-sitter-rust",
+   "path": "a.rs",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:bf437687a5547a54a5a228cc292902471e776d32",
+   "diagnostics": [],
+   "id": "bcccf14e41f39868a9243d609da8f01792026e84",
+   "language": "rust",
+   "parser": "tree-sitter-rust",
+   "path": "b.rs",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:551d01cdf8cb359a98bdaa96cfade697e5fc24a6",
+   "diagnostics": [],
+   "id": "3638d4e25bec2e11d6d00d48dcc77ae3d576c3f1",
+   "language": "rust",
+   "parser": "tree-sitter-rust",
+   "path": "c.rs",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 2,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 3,
+  "files_processed": 3,
+  "files_skipped": 0,
+  "files_total": 3,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 4,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "09615fa81b4602d5435e48154642977238008653",
+   "file_id": "3638d4e25bec2e11d6d00d48dcc77ae3d576c3f1",
+   "id": "09615fa81b4602d5435e48154642977238008653",
+   "identity": {
+    "source": "definition_id",
+    "value": "09615fa81b4602d5435e48154642977238008653"
+   },
+   "kind": "struct",
+   "language": "rust",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: rust\nfile: c.rs\nkind: struct\nsymbol: helper\nqualified name: helper\nsemantic path: c.rs::helper\ncontent:\nstruct helper {}"
+   },
+   "node_id": "e8b54b5862267f3a83cdd0d4d8fb2096b7b6b76a",
+   "parent": null,
+   "path": "c.rs",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "c.rs::helper",
+   "signature": null,
+   "span": {
+    "byte_end": 16,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "4c87708e8b9796d2c7962a4a9198fc1d958978e3"
+  },
+  {
+   "definition_id": "1032a44c24150f5be5a2129a2abd241fb8bb446a",
+   "file_id": "84ccb013b571a52e08cc92ef72ccb1e5cf178732",
+   "id": "1032a44c24150f5be5a2129a2abd241fb8bb446a",
+   "identity": {
+    "source": "definition_id",
+    "value": "1032a44c24150f5be5a2129a2abd241fb8bb446a"
+   },
+   "kind": "function",
+   "language": "rust",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: rust\nfile: a.rs\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: a.rs::helper\nsignature text: helper() -> i32\ncontent:\nfn helper() -> i32 { 1 }"
+   },
+   "node_id": "b068331561cf76ccedc6e8c65952cc7eb8469667",
+   "parent": null,
+   "path": "a.rs",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "a.rs::helper",
+   "signature": "helper() -> i32",
+   "span": {
+    "byte_end": 24,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "7f2a692a88877b416c51448a2b28c5e824171dc7"
+  },
+  {
+   "definition_id": "1349361eb4b1d3da6e45a33446e31f5d09cea898",
+   "file_id": "84ccb013b571a52e08cc92ef72ccb1e5cf178732",
+   "id": "1349361eb4b1d3da6e45a33446e31f5d09cea898",
+   "identity": {
+    "source": "definition_id",
+    "value": "1349361eb4b1d3da6e45a33446e31f5d09cea898"
+   },
+   "kind": "function",
+   "language": "rust",
+   "metadata": {
+    "dependencies": [
+     "helper"
+    ],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: rust\nfile: a.rs\nkind: function\nsymbol: use_it\nqualified name: use_it\nsemantic path: a.rs::use_it\nsignature text: use_it() -> i32\ndependencies: helper\ncontent:\nfn use_it() -> i32 { helper() }"
+   },
+   "node_id": "ea49d1676cf17a9d540d27345b8682da02525595",
+   "parent": null,
+   "path": "a.rs",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "use_it",
+   "relationships": [
+    "call:b7966d80bf5d3f7df37b5af227ad1d324b486aca",
+    "edge:4d73a49bb929bb2c"
+   ],
+   "semantic_path": "a.rs::use_it",
+   "signature": "use_it() -> i32",
+   "span": {
+    "byte_end": 56,
+    "byte_start": 25,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "use_it",
+   "symbol_id": "37795675926f70c510b4bccd7556a02d142d8fc5"
+  },
+  {
+   "definition_id": "ced1160ef0f343fe4faceb9045034022fa85c7f8",
+   "file_id": "bcccf14e41f39868a9243d609da8f01792026e84",
+   "id": "ced1160ef0f343fe4faceb9045034022fa85c7f8",
+   "identity": {
+    "source": "definition_id",
+    "value": "ced1160ef0f343fe4faceb9045034022fa85c7f8"
+   },
+   "kind": "function",
+   "language": "rust",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: rust\nfile: b.rs\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: b.rs::helper\nsignature text: helper() -> i32\ncontent:\nfn helper() -> i32 { 2 }"
+   },
+   "node_id": "623606acd31eafeb0bbdf3215c8570a53c2c754f",
+   "parent": null,
+   "path": "b.rs",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "b.rs::helper",
+   "signature": "helper() -> i32",
+   "span": {
+    "byte_end": 24,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "e729e5df015ab542e55e5fcc7ae276dac8c9083f"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "strict"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

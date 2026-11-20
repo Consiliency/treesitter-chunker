@@ -1,0 +1,477 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:99c230f6ab8746a247f8ae41b28fe1605b6b6c45",
+   "candidates": [
+    "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+    "d1ed0db740dd9d5918a0b5bd71808700b46beca0"
+   ],
+   "file": "k.cpp",
+   "id": "call:99c230f6ab8746a247f8ae41b28fe1605b6b6c45",
+   "location": {
+    "byte_end": 154,
+    "byte_start": 150,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "k.cpp",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "ambiguous",
+   "source": "1fdcff116e26c4a40652f09421324dd80fa31b22",
+   "target": "f",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+    "d1ed0db740dd9d5918a0b5bd71808700b46beca0"
+   ],
+   "id": "edge:cc6c1b3745c6a95d",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "metadata": {
+    "file": "k.cpp",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "f",
+   "resolution": "ambiguous",
+   "source": "1fdcff116e26c4a40652f09421324dd80fa31b22",
+   "target": "f",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:429ff2f62e75a486",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "k.cpp",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "a",
+   "resolution": "unresolved",
+   "source": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+   "target": "a",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:e331bd82ddb0e8aa0e0fc1bdb5213f7209a77955",
+   "candidates": [
+    "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5"
+   ],
+   "file": "k.cpp",
+   "id": "call:e331bd82ddb0e8aa0e0fc1bdb5213f7209a77955",
+   "location": {
+    "byte_end": 88,
+    "byte_start": 80,
+    "end_line": 4,
+    "start_line": 4
+   },
+   "metadata": {
+    "file": "k.cpp",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_a",
+   "resolution": "resolved",
+   "source": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+   "target": "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5"
+   ],
+   "id": "edge:ac4ac2a9d60e5f29",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 3,
+    "start_line": 3
+   },
+   "metadata": {
+    "file": "k.cpp",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_a",
+   "resolution": "resolved",
+   "source": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+   "target": "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:b7b05d245ad3dd3a7c3bff1990777cf27368f27b",
+   "candidates": [
+    "b60ecc558c883f50552528ccb54aa2f1d2e94c9b"
+   ],
+   "file": "k.cpp",
+   "id": "call:b7b05d245ad3dd3a7c3bff1990777cf27368f27b",
+   "location": {
+    "byte_end": 129,
+    "byte_start": 121,
+    "end_line": 7,
+    "start_line": 7
+   },
+   "metadata": {
+    "file": "k.cpp",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "source": "d1ed0db740dd9d5918a0b5bd71808700b46beca0",
+   "target": "b60ecc558c883f50552528ccb54aa2f1d2e94c9b",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "b60ecc558c883f50552528ccb54aa2f1d2e94c9b"
+   ],
+   "id": "edge:630a7a67cf71746c",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 6,
+    "start_line": 6
+   },
+   "metadata": {
+    "file": "k.cpp",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "source": "d1ed0db740dd9d5918a0b5bd71808700b46beca0",
+   "target": "b60ecc558c883f50552528ccb54aa2f1d2e94c9b",
+   "type": "dependencies"
+  },
+  {
+   "candidates": [],
+   "id": "edge:1e9478cac2053996",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 6,
+    "start_line": 6
+   },
+   "metadata": {
+    "file": "k.cpp",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "s",
+   "resolution": "unresolved",
+   "source": "d1ed0db740dd9d5918a0b5bd71808700b46beca0",
+   "target": "s",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:a420cebeb9963a14cac864847f4495b4fd2c97ee",
+   "diagnostics": [],
+   "id": "05a128291d2069bcb45d42ec2f60c0b93240094e",
+   "language": "cpp",
+   "parser": "tree-sitter-cpp",
+   "path": "k.cpp",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 8,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 1,
+  "files_processed": 1,
+  "files_skipped": 0,
+  "files_total": 1,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 5,
+  "parse_failures": 0,
+  "resolved_edges": 4,
+  "serialization_failures": 0,
+  "unresolved_edges": 2
+ },
+ "nodes": [
+  {
+   "definition_id": "1fdcff116e26c4a40652f09421324dd80fa31b22",
+   "file_id": "05a128291d2069bcb45d42ec2f60c0b93240094e",
+   "id": "1fdcff116e26c4a40652f09421324dd80fa31b22",
+   "identity": {
+    "source": "definition_id",
+    "value": "1fdcff116e26c4a40652f09421324dd80fa31b22"
+   },
+   "kind": "function",
+   "language": "cpp",
+   "metadata": {
+    "dependencies": [
+     "f"
+    ],
+    "exports": [
+     "g"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: cpp\nfile: k.cpp\nkind: function\nsymbol: g\nqualified name: g\nsemantic path: k.cpp::g\nsignature text: g() -> int\nexports: g\ndependencies: f\ncontent:\nint g() { return f(1); }"
+   },
+   "node_id": "ec09edac9358204cfdef1af34fffd80e8650b0a1",
+   "parent": null,
+   "path": "k.cpp",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "g",
+   "relationships": [
+    "call:99c230f6ab8746a247f8ae41b28fe1605b6b6c45",
+    "edge:cc6c1b3745c6a95d"
+   ],
+   "semantic_path": "k.cpp::g",
+   "signature": "g() -> int",
+   "span": {
+    "byte_end": 157,
+    "byte_start": 133,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "symbol": "g",
+   "symbol_id": "8dc7dbfbcf25af17c2ab9894e9599c9f8ca7b5f7"
+  },
+  {
+   "definition_id": "b60ecc558c883f50552528ccb54aa2f1d2e94c9b",
+   "file_id": "05a128291d2069bcb45d42ec2f60c0b93240094e",
+   "id": "b60ecc558c883f50552528ccb54aa2f1d2e94c9b",
+   "identity": {
+    "source": "definition_id",
+    "value": "b60ecc558c883f50552528ccb54aa2f1d2e94c9b"
+   },
+   "kind": "function",
+   "language": "cpp",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "only_b"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: cpp\nfile: k.cpp\nkind: function\nsymbol: only_b\nqualified name: only_b\nsemantic path: k.cpp::only_b\nsignature text: only_b() -> int\nexports: only_b\ncontent:\nint only_b() { return 2; }"
+   },
+   "node_id": "bd8d7fcce33dc6763232a2650e8379222480f65b",
+   "parent": null,
+   "path": "k.cpp",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "only_b",
+   "relationships": [],
+   "semantic_path": "k.cpp::only_b",
+   "signature": "only_b() -> int",
+   "span": {
+    "byte_end": 53,
+    "byte_start": 27,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "only_b",
+   "symbol_id": "5a2ac6389b0689b482e38e36e5570804dea7f480"
+  },
+  {
+   "definition_id": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+   "file_id": "05a128291d2069bcb45d42ec2f60c0b93240094e",
+   "id": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a",
+   "identity": {
+    "source": "definition_id",
+    "value": "bb63e5e9b3c9d5de1d4cf6a40539ae160a224e8a"
+   },
+   "kind": "function",
+   "language": "cpp",
+   "metadata": {
+    "dependencies": [
+     "a",
+     "only_a"
+    ],
+    "exports": [
+     "f"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: cpp\nfile: k.cpp\nkind: function\nsymbol: f\nqualified name: f\nsemantic path: k.cpp::f\nsignature text: f(int a) -> int\nexports: f\ndependencies: a, only_a\ncontent:\nint f(int a) {\n    return only_a();\n}"
+   },
+   "node_id": "f66eaa7de692dfc44605dd7445849dcad8eb5a5a",
+   "parent": null,
+   "path": "k.cpp",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "f",
+   "relationships": [
+    "call:e331bd82ddb0e8aa0e0fc1bdb5213f7209a77955",
+    "edge:429ff2f62e75a486",
+    "edge:ac4ac2a9d60e5f29"
+   ],
+   "semantic_path": "k.cpp::f",
+   "signature": "f(int a) -> int",
+   "span": {
+    "byte_end": 91,
+    "byte_start": 54,
+    "end_line": 5,
+    "start_line": 3
+   },
+   "symbol": "f",
+   "symbol_id": "583647aaa562b1b12f4ef7992b235ae4eab34126"
+  },
+  {
+   "definition_id": "d1ed0db740dd9d5918a0b5bd71808700b46beca0",
+   "file_id": "05a128291d2069bcb45d42ec2f60c0b93240094e",
+   "id": "d1ed0db740dd9d5918a0b5bd71808700b46beca0",
+   "identity": {
+    "source": "definition_id",
+    "value": "d1ed0db740dd9d5918a0b5bd71808700b46beca0"
+   },
+   "kind": "function",
+   "language": "cpp",
+   "metadata": {
+    "dependencies": [
+     "only_b",
+     "s"
+    ],
+    "exports": [
+     "f"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: cpp\nfile: k.cpp\nkind: function\nsymbol: f\nqualified name: f\nsemantic path: k.cpp::f\nsignature text: f(double s) -> int\nexports: f\ndependencies: only_b, s\ncontent:\nint f(double s) {\n    return only_b();\n}"
+   },
+   "node_id": "0eaec5bc8d22d7a132902ff64ee896d08e576c70",
+   "parent": null,
+   "path": "k.cpp",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "f",
+   "relationships": [
+    "call:b7b05d245ad3dd3a7c3bff1990777cf27368f27b",
+    "edge:1e9478cac2053996",
+    "edge:630a7a67cf71746c"
+   ],
+   "semantic_path": "k.cpp::f",
+   "signature": "f(double s) -> int",
+   "span": {
+    "byte_end": 132,
+    "byte_start": 92,
+    "end_line": 8,
+    "start_line": 6
+   },
+   "symbol": "f",
+   "symbol_id": "583647aaa562b1b12f4ef7992b235ae4eab34126"
+  },
+  {
+   "definition_id": "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5",
+   "file_id": "05a128291d2069bcb45d42ec2f60c0b93240094e",
+   "id": "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5",
+   "identity": {
+    "source": "definition_id",
+    "value": "faab4f41ca179b3ca81e743fea9ec8ab52aee4e5"
+   },
+   "kind": "function",
+   "language": "cpp",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "only_a"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: cpp\nfile: k.cpp\nkind: function\nsymbol: only_a\nqualified name: only_a\nsemantic path: k.cpp::only_a\nsignature text: only_a() -> int\nexports: only_a\ncontent:\nint only_a() { return 1; }"
+   },
+   "node_id": "b73ccc13c2a260edd697d2b1ecb705654ea2343b",
+   "parent": null,
+   "path": "k.cpp",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "only_a",
+   "relationships": [],
+   "semantic_path": "k.cpp::only_a",
+   "signature": "only_a() -> int",
+   "span": {
+    "byte_end": 26,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "only_a",
+   "symbol_id": "617c88d084bef7d4ab23c6c9534f58bb32e639a8"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

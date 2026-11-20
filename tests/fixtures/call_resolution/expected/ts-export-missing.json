@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:878dd929df864089694a596b45ff87df4f9e60cb",
+     "call_span": [
+      56,
+      59
+     ],
+     "callee_span": [
+      56,
+      57
+     ],
+     "caller": "f",
+     "file": "use.ts",
+     "line": 2,
+     "reference": "u",
+     "today": {
+      "candidate_ids": [
+       "0671a194114b403bd9ce3e05b7e1b6faed088aa6",
+       "cefd0952ebb8b7d4a164fb614bcf3b9fecbc4bd6"
+      ],
+      "candidates": [
+       "a.ts:1:u",
+       "b.ts:1:u"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-export-missing"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-export-missing"
+}

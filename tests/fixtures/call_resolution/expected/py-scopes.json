@@ -1,0 +1,295 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:db237cd71e4c5080888f0656851f47f5610bc171",
+     "call_span": [
+      57,
+      65
+     ],
+     "callee_span": [
+      57,
+      63
+     ],
+     "caller": "c_comp",
+     "file": "a.py",
+     "line": 6,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:7533179d6845d22813576a4d8cf4ddcfe89101b7",
+     "call_span": [
+      129,
+      137
+     ],
+     "callee_span": [
+      129,
+      135
+     ],
+     "caller": "c_lambda",
+     "file": "a.py",
+     "line": 10,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:58c7770c0d461181579630f9c41faf65632684ae",
+     "call_span": [
+      180,
+      184
+     ],
+     "callee_span": [
+      180,
+      182
+     ],
+     "caller": "c_walrus",
+     "file": "a.py",
+     "line": 14,
+     "reference": "mk",
+     "today": {
+      "candidate_ids": [
+       "128625f8e529d7dcb246d685bbad344f554cdaae"
+      ],
+      "candidates": [
+       "a.py:50:mk"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:d0e2d7d1e5a2e41b2b288cb9afbfc2840f94f9d1",
+     "call_span": [
+      202,
+      210
+     ],
+     "callee_span": [
+      202,
+      208
+     ],
+     "caller": "c_walrus",
+     "file": "a.py",
+     "line": 15,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:24edb08297e836c9369191fc95352ba007a249cc",
+     "call_span": [
+      244,
+      248
+     ],
+     "callee_span": [
+      244,
+      246
+     ],
+     "caller": "c_nonlocal",
+     "file": "a.py",
+     "line": 19,
+     "reference": "mk",
+     "today": {
+      "candidate_ids": [
+       "128625f8e529d7dcb246d685bbad344f554cdaae"
+      ],
+      "candidates": [
+       "a.py:50:mk"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:50d2ebe97145cc55bc14781d13191b0e24b68b3d",
+     "call_span": [
+      306,
+      314
+     ],
+     "callee_span": [
+      306,
+      312
+     ],
+     "caller": "c_nonlocal.inner",
+     "file": "a.py",
+     "line": 23,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:69a35571323b30fa4049cd8fe8d6c4e11a3e45da",
+     "call_span": [
+      389,
+      397
+     ],
+     "callee_span": [
+      389,
+      395
+     ],
+     "caller": "c_del",
+     "file": "a.py",
+     "line": 31,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:cb1d18f25a45af4e57c4a6044589d91b7dfedca6",
+     "call_span": [
+      423,
+      427
+     ],
+     "callee_span": [
+      423,
+      425
+     ],
+     "caller": "c_with",
+     "file": "a.py",
+     "line": 35,
+     "reference": "mk",
+     "today": {
+      "candidate_ids": [
+       "128625f8e529d7dcb246d685bbad344f554cdaae"
+      ],
+      "candidates": [
+       "a.py:50:mk"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:e2b9bd26236ea05127f15cf7d1c6d7c2f0cd4c99",
+     "call_span": [
+      454,
+      462
+     ],
+     "callee_span": [
+      454,
+      460
+     ],
+     "caller": "c_with",
+     "file": "a.py",
+     "line": 36,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:6e0d97bfefcd9868c2df561c80bf9a047d929383",
+     "call_span": [
+      517,
+      525
+     ],
+     "callee_span": [
+      517,
+      523
+     ],
+     "caller": "c_for",
+     "file": "a.py",
+     "line": 41,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:3ff69357faee67b2168ef3d56cac57270fbdc1ae",
+     "call_span": [
+      597,
+      605
+     ],
+     "callee_span": [
+      597,
+      603
+     ],
+     "caller": "c_match",
+     "file": "a.py",
+     "line": 47,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-scopes"
+  }
+ },
+ "source": "authored",
+ "tree": "py-scopes"
+}

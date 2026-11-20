@@ -1,0 +1,43 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:773c759f14e85d4ecf6fe125f579558fe6a00733",
+     "call_span": [
+      99,
+      102
+     ],
+     "callee_span": [
+      99,
+      100
+     ],
+     "caller": "use",
+     "file": "a.ts",
+     "line": 3,
+     "reference": "f",
+     "today": {
+      "candidate_ids": [
+       "0e765f6a75a7724e713cc82db91c1765a392be90",
+       "1dc44e41485b5c00d1f88d909b1e2b8bfe98ac28",
+       "8fb5223e1df9d5e076924a82d0a7a9c04e118b72"
+      ],
+      "candidates": [
+       "other.ts:1:f",
+       "a.ts:1:f",
+       "a.ts:2:f"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-dup-impl"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-dup-impl"
+}

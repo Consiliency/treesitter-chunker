@@ -1,0 +1,76 @@
+{
+ "plan_sections": [
+  "10.3",
+  "10.5"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:466c95ac7b32cb31a4bfa9806c13ca6bb5dfe570",
+     "call_span": [
+      71,
+      79
+     ],
+     "callee_span": [
+      71,
+      77
+     ],
+     "caller": "use2",
+     "file": "c.go",
+     "line": 5,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+       "8928a88f3719d8fcc2059218e6116210b5e8fafc",
+       "d863111925e70aaaaba83433e60fea8fcc91ca6a",
+       "ecc02047dc2440411d68ed540d234c52240969bc"
+      ],
+      "candidates": [
+       "b.py:1:helper",
+       "c.go:3:helper",
+       "d.ts:1:helper",
+       "a.ts:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:8ad64a887fb737c49adf2a51a63ef8a50830b4ad",
+     "call_span": [
+      31,
+      39
+     ],
+     "callee_span": [
+      31,
+      37
+     ],
+     "caller": "use",
+     "file": "x.ts",
+     "line": 1,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+       "8928a88f3719d8fcc2059218e6116210b5e8fafc",
+       "d863111925e70aaaaba83433e60fea8fcc91ca6a",
+       "ecc02047dc2440411d68ed540d234c52240969bc"
+      ],
+      "candidates": [
+       "b.py:1:helper",
+       "c.go:3:helper",
+       "d.ts:1:helper",
+       "a.ts:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/mixed-family"
+  }
+ },
+ "source": "authored",
+ "tree": "mixed-family"
+}

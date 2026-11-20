@@ -1,0 +1,27 @@
+{
+ "files": {
+  "K.java": {
+   "cache_key": "boundary:v3:13bfa7d6265a7b3d1f33745c53923ddf77c08c309b61564a494d72aa8eca013f",
+   "key_payload": {
+    "content_hash": "sha1:3f52ae2804dea5946de4abc7d1cc8a802bbf6bc0",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-java:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "java",
+    "path": "K.java",
+    "resolution_mode": "strict",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

@@ -1,0 +1,238 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:5cec969d22481576a1620ba5cf729bb17d506a0d",
+   "candidates": [
+    "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c",
+    "a589b0496029e5b93b238d40f9b6cf63e43247ff"
+   ],
+   "file": "a.py",
+   "id": "call:5cec969d22481576a1620ba5cf729bb17d506a0d",
+   "location": {
+    "byte_end": 46,
+    "byte_start": 43,
+    "end_line": 6,
+    "start_line": 6
+   },
+   "metadata": {
+    "file": "a.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "source": "e9a14df56b5ad4bdf6c1010993de28343b2b8de4",
+   "target": "C",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c",
+    "a589b0496029e5b93b238d40f9b6cf63e43247ff"
+   ],
+   "id": "edge:42d2859d6aa4de16",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 5,
+    "start_line": 5
+   },
+   "metadata": {
+    "file": "a.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "source": "e9a14df56b5ad4bdf6c1010993de28343b2b8de4",
+   "target": "C",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:3b1cb8479ba866c66010c18ed9d4d094cdf68822",
+   "diagnostics": [],
+   "id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "a.py",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:57dd8eb5238c3f5f362c3bc2447ef214969b89fd",
+   "diagnostics": [],
+   "id": "3a2ae268733a0ca8142c1c6bb39d91e619c48999",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "b.py",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 2,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 2,
+  "files_processed": 2,
+  "files_skipped": 0,
+  "files_total": 2,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 3,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c",
+   "file_id": "3a2ae268733a0ca8142c1c6bb39d91e619c48999",
+   "id": "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c",
+   "identity": {
+    "source": "definition_id",
+    "value": "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "C"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: b.py\nkind: function\nsymbol: C\nqualified name: C\nsemantic path: b.py::C\nsignature text: C()\nexports: C\ncontent:\ndef C():\n    return 1"
+   },
+   "node_id": "d3d75808baa62a86048581495578fad155e7d59a",
+   "parent": null,
+   "path": "b.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "C",
+   "relationships": [],
+   "semantic_path": "b.py::C",
+   "signature": "C()",
+   "span": {
+    "byte_end": 21,
+    "byte_start": 0,
+    "end_line": 2,
+    "start_line": 1
+   },
+   "symbol": "C",
+   "symbol_id": "42df43644c94104de3f67d1b094914cfee910295"
+  },
+  {
+   "definition_id": "a589b0496029e5b93b238d40f9b6cf63e43247ff",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "a589b0496029e5b93b238d40f9b6cf63e43247ff",
+   "identity": {
+    "source": "definition_id",
+    "value": "a589b0496029e5b93b238d40f9b6cf63e43247ff"
+   },
+   "kind": "class",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "C"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: a.py\nkind: class\nsymbol: C\nqualified name: C\nsemantic path: a.py::C\nexports: C\ncontent:\nclass C:\n    pass"
+   },
+   "node_id": "6f69205705ddfced6f1976e74cd370ecfaf2bdc0",
+   "parent": null,
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "C",
+   "relationships": [],
+   "semantic_path": "a.py::C",
+   "signature": null,
+   "span": {
+    "byte_end": 17,
+    "byte_start": 0,
+    "end_line": 2,
+    "start_line": 1
+   },
+   "symbol": "C",
+   "symbol_id": "817ab721d38bebbb7cb73d8dc98bc4358b06922b"
+  },
+  {
+   "definition_id": "e9a14df56b5ad4bdf6c1010993de28343b2b8de4",
+   "file_id": "e289f646d304667e0cae8d5548559cce2690afa2",
+   "id": "e9a14df56b5ad4bdf6c1010993de28343b2b8de4",
+   "identity": {
+    "source": "definition_id",
+    "value": "e9a14df56b5ad4bdf6c1010993de28343b2b8de4"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "C"
+    ],
+    "exports": [
+     "make"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: a.py\nkind: function\nsymbol: make\nqualified name: make\nsemantic path: a.py::make\nsignature text: make()\nexports: make\ndependencies: C\ncontent:\ndef make():\n    return C()"
+   },
+   "node_id": "5cd05e5d728c8c4fa9c44918f1c7e5fe927e8dec",
+   "parent": null,
+   "path": "a.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "make",
+   "relationships": [
+    "call:5cec969d22481576a1620ba5cf729bb17d506a0d",
+    "edge:42d2859d6aa4de16"
+   ],
+   "semantic_path": "a.py::make",
+   "signature": "make()",
+   "span": {
+    "byte_end": 46,
+    "byte_start": 20,
+    "end_line": 6,
+    "start_line": 5
+   },
+   "symbol": "make",
+   "symbol_id": "2cb623e385e81eb948a2b9392319d63065cc22ed"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

@@ -1,0 +1,235 @@
+{
+ "diagnostics": [],
+ "edges": [],
+ "files": [
+  {
+   "content_hash": "sha1:da63dd93d009d90e792274533696b7864a43202d",
+   "diagnostics": [],
+   "id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "language": "kotlin",
+   "parser": "tree-sitter-kotlin",
+   "path": "K.kt",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 0,
+  "diagnostics_total": 0,
+  "edges_total": 0,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 1,
+  "files_processed": 1,
+  "files_skipped": 0,
+  "files_total": 1,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 5,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "223fcc2ac90f20cd69449152050a48d1a284feef",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "223fcc2ac90f20cd69449152050a48d1a284feef",
+   "identity": {
+    "source": "definition_id",
+    "value": "223fcc2ac90f20cd69449152050a48d1a284feef"
+   },
+   "kind": "function",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: function\nsymbol: f\nqualified name: f\nsemantic path: K.kt::f\nsignature text: f(a: Int) -> Int\ncontent:\nfun f(a: Int): Int {\n    return onlyA()\n}"
+   },
+   "node_id": "8d573fe97ff656e468fe4614b9836795d6f7737d",
+   "parent": null,
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "f",
+   "relationships": [],
+   "semantic_path": "K.kt::f",
+   "signature": "f(a: Int) -> Int",
+   "span": {
+    "byte_end": 83,
+    "byte_start": 42,
+    "end_line": 5,
+    "start_line": 3
+   },
+   "symbol": "f",
+   "symbol_id": "73de2e78a564c01590b144ee610171036b476549"
+  },
+  {
+   "definition_id": "7bbc005bea6505e962889f271c61ff71f3cce193",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "7bbc005bea6505e962889f271c61ff71f3cce193",
+   "identity": {
+    "source": "definition_id",
+    "value": "7bbc005bea6505e962889f271c61ff71f3cce193"
+   },
+   "kind": "function",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: function\nsymbol: g\nqualified name: g\nsemantic path: K.kt::g\nsignature text: g() -> Int\ncontent:\nfun g(): Int { return f(1) }"
+   },
+   "node_id": "10a48e70aea7849752ee106dad532649a8d59d8f",
+   "parent": null,
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "g",
+   "relationships": [],
+   "semantic_path": "K.kt::g",
+   "signature": "g() -> Int",
+   "span": {
+    "byte_end": 157,
+    "byte_start": 129,
+    "end_line": 9,
+    "start_line": 9
+   },
+   "symbol": "g",
+   "symbol_id": "5e9b9cd74e1612420c3d320633275380c7273688"
+  },
+  {
+   "definition_id": "88ba563a7056761e1c820c132b5e71c27d1c8606",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "88ba563a7056761e1c820c132b5e71c27d1c8606",
+   "identity": {
+    "source": "definition_id",
+    "value": "88ba563a7056761e1c820c132b5e71c27d1c8606"
+   },
+   "kind": "function",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: function\nsymbol: f\nqualified name: f\nsemantic path: K.kt::f\nsignature text: f(s: String) -> Int\ncontent:\nfun f(s: String): Int {\n    return onlyB()\n}"
+   },
+   "node_id": "649e251c11877a8fbcfa876510b487879bd56ef3",
+   "parent": null,
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "f",
+   "relationships": [],
+   "semantic_path": "K.kt::f",
+   "signature": "f(s: String) -> Int",
+   "span": {
+    "byte_end": 128,
+    "byte_start": 84,
+    "end_line": 8,
+    "start_line": 6
+   },
+   "symbol": "f",
+   "symbol_id": "73de2e78a564c01590b144ee610171036b476549"
+  },
+  {
+   "definition_id": "97e81eb007a67896805d038b303e9ca2c8ef3c99",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "97e81eb007a67896805d038b303e9ca2c8ef3c99",
+   "identity": {
+    "source": "definition_id",
+    "value": "97e81eb007a67896805d038b303e9ca2c8ef3c99"
+   },
+   "kind": "function",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: function\nsymbol: onlyB\nqualified name: onlyB\nsemantic path: K.kt::onlyB\nsignature text: onlyB() -> Int\ncontent:\nfun onlyB(): Int = 2"
+   },
+   "node_id": "c6d2d372839faa1111568ab1fe1412f1777dfd5e",
+   "parent": null,
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "onlyB",
+   "relationships": [],
+   "semantic_path": "K.kt::onlyB",
+   "signature": "onlyB() -> Int",
+   "span": {
+    "byte_end": 41,
+    "byte_start": 21,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "onlyB",
+   "symbol_id": "006e97344b2645be6406a8e1ac8f707d22e11d2f"
+  },
+  {
+   "definition_id": "aa741ea6b7fbf45d2036907b3b03e036e3fdc434",
+   "file_id": "bd3b152ba559c6276a0c3cfe414d4c3bd3ec19bc",
+   "id": "aa741ea6b7fbf45d2036907b3b03e036e3fdc434",
+   "identity": {
+    "source": "definition_id",
+    "value": "aa741ea6b7fbf45d2036907b3b03e036e3fdc434"
+   },
+   "kind": "function",
+   "language": "kotlin",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: kotlin\nfile: K.kt\nkind: function\nsymbol: onlyA\nqualified name: onlyA\nsemantic path: K.kt::onlyA\nsignature text: onlyA() -> Int\ncontent:\nfun onlyA(): Int = 1"
+   },
+   "node_id": "3618f1d418ad4adf556115c5e28299614f2b7c19",
+   "parent": null,
+   "path": "K.kt",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "onlyA",
+   "relationships": [],
+   "semantic_path": "K.kt::onlyA",
+   "signature": "onlyA() -> Int",
+   "span": {
+    "byte_end": 20,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "onlyA",
+   "symbol_id": "d8dbdca24f58cfbac7b6441ba9197ab96f22ec82"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:8551ac7a39871481e555950b14465d8bd7d093bf",
+     "call_span": [
+      22,
+      31
+     ],
+     "callee_span": [
+      22,
+      26
+     ],
+     "caller": "use",
+     "file": "c.py",
+     "line": 2,
+     "reference": "open",
+     "today": {
+      "candidate_ids": [
+       "074474905b6a074770baf5b810f4821186886c78",
+       "f1f554cf3f4e4b85e5adebd8a8f55713fc0c90a8"
+      ],
+      "candidates": [
+       "a.py:1:open",
+       "x.js:1:open"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-builtin-family"
+  }
+ },
+ "source": "authored",
+ "tree": "py-builtin-family"
+}

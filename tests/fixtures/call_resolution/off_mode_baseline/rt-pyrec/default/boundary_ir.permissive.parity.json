@@ -1,0 +1,710 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:a02ce5a66050713616b21cc3aba67c367d41c5ef",
+   "candidates": [
+    "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+    "0de792bed499be0d05b2d0ee621b71ffea7755cc#1"
+   ],
+   "file": "svc.py",
+   "id": "call:a02ce5a66050713616b21cc3aba67c367d41c5ef",
+   "location": {
+    "byte_end": 221,
+    "byte_start": 217,
+    "end_line": 23,
+    "start_line": 23
+   },
+   "metadata": {
+    "file": "svc.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "d",
+   "resolution": "ambiguous",
+   "source": "0de792bed499be0d05b2d0ee621b71ffea7755cc#1",
+   "target": "d",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "569463d08618124fc8d6e338020f588bc03a422e"
+   ],
+   "id": "edge:123417c99214f1b2",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 10,
+    "start_line": 10
+   },
+   "metadata": {
+    "file": "svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "source": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83#1",
+   "target": "569463d08618124fc8d6e338020f588bc03a422e",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:daaad6eb52b7f3495c40776de336c789c3e8e1f7",
+   "candidates": [
+    "e166968e86022d3720ff9a96fb5bef95958ef980"
+   ],
+   "file": "svc.py",
+   "id": "call:daaad6eb52b7f3495c40776de336c789c3e8e1f7",
+   "location": {
+    "byte_end": 123,
+    "byte_start": 115,
+    "end_line": 12,
+    "start_line": 12
+   },
+   "metadata": {
+    "file": "svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "self.c",
+   "resolution": "resolved",
+   "source": "e0fe8a0139fba5c8ccc71e40a685170f38e0512e",
+   "target": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "e166968e86022d3720ff9a96fb5bef95958ef980"
+   ],
+   "id": "edge:8d05cdf13f62d70b",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 11,
+    "start_line": 11
+   },
+   "metadata": {
+    "file": "svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "c",
+   "resolution": "resolved",
+   "source": "e0fe8a0139fba5c8ccc71e40a685170f38e0512e",
+   "target": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:94a4d8bbfaaf45d1245c48af206c0637d364ac99",
+   "candidates": [
+    "569463d08618124fc8d6e338020f588bc03a422e"
+   ],
+   "file": "svc.py",
+   "id": "call:94a4d8bbfaaf45d1245c48af206c0637d364ac99",
+   "location": {
+    "byte_end": 165,
+    "byte_start": 157,
+    "end_line": 15,
+    "start_line": 15
+   },
+   "metadata": {
+    "file": "svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "source": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "target": "569463d08618124fc8d6e338020f588bc03a422e",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "569463d08618124fc8d6e338020f588bc03a422e"
+   ],
+   "id": "edge:d54bf51703eb93a5",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 14,
+    "start_line": 14
+   },
+   "metadata": {
+    "file": "svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "only_b",
+   "resolution": "resolved",
+   "source": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "target": "569463d08618124fc8d6e338020f588bc03a422e",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:3ecea44b016fe52648d182acb89b0e82e3d12f7a",
+   "candidates": [
+    "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+    "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83#1"
+   ],
+   "file": "svc.py",
+   "id": "call:3ecea44b016fe52648d182acb89b0e82e3d12f7a",
+   "location": {
+    "byte_end": 253,
+    "byte_start": 250,
+    "end_line": 27,
+    "start_line": 27
+   },
+   "metadata": {
+    "file": "svc.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "source": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "target": "C",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+    "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83#1"
+   ],
+   "id": "edge:6a51ccf5e3c53220",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 26,
+    "start_line": 26
+   },
+   "metadata": {
+    "file": "svc.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C",
+   "resolution": "ambiguous",
+   "source": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "target": "C",
+   "type": "dependencies"
+  },
+  {
+   "call_site_id": "call:cbcf4d03fe6c7961d2414c877ecff5933568a6d0",
+   "candidates": [],
+   "file": "svc.py",
+   "id": "call:cbcf4d03fe6c7961d2414c877ecff5933568a6d0",
+   "location": {
+    "byte_end": 257,
+    "byte_start": 250,
+    "end_line": 27,
+    "start_line": 27
+   },
+   "metadata": {
+    "file": "svc.py",
+    "is_internal": false
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "C().c",
+   "resolution": "unresolved",
+   "source": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "target": "C().c",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "e166968e86022d3720ff9a96fb5bef95958ef980"
+   ],
+   "id": "edge:32dc3ed4ef62d203",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 26,
+    "start_line": 26
+   },
+   "metadata": {
+    "file": "svc.py",
+    "is_internal": true
+   },
+   "provenance": {
+    "resolution_mode": "permissive",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "c",
+   "resolution": "resolved",
+   "source": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "target": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:944ee5ef996eb1849f911ec8977ad49ff53f6886",
+   "diagnostics": [],
+   "id": "f25286ef1e771fbe7f1955e8db8f508fa0b949f4",
+   "language": "python",
+   "parser": "tree-sitter-python",
+   "path": "svc.py",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 3,
+  "diagnostics_total": 0,
+  "edges_total": 10,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 1,
+  "files_processed": 1,
+  "files_skipped": 0,
+  "files_total": 1,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 9,
+  "parse_failures": 0,
+  "resolved_edges": 6,
+  "serialization_failures": 0,
+  "unresolved_edges": 1
+ },
+ "nodes": [
+  {
+   "definition_id": "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+   "file_id": "f25286ef1e771fbe7f1955e8db8f508fa0b949f4",
+   "id": "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+   "identity": {
+    "source": "definition_id",
+    "value": "0de792bed499be0d05b2d0ee621b71ffea7755cc"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d",
+     "x"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: svc.py\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: svc.py::d\nsignature text: d(x)\nexports: d, x\ncontent:\ndef d(x):\n    return 1"
+   },
+   "node_id": "d610a972c06e448143be2fedface2850a7182994",
+   "parent": null,
+   "path": "svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [],
+   "semantic_path": "svc.py::d",
+   "signature": "d(x)",
+   "span": {
+    "byte_end": 190,
+    "byte_start": 168,
+    "end_line": 19,
+    "start_line": 18
+   },
+   "symbol": "d",
+   "symbol_id": "2eeeff9f9cd4d4603f0c94286e3e421b7e91b4d7"
+  },
+  {
+   "definition_id": "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+   "file_id": "f25286ef1e771fbe7f1955e8db8f508fa0b949f4",
+   "id": "0de792bed499be0d05b2d0ee621b71ffea7755cc#1",
+   "identity": {
+    "disambiguated_from": "0de792bed499be0d05b2d0ee621b71ffea7755cc",
+    "source": "definition_id",
+    "value": "0de792bed499be0d05b2d0ee621b71ffea7755cc#1"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "d",
+     "x",
+     "y"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: svc.py\nkind: function\nsymbol: d\nqualified name: d\nsemantic path: svc.py::d\nsignature text: d(x, y)\nexports: d, x, y\ncontent:\ndef d(x, y):\n    return d(x)"
+   },
+   "node_id": "45c5031fb8598bc29cf4eec85b2daeb23065ef90",
+   "parent": null,
+   "path": "svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "d",
+   "relationships": [
+    "call:a02ce5a66050713616b21cc3aba67c367d41c5ef"
+   ],
+   "semantic_path": "svc.py::d",
+   "signature": "d(x, y)",
+   "span": {
+    "byte_end": 221,
+    "byte_start": 193,
+    "end_line": 23,
+    "start_line": 22
+   },
+   "symbol": "d",
+   "symbol_id": "2eeeff9f9cd4d4603f0c94286e3e421b7e91b4d7"
+  },
+  {
+   "definition_id": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+   "file_id": "f25286ef1e771fbe7f1955e8db8f508fa0b949f4",
+   "id": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+   "identity": {
+    "source": "definition_id",
+    "value": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83"
+   },
+   "kind": "class",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "C",
+     "a",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: svc.py\nkind: class\nsymbol: C\nqualified name: C\nsemantic path: svc.py::C\nexports: C, a, self\ncontent:\nclass C:\n    def a(self):\n        return 1"
+   },
+   "node_id": "fb03ee744ea57475dc890e04f152da0a948b0e46",
+   "parent": null,
+   "path": "svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "C",
+   "relationships": [],
+   "semantic_path": "svc.py::C",
+   "signature": null,
+   "span": {
+    "byte_end": 71,
+    "byte_start": 29,
+    "end_line": 7,
+    "start_line": 5
+   },
+   "symbol": "C",
+   "symbol_id": "f26f0cb4e4e2c964317bbc9cd92e5ac679a1cd83"
+  },
+  {
+   "definition_id": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+   "file_id": "f25286ef1e771fbe7f1955e8db8f508fa0b949f4",
+   "id": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83#1",
+   "identity": {
+    "disambiguated_from": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
+    "source": "definition_id",
+    "value": "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83#1"
+   },
+   "kind": "class",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "only_b"
+    ],
+    "exports": [
+     "C",
+     "b",
+     "c",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: svc.py\nkind: class\nsymbol: C\nqualified name: C\nsemantic path: svc.py::C\nexports: C, b, c, self\ndependencies: only_b\ncontent:\nclass C:\n    def b(self):\n        return self.c()\n\n    def c(self):\n        return only_b()"
+   },
+   "node_id": "9490dd660fd9dbe7bbd5f37d78de8f79999123ec",
+   "parent": null,
+   "path": "svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "C",
+   "relationships": [
+    "edge:123417c99214f1b2"
+   ],
+   "semantic_path": "svc.py::C",
+   "signature": null,
+   "span": {
+    "byte_end": 165,
+    "byte_start": 74,
+    "end_line": 15,
+    "start_line": 10
+   },
+   "symbol": "C",
+   "symbol_id": "f26f0cb4e4e2c964317bbc9cd92e5ac679a1cd83"
+  },
+  {
+   "definition_id": "569463d08618124fc8d6e338020f588bc03a422e",
+   "file_id": "f25286ef1e771fbe7f1955e8db8f508fa0b949f4",
+   "id": "569463d08618124fc8d6e338020f588bc03a422e",
+   "identity": {
+    "source": "definition_id",
+    "value": "569463d08618124fc8d6e338020f588bc03a422e"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "only_b"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: svc.py\nkind: function\nsymbol: only_b\nqualified name: only_b\nsemantic path: svc.py::only_b\nsignature text: only_b()\nexports: only_b\ncontent:\ndef only_b():\n    return 2"
+   },
+   "node_id": "8a4af85948fc18d84779aef36f807cbeb1ba9923",
+   "parent": null,
+   "path": "svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "only_b",
+   "relationships": [],
+   "semantic_path": "svc.py::only_b",
+   "signature": "only_b()",
+   "span": {
+    "byte_end": 26,
+    "byte_start": 0,
+    "end_line": 2,
+    "start_line": 1
+   },
+   "symbol": "only_b",
+   "symbol_id": "4fe9e73be97956399c0ddc6c9ce771110f6b52e0"
+  },
+  {
+   "definition_id": "e0fe8a0139fba5c8ccc71e40a685170f38e0512e",
+   "file_id": "f25286ef1e771fbe7f1955e8db8f508fa0b949f4",
+   "id": "e0fe8a0139fba5c8ccc71e40a685170f38e0512e",
+   "identity": {
+    "source": "definition_id",
+    "value": "e0fe8a0139fba5c8ccc71e40a685170f38e0512e"
+   },
+   "kind": "method",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "c"
+    ],
+    "exports": [
+     "b",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": "C",
+    "semantic_text": "language: python\nfile: svc.py\nkind: method\nsymbol: b\nqualified name: C.b\nparent symbol: C\nsemantic path: svc.py::C.b\nsignature text: b(self)\nexports: b, self\ndependencies: c\ncontent:\ndef b(self):\n        return self.c()"
+   },
+   "node_id": "2d2c355cbfca06590dfc5d2daa696800423cfc3f",
+   "parent": "9490dd660fd9dbe7bbd5f37d78de8f79999123ec",
+   "path": "svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "C.b",
+   "relationships": [
+    "call:daaad6eb52b7f3495c40776de336c789c3e8e1f7",
+    "edge:8d05cdf13f62d70b"
+   ],
+   "semantic_path": "svc.py::C.b",
+   "signature": "b(self)",
+   "span": {
+    "byte_end": 123,
+    "byte_start": 87,
+    "end_line": 12,
+    "start_line": 11
+   },
+   "symbol": "b",
+   "symbol_id": "fe001d9b241060c8662de4cbb57e98befb1eb6fb"
+  },
+  {
+   "definition_id": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "file_id": "f25286ef1e771fbe7f1955e8db8f508fa0b949f4",
+   "id": "e166968e86022d3720ff9a96fb5bef95958ef980",
+   "identity": {
+    "source": "definition_id",
+    "value": "e166968e86022d3720ff9a96fb5bef95958ef980"
+   },
+   "kind": "method",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "only_b"
+    ],
+    "exports": [
+     "c",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": "C",
+    "semantic_text": "language: python\nfile: svc.py\nkind: method\nsymbol: c\nqualified name: C.c\nparent symbol: C\nsemantic path: svc.py::C.c\nsignature text: c(self)\nexports: c, self\ndependencies: only_b\ncontent:\ndef c(self):\n        return only_b()"
+   },
+   "node_id": "cb98bd0b887715f1c3b38ee5ec77938ab325e145",
+   "parent": "9490dd660fd9dbe7bbd5f37d78de8f79999123ec",
+   "path": "svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "C.c",
+   "relationships": [
+    "call:94a4d8bbfaaf45d1245c48af206c0637d364ac99",
+    "edge:d54bf51703eb93a5"
+   ],
+   "semantic_path": "svc.py::C.c",
+   "signature": "c(self)",
+   "span": {
+    "byte_end": 165,
+    "byte_start": 129,
+    "end_line": 15,
+    "start_line": 14
+   },
+   "symbol": "c",
+   "symbol_id": "0ee8f456d0c3c80c92064ab5593e41ced52ebbba"
+  },
+  {
+   "definition_id": "e2c9541590240344519e9e3a36d63f19aed45615",
+   "file_id": "f25286ef1e771fbe7f1955e8db8f508fa0b949f4",
+   "id": "e2c9541590240344519e9e3a36d63f19aed45615",
+   "identity": {
+    "source": "definition_id",
+    "value": "e2c9541590240344519e9e3a36d63f19aed45615"
+   },
+   "kind": "method",
+   "language": "python",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "a",
+     "self"
+    ],
+    "imports": [],
+    "parent_symbol": "C",
+    "semantic_text": "language: python\nfile: svc.py\nkind: method\nsymbol: a\nqualified name: C.a\nparent symbol: C\nsemantic path: svc.py::C.a\nsignature text: a(self)\nexports: a, self\ncontent:\ndef a(self):\n        return 1"
+   },
+   "node_id": "da7dbd381680802acb5e58dacbd36a6a4d4f1093",
+   "parent": "fb03ee744ea57475dc890e04f152da0a948b0e46",
+   "path": "svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "C.a",
+   "relationships": [],
+   "semantic_path": "svc.py::C.a",
+   "signature": "a(self)",
+   "span": {
+    "byte_end": 71,
+    "byte_start": 42,
+    "end_line": 7,
+    "start_line": 6
+   },
+   "symbol": "a",
+   "symbol_id": "c0eb9c2a06c9324c7d6454adf519536c3c7aac32"
+  },
+  {
+   "definition_id": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "file_id": "f25286ef1e771fbe7f1955e8db8f508fa0b949f4",
+   "id": "edd2a0677cb1754459ceacf3262f7813e71a806e",
+   "identity": {
+    "source": "definition_id",
+    "value": "edd2a0677cb1754459ceacf3262f7813e71a806e"
+   },
+   "kind": "function",
+   "language": "python",
+   "metadata": {
+    "dependencies": [
+     "C",
+     "c"
+    ],
+    "exports": [
+     "uses_c2"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: python\nfile: svc.py\nkind: function\nsymbol: uses_c2\nqualified name: uses_c2\nsemantic path: svc.py::uses_c2\nsignature text: uses_c2()\nexports: uses_c2\ndependencies: C, c\ncontent:\ndef uses_c2():\n    return C().c()"
+   },
+   "node_id": "3839cb85ff66c8e51dc5b52b0e3d1fa081d79834",
+   "parent": null,
+   "path": "svc.py",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "uses_c2",
+   "relationships": [
+    "call:3ecea44b016fe52648d182acb89b0e82e3d12f7a",
+    "call:cbcf4d03fe6c7961d2414c877ecff5933568a6d0",
+    "edge:32dc3ed4ef62d203",
+    "edge:6a51ccf5e3c53220"
+   ],
+   "semantic_path": "svc.py::uses_c2",
+   "signature": "uses_c2()",
+   "span": {
+    "byte_end": 257,
+    "byte_start": 224,
+    "end_line": 27,
+    "start_line": 26
+   },
+   "symbol": "uses_c2",
+   "symbol_id": "f8c5194d659dd5c0985216c61b476c251312cd4d"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "permissive"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

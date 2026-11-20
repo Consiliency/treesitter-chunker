@@ -1,0 +1,41 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:944e3375c7c90cede46d6c288591a9849d041b24",
+     "call_span": [
+      61,
+      66
+     ],
+     "callee_span": [
+      61,
+      64
+     ],
+     "caller": "use",
+     "file": "a.ts",
+     "line": 2,
+     "reference": "amb",
+     "today": {
+      "candidate_ids": [
+       "563d294cd0052277f67391ae4df73c2963e7f0a3",
+       "ff915f9cfdda338cc67e6feaeba0e7d911d1ceeb"
+      ],
+      "candidates": [
+       "b.js:1:amb",
+       "a.ts:1:amb"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-declare-ambient"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-declare-ambient"
+}

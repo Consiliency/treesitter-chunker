@@ -1,0 +1,177 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 28,
+   "callee_byte_start": 22,
+   "file": "c.py",
+   "from": "12421c37ce122ae07f644475e3da40ef532d19b4",
+   "id": "call:7b855ed19c076229580d0742eb377ddcb0bd54a0",
+   "location": {
+    "byte_end": 30,
+    "byte_start": 22,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "helper",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 3,
+  "total_classes": 0,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "5d97167e581b853d48d3108e0a7c011a58a605d8",
+    "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+   ],
+   "file": "c.py",
+   "from": "12421c37ce122ae07f644475e3da40ef532d19b4",
+   "is_internal": false,
+   "line": 1,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "helper",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:7b855ed19c076229580d0742eb377ddcb0bd54a0",
+   "callee_byte_end": 28,
+   "callee_byte_start": 22,
+   "candidates": [
+    "5d97167e581b853d48d3108e0a7c011a58a605d8",
+    "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+   ],
+   "file": "c.py",
+   "from": "12421c37ce122ae07f644475e3da40ef532d19b4",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 30,
+    "byte_start": 22,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "helper",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "12421c37ce122ae07f644475e3da40ef532d19b4": {
+   "definition_id": "12421c37ce122ae07f644475e3da40ef532d19b4",
+   "end_line": 2,
+   "file": "c.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "c",
+   "name": "use",
+   "node_id": "39a622a3b72d147de4c16cf4399dd19d926b5b8a",
+   "parent_class": "",
+   "qualified_name": "use",
+   "semantic_path": "c.py::use",
+   "signature": "use()"
+  },
+  "5d97167e581b853d48d3108e0a7c011a58a605d8": {
+   "definition_id": "5d97167e581b853d48d3108e0a7c011a58a605d8",
+   "end_line": 2,
+   "file": "a.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "a",
+   "name": "helper",
+   "node_id": "d1ac426919f231073fa6c9a4eeeaa83e57709e70",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "a.py::helper",
+   "signature": "helper()"
+  },
+  "6aaa93ccf7af52ba054b2c63e2223607d6449855": {
+   "definition_id": "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+   "end_line": 2,
+   "file": "b.py",
+   "kind": "function",
+   "language": "python",
+   "line": 1,
+   "module": "b",
+   "name": "helper",
+   "node_id": "265ff361c260516e7be20a7089b93aea0d6ab22d",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "b.py::helper",
+   "signature": "helper()"
+  }
+ },
+ "symbols": {
+  "classes": [],
+  "functions": [
+   {
+    "definition_id": "5d97167e581b853d48d3108e0a7c011a58a605d8",
+    "end_line": 2,
+    "file": "a.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "a",
+    "name": "helper",
+    "node_id": "d1ac426919f231073fa6c9a4eeeaa83e57709e70",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "a.py::helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "6aaa93ccf7af52ba054b2c63e2223607d6449855",
+    "end_line": 2,
+    "file": "b.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "b",
+    "name": "helper",
+    "node_id": "265ff361c260516e7be20a7089b93aea0d6ab22d",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "b.py::helper",
+    "signature": "helper()"
+   },
+   {
+    "definition_id": "12421c37ce122ae07f644475e3da40ef532d19b4",
+    "end_line": 2,
+    "file": "c.py",
+    "kind": "function",
+    "language": "python",
+    "line": 1,
+    "module": "c",
+    "name": "use",
+    "node_id": "39a622a3b72d147de4c16cf4399dd19d926b5b8a",
+    "parent_class": "",
+    "qualified_name": "use",
+    "semantic_path": "c.py::use",
+    "signature": "use()"
+   }
+  ],
+  "imports": []
+ }
+}

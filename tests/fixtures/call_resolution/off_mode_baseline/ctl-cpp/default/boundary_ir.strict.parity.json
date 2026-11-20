@@ -1,0 +1,325 @@
+{
+ "diagnostics": [],
+ "edges": [
+  {
+   "call_site_id": "call:ba48720e03efbf47d36286daac5a63de8ca1670d",
+   "candidates": [
+    "87b93cf159ac67cff8662ca4ddc7c4cc63e343d7",
+    "ef346d88dc5e0546e680df5b1deeb47324581f49",
+    "f7ec512714bf4759abf89590726a4cf4742cff69"
+   ],
+   "file": "a.cpp",
+   "id": "call:ba48720e03efbf47d36286daac5a63de8ca1670d",
+   "location": {
+    "byte_end": 54,
+    "byte_start": 46,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "metadata": {
+    "file": "a.cpp",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "source": "a1f93f486ba1ec7a9a0cadb83ddce5d178e9f56a",
+   "target": "helper",
+   "type": "calls"
+  },
+  {
+   "candidates": [
+    "87b93cf159ac67cff8662ca4ddc7c4cc63e343d7",
+    "ef346d88dc5e0546e680df5b1deeb47324581f49",
+    "f7ec512714bf4759abf89590726a4cf4742cff69"
+   ],
+   "id": "edge:aef83fca63d7ce85",
+   "location": {
+    "byte_end": null,
+    "byte_start": null,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "metadata": {
+    "file": "a.cpp",
+    "is_internal": false
+   },
+   "provenance": {
+    "enforcement_grade": "strict",
+    "resolution_mode": "strict",
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "source": "a1f93f486ba1ec7a9a0cadb83ddce5d178e9f56a",
+   "target": "helper",
+   "type": "dependencies"
+  }
+ ],
+ "files": [
+  {
+   "content_hash": "sha1:a7f03d8fc09f69b51c9e14bfda26f71fd0d2be51",
+   "diagnostics": [],
+   "id": "69459fff55a82e783a8c013738a4493a626bade5",
+   "language": "cpp",
+   "parser": "tree-sitter-cpp",
+   "path": "a.cpp",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:e3f657d814e08cacce0366c4a36def2a877e1809",
+   "diagnostics": [],
+   "id": "9ba3dd395e8909feb9d011d80a5bf78703c1e1c4",
+   "language": "cpp",
+   "parser": "tree-sitter-cpp",
+   "path": "b.cpp",
+   "status": "parsed"
+  },
+  {
+   "content_hash": "sha1:1fd7bf98dc977fb97f19f9807712a3905078f956",
+   "diagnostics": [],
+   "id": "2ea03fee278d2b0c785adfa77f1daaca74b8eb39",
+   "language": "cpp",
+   "parser": "tree-sitter-cpp",
+   "path": "c.cpp",
+   "status": "parsed"
+  }
+ ],
+ "metrics": {
+  "ambiguous_edges": 2,
+  "diagnostics_total": 0,
+  "edges_total": 2,
+  "failure_buckets": {},
+  "files_failed": 0,
+  "files_parsed": 3,
+  "files_processed": 3,
+  "files_skipped": 0,
+  "files_total": 3,
+  "graph_failures": 0,
+  "metadata_failures": 0,
+  "nodes_total": 5,
+  "parse_failures": 0,
+  "resolved_edges": 0,
+  "serialization_failures": 0,
+  "unresolved_edges": 0
+ },
+ "nodes": [
+  {
+   "definition_id": "4b045e7b8417c5fe50da3216611f05177c531e80",
+   "file_id": "2ea03fee278d2b0c785adfa77f1daaca74b8eb39",
+   "id": "4b045e7b8417c5fe50da3216611f05177c531e80",
+   "identity": {
+    "source": "definition_id",
+    "value": "4b045e7b8417c5fe50da3216611f05177c531e80"
+   },
+   "kind": "field_declaration",
+   "language": "cpp",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": "helper",
+    "semantic_text": "language: cpp\nfile: c.cpp\nkind: field_declaration\nsymbol: x\nqualified name: helper.x\nparent symbol: helper\nsemantic path: c.cpp::helper.x\ncontent:\nint x;"
+   },
+   "node_id": "065acd37f1ae72e1f195e24a653a3622840841e9",
+   "parent": "472f0c71a54e773dd5d5af2c71b4cf738efc6a36",
+   "path": "c.cpp",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper.x",
+   "relationships": [],
+   "semantic_path": "c.cpp::helper.x",
+   "signature": null,
+   "span": {
+    "byte_end": 22,
+    "byte_start": 16,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "x",
+   "symbol_id": "5560bfbe0b30c4461bbe37d30bc89c400b93f7a1"
+  },
+  {
+   "definition_id": "87b93cf159ac67cff8662ca4ddc7c4cc63e343d7",
+   "file_id": "69459fff55a82e783a8c013738a4493a626bade5",
+   "id": "87b93cf159ac67cff8662ca4ddc7c4cc63e343d7",
+   "identity": {
+    "source": "definition_id",
+    "value": "87b93cf159ac67cff8662ca4ddc7c4cc63e343d7"
+   },
+   "kind": "function",
+   "language": "cpp",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "helper"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: cpp\nfile: a.cpp\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: a.cpp::helper\nsignature text: helper() -> int\nexports: helper\ncontent:\nint helper() { return 1; }"
+   },
+   "node_id": "0f7af33745d9661e2011e2579783f1800384ad65",
+   "parent": null,
+   "path": "a.cpp",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "a.cpp::helper",
+   "signature": "helper() -> int",
+   "span": {
+    "byte_end": 26,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "b121ac53fe569b38d2c5bfc688707a41f14e1b6b"
+  },
+  {
+   "definition_id": "a1f93f486ba1ec7a9a0cadb83ddce5d178e9f56a",
+   "file_id": "69459fff55a82e783a8c013738a4493a626bade5",
+   "id": "a1f93f486ba1ec7a9a0cadb83ddce5d178e9f56a",
+   "identity": {
+    "source": "definition_id",
+    "value": "a1f93f486ba1ec7a9a0cadb83ddce5d178e9f56a"
+   },
+   "kind": "function",
+   "language": "cpp",
+   "metadata": {
+    "dependencies": [
+     "helper"
+    ],
+    "exports": [
+     "use"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: cpp\nfile: a.cpp\nkind: function\nsymbol: use\nqualified name: use\nsemantic path: a.cpp::use\nsignature text: use() -> int\nexports: use\ndependencies: helper\ncontent:\nint use() { return helper(); }"
+   },
+   "node_id": "03bf1162b24ffd8c51c459606affa6a8eb1e3850",
+   "parent": null,
+   "path": "a.cpp",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "use",
+   "relationships": [
+    "call:ba48720e03efbf47d36286daac5a63de8ca1670d",
+    "edge:aef83fca63d7ce85"
+   ],
+   "semantic_path": "a.cpp::use",
+   "signature": "use() -> int",
+   "span": {
+    "byte_end": 57,
+    "byte_start": 27,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "symbol": "use",
+   "symbol_id": "e5a39a3a6131c91659f50ad24a02baaaddf539d1"
+  },
+  {
+   "definition_id": "ef346d88dc5e0546e680df5b1deeb47324581f49",
+   "file_id": "2ea03fee278d2b0c785adfa77f1daaca74b8eb39",
+   "id": "ef346d88dc5e0546e680df5b1deeb47324581f49",
+   "identity": {
+    "source": "definition_id",
+    "value": "ef346d88dc5e0546e680df5b1deeb47324581f49"
+   },
+   "kind": "struct",
+   "language": "cpp",
+   "metadata": {
+    "dependencies": [],
+    "exports": [],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: cpp\nfile: c.cpp\nkind: struct\nsymbol: helper\nqualified name: helper\nsemantic path: c.cpp::helper\ncontent:\nstruct helper { int x; }"
+   },
+   "node_id": "472f0c71a54e773dd5d5af2c71b4cf738efc6a36",
+   "parent": null,
+   "path": "c.cpp",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "c.cpp::helper",
+   "signature": null,
+   "span": {
+    "byte_end": 24,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "4852b8c8b0b4b0e41797c29ddbd54fedcf5be9ff"
+  },
+  {
+   "definition_id": "f7ec512714bf4759abf89590726a4cf4742cff69",
+   "file_id": "9ba3dd395e8909feb9d011d80a5bf78703c1e1c4",
+   "id": "f7ec512714bf4759abf89590726a4cf4742cff69",
+   "identity": {
+    "source": "definition_id",
+    "value": "f7ec512714bf4759abf89590726a4cf4742cff69"
+   },
+   "kind": "function",
+   "language": "cpp",
+   "metadata": {
+    "dependencies": [],
+    "exports": [
+     "helper"
+    ],
+    "imports": [],
+    "parent_symbol": null,
+    "semantic_text": "language: cpp\nfile: b.cpp\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: b.cpp::helper\nsignature text: helper() -> int\nexports: helper\ncontent:\nint helper() { return 2; }"
+   },
+   "node_id": "5bed46e9d27ec3bf62fe2ba62c1bc5965f824d02",
+   "parent": null,
+   "path": "b.cpp",
+   "provenance": {
+    "extractor": "chunk_file",
+    "metadata": "retrieval"
+   },
+   "qualified_name": "helper",
+   "relationships": [],
+   "semantic_path": "b.cpp::helper",
+   "signature": "helper() -> int",
+   "span": {
+    "byte_end": 26,
+    "byte_start": 0,
+    "end_line": 1,
+    "start_line": 1
+   },
+   "symbol": "helper",
+   "symbol_id": "8b89bcf3efda8e85e5bcfe6570d793d753b6db5d"
+  }
+ ],
+ "run": {
+  "canonical": true,
+  "options": {
+   "fail_fast": false,
+   "include_retrieval_metadata": true,
+   "include_timings": false,
+   "language": null,
+   "resolution_mode": "strict"
+  },
+  "tool": "treesitter-chunker"
+ },
+ "schema_version": "3.0",
+ "source": {
+  "kind": "repository"
+ }
+}

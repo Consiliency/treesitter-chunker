@@ -1,0 +1,210 @@
+{
+ "call_facts": [
+  {
+   "call_kind": "call",
+   "callee_byte_end": 52,
+   "callee_byte_start": 46,
+   "file": "a.rs",
+   "from": "1349361eb4b1d3da6e45a33446e31f5d09cea898",
+   "id": "call:b7966d80bf5d3f7df37b5af227ad1d324b486aca",
+   "location": {
+    "byte_end": 54,
+    "byte_start": 46,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "reference": "helper",
+   "type": "calls"
+  }
+ ],
+ "errors": [],
+ "metadata": {
+  "errors": [],
+  "files_processed": 3,
+  "total_classes": 1,
+  "total_functions": 3,
+  "total_imports": 0,
+  "total_relationships": 2
+ },
+ "relationships": [
+  {
+   "candidates": [
+    "09615fa81b4602d5435e48154642977238008653",
+    "1032a44c24150f5be5a2129a2abd241fb8bb446a",
+    "ced1160ef0f343fe4faceb9045034022fa85c7f8"
+   ],
+   "file": "a.rs",
+   "from": "1349361eb4b1d3da6e45a33446e31f5d09cea898",
+   "is_internal": false,
+   "line": 2,
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "helper",
+   "type": "dependencies"
+  },
+  {
+   "call_kind": "call",
+   "call_site_id": "call:b7966d80bf5d3f7df37b5af227ad1d324b486aca",
+   "callee_byte_end": 52,
+   "callee_byte_start": 46,
+   "candidates": [
+    "09615fa81b4602d5435e48154642977238008653",
+    "1032a44c24150f5be5a2129a2abd241fb8bb446a",
+    "ced1160ef0f343fe4faceb9045034022fa85c7f8"
+   ],
+   "file": "a.rs",
+   "from": "1349361eb4b1d3da6e45a33446e31f5d09cea898",
+   "is_internal": false,
+   "line": 2,
+   "location": {
+    "byte_end": 54,
+    "byte_start": 46,
+    "end_line": 2,
+    "start_line": 2
+   },
+   "provenance": {
+    "resolver": "extract_symbol_graph",
+    "source": "syntax"
+   },
+   "reference": "helper",
+   "resolution": "ambiguous",
+   "resolution_mode": "permissive",
+   "to": "helper",
+   "type": "calls"
+  }
+ ],
+ "symbol_lookup": {
+  "09615fa81b4602d5435e48154642977238008653": {
+   "definition_id": "09615fa81b4602d5435e48154642977238008653",
+   "end_line": 1,
+   "file": "c.rs",
+   "kind": "struct",
+   "language": "rust",
+   "line": 1,
+   "module": "c",
+   "name": "helper",
+   "node_id": "e8b54b5862267f3a83cdd0d4d8fb2096b7b6b76a",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "c.rs::helper",
+   "signature": null
+  },
+  "1032a44c24150f5be5a2129a2abd241fb8bb446a": {
+   "definition_id": "1032a44c24150f5be5a2129a2abd241fb8bb446a",
+   "end_line": 1,
+   "file": "a.rs",
+   "kind": "function",
+   "language": "rust",
+   "line": 1,
+   "module": "a",
+   "name": "helper",
+   "node_id": "b068331561cf76ccedc6e8c65952cc7eb8469667",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "a.rs::helper",
+   "signature": "helper() -> i32"
+  },
+  "1349361eb4b1d3da6e45a33446e31f5d09cea898": {
+   "definition_id": "1349361eb4b1d3da6e45a33446e31f5d09cea898",
+   "end_line": 2,
+   "file": "a.rs",
+   "kind": "function",
+   "language": "rust",
+   "line": 2,
+   "module": "a",
+   "name": "use_it",
+   "node_id": "ea49d1676cf17a9d540d27345b8682da02525595",
+   "parent_class": "",
+   "qualified_name": "use_it",
+   "semantic_path": "a.rs::use_it",
+   "signature": "use_it() -> i32"
+  },
+  "ced1160ef0f343fe4faceb9045034022fa85c7f8": {
+   "definition_id": "ced1160ef0f343fe4faceb9045034022fa85c7f8",
+   "end_line": 1,
+   "file": "b.rs",
+   "kind": "function",
+   "language": "rust",
+   "line": 1,
+   "module": "b",
+   "name": "helper",
+   "node_id": "623606acd31eafeb0bbdf3215c8570a53c2c754f",
+   "parent_class": "",
+   "qualified_name": "helper",
+   "semantic_path": "b.rs::helper",
+   "signature": "helper() -> i32"
+  }
+ },
+ "symbols": {
+  "classes": [
+   {
+    "definition_id": "09615fa81b4602d5435e48154642977238008653",
+    "end_line": 1,
+    "file": "c.rs",
+    "kind": "struct",
+    "language": "rust",
+    "line": 1,
+    "module": "c",
+    "name": "helper",
+    "node_id": "e8b54b5862267f3a83cdd0d4d8fb2096b7b6b76a",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "c.rs::helper",
+    "signature": null
+   }
+  ],
+  "functions": [
+   {
+    "definition_id": "1032a44c24150f5be5a2129a2abd241fb8bb446a",
+    "end_line": 1,
+    "file": "a.rs",
+    "kind": "function",
+    "language": "rust",
+    "line": 1,
+    "module": "a",
+    "name": "helper",
+    "node_id": "b068331561cf76ccedc6e8c65952cc7eb8469667",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "a.rs::helper",
+    "signature": "helper() -> i32"
+   },
+   {
+    "definition_id": "1349361eb4b1d3da6e45a33446e31f5d09cea898",
+    "end_line": 2,
+    "file": "a.rs",
+    "kind": "function",
+    "language": "rust",
+    "line": 2,
+    "module": "a",
+    "name": "use_it",
+    "node_id": "ea49d1676cf17a9d540d27345b8682da02525595",
+    "parent_class": "",
+    "qualified_name": "use_it",
+    "semantic_path": "a.rs::use_it",
+    "signature": "use_it() -> i32"
+   },
+   {
+    "definition_id": "ced1160ef0f343fe4faceb9045034022fa85c7f8",
+    "end_line": 1,
+    "file": "b.rs",
+    "kind": "function",
+    "language": "rust",
+    "line": 1,
+    "module": "b",
+    "name": "helper",
+    "node_id": "623606acd31eafeb0bbdf3215c8570a53c2c754f",
+    "parent_class": "",
+    "qualified_name": "helper",
+    "semantic_path": "b.rs::helper",
+    "signature": "helper() -> i32"
+   }
+  ],
+  "imports": []
+ }
+}

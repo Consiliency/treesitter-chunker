@@ -1,0 +1,67 @@
+{
+ "plan_sections": [
+  "10.4"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:2846b011fb80b72e0241eb2188f494ebda2c190e",
+     "call_span": [
+      63,
+      77
+     ],
+     "callee_span": [
+      63,
+      75
+     ],
+     "caller": "g",
+     "file": "a.ts",
+     "line": 2,
+     "reference": "globalThis.t",
+     "today": {
+      "candidate_ids": [
+       "a6ec565ebf998845ef692f97091959a974bbe63b",
+       "aeff2fb2308e710c2fea292ea24530413d05a84d"
+      ],
+      "candidates": [
+       "a.ts:1:t",
+       "b.ts:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    },
+    {
+     "call_site_id": "call:f18d1689e42dc8407f6f7a5e904ca27cb312f6d0",
+     "call_span": [
+      80,
+      90
+     ],
+     "callee_span": [
+      80,
+      88
+     ],
+     "caller": "g",
+     "file": "a.ts",
+     "line": 2,
+     "reference": "window.t",
+     "today": {
+      "candidate_ids": [
+       "a6ec565ebf998845ef692f97091959a974bbe63b",
+       "aeff2fb2308e710c2fea292ea24530413d05a84d"
+      ],
+      "candidates": [
+       "a.ts:1:t",
+       "b.ts:1:t"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/ts-globalThis"
+  }
+ },
+ "source": "authored",
+ "tree": "ts-globalThis"
+}

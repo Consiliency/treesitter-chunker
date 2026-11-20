@@ -1,0 +1,45 @@
+{
+ "files": {
+  "web/svc.ts": {
+   "cache_key": "boundary:v3:3e2019f08a7471164d9af5a9ff338958f2d83b89d4ecaa382fedd0afbcbf83b8",
+   "key_payload": {
+    "content_hash": "sha1:3fbae3d9aacf755ec33a4f0351a0684970df3d70",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-typescript:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "typescript",
+    "path": "web/svc.ts",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  },
+  "web/svc.tsx": {
+   "cache_key": "boundary:v3:dfbc4ad99743885fee3bef11ccfb1ee9ffff6b769324c1faedca658766c1cba9",
+   "key_payload": {
+    "content_hash": "sha1:40399697e8d8d2ba06cd0ca7c0cd58def2c2dd7e",
+    "fail_fast": false,
+    "grammar_version": "tree-sitter-tsx:pack=1.20.0:runtime=0.26.0",
+    "include_retrieval_metadata": true,
+    "language": "tsx",
+    "path": "web/svc.tsx",
+    "resolution_mode": "permissive",
+    "runtime_version": "0.26.0",
+    "schema_version": "3.0",
+    "semantic_min_confidence": null,
+    "semantic_resolvers": null,
+    "semantic_schema_version": null,
+    "tool_version": "7.0.0"
+   }
+  }
+ },
+ "volatile_fields": [
+  "grammar_version",
+  "runtime_version",
+  "tool_version"
+ ]
+}

@@ -1,0 +1,65 @@
+{
+ "plan_sections": [
+  "10.3"
+ ],
+ "runs": {
+  "default": {
+   "calls": [
+    {
+     "call_site_id": "call:908676f1af3e5d023f24839c8b0ecc091e7c6f46",
+     "call_span": [
+      72,
+      90
+     ],
+     "callee_span": [
+      72,
+      80
+     ],
+     "caller": "f",
+     "file": "a.py",
+     "line": 9,
+     "reference": "register",
+     "today": {
+      "candidate_ids": [
+       "786452036f36685fc66a8a979d0f0abcce78bd5d"
+      ],
+      "candidates": [
+       "a.py:5:register"
+      ],
+      "resolution": "resolved"
+     }
+    },
+    {
+     "call_site_id": "call:35085feda1b2fcb7e17fa859235a51fb2c8c3253",
+     "call_span": [
+      81,
+      89
+     ],
+     "callee_span": [
+      81,
+      87
+     ],
+     "caller": "f",
+     "file": "a.py",
+     "line": 9,
+     "reference": "helper",
+     "today": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8",
+       "6aaa93ccf7af52ba054b2c63e2223607d6449855"
+      ],
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "resolution": "ambiguous"
+     }
+    }
+   ],
+   "language": null,
+   "root": "authored/py-decorated"
+  }
+ },
+ "source": "authored",
+ "tree": "py-decorated"
+}
