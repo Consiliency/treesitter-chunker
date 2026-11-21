@@ -51,7 +51,9 @@ pytest's `-n` option bounds only the test processes, not the worker pools the
 performance tests start. Those tests therefore never size a pool from the
 host's core count: ordinary runs request at most two workers. The scaling test
 requires two workers to be more than 30% faster than one, using uncached parsing
-and the best of three runs.
+and the best of three runs. In a CI environment (`GITHUB_ACTIONS=true`, or `CI`
+set to `true` or `1`) it only requires two workers to be faster than one, and
+reports the 30% result as a warning (owner decision, treesitter-chunker#660).
 
 The 4-worker check needs four workers to be more than twice as fast as one, and
 it applies that bar only when psutil reports at least four physical cores.

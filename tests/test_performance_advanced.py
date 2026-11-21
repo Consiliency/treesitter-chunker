@@ -50,7 +50,12 @@ TWO_WORKER_BAR = 0.7
 
 
 def hosted_ci_runner():
-    """Whether this run is on a hosted CI runner (explicit markers only)."""
+    """Whether this run is in a CI environment (explicit markers only).
+
+    GitHub Actions sets GITHUB_ACTIONS=true and CI=true on every runner,
+    self-hosted ones included. Other tools that export CI=true or CI=1, or a
+    developer who exports CI locally, also select the hosted gate.
+    """
     return os.environ.get("GITHUB_ACTIONS") == "true" or os.environ.get(
         "CI", ""
     ).lower() in {"true", "1"}
@@ -182,7 +187,7 @@ class TestClass:
         ratio = times[2] / times[1]
         met = "met" if ratio < TWO_WORKER_BAR else "not met (reported only)"
         warnings.warn(
-            f"hosted CI runner: two workers took {ratio:.3f} of the one-worker "
+            f"CI environment: two workers took {ratio:.3f} of the one-worker "
             f"time; the {1 - TWO_WORKER_BAR:.0%} improvement bar was {met} "
             "(treesitter-chunker#660)",
             stacklevel=1,
