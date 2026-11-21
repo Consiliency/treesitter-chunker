@@ -5341,3 +5341,163 @@ def test_fold11_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) ->
     off_calls = [e for e in off["relationships"] if e["file"] == target]
     assert any(edge["resolution"] == "ambiguous" for edge in off_calls), case
     assert [e for e in on["relationships"] if e["file"] == target] == off_calls
+
+
+# ---------------------------------------------------------------------------
+# Codex 4655078224: closure cells, code objects and other routes that rebind
+# a binding without spelling an assignment make every lookup dynamic.
+
+CODEX_4655078224 = (
+    "def replacement():\n    return 2\n\n\n"
+    "def run():\n    def helper():\n        return 1\n\n"
+    "    def invoke():\n        return helper()\n\n"
+    "    invoke.__closure__[0].cell_contents = replacement\n"
+    "    return invoke()\n"
+)
+
+
+def _invoke_helper_edge(graph: dict[str, Any]) -> dict[str, Any]:
+    (edge,) = (
+        edge
+        for edge in graph["relationships"]
+        if edge["type"] == "calls"
+        and edge["file"] == "a.py"
+        and edge["reference"] == "helper"
+    )
+    return edge
+
+
+CLOSURE_VARIANTS = {
+    "codex": CODEX_4655078224,
+    "in-a-method": CODEX_4655078224.replace(
+        "def run():", "class K:\n    pass\n\n\ndef run():"
+    ).replace(
+        "    invoke.__closure__[0].cell_contents = replacement\n",
+        "    class J:\n        def m(self):\n"
+        "            invoke.__closure__[0].cell_contents = replacement\n"
+        "    J().m()\n",
+    ),
+    "setattr-string": CODEX_4655078224.replace(
+        "    invoke.__closure__[0].cell_contents = replacement\n",
+        "    cell = getattr(invoke, '__clo' + 'sure__')[0]\n"
+        "    setattr(cell, 'cell_contents', replacement)\n",
+    ),
+    "celltype": CODEX_4655078224.replace(
+        "    invoke.__closure__[0].cell_contents = replacement\n"
+        "    return invoke()\n",
+        "    import types\n"
+        "    new = types.FunctionType(code, {}, None, None, "
+        "(types.CellType(replacement),))\n    return new()\n",
+    ),
+    "nested-closure": CODEX_4655078224.replace(
+        "    def invoke():\n        return helper()\n\n",
+        "    def outer():\n        def invoke():\n            return helper()\n"
+        "        return invoke\n\n    invoke = outer()\n",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(CLOSURE_VARIANTS))
+def test_codex_4655078224_closure_rebinding_end_to_end(
+    tmp_path: Path, case: str
+) -> None:
+    """Python calls ``replacement``; the analyzer must not prove the local
+    ``helper`` (Codex 4655078224)."""
+    # A nested ``helper`` in ``b.py`` keeps the off-mode edge ambiguous
+    # between the two nested definitions.
+    other = "def other():\n    def helper():\n        return 3\n    return helper\n"
+    root = _tree(tmp_path, {"a.py": CLOSURE_VARIANTS[case], "b.py": other})
+    off, on = _off_on(root)
+    edge = _invoke_helper_edge(off)
+    assert edge["resolution"] == "ambiguous", case
+    assert _invoke_helper_edge(on) == edge, case
+
+
+LOCAL_PROOF = "def f():\n    def helper():\n        return 1\n    return helper()\n"
+
+
+# Pinned here, not read from the module, so dropping a name fails a case.
+FILE_WIDE_NAMES = (
+    "f_locals",
+    "__closure__",
+    "cell_contents",
+    "CellType",
+    "FunctionType",
+    "LambdaType",
+    "CodeType",
+    "__code__",
+    "gi_code",
+    "cr_code",
+    "ag_code",
+    "f_code",
+    "co_code",
+    "co_names",
+    "co_consts",
+    "co_varnames",
+    "co_freevars",
+    "co_cellvars",
+    "ctypes",
+    "pythonapi",
+    "PyFrame_LocalsToFast",
+)
+
+
+def test_file_wide_names_are_pinned() -> None:
+    assert frozenset(FILE_WIDE_NAMES) == py_scope._FILE_WIDE_NAMES
+
+
+@pytest.mark.parametrize("name", FILE_WIDE_NAMES)
+def test_each_file_wide_name_makes_function_lookups_dynamic(name: str) -> None:
+    """Every file-wide trigger reaches function scopes, as an identifier in
+    any position and as a constant string."""
+    for mention in (f"x = obj.{name}", f"x = '{name}'"):
+        source = mention + "\n\n\n" + LOCAL_PROOF
+        assert reason(source) == "dynamic-scope", (name, mention)
+    assert proof_text(LOCAL_PROOF) == ["def helper():\n        return 1"]
+
+
+def test_a_closure_keyword_makes_function_lookups_dynamic() -> None:
+    """``exec(code, g, closure=cells)`` runs existing code against new cells,
+    with nothing else spelled (cells from heap walking)."""
+    source = "exec(obj, {}, closure=cells)\n\n\n" + LOCAL_PROOF
+    assert reason(source) == "dynamic-scope"
+    other = "f(obj, enclosure=cells)\n\n\n" + LOCAL_PROOF
+    assert proof_text(other) == ["def helper():\n        return 1"]
+
+
+def test_code_surgery_and_ctypes_fail_closed_everywhere() -> None:
+    surgery = (
+        "def f():\n    def helper():\n        return 1\n"
+        "    f.__code__ = f.__code__.replace(co_names=('replacement',))\n"
+        "    return helper()\n"
+    )
+    assert reason(surgery) == "dynamic-scope"
+    poke = "import ctypes\n\n\n" + LOCAL_PROOF
+    assert reason(poke) == "dynamic-scope"
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        # Heap walking alone, parameter defaults, read-only views and
+        # introspection metadata cannot change a proven binding (plan R12).
+        "import gc\nrefs = gc.get_referrers(f)",
+        "f.__defaults__ = (1,)",
+        "f.__kwdefaults__ = {'a': 1}",
+        "m = obj.__func__\ns = obj.__self__",
+        "g.__wrapped__ = f",
+        "import inspect, sys\nfr = inspect.currentframe()\nfr2 = sys._getframe()",
+    ],
+)
+def test_routes_that_cannot_rebind_a_proof_still_resolve(form: str) -> None:
+    source = form + "\n\n\n" + LOCAL_PROOF
+    assert proof_text(source) == ["def helper():\n        return 1"], form
+
+
+def test_heap_walked_dict_writes_are_caught_by_the_attribute_write_rule() -> None:
+    source = (
+        HELPER
+        + "import gc\nfor d in gc.get_referrers(helper):\n    d['helper'] = len\n"
+        "\n\ndef use():\n    return helper()\n"
+    )
+    assert reason(source) == "mixed-bindings"

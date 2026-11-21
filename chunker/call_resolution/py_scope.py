@@ -91,6 +91,15 @@ A name bound nowhere in the file is ``unbound`` (a builtin or a
 A file that mentions ``f_locals`` anywhere (an attribute or a constant string)
 gives ``dynamic-scope`` for every lookup, function scopes included: a frame's
 ``f_locals`` writes through to a function's locals (PEP 667, Python 3.13+).
+So does every other route that rebinds a binding a lookup depends on without
+spelling an assignment to that name (:data:`_FILE_WIDE_NAMES`; Codex
+4655078224): a closure cell (``__closure__``, ``cell_contents``,
+``types.CellType``), a function rebuilt over existing code
+(``FunctionType``/``LambdaType``), code-object surgery (``__code__``,
+``CodeType``, ``gi_code``/``cr_code``/``ag_code``/``f_code``, the ``co_*``
+fields ``code.replace`` rewrites), raw C-level access (``ctypes``,
+``pythonapi``, ``PyFrame_LocalsToFast``), and a ``closure=`` keyword argument
+(``exec(code, g, closure=cells)``).
 
 **Dynamic binding fails closed** (``dynamic-scope``). A file may bind module
 names at run time when it mentions ``exec``, ``eval``, ``globals``,
@@ -334,6 +343,47 @@ _NAME_SEPARATORS = re.compile(r"[.:]")
 # ``frame.f_locals`` writes through to a function's locals (PEP 667, Python
 # 3.13+): every lookup of a file that mentions it fails closed.
 _FRAME_LOCALS = "f_locals"
+# Names whose mention may rebind a binding a lookup depends on in any scope,
+# function scopes included, without spelling an assignment to that name: a
+# closure cell (``f.__closure__[0].cell_contents = g``; Codex 4655078224), a
+# function rebuilt over existing code with a new closure or globals
+# (``types.FunctionType``/``LambdaType``, ``types.CellType``), code-object
+# surgery (``f.__code__ = f.__code__.replace(co_names=...)``, ``CodeType``,
+# the code of a generator, coroutine or frame) and raw C-level access
+# (``ctypes``). Like ``f_locals``, any mention makes every lookup of the file
+# dynamic, and so does a ``closure=`` keyword argument (``exec(code, g,
+# closure=cells)``, ``FunctionType(..., closure=...)``). Heap walking
+# (``gc.get_referents``) is no trigger: an object found that way rebinds a
+# proven name only through a write another rule sees (a constant-key or
+# attribute write, ``cell_contents``, ``f_locals``, ``__code__``, a
+# ``closure=`` keyword) or a computed key (plan risk R12).
+_FILE_WIDE_NAMES = frozenset(
+    {
+        _FRAME_LOCALS,
+        "__closure__",
+        "cell_contents",
+        "CellType",
+        "FunctionType",
+        "LambdaType",
+        "CodeType",
+        "__code__",
+        "gi_code",
+        "cr_code",
+        "ag_code",
+        "f_code",
+        "co_code",
+        "co_names",
+        "co_consts",
+        "co_varnames",
+        "co_freevars",
+        "co_cellvars",
+        "ctypes",
+        "pythonapi",
+        "PyFrame_LocalsToFast",
+    }
+)
+# A keyword argument that hands a function or code object a new closure.
+_CLOSURE_KEYWORD = "closure"
 # ``X.modules[__name__]`` and these methods with ``__name__`` reach this
 # module's object through any receiver (``collections._sys.modules``).
 _MODULE_GETTERS = frozenset({"get", "__getitem__", "setdefault", "pop"})
@@ -1242,7 +1292,9 @@ class _Analysis:
             spellings = _spellings(ident, source)
             if spellings & _DYNAMIC_ATTRIBUTES:
                 self.dynamic = True
-                self.frame_locals = self.frame_locals or _FRAME_LOCALS in spellings
+            if spellings & _FILE_WIDE_NAMES:
+                self.dynamic = True
+                self.frame_locals = True
             if not _scope_binding_name(ident) and any(
                 self._names_own_module(spelling) for spelling in spellings
             ):
@@ -1258,6 +1310,11 @@ class _Analysis:
             if parent.type == "keyword_argument" and _same(
                 ident, parent.child_by_field_name("name")
             ):
+                if name == _CLOSURE_KEYWORD:
+                    # ``exec(code, g, closure=cells)`` runs existing code
+                    # against new cells: every lookup is dynamic.
+                    self.dynamic = True
+                    self.frame_locals = True
                 continue
             if parent.type in ("function_definition", "class_definition") and _same(
                 ident, parent.child_by_field_name("name")
@@ -1372,7 +1429,8 @@ class _Analysis:
         parts = set(_NAME_SEPARATORS.split(value))
         if parts & _LITERAL_DYNAMIC:
             self.dynamic = True
-        if _FRAME_LOCALS in parts:
+        if parts & _FILE_WIDE_NAMES:
+            self.dynamic = True
             self.frame_locals = True
 
     def _import_use(self, node: Any) -> None:
