@@ -39,8 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     declare the name as a global (`script_globals`: other scripts'
     top-level names; implicit globals in any file; `window.x =`,
     `globalThis.x =`, `self.x =`, `global.x =`, `top`/`parent`/`frames`/
-    `defaultView` writes, and `this.x =` in functions and methods, in any
-    file; `declare global`; a computed key, the global object used as a
+    `defaultView` writes, and `this.x =` or `super.x =` in functions and
+    methods, in any file; `declare global`; a computed key, the global object used as a
     value, a code evaluator, a `constructor` call, a timer not given a
     function, an unsupported JS/TS file, or an HTML, XML or PHP file counts
     for every name). This holds within the run

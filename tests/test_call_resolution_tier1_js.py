@@ -1774,6 +1774,49 @@ PANEL_CASES: dict[str, tuple[dict[str, str], str, str]] = {
     # B-3: receiver ``this`` through alias chains.
     "T22": (_writer("export function o() { this.window.d = 1; }\n"), "a.js", "d"),
     "T22b": (_writer("export function o() { this['self'].d = 1; }\n"), "a.js", "d"),
+    # B-4 (#691 re-check): ``super.x =`` sets ``x`` on the receiver.
+    "Y12": (
+        _writer(
+            "export class K { m() { super.d = function () { return 2; }; } }\n"
+            "window.onload = K.prototype.m;\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "Y12b": (
+        _writer("export class K { m(): void { super.d = 2; } }\n", "c.ts"),
+        "a.js",
+        "d",
+    ),
+    "Y13": (
+        _writer(
+            "export const o = { m() { super.d = function () { return 3; }; } };\n"
+            "window.onload = o.m;\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "Y13b": (_writer("export const o = { m() { super['d'] = 2; } };\n"), "a.js", "d"),
+    "Y13c": (_writer("export const o = { m(k) { super[k] = 2; } };\n"), "a.js", "d"),
+    "Y32": (
+        _writer("export const o = { m() { super.window.d = 2; } };\n"),
+        "a.js",
+        "d",
+    ),
+    "Y33": (_writer("export const o = { m(s) { super.eval(s); } };\n"), "a.js", "d"),
+    # B-5: a computed link in a receiver ``this`` chain records the name.
+    "Y28": (
+        _writer("export function o(k) { this[k].d = function () { return 5; }; }\n"),
+        "a.js",
+        "d",
+    ),
+    "Y18": (
+        _writer(
+            "export function o() { this[`window`].d = function () { return 7; }; }\n"
+        ),
+        "a.js",
+        "d",
+    ),
     # Closed rather than left to R11 (#691 ruling, section 4).
     "T19": (_writer("export class K { m() { this.eval(s); } }\n"), "a.js", "d"),
     "T20": (
@@ -1886,3 +1929,19 @@ def test_static_constructor_is_not_the_class_constructor() -> None:
     assert "d" not in script_globals("export class K { constructor() { this.d = 1; } }")
     # A string-named ``'constructor'()`` still counts (conservative).
     assert "d" in script_globals("export class K { 'constructor'() { this.d = 1; } }")
+
+
+def test_receiver_chain_writes_record_the_name_not_a_wildcard() -> None:
+    """B-4/B-5: ``super.x =`` and ``this[k].x =`` record ``x``; only a
+    computed final key gives ``*``."""
+    assert script_globals("export function o(k) { this[k].d = 1; }") == ["d"]
+    assert script_globals("export function o(k, j) { this[k][j].d = 1; }") == ["d"]
+    assert script_globals("export const o = { m() { super.d = 1; } };") == ["d"]
+    assert script_globals("export const o = { m(k) { super[k] = 1; } };") == ["*"]
+    # The class constructor's ``super``/``this`` is the new instance.
+    assert (
+        script_globals(
+            "export class K extends B { constructor() { super(); super.d = 1; } }"
+        )
+        == []
+    )

@@ -510,7 +510,10 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     initializers, static blocks and a module top level (`static
     constructor()` is an ordinary method and counts). Alias chains count
     from a receiver `this` too (`this.window.x =`), as do `this.eval(…)`,
-    `this.setTimeout(…)` and `Object.assign(this, …)`. A literal subscript
+    `this.setTimeout(…)` and `Object.assign(this, …)`. `super` counts like
+    `this` (`super.x = v` sets `x` on the receiver), and a computed link in
+    such a chain (`this[k].x =`) may name the global object, so `x` is
+    recorded; a computed final key still gives `*`. A literal subscript
     key writes that key; a non-literal key gives `*`. At a script top level,
     in sloppy functions and in object-literal methods, `this` used as a value
     gives `*` too.
@@ -1523,7 +1526,7 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | R7 | Python extension modules shadow `.py` | Accept. |
 | R8 | Interim behavior between PRs | Experimental label, plus a per-head CHANGELOG statement (4.5). |
 | R9 | Scripts outside the run can redefine a global: HTML-included scripts outside the run, `dist/`, `node_modules`, `.mjs` and `.cjs` files, inline `<script>` in `.vue` and `.svelte` files (none of these is collected), and raw HTML in Markdown or reStructuredText that a site generator renders, which, like any generated page, is outside the run | Accept: they are not scanned. In-run HTML, XML and PHP files count as declaring every global (PR 3). |
-| R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: `const s = this; s.d = f` and other hand-offs of a receiver `this` (except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)`, which give `*`); `Reflect.get(f, 'constructor')` | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
+| R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: a computed call on a receiver `this` that may be an indirect `eval` (`this[k](s)`, `this['ev' + 'al'](s)`; `*` would switch off script-top resolution in about 52 of 1136 npm files); hand-offs of a receiver `this` through a variable or an expression (`const s = this; s.d = f`, `const w = this.window; w.d = f`, `(0, this).d =`, `(c ? this : o).d =`, `(c || this).d =`, the receiver argument of `Reflect.set(o, 'd', v, this)`, `Object.assign(...[this], …)`), except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)` with `this` first, which give `*`; `Reflect.get(f, 'constructor')` | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
 | R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) is not tracked | Accept. This is the same kind of risk as the module-scope preference the issue asks for. |
 
 **Owner notice** (informational, from the ruling): these are delegated
@@ -1734,3 +1737,14 @@ Every item only adds `none`; no expected row changes. `js` fact version 6.
 | B-3: receiver `this` through alias chains (`this.window.x =`, `this['self'].x =`) | §7.2 script goal |
 | 3.1: Markdown and reStructuredText no longer count as inline-script carriers | §7.2; R9 |
 | Section 4: `this.eval`/`this.setTimeout`, `Object.assign(this, …)` and `{ constructor: F }` give `*`; `export import Q = N` counts as an export; the rest named in R11 | §7.2; R11 |
+
+### PR 3: the president's #691 re-check at 6c5f8b81
+
+Every item only adds `none` (names, never `*`, for B-5); no expected row
+changes. `js` fact version 7.
+
+| Item | Applied in |
+| --- | --- |
+| B-4: `super` counts like a receiver `this` (`super.x =`, `super[k] =`, `super.window.x =`, `super.eval(…)`) | §7.2 script goal |
+| B-5: a computed link in a receiver `this` chain (`this[k].x =`, ``this[`window`].x =``) records `x` | §7.2 script goal |
+| R3: `this[k](…)` and hand-offs through an expression named in R11 | §15 R11 |

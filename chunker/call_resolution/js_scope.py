@@ -947,6 +947,10 @@ class _Analysis:
             return self._maybe_global_this(node) or (
                 receiver and self._receiver_this(node)
             )
+        if node.type == "super":
+            # ``super.x = v`` sets ``x`` on the receiver ``this`` when no
+            # setter intervenes (B-4, the president's #691 re-check).
+            return receiver and self._receiver_this(node)
         if node.type == "member_expression":
             prop = node.child_by_field_name("property")
             name = _text(prop, self.source) if prop is not None else ""
@@ -958,8 +962,13 @@ class _Analysis:
             )
         if node.type == "subscript_expression":
             key = self._literal_key(node.child_by_field_name("index"))
+            # In a write chain, a computed key on the global object may name
+            # the global object itself (``this[k].x =`` with ``k`` set to
+            # ``'globalThis'``), so the chain continues and ``x`` is
+            # recorded (B-5, the president's #691 re-check). A computed read
+            # outside a write is already ``*`` (:meth:`_global_object_use`).
             return key == _DEFAULT_VIEW or (
-                key in _GLOBAL_OBJECT_PROPERTIES
+                (key in _GLOBAL_OBJECT_PROPERTIES or (receiver and key is None))
                 and self._is_global_object(
                     node.child_by_field_name("object"), receiver=receiver
                 )
