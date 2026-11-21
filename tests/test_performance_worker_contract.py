@@ -81,6 +81,10 @@ def simulate_host(monkeypatch, cores, physical, admitted):
         monkeypatch.setenv(ENV, "1")
     else:
         monkeypatch.delenv(ENV, raising=False)
+    # Simulated runs are off-hosted unless a test opts in (run_two_worker_test),
+    # so CI's own GITHUB_ACTIONS/CI markers never reach them (#660).
+    for name in ("GITHUB_ACTIONS", "CI"):
+        monkeypatch.delenv(name, raising=False)
 
 
 def run_pool_tests(module, monkeypatch, tmp_path, seconds=ideal):
@@ -177,6 +181,22 @@ def test_admitted_run_below_four_physical_cores_is_reported(monkeypatch, tmp_pat
         )
 
 
+def run_two_worker_test(
+    monkeypatch, tmp_path, two_worker_seconds, hosted_env, recorder
+):
+    """Run test_multiprocess_scaling with simulated timings and environment."""
+    simulate_host(monkeypatch, cores=2, physical=2, admitted=False)
+    for name, value in hosted_env.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setattr(perf, "chunk_files_parallel", recorder.chunk_files_parallel)
+    monkeypatch.setattr(perf, "time", SimpleNamespace(perf_counter=recorder.clock))
+    perf.TestConcurrentPerformance.test_multiprocess_scaling(tmp_path)
+
+
+def two_worker_recorder(two_worker_seconds):
+    return Recorder(lambda n: two_worker_seconds if n == 2 else ideal(n))
+
+
 @pytest.mark.parametrize(
     ("two_worker_seconds", "passes"),
     [(0.71875, False), (0.6875, True)],
@@ -184,16 +204,65 @@ def test_admitted_run_below_four_physical_cores_is_reported(monkeypatch, tmp_pat
 def test_two_worker_bar_stays_at_thirty_percent(
     two_worker_seconds, passes, monkeypatch, tmp_path
 ):
-    simulate_host(monkeypatch, cores=2, physical=2, admitted=False)
-    recorder = Recorder(lambda n: two_worker_seconds if n == 2 else ideal(n))
-    monkeypatch.setattr(perf, "chunk_files_parallel", recorder.chunk_files_parallel)
-    monkeypatch.setattr(perf, "time", SimpleNamespace(perf_counter=recorder.clock))
+    """Off a hosted runner the 30% bar gates (owner decision, #660)."""
+    recorder = two_worker_recorder(two_worker_seconds)
     if passes:
-        perf.TestConcurrentPerformance.test_multiprocess_scaling(tmp_path)
+        run_two_worker_test(monkeypatch, tmp_path, two_worker_seconds, {}, recorder)
     else:
         with pytest.raises(AssertionError):
-            perf.TestConcurrentPerformance.test_multiprocess_scaling(tmp_path)
+            run_two_worker_test(monkeypatch, tmp_path, two_worker_seconds, {}, recorder)
     assert recorder.requests == SCALING
+
+
+@pytest.mark.parametrize(
+    ("two_worker_seconds", "passes"),
+    [(0.71875, True), (0.999, True), (1.0, False), (1.2, False)],
+)
+def test_hosted_runner_gates_only_a_real_speedup(
+    two_worker_seconds, passes, monkeypatch, tmp_path
+):
+    """On a hosted runner two workers must only be faster; 30% is reported."""
+    hosted = {"GITHUB_ACTIONS": "true"}
+    recorder = two_worker_recorder(two_worker_seconds)
+    if passes:
+        with pytest.warns(UserWarning, match=r"treesitter-chunker#660"):
+            run_two_worker_test(
+                monkeypatch, tmp_path, two_worker_seconds, hosted, recorder
+            )
+    else:
+        with (
+            pytest.raises(AssertionError),
+            pytest.warns(UserWarning, match=r"not met \(reported only\)"),
+        ):
+            run_two_worker_test(
+                monkeypatch, tmp_path, two_worker_seconds, hosted, recorder
+            )
+    assert recorder.requests == SCALING
+
+
+@pytest.mark.parametrize(
+    ("env", "hosted"),
+    [
+        ({}, False),
+        ({"GITHUB_ACTIONS": "true"}, True),
+        ({"CI": "true"}, True),
+        ({"CI": "1"}, True),
+        ({"CI": "TRUE"}, True),
+        ({"GITHUB_ACTIONS": "1"}, False),
+        ({"GITHUB_ACTIONS": "false"}, False),
+        ({"CI": "false"}, False),
+        ({"CI": "0"}, False),
+        ({"CI": "yes"}, False),
+        ({"CI": ""}, False),
+    ],
+)
+def test_hosted_detection_is_explicit_and_fails_closed(env, hosted, monkeypatch):
+    """Only explicit markers select hosted mode; anything else keeps 30%."""
+    for name in ("GITHUB_ACTIONS", "CI"):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    assert perf.hosted_ci_runner() is hosted
 
 
 # Named mutations of tests/test_performance_advanced.py. Each must break the
