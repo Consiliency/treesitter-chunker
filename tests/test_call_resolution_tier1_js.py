@@ -640,6 +640,22 @@ GLOBAL_WILDCARD_FORMS = {
     "bracket-timer": "window['setTimeout'](s, 1);",
     "bracket-timer-function": "window['setTimeout'](s);",
     "receiver-computed": "class K { m() { this[k] = f; } }",
+    # Codex 4652498471: literal keys equal dot access for every family;
+    # escaped keys fail closed.
+    "template-evaluator": "window[`eval`](s);",
+    "template-timer": "window[`setTimeout`]('d = f');",
+    "template-constructor": "[][`constructor`][`constructor`]('d = f')();",
+    "bracket-constructor": "[]['constructor']['constructor']('d = f')();",
+    "escaped-constructor": "f['\\x63onstructor']('d = f')();",
+    "template-default-view": "const w = document[`defaultView`];",
+    "template-global-alias": "const w = window[`top`];",
+    "computed-constructor-pattern": "const { ['constructor']: F } = f;",
+    "escaped-writer": "class K { m() { Object['\\x61ssign'](this, { d: f }); } }",
+    "computed-writer": "class K { m(k) { Object[k](this, { d: f }); } }",
+    "global-writer-path": "class K { m() { window['Reflect']['set'](this, 'd', f); } }",
+    "writer-call": "class K { m() { Object.assign.call(null, this, { d: f }); } }",
+    "writer-apply": "class K { m() { Object['assign']['apply'](null, [this, {}]); } }",
+    "receiver-bracket-eval": "class K { m() { this[`eval`](s); } }",
     "timer-script-function": "function tick() {}\nsetTimeout(tick, 1);",
 }
 
@@ -671,6 +687,9 @@ def test_inert_global_object_uses_are_not_wildcards() -> None:
         "export class K { m() { return this; } x = this; static { this.y = 1; } }",
         "function f() { return () => 1; }",
         "if (x.constructor === Object) {}",
+        "const n = x['constructor'].name;",
+        "Object['keys'](o);\nObject.assign({}, o);",
+        "window['addEventListener']('load', () => 1);",
         "const n = x.constructor.name;",
         "declare function f(parent?: number, top?: number): void;\nexport {};",
         "type F = (window: Window) => void;\nexport {};",
@@ -1814,6 +1833,37 @@ PANEL_CASES: dict[str, tuple[dict[str, str], str, str]] = {
         _writer(
             "export function o() { this[`window`].d = function () { return 7; }; }\n"
         ),
+        "a.js",
+        "d",
+    ),
+    # Codex 4652498471: a literal-key callee equals dot access.
+    "codex-4652498471": (
+        _writer(
+            "export {};\nfunction overwrite() { Object['assign'](this, { d: 1 }); }\n"
+            "window.onload = overwrite;\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "bracket-define-property": (
+        _writer(
+            "export function o() { Object['defineProperty'](this, 'd', { value: 1 }); }\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "bracket-reflect-set": (
+        _writer("export {};\nReflect['set'](globalThis, 'd', 1);\n"),
+        "a.js",
+        "d",
+    ),
+    "bracket-timer-call": (
+        _writer("export {};\nwindow['setTimeout']['call'](null, 'd = 1');\n"),
+        "a.js",
+        "d",
+    ),
+    "template-assign": (
+        _writer("export function o() { Object[`assign`](this, { d: 1 }); }\n"),
         "a.js",
         "d",
     ),

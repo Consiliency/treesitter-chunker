@@ -533,6 +533,15 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     can carry inline scripts (HTML, XML, PHP; #691 panel B5). Markdown and
     reStructuredText do not count: they run nothing themselves (the
     president's #691 ruling, 3.1).
+  - **Literal keys equal dot access** for every name the analysis recognizes
+    (property writers, evaluators, `constructor`, timers and their
+    invokers, global-object names, `defaultView`): `X['name']` and
+    ``X[`name`]`` without substitutions match exactly like `X.name`, and a
+    string or template key with an escape fails closed (Codex 4652498471 on
+    #691). Property writers are `Object`/`Reflect` members reached by name,
+    through the global object (`globalThis.Object.assign`) or through
+    `.call`/`.apply`/`.bind`; a computed or escaped key on `Object` or
+    `Reflect` counts as one.
   - In a script, a global-object write of `x` (or `*`) also makes that
     file's top-level binding of `x` (or of every name) `reassigned`.
   - A lookup that lands on a script-goal top level narrows only if no other
@@ -1230,7 +1239,7 @@ compares the analyzer's output with them.
 | TS `using` / `await using` (fail closed, 7.5) | `test_using_near_miss_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on a tree the test writes (a committed tree would change the off-mode baseline, 11.2) |
 | stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2); PR 3 drops the latter two from the vocabulary |
 | script-global, namespace-merged, t1.js_hoist, inherited ambient (PR 3) | also `test_script_global_end_to_end`, `test_script_global_controls_end_to_end`, `test_js_hoist_end_to_end`, `test_js_hoist_near_misses_end_to_end`, `test_namespace_merging_end_to_end` and `test_inherited_ambient_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on trees the tests write (11.2) |
-| #691 panel classes A1–A6, B5, and the president's B-1–B-3 (PR 3) | `test_panel_691_cases_keep_their_off_mode_edge`, `test_misparsed_blocks_make_the_file_unsupported`, `test_static_constructor_is_not_the_class_constructor` and `test_markdown_and_rst_in_the_run_do_not_count` in `tests/test_call_resolution_tier1_js.py`; `test_editing_another_file_reruns_the_script_global_check` in `tests/test_call_resolution_cache.py` |
+| #691 panel classes A1–A6, B5, and the president's B-1–B-3 (PR 3) | `test_panel_691_cases_keep_their_off_mode_edge`, `test_misparsed_blocks_make_the_file_unsupported`, `test_static_constructor_is_not_the_class_constructor` and `test_markdown_and_rst_in_the_run_do_not_count` in `tests/test_call_resolution_tier1_js.py` (its `codex-4652498471`, `bracket-*` and `template-assign` cases pin literal-key callees, with the matching `test_global_object_uses_fail_closed_with_a_wildcard` cases); `test_editing_another_file_reruns_the_script_global_check` in `tests/test_call_resolution_cache.py` |
 | external-module | ts-bare-specifier, ts-external-import-kind |
 | outside-root | py-relative-root |
 | module-not-found | js-importer-ext-order (use3), py-namespace-dir, py-ancestor-module-shadow |
@@ -1748,3 +1757,13 @@ changes. `js` fact version 7.
 | B-4: `super` counts like a receiver `this` (`super.x =`, `super[k] =`, `super.window.x =`, `super.eval(…)`) | §7.2 script goal |
 | B-5: a computed link in a receiver `this` chain (`this[k].x =`, ``this[`window`].x =``) records `x` | §7.2 script goal |
 | R3: `this[k](…)` and hand-offs through an expression named in R11 | §15 R11 |
+
+### PR 3: Codex 4652498471 (literal-key callees)
+
+Only adds `none`; no expected row changes. `js` fact version 8.
+
+| Item | Applied in |
+| --- | --- |
+| One helper (`_member_key`/`_static_key`) matches `X.name`, `X['name']` and ``X[`name`]`` at every name-matching site; escaped keys fail closed | §7.2 script goal |
+| Property writers by bracket or template key, through the global object, or via `.call`/`.apply`/`.bind`; a computed or escaped key on `Object`/`Reflect` counts | §7.2 script goal |
+| Computed (static) `constructor` keys in destructuring patterns | §7.2 script goal |

@@ -149,6 +149,11 @@ _PROPERTY_WRITERS = frozenset(
     }
 )
 _INVOKERS = frozenset({"call", "apply", "bind"})
+# The namespaces whose members are property writers (``_PROPERTY_WRITERS``).
+_WRITER_NAMESPACES = frozenset(namespace for namespace, _ in _PROPERTY_WRITERS)
+# A static key the analysis cannot read: a string or template key with an
+# escape (``o['\x61ssign']``). It may be any name, so it fails closed.
+_UNREADABLE_KEY = "\0unreadable"
 # Timer arguments that are certainly functions, never source text.
 _FUNCTION_ARGUMENTS = frozenset(
     {"function_expression", "arrow_function", "generator_function"}
@@ -901,8 +906,9 @@ class _Analysis:
             elif kind == "call_expression":
                 self._property_writer_call(node)
             elif kind == "pair_pattern":
-                if self._member_key_name(node.child_by_field_name("key")) == (
-                    _CONSTRUCTOR
+                if self._member_key_name(node.child_by_field_name("key")) in (
+                    _CONSTRUCTOR,
+                    _UNREADABLE_KEY,
                 ):
                     # ``const { constructor: F } = f`` reaches the function
                     # constructors like ``f.constructor``.
@@ -961,7 +967,9 @@ class _Analysis:
                 )
             )
         if node.type == "subscript_expression":
-            key = self._literal_key(node.child_by_field_name("index"))
+            key = self._member_key(node)
+            if key == _UNREADABLE_KEY:
+                key = None
             # In a write chain, a computed key on the global object may name
             # the global object itself (``this[k].x =`` with ``k`` set to
             # ``'globalThis'``), so the chain continues and ``x`` is
@@ -1017,11 +1025,33 @@ class _Analysis:
         return False
 
     def _member_key(self, node: Any) -> str | None:
-        """A member access's property name, or a subscript's literal key."""
+        """The name a member access reads, matched the same way everywhere.
+
+        ``x.name``, ``x['name']`` and ``x[`name`]`` (a template without
+        substitutions) all give ``"name"``: a literal key equals dot access
+        for every name the analysis recognizes (Codex 4652498471, #691). A
+        string or template key with an escape gives :data:`_UNREADABLE_KEY`,
+        and any other computed key gives ``None``.
+        """
         if node.type == "member_expression":
             prop = node.child_by_field_name("property")
             return _text(prop, self.source) if prop is not None else None
-        return self._literal_key(node.child_by_field_name("index"))
+        if node.type != "subscript_expression":
+            return None
+        return self._static_key(node.child_by_field_name("index"))
+
+    def _static_key(self, node: Any) -> str | None:
+        """A plain string or substitution-free template's text;
+        :data:`_UNREADABLE_KEY` when it holds an escape; else ``None``."""
+        node = unwrap(node)
+        if node is None or node.type not in ("string", "template_string"):
+            return None
+        parts = node.named_children
+        if any(part.type == "template_substitution" for part in parts):
+            return None
+        if any(part.type != "string_fragment" for part in parts):
+            return _UNREADABLE_KEY
+        return "".join(_text(part, self.source) for part in parts)
 
     def _member_use(self, node: Any) -> None:
         """Member accesses that reach the global object or a code evaluator:
@@ -1029,7 +1059,13 @@ class _Analysis:
         ``G['setTimeout']``, and ``x.constructor`` called or handed on."""
         key = self._member_key(node)
         obj = node.child_by_field_name("object")
-        if key == _DEFAULT_VIEW:
+        if key == _UNREADABLE_KEY:
+            # An escaped key may be any name: ``constructor``, a timer or an
+            # evaluator (fail closed).
+            self._evaluator_use(node)
+            if self._is_global_object(obj, receiver=True):
+                self.global_wildcard = True
+        elif key == _DEFAULT_VIEW:
             self._global_object_use(node)
         elif key == _CONSTRUCTOR:
             self._evaluator_use(node)
@@ -1045,25 +1081,76 @@ class _Analysis:
             return None
         if key.type in ("property_identifier", "identifier"):
             return _text(key, self.source)
-        return self._literal_key(key)
+        if key.type == "computed_property_name":
+            named = key.named_children
+            return self._static_key(named[0]) if named else None
+        return self._static_key(key)
+
+    def _writer_namespace(self, node: Any) -> bool:
+        """Whether an expression is ``Object`` or ``Reflect``: the global
+        name, or that property of the global object (``globalThis.Object``,
+        ``window['Reflect']``)."""
+        node = unwrap(node)
+        if node is None:
+            return False
+        if node.type == "identifier":
+            name = _text(node, self.source)
+            return name in _WRITER_NAMESPACES and self._refers_to_global(node, name)
+        if node.type in _MEMBER_ACCESS:
+            return self._member_key(node) in _WRITER_NAMESPACES and (
+                self._is_global_object(node.child_by_field_name("object"))
+            )
+        return False
+
+    def _is_property_writer(self, node: Any) -> bool:
+        """Whether an expression is a property writer: ``Object.assign``,
+        ``Object['defineProperty']``, ``Reflect[`set`]`` and the rest of
+        :data:`_PROPERTY_WRITERS`. An escaped or computed key on ``Object``
+        or ``Reflect`` may name one, so it counts too (fail closed)."""
+        node = unwrap(node)
+        if node is None or node.type not in _MEMBER_ACCESS:
+            return False
+        obj = node.child_by_field_name("object")
+        if not self._writer_namespace(obj):
+            return False
+        key = self._member_key(node)
+        if key is None or key == _UNREADABLE_KEY:
+            return True
+        namespace = unwrap(obj)
+        namespace_name = (
+            _text(namespace, self.source)
+            if namespace.type == "identifier"
+            else self._member_key(namespace)
+        )
+        return (namespace_name, key) in _PROPERTY_WRITERS
 
     def _property_writer_call(self, node: Any) -> None:
-        """``Object.assign(G, …)``, ``Object.defineProperty(G, …)`` and the
-        like, where ``G`` is a receiver ``this`` (or the global object, which
+        """``Object.assign(G, …)``, ``Object['defineProperty'](G, …)`` and the
+        like, also through ``.call``/``.apply``/``.bind``, where ``G`` is a
+        receiver ``this`` (or the global object, which
         :meth:`_global_object_use` already catches), may write any global."""
         function = unwrap(node.child_by_field_name("function"))
-        if function is None or function.type != "member_expression":
-            return
-        obj = function.child_by_field_name("object")
-        prop = function.child_by_field_name("property")
-        if obj is None or prop is None or obj.type != "identifier":
-            return
-        name = (_text(obj, self.source), _text(prop, self.source))
-        if name not in _PROPERTY_WRITERS:
+        if function is None:
             return
         arguments = node.child_by_field_name("arguments")
         named = arguments.named_children if arguments is not None else []
-        if named and self._is_global_object(named[0], receiver=True):
+        target = None
+        if self._is_property_writer(function):
+            target = named[0] if named else None
+        elif function.type in _MEMBER_ACCESS and self._is_property_writer(
+            function.child_by_field_name("object")
+        ):
+            invoker = self._member_key(function)
+            if invoker in ("call", "bind"):
+                target = named[1] if len(named) > 1 else None
+            elif invoker == "apply":
+                listed = unwrap(named[1]) if len(named) > 1 else None
+                if listed is not None and listed.type == "array":
+                    items = listed.named_children
+                    target = items[0] if items else None
+            elif invoker is None or invoker == _UNREADABLE_KEY:
+                self.global_wildcard = True
+        if target is not None and self._is_global_object(target, receiver=True):
             self.global_wildcard = True
 
     def _use_site(self, node: Any) -> tuple[Any, Any]:
@@ -1196,11 +1283,11 @@ class _Analysis:
                         self.global_wildcard = True
                     return
                 if kind == "subscript_expression":
-                    key = self._literal_key(parent.child_by_field_name("index"))
+                    key = self._member_key(parent)
                     if key in _GLOBAL_OBJECT_PROPERTIES:
                         current = parent
                         continue
-                    if key is None or key in _CODE_EVALUATORS:
+                    if key is None or key == _UNREADABLE_KEY or key in _CODE_EVALUATORS:
                         self.global_wildcard = True
                     return
             if kind == "type_query":
