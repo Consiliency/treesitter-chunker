@@ -5445,6 +5445,13 @@ FILE_WIDE_NAMES = (
     "codeobj",
     "_get_code_object",
     "monitoring",
+    # The #695 re-check at 8fd7c1a2 (P-3): the profiler's code objects and
+    # inspect's helpers that return a frame's live locals (PEP 667).
+    "getstats",
+    "getgeneratorlocals",
+    "getcoroutinelocals",
+    "getasyncgenlocals",
+    "getargvalues",
 )
 
 
@@ -5666,6 +5673,11 @@ def test_fold13_controls_still_resolve(tmp_path: Path, case: str) -> None:
         "b = len.__self__",
         "b = getattr(print, '__self__')",
         "b = getattr(f, '__built' 'ins__')",
+        # The #695 re-check at 8fd7c1a2 (P-2): the builtins module by name.
+        "b = inspect.builtins",
+        "b = enum.bltns",
+        "mock.patch('builtins.x', len)",
+        "pydoc.locate('builtins')",
     ],
 )
 def test_builtins_reached_as_an_attribute_fail_closed(form: str) -> None:
@@ -5674,3 +5686,242 @@ def test_builtins_reached_as_an_attribute_fail_closed(form: str) -> None:
     to before a module-level definition runs (#695 O-3b)."""
     source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
     assert reason(source) == "dynamic-scope", form
+
+
+# ---------------------------------------------------------------------------
+# The #695 re-check at 8fd7c1a2 (P-2, P-3): the ``builtins`` module reached as
+# another module's attribute or a constant string (P-2a), as ``enum.bltns``
+# (P-2b), a code object from the profiler (P-3a), and a function's live
+# locals through ``inspect`` helpers (P-3b; PEP 667). Each tree is the
+# ruling's own and runtime-traced: Python calls ``len``, and 8fd7c1a2 proved
+# ``a.py``'s ``helper``.
+
+GEN14 = (
+    "def gen():\n    def helper(*a):\n        return 'loc'\n"
+    "    yield 1\n    yield helper('ab')\n\n"
+)
+CO14 = (
+    "async def co():\n    def helper(*a):\n        return 'loc'\n"
+    "    await A()\n    return helper('ab')\n\n"
+    "class A:\n    def __await__(self):\n        yield 1\n\n"
+)
+AG14 = (
+    "async def ag():\n    def helper(*a):\n        return 'loc'\n"
+    "    yield 1\n    yield helper('ab')\n\n"
+)
+STEP_AG14 = "try:\n    g.asend(None).send(None)\nexcept StopIteration:\n    pass\n"
+STEP_CO14 = "try:\n    k.send(None)\nexcept StopIteration:\n    pass\n"
+ARGV14 = (
+    "import inspect\ndef run():\n    def helper(*a):\n        return 'loc'\n"
+    "    {line}\n    return helper('ab')\n\nrun()\n"
+)
+# A nested ``helper`` elsewhere keeps a function-local proof's off-mode edge
+# ambiguous.
+OTHER14 = "def other():\n    def helper(*a):\n        return 3\n    return helper\n"
+
+FOLD14_695: dict[str, tuple[str, str]] = {
+    "q34_inspect_builtins_update": (
+        "P-2a",
+        "import inspect\n"
+        + LATE13
+        + "D = dict(helper=len)\ninspect.builtins.__dict__.update(D)\nrun()\n"
+        + DEF13,
+    ),
+    "q34_site_builtins_ior": (
+        "P-2a",
+        "import site\n"
+        + LATE13
+        + "b = site.builtins.__dict__\nb |= {'helper': len}\nrun()\n"
+        + DEF13,
+    ),
+    "q34_mock_patch_builtins": (
+        "P-2a",
+        "from unittest import mock\n"
+        + LATE13
+        + "mock.patch('builtins.helper', len, create=True).start()\nrun()\n"
+        + DEF13,
+    ),
+    "q34_mock_patch_dict_builtins": (
+        "P-2a",
+        "from unittest import mock\n"
+        + LATE13
+        + "D = dict(helper=len)\nmock.patch.dict('builtins.__dict__', D).start()\n"
+        "run()\n" + DEF13,
+    ),
+    "q34_pydoc_locate_builtins": (
+        "P-2a",
+        "import pydoc\n"
+        + LATE13
+        + "D = dict(helper=len)\npydoc.locate('builtins').__dict__.update(D)\n"
+        "run()\n" + DEF13,
+    ),
+    "q34_resolve_name_builtins": (
+        "P-2a",
+        "import pkgutil\n"
+        + LATE13
+        + "D = dict(helper=len)\npkgutil.resolve_name('builtins').__dict__.update(D)\n"
+        "run()\n" + DEF13,
+    ),
+    "q34_enum_bltns_update": (
+        "P-2b",
+        "import enum\n"
+        + LATE13
+        + "D = dict(helper=len)\nenum.bltns.__dict__.update(D)\nrun()\n"
+        + DEF13,
+    ),
+    "q34_from_enum_bltns": (
+        "P-2b",
+        "from enum import bltns\n"
+        + LATE13
+        + "D = dict(helper=len)\nbltns.__dict__.update(D)\nrun()\n"
+        + DEF13,
+    ),
+    "q34_cprofile_getstats_code": (
+        "P-3a",
+        G13 + "import cProfile\np = cProfile.Profile()\np.enable()\nrun()\n"
+        "p.disable()\nc = [e.code for e in p.getstats() "
+        "if 'code object run' in repr(e.code)][0]\n"
+        "type(run)(c, {'helper': len})()\n",
+    ),
+    "g35_genlocals_update": (
+        "P-3b",
+        "import inspect\n" + GEN14 + "g = gen()\nnext(g)\nD = dict(helper=len)\n"
+        "inspect.getgeneratorlocals(g).update(D)\nnext(g)\n",
+    ),
+    "g35_genlocals_ior": (
+        "P-3b",
+        "import inspect\n" + GEN14 + "g = gen()\nnext(g)\n"
+        "L = inspect.getgeneratorlocals(g)\nL |= {'helper': len}\nnext(g)\n",
+    ),
+    "g35_genlocals_setitem": (
+        "P-3b",
+        "import inspect\n" + GEN14 + "g = gen()\nnext(g)\n"
+        "inspect.getgeneratorlocals(g)['helper'] = len\nnext(g)\n",
+    ),
+    "g35_corolocals_update": (
+        "P-3b",
+        "import inspect\n" + CO14 + "k = co()\nk.send(None)\nD = dict(helper=len)\n"
+        "inspect.getcoroutinelocals(k).update(D)\n" + STEP_CO14,
+    ),
+    "g35_asyncgenlocals_update": (
+        "P-3b",
+        "import inspect\n" + AG14 + "g = ag()\n" + STEP_AG14 + "D = dict(helper=len)\n"
+        "inspect.getasyncgenlocals(g).update(D)\n" + STEP_AG14,
+    ),
+    "g35_argvalues_update": (
+        "P-3b",
+        "import inspect\ndef run():\n    def helper(*a):\n        return 'loc'\n"
+        "    D = dict(helper=len)\n"
+        "    inspect.getargvalues(inspect.currentframe()).locals.update(D)\n"
+        "    return helper('ab')\n\nrun()\n",
+    ),
+}
+
+# One control per tree: the same shape without the builtins module, the
+# code-object source or the live-locals helper still resolves.
+FOLD14_CONTROLS = {
+    "q34_inspect_builtins_update": "import inspect\n"
+    + LATE13
+    + "D = dict(helper=len)\nx = inspect.signature\n"
+    + DEF13
+    + "run()\n",
+    "q34_site_builtins_ior": "import site\n"
+    + LATE13
+    + "x = site.getsitepackages\nb = {}\nb |= {'helper': len}\n"
+    + DEF13
+    + "run()\n",
+    "q34_mock_patch_builtins": "from unittest import mock\n"
+    + LATE13
+    + "mock.patch('os.getcwd', len).start()\n"
+    + DEF13
+    + "run()\n",
+    "q34_mock_patch_dict_builtins": "from unittest import mock\n"
+    + LATE13
+    + "D = dict(helper=len)\nmock.patch.dict('os.environ', D).start()\n"
+    + DEF13
+    + "run()\n",
+    "q34_pydoc_locate_builtins": "import pydoc\n"
+    + LATE13
+    + "D = dict(helper=len)\npydoc.locate('os').__dict__.update(D)\n"
+    + DEF13
+    + "run()\n",
+    "q34_resolve_name_builtins": "import pkgutil\n"
+    + LATE13
+    + "D = dict(helper=len)\npkgutil.resolve_name('os.path').__dict__.update(D)\n"
+    + DEF13
+    + "run()\n",
+    "q34_enum_bltns_update": "import enum\n"
+    + LATE13
+    + "D = dict(helper=len)\nx = enum.Enum\n"
+    + DEF13
+    + "run()\n",
+    "q34_from_enum_bltns": "from enum import Enum\n"
+    + LATE13
+    + "D = dict(helper=len)\nx = Enum\n"
+    + DEF13
+    + "run()\n",
+    "q34_cprofile_getstats_code": G13
+    + "import cProfile\np = cProfile.Profile()\np.enable()\nrun()\n"
+    "p.disable()\np.print_stats()\n",
+    "g35_genlocals_update": "import inspect\n"
+    + GEN14
+    + "g = gen()\nnext(g)\ns = inspect.getgeneratorstate(g)\nnext(g)\n",
+    "g35_genlocals_ior": "import inspect\n"
+    + GEN14
+    + "g = gen()\nnext(g)\nL = {}\nL |= {'helper': len}\nnext(g)\n",
+    "g35_genlocals_setitem": "import inspect\n"
+    + GEN14
+    + "g = gen()\nnext(g)\nL = {}\nL['helper'] = len\nnext(g)\n",
+    "g35_corolocals_update": "import inspect\n"
+    + CO14
+    + "k = co()\nk.send(None)\ns = inspect.getcoroutinestate(k)\n"
+    + STEP_CO14,
+    "g35_asyncgenlocals_update": "import inspect\n"
+    + AG14
+    + "g = ag()\n"
+    + STEP_AG14
+    + "s = inspect.getasyncgenstate(g)\n"
+    + STEP_AG14,
+    "g35_argvalues_update": ARGV14.format(line="n = inspect.currentframe().f_lineno"),
+}
+
+
+def _other14(case: str, source: str) -> str:
+    """``b.py`` for a tree: decoys for module-level proofs, a nested
+    ``helper`` for the function-local (P-3b) ones."""
+    return OTHER14 if case.startswith("g35_") else _decoys(source)
+
+
+@pytest.mark.parametrize("case", sorted(FOLD14_695))
+def test_fold14_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    _, source = FOLD14_695[case]
+    root = _tree(tmp_path, {"a.py": source, "b.py": _other14(case, source)})
+    off, on = _off_on(root)
+    off_calls = [e for e in off["relationships"] if e["file"] == "a.py"]
+    assert _helper_edge(off)["resolution"] == "ambiguous", case
+    assert [e for e in on["relationships"] if e["file"] == "a.py"] == off_calls
+
+
+def test_fold14_controls_pair_with_the_trees() -> None:
+    assert set(FOLD14_CONTROLS) == set(FOLD14_695)
+
+
+@pytest.mark.parametrize("case", sorted(FOLD14_CONTROLS))
+def test_fold14_controls_still_resolve(tmp_path: Path, case: str) -> None:
+    source = FOLD14_CONTROLS[case]
+    other = OTHER14 if case.startswith("g35_") else OTHER
+    root = _tree(tmp_path, {"a.py": source, "b.py": other})
+    off, on = _off_on(root)
+    assert _helper_edge(off)["resolution"] == "ambiguous", case
+    on_edge = _helper_edge(on)
+    assert on_edge["resolution"] == "resolved", case
+    assert on_edge["provenance"]["call_rules"] == ["t1.lexical"]
+    (target,) = on_edge["candidates"]
+    assert on["symbol_lookup"][target]["file"] == "a.py"
+
+
+def test_getargvalues_alone_fails_closed() -> None:
+    """Reading ``getargvalues(frame).args`` is harmless, but the name alone
+    triggers: the one correct resolution fold 14 gives up (``g35_argvalues_ctrl``)."""
+    source = ARGV14.format(line="n = inspect.getargvalues(inspect.currentframe()).args")
+    assert reason(source) == "dynamic-scope"

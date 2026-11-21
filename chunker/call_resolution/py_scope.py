@@ -99,8 +99,11 @@ spelling an assignment to that name (:data:`_FILE_WIDE_NAMES`; Codex
 ``CodeType``, ``gi_code``/``cr_code``/``ag_code``/``f_code``, the ``co_*``
 fields ``code.replace`` rewrites, and the code objects ``dis`` and
 ``sys.monitoring`` hand over: ``dis``, ``codeobj``, ``_get_code_object``,
-``monitoring``), raw C-level access (``ctypes``, ``pythonapi``,
-``PyFrame_LocalsToFast``), and a ``closure=`` keyword argument
+``monitoring``, and the profiler's ``getstats``), a frame's live locals
+through ``inspect`` (``getgeneratorlocals``, ``getcoroutinelocals``,
+``getasyncgenlocals``, ``getargvalues``; PEP 667), raw C-level access
+(``ctypes``, ``pythonapi``, ``PyFrame_LocalsToFast``), and a ``closure=``
+keyword argument
 (``exec(code, g, closure=cells)``). The function type itself is reachable
 without naming it (``type(f)``), so a rebuilt function is caught through the
 code object it needs (#695 re-check at 606c689f).
@@ -136,8 +139,11 @@ through any receiver ``X``; an import of the file's own module (``import a``
 or ``from . import a`` in ``a.py``); a function's ``__globals__``, a frame's
 ``f_globals``/``f_builtins`` and ``inspect.getmodule``; the builtins
 namespace reached as an attribute, ``f.__builtins__``, ``os.__builtins__`` or
-``len.__self__`` (the ``builtins`` module; #695 re-check at 606c689f); a
-constant string
+``len.__self__`` (the ``builtins`` module; #695 re-check at 606c689f), and
+the ``builtins`` module as an attribute (``inspect.builtins``,
+``enum.bltns``) or a constant string (``mock.patch("builtins.helper")``,
+``pydoc.locate("builtins")``; #695 re-check at 8fd7c1a2); a constant
+string
 (a literal, adjacent literals or literals joined by ``+``) that is one of
 those attribute names or ``modules``, alone or as a part of a dotted path
 (``getattr(f, "__globals__")``, ``attrgetter("sys.modules")``); and the
@@ -223,7 +229,8 @@ whitespace, comments and backslash continuations may sit between them
   also from a function.
 
 Dynamic attribute names (``__globals__``, ``f_globals``, ``f_locals``,
-``f_builtins``, ``getmodule``, ``__builtins__``, ``__self__``) also count whatever node spells them, and
+``f_builtins``, ``getmodule``, ``__builtins__``, ``__self__``, ``builtins``,
+``bltns``) also count whatever node spells them, and
 ``X[__name__]`` or ``X.get(__name__)`` (also ``__getitem__``, ``setdefault``,
 ``pop``) on any receiver is dynamic. What is left to reach the module without
 spelling its name or writing through it by name is other dynamic triggers
@@ -332,7 +339,11 @@ _DYNAMIC_NAMES = frozenset(
 # object (``inspect.getmodule``), including the builtins namespace a lookup
 # falls back to before a module-level definition has run: ``f.__builtins__``,
 # ``os.__builtins__``, and ``len.__self__``, which is the ``builtins`` module
-# (#695 re-check at 606c689f, O-3b).
+# (#695 re-check at 606c689f, O-3b); and the ``builtins`` module as another
+# module's attribute or in a constant string (``inspect.builtins``,
+# ``site.builtins``, ``mock.patch("builtins.helper", ...)``,
+# ``pydoc.locate("builtins")``), including ``enum.bltns``, the one other
+# name the stdlib binds it to (#695 re-check at 8fd7c1a2, P-2).
 _DYNAMIC_ATTRIBUTES = frozenset(
     {
         "__globals__",
@@ -342,6 +353,8 @@ _DYNAMIC_ATTRIBUTES = frozenset(
         "getmodule",
         "__builtins__",
         "__self__",
+        "builtins",
+        "bltns",
     }
 )
 _SYS = "sys"
@@ -378,7 +391,11 @@ _FRAME_LOCALS = "f_locals"
 # code object, and every way to reach it by a spelled name is listed here,
 # including ``dis`` (``Bytecode(f).codeobj``, ``get_instructions`` constants,
 # ``_get_code_object``) and ``sys.monitoring`` callbacks (#695 re-check at
-# 606c689f, O-3a). Objects reached by introspection rather than by a spelled
+# 606c689f, O-3a), and the profiler's ``getstats()`` entries (#695 re-check
+# at 8fd7c1a2, P-3a). ``inspect.getgeneratorlocals``, ``getcoroutinelocals``,
+# ``getasyncgenlocals`` and ``getargvalues(frame).locals`` return a frame's
+# live, write-through ``f_locals`` proxy (PEP 667), so they count like
+# ``f_locals`` (P-3b). Objects reached by introspection rather than by a spelled
 # name stay in plan risk R12: heap walking (``gc`` referents, for example a
 # found globals dict written with ``update(D)``, or found code or cells run
 # under ``type(f)(...)``) and computed member names (``inspect.getmembers``,
@@ -410,6 +427,11 @@ _FILE_WIDE_NAMES = frozenset(
         "codeobj",
         "_get_code_object",
         "monitoring",
+        "getstats",
+        "getgeneratorlocals",
+        "getcoroutinelocals",
+        "getasyncgenlocals",
+        "getargvalues",
     }
 )
 # A keyword argument that hands a function or code object a new closure.
