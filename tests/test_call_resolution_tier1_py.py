@@ -3695,3 +3695,381 @@ def test_mangled_sys_and_main_aliases_fail_closed(form: str) -> None:
         "outcome": "none",
         "reason": "dynamic-scope",
     }, form
+
+
+# ---------------------------------------------------------------------------
+# The president's re-check at eae66582 (J-3): ``__main__`` reached through a
+# class attribute or a ``from __main__`` import.
+
+FOLD8_695: dict[str, tuple[str, dict[str, str]]] = {
+    "m19_from_main_dict": (
+        "J-3b",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "from __main__ import __dict__ as g\n"
+            "g.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m19_from_main_dict_bare": (
+        "J-3b",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "from __main__ import __dict__\n"
+            "__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m19_from_main_dict_class": (
+        "J-3b",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    from __main__ import __dict__ as __g\n"
+            "    __g.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m19_from_main_setattr": (
+        "J-3b",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "from __main__ import __dict__ as g\n"
+            "g[n] = len\n"
+            "use()\n"
+        },
+    ),
+    "m19_main_chain_attr": (
+        "J-3a",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    import __main__ as __m\n"
+            "K._K__m.__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m19_main_classattr_self": (
+        "J-3a",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    import __main__ as __m\n"
+            "    def f(self):\n"
+            "        self.__m.__dict__.update(D)\n"
+            "K().f()\n"
+            "use()\n"
+        },
+    ),
+    "m20_ctrl_classattr_plain": (
+        "J-3a",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    import __main__ as mm\n"
+            "K.mm.__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m20_ctrl_cls": (
+        "J-3a",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    import __main__ as __m\n"
+            "    @classmethod\n"
+            "    def f(cls):\n"
+            "        cls.__m.__dict__.update(D)\n"
+            "K.f()\n"
+            "use()\n"
+        },
+    ),
+    "m20_ctrl_getattr_const": (
+        "J-3a",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    import __main__ as mm\n"
+            "getattr(K, 'mm').__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m20_ctrl_self_plain": (
+        "J-3a",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    import __main__ as mm\n"
+            "    def f(self):\n"
+            "        self.mm.__dict__.update(D)\n"
+            "K().f()\n"
+            "use()\n"
+        },
+    ),
+    "m20_ctrl_setattr_plain": (
+        "J-3a",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    import __main__ as mm\n"
+            "setattr(K.mm, n, len)\n"
+            "use()\n"
+        },
+    ),
+    "m20_ctrl_type_self": (
+        "J-3a",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    import __main__ as __m\n"
+            "    def f(self):\n"
+            "        type(self)._K__m.__dict__.update(D)\n"
+            "K().f()\n"
+            "use()\n"
+        },
+    ),
+    "m20_from_main_classattr": (
+        "J-3b",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    from __main__ import __dict__ as g\n"
+            "K.g.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m20_from_main_dict_fn": (
+        "J-3b",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "def f():\n"
+            "    from __main__ import __dict__ as g\n"
+            "    g.update(D)\n"
+            "f()\n"
+            "use()\n"
+        },
+    ),
+    "m20_from_main_getitem": (
+        "J-3b",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "from __main__ import __dict__ as g\n"
+            "g.__setitem__(n, len)\n"
+            "use()\n"
+        },
+    ),
+    "m20_main_plain_import_in_class": (
+        "J-3a",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    import __main__\n"
+            "K.__main__.__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m20_sys_classattr_k": (
+        "J-3a",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    import sys as ss\n"
+            "K.ss.modules[k].__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD8_695))
+def test_fold8_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    _, spec = FOLD8_695[case]
+    files = dict(spec)
+    target = files.pop("__target__", "a.py")
+    files.setdefault("b.py", _decoys(files[target]))
+    root = _tree(tmp_path, files)
+    off, on = _off_on(root)
+    off_calls = [e for e in off["relationships"] if e["file"] == target]
+    assert any(edge["resolution"] == "ambiguous" for edge in off_calls), case
+    assert [e for e in on["relationships"] if e["file"] == target] == off_calls
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        # J-3a: a class-body import of ``sys`` or ``__main__`` is a class
+        # attribute no identifier rule sees.
+        "class K:\n    import __main__ as mm\nK.mm.__dict__.clear()",
+        "class K:\n    import __main__",
+        "class K:\n    import sys as ss",
+        "class K:\n    from os import sys",
+        "class K:\n    from __main__ import x",
+        # J-3b: names a ``from __main__`` import binds are aliases.
+        "from __main__ import __dict__ as g\ng.clear()",
+        "from __main__ import __dict__\n__dict__.clear()",
+        "from __main__ import __dict__ as g\ndef f(n):\n    g[n] = len",
+        # The bound name takes its mangled spelling too: ``__g`` under
+        # ``global`` in a method of ``K`` binds the module's ``_K__g``.
+        "class K:\n    def m(self):\n        global __g\n"
+        "        from __main__ import __dict__ as __g\n_K__g.clear()",
+    ],
+)
+def test_main_through_class_attributes_and_from_imports_fails_closed(form: str) -> None:
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", "pkg/a.py") == {
+        "outcome": "none",
+        "reason": "dynamic-scope",
+    }, form
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "from __main__ import __dict__ as g",
+        "from __main__ import x",
+        "def f():\n    import sys\n    return sys.argv",
+        "class K:\n    def m(self):\n        import sys\n        return sys.argv",
+        "class K:\n    def m(self):\n        import os\n        return os.sep",
+    ],
+)
+def test_unused_main_from_imports_and_function_imports_still_resolve(form: str) -> None:
+    """An unused ``from __main__`` import binds nothing used; an import in a
+    method is not a class attribute (#695 J-4)."""
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", "pkg/a.py")["outcome"] == "local", form

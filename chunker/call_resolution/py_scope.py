@@ -102,7 +102,10 @@ argument name or a ``def``/``class`` name (so ``import builtins as b`` and
 attribute ``os.sys``), a dunder attribute of ``sys`` (``sys.__dict__``), the
 ``sys`` module handed on as a value (``getattr(sys, "modules")``,
 ``f(sys)``), ``from sys import modules``; ``__main__`` or an alias of it used
-other than in an import; ``X.modules[__name__]`` or
+other than in an import, any name a ``from __main__`` import binds (``from
+__main__ import __dict__ as g`` hands over the namespace), and any import of
+``sys`` or ``__main__`` in a class body (a class attribute, read as ``K.m``,
+``self.m`` or ``getattr(K, "m")``); ``X.modules[__name__]`` or
 ``X.modules.get(__name__)`` (also ``__getitem__``, ``setdefault``, ``pop``)
 through any receiver ``X``; an import of the file's own module (``import a``
 or ``from . import a`` in ``a.py``); a function's ``__globals__``, a frame's
@@ -1173,6 +1176,17 @@ class _Analysis:
                     self._setattr_call(node)
             if kind in ("import_statement", "import_from_statement"):
                 self._import_use(node)
+                self._class_body_module_import(node)
+                if kind == "import_from_statement" and _module_parts(node, source) == (
+                    0,
+                    [_MAIN],
+                ):
+                    # ``from __main__ import __dict__ as g`` hands over a
+                    # piece of ``__main__``'s namespace: every name it binds
+                    # is an alias, so any later use is dynamic (#695 J-3b).
+                    # An unused one still resolves.
+                    for bound in _from_import_bound_names(node):
+                        main_names.update(_spellings(bound, source))
             stack.extend(node.named_children)
         for ident in identifiers:
             name = _text(ident, source)
@@ -1229,6 +1243,17 @@ class _Analysis:
         return bool(set(text.split(".")) & self.own_names) or any(
             "." in own and own in text for own in self.own_names
         )
+
+    def _class_body_module_import(self, node: Any) -> None:
+        """An import in a class body that names ``sys`` or ``__main__`` stores
+        it as a class attribute (``K.m``, ``self.m``, ``getattr(K, "m")``),
+        which no identifier rule sees: dynamic (#695 J-3a)."""
+        if not _in_class_body(node):
+            return
+        # The paths include a from-import's module components.
+        for path in self._import_paths(node, resolve=False):
+            if {_SYS, _MAIN} & set(path):
+                self.dynamic = True
 
     def _literal_use(self, value: str) -> None:
         """A constant string naming a dynamic attribute counts as a mention
@@ -1571,6 +1596,37 @@ def _spellings(ident: Any, source: bytes) -> set[str]:
     rules of :func:`_mangled_names`)."""
     name = _text(ident, source)
     return {name, *_mangled_names(ident, name, source)}
+
+
+def _in_class_body(node: Any) -> bool:
+    """Whether a statement runs directly in a class body: the nearest
+    enclosing ``class_definition`` comes before any function or lambda."""
+    current = node.parent
+    while current is not None:
+        if current.type == "class_definition":
+            return True
+        if current.type in ("function_definition", "lambda"):
+            return False
+        current = current.parent
+    return False
+
+
+def _from_import_bound_names(node: Any) -> list[Any]:
+    """The identifiers a ``from … import`` binds (each alias, or the imported
+    name)."""
+    bound: list[Any] = []
+    for index, child in enumerate(node.children):
+        if node.field_name_for_child(index) != "name":
+            continue
+        if child.type == "aliased_import":
+            alias = child.child_by_field_name("alias")
+            if alias is not None:
+                bound.append(alias)
+            continue
+        tokens = _identifier_children(child) if child.type != "identifier" else [child]
+        if len(tokens) == 1:
+            bound.append(tokens[0])
+    return bound
 
 
 def _unwrap(node: Any) -> Any:
