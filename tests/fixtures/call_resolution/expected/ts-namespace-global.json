@@ -25,8 +25,7 @@
        "b.ts:1:N.f",
        "a.ts:1:N.f"
       ],
-      "interim": "PR 2 interim (plan 7.6): the lookup passes through a namespace body; PR 3 gives none(namespace-merged)",
-      "outcome": "none(namespace-deferred)",
+      "outcome": "none(namespace-merged)",
       "resolution": "ambiguous",
       "rules": []
      },

@@ -25,18 +25,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     callee up through the lexical scope chain (class bodies skipped,
     parameter scopes, function-expression self names, `let`/`const` across
     their whole block). An edge resolves only when that lookup proves one
-    remaining candidate: a single definition (`t1.lexical`), or the body of a
-    TS overload set (`t1.ts_overload`); duplicate bodies narrow to the group
-    and stay ambiguous. Parameters, locals, reassigned names, block-level
-    functions, `eval`/`with`, ambient and bodyless declarations, enums and
-    namespaces, and calls inside TS enum bodies never resolve. Script-goal
-    top levels and TS namespace bodies are not resolved yet, and
+    remaining candidate: a single definition (`t1.lexical`), the body of a
+    TS overload set (`t1.ts_overload`), or, in plain JavaScript, the last of
+    two or more function declarations directly in one function body or
+    script top level (`t1.js_hoist`); other duplicate bodies narrow to the
+    group and stay ambiguous. Parameters, locals, reassigned names,
+    block-level functions (which also turn hoisting off), `eval`/`with`,
+    ambient declarations (also inside `declare` blocks) and bodyless ones,
+    enums and namespaces, and calls inside TS enum bodies never resolve.
+    Neither do a name a body function shares with a parameter when the
+    function uses `arguments`, nor an exported `const` in a TS namespace. A
+    script-goal top level resolves only when no other file of the run may
+    declare the name as a global (`script_globals`: other scripts'
+    top-level names; implicit globals in any file; `window.x =`,
+    `globalThis.x =`, `self.x =`, `global.x =`, `top`/`parent`/`frames`/
+    `defaultView` writes, and `this.x =` or `super.x =` in functions and
+    methods, in any file; `declare global`; a computed key, the global object used as a
+    value, a code evaluator, a `constructor` call, a timer not given a
+    function, an unsupported JS/TS file, or an HTML, XML or PHP file counts
+    for every name). This holds within the run
+    only: scripts outside it, and global writes no syntactic rule sees, are
+    not tracked (plan risks R9 and R11). A lookup through a merged TS
+    namespace body (another declaration, an exported namespace that module
+    augmentation can extend, a dotted name, `declare module`/
+    `declare global`, or any namespace in a script) never resolves.
     **Python calls are not resolved yet**: for them, and wherever no binding
     proves a candidate, only the kind and family filters (`t1.kind`,
     `t1.family`) narrow, and only when two or more candidates remain. A file
-    whose tree has syntax errors, is too deeply nested for the scope pass,
-    spells a name with a Unicode escape, or whose analysis fails keeps
-    exactly its off-mode edges. Narrowed edges carry
+    whose tree has syntax errors or a misparsed block, is too deeply nested
+    for the scope pass, spells a name with a Unicode escape, or whose
+    analysis fails keeps exactly its off-mode edges. Narrowed edges carry
     `provenance.call_resolution` and `provenance.call_rules`, and
     `run.options.call_resolution` and symbol-graph
     `metadata.call_resolution` record the mode. On-mode `parity_digest`

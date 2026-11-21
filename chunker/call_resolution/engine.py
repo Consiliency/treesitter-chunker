@@ -13,7 +13,12 @@ filesystem access. The engine narrows call relationships in place:
    declaration that maps to no symbol, or to more than one, fails closed as
    ``none(unmapped)`` (5.4). A call with no binding entry is
    ``none(no-binding-fact)``. In ``structural`` mode an ``import`` outcome
-   proves nothing.
+   proves nothing. A ``local`` outcome that lands on a script-goal top level
+   (it carries ``global``) proves its group only if no other file of the run
+   declares that name in its ``script_globals``, none may write a global of
+   any name, no other JavaScript/TypeScript file is unsupported (its globals
+   are unknown) and no file of a language that can carry inline scripts is
+   in the run; otherwise it is ``none(script-global)`` (7.2).
 3. **Filters (7.1).** ``t1.family`` then ``t1.kind`` remove candidates of
    another language family or of a non-callable kind. They apply only when two
    or more candidates remain, or when the single survivor is proven by ``P``.
@@ -50,6 +55,14 @@ KNOWN_RULE_IDS = (
 )
 # Rules that prove a binding; every resolved edge names one of them.
 BINDING_RULE_IDS = frozenset({RULE_LEXICAL, RULE_IMPORT, RULE_NAMESPACE})
+# A ``script_globals`` entry for a file that may write a global of any name.
+GLOBAL_WILDCARD = "*"
+# Collected languages whose files can carry inline scripts (``<script>``,
+# event-handler attributes) the analysis never reads: each such file in the
+# run counts as declaring every global (B5, #691 panel).
+# Markdown and reStructuredText run nothing themselves: their raw HTML runs
+# only in a page a site generator renders, outside the run (plan R9).
+INLINE_SCRIPT_LANGUAGES = frozenset({"html", "xml", "php"})
 # Group rules (7.4) refine a binding's group; they never apply alone.
 GROUP_RULE_IDS = frozenset({RULE_TS_OVERLOAD, RULE_JS_HOIST})
 FILTER_RULE_IDS = frozenset({RULE_KIND, RULE_FAMILY})
@@ -90,6 +103,7 @@ class FileContext:
     bindings: Mapping[str, Any]
     declarations: Mapping[Declaration, tuple[str, ...]]
     path: str = ""
+    script_globals: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -102,6 +116,11 @@ class RunContext:
     # Tier 2 input (plan 4.2): the run's language filter. The run's file set
     # is ``files``; assembly never touches the filesystem.
     language_filter: str | None = None
+    # Script globals (7.2): the files declaring each name, and the files
+    # whose globals are unknown (a wildcard, an unsupported JS/TS file, or a
+    # file that can carry inline scripts).
+    global_declarers: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    unknown_globals: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -150,13 +169,59 @@ def build_run_context(
             supported=bool(scope_facts.get("supported")),
             bindings=scope_facts.get("bindings") or {},
             declarations={key: tuple(ids) for key, ids in declarations.items()},
+            script_globals=frozenset(
+                str(name) for name in scope_facts.get("script_globals") or ()
+            ),
         )
+    declarers: defaultdict[str, set[str]] = defaultdict(set)
+    unknown: set[str] = set()
+    for path, file_context in files.items():
+        if file_context.language in INLINE_SCRIPT_LANGUAGES:
+            unknown.add(path)
+            continue
+        if language_family(file_context.language) != "js":
+            continue
+        if not file_context.supported or GLOBAL_WILDCARD in file_context.script_globals:
+            unknown.add(path)
+        for name in file_context.script_globals:
+            declarers[name].add(path)
     return RunContext(
         mode=mode,
         files=files,
         symbol_lookup=symbol_lookup,
         language_filter=language_filter,
+        global_declarers={name: frozenset(paths) for name, paths in declarers.items()},
+        unknown_globals=frozenset(unknown),
     )
+
+
+def script_global_outcome(
+    context: RunContext,
+    file_context: FileContext,
+    outcome: Mapping[str, Any] | None,
+) -> Mapping[str, Any] | None:
+    """Apply the cross-file script-global check to a lookup outcome (7.2).
+
+    Only a ``local`` outcome that landed on a script-goal top level carries
+    ``global``; it becomes ``none(script-global)`` when another file of the
+    run declares that name as a script global, may write a global of any
+    name, is an unsupported JavaScript/TypeScript file, or is a file of a
+    language that can carry inline scripts (HTML, XML, PHP). This holds
+    within the run only (plan R9, R11).
+    """
+    if outcome is None or outcome.get("outcome") != "local" or "global" not in outcome:
+        return outcome
+    name = str(outcome["global"])
+    path = file_context.path
+    declared = context.global_declarers.get(name, frozenset())
+    unknown = context.unknown_globals
+    conflict = (
+        len(declared) > 1
+        or bool(declared and path not in declared)
+        or len(unknown) > 1
+        or bool(unknown and path not in unknown)
+    )
+    return _none("script-global") if conflict else outcome
 
 
 def _join(
@@ -291,8 +356,12 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         return not_eligible
     if not is_bare_identifier(str(relationship.get("reference") or "")):
         return not_eligible
-    raw = file_context.bindings.get(
-        f"{relationship.get('callee_byte_start')}:{relationship.get('callee_byte_end')}"
+    raw = script_global_outcome(
+        context,
+        file_context,
+        file_context.bindings.get(
+            f"{relationship.get('callee_byte_start')}:{relationship.get('callee_byte_end')}"
+        ),
     )
     proven, outcome, binding_rules = proof(
         raw, context.mode, file_context, context.symbol_lookup

@@ -1102,8 +1102,10 @@ def extract_boundary_ir(
     narrowed edges carry ``provenance.call_resolution`` and
     ``provenance.call_rules``, and ``run.options.call_resolution`` is set. At
     this head ``"structural"`` resolves JavaScript, TypeScript and TSX calls
-    whose target a lexical binding proves; Python calls are not resolved yet,
-    so only the kind and family filters narrow them.
+    whose target a lexical binding proves (``t1.lexical``, ``t1.ts_overload``,
+    ``t1.js_hoist``), a script top level only when no other file of the run
+    may declare the name as a global; Python calls are not resolved yet, so
+    only the kind and family filters narrow them.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"

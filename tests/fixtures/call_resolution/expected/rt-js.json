@@ -70,13 +70,14 @@
      "reference": "d",
      "structural": {
       "candidates": [
-       "k.js:3:d",
        "k.js:6:d"
       ],
-      "interim": "PR 2 interim (plan 7.6): k.js is a script; PR 3 resolves to k.js:6 d by t1.js_hoist",
-      "outcome": "none(script-goal-deferred)",
-      "resolution": "ambiguous",
-      "rules": []
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical",
+       "t1.js_hoist"
+      ]
      },
      "today": {
       "candidate_ids": [

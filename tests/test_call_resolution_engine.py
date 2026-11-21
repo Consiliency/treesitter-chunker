@@ -39,12 +39,12 @@ MODE = "structural"
 
 # The plan PR this head implements (section 13.1). Expected-table rows of a
 # later PR that record an expectation for this head carry ``interim``.
-HEAD_PR = 2
+HEAD_PR = 3
 # Rules and reasons this head produces, each with a case in the expected
 # tables (10.6). Each later PR adds its own. ``stub`` stays until the Python
 # analyzer lands; ``unmapped`` and ``no-binding-fact`` are covered by the
 # named tests below.
-LIVE_RULES = {"t1.kind", "t1.family", "t1.lexical", "t1.ts_overload"}
+LIVE_RULES = {"t1.kind", "t1.family", "t1.lexical", "t1.ts_overload", "t1.js_hoist"}
 LIVE_REASONS = {
     "stub",
     "unbound",
@@ -60,8 +60,8 @@ LIVE_REASONS = {
     "bodyless",
     "non-callable",
     "type-only",
-    "script-goal-deferred",
-    "namespace-deferred",
+    "script-global",
+    "namespace-merged",
 }
 # Named generated-coverage tests (plan 10.6, R-3) that exist at this head.
 NAMED_FAILURE_MODE_TESTS = (
@@ -85,6 +85,16 @@ NAMED_TIER1_JS_TESTS = (
     "test_member_call_on_a_local_function_is_unchanged",
     "test_enum_scope_end_to_end",
     "test_escaped_names_end_to_end",
+    # PR 3: hoisting, script globals, namespace merging, inherited ambient.
+    "test_script_global_end_to_end",
+    "test_script_global_controls_end_to_end",
+    "test_js_hoist_end_to_end",
+    "test_js_hoist_near_misses_end_to_end",
+    "test_namespace_merging_end_to_end",
+    "test_inherited_ambient_end_to_end",
+    # #691 panel fold.
+    "test_panel_691_cases_keep_their_off_mode_edge",
+    "test_misparsed_blocks_make_the_file_unsupported",
 )
 # Live reasons no committed fixture produces, each covered by a named test on
 # a tree the test writes (the president's #689 ruling, B-1).
@@ -414,6 +424,91 @@ def _context(language: str = "typescript", supported: bool = True) -> engine.Run
     )
 
 
+def _globals_context(
+    others: list[tuple[str, str | None, bool, list[str]]],
+) -> engine.RunContext:
+    """A run of ``k.js`` (a script) plus ``(path, language, supported,
+    script_globals)`` for every other file."""
+    files = [("k.js", "javascript", True, ["d", "g"]), *others]
+    return engine.build_run_context(
+        [
+            {
+                "path": path,
+                "scope_facts": {
+                    "language": language,
+                    "supported": supported,
+                    "bindings": {},
+                    "symbols": [],
+                    "script_globals": names,
+                },
+            }
+            for path, language, supported, names in files
+        ],
+        SYMBOLS,
+        MODE,
+    )
+
+
+SCRIPT_LOCAL = {
+    "outcome": "local",
+    "proof": [["function_declaration", 0, 5]],
+    "rules": [],
+    "global": "d",
+}
+
+
+@pytest.mark.parametrize(
+    ("others", "conflict"),
+    [
+        ([], False),
+        ([("s.js", "javascript", True, ["e"])], False),
+        ([("s.js", "javascript", True, ["d"])], True),
+        ([("s.ts", "typescript", True, ["d"])], True),
+        ([("s.tsx", "tsx", True, ["*"])], True),
+        # An unsupported JS/TS file's globals are unknown (fail closed).
+        ([("s.js", "javascript", False, [])], True),
+        # Other families never share JS globals.
+        ([("s.py", "python", False, []), ("s.go", "go", False, [])], False),
+        # A file that can carry inline scripts may declare any global (B5).
+        ([("index.html", "html", False, [])], True),
+        ([("page.php", "php", False, [])], True),
+        ([("feed.xml", "xml", False, [])], True),
+        # Markdown and reStructuredText run nothing themselves: a page a site
+        # generator renders from them is outside the run (R9; #691 ruling).
+        ([("README.md", "markdown", False, []), ("doc.rst", "rst", False, [])], False),
+        ([("doc.rst", "restructuredtext", False, [])], False),
+    ],
+)
+def test_script_global_check(
+    others: list[tuple[str, str | None, bool, list[str]]], conflict: bool
+) -> None:
+    """7.2: a script top-level proof stands only if no other file of the
+    run may declare the name as a global."""
+    context = _globals_context(others)
+    result = engine.script_global_outcome(context, context.files["k.js"], SCRIPT_LOCAL)
+    expected = {"outcome": "none", "reason": "script-global"}
+    assert result == (expected if conflict else SCRIPT_LOCAL)
+
+
+def test_script_global_check_ignores_other_outcomes() -> None:
+    context = _globals_context([("s.js", "javascript", True, ["d"])])
+    file_context = context.files["k.js"]
+    # The caller's own globals never conflict, and only a ``local`` outcome
+    # that carries ``global`` is checked.
+    assert (
+        engine.script_global_outcome(_globals_context([]), file_context, SCRIPT_LOCAL)
+        == SCRIPT_LOCAL
+    )
+    module_local = {key: SCRIPT_LOCAL[key] for key in ("outcome", "proof", "rules")}
+    for value in (
+        module_local,
+        {"outcome": "none", "reason": "parameter"},
+        {"outcome": "import", "binding": {}},
+        None,
+    ):
+        assert engine.script_global_outcome(context, file_context, value) == value
+
+
 def test_decide_narrows_an_eligible_edge_and_rewrites_it() -> None:
     relationship = _relationship()
     decisions = engine.narrow_relationships([relationship], _context())
@@ -481,7 +576,7 @@ def test_rule_and_reason_vocabularies() -> None:
         "trait",
     } == engine.NON_CALLABLE_KINDS
     assert {"stub", "unmapped", "no-binding-fact", "unbound"} <= KNOWN_NONE_REASONS
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "2", "python": "1"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "1"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
@@ -534,6 +629,9 @@ def test_expected_tables_hold_at_this_head(tree: str) -> None:
     for run in (run for run in RUNS if run.tree == tree):
         facts, graph = _on_mode(run)
         scope = {item["path"]: item["scope_facts"] for item in facts}
+        # The recorded outcome is the lookup outcome after the engine's
+        # cross-file script-global check (7.2).
+        context = engine.build_run_context(facts, graph["symbol_lookup"], MODE)
         for item in facts:
             assert valid_scope_facts(item["scope_facts"], item["language"])
             is_stub = engine.language_family(item["language"]) in STUB_FAMILIES
@@ -550,8 +648,12 @@ def test_expected_tables_hold_at_this_head(tree: str) -> None:
                 f"{run.run_id} {record['file']}:{record['line']} {record['reference']}"
             )
             facts_for_file = scope[edge["file"]]
-            outcome = facts_for_file["bindings"].get(
-                f"{edge['callee_byte_start']}:{edge['callee_byte_end']}"
+            outcome = engine.script_global_outcome(
+                context,
+                context.files[edge["file"]],
+                facts_for_file["bindings"].get(
+                    f"{edge['callee_byte_start']}:{edge['callee_byte_end']}"
+                ),
             )
             actual = {
                 "outcome": _outcome_label(outcome),
@@ -683,6 +785,18 @@ def test_proving_families_have_reviewed_allowlists() -> None:
 # Scope-fact digests (4.6)
 
 
+def _version_key(version: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in str(version).split("."))
+
+
+def test_fact_versions_never_go_down_from_main() -> None:
+    """A version is never reused: each family's version is at least the one
+    pinned in the committed digests (#691 panel B3)."""
+    pinned = json.loads(harness.SCOPE_FACTS_DIGESTS.read_text(encoding="utf-8"))
+    for family, version in CALL_RESOLUTION_FACT_VERSIONS.items():
+        assert _version_key(version) >= _version_key(pinned[family]["version"])
+
+
 def digest_problems(
     pinned: dict[str, Any], current: dict[str, Any]
 ) -> list[tuple[str, str]]:
@@ -706,6 +820,15 @@ def digest_problems(
                 (
                     "unbumped",
                     f"{family} facts changed without a version bump: {changed[:5]}",
+                )
+            )
+        if _version_key(new["version"]) < _version_key(old["version"]):
+            # A version number is never reused, so it never goes down: a
+            # revert takes a new, higher version (#691 panel B3).
+            problems.append(
+                (
+                    "downgrade",
+                    f"{family} version went down: {old['version']} -> {new['version']}",
                 )
             )
         if old["version"] != new["version"] or set(old["files"]) != set(new["files"]):
@@ -741,3 +864,4 @@ def test_digest_rule_applies_only_to_shared_files() -> None:
     assert kinds(current("2", {"a": "1", "b": "X"})) == {"regenerate"}
     assert kinds(current("1", {"a": "1", "b": "2", "c": "3"})) == {"regenerate"}
     assert kinds(current("1", {"a": "1"})) == {"regenerate"}
+    assert kinds(current("0", {"a": "1", "b": "2"})) == {"downgrade", "regenerate"}

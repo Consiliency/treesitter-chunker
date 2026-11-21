@@ -119,8 +119,9 @@ def boundary(
             "Experimental: call-edge resolution. 'structural' narrows ambiguous "
             "calls to bare names in Python, JavaScript, TypeScript and TSX "
             "files; it currently resolves JS/TS calls whose target a lexical "
-            "binding proves, except at script top levels and in TS namespace "
-            "bodies, and does not resolve Python calls"
+            "binding proves (a script top level only when no other file in the "
+            "run may declare the name as a global), and does not resolve "
+            "Python calls"
         ),
     ),
     quiet: bool = typer.Option(

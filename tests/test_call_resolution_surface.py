@@ -319,6 +319,18 @@ def test_cli_boundary_flag(tmp_path: Path) -> None:
     assert result.exit_code != 0
 
 
+def test_cli_help_states_the_current_head() -> None:
+    """The ``--call-resolution`` help text states what this head does (C4)."""
+    from chunker.cli import symbol_commands
+    from cli import main as cli_main
+
+    for module in (symbol_commands, cli_main):
+        text = " ".join(inspect.getsource(module).split())
+        assert '"Experimental: call-edge resolution' in text, module
+        assert "except at script top levels" not in text, module
+        assert "may declare the name as a global" in text, module
+
+
 def test_experimental_label_and_spec_text() -> None:
     for function in (extract_symbol_graph, extract_boundary_ir):
         assert "experimental" in (function.__doc__ or "").lower()
@@ -326,9 +338,12 @@ def test_experimental_label_and_spec_text() -> None:
     unreleased = changelog.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
     assert "**Experimental:**" in unreleased
     assert "call_resolution" in unreleased
-    # The per-head statement (plan 4.5) at PR 2.
+    # The per-head statement (plan 4.5) at PR 3.
     assert "Python calls are not resolved yet" in unreleased
     assert "t1.ts_overload" in unreleased
+    assert "t1.js_hoist" in unreleased
+    assert "script_globals" in unreleased
+    assert "within the run" in unreleased
     spec = (ROOT / "docs" / "interface-boundary-spec.md").read_text(encoding="utf-8")
     assert "### Call resolution extension (experimental)" in spec
     assert "Resolution remains heuristic and does not\nestablish" not in spec

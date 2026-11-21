@@ -1,4 +1,4 @@
-"""Tier 1 JavaScript/TypeScript scope analysis (treesitter-chunker#682, PR 2).
+"""Tier 1 JavaScript/TypeScript scope analysis (treesitter-chunker#682, PR 2-3).
 
 Plan ``plans/detailed-scoped-call-resolution-682.md`` sections 7.2, 7.4, 7.5
 and 7.6. The expected tables (``test_call_resolution_engine.py``) pin every
@@ -10,7 +10,10 @@ fixture call end to end; this module adds:
   declaration, never the ``export_statement``), note 1 (a namespace merged
   with a function is dropped before the proof), and B7 (``declare enum``
   gives ``non-callable``);
-- the allow-list contract: every handled kind has a handler.
+- the allow-list contract: every handled kind has a handler;
+- PR 3: ``t1.js_hoist`` with Annex B, script globals (implicit globals,
+  global-object writes and their fail-closed wildcard), TS namespace merging
+  and inherited ambient status, with end-to-end trees the tests write.
 """
 
 from __future__ import annotations
@@ -68,6 +71,17 @@ def proof_text(source: str, callee: str, **kwargs: Any) -> list[str]:
     assert result["outcome"] == "local", result
     data = source.encode()
     return [data[start:end].decode() for _, start, end in result["proof"]]
+
+
+def _js_proof(
+    source: str, callee: str = "d", **kwargs: Any
+) -> tuple[list[str], list[str]]:
+    """JavaScript proof text and group rules for one call."""
+    result = outcome(source, callee, language="javascript", **kwargs)
+    assert result["outcome"] == "local", result
+    data = source.encode()
+    proof = [data[start:end].decode() for _, start, end in result["proof"]]
+    return proof, result["rules"]
 
 
 # ---------------------------------------------------------------------------
@@ -390,22 +404,716 @@ def test_overload_rules() -> None:
     assert len(outcome(js, "f", language="javascript")["proof"]) == 2
 
 
-def test_script_goal_and_namespace_deferrals_follow_r1() -> None:
+def test_script_goal_and_namespace_lookups_follow_r1() -> None:
+    """PR 3 replaces the PR 2 deferrals; R-1(i) still orders the reasons."""
     script = "function t() {}\nfunction g() { return t(); }"
-    assert reason(script, "t", language="javascript") == "script-goal-deferred"
+    # A script top level proves, and names the global for the engine's
+    # cross-file script-global check (7.2).
+    result = outcome(script, "t", language="javascript")
+    assert result["outcome"] == "local"
+    assert result["global"] == "t"
     # R-1(i): an outcome that proves nothing reports its own reason.
     script_param = "function g(t) { return t(); }"
     assert reason(script_param, "t", language="javascript") == "parameter"
+    # A single namespace declaration in a module proves, inside or outside.
     namespace = (
         MODULE + "function t() {}\nnamespace N { export function g() { return t(); } }"
     )
-    assert reason(namespace, "t") == "namespace-deferred"
+    assert proof_text(namespace, "t") == ["function t() {}"]
     inside = (
         MODULE + "namespace N { function t() {} export function g() { return t(); } }"
     )
-    assert reason(inside, "t") == "namespace-deferred"
+    assert proof_text(inside, "t") == ["function t() {}"]
     inside_param = MODULE + "namespace N { export function g(t) { return t(); } }"
     assert reason(inside_param, "t") == "parameter"
+    unbound = MODULE + "namespace N { export function g() { return nowhere(); } }"
+    assert reason(unbound, "nowhere") == "unbound"
+
+
+# ---------------------------------------------------------------------------
+# t1.js_hoist (7.4, 8; PR 3)
+
+
+def test_js_hoist_proves_the_last_declaration() -> None:
+    body = "function g() { function d() { return 1; } function d() { return 2; } return d(); }"
+    assert _js_proof(body) == (["function d() { return 2; }"], ["t1.js_hoist"])
+    # The call position does not matter: every declaration is hoisted.
+    before = (
+        "function g() { d(); function d() { return 1; } function d() { return 2; } }"
+    )
+    assert _js_proof(before) == (["function d() { return 2; }"], ["t1.js_hoist"])
+    script = "function d() { return 1; }\nfunction* d() { yield 2; }\nfunction g() { return d(); }"
+    assert _js_proof(script) == (["function* d() { yield 2; }"], ["t1.js_hoist"])
+    arrow_body = (
+        "const g = () => { function d() {} async function d() {} return d(); };"
+    )
+    assert _js_proof(arrow_body) == (["async function d() {}"], ["t1.js_hoist"])
+    method = "export class K { m() { function d() {} function d() { return 2; } return d(); } }"
+    assert _js_proof(method) == (["function d() { return 2; }"], ["t1.js_hoist"])
+    # A parameter of the same name is overwritten by the declarations.
+    param = "function g(d) { function d() {} function d() { return 2; } return d(); }"
+    assert _js_proof(param) == (["function d() { return 2; }"], ["t1.js_hoist"])
+
+
+ANNEX_B_FORMS = {
+    # 2.6(a)/(b): a block-level declaration anywhere in the var scope.
+    "if-block": "if (x) { function d() {} }",
+    "if-clause": "if (x) function d() {}",
+    "else": "if (x) {} else { function d() {} }",
+    "switch": "switch (x) { case 1: function d() {} }",
+    "labelled": "l: function d() {}",
+    "labelled-block": "l: { function d() {} }",
+    "for": "for (;;) { function d() {} }",
+    "try": "try { function d() {} } catch (e) {}",
+    "catch": "try {} catch (e) { function d() {} }",
+    "nested-block": "{ { function d() {} } }",
+}
+
+
+@pytest.mark.parametrize("form", sorted(ANNEX_B_FORMS))
+def test_js_hoist_is_off_with_a_block_level_declaration(form: str) -> None:
+    for wrap in ("function g(x) { %s }", "%s"):
+        source = wrap % (
+            "function d() { return 1; } function d() { return 2; } "
+            + ANNEX_B_FORMS[form]
+            + " function h() { return d(); }"
+        )
+        assert reason(source, "d", language="javascript") == "block-function", source
+
+
+OTHER_BINDINGS = {
+    # 2.6(a): an expression binding, or any other binding of the name.
+    "var-function": ("var d = function () {};", "mixed-bindings"),
+    "var-arrow": ("var d = () => 1;", "mixed-bindings"),
+    "var": ("var d;", "mixed-bindings"),
+    "var-in-block": ("if (x) { var d = 1; }", "mixed-bindings"),
+    "for-var": ("for (var d in o) {}", "mixed-bindings"),
+    "assignment": ("d = function () {};", "reassigned"),
+    "nested-assignment": ("function h() { d = 1; }", "reassigned"),
+    "deep-nested-assignment": ("function h() { return () => { d++; }; }", "reassigned"),
+    "compound": ("d ||= other;", "reassigned"),
+    "for-of-target": ("for (d of xs) {}", "reassigned"),
+    "destructuring": ("[d] = xs;", "reassigned"),
+    "eval": ("eval(s);", "dynamic-scope"),
+    "nested-eval": ("function h() { eval(s); }", "dynamic-scope"),
+    "arguments-alias": ("arguments[0] = 1;", None),
+}
+
+
+@pytest.mark.parametrize("form", sorted(OTHER_BINDINGS))
+def test_js_hoist_is_off_with_another_binding_or_write(form: str) -> None:
+    extra, expected = OTHER_BINDINGS[form]
+    params = "d, x" if form == "arguments-alias" else "x"
+    source = (
+        f"function g({params}) {{ function d() {{ return 1; }} "
+        f"function d() {{ return 2; }} {extra} return d(); }}"
+    )
+    assert reason(source, "d", language="javascript") == (expected or "reassigned")
+
+
+def test_js_hoist_needs_plain_js_in_a_function_body_or_script() -> None:
+    pair = "function d() { return 1; } function d() { return 2; }"
+    # An ES-module top level (an early error) keeps the group.
+    esm = f"export {{}};\n{pair}\nexport function g() {{ return d(); }}"
+    assert _js_proof(esm) == (
+        ["function d() { return 1; }", "function d() { return 2; }"],
+        [],
+    )
+    # A class static block is its own var scope, but not a function body.
+    static = f"class K {{ static {{ {pair} d(); }} }}"
+    assert _js_proof(static)[1] == []
+    # TypeScript duplicate bodies stay an ambiguous group (section 8).
+    for language in ("typescript", "tsx"):
+        ts = f"function g() {{ {pair} return d(); }}"
+        result = outcome(ts, "d", language=language)
+        assert (len(result["proof"]), result["rules"]) == (2, []), language
+    # A function inside a module file is still a function body.
+    module_body = f"export function g() {{ {pair} return d(); }}"
+    assert _js_proof(module_body) == (["function d() { return 2; }"], ["t1.js_hoist"])
+
+
+# ---------------------------------------------------------------------------
+# Script globals (7.2; PR 3)
+
+
+def script_globals(source: str, language: str = "javascript") -> list[str]:
+    data = source.encode()
+    root = get_parser(language).parse(data).root_node
+    assert not root.has_error, source
+    return js_scope.analyze(root, data, language, [])["script_globals"]
+
+
+def test_script_globals_of_a_script() -> None:
+    source = (
+        "var a = 1; let b = 2; const c = 3; class K {} function f() {}\n"
+        "if (x) { var v = 1; let blockLocal = 2; function bf() {} }\n"
+        "function g() { implicit = 1; var local = 2; local = 3; inner++; }\n"
+        "for (loopGlobal in o) {}\n"
+    )
+    assert script_globals(source) == [
+        "K",
+        "a",
+        "b",
+        "bf",
+        "c",
+        "f",
+        "g",
+        "implicit",
+        "inner",
+        "loopGlobal",
+        "v",
+    ]
+    ts = "namespace N {}\nenum E { A }\ndeclare function amb(): void;\nimport t = N.f;"
+    assert script_globals(ts, "typescript") == ["E", "N", "amb", "t"]
+
+
+def test_script_globals_of_a_module() -> None:
+    """A module's own top level is not global; global-object writes,
+    implicit globals (A2) and receiver ``this`` writes (A4) are."""
+    source = (
+        "export function f() {}\nlet b = 2;\nfunction g() { implicit = 1; }\n"
+        "window.w = 1;\nglobalThis['gt'] = 2;\nself.s += 1;\nglobal.n++;\n"
+        "window.top.chain = 3;\n[window.pattern] = xs;\nfor (window.loop of xs) {}\n"
+        "delete window.deleted;\nframes.fr = 1;\ndocument.defaultView.dv = 1;\n"
+        "this.notGlobal = 1;\nfunction h() { this.receiver = 1; }\n"
+        "class K { constructor() { this.ctor = 1; } field = (this.fieldInit = 1); "
+        "static { this.staticBlock = 1; } m() { this.method = 1; this['key'] = 2; } }\n"
+    )
+    assert script_globals(source) == [
+        "chain",
+        "deleted",
+        "dv",
+        "fr",
+        "gt",
+        "implicit",
+        "key",
+        "loop",
+        "method",
+        "n",
+        "pattern",
+        "receiver",
+        "s",
+        "w",
+    ]
+    declare_global = (
+        "export {};\ndeclare global { function dg(): void; var dv: number; }"
+    )
+    assert script_globals(declare_global, "typescript") == ["dg", "dv"]
+
+
+GLOBAL_WILDCARD_FORMS = {
+    "computed-key": "globalThis[k] = f;",
+    "template-key": "window[`d`] = f;",
+    "escaped-string-key": "window['\\x64'] = f;",
+    "computed-read": "window[k]();",
+    "argument": "Object.assign(window, { d: f });",
+    "alias": "const g = globalThis; g.d = f;",
+    "shorthand": "register({ window });",
+    "conditional": "const root = typeof self !== 'undefined' ? self : this;",
+    "chain-alias": "const w = window.window;",
+    "eval-property": "window.eval(s);",
+    "eval": "(0, eval)(s);",
+    "function-constructor": "new Function(s)();",
+    "exec-script": "execScript(s);",
+    "string-timer": "setTimeout('d = f', 1);",
+    "string-timer-member": "window.setInterval('d = f' + x, 1);",
+    "top-level-this": "(function (root) { root.d = f; })(this);",
+    "function-this": "function init() { var self = this; self.d = f; }",
+    "object-method-this": "const o = { m() { return this; } };",
+    # #691 panel C2 and A5/A6.
+    "template-string-timer": "setTimeout(`d = ${f}`, 1);",
+    "bracket-eval": 'window["eval"](s);',
+    "bracket-chain-key": 'window["top"][k] = f;',
+    "parent-escape": "const p = parent;",
+    "frames-computed": "frames[k] = f;",
+    "default-view-escape": "const w = document.defaultView;",
+    "constructor-call": "[].constructor.constructor('d = f')();",
+    "constructor-new": "new (function () {}).constructor('d = f')();",
+    "constructor-alias": "const AF = (async () => {}).constructor;",
+    "constructor-call-method": "f.constructor.call(null, s);",
+    "timer-alias": "const t = setTimeout;",
+    "timer-call-method": "setTimeout.call(null, s);",
+    "timer-reflect": "Reflect.apply(setTimeout, null, [s]);",
+    "timer-variable": "const s = 'd = f';\nsetTimeout(s);",
+    "timer-unbound-name": "setTimeout(tick, 1);",
+    "timer-member-argument": "setTimeout(o.m, 1);",
+    "bracket-timer": "window['setTimeout'](s, 1);",
+    "bracket-timer-function": "window['setTimeout'](s);",
+    "receiver-computed": "class K { m() { this[k] = f; } }",
+    # Codex 4652498471: literal keys equal dot access for every family;
+    # escaped keys fail closed.
+    "template-evaluator": "window[`eval`](s);",
+    "template-timer": "window[`setTimeout`]('d = f');",
+    "template-constructor": "[][`constructor`][`constructor`]('d = f')();",
+    "bracket-constructor": "[]['constructor']['constructor']('d = f')();",
+    "escaped-constructor": "f['\\x63onstructor']('d = f')();",
+    "template-default-view": "const w = document[`defaultView`];",
+    "template-global-alias": "const w = window[`top`];",
+    "computed-constructor-pattern": "const { ['constructor']: F } = f;",
+    "escaped-writer": "class K { m() { Object['\\x61ssign'](this, { d: f }); } }",
+    "computed-writer": "class K { m(k) { Object[k](this, { d: f }); } }",
+    "global-writer-path": "class K { m() { window['Reflect']['set'](this, 'd', f); } }",
+    "writer-call": "class K { m() { Object.assign.call(null, this, { d: f }); } }",
+    "writer-apply": "class K { m() { Object['assign']['apply'](null, [this, {}]); } }",
+    "receiver-bracket-eval": "class K { m() { this[`eval`](s); } }",
+    # C-1: writers reached through a receiver ``this``, and a comma callee.
+    "receiver-writer": "class K { m() { this.Object.assign(this, { d: f }); } }",
+    "receiver-writer-bracket": "class K { m() { this['Reflect']['set'](this, 'd', f); } }",
+    "receiver-window-writer": "class K { m() { this.window.Object.assign(this, {}); } }",
+    "receiver-writer-call": (
+        "class K { m() { this.Object.defineProperty.call(null, this, 'd', {}); } }"
+    ),
+    "receiver-writer-target": "class K { m() { this.Object.assign(this.window, {}); } }",
+    "comma-writer": "class K { m() { (0, Object.assign)(this, { d: f }); } }",
+    "timer-script-function": "function tick() {}\nsetTimeout(tick, 1);",
+}
+
+
+@pytest.mark.parametrize("form", sorted(GLOBAL_WILDCARD_FORMS))
+def test_global_object_uses_fail_closed_with_a_wildcard(form: str) -> None:
+    source = GLOBAL_WILDCARD_FORMS[form]
+    assert js_scope.GLOBAL_WILDCARD in script_globals(source), source
+    # The same file's own top level is then reassigned for every name.
+    script = "function d() {}\nfunction g() { return d(); }\n" + source
+    assert reason(script, "d", language="javascript") == "reassigned", source
+
+
+def test_inert_global_object_uses_are_not_wildcards() -> None:
+    for source in (
+        "if (typeof window !== 'undefined') {}",
+        "if ('fetch' in window) {}",
+        "if (self === window) {}",
+        "window.addEventListener('load', f);",
+        "const t = window.setTimeout(function () {}, 1);",
+        "setTimeout(() => f(), 1);",
+        # A name the file proves to be a local function (not a script
+        # top level, which another script could reassign).
+        "function f() { function tick() {} setTimeout(tick, 1); }",
+        "export function tick() {}\nsetTimeout(tick, 1);",
+        "export function tick() {}\nwindow['setInterval'](tick, 1);",
+        "if (typeof setTimeout === 'function') {}",
+        "function f(window) { return window; }",
+        "export class K { m() { return this; } x = this; static { this.y = 1; } }",
+        "function f() { return () => 1; }",
+        "if (x.constructor === Object) {}",
+        "const n = x['constructor'].name;",
+        "Object['keys'](o);\nObject.assign({}, o);",
+        "window['addEventListener']('load', () => 1);",
+        "const n = x.constructor.name;",
+        "declare function f(parent?: number, top?: number): void;\nexport {};",
+        "type F = (window: Window) => void;\nexport {};",
+    ):
+        language = "typescript" if ": " in source else "javascript"
+        assert js_scope.GLOBAL_WILDCARD not in script_globals(source, language), source
+    module_this = "export function f() { var self = this; return self; }"
+    assert js_scope.GLOBAL_WILDCARD not in script_globals(module_this)
+
+
+GLOBAL_WRITE_FORMS = {
+    "window": "window.d = other;",
+    "globalThis-string": "globalThis['d'] = other;",
+    "self-update": "self.d++;",
+    "global-compound": "global.d ??= other;",
+    "chain": "window.self.d = other;",
+    "parenthesized": "(window).d = other;",
+    # A script's top-level ``var``/``declare var`` of an alias is the global
+    # object's own property.
+    "script-var-alias": "var self;\nself.d = other;",
+    "pattern": "({ a: window.d } = o);",
+    "for-of": "for (window.d of xs) {}",
+    "delete": "delete window.d;",
+    "nested-function": "function h() { window.d = other; }",
+    "top-level-this": "this.d = other;",
+    "sloppy-function-this": "function h() { this.d = other; }",
+    "object-method-this": "const o = { m() { this.d = other; } };",
+    "arrow-in-function-this": "function h() { return () => { this.d = other; }; }",
+    # A4: a host may pass the global object as ``this`` to strict code too.
+    "class-method-this": "class K { m() { this.d = other; } }",
+    "class-getter-this": "class K { set x(v) { this['d'] = v; } }",
+    "function-in-class-this": "class K { m() { const f = function () { this.d = 1; }; } }",
+    # A5.
+    "top": "top.d = other;",
+    "parent": "parent.d = other;",
+    "frames": "frames.d = other;",
+    "default-view": "document.defaultView.d = other;",
+    "parent-chain": "window.parent.d = other;",
+    "frames-chain": "window.frames.d = other;",
+    "bracket-top": 'window["top"]["d"] = other;',
+}
+
+
+@pytest.mark.parametrize("form", sorted(GLOBAL_WRITE_FORMS))
+def test_global_writes_reassign_a_script_top_level(form: str) -> None:
+    source = (
+        "function d() {}\nfunction other() {}\nfunction g() { return d(); }\n"
+        + GLOBAL_WRITE_FORMS[form]
+    )
+    assert reason(source, "d", language="javascript") == "reassigned", source
+    assert "d" in script_globals(source)
+
+
+def test_global_writes_leave_other_bindings_alone() -> None:
+    # In a module, the top level is not the global object.
+    module = (
+        "export function d() {}\nwindow.d = 1;\nexport function g() { return d(); }"
+    )
+    assert _js_proof(module) == (["function d() {}"], [])
+    # ``this`` in a class constructor, field or static block is never the
+    # global object (A4 exclusions).
+    strict = (
+        "function d() {}\nclass K { constructor() { this.d = 1; } x = (this.d = 2); "
+        "static { this.d = 3; } }\nfunction g() { return d(); }"
+    )
+    assert outcome(strict, "d", language="javascript")["outcome"] == "local"
+    # A function-local binding is not the global.
+    local = "function g() { function d() {} window.d = 1; return d(); }"
+    assert _js_proof(local) == (["function d() {}"], [])
+    # A locally bound ``window`` is not the global object.
+    shadowed = "function d() {}\nfunction g(window) { window.d = 1; return d(); }"
+    assert outcome(shadowed, "d", language="javascript")["outcome"] == "local"
+
+
+def test_arguments_alias_reassigns_shared_parameter_names() -> None:
+    """Sloppy ``arguments[0] = x`` writes a parameter binding, which a body
+    function of the same name shares: fail closed when ``arguments`` occurs."""
+    base = "export function g(d) { function d() {} %s return d(); }"
+    for extra in ("arguments[0] = 1;", "h(arguments);", "(() => arguments)();"):
+        assert reason(base % extra, "d", language="javascript") == "reassigned", extra
+    assert outcome(base % "", "d", language="javascript")["outcome"] == "local"
+    other = "export function g(x) { function d() {} arguments[0] = 1; return d(); }"
+    assert outcome(other, "d", language="javascript")["outcome"] == "local"
+
+
+# ---------------------------------------------------------------------------
+# TS namespace merging and inherited ambient status (7.2; PR 3)
+
+MERGED_NAMESPACES = {
+    "two-declarations": (
+        "namespace N { export function t() { return 1; } }\n"
+        "namespace N { export function g() { return t(); } }"
+    ),
+    "declare-and-body": (
+        "declare namespace N { function t(): void; }\n"
+        "namespace N { export function g() { return t(); } }"
+    ),
+    "exported-and-plain": (
+        "export namespace N { }\nnamespace N { export function g() { return t(); } }"
+    ),
+    "enum-merge": "enum N { A }\nnamespace N { export function g() { return t(); } }",
+    "dotted": "namespace A.N { export function g() { return t(); } }",
+    "dotted-sibling": (
+        "namespace A { export namespace N { export function g() { return t(); } } }\n"
+        "namespace A.B { }"
+    ),
+    # A3: module augmentation merges into an exported namespace.
+    "export-modifier": "export namespace N { export function g() { return t(); } }",
+    "export-inner": (
+        "export namespace N { export namespace M { export function g() { return t(); } } }"
+    ),
+    "export-clause": "namespace N { export function g() { return t(); } }\nexport { N };",
+    "export-alias": "namespace N { export function g() { return t(); } }\nexport { N as Q };",
+    "export-equals": "namespace N { export function g() { return t(); } }\nexport = N;",
+    "nested-merged-parent": (
+        "namespace O { export namespace N { export function g() { return t(); } } }\n"
+        "namespace O { export function t() { return 2; } }"
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(MERGED_NAMESPACES))
+def test_lookups_through_a_merged_namespace(case: str) -> None:
+    source = MODULE + "export function t() { return 1; }\n" + MERGED_NAMESPACES[case]
+    data = source.encode()
+    root = get_parser("typescript").parse(data).root_node
+    assert not root.has_error
+    calls = _callees(root, data, "t")
+    assert calls, case
+    for index in range(len(calls)):
+        assert reason(source, "t", occurrence=index) == "namespace-merged", case
+
+
+def test_declare_module_and_global_bodies_are_merged() -> None:
+    """Defensive: ambient bodies hold no calls, so the rule cannot change an
+    edge today; the scopes are still marked merged (#691 panel C1)."""
+    source = MODULE + "declare module 'm' { function t(): void; }\ndeclare global { }"
+    data = source.encode()
+    root = get_parser("typescript").parse(data).root_node
+    analysis = js_scope._Analysis(root, data, "typescript")
+    bodies = [
+        scope
+        for scope in analysis.scopes.values()
+        if scope.kind == js_scope._NAMESPACE_SCOPE
+    ]
+    assert len(bodies) == 2
+    assert all(analysis._merged(scope) for scope in bodies)
+
+
+def test_unexported_and_default_exported_namespaces_are_not_merged() -> None:
+    """Module augmentation cannot reach these (A3)."""
+    for tail in ("", "\nexport default N;"):
+        source = (
+            "export function t() { return 1; }\n"
+            "namespace N { export function g() { return t(); } }" + tail
+        )
+        assert proof_text(source, "t") == ["function t() { return 1; }"], tail
+
+
+def test_namespaces_in_a_script_are_merged() -> None:
+    source = "function t() {}\nnamespace N { export function g() { return t(); } }"
+    assert reason(source, "t") == "namespace-merged"
+    unbound = "namespace N { export function g() { return nowhere(); } }"
+    assert reason(unbound, "nowhere") == "namespace-merged"
+
+
+def test_namespace_merged_follows_r1() -> None:
+    """The binding's own reason wins; ``namespace-merged`` only replaces a
+    proof (and an unbound name, which another declaration may bind)."""
+    pair = "namespace N { }\n"
+    param = MODULE + pair + "namespace N { export function g(t) { return t(); } }"
+    assert reason(param, "t") == "parameter"
+    reassigned = (
+        MODULE
+        + "function t() {}\n"
+        + pair
+        + "namespace N { export function g() { t = 1; return t(); } }"
+    )
+    assert reason(reassigned, "t") == "reassigned"
+
+
+def test_a_namespace_function_beside_the_namespace_is_not_a_merge() -> None:
+    source = (
+        MODULE + "function N() {}\nfunction t() {}\n"
+        "namespace N { export function g() { return t(); } }"
+    )
+    assert proof_text(source, "t") == ["function t() {}"]
+
+
+def test_exported_namespace_variables_are_expression_bound() -> None:
+    """tsc rewrites uses of an exported namespace variable to a property of
+    the namespace object, which other code can reassign."""
+    source = (
+        MODULE
+        + "namespace N { export const t = () => 1; export function g() { return t(); } }"
+    )
+    assert reason(source, "t") == "expression-bound"
+    local = (
+        MODULE
+        + "namespace N { const t = () => 1; export function g() { return t(); } }"
+    )
+    assert proof_text(local, "t") == ["() => 1"]
+
+
+AMBIENT_BLOCKS = {
+    # Ambient status is inherited from enclosing ``declare`` blocks; it is
+    # the binding's own reason, so it wins over ``namespace-merged`` (R-1).
+    "namespace-function": "declare namespace N { function t() {} function g() { return t(); } }",
+    "namespace-class": "declare namespace N { class t {} function g() { return new t(); } }",
+    "nested-namespace": (
+        "declare namespace O { namespace N { function t() {} function g() { return t(); } } }"
+    ),
+    "module": "declare module 'm' { function t() {} function g() { return t(); } }",
+    "global": "declare global { function t() {} function g() { return t(); } }",
+}
+
+
+@pytest.mark.parametrize("case", sorted(AMBIENT_BLOCKS))
+def test_ambient_status_is_inherited(case: str) -> None:
+    assert reason(MODULE + AMBIENT_BLOCKS[case], "t") == "ambient"
+
+
+# ---------------------------------------------------------------------------
+# PR 3 end to end, on trees the tests write (a committed tree would change
+# the off-mode baseline, 11.2)
+
+
+def _edges(root: Path) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """``(off, on)`` call edges, paired by ``call_site_id``."""
+    off = extract_symbol_graph(root)
+    on = extract_symbol_graph(root, call_resolution=MODE)
+    on_by_site = {
+        edge["call_site_id"]: edge
+        for edge in on["relationships"]
+        if edge["type"] == "calls"
+    }
+    return [
+        (edge, on_by_site[edge["call_site_id"]])
+        for edge in off["relationships"]
+        if edge["type"] == "calls"
+    ]
+
+
+def _edge(
+    pairs: list[tuple[dict[str, Any], dict[str, Any]]], file: str, reference: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    (pair,) = [
+        pair
+        for pair in pairs
+        if pair[0]["file"] == file and pair[0]["reference"] == reference
+    ]
+    return pair
+
+
+SCRIPT = "function d() { return 1; }\nfunction g() { return d(); }\n"
+OTHER_SCRIPT_GLOBALS = {
+    # Each second file makes ``d`` a script global elsewhere in the run.
+    "let": "let d = () => 3;\n",
+    "const": "const d = () => 3;\n",
+    "class": "class d {}\n",
+    "var": "var d;\n",
+    "implicit": "function init() { d = function () { return 3; }; }\n",
+    "nested-implicit": "function init() { return () => { d ||= other; }; }\n",
+    "window-module": "export function d() {}\nwindow.d = function () {};\n",
+    "globalThis-string": "export {};\nglobalThis['d'] = 1;\n",
+    "self": "export {};\nself.d = 1;\n",
+    "computed-key": "export {};\nglobalThis[name] = 1;\n",
+    "escape": "export {};\nObject.assign(window, { d: 1 });\n",
+    "indirect-eval": "export {};\n(0, eval)(s);\n",
+    "sloppy-this": "function init() { this.d = 1; }\n",
+    "declare-global": "export {};\ndeclare global { function d(): void; }\n",
+    "unsupported": "function d() { return 3; }\nfunction (\n",
+}
+
+
+@pytest.mark.parametrize("form", sorted(OTHER_SCRIPT_GLOBALS))
+def test_script_global_end_to_end(tmp_path: Path, form: str) -> None:
+    """A script top level narrows only when no other file may declare the
+    name as a global (7.2): k.js's own ``d`` stays ambiguous next to these."""
+    extension = ".ts" if form == "declare-global" else ".js"
+    root = _write(
+        tmp_path,
+        {
+            "k.js": SCRIPT,
+            "b" + extension: OTHER_SCRIPT_GLOBALS[form],
+            # A third definition, so C0 keeps two or more candidates even
+            # when the second file declares no symbol ``d``.
+            "c.js": "export function d() { return 4; }\n",
+        },
+    )
+    off, on = _edge(_edges(root), "k.js", "d")
+    assert off["resolution"] == "ambiguous"
+    assert on == off
+
+
+COMPANIONS = {
+    # No script globals: a module (whose ``window.other`` names another
+    # global) and a Python file.
+    "c.js": "export function d() { return 4; }\nexport let x = 1;\n",
+    "m.ts": "export {};\nfunction d() { return 5; }\nwindow.other = 1;\n",
+    "p.py": "def d():\n    return 6\n",
+}
+
+
+def _resolved_line(root: Path, rules: list[str]) -> int:
+    off, on = _edge(_edges(root), "k.js", "d")
+    assert off["resolution"] == "ambiguous"
+    assert on["resolution"] == "resolved"
+    assert on["provenance"]["call_rules"] == rules
+    assert on["to"] in off["candidates"]
+    graph = extract_symbol_graph(root, call_resolution=MODE)
+    target = graph["symbol_lookup"][on["to"]]
+    assert target["file"] == "k.js"
+    return int(target["line"])
+
+
+def test_script_global_controls_end_to_end(tmp_path: Path) -> None:
+    """Module files and Python files declare no script globals, so a script
+    top level resolves next to them."""
+    root = _write(tmp_path, {"k.js": SCRIPT, **COMPANIONS})
+    assert _resolved_line(root, ["t1.lexical"]) == 1
+
+
+HOISTED_SCRIPT = (
+    "function d() { return 1; }\nfunction d() { return 2; }\n"
+    "function g() { return d(); }\n"
+)
+
+
+def test_js_hoist_end_to_end(tmp_path: Path) -> None:
+    """rt-js's shape: a script's hoisted pair resolves to the last one, and
+    the script-global check still applies to it (7.2, 7.4)."""
+    alone = tmp_path / "alone"
+    alone.mkdir()
+    _write(alone, {"k.js": HOISTED_SCRIPT, **COMPANIONS})
+    assert _resolved_line(alone, ["t1.lexical", "t1.js_hoist"]) == 2
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    _write(shared, {"k.js": HOISTED_SCRIPT, "s.js": "var d;\n", **COMPANIONS})
+    off, on = _edge(_edges(shared), "k.js", "d")
+    assert off["resolution"] == "ambiguous"
+    # none(script-global) proves nothing; only t1.family drops p.py's ``d``.
+    assert on["resolution"] == "ambiguous"
+    assert on["provenance"]["call_rules"] == ["t1.family"]
+    assert len(on["candidates"]) == len(off["candidates"]) - 1
+
+
+def test_js_hoist_near_misses_end_to_end(tmp_path: Path) -> None:
+    """Annex B, a later write and a TS file keep their off-mode edges."""
+    root = _write(
+        tmp_path,
+        {
+            "a.js": (
+                "export function g(x) { function d() {} function d() {} "
+                "switch (x) { case 1: function d() {} } return d(); }\n"
+                "export function h() { function e() {} function e() {} "
+                "function w() { e = 1; } return e(); }\n"
+            ),
+            "b.ts": "export function g() { function d() {} function d() {} return d(); }\n",
+            # Nested only: a top-level ``d`` would be C0 on its own (6.2).
+            "c.js": "export function k() { function d() {} function e() {} }\n",
+        },
+    )
+    pairs = _edges(root)
+    for file, reference in (("a.js", "d"), ("a.js", "e")):
+        off, on = _edge(pairs, file, reference)
+        assert off["resolution"] == "ambiguous", (file, reference)
+        assert on == off, (file, reference)
+    # TS duplicate bodies narrow to the group and stay ambiguous.
+    off, on = _edge(pairs, "b.ts", "d")
+    assert on["resolution"] == "ambiguous"
+    assert len(on["candidates"]) == 2 < len(off["candidates"])
+
+
+def test_namespace_merging_end_to_end(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "a.ts": (
+                "export function t() { return 1; }\n"
+                "export namespace N { export function g() { return t(); } }\n"
+                "namespace N { }\n"
+            ),
+            "b.ts": (
+                "export function t() { return 2; }\n"
+                "namespace M { export function g() { return t(); } }\n"
+            ),
+            "c.ts": "export function t() { return 3; }\n",
+        },
+    )
+    pairs = _edges(root)
+    off, on = _edge(pairs, "a.ts", "t")
+    assert off["resolution"] == "ambiguous"
+    assert on == off
+    # A single declaration in a module is not merged: it resolves.
+    off, on = _edge(pairs, "b.ts", "t")
+    assert on["resolution"] == "resolved"
+    assert on["provenance"]["call_rules"] == ["t1.lexical"]
+
+
+def test_inherited_ambient_end_to_end(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "a.ts": (
+                "export {};\n"
+                "declare namespace N { class t {} function g() { return new t(); } }\n"
+            ),
+            # Nested only: a top-level ``t`` would be C0 on its own (6.2).
+            "b.ts": "export namespace M { export class t {} }\n",
+        },
+    )
+    off, on = _edge(_edges(root), "a.ts", "t")
+    assert off["resolution"] == "ambiguous"
+    assert on == off
 
 
 ENUM_CASES = {
@@ -878,3 +1586,475 @@ def test_escaped_names_end_to_end(tmp_path: Path, form: str) -> None:
     assert control["resolution"] == "resolved"
     assert control["provenance"]["call_rules"] == ["t1.lexical"]
     assert on["symbol_lookup"][control["to"]]["file"] == "c.ts"
+
+
+# ---------------------------------------------------------------------------
+# #691 panel fold: wrong-resolution classes A1-A6 and B5, end to end on
+# trees the test writes (panel A's probe shapes)
+
+_NESTED_DECOY = "function h() {\n  function d() { return 9; }\n  return 0;\n}\n"
+_ESM_DECOY = "export function d() { return 9; }\n"
+_SCRIPT_A = "function d() { return 1; }\nfunction caller() { return d(); }\n"
+_NS_DECOY = "export function t() { return 9; }\n"
+_AUGMENT = (
+    "import './a';\ndeclare module './a' {\n"
+    "  namespace N { export function t(): number; }\n}\n"
+)
+_D1 = "  function d() { return 1; }"
+_DD = _D1 + "\n  function d() { return 2; }"
+
+
+def _in_function(body: str, ext: str = "js") -> dict[str, str]:
+    return {
+        f"a.{ext}": f"function f() {{\n{body}\n  return d();\n}}\n",
+        f"b.{ext}": _NESTED_DECOY,
+    }
+
+
+def _top(top: str) -> dict[str, str]:
+    return {"a.js": f"{top}\nfunction caller() {{ return d(); }}\n", "b.js": _ESM_DECOY}
+
+
+def _writer(source: str, name: str = "c.js") -> dict[str, str]:
+    return {"a.js": _SCRIPT_A, "b.js": _ESM_DECOY, name: source}
+
+
+def _augmented(a: str, extra: dict[str, str]) -> dict[str, str]:
+    return {"a.ts": a, "b.ts": _NS_DECOY, **extra}
+
+
+_LABEL = "{ L: function d() { return 3; } }"
+_NS_BODY = "namespace N {\n  export function g() { return t(); }\n}\n"
+PANEL_CASES: dict[str, tuple[dict[str, str], str, str]] = {
+    # A1: ``{ L: function d() {} }`` misparses as an object literal.
+    "L1": (_in_function(_D1 + "\n  " + _LABEL), "a.js", "d"),
+    "L2": (_in_function("  " + _LABEL + "\n" + _DD), "a.js", "d"),
+    "L3": (_in_function(_DD + "\n  if (x) " + _LABEL), "a.js", "d"),
+    "L4": (_top("function d() { return 1; }\n" + _LABEL), "a.js", "d"),
+    "L5": (
+        _top("function d() { return 1; }\nfunction d() { return 2; }\n" + _LABEL),
+        "a.js",
+        "d",
+    ),
+    "L14": (_in_function(_D1 + "\n  " + _LABEL, "ts"), "a.ts", "d"),
+    "R05b": (_writer(_LABEL + "\n"), "a.js", "d"),
+    # A2: implicit globals in module files.
+    "G18b": (_writer("export {};\nfunction z() { d = 1; }\n"), "a.js", "d"),
+    "G18c": (
+        _writer("export {};\nfunction z() { (d as any) = 1; }\n", "c.ts"),
+        "a.js",
+        "d",
+    ),
+    "R06e": (_writer("export {};\nfor (d of xs) {}\n"), "a.js", "d"),
+    # A3: module augmentation of an exported namespace.
+    "N05": (
+        _augmented(
+            "export function t() { return 1; }\nexport " + _NS_BODY, {"c.ts": _AUGMENT}
+        ),
+        "a.ts",
+        "t",
+    ),
+    "N05c": (
+        _augmented(
+            "export function t() { return 1; }\nexport namespace N {\n"
+            "  export namespace M {\n    export function g() { return t(); }\n  }\n}\n",
+            {"c.ts": _AUGMENT},
+        ),
+        "a.ts",
+        "t",
+    ),
+    "N11": (
+        _augmented(
+            "export function t() { return 1; }\n" + _NS_BODY + "export { N };\n",
+            {"c.ts": _AUGMENT},
+        ),
+        "a.ts",
+        "t",
+    ),
+    "N11c": (
+        _augmented(
+            "function t() { return 1; }\n" + _NS_BODY + "export = N;\n",
+            {"c.ts": "import N = require('./a');\n"},
+        ),
+        "a.ts",
+        "t",
+    ),
+    "N11d": (
+        _augmented(
+            "export function t() { return 1; }\n" + _NS_BODY + "export { N as Q };\n",
+            {"c.ts": _AUGMENT.replace("namespace N", "namespace Q")},
+        ),
+        "a.ts",
+        "t",
+    ),
+    "N11e": (
+        _augmented(
+            "export function t() { return 1; }\nexport " + _NS_BODY,
+            {"c.d.ts": _AUGMENT},
+        ),
+        "a.ts",
+        "t",
+    ),
+    # A4: the global object as the receiver of strict code.
+    "G20d": (
+        _writer(
+            "class K { m() { this.d = function () {}; } }\nsetTimeout(K.prototype.m);\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "G20e": (
+        _writer(
+            "export {};\nfunction m() { this.d = function () {}; }\nsetTimeout(m);\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "G20f": (
+        _writer(
+            "class K { m() { this.d = 1; } }\nwindow.m = K.prototype.m;\nwindow.m();\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "G20i": (
+        _writer(
+            "export {};\nfunction m(this: any) { this.d = 1; }\nsetTimeout(m);\n",
+            "c.ts",
+        ),
+        "a.js",
+        "d",
+    ),
+    # A5: the global object under other names.
+    "G15": (
+        _writer("export {};\ndocument.defaultView.d = function () {};\n"),
+        "a.js",
+        "d",
+    ),
+    "G21c": (_writer("export {};\nframes.d = 1;\n"), "a.js", "d"),
+    # A6: code evaluators reached without their names.
+    "G16": (
+        _writer("export {};\n[].constructor.constructor('d = 1')();\n"),
+        "a.js",
+        "d",
+    ),
+    "G16c": (
+        _writer(
+            "export {};\nconst AF = (async () => {}).constructor;\nnew AF('d = 1')();\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "G17": (_writer("export {};\nconst t = setTimeout;\nt('d = 1');\n"), "a.js", "d"),
+    "G17c": (_writer("export {};\nconst s = 'd = 1';\nsetTimeout(s);\n"), "a.js", "d"),
+    "G17d": (_writer("export {};\nsetTimeout.call(null, 'd = 1');\n"), "a.js", "d"),
+    "G17e": (
+        _writer("export {};\nReflect.apply(setTimeout, null, ['d = 1']);\n"),
+        "a.js",
+        "d",
+    ),
+    "codex-template-timer": (
+        _writer("export {};\nsetTimeout(`d = 1`);\n"),
+        "a.js",
+        "d",
+    ),
+    "codex-bracket-timer": (
+        _writer("export {};\nwindow['setTimeout']('d = 1');\n"),
+        "a.js",
+        "d",
+    ),
+    # B-1 (#691 ruling): a misparsed block glued to the next expression.
+    "W01": (_in_function(_DD + "\n  " + _LABEL + " [0];"), "a.js", "d"),
+    "W02": (_in_function(_DD + "\n  " + _LABEL + " (0);"), "a.js", "d"),
+    "W03": (_in_function(_DD + "\n  " + _LABEL + " +0;"), "a.js", "d"),
+    "W05": (_in_function(_DD + "\n  " + _LABEL + " `x`;"), "a.js", "d"),
+    "W06": (_in_function(_D1 + "\n  " + _LABEL + " [0];"), "a.js", "d"),
+    "W07": (_in_function(_DD + "\n  " + _LABEL + " /x/g;"), "a.js", "d"),
+    "W08": (_in_function(_D1 + "\n  " + _LABEL + " (0);", "ts"), "a.ts", "d"),
+    "W10": (
+        {
+            "a.js": (
+                "function d() { return 1; }\n" + _LABEL + " (0);\n"
+                "function caller() { return d(); }\n"
+            ),
+            "c.js": "export {};\n",
+        },
+        "a.js",
+        "d",
+    ),
+    # B-2: ``static constructor()`` is an ordinary static method.
+    "T01": (
+        _writer(
+            "export class K { static constructor() { this.d = function () {}; } }\n"
+            "window.onload = Reflect.get(K, 'constructor');\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "T01b": (
+        _writer(
+            "export class K { static constructor() { this.d = function () {}; } }\n",
+            "c.ts",
+        ),
+        "a.js",
+        "d",
+    ),
+    # B-3: receiver ``this`` through alias chains.
+    "T22": (_writer("export function o() { this.window.d = 1; }\n"), "a.js", "d"),
+    "T22b": (_writer("export function o() { this['self'].d = 1; }\n"), "a.js", "d"),
+    # B-4 (#691 re-check): ``super.x =`` sets ``x`` on the receiver.
+    "Y12": (
+        _writer(
+            "export class K { m() { super.d = function () { return 2; }; } }\n"
+            "window.onload = K.prototype.m;\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "Y12b": (
+        _writer("export class K { m(): void { super.d = 2; } }\n", "c.ts"),
+        "a.js",
+        "d",
+    ),
+    "Y13": (
+        _writer(
+            "export const o = { m() { super.d = function () { return 3; }; } };\n"
+            "window.onload = o.m;\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "Y13b": (_writer("export const o = { m() { super['d'] = 2; } };\n"), "a.js", "d"),
+    "Y13c": (_writer("export const o = { m(k) { super[k] = 2; } };\n"), "a.js", "d"),
+    "Y32": (
+        _writer("export const o = { m() { super.window.d = 2; } };\n"),
+        "a.js",
+        "d",
+    ),
+    "Y33": (_writer("export const o = { m(s) { super.eval(s); } };\n"), "a.js", "d"),
+    # B-5: a computed link in a receiver ``this`` chain records the name.
+    "Y28": (
+        _writer("export function o(k) { this[k].d = function () { return 5; }; }\n"),
+        "a.js",
+        "d",
+    ),
+    "Y18": (
+        _writer(
+            "export function o() { this[`window`].d = function () { return 7; }; }\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    # Codex 4652498471: a literal-key callee equals dot access.
+    "codex-4652498471": (
+        _writer(
+            "export {};\nfunction overwrite() { Object['assign'](this, { d: 1 }); }\n"
+            "window.onload = overwrite;\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "bracket-define-property": (
+        _writer(
+            "export function o() { Object['defineProperty'](this, 'd', { value: 1 }); }\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "bracket-reflect-set": (
+        _writer("export {};\nReflect['set'](globalThis, 'd', 1);\n"),
+        "a.js",
+        "d",
+    ),
+    "bracket-timer-call": (
+        _writer("export {};\nwindow['setTimeout']['call'](null, 'd = 1');\n"),
+        "a.js",
+        "d",
+    ),
+    "template-assign": (
+        _writer("export function o() { Object[`assign`](this, { d: 1 }); }\n"),
+        "a.js",
+        "d",
+    ),
+    # C-1 (#691 re-check at 7c681e04): ``Object``/``Reflect`` through a
+    # receiver ``this``.
+    "M01": (
+        _writer(
+            "export function o() { this.Object.assign(this, { d: 2 }); }\n"
+            "window.onload = o;\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "M02": (
+        _writer("export function o() { this['Object']['assign'](this, { d: 2 }); }\n"),
+        "a.js",
+        "d",
+    ),
+    "M03": (
+        _writer("export function o() { this.Reflect.set(this, 'd', 2); }\n"),
+        "a.js",
+        "d",
+    ),
+    "M07": (
+        _writer(
+            "export function o() { this.Object.assign(this, { d: 2 }); }\n", "c.ts"
+        ),
+        "a.js",
+        "d",
+    ),
+    "M12": (
+        _writer(
+            "export class K { m() { this.Object.assign(this, { d: 2 }); } }\n"
+            "window.onload = K.prototype.m;\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    # Closed rather than left to R11 (#691 ruling, section 4).
+    "T19": (_writer("export class K { m() { this.eval(s); } }\n"), "a.js", "d"),
+    "T20": (
+        _writer("export class K { m() { this.setTimeout('d = 2'); } }\n"),
+        "a.js",
+        "d",
+    ),
+    "T25": (
+        _writer("export function o() { Object.assign(this, { d: 1 }); }\n"),
+        "a.js",
+        "d",
+    ),
+    "M26": (
+        _writer("export {};\nconst { constructor: F } = () => {};\nF('d = 1')();\n"),
+        "a.js",
+        "d",
+    ),
+    # B5: an in-run HTML file may declare any global in an inline script.
+    "G24e": (
+        _writer("<script>function d() { return 3; }</script>\n", "c.html"),
+        "a.js",
+        "d",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(PANEL_CASES))
+def test_panel_691_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    files, file, reference = PANEL_CASES[case]
+    root = tmp_path / "tree"
+    for name, text in files.items():
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).write_text(text, encoding="utf-8")
+    pairs = [
+        pair
+        for pair in _edges(root)
+        if pair[0]["file"] == file and pair[0]["reference"] == reference
+    ]
+    assert pairs, case
+    for off, on in pairs:
+        assert off["resolution"] == "ambiguous", case
+        assert on == off, case
+
+
+def test_misparsed_blocks_make_the_file_unsupported() -> None:
+    """A1: a statement-level object literal refuses the file; a
+    parenthesized object and a real block do not."""
+    for source in (
+        "{ L: function d() {} }",
+        "function f() { { L: d = 3 } }",
+        # B-1 (#691 ruling): the misparsed block glued to what follows.
+        "{ L: function d() {} } [0];",
+        "{ L: function d() {} } (0);",
+        "{ L: function d() {} } +0;",
+        "{ L: function d() {} } -0;",
+        "{ L: function d() {} } `x`;",
+        "{ L: function d() {} } /x/g;",
+    ):
+        data = source.encode()
+        root = get_parser("javascript").parse(data).root_node
+        assert not root.has_error, source
+        with pytest.raises(js_scope.MisparsedBlockError):
+            js_scope.analyze(root, data, "javascript", [])
+    for source in ("({ a: 1 });", "{ function d() {} }", "{}"):
+        data = source.encode()
+        root = get_parser("javascript").parse(data).root_node
+        assert js_scope.misparsed_block(root) is None, source
+
+
+def test_mjs_files_are_modules() -> None:
+    """A8: ``.mjs`` and ``.mts`` are always ES modules (not collected yet)."""
+    from chunker.call_resolution.facts import compute_scope_facts
+
+    source = b"function d() {}\nfunction d() {}\nd();\n"
+    goals = {
+        suffix: compute_scope_facts(
+            language="javascript",
+            source=source,
+            call_facts=[],
+            symbols=[],
+            suffix=suffix,
+        )["goal"]
+        for suffix in (".js", ".mjs", ".cjs")
+    }
+    assert goals == {".js": "script", ".mjs": "module", ".cjs": "script"}
+
+
+def test_markdown_and_rst_in_the_run_do_not_count(tmp_path: Path) -> None:
+    """The #691 ruling (3.1): a README or an ``.rst`` page runs nothing by
+    itself, so a script top level still resolves next to one."""
+    root = _write(
+        tmp_path,
+        {
+            "a.js": _SCRIPT_A,
+            "b.js": _ESM_DECOY,
+            "README.md": "# Read me\n\n<script>function d() {}</script>\n",
+        },
+    )
+    off, on = _edge(_edges(root), "a.js", "d")
+    assert off["resolution"] == "ambiguous"
+    assert on["resolution"] == "resolved"
+    assert on["provenance"]["call_rules"] == ["t1.lexical"]
+
+
+def test_static_constructor_is_not_the_class_constructor() -> None:
+    """B-2: only a non-static ``constructor`` method is excluded."""
+    assert "d" in script_globals(
+        "export class K { static constructor() { this.d = 1; } }"
+    )
+    assert "d" not in script_globals("export class K { constructor() { this.d = 1; } }")
+    # A string-named ``'constructor'()`` still counts (conservative).
+    assert "d" in script_globals("export class K { 'constructor'() { this.d = 1; } }")
+
+
+def test_receiver_chain_writes_record_the_name_not_a_wildcard() -> None:
+    """B-4/B-5: ``super.x =`` and ``this[k].x =`` record ``x``; only a
+    computed final key gives ``*``."""
+    assert script_globals("export function o(k) { this[k].d = 1; }") == ["d"]
+    assert script_globals("export function o(k, j) { this[k][j].d = 1; }") == ["d"]
+    assert script_globals("export const o = { m() { super.d = 1; } };") == ["d"]
+    assert script_globals("export const o = { m(k) { super[k] = 1; } };") == ["*"]
+    # The class constructor's ``super``/``this`` is the new instance.
+    assert (
+        script_globals(
+            "export class K extends B { constructor() { super(); super.d = 1; } }"
+        )
+        == []
+    )
+
+
+def test_writer_through_this_in_a_constructor_still_resolves(tmp_path: Path) -> None:
+    """C-1 control (M13): in a class constructor ``this`` is the instance, so
+    ``this.Object.assign(this, …)`` writes no global."""
+    root = _write(
+        tmp_path,
+        {
+            "a.js": _SCRIPT_A,
+            "b.js": _ESM_DECOY,
+            "c.js": (
+                "export class K { constructor() { this.Object.assign(this, { d: 2 }); } }\n"
+            ),
+        },
+    )
+    off, on = _edge(_edges(root), "a.js", "d")
+    assert off["resolution"] == "ambiguous"
+    assert on["resolution"] == "resolved"
+    assert on["provenance"]["call_rules"] == ["t1.lexical"]

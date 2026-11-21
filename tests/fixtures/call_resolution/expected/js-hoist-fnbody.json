@@ -22,14 +22,13 @@
      "reference": "d",
      "structural": {
       "candidates": [
-       "a.js:2:g.d",
        "a.js:3:g.d"
       ],
-      "interim": "PR 2 interim (plan 10.3): the function-body group stays ambiguous; PR 3 resolves to a.js:3 g.d by t1.js_hoist",
       "outcome": "local",
-      "resolution": "ambiguous",
+      "resolution": "resolved",
       "rules": [
-       "t1.lexical"
+       "t1.lexical",
+       "t1.js_hoist"
       ]
      },
      "today": {
