@@ -2038,3 +2038,15 @@ parsing fails 20 tests.
 | Audit: every place that used raw node text as a name or dotted path now uses identifier tokens (import names and module paths, the `from sys import modules` check, the import-binding text, bound import names, `as` alias targets, `case` value patterns) | §7.3 "Names come from tokens" |
 | G-3: the attribute-write rule catches its listed spellings only; R12 names `operator.setitem`, `\|=` on the namespace dict and `update()` with a non-literal mapping | §7.3; §15 R12 |
 | G-1 nit: `analyze(path=None)` fails closed like `""` | `py_scope.analyze` |
+
+### PR 4: Codex 4654363963 (mangled names from class code)
+
+Only adds `none`; no expected row changes. `python` fact version 8. A
+Codex P2 on ready voided the approval at `e4ed3c5e`: the attribute-write rule
+recorded only the source spelling, but `mod.__helper = f` inside class `K`
+writes `_K__helper` at run time.
+
+| Item | Applied in |
+| --- | --- |
+| Every name recorded from an identifier in class code takes every runtime spelling (source and mangled `_Class__x`, by `_record`'s rules): attribute writes (`x.__n = v`, `del`, augmented), the own-name and dynamic-name scans, submodule imports. CPython 3.14 (`co_names`) mangles attribute names, imported module names and aliases, not keyword-argument names, class-pattern keywords or strings; the scans over-trigger on those safely, and string keys stay literal | §7.3 (B-1, via the `py_scope` docstring) |
+| Pins: Codex's tree end to end and variants (`del`, augmented assignment, a method body, a nested class, a comprehension target in a lambda, `global` plus an attribute write, a `with` target); mutation: attribute-write 9, scans 1, submodule imports 1 failures | `tests/test_call_resolution_tier1_py.py` |

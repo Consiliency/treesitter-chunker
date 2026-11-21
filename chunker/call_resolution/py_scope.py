@@ -133,7 +133,15 @@ comprehension in it), CPython rewrites ``__x`` (not ending in ``__``) to
 ``_<Class>__x``. A lookup of such a name there gives ``none(unmapped)``, and
 every binding, ``global`` or ``nonlocal`` of one there also binds each
 mangled spelling an enclosing class may give it (a non-definition binding),
-so ``_C__x`` spelled out elsewhere never proves past a mangled write.
+so ``_C__x`` spelled out elsewhere never proves past a mangled write. The
+same holds wherever the analysis records a name from an identifier in class
+code (Codex 4654363963): an attribute write (``mod.__helper = f`` in class
+``K`` writes ``_K__helper``; also ``del`` and augmented assignment), the
+own-name and dynamic-name scans, and submodule imports all take every runtime
+spelling. CPython 3.14 mangles attribute names, imported module names and
+``as`` aliases, but not keyword-argument names, class-pattern keywords or
+strings; the scans take the mangled spelling everywhere anyway, which can
+only fail closed, and string keys keep their literal spelling.
 
 **The file's own module: one general fail-closed rule** (the president's
 re-checks of #695, replacing per-shape fixes). The names the import system
@@ -710,7 +718,10 @@ class _Analysis:
         if node.type == "attribute":
             attribute = node.child_by_field_name("attribute")
             if attribute is not None:
-                self.attribute_writes.add(_text(attribute, self.source))
+                # Inside a class, CPython mangles the attribute name too:
+                # ``mod.__helper = f`` in class ``K`` writes ``_K__helper``
+                # (Codex 4654363963). Record every runtime spelling.
+                self.attribute_writes.update(_spellings(attribute, self.source))
             return
         for index, child in enumerate(node.children):
             if node.field_name_for_child(index) == "subscript":
@@ -1008,6 +1019,9 @@ class _Analysis:
             for index in range(1, len(path)):
                 if path[index - 1] in own:
                     self._module_write(path[index])
+                    # In class code an import name may also be mangled.
+                    for mangled in _mangled_names(node, path[index], self.source):
+                        self._module_write(mangled)
 
     def _import(self, node: Any, scope: _Scope, depth: int) -> None:
         self._submodule_writes(node)
@@ -1165,11 +1179,16 @@ class _Analysis:
             # (#695 re-check N-4): an attribute, a keyword argument, a class
             # pattern's keyword (``case object(__globals__=g)``), an import or
             # dotted name, a definition's name. Over-triggering only fails
-            # closed.
-            if name in _DYNAMIC_ATTRIBUTES:
+            # closed. Inside a class every runtime spelling counts: the
+            # source one and each mangled ``_Class__x`` one (Codex
+            # 4654363963), whether or not CPython mangles that position.
+            spellings = _spellings(ident, source)
+            if spellings & _DYNAMIC_ATTRIBUTES:
                 self.dynamic = True
-                self.frame_locals = self.frame_locals or name == _FRAME_LOCALS
-            if self._names_own_module(name) and not _scope_binding_name(ident):
+                self.frame_locals = self.frame_locals or _FRAME_LOCALS in spellings
+            if not _scope_binding_name(ident) and any(
+                self._names_own_module(spelling) for spelling in spellings
+            ):
                 # ``pkg.a.helper = …``, ``case object(a=m)``: a path through a
                 # parent package, which may be the run root itself.
                 self.dynamic = True
@@ -1538,6 +1557,14 @@ def _mangled_names(node: Any, name: str, source: bytes) -> list[str]:
                     found.append(f"_{stripped}{name}")
         child, current = current, current.parent
     return found
+
+
+def _spellings(ident: Any, source: bytes) -> set[str]:
+    """Every name an identifier may have at run time: its source spelling and
+    each mangled ``_Class__x`` spelling a class around it may give it (the
+    rules of :func:`_mangled_names`)."""
+    name = _text(ident, source)
+    return {name, *_mangled_names(ident, name, source)}
 
 
 def _unwrap(node: Any) -> Any:

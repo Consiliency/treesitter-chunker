@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"9"`` for the ``js`` family and ``"7"`` for
+Schema (fact version ``"9"`` for the ``js`` family and ``"8"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -107,7 +107,9 @@ logger = logging.getLogger(__name__)
 # ``X[__name__]`` on any receiver, an unknown path fails closed).
 # python "7": the re-check at 06f5dc32 (names, dotted paths and relative
 # levels from tokens, not raw node text).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "9", "python": "7"}
+# python "8": Codex 4654363963 (every runtime spelling of a name recorded
+# from class code, mangled ``_Class__x`` included).
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "9", "python": "8"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.

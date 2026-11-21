@@ -3460,3 +3460,77 @@ def test_analyze_without_a_path_fails_closed() -> None:
         }, path
     named = py_scope.analyze(root, source, "python", call, path="a.py")
     assert named["bindings"][key]["outcome"] == "local"
+
+
+# ---------------------------------------------------------------------------
+# Codex 4654363963: names recorded from class code take every runtime
+# spelling, mangled ``_Class__x`` included.
+
+CODEX_4654363963 = (
+    "def _K__helper():\n    return 1\n\n\ndef replacement():\n    return 2\n\n\n"
+    "def run(mod):\n    class K:\n        mod.__helper = replacement\n"
+    "    return _K__helper()\n"
+)
+
+
+def test_codex_4654363963_end_to_end(tmp_path: Path) -> None:
+    """Passed this module, ``run`` calls ``replacement``: the class-body write
+    ``mod.__helper`` is ``mod._K__helper`` at run time."""
+    root = _tree(
+        tmp_path,
+        {"a.py": CODEX_4654363963, "b.py": "def _K__helper():\n    return 3\n"},
+    )
+    off, on = _off_on(root)
+    edge = _helper_edge(off, "_K__helper")
+    assert edge["resolution"] == "ambiguous"
+    assert _helper_edge(on, "_K__helper") == edge
+
+
+@pytest.mark.parametrize(
+    "write",
+    [
+        "    class K:\n        mod.__helper = replacement",
+        "    class K:\n        del mod.__helper",
+        "    class K:\n        mod.__helper += 1",
+        "    class K:\n        def m(self):\n            mod.__helper = replacement",
+        "    class K:\n        f = lambda: setattr(mod, 'x', 1) or mod.__dict__",
+        "    class Outer:\n        class K:\n            mod.__helper = replacement",
+        "    class K:\n        g = (lambda: [mod for mod.__helper in [replacement]])",
+        "    class K:\n        def m(self):\n            global __helper\n            mod.__helper = 1",
+        "    class K:\n        with cm as mod.__helper:\n            pass",
+    ],
+)
+def test_class_code_attribute_writes_bind_the_mangled_name(write: str) -> None:
+    source = (
+        "def _K__helper():\n    return 1\n\n\ndef replacement():\n    return 2\n\n\n"
+        f"def run(mod, cm):\n{write}\n    return _K__helper()\n"
+    )
+    result = _outcome_at(source, "_K__helper", "pkg/a.py")
+    if "lambda: setattr" in write:
+        # Control: no ``__helper`` write, so ``_K__helper`` still resolves.
+        assert result["outcome"] == "local", write
+    else:
+        assert result["outcome"] == "none", write
+
+
+def test_class_code_names_take_mangled_spellings_in_every_scan() -> None:
+    """The own-name and dynamic-name scans see the mangled spelling too."""
+    # A module whose own name is the mangled spelling of a class-code name.
+    source = (
+        HELPER + "class K:\n    x = pkg.__helper\n\n\ndef use():\n    return helper()\n"
+    )
+    assert _outcome_at(source, "helper", "pkg/_K__helper.py") == {
+        "outcome": "none",
+        "reason": "dynamic-scope",
+    }
+    # Outside a class nothing is mangled.
+    plain = HELPER + "x = pkg.__helper\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(plain, "helper", "pkg/_K__helper.py")["outcome"] == "local"
+
+
+def test_class_code_submodule_imports_bind_mangled_names() -> None:
+    source = (
+        "def _K__helper():\n    return 1\n\n\nclass K:\n    from . import __helper\n\n\n"
+        "def use():\n    return _K__helper()\n"
+    )
+    assert _outcome_at(source, "_K__helper", "pkg/__init__.py")["outcome"] == "none"
