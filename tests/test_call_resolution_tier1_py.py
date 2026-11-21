@@ -4073,3 +4073,187 @@ def test_unused_main_from_imports_and_function_imports_still_resolve(form: str) 
     method is not a class attribute (#695 J-4)."""
     source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
     assert _outcome_at(source, "helper", "pkg/a.py")["outcome"] == "local", form
+
+
+# ---------------------------------------------------------------------------
+# The president's re-check at f2b38014 (K-3): ``"__main__"`` as a constant
+# string names this module by string when the file runs as a script.
+
+FOLD9_695: dict[str, tuple[str, dict[str, str]]] = {
+    "m21_name_const_main": (
+        "K-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "import pydoc\n"
+            "MM = '__main__'\n"
+            "pydoc.locate(MM).__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m21_pkgutil_resolve_main": (
+        "K-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "import pkgutil\n"
+            "pkgutil.resolve_name('__main__').__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m21_pydoc_locate_main": (
+        "K-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "import pydoc\n"
+            "pydoc.locate('__main__').__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m22_mock_patch_dict_main": (
+        "K-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "from unittest import mock\n"
+            "import pydoc\n"
+            "with "
+            "mock.patch.dict(pydoc.locate('__main__').__dict__, "
+            "D):\n"
+            "    use()\n"
+        },
+    ),
+    "m22_mock_patch_main_literal": (
+        "K-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "from unittest import mock\n"
+            "with mock.patch('__main__.helper', len):\n"
+            "    use()\n"
+        },
+    ),
+    "m22_operator_attrgetter": (
+        "K-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "import pydoc, operator\n"
+            "setattr(pydoc.locate('__main__'), n, len)\n"
+            "use()\n"
+        },
+    ),
+    "m22_resolve_name_colon": (
+        "K-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "k = __name__\n"
+            "import pkgutil\n"
+            "pkgutil.resolve_name('__main__:__dict__').update(D)\n"
+            "use()\n"
+        },
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD9_695))
+def test_fold9_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    _, spec = FOLD9_695[case]
+    files = dict(spec)
+    target = files.pop("__target__", "a.py")
+    files.setdefault("b.py", _decoys(files[target]))
+    root = _tree(tmp_path, files)
+    off, on = _off_on(root)
+    off_calls = [e for e in off["relationships"] if e["file"] == target]
+    assert any(edge["resolution"] == "ambiguous" for edge in off_calls), case
+    assert [e for e in on["relationships"] if e["file"] == target] == off_calls
+
+
+@pytest.mark.parametrize(
+    ("path", "form"),
+    [
+        # K-3: ``"__main__"`` as a component, split on ``.`` and ``:``.
+        ("pkg/a.py", "with mock.patch('__main__.helper', len):\n    pass"),
+        ("pkg/a.py", "pydoc.locate('__main__').__dict__.update(D)"),
+        ("pkg/a.py", "pkgutil.resolve_name('__main__:__dict__').update(D)"),
+        ("pkg/a.py", "MM = '__main__'"),
+        # A multiprocessing spawn child imports the script as ``__mp_main__``.
+        ("pkg/a.py", "pydoc.locate('__mp_main__').__dict__.update(D)"),
+        ("pkg/a.py", "import __mp_main__ as m\nm.__dict__.update(D)"),
+        # ``:`` also separates the own name and the dynamic attribute names.
+        ("pkg/a.py", "pkgutil.resolve_name('pkg.a:__dict__').update(D)"),
+        ("pkg/a.py", "pkgutil.resolve_name('sys:modules')[k].__dict__.update(D)"),
+    ],
+)
+def test_main_and_own_name_strings_fail_closed(path: str, form: str) -> None:
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", path) == {
+        "outcome": "none",
+        "reason": "dynamic-scope",
+    }, form
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "if __name__ == '__main__':\n    pass",
+        "if '__main__' == __name__:\n    pass",
+        "if __name__ in ('__main__',):\n    pass",
+        "if __name__ != ('__main__'):\n    pass",
+        "match __name__:\n    case '__main__':\n        pass",
+    ],
+)
+def test_main_guards_still_resolve(form: str) -> None:
+    """A comparison operand or ``case`` pattern only yields a boolean."""
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", "pkg/a.py")["outcome"] == "local", form

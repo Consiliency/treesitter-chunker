@@ -105,7 +105,14 @@ attribute ``os.sys``), a dunder attribute of ``sys`` (``sys.__dict__``), the
 other than in an import, any name a ``from __main__`` import binds (``from
 __main__ import __dict__ as g`` hands over the namespace), and any import of
 ``sys`` or ``__main__`` in a class body (a class attribute, read as ``K.m``,
-``self.m`` or ``getattr(K, "m")``); ``X.modules[__name__]`` or
+``self.m`` or ``getattr(K, "m")``), and a constant string with a ``__main__``
+component (``mock.patch("__main__.helper")``, ``pydoc.locate("__main__")``),
+except as a comparison operand or a ``case`` pattern (``if __name__ ==
+"__main__":`` still resolves); ``__mp_main__``, the name a multiprocessing
+spawn child imports the script under, counts as ``__main__``, and constant
+strings split on ``.`` and ``:`` (``pkgutil.resolve_name("pkg.mod:attr")``)
+for this rule, the own-name rule and the dynamic attribute names;
+``X.modules[__name__]`` or
 ``X.modules.get(__name__)`` (also ``__getitem__``, ``setdefault``, ``pop``)
 through any receiver ``X``; an import of the file's own module (``import a``
 or ``from . import a`` in ``a.py``); a function's ``__globals__``, a frame's
@@ -310,6 +317,15 @@ _SYS_MODULES = "modules"
 # ``import __main__`` reaches the namespace of the module run as a script,
 # which may be this one: any use other than importing it is dynamic.
 _MAIN = "__main__"
+# The names the module run as a script answers to: ``__main__``, and
+# ``__mp_main__`` in a multiprocessing spawn child, which imports the main
+# script under that name.
+_MAIN_NAMES = frozenset({_MAIN, "__mp_main__"})
+# Separators of a module path in a string resolvers accept: ``.`` and the
+# ``:`` of ``pkgutil.resolve_name("pkg.mod:attr")``. No resolver maps ``/``
+# to this module's namespace (``runpy.run_path`` and
+# ``spec_from_file_location`` build a new module object).
+_NAME_SEPARATORS = re.compile(r"[.:]")
 # ``frame.f_locals`` writes through to a function's locals (PEP 667, Python
 # 3.13+): every lookup of a file that mentions it fails closed.
 _FRAME_LOCALS = "f_locals"
@@ -1142,7 +1158,7 @@ class _Analysis:
         ``frame_locals`` if it may write a function's locals."""
         source = self.source
         sys_names = {_SYS}
-        main_names = {_MAIN}
+        main_names = set(_MAIN_NAMES)
         identifiers: list[Any] = []
         stack = [self.root]
         while stack:
@@ -1159,12 +1175,23 @@ class _Analysis:
                 # (``import __main__ as __m`` binds ``_K__m``; #695 I-3).
                 if alias is not None and last == _SYS:
                     sys_names.update(_spellings(alias, source))
-                if alias is not None and last == _MAIN:
+                if alias is not None and last in _MAIN_NAMES:
                     main_names.update(_spellings(alias, source))
             elif kind in ("string", "concatenated_string", "binary_operator"):
                 value = _constant_string(node, source)
                 if value is not None:
                     self._literal_use(value)
+                    if set(_NAME_SEPARATORS.split(value)) & _MAIN_NAMES and not (
+                        _main_test_operand(node)
+                    ):
+                        # ``"__main__"`` names this module by string when the
+                        # file runs as a script (``mock.patch("__main__.f")``,
+                        # ``pydoc.locate("__main__")``,
+                        # ``pkgutil.resolve_name("__main__:__dict__")``; #695
+                        # K-3). A comparison operand or a ``case`` pattern
+                        # (``if __name__ == "__main__":``) only yields a
+                        # boolean.
+                        self.dynamic = True
                     if self._names_own_module(value):
                         # Any constant string naming this module, alone or as
                         # a component of a dotted path (``getattr(pkg, "a")``,
@@ -1177,9 +1204,15 @@ class _Analysis:
             if kind in ("import_statement", "import_from_statement"):
                 self._import_use(node)
                 self._class_body_module_import(node)
-                if kind == "import_from_statement" and _module_parts(node, source) == (
-                    0,
-                    [_MAIN],
+                dots, module_parts = (
+                    _module_parts(node, source)
+                    if kind == "import_from_statement"
+                    else (0, [])
+                )
+                if (
+                    not dots
+                    and len(module_parts) == 1
+                    and module_parts[0] in (_MAIN_NAMES)
                 ):
                     # ``from __main__ import __dict__ as g`` hands over a
                     # piece of ``__main__``'s namespace: every name it binds
@@ -1240,7 +1273,7 @@ class _Analysis:
         name."""
         if not self.own_names:
             return False
-        return bool(set(text.split(".")) & self.own_names) or any(
+        return bool(set(_NAME_SEPARATORS.split(text)) & self.own_names) or any(
             "." in own and own in text for own in self.own_names
         )
 
@@ -1252,13 +1285,13 @@ class _Analysis:
             return
         # The paths include a from-import's module components.
         for path in self._import_paths(node, resolve=False):
-            if {_SYS, _MAIN} & set(path):
+            if ({_SYS} | _MAIN_NAMES) & set(path):
                 self.dynamic = True
 
     def _literal_use(self, value: str) -> None:
         """A constant string naming a dynamic attribute counts as a mention
         of it (the analogue of PR 3's literal-key rule)."""
-        parts = set(value.split("."))
+        parts = set(_NAME_SEPARATORS.split(value))
         if parts & _LITERAL_DYNAMIC:
             self.dynamic = True
         if _FRAME_LOCALS in parts:
@@ -1596,6 +1629,31 @@ def _spellings(ident: Any, source: bytes) -> set[str]:
     rules of :func:`_mangled_names`)."""
     name = _text(ident, source)
     return {name, *_mangled_names(ident, name, source)}
+
+
+def _main_test_operand(node: Any) -> bool:
+    """Whether a constant is a comparison operand (also inside a tuple, list
+    or set operand of ``in``) or sits in a ``case`` pattern."""
+    current = node
+    while current.parent is not None and current.parent.type in (
+        "parenthesized_expression",
+        "tuple",
+        "list",
+        "set",
+        "concatenated_string",
+        "binary_operator",
+    ):
+        current = current.parent
+    parent = current.parent
+    if parent is not None and parent.type == "comparison_operator":
+        return True
+    while parent is not None:
+        if parent.type == "case_pattern":
+            return True
+        if parent.type in ("block", "module"):
+            return False
+        parent = parent.parent
+    return False
 
 
 def _in_class_body(node: Any) -> bool:

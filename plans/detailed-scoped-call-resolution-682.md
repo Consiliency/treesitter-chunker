@@ -693,8 +693,15 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     `modules` from `sys`; or that touches `__globals__`, `f_globals`,
     `f_locals`, `f_builtins` or `inspect.getmodule`. The #695 panel fold
     adds: `__main__` or an alias of it used other than in an import (A5),
-    any name a `from __main__` import binds, and any import of `sys` or
-    `__main__` in a class body (#695 J-3/J-4); a
+    any name a `from __main__` import binds, any import of `sys` or
+    `__main__` in a class body (#695 J-3/J-4), and a constant string with a
+    `__main__` component (`mock.patch('__main__.helper')`,
+    `pydoc.locate('__main__')`), except as a comparison operand or a `case`
+    pattern (#695 K-3/K-4). `__mp_main__`, the name a multiprocessing spawn
+    child imports the script under, counts as `__main__`. Constant strings
+    split on `.` and `:` (the `pkgutil.resolve_name('pkg.mod:attr')` form)
+    for this rule, the own-name rule and the dynamic attribute names; no
+    resolver maps `/` to this module's namespace. Also a
     constant string (a literal, adjacent literals or literals joined by `+`)
     that is one of those attribute names or `modules`, alone or as a part of
     a dotted path (`getattr(f, '__globals__')`, `attrgetter('sys.modules')`;
@@ -2072,3 +2079,13 @@ Only adds `none`; no expected row changes. `python` fact version 10.
 | J-3b/J-4(2): every name a `from __main__ import …` binds joins the `__main__` alias set with every runtime spelling, so any later use (`g.update(D)`, `g[n] = len`, `__dict__.update(D)`) is dynamic; an unused one still resolves (panel A's `import_main_from`) | §7.3 dynamic binding |
 | R12 names the `sys` variants with a computed `modules` key and `from sys import __dict__` with a computed key | §15 R12 |
 | Pins: the 16 J-3 trees plus `m20_sys_classattr_k` (`test_fold8_695_cases_keep_their_off_mode_edge`), unit pins and resolving controls; mutation: class-body rule 16, from-import names 9, their spellings 1, the function boundary of `_in_class_body` 1 failures | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: the president's #695 re-check at f2b38014
+
+Only adds `none`; no expected row changes. `python` fact version 11.
+
+| Item | Applied in |
+| --- | --- |
+| K-3/K-4: a constant string with a `__main__` component (split on `.` and `:`) is dynamic, except as a comparison operand (through parentheses, or a tuple, list or set operand of `in`) or in a `case` pattern | §7.3 dynamic binding |
+| Closing the class: `__mp_main__` (a multiprocessing spawn child's name for the script) counts as `__main__` for the alias and string rules; the own-name and dynamic-attribute string rules also split on `:` (`pkgutil.resolve_name('pkg.a:__dict__')`, `'sys:modules'`); `/` maps no resolver to this module | §7.3 |
+| Pins: the 7 K-3 trees (`test_fold9_695_cases_keep_their_off_mode_edge`), unit pins and the guard controls (`==` both ways, `in`, `!=` with parentheses, `case`); mutation: string rule 12, exemption 5, `:` for `__main__` 2, own name 1, dynamic attributes 1, `__mp_main__` 2, `case` exemption 1 failures | `tests/test_call_resolution_tier1_py.py` |
