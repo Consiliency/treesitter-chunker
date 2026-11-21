@@ -18,7 +18,18 @@
      "caller": "use",
      "file": "a.py",
      "line": 13,
+     "pr": 4,
      "reference": "f",
+     "structural": {
+      "candidates": [
+       "a.py:7:f",
+       "a.py:5:f",
+       "a.py:8:f"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "4d4cd9d7f3fd6e82443194cd97630678d117be81",

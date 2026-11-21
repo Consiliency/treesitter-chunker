@@ -24,7 +24,7 @@
       "candidates": [
        "pkg/sub/svc.py:5:target"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },
@@ -51,7 +51,17 @@
      "caller": "C.b",
      "file": "pkg/sub/svc.py",
      "line": 16,
+     "pr": 4,
      "reference": "C",
+     "structural": {
+      "candidates": [
+       "pkg/sub/svc.py:9:C",
+       "pkg/sub/svc.py:14:C"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "219cfa7e0bd9e7b1284997c116104a144444a0cc",
@@ -83,7 +93,7 @@
       "candidates": [
        "pkg/sub/svc.py:5:target"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },
@@ -116,7 +126,7 @@
       "candidates": [
        "pkg/sub/svc.py:1:helper"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },
@@ -149,7 +159,7 @@
       "candidates": [
        "pkg/sub/svc.py:5:target"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },
@@ -182,7 +192,7 @@
       "candidates": [
        "pkg/sub/svc.py:5:target"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },
@@ -215,7 +225,7 @@
       "candidates": [
        "pkg/sub/svc.py:1:helper"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },
@@ -242,7 +252,17 @@
      "caller": "caller",
      "file": "pkg/sub/svc.py",
      "line": 31,
+     "pr": 4,
      "reference": "d",
+     "structural": {
+      "candidates": [
+       "pkg/sub/svc.py:19:d",
+       "pkg/sub/svc.py:24:d"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "8359b6a5c56a58c166b73d4e5a70ffa42c20c1ed",
@@ -272,7 +292,7 @@
      "reference": "unknown_thing",
      "structural": {
       "candidates": [],
-      "outcome": "none(stub)",
+      "outcome": "none(unbound)",
       "resolution": "unresolved",
       "rules": []
      },
@@ -301,7 +321,7 @@
       "candidates": [
        "pkg/sub/svc.py:5:target"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },
@@ -334,7 +354,7 @@
       "candidates": [
        "pkg/sub/svc.py:5:target"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },
@@ -367,7 +387,7 @@
       "candidates": [
        "pkg/sub/svc.py:5:target"
       ],
-      "outcome": "none(stub)",
+      "outcome": "import",
       "resolution": "resolved",
       "rules": []
      },

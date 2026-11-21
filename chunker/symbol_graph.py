@@ -856,9 +856,10 @@ def extract_symbol_graph(
     file. At this head it resolves JavaScript, TypeScript and TSX calls whose
     target a lexical binding proves (``t1.lexical``, ``t1.ts_overload``,
     ``t1.js_hoist``); a script top level resolves only when no other file of
-    the run may declare the name as a global. Python calls are not resolved
-    yet, so only the kind and family filters (``t1.kind``, ``t1.family``)
-    narrow them.
+    the run may declare the name as a global. Python calls resolve through
+    the LEGB scope chain (``t1.lexical``); Python redefinitions narrow to
+    their group and never resolve. Elsewhere only the kind and family filters
+    (``t1.kind``, ``t1.family``) narrow.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"

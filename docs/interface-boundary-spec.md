@@ -266,8 +266,13 @@ top level, unless a block-level declaration, an expression binding or a write
 of the name exists there). A script-goal top level proves a binding only when
 no other file of the run may declare that name as a global; this holds within
 the run only, so scripts outside it and global writes no syntactic rule sees
-are not tracked. A lookup through a merged TS namespace body proves nothing. Python callers are not
-resolved yet, so only the kind and family filters narrow them.
+are not tracked. A lookup through a merged TS namespace body proves nothing.
+For Python callers it proves bindings through the LEGB scope chain
+(`t1.lexical`): a single unconditional, undecorated `def` or `class`. Python
+redefinitions narrow to their group and never resolve; module-scope and
+class-body lookups in a file that may bind names at run time (`exec`,
+`globals`, `sys.modules` and the like) or has a star import prove nothing,
+and monkeypatching from other modules is not tracked.
 
 A narrowed edge changes only `target`, `resolution`, `candidates` and
 `metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and

@@ -5,8 +5,8 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"9"`` for the ``js`` family, whose analyzer is real,
-and ``"1"`` for ``python``, still the stub):
+Schema (fact version ``"9"`` for the ``js`` family and ``"2"`` for
+``python``; both analyzers are real):
 
 ``version``
     :data:`CALL_RESOLUTION_FACT_VERSIONS` for the file's language family, or
@@ -16,8 +16,8 @@ and ``"1"`` for ``python``, still the stub):
 ``supported``
     ``False`` for a language no analyzer covers, an analyzer exception,
     ``RecursionError``, a parser initialization failure, a tree with
-    errors, or a JS/TS file that spells a name with a Unicode escape
-    (section 5.3). An unsupported file never narrows, has no
+    errors, a JS/TS file that spells a name with a Unicode escape, or a
+    Python file with a non-ASCII identifier (section 5.3). An unsupported file never narrows, has no
     ``bindings`` and contributes nothing to other files.
 ``goal``
     JavaScript and TypeScript: ``"module"`` if the program has any top-level
@@ -35,6 +35,9 @@ and ``"1"`` for ``python``, still the stub):
     run declares that name as a script global (section 7.2).
     The JS/TS import binding is ``{"source": <specifier>, "name": <imported
     name, "default" or "*">, "form": "named" | "default" | "namespace"}``.
+    The Python import binding is ``{"form": "import", "module": <dotted
+    name>}`` for ``import m [as y]``, or ``{"form": "from", "module":
+    <module, with any leading dots>, "name": <imported name>}``.
     A call whose callee span matches no node has no entry
     (``no-binding-fact``).
 ``script_globals``
@@ -88,7 +91,8 @@ logger = logging.getLogger(__name__)
 # js "8": literal-key access equals dot access at every name-matching site
 # (Codex 4652498471 on #691).
 # js "9": ``Object``/``Reflect`` reached through a receiver ``this`` (C-1).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "9", "python": "1"}
+# python "2": the Python scope analyzer replaces the stub (plan PR 4).
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "9", "python": "2"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -135,8 +139,9 @@ TIER2_NONE_REASONS = (
 )
 # Reasons that exist only at interim heads (section 7.6).
 # ``script-goal-deferred`` and ``namespace-deferred`` existed only at the PR 2
-# head; PR 3 replaced them, so they are no longer valid outcomes.
-INTERIM_NONE_REASONS = ("stub",)
+# head; PR 3 replaced them. ``stub`` existed until both analyzers were real;
+# PR 4 replaced the Python stub. None is a valid outcome any more.
+INTERIM_NONE_REASONS: tuple[str, ...] = ()
 KNOWN_NONE_REASONS = frozenset(
     TIER1_NONE_REASONS + TIER2_NONE_REASONS + INTERIM_NONE_REASONS
 )

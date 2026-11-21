@@ -18,7 +18,18 @@
      "caller": "make",
      "file": "a.py",
      "line": 6,
+     "pr": 4,
      "reference": "C",
+     "structural": {
+      "candidates": [
+       "a.py:1:C"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "1d8a5d3a7c63ae50b6803e18ecb258de8282c41c",

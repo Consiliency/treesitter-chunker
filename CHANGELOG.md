@@ -49,12 +49,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     namespace body (another declaration, an exported namespace that module
     augmentation can extend, a dotted name, `declare module`/
     `declare global`, or any namespace in a script) never resolves.
-    **Python calls are not resolved yet**: for them, and wherever no binding
-    proves a candidate, only the kind and family filters (`t1.kind`,
-    `t1.family`) narrow, and only when two or more candidates remain. A file
-    whose tree has syntax errors or a misparsed block, is too deeply nested
-    for the scope pass, spells a name with a Unicode escape, or whose
-    analysis fails keeps exactly its off-mode edges. Narrowed edges carry
+    In Python files the scope pass follows LEGB: function, lambda, class,
+    comprehension and PEP 695 type-parameter scopes, with class-body code
+    (statements, method decorators, defaults and annotations) seeing its
+    class while methods, lambdas and comprehension bodies skip it, and
+    `global`/`nonlocal` redirects. A single unconditional `def` or `class`
+    resolves (`t1.lexical`); **Python redefinitions never resolve**, they
+    narrow to their group. Parameters, locals (every write form: assignment,
+    augmented and annotated assignment, `for`/`with`/`except`/comprehension
+    targets, walrus, `match` captures, `del`, `type`), imports, a single
+    decorated or conditional definition, names a class body binds, names
+    written through `global` or `nonlocal` from another scope, and
+    module-scope or class-body lookups in a file that may bind names at run
+    time (`exec`, `eval`, `globals`, `vars`, `locals`, `__import__`,
+    `builtins`, `importlib`, `sys.modules`, `__globals__`, frame globals) or
+    has a star import never resolve. Monkeypatching from other modules is not
+    tracked (plan risk R10). Wherever no binding proves a candidate, only
+    the kind and family filters (`t1.kind`, `t1.family`) narrow, and only
+    when two or more candidates remain. A file whose tree has syntax errors
+    or a misparsed block, is too deeply nested for the scope pass, spells a
+    name with a Unicode escape (JS/TS) or has a non-ASCII identifier
+    (Python, whose identifiers are NFKC-normalized), or whose analysis fails
+    keeps exactly its off-mode edges. Narrowed edges carry
     `provenance.call_resolution` and `provenance.call_rules`, and
     `run.options.call_resolution` and symbol-graph
     `metadata.call_resolution` record the mode. On-mode `parity_digest`

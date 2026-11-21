@@ -39,14 +39,13 @@ MODE = "structural"
 
 # The plan PR this head implements (section 13.1). Expected-table rows of a
 # later PR that record an expectation for this head carry ``interim``.
-HEAD_PR = 3
+HEAD_PR = 4
 # Rules and reasons this head produces, each with a case in the expected
-# tables (10.6). Each later PR adds its own. ``stub`` stays until the Python
-# analyzer lands; ``unmapped`` and ``no-binding-fact`` are covered by the
-# named tests below.
+# tables (10.6). Each later PR adds its own. ``stub`` left the vocabulary
+# when the Python analyzer landed (PR 4); ``unmapped`` and ``no-binding-fact``
+# are covered by the named tests below.
 LIVE_RULES = {"t1.kind", "t1.family", "t1.lexical", "t1.ts_overload", "t1.js_hoist"}
 LIVE_REASONS = {
-    "stub",
     "unbound",
     "parameter",
     "local-variable",
@@ -62,6 +61,10 @@ LIVE_REASONS = {
     "type-only",
     "script-global",
     "namespace-merged",
+    # PR 4: Python.
+    "conditional",
+    "class-scope-bound",
+    "star-import",
 }
 # Named generated-coverage tests (plan 10.6, R-3) that exist at this head.
 NAMED_FAILURE_MODE_TESTS = (
@@ -74,6 +77,9 @@ NAMED_FAILURE_MODE_TESTS = (
     "test_unmapped_missing_symbol",
     "test_unmapped_unclassified_node",
     "test_unsupported_deep_nesting_js",
+    # PR 4: the Python analyzer's named tests (plan 10.6).
+    "test_unmapped_duplicate_key",
+    "test_unsupported_deep_nesting",
 )
 # Named end-to-end near-misses on trees the test writes, because a committed
 # tree would change the off-mode baseline (plan 10.6, 11.2): B7 and ``using``.
@@ -99,14 +105,20 @@ NAMED_TIER1_JS_TESTS = (
 # Live reasons no committed fixture produces, each covered by a named test on
 # a tree the test writes (the president's #689 ruling, B-1).
 TEST_WRITTEN_REASONS = {"enum-scope": "test_enum_scope_end_to_end"}
-# Named tests the plan assigns to later heads (panel C2). Each moves to the
-# live list when its analyzer lands.
-DEFERRED_FAILURE_MODE_TESTS = {
-    "test_unmapped_duplicate_key": "PR 4",
-    "test_unsupported_deep_nesting": "PR 4",
-}
-# Families whose analyzer is still the PR 1 stub.
-STUB_FAMILIES = {"python"}
+# Named tests the plan assigns to later heads (panel C2). Each moved to the
+# live list when its analyzer landed; none is left.
+DEFERRED_FAILURE_MODE_TESTS: dict[str, str] = {}
+# Named Python end-to-end tests on trees the test writes, because a committed
+# tree would change the off-mode baseline (plan 10.6, 11.2).
+NAMED_TIER1_PY_TESTS = (
+    "test_decorated_definitions_keep_their_off_mode_edge",
+    "test_non_ascii_identifiers_make_the_file_unsupported",
+    "test_dynamic_binding_forms_keep_their_off_mode_edge",
+    "test_write_forms_keep_their_off_mode_edge",
+    "test_python_positives_end_to_end",
+)
+# Families whose analyzer is still the PR 1 stub: none since PR 4.
+STUB_FAMILIES: set[str] = set()
 # Grammars per analyzer family, for the allow-list review rule.
 FAMILY_GRAMMARS = {"js": ("javascript", "typescript", "tsx"), "python": ("python",)}
 
@@ -414,7 +426,7 @@ def _context(language: str = "typescript", supported: bool = True) -> engine.Run
                 "scope_facts": {
                     "language": language,
                     "supported": supported,
-                    "bindings": {"3:4": {"outcome": "none", "reason": "stub"}},
+                    "bindings": {"3:4": {"outcome": "none", "reason": "unbound"}},
                     "symbols": [],
                 },
             }
@@ -514,7 +526,7 @@ def test_decide_narrows_an_eligible_edge_and_rewrites_it() -> None:
     decisions = engine.narrow_relationships([relationship], _context())
     decision = decisions[relationship["call_site_id"]]
     assert decision.eligible and decision.changed
-    assert decision.outcome == {"outcome": "none", "reason": "stub"}
+    assert decision.outcome == {"outcome": "none", "reason": "unbound"}
     assert relationship["candidates"] == ["ts_fn_a", "ts_fn_b"]
     assert relationship["resolution"] == "ambiguous"
     assert relationship["to"] == "t"
@@ -575,8 +587,12 @@ def test_rule_and_reason_vocabularies() -> None:
         "struct",
         "trait",
     } == engine.NON_CALLABLE_KINDS
-    assert {"stub", "unmapped", "no-binding-fact", "unbound"} <= KNOWN_NONE_REASONS
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "1"}
+    assert {"unmapped", "no-binding-fact", "unbound"} <= KNOWN_NONE_REASONS
+    # Interim reasons leave the vocabulary once replaced (stub at PR 4).
+    assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
+        KNOWN_NONE_REASONS
+    )
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "2"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
@@ -620,9 +636,8 @@ def _on_mode(run: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
 def test_expected_tables_hold_at_this_head(tree: str) -> None:
     """Rows with a ``structural`` field match it; every other row is unchanged.
 
-    At this head the JS/TS analyzer is real and the Python analyzer is still
-    the stub: every Python call has the outcome ``none(stub)``, and no JS/TS
-    call has it.
+    At this head both analyzers are real: no call has the outcome
+    ``none(stub)``.
     """
     table = _table(tree)
     stub = {"outcome": "none", "reason": "stub"}
@@ -735,6 +750,10 @@ def test_live_rules_and_reasons_have_cases() -> None:
 
     for name in NAMED_TIER1_JS_TESTS:
         assert callable(getattr(tier1_js, name, None)), name
+    from tests import test_call_resolution_tier1_py as tier1_py
+
+    for name in NAMED_TIER1_PY_TESTS:
+        assert callable(getattr(tier1_py, name, None)), name
     # Every reason the analyzers emit on the fixtures is a live reason; the
     # two the engine itself produces are covered by the named tests.
     emitted = {
@@ -760,9 +779,9 @@ def test_live_rules_and_reasons_have_cases() -> None:
 def test_proving_families_have_reviewed_allowlists() -> None:
     """A family whose analyzer proves anything has reviewed grammars (7.5).
 
-    The JS/TS analyzer emits real outcomes, so javascript, typescript and
-    tsx must be classified in full; the Python stub emits only
-    ``none(stub)`` until its analyzer and review land together.
+    Both analyzers emit real outcomes, so javascript, typescript, tsx and
+    python must be classified in full (the Python review landed with its
+    analyzer, PR 4).
     """
     from chunker.call_resolution.allowlist import REVIEWED_LANGUAGES
 
@@ -774,7 +793,7 @@ def test_proving_families_have_reviewed_allowlists() -> None:
             if outcome != {"outcome": "none", "reason": "stub"}:
                 assert family is not None
                 proving.add(family)
-    assert "js" in proving
+    assert {"js", "python"} <= proving
     assert not proving & STUB_FAMILIES
     for family in sorted(proving):
         missing = set(FAMILY_GRAMMARS[family]) - REVIEWED_LANGUAGES
