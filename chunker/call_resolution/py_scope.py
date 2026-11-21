@@ -25,8 +25,11 @@ body (class-level statements, method decorators, defaults and annotations,
 nested class bases, a comprehension's first iterable) starts its lookup at
 the class scope, and so does an annotation scope immediately inside a class.
 A name the class body binds anywhere gives ``none(class-scope-bound)``; there
-is no positional variant. A free name continues through the enclosing
-function scopes, then the module. Code in methods, nested functions, lambdas
+is no positional variant. When the class statement has any base or keyword
+argument, every lookup from class-body code gives ``class-scope-bound``: a
+metaclass's ``__prepare__`` (possibly inherited from a base defined in
+another file) or a ``__missing__`` namespace may supply any name. Otherwise a
+free name continues through the enclosing function scopes, then the module. Code in methods, nested functions, lambdas
 and comprehension bodies skips every class scope. A method's bare
 ``__class__`` is the implicit class cell (``none(local-variable)``), and every
 dunder name is implicitly bound in a module or class namespace.
@@ -46,7 +49,8 @@ so lookups never depend on position. Every write form binds:
   (``local-variable``). Targets are read fail-closed: every identifier under a
   target counts, through tuples, lists, starred targets and parentheses,
   except the object of an attribute or subscript (``x.y = v``); any other
-  target form poisons the scope (``unmapped``). The grammar also accepts
+  target form poisons the scope (``unmapped``); a backslash continuation
+  inside a target is only a token. The grammar also accepts
   Python 2, so ``except E, e`` binds ``e`` and a list comprehension's
   targets also bind in the enclosing scope (Python 2 leaked them); the extra
   binding can only fail closed;
@@ -74,13 +78,19 @@ target scope, so a definition there gives ``none(mixed-bindings)`` (the
    proves itself (``t1.lexical``); a single decorated one gives
    ``expression-bound`` and a single conditional one ``conditional``; two or
    more definitions prove the whole group, which narrows but never resolves
-   (section 8). A definition is conditional when an ``if``, ``elif``,
+   (section 8). A module-level definition or import whose name is a builtin
+   (:data:`BUILTINS`) never proves (``builtin-shadow``): until it runs, the
+   name is the builtin, not a ``NameError``. A definition is conditional when an ``if``, ``elif``,
    ``else``, ``try``, ``except``, ``finally``, ``while``, ``for``, ``with``,
    ``match`` or ``case`` lies between it and its scope's body;
    ``decorated_definition`` is transparent.
 
 A name bound nowhere in the file is ``unbound`` (a builtin or a
 ``NameError``).
+
+A file that mentions ``f_locals`` anywhere (an attribute or a constant string)
+gives ``dynamic-scope`` for every lookup, function scopes included: a frame's
+``f_locals`` writes through to a function's locals (PEP 667, Python 3.13+).
 
 **Dynamic binding fails closed** (``dynamic-scope``). A file may bind module
 names at run time when it mentions ``exec``, ``eval``, ``globals``,
@@ -91,15 +101,29 @@ argument name or a ``def``/``class`` name (so ``import builtins as b`` and
 ``sys.modules`` (``sys`` reached by name, through an ``as`` alias, or as an
 attribute ``os.sys``), a dunder attribute of ``sys`` (``sys.__dict__``), the
 ``sys`` module handed on as a value (``getattr(sys, "modules")``,
-``f(sys)``), ``from sys import modules``; a function's ``__globals__``, a
-frame's ``f_globals``/``f_locals``/``f_builtins`` and ``inspect.getmodule``;
-and the Python 2 ``exec`` statement. Inside a function,
-``exec`` and ``locals()`` writes cannot rebind a local, so lookups that
-resolve in a function scope are unaffected; a class body's namespace is a
-dict they can write, so class-body lookups fail closed too. Monkeypatching
-from other modules (plan R10) and other run-time paths no syntactic rule
-sees (frame and ``ctypes`` tricks, a module importing itself by name) are
-not tracked.
+``f(sys)``), ``from sys import modules``; ``__main__`` or an alias of it used
+other than in an import; ``X.modules[__name__]`` or
+``X.modules.get(__name__)`` (also ``__getitem__``, ``setdefault``, ``pop``)
+through any receiver ``X``; an import of the file's own module (``import a``
+or ``from . import a`` in ``a.py``); a function's ``__globals__``, a frame's
+``f_globals``/``f_builtins`` and ``inspect.getmodule``; a constant string
+(a literal, adjacent literals or literals joined by ``+``) that is one of
+those attribute names or ``modules``, alone or as a part of a dotted path
+(``getattr(f, "__globals__")``, ``attrgetter("sys.modules")``); and the
+Python 2 ``exec`` statement. Inside a function, ``exec`` and ``locals()``
+cannot rebind a local, so without ``f_locals`` lookups that resolve in a
+function scope are unaffected; a class body's namespace is a dict they can
+write, so class-body lookups fail closed too. Monkeypatching from other
+modules (plan R10) and run-time paths no syntactic rule sees (plan R12:
+frame writes from another module, computed strings, other ``X.modules``
+uses, ``gc``/``ctypes`` tricks) are not tracked.
+
+**Indentation that depends on the tab width is not analyzed.** tree-sitter
+counts a tab as eight more columns, while CPython advances to the next
+multiple of eight, so a line whose leading whitespace has a space before a
+tab can land in a different block without a parse error. Such a file, or one
+with a form feed in a line's leading whitespace, raises
+:class:`AmbiguousIndentationError` and is ``supported: false``.
 
 **Identifiers are compared by their source spelling, so a file with a
 non-ASCII identifier is not analyzed.** Python normalizes identifiers to
@@ -126,6 +150,8 @@ the chunker emits as symbols, never the enclosing ``decorated_definition``.
 
 from __future__ import annotations
 
+import ast
+import re
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -203,6 +229,207 @@ _DYNAMIC_ATTRIBUTES = frozenset(
 )
 _SYS = "sys"
 _SYS_MODULES = "modules"
+# ``import __main__`` reaches the namespace of the module run as a script,
+# which may be this one: any use other than importing it is dynamic.
+_MAIN = "__main__"
+# ``frame.f_locals`` writes through to a function's locals (PEP 667, Python
+# 3.13+): every lookup of a file that mentions it fails closed.
+_FRAME_LOCALS = "f_locals"
+# ``X.modules[__name__]`` and these methods with ``__name__`` reach this
+# module's object through any receiver (``collections._sys.modules``).
+_MODULE_GETTERS = frozenset({"get", "__getitem__", "setdefault", "pop"})
+# A string literal naming one of these, alone or as a part of a dotted path
+# (``getattr(f, "__globals__")``, ``attrgetter("sys.modules")``), counts as a
+# mention of the attribute.
+_LITERAL_DYNAMIC = _DYNAMIC_ATTRIBUTES | {_SYS_MODULES}
+# ``dir(builtins)`` on CPython 3.14 (``python -I``), pinned by a test, plus
+# the Python 2 builtins the grammar's Python 2 forms imply. A module-level
+# definition of one of these names never proves: until the definition runs,
+# the name falls back to the builtin (``builtin-shadow``).
+BUILTINS_314 = frozenset(
+    [
+        "ArithmeticError",
+        "AssertionError",
+        "AttributeError",
+        "BaseException",
+        "BaseExceptionGroup",
+        "BlockingIOError",
+        "BrokenPipeError",
+        "BufferError",
+        "BytesWarning",
+        "ChildProcessError",
+        "ConnectionAbortedError",
+        "ConnectionError",
+        "ConnectionRefusedError",
+        "ConnectionResetError",
+        "DeprecationWarning",
+        "EOFError",
+        "Ellipsis",
+        "EncodingWarning",
+        "EnvironmentError",
+        "Exception",
+        "ExceptionGroup",
+        "False",
+        "FileExistsError",
+        "FileNotFoundError",
+        "FloatingPointError",
+        "FutureWarning",
+        "GeneratorExit",
+        "IOError",
+        "ImportError",
+        "ImportWarning",
+        "IndentationError",
+        "IndexError",
+        "InterruptedError",
+        "IsADirectoryError",
+        "KeyError",
+        "KeyboardInterrupt",
+        "LookupError",
+        "MemoryError",
+        "ModuleNotFoundError",
+        "NameError",
+        "None",
+        "NotADirectoryError",
+        "NotImplemented",
+        "NotImplementedError",
+        "OSError",
+        "OverflowError",
+        "PendingDeprecationWarning",
+        "PermissionError",
+        "ProcessLookupError",
+        "PythonFinalizationError",
+        "RecursionError",
+        "ReferenceError",
+        "ResourceWarning",
+        "RuntimeError",
+        "RuntimeWarning",
+        "StopAsyncIteration",
+        "StopIteration",
+        "SyntaxError",
+        "SyntaxWarning",
+        "SystemError",
+        "SystemExit",
+        "TabError",
+        "TimeoutError",
+        "True",
+        "TypeError",
+        "UnboundLocalError",
+        "UnicodeDecodeError",
+        "UnicodeEncodeError",
+        "UnicodeError",
+        "UnicodeTranslateError",
+        "UnicodeWarning",
+        "UserWarning",
+        "ValueError",
+        "Warning",
+        "ZeroDivisionError",
+        "_IncompleteInputError",
+        "__build_class__",
+        "__debug__",
+        "__doc__",
+        "__import__",
+        "__loader__",
+        "__name__",
+        "__package__",
+        "__spec__",
+        "abs",
+        "aiter",
+        "all",
+        "anext",
+        "any",
+        "ascii",
+        "bin",
+        "bool",
+        "breakpoint",
+        "bytearray",
+        "bytes",
+        "callable",
+        "chr",
+        "classmethod",
+        "compile",
+        "complex",
+        "copyright",
+        "credits",
+        "delattr",
+        "dict",
+        "dir",
+        "divmod",
+        "enumerate",
+        "eval",
+        "exec",
+        "exit",
+        "filter",
+        "float",
+        "format",
+        "frozenset",
+        "getattr",
+        "globals",
+        "hasattr",
+        "hash",
+        "help",
+        "hex",
+        "id",
+        "input",
+        "int",
+        "isinstance",
+        "issubclass",
+        "iter",
+        "len",
+        "license",
+        "list",
+        "locals",
+        "map",
+        "max",
+        "memoryview",
+        "min",
+        "next",
+        "object",
+        "oct",
+        "open",
+        "ord",
+        "pow",
+        "print",
+        "property",
+        "quit",
+        "range",
+        "repr",
+        "reversed",
+        "round",
+        "set",
+        "setattr",
+        "slice",
+        "sorted",
+        "staticmethod",
+        "str",
+        "sum",
+        "super",
+        "tuple",
+        "type",
+        "vars",
+        "zip",
+    ]
+)
+PY2_BUILTINS = frozenset(
+    [
+        "StandardError",
+        "apply",
+        "basestring",
+        "buffer",
+        "cmp",
+        "coerce",
+        "execfile",
+        "file",
+        "intern",
+        "long",
+        "raw_input",
+        "reduce",
+        "reload",
+        "unichr",
+        "unicode",
+        "xrange",
+    ]
+)
+BUILTINS = BUILTINS_314 | PY2_BUILTINS
 _IMPORT_STATEMENTS = frozenset(
     {"import_statement", "import_from_statement", "future_import_statement"}
 )
@@ -271,6 +498,9 @@ class _Scope:
     globals: set[str] = field(default_factory=set)
     nonlocals: set[str] = field(default_factory=set)
     poisoned: bool = False
+    # A class with any base or keyword: its metaclass's ``__prepare__``, or a
+    # ``__missing__`` namespace, may supply any name to the class body.
+    open_namespace: bool = False
 
     def bind(self, name: str, binding: _Binding) -> None:
         self.bindings.setdefault(name, []).append(binding)
@@ -284,12 +514,18 @@ _UNVISITED = _Scope(_POISONED, None, poisoned=True)
 class _Analysis:
     """Scopes and bindings of one Python file, and lookups through them."""
 
-    def __init__(self, root: Any, source: bytes) -> None:
+    def __init__(
+        self, root: Any, source: bytes, own_names: frozenset[str] = frozenset()
+    ) -> None:
         self.root = root
         self.source = source
+        # The file's own module name (its stem, or its package for
+        # ``__init__.py``): importing it is a self-import.
+        self.own_names = own_names
         self.scopes: dict[tuple[int, str], _Scope] = {}
         self.events: list[tuple[_Scope, str, _Binding]] = []
         self.dynamic = False
+        self.frame_locals = False
         self.star = False
         self.handlers: dict[str, Callable[[Any, _Scope, int], None]] = {
             "function_definition": self._function,
@@ -387,7 +623,7 @@ class _Analysis:
         elif kind in ("attribute", "subscript"):
             # ``x.y = v`` and ``x[i] = v`` write no name; their parts are read.
             self.visit(node, scope, depth + 1)
-        elif kind != "comment":
+        elif kind not in ("comment", "line_continuation"):
             scope.poisoned = True
 
     def _type_params(self, node: Any, scope: _Scope, depth: int) -> _Scope:
@@ -476,6 +712,11 @@ class _Analysis:
         )
         header = self._type_params(node, scope, depth)
         class_scope = self._scope(_CLASS, node, header, "scope")
+        bases = node.child_by_field_name("superclasses")
+        class_scope.open_namespace = bases is not None and any(
+            child.type not in ("comment", "line_continuation")
+            for child in bases.named_children
+        )
         for name, child in self._fields(node):
             if name in ("name", "type_parameters"):
                 continue
@@ -682,46 +923,38 @@ class _Analysis:
     # -- dynamic binding ----------------------------------------------------
 
     def _scan_dynamic(self) -> None:
-        """Set ``dynamic`` if the file may bind module names at run time."""
+        """Set ``dynamic`` if the file may bind module names at run time, and
+        ``frame_locals`` if it may write a function's locals."""
         source = self.source
         sys_names = {_SYS}
+        main_names = {_MAIN}
         identifiers: list[Any] = []
         stack = [self.root]
         while stack:
             node = stack.pop()
-            if node.type == "identifier":
+            kind = node.type
+            if kind == "identifier":
                 identifiers.append(node)
-            elif node.type == "aliased_import":
+            elif kind == "aliased_import":
                 imported = node.child_by_field_name("name")
                 alias = node.child_by_field_name("alias")
-                if (
-                    imported is not None
-                    and alias is not None
-                    and imported.named_children
-                    and _text(imported.named_children[-1], source) == _SYS
-                ):
+                last = (
+                    _text(imported.named_children[-1], source)
+                    if imported is not None and imported.named_children
+                    else ""
+                )
+                if alias is not None and last == _SYS:
                     sys_names.add(_text(alias, source))
-            elif node.type == "import_from_statement":
-                module = node.child_by_field_name("module_name")
-                for index, child in enumerate(node.children):
-                    if node.field_name_for_child(index) != "name":
-                        continue
-                    imported = (
-                        child.child_by_field_name("name")
-                        if child.type == "aliased_import"
-                        else child
-                    )
-                    if (
-                        imported is not None
-                        and module is not None
-                        and _text(imported, source) == _SYS_MODULES
-                        and _text(module, source).rsplit(".", 1)[-1] == _SYS
-                    ):
-                        self.dynamic = True
+                if alias is not None and last == _MAIN:
+                    main_names.add(_text(alias, source))
+            elif kind in ("string", "concatenated_string", "binary_operator"):
+                value = _constant_string(node, source)
+                if value is not None:
+                    self._literal_use(value)
+            if kind in ("import_statement", "import_from_statement"):
+                self._import_use(node)
             stack.extend(node.named_children)
         for ident in identifiers:
-            if self.dynamic:
-                return
             name = _text(ident, source)
             parent = ident.parent
             if parent is None:
@@ -731,8 +964,11 @@ class _Analysis:
             ):
                 if name in _DYNAMIC_ATTRIBUTES:
                     self.dynamic = True
+                    self.frame_locals = self.frame_locals or name == _FRAME_LOCALS
                 elif name == _SYS:
                     self._sys_use(parent)
+                elif name == _SYS_MODULES:
+                    self._modules_use(parent)
                 continue
             if parent.type == "keyword_argument" and _same(
                 ident, parent.child_by_field_name("name")
@@ -746,6 +982,85 @@ class _Analysis:
                 self.dynamic = True
             elif name in sys_names:
                 self._sys_use(ident)
+            elif name in main_names and not _import_context(ident):
+                # ``__main__.helper = len``, ``setattr(m, ...)``.
+                self.dynamic = True
+
+    def _literal_use(self, value: str) -> None:
+        """A constant string naming a dynamic attribute counts as a mention
+        of it (the analogue of PR 3's literal-key rule)."""
+        parts = set(value.split("."))
+        if parts & _LITERAL_DYNAMIC:
+            self.dynamic = True
+        if _FRAME_LOCALS in parts:
+            self.frame_locals = True
+
+    def _import_use(self, node: Any) -> None:
+        """``from sys import modules`` and imports of the file's own module
+        (``import a`` in ``a.py``, ``from . import a``) are dynamic."""
+        source = self.source
+        module = node.child_by_field_name("module_name")
+        for index, child in enumerate(node.children):
+            if node.field_name_for_child(index) != "name":
+                continue
+            imported = (
+                child.child_by_field_name("name")
+                if child.type == "aliased_import"
+                else child
+            )
+            if imported is None:
+                continue
+            text = _text(imported, source)
+            if node.type == "import_from_statement":
+                if (
+                    module is not None
+                    and text == _SYS_MODULES
+                    and _text(module, source).rsplit(".", 1)[-1] == _SYS
+                ):
+                    self.dynamic = True
+                if text in self.own_names:
+                    self.dynamic = True
+            elif text.rsplit(".", 1)[-1] in self.own_names:
+                self.dynamic = True
+
+    def _modules_use(self, node: Any) -> None:
+        """``X.modules[__name__]``, ``X.modules.get(__name__)`` and the like
+        reach this module through any receiver ``X``; other ``X.modules`` uses
+        are left to plan risk R12."""
+        parent = node.parent
+        if parent is None:
+            return
+        if parent.type == "subscript" and _same(
+            node, parent.child_by_field_name("value")
+        ):
+            keys = [
+                child
+                for index, child in enumerate(parent.children)
+                if parent.field_name_for_child(index) == "subscript"
+            ]
+            if any(_text(key, self.source) == "__name__" for key in keys):
+                self.dynamic = True
+            return
+        if parent.type == "attribute" and _same(
+            node, parent.child_by_field_name("object")
+        ):
+            method = parent.child_by_field_name("attribute")
+            call = parent.parent
+            if (
+                method is not None
+                and _text(method, self.source) in _MODULE_GETTERS
+                and call is not None
+                and call.type == "call"
+                and _same(parent, call.child_by_field_name("function"))
+            ):
+                arguments = call.child_by_field_name("arguments")
+                first = (
+                    arguments.named_children[0]
+                    if arguments is not None and arguments.named_children
+                    else None
+                )
+                if first is not None and _text(first, self.source) == "__name__":
+                    self.dynamic = True
 
     def _sys_use(self, node: Any) -> None:
         """A use of the ``sys`` module: ``sys.modules``, a dunder attribute
@@ -762,15 +1077,8 @@ class _Analysis:
             if text == _SYS_MODULES or _dunder(text):
                 self.dynamic = True
             return
-        context = parent
-        while context is not None and context.type in ("dotted_name", "aliased_import"):
-            context = context.parent
-        if context is not None and (
-            context.type in _IMPORT_STATEMENTS
-            or context.type in ("global_statement", "nonlocal_statement")
-        ):
-            return
-        self.dynamic = True
+        if not _import_context(node):
+            self.dynamic = True
 
     # -- redirects ----------------------------------------------------------
 
@@ -841,6 +1149,9 @@ class _Analysis:
     def lookup(self, ident: Any) -> dict[str, Any]:
         """The outcome of a value lookup of ``ident``'s name."""
         name = _text(ident, self.source)
+        if self.frame_locals:
+            # ``frame.f_locals`` writes any function's locals (PEP 667).
+            return _none("dynamic-scope")
         crossed = False  # a function-like scope lies between ``ident`` and here
         for scope in self._chain(ident):
             if scope.kind == _CLASS:
@@ -852,6 +1163,10 @@ class _Analysis:
                 if self.dynamic:
                     # exec/locals() in a class body write its namespace.
                     return _none("dynamic-scope")
+                if scope.open_namespace:
+                    # A metaclass's ``__prepare__`` (possibly inherited from a
+                    # base in another file) may supply any name.
+                    return _none("class-scope-bound")
             if scope.kind == _MODULE:
                 return self._module_lookup(name)
             if scope.kind != _TYPE_PARAMS:
@@ -901,8 +1216,16 @@ class _Analysis:
         if imports:
             if imports[0].conditional:
                 return _none("conditional")
-            return {"outcome": "import", "binding": dict(imports[0].info or {})}
-        return _group(symbols)
+            outcome: dict[str, Any] = {
+                "outcome": "import",
+                "binding": dict(imports[0].info or {}),
+            }
+        else:
+            outcome = _group(symbols)
+        if outcome["outcome"] != "none" and scope.kind == _MODULE and name in BUILTINS:
+            # Until the definition or import runs, the name is the builtin.
+            return _none("builtin-shadow")
+        return outcome
 
 
 def _group(symbols: Sequence[_Binding]) -> dict[str, Any]:
@@ -921,6 +1244,67 @@ def _group(symbols: Sequence[_Binding]) -> dict[str, Any]:
         for binding in symbols
     )
     return {"outcome": "local", "proof": proof, "rules": []}
+
+
+def _import_context(node: Any) -> bool:
+    """Whether a name sits in an import, ``global`` or ``nonlocal``
+    statement (a binding position, not a use)."""
+    context = node.parent
+    while context is not None and context.type in ("dotted_name", "aliased_import"):
+        context = context.parent
+    return context is not None and (
+        context.type in _IMPORT_STATEMENTS
+        or context.type in ("global_statement", "nonlocal_statement")
+    )
+
+
+def _constant_string(node: Any, source: bytes) -> str | None:
+    """The value of a constant string expression: a literal without
+    interpolations, adjacent literals, or literals joined by ``+``.
+
+    Anything computed (a name, a call, an interpolation) gives ``None``; such
+    strings are plan risk R12.
+    """
+    kind = node.type
+    if kind == "parenthesized_expression" and len(node.named_children) == 1:
+        return _constant_string(node.named_children[0], source)
+    if kind == "concatenated_string":
+        parts = [_constant_string(child, source) for child in node.named_children]
+        if not parts or any(part is None for part in parts):
+            return None
+        return "".join(part for part in parts if part is not None)
+    if kind == "binary_operator":
+        operator = node.child_by_field_name("operator")
+        if operator is None or operator.type != "+":
+            return None
+        left = node.child_by_field_name("left")
+        right = node.child_by_field_name("right")
+        if left is None or right is None:
+            return None
+        first = _constant_string(left, source)
+        second = _constant_string(right, source)
+        if first is None or second is None:
+            return None
+        return first + second
+    if kind != "string" or any(
+        child.type == "interpolation" for child in node.named_children
+    ):
+        return None
+    text = _text(node, source)
+    quote = min(
+        (index for index in (text.find("'"), text.find('"')) if index >= 0),
+        default=-1,
+    )
+    if quote < 0:
+        return None
+    prefix = text[:quote].lower()
+    if "b" in prefix:
+        return None
+    try:
+        value = ast.literal_eval(prefix.replace("f", "") + text[quote:])
+    except (SyntaxError, ValueError):
+        return None
+    return value if isinstance(value, str) else None
 
 
 def _alias_parts(node: Any) -> tuple[Any, Any]:
@@ -995,6 +1379,32 @@ class NonAsciiNameError(ValueError):
     """The file has a non-ASCII identifier, so it is not analyzed (5.3)."""
 
 
+class AmbiguousIndentationError(ValueError):
+    """A line's indentation depends on the width of a tab (5.3)."""
+
+
+_LINES = re.compile(rb"\r\n|\r|\n")
+
+
+def ambiguous_indentation(source: bytes) -> int | None:
+    """The 1-based number of the first line whose leading whitespace has a
+    space before a tab, or a form feed, or ``None``.
+
+    tree-sitter counts a tab as eight more columns, while CPython advances to
+    the next multiple of eight, so "seven spaces and a tab" can put a ``def``
+    in a different block without a parse error. Lines inside strings count
+    too, which can only fail closed.
+    """
+    for number, line in enumerate(_LINES.split(source), start=1):
+        leading = line[: len(line) - len(line.lstrip(b" \t\f"))]
+        if b"\f" in leading:
+            return number
+        first_space = leading.find(b" ")
+        if first_space >= 0 and leading.rfind(b"\t") > first_space:
+            return number
+    return None
+
+
 def non_ascii_name(root: Any, source: bytes) -> Any:
     """The first non-ASCII identifier, or non-ASCII leaf outside strings and
     comments, or ``None``.
@@ -1018,19 +1428,38 @@ def non_ascii_name(root: Any, source: bytes) -> Any:
     return None
 
 
+def own_module_names(path: str) -> frozenset[str]:
+    """The names a file's own module is imported by: its stem, or its
+    package's name for ``__init__.py``."""
+    parts = path.replace("\\", "/").rstrip("/").split("/")
+    stem = parts[-1].rsplit(".", 1)[0] if parts and parts[-1] else ""
+    if stem == "__init__":
+        stem = parts[-2] if len(parts) > 1 else ""
+    return frozenset({stem}) if stem.isidentifier() else frozenset()
+
+
 def analyze(
     root: Any,
     source: bytes,
     language: str,
     call_facts: Sequence[Mapping[str, Any]],
+    own_names: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
-    """Return partial scope facts: the goal and one outcome per call."""
+    """Return partial scope facts: the goal and one outcome per call.
+
+    ``own_names`` are the names the file's own module is imported by
+    (:func:`own_module_names`); importing one is a self-import.
+    """
     del language  # always python
     bad = non_ascii_name(root, source)
     if bad is not None:
         msg = f"non-ASCII name in a {bad.type} at byte {bad.start_byte}"
         raise NonAsciiNameError(msg)
-    analysis = _Analysis(root, source)
+    line = ambiguous_indentation(source)
+    if line is not None:
+        msg = f"indentation depends on the tab width on line {line}"
+        raise AmbiguousIndentationError(msg)
+    analysis = _Analysis(root, source, own_names)
     bindings: dict[str, Any] = {}
     for fact in call_facts:
         start = int(fact["callee_byte_start"])

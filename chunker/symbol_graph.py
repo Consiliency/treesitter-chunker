@@ -634,6 +634,7 @@ def extract_symbol_facts_for_file(
             call_facts=facts["call_facts"],
             symbols=symbol_spans,
             suffix=file_path.suffix.lower(),
+            path=display_file,
         )
     return facts
 

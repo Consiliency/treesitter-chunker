@@ -104,7 +104,11 @@ NAMED_TIER1_JS_TESTS = (
 )
 # Live reasons no committed fixture produces, each covered by a named test on
 # a tree the test writes (the president's #689 ruling, B-1).
-TEST_WRITTEN_REASONS = {"enum-scope": "test_enum_scope_end_to_end"}
+TEST_WRITTEN_REASONS = {
+    "enum-scope": "test_enum_scope_end_to_end",
+    # PR 4 (#695 panel A3): no committed fixture shadows a builtin.
+    "builtin-shadow": "test_builtin_shadow_end_to_end",
+}
 # Named tests the plan assigns to later heads (panel C2). Each moved to the
 # live list when its analyzer landed; none is left.
 DEFERRED_FAILURE_MODE_TESTS: dict[str, str] = {}
@@ -116,9 +120,15 @@ NAMED_TIER1_PY_TESTS = (
     "test_dynamic_binding_forms_keep_their_off_mode_edge",
     "test_write_forms_keep_their_off_mode_edge",
     "test_python_positives_end_to_end",
+    # The #695 panel fold.
+    "test_panel_695_cases_keep_their_off_mode_edge",
+    "test_natural_unmapped_forms_keep_their_off_mode_edge",
+    "test_line_continuation_target_end_to_end",
+    "test_builtin_shadow_end_to_end",
 )
-# Families whose analyzer is still the PR 1 stub: none since PR 4.
-STUB_FAMILIES: set[str] = set()
+# Expected rows per plan PR (10.1): a row that loses its finalization fails
+# the pin (#695 panel B7).
+EXPECTED_ROWS_PER_PR = {1: 55, 2: 55, 3: 6, 4: 43}
 # Grammars per analyzer family, for the allow-list review rule.
 FAMILY_GRAMMARS = {"js": ("javascript", "typescript", "tsx"), "python": ("python",)}
 
@@ -592,7 +602,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "2"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "3"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
@@ -636,11 +646,9 @@ def _on_mode(run: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
 def test_expected_tables_hold_at_this_head(tree: str) -> None:
     """Rows with a ``structural`` field match it; every other row is unchanged.
 
-    At this head both analyzers are real: no call has the outcome
-    ``none(stub)``.
+    At this head both analyzers are real.
     """
     table = _table(tree)
-    stub = {"outcome": "none", "reason": "stub"}
     for run in (run for run in RUNS if run.tree == tree):
         facts, graph = _on_mode(run)
         scope = {item["path"]: item["scope_facts"] for item in facts}
@@ -649,9 +657,6 @@ def test_expected_tables_hold_at_this_head(tree: str) -> None:
         context = engine.build_run_context(facts, graph["symbol_lookup"], MODE)
         for item in facts:
             assert valid_scope_facts(item["scope_facts"], item["language"])
-            is_stub = engine.language_family(item["language"]) in STUB_FAMILIES
-            for outcome in item["scope_facts"]["bindings"].values():
-                assert (outcome == stub) is is_stub, item["path"]
         symbols = graph["symbol_lookup"]
         edges = [edge for edge in graph["relationships"] if edge["type"] == "calls"]
         records = table["runs"][run.label]["calls"]
@@ -693,6 +698,16 @@ def test_expected_tables_hold_at_this_head(tree: str) -> None:
                 # Labels cannot tell two symbols on one line apart.
                 assert expected["candidate_ids"] == edge["candidates"], label
             assert isinstance(record.get("pr"), int), label
+
+
+def test_expected_rows_per_pr_are_pinned() -> None:
+    counts: dict[int, int] = {}
+    for tree in TREES:
+        for run in _table(tree)["runs"].values():
+            for record in run["calls"]:
+                if record.get(MODE) is not None:
+                    counts[record["pr"]] = counts.get(record["pr"], 0) + 1
+    assert counts == EXPECTED_ROWS_PER_PR
 
 
 def test_expected_records_use_the_known_vocabulary() -> None:
@@ -767,7 +782,9 @@ def test_live_rules_and_reasons_have_cases() -> None:
         emitted - covered
     )
     assert set(TEST_WRITTEN_REASONS) <= KNOWN_NONE_REASONS
-    assert set(TEST_WRITTEN_REASONS.values()) <= set(NAMED_TIER1_JS_TESTS)
+    assert set(TEST_WRITTEN_REASONS.values()) <= set(NAMED_TIER1_JS_TESTS) | set(
+        NAMED_TIER1_PY_TESTS
+    )
     assert not set(NAMED_FAILURE_MODE_TESTS) & set(DEFERRED_FAILURE_MODE_TESTS)
     assert set(DEFERRED_FAILURE_MODE_TESTS.values()) <= {"PR 2", "PR 4"}
     for name in DEFERRED_FAILURE_MODE_TESTS:
@@ -789,12 +806,10 @@ def test_proving_families_have_reviewed_allowlists() -> None:
     proving: set[str] = set()
     for _, item in harness.fixture_scope_facts():
         family = engine.language_family(item["language"])
-        for outcome in item["scope_facts"]["bindings"].values():
-            if outcome != {"outcome": "none", "reason": "stub"}:
-                assert family is not None
-                proving.add(family)
+        if item["scope_facts"]["bindings"]:
+            assert family is not None
+            proving.add(family)
     assert {"js", "python"} <= proving
-    assert not proving & STUB_FAMILIES
     for family in sorted(proving):
         missing = set(FAMILY_GRAMMARS[family]) - REVIEWED_LANGUAGES
         assert not missing, f"{family} proves bindings; review {sorted(missing)}"

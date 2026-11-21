@@ -19,6 +19,7 @@ fixture call end to end; this module adds:
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -539,6 +540,26 @@ DYNAMIC_FORMS = [
     "def f():\n    pass\nf.__globals__['helper'] = len",
     "import sys\nsys._getframe().f_globals['helper'] = len",
     "exec 'helper = len'",
+    "execfile('x.py')",
+    "import sys\nsys._getframe().f_locals['x'] = 1",
+    "import sys\nsys._getframe().f_builtins['helper'] = len",
+    # The #695 panel fold: ``__main__``, literal attribute names, any
+    # receiver's ``modules[__name__]``.
+    "import __main__\n__main__.helper = len",
+    "import __main__ as m\nsetattr(m, 'helper', len)",
+    "getattr(f, '__globals__')['helper'] = len",
+    "getattr(frame, 'f_globals')['helper'] = len",
+    "operator.attrgetter('sys.modules')(os)[__name__].helper = len",
+    "getattr(f, '__glo' + 'bals__')['helper'] = len",
+    "getattr(f, '__glo' 'bals__')['helper'] = len",
+    "getattr(f, r'__globals__')['helper'] = len",
+    "getattr(f, f'__globals__')['helper'] = len",
+    'getattr(f, """__globals__""")["helper"] = len',
+    "x = 'modules'",
+    "collections._sys.modules[__name__].helper = len",
+    "pkg.sys_alias.modules.get(__name__).helper = len",
+    "x.modules.__getitem__(__name__).helper = len",
+    "x.modules.setdefault(__name__).helper = len",
     "def g():\n    exec('helper = len')",
 ]
 
@@ -566,10 +587,37 @@ def test_non_dynamic_lookalikes_still_resolve(form: str) -> None:
     assert proof_text(source) == PROOF, form
 
 
-def test_dynamic_binding_leaves_function_scopes_alone() -> None:
-    """``exec`` and ``locals()`` writes cannot rebind a function's locals."""
-    source = "exec('x')\n\n\ndef f():\n    def helper():\n        return 1\n    return helper()\n"
-    assert proof_text(source) == ["def helper():\n        return 1"]
+LOCAL_HELPER = "def f():\n    def helper():\n        return 1\n    return helper()\n"
+
+
+def test_exec_and_locals_leave_function_scopes_alone() -> None:
+    """``exec`` and ``locals()`` cannot rebind a function's locals; only
+    ``frame.f_locals`` can (below)."""
+    for form in ("exec('x')", "locals()['helper'] = len", "globals()['x'] = 1"):
+        source = form + "\n\n\n" + LOCAL_HELPER
+        assert proof_text(source) == ["def helper():\n        return 1"], form
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "import sys\nsys._getframe().f_locals['helper'] = len",
+        "import inspect\ninspect.currentframe().f_locals['helper'] = len",
+        "getattr(frame, 'f_locals')['helper'] = len",
+        "attrgetter('f_back.f_locals')",
+        "x = 'f_' 'locals'",
+        "x = 'f_' + 'locals'",
+    ],
+)
+def test_f_locals_fails_closed_for_every_lookup(form: str) -> None:
+    """A frame's ``f_locals`` writes through to a function's locals (PEP 667,
+    Python 3.13+), so every lookup of the file fails closed."""
+    source = form + "\n\n\n" + LOCAL_HELPER
+    assert reason(source) == "dynamic-scope", form
+    in_function = "def f():\n    def helper():\n        return 1\n    " + (
+        form.replace("\n", "\n    ") + "\n    return helper()\n"
+    )
+    assert reason(in_function) == "dynamic-scope", form
 
 
 def test_dynamic_binding_fails_closed_for_class_body_lookups() -> None:
@@ -890,3 +938,308 @@ def test_python_positives_end_to_end(tmp_path: Path, case: str) -> None:
     (target,) = on_edge["candidates"]
     assert on["symbol_lookup"][target]["file"] == "a.py"
     assert on["symbol_lookup"][target]["line"] == 1
+
+
+# ---------------------------------------------------------------------------
+# The #695 panel fold: every fix only adds ``none``
+
+
+def test_classes_with_bases_or_keywords_open_their_namespace() -> None:
+    """A metaclass's ``__prepare__`` (possibly inherited from a base in
+    another file) or a ``__missing__`` namespace may supply any name."""
+    for header in ("class K(Base):", "class K(metaclass=M):", "class K(object, x=1):"):
+        for code in (
+            "x = helper()",
+            "def m(self, x=helper()):\n        return x",
+            "@helper()\n    def m(self):\n        return 0",
+            "xs = [y for y in helper()]",
+        ):
+            source = HELPER + f"{header}\n    {code}\n"
+            assert reason(source) == "class-scope-bound", (header, code)
+    # Without bases the class namespace is a plain dict.
+    assert proof_text(HELPER + "class K():\n    x = helper()\n") == PROOF
+    # Methods still skip the class, and the bases run outside it.
+    method = HELPER + "class K(Base):\n    def m(self):\n        return helper()\n"
+    assert proof_text(method) == PROOF
+    assert proof_text(HELPER + "class K(helper()):\n    pass\n") == PROOF
+
+
+def test_module_level_builtin_names_never_prove() -> None:
+    """Until a module-level ``def len`` runs, ``len`` is the builtin."""
+    source = (
+        "def use():\n    return len('ab')\n\n\nuse()\n\n\ndef len(*a):\n    return 1\n"
+    )
+    assert reason(source, "len") == "builtin-shadow"
+    imported = "from m import open\n\n\ndef use():\n    return open('f')\n"
+    assert reason(imported, "open") == "builtin-shadow"
+    py2 = "def xrange(n):\n    return n\n\n\ndef use():\n    return xrange(3)\n"
+    assert reason(py2, "xrange") == "builtin-shadow"
+    # A function-local definition shadows the builtin for the whole body.
+    local = "def use():\n    def len(*a):\n        return 1\n    return len('ab')\n"
+    assert proof_text(local, "len") == ["def len(*a):\n        return 1"]
+
+
+def test_builtin_pin_matches_the_interpreter() -> None:
+    """``BUILTINS_314`` is ``dir(builtins)`` of CPython 3.14 (``python -I``);
+    a new interpreter that adds a builtin must update the pin."""
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", "import builtins; print(*sorted(dir(builtins)))"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert frozenset(result.stdout.split()) == py_scope.BUILTINS_314
+    assert not py_scope.PY2_BUILTINS & py_scope.BUILTINS_314
+    assert {"xrange", "unicode", "raw_input", "execfile"} <= py_scope.PY2_BUILTINS
+
+
+@pytest.mark.parametrize(
+    ("source", "line"),
+    [
+        ("def f():\n       \tpass\n", 2),
+        ("if x:\n    pass\n \t\tpass\n", 3),
+        ("x = 1\n\f\ny = 2\n", 2),
+        ("def f():\n  \f  pass\n", 2),
+    ],
+)
+def test_tab_width_dependent_indentation_is_not_analyzed(
+    source: str, line: int
+) -> None:
+    data = source.encode()
+    assert py_scope.ambiguous_indentation(data) == line
+    root = get_parser("python").parse(data).root_node
+    with pytest.raises(py_scope.AmbiguousIndentationError):
+        py_scope.analyze(root, data, "python", [])
+
+
+def test_tabs_alone_are_unambiguous() -> None:
+    for source in (
+        "def f():\n\treturn 1\n",
+        "def f():\n\t    return 1\n",
+        "x = 'a \t b'\n",
+    ):
+        assert py_scope.ambiguous_indentation(source.encode()) is None, source
+
+
+@pytest.mark.parametrize(
+    ("path", "names"),
+    [
+        ("a.py", {"a"}),
+        ("pkg/a.py", {"a"}),
+        ("pkg/__init__.py", {"pkg"}),
+        ("__init__.py", set()),
+        ("pkg\\sub\\mod.py", {"mod"}),
+        ("my-script.py", set()),
+    ],
+)
+def test_own_module_names(path: str, names: set[str]) -> None:
+    assert py_scope.own_module_names(path) == names
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "import a\na.helper = len",
+        "import pkg.a\npkg.a.helper = len",
+        "import a as me\nsetattr(me, 'helper', len)",
+        "from . import a",
+        "from pkg import a as me",
+    ],
+)
+def test_self_imports_fail_closed(form: str) -> None:
+    data = (HELPER + form + "\n\n\ndef use():\n    return helper()\n").encode()
+    root = get_parser("python").parse(data).root_node
+    (node,) = _callees(root, data, "helper")
+    span = {"callee_byte_start": node.start_byte, "callee_byte_end": node.end_byte}
+    key = f"{node.start_byte}:{node.end_byte}"
+    own = py_scope.analyze(root, data, "python", [span], own_names=frozenset({"a"}))
+    assert own["bindings"][key] == {"outcome": "none", "reason": "dynamic-scope"}
+    other = py_scope.analyze(root, data, "python", [span], own_names=frozenset({"b"}))
+    assert other["bindings"][key]["outcome"] in ("local", "none")
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "self.modules.append(1)",
+        "x = self.modules[0]",
+        "x = 'modules list'",
+        "x = f'{y}modules'",
+        "x = 'f_locals_count'",
+        "import __main__ as m",
+        "from __main__ import x",
+    ],
+)
+def test_more_non_dynamic_lookalikes_still_resolve(form: str) -> None:
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert proof_text(source) == PROOF, form
+
+
+def test_natural_unmapped_forms_poison_their_scope() -> None:
+    """Valid code the target reader does not understand fails closed."""
+    for form in ("del f()", "with a as f():\n    pass", "type(x).attr = v"):
+        source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+        assert reason(source) == "unmapped", form
+    local = "def use():\n    def helper():\n        return 1\n    del f()\n    return helper()\n"
+    assert reason(local) == "unmapped"
+
+
+def test_a_line_continuation_in_a_target_is_only_a_token() -> None:
+    source = HELPER + "x, \\\n    y = 1, 2\n\n\ndef use():\n    return helper()\n"
+    assert proof_text(source) == PROOF
+    bound = HELPER + "x, \\\n    helper = 1, 2\n\n\ndef use():\n    return helper()\n"
+    assert reason(bound) == "mixed-bindings"
+
+
+def _decoys(a_py: str) -> str:
+    names = sorted(
+        set(re.findall(r"([A-Za-z_]\w*)\s*\(", a_py))
+        - {
+            "print",
+            "def",
+            "class",
+            "if",
+            "while",
+            "return",
+            "lambda",
+            "not",
+            "and",
+            "or",
+            "in",
+        }
+    )
+    return "".join(f"def {name}(*a, **k):\n    return 'decoy'\n\n" for name in names)
+
+
+H695 = "def helper(*a):\n    return 'mod'\n\n"
+U695 = "\ndef use():\n    return helper('ab')\n\nuse()\n"
+L695 = "import sys\ndef use():\n    def helper(*a):\n        return 'l'\n"
+OTHER_LOCAL = (
+    "def other():\n    def helper(*a):\n        return 'decoy'\n    return helper\n"
+)
+PANEL_695 = {
+    "class_kw_metaclass_prepare": {
+        "a.py": H695
+        + "class M(type):\n    @classmethod\n    def __prepare__(m, name, bases):\n"
+        "        return {'helper': len}\n\nclass C(metaclass=M):\n    x = helper('ab')\n"
+    },
+    "class_base_prepare_crossfile": {
+        "a.py": H695 + "from m import Base\n\nclass C(Base):\n    x = helper('ab')\n",
+        "m.py": "class M(type):\n    @classmethod\n    def __prepare__(m, name, bases):\n"
+        "        return {'helper': len}\n\nclass Base(metaclass=M):\n    pass\n",
+    },
+    "flocals_proxy_write": {
+        "a.py": L695
+        + "    sys._getframe().f_locals['helper'] = len\n    return helper('ab')\nuse()\n",
+        "b.py": OTHER_LOCAL,
+    },
+    "getattr_literal_flocals_func": {
+        "a.py": L695 + "    getattr(sys._getframe(), 'f_locals')['helper'] = len\n"
+        "    return helper('ab')\nuse()\n",
+        "b.py": OTHER_LOCAL,
+    },
+    "builtin_shadow_func_early": {
+        "a.py": "def use():\n    return len('ab')\n\nuse()\n\ndef len(*a):\n    return 'mine'\n"
+    },
+    "builtin_shadow_default": {
+        "a.py": "def use(x=len('ab')):\n    return x\n\ndef len(*a):\n    return 'mine'\n"
+    },
+    "import_main": {"a.py": H695 + "import __main__\n__main__.helper = len\n" + U695},
+    "self_import_by_name": {
+        "a.py": H695 + "import a\na.helper = len\n" + U695,
+        "main.py": "import a\n",
+    },
+    "operator_attrgetter_sys": {
+        "a.py": H695
+        + "import operator, os\nm = operator.attrgetter('sys.modules')(os)\n"
+        "m[__name__].helper = len\n" + U695
+    },
+    "types_function_globals": {
+        "a.py": H695 + "def use2():\n    pass\ng = getattr(use2, '__glo' + 'bals__')\n"
+        "g['helper'] = len\n" + U695
+    },
+    "getattr_literal_globals": {
+        "a.py": H695
+        + "def use2():\n    pass\ngetattr(use2, '__globals__')['helper'] = len\n"
+        + U695
+    },
+    "tab_width_dedent": {
+        "a.py": "def outer():\n        def helper(*a):\n            return 'A'\n"
+        "        class C:\n               x = 1\n       \tdef helper(*a):\n"
+        "                return 'B'\n        return helper('ab')\nouter()\n",
+        "b.py": OTHER_LOCAL,
+    },
+    "sys_through_another_module": {
+        "a.py": H695 + "import collections\n"
+        "collections._sys.modules[__name__].helper = len\n" + U695
+    },
+}
+
+
+@pytest.mark.parametrize("case", sorted(PANEL_695))
+def test_panel_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    """Each tree resolved wrongly at 9cff92b9 under a runtime trace (#695
+    panel A, B and Codex 4653329444); every edge now stays as off."""
+    files = dict(PANEL_695[case])
+    files.setdefault("b.py", _decoys(files["a.py"]))
+    root = _tree(tmp_path, files)
+    off, on = _off_on(root)
+    off_calls = [e for e in off["relationships"] if e["file"] == "a.py"]
+    assert any(edge["resolution"] == "ambiguous" for edge in off_calls), case
+    assert [e for e in on["relationships"] if e["file"] == "a.py"] == off_calls
+
+
+NATURAL_UNMAPPED = {
+    "del-call": "del f()",
+    "with-call-target": "with a as f():\n    pass",
+    "type-attribute": "type(x).attr = v",
+}
+
+
+@pytest.mark.parametrize("case", sorted(NATURAL_UNMAPPED))
+def test_natural_unmapped_forms_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    source = HELPER + NATURAL_UNMAPPED[case] + "\n\n\ndef use():\n    return helper()\n"
+    root = _tree(tmp_path, {"a.py": source, "b.py": OTHER})
+    off, on = _off_on(root)
+    assert _helper_edge(off)["resolution"] == "ambiguous"
+    assert _helper_edge(on) == _helper_edge(off)
+    (facts,) = (
+        item
+        for item in (
+            extract_symbol_facts_for_file(
+                root / "a.py", root, None, call_resolution=MODE
+            ),
+        )
+    )
+    edge = _helper_edge(off)
+    key = f"{edge['callee_byte_start']}:{edge['callee_byte_end']}"
+    assert facts["scope_facts"]["bindings"][key] == {
+        "outcome": "none",
+        "reason": "unmapped",
+    }
+
+
+def test_line_continuation_target_end_to_end(tmp_path: Path) -> None:
+    source = HELPER + "x, \\\n    y = 1, 2\n\n\ndef use():\n    return helper()\n"
+    root = _tree(tmp_path, {"a.py": source, "b.py": OTHER})
+    on = extract_symbol_graph(root, call_resolution=MODE)
+    assert _helper_edge(on)["resolution"] == "resolved"
+
+
+def test_builtin_shadow_end_to_end(tmp_path: Path) -> None:
+    source = "def use():\n    return len('ab')\n\n\ndef len(*a):\n    return 1\n"
+    root = _tree(tmp_path, {"a.py": source, "b.py": "def len(*a):\n    return 2\n"})
+    off, on = _off_on(root)
+    edge = _helper_edge(off, "len")
+    assert edge["resolution"] == "ambiguous"
+    assert _helper_edge(on, "len") == edge
+    facts = extract_symbol_facts_for_file(
+        root / "a.py", root, None, call_resolution=MODE
+    )
+    key = f"{edge['callee_byte_start']}:{edge['callee_byte_end']}"
+    assert facts["scope_facts"]["bindings"][key]["reason"] == "builtin-shadow"

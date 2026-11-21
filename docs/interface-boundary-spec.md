@@ -271,8 +271,10 @@ For Python callers it proves bindings through the LEGB scope chain
 (`t1.lexical`): a single unconditional, undecorated `def` or `class`. Python
 redefinitions narrow to their group and never resolve; module-scope and
 class-body lookups in a file that may bind names at run time (`exec`,
-`globals`, `sys.modules` and the like) or has a star import prove nothing,
-and monkeypatching from other modules is not tracked.
+`globals`, `sys.modules` and the like) or has a star import prove nothing, as
+do module-level definitions of builtin names, class-body lookups in a class
+with a base or keyword argument, and every lookup in a file that mentions
+`f_locals`; monkeypatching from other modules is not tracked.
 
 A narrowed edge changes only `target`, `resolution`, `candidates` and
 `metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and

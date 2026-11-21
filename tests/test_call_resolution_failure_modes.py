@@ -418,7 +418,7 @@ MALFORMED_OUTPUTS = {
     "bindings-not-a-mapping": {"goal": "module", "bindings": 5},
     "unhashable-reason": {
         "goal": "module",
-        "bindings": {"1:2": {"outcome": "none", "reason": ["stub"]}},
+        "bindings": {"1:2": {"outcome": "none", "reason": ["unbound"]}},
     },
     "unhashable-script-global": {"goal": "module", "script_globals": [["a"]]},
     "unhashable-outcome-kind": {"goal": "module", "bindings": {"1:2": {"outcome": []}}},

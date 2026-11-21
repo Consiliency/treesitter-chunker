@@ -311,7 +311,12 @@ These all give `supported: false` for the file:
   after NFKC normalization (`ﬁle` is `file`, `ｈelper` is `helper`), while
   the analysis and the chunker's symbol names use the source spelling, so a
   normalized write or parameter would otherwise be missed. ASCII names are
-  NFKC-invariant.
+  NFKC-invariant;
+- a Python file in which any line's leading whitespace has a space before a
+  tab, or a form feed (#695 panel A4). tree-sitter counts a tab as eight
+  more columns, while CPython advances to the next multiple of eight, so
+  "seven spaces and a tab" can move a `def` into a different block without a
+  parse error.
 
 None of them adds anything to `facts["errors"]` or diagnostics, and none
 raises, even with `fail_fast`. A debug log line is allowed. A file with
@@ -610,6 +615,13 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
   - **A free name** (one the class body does not bind) continues through any
     enclosing **function** scopes, then the module, then builtins. A class
     nested in a function reads that function's binding (`py-class-free-var`).
+  - **Open class namespaces (#695 panel A1, B4; Codex 4653329444).** When the
+    class statement has any base or any keyword argument, every lookup from
+    class-body-evaluated code (the code listed above, the first comprehension
+    iterable, and class annotation and type-parameter scopes) gives
+    `none(class-scope-bound)`: a metaclass's `__prepare__`, inherited through
+    a base possibly defined in another file, or a `__missing__` namespace may
+    supply any name. No committed fixture class has bases.
   - **Code inside methods, nested functions, lambdas and comprehensions** in a
     class skips the class scope. It continues in enclosing function scopes,
     then the module.
@@ -642,7 +654,11 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
   `try`, `except`, `finally`, `while`, `for`, `with` or `match` statement lies
   between it and its scope body. `decorated_definition` is transparent.
 - A module-level call before the only definition is a `NameError` at runtime,
-  so resolving it is harmless.
+  so resolving it is harmless, **unless the name is a builtin** (#695 panel
+  A3): then the call reaches the builtin until the definition runs. A
+  module-scope definition or import whose name is a builtin (CPython 3.14's
+  `dir(builtins)`, pinned by a test, plus the Python 2 builtins) never
+  proves: `none(builtin-shadow)`.
 - **Fail-closed refinements (PR 4).** Each only adds `none`; no expected row
   changes.
   - **Decorated definitions.** A decorator can replace the function, so a
@@ -661,7 +677,7 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     them), and the `exec` statement is dynamic.
   - **Dynamic binding.** `dynamic-scope` applies to module-scope lookups, and
     to class-body lookups (a class namespace is a dict that `exec` and
-    `locals()` can write; function locals cannot be), in a file that mentions
+    `locals()` can write), in a file that mentions
     `exec`, `eval`, `globals`, `vars`, `locals`, `__import__`,
     `__builtins__`, `builtins`, `importlib` or `execfile` outside an
     attribute name, a keyword-argument name or a `def`/`class` name (so
@@ -670,8 +686,26 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     `sys` reached by name, by an `as` alias or as `os.sys`; that hands the
     `sys` module on as a value (`getattr(sys, "modules")`); that imports
     `modules` from `sys`; or that touches `__globals__`, `f_globals`,
-    `f_locals`, `f_builtins` or `inspect.getmodule`. Precedence:
-    `dynamic-scope`, then `star-import`, then `unmapped`.
+    `f_locals`, `f_builtins` or `inspect.getmodule`. The #695 panel fold
+    adds: `__main__` or an alias of it used other than in an import (A5); a
+    constant string (a literal, adjacent literals or literals joined by `+`)
+    that is one of those attribute names or `modules`, alone or as a part of
+    a dotted path (`getattr(f, '__globals__')`, `attrgetter('sys.modules')`;
+    A6, B2); an import of the file's own module (`import a`, `import pkg.a as
+    m` or `from . import a` in `a.py`; the package name for `__init__.py`;
+    A7); and `X.modules[__name__]`, `X.modules.get(__name__)` (also
+    `__getitem__`, `setdefault`, `pop`) through any receiver `X` (B3).
+    Precedence: `dynamic-scope`, then `star-import`, then `unmapped`.
+  - **`f_locals` (#695 panel A2, B1).** A frame's `f_locals` writes through
+    to a function's locals (PEP 667, Python 3.13+). A file that mentions
+    `f_locals` anywhere, as an attribute or a constant string, gives
+    `dynamic-scope` for every lookup, function scopes included. Without it,
+    `exec` and `locals()` cannot rebind a function's locals.
+  - **Line continuations.** A backslash continuation inside a target is only
+    a token. Valid targets the reader does not understand still poison the
+    scope: `del f()`, `with a as f():` and `type(x).attr = v` (which
+    tree-sitter parses as a `type` statement) are committed as test-written
+    near-misses (10.6).
   - **Type-parameter scopes.** A PEP 695 generic `def`, `class` or `type`
     statement gets a type-parameter scope between it and its enclosing scope.
     Lookups from its annotations, bases, body and, conservatively, its
@@ -760,6 +794,7 @@ an unreviewed binding form.
 | `reassigned` | The name is assigned somewhere in the binding's subtree |
 | `block-function` | A block-level function declaration binds the name |
 | `conditional` | Python: a single conditional definition or import |
+| `builtin-shadow` | Python: a module-scope definition or import whose name is a builtin, which the name reaches until it runs (PR 4, #695 panel A3) |
 | `mixed-bindings` | Definitions mixed with other bindings, or duplicate imports |
 | `class-scope-bound` | Python class-body lookup of a name the class binds |
 | `star-import` | Python module-scope lookup in a file with `from m import *` |
@@ -793,7 +828,7 @@ per call, decided in this order:
    ambient (`declare enum E {}`; B7, settled in PR 2). Among the callable
    members left, `ambient` wins over `bodyless`: `declare function amb():
    void;` is both, and ts-declare-ambient expects `ambient`. Then comes
-   `conditional`.
+   `conditional`, then (Python, module scope) `builtin-shadow`.
 3. Tier 2 reasons (9.8) are checked in the order 9.2, 9.5 and 9.6 list them.
    For Python, `script-dir-shadow` is checked before `module-not-found`.
 
@@ -1263,6 +1298,7 @@ compares the analyzer's output with them.
 | unbound | py-global-unbound, py-builtin-family, ts-kind-filter, mixed-family |
 | parameter | ts-param-kind, ts-param-shadow, js-default-param, js-locals (c3, `arguments`), py-param-shadow, py-scopes (lambda) |
 | local-variable | ts-param-shadow, js-locals, js-cjs-local, js-require, ts-dynamic-import, ts-import-cjs (`import =`), py-scopes, py-dynamic-import |
+| builtin-shadow | `test_builtin_shadow_end_to_end` in `tests/test_call_resolution_tier1_py.py`, on a tree the test writes (11.2) |
 | expression-bound | js-var-fn; Python decorated definitions (`test_decorated_definitions_keep_their_off_mode_edge`, on trees the test writes) |
 | self-binding | js-fnexpr-self, js-class-expr-self |
 | reassigned | ts-reassign |
@@ -1285,7 +1321,7 @@ compares the analyzer's output with them.
 | TS `using` / `await using` (fail closed, 7.5) | `test_using_near_miss_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on a tree the test writes (a committed tree would change the off-mode baseline, 11.2) |
 | stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2); PR 3 drops the latter two from the vocabulary and PR 4 drops `stub` |
 | script-global, namespace-merged, t1.js_hoist, inherited ambient (PR 3) | also `test_script_global_end_to_end`, `test_script_global_controls_end_to_end`, `test_js_hoist_end_to_end`, `test_js_hoist_near_misses_end_to_end`, `test_namespace_merging_end_to_end` and `test_inherited_ambient_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on trees the tests write (11.2) |
-| Python fail-closed classes (PR 4): write forms, dynamic binding, decorated definitions, non-ASCII identifiers (unsupported file, 5.3) | `test_write_forms_keep_their_off_mode_edge`, `test_dynamic_binding_forms_keep_their_off_mode_edge`, `test_decorated_definitions_keep_their_off_mode_edge`, `test_non_ascii_identifiers_make_the_file_unsupported` and `test_python_positives_end_to_end` in `tests/test_call_resolution_tier1_py.py`, on trees the tests write (11.2), with analyzer unit cases in the same module |
+| Python fail-closed classes (PR 4): write forms, dynamic binding, decorated definitions, non-ASCII identifiers (unsupported file, 5.3) | `test_write_forms_keep_their_off_mode_edge`, `test_dynamic_binding_forms_keep_their_off_mode_edge`, `test_decorated_definitions_keep_their_off_mode_edge`, `test_non_ascii_identifiers_make_the_file_unsupported` and `test_python_positives_end_to_end` in `tests/test_call_resolution_tier1_py.py`; the #695 panel fold adds `test_panel_695_cases_keep_their_off_mode_edge` (panel A's runtime-traced wrong cases), `test_natural_unmapped_forms_keep_their_off_mode_edge` (`del f()`, `with a as f():`, `type(x).attr = v`: natural `unmapped` near-misses), `test_line_continuation_target_end_to_end` and `test_builtin_shadow_end_to_end`, on trees the tests write (11.2), with analyzer unit cases in the same module |
 | #691 panel classes A1–A6, B5, and the president's B-1–B-3 (PR 3) | `test_panel_691_cases_keep_their_off_mode_edge`, `test_misparsed_blocks_make_the_file_unsupported`, `test_static_constructor_is_not_the_class_constructor` and `test_markdown_and_rst_in_the_run_do_not_count` in `tests/test_call_resolution_tier1_js.py` (its `codex-4652498471`, `bracket-*` and `template-assign` cases pin literal-key callees, and its `M01`–`M12` cases writers through a receiver `this`, with the matching `test_global_object_uses_fail_closed_with_a_wildcard` cases; `test_writer_through_this_in_a_constructor_still_resolves` is the C-1 control); `test_editing_another_file_reruns_the_script_global_check` in `tests/test_call_resolution_cache.py` |
 | external-module | ts-bare-specifier, ts-external-import-kind |
 | outside-root | py-relative-root |
@@ -1584,7 +1620,7 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | R9 | Scripts outside the run can redefine a global: HTML-included scripts outside the run, `dist/`, `node_modules`, `.mjs` and `.cjs` files, inline `<script>` in `.vue` and `.svelte` files (none of these is collected), and raw HTML in Markdown or reStructuredText that a site generator renders, which, like any generated page, is outside the run | Accept: they are not scanned. In-run HTML, XML and PHP files count as declaring every global (PR 3). |
 | R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: a computed call on a receiver `this` that may be an indirect `eval` (`this[k](s)`, `this['ev' + 'al'](s)`; `*` would switch off script-top resolution in about 52 of 1136 npm files); hand-offs of a receiver `this` through a variable or an expression (`const s = this; s.d = f`, `const w = this.window; w.d = f`, `(0, this).d =`, `(c ? this : o).d =`, `(c || this).d =`, the receiver argument of `Reflect.set(o, 'd', v, this)`, `Object.assign(...[this], …)`), except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)` with `this` first, which give `*`; `Reflect.get(f, 'constructor')`, and computed keys that may reach `constructor` on arbitrary objects (`x[k](s)`, `x['constr' + 'uctor'](s)`, `f[['constructor']](s)`, `const { [k]: F } = f`); writer hand-offs the analysis cannot identify syntactically (`const a = Object.assign; a(this, …)`, `Reflect.apply(Object.assign, null, [this, …])`, `Object['assign'](...[this], …)`, and a helper given `this`: `h(this)`) | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
 | R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) is not tracked | Accept. This is the same kind of risk as the module-scope preference the issue asks for. |
-| R12 | Python run-time binding no syntactic rule sees (PR 4): a module importing itself by name (`import pkg.mod as m; m.d = f`, a variant of R10); a helper in another module that writes its caller's globals through frames (`sys._getframe(1).f_globals` there, not here) or `exec(code, mod.__dict__)`; `gc`/`ctypes` tricks; replacing a function's `__code__` (the edge still names the right definition, which then runs other code) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
+| R12 | Python run-time binding no syntactic rule sees (PR 4): a helper in another module that writes its caller's globals or locals through frames (`sys._getframe(1).f_globals` or `.f_locals` there, not here; #695 panel A2) or `exec(code, mod.__dict__)`; computed strings beyond constant literals (`'__glo' + name`); `X.modules` uses other than `X.modules[__name__]` and its getters (`m = collections._sys.modules; m[__name__]`); `gc`/`ctypes` tricks; replacing a function's `__code__` (the edge still names the right definition, which then runs other code). Self-imports are no longer here: they give `dynamic-scope` (#695 panel A7) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
 
 **Owner notice** (informational, from the ruling): these are delegated
 decisions, all stricter than or consistent with the issue:
@@ -1848,3 +1884,20 @@ JS row changes.
 | The probe's one-root run asserts the same Tier 1 rows as its py-root run | §10.2 |
 | `stub` leaves the vocabulary | §10.6 |
 | R12 added | §15 |
+
+### PR 4: #695 panel fold
+
+Every item only adds `none`; no expected row changes. `python` fact version
+3.
+
+| Item | Applied in |
+| --- | --- |
+| A1, B4, Codex 4653329444: a class with any base or keyword opens its namespace (`class-scope-bound`) | §7.3 class scope |
+| A2, B1: `f_locals` anywhere makes every lookup `dynamic-scope` | §7.3; R12 |
+| A3: module-scope definitions of builtin names give `builtin-shadow` | §7.3; §7.6 |
+| A4: a space before a tab, or a form feed, in indentation makes the file unsupported | §5.3 |
+| A5: `__main__` like `sys`; A6, B2: constant-string attribute names; A7: self-imports; B3: `X.modules[__name__]` | §7.3 dynamic binding |
+| B5, C1: line continuations are tokens; natural `unmapped` near-misses | §7.3; §10.6 |
+| B7: expected rows per plan PR pinned | `tests/test_call_resolution_engine.py` |
+| B8 (not done): digesting the unit-case sources | Each unit case pins its own outcome, so a fact change there already fails a test in the same change, where the version bump is reviewed; covering them would mean moving several hundred inline sources into a registry the harness can read |
+| C2 (not in this PR): narrowing the `importlib`/`sys` triggers needs its own soundness argument; A8 (cross-file monkeypatch, R10) is a follow-up | — |

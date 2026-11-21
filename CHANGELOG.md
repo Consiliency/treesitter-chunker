@@ -58,19 +58,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     narrow to their group. Parameters, locals (every write form: assignment,
     augmented and annotated assignment, `for`/`with`/`except`/comprehension
     targets, walrus, `match` captures, `del`, `type`), imports, a single
-    decorated or conditional definition, names a class body binds, names
-    written through `global` or `nonlocal` from another scope, and
-    module-scope or class-body lookups in a file that may bind names at run
-    time (`exec`, `eval`, `globals`, `vars`, `locals`, `__import__`,
-    `builtins`, `importlib`, `sys.modules`, `__globals__`, frame globals) or
-    has a star import never resolve. Monkeypatching from other modules is not
+    decorated or conditional definition, a module-level definition of a
+    builtin name (which the name reaches until it runs), names a class body
+    binds, any class-body lookup in a class with a base or keyword argument
+    (a metaclass's `__prepare__` may supply any name), names written through
+    `global` or `nonlocal` from another scope, and module-scope or
+    class-body lookups in a file that may bind names at run time (`exec`,
+    `eval`, `globals`, `vars`, `locals`, `__import__`, `builtins`,
+    `importlib`, `sys.modules` or any `X.modules[__name__]`, `__main__`,
+    `__globals__`, frame globals, those attribute names as constant strings,
+    or an import of the file's own module) or has a star import never
+    resolve. A file that mentions `f_locals`, which writes function locals,
+    resolves nothing. Monkeypatching from other modules is not
     tracked (plan risk R10). Wherever no binding proves a candidate, only
     the kind and family filters (`t1.kind`, `t1.family`) narrow, and only
     when two or more candidates remain. A file whose tree has syntax errors
     or a misparsed block, is too deeply nested for the scope pass, spells a
     name with a Unicode escape (JS/TS) or has a non-ASCII identifier
-    (Python, whose identifiers are NFKC-normalized), or whose analysis fails
-    keeps exactly its off-mode edges. Narrowed edges carry
+    (Python, whose identifiers are NFKC-normalized) or indentation that
+    depends on the width of a tab (Python), or whose analysis fails keeps
+    exactly its off-mode edges. Narrowed edges carry
     `provenance.call_resolution` and `provenance.call_rules`, and
     `run.options.call_resolution` and symbol-graph
     `metadata.call_resolution` record the mode. On-mode `parity_digest`

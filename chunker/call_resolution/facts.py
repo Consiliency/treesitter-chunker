@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"9"`` for the ``js`` family and ``"2"`` for
+Schema (fact version ``"9"`` for the ``js`` family and ``"3"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -17,7 +17,8 @@ Schema (fact version ``"9"`` for the ``js`` family and ``"2"`` for
     ``False`` for a language no analyzer covers, an analyzer exception,
     ``RecursionError``, a parser initialization failure, a tree with
     errors, a JS/TS file that spells a name with a Unicode escape, or a
-    Python file with a non-ASCII identifier (section 5.3). An unsupported file never narrows, has no
+    Python file with a non-ASCII identifier or with indentation that depends
+    on the width of a tab (section 5.3). An unsupported file never narrows, has no
     ``bindings`` and contributes nothing to other files.
 ``goal``
     JavaScript and TypeScript: ``"module"`` if the program has any top-level
@@ -92,7 +93,10 @@ logger = logging.getLogger(__name__)
 # (Codex 4652498471 on #691).
 # js "9": ``Object``/``Reflect`` reached through a receiver ``this`` (C-1).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "9", "python": "2"}
+# python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
+# builtin shadowing, tab-width indentation, ``__main__``, literal attribute
+# names, self-imports, ``X.modules[__name__]``, line continuations).
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "9", "python": "3"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -107,6 +111,7 @@ TIER1_NONE_REASONS = (
     "reassigned",
     "block-function",
     "conditional",
+    "builtin-shadow",
     "mixed-bindings",
     "class-scope-bound",
     "star-import",
@@ -203,11 +208,14 @@ def compute_scope_facts(
     call_facts: Sequence[Mapping[str, Any]],
     symbols: Sequence[Sequence[Any]],
     suffix: str = "",
+    path: str = "",
 ) -> dict[str, Any]:
     """Re-parse ``source`` and return the file's scope facts.
 
     ``suffix`` is the file's lower-case extension: ``.mjs`` and ``.mts``
-    files are always ES modules, whatever their syntax.
+    files are always ES modules, whatever their syntax. ``path`` is the
+    file's display path relative to the root (part of every cache key): a
+    Python file that imports its own module is dynamic.
 
     ``source`` is the buffer symbol-fact extraction already read, so callee
     spans match the call facts. Python source with a lone CR is parsed through
@@ -236,6 +244,14 @@ def compute_scope_facts(
         if family == "js" and suffix in _MODULE_SUFFIXES:
             partial = js_scope.analyze(
                 root, source, language, call_facts, goal="module"
+            )
+        elif family == "python" and analyzer is py_scope.analyze:
+            partial = py_scope.analyze(
+                root,
+                source,
+                language,
+                call_facts,
+                own_names=py_scope.own_module_names(path),
             )
         else:
             partial = analyzer(root, source, language, call_facts)
