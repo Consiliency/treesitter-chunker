@@ -18,7 +18,18 @@
      "caller": "g",
      "file": "a.js",
      "line": 2,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "a.js:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "5fbd2e65170896256895ccf75fd4d3efa5f5e70c",

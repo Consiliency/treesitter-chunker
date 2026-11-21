@@ -18,7 +18,17 @@
      "caller": "wrap.f",
      "file": "a.js",
      "line": 2,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "b.js:2:h.t",
+       "a.js:3:wrap.f.t"
+      ],
+      "outcome": "none(parameter)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "16490056ff4613bda497f63f916118b1b604efbb",

@@ -18,7 +18,20 @@
      "caller": "g",
      "file": "a.js",
      "line": 4,
+     "pr": 3,
      "reference": "d",
+     "structural": {
+      "candidates": [
+       "a.js:2:g.d",
+       "a.js:3:g.d"
+      ],
+      "interim": "PR 2 interim (plan 10.3): the function-body group stays ambiguous; PR 3 resolves to a.js:3 g.d by t1.js_hoist",
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "470018ad4567de538b2174af53f399566b73cff5",

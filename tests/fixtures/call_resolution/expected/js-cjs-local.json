@@ -18,7 +18,17 @@
      "caller": "use",
      "file": "a.js",
      "line": 2,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "lib.js:1:t",
+       "other.js:1:t"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "222d82fb2ca3c883cac152ce92ec3b26da16a821",

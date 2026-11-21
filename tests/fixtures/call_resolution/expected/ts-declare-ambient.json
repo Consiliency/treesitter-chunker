@@ -18,7 +18,17 @@
      "caller": "use",
      "file": "a.ts",
      "line": 2,
+     "pr": 2,
      "reference": "amb",
+     "structural": {
+      "candidates": [
+       "b.js:1:amb",
+       "a.ts:1:amb"
+      ],
+      "outcome": "none(ambient)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "563d294cd0052277f67391ae4df73c2963e7f0a3",

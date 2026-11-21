@@ -18,7 +18,18 @@
      "caller": "App",
      "file": "a.tsx",
      "line": 2,
+     "pr": 2,
      "reference": "Foo",
+     "structural": {
+      "candidates": [
+       "a.tsx:1:Foo"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "6eb619dd367185804e443b991e590311c7229307",

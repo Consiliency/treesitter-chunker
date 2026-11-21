@@ -19,7 +19,17 @@
      "caller": "c1",
      "file": "a.js",
      "line": 2,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "a.js:1:t",
+       "b.js:1:t"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5fbd2e65170896256895ccf75fd4d3efa5f5e70c",
@@ -45,7 +55,17 @@
      "caller": "c2",
      "file": "a.js",
      "line": 3,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "a.js:1:t",
+       "b.js:1:t"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5fbd2e65170896256895ccf75fd4d3efa5f5e70c",
@@ -71,7 +91,17 @@
      "caller": "c3",
      "file": "a.js",
      "line": 4,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "a.js:1:t",
+       "b.js:1:t"
+      ],
+      "outcome": "none(parameter)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5fbd2e65170896256895ccf75fd4d3efa5f5e70c",
@@ -97,7 +127,21 @@
      "caller": "c4",
      "file": "a.js",
      "line": 5,
+     "pr": 2,
      "reference": "mk",
+     "structural": {
+      "candidate_ids": [
+       "606e58ec3aea25f4fa4d424562364cc8e3f5b966"
+      ],
+      "candidates": [
+       "a.js:7:mk"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "22138f124f5890a3aaf79ab6a36ab6c058557dc2",
@@ -123,7 +167,17 @@
      "caller": "c4",
      "file": "a.js",
      "line": 5,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "a.js:1:t",
+       "b.js:1:t"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5fbd2e65170896256895ccf75fd4d3efa5f5e70c",
@@ -149,7 +203,21 @@
      "caller": "c6",
      "file": "a.js",
      "line": 6,
+     "pr": 2,
      "reference": "mk",
+     "structural": {
+      "candidate_ids": [
+       "606e58ec3aea25f4fa4d424562364cc8e3f5b966"
+      ],
+      "candidates": [
+       "a.js:7:mk"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "22138f124f5890a3aaf79ab6a36ab6c058557dc2",
@@ -175,7 +243,17 @@
      "caller": "c6",
      "file": "a.js",
      "line": 6,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "a.js:1:t",
+       "b.js:1:t"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5fbd2e65170896256895ccf75fd4d3efa5f5e70c",
@@ -201,7 +279,17 @@
      "caller": "c5",
      "file": "args.js",
      "line": 2,
+     "pr": 2,
      "reference": "arguments",
+     "structural": {
+      "candidates": [
+       "args2.js:1:arguments",
+       "args.js:1:arguments"
+      ],
+      "outcome": "none(parameter)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "6321bcbbb25dbb5fa4920a0f1a83bee8f88e4e36",

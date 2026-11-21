@@ -294,7 +294,13 @@ These all give `supported: false` for the file:
 - an analyzer exception;
 - `RecursionError`;
 - a parser initialization failure;
-- a tree with errors.
+- a tree with errors;
+- a JS/TS file that spells any name with a Unicode escape (`\u0074`,
+  `\u{74}`), in an identifier, property, private, label or type name
+  (PR 2, Codex review of treesitter-chunker#689). Names are compared by
+  their source spelling, so an escaped parameter, write or `eval` would
+  otherwise be missed. Backslashes in strings, templates, regexes, comments
+  and JSX text do not count.
 
 None of them adds anything to `facts["errors"]` or diagnostics, and none
 raises, even with `fail_fast`. A debug log line is allowed. A file with
@@ -420,6 +426,15 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     bound as a non-symbol (`none(self-binding)`). A class expression's own name
     works the same way;
   - TS namespace body (`internal_module`, `module`);
+  - **TS enum body** (`enum_body`; PR 2, the president's treesitter-chunker#689
+    ruling, B-1). Inside it the member names of every declaration of that
+    enum are in scope for the initializers and shadow outer bindings: tsc
+    emits `E.t()` for `enum E { t = 1, B = (t as any)() }`, also across merged
+    declarations. Merged declarations, possibly in other files, make that
+    member set non-local, so Tier 1 fails closed for every bare-name lookup
+    that reaches an enum body, member or not: `none(enum-scope)`. A binding
+    found before the body (a parameter of an arrow in an initializer, say)
+    still decides. Lookups outside the enum are unaffected;
   - `program`.
 - **`class_body` binds no bare names.** Method bodies skip the class and
   continue in the scope enclosing it.
@@ -452,10 +467,20 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
 - **Reassignment.** Any assignment, update or compound assignment to the name
   anywhere in the binding's scope subtree turns off narrowing
   (`none(reassigned)`). That includes nested functions that do not shadow the
-  name.
-- **Fail closed** with `none(dynamic-scope)` on a direct `eval(...)` or a
-  `with` on the lookup chain, and with `none(unmapped)` on an unclassified
-  declaration node (7.5).
+  name. Targets are read fail-closed (PR 2, treesitter-chunker#689 panel):
+  every identifier under an assignment target, an update argument or a bare
+  `for … of/in` target counts as a write, through parentheses and TS wrappers
+  (`(t)++`, `(t as any) = x`, `t! = x`, `<any>t`, `satisfies`) and patterns.
+  The one exception is the object of a member or subscript access
+  (`t.x = 1`). Computed method and property names are evaluated, so they are
+  read too.
+- **Fail closed** with `none(dynamic-scope)` when the lookup chain meets a
+  scope that contains a direct `eval(...)`, or a `with` lies on the lookup
+  chain. A direct eval can
+  assign any binding visible from its site, so every scope from the eval out
+  to `program` is dynamic. Parenthesized and TS-wrapped callees (`(eval)(s)`,
+  `eval!(s)`, `(eval as any)(s)`) are direct eval. Also fail closed with
+  `none(unmapped)` on an unclassified declaration node (7.5).
 - **Script goal and `script_globals`:**
   - `script_globals` holds the `var`, `let`, `const`, `class` and `function`
     top-level names of every script-goal JS/TS file.
@@ -545,19 +570,32 @@ result is `none(non-callable)`. Then:
 | --- | --- | --- | --- |
 | Any | Any group with **no body** (signatures only, or all ambient; ambient is inherited) | `none(ambient)` if every member is ambient (ambient wins over bodyless, R-1(iii)); otherwise `none(bodyless)` | — |
 | Any | One definition | That definition (Python: only if unconditional; a single conditional definition gives `none(conditional)`) | `t1.lexical` |
-| TS/TSX | k ≥ 1 bodyless `function_signature` plus exactly one body, contiguous, in one scope | The body | `t1.ts_overload` |
+| TS/TSX | k ≥ 1 bodyless `function_signature` immediately followed by exactly one body that is a `function_declaration`, contiguous, in one scope (PR 2) | The body | `t1.ts_overload` |
+| TS/TSX | Signatures with one body in any other shape (a body before a signature, a `const` arrow body, not contiguous) | Every member; narrows, never resolves | `t1.lexical` |
 | TS/TSX | Two or more bodies | The bodies, `ambiguous` | `t1.lexical` |
 | JS | Two or more `function_declaration`/`generator_function_declaration` directly in one function body or one script-goal `program`; no block-level declaration, expression binding or other binding of the name in that scope | The last one | `t1.js_hoist` (PR 3) |
 | JS | The same at an ES-module top level (an early error) | The group, `ambiguous` | `t1.lexical` |
 | Python | Two or more definitions in one scope | The group, `ambiguous` | `t1.lexical` |
 | Any | Definitions mixed with non-definition bindings | `none(mixed-bindings)` | — |
 
-**Open for PR 2 (#688 panel, B7).** This section and R-1 item 2 (7.6) conflict
-on an ambient enum called as a function, `declare enum E {}` then `E()`. Here
-the non-callable kinds are dropped first, giving `none(non-callable)`; R-1 item
-2 puts `ambient` first, giving `none(ambient)`. PR 2 must fix the order and add
-a fixture for it. Either way the edge is unchanged; only the recorded reason
-differs.
+**Settled in PR 2 (treesitter-chunker#688 panel, B7).** An ambient enum called
+as a function, `declare enum E {}` then `E()`, gives `none(non-callable)`:
+non-callable kinds are dropped first, as this section says, and `ambient` and
+`bodyless` then apply only to the callable members left. The rulings support
+this order:
+
+- R-1(iii) of the plan ruling orders only `ambient` before `bodyless`
+  (ts-declare-ambient) and says nothing about enums or namespaces;
+- the treesitter-chunker#688 president's ruling (note 1) restates this
+  section's drop-first order as the analyzer contract;
+- the engine already rejects any proof that names a non-callable symbol.
+
+The edge is unchanged either way; only the recorded reason differs. A function
+merged with an ambient namespace (`declare function g(): void;` plus
+`declare namespace g {}`) drops the namespace and gives `none(ambient)`. Both
+cases are pinned by `test_b7_*` in `tests/test_call_resolution_tier1_js.py` on
+trees the test writes, because a committed tree would change the off-mode
+baseline (11.2).
 
 ### 7.5 Binding allow-list (A5)
 
@@ -611,6 +649,7 @@ an unreviewed binding form.
 | `namespace-merged` | The lookup passes through a merged or script-goal namespace |
 | `script-global` | Another file declares the name as a script global |
 | `type-only` | Only a type-only import binds the name |
+| `enum-scope` | The lookup reaches a TS enum body, where the members of every declaration of the enum shadow outer names (7.2) |
 | `unmapped` | A declaration with no symbol, a duplicate span, or an unclassified node |
 | `no-binding-fact` | The call has no binding entry |
 | `stub` | PR 1 only |
@@ -623,13 +662,17 @@ per call, decided in this order:
 
 1. The outcome's own reason (`parameter`, `local-variable`,
    `expression-bound`, `self-binding`, `reassigned`, `block-function`,
-   `dynamic-scope`, `star-import`, `class-scope-bound`, `mixed-bindings`,
-   `type-only`, `unmapped`, `no-binding-fact`) wins over `script-goal-deferred`,
+   `dynamic-scope`, `enum-scope`, `star-import`, `class-scope-bound`,
+   `mixed-bindings`, `type-only`, `unmapped`, `no-binding-fact`) wins over
+   `script-goal-deferred`,
    `script-global`, `namespace-deferred` and `namespace-merged`. Those apply
    only when the lookup would otherwise prove a group.
-2. In a definition group, `ambient` wins over `bodyless`: `declare function
-   amb(): void;` is both, and ts-declare-ambient expects `ambient`. Then come
-   `non-callable` and `conditional`.
+2. In a definition group, non-callable kinds are dropped first (7.4), so a
+   group of only enums and namespaces gives `non-callable`, even when it is
+   ambient (`declare enum E {}`; B7, settled in PR 2). Among the callable
+   members left, `ambient` wins over `bodyless`: `declare function amb():
+   void;` is both, and ts-declare-ambient expects `ambient`. Then comes
+   `conditional`.
 3. Tier 2 reasons (9.8) are checked in the order 9.2, 9.5 and 9.6 list them.
    For Python, `script-dir-shadow` is checked before `module-not-found`.
 
@@ -1109,12 +1152,15 @@ compares the analyzer's output with them.
 | dynamic-scope | js-eval-with, py-dynamic-scope |
 | ambient | ts-declare-ambient |
 | bodyless | ts-signature-only |
-| non-callable | ts-enum-shadow |
+| non-callable | ts-enum-shadow; B7 `declare enum` (`test_b7_*`, written by the test) |
 | namespace-merged | ts-declare-namespace, ts-namespace-global |
 | script-global | js-script-global, js-implicit-global |
 | type-only | ts-type-only-import |
+| enum-scope | `test_enum_scope_end_to_end` and `test_lookups_inside_an_enum_body_fail_closed` in `tests/test_call_resolution_tier1_js.py`, on trees the tests write (a committed tree would change the off-mode baseline, 11.2) |
 | no-binding-fact, unmapped | named synthetic-facts tests (R-3; listed below the table) |
 | unsupported file | named end-to-end failure-mode tests (R-3; listed below the table) |
+| escaped names (unsupported file, 5.3) | `test_escaped_names_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on trees the test writes (11.2) |
+| TS `using` / `await using` (fail closed, 7.5) | `test_using_near_miss_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on a tree the test writes (a committed tree would change the off-mode baseline, 11.2) |
 | stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2) |
 | external-module | ts-bare-specifier, ts-external-import-kind |
 | outside-root | py-relative-root |
@@ -1550,3 +1596,23 @@ for name in sys.argv[3:]:
 | Dotted Python module paths resolve one component at a time | §9.5 "Dotted names resolve one component at a time"; §10.4 py-ancestor-module-shadow; §10.6 module-not-found row |
 
 Both tighten the rules (fail closed); neither departs from a ruling. Today cells for both fixtures were derived on main f213f1c2.
+
+### PR 2: treesitter-chunker#688 panel item B7
+
+| Item | Applied in |
+| --- | --- |
+| B7: `declare enum E {}` then `E()` | §7.4 (settled: `non-callable`, non-callable kinds dropped first); §7.6 precedence item 2; §10.6 non-callable row |
+
+### PR 2: the president's treesitter-chunker#689 ruling
+
+| Item | Applied in |
+| --- | --- |
+| B-1: lookups inside a TS enum body | §7.2 scope list (enum body, `none(enum-scope)`); §7.6 reason table and precedence item 1; §10.6 enum-scope row |
+| Nit: eval wording | §7.2 fail-closed bullet ("the lookup chain meets a scope that contains a direct `eval(...)`") |
+| Nit: overload row layout | §7.4 table (the fallback has its own row) |
+
+### PR 2: Codex review of treesitter-chunker#689 (escaped names)
+
+| Finding | Applied in |
+| --- | --- |
+| Unicode-escaped names compare by source spelling (comment 4649197239) | §5.3 (an escaped name makes a JS/TS file unsupported); §10.6 row |

@@ -18,7 +18,18 @@
      "caller": "A.m",
      "file": "web/svc.ts",
      "line": 4,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "web/svc.ts:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "24ab644144b8abb52389efc2487b1ab5dde4f811",
@@ -44,7 +55,18 @@
      "caller": "A.m2",
      "file": "web/svc.ts",
      "line": 5,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "web/svc.ts:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "24ab644144b8abb52389efc2487b1ab5dde4f811",
@@ -70,7 +92,18 @@
      "caller": "A.m2",
      "file": "web/svc.ts",
      "line": 5,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "web/svc.ts:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "24ab644144b8abb52389efc2487b1ab5dde4f811",
@@ -96,7 +129,18 @@
      "caller": "d",
      "file": "web/svc.ts",
      "line": 9,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "web/svc.ts:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "24ab644144b8abb52389efc2487b1ab5dde4f811",
@@ -122,7 +166,18 @@
      "caller": "d",
      "file": "web/svc.ts",
      "line": 9,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "web/svc.ts:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "24ab644144b8abb52389efc2487b1ab5dde4f811",
@@ -148,7 +203,19 @@
      "caller": "caller",
      "file": "web/svc.ts",
      "line": 12,
+     "pr": 2,
      "reference": "d",
+     "structural": {
+      "candidates": [
+       "web/svc.ts:9:d"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical",
+       "t1.ts_overload"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
@@ -174,7 +241,19 @@
      "caller": "caller",
      "file": "web/svc.ts",
      "line": 13,
+     "pr": 2,
      "reference": "d",
+     "structural": {
+      "candidates": [
+       "web/svc.ts:9:d"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical",
+       "t1.ts_overload"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "6293f3f3d8657d9ba61cbcfc9de4a490bd2633c1",
@@ -200,7 +279,18 @@
      "caller": "caller",
      "file": "web/svc.ts",
      "line": 14,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "web/svc.ts:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "24ab644144b8abb52389efc2487b1ab5dde4f811",
@@ -226,7 +316,18 @@
      "caller": "View",
      "file": "web/svc.tsx",
      "line": 2,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "web/svc.tsx:1:t"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "24ab644144b8abb52389efc2487b1ab5dde4f811",

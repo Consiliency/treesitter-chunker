@@ -38,7 +38,17 @@
      "caller": "e",
      "file": "a.js",
      "line": 2,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "b.js:1:t",
+       "a.js:1:t"
+      ],
+      "outcome": "none(dynamic-scope)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "68e34674aef67ea3c811dec5a1856703f0398c2a",
@@ -64,7 +74,17 @@
      "caller": "w",
      "file": "a.js",
      "line": 3,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "b.js:1:t",
+       "a.js:1:t"
+      ],
+      "outcome": "none(dynamic-scope)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "68e34674aef67ea3c811dec5a1856703f0398c2a",

@@ -24,7 +24,7 @@
       "candidates": [
        "k.ts:1:onlyA"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },
@@ -57,7 +57,7 @@
       "candidates": [
        "k.ts:2:onlyB"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },

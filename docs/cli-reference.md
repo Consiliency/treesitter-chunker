@@ -105,8 +105,12 @@ bypasses cache reads and refreshes records for the current snapshot.
 `--call-resolution` is experimental (treesitter-chunker#682). `name`, the
 default, is the usual name-only resolution. `structural` narrows `ambiguous`
 call edges whose callee is a bare identifier in a Python, JavaScript, TypeScript
-or TSX file. It currently applies only the symbol-kind and language-family
-filters and resolves nothing. Narrowed edges carry `provenance.call_resolution`
+or TSX file. For JavaScript, TypeScript and TSX callers it resolves an edge
+when a lexical binding in the caller's file proves its one target
+(`t1.lexical`, and `t1.ts_overload` for a TS overload set); script-goal top
+levels, TS namespace bodies and Python callers are not resolved yet, and only
+the symbol-kind and language-family filters narrow them. Narrowed edges carry
+`provenance.call_resolution`
 and `provenance.call_rules`, and `run.options.call_resolution` records the mode.
 Use a separate `--cache-dir` per mode: switching modes on one cache directory is a
 cold run.

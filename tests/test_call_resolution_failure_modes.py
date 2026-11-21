@@ -6,7 +6,8 @@ Plan sections 5.3 and 5.4, and the named generated-coverage tests of section
 - **Synthetic facts.** Start from a committed tree's real facts, apply one
   mutation, run the real ``assemble_symbol_graph``, and assert the recorded
   reason and that the edge equals its off-mode form. The ``unmapped`` tests
-  need analyzers that prove bindings, so they land with them.
+  need an analyzer that proves bindings: the JS/TS ones are here, and the
+  Python duplicate-key test lands with the Python analyzer.
 - **Unsupported files.** Run ``extract_symbol_graph`` on a temporary copy of
   a committed tree with one change, and assert ``supported: false`` for the
   file and that on equals off. Nothing is added to errors or diagnostics, and
@@ -136,6 +137,74 @@ def test_unmapped_injected_missing_declaration() -> None:
     assert on_edge["provenance"]["call_rules"] == ["t1.kind"]
 
 
+def _decision(
+    file_facts: list[dict[str, Any]], file: str, line: int, reference: str
+) -> tuple[dict[str, Any], dict[str, Any], engine.Decision]:
+    """``(off edge, on edge, decision)`` for one call of mutated facts."""
+    off_edge = _call(
+        assemble_symbol_graph(copy.deepcopy(file_facts)), file, line, reference
+    )
+    on_graph = assemble_symbol_graph(file_facts, call_resolution=MODE)
+    context = engine.build_run_context(file_facts, on_graph["symbol_lookup"], MODE)
+    return (
+        off_edge,
+        _call(on_graph, file, line, reference),
+        engine.decide(context, off_edge),
+    )
+
+
+def test_unmapped_missing_symbol() -> None:
+    """A proof whose declaration has no symbol entry fails closed (5.4).
+
+    tsx-local ``a.tsx:2 App -> Foo`` resolves to ``a.tsx:1 Foo`` unmutated.
+    Dropping that symbol's join entry leaves the analyzer's proof with no
+    symbol, so the outcome is ``none(unmapped)`` and the edge stays as off.
+    """
+    file_facts = _facts(FIXTURES / "authored" / "tsx-local")
+    off_edge, on_edge, decision = _decision(
+        copy.deepcopy(file_facts), "a.tsx", 2, "Foo"
+    )
+    assert decision.outcome["outcome"] == "local"
+    assert on_edge["resolution"] == "resolved"
+    (target,) = (item for item in file_facts if item["path"] == "a.tsx")
+    ((node_type, start, end),) = decision.outcome["proof"]
+    entries = target["scope_facts"]["symbols"]
+    kept = [entry for entry in entries if entry[:3] != [node_type, start, end]]
+    assert len(kept) == len(entries) - 1
+    target["scope_facts"]["symbols"] = kept
+    assert facts.valid_scope_facts(target["scope_facts"], target["language"])
+    off_edge, on_edge, decision = _decision(file_facts, "a.tsx", 2, "Foo")
+    assert decision.eligible
+    assert decision.outcome == {"outcome": "none", "reason": "unmapped"}
+    assert decision.proven == frozenset()
+    assert on_edge == off_edge
+
+
+def test_unmapped_unclassified_node(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An unclassified declaration kind fails closed as ``unmapped`` (7.5).
+
+    ts-nested-only ``a.ts:3 outer -> t`` resolves to ``outer.t`` with the
+    full allow-list. With ``function_declaration`` removed from the
+    TypeScript list, the kind is unclassified, the analyzer fails closed and
+    the edge stays as off.
+    """
+    from chunker.call_resolution import allowlist
+
+    root = FIXTURES / "authored" / "ts-nested-only"
+    _, on_edge, decision = _decision(_facts(root), "a.ts", 3, "t")
+    assert decision.outcome["outcome"] == "local"
+    assert on_edge["resolution"] == "resolved"
+    monkeypatch.delitem(allowlist.ALLOWLIST["typescript"], "function_declaration")
+    assert (
+        allowlist.classify("typescript", "function_declaration").classification
+        == allowlist.FAIL_CLOSED
+    )
+    off_edge, on_edge, decision = _decision(_facts(root), "a.ts", 3, "t")
+    assert decision.eligible
+    assert decision.outcome == {"outcome": "none", "reason": "unmapped"}
+    assert on_edge == off_edge
+
+
 def test_a_malformed_symbol_span_is_skipped_not_fatal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -212,9 +281,10 @@ def test_unsupported_recursion_error(
 ) -> None:
     """``RecursionError`` in the analyzer gives ``supported: false``.
 
-    Injected here, because the stub analyzers do not recurse. The plan's
-    deeply nested source case (``test_unsupported_deep_nesting``) lands with
-    the Python analyzer.
+    Injected here, because the Python stub does not recurse. The plan's
+    deeply nested Python source case (``test_unsupported_deep_nesting``)
+    lands with the Python analyzer; the JS one is
+    ``test_unsupported_deep_nesting_js``.
     """
 
     def deep(*args: object) -> dict[str, Any]:
@@ -223,6 +293,44 @@ def test_unsupported_recursion_error(
     monkeypatch.setitem(facts._ANALYZERS, "python", deep)
     root = _copy(tmp_path, "authored/py-class-scope-2")
     _assert_unsupported_and_on_equals_off(root, "a.py", fail_fast=True)
+
+
+def test_unsupported_deep_nesting_js(tmp_path: Path) -> None:
+    """A deeply nested JS/TS expression makes the analyzer give up (5.3).
+
+    The nesting stays under the chunker's own depth cap, so the chunker
+    still emits the file's symbols and calls; the analyzer's recursion hits
+    its cap and raises ``RecursionError``, which gives ``supported: false``.
+    """
+    from chunker.call_resolution import js_scope
+
+    depth = js_scope.MAX_DEPTH + 100
+    root = _copy(tmp_path, "authored/ts-class-body")
+    _append(
+        root / "svc.ts",
+        b"\nexport const deep = " + b"[" * depth + b"]" * depth + b";\n",
+    )
+    (target,) = (item for item in _facts(root) if item["path"] == "svc.ts")
+    assert target["symbol_lookup"], "the chunker must still emit the symbols"
+    assert target["call_facts"]
+    _assert_unsupported_and_on_equals_off(root, "svc.ts", fail_fast=True)
+
+
+def test_unsupported_deep_blocks_js(tmp_path: Path) -> None:
+    """Deeply nested blocks, not only arrays, make the analyzer give up (C3)."""
+    depth = 400
+    root = _copy(tmp_path, "authored/ts-class-body")
+    _append(
+        root / "svc.ts",
+        b"\nexport function deep() { "
+        + b"{ " * depth
+        + b"t();"
+        + b" }" * depth
+        + b" }\n",
+    )
+    (target,) = (item for item in _facts(root) if item["path"] == "svc.ts")
+    assert target["symbol_lookup"], "the chunker must still emit the symbols"
+    _assert_unsupported_and_on_equals_off(root, "svc.ts", fail_fast=True)
 
 
 def test_unsupported_analyzer_exception(

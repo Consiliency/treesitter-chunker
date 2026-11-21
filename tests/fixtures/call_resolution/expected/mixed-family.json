@@ -68,7 +68,7 @@
        "d.ts:1:helper",
        "a.ts:1:helper"
       ],
-      "outcome": "none(stub)",
+      "outcome": "none(unbound)",
       "resolution": "ambiguous",
       "rules": [
        "t1.family"

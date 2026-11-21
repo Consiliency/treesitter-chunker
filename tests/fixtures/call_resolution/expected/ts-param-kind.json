@@ -18,7 +18,17 @@
      "caller": "run",
      "file": "u.ts",
      "line": 1,
+     "pr": 2,
      "reference": "t",
+     "structural": {
+      "candidates": [
+       "k.ts:1:t",
+       "j.ts:1:t"
+      ],
+      "outcome": "none(parameter)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "1720f154eff4e9809745839fba0bb72d5faa2e1b",
