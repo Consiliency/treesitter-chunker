@@ -84,6 +84,7 @@ NAMED_TIER1_JS_TESTS = (
     "test_wrapped_reassignment_end_to_end",
     "test_member_call_on_a_local_function_is_unchanged",
     "test_enum_scope_end_to_end",
+    "test_escaped_names_end_to_end",
 )
 # Live reasons no committed fixture produces, each covered by a named test on
 # a tree the test writes (the president's #689 ruling, B-1).

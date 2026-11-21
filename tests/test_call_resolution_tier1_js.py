@@ -750,17 +750,22 @@ def test_enum_scope_end_to_end(tmp_path: Path) -> None:
     )
     off = extract_symbol_graph(root)
     on = extract_symbol_graph(root, call_resolution=MODE)
+    on_by_site = {
+        edge["call_site_id"]: edge
+        for edge in on["relationships"]
+        if edge["type"] == "calls"
+    }
+    # Pair by call_site_id, which is identical on and off.
     pairs = [
-        (off_edge, on_edge)
-        for off_edge, on_edge in zip(off["relationships"], on["relationships"])
-        if on_edge["type"] == "calls" and on_edge["reference"] == "t"
+        (off_edge, on_by_site[off_edge["call_site_id"]])
+        for off_edge in off["relationships"]
+        if off_edge["type"] == "calls" and off_edge["reference"] == "t"
     ]
-    by_line = {on_edge["line"]: (off_edge, on_edge) for off_edge, on_edge in pairs}
-    assert sorted(by_line) == [2, 3, 5, 6]
-    for line in (2, 3, 5):
-        off_edge, on_edge = by_line[line]
-        assert off_edge["resolution"] == "ambiguous", line
-        assert on_edge == off_edge, line
+    assert sorted({on_edge["line"] for _, on_edge in pairs}) == [2, 3, 5, 6]
+    for off_edge, on_edge in pairs:
+        if on_edge["line"] in (2, 3, 5):
+            assert off_edge["resolution"] == "ambiguous", on_edge["line"]
+            assert on_edge == off_edge, on_edge["line"]
     # Line 6 has two calls: the enum initializer stays as off, and the
     # ``return t()`` outside the enum resolves to a.ts's own ``t``.
     line6 = [(a, b) for a, b in pairs if b["line"] == 6]
@@ -773,3 +778,103 @@ def test_enum_scope_end_to_end(tmp_path: Path) -> None:
     assert outside_on["resolution"] == "resolved"
     assert outside_on["provenance"]["call_rules"] == ["t1.lexical"]
     assert on["symbol_lookup"][outside_on["to"]]["file"] == "a.ts"
+
+
+# ---------------------------------------------------------------------------
+# Escaped names fail closed (Codex review of #689, comment 4649197239)
+
+# ``\\u0074`` in these sources is the six characters of a Unicode escape for
+# ``t``. Each form, in a.ts, sits beside a call ``t()`` that a.ts's own
+# ``function t`` could otherwise prove.
+ESCAPED_FORMS = {
+    # The three Codex shapes: each resolved wrongly before.
+    "parameter": "export function g(\\u0074: () => number) { return t(); }",
+    "write": (
+        "function other() { return 3; }\n"
+        "export function g() { \\u0074 = other; return t(); }"
+    ),
+    "eval": "export function g(s: string) { \\u0065val(s); return t(); }",
+    # More escape forms.
+    "destructuring": "export function g(o: any) { const { \\u0074 } = o; return t(); }",
+    "brace-form": "export function g(\\u{74}: () => number) { return t(); }",
+    "declaration": "function \\u0074x() { return 4; }\nexport function g() { return t(); }",
+    "property": "export function g(o: any) { o.\\u0074(); return t(); }",
+}
+BUG_FORMS = ("parameter", "write", "eval", "destructuring", "brace-form")
+
+
+@pytest.mark.parametrize("form", sorted(ESCAPED_FORMS))
+def test_escaped_names_make_the_analyzer_refuse(form: str) -> None:
+    data = ("export function t() { return 1; }\n" + ESCAPED_FORMS[form]).encode()
+    root = get_parser("typescript").parse(data).root_node
+    assert not root.has_error
+    assert js_scope.escaped_name(root, data) is not None
+    with pytest.raises(js_scope.EscapedIdentifierError):
+        js_scope.analyze(root, data, "typescript", [])
+
+
+def test_backslashes_in_text_are_not_escaped_names() -> None:
+    """Strings, templates, regexes, comments and JSX text keep the file."""
+    source = (
+        'export function t() { return "a\\nb" + `c\\t${1}` + /\\d+/.source; }\n'
+        "// a \\u0074 comment\n/* \\u0074 */\n"
+        "export const e = <div title='x\\ny'>a \\u0074 b</div>;\n"
+        "export function g() { return t(); }\n"
+    )
+    data = source.encode()
+    root = get_parser("tsx").parse(data).root_node
+    assert not root.has_error
+    assert js_scope.escaped_name(root, data) is None
+    assert proof_text(source, "t", language="tsx") == [
+        'function t() { return "a\\nb" + `c\\t${1}` + /\\d+/.source; }'
+    ]
+
+
+@pytest.mark.parametrize("form", sorted(ESCAPED_FORMS))
+def test_escaped_names_end_to_end(tmp_path: Path, form: str) -> None:
+    """The file is unsupported and keeps its off-mode edges; c.ts resolves."""
+    from chunker.symbol_graph import extract_symbol_facts_for_file
+
+    root = _write(
+        tmp_path,
+        {
+            "a.ts": "export function t() { return 1; }\n" + ESCAPED_FORMS[form] + "\n",
+            "b.ts": "export function t() { return 2; }\n",
+            "c.ts": (
+                "export function t() { return 3; }\n"
+                "export function h() { return t(); }\n"
+            ),
+        },
+    )
+    facts = extract_symbol_facts_for_file(
+        root / "a.ts", root, None, call_resolution=MODE
+    )
+    assert facts["scope_facts"]["supported"] is False
+    assert facts["errors"] == []
+    off = extract_symbol_graph(root)
+    on = extract_symbol_graph(root, call_resolution=MODE)
+    on_by_site = {
+        edge["call_site_id"]: edge
+        for edge in on["relationships"]
+        if edge["type"] == "calls"
+    }
+    a_calls = [
+        edge
+        for edge in off["relationships"]
+        if edge["type"] == "calls" and edge["file"] == "a.ts"
+    ]
+    assert any(
+        edge["reference"] == "t" and edge["resolution"] == "ambiguous"
+        for edge in a_calls
+    )
+    for edge in a_calls:
+        assert on_by_site[edge["call_site_id"]] == edge
+    # Control: the escape-free file in the same run still resolves.
+    (control,) = (
+        edge
+        for edge in on["relationships"]
+        if edge["type"] == "calls" and edge["file"] == "c.ts"
+    )
+    assert control["resolution"] == "resolved"
+    assert control["provenance"]["call_rules"] == ["t1.lexical"]
+    assert on["symbol_lookup"][control["to"]]["file"] == "c.ts"

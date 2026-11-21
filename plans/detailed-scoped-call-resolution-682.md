@@ -294,7 +294,13 @@ These all give `supported: false` for the file:
 - an analyzer exception;
 - `RecursionError`;
 - a parser initialization failure;
-- a tree with errors.
+- a tree with errors;
+- a JS/TS file that spells any name with a Unicode escape (`\u0074`,
+  `\u{74}`), in an identifier, property, private, label or type name
+  (PR 2, Codex review of treesitter-chunker#689). Names are compared by
+  their source spelling, so an escaped parameter, write or `eval` would
+  otherwise be missed. Backslashes in strings, templates, regexes, comments
+  and JSX text do not count.
 
 None of them adds anything to `facts["errors"]` or diagnostics, and none
 raises, even with `fail_fast`. A debug log line is allowed. A file with
@@ -1153,6 +1159,7 @@ compares the analyzer's output with them.
 | enum-scope | `test_enum_scope_end_to_end` and `test_lookups_inside_an_enum_body_fail_closed` in `tests/test_call_resolution_tier1_js.py`, on trees the tests write (a committed tree would change the off-mode baseline, 11.2) |
 | no-binding-fact, unmapped | named synthetic-facts tests (R-3; listed below the table) |
 | unsupported file | named end-to-end failure-mode tests (R-3; listed below the table) |
+| escaped names (unsupported file, 5.3) | `test_escaped_names_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on trees the test writes (11.2) |
 | TS `using` / `await using` (fail closed, 7.5) | `test_using_near_miss_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on a tree the test writes (a committed tree would change the off-mode baseline, 11.2) |
 | stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2) |
 | external-module | ts-bare-specifier, ts-external-import-kind |
@@ -1603,3 +1610,9 @@ Both tighten the rules (fail closed); neither departs from a ruling. Today cells
 | B-1: lookups inside a TS enum body | §7.2 scope list (enum body, `none(enum-scope)`); §7.6 reason table and precedence item 1; §10.6 enum-scope row |
 | Nit: eval wording | §7.2 fail-closed bullet ("the lookup chain meets a scope that contains a direct `eval(...)`") |
 | Nit: overload row layout | §7.4 table (the fallback has its own row) |
+
+### PR 2: Codex review of treesitter-chunker#689 (escaped names)
+
+| Finding | Applied in |
+| --- | --- |
+| Unicode-escaped names compare by source spelling (comment 4649197239) | §5.3 (an escaped name makes a JS/TS file unsupported); §10.6 row |

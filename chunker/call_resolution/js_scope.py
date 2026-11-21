@@ -71,6 +71,13 @@ recursive; a tree too deep for it raises ``RecursionError`` (see
 :data:`MAX_DEPTH`), which the caller turns into ``supported: false``
 (section 5.3).
 
+A file in which any name is spelled with a Unicode escape (``\\u0074``,
+``\\u{74}``) is not analyzed: :func:`analyze` raises
+:class:`EscapedIdentifierError`, and the caller gives the file
+``supported: false``, so its edges stay exactly as off (section 5.3). Names
+are compared by their source spelling, so an escaped parameter, write or
+``eval`` would otherwise be missed (Codex review of treesitter-chunker#689).
+
 Proof declarations are the nodes the chunker emits as symbols: the
 declaration itself, never an enclosing ``export_statement`` (N-1), and for a
 single ``const`` bound to an arrow or function expression, the arrow or
@@ -881,6 +888,46 @@ def _callee_head(node: Any) -> Any:
     return head if head is not None and head.type == "identifier" else None
 
 
+class EscapedIdentifierError(ValueError):
+    """A name in the file uses a Unicode escape; the file fails closed."""
+
+
+# Leaf kinds whose text is content, not a name: a backslash in them is an
+# ordinary escape. Every other named leaf holding a backslash is a name
+# spelled with a Unicode escape.
+_TEXT_LEAVES = frozenset(
+    {
+        "string_fragment",
+        "escape_sequence",
+        "regex_pattern",
+        "regex_flags",
+        "comment",
+        "html_comment",
+        "hash_bang_line",
+        "jsx_text",
+        "html_character_reference",
+    }
+)
+
+
+def escaped_name(root: Any, source: bytes) -> Any:
+    """The first named leaf that spells a name with an escape, or ``None``."""
+    if b"\\" not in source:
+        return None
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        if node.child_count:
+            stack.extend(reversed(node.children))
+        elif (
+            node.is_named
+            and node.type not in _TEXT_LEAVES
+            and b"\\" in source[node.start_byte : node.end_byte]
+        ):
+            return node
+    return None
+
+
 def analyze(
     root: Any,
     source: bytes,
@@ -888,6 +935,10 @@ def analyze(
     call_facts: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     """Return partial scope facts: the goal and one outcome per call."""
+    escaped = escaped_name(root, source)
+    if escaped is not None:
+        msg = f"escaped name in a {escaped.type} at byte {escaped.start_byte}"
+        raise EscapedIdentifierError(msg)
     analysis = _Analysis(root, source, language)
     bindings: dict[str, Any] = {}
     for fact in call_facts:

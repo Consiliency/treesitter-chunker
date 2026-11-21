@@ -15,8 +15,9 @@ and ``"1"`` for ``python``, still the stub):
     The file's language, or ``None``.
 ``supported``
     ``False`` for a language no analyzer covers, an analyzer exception,
-    ``RecursionError``, a parser initialization failure, or a tree with
-    errors (section 5.3). An unsupported file never narrows, has no
+    ``RecursionError``, a parser initialization failure, a tree with
+    errors, or a JS/TS file that spells a name with a Unicode escape
+    (section 5.3). An unsupported file never narrows, has no
     ``bindings`` and contributes nothing to other files.
 ``goal``
     JavaScript and TypeScript: ``"module"`` if the program has any top-level
