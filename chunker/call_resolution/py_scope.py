@@ -20,6 +20,16 @@ generic ``def``, ``class`` or ``type`` statement. Where code runs:
 - a comprehension's first iterable runs in the enclosing scope; its targets,
   conditions, later iterables and body run in the comprehension's scope.
 
+**Annotations prove nothing** (#695 re-check at 14e8f044, Q-2). A name looked
+up inside any annotation (a parameter's, a return annotation, or a variable
+annotation at module, class or function level) gives ``dynamic-scope``. On
+3.14 annotations are evaluated lazily (PEP 649/749), and ``annotationlib``
+runs an annotation scope again under substitute globals for the
+``FORWARDREF`` and ``STRING`` formats, which ``dataclasses``,
+``typing.get_type_hints``, ``inspect.signature`` and
+``functools.singledispatch`` use: a call there may reach a stand-in
+(``annotationlib._Stringifier``), not the binding the lookup would prove.
+
 **Class scope (ruling A10 as modified).** Code that runs directly in a class
 body (class-level statements, method decorators, defaults and annotations,
 nested class bases, a comprehension's first iterable) starts its lookup at
@@ -395,7 +405,12 @@ _FRAME_LOCALS = "f_locals"
 # at 8fd7c1a2, P-3a). ``inspect.getgeneratorlocals``, ``getcoroutinelocals``,
 # ``getasyncgenlocals`` and ``getargvalues(frame).locals`` return a frame's
 # live, write-through ``f_locals`` proxy (PEP 667), so they count like
-# ``f_locals`` (P-3b). Objects reached by introspection rather than by a spelled
+# ``f_locals`` (P-3b). Also (#695 re-check at 14e8f044, Q-3): the code
+# object of a ``traceback.FrameSummary`` (``_code``) and the code objects
+# ``bdb.Bdb`` caches (``code_linenos``); ``pdb.Pdb().curframe_locals``, the
+# live ``f_locals`` proxy; and ``annotationlib.call_annotate_function``,
+# ``call_evaluate_function`` and ``__annotate__``, which rebuild a user
+# function from its ``__code__`` under substitute globals. Objects reached by introspection rather than by a spelled
 # name stay in plan risk R12: heap walking (``gc`` referents, for example a
 # found globals dict written with ``update(D)``, or found code or cells run
 # under ``type(f)(...)``) and computed member names (``inspect.getmembers``,
@@ -432,6 +447,12 @@ _FILE_WIDE_NAMES = frozenset(
         "getcoroutinelocals",
         "getasyncgenlocals",
         "getargvalues",
+        "_code",
+        "code_linenos",
+        "curframe_locals",
+        "call_annotate_function",
+        "call_evaluate_function",
+        "__annotate__",
     }
 )
 # A keyword argument that hands a function or code object a new closure.
@@ -1685,6 +1706,14 @@ class _Analysis:
         if self.frame_locals:
             # ``frame.f_locals`` writes any function's locals (PEP 667).
             return _none("dynamic-scope")
+        if _in_annotation(ident):
+            # Annotations are evaluated lazily (PEP 649/749): ``annotationlib``
+            # runs an annotation scope again under substitute globals for the
+            # ``FORWARDREF`` and ``STRING`` formats, which ``dataclasses``,
+            # ``typing.get_type_hints``, ``inspect.signature`` and
+            # ``functools.singledispatch`` use, so a call there may reach a
+            # stand-in, not the binding (#695 re-check at 14e8f044, Q-2).
+            return _none("dynamic-scope")
         if _mangled_names(ident, name, self.source):
             # CPython looks up ``_C__x`` for ``__x`` inside class ``C``; the
             # source spelling proves nothing (B-1).
@@ -1817,6 +1846,24 @@ def _spellings(ident: Any, source: bytes) -> set[str]:
     rules of :func:`_mangled_names`)."""
     name = _text(ident, source)
     return {name, *_mangled_names(ident, name, source)}
+
+
+def _in_annotation(ident: Any) -> bool:
+    """Whether ``ident`` lies in an annotation: the ``type`` of a typed
+    parameter, a typed default parameter or an annotated assignment, or a
+    function's return annotation."""
+    child = ident
+    node = ident.parent
+    while node is not None:
+        kind = node.type
+        if kind in ("typed_parameter", "typed_default_parameter", "assignment"):
+            if _same(child, node.child_by_field_name("type")):
+                return True
+        elif kind == "function_definition":
+            if _same(child, node.child_by_field_name("return_type")):
+                return True
+        child, node = node, node.parent
+    return False
 
 
 def _in_class_body(node: Any) -> bool:

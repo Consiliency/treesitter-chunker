@@ -125,9 +125,12 @@ def test_defaults_and_annotations_run_in_the_enclosing_scope() -> None:
     # The parameter ``helper`` is not visible to its own default.
     source = HELPER + "def f(helper=helper()):\n    return 0\n"
     assert proof_text(source) == PROOF
+    # Annotations run in the enclosing scope too, but ``annotationlib`` may
+    # evaluate them under substitute globals, so they prove nothing (#695
+    # re-check at 14e8f044, Q-2).
     annotated = HELPER + "def f(x: helper()) -> helper():\n    return 0\n"
-    assert proof_text(annotated, occurrence=0) == PROOF
-    assert proof_text(annotated, occurrence=1) == PROOF
+    assert reason(annotated, occurrence=0) == "dynamic-scope"
+    assert reason(annotated, occurrence=1) == "dynamic-scope"
     lam = HELPER + "g = lambda helper=helper(): 0\n"
     assert proof_text(lam) == PROOF
 
@@ -194,13 +197,15 @@ def test_class_body_code_sees_names_the_class_binds() -> None:
         "x = helper()",
         "@helper()\n    def m(self):\n        return 0",
         "def m(self, x=helper()):\n        return x",
-        "def m(self, x: helper()):\n        return x",
         "class Inner(helper()):\n        pass",
         "xs = [y for y in helper()]",
         "f = lambda x=helper(): x",
     ):
         source = HELPER + f"class K:\n    {body}\n    {code}\n"
         assert reason(source) == "class-scope-bound", code
+    # An annotation proves nothing before the class step (#695 Q-2).
+    source = HELPER + f"class K:\n    {body}\n    def m(self, x: helper()):\n"
+    assert reason(source + "        return x\n") == "dynamic-scope"
 
 
 def test_class_body_binding_has_no_positional_variant() -> None:
@@ -5452,6 +5457,15 @@ FILE_WIDE_NAMES = (
     "getcoroutinelocals",
     "getasyncgenlocals",
     "getargvalues",
+    # The #695 re-check at 14e8f044 (Q-3): a traceback frame summary's and
+    # bdb's code objects, pdb's live frame locals, and annotationlib running a
+    # user function under substitute globals.
+    "_code",
+    "code_linenos",
+    "curframe_locals",
+    "call_annotate_function",
+    "call_evaluate_function",
+    "__annotate__",
 )
 
 
@@ -5925,3 +5939,232 @@ def test_getargvalues_alone_fails_closed() -> None:
     triggers: the one correct resolution fold 14 gives up (``g35_argvalues_ctrl``)."""
     source = ARGV14.format(line="n = inspect.getargvalues(inspect.currentframe()).args")
     assert reason(source) == "dynamic-scope"
+
+
+# ---------------------------------------------------------------------------
+# The #695 re-check at 14e8f044 (Q-2, Q-3): a call in an annotation, which
+# ``annotationlib`` evaluates under substitute globals for the ``FORWARDREF``
+# and ``STRING`` formats (Q-2), and reflective routes a name closes (Q-3).
+# Each tree is the ruling's own and runtime-traced: 14e8f044 proved
+# ``a.py``'s ``helper``, and Python called a stand-in or ``len`` instead.
+
+DEF15 = "def helper(*a):\n    return 'mod'\n"
+USER_FN15 = (
+    "\ndef run(fmt=1, _n=[0]):\n    _n[0] += 1\n    if _n[0] == 1:\n"
+    "        raise NotImplementedError\n    if _n[0] == 2:\n        raise ValueError\n"
+    "    return helper('ab')\n\n"
+)
+TRY15 = "try:\n    {call}\nexcept Exception:\n    pass\n"
+
+FOLD15_695: dict[str, tuple[str, str]] = {
+    "a37_dataclass_late": (
+        "Q-2",
+        "from dataclasses import dataclass\n\n@dataclass\nclass C:\n"
+        "    x: helper('ab')\n\n" + DEF15,
+    ),
+    "a37_class_fwdref_late": (
+        "Q-2",
+        "import annotationlib\n\nclass C:\n    x: helper('ab')\n\n"
+        "annotationlib.get_annotations(C, format=annotationlib.Format.FORWARDREF)\n"
+        + DEF15,
+    ),
+    "a37_func_fwdref_late": (
+        "Q-2",
+        "import annotationlib\n\ndef g(x: helper('ab')):\n    pass\n\n"
+        "annotationlib.get_annotations(g, format=annotationlib.Format.FORWARDREF)\n"
+        + DEF15,
+    ),
+    "a38_return_annot_late": (
+        "Q-2",
+        "import annotationlib\n\ndef g() -> helper('ab'):\n    pass\n\n"
+        "annotationlib.get_annotations(g, format=annotationlib.Format.FORWARDREF)\n"
+        + DEF15,
+    ),
+    "a37_inspect_signature_late": (
+        "Q-2",
+        "import inspect\n\ndef g(x: helper('ab')):\n    pass\n\n"
+        "inspect.signature(g, annotation_format=inspect.Format.FORWARDREF)\n" + DEF15,
+    ),
+    "a37_typing_hints_late": (
+        "Q-2",
+        "import typing, annotationlib\n\nclass C:\n    x: helper('ab')\n\n"
+        + TRY15.format(
+            call="typing.get_type_hints(C, format=annotationlib.Format.FORWARDREF)"
+        )
+        + DEF15,
+    ),
+    "a38_singledispatch_late": (
+        "Q-2",
+        "import functools\n\n@functools.singledispatch\ndef f(x):\n    pass\n\n"
+        "@f.register\ndef _(x: helper('ab')):\n    pass\n\n" + DEF15,
+    ),
+    "a37_func_string_early": (
+        "Q-2 (mixed)",
+        DEF15 + "\nimport annotationlib\n\ndef g(x: helper('ab')):\n    pass\n\n"
+        "annotationlib.get_annotations(g, format=annotationlib.Format.STRING)\n",
+    ),
+    "a37_call_annotate_user_fn": (
+        "Q-3",
+        DEF15
+        + USER_FN15
+        + "import annotationlib\n"
+        + TRY15.format(
+            call="annotationlib.call_annotate_function(run, "
+            "annotationlib.Format.STRING)"
+        ),
+    ),
+    "a38_call_evaluate_user_fn": (
+        "Q-3",
+        DEF15
+        + USER_FN15
+        + "from annotationlib import call_evaluate_function as cef, Format\n"
+        + TRY15.format(call="cef(run, Format.STRING)"),
+    ),
+    "a37_annotate_attr_user_fn": (
+        "Q-3",
+        DEF15
+        + USER_FN15
+        + "import annotationlib\nclass K:\n    pass\nK.__annotate__ = run\n"
+        + TRY15.format(
+            call="annotationlib.get_annotations(K, format=annotationlib.Format.STRING)"
+        ),
+    ),
+    "a38_class_body_annotate": (
+        "Q-3",
+        DEF15
+        + USER_FN15
+        + "import annotationlib\nclass K:\n    __annotate__ = run\n"
+        + TRY15.format(
+            call="annotationlib.get_annotations(K, format=annotationlib.Format.STRING)"
+        ),
+    ),
+    "t38_traceback_framesummary_code": (
+        "Q-3",
+        DEF15 + "\nimport traceback\nS = []\ndef run():\n"
+        "    S.append(traceback.extract_stack(limit=1)[0])\n    return helper('ab')\n\n"
+        "run()\ntype(run)(S[0]._code, {'helper': len, 'S': [], "
+        "'traceback': traceback})()\n",
+    ),
+    "t38_bdb_code_linenos": (
+        "Q-3",
+        DEF15 + "\nimport bdb, inspect\nB = bdb.Bdb()\ndef run():\n"
+        "    B._lineno_in_frame(10**6, inspect.currentframe())\n"
+        "    return helper('ab')\n\nrun()\ncode = next(iter(B.code_linenos))\n"
+        "type(run)(code, {'helper': len, 'B': B, 'inspect': inspect})()\n",
+    ),
+    "p38_pdb_curframe_locals": (
+        "Q-3",
+        "import pdb, inspect, warnings\nwarnings.simplefilter('ignore')\ndef run():\n"
+        "    def helper(*a):\n        return 'loc'\n    p = pdb.Pdb()\n"
+        "    p.curframe = inspect.currentframe()\n"
+        "    p.curframe_locals['helper'] = len\n    return helper('ab')\n\nrun()\n",
+    ),
+}
+
+# One control per tree: the call moved from the annotation into a value
+# position (Q-2), or the reflective name left out (Q-3), still resolves.
+_Q2_MOVES = (
+    ("    x: helper('ab')\n", "    x: int = helper('ab')\n"),
+    ("def g(x: helper('ab')):", "def g(x=helper('ab')):"),
+    ("def g() -> helper('ab'):\n    pass", "def g() -> int:\n    return helper('ab')"),
+    ("def _(x: helper('ab')):", "def _(x: int = helper('ab')):"),
+)
+_Q3_DROPS = {
+    "a37_call_annotate_user_fn": (
+        "annotationlib.call_annotate_function(run, annotationlib.Format.STRING)",
+        "annotationlib.get_annotations(run)",
+    ),
+    "a38_call_evaluate_user_fn": (
+        "call_evaluate_function as cef",
+        "get_annotations as cef",
+    ),
+    "a37_annotate_attr_user_fn": ("K.__annotate__ = run", "K.attr = run"),
+    "a38_class_body_annotate": ("    __annotate__ = run", "    attr = run"),
+    "t38_traceback_framesummary_code": (
+        "type(run)(S[0]._code, {'helper': len, 'S': [], 'traceback': traceback})()",
+        "n = S[0].lineno",
+    ),
+    "t38_bdb_code_linenos": (
+        "code = next(iter(B.code_linenos))\n"
+        "type(run)(code, {'helper': len, 'B': B, 'inspect': inspect})()\n",
+        "",
+    ),
+    "p38_pdb_curframe_locals": ("    p.curframe_locals['helper'] = len\n", ""),
+}
+
+
+def _fold15_control(case: str) -> str:
+    _, source = FOLD15_695[case]
+    if case in _Q3_DROPS:
+        old, new = _Q3_DROPS[case]
+        assert old in source, case
+        return source.replace(old, new)
+    for old, new in _Q2_MOVES:
+        if old in source:
+            return source.replace(old, new)
+    raise AssertionError(case)
+
+
+def _other15(case: str, source: str) -> str:
+    return OTHER14 if case.startswith("p38_") else _decoys(source)
+
+
+@pytest.mark.parametrize("case", sorted(FOLD15_695))
+def test_fold15_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    _, source = FOLD15_695[case]
+    root = _tree(tmp_path, {"a.py": source, "b.py": _other15(case, source)})
+    off, on = _off_on(root)
+    off_calls = [e for e in off["relationships"] if e["file"] == "a.py"]
+    assert _helper_edge(off)["resolution"] == "ambiguous", case
+    assert [e for e in on["relationships"] if e["file"] == "a.py"] == off_calls
+
+
+@pytest.mark.parametrize("case", sorted(FOLD15_695))
+def test_fold15_controls_still_resolve(tmp_path: Path, case: str) -> None:
+    source = _fold15_control(case)
+    other = OTHER14 if case.startswith("p38_") else OTHER
+    root = _tree(tmp_path, {"a.py": source, "b.py": other})
+    off, on = _off_on(root)
+    assert _helper_edge(off)["resolution"] == "ambiguous", case
+    on_edge = _helper_edge(on)
+    assert on_edge["resolution"] == "resolved", case
+    assert on_edge["provenance"]["call_rules"] == ["t1.lexical"]
+    (target,) = on_edge["candidates"]
+    assert on["symbol_lookup"][target]["file"] == "a.py"
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        "def f(x: helper()):\n    pass",
+        "def f(x: helper() = 1):\n    pass",
+        "def f(*x: helper()):\n    pass",
+        "def f() -> helper():\n    pass",
+        "x: helper()",
+        "x: helper() = 1",
+        "class K:\n    x: helper()",
+        "def f():\n    x: helper() = 1",
+        "def f(x: list[helper()]):\n    pass",
+        # A correct resolution given up: ``helper`` is defined first, and a
+        # ``VALUE``-format evaluation would call it (``a37_dataclass_early_ctrl``).
+        "from dataclasses import dataclass\n@dataclass\nclass C:\n    x: helper()",
+    ],
+)
+def test_annotations_prove_nothing(annotation: str) -> None:
+    """``annotationlib`` evaluates annotation scopes under substitute globals
+    for ``FORWARDREF``/``STRING`` (PEP 649/749), so a name in any annotation
+    proves nothing (#695 Q-2)."""
+    assert reason(HELPER + annotation + "\n") == "dynamic-scope", annotation
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "def f(x=helper()):\n    pass",
+        "x: int = helper()",
+        "def f() -> int:\n    return helper()",
+        "class K:\n    x: int = helper()",
+    ],
+)
+def test_values_next_to_annotations_still_resolve(form: str) -> None:
+    assert proof_text(HELPER + form + "\n") == PROOF, form
