@@ -260,9 +260,10 @@ proven by a lexical binding; filtering by symbol kind (`t1.kind`) or language
 family (`t1.family`) never resolves an edge by itself. Resolved, unresolved and
 member-call edges are never changed. Currently `"structural"` proves
 bindings for JavaScript, TypeScript and TSX callers (`t1.lexical`, and
-`t1.ts_overload` for a TS overload set), except at script-goal top levels and
-in TS namespace bodies; Python callers are not resolved yet, so only the kind
-and family filters narrow them.
+`t1.ts_overload` for a TS overload set). A script-goal top level proves a binding only when
+no other file of the run may declare that name as a global, and a lookup
+through a merged TS namespace body proves nothing. Python callers are not
+resolved yet, so only the kind and family filters narrow them.
 
 A narrowed edge changes only `target`, `resolution`, `candidates` and
 `metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and

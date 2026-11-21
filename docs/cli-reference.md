@@ -107,9 +107,11 @@ default, is the usual name-only resolution. `structural` narrows `ambiguous`
 call edges whose callee is a bare identifier in a Python, JavaScript, TypeScript
 or TSX file. For JavaScript, TypeScript and TSX callers it resolves an edge
 when a lexical binding in the caller's file proves its one target
-(`t1.lexical`, and `t1.ts_overload` for a TS overload set); script-goal top
-levels, TS namespace bodies and Python callers are not resolved yet, and only
-the symbol-kind and language-family filters narrow them. Narrowed edges carry
+(`t1.lexical`, and `t1.ts_overload` for a TS overload set). A script-goal top
+level resolves only when no other file of the run may declare the name as a
+global, and merged TS namespace bodies never resolve. Python callers are not
+resolved yet, and only the symbol-kind and language-family filters narrow
+them. Narrowed edges carry
 `provenance.call_resolution`
 and `provenance.call_rules`, and `run.options.call_resolution` records the mode.
 Use a separate `--cache-dir` per mode: switching modes on one cache directory is a

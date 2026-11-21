@@ -1,4 +1,4 @@
-"""Tier 1 JavaScript/TypeScript scope analysis (treesitter-chunker#682, PR 2).
+"""Tier 1 JavaScript/TypeScript scope analysis (treesitter-chunker#682, PR 2-3).
 
 Plan ``plans/detailed-scoped-call-resolution-682.md`` sections 7.2, 7.4, 7.5
 and 7.6. The expected tables (``test_call_resolution_engine.py``) pin every
@@ -10,7 +10,10 @@ fixture call end to end; this module adds:
   declaration, never the ``export_statement``), note 1 (a namespace merged
   with a function is dropped before the proof), and B7 (``declare enum``
   gives ``non-callable``);
-- the allow-list contract: every handled kind has a handler.
+- the allow-list contract: every handled kind has a handler;
+- PR 3: script globals (implicit globals,
+  global-object writes and their fail-closed wildcard), TS namespace merging
+  and inherited ambient status, with end-to-end trees the tests write.
 """
 
 from __future__ import annotations
@@ -68,6 +71,17 @@ def proof_text(source: str, callee: str, **kwargs: Any) -> list[str]:
     assert result["outcome"] == "local", result
     data = source.encode()
     return [data[start:end].decode() for _, start, end in result["proof"]]
+
+
+def _js_proof(
+    source: str, callee: str = "d", **kwargs: Any
+) -> tuple[list[str], list[str]]:
+    """JavaScript proof text and group rules for one call."""
+    result = outcome(source, callee, language="javascript", **kwargs)
+    assert result["outcome"] == "local", result
+    data = source.encode()
+    proof = [data[start:end].decode() for _, start, end in result["proof"]]
+    return proof, result["rules"]
 
 
 # ---------------------------------------------------------------------------
@@ -390,22 +404,452 @@ def test_overload_rules() -> None:
     assert len(outcome(js, "f", language="javascript")["proof"]) == 2
 
 
-def test_script_goal_and_namespace_deferrals_follow_r1() -> None:
+def test_script_goal_and_namespace_lookups_follow_r1() -> None:
+    """PR 3 replaces the PR 2 deferrals; R-1(i) still orders the reasons."""
     script = "function t() {}\nfunction g() { return t(); }"
-    assert reason(script, "t", language="javascript") == "script-goal-deferred"
+    # A script top level proves, and names the global for the engine's
+    # cross-file script-global check (7.2).
+    result = outcome(script, "t", language="javascript")
+    assert result["outcome"] == "local"
+    assert result["global"] == "t"
     # R-1(i): an outcome that proves nothing reports its own reason.
     script_param = "function g(t) { return t(); }"
     assert reason(script_param, "t", language="javascript") == "parameter"
+    # A single namespace declaration in a module proves, inside or outside.
     namespace = (
         MODULE + "function t() {}\nnamespace N { export function g() { return t(); } }"
     )
-    assert reason(namespace, "t") == "namespace-deferred"
+    assert proof_text(namespace, "t") == ["function t() {}"]
     inside = (
         MODULE + "namespace N { function t() {} export function g() { return t(); } }"
     )
-    assert reason(inside, "t") == "namespace-deferred"
+    assert proof_text(inside, "t") == ["function t() {}"]
     inside_param = MODULE + "namespace N { export function g(t) { return t(); } }"
     assert reason(inside_param, "t") == "parameter"
+    unbound = MODULE + "namespace N { export function g() { return nowhere(); } }"
+    assert reason(unbound, "nowhere") == "unbound"
+
+
+# ---------------------------------------------------------------------------
+# Script globals (7.2; PR 3)
+
+
+def script_globals(source: str, language: str = "javascript") -> list[str]:
+    data = source.encode()
+    root = get_parser(language).parse(data).root_node
+    assert not root.has_error, source
+    return js_scope.analyze(root, data, language, [])["script_globals"]
+
+
+def test_script_globals_of_a_script() -> None:
+    source = (
+        "var a = 1; let b = 2; const c = 3; class K {} function f() {}\n"
+        "if (x) { var v = 1; let blockLocal = 2; function bf() {} }\n"
+        "function g() { implicit = 1; var local = 2; local = 3; inner++; }\n"
+        "for (loopGlobal in o) {}\n"
+    )
+    assert script_globals(source) == [
+        "K",
+        "a",
+        "b",
+        "bf",
+        "c",
+        "f",
+        "g",
+        "implicit",
+        "inner",
+        "loopGlobal",
+        "v",
+    ]
+    ts = "namespace N {}\nenum E { A }\ndeclare function amb(): void;\nimport t = N.f;"
+    assert script_globals(ts, "typescript") == ["E", "N", "amb", "t"]
+
+
+def test_script_globals_of_a_module() -> None:
+    """A module's own top level is not global; global-object writes are."""
+    source = (
+        "export function f() {}\nlet b = 2;\nfunction g() { implicit = 1; }\n"
+        "window.w = 1;\nglobalThis['gt'] = 2;\nself.s += 1;\nglobal.n++;\n"
+        "window.top.chain = 3;\n[window.pattern] = xs;\nfor (window.loop of xs) {}\n"
+        "delete window.deleted;\n"
+        "this.notGlobal = 1;\nfunction h() { this.alsoNot = 1; }\n"
+    )
+    assert script_globals(source) == [
+        "chain",
+        "deleted",
+        "gt",
+        "loop",
+        "n",
+        "pattern",
+        "s",
+        "w",
+    ]
+    declare_global = (
+        "export {};\ndeclare global { function dg(): void; var dv: number; }"
+    )
+    assert script_globals(declare_global, "typescript") == ["dg", "dv"]
+
+
+GLOBAL_WILDCARD_FORMS = {
+    "computed-key": "globalThis[k] = f;",
+    "template-key": "window[`d`] = f;",
+    "escaped-string-key": "window['\\x64'] = f;",
+    "computed-read": "window[k]();",
+    "argument": "Object.assign(window, { d: f });",
+    "alias": "const g = globalThis; g.d = f;",
+    "shorthand": "register({ window });",
+    "conditional": "const root = typeof self !== 'undefined' ? self : this;",
+    "chain-alias": "const w = window.window;",
+    "eval-property": "window.eval(s);",
+    "eval": "(0, eval)(s);",
+    "function-constructor": "new Function(s)();",
+    "exec-script": "execScript(s);",
+    "string-timer": "setTimeout('d = f', 1);",
+    "string-timer-member": "window.setInterval('d = f' + x, 1);",
+    "top-level-this": "(function (root) { root.d = f; })(this);",
+    "function-this": "function init() { var self = this; self.d = f; }",
+    "object-method-this": "const o = { m() { return this; } };",
+}
+
+
+@pytest.mark.parametrize("form", sorted(GLOBAL_WILDCARD_FORMS))
+def test_global_object_uses_fail_closed_with_a_wildcard(form: str) -> None:
+    source = GLOBAL_WILDCARD_FORMS[form]
+    assert js_scope.GLOBAL_WILDCARD in script_globals(source), source
+    # The same file's own top level is then reassigned for every name.
+    script = "function d() {}\nfunction g() { return d(); }\n" + source
+    assert reason(script, "d", language="javascript") == "reassigned", source
+
+
+def test_inert_global_object_uses_are_not_wildcards() -> None:
+    for source in (
+        "if (typeof window !== 'undefined') {}",
+        "if ('fetch' in window) {}",
+        "if (self === window) {}",
+        "window.addEventListener('load', f);",
+        "const t = window.setTimeout(f, 1);",
+        "setTimeout(f, 1);",
+        "function f(window) { return window; }",
+        "export class K { m() { return this; } x = this; static { this.y = 1; } }",
+        "function f() { return () => 1; }",
+    ):
+        assert js_scope.GLOBAL_WILDCARD not in script_globals(source), source
+    module_this = "export function f() { var self = this; return self; }"
+    assert js_scope.GLOBAL_WILDCARD not in script_globals(module_this)
+
+
+GLOBAL_WRITE_FORMS = {
+    "window": "window.d = other;",
+    "globalThis-string": "globalThis['d'] = other;",
+    "self-update": "self.d++;",
+    "global-compound": "global.d ??= other;",
+    "chain": "window.self.d = other;",
+    "parenthesized": "(window).d = other;",
+    # A script's top-level ``var``/``declare var`` of an alias is the global
+    # object's own property.
+    "script-var-alias": "var self;\nself.d = other;",
+    "pattern": "({ a: window.d } = o);",
+    "for-of": "for (window.d of xs) {}",
+    "delete": "delete window.d;",
+    "nested-function": "function h() { window.d = other; }",
+    "top-level-this": "this.d = other;",
+    "sloppy-function-this": "function h() { this.d = other; }",
+    "object-method-this": "const o = { m() { this.d = other; } };",
+    "arrow-in-function-this": "function h() { return () => { this.d = other; }; }",
+}
+
+
+@pytest.mark.parametrize("form", sorted(GLOBAL_WRITE_FORMS))
+def test_global_writes_reassign_a_script_top_level(form: str) -> None:
+    source = (
+        "function d() {}\nfunction other() {}\nfunction g() { return d(); }\n"
+        + GLOBAL_WRITE_FORMS[form]
+    )
+    assert reason(source, "d", language="javascript") == "reassigned", source
+    assert "d" in script_globals(source)
+
+
+def test_global_writes_leave_other_bindings_alone() -> None:
+    # In a module, the top level is not the global object.
+    module = (
+        "export function d() {}\nwindow.d = 1;\nexport function g() { return d(); }"
+    )
+    assert _js_proof(module) == (["function d() {}"], [])
+    # Class code is strict: ``this`` is never the global object there.
+    strict = (
+        "function d() {}\nclass K { m() { this.d = 1; function f() { this.d = 2; } } }\n"
+        "function g() { return d(); }"
+    )
+    assert outcome(strict, "d", language="javascript")["outcome"] == "local"
+    # A function-local binding is not the global.
+    local = "function g() { function d() {} window.d = 1; return d(); }"
+    assert _js_proof(local) == (["function d() {}"], [])
+    # A locally bound ``window`` is not the global object.
+    shadowed = "function d() {}\nfunction g(window) { window.d = 1; return d(); }"
+    assert outcome(shadowed, "d", language="javascript")["outcome"] == "local"
+
+
+def test_arguments_alias_reassigns_shared_parameter_names() -> None:
+    """Sloppy ``arguments[0] = x`` writes a parameter binding, which a body
+    function of the same name shares: fail closed when ``arguments`` occurs."""
+    base = "export function g(d) { function d() {} %s return d(); }"
+    for extra in ("arguments[0] = 1;", "h(arguments);", "(() => arguments)();"):
+        assert reason(base % extra, "d", language="javascript") == "reassigned", extra
+    assert outcome(base % "", "d", language="javascript")["outcome"] == "local"
+    other = "export function g(x) { function d() {} arguments[0] = 1; return d(); }"
+    assert outcome(other, "d", language="javascript")["outcome"] == "local"
+
+
+# ---------------------------------------------------------------------------
+# TS namespace merging and inherited ambient status (7.2; PR 3)
+
+MERGED_NAMESPACES = {
+    "two-declarations": (
+        "namespace N { export function t() { return 1; } }\n"
+        "namespace N { export function g() { return t(); } }"
+    ),
+    "declare-and-body": (
+        "declare namespace N { function t(): void; }\n"
+        "namespace N { export function g() { return t(); } }"
+    ),
+    "exported-and-plain": (
+        "export namespace N { }\nnamespace N { export function g() { return t(); } }"
+    ),
+    "enum-merge": "enum N { A }\nnamespace N { export function g() { return t(); } }",
+    "dotted": "namespace A.N { export function g() { return t(); } }",
+    "dotted-sibling": (
+        "namespace A { export namespace N { export function g() { return t(); } } }\n"
+        "namespace A.B { }"
+    ),
+    "declare-module": "declare module 'm' { export function g(): void; function t(): void; }",
+    "declare-global": "declare global { function t(): void; }",
+    "nested-merged-parent": (
+        "namespace O { export namespace N { export function g() { return t(); } } }\n"
+        "namespace O { export function t() { return 2; } }"
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(MERGED_NAMESPACES))
+def test_lookups_through_a_merged_namespace(case: str) -> None:
+    source = MODULE + "export function t() { return 1; }\n" + MERGED_NAMESPACES[case]
+    data = source.encode()
+    root = get_parser("typescript").parse(data).root_node
+    assert not root.has_error
+    calls = _callees(root, data, "t")
+    if not calls:
+        # Bodies with only declarations have no call; the scope is merged.
+        assert case in ("declare-module", "declare-global")
+        return
+    for index in range(len(calls)):
+        assert reason(source, "t", occurrence=index) == "namespace-merged", case
+
+
+def test_namespaces_in_a_script_are_merged() -> None:
+    source = "function t() {}\nnamespace N { export function g() { return t(); } }"
+    assert reason(source, "t") == "namespace-merged"
+    unbound = "namespace N { export function g() { return nowhere(); } }"
+    assert reason(unbound, "nowhere") == "namespace-merged"
+
+
+def test_namespace_merged_follows_r1() -> None:
+    """The binding's own reason wins; ``namespace-merged`` only replaces a
+    proof (and an unbound name, which another declaration may bind)."""
+    pair = "namespace N { }\n"
+    param = MODULE + pair + "namespace N { export function g(t) { return t(); } }"
+    assert reason(param, "t") == "parameter"
+    reassigned = (
+        MODULE
+        + "function t() {}\n"
+        + pair
+        + "namespace N { export function g() { t = 1; return t(); } }"
+    )
+    assert reason(reassigned, "t") == "reassigned"
+
+
+def test_a_namespace_function_beside_the_namespace_is_not_a_merge() -> None:
+    source = (
+        MODULE + "function N() {}\nfunction t() {}\n"
+        "namespace N { export function g() { return t(); } }"
+    )
+    assert proof_text(source, "t") == ["function t() {}"]
+
+
+def test_exported_namespace_variables_are_expression_bound() -> None:
+    """tsc rewrites uses of an exported namespace variable to a property of
+    the namespace object, which other code can reassign."""
+    source = (
+        MODULE
+        + "namespace N { export const t = () => 1; export function g() { return t(); } }"
+    )
+    assert reason(source, "t") == "expression-bound"
+    local = (
+        MODULE
+        + "namespace N { const t = () => 1; export function g() { return t(); } }"
+    )
+    assert proof_text(local, "t") == ["() => 1"]
+
+
+AMBIENT_BLOCKS = {
+    # Ambient status is inherited from enclosing ``declare`` blocks; it is
+    # the binding's own reason, so it wins over ``namespace-merged`` (R-1).
+    "namespace-function": "declare namespace N { function t() {} function g() { return t(); } }",
+    "namespace-class": "declare namespace N { class t {} function g() { return new t(); } }",
+    "nested-namespace": (
+        "declare namespace O { namespace N { function t() {} function g() { return t(); } } }"
+    ),
+    "module": "declare module 'm' { function t() {} function g() { return t(); } }",
+    "global": "declare global { function t() {} function g() { return t(); } }",
+}
+
+
+@pytest.mark.parametrize("case", sorted(AMBIENT_BLOCKS))
+def test_ambient_status_is_inherited(case: str) -> None:
+    assert reason(MODULE + AMBIENT_BLOCKS[case], "t") == "ambient"
+
+
+# ---------------------------------------------------------------------------
+# PR 3 end to end, on trees the tests write (a committed tree would change
+# the off-mode baseline, 11.2)
+
+
+def _edges(root: Path) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """``(off, on)`` call edges, paired by ``call_site_id``."""
+    off = extract_symbol_graph(root)
+    on = extract_symbol_graph(root, call_resolution=MODE)
+    on_by_site = {
+        edge["call_site_id"]: edge
+        for edge in on["relationships"]
+        if edge["type"] == "calls"
+    }
+    return [
+        (edge, on_by_site[edge["call_site_id"]])
+        for edge in off["relationships"]
+        if edge["type"] == "calls"
+    ]
+
+
+def _edge(
+    pairs: list[tuple[dict[str, Any], dict[str, Any]]], file: str, reference: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    (pair,) = [
+        pair
+        for pair in pairs
+        if pair[0]["file"] == file and pair[0]["reference"] == reference
+    ]
+    return pair
+
+
+SCRIPT = "function d() { return 1; }\nfunction g() { return d(); }\n"
+OTHER_SCRIPT_GLOBALS = {
+    # Each second file makes ``d`` a script global elsewhere in the run.
+    "let": "let d = () => 3;\n",
+    "const": "const d = () => 3;\n",
+    "class": "class d {}\n",
+    "var": "var d;\n",
+    "implicit": "function init() { d = function () { return 3; }; }\n",
+    "nested-implicit": "function init() { return () => { d ||= other; }; }\n",
+    "window-module": "export function d() {}\nwindow.d = function () {};\n",
+    "globalThis-string": "export {};\nglobalThis['d'] = 1;\n",
+    "self": "export {};\nself.d = 1;\n",
+    "computed-key": "export {};\nglobalThis[name] = 1;\n",
+    "escape": "export {};\nObject.assign(window, { d: 1 });\n",
+    "indirect-eval": "export {};\n(0, eval)(s);\n",
+    "sloppy-this": "function init() { this.d = 1; }\n",
+    "declare-global": "export {};\ndeclare global { function d(): void; }\n",
+    "unsupported": "function d() { return 3; }\nfunction (\n",
+}
+
+
+@pytest.mark.parametrize("form", sorted(OTHER_SCRIPT_GLOBALS))
+def test_script_global_end_to_end(tmp_path: Path, form: str) -> None:
+    """A script top level narrows only when no other file may declare the
+    name as a global (7.2): k.js's own ``d`` stays ambiguous next to these."""
+    extension = ".ts" if form == "declare-global" else ".js"
+    root = _write(
+        tmp_path,
+        {
+            "k.js": SCRIPT,
+            "b" + extension: OTHER_SCRIPT_GLOBALS[form],
+            # A third definition, so C0 keeps two or more candidates even
+            # when the second file declares no symbol ``d``.
+            "c.js": "export function d() { return 4; }\n",
+        },
+    )
+    off, on = _edge(_edges(root), "k.js", "d")
+    assert off["resolution"] == "ambiguous"
+    assert on == off
+
+
+COMPANIONS = {
+    # No script globals: a module (whose ``window.other`` names another
+    # global) and a Python file.
+    "c.js": "export function d() { return 4; }\nexport let x = 1;\n",
+    "m.ts": "export {};\nfunction d() { return 5; }\nwindow.other = 1;\n",
+    "p.py": "def d():\n    return 6\n",
+}
+
+
+def _resolved_line(root: Path, rules: list[str]) -> int:
+    off, on = _edge(_edges(root), "k.js", "d")
+    assert off["resolution"] == "ambiguous"
+    assert on["resolution"] == "resolved"
+    assert on["provenance"]["call_rules"] == rules
+    assert on["to"] in off["candidates"]
+    graph = extract_symbol_graph(root, call_resolution=MODE)
+    target = graph["symbol_lookup"][on["to"]]
+    assert target["file"] == "k.js"
+    return int(target["line"])
+
+
+def test_script_global_controls_end_to_end(tmp_path: Path) -> None:
+    """Module files and Python files declare no script globals, so a script
+    top level resolves next to them."""
+    root = _write(tmp_path, {"k.js": SCRIPT, **COMPANIONS})
+    assert _resolved_line(root, ["t1.lexical"]) == 1
+
+
+def test_namespace_merging_end_to_end(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "a.ts": (
+                "export function t() { return 1; }\n"
+                "export namespace N { export function g() { return t(); } }\n"
+                "namespace N { }\n"
+            ),
+            "b.ts": (
+                "export function t() { return 2; }\n"
+                "export namespace M { export function g() { return t(); } }\n"
+            ),
+            "c.ts": "export function t() { return 3; }\n",
+        },
+    )
+    pairs = _edges(root)
+    off, on = _edge(pairs, "a.ts", "t")
+    assert off["resolution"] == "ambiguous"
+    assert on == off
+    # A single declaration in a module is not merged: it resolves.
+    off, on = _edge(pairs, "b.ts", "t")
+    assert on["resolution"] == "resolved"
+    assert on["provenance"]["call_rules"] == ["t1.lexical"]
+
+
+def test_inherited_ambient_end_to_end(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "a.ts": (
+                "export {};\n"
+                "declare namespace N { class t {} function g() { return new t(); } }\n"
+            ),
+            # Nested only: a top-level ``t`` would be C0 on its own (6.2).
+            "b.ts": "export namespace M { export class t {} }\n",
+        },
+    )
+    off, on = _edge(_edges(root), "a.ts", "t")
+    assert off["resolution"] == "ambiguous"
+    assert on == off
 
 
 ENUM_CASES = {

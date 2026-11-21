@@ -28,12 +28,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     remaining candidate: a single definition (`t1.lexical`), or the body of a
     TS overload set (`t1.ts_overload`); duplicate bodies narrow to the group
     and stay ambiguous. Parameters, locals, reassigned names, block-level
-    functions, `eval`/`with`, ambient and bodyless declarations, enums and
-    namespaces, and calls inside TS enum bodies never resolve. Script-goal
-    top levels and TS namespace bodies are not resolved yet, and
-    **Python calls are not resolved yet**: for them, and wherever no binding
-    proves a candidate, only the kind and family filters (`t1.kind`,
-    `t1.family`) narrow, and only when two or more candidates remain. A file
+    functions, `eval`/`with`, ambient declarations (also inside `declare`
+    blocks) and bodyless ones, enums and namespaces, and calls inside TS
+    enum bodies never resolve. A
+    script-goal top level resolves only when no other file of the run may
+    declare the name as a global (`script_globals`: other scripts' top-level
+    names and implicit globals, `window.x =`, `globalThis.x =`, `self.x =`
+    in any file, `declare global`; a computed key, the global object used as
+    a value, a code evaluator or an unsupported JS/TS file counts for every
+    name). A lookup through a merged TS namespace body (another declaration,
+    a dotted name, `declare module`/`declare global`, or any namespace in a
+    script) never resolves. **Python calls are not resolved yet**: for them,
+    and wherever no binding proves a candidate, only the kind and family
+    filters (`t1.kind`, `t1.family`) narrow, and only when two or more
+    candidates remain. A file
     whose tree has syntax errors, is too deeply nested for the scope pass,
     spells a name with a Unicode escape, or whose analysis fails keeps
     exactly its off-mode edges. Narrowed edges carry

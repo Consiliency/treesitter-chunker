@@ -25,8 +25,7 @@
        "c.js:1:d",
        "a.js:1:d"
       ],
-      "interim": "PR 2 interim (plan 7.6): a.js is a script; PR 3 gives none(script-global)",
-      "outcome": "none(script-goal-deferred)",
+      "outcome": "none(script-global)",
       "resolution": "ambiguous",
       "rules": []
      },

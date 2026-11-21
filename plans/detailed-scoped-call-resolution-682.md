@@ -473,7 +473,9 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
   (`(t)++`, `(t as any) = x`, `t! = x`, `<any>t`, `satisfies`) and patterns.
   The one exception is the object of a member or subscript access
   (`t.x = 1`). Computed method and property names are evaluated, so they are
-  read too.
+  read too. **Mapped `arguments` (PR 3).** In a non-arrow function that
+  mentions `arguments` anywhere, a body binding that shares a parameter's
+  name is reassigned: `arguments[0] = x` writes that binding.
 - **Fail closed** with `none(dynamic-scope)` when the lookup chain meets a
   scope that contains a direct `eval(...)`, or a `with` lies on the lookup
   chain. A direct eval can
@@ -489,6 +491,21 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     top-level ones.
   - `window.x =`, `globalThis.x =` and `self.x =` count as declarations of `x`
     in a file of either goal.
+  - **Fail closed (PR 3).** So do `global.x =`, alias chains
+    (`window.top.x =`), string-literal keys (`globalThis["x"] =`), every
+    write form (compound, update, pattern, `for … of` target, `delete`), and
+    `this.x =` wherever `this` may be the global object in a script (the top
+    level, sloppy functions and object-literal methods, but never class
+    code). An alias counts when nothing binds it, or only a script's top
+    level does (`var self;` there is the global object's own property). A
+    write the analysis cannot read gives the wildcard `*`, which declares
+    every name: a non-literal key; the global object used as a value
+    (`f(window)`, `const g = globalThis`, `window[k]()`, `{ window }`); and
+    any reference to `eval`, `Function`, `execScript`, or a timer given
+    source text. An **unsupported** JS/TS file in the run counts as `*`,
+    because its globals are unknown.
+  - In a script, a global-object write of `x` (or `*`) also makes that
+    file's top-level binding of `x` (or of every name) `reassigned`.
   - A lookup that lands on a script-goal top level narrows only if no other
     file in the run declares that name in `script_globals`. Otherwise it gives
     `none(script-global)`.
@@ -507,10 +524,20 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
   CommonJS wrapper.
 - **TS namespaces.** A lookup through a namespace body gives
   `none(namespace-merged)` when the namespace has more than one declaration in
-  the run, or lives in a script-goal file.
+  the run, or lives in a script-goal file. In a module, declarations merge only
+  within the file, so they are counted in the declaring scope (PR 3), and an
+  enum declaration of the same name counts too. A dotted namespace
+  (`namespace A.B`, whose body also sees the members of every `A` and `A.B`),
+  `declare module 'm'` and `declare global` bodies are always treated as
+  merged. A lookup that ends unbound inside a merged body also gives
+  `namespace-merged`: another declaration may bind the name. An exported
+  `const` in a namespace body is `expression-bound`, because tsc rewrites its
+  uses to properties of the namespace object.
 - **Ambient status** is inherited from enclosing `declare` blocks
   (`declare namespace`, `declare module`, `declare global`). A binding made only
-  of ambient declarations gives `none(ambient)`.
+  of ambient declarations gives `none(ambient)`. Every declaration under
+  `declare`, at any depth, is ambient (PR 3), and as a binding's own reason
+  `ambient` wins over `namespace-merged`.
 
 ### 7.3 `t1.lexical`, Python scope chain
 
@@ -1616,3 +1643,15 @@ Both tighten the rules (fail closed); neither departs from a ruling. Today cells
 | Finding | Applied in |
 | --- | --- |
 | Unicode-escaped names compare by source spelling (comment 4649197239) | §5.3 (an escaped name makes a JS/TS file unsupported); §10.6 row |
+
+### PR 3: hoisting and globals (fail-closed refinements)
+
+These tighten §7.2 and §7.4 without changing any expected row; each only
+adds `none`.
+
+| Item | Applied in |
+| --- | --- |
+| Global-object writes beyond `window`/`globalThis`/`self`, the wildcard `*`, unsupported files as `*`, same-file writes as `reassigned` | §7.2 script goal |
+| Mapped `arguments` aliasing | §7.2 reassignment |
+| Namespace merging counted per declaring scope; enums, dotted names, `declare module` and `declare global` always merged; exported namespace `const` is `expression-bound` | §7.2 TS namespaces |
+| Ambient status at any depth under `declare`; `ambient` before `namespace-merged` | §7.2 ambient status |

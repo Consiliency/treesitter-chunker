@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"2"`` for the ``js`` family, whose analyzer is real,
+Schema (fact version ``"3"`` for the ``js`` family, whose analyzer is real,
 and ``"1"`` for ``python``, still the stub):
 
 ``version``
@@ -30,11 +30,25 @@ and ``"1"`` for ``python``, still the stub):
     ``{"outcome": "local", "proof": [[node_type, byte_start, byte_end], ...],
     "rules": [<group rule id>, ...]}`` (the declarations the group rule
     proves, section 7.4), or ``{"outcome": "import", "binding": {...}}``.
+    A ``local`` outcome that lands on a script-goal top level also has
+    ``"global": <name>``: the engine proves it only if no other file of the
+    run declares that name as a script global (section 7.2).
     The JS/TS import binding is ``{"source": <specifier>, "name": <imported
     name, "default" or "*">, "form": "named" | "default" | "namespace"}``.
     A call whose callee span matches no node has no entry
     (``no-binding-fact``).
-``script_globals``, ``exports``, ``module_bindings``
+``script_globals``
+    JavaScript and TypeScript: the sorted globals the file declares or may
+    write (section 7.2). In a script, every name its top level binds, and
+    every name it assigns with no declaration in scope (implicit globals).
+    In a file of either goal, the names declared in ``declare global`` and
+    the names written through the global object (``window.x =``,
+    ``globalThis["x"] =``, ``self.x =``, ``global.x =``; ``this.x =`` where
+    ``this`` may be the global object in a script). ``"*"`` when the file
+    may write a global of any name: a computed key, the global object used
+    as a value, or a code evaluator (``eval``, ``Function``, ``execScript``,
+    a timer given source text). Empty for Python.
+``exports``, ``module_bindings``
     Cross-file facts for later tiers; empty until an analyzer fills them.
 ``symbols``
     ``[[node_type, byte_start, byte_end, symbol_id], ...]``, one entry per
@@ -58,7 +72,9 @@ logger = logging.getLogger(__name__)
 # tests/fixtures/call_resolution/scope_facts_digests.json pins a digest of the
 # fixtures' facts per family, so a change without a bump fails.
 # js "2": the JS/TS scope analyzer replaces the stub (plan PR 2).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "2", "python": "1"}
+# js "3": script globals, script-goal lookups, namespace merging and
+# inherited ambient status (plan PR 3).
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "3", "python": "1"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 
@@ -253,7 +269,8 @@ def valid_outcome(value: object) -> bool:
         proof = value.get("proof")
         rules = value.get("rules")
         return (
-            set(value) == {"outcome", "proof", "rules"}
+            set(value) - {"global"} == {"outcome", "proof", "rules"}
+            and isinstance(value.get("global", ""), str)
             and isinstance(proof, list)
             and bool(proof)
             and all(_valid_declaration(item) for item in proof)
