@@ -107,8 +107,12 @@ __main__ import __dict__ as g`` hands over the namespace), and any import of
 ``sys`` or ``__main__`` in a class body (a class attribute, read as ``K.m``,
 ``self.m`` or ``getattr(K, "m")``), and a constant string with a ``__main__``
 component (``mock.patch("__main__.helper")``, ``pydoc.locate("__main__")``),
-except as a comparison operand or a ``case`` pattern (``if __name__ ==
-"__main__":`` still resolves); ``__mp_main__``, the name a multiprocessing
+except as an operand of a comparison whose other operands are ``__name__`` or
+constant strings, or as a literal ``case`` pattern of ``match __name__``,
+outside class bodies and in files that never rebind ``__name__`` (``if
+__name__ == "__main__":`` still resolves; any other comparison or pattern can
+hand the constant to user code through ``__eq__``, ``__contains__`` or a
+rebound ``__name__``, #695 L-2); ``__mp_main__``, the name a multiprocessing
 spawn child imports the script under, counts as ``__main__``, and constant
 strings split on ``.`` and ``:`` (``pkgutil.resolve_name("pkg.mod:attr")``)
 for this rule, the own-name rule and the dynamic attribute names;
@@ -1159,6 +1163,7 @@ class _Analysis:
         source = self.source
         sys_names = {_SYS}
         main_names = set(_MAIN_NAMES)
+        main_strings: list[Any] = []
         identifiers: list[Any] = []
         stack = [self.root]
         while stack:
@@ -1181,17 +1186,14 @@ class _Analysis:
                 value = _constant_string(node, source)
                 if value is not None:
                     self._literal_use(value)
-                    if set(_NAME_SEPARATORS.split(value)) & _MAIN_NAMES and not (
-                        _main_test_operand(node)
-                    ):
+                    if set(_NAME_SEPARATORS.split(value)) & _MAIN_NAMES:
                         # ``"__main__"`` names this module by string when the
                         # file runs as a script (``mock.patch("__main__.f")``,
                         # ``pydoc.locate("__main__")``,
                         # ``pkgutil.resolve_name("__main__:__dict__")``; #695
-                        # K-3). A comparison operand or a ``case`` pattern
-                        # (``if __name__ == "__main__":``) only yields a
-                        # boolean.
-                        self.dynamic = True
+                        # K-3). Decided after the scan, once every attribute
+                        # write is known (see :meth:`_main_guard`).
+                        main_strings.append(node)
                     if self._names_own_module(value):
                         # Any constant string naming this module, alone or as
                         # a component of a dotted path (``getattr(pkg, "a")``,
@@ -1221,6 +1223,9 @@ class _Analysis:
                     for bound in _from_import_bound_names(node):
                         main_names.update(_spellings(bound, source))
             stack.extend(node.named_children)
+        for node in main_strings:
+            if not self._main_guard(node):
+                self.dynamic = True
         for ident in identifiers:
             name = _text(ident, source)
             parent = ident.parent
@@ -1266,6 +1271,75 @@ class _Analysis:
             elif spellings & main_names and not _import_context(ident):
                 # ``__main__.helper = len``, ``setattr(m, ...)``.
                 self.dynamic = True
+
+    def _main_guard(self, node: Any) -> bool:
+        """Whether a ``__main__`` constant is exempt: no user code can receive
+        it (#695 L-2/L-3).
+
+        Only an operand of a comparison whose every operand is the bare
+        ``__name__`` or a constant string (or a tuple, list or set of those),
+        or a literal ``case`` pattern (through adjacent literals or ``|``) of
+        ``match __name__``. Never in a class body, whose namespace may supply
+        ``__name__``, and never in a file that binds, declares ``global`` or
+        ``nonlocal``, deletes or attribute-writes ``__name__`` anywhere: a
+        rebound ``__name__``, a dunder method of an operand (``__eq__``,
+        ``__contains__``) or a ``case`` value, ``|``, class or keyword pattern
+        could hand the constant to user code.
+        """
+        if self._name_rebound():
+            return False
+        source = self.source
+        current = node
+        while current.parent is not None and current.parent.type in (
+            "parenthesized_expression",
+            "tuple",
+            "list",
+            "set",
+            "concatenated_string",
+        ):
+            current = current.parent
+        parent = current.parent
+        if parent is not None and parent.type == "comparison_operator":
+            return not _in_class_body(parent) and all(
+                _guard_operand(operand, source) for operand in parent.named_children
+            )
+        current = node
+        while current.parent is not None and current.parent.type in (
+            "concatenated_string",
+            "union_pattern",
+        ):
+            current = current.parent
+        pattern = current.parent
+        clause = pattern.parent if pattern is not None else None
+        block = clause.parent if clause is not None else None
+        match = block.parent if block is not None else None
+        # Only a ``case_pattern`` sits directly under a ``case_clause``, so the
+        # clause check also proves the constant is a whole literal pattern.
+        if (
+            pattern is None
+            or clause is None
+            or clause.type != "case_clause"
+            or match is None
+            or match.type != "match_statement"
+            or _in_class_body(match)
+        ):
+            return False
+        subject = match.child_by_field_name("subject")
+        return (
+            subject is not None
+            and subject.type == "identifier"
+            and _text(subject, source) == "__name__"
+        )
+
+    def _name_rebound(self) -> bool:
+        """Whether any scope binds, declares or deletes ``__name__``, or any
+        receiver's attribute ``__name__`` is written."""
+        return "__name__" in self.attribute_writes or any(
+            "__name__" in scope.assigned
+            or "__name__" in scope.globals
+            or "__name__" in scope.nonlocals
+            for scope in self.scopes.values()
+        )
 
     def _names_own_module(self, text: str) -> bool:
         """Whether a name, or a dotted constant string, may denote this
@@ -1631,28 +1705,18 @@ def _spellings(ident: Any, source: bytes) -> set[str]:
     return {name, *_mangled_names(ident, name, source)}
 
 
-def _main_test_operand(node: Any) -> bool:
-    """Whether a constant is a comparison operand (also inside a tuple, list
-    or set operand of ``in``) or sits in a ``case`` pattern."""
-    current = node
-    while current.parent is not None and current.parent.type in (
-        "parenthesized_expression",
-        "tuple",
-        "list",
-        "set",
-        "concatenated_string",
-        "binary_operator",
-    ):
-        current = current.parent
-    parent = current.parent
-    if parent is not None and parent.type == "comparison_operator":
+def _guard_operand(operand: Any, source: bytes) -> bool:
+    """A comparison operand no user code receives: the bare ``__name__``, a
+    constant string, or a tuple, list or set of those."""
+    operand = _unwrap(operand)
+    if operand.type == "comment":
         return True
-    while parent is not None:
-        if parent.type == "case_pattern":
-            return True
-        if parent.type in ("block", "module"):
-            return False
-        parent = parent.parent
+    if operand.type == "identifier":
+        return _text(operand, source) == "__name__"
+    if _constant_string(operand, source) is not None:
+        return True
+    if operand.type in ("tuple", "list", "set"):
+        return all(_guard_operand(item, source) for item in operand.named_children)
     return False
 
 

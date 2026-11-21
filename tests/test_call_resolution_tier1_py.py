@@ -4251,9 +4251,734 @@ def test_main_and_own_name_strings_fail_closed(path: str, form: str) -> None:
         "if __name__ in ('__main__',):\n    pass",
         "if __name__ != ('__main__'):\n    pass",
         "match __name__:\n    case '__main__':\n        pass",
+        "if __name__ not in ['__main__', '__mp_main__']:\n    pass",
+        "match __name__:\n    case '__main__' | '__mp_main__':\n        pass",
+        "def main():\n    if __name__ == '__main__':\n        pass",
+        "class K:\n    def m(self):\n        return __name__ == '__main__'",
     ],
 )
 def test_main_guards_still_resolve(form: str) -> None:
-    """A comparison operand or ``case`` pattern only yields a boolean."""
+    """A ``__main__`` constant in a comparison whose other operands are
+    ``__name__`` or constant strings, or in a literal ``case`` pattern of
+    ``match __name__``, outside class bodies and in a file that never rebinds
+    ``__name__``, reaches no user code (#695 L-3)."""
     source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
     assert _outcome_at(source, "helper", "pkg/a.py")["outcome"] == "local", form
+
+
+# ---------------------------------------------------------------------------
+# The president's re-check at 3b2d8fae (L-2): the ``__main__`` guard exemption
+# narrowed to code that can hand the constant to no user code.
+
+FOLD10_695: dict[str, tuple[str, dict[str, str]]] = {
+    "m23_case_class_kw": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class K:\n"
+            "    __match_args__ = ()\n"
+            "    def __getattr__(self, k):\n"
+            "        return self\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "match K():\n"
+            "    case K(x='__main__.helper'):\n"
+            "        pass\n"
+            "use()\n"
+        },
+    ),
+    "m23_case_value_eq": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "match P():\n"
+            "    case '__main__.helper':\n"
+            "        pass\n"
+            "use()\n"
+        },
+    ),
+    "m23_contains_dunder": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class R:\n"
+            "    def __contains__(self, k):\n"
+            "        mock.patch(k, len).start()\n"
+            "        return True\n"
+            "'__main__.helper' in R()\n"
+            "use()\n"
+        },
+    ),
+    "m23_eq_dunder_patch": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "P() == '__main__.helper'\n"
+            "use()\n"
+        },
+    ),
+    "m23_eq_dunder_reflected": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "'__main__.helper' == P()\n"
+            "use()\n"
+        },
+    ),
+    "m23_eq_locate": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "import pydoc\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        pydoc.locate(o).__dict__.update(D)\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "P() == '__main__'\n"
+            "use()\n"
+        },
+    ),
+    "m23_in_list_eq": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "P() in ['__main__.helper']\n"
+            "use()\n"
+        },
+    ),
+    "m23_in_tuple_eq": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "P() in ('__main__.helper',)\n"
+            "use()\n"
+        },
+    ),
+    "m23_lt_dunder": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __lt__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "P() < '__main__.helper'\n"
+            "use()\n"
+        },
+    ),
+    "m23_ne_dunder": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "P() != '__main__.helper'\n"
+            "use()\n"
+        },
+    ),
+    "m24_case_or_eq": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "match P():\n"
+            "    case '__main__.helper' | 'x':\n"
+            "        pass\n"
+            "use()\n"
+        },
+    ),
+    "m24_chained": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "P() == '__main__.helper' == '__main__.helper'\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_assign": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "__name__ = P()\n"
+            "if __name__ == '__main__.helper':\n"
+            "    pass\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_aug": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "__name__ += ''\n"
+            "__name__ = P()\n"
+            "if __name__ == '__main__.helper':\n"
+            "    pass\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_classbody": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "class K:\n"
+            "    __name__ = P()\n"
+            "    __name__ == '__main__.helper'\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_comp": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "[__name__ == '__main__.helper' for __name__ in [P()]]\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_except": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "class E(Exception):\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "try:\n"
+            "    raise E()\n"
+            "except E as __name__:\n"
+            "    __name__ == '__main__.helper'\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_for": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "for __name__ in [P()]:\n"
+            "    pass\n"
+            "if __name__ == '__main__.helper':\n"
+            "    pass\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_global_fn": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "def g():\n"
+            "    global __name__\n"
+            "    __name__ = P()\n"
+            "g()\n"
+            "if __name__ == '__main__.helper':\n"
+            "    pass\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_lambda": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "(lambda __name__: __name__ == '__main__.helper')(P())\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_match_capture": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "match P():\n"
+            "    case __name__:\n"
+            "        pass\n"
+            "if __name__ == '__main__.helper':\n"
+            "    pass\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_param": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "def f(__name__):\n"
+            "    return __name__ == '__main__.helper'\n"
+            "f(P())\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_walrus": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "(__name__ := P())\n"
+            "if __name__ == '__main__.helper':\n"
+            "    pass\n"
+            "use()\n"
+        },
+    ),
+    "m24_name_with": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "import contextlib\n"
+            "with contextlib.nullcontext(P()) as __name__:\n"
+            "    pass\n"
+            "if __name__ == '__main__.helper':\n"
+            "    pass\n"
+            "use()\n"
+        },
+    ),
+    "m24_prepare_ns": (
+        "L-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "from unittest import mock\n"
+            "class P:\n"
+            "    def __eq__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __ne__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    def __contains__(self, o):\n"
+            "        mock.patch(o, len).start()\n"
+            "        return True\n"
+            "    __hash__ = object.__hash__\n"
+            "class NS(dict):\n"
+            "    def __missing__(self, k):\n"
+            "        return P()\n"
+            "class Meta(type):\n"
+            "    @classmethod\n"
+            "    def __prepare__(m, *a, **k):\n"
+            "        return NS()\n"
+            "class K(metaclass=Meta):\n"
+            "    __name__ == '__main__.helper'\n"
+            "use()\n"
+        },
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD10_695))
+def test_fold10_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    _, spec = FOLD10_695[case]
+    files = dict(spec)
+    target = files.pop("__target__", "a.py")
+    files.setdefault("b.py", _decoys(files[target]))
+    root = _tree(tmp_path, files)
+    off, on = _off_on(root)
+    off_calls = [e for e in off["relationships"] if e["file"] == target]
+    assert any(edge["resolution"] == "ambiguous" for edge in off_calls), case
+    assert [e for e in on["relationships"] if e["file"] == target] == off_calls
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        # An operand user code receives (``__eq__``, ``__contains__``).
+        "x = P() == '__main__'",
+        "x = '__main__' in R()",
+        "x = P() in ('__main__',)",
+        # A ``case`` value pattern on another subject, or a nested pattern.
+        "match P():\n    case '__main__':\n        pass",
+        "match __name__:\n    case '__main__' as s:\n        pass",
+        "match __name__:\n    case K(x='__main__'):\n        pass",
+        # A class body may supply ``__name__`` (``__prepare__``).
+        "class K(metaclass=M):\n    x = __name__ == '__main__'",
+        "class K(metaclass=M):\n    match __name__:\n        case '__main__':\n"
+        "            pass",
+        # ``__name__`` rebound anywhere, also by an attribute write through
+        # a receiver that may be this module.
+        "__name__ = P()\nx = __name__ == '__main__'",
+        "def f(__name__):\n    return __name__ == '__main__'",
+        "def f():\n    global __name__\n    __name__ = P()\nx = __name__ == '__main__'",
+        "for __name__ in [P()]:\n    pass\nx = __name__ == '__main__'",
+        "del __name__\nx = 1 if __name__ == '__main__' else 0",
+        "def f(mod):\n    mod.__name__ = P()\nx = __name__ == '__main__'",
+    ],
+)
+def test_narrowed_main_guard_fails_closed(form: str) -> None:
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", "pkg/a.py") == {
+        "outcome": "none",
+        "reason": "dynamic-scope",
+    }, form
