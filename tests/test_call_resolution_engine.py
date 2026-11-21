@@ -128,6 +128,8 @@ NAMED_TIER1_PY_TESTS = (
     # The president's #695 ruling (B-1 to B-6).
     "test_ruling_695_cases_keep_their_off_mode_edge",
     "test_whitespace_differential_has_no_silent_misparse",
+    # The president's re-check (N-1 to N-3): the general self-reference rule.
+    "test_recheck_695_cases_keep_their_off_mode_edge",
 )
 # Expected rows per plan PR (10.1): a row that loses its finalization fails
 # the pin (#695 panel B7).
@@ -605,7 +607,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "4"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "5"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",

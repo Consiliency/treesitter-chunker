@@ -701,6 +701,38 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     A7); and `X.modules[__name__]`, `X.modules.get(__name__)` (also
     `__getitem__`, `setdefault`, `pop`) through any receiver `X` (B3).
     Precedence: `dynamic-scope`, then `star-import`, then `unmapped`.
+  - **The file's own module: one general rule (the president's re-check of
+    #695, N-1 to N-3).** It replaces the per-shape self-import and
+    submodule fixes.
+    - **Which names can denote the module.** The names that can denote this
+      file's module are every suffix of its dotted module path, relative to
+      the run root and to every ancestor directory, because the root and any
+      ancestor may be packages, regular or PEP 420 namespace packages. Every
+      such name, and any longer path ending in one, ends with the file's own
+      name: its stem, or the package directory's name for `__init__.py`.
+    - **Self-reference.** Module-scope lookups give `dynamic-scope` when the
+      own name is a component of any of these:
+      - any import's path or imported names, absolute or relative, in any
+        scope;
+      - any attribute name, for example `R.a.helper = …` through a parent
+        package or the run root;
+      - any constant string, alone or dotted: `getattr(pkg, 'a')`,
+        `pkg.__dict__['a']`, `NAME = 'a'`.
+
+      A root-level `__init__.py` has no own name in the run, so it treats
+      every absolute import as a possible self-import; a relative import
+      cannot reach it. The rule over-triggers by design: losing a proof is
+      acceptable, a wrong edge is not. The remaining ways to reach the module
+      object without spelling its name are either dynamic triggers already
+      (`__import__`, `importlib`, `sys.modules`, `globals()`, frames) or R10
+      and R12 (another module, iterating a package's namespace, `gc`).
+    - **Submodule rebinding.** In any `__init__.py`, every import is resolved
+      to a full dotted path, with relative dots joined to the file's module
+      path. Wherever the own name is followed by a component `X`, loading
+      the submodule sets this package's global `X`. That is a non-definition
+      binding at module scope, also when the import is in a function.
+      Examples: `import pkg.sub.X`, `from ..sub.X import y`, `from . import
+      X`.
   - **`f_locals` (#695 panel A2, B1).** A frame's `f_locals` writes through
     to a function's locals (PEP 667, Python 3.13+). A file that mentions
     `f_locals` anywhere, as an attribute or a constant string, gives
@@ -1625,7 +1657,7 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | R9 | Scripts outside the run can redefine a global: HTML-included scripts outside the run, `dist/`, `node_modules`, `.mjs` and `.cjs` files, inline `<script>` in `.vue` and `.svelte` files (none of these is collected), and raw HTML in Markdown or reStructuredText that a site generator renders, which, like any generated page, is outside the run | Accept: they are not scanned. In-run HTML, XML and PHP files count as declaring every global (PR 3). |
 | R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: a computed call on a receiver `this` that may be an indirect `eval` (`this[k](s)`, `this['ev' + 'al'](s)`; `*` would switch off script-top resolution in about 52 of 1136 npm files); hand-offs of a receiver `this` through a variable or an expression (`const s = this; s.d = f`, `const w = this.window; w.d = f`, `(0, this).d =`, `(c ? this : o).d =`, `(c || this).d =`, the receiver argument of `Reflect.set(o, 'd', v, this)`, `Object.assign(...[this], …)`), except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)` with `this` first, which give `*`; `Reflect.get(f, 'constructor')`, and computed keys that may reach `constructor` on arbitrary objects (`x[k](s)`, `x['constr' + 'uctor'](s)`, `f[['constructor']](s)`, `const { [k]: F } = f`); writer hand-offs the analysis cannot identify syntactically (`const a = Object.assign; a(this, …)`, `Reflect.apply(Object.assign, null, [this, …])`, `Object['assign'](...[this], …)`, and a helper given `this`: `h(this)`) | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
 | R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) is not tracked | Accept. This is the same kind of risk as the module-scope preference the issue asks for. |
-| R12 | Python run-time binding no syntactic rule sees (PR 4): a helper in another module that writes its caller's globals or locals through frames (`sys._getframe(1).f_globals` or `.f_locals` there, not here; #695 panel A2) or `exec(code, mod.__dict__)`; computed strings beyond constant literals (`'__glo' + name`); `X.modules` uses other than `X.modules[__name__]` and its getters (`m = collections._sys.modules; m[__name__]`); `gc`/`ctypes` tricks; replacing a function's `__code__` (the edge still names the right definition, which then runs other code). Named by the president's #695 ruling (section 4): same-file resolvers that take the module name as a value, `pkgutil.resolve_name(__name__).helper = len`, `pydoc.locate(__name__).helper = len` and `mock.patch(__name__ + '.helper', len)` self-patches; other computed strings (`'%s' % …`, `b'…'.decode()`); `X.modules[__spec__.name]` and other `X.modules` keys; **cross-file submodule rebinding** (another module importing `pkg.X` sets `pkg/__init__.py`'s global `X` with no write in any source of `pkg/__init__.py`); **builtins injected from another module** (`gettext.install()`, or `builtins.X = …` elsewhere) ahead of a module-level definition that has not run yet, also an R10 item for the deferred follow-up. Self-imports are no longer here: they give `dynamic-scope` (#695 panel A7, and the ruling's B-4 shapes) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
+| R12 | Python run-time binding no syntactic rule sees (PR 4): a helper in another module that writes its caller's globals or locals through frames (`sys._getframe(1).f_globals` or `.f_locals` there, not here; #695 panel A2) or `exec(code, mod.__dict__)`; computed strings beyond constant literals (`'__glo' + name`); `X.modules` uses other than `X.modules[__name__]` and its getters (`m = collections._sys.modules; m[__name__]`); `gc`/`ctypes` tricks; replacing a function's `__code__` (the edge still names the right definition, which then runs other code). Named by the president's #695 ruling (section 4): same-file resolvers that take the module name as a value, `pkgutil.resolve_name(__name__).helper = len`, `pydoc.locate(__name__).helper = len` and `mock.patch(__name__ + '.helper', len)` self-patches; other computed strings (`'%s' % …`, `b'…'.decode()`); `X.modules[__spec__.name]` and other `X.modules` keys; **cross-file submodule rebinding** (another module importing `pkg.X` sets `pkg/__init__.py`'s global `X` with no write in any source of `pkg/__init__.py`); **builtins injected from another module** (`gettext.install()`, or `builtins.X = …` elsewhere) ahead of a module-level definition that has not run yet, also an R10 item for the deferred follow-up. Also: reaching the module without spelling its name by iterating a package's namespace (`for m in pkg.__dict__.values()`, `inspect.getmembers(pkg)`, `pkgutil.iter_modules`). Self-references that spell the module's name are no longer here: they give `dynamic-scope` (#695 panel A7, the ruling's B-4 and the general rule of its re-check) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
 
 **Owner notice** (informational, from the ruling): these are delegated
 decisions, all stricter than or consistent with the issue:
@@ -1919,7 +1951,21 @@ removing any one fix fails at least one test.
 | B-1: private-name mangling; a `__x` lookup inside a class gives `unmapped`, and bindings, `global` and `nonlocal` there also bind every mangled spelling | §7.3 (via the `py_scope` docstring); §7.6 `unmapped` |
 | B-2: a backslash continuation as a line's first non-blank character makes the file unsupported; the ruling's whitespace differential is a test | §5.3 |
 | B-3: in `__init__.py`, importing submodule `X` of the own package binds `X` at module scope (non-definition), also from a function | §7.3 dynamic binding (`py_scope` docstring); R12 for the cross-file form |
-| B-4: `import pkg.x` in `pkg/__init__.py`; the own module reached as an attribute of its parent package (`.a`, or `'a'` given to `getattr`/`setattr`/…); a root-level `__init__.py` treats every absolute import as a possible self-import (narrower than making the file unsupported: function-local lookups and relative-import-only files still resolve) | §7.3 dynamic binding |
+| B-4: `import pkg.x` in `pkg/__init__.py`; the own module reached as an attribute of a parent package; a root-level `__init__.py` treats every absolute import as a possible self-import (narrower than making the file unsupported: function-local lookups and relative-import-only files still resolve). Superseded by the general rule of the re-check below | §7.3 dynamic binding |
 | B-5: parentheses around `__name__` in `X.modules[…]` and the getters | §7.3 dynamic binding |
 | B-6: `WindowsError` pinned as a platform builtin; the pin test is a superset check on every OS plus the exact 3.14 list | §7.3 builtin rule |
 | Section 4: R12 names `pkgutil.resolve_name`, `pydoc.locate` and `mock.patch` self-patches, cross-file submodule rebinding and builtins injected from elsewhere | §15 R12 |
+
+### PR 4: the president's #695 re-check at 5efc7eec
+
+Every item only adds `none`; no expected row changes. `python` fact version
+5. The 13 re-check trees, and variants, are committed as tests
+(`test_recheck_695_cases_keep_their_off_mode_edge`,
+`test_submodule_imports_rebind_at_any_depth`,
+`test_any_possible_self_reference_fails_closed`). Removing any part of the
+rule fails tests.
+
+| Item | Applied in |
+| --- | --- |
+| N-1, N-2, N-3: one general fail-closed rule replaces the per-shape B-3/B-4 fixes. The own name as a component of any import, any attribute name or any constant string makes module-scope lookups `dynamic-scope`. In any `__init__.py`, every resolved import path that passes through the package rebinds its next component. | §7.3 "The file's own module" |
+| R12 names iteration over a package's namespace | §15 R12 |

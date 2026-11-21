@@ -67,8 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `eval`, `globals`, `vars`, `locals`, `__import__`, `builtins`,
     `importlib`, `sys.modules` or any `X.modules[__name__]`, `__main__`,
     `__globals__`, frame globals, those attribute names as constant strings,
-    or an import of the file's own module, including submodule imports in
-    `__init__.py`) or has a star import never resolve, and neither does a
+    or any import, attribute name or constant string that may name the
+    file's own module, and submodule imports in `__init__.py`) or has a star
+    import never resolve, and neither does a
     private name (`__x`) looked up inside a class, which CPython mangles.
     A file that mentions `f_locals`, which writes function locals, resolves
     nothing. Monkeypatching from other modules is not tracked (plan risk

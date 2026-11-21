@@ -135,18 +135,37 @@ every binding, ``global`` or ``nonlocal`` of one there also binds each
 mangled spelling an enclosing class may give it (a non-definition binding),
 so ``_C__x`` spelled out elsewhere never proves past a mangled write.
 
-**The file's own module.** Besides the self-imports above: in
-``pkg/__init__.py``, importing submodule ``pkg.X`` (``from .X import y``,
-``from . import X``, ``import pkg.X``, ``from pkg.X import y``, ``from pkg
-import X``) sets the package's global ``X``, a non-definition binding even
-in a function; ``import pkg.x`` there binds ``pkg``, the file's own module;
-in a module with a parent package, an attribute named after the module
-(``pkg.a.helper = …`` in ``pkg/a.py``) or that name as a constant string
-given to ``getattr``/``setattr``/``delattr``/``hasattr``/``attrgetter`` is
-dynamic; and a root-level ``__init__.py``, whose package name lies outside
-the run, treats every absolute import as a possible self-import. Redundant
-parentheses around ``__name__`` in ``X.modules[(__name__)]`` and the getters
-are ignored.
+**The file's own module: one general fail-closed rule** (the president's
+re-check of #695, replacing per-shape fixes). The names that can denote this
+file's module are every suffix of its dotted module path relative to the run
+root and to every ancestor directory, because the root and any ancestor may
+be packages, regular or PEP 420 namespace packages. Every such name, and any
+longer path ending in one, ends with the file's own name: its stem, or the
+package directory's name for ``__init__.py`` (:class:`ModulePath`). So:
+
+- **Self-reference.** Module-scope lookups give ``dynamic-scope`` when the own
+  name is a component of any import's path or imported names (absolute or
+  relative, after any dots, in any scope: ``import a``, ``import pkg.a.x``,
+  ``from . import a``, ``from ..sub import x`` in ``pkg/sub/__init__.py``), of
+  any attribute name (``R.a.helper = …`` through a parent package or the run
+  root itself), or of any constant string, alone or dotted (``getattr(pkg,
+  "a")``, ``pkg.__dict__["a"]``, ``NAME = "a"``), mirroring the rule for
+  dynamic attribute names. A root-level ``__init__.py`` has no own name in
+  the run, and treats every absolute import as a possible self-import; a
+  relative import cannot reach it. This over-triggers by design. Losing a
+  proof is fine; a wrong edge is not. The ways left to reach the module
+  object without spelling its name are other dynamic triggers (``__import__``,
+  ``importlib``, ``sys.modules``, ``globals()``, frames) or plan risks R10/R12
+  (another module, iteration over a package's namespace, ``gc``).
+- **Submodule rebinding.** In any ``__init__.py``, every import is resolved to
+  a full dotted path (relative dots joined to this file's module path). Where
+  the own name is followed by a component ``X`` (``import pkg.sub.X``,
+  ``from ..sub.X import y``, ``from . import X``), loading the submodule sets
+  this package's global ``X``: a non-definition binding at module scope,
+  also from a function.
+
+Redundant parentheses around ``__name__`` in ``X.modules[(__name__)]`` and the
+getters are ignored.
 
 **Identifiers are compared by their source spelling, so a file with a
 non-ASCII identifier is not analyzed.** Python normalizes identifiers to
@@ -455,10 +474,9 @@ PY2_BUILTINS = frozenset(
 # Builtins only some platforms have (``WindowsError`` on Windows).
 PLATFORM_BUILTINS = frozenset(["WindowsError"])
 BUILTINS = BUILTINS_314 | PY2_BUILTINS | PLATFORM_BUILTINS
-# Calls that take an attribute name as a string (B-4).
-_ATTRIBUTE_FUNCTIONS = frozenset(
-    {"getattr", "setattr", "delattr", "hasattr", "attrgetter"}
-)
+# The package an import in a root-level ``__init__.py`` names with ``.``: its
+# own name is outside the run, so it stands for "this package".
+_SELF = "<this package>"
 _IMPORT_STATEMENTS = frozenset(
     {"import_statement", "import_from_statement", "future_import_statement"}
 )
@@ -869,52 +887,66 @@ class _Analysis:
             ),
         )
 
+    def _import_paths(self, node: Any, *, resolve: bool) -> list[list[str]]:
+        """The dotted paths an import statement names, one per imported name.
+
+        ``import a.b`` gives ``[a, b]``; ``from m.x import y`` gives
+        ``[m, x, y]``. With ``resolve``, a relative module is joined to the
+        package its dots name, from this file's module path (``[_SELF]`` for
+        a root-level ``__init__.py``; nothing when the dots leave the run);
+        without it, only the components after the dots count.
+        """
+        source = self.source
+        names: list[str] = []
+        star = False
+        for index, child in enumerate(node.children):
+            if child.type == "wildcard_import":
+                star = True
+            if node.field_name_for_child(index) != "name":
+                continue
+            imported = (
+                child.child_by_field_name("name")
+                if child.type == "aliased_import"
+                else child
+            )
+            if imported is not None:
+                names.append(_text(imported, source))
+        if node.type == "import_statement":
+            return [name.split(".") for name in names]
+        module = node.child_by_field_name("module_name")
+        text = _text(module, source) if module is not None else ""
+        dots = len(text) - len(text.lstrip("."))
+        rest = [part for part in text[dots:].split(".") if part]
+        base: list[str] = []
+        if dots and resolve:
+            info = self.module_path
+            package = list(info.components)
+            if not info.package_init:
+                package = package[:-1]
+            if info.root_init:
+                package = [_SELF]
+            up = dots - 1
+            if up < len(package) or (up == len(package) and not info.root_init):
+                base = package[: len(package) - up]
+        prefix = base + rest
+        paths = [prefix + name.split(".") for name in names]
+        if star or not paths:
+            paths.append(prefix)
+        return paths
+
     def _submodule_writes(self, node: Any) -> None:
-        """In ``pkg/__init__.py``, importing submodule ``pkg.X`` sets the
-        package's global ``X`` (B-3), even when the statement binds no
-        ``X`` (``from .X import y``, ``import pkg.X``)."""
+        """In any ``__init__.py``, an import whose resolved path passes
+        through this package and names a next component ``X`` (``import
+        pkg.sub.X``, ``from ..sub.X import y``, ``from . import X``) sets the
+        package's global ``X`` when the submodule loads (B-3, N-1): a
+        non-definition binding at module scope, also from a function."""
         if not self.module_path.package_init:
             return
-        source = self.source
-        own = self.own_names
-        module = node.child_by_field_name("module_name")
-        names = []
-        for index, child in enumerate(node.children):
-            if node.field_name_for_child(index) == "name":
-                imported = (
-                    child.child_by_field_name("name")
-                    if child.type == "aliased_import"
-                    else child
-                )
-                if imported is not None:
-                    names.append(_text(imported, source))
-        if node.type == "import_statement":
-            for text in names:
-                parts = text.split(".")
-                if len(parts) > 1 and parts[0] in own:
-                    self._module_write(parts[1])
-            return
-        if module is None:
-            return
-        module_text = _text(module, source)
-        if module_text.startswith("."):
-            dots = len(module_text) - len(module_text.lstrip("."))
-            rest = module_text[dots:]
-            if dots != 1:
-                return
-            if rest:
-                self._module_write(rest.split(".")[0])
-            else:
-                for text in names:
-                    self._module_write(text.split(".")[0])
-            return
-        parts = module_text.split(".")
-        if parts[0] in own:
-            if len(parts) > 1:
-                self._module_write(parts[1])
-            else:
-                for text in names:
-                    self._module_write(text.split(".")[0])
+        own = self.own_names | {_SELF}
+        for path in self._import_paths(node, resolve=True):
+            for index in range(1, len(path)):
+                if path[index - 1] in own:
+                    self._module_write(path[index])
 
     def _import(self, node: Any, scope: _Scope, depth: int) -> None:
         self._submodule_writes(node)
@@ -1053,12 +1085,10 @@ class _Analysis:
                 value = _constant_string(node, source)
                 if value is not None:
                     self._literal_use(value)
-                    if (
-                        self.module_path.in_package
-                        and set(value.split(".")) & self.own_names
-                        and _attribute_argument(node, source)
-                    ):
-                        # ``setattr(pkg, "a", …)``, ``getattr(pkg, "a")``.
+                    if set(value.split(".")) & self.own_names:
+                        # Any constant string naming this module, alone or as
+                        # a component of a dotted path (``getattr(pkg, "a")``,
+                        # ``pkg.__dict__["a"]``, ``NAME = "a"``; N-3).
                         self.dynamic = True
             if kind in ("import_statement", "import_from_statement"):
                 self._import_use(node)
@@ -1078,9 +1108,9 @@ class _Analysis:
                     self._sys_use(parent)
                 elif name == _SYS_MODULES:
                     self._modules_use(parent)
-                elif self.module_path.in_package and name in self.own_names:
-                    # ``pkg.a.helper = …`` in ``pkg/a.py`` reaches the file's
-                    # own module through its parent package (B-4b).
+                elif name in self.own_names:
+                    # ``pkg.a.helper = …``: an attribute path through a parent
+                    # package, which may be the run root itself (N-2).
                     self.dynamic = True
                 continue
             if parent.type == "keyword_argument" and _same(
@@ -1109,42 +1139,33 @@ class _Analysis:
             self.frame_locals = True
 
     def _import_use(self, node: Any) -> None:
-        """``from sys import modules`` and imports of the file's own module
-        (``import a`` in ``a.py``, ``from . import a``) are dynamic."""
+        """``from sys import modules`` and every import that may name this
+        file's module are dynamic.
+
+        An import may name it when its own name is a component of the
+        import's path or of an imported name (raw, after any leading dots):
+        ``import a``, ``import pkg.a.x``, ``from . import a``, ``from ..sub
+        import x`` in ``pkg/sub/__init__.py``. A root-level ``__init__.py``
+        has no own name in the run, so any absolute import may name it.
+        """
         source = self.source
         module = node.child_by_field_name("module_name")
-        for index, child in enumerate(node.children):
-            if node.field_name_for_child(index) != "name":
-                continue
-            imported = (
-                child.child_by_field_name("name")
-                if child.type == "aliased_import"
-                else child
-            )
-            if imported is None:
-                continue
-            text = _text(imported, source)
-            if node.type == "import_from_statement":
+        module_text = _text(module, source) if module is not None else ""
+        if node.type == "import_from_statement":
+            for path in self._import_paths(node, resolve=False):
                 if (
-                    module is not None
-                    and text == _SYS_MODULES
-                    and _text(module, source).rsplit(".", 1)[-1] == _SYS
+                    module_text.rsplit(".", 1)[-1] == _SYS
+                    and len(path) > 1
+                    and path[-1] == _SYS_MODULES
                 ):
                     self.dynamic = True
-                if text in self.own_names:
-                    self.dynamic = True
-            else:
-                parts = text.split(".")
-                # ``import pkg.x`` in ``pkg/__init__.py`` binds ``pkg``, the
-                # file's own module (B-4a).
-                if parts[0] in self.own_names or parts[-1] in self.own_names:
-                    self.dynamic = True
+        for path in self._import_paths(node, resolve=False):
+            if set(path) & self.own_names:
+                self.dynamic = True
         if self.module_path.root_init and (
-            node.type == "import_statement"
-            or (module is not None and not _text(module, source).startswith("."))
+            node.type == "import_statement" or not module_text.startswith(".")
         ):
-            # A root-level ``__init__.py`` cannot know its own name: any
-            # absolute import may name it (B-4c).
+            # B-4(c).
             self.dynamic = True
 
     def _modules_use(self, node: Any) -> None:
@@ -1411,26 +1432,6 @@ def _unwrap(node: Any) -> Any:
     return node
 
 
-def _attribute_argument(node: Any, source: bytes) -> bool:
-    """Whether a string is an argument of ``getattr``, ``setattr`` and the
-    like (also ``operator.attrgetter``)."""
-    current = node
-    while current.parent is not None and current.parent.type in (
-        "parenthesized_expression",
-        "concatenated_string",
-        "binary_operator",
-    ):
-        current = current.parent
-    arguments = current.parent
-    call = arguments.parent if arguments is not None else None
-    if arguments is None or arguments.type != "argument_list" or call is None:
-        return False
-    function = call.child_by_field_name("function")
-    if function is not None and function.type == "attribute":
-        function = function.child_by_field_name("attribute")
-    return function is not None and _text(function, source) in _ATTRIBUTE_FUNCTIONS
-
-
 def _import_context(node: Any) -> bool:
     """Whether a name sits in an import, ``global`` or ``nonlocal``
     statement (a binding position, not a use)."""
@@ -1626,20 +1627,26 @@ class ModulePath:
     package_init: bool = False
     # A root-level ``__init__.py``, whose package name is outside the run.
     root_init: bool = False
-    # The module has a parent package in the run (``pkg/a.py``,
-    # ``top/pkg/__init__.py``).
-    in_package: bool = False
+    # The dotted module path relative to the run root (``("pkg", "sub",
+    # "mod")``; ``("pkg", "sub")`` for ``pkg/sub/__init__.py``). The root and
+    # any ancestor directory may be packages too, so every suffix of it, and
+    # any longer path ending in one, may name the module: each ends with the
+    # own name.
+    components: tuple[str, ...] = ()
 
 
 def module_path(path: str) -> ModulePath:
     """The :class:`ModulePath` of a root-relative display path."""
     parts = [part for part in path.replace("\\", "/").split("/") if part]
     init = bool(parts) and parts[-1] == "__init__.py"
+    components = [*parts[:-1]]
+    if parts and not init:
+        components.append(parts[-1].rsplit(".", 1)[0])
     return ModulePath(
         own_names=own_module_names(path),
         package_init=init,
         root_init=init and len(parts) == 1,
-        in_package=len(parts) > (2 if init else 1),
+        components=tuple(components),
     )
 
 
