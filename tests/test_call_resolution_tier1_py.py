@@ -48,6 +48,11 @@ def _callees(root: Any, source: bytes, text: str) -> list[Any]:
     return sorted(found, key=lambda item: item.start_byte)
 
 
+# A path whose own name no unit source spells: ``analyze`` without a path
+# fails closed, so unit cases pass one.
+NEUTRAL_PATH = "unit_case_module.py"
+
+
 def outcome(source: str, callee: str, occurrence: int = 0) -> dict[str, Any]:
     """The analyzer's outcome for the ``occurrence``-th call of ``callee``."""
     data = source.encode()
@@ -55,8 +60,8 @@ def outcome(source: str, callee: str, occurrence: int = 0) -> dict[str, Any]:
     assert not root.has_error, source
     node = _callees(root, data, callee)[occurrence]
     span = {"callee_byte_start": node.start_byte, "callee_byte_end": node.end_byte}
-    bindings = py_scope.analyze(root, data, "python", [span])["bindings"]
-    return bindings[f"{node.start_byte}:{node.end_byte}"]
+    bindings = py_scope.analyze(root, data, "python", [span], path=NEUTRAL_PATH)
+    return bindings["bindings"][f"{node.start_byte}:{node.end_byte}"]
 
 
 def reason(source: str, callee: str = "helper", occurrence: int = 0) -> str:
@@ -685,7 +690,9 @@ def test_member_callees_record_the_head_lookup() -> None:
     root = get_parser("python").parse(data).root_node
     (node,) = _callees(root, data, "C().c")
     span = {"callee_byte_start": node.start_byte, "callee_byte_end": node.end_byte}
-    result = py_scope.analyze(root, data, "python", [span])["bindings"]
+    result = py_scope.analyze(root, data, "python", [span], path=NEUTRAL_PATH)[
+        "bindings"
+    ]
     assert result == {
         f"{node.start_byte}:{node.end_byte}": {"outcome": "none", "reason": "unbound"}
     }
@@ -695,7 +702,10 @@ def test_a_callee_span_with_no_node_has_no_entry() -> None:
     data = HELPER.encode() + b"helper()\n"
     root = get_parser("python").parse(data).root_node
     facts = [{"callee_byte_start": 0, "callee_byte_end": 5}]
-    assert py_scope.analyze(root, data, "python", facts)["bindings"] == {}
+    assert (
+        py_scope.analyze(root, data, "python", facts, path=NEUTRAL_PATH)["bindings"]
+        == {}
+    )
 
 
 def test_a_fail_closed_kind_poisons_only_its_scopes(
@@ -1070,9 +1080,9 @@ def test_self_imports_fail_closed(form: str) -> None:
     (node,) = _callees(root, data, "helper")
     span = {"callee_byte_start": node.start_byte, "callee_byte_end": node.end_byte}
     key = f"{node.start_byte}:{node.end_byte}"
-    own = py_scope.analyze(root, data, "python", [span], own_names=frozenset({"a"}))
+    own = py_scope.analyze(root, data, "python", [span], path="a.py")
     assert own["bindings"][key] == {"outcome": "none", "reason": "dynamic-scope"}
-    other = py_scope.analyze(root, data, "python", [span], own_names=frozenset({"b"}))
+    other = py_scope.analyze(root, data, "python", [span], path="b.py")
     assert other["bindings"][key]["outcome"] in ("local", "none")
 
 
@@ -3180,3 +3190,273 @@ def test_reads_and_bindings_still_resolve(form: str) -> None:
         HELPER + "def f(a, *a2):\n    return 0\n\n\ndef use():\n    return helper()\n"
     )
     assert _outcome_at(param, "helper", "pkg/a.py")["outcome"] == "local"
+
+
+# ---------------------------------------------------------------------------
+# The president's re-check at 06f5dc32 (N-7): names and dotted paths come from
+# identifier tokens, never raw node text (whitespace, comments and backslash
+# continuations may sit between the tokens).
+
+FOLD5_695: dict[str, tuple[str, dict[str, str]]] = {
+    "ws_init_rel_contline": (
+        "N-7",
+        {
+            "__target__": "pkg/__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "pkg/__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "from .\\\n"
+            "helper import M\n",
+            "pkg/helper.py": "import sys, types\n"
+            "class M(types.ModuleType):\n"
+            "    def __call__(self, *a):\n"
+            "        return 'callable-module'\n"
+            "sys.modules[__name__].__class__ = M\n",
+        },
+    ),
+    "ws_init_rel_deep": (
+        "N-7",
+        {
+            "__target__": "pkg/__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "pkg/__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "from . helper.x import y\n",
+            "pkg/helper/__init__.py": "import sys, types\n"
+            "class M(types.ModuleType):\n"
+            "    def __call__(self, *a):\n"
+            "        return 'callable-module'\n"
+            "sys.modules[__name__].__class__ = "
+            "M\n",
+            "pkg/helper/x.py": "y = 1\n",
+        },
+    ),
+    "ws_init_rel_submodule": (
+        "N-7",
+        {
+            "__target__": "pkg/__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "pkg/__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "from . helper import M\n",
+            "pkg/helper.py": "import sys, types\n"
+            "class M(types.ModuleType):\n"
+            "    def __call__(self, *a):\n"
+            "        return 'callable-module'\n"
+            "sys.modules[__name__].__class__ = M\n",
+        },
+    ),
+    "ws_rootinit_rel_submodule": (
+        "N-7",
+        {
+            "__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "from . helper import M\n",
+            "__target__": "__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "helper.py": "import sys, types\n"
+            "class M(types.ModuleType):\n"
+            "    def __call__(self, *a):\n"
+            "        return 'callable-module'\n"
+            "sys.modules[__name__].__class__ = M\n",
+        },
+    ),
+    "ws_rootpar_contline": (
+        "N-7",
+        {
+            "__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "from .\\\n"
+            ".ws_rootpar_contline.helper import M\n",
+            "__target__": "__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "helper.py": "import sys, types\n"
+            "class M(types.ModuleType):\n"
+            "    def __call__(self, *a):\n"
+            "        return 'callable-module'\n"
+            "sys.modules[__name__].__class__ = M\n",
+        },
+    ),
+    "ws_rootpar_self": (
+        "N-7",
+        {
+            "__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = dict(helper=len)\n"
+            "def patch():\n"
+            "    from . . import ws_rootpar_self as me\n"
+            "    me.__dict__.update(D)\n",
+            "__target__": "__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+        },
+    ),
+    "ws_rootpar_sub": (
+        "N-7",
+        {
+            "__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "from . . ws_rootpar_sub.helper import M\n",
+            "__target__": "__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "helper.py": "import sys, types\n"
+            "class M(types.ModuleType):\n"
+            "    def __call__(self, *a):\n"
+            "        return 'callable-module'\n"
+            "sys.modules[__name__].__class__ = M\n",
+        },
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD5_695))
+def test_fold5_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    _, spec = FOLD5_695[case]
+    files = dict(spec)
+    target = files.pop("__target__", "a.py")
+    files.setdefault("b.py", _decoys(files[target]))
+    root = _tree(tmp_path, files)
+    off, on = _off_on(root)
+    off_calls = [e for e in off["relationships"] if e["file"] == target]
+    assert any(edge["resolution"] == "ambiguous" for edge in off_calls), case
+    assert [e for e in on["relationships"] if e["file"] == target] == off_calls
+
+
+@pytest.mark.parametrize(
+    ("source", "level", "parts"),
+    [
+        ("from . helper import M\n", 1, ["helper"]),
+        ("from .\\\nhelper import M\n", 1, ["helper"]),
+        ("from . . import R\n", 2, []),
+        ("from .\\\n.R.helper import M\n", 2, ["R", "helper"]),
+        ("from ... x . y import z\n", 3, ["x", "y"]),
+        ("from os . sys import modules\n", 0, ["os", "sys"]),
+        ("from \\\n  sys import modules\n", 0, ["sys"]),
+    ],
+)
+def test_module_parts_come_from_tokens(
+    source: str, level: int, parts: list[str]
+) -> None:
+    data = source.encode()
+    root = get_parser("python").parse(data).root_node
+    assert not root.has_error
+    (statement,) = root.named_children
+    assert py_scope._module_parts(statement, data) == (level, parts)
+
+
+@pytest.mark.parametrize(
+    ("path", "form", "expected"),
+    [
+        # B-3 and N-1 with whitespace or a continuation after the dots.
+        ("pkg/__init__.py", "from . helper import M", "mixed-bindings"),
+        ("pkg/__init__.py", "from .\\\nhelper import M", "mixed-bindings"),
+        ("pkg/sub/__init__.py", "from . helper . x import y", "mixed-bindings"),
+        ("pkg/sub/__init__.py", "from . . sub . helper import M", "dynamic-scope"),
+        ("__init__.py", "from . helper import M", "mixed-bindings"),
+        # N-6 with the dots apart.
+        ("__init__.py", "def patch():\n    from . . import R as me", "dynamic-scope"),
+        ("__init__.py", "from .\\\n.R.helper import M", "dynamic-scope"),
+        # ``from sys import modules`` with the module path spaced out.
+        ("pkg/a.py", "from os . sys import modules", "dynamic-scope"),
+        ("pkg/a.py", "from \\\n  sys import modules", "dynamic-scope"),
+    ],
+)
+def test_spaced_import_tokens_fail_closed(path: str, form: str, expected: str) -> None:
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", path) == {
+        "outcome": "none",
+        "reason": expected,
+    }, (path, form)
+
+
+def test_analyze_without_a_path_fails_closed() -> None:
+    """``analyze(path=None)`` cannot know the own name, like ``""``."""
+    source = (HELPER + "def use():\n    return helper()\n").encode()
+    root = get_parser("python").parse(source).root_node
+    start = source.rindex(b"helper")
+    call = [{"callee_byte_start": start, "callee_byte_end": start + 6}]
+    key = f"{start}:{start + 6}"
+    for path in (None, ""):
+        result = py_scope.analyze(root, source, "python", call, path=path)
+        assert result["bindings"][key] == {
+            "outcome": "none",
+            "reason": "dynamic-scope",
+        }, path
+    named = py_scope.analyze(root, source, "python", call, path="a.py")
+    assert named["bindings"][key]["outcome"] == "local"

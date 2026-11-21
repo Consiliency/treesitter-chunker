@@ -144,9 +144,13 @@ namespace packages. Each of those, and any longer path ending in one, ends
 with the file's own name: its raw stem, or the package directory's raw name
 for ``__init__.py`` (:class:`ModulePath`; no identifier filter, since
 ``my-mod`` is importable by ``importlib``). A loader may choose any other name
-(``spec_from_file_location``, ``runpy``); writes through such a module are
-covered by the attribute-write rule below, and the rest is plan risk R12. A
-file whose own name cannot be computed (no path) fails closed. So:
+(``spec_from_file_location``, ``runpy``); writes through such a module in
+the spellings the attribute-write rule below lists fail closed, and every
+other spelling is plan risk R12. A file whose own name cannot be computed
+(no path: ``None`` or ``""``) fails closed. Names, dotted paths and relative
+levels are read from identifier and ``.`` tokens, never raw node text:
+whitespace, comments and backslash continuations may sit between them
+(``from . helper import M``, ``from . . import R``). So:
 
 - **Self-reference.** Module-scope lookups give ``dynamic-scope`` when the own
   name is a component of any import's path or imported names (absolute or
@@ -166,7 +170,10 @@ file whose own name cannot be computed (no path) fails closed. So:
   ``setattr``/``delattr``/``__setattr__``/``__setitem__`` with a constant
   string, ``x.__dict__.update(name=v)``/``.update({"name": v})``/
   ``.setdefault``/``.pop``) gives ``name`` a non-definition binding at module
-  scope, so a definition of ``name`` there never proves.
+  scope, so a definition of ``name`` there never proves. Only those listed
+  spellings are caught: ``operator.setitem(mod.__dict__, "helper", len)``,
+  ``d = mod.__dict__; d |= {...}`` and ``update()`` with a non-literal mapping
+  are plan risk R12.
 - **Submodule rebinding.** In any ``__init__.py``, every import is resolved to
   a full dotted path (relative dots joined to this file's module path). Where
   the own name is followed by a component ``X`` (``import pkg.sub.X``,
@@ -954,7 +961,7 @@ class _Analysis:
         without it, only the components after the dots count.
         """
         source = self.source
-        names: list[str] = []
+        names: list[list[str]] = []
         star = False
         for index, child in enumerate(node.children):
             if child.type == "wildcard_import":
@@ -967,13 +974,10 @@ class _Analysis:
                 else child
             )
             if imported is not None:
-                names.append(_text(imported, source))
+                names.append(_dotted_parts(imported, source))
         if node.type == "import_statement":
-            return [name.split(".") for name in names]
-        module = node.child_by_field_name("module_name")
-        text = _text(module, source) if module is not None else ""
-        dots = len(text) - len(text.lstrip("."))
-        rest = [part for part in text[dots:].split(".") if part]
+            return names
+        dots, rest = _module_parts(node, source)
         base: list[str] = []
         if dots and resolve:
             info = self.module_path
@@ -986,7 +990,7 @@ class _Analysis:
             if up < len(package) or (up == len(package) and not info.root_init):
                 base = package[: len(package) - up]
         prefix = base + rest
-        paths = [prefix + name.split(".") for name in names]
+        paths = [prefix + name for name in names]
         if star or not paths:
             paths.append(prefix)
         return paths
@@ -1016,14 +1020,15 @@ class _Analysis:
                 bound = child.child_by_field_name("alias")
             else:
                 module = child
-                bound = child.named_children[0] if child.named_children else None
-            text = _text(module, self.source) if module is not None else ""
+                # ``import a.b`` binds ``a``: the first identifier token.
+                bound = next(iter(_identifier_children(child)), None)
+            text = ".".join(_dotted_parts(module, self.source)) if module else ""
             self._import_binding(scope, node, bound, {"form": "import", "module": text})
 
     def _import_from(self, node: Any, scope: _Scope, depth: int) -> None:
         self._submodule_writes(node)
-        module_node = node.child_by_field_name("module_name")
-        module = _text(module_node, self.source) if module_node is not None else ""
+        dots, parts = _module_parts(node, self.source)
+        module = "." * dots + ".".join(parts)
         for name, child in self._fields(node):
             if name != "name":
                 self.visit(child, scope, depth + 1)
@@ -1033,9 +1038,9 @@ class _Analysis:
                 bound = child.child_by_field_name("alias")
             else:
                 imported = child
-                parts = child.named_children
-                bound = parts[0] if len(parts) == 1 else None
-            text = _text(imported, self.source) if imported is not None else ""
+                tokens = _identifier_children(child)
+                bound = tokens[0] if len(tokens) == 1 else None
+            text = ".".join(_dotted_parts(imported, self.source)) if imported else ""
             self._import_binding(
                 scope, node, bound, {"form": "from", "module": module, "name": text}
             )
@@ -1050,9 +1055,9 @@ class _Analysis:
                 bound = child.child_by_field_name("alias")
             else:
                 imported = child
-                parts = child.named_children
-                bound = parts[0] if len(parts) == 1 else None
-            text = _text(imported, self.source) if imported is not None else ""
+                tokens = _identifier_children(child)
+                bound = tokens[0] if len(tokens) == 1 else None
+            text = ".".join(_dotted_parts(imported, self.source)) if imported else ""
             self._import_binding(
                 scope,
                 node,
@@ -1129,11 +1134,8 @@ class _Analysis:
             elif kind == "aliased_import":
                 imported = node.child_by_field_name("name")
                 alias = node.child_by_field_name("alias")
-                last = (
-                    _text(imported.named_children[-1], source)
-                    if imported is not None and imported.named_children
-                    else ""
-                )
+                parts = _dotted_parts(imported, source) if imported is not None else []
+                last = parts[-1] if parts else ""
                 if alias is not None and last == _SYS:
                     sys_names.add(_text(alias, source))
                 if alias is not None and last == _MAIN:
@@ -1223,12 +1225,15 @@ class _Analysis:
         has no own name in the run, so any absolute import may name it.
         """
         source = self.source
-        module = node.child_by_field_name("module_name")
-        module_text = _text(module, source) if module is not None else ""
+        dots, module_parts = (
+            _module_parts(node, source)
+            if node.type == "import_from_statement"
+            else (0, [])
+        )
         if node.type == "import_from_statement":
             for path in self._import_paths(node, resolve=False):
                 if (
-                    module_text.rsplit(".", 1)[-1] == _SYS
+                    module_parts[-1:] == [_SYS]
                     and len(path) > 1
                     and path[-1] == _SYS_MODULES
                 ):
@@ -1237,9 +1242,7 @@ class _Analysis:
             if set(path) & self.own_names:
                 self.dynamic = True
         if self.module_path.root_init and (
-            node.type == "import_statement"
-            or not module_text.startswith(".")
-            or module_text.startswith("..")
+            node.type == "import_statement" or dots == 0 or dots >= 2
         ):
             # B-4(c): a root-level ``__init__.py`` (also any ``__init__.py``
             # run as a single file) has no own name in the run. An absolute
@@ -1574,6 +1577,48 @@ def _scope_binding_name(ident: Any) -> bool:
     return False
 
 
+def _identifier_children(node: Any) -> list[Any]:
+    """A node's identifier children, skipping comments and line
+    continuations between the tokens."""
+    return [child for child in node.named_children if child.type == "identifier"]
+
+
+def _dotted_parts(node: Any, source: bytes) -> list[str]:
+    """The identifier tokens of a dotted name (or of a lone identifier),
+    never its raw text: whitespace, comments and backslash continuations may
+    sit between the tokens (#695 re-check N-7)."""
+    if node.type == "identifier":
+        return [_text(node, source)]
+    return [_text(child, source) for child in _identifier_children(node)]
+
+
+def _module_parts(node: Any, source: bytes) -> tuple[int, list[str]]:
+    """A ``from`` import's relative level and module components.
+
+    The level counts the ``.`` tokens of ``import_prefix`` (``from . .
+    import x`` is level 2, ``from ...x`` level 3); the components come from
+    the ``dotted_name``'s identifiers, so ``from . helper import M`` is
+    ``(1, ["helper"])`` and not ``" helper"``.
+    """
+    module = node.child_by_field_name("module_name")
+    if module is None:
+        return 0, []
+    if module.type != "relative_import":
+        return 0, _dotted_parts(module, source)
+    level = 0
+    parts: list[str] = []
+    for child in module.children:
+        if child.type == "import_prefix":
+            level += sum(
+                _text(token, source).count(".")
+                for token in child.children
+                if not token.is_named
+            )
+        elif child.type == "dotted_name":
+            parts = _dotted_parts(child, source)
+    return level, parts
+
+
 def _import_context(node: Any) -> bool:
     """Whether a name sits in an import, ``global`` or ``nonlocal``
     statement (a binding position, not a use)."""
@@ -1674,7 +1719,7 @@ def _pattern_captures(node: Any) -> list[Any]:
         if kind == "identifier":
             found.append(current)
             continue
-        if kind == "dotted_name" and len(current.named_children) > 1:
+        if kind == "dotted_name" and len(_identifier_children(current)) > 1:
             continue  # a value pattern: ``Color.RED``
         children = list(current.named_children)
         if kind == "class_pattern" and children and children[0].type == "dotted_name":
@@ -1819,14 +1864,13 @@ def analyze(
     source: bytes,
     language: str,
     call_facts: Sequence[Mapping[str, Any]],
-    own_names: frozenset[str] = frozenset(),
     path: str | None = None,
 ) -> dict[str, Any]:
     """Return partial scope facts: the goal and one outcome per call.
 
-    ``path`` is the file's root-relative display path (:func:`module_path`);
-    without it, ``own_names`` are the names the file's own module is imported
-    by. Importing one is a self-import.
+    ``path`` is the file's root-relative display path (:func:`module_path`).
+    Without one (``None`` or ``""``) the own name is unknown, and module-scope
+    lookups fail closed.
     """
     del language  # always python
     bad = non_ascii_name(root, source)
@@ -1837,8 +1881,7 @@ def analyze(
     if line is not None:
         msg = f"indentation depends on the tab width on line {line}"
         raise AmbiguousIndentationError(msg)
-    info = module_path(path) if path is not None else ModulePath(own_names=own_names)
-    analysis = _Analysis(root, source, module_path=info)
+    analysis = _Analysis(root, source, module_path=module_path(path or ""))
     bindings: dict[str, Any] = {}
     for fact in call_facts:
         start = int(fact["callee_byte_start"])

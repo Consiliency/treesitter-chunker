@@ -132,6 +132,8 @@ NAMED_TIER1_PY_TESTS = (
     "test_recheck_695_cases_keep_their_off_mode_edge",
     # The re-check at f7f0b0bd (N-4 to N-6) and the R-5 family.
     "test_fold4_695_cases_keep_their_off_mode_edge",
+    # The re-check at 06f5dc32 (N-7): names from tokens.
+    "test_fold5_695_cases_keep_their_off_mode_edge",
 )
 # Expected rows per plan PR (10.1): a row that loses its finalization fails
 # the pin (#695 panel B7).
@@ -609,7 +611,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "6"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "7"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
