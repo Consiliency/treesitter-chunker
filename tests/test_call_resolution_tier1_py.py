@@ -560,6 +560,10 @@ DYNAMIC_FORMS = [
     "pkg.sys_alias.modules.get(__name__).helper = len",
     "x.modules.__getitem__(__name__).helper = len",
     "x.modules.setdefault(__name__).helper = len",
+    # B-5: parentheses are only a spelling of the ruled shape.
+    "collections._sys.modules[(__name__)].helper = len",
+    "collections._sys.modules[((__name__))].helper = len",
+    "x.modules.get((__name__)).helper = len",
     "def g():\n    exec('helper = len')",
 ]
 
@@ -974,14 +978,19 @@ def test_module_level_builtin_names_never_prove() -> None:
     assert reason(imported, "open") == "builtin-shadow"
     py2 = "def xrange(n):\n    return n\n\n\ndef use():\n    return xrange(3)\n"
     assert reason(py2, "xrange") == "builtin-shadow"
+    # B-6: a builtin only Windows has.
+    windows = "def f():\n    return WindowsError(1)\n\n\nclass WindowsError(Exception):\n    pass\n"
+    assert reason(windows, "WindowsError") == "builtin-shadow"
     # A function-local definition shadows the builtin for the whole body.
     local = "def use():\n    def len(*a):\n        return 1\n    return len('ab')\n"
     assert proof_text(local, "len") == ["def len(*a):\n        return 1"]
 
 
 def test_builtin_pin_matches_the_interpreter() -> None:
-    """``BUILTINS_314`` is ``dir(builtins)`` of CPython 3.14 (``python -I``);
-    a new interpreter that adds a builtin must update the pin."""
+    """``BUILTINS_314`` is ``dir(builtins)`` of CPython 3.14 (``python -I``)
+    less the platform builtins (``WindowsError`` on Windows, B-6), so the
+    pin holds on every OS; a new interpreter that adds a builtin must update
+    it. ``BUILTINS`` is a superset of the running interpreter's builtins."""
     import subprocess
     import sys
 
@@ -991,8 +1000,12 @@ def test_builtin_pin_matches_the_interpreter() -> None:
         text=True,
         check=True,
     )
-    assert frozenset(result.stdout.split()) == py_scope.BUILTINS_314
+    running = frozenset(result.stdout.split())
+    assert running <= py_scope.BUILTINS
+    assert running - py_scope.PLATFORM_BUILTINS == py_scope.BUILTINS_314
+    assert "WindowsError" in py_scope.PLATFORM_BUILTINS
     assert not py_scope.PY2_BUILTINS & py_scope.BUILTINS_314
+    assert not py_scope.PLATFORM_BUILTINS & py_scope.BUILTINS_314
     assert {"xrange", "unicode", "raw_input", "execfile"} <= py_scope.PY2_BUILTINS
 
 
@@ -1243,3 +1256,564 @@ def test_builtin_shadow_end_to_end(tmp_path: Path) -> None:
     )
     key = f"{edge['callee_byte_start']}:{edge['callee_byte_end']}"
     assert facts["scope_facts"]["bindings"][key]["reason"] == "builtin-shadow"
+
+
+# ---------------------------------------------------------------------------
+# The president's #695 ruling (B-1 to B-6): every fix only adds ``none``.
+# The trees are the ruling's own, each wrong under a runtime trace at
+# a58f502e; ``__target__`` names the file whose edges are checked.
+
+RULING_695: dict[str, tuple[str, dict[str, str]]] = {
+    "bs_moves_def_into_sibling": (
+        "B-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def f():\n"
+            "    def g():\n"
+            "        pass\n"
+            "    \\\n"
+            "    def helper(*a):\n"
+            "        return 'inner'\n"
+            "    return helper()\n"
+            "\n"
+            "f()\n"
+        },
+    ),
+    "bs_moves_def_into_sibling_1sp": (
+        "B-2",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def f():\n"
+            " def g():\n"
+            "  pass\n"
+            " \\\n"
+            " def helper(*a):\n"
+            "  return 'inner'\n"
+            " return helper()\n"
+            "\n"
+            "f()\n"
+        },
+    ),
+    "init_abs_submodule": (
+        "B-3",
+        {
+            "__target__": "pkg/__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n",
+            "pkg/__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper()\n"
+            "\n"
+            "import pkg.helper\n",
+            "pkg/helper.py": "import sys, types\n"
+            "class M(types.ModuleType):\n"
+            "    def __call__(self, *a):\n"
+            "        return 'callable-module'\n"
+            "sys.modules[__name__].__class__ = M\n",
+        },
+    ),
+    "init_pyi_dir_named": (
+        "B-4",
+        {
+            "__target__": "pkg/__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "pkg/__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper()\n"
+            "\n"
+            "def patch():\n"
+            "    import pkg.x\n"
+            "    pkg.helper = len\n",
+            "pkg/x.py": "",
+        },
+    ),
+    "init_rel_plain": (
+        "B-3",
+        {
+            "__target__": "pkg/__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n",
+            "pkg/__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper()\n"
+            "\n"
+            "from .helper import x\n",
+            "pkg/helper.py": "x = 1\n",
+        },
+    ),
+    "init_rel_submodule": (
+        "B-3",
+        {
+            "__target__": "pkg/__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n",
+            "pkg/__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper()\n"
+            "\n"
+            "from .helper import M\n",
+            "pkg/helper.py": "import sys, types\n"
+            "class M(types.ModuleType):\n"
+            "    def __call__(self, *a):\n"
+            "        return 'callable-module'\n"
+            "sys.modules[__name__].__class__ = M\n",
+        },
+    ),
+    "mangle_classbody": (
+        "B-1",
+        {
+            "a.py": "def _C__helper(*a):\n"
+            "    return 'mangled'\n"
+            "\n"
+            "def __helper(*a):\n"
+            "    return 'plain'\n"
+            "\n"
+            "class C:\n"
+            "    x = __helper()\n"
+        },
+    ),
+    "mangle_classbody_global_write": (
+        "B-1",
+        {
+            "a.py": "def _C__helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return _C__helper('ab')\n"
+            "\n"
+            "class C:\n"
+            "    global __helper\n"
+            "    __helper = len\n"
+            "\n"
+            "use()\n"
+        },
+    ),
+    "mangle_global": (
+        "B-1",
+        {
+            "a.py": "def _C__helper(*a):\n"
+            "    return 'mangled'\n"
+            "\n"
+            "def __helper(*a):\n"
+            "    return 'plain'\n"
+            "\n"
+            "class C:\n"
+            "    def m(self):\n"
+            "        return __helper()\n"
+            "\n"
+            "C().m()\n"
+        },
+    ),
+    "mangle_global_write": (
+        "B-1",
+        {
+            "a.py": "def _C__helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return _C__helper()\n"
+            "\n"
+            "class C:\n"
+            "    def m(self):\n"
+            "        global __helper\n"
+            "        __helper = len\n"
+            "\n"
+            "C().m()\n"
+            "use()\n"
+        },
+    ),
+    "mangle_import_in_class": (
+        "B-1",
+        {
+            "a.py": "def _C__helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return _C__helper('ab')\n"
+            "\n"
+            "class C:\n"
+            "    def m(self):\n"
+            "        global __helper\n"
+            "        from builtins import len as __helper\n"
+            "\n"
+            "C().m()\n"
+            "use()\n"
+        },
+    ),
+    "mangle_lambda_in_class": (
+        "B-1",
+        {
+            "a.py": "def _C__helper(*a):\n"
+            "    return 'mangled'\n"
+            "\n"
+            "def __helper(*a):\n"
+            "    return 'plain'\n"
+            "\n"
+            "class C:\n"
+            "    f = staticmethod(lambda: __helper())\n"
+            "\n"
+            "C.f()\n"
+        },
+    ),
+    "mangle_leading_us_class": (
+        "B-1",
+        {
+            "a.py": "def _C__helper(*a):\n"
+            "    return 'mangled'\n"
+            "\n"
+            "def __helper(*a):\n"
+            "    return 'plain'\n"
+            "\n"
+            "class __C:\n"
+            "    def m(self):\n"
+            "        return __helper()\n"
+            "\n"
+            "__C().m()\n"
+        },
+    ),
+    "modules_paren_name": (
+        "B-5",
+        {
+            "a.py": "import collections\n"
+            "import types\n"
+            "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "collections._sys.modules[(__name__)].helper = len\n"
+            "use()\n"
+        },
+    ),
+    "root_init_self_import": (
+        "B-4",
+        {
+            "__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    import root_init_self_import as me\n"
+            "    me.helper = len\n",
+            "__target__": "__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+        },
+    ),
+    "sub_parent_attr_in_func": (
+        "B-4",
+        {
+            "__target__": "pkg/a.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "pkg/__init__.py": "",
+            "pkg/a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper()\n"
+            "\n"
+            "def patch():\n"
+            "    import pkg\n"
+            "    pkg.a.helper = len\n",
+        },
+    ),
+    "sub_parent_getattr_in_func": (
+        "B-4",
+        {
+            "__target__": "pkg/a.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "pkg/__init__.py": "",
+            "pkg/a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper()\n"
+            "\n"
+            "def patch():\n"
+            "    import pkg\n"
+            "    setattr(pkg.a, 'helper', len)\n",
+        },
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(RULING_695))
+def test_ruling_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    _, spec = RULING_695[case]
+    files = dict(spec)
+    target = files.pop("__target__", "a.py")
+    files.setdefault("b.py", _decoys(files[target]))
+    root = _tree(tmp_path, files)
+    off, on = _off_on(root)
+    off_calls = [e for e in off["relationships"] if e["file"] == target]
+    assert any(edge["resolution"] == "ambiguous" for edge in off_calls), case
+    assert [e for e in on["relationships"] if e["file"] == target] == off_calls
+
+
+def test_private_names_inside_a_class_never_prove() -> None:
+    """B-1: CPython looks up ``_C__x`` for ``__x`` inside class ``C``."""
+    plain = "def __helper():\n    return 1\n\n\n"
+    for code in (
+        "class C:\n    def m(self):\n        return __helper()\n",
+        "class C:\n    x = __helper()\n",
+        "class __C:\n    x = __helper()\n",
+        "class C:\n    f = lambda: __helper()\n",
+        "class C:\n    xs = [__helper() for y in z]\n",
+        "class C:\n    class D:\n        x = __helper()\n",
+    ):
+        assert reason(plain + code, "__helper") == "unmapped", code
+    # Outside a class, under an all-underscore class, and for dunder names
+    # nothing is mangled.
+    assert proof_text(plain + "def use():\n    return __helper()\n", "__helper") == [
+        "def __helper():\n    return 1"
+    ]
+    assert proof_text(plain + "class _:\n    x = __helper()\n", "__helper") == [
+        "def __helper():\n    return 1"
+    ]
+    dunder = "def __helper__():\n    return 1\n\n\nclass C:\n    x = __helper__()\n"
+    assert reason(dunder, "__helper__") == "class-scope-bound"
+
+
+@pytest.mark.parametrize(
+    "write",
+    [
+        "    def m(self):\n        global __helper\n        __helper = len",
+        "    global __helper\n    __helper = len",
+        "    def m(self):\n        global __helper\n        from x import y as __helper",
+        "    def m(self):\n        global __helper\n        def __helper():\n            return 2",
+    ],
+)
+def test_private_name_global_writes_bind_the_mangled_name(write: str) -> None:
+    """B-1: ``global __x`` inside class ``C`` writes the module's ``_C__x``."""
+    source = (
+        "def _C__helper():\n    return 1\n\n\ndef use():\n    return _C__helper()\n\n\n"
+        f"class C:\n{write}\n"
+    )
+    assert reason(source, "_C__helper") == "mixed-bindings", write
+
+
+def test_private_name_local_bindings_also_bind_the_mangled_name() -> None:
+    """``__x = …`` in a method binds ``_C__x``, which ``_C__x`` reaches."""
+    source = (
+        "def _C__helper():\n    return 1\n\n\n"
+        "class C:\n    def m(self):\n        __helper = len\n        return _C__helper()\n"
+    )
+    assert reason(source, "_C__helper") == "local-variable"
+    nonlocal_write = (
+        "def f():\n    def _C__h():\n        return 1\n\n"
+        "    class C:\n        def m(self):\n            nonlocal __h\n            __h = len\n"
+        "    return _C__h()\n"
+    )
+    assert reason(nonlocal_write, "_C__h") == "mixed-bindings"
+
+
+def test_backslash_led_lines_are_not_analyzed() -> None:
+    """B-2: CPython takes a continued logical line's indentation from its
+    first physical line; tree-sitter adds the next line's."""
+    for source in (
+        "def f():\n    \\\n    pass\n",
+        "x = 1\n\\\ny = 2\n",
+        "if x:\n \\\n pass\n",
+    ):
+        assert py_scope.ambiguous_indentation(source.encode()) is not None, source
+    assert py_scope.ambiguous_indentation(b"x = 1 + \\\n    2\n") is None
+
+
+def _ts_nesting(parser: Any, source: str) -> Any:
+    tree = parser.parse(source.encode())
+    if tree.root_node.has_error:
+        return None
+    found: list[tuple[str, tuple[str, ...]]] = []
+
+    def walk(node: Any, path: tuple[str, ...]) -> None:
+        for child in node.named_children:
+            if child.type in ("function_definition", "class_definition"):
+                name = child.child_by_field_name("name").text.decode()
+                found.append((name, path))
+                walk(child, (*path, name))
+            else:
+                walk(child, path)
+
+    walk(tree.root_node, ())
+    return sorted(found)
+
+
+def _py_nesting(source: str) -> Any:
+    import ast
+
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return None
+    found: list[tuple[str, tuple[str, ...]]] = []
+
+    def walk(node: Any, path: tuple[str, ...]) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                found.append((child.name, path))
+                walk(child, (*path, child.name))
+            else:
+                walk(child, path)
+
+    walk(tree, ())
+    return sorted(found)
+
+
+def test_whitespace_differential_has_no_silent_misparse() -> None:
+    """The president's generator (B-2): 50,625 nested-``def`` sources built
+    from whitespace pieces. Every source where tree-sitter's ``def`` nesting
+    differs from CPython's ``ast`` without a parse error on either side must
+    be caught by :func:`py_scope.ambiguous_indentation` (73 got past the
+    tab rule alone)."""
+    import itertools
+
+    parser = get_parser("python")
+    pieces = [
+        "", " ", "  ", "    ", "\t", " \t", "\t ", "\\\n", " \\\n ", "\f",
+        "#c\n", "\r\n", "\x0c ", "\\\n    ", "    \\\n",
+    ]  # fmt: skip
+    template = "def f():\n{0}def g():\n{1}pass\n{2}def h():\n{3}  pass\n"
+    total = mismatched = missed = 0
+    for parts in itertools.product(pieces, repeat=4):
+        source = template.format(*parts)
+        total += 1
+        ours, cpython = _ts_nesting(parser, source), _py_nesting(source)
+        if ours is None or cpython is None or ours == cpython:
+            continue
+        mismatched += 1
+        if py_scope.ambiguous_indentation(source.encode()) is None:
+            missed += 1
+    assert total == 50625
+    assert mismatched > 0
+    assert missed == 0
+
+
+@pytest.mark.parametrize(
+    ("path", "init", "root_init", "in_package"),
+    [
+        ("a.py", False, False, False),
+        ("pkg/a.py", False, False, True),
+        ("pkg/__init__.py", True, False, False),
+        ("top/pkg/__init__.py", True, False, True),
+        ("__init__.py", True, True, False),
+    ],
+)
+def test_module_path(path: str, init: bool, root_init: bool, in_package: bool) -> None:
+    info = py_scope.module_path(path)
+    assert (info.package_init, info.root_init, info.in_package) == (
+        init,
+        root_init,
+        in_package,
+    )
+
+
+def _outcome_at(source: str, callee: str, path: str) -> dict[str, Any]:
+    data = source.encode()
+    root = get_parser("python").parse(data).root_node
+    (node,) = _callees(root, data, callee)
+    span = {"callee_byte_start": node.start_byte, "callee_byte_end": node.end_byte}
+    bindings = py_scope.analyze(root, data, "python", [span], path=path)["bindings"]
+    return bindings[f"{node.start_byte}:{node.end_byte}"]
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "from .helper import M",
+        "from .helper.sub import M",
+        "from . import helper",
+        "import pkg.helper",
+        "import pkg.helper.sub as s",
+        "from pkg.helper import M",
+        "from pkg import helper",
+        "def patch():\n    from .helper import M",
+    ],
+)
+def test_submodule_imports_in_a_package_init_rebind(form: str) -> None:
+    """B-3: importing submodule ``pkg.X`` sets ``pkg/__init__.py``'s ``X``."""
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", "pkg/__init__.py")["outcome"] == "none"
+    # The same imports in a plain module rebind nothing of its own.
+    plain = HELPER + "from .other import M\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(plain, "helper", "pkg/a.py")["outcome"] == "local"
+
+
+@pytest.mark.parametrize(
+    ("path", "form"),
+    [
+        ("pkg/__init__.py", "def patch():\n    import pkg.x\n    pkg.helper = len"),
+        ("pkg/a.py", "def patch():\n    import pkg\n    pkg.a.helper = len"),
+        ("pkg/a.py", "def patch():\n    import pkg\n    setattr(pkg.a, 'helper', len)"),
+        (
+            "pkg/a.py",
+            "def patch():\n    import pkg\n    getattr(pkg, 'a').helper = len",
+        ),
+        ("__init__.py", "def patch():\n    import anything as me\n    me.helper = len"),
+        ("__init__.py", "from anything import x"),
+    ],
+)
+def test_more_self_import_shapes_fail_closed(path: str, form: str) -> None:
+    """B-4: the file's own module reached by ``import pkg.x`` in its
+    ``__init__.py``, through its parent package, or from a root-level
+    ``__init__.py`` whose name is unknown (any absolute import)."""
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", path) == {
+        "outcome": "none",
+        "reason": "dynamic-scope",
+    }
+
+
+def test_root_init_with_relative_imports_only_still_resolves() -> None:
+    source = HELPER + "from .x import y\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", "__init__.py")["outcome"] == "local"

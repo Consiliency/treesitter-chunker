@@ -67,17 +67,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `eval`, `globals`, `vars`, `locals`, `__import__`, `builtins`,
     `importlib`, `sys.modules` or any `X.modules[__name__]`, `__main__`,
     `__globals__`, frame globals, those attribute names as constant strings,
-    or an import of the file's own module) or has a star import never
-    resolve. A file that mentions `f_locals`, which writes function locals,
-    resolves nothing. Monkeypatching from other modules is not
-    tracked (plan risk R10). Wherever no binding proves a candidate, only
+    or an import of the file's own module, including submodule imports in
+    `__init__.py`) or has a star import never resolve, and neither does a
+    private name (`__x`) looked up inside a class, which CPython mangles.
+    A file that mentions `f_locals`, which writes function locals, resolves
+    nothing. Monkeypatching from other modules is not tracked (plan risk
+    R10). Wherever no binding proves a candidate, only
     the kind and family filters (`t1.kind`, `t1.family`) narrow, and only
     when two or more candidates remain. A file whose tree has syntax errors
     or a misparsed block, is too deeply nested for the scope pass, spells a
     name with a Unicode escape (JS/TS) or has a non-ASCII identifier
     (Python, whose identifiers are NFKC-normalized) or indentation that
-    depends on the width of a tab (Python), or whose analysis fails keeps
-    exactly its off-mode edges. Narrowed edges carry
+    tree-sitter may read differently (Python: a space before a tab, a form
+    feed, or a line starting with a backslash continuation), or whose
+    analysis fails keeps exactly its off-mode edges. Narrowed edges carry
     `provenance.call_resolution` and `provenance.call_rules`, and
     `run.options.call_resolution` and symbol-graph
     `metadata.call_resolution` record the mode. On-mode `parity_digest`

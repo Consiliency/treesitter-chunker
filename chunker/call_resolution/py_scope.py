@@ -118,12 +118,35 @@ modules (plan R10) and run-time paths no syntactic rule sees (plan R12:
 frame writes from another module, computed strings, other ``X.modules``
 uses, ``gc``/``ctypes`` tricks) are not tracked.
 
-**Indentation that depends on the tab width is not analyzed.** tree-sitter
+**Indentation tree-sitter may read differently is not analyzed.** tree-sitter
 counts a tab as eight more columns, while CPython advances to the next
 multiple of eight, so a line whose leading whitespace has a space before a
-tab can land in a different block without a parse error. Such a file, or one
-with a form feed in a line's leading whitespace, raises
-:class:`AmbiguousIndentationError` and is ``supported: false``.
+tab can land in a different block without a parse error. And when a line's
+first non-blank character is a backslash continuation, CPython takes the
+logical line's indentation from that line while tree-sitter takes it from
+the next. Such a file, or one with a form feed in a line's leading
+whitespace, raises :class:`AmbiguousIndentationError` and is
+``supported: false``.
+
+**Private names.** Inside a class (its body and every function, lambda and
+comprehension in it), CPython rewrites ``__x`` (not ending in ``__``) to
+``_<Class>__x``. A lookup of such a name there gives ``none(unmapped)``, and
+every binding, ``global`` or ``nonlocal`` of one there also binds each
+mangled spelling an enclosing class may give it (a non-definition binding),
+so ``_C__x`` spelled out elsewhere never proves past a mangled write.
+
+**The file's own module.** Besides the self-imports above: in
+``pkg/__init__.py``, importing submodule ``pkg.X`` (``from .X import y``,
+``from . import X``, ``import pkg.X``, ``from pkg.X import y``, ``from pkg
+import X``) sets the package's global ``X``, a non-definition binding even
+in a function; ``import pkg.x`` there binds ``pkg``, the file's own module;
+in a module with a parent package, an attribute named after the module
+(``pkg.a.helper = …`` in ``pkg/a.py``) or that name as a constant string
+given to ``getattr``/``setattr``/``delattr``/``hasattr``/``attrgetter`` is
+dynamic; and a root-level ``__init__.py``, whose package name lies outside
+the run, treats every absolute import as a possible self-import. Redundant
+parentheses around ``__name__`` in ``X.modules[(__name__)]`` and the getters
+are ignored.
 
 **Identifiers are compared by their source spelling, so a file with a
 non-ASCII identifier is not analyzed.** Python normalizes identifiers to
@@ -429,7 +452,13 @@ PY2_BUILTINS = frozenset(
         "xrange",
     ]
 )
-BUILTINS = BUILTINS_314 | PY2_BUILTINS
+# Builtins only some platforms have (``WindowsError`` on Windows).
+PLATFORM_BUILTINS = frozenset(["WindowsError"])
+BUILTINS = BUILTINS_314 | PY2_BUILTINS | PLATFORM_BUILTINS
+# Calls that take an attribute name as a string (B-4).
+_ATTRIBUTE_FUNCTIONS = frozenset(
+    {"getattr", "setattr", "delattr", "hasattr", "attrgetter"}
+)
 _IMPORT_STATEMENTS = frozenset(
     {"import_statement", "import_from_statement", "future_import_statement"}
 )
@@ -515,13 +544,19 @@ class _Analysis:
     """Scopes and bindings of one Python file, and lookups through them."""
 
     def __init__(
-        self, root: Any, source: bytes, own_names: frozenset[str] = frozenset()
+        self,
+        root: Any,
+        source: bytes,
+        own_names: frozenset[str] = frozenset(),
+        module_path: ModulePath | None = None,
     ) -> None:
         self.root = root
         self.source = source
+        path = module_path or ModulePath(own_names=own_names)
         # The file's own module name (its stem, or its package for
         # ``__init__.py``): importing it is a self-import.
-        self.own_names = own_names
+        self.own_names = path.own_names
+        self.module_path = path
         self.scopes: dict[tuple[int, str], _Scope] = {}
         self.events: list[tuple[_Scope, str, _Binding]] = []
         self.dynamic = False
@@ -600,6 +635,16 @@ class _Analysis:
         name = _text(name_node, self.source)
         scope.assigned.add(name)
         self.events.append((scope, name, binding))
+        for mangled in _mangled_names(name_node, name, self.source):
+            # CPython binds ``_C__x`` for ``__x`` inside class ``C`` (B-1): the
+            # mangled spelling gets a non-definition binding too.
+            scope.assigned.add(mangled)
+            self.events.append((scope, mangled, _Binding(LOCAL)))
+
+    def _module_write(self, name: str) -> None:
+        """A non-definition binding of ``name`` at module scope."""
+        self.module.assigned.add(name)
+        self.events.append((self.module, name, _Binding(LOCAL)))
 
     def _conditional(self, node: Any, scope: _Scope) -> bool:
         current = node.parent
@@ -824,7 +869,55 @@ class _Analysis:
             ),
         )
 
+    def _submodule_writes(self, node: Any) -> None:
+        """In ``pkg/__init__.py``, importing submodule ``pkg.X`` sets the
+        package's global ``X`` (B-3), even when the statement binds no
+        ``X`` (``from .X import y``, ``import pkg.X``)."""
+        if not self.module_path.package_init:
+            return
+        source = self.source
+        own = self.own_names
+        module = node.child_by_field_name("module_name")
+        names = []
+        for index, child in enumerate(node.children):
+            if node.field_name_for_child(index) == "name":
+                imported = (
+                    child.child_by_field_name("name")
+                    if child.type == "aliased_import"
+                    else child
+                )
+                if imported is not None:
+                    names.append(_text(imported, source))
+        if node.type == "import_statement":
+            for text in names:
+                parts = text.split(".")
+                if len(parts) > 1 and parts[0] in own:
+                    self._module_write(parts[1])
+            return
+        if module is None:
+            return
+        module_text = _text(module, source)
+        if module_text.startswith("."):
+            dots = len(module_text) - len(module_text.lstrip("."))
+            rest = module_text[dots:]
+            if dots != 1:
+                return
+            if rest:
+                self._module_write(rest.split(".")[0])
+            else:
+                for text in names:
+                    self._module_write(text.split(".")[0])
+            return
+        parts = module_text.split(".")
+        if parts[0] in own:
+            if len(parts) > 1:
+                self._module_write(parts[1])
+            else:
+                for text in names:
+                    self._module_write(text.split(".")[0])
+
     def _import(self, node: Any, scope: _Scope, depth: int) -> None:
+        self._submodule_writes(node)
         for name, child in self._fields(node):
             if name != "name":
                 self.visit(child, scope, depth + 1)
@@ -839,6 +932,7 @@ class _Analysis:
             self._import_binding(scope, node, bound, {"form": "import", "module": text})
 
     def _import_from(self, node: Any, scope: _Scope, depth: int) -> None:
+        self._submodule_writes(node)
         module_node = node.child_by_field_name("module_name")
         module = _text(module_node, self.source) if module_node is not None else ""
         for name, child in self._fields(node):
@@ -885,13 +979,21 @@ class _Analysis:
         del depth
         if scope.kind == _MODULE:
             return  # a no-op at module level
-        scope.globals.update(_text(ident, self.source) for ident in _identifiers(node))
+        scope.globals.update(self._declared(node))
 
     def _nonlocal(self, node: Any, scope: _Scope, depth: int) -> None:
         del depth
-        scope.nonlocals.update(
-            _text(ident, self.source) for ident in _identifiers(node)
-        )
+        scope.nonlocals.update(self._declared(node))
+
+    def _declared(self, node: Any) -> set[str]:
+        """The names a ``global``/``nonlocal`` declares, with every mangled
+        spelling a class around it may give them (B-1)."""
+        names: set[str] = set()
+        for ident in _identifiers(node):
+            name = _text(ident, self.source)
+            names.add(name)
+            names.update(_mangled_names(ident, name, self.source))
+        return names
 
     def _case_pattern(self, node: Any, scope: _Scope, depth: int) -> None:
         """Bind the names a ``case`` pattern captures.
@@ -951,6 +1053,13 @@ class _Analysis:
                 value = _constant_string(node, source)
                 if value is not None:
                     self._literal_use(value)
+                    if (
+                        self.module_path.in_package
+                        and set(value.split(".")) & self.own_names
+                        and _attribute_argument(node, source)
+                    ):
+                        # ``setattr(pkg, "a", …)``, ``getattr(pkg, "a")``.
+                        self.dynamic = True
             if kind in ("import_statement", "import_from_statement"):
                 self._import_use(node)
             stack.extend(node.named_children)
@@ -969,6 +1078,10 @@ class _Analysis:
                     self._sys_use(parent)
                 elif name == _SYS_MODULES:
                     self._modules_use(parent)
+                elif self.module_path.in_package and name in self.own_names:
+                    # ``pkg.a.helper = …`` in ``pkg/a.py`` reaches the file's
+                    # own module through its parent package (B-4b).
+                    self.dynamic = True
                 continue
             if parent.type == "keyword_argument" and _same(
                 ident, parent.child_by_field_name("name")
@@ -1020,8 +1133,19 @@ class _Analysis:
                     self.dynamic = True
                 if text in self.own_names:
                     self.dynamic = True
-            elif text.rsplit(".", 1)[-1] in self.own_names:
-                self.dynamic = True
+            else:
+                parts = text.split(".")
+                # ``import pkg.x`` in ``pkg/__init__.py`` binds ``pkg``, the
+                # file's own module (B-4a).
+                if parts[0] in self.own_names or parts[-1] in self.own_names:
+                    self.dynamic = True
+        if self.module_path.root_init and (
+            node.type == "import_statement"
+            or (module is not None and not _text(module, source).startswith("."))
+        ):
+            # A root-level ``__init__.py`` cannot know its own name: any
+            # absolute import may name it (B-4c).
+            self.dynamic = True
 
     def _modules_use(self, node: Any) -> None:
         """``X.modules[__name__]``, ``X.modules.get(__name__)`` and the like
@@ -1038,7 +1162,7 @@ class _Analysis:
                 for index, child in enumerate(parent.children)
                 if parent.field_name_for_child(index) == "subscript"
             ]
-            if any(_text(key, self.source) == "__name__" for key in keys):
+            if any(_text(_unwrap(key), self.source) == "__name__" for key in keys):
                 self.dynamic = True
             return
         if parent.type == "attribute" and _same(
@@ -1059,7 +1183,10 @@ class _Analysis:
                     if arguments is not None and arguments.named_children
                     else None
                 )
-                if first is not None and _text(first, self.source) == "__name__":
+                if (
+                    first is not None
+                    and _text(_unwrap(first), self.source) == "__name__"
+                ):
                     self.dynamic = True
 
     def _sys_use(self, node: Any) -> None:
@@ -1152,6 +1279,10 @@ class _Analysis:
         if self.frame_locals:
             # ``frame.f_locals`` writes any function's locals (PEP 667).
             return _none("dynamic-scope")
+        if _mangled_names(ident, name, self.source):
+            # CPython looks up ``_C__x`` for ``__x`` inside class ``C``; the
+            # source spelling proves nothing (B-1).
+            return _none(UNMAPPED)
         crossed = False  # a function-like scope lies between ``ident`` and here
         for scope in self._chain(ident):
             if scope.kind == _CLASS:
@@ -1244,6 +1375,60 @@ def _group(symbols: Sequence[_Binding]) -> dict[str, Any]:
         for binding in symbols
     )
     return {"outcome": "local", "proof": proof, "rules": []}
+
+
+def _mangle_eligible(name: str) -> bool:
+    return name.startswith("__") and not name.endswith("__")
+
+
+def _mangled_names(node: Any, name: str, source: bytes) -> list[str]:
+    """Every mangled spelling a class around ``node`` may give ``name``.
+
+    CPython rewrites ``__x`` (not ending in ``__``) inside a class to
+    ``_<Class>__x``, the class name's leading underscores stripped, unless
+    the class name is all underscores. Every enclosing class counts, not
+    only the innermost, and a class's bases and decorators count too: an
+    extra spelling can only fail closed.
+    """
+    if not _mangle_eligible(name):
+        return []
+    found: list[str] = []
+    child, current = node, node.parent
+    while current is not None:
+        if current.type == "class_definition":
+            class_name = current.child_by_field_name("name")
+            if class_name is not None and not _same(child, class_name):
+                stripped = _text(class_name, source).lstrip("_")
+                if stripped:
+                    found.append(f"_{stripped}{name}")
+        child, current = current, current.parent
+    return found
+
+
+def _unwrap(node: Any) -> Any:
+    while node.type == "parenthesized_expression" and len(node.named_children) == 1:
+        node = node.named_children[0]
+    return node
+
+
+def _attribute_argument(node: Any, source: bytes) -> bool:
+    """Whether a string is an argument of ``getattr``, ``setattr`` and the
+    like (also ``operator.attrgetter``)."""
+    current = node
+    while current.parent is not None and current.parent.type in (
+        "parenthesized_expression",
+        "concatenated_string",
+        "binary_operator",
+    ):
+        current = current.parent
+    arguments = current.parent
+    call = arguments.parent if arguments is not None else None
+    if arguments is None or arguments.type != "argument_list" or call is None:
+        return False
+    function = call.child_by_field_name("function")
+    if function is not None and function.type == "attribute":
+        function = function.child_by_field_name("attribute")
+    return function is not None and _text(function, source) in _ATTRIBUTE_FUNCTIONS
 
 
 def _import_context(node: Any) -> bool:
@@ -1396,8 +1581,12 @@ def ambiguous_indentation(source: bytes) -> int | None:
     too, which can only fail closed.
     """
     for number, line in enumerate(_LINES.split(source), start=1):
-        leading = line[: len(line) - len(line.lstrip(b" \t\f"))]
-        if b"\f" in leading:
+        stripped = line.lstrip(b" \t\f")
+        leading = line[: len(line) - len(stripped)]
+        if b"\f" in leading or stripped.startswith(b"\\"):
+            # A backslash continuation as a line's first non-blank character:
+            # CPython takes the indentation from this line, tree-sitter from
+            # the next (B-2).
             return number
         first_space = leading.find(b" ")
         if first_space >= 0 and leading.rfind(b"\t") > first_space:
@@ -1428,6 +1617,32 @@ def non_ascii_name(root: Any, source: bytes) -> Any:
     return None
 
 
+@dataclass(frozen=True)
+class ModulePath:
+    """What a Python file's display path says about its own module."""
+
+    own_names: frozenset[str] = frozenset()
+    # ``__init__.py``: importing a submodule sets the package's global.
+    package_init: bool = False
+    # A root-level ``__init__.py``, whose package name is outside the run.
+    root_init: bool = False
+    # The module has a parent package in the run (``pkg/a.py``,
+    # ``top/pkg/__init__.py``).
+    in_package: bool = False
+
+
+def module_path(path: str) -> ModulePath:
+    """The :class:`ModulePath` of a root-relative display path."""
+    parts = [part for part in path.replace("\\", "/").split("/") if part]
+    init = bool(parts) and parts[-1] == "__init__.py"
+    return ModulePath(
+        own_names=own_module_names(path),
+        package_init=init,
+        root_init=init and len(parts) == 1,
+        in_package=len(parts) > (2 if init else 1),
+    )
+
+
 def own_module_names(path: str) -> frozenset[str]:
     """The names a file's own module is imported by: its stem, or its
     package's name for ``__init__.py``."""
@@ -1444,11 +1659,13 @@ def analyze(
     language: str,
     call_facts: Sequence[Mapping[str, Any]],
     own_names: frozenset[str] = frozenset(),
+    path: str | None = None,
 ) -> dict[str, Any]:
     """Return partial scope facts: the goal and one outcome per call.
 
-    ``own_names`` are the names the file's own module is imported by
-    (:func:`own_module_names`); importing one is a self-import.
+    ``path`` is the file's root-relative display path (:func:`module_path`);
+    without it, ``own_names`` are the names the file's own module is imported
+    by. Importing one is a self-import.
     """
     del language  # always python
     bad = non_ascii_name(root, source)
@@ -1459,7 +1676,8 @@ def analyze(
     if line is not None:
         msg = f"indentation depends on the tab width on line {line}"
         raise AmbiguousIndentationError(msg)
-    analysis = _Analysis(root, source, own_names)
+    info = module_path(path) if path is not None else ModulePath(own_names=own_names)
+    analysis = _Analysis(root, source, module_path=info)
     bindings: dict[str, Any] = {}
     for fact in call_facts:
         start = int(fact["callee_byte_start"])

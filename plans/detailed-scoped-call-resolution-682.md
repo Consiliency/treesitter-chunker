@@ -316,7 +316,12 @@ These all give `supported: false` for the file:
   tab, or a form feed (#695 panel A4). tree-sitter counts a tab as eight
   more columns, while CPython advances to the next multiple of eight, so
   "seven spaces and a tab" can move a `def` into a different block without a
-  parse error.
+  parse error. Likewise a line whose first non-blank character is a
+  backslash continuation (the president's #695 ruling, B-2): CPython takes
+  the logical line's indentation from that line, tree-sitter from the next.
+  The ruling's generator of 50,625 nested-`def` sources finds 73 silent
+  nesting mismatches past the tab rule alone and none with this rule
+  (`test_whitespace_differential_has_no_silent_misparse`).
 
 None of them adds anything to `facts["errors"]` or diagnostics, and none
 raises, even with `fail_fast`. A debug log line is allowed. A file with
@@ -806,7 +811,7 @@ an unreviewed binding form.
 | `script-global` | Another file declares the name as a script global |
 | `type-only` | Only a type-only import binds the name |
 | `enum-scope` | The lookup reaches a TS enum body, where the members of every declaration of the enum shadow outer names (7.2) |
-| `unmapped` | A declaration with no symbol, a duplicate span, or an unclassified node |
+| `unmapped` | A declaration with no symbol, a duplicate span, or an unclassified node; Python: a private name (`__x`) looked up inside a class, which CPython mangles to `_<Class>__x` (the president's #695 ruling, B-1) |
 | `no-binding-fact` | The call has no binding entry |
 | `stub` | PR 1 only |
 | `script-goal-deferred`, `namespace-deferred` | PR 2 only; replaced by real handling in PR 3 |
@@ -1620,7 +1625,7 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | R9 | Scripts outside the run can redefine a global: HTML-included scripts outside the run, `dist/`, `node_modules`, `.mjs` and `.cjs` files, inline `<script>` in `.vue` and `.svelte` files (none of these is collected), and raw HTML in Markdown or reStructuredText that a site generator renders, which, like any generated page, is outside the run | Accept: they are not scanned. In-run HTML, XML and PHP files count as declaring every global (PR 3). |
 | R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: a computed call on a receiver `this` that may be an indirect `eval` (`this[k](s)`, `this['ev' + 'al'](s)`; `*` would switch off script-top resolution in about 52 of 1136 npm files); hand-offs of a receiver `this` through a variable or an expression (`const s = this; s.d = f`, `const w = this.window; w.d = f`, `(0, this).d =`, `(c ? this : o).d =`, `(c || this).d =`, the receiver argument of `Reflect.set(o, 'd', v, this)`, `Object.assign(...[this], …)`), except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)` with `this` first, which give `*`; `Reflect.get(f, 'constructor')`, and computed keys that may reach `constructor` on arbitrary objects (`x[k](s)`, `x['constr' + 'uctor'](s)`, `f[['constructor']](s)`, `const { [k]: F } = f`); writer hand-offs the analysis cannot identify syntactically (`const a = Object.assign; a(this, …)`, `Reflect.apply(Object.assign, null, [this, …])`, `Object['assign'](...[this], …)`, and a helper given `this`: `h(this)`) | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
 | R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) is not tracked | Accept. This is the same kind of risk as the module-scope preference the issue asks for. |
-| R12 | Python run-time binding no syntactic rule sees (PR 4): a helper in another module that writes its caller's globals or locals through frames (`sys._getframe(1).f_globals` or `.f_locals` there, not here; #695 panel A2) or `exec(code, mod.__dict__)`; computed strings beyond constant literals (`'__glo' + name`); `X.modules` uses other than `X.modules[__name__]` and its getters (`m = collections._sys.modules; m[__name__]`); `gc`/`ctypes` tricks; replacing a function's `__code__` (the edge still names the right definition, which then runs other code). Self-imports are no longer here: they give `dynamic-scope` (#695 panel A7) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
+| R12 | Python run-time binding no syntactic rule sees (PR 4): a helper in another module that writes its caller's globals or locals through frames (`sys._getframe(1).f_globals` or `.f_locals` there, not here; #695 panel A2) or `exec(code, mod.__dict__)`; computed strings beyond constant literals (`'__glo' + name`); `X.modules` uses other than `X.modules[__name__]` and its getters (`m = collections._sys.modules; m[__name__]`); `gc`/`ctypes` tricks; replacing a function's `__code__` (the edge still names the right definition, which then runs other code). Named by the president's #695 ruling (section 4): same-file resolvers that take the module name as a value, `pkgutil.resolve_name(__name__).helper = len`, `pydoc.locate(__name__).helper = len` and `mock.patch(__name__ + '.helper', len)` self-patches; other computed strings (`'%s' % …`, `b'…'.decode()`); `X.modules[__spec__.name]` and other `X.modules` keys; **cross-file submodule rebinding** (another module importing `pkg.X` sets `pkg/__init__.py`'s global `X` with no write in any source of `pkg/__init__.py`); **builtins injected from another module** (`gettext.install()`, or `builtins.X = …` elsewhere) ahead of a module-level definition that has not run yet, also an R10 item for the deferred follow-up. Self-imports are no longer here: they give `dynamic-scope` (#695 panel A7, and the ruling's B-4 shapes) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
 
 **Owner notice** (informational, from the ruling): these are delegated
 decisions, all stricter than or consistent with the issue:
@@ -1899,5 +1904,22 @@ Every item only adds `none`; no expected row changes. `python` fact version
 | A5: `__main__` like `sys`; A6, B2: constant-string attribute names; A7: self-imports; B3: `X.modules[__name__]` | §7.3 dynamic binding |
 | B5, C1: line continuations are tokens; natural `unmapped` near-misses | §7.3; §10.6 |
 | B7: expected rows per plan PR pinned | `tests/test_call_resolution_engine.py` |
-| B8 (not done): digesting the unit-case sources | Each unit case pins its own outcome, so a fact change there already fails a test in the same change, where the version bump is reviewed; covering them would mean moving several hundred inline sources into a registry the harness can read |
+| B8 (not done): digesting the unit-case sources | Each unit case pins its own outcome, so a fact change there already fails a test in the same change, where the version bump is reviewed; covering them would mean moving several hundred inline sources into a registry the harness can read. **Rule (the president's #695 ruling, section 5): any change to analyzer output bumps the per-family fact version, whether or not committed digests move.** |
 | C2 (not in this PR): narrowing the `importlib`/`sys` triggers needs its own soundness argument; A8 (cross-file monkeypatch, R10) is a follow-up | — |
+
+### PR 4: the president's #695 ruling
+
+Every item only adds `none`; no expected row changes. `python` fact version
+4, bumped by hand under the B8 rule above. Each fix has the ruling's trees
+committed as tests (`test_ruling_695_cases_keep_their_off_mode_edge`), and
+removing any one fix fails at least one test.
+
+| Item | Applied in |
+| --- | --- |
+| B-1: private-name mangling; a `__x` lookup inside a class gives `unmapped`, and bindings, `global` and `nonlocal` there also bind every mangled spelling | §7.3 (via the `py_scope` docstring); §7.6 `unmapped` |
+| B-2: a backslash continuation as a line's first non-blank character makes the file unsupported; the ruling's whitespace differential is a test | §5.3 |
+| B-3: in `__init__.py`, importing submodule `X` of the own package binds `X` at module scope (non-definition), also from a function | §7.3 dynamic binding (`py_scope` docstring); R12 for the cross-file form |
+| B-4: `import pkg.x` in `pkg/__init__.py`; the own module reached as an attribute of its parent package (`.a`, or `'a'` given to `getattr`/`setattr`/…); a root-level `__init__.py` treats every absolute import as a possible self-import (narrower than making the file unsupported: function-local lookups and relative-import-only files still resolve) | §7.3 dynamic binding |
+| B-5: parentheses around `__name__` in `X.modules[…]` and the getters | §7.3 dynamic binding |
+| B-6: `WindowsError` pinned as a platform builtin; the pin test is a superset check on every OS plus the exact 3.14 list | §7.3 builtin rule |
+| Section 4: R12 names `pkgutil.resolve_name`, `pydoc.locate` and `mock.patch` self-patches, cross-file submodule rebinding and builtins injected from elsewhere | §15 R12 |
