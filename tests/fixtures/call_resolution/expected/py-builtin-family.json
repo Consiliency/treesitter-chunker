@@ -18,7 +18,17 @@
      "caller": "use",
      "file": "c.py",
      "line": 2,
+     "pr": 4,
      "reference": "open",
+     "structural": {
+      "candidates": [
+       "a.py:1:open",
+       "x.js:1:open"
+      ],
+      "outcome": "none(unbound)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "074474905b6a074770baf5b810f4821186886c78",

@@ -13,11 +13,13 @@ Modules:
 - :mod:`.js_scope` and :mod:`.py_scope`: the per-language analyzers;
 - :mod:`.allowlist`: the binding allow-list.
 
-At this head the JS/TS analyzer implements Tier 1 (plan section 13.1, PR 2
-and PR 3): the scope chain, ``t1.lexical``, ``t1.ts_overload`` and
-``t1.js_hoist``, script globals checked across the run's files, TS namespace
-merging and inherited ambient status. The Python analyzer is still a stub: every Python call has the outcome
-``none(stub)``, so only the kind and family filters can narrow a Python edge.
+At this head both analyzers implement Tier 1 (plan section 13.1, PRs 2-4).
+The JS/TS analyzer has the scope chain, ``t1.lexical``, ``t1.ts_overload``
+and ``t1.js_hoist``, script globals checked across the run's files, TS
+namespace merging and inherited ambient status. The Python analyzer has the
+LEGB scope chain with class scopes (ruling A10), comprehension and
+type-parameter scopes, ``global``/``nonlocal`` redirects and ``t1.lexical``;
+Python redefinitions narrow to their group and never resolve.
 """
 
 from __future__ import annotations

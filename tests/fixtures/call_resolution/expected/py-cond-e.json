@@ -42,7 +42,17 @@
      "caller": "e",
      "file": "svc.py",
      "line": 12,
+     "pr": 4,
      "reference": "e",
+     "structural": {
+      "candidates": [
+       "svc.py:9:e",
+       "svc.py:14:e"
+      ],
+      "outcome": "none(conditional)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "9746a333f37a17780471d5ea852953d0d26ff048",
@@ -92,7 +102,17 @@
      "caller": "caller",
      "file": "svc.py",
      "line": 18,
+     "pr": 4,
      "reference": "e",
+     "structural": {
+      "candidates": [
+       "svc.py:9:e",
+       "svc.py:14:e"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "9746a333f37a17780471d5ea852953d0d26ff048",

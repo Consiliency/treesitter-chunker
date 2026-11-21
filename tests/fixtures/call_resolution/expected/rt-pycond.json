@@ -66,7 +66,17 @@
      "caller": "caller",
      "file": "svc.py",
      "line": 21,
+     "pr": 4,
      "reference": "d",
+     "structural": {
+      "candidates": [
+       "svc.py:13:d",
+       "svc.py:16:d"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "0de792bed499be0d05b2d0ee621b71ffea7755cc",

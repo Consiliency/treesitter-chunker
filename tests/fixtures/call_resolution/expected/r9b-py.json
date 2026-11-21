@@ -24,7 +24,7 @@
       "candidates": [
        "pkg/svc.py:1:only_a"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },
@@ -57,7 +57,7 @@
       "candidates": [
        "pkg/svc.py:5:only_b"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },

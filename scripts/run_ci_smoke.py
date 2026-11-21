@@ -117,6 +117,8 @@ CI_SMOKE_TESTS = [
     "tests/test_call_resolution_failure_modes.py",
     # Tier 1 JS/TS scope analysis (treesitter-chunker#682, PR 2).
     "tests/test_call_resolution_tier1_js.py",
+    # Tier 1 Python scope analysis (treesitter-chunker#682, PR 4).
+    "tests/test_call_resolution_tier1_py.py",
 ]
 
 

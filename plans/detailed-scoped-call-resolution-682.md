@@ -305,7 +305,23 @@ These all give `supported: false` for the file:
   (PR 3, #691 panel A1 and the president's B-1). Valid JavaScript never has
   one, but tree-sitter parses `{ L: function d() {} }` as an object literal
   without an error, alone or glued to what follows (`[0]`, `(0)`, `+0`, a
-  template, a regex), which would hide a block-level declaration.
+  template, a regex), which would hide a block-level declaration;
+- a Python file with a non-ASCII identifier, or any non-ASCII character
+  outside string literals and comments (PR 4). Python compares identifiers
+  after NFKC normalization (`ﬁle` is `file`, `ｈelper` is `helper`), while
+  the analysis and the chunker's symbol names use the source spelling, so a
+  normalized write or parameter would otherwise be missed. ASCII names are
+  NFKC-invariant;
+- a Python file in which any line's leading whitespace has a space before a
+  tab, or a form feed (#695 panel A4). tree-sitter counts a tab as eight
+  more columns, while CPython advances to the next multiple of eight, so
+  "seven spaces and a tab" can move a `def` into a different block without a
+  parse error. Likewise a line whose first non-blank character is a
+  backslash continuation (the president's #695 ruling, B-2): CPython takes
+  the logical line's indentation from that line, tree-sitter from the next.
+  The ruling's generator of 50,625 nested-`def` sources finds 73 silent
+  nesting mismatches past the tab rule alone and none with this rule
+  (`test_whitespace_differential_has_no_silent_misparse`).
 
 None of them adds anything to `facts["errors"]` or diagnostics, and none
 raises, even with `fail_fast`. A debug log line is allowed. A file with
@@ -604,6 +620,13 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
   - **A free name** (one the class body does not bind) continues through any
     enclosing **function** scopes, then the module, then builtins. A class
     nested in a function reads that function's binding (`py-class-free-var`).
+  - **Open class namespaces (#695 panel A1, B4; Codex 4653329444).** When the
+    class statement has any base or any keyword argument, every lookup from
+    class-body-evaluated code (the code listed above, the first comprehension
+    iterable, and class annotation and type-parameter scopes) gives
+    `none(class-scope-bound)`: a metaclass's `__prepare__`, inherited through
+    a base possibly defined in another file, or a `__missing__` namespace may
+    supply any name. No committed fixture class has bases.
   - **Code inside methods, nested functions, lambdas and comprehensions** in a
     class skips the class scope. It continues in enclosing function scopes,
     then the module.
@@ -636,7 +659,164 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
   `try`, `except`, `finally`, `while`, `for`, `with` or `match` statement lies
   between it and its scope body. `decorated_definition` is transparent.
 - A module-level call before the only definition is a `NameError` at runtime,
-  so resolving it is harmless.
+  so resolving it is harmless, **unless the name is a builtin** (#695 panel
+  A3): then the call reaches the builtin until the definition runs. A
+  module-scope definition or import whose name is a builtin (CPython 3.14's
+  `dir(builtins)`, pinned by a test, plus the Python 2 builtins) never
+  proves: `none(builtin-shadow)`.
+- **Fail-closed refinements (PR 4).** Each only adds `none`; no expected row
+  changes.
+  - **Decorated definitions.** A decorator can replace the function, so a
+    decorated `def` or `class` binds the decorator's result: a single one is
+    `none(expression-bound)`. It still joins a redefinition group, which never
+    resolves (py-overload stays "group = C0").
+  - **Every write form binds**, read fail-closed: every identifier under an
+    assignment, augmented or annotated target, `for`/`with`/`except`/
+    comprehension target or `del`, through tuples, lists, starred targets and
+    parentheses, except the object of an attribute or subscript. Any other
+    target form poisons the scope (`unmapped`). Every identifier in a `case`
+    pattern binds except a dotted value pattern, a class pattern's class and
+    a keyword pattern's keyword. `from __future__ import x` binds `x`.
+  - **Python 2 forms the grammar accepts.** `except E, e:` binds `e`, a list
+    comprehension's targets also bind in the enclosing scope (Python 2 leaked
+    them), and the `exec` statement is dynamic.
+  - **Dynamic binding.** `dynamic-scope` applies to module-scope lookups, and
+    to class-body lookups (a class namespace is a dict that `exec` and
+    `locals()` can write), in a file that mentions
+    `exec`, `eval`, `globals`, `vars`, `locals`, `__import__`,
+    `__builtins__`, `builtins`, `importlib` or `execfile` outside an
+    attribute name, a keyword-argument name or a `def`/`class` name (so
+    `import builtins as b` and `from importlib import import_module` count);
+    that writes or reads `sys.modules` or a dunder attribute of `sys`, with
+    `sys` reached by name, by an `as` alias or as `os.sys`; that hands the
+    `sys` module on as a value (`getattr(sys, "modules")`); that imports
+    `modules` from `sys`; or that touches `__globals__`, `f_globals`,
+    `f_locals`, `f_builtins` or `inspect.getmodule`. The #695 panel fold
+    adds: `__main__` or an alias of it used other than in an import (A5),
+    any name a `from __main__` import binds, any import of `sys` or
+    `__main__` in a class body (#695 J-3/J-4), and a constant string with a
+    `__main__` component (`mock.patch('__main__.helper')`,
+    `pydoc.locate('__main__')`), except on a **positive allow-list** (#695
+    K-3, then L-2 and M-2; executive decision after three rounds of escapes
+    through a deny-list exemption). A `'__main__'` constant is exempt only
+    when all of these hold:
+    1. it is exactly `'__main__'`, a plain string, and an operand of the
+       test of an `if` or `elif` statement at module top level (not nested in
+       a function, class, lambda, comprehension or `match`, and not a default
+       or decorator);
+    2. the test is exactly one comparison, `__name__ == '__main__'`,
+       `'__main__' == __name__` or the same with `!=`, with parentheses
+       allowed around the whole test or either operand (no chains, `in`,
+       tuples, `and`/`or`/`not`);
+    3. `__name__` is the bare identifier and the file never rebinds it
+       (`global`/`nonlocal`, parameters, imports, targets, walrus, `del`,
+       `match` captures, or an attribute write `x.__name__ = v`).
+
+    At module top level `__name__` is read from module globals, which only the
+    rebinding forms above, the existing dynamic triggers (`globals()`,
+    `sys.modules`, frames, `vars`) and R12 can replace. The comparison is
+    between a module-global `str` and a literal, so no user `__eq__` runs and
+    no class namespace or `__prepare__` is involved. Everything else with a
+    `__main__` component fails closed, including guards in functions or
+    methods, `in` forms and every `match __name__` form. `__mp_main__`, the name a multiprocessing spawn
+    child imports the script under, counts as `__main__`. Constant strings
+    split on `.` and `:` (the `pkgutil.resolve_name('pkg.mod:attr')` form)
+    for this rule, the own-name rule and the dynamic attribute names; no
+    resolver maps `/` to this module's namespace. Also a
+    constant string (a literal, adjacent literals or literals joined by `+`)
+    that is one of those attribute names or `modules`, alone or as a part of
+    a dotted path (`getattr(f, '__globals__')`, `attrgetter('sys.modules')`;
+    A6, B2); an import of the file's own module (`import a`, `import pkg.a as
+    m` or `from . import a` in `a.py`; the package name for `__init__.py`;
+    A7); and `X.modules[__name__]`, `X.modules.get(__name__)` (also
+    `__getitem__`, `setdefault`, `pop`) through any receiver `X` (B3).
+    Precedence: `dynamic-scope`, then `star-import`, then `unmapped`.
+  - **The file's own module: one general rule (the president's re-check of
+    #695, N-1 to N-3).** It replaces the per-shape self-import and
+    submodule fixes.
+    - **Which names can denote the module.** The names the import system
+      derives from the path can denote this file's module: every suffix of
+      its dotted module path, relative to the run root and to every ancestor
+      directory, because the root and any ancestor may be packages, regular
+      or PEP 420 namespace packages. Each of those, and any longer path
+      ending in one, ends with the file's own name: its raw stem, or the
+      package directory's raw name for `__init__.py`, with no identifier
+      filter (`my-mod` is importable; re-check N-5). A loader may choose any
+      other name (`spec_from_file_location`, `runpy`): writes through such a
+      module in the spellings the attribute-write rule lists fail closed, and
+      every other spelling is R12. A file whose own name cannot be computed
+      (no path: `None` or `""`) fails closed.
+    - **Self-reference.** Module-scope lookups give `dynamic-scope` when the
+      own name is a component of any of these:
+      - any import's path or imported names, absolute or relative, in any
+        scope;
+      - any identifier that is not a parameter or `def`/`class` name, whatever
+        node spells it: an attribute (`R.a.helper = …` through a parent package
+        or the run root), a keyword argument, a class pattern's keyword
+        (`case object(a=m)`, re-check N-4), a dotted name;
+      - any constant string, alone or dotted: `getattr(pkg, 'a')`,
+        `pkg.__dict__['a']`, `NAME = 'a'`.
+
+      A root-level `__init__.py`, which includes any `__init__.py` run as a
+      single file, has no own name in the run. Every absolute import, and
+      every relative import whose dots leave the run (`from .. import R`;
+      re-check N-6), may name it; only a single-dot relative import cannot.
+      The level is the number of `.` tokens, wherever whitespace or a
+      backslash continuation separates them (re-check N-7). The rule
+      over-triggers by design: losing a proof is acceptable, a wrong edge is
+      not. The remaining ways to reach the module
+      object without spelling its name are either dynamic triggers already
+      (`__import__`, `importlib`, `sys.modules`, `globals()`, frames) or R10
+      and R12 (another module, iterating a package's namespace, `gc`).
+    - **Attribute writes through any receiver (re-check R-5 family).** The
+      receiver may be this module, handed over by a sibling's re-export, a
+      function's return value, a parameter or a loader. Writing attribute
+      `name` of anything gives `name` a non-definition binding at module
+      scope. That covers `x.name = v`, `del x.name`, `x['name'] = v` with a
+      constant key, `setattr`/`delattr`/`__setattr__`/`__setitem__` with a
+      constant string, and `x.__dict__.update(name=v)`, `.update({'name':
+      v})`, `.setdefault`, `.pop`. The rule catches those listed spellings
+      only. Other writes by constant name stay in R12, among them
+      `operator.setitem(mod.__dict__, 'helper', len)`, `d = mod.__dict__; d
+      |= {'helper': len}`, and `update()` with a mapping that is not a
+      literal (`D = dict(helper=len); mod.__dict__.update(D)`; re-check
+      06f5dc32, G-3).
+    - **Names come from tokens (re-check N-7).** Every import name, dotted
+      path and relative level is read from identifier and `.` tokens, never
+      from raw node text, because whitespace, comments and backslash
+      continuations may sit between them (`from . helper import M`, `from .
+      . import R`).
+    - **Name triggers whatever node spells them (re-check N-4).** The dynamic
+      attribute names (`__globals__`, `f_globals`, `f_locals`, `f_builtins`,
+      `getmodule`) count in any identifier position, and `X[__name__]` or
+      `X.get(__name__)` (also `__getitem__`, `setdefault`, `pop`) on any
+      receiver is dynamic.
+    - **Submodule rebinding.** In any `__init__.py`, every import is resolved
+      to a full dotted path, with relative dots joined to the file's module
+      path. Wherever the own name is followed by a component `X`, loading
+      the submodule sets this package's global `X`. That is a non-definition
+      binding at module scope, also when the import is in a function.
+      Examples: `import pkg.sub.X`, `from ..sub.X import y`, `from . import
+      X`.
+  - **`f_locals` (#695 panel A2, B1).** A frame's `f_locals` writes through
+    to a function's locals (PEP 667, Python 3.13+). A file that mentions
+    `f_locals` anywhere, as an attribute or a constant string, gives
+    `dynamic-scope` for every lookup, function scopes included. Without it,
+    `exec` and `locals()` cannot rebind a function's locals.
+  - **Line continuations.** A backslash continuation inside a target is only
+    a token. Valid targets the reader does not understand still poison the
+    scope: `del f()`, `with a as f():` and `type(x).attr = v` (which
+    tree-sitter parses as a `type` statement) are committed as test-written
+    near-misses (10.6).
+  - **Type-parameter scopes.** A PEP 695 generic `def`, `class` or `type`
+    statement gets a type-parameter scope between it and its enclosing scope.
+    Lookups from its annotations, bases, body and, conservatively, its
+    default values pass through it (CPython evaluates defaults outside it,
+    so this can only fail closed); a type parameter is `parameter`. An
+    annotation scope immediately inside a class still sees the class.
+  - **Implicit names.** Module and class namespaces bind every dunder name
+    implicitly (a non-definition binding), and a method's bare `__class__`
+    is the implicit class cell (`none(local-variable)`).
 
 ### 7.4 Group rules
 
@@ -711,15 +891,16 @@ an unreviewed binding form.
 | `unbound` | No binding in the file (global or builtin) |
 | `parameter` | A parameter, including destructured ones and `arguments` |
 | `local-variable` | `catch`/loop/`with`/`except`/comprehension/walrus/`match` targets, `let`/`var`/non-function `const`, destructuring |
-| `expression-bound` | A function or arrow bound by `var`/`let`, or a `const` that is not a single declaration |
+| `expression-bound` | A function or arrow bound by `var`/`let`, or a `const` that is not a single declaration; Python: a single decorated `def` or `class`, which binds the decorator's result (PR 4) |
 | `self-binding` | A function or class expression's own name |
 | `reassigned` | The name is assigned somewhere in the binding's subtree |
 | `block-function` | A block-level function declaration binds the name |
 | `conditional` | Python: a single conditional definition or import |
+| `builtin-shadow` | Python: a module-scope definition or import whose name is a builtin, which the name reaches until it runs (PR 4, #695 panel A3) |
 | `mixed-bindings` | Definitions mixed with other bindings, or duplicate imports |
 | `class-scope-bound` | Python class-body lookup of a name the class binds |
 | `star-import` | Python module-scope lookup in a file with `from m import *` |
-| `dynamic-scope` | `eval`/`with` (JS); `exec`/`globals`/`vars`/`sys.modules` writes (Python) |
+| `dynamic-scope` | `eval`/`with` (JS); `exec`/`eval`/`globals`/`vars`/`locals`/`builtins`/`importlib`/`sys.modules` and the other forms of 7.3 (Python), for module-scope and class-body lookups |
 | `ambient` | Only ambient declarations bind the name |
 | `bodyless` | Only bodyless signatures bind the name |
 | `non-callable` | The binding is only an enum or namespace |
@@ -727,7 +908,7 @@ an unreviewed binding form.
 | `script-global` | Another file declares the name as a script global |
 | `type-only` | Only a type-only import binds the name |
 | `enum-scope` | The lookup reaches a TS enum body, where the members of every declaration of the enum shadow outer names (7.2) |
-| `unmapped` | A declaration with no symbol, a duplicate span, or an unclassified node |
+| `unmapped` | A declaration with no symbol, a duplicate span, or an unclassified node; Python: a private name (`__x`) looked up inside a class, which CPython mangles to `_<Class>__x` (the president's #695 ruling, B-1) |
 | `no-binding-fact` | The call has no binding entry |
 | `stub` | PR 1 only |
 | `script-goal-deferred`, `namespace-deferred` | PR 2 only; replaced by real handling in PR 3 |
@@ -749,7 +930,7 @@ per call, decided in this order:
    ambient (`declare enum E {}`; B7, settled in PR 2). Among the callable
    members left, `ambient` wins over `bodyless`: `declare function amb():
    void;` is both, and ts-declare-ambient expects `ambient`. Then comes
-   `conditional`.
+   `conditional`, then (Python, module scope) `builtin-shadow`.
 3. Tier 2 reasons (9.8) are checked in the order 9.2, 9.5 and 9.6 list them.
    For Python, `script-dir-shadow` is checked before `module-not-found`.
 
@@ -1047,6 +1228,7 @@ final expectation. Every Today cell is from main.
 | probe (py root) | pkg/__init__.py:5 call_k → k | amb {pkg.py k, pkg/__init__.py k} | **resolved pkg/__init__.py k** | = | t1.lexical | 4 |
 | probe (py root) | redef.py:11 caller → d | amb {d@1, d@4} | = | = | group = C0 | 4 |
 | probe (one root) | py/c.py:4 use → helper | amb {py/a, py/b} | = | = | script-dir-shadow (`a` resolves inside the non-root directory `py/`; 9.5) | 6 |
+| probe (one root) | py/pkg/__init__.py:5 call_k → k; py/redef.py:11 caller → d | as the py-root rows | as the py-root rows | = | Tier 1 does not depend on the root (PR 4) | 4 |
 
 ### 10.3 Authored positives
 
@@ -1218,7 +1400,8 @@ compares the analyzer's output with them.
 | unbound | py-global-unbound, py-builtin-family, ts-kind-filter, mixed-family |
 | parameter | ts-param-kind, ts-param-shadow, js-default-param, js-locals (c3, `arguments`), py-param-shadow, py-scopes (lambda) |
 | local-variable | ts-param-shadow, js-locals, js-cjs-local, js-require, ts-dynamic-import, ts-import-cjs (`import =`), py-scopes, py-dynamic-import |
-| expression-bound | js-var-fn |
+| builtin-shadow | `test_builtin_shadow_end_to_end` in `tests/test_call_resolution_tier1_py.py`, on a tree the test writes (11.2) |
+| expression-bound | js-var-fn; Python decorated definitions (`test_decorated_definitions_keep_their_off_mode_edge`, on trees the test writes) |
 | self-binding | js-fnexpr-self, js-class-expr-self |
 | reassigned | ts-reassign |
 | block-function | js-block-fn, js-annexb-overwrite |
@@ -1238,8 +1421,9 @@ compares the analyzer's output with them.
 | unsupported file | named end-to-end failure-mode tests (R-3; listed below the table) |
 | escaped names (unsupported file, 5.3) | `test_escaped_names_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on trees the test writes (11.2) |
 | TS `using` / `await using` (fail closed, 7.5) | `test_using_near_miss_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on a tree the test writes (a committed tree would change the off-mode baseline, 11.2) |
-| stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2); PR 3 drops the latter two from the vocabulary |
+| stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2); PR 3 drops the latter two from the vocabulary and PR 4 drops `stub` |
 | script-global, namespace-merged, t1.js_hoist, inherited ambient (PR 3) | also `test_script_global_end_to_end`, `test_script_global_controls_end_to_end`, `test_js_hoist_end_to_end`, `test_js_hoist_near_misses_end_to_end`, `test_namespace_merging_end_to_end` and `test_inherited_ambient_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on trees the tests write (11.2) |
+| Python fail-closed classes (PR 4): write forms, dynamic binding, decorated definitions, non-ASCII identifiers (unsupported file, 5.3) | `test_write_forms_keep_their_off_mode_edge`, `test_dynamic_binding_forms_keep_their_off_mode_edge`, `test_decorated_definitions_keep_their_off_mode_edge`, `test_non_ascii_identifiers_make_the_file_unsupported` and `test_python_positives_end_to_end` in `tests/test_call_resolution_tier1_py.py`; the #695 panel fold adds `test_panel_695_cases_keep_their_off_mode_edge` (panel A's runtime-traced wrong cases), `test_natural_unmapped_forms_keep_their_off_mode_edge` (`del f()`, `with a as f():`, `type(x).attr = v`: natural `unmapped` near-misses), `test_line_continuation_target_end_to_end` and `test_builtin_shadow_end_to_end`, on trees the tests write (11.2), with analyzer unit cases in the same module |
 | #691 panel classes A1–A6, B5, and the president's B-1–B-3 (PR 3) | `test_panel_691_cases_keep_their_off_mode_edge`, `test_misparsed_blocks_make_the_file_unsupported`, `test_static_constructor_is_not_the_class_constructor` and `test_markdown_and_rst_in_the_run_do_not_count` in `tests/test_call_resolution_tier1_js.py` (its `codex-4652498471`, `bracket-*` and `template-assign` cases pin literal-key callees, and its `M01`–`M12` cases writers through a receiver `this`, with the matching `test_global_object_uses_fail_closed_with_a_wildcard` cases; `test_writer_through_this_in_a_constructor_still_resolves` is the C-1 control); `test_editing_another_file_reruns_the_script_global_check` in `tests/test_call_resolution_cache.py` |
 | external-module | ts-bare-specifier, ts-external-import-kind |
 | outside-root | py-relative-root |
@@ -1538,6 +1722,7 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | R9 | Scripts outside the run can redefine a global: HTML-included scripts outside the run, `dist/`, `node_modules`, `.mjs` and `.cjs` files, inline `<script>` in `.vue` and `.svelte` files (none of these is collected), and raw HTML in Markdown or reStructuredText that a site generator renders, which, like any generated page, is outside the run | Accept: they are not scanned. In-run HTML, XML and PHP files count as declaring every global (PR 3). |
 | R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: a computed call on a receiver `this` that may be an indirect `eval` (`this[k](s)`, `this['ev' + 'al'](s)`; `*` would switch off script-top resolution in about 52 of 1136 npm files); hand-offs of a receiver `this` through a variable or an expression (`const s = this; s.d = f`, `const w = this.window; w.d = f`, `(0, this).d =`, `(c ? this : o).d =`, `(c || this).d =`, the receiver argument of `Reflect.set(o, 'd', v, this)`, `Object.assign(...[this], …)`), except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)` with `this` first, which give `*`; `Reflect.get(f, 'constructor')`, and computed keys that may reach `constructor` on arbitrary objects (`x[k](s)`, `x['constr' + 'uctor'](s)`, `f[['constructor']](s)`, `const { [k]: F } = f`); writer hand-offs the analysis cannot identify syntactically (`const a = Object.assign; a(this, …)`, `Reflect.apply(Object.assign, null, [this, …])`, `Object['assign'](...[this], …)`, and a helper given `this`: `h(this)`) | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
 | R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) is not tracked | Accept. This is the same kind of risk as the module-scope preference the issue asks for. |
+| R12 | Python run-time binding no syntactic rule sees (PR 4): a helper in another module that writes its caller's globals or locals through frames (`sys._getframe(1).f_globals` or `.f_locals` there, not here; #695 panel A2) or `exec(code, mod.__dict__)`; computed strings beyond constant literals (`'__glo' + name`); `X.modules` uses other than `X.modules[__name__]` and its getters (`m = collections._sys.modules; m[__name__]`); `gc`/`ctypes` tricks; replacing a function's `__code__` (the edge still names the right definition, which then runs other code). Named by the president's #695 ruling (section 4): same-file resolvers that take the module name as a value, `pkgutil.resolve_name(__name__).helper = len`, `pydoc.locate(__name__).helper = len` and `mock.patch(__name__ + '.helper', len)` self-patches; other computed strings (`'%s' % …`, `b'…'.decode()`, including `b'__main__.helper'.decode()`, and an f-string with an interpolation and a `__main__` part, `f'__main__.{h}'`; #695 L-2); `X.modules[__spec__.name]` and other `X.modules` keys, including through a `sys` class attribute or alias with a computed key (`K.ss.modules[k]`, `getattr(K, '_K__s').modules[k]`); `from sys import __dict__ as sd` with a computed key (`sd[''.join(['mod', 'ules'])][k]`; #695 J-3); **cross-file submodule rebinding** (another module importing `pkg.X` sets `pkg/__init__.py`'s global `X` with no write in any source of `pkg/__init__.py`); **builtins injected from another module** (`gettext.install()`, or `builtins.X = …` elsewhere) ahead of a module-level definition that has not run yet, also an R10 item for the deferred follow-up. Also: reaching the module without spelling its name by iterating a package's namespace (`for m in pkg.__dict__.values()`, `inspect.getmembers(pkg)`, `pkgutil.iter_modules`, and `g(**pkg.__dict__)`). Named by the re-check at f7f0b0bd (R-5); same-file writes through these in the spellings the attribute-write rule lists (§7.3) fail closed, while other write spellings stay here, among them `operator.setitem(mod.__dict__, 'helper', len)`, `d = mod.__dict__; d |= {'helper': len}` and `update()` with a non-literal mapping (re-check 06f5dc32, G-3). Also here: the module object handed over by another module (a sibling re-export, a function returning it, a parameter); a module loaded under a loader-chosen name (`importlib.util.spec_from_file_location`, `runpy` with a custom name); and by-name submodule loading with a computed name in `__init__.py` (`pkgutil.walk_packages(__path__, __name__ + '.')`), which rebinds a package global with no write in the source. Self-references that spell the module's name are no longer here: they give `dynamic-scope` (#695 panel A7, the ruling's B-4 and the general rule of its re-check) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
 
 **Owner notice** (informational, from the ruling): these are delegated
 decisions, all stricter than or consistent with the issue:
@@ -1783,3 +1968,165 @@ Only adds `none`; no expected row changes. `js` fact version 9.
 | C-1: `Object`/`Reflect` reached through a receiver `this` (`this.Object.assign`, `this['Reflect']['set']`, `this.window.Object`) is a property writer; the class-constructor exclusion still applies | §7.2 script goal |
 | A comma callee (`(0, Object.assign)(this, …)`) is a property writer | §7.2 script goal |
 | Writer aliases, `Reflect.apply`, spread arguments and computed `constructor` keys on arbitrary objects named in R11 | §15 R11 |
+
+### PR 4: Tier 1 Python (fail-closed refinements)
+
+The Python analyzer replaces the stub (`python` fact version 2). Every PR 4
+row of §10 holds as planned; the refinements below only add `none`, and no
+JS row changes.
+
+| Item | Applied in |
+| --- | --- |
+| Decorated definitions never prove alone (`expression-bound`); they still join a group | §7.3; §7.6 |
+| Every write form binds, read fail-closed; `case` captures; `from __future__` | §7.3 |
+| Python 2 forms (`except E, e`, list-comprehension leak, `exec` statement) | §7.3 |
+| Dynamic binding widened (`eval`, `locals`, `builtins`, `importlib`, `sys` aliases and dunders, `__globals__`, frame globals) and applied to class-body lookups | §7.3; §7.6 |
+| Type-parameter scopes, implicit dunders and `__class__` | §7.3 |
+| A non-ASCII identifier makes a Python file unsupported (NFKC) | §5.3 |
+| The probe's one-root run asserts the same Tier 1 rows as its py-root run | §10.2 |
+| `stub` leaves the vocabulary | §10.6 |
+| R12 added | §15 |
+
+### PR 4: #695 panel fold
+
+Every item only adds `none`; no expected row changes. `python` fact version
+3.
+
+| Item | Applied in |
+| --- | --- |
+| A1, B4, Codex 4653329444: a class with any base or keyword opens its namespace (`class-scope-bound`) | §7.3 class scope |
+| A2, B1: `f_locals` anywhere makes every lookup `dynamic-scope` | §7.3; R12 |
+| A3: module-scope definitions of builtin names give `builtin-shadow` | §7.3; §7.6 |
+| A4: a space before a tab, or a form feed, in indentation makes the file unsupported | §5.3 |
+| A5: `__main__` like `sys`; A6, B2: constant-string attribute names; A7: self-imports; B3: `X.modules[__name__]` | §7.3 dynamic binding |
+| B5, C1: line continuations are tokens; natural `unmapped` near-misses | §7.3; §10.6 |
+| B7: expected rows per plan PR pinned | `tests/test_call_resolution_engine.py` |
+| B8 (not done): digesting the unit-case sources | Each unit case pins its own outcome, so a fact change there already fails a test in the same change, where the version bump is reviewed; covering them would mean moving several hundred inline sources into a registry the harness can read. **Rule (the president's #695 ruling, section 5): any change to analyzer output bumps the per-family fact version, whether or not committed digests move.** |
+| C2 (not in this PR): narrowing the `importlib`/`sys` triggers needs its own soundness argument; A8 (cross-file monkeypatch, R10) is a follow-up | — |
+
+### PR 4: the president's #695 ruling
+
+Every item only adds `none`; no expected row changes. `python` fact version
+4, bumped by hand under the B8 rule above. Each fix has the ruling's trees
+committed as tests (`test_ruling_695_cases_keep_their_off_mode_edge`), and
+removing any one fix fails at least one test.
+
+| Item | Applied in |
+| --- | --- |
+| B-1: private-name mangling; a `__x` lookup inside a class gives `unmapped`, and bindings, `global` and `nonlocal` there also bind every mangled spelling | §7.3 (via the `py_scope` docstring); §7.6 `unmapped` |
+| B-2: a backslash continuation as a line's first non-blank character makes the file unsupported; the ruling's whitespace differential is a test | §5.3 |
+| B-3: in `__init__.py`, importing submodule `X` of the own package binds `X` at module scope (non-definition), also from a function | §7.3 dynamic binding (`py_scope` docstring); R12 for the cross-file form |
+| B-4: `import pkg.x` in `pkg/__init__.py`; the own module reached as an attribute of a parent package; a root-level `__init__.py` treats every absolute import as a possible self-import (narrower than making the file unsupported: function-local lookups and relative-import-only files still resolve). Superseded by the general rule of the re-check below | §7.3 dynamic binding |
+| B-5: parentheses around `__name__` in `X.modules[…]` and the getters | §7.3 dynamic binding |
+| B-6: `WindowsError` pinned as a platform builtin; the pin test is a superset check on every OS plus the exact 3.14 list | §7.3 builtin rule |
+| Section 4: R12 names `pkgutil.resolve_name`, `pydoc.locate` and `mock.patch` self-patches, cross-file submodule rebinding and builtins injected from elsewhere | §15 R12 |
+
+### PR 4: the president's #695 re-check at 5efc7eec
+
+Every item only adds `none`; no expected row changes. `python` fact version
+5. The 13 re-check trees, and variants, are committed as tests
+(`test_recheck_695_cases_keep_their_off_mode_edge`,
+`test_submodule_imports_rebind_at_any_depth`,
+`test_any_possible_self_reference_fails_closed`). Removing any part of the
+rule fails tests.
+
+| Item | Applied in |
+| --- | --- |
+| N-1, N-2, N-3: one general fail-closed rule replaces the per-shape B-3/B-4 fixes. The own name as a component of any import, any attribute name or any constant string makes module-scope lookups `dynamic-scope`. In any `__init__.py`, every resolved import path that passes through the package rebinds its next component. | §7.3 "The file's own module" |
+| R12 names iteration over a package's namespace | §15 R12 |
+
+### PR 4: the president's #695 re-check at f7f0b0bd
+
+Every item only adds `none`; no expected row changes. `python` fact version
+6. The 10 re-check trees, the R-5 trees and the computed-string trees the new
+attribute-write rule closes are committed as tests
+(`test_fold4_695_cases_keep_their_off_mode_edge`), with unit pins for each
+rule part (`test_fold4_rules_fail_closed`,
+`test_attribute_writes_through_any_receiver_rebind`). Removing any part fails
+tests.
+
+| Item | Applied in |
+| --- | --- |
+| N-4: own names and dynamic attribute names count whatever identifier node spells them (attribute, keyword argument, class-pattern keyword, dotted name), except parameter and `def`/`class` names; `X[__name__]` and the getters on any receiver | §7.3 "The file's own module" |
+| N-5: raw own names (no identifier filter; dotted stems add their components); no path fails closed | §7.3 |
+| N-6: a root-level `__init__.py` treats relative imports with two or more dots as self-imports; the "a relative import cannot reach it" claim is narrowed to a single dot | §7.3 |
+| R-5 family: attribute writes through any receiver (`x.name = v`, `setattr`, constant-key subscripts, `__dict__.update`/`setdefault`/`pop`, `__setitem__`) bind `name` at module scope; this also closes `pkgutil_resolve`, `pydoc_locate`, `str_percent`, `str_bytes_decode`, `modules_spec_name` and `str_fstring_nested` | §7.3 |
+| R12 names the R-5 shapes; the "every name ends with the own name" claim is narrowed to path-derived names | §15 R12; §7.3 |
+
+### PR 4: the president's #695 re-check at 06f5dc32
+
+Every item only adds `none`; no expected row changes. `python` fact version
+7. The seven `ws_*` trees are committed as tests
+(`test_fold5_695_cases_keep_their_off_mode_edge`), with unit pins
+(`test_module_parts_come_from_tokens`, `test_spaced_import_tokens_fail_closed`,
+`test_analyze_without_a_path_fails_closed`). Reverting the token-based
+parsing fails 20 tests.
+
+| Item | Applied in |
+| --- | --- |
+| N-7: a `from` import's relative level counts the `.` tokens of `import_prefix`, and its components come from `dotted_name`'s identifiers; the same level drives B-3/N-1 and N-6 | §7.3 |
+| Audit: every place that used raw node text as a name or dotted path now uses identifier tokens (import names and module paths, the `from sys import modules` check, the import-binding text, bound import names, `as` alias targets, `case` value patterns) | §7.3 "Names come from tokens" |
+| G-3: the attribute-write rule catches its listed spellings only; R12 names `operator.setitem`, `\|=` on the namespace dict and `update()` with a non-literal mapping | §7.3; §15 R12 |
+| G-1 nit: `analyze(path=None)` fails closed like `""` | `py_scope.analyze` |
+
+### PR 4: Codex 4654363963 (mangled names from class code)
+
+Only adds `none`; no expected row changes. `python` fact version 8. A
+Codex P2 on ready voided the approval at `e4ed3c5e`: the attribute-write rule
+recorded only the source spelling, but `mod.__helper = f` inside class `K`
+writes `_K__helper` at run time.
+
+| Item | Applied in |
+| --- | --- |
+| Every name recorded from an identifier in class code takes every runtime spelling (source and mangled `_Class__x`, by `_record`'s rules): attribute writes (`x.__n = v`, `del`, augmented), the own-name and dynamic-name scans, submodule imports. CPython 3.14 (`co_names`) mangles attribute names, imported module names and aliases, not keyword-argument names, class-pattern keywords or strings; the scans over-trigger on those safely, and string keys stay literal | §7.3 (B-1, via the `py_scope` docstring) |
+| Pins: Codex's tree end to end and variants (`del`, augmented assignment, a method body, a nested class, a comprehension target in a lambda, `global` plus an attribute write, a `with` target); mutation: attribute-write 9, scans 1, submodule imports 1 failures | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: the president's #695 re-check at 13c38360
+
+Only adds `none`; no expected row changes. `python` fact version 9.
+
+| Item | Applied in |
+| --- | --- |
+| I-3: the `sys` and `__main__` alias sets are built from every runtime spelling of the alias (`import __main__ as __m` in class `K` binds `_K__m`), and each use is tested by every spelling (`__m` in class code reads `_K__m`). The seven `p18` trees are committed (`test_fold7_695_cases_keep_their_off_mode_edge`), with unit pins (`test_mangled_sys_and_main_aliases_fail_closed`); reverting either side fails 2–4 tests | §7.3 (B-1, via the `py_scope` docstring) |
+| Audit of every name set compared against a use: own names (identifier spellings; strings stay literal), `_DYNAMIC_ATTRIBUTES` (spellings), `_DYNAMIC_NAMES`, `_ATTRIBUTE_WRITERS`, `_MODULE_GETTERS`, `__name__` and `__main__` (plain names or dunders, never mangled), scope bindings and `global`/`nonlocal` (mangled since B-1), attribute writes and submodule writes (mangled since Codex 4654363963). No other set compared source spellings only | — |
+
+### PR 4: the president's #695 re-check at eae66582
+
+Only adds `none`; no expected row changes. `python` fact version 10.
+
+| Item | Applied in |
+| --- | --- |
+| J-3a/J-4(1): an import in a class body (the nearest enclosing `class_definition` before any function or lambda) whose path or imported names include `sys` or `__main__` is dynamic: the bound name is a class attribute (`K.m`, `self.m`, `cls.__m`, `type(self)._K__m`, `getattr(K, 'm')`, `K.__main__`) that no identifier rule sees | §7.3 dynamic binding |
+| J-3b/J-4(2): every name a `from __main__ import …` binds joins the `__main__` alias set with every runtime spelling, so any later use (`g.update(D)`, `g[n] = len`, `__dict__.update(D)`) is dynamic; an unused one still resolves (panel A's `import_main_from`) | §7.3 dynamic binding |
+| R12 names the `sys` variants with a computed `modules` key and `from sys import __dict__` with a computed key | §15 R12 |
+| Pins: the 16 J-3 trees plus `m20_sys_classattr_k` (`test_fold8_695_cases_keep_their_off_mode_edge`), unit pins and resolving controls; mutation: class-body rule 16, from-import names 9, their spellings 1, the function boundary of `_in_class_body` 1 failures | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: the president's #695 re-check at f2b38014
+
+Only adds `none`; no expected row changes. `python` fact version 11.
+
+| Item | Applied in |
+| --- | --- |
+| K-3/K-4: a constant string with a `__main__` component (split on `.` and `:`) is dynamic, except as a comparison operand (through parentheses, or a tuple, list or set operand of `in`) or in a `case` pattern | §7.3 dynamic binding |
+| Closing the class: `__mp_main__` (a multiprocessing spawn child's name for the script) counts as `__main__` for the alias and string rules; the own-name and dynamic-attribute string rules also split on `:` (`pkgutil.resolve_name('pkg.a:__dict__')`, `'sys:modules'`); `/` maps no resolver to this module | §7.3 |
+| Pins: the 7 K-3 trees (`test_fold9_695_cases_keep_their_off_mode_edge`), unit pins and the guard controls (`==` both ways, `in`, `!=` with parentheses, `case`); mutation: string rule 12, exemption 5, `:` for `__main__` 2, own name 1, dynamic attributes 1, `__mp_main__` 2, `case` exemption 1 failures | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: the president's #695 re-check at 3b2d8fae
+
+Only adds `none`; no expected row changes. `python` fact version 12.
+
+| Item | Applied in |
+| --- | --- |
+| L-2/L-3: the `__main__` constant exemption is narrowed to an operand of a comparison whose every operand is the bare `__name__` or a constant string (or a tuple, list or set of those), or a whole literal `case` pattern (through adjacent literals or `\|`) of `match __name__`; never in a class body; never in a file that binds, declares `global`/`nonlocal`, deletes or attribute-writes `__name__` (the decision runs after the scan, once every attribute write is known) | §7.3 dynamic binding |
+| R12 names `b'__main__.helper'.decode()` and interpolated f-strings with a `__main__` part | §15 R12 |
+| Pins: the 25 L-2 trees (`test_fold10_695_cases_keep_their_off_mode_edge`), unit pins (`test_narrowed_main_guard_fails_closed`) and the guard controls (`==` both ways, `in`, `not in` a list, `!=` with parentheses, `case` and `case … \| …`, the guard in a function and in a method); mutation: operand check 12, comparison class-body stop 2, `match` subject 3, `match` class-body stop 1, `__name__` binding check 17, attribute-write `__name__` 1 failures; a redundant `case_pattern` type check was removed as dead code | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: the president's #695 re-check at 8006c72c
+
+Only adds `none`; no expected row changes. `python` fact version 13.
+
+| Item | Applied in |
+| --- | --- |
+| M-2 (multi-subject `match`; defaults evaluated in a class namespace): the comparison/`case` deny-list exemption is replaced by a positive allow-list (executive decision): exactly `__name__ == '__main__'` or `!=`, either order, optionally parenthesized, as the whole test of a module-level `if`/`elif`, in a file that never rebinds `__name__`. The `match` exemption, the class-body stops and the operand-shape logic are removed | §7.3 dynamic binding |
+| Flipped to fail closed (resolved under the fold-10 deny-list): `in ('__main__',)`, `not in [...]`, `match __name__: case '__main__'` and `case … \| …`, the guard in a function, `__name__ == '__main__'` in a method | `test_main_guards_off_the_allow_list_fail_closed` |
+| Pins: the 9 M-2 trees (`test_fold11_695_cases_keep_their_off_mode_edge`); allow-list controls that resolve (`==` both ways, `!=`, a parenthesized test and operand, `elif`) and that fail closed (chain, `and`, `not`, `in`, `<`, `is`, `is not`, `__mp_main__`, another left operand, a concatenated literal, a nested or class-body or function guard, a rebinding); mutation: every allow-list condition fails 1–3 tests | `tests/test_call_resolution_tier1_py.py` |

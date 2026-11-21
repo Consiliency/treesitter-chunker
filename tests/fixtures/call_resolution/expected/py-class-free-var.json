@@ -19,7 +19,17 @@
      "caller": "f",
      "file": "a.py",
      "line": 10,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5d97167e581b853d48d3108e0a7c011a58a605d8",
@@ -45,7 +55,18 @@
      "caller": "J",
      "file": "a.py",
      "line": 16,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.py:1:helper"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "5d97167e581b853d48d3108e0a7c011a58a605d8",

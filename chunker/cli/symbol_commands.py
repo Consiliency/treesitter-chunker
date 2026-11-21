@@ -64,8 +64,8 @@ def setup_symbol_parser(subparsers: argparse._SubParsersAction) -> None:
             "narrows ambiguous calls to bare names in Python, JavaScript, "
             "TypeScript and TSX files; it currently resolves JS/TS calls whose "
             "target a lexical binding proves (a script top level only when no "
-            "other file in the run may declare the name as a global), and does "
-            "not resolve Python calls"
+            "other file in the run may declare the name as a global), and "
+            "Python calls through the LEGB scope chain (never a redefinition)"
         ),
     )
     extract_parser.set_defaults(func=cmd_extract_symbols)

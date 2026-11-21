@@ -18,7 +18,18 @@
      "caller": "outer",
      "file": "a.py",
      "line": 5,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.py:2:outer.helper"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "16e4c90fb6553aa53e7b55b3a6da10e3cd7bf06e",

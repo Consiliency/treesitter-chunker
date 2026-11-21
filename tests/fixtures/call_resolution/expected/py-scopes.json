@@ -18,7 +18,17 @@
      "caller": "c_comp",
      "file": "a.py",
      "line": 6,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5d97167e581b853d48d3108e0a7c011a58a605d8",
@@ -44,7 +54,17 @@
      "caller": "c_lambda",
      "file": "a.py",
      "line": 10,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "outcome": "none(parameter)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5d97167e581b853d48d3108e0a7c011a58a605d8",
@@ -94,7 +114,17 @@
      "caller": "c_walrus",
      "file": "a.py",
      "line": 15,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5d97167e581b853d48d3108e0a7c011a58a605d8",
@@ -144,7 +174,17 @@
      "caller": "c_nonlocal.inner",
      "file": "a.py",
      "line": 23,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5d97167e581b853d48d3108e0a7c011a58a605d8",
@@ -170,7 +210,17 @@
      "caller": "c_del",
      "file": "a.py",
      "line": 31,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5d97167e581b853d48d3108e0a7c011a58a605d8",
@@ -220,7 +270,17 @@
      "caller": "c_with",
      "file": "a.py",
      "line": 36,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5d97167e581b853d48d3108e0a7c011a58a605d8",
@@ -246,7 +306,17 @@
      "caller": "c_for",
      "file": "a.py",
      "line": 41,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5d97167e581b853d48d3108e0a7c011a58a605d8",
@@ -272,7 +342,17 @@
      "caller": "c_match",
      "file": "a.py",
      "line": 47,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a.py:1:helper",
+       "b.py:1:helper"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "5d97167e581b853d48d3108e0a7c011a58a605d8",

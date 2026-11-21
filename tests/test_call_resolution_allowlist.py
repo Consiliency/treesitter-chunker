@@ -2,9 +2,9 @@
 
 Node kinds come from the loaded ``Language``, so this runs in CI without
 grammar sources. Every named kind of a reviewed grammar must be classified,
-so a grammar bump cannot add an unreviewed binding form. At this head the
-JavaScript, TypeScript and TSX grammars are reviewed (the JS/TS analyzer);
-Python is reviewed with its analyzer.
+so a grammar bump cannot add an unreviewed binding form. At this head all four
+grammars are reviewed: JavaScript, TypeScript and TSX with the JS/TS
+analyzer (PR 2), and Python with its analyzer (PR 4).
 """
 
 from __future__ import annotations
@@ -54,8 +54,8 @@ def test_entries_name_real_kinds_with_valid_classifications(language: str) -> No
 
 
 def test_reviewed_grammars_classify_every_named_kind() -> None:
-    """Each analyzer change lists its grammars; JS/TS at this head."""
-    assert {"javascript", "typescript", "tsx"} <= REVIEWED_LANGUAGES
+    """Each analyzer change lists its grammars; all four at this head."""
+    assert {"javascript", "typescript", "tsx", "python"} <= REVIEWED_LANGUAGES
     for language in sorted(REVIEWED_LANGUAGES):
         kinds = allowlist.named_node_kinds(language)
         assert allowlist.unclassified_kinds(kinds, ALLOWLIST[language]) == [], language
@@ -63,7 +63,12 @@ def test_reviewed_grammars_classify_every_named_kind() -> None:
 
 # ``node_kind_count`` of each reviewed grammar at its review (#689 panel B5).
 # A grammar bump changes it and forces a re-review of the allow-list.
-REVIEWED_NODE_KIND_COUNTS = {"javascript": 265, "typescript": 383, "tsx": 400}
+REVIEWED_NODE_KIND_COUNTS = {
+    "javascript": 265,
+    "typescript": 383,
+    "tsx": 400,
+    "python": 274,
+}
 
 
 def test_reviewed_grammars_are_pinned_by_node_kind_count() -> None:

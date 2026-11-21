@@ -5,8 +5,8 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"9"`` for the ``js`` family, whose analyzer is real,
-and ``"1"`` for ``python``, still the stub):
+Schema (fact version ``"9"`` for the ``js`` family and ``"13"`` for
+``python``; both analyzers are real):
 
 ``version``
     :data:`CALL_RESOLUTION_FACT_VERSIONS` for the file's language family, or
@@ -16,8 +16,9 @@ and ``"1"`` for ``python``, still the stub):
 ``supported``
     ``False`` for a language no analyzer covers, an analyzer exception,
     ``RecursionError``, a parser initialization failure, a tree with
-    errors, or a JS/TS file that spells a name with a Unicode escape
-    (section 5.3). An unsupported file never narrows, has no
+    errors, a JS/TS file that spells a name with a Unicode escape, or a
+    Python file with a non-ASCII identifier or with indentation that depends
+    on the width of a tab (section 5.3). An unsupported file never narrows, has no
     ``bindings`` and contributes nothing to other files.
 ``goal``
     JavaScript and TypeScript: ``"module"`` if the program has any top-level
@@ -35,6 +36,9 @@ and ``"1"`` for ``python``, still the stub):
     run declares that name as a script global (section 7.2).
     The JS/TS import binding is ``{"source": <specifier>, "name": <imported
     name, "default" or "*">, "form": "named" | "default" | "namespace"}``.
+    The Python import binding is ``{"form": "import", "module": <dotted
+    name>}`` for ``import m [as y]``, or ``{"form": "from", "module":
+    <module, with any leading dots>, "name": <imported name>}``.
     A call whose callee span matches no node has no entry
     (``no-binding-fact``).
 ``script_globals``
@@ -88,7 +92,34 @@ logger = logging.getLogger(__name__)
 # js "8": literal-key access equals dot access at every name-matching site
 # (Codex 4652498471 on #691).
 # js "9": ``Object``/``Reflect`` reached through a receiver ``this`` (C-1).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "9", "python": "1"}
+# python "2": the Python scope analyzer replaces the stub (plan PR 4).
+# python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
+# builtin shadowing, tab-width indentation, ``__main__``, literal attribute
+# names, self-imports, ``X.modules[__name__]``, line continuations).
+# python "4": the president's #695 ruling (private-name mangling, backslash
+# continuations in indentation, submodule rebinding in ``__init__.py``,
+# self-import gaps, parenthesized ``__name__``, ``WindowsError``). Any change
+# to analyzer output bumps the version, whether or not digests move.
+# python "5": the president's #695 re-check (one general fail-closed rule for
+# self-reference and submodule rebinding at any depth).
+# python "6": the re-check at f7f0b0bd (names matched whatever node spells
+# them, raw non-identifier own names, ``..`` from a root ``__init__.py``,
+# ``X[__name__]`` on any receiver, an unknown path fails closed).
+# python "7": the re-check at 06f5dc32 (names, dotted paths and relative
+# levels from tokens, not raw node text).
+# python "8": Codex 4654363963 (every runtime spelling of a name recorded
+# from class code, mangled ``_Class__x`` included).
+# python "9": the re-check at 13c38360 (I-3: ``sys``/``__main__`` alias sets
+# and their uses compare every runtime spelling).
+# python "10": the re-check at eae66582 (J-3: class-body imports of sys or
+# __main__, names a ``from __main__`` import binds).
+# python "11": the re-check at f2b38014 (K-3: ``"__main__"`` constant
+# strings; ``__mp_main__``; ``:`` separates string module paths).
+# python "12": the re-check at 3b2d8fae (L-2: the ``__main__`` guard
+# exemption narrowed).
+# python "13": the re-check at 8006c72c (M-2: a positive allow-list for the
+# module-level ``if __name__ == "__main__":`` guard).
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "9", "python": "13"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -103,6 +134,7 @@ TIER1_NONE_REASONS = (
     "reassigned",
     "block-function",
     "conditional",
+    "builtin-shadow",
     "mixed-bindings",
     "class-scope-bound",
     "star-import",
@@ -135,8 +167,9 @@ TIER2_NONE_REASONS = (
 )
 # Reasons that exist only at interim heads (section 7.6).
 # ``script-goal-deferred`` and ``namespace-deferred`` existed only at the PR 2
-# head; PR 3 replaced them, so they are no longer valid outcomes.
-INTERIM_NONE_REASONS = ("stub",)
+# head; PR 3 replaced them. ``stub`` existed until both analyzers were real;
+# PR 4 replaced the Python stub. None is a valid outcome any more.
+INTERIM_NONE_REASONS: tuple[str, ...] = ()
 KNOWN_NONE_REASONS = frozenset(
     TIER1_NONE_REASONS + TIER2_NONE_REASONS + INTERIM_NONE_REASONS
 )
@@ -198,11 +231,14 @@ def compute_scope_facts(
     call_facts: Sequence[Mapping[str, Any]],
     symbols: Sequence[Sequence[Any]],
     suffix: str = "",
+    path: str = "",
 ) -> dict[str, Any]:
     """Re-parse ``source`` and return the file's scope facts.
 
     ``suffix`` is the file's lower-case extension: ``.mjs`` and ``.mts``
-    files are always ES modules, whatever their syntax.
+    files are always ES modules, whatever their syntax. ``path`` is the
+    file's display path relative to the root (part of every cache key): a
+    Python file that imports its own module is dynamic.
 
     ``source`` is the buffer symbol-fact extraction already read, so callee
     spans match the call facts. Python source with a lone CR is parsed through
@@ -231,6 +267,14 @@ def compute_scope_facts(
         if family == "js" and suffix in _MODULE_SUFFIXES:
             partial = js_scope.analyze(
                 root, source, language, call_facts, goal="module"
+            )
+        elif family == "python" and analyzer is py_scope.analyze:
+            partial = py_scope.analyze(
+                root,
+                source,
+                language,
+                call_facts,
+                path=path,
             )
         else:
             partial = analyzer(root, source, language, call_facts)
