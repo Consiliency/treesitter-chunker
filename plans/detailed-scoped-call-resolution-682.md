@@ -696,15 +696,29 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     any name a `from __main__` import binds, any import of `sys` or
     `__main__` in a class body (#695 J-3/J-4), and a constant string with a
     `__main__` component (`mock.patch('__main__.helper')`,
-    `pydoc.locate('__main__')`), except as an operand of a comparison whose
-    other operands are `__name__` or constant strings, or as a literal `case`
-    pattern of `match __name__`, outside class bodies and in files that never
-    rebind `__name__` (#695 K-3/K-4, narrowed by L-2/L-3: any other comparison
-    or pattern can hand the constant to user code through `__eq__`,
-    `__contains__`, a `case` value, `|`, class or keyword pattern, a
-    `__prepare__` namespace or a rebound `__name__`; a rebinding includes
-    `global`/`nonlocal`, parameters, imports, targets, walrus, `del`, `match`
-    captures and an attribute write `x.__name__ = v`). `__mp_main__`, the name a multiprocessing spawn
+    `pydoc.locate('__main__')`), except on a **positive allow-list** (#695
+    K-3, then L-2 and M-2; executive decision after three rounds of escapes
+    through a deny-list exemption). A `'__main__'` constant is exempt only
+    when all of these hold:
+    1. it is exactly `'__main__'`, a plain string, and an operand of the
+       test of an `if` or `elif` statement at module top level (not nested in
+       a function, class, lambda, comprehension or `match`, and not a default
+       or decorator);
+    2. the test is exactly one comparison, `__name__ == '__main__'`,
+       `'__main__' == __name__` or the same with `!=`, with parentheses
+       allowed around the whole test or either operand (no chains, `in`,
+       tuples, `and`/`or`/`not`);
+    3. `__name__` is the bare identifier and the file never rebinds it
+       (`global`/`nonlocal`, parameters, imports, targets, walrus, `del`,
+       `match` captures, or an attribute write `x.__name__ = v`).
+
+    At module top level `__name__` is read from module globals, which only the
+    rebinding forms above, the existing dynamic triggers (`globals()`,
+    `sys.modules`, frames, `vars`) and R12 can replace. The comparison is
+    between a module-global `str` and a literal, so no user `__eq__` runs and
+    no class namespace or `__prepare__` is involved. Everything else with a
+    `__main__` component fails closed, including guards in functions or
+    methods, `in` forms and every `match __name__` form. `__mp_main__`, the name a multiprocessing spawn
     child imports the script under, counts as `__main__`. Constant strings
     split on `.` and `:` (the `pkgutil.resolve_name('pkg.mod:attr')` form)
     for this rule, the own-name rule and the dynamic attribute names; no
@@ -2106,3 +2120,13 @@ Only adds `none`; no expected row changes. `python` fact version 12.
 | L-2/L-3: the `__main__` constant exemption is narrowed to an operand of a comparison whose every operand is the bare `__name__` or a constant string (or a tuple, list or set of those), or a whole literal `case` pattern (through adjacent literals or `\|`) of `match __name__`; never in a class body; never in a file that binds, declares `global`/`nonlocal`, deletes or attribute-writes `__name__` (the decision runs after the scan, once every attribute write is known) | §7.3 dynamic binding |
 | R12 names `b'__main__.helper'.decode()` and interpolated f-strings with a `__main__` part | §15 R12 |
 | Pins: the 25 L-2 trees (`test_fold10_695_cases_keep_their_off_mode_edge`), unit pins (`test_narrowed_main_guard_fails_closed`) and the guard controls (`==` both ways, `in`, `not in` a list, `!=` with parentheses, `case` and `case … \| …`, the guard in a function and in a method); mutation: operand check 12, comparison class-body stop 2, `match` subject 3, `match` class-body stop 1, `__name__` binding check 17, attribute-write `__name__` 1 failures; a redundant `case_pattern` type check was removed as dead code | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: the president's #695 re-check at 8006c72c
+
+Only adds `none`; no expected row changes. `python` fact version 13.
+
+| Item | Applied in |
+| --- | --- |
+| M-2 (multi-subject `match`; defaults evaluated in a class namespace): the comparison/`case` deny-list exemption is replaced by a positive allow-list (executive decision): exactly `__name__ == '__main__'` or `!=`, either order, optionally parenthesized, as the whole test of a module-level `if`/`elif`, in a file that never rebinds `__name__`. The `match` exemption, the class-body stops and the operand-shape logic are removed | §7.3 dynamic binding |
+| Flipped to fail closed (resolved under the fold-10 deny-list): `in ('__main__',)`, `not in [...]`, `match __name__: case '__main__'` and `case … \| …`, the guard in a function, `__name__ == '__main__'` in a method | `test_main_guards_off_the_allow_list_fail_closed` |
+| Pins: the 9 M-2 trees (`test_fold11_695_cases_keep_their_off_mode_edge`); allow-list controls that resolve (`==` both ways, `!=`, a parenthesized test and operand, `elif`) and that fail closed (chain, `and`, `not`, `in`, `<`, `is`, `is not`, `__mp_main__`, another left operand, a concatenated literal, a nested or class-body or function guard, a rebinding); mutation: every allow-list condition fails 1–3 tests | `tests/test_call_resolution_tier1_py.py` |

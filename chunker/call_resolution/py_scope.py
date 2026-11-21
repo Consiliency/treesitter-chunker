@@ -107,12 +107,13 @@ __main__ import __dict__ as g`` hands over the namespace), and any import of
 ``sys`` or ``__main__`` in a class body (a class attribute, read as ``K.m``,
 ``self.m`` or ``getattr(K, "m")``), and a constant string with a ``__main__``
 component (``mock.patch("__main__.helper")``, ``pydoc.locate("__main__")``),
-except as an operand of a comparison whose other operands are ``__name__`` or
-constant strings, or as a literal ``case`` pattern of ``match __name__``,
-outside class bodies and in files that never rebind ``__name__`` (``if
-__name__ == "__main__":`` still resolves; any other comparison or pattern can
-hand the constant to user code through ``__eq__``, ``__contains__`` or a
-rebound ``__name__``, #695 L-2); ``__mp_main__``, the name a multiprocessing
+except on a positive allow-list: exactly ``__name__ == "__main__"`` or
+``!=``, either order, optionally parenthesized, as the whole test of an
+``if`` or ``elif`` at module top level, in a file that never rebinds
+``__name__`` (#695 M-2). There ``__name__`` is a module-global ``str``, so no
+user ``__eq__`` runs and no class namespace or ``__prepare__`` is involved;
+every other comparison, ``in``, chain, ``match`` form, or guard in a function,
+method or class fails closed; ``__mp_main__``, the name a multiprocessing
 spawn child imports the script under, counts as ``__main__``, and constant
 strings split on ``.`` and ``:`` (``pkgutil.resolve_name("pkg.mod:attr")``)
 for this rule, the own-name rule and the dynamic attribute names;
@@ -1273,62 +1274,65 @@ class _Analysis:
                 self.dynamic = True
 
     def _main_guard(self, node: Any) -> bool:
-        """Whether a ``__main__`` constant is exempt: no user code can receive
-        it (#695 L-2/L-3).
+        """Whether a ``__main__`` constant is exempt: a positive allow-list
+        (#695 L-2/M-2, executive decision).
 
-        Only an operand of a comparison whose every operand is the bare
-        ``__name__`` or a constant string (or a tuple, list or set of those),
-        or a literal ``case`` pattern (through adjacent literals or ``|``) of
-        ``match __name__``. Never in a class body, whose namespace may supply
-        ``__name__``, and never in a file that binds, declares ``global`` or
-        ``nonlocal``, deletes or attribute-writes ``__name__`` anywhere: a
-        rebound ``__name__``, a dunder method of an operand (``__eq__``,
-        ``__contains__``) or a ``case`` value, ``|``, class or keyword pattern
-        could hand the constant to user code.
+        Only the script guard at module top level: the constant is exactly
+        ``"__main__"`` (a plain string, optionally in parentheses) and one
+        operand of a single ``==`` or ``!=`` comparison whose other operand is
+        the bare ``__name__``; that comparison (optionally in parentheses) is
+        the whole test of an ``if`` statement directly in the module, or of
+        an ``elif`` of one; and the file never rebinds ``__name__``. There,
+        ``__name__`` is read from the module globals, so the comparison is
+        between a module-global ``str`` and a literal: no user ``__eq__`` runs
+        and no class namespace or ``__prepare__`` is involved. Everything
+        else with a ``__main__`` component fails closed: guards in functions,
+        methods or classes, ``in``, chains, ``and``/``or``/``not``, and every
+        ``match`` form.
         """
-        if self._name_rebound():
+        if self._name_rebound() or node.type != "string":
             return False
-        source = self.source
-        current = node
-        while current.parent is not None and current.parent.type in (
-            "parenthesized_expression",
-            "tuple",
-            "list",
-            "set",
-            "concatenated_string",
+        if _constant_string(node, self.source) != _MAIN:
+            return False
+        operand = node
+        while (
+            operand.parent is not None
+            and operand.parent.type == "parenthesized_expression"
         ):
-            current = current.parent
-        parent = current.parent
-        if parent is not None and parent.type == "comparison_operator":
-            return not _in_class_body(parent) and all(
-                _guard_operand(operand, source) for operand in parent.named_children
-            )
-        current = node
-        while current.parent is not None and current.parent.type in (
-            "concatenated_string",
-            "union_pattern",
-        ):
-            current = current.parent
-        pattern = current.parent
-        clause = pattern.parent if pattern is not None else None
-        block = clause.parent if clause is not None else None
-        match = block.parent if block is not None else None
-        # Only a ``case_pattern`` sits directly under a ``case_clause``, so the
-        # clause check also proves the constant is a whole literal pattern.
-        if (
-            pattern is None
-            or clause is None
-            or clause.type != "case_clause"
-            or match is None
-            or match.type != "match_statement"
-            or _in_class_body(match)
+            operand = operand.parent
+        comparison = operand.parent
+        if comparison is None:
+            return False
+        # A single ``==``/``!=`` token between exactly two operands only occurs
+        # in a ``comparison_operator``.
+        operands = [
+            child for child in comparison.named_children if child.type != "comment"
+        ]
+        operators = [child.type for child in comparison.children if not child.is_named]
+        if len(operands) != 2 or operators not in (["=="], ["!="]):
+            return False
+        other = _unwrap(operands[1] if _same(operands[0], operand) else operands[0])
+        if not any(_same(item, operand) for item in operands) or not (
+            other.type == "identifier" and _text(other, self.source) == "__name__"
         ):
             return False
-        subject = match.child_by_field_name("subject")
+        test = comparison
+        while (
+            test.parent is not None and test.parent.type == "parenthesized_expression"
+        ):
+            test = test.parent
+        # A comparison sits directly under an ``if`` or ``elif`` only as its
+        # whole condition.
+        statement = test.parent
+        if statement is None:
+            return False
+        if statement.type == "elif_clause":
+            statement = statement.parent
         return (
-            subject is not None
-            and subject.type == "identifier"
-            and _text(subject, source) == "__name__"
+            statement is not None
+            and statement.type == "if_statement"
+            and statement.parent is not None
+            and statement.parent.type == "module"
         )
 
     def _name_rebound(self) -> bool:
@@ -1703,21 +1707,6 @@ def _spellings(ident: Any, source: bytes) -> set[str]:
     rules of :func:`_mangled_names`)."""
     name = _text(ident, source)
     return {name, *_mangled_names(ident, name, source)}
-
-
-def _guard_operand(operand: Any, source: bytes) -> bool:
-    """A comparison operand no user code receives: the bare ``__name__``, a
-    constant string, or a tuple, list or set of those."""
-    operand = _unwrap(operand)
-    if operand.type == "comment":
-        return True
-    if operand.type == "identifier":
-        return _text(operand, source) == "__name__"
-    if _constant_string(operand, source) is not None:
-        return True
-    if operand.type in ("tuple", "list", "set"):
-        return all(_guard_operand(item, source) for item in operand.named_children)
-    return False
 
 
 def _in_class_body(node: Any) -> bool:
