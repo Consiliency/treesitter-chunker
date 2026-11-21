@@ -2050,3 +2050,12 @@ writes `_K__helper` at run time.
 | --- | --- |
 | Every name recorded from an identifier in class code takes every runtime spelling (source and mangled `_Class__x`, by `_record`'s rules): attribute writes (`x.__n = v`, `del`, augmented), the own-name and dynamic-name scans, submodule imports. CPython 3.14 (`co_names`) mangles attribute names, imported module names and aliases, not keyword-argument names, class-pattern keywords or strings; the scans over-trigger on those safely, and string keys stay literal | §7.3 (B-1, via the `py_scope` docstring) |
 | Pins: Codex's tree end to end and variants (`del`, augmented assignment, a method body, a nested class, a comprehension target in a lambda, `global` plus an attribute write, a `with` target); mutation: attribute-write 9, scans 1, submodule imports 1 failures | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: the president's #695 re-check at 13c38360
+
+Only adds `none`; no expected row changes. `python` fact version 9.
+
+| Item | Applied in |
+| --- | --- |
+| I-3: the `sys` and `__main__` alias sets are built from every runtime spelling of the alias (`import __main__ as __m` in class `K` binds `_K__m`), and each use is tested by every spelling (`__m` in class code reads `_K__m`). The seven `p18` trees are committed (`test_fold7_695_cases_keep_their_off_mode_edge`), with unit pins (`test_mangled_sys_and_main_aliases_fail_closed`); reverting either side fails 2–4 tests | §7.3 (B-1, via the `py_scope` docstring) |
+| Audit of every name set compared against a use: own names (identifier spellings; strings stay literal), `_DYNAMIC_ATTRIBUTES` (spellings), `_DYNAMIC_NAMES`, `_ATTRIBUTE_WRITERS`, `_MODULE_GETTERS`, `__name__` and `__main__` (plain names or dunders, never mangled), scope bindings and `global`/`nonlocal` (mangled since B-1), attribute writes and submodule writes (mangled since Codex 4654363963). No other set compared source spellings only | — |

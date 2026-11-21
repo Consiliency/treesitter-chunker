@@ -3534,3 +3534,164 @@ def test_class_code_submodule_imports_bind_mangled_names() -> None:
         "def use():\n    return _K__helper()\n"
     )
     assert _outcome_at(source, "_K__helper", "pkg/__init__.py")["outcome"] == "none"
+
+
+# ---------------------------------------------------------------------------
+# The president's re-check at 13c38360 (I-3): the ``sys``/``__main__`` alias
+# sets and their uses compare every runtime spelling, mangled included.
+
+FOLD7_695: dict[str, tuple[str, dict[str, str]]] = {
+    "m18_main_alias_in_class": (
+        "I-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "class K:\n"
+            "    global __m\n"
+            "    import __main__ as __m\n"
+            "_K__m.__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m18_main_alias_in_class_setattr": (
+        "I-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "class K:\n"
+            "    global __m\n"
+            "    import __main__ as __m\n"
+            "setattr(_K__m, n, len)\n"
+            "use()\n"
+        },
+    ),
+    "m18_main_alias_setattr": (
+        "I-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "import __main__ as _K__m\n"
+            "n = ''.join(['hel', 'per'])\n"
+            "class K:\n"
+            "    setattr(__m, n, len)\n"
+            "use()\n"
+        },
+    ),
+    "m18_main_alias_use_in_class": (
+        "I-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "import __main__ as _K__m\n"
+            "class K:\n"
+            "    __m.__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m18_main_alias_use_in_method": (
+        "I-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "import __main__ as _K__m\n"
+            "class K:\n"
+            "    def f(self):\n"
+            "        __m.__dict__.update(D)\n"
+            "K().f()\n"
+            "use()\n"
+        },
+    ),
+    "m18_sys_alias_in_class": (
+        "I-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "k = __name__\n"
+            "class K:\n"
+            "    global __s\n"
+            "    import sys as __s\n"
+            "_K__s.modules[k].__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+    "m18_sys_alias_use_in_class": (
+        "I-3",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "D = {'helper': len}\n"
+            "k = __name__\n"
+            "import sys as _K__s\n"
+            "class K:\n"
+            "    __s.modules[k].__dict__.update(D)\n"
+            "use()\n"
+        },
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD7_695))
+def test_fold7_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    _, spec = FOLD7_695[case]
+    files = dict(spec)
+    target = files.pop("__target__", "a.py")
+    files.setdefault("b.py", _decoys(files[target]))
+    root = _tree(tmp_path, files)
+    off, on = _off_on(root)
+    off_calls = [e for e in off["relationships"] if e["file"] == target]
+    assert any(edge["resolution"] == "ambiguous" for edge in off_calls), case
+    assert [e for e in on["relationships"] if e["file"] == target] == off_calls
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        # Defined in class code (binds ``_K__m``), used outside it.
+        "class K:\n    global __m\n    import __main__ as __m\n_K__m.__dict__.clear()",
+        "class K:\n    global __s\n    import sys as __s\n_K__s.modules",
+        # Defined outside, used in class code (``__m`` reads ``_K__m``).
+        "import __main__ as _K__m\nclass K:\n    __m.__dict__.clear()",
+        "import sys as _K__s\nclass K:\n    def m(self):\n        return __s.modules",
+    ],
+)
+def test_mangled_sys_and_main_aliases_fail_closed(form: str) -> None:
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", "pkg/a.py") == {
+        "outcome": "none",
+        "reason": "dynamic-scope",
+    }, form

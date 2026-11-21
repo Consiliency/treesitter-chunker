@@ -137,8 +137,10 @@ so ``_C__x`` spelled out elsewhere never proves past a mangled write. The
 same holds wherever the analysis records a name from an identifier in class
 code (Codex 4654363963): an attribute write (``mod.__helper = f`` in class
 ``K`` writes ``_K__helper``; also ``del`` and augmented assignment), the
-own-name and dynamic-name scans, and submodule imports all take every runtime
-spelling. CPython 3.14 mangles attribute names, imported module names and
+own-name and dynamic-name scans, submodule imports, and the ``sys`` and
+``__main__`` alias sets with the uses tested against them (#695 I-3:
+``import __main__ as __m`` in class ``K`` binds ``_K__m``) all take every
+runtime spelling. CPython 3.14 mangles attribute names, imported module names and
 ``as`` aliases, but not keyword-argument names, class-pattern keywords or
 strings; the scans take the mangled spelling everywhere anyway, which can
 only fail closed, and string keys keep their literal spelling.
@@ -1150,10 +1152,12 @@ class _Analysis:
                 alias = node.child_by_field_name("alias")
                 parts = _dotted_parts(imported, source) if imported is not None else []
                 last = parts[-1] if parts else ""
+                # In class code an alias binds its mangled spelling too
+                # (``import __main__ as __m`` binds ``_K__m``; #695 I-3).
                 if alias is not None and last == _SYS:
-                    sys_names.add(_text(alias, source))
+                    sys_names.update(_spellings(alias, source))
                 if alias is not None and last == _MAIN:
-                    main_names.add(_text(alias, source))
+                    main_names.update(_spellings(alias, source))
             elif kind in ("string", "concatenated_string", "binary_operator"):
                 value = _constant_string(node, source)
                 if value is not None:
@@ -1208,9 +1212,11 @@ class _Analysis:
                 continue
             if name in _DYNAMIC_NAMES:
                 self.dynamic = True
-            elif name in sys_names:
+            elif spellings & sys_names:
+                # Both sides use every runtime spelling: ``__m`` in class
+                # ``K`` reads ``_K__m``, and ``_K__m`` outside reads it too.
                 self._sys_use(ident)
-            elif name in main_names and not _import_context(ident):
+            elif spellings & main_names and not _import_context(ident):
                 # ``__main__.helper = len``, ``setattr(m, ...)``.
                 self.dynamic = True
 
