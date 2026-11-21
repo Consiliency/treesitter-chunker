@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"3"`` for the ``js`` family, whose analyzer is real,
+Schema (fact version ``"4"`` for the ``js`` family, whose analyzer is real,
 and ``"1"`` for ``python``, still the stub):
 
 ``version``
@@ -74,7 +74,8 @@ logger = logging.getLogger(__name__)
 # js "2": the JS/TS scope analyzer replaces the stub (plan PR 2).
 # js "3": script globals, script-goal lookups, namespace merging and
 # inherited ambient status (plan PR 3).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "3", "python": "1"}
+# js "4": t1.js_hoist, in its own change so it can be reverted alone (PR 3).
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "4", "python": "1"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 

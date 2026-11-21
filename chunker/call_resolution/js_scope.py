@@ -47,8 +47,10 @@ precedence):
    body proves itself (``t1.lexical``); in TS, k >= 1 bodyless signatures
    directly followed by one ``function_declaration`` body, contiguous, prove
    the body (``t1.ts_overload``); signatures with any other body shape prove
-   every member, which narrows but never resolves; two or more bodies prove
-   the bodies as an ambiguous group;
+   every member, which narrows but never resolves; in plain JavaScript, two
+   or more function declarations directly in one function body or script
+   ``program`` prove the last one (``t1.js_hoist``); any other two or more
+   bodies prove the bodies as an ambiguous group;
 4. only when the lookup would otherwise prove something:
    ``namespace-merged`` for a lookup through a merged namespace body (also
    when it ends unbound there), one whose namespace has another namespace or
@@ -114,6 +116,7 @@ from . import allowlist
 MAX_DEPTH = 500
 
 RULE_TS_OVERLOAD = "t1.ts_overload"
+RULE_JS_HOIST = "t1.js_hoist"
 
 # ``script_globals`` entry for a file that may write a global of any name: a
 # global object written through a computed key or escaping into other code,
@@ -1203,7 +1206,12 @@ class _Analysis:
         signatures = [binding for binding in callable_ if binding.kind == _SIGNATURE]
         rules: list[str] = []
         group: Sequence[_Binding] = bodies
-        if len(bodies) == 1 and signatures:
+        if self._hoisted(scope, symbols, bodies):
+            # t1.js_hoist: every function declaration of the scope is bound
+            # before any statement runs, so the last one is the value.
+            group = [max(bodies, key=lambda binding: binding.decl.start_byte)]
+            rules = [RULE_JS_HOIST]
+        elif len(bodies) == 1 and signatures:
             if self.typescript and self._overload_set(scope, signatures, bodies[0]):
                 rules = [RULE_TS_OVERLOAD]
             else:
@@ -1215,6 +1223,35 @@ class _Analysis:
             for binding in group
         )
         return {"outcome": "local", "proof": proof, "rules": rules}
+
+    def _hoisted(
+        self,
+        scope: _Scope,
+        symbols: Sequence[_Binding],
+        bodies: Sequence[_Binding],
+    ) -> bool:
+        """``t1.js_hoist`` (section 7.4, 8): plain JavaScript, two or more
+        function or generator declarations directly in one function body or
+        one script ``program``, and nothing else binding the name there.
+
+        Block-level declarations (Annex B), expression bindings and any other
+        binding never reach this point: :meth:`_decide` already returned
+        ``block-function``, ``mixed-bindings`` or ``reassigned`` (2.6(a)).
+        An ES-module top level, where duplicates are an early error, a class
+        static block and TypeScript keep the ambiguous group.
+        """
+        if self.language != "javascript" or len(bodies) < 2:
+            return False
+        if not (
+            scope.kind == _FUNCTION_SCOPE
+            or (scope.kind == _PROGRAM and self.goal == "script")
+        ):
+            return False
+        return len(symbols) == len(bodies) and all(
+            binding.decl.type in _FUNCTION_DECLARATIONS
+            and _same(binding.statement.parent, scope.node)
+            for binding in bodies
+        )
 
     def _overload_set(
         self, scope: _Scope, signatures: Sequence[_Binding], body: _Binding

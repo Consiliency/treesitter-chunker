@@ -70,12 +70,14 @@
      "reference": "d",
      "structural": {
       "candidates": [
-       "k.js:3:d",
        "k.js:6:d"
       ],
       "outcome": "local",
-      "resolution": "ambiguous",
-      "rules": []
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical",
+       "t1.js_hoist"
+      ]
      },
      "today": {
       "candidate_ids": [

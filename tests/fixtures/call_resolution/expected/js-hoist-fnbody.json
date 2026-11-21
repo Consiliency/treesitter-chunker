@@ -22,13 +22,13 @@
      "reference": "d",
      "structural": {
       "candidates": [
-       "a.js:2:g.d",
        "a.js:3:g.d"
       ],
       "outcome": "local",
-      "resolution": "ambiguous",
+      "resolution": "resolved",
       "rules": [
-       "t1.lexical"
+       "t1.lexical",
+       "t1.js_hoist"
       ]
      },
      "today": {

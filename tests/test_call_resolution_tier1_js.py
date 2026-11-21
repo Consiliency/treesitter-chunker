@@ -11,7 +11,7 @@ fixture call end to end; this module adds:
   with a function is dropped before the proof), and B7 (``declare enum``
   gives ``non-callable``);
 - the allow-list contract: every handled kind has a handler;
-- PR 3: script globals (implicit globals,
+- PR 3: ``t1.js_hoist`` with Annex B, script globals (implicit globals,
   global-object writes and their fail-closed wildcard), TS namespace merging
   and inherited ambient status, with end-to-end trees the tests write.
 """
@@ -431,6 +431,108 @@ def test_script_goal_and_namespace_lookups_follow_r1() -> None:
 
 
 # ---------------------------------------------------------------------------
+# t1.js_hoist (7.4, 8; PR 3)
+
+
+def test_js_hoist_proves_the_last_declaration() -> None:
+    body = "function g() { function d() { return 1; } function d() { return 2; } return d(); }"
+    assert _js_proof(body) == (["function d() { return 2; }"], ["t1.js_hoist"])
+    # The call position does not matter: every declaration is hoisted.
+    before = (
+        "function g() { d(); function d() { return 1; } function d() { return 2; } }"
+    )
+    assert _js_proof(before) == (["function d() { return 2; }"], ["t1.js_hoist"])
+    script = "function d() { return 1; }\nfunction* d() { yield 2; }\nfunction g() { return d(); }"
+    assert _js_proof(script) == (["function* d() { yield 2; }"], ["t1.js_hoist"])
+    arrow_body = (
+        "const g = () => { function d() {} async function d() {} return d(); };"
+    )
+    assert _js_proof(arrow_body) == (["async function d() {}"], ["t1.js_hoist"])
+    method = "export class K { m() { function d() {} function d() { return 2; } return d(); } }"
+    assert _js_proof(method) == (["function d() { return 2; }"], ["t1.js_hoist"])
+    # A parameter of the same name is overwritten by the declarations.
+    param = "function g(d) { function d() {} function d() { return 2; } return d(); }"
+    assert _js_proof(param) == (["function d() { return 2; }"], ["t1.js_hoist"])
+
+
+ANNEX_B_FORMS = {
+    # 2.6(a)/(b): a block-level declaration anywhere in the var scope.
+    "if-block": "if (x) { function d() {} }",
+    "if-clause": "if (x) function d() {}",
+    "else": "if (x) {} else { function d() {} }",
+    "switch": "switch (x) { case 1: function d() {} }",
+    "labelled": "l: function d() {}",
+    "labelled-block": "l: { function d() {} }",
+    "for": "for (;;) { function d() {} }",
+    "try": "try { function d() {} } catch (e) {}",
+    "catch": "try {} catch (e) { function d() {} }",
+    "nested-block": "{ { function d() {} } }",
+}
+
+
+@pytest.mark.parametrize("form", sorted(ANNEX_B_FORMS))
+def test_js_hoist_is_off_with_a_block_level_declaration(form: str) -> None:
+    for wrap in ("function g(x) { %s }", "%s"):
+        source = wrap % (
+            "function d() { return 1; } function d() { return 2; } "
+            + ANNEX_B_FORMS[form]
+            + " function h() { return d(); }"
+        )
+        assert reason(source, "d", language="javascript") == "block-function", source
+
+
+OTHER_BINDINGS = {
+    # 2.6(a): an expression binding, or any other binding of the name.
+    "var-function": ("var d = function () {};", "mixed-bindings"),
+    "var-arrow": ("var d = () => 1;", "mixed-bindings"),
+    "var": ("var d;", "mixed-bindings"),
+    "var-in-block": ("if (x) { var d = 1; }", "mixed-bindings"),
+    "for-var": ("for (var d in o) {}", "mixed-bindings"),
+    "assignment": ("d = function () {};", "reassigned"),
+    "nested-assignment": ("function h() { d = 1; }", "reassigned"),
+    "deep-nested-assignment": ("function h() { return () => { d++; }; }", "reassigned"),
+    "compound": ("d ||= other;", "reassigned"),
+    "for-of-target": ("for (d of xs) {}", "reassigned"),
+    "destructuring": ("[d] = xs;", "reassigned"),
+    "eval": ("eval(s);", "dynamic-scope"),
+    "nested-eval": ("function h() { eval(s); }", "dynamic-scope"),
+    "arguments-alias": ("arguments[0] = 1;", None),
+}
+
+
+@pytest.mark.parametrize("form", sorted(OTHER_BINDINGS))
+def test_js_hoist_is_off_with_another_binding_or_write(form: str) -> None:
+    extra, expected = OTHER_BINDINGS[form]
+    params = "d, x" if form == "arguments-alias" else "x"
+    source = (
+        f"function g({params}) {{ function d() {{ return 1; }} "
+        f"function d() {{ return 2; }} {extra} return d(); }}"
+    )
+    assert reason(source, "d", language="javascript") == (expected or "reassigned")
+
+
+def test_js_hoist_needs_plain_js_in_a_function_body_or_script() -> None:
+    pair = "function d() { return 1; } function d() { return 2; }"
+    # An ES-module top level (an early error) keeps the group.
+    esm = f"export {{}};\n{pair}\nexport function g() {{ return d(); }}"
+    assert _js_proof(esm) == (
+        ["function d() { return 1; }", "function d() { return 2; }"],
+        [],
+    )
+    # A class static block is its own var scope, but not a function body.
+    static = f"class K {{ static {{ {pair} d(); }} }}"
+    assert _js_proof(static)[1] == []
+    # TypeScript duplicate bodies stay an ambiguous group (section 8).
+    for language in ("typescript", "tsx"):
+        ts = f"function g() {{ {pair} return d(); }}"
+        result = outcome(ts, "d", language=language)
+        assert (len(result["proof"]), result["rules"]) == (2, []), language
+    # A function inside a module file is still a function body.
+    module_body = f"export function g() {{ {pair} return d(); }}"
+    assert _js_proof(module_body) == (["function d() { return 2; }"], ["t1.js_hoist"])
+
+
+# ---------------------------------------------------------------------------
 # Script globals (7.2; PR 3)
 
 
@@ -807,6 +909,57 @@ def test_script_global_controls_end_to_end(tmp_path: Path) -> None:
     top level resolves next to them."""
     root = _write(tmp_path, {"k.js": SCRIPT, **COMPANIONS})
     assert _resolved_line(root, ["t1.lexical"]) == 1
+
+
+HOISTED_SCRIPT = (
+    "function d() { return 1; }\nfunction d() { return 2; }\n"
+    "function g() { return d(); }\n"
+)
+
+
+def test_js_hoist_end_to_end(tmp_path: Path) -> None:
+    """rt-js's shape: a script's hoisted pair resolves to the last one, and
+    the script-global check still applies to it (7.2, 7.4)."""
+    alone = tmp_path / "alone"
+    alone.mkdir()
+    _write(alone, {"k.js": HOISTED_SCRIPT, **COMPANIONS})
+    assert _resolved_line(alone, ["t1.lexical", "t1.js_hoist"]) == 2
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    _write(shared, {"k.js": HOISTED_SCRIPT, "s.js": "var d;\n", **COMPANIONS})
+    off, on = _edge(_edges(shared), "k.js", "d")
+    assert off["resolution"] == "ambiguous"
+    # none(script-global) proves nothing; only t1.family drops p.py's ``d``.
+    assert on["resolution"] == "ambiguous"
+    assert on["provenance"]["call_rules"] == ["t1.family"]
+    assert len(on["candidates"]) == len(off["candidates"]) - 1
+
+
+def test_js_hoist_near_misses_end_to_end(tmp_path: Path) -> None:
+    """Annex B, a later write and a TS file keep their off-mode edges."""
+    root = _write(
+        tmp_path,
+        {
+            "a.js": (
+                "export function g(x) { function d() {} function d() {} "
+                "switch (x) { case 1: function d() {} } return d(); }\n"
+                "export function h() { function e() {} function e() {} "
+                "function w() { e = 1; } return e(); }\n"
+            ),
+            "b.ts": "export function g() { function d() {} function d() {} return d(); }\n",
+            # Nested only: a top-level ``d`` would be C0 on its own (6.2).
+            "c.js": "export function k() { function d() {} function e() {} }\n",
+        },
+    )
+    pairs = _edges(root)
+    for file, reference in (("a.js", "d"), ("a.js", "e")):
+        off, on = _edge(pairs, file, reference)
+        assert off["resolution"] == "ambiguous", (file, reference)
+        assert on == off, (file, reference)
+    # TS duplicate bodies narrow to the group and stay ambiguous.
+    off, on = _edge(pairs, "b.ts", "d")
+    assert on["resolution"] == "ambiguous"
+    assert len(on["candidates"]) == 2 < len(off["candidates"])
 
 
 def test_namespace_merging_end_to_end(tmp_path: Path) -> None:

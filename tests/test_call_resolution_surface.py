@@ -329,6 +329,7 @@ def test_experimental_label_and_spec_text() -> None:
     # The per-head statement (plan 4.5) at PR 3.
     assert "Python calls are not resolved yet" in unreleased
     assert "t1.ts_overload" in unreleased
+    assert "t1.js_hoist" in unreleased
     assert "script_globals" in unreleased
     spec = (ROOT / "docs" / "interface-boundary-spec.md").read_text(encoding="utf-8")
     assert "### Call resolution extension (experimental)" in spec

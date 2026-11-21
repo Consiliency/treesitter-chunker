@@ -1646,11 +1646,13 @@ Both tighten the rules (fail closed); neither departs from a ruling. Today cells
 
 ### PR 3: hoisting and globals (fail-closed refinements)
 
-These tighten §7.2 and §7.4 without changing any expected row; each only
-adds `none`.
+`t1.js_hoist` lands in its own commit (js fact version 4), so it can be
+reverted alone. The other items tighten §7.2 without changing any expected
+row; each only adds `none`.
 
 | Item | Applied in |
 | --- | --- |
+| `t1.js_hoist`, its own rule ID | §7.4 JS row; §8; §10.2 rt-js and §10.3 js-hoist-fnbody final |
 | Global-object writes beyond `window`/`globalThis`/`self`, the wildcard `*`, unsupported files as `*`, same-file writes as `reassigned` | §7.2 script goal |
 | Mapped `arguments` aliasing | §7.2 reassignment |
 | Namespace merging counted per declaring scope; enums, dotted names, `declare module` and `declare global` always merged; exported namespace `const` is `expression-bound` | §7.2 TS namespaces |

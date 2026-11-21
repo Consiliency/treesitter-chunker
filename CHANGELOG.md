@@ -25,12 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     callee up through the lexical scope chain (class bodies skipped,
     parameter scopes, function-expression self names, `let`/`const` across
     their whole block). An edge resolves only when that lookup proves one
-    remaining candidate: a single definition (`t1.lexical`), or the body of a
-    TS overload set (`t1.ts_overload`); duplicate bodies narrow to the group
-    and stay ambiguous. Parameters, locals, reassigned names, block-level
-    functions, `eval`/`with`, ambient declarations (also inside `declare`
-    blocks) and bodyless ones, enums and namespaces, and calls inside TS
-    enum bodies never resolve. A
+    remaining candidate: a single definition (`t1.lexical`), the body of a
+    TS overload set (`t1.ts_overload`), or, in plain JavaScript, the last of
+    two or more function declarations directly in one function body or
+    script top level (`t1.js_hoist`); other duplicate bodies narrow to the
+    group and stay ambiguous. Parameters, locals, reassigned names,
+    block-level functions (which also turn hoisting off), `eval`/`with`,
+    ambient declarations (also inside `declare` blocks) and bodyless ones,
+    enums and namespaces, and calls inside TS enum bodies never resolve. A
     script-goal top level resolves only when no other file of the run may
     declare the name as a global (`script_globals`: other scripts' top-level
     names and implicit globals, `window.x =`, `globalThis.x =`, `self.x =`

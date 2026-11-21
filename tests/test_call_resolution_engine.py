@@ -44,7 +44,7 @@ HEAD_PR = 3
 # tables (10.6). Each later PR adds its own. ``stub`` stays until the Python
 # analyzer lands; ``unmapped`` and ``no-binding-fact`` are covered by the
 # named tests below.
-LIVE_RULES = {"t1.kind", "t1.family", "t1.lexical", "t1.ts_overload"}
+LIVE_RULES = {"t1.kind", "t1.family", "t1.lexical", "t1.ts_overload", "t1.js_hoist"}
 LIVE_REASONS = {
     "stub",
     "unbound",
@@ -85,9 +85,11 @@ NAMED_TIER1_JS_TESTS = (
     "test_member_call_on_a_local_function_is_unchanged",
     "test_enum_scope_end_to_end",
     "test_escaped_names_end_to_end",
-    # PR 3: script globals, namespace merging, inherited ambient status.
+    # PR 3: hoisting, script globals, namespace merging, inherited ambient.
     "test_script_global_end_to_end",
     "test_script_global_controls_end_to_end",
+    "test_js_hoist_end_to_end",
+    "test_js_hoist_near_misses_end_to_end",
     "test_namespace_merging_end_to_end",
     "test_inherited_ambient_end_to_end",
 )
@@ -563,7 +565,7 @@ def test_rule_and_reason_vocabularies() -> None:
         "trait",
     } == engine.NON_CALLABLE_KINDS
     assert {"stub", "unmapped", "no-binding-fact", "unbound"} <= KNOWN_NONE_REASONS
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "3", "python": "1"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "4", "python": "1"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
