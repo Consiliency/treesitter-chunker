@@ -97,9 +97,13 @@ spelling an assignment to that name (:data:`_FILE_WIDE_NAMES`; Codex
 ``types.CellType``), a function rebuilt over existing code
 (``FunctionType``/``LambdaType``), code-object surgery (``__code__``,
 ``CodeType``, ``gi_code``/``cr_code``/``ag_code``/``f_code``, the ``co_*``
-fields ``code.replace`` rewrites), raw C-level access (``ctypes``,
-``pythonapi``, ``PyFrame_LocalsToFast``), and a ``closure=`` keyword argument
-(``exec(code, g, closure=cells)``).
+fields ``code.replace`` rewrites, and the code objects ``dis`` and
+``sys.monitoring`` hand over: ``dis``, ``codeobj``, ``_get_code_object``,
+``monitoring``), raw C-level access (``ctypes``, ``pythonapi``,
+``PyFrame_LocalsToFast``), and a ``closure=`` keyword argument
+(``exec(code, g, closure=cells)``). The function type itself is reachable
+without naming it (``type(f)``), so a rebuilt function is caught through the
+code object it needs (#695 re-check at 606c689f).
 
 **Dynamic binding fails closed** (``dynamic-scope``). A file may bind module
 names at run time when it mentions ``exec``, ``eval``, ``globals``,
@@ -130,7 +134,10 @@ for this rule, the own-name rule and the dynamic attribute names;
 ``X.modules.get(__name__)`` (also ``__getitem__``, ``setdefault``, ``pop``)
 through any receiver ``X``; an import of the file's own module (``import a``
 or ``from . import a`` in ``a.py``); a function's ``__globals__``, a frame's
-``f_globals``/``f_builtins`` and ``inspect.getmodule``; a constant string
+``f_globals``/``f_builtins`` and ``inspect.getmodule``; the builtins
+namespace reached as an attribute, ``f.__builtins__``, ``os.__builtins__`` or
+``len.__self__`` (the ``builtins`` module; #695 re-check at 606c689f); a
+constant string
 (a literal, adjacent literals or literals joined by ``+``) that is one of
 those attribute names or ``modules``, alone or as a part of a dotted path
 (``getattr(f, "__globals__")``, ``attrgetter("sys.modules")``); and the
@@ -216,7 +223,7 @@ whitespace, comments and backslash continuations may sit between them
   also from a function.
 
 Dynamic attribute names (``__globals__``, ``f_globals``, ``f_locals``,
-``f_builtins``, ``getmodule``) also count whatever node spells them, and
+``f_builtins``, ``getmodule``, ``__builtins__``, ``__self__``) also count whatever node spells them, and
 ``X[__name__]`` or ``X.get(__name__)`` (also ``__getitem__``, ``setdefault``,
 ``pop``) on any receiver is dynamic. What is left to reach the module without
 spelling its name or writing through it by name is other dynamic triggers
@@ -322,9 +329,20 @@ _DYNAMIC_NAMES = frozenset(
     }
 )
 # Attributes that reach a namespace dict of a module or frame, or a module
-# object (``inspect.getmodule``).
+# object (``inspect.getmodule``), including the builtins namespace a lookup
+# falls back to before a module-level definition has run: ``f.__builtins__``,
+# ``os.__builtins__``, and ``len.__self__``, which is the ``builtins`` module
+# (#695 re-check at 606c689f, O-3b).
 _DYNAMIC_ATTRIBUTES = frozenset(
-    {"__globals__", "f_globals", "f_locals", "f_builtins", "getmodule"}
+    {
+        "__globals__",
+        "f_globals",
+        "f_locals",
+        "f_builtins",
+        "getmodule",
+        "__builtins__",
+        "__self__",
+    }
 )
 _SYS = "sys"
 _SYS_MODULES = "modules"
@@ -352,11 +370,19 @@ _FRAME_LOCALS = "f_locals"
 # the code of a generator, coroutine or frame) and raw C-level access
 # (``ctypes``). Like ``f_locals``, any mention makes every lookup of the file
 # dynamic, and so does a ``closure=`` keyword argument (``exec(code, g,
-# closure=cells)``, ``FunctionType(..., closure=...)``). Heap walking
-# (``gc.get_referents``) is no trigger: an object found that way rebinds a
-# proven name only through a write another rule sees (a constant-key or
-# attribute write, ``cell_contents``, ``f_locals``, ``__code__``, a
-# ``closure=`` keyword) or a computed key (plan risk R12).
+# closure=cells)``, ``FunctionType(..., closure=...)``).
+#
+# The function type is reachable without naming it (``type(f)``,
+# ``f.__class__``, ``type(lambda: 0)``), so a rebuilt function is caught on
+# the code-object side: rebinding a proven name for existing code takes that
+# code object, and every way to reach it by a spelled name is listed here,
+# including ``dis`` (``Bytecode(f).codeobj``, ``get_instructions`` constants,
+# ``_get_code_object``) and ``sys.monitoring`` callbacks (#695 re-check at
+# 606c689f, O-3a). Objects reached by introspection rather than by a spelled
+# name stay in plan risk R12: heap walking (``gc`` referents, for example a
+# found globals dict written with ``update(D)``, or found code or cells run
+# under ``type(f)(...)``) and computed member names (``inspect.getmembers``,
+# ``dir`` plus ``getattr``).
 _FILE_WIDE_NAMES = frozenset(
     {
         _FRAME_LOCALS,
@@ -380,6 +406,10 @@ _FILE_WIDE_NAMES = frozenset(
         "ctypes",
         "pythonapi",
         "PyFrame_LocalsToFast",
+        "dis",
+        "codeobj",
+        "_get_code_object",
+        "monitoring",
     }
 )
 # A keyword argument that hands a function or code object a new closure.

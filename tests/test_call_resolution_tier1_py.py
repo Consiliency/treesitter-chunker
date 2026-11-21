@@ -5439,6 +5439,12 @@ FILE_WIDE_NAMES = (
     "ctypes",
     "pythonapi",
     "PyFrame_LocalsToFast",
+    # The #695 re-check at 606c689f (O-3a): code objects from ``dis`` and
+    # ``sys.monitoring``.
+    "dis",
+    "codeobj",
+    "_get_code_object",
+    "monitoring",
 )
 
 
@@ -5481,10 +5487,13 @@ def test_code_surgery_and_ctypes_fail_closed_everywhere() -> None:
     [
         # Heap walking alone, parameter defaults, read-only views and
         # introspection metadata cannot change a proven binding (plan R12).
+        # ``__self__`` and ``__builtins__`` reach the builtins namespace,
+        # which only module-scope lookups fall back to (#695 O-3b).
         "import gc\nrefs = gc.get_referrers(f)",
         "f.__defaults__ = (1,)",
         "f.__kwdefaults__ = {'a': 1}",
         "m = obj.__func__\ns = obj.__self__",
+        "b = f.__builtins__",
         "g.__wrapped__ = f",
         "import inspect, sys\nfr = inspect.currentframe()\nfr2 = sys._getframe()",
     ],
@@ -5501,3 +5510,167 @@ def test_heap_walked_dict_writes_are_caught_by_the_attribute_write_rule() -> Non
         "\n\ndef use():\n    return helper()\n"
     )
     assert reason(source) == "mixed-bindings"
+
+
+# ---------------------------------------------------------------------------
+# The #695 re-check at 606c689f (O-3): a function rebuilt over existing code
+# without spelling a trigger (O-3a), and builtins injected before a
+# module-level definition runs (O-3b). Each tree is the ruling's own and
+# runtime-traced: Python calls ``len``, and 606c689f proved ``a.py``'s
+# ``helper``.
+
+G13 = "def helper(*a):\n    return 'mod'\n\ndef run():\n    return helper('ab')\n\n"
+LATE13 = "def run():\n    return helper('ab')\n\n"
+DEF13 = "def helper(*a):\n    return 'mod'\n"
+NESTED13 = (
+    "def helper(*a):\n    return 'mod'\n\n"
+    "def outer():\n    def inner():\n        return helper('ab')\n"
+    "    return inner\n\n"
+)
+
+FOLD13_695: dict[str, tuple[str, str]] = {
+    "l1_dis_type_globals": (
+        "O-3a",
+        G13 + "import dis\ntype(run)(dis.Bytecode(run).codeobj, {'helper': len})()\n",
+    ),
+    "l1_dis_lambda_type": (
+        "O-3a",
+        G13 + "import dis\nF = type(lambda: 0)\n"
+        "F(dis.Bytecode(run).codeobj, {'helper': len})()\n",
+    ),
+    "l1_dis_class_attr": (
+        "O-3a",
+        G13 + "import dis\n(run.__class__)(dis.Bytecode(run).codeobj, "
+        "{'helper': len})()\n",
+    ),
+    "n31_dis_instr_nested_globals": (
+        "O-3a",
+        NESTED13 + "import dis\nc = [i.argval for i in dis.get_instructions(outer) "
+        "if type(i.argval).__name__ == 'code'][0]\n"
+        "type(outer)(c, {'helper': len})()\n",
+    ),
+    "n31_dis_computed_keys": (
+        "O-3a",
+        G13 + "import dis\nb = dis.Bytecode(run)\n"
+        "g = {i.argval: len for i in b if i.opname == 'LOAD_GLOBAL'}\n"
+        "type(run)(b.codeobj, g)()\n",
+    ),
+    "n31_monitoring_code": (
+        "O-3a",
+        G13 + "import sys\nM = sys.monitoring\nseen = []\nM.use_tool_id(3, 'x')\n"
+        "M.register_callback(3, M.events.PY_START, lambda c, o: seen.append(c))\n"
+        "M.set_events(3, M.events.PY_START)\nrun()\nM.set_events(3, 0)\n"
+        "c = seen[0]\ntype(run)(c, {'helper': len})()\n",
+    ),
+    "l2_fn_builtins_update_var": (
+        "O-3b",
+        LATE13 + "D = dict(helper=len)\nrun.__builtins__.update(D)\nrun()\n" + DEF13,
+    ),
+    "n31_os_builtins_var": (
+        "O-3b",
+        "import os\n"
+        + LATE13
+        + "D = dict(helper=len)\nos.__builtins__.update(D)\nrun()\n"
+        + DEF13,
+    ),
+    "l2_self_builtins_update_var": (
+        "O-3b",
+        LATE13
+        + "D = dict(helper=len)\nlen.__self__.__dict__.update(D)\nrun()\n"
+        + DEF13,
+    ),
+    "n31_self_getattr_str_var": (
+        "O-3b",
+        LATE13 + "D = dict(helper=len)\ngetattr(print, '__self__').__dict__.update(D)\n"
+        "run()\n" + DEF13,
+    ),
+    "n31_self_ior": (
+        "O-3b",
+        LATE13 + "b = len.__self__.__dict__\nb |= {'helper': len}\nrun()\n" + DEF13,
+    ),
+    "l5_update_wrapper_dict_builtins": (
+        "O-3b",
+        "import functools\n"
+        + LATE13
+        + "functools.update_wrapper(len.__self__, type('S', (), dict(helper=len)), "
+        "assigned=(), updated=('__dict__',))\nrun()\n" + DEF13,
+    ),
+}
+
+# One control per tree: the same shape without the code-object source or the
+# builtins receiver still resolves to ``a.py``'s ``helper``.
+FOLD13_CONTROLS = {
+    "l1_dis_type_globals": G13 + "F = type(run)\nrun()\n",
+    "l1_dis_lambda_type": G13 + "F = type(lambda: 0)\nrun()\n",
+    "l1_dis_class_attr": G13 + "F = run.__class__\nrun()\n",
+    "n31_dis_instr_nested_globals": NESTED13 + "outer()()\n",
+    "n31_dis_computed_keys": G13 + "b = [run]\ng = {i: len for i in b}\nrun()\n",
+    "n31_monitoring_code": G13 + "import sys\nseen = [sys.argv]\nrun()\n",
+    "l2_fn_builtins_update_var": LATE13
+    + "D = dict(helper=len)\nn = run.__name__\n"
+    + DEF13
+    + "run()\n",
+    "n31_os_builtins_var": "import os\n"
+    + LATE13
+    + "D = dict(helper=len)\nos.environ.update(D)\n"
+    + DEF13
+    + "run()\n",
+    "l2_self_builtins_update_var": LATE13
+    + "D = dict(helper=len)\nn = len.__name__\n"
+    + DEF13
+    + "run()\n",
+    "n31_self_getattr_str_var": LATE13
+    + "D = dict(helper=len)\nn = getattr(print, '__name__')\n"
+    + DEF13
+    + "run()\n",
+    "n31_self_ior": LATE13 + "b = {}\nb |= {'helper': len}\n" + DEF13 + "run()\n",
+    "l5_update_wrapper_dict_builtins": "import functools\n"
+    + LATE13
+    + "functools.update_wrapper(run, type('S', (), dict(helper=len)), "
+    "assigned=(), updated=())\n" + DEF13 + "run()\n",
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD13_695))
+def test_fold13_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    _, source = FOLD13_695[case]
+    root = _tree(tmp_path, {"a.py": source, "b.py": _decoys(source)})
+    off, on = _off_on(root)
+    off_calls = [e for e in off["relationships"] if e["file"] == "a.py"]
+    assert _helper_edge(off)["resolution"] == "ambiguous", case
+    assert [e for e in on["relationships"] if e["file"] == "a.py"] == off_calls
+
+
+def test_fold13_controls_pair_with_the_trees() -> None:
+    assert set(FOLD13_CONTROLS) == set(FOLD13_695)
+
+
+@pytest.mark.parametrize("case", sorted(FOLD13_CONTROLS))
+def test_fold13_controls_still_resolve(tmp_path: Path, case: str) -> None:
+    source = FOLD13_CONTROLS[case]
+    root = _tree(tmp_path, {"a.py": source, "b.py": OTHER})
+    off, on = _off_on(root)
+    assert _helper_edge(off)["resolution"] == "ambiguous", case
+    on_edge = _helper_edge(on)
+    assert on_edge["resolution"] == "resolved", case
+    assert on_edge["provenance"]["call_rules"] == ["t1.lexical"]
+    (target,) = on_edge["candidates"]
+    assert on["symbol_lookup"][target]["file"] == "a.py"
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "b = f.__builtins__",
+        "b = os.__builtins__",
+        "b = len.__self__",
+        "b = getattr(print, '__self__')",
+        "b = getattr(f, '__built' 'ins__')",
+    ],
+)
+def test_builtins_reached_as_an_attribute_fail_closed(form: str) -> None:
+    """``f.__builtins__``, ``os.__builtins__`` and ``len.__self__`` (the
+    ``builtins`` module) reach the namespace a module-scope lookup falls back
+    to before a module-level definition runs (#695 O-3b)."""
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert reason(source) == "dynamic-scope", form

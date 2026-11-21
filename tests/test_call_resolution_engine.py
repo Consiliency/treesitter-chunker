@@ -149,6 +149,9 @@ NAMED_TIER1_PY_TESTS = (
     "test_fold11_695_cases_keep_their_off_mode_edge",
     # Codex 4655078224: closure cells and code objects.
     "test_codex_4655078224_closure_rebinding_end_to_end",
+    # The re-check at 606c689f (O-3): code objects from dis/monitoring and
+    # builtins reached as an attribute.
+    "test_fold13_695_cases_keep_their_off_mode_edge",
 )
 # Expected rows per plan PR (10.1): a row that loses its finalization fails
 # the pin (#695 panel B7).
@@ -626,7 +629,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "14"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "15"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
