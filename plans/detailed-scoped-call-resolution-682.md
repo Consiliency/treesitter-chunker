@@ -539,9 +539,10 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     ``X[`name`]`` without substitutions match exactly like `X.name`, and a
     string or template key with an escape fails closed (Codex 4652498471 on
     #691). Property writers are `Object`/`Reflect` members reached by name,
-    through the global object (`globalThis.Object.assign`) or through
-    `.call`/`.apply`/`.bind`; a computed or escaped key on `Object` or
-    `Reflect` counts as one.
+    through the global object (`globalThis.Object.assign`) or a receiver
+    `this` (`this.Object.assign`; C-1), through a comma callee
+    (`(0, Object.assign)(…)`), or through `.call`/`.apply`/`.bind`; a
+    computed or escaped key on `Object` or `Reflect` counts as one.
   - In a script, a global-object write of `x` (or `*`) also makes that
     file's top-level binding of `x` (or of every name) `reassigned`.
   - A lookup that lands on a script-goal top level narrows only if no other
@@ -1239,7 +1240,7 @@ compares the analyzer's output with them.
 | TS `using` / `await using` (fail closed, 7.5) | `test_using_near_miss_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on a tree the test writes (a committed tree would change the off-mode baseline, 11.2) |
 | stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2); PR 3 drops the latter two from the vocabulary |
 | script-global, namespace-merged, t1.js_hoist, inherited ambient (PR 3) | also `test_script_global_end_to_end`, `test_script_global_controls_end_to_end`, `test_js_hoist_end_to_end`, `test_js_hoist_near_misses_end_to_end`, `test_namespace_merging_end_to_end` and `test_inherited_ambient_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on trees the tests write (11.2) |
-| #691 panel classes A1–A6, B5, and the president's B-1–B-3 (PR 3) | `test_panel_691_cases_keep_their_off_mode_edge`, `test_misparsed_blocks_make_the_file_unsupported`, `test_static_constructor_is_not_the_class_constructor` and `test_markdown_and_rst_in_the_run_do_not_count` in `tests/test_call_resolution_tier1_js.py` (its `codex-4652498471`, `bracket-*` and `template-assign` cases pin literal-key callees, with the matching `test_global_object_uses_fail_closed_with_a_wildcard` cases); `test_editing_another_file_reruns_the_script_global_check` in `tests/test_call_resolution_cache.py` |
+| #691 panel classes A1–A6, B5, and the president's B-1–B-3 (PR 3) | `test_panel_691_cases_keep_their_off_mode_edge`, `test_misparsed_blocks_make_the_file_unsupported`, `test_static_constructor_is_not_the_class_constructor` and `test_markdown_and_rst_in_the_run_do_not_count` in `tests/test_call_resolution_tier1_js.py` (its `codex-4652498471`, `bracket-*` and `template-assign` cases pin literal-key callees, and its `M01`–`M12` cases writers through a receiver `this`, with the matching `test_global_object_uses_fail_closed_with_a_wildcard` cases; `test_writer_through_this_in_a_constructor_still_resolves` is the C-1 control); `test_editing_another_file_reruns_the_script_global_check` in `tests/test_call_resolution_cache.py` |
 | external-module | ts-bare-specifier, ts-external-import-kind |
 | outside-root | py-relative-root |
 | module-not-found | js-importer-ext-order (use3), py-namespace-dir, py-ancestor-module-shadow |
@@ -1535,7 +1536,7 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | R7 | Python extension modules shadow `.py` | Accept. |
 | R8 | Interim behavior between PRs | Experimental label, plus a per-head CHANGELOG statement (4.5). |
 | R9 | Scripts outside the run can redefine a global: HTML-included scripts outside the run, `dist/`, `node_modules`, `.mjs` and `.cjs` files, inline `<script>` in `.vue` and `.svelte` files (none of these is collected), and raw HTML in Markdown or reStructuredText that a site generator renders, which, like any generated page, is outside the run | Accept: they are not scanned. In-run HTML, XML and PHP files count as declaring every global (PR 3). |
-| R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: a computed call on a receiver `this` that may be an indirect `eval` (`this[k](s)`, `this['ev' + 'al'](s)`; `*` would switch off script-top resolution in about 52 of 1136 npm files); hand-offs of a receiver `this` through a variable or an expression (`const s = this; s.d = f`, `const w = this.window; w.d = f`, `(0, this).d =`, `(c ? this : o).d =`, `(c || this).d =`, the receiver argument of `Reflect.set(o, 'd', v, this)`, `Object.assign(...[this], …)`), except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)` with `this` first, which give `*`; `Reflect.get(f, 'constructor')` | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
+| R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: a computed call on a receiver `this` that may be an indirect `eval` (`this[k](s)`, `this['ev' + 'al'](s)`; `*` would switch off script-top resolution in about 52 of 1136 npm files); hand-offs of a receiver `this` through a variable or an expression (`const s = this; s.d = f`, `const w = this.window; w.d = f`, `(0, this).d =`, `(c ? this : o).d =`, `(c || this).d =`, the receiver argument of `Reflect.set(o, 'd', v, this)`, `Object.assign(...[this], …)`), except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)` with `this` first, which give `*`; `Reflect.get(f, 'constructor')`, and computed keys that may reach `constructor` on arbitrary objects (`x[k](s)`, `x['constr' + 'uctor'](s)`, `f[['constructor']](s)`, `const { [k]: F } = f`); writer hand-offs the analysis cannot identify syntactically (`const a = Object.assign; a(this, …)`, `Reflect.apply(Object.assign, null, [this, …])`, `Object['assign'](...[this], …)`, and a helper given `this`: `h(this)`) | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
 | R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) is not tracked | Accept. This is the same kind of risk as the module-scope preference the issue asks for. |
 
 **Owner notice** (informational, from the ruling): these are delegated
@@ -1760,10 +1761,25 @@ changes. `js` fact version 7.
 
 ### PR 3: Codex 4652498471 (literal-key callees)
 
-Only adds `none`; no expected row changes. `js` fact version 8.
+No expected row changes. `js` fact version 8. Mostly it only adds `none`.
+One part does not: because a substitution-free template key now reads like
+the dot form, a template-key read of a global-object name continues the
+chain (``window[`top`].name`` reads like `window.top.name`) instead of
+giving `*`. That matches the language exactly, and every write or
+evaluator use through such a chain still fails closed.
 
 | Item | Applied in |
 | --- | --- |
 | One helper (`_member_key`/`_static_key`) matches `X.name`, `X['name']` and ``X[`name`]`` at every name-matching site; escaped keys fail closed | §7.2 script goal |
 | Property writers by bracket or template key, through the global object, or via `.call`/`.apply`/`.bind`; a computed or escaped key on `Object`/`Reflect` counts | §7.2 script goal |
 | Computed (static) `constructor` keys in destructuring patterns | §7.2 script goal |
+
+### PR 3: the president's re-check at 7c681e04
+
+Only adds `none`; no expected row changes. `js` fact version 9.
+
+| Item | Applied in |
+| --- | --- |
+| C-1: `Object`/`Reflect` reached through a receiver `this` (`this.Object.assign`, `this['Reflect']['set']`, `this.window.Object`) is a property writer; the class-constructor exclusion still applies | §7.2 script goal |
+| A comma callee (`(0, Object.assign)(this, …)`) is a property writer | §7.2 script goal |
+| Writer aliases, `Reflect.apply`, spread arguments and computed `constructor` keys on arbitrary objects named in R11 | §15 R11 |

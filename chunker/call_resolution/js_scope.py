@@ -1089,7 +1089,8 @@ class _Analysis:
     def _writer_namespace(self, node: Any) -> bool:
         """Whether an expression is ``Object`` or ``Reflect``: the global
         name, or that property of the global object (``globalThis.Object``,
-        ``window['Reflect']``)."""
+        ``window['Reflect']``) or of a receiver ``this`` (``this.Object``;
+        C-1, the president's #691 re-check)."""
         node = unwrap(node)
         if node is None:
             return False
@@ -1098,7 +1099,9 @@ class _Analysis:
             return name in _WRITER_NAMESPACES and self._refers_to_global(node, name)
         if node.type in _MEMBER_ACCESS:
             return self._member_key(node) in _WRITER_NAMESPACES and (
-                self._is_global_object(node.child_by_field_name("object"))
+                self._is_global_object(
+                    node.child_by_field_name("object"), receiver=True
+                )
             )
         return False
 
@@ -1130,6 +1133,10 @@ class _Analysis:
         receiver ``this`` (or the global object, which
         :meth:`_global_object_use` already catches), may write any global."""
         function = unwrap(node.child_by_field_name("function"))
+        while function is not None and function.type == "sequence_expression":
+            # ``(0, Object.assign)(this, …)`` calls the last operand.
+            operands = function.named_children
+            function = unwrap(operands[-1]) if operands else None
         if function is None:
             return
         arguments = node.child_by_field_name("arguments")

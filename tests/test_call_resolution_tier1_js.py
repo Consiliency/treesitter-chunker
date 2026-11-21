@@ -656,6 +656,15 @@ GLOBAL_WILDCARD_FORMS = {
     "writer-call": "class K { m() { Object.assign.call(null, this, { d: f }); } }",
     "writer-apply": "class K { m() { Object['assign']['apply'](null, [this, {}]); } }",
     "receiver-bracket-eval": "class K { m() { this[`eval`](s); } }",
+    # C-1: writers reached through a receiver ``this``, and a comma callee.
+    "receiver-writer": "class K { m() { this.Object.assign(this, { d: f }); } }",
+    "receiver-writer-bracket": "class K { m() { this['Reflect']['set'](this, 'd', f); } }",
+    "receiver-window-writer": "class K { m() { this.window.Object.assign(this, {}); } }",
+    "receiver-writer-call": (
+        "class K { m() { this.Object.defineProperty.call(null, this, 'd', {}); } }"
+    ),
+    "receiver-writer-target": "class K { m() { this.Object.assign(this.window, {}); } }",
+    "comma-writer": "class K { m() { (0, Object.assign)(this, { d: f }); } }",
     "timer-script-function": "function tick() {}\nsetTimeout(tick, 1);",
 }
 
@@ -1867,6 +1876,41 @@ PANEL_CASES: dict[str, tuple[dict[str, str], str, str]] = {
         "a.js",
         "d",
     ),
+    # C-1 (#691 re-check at 7c681e04): ``Object``/``Reflect`` through a
+    # receiver ``this``.
+    "M01": (
+        _writer(
+            "export function o() { this.Object.assign(this, { d: 2 }); }\n"
+            "window.onload = o;\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "M02": (
+        _writer("export function o() { this['Object']['assign'](this, { d: 2 }); }\n"),
+        "a.js",
+        "d",
+    ),
+    "M03": (
+        _writer("export function o() { this.Reflect.set(this, 'd', 2); }\n"),
+        "a.js",
+        "d",
+    ),
+    "M07": (
+        _writer(
+            "export function o() { this.Object.assign(this, { d: 2 }); }\n", "c.ts"
+        ),
+        "a.js",
+        "d",
+    ),
+    "M12": (
+        _writer(
+            "export class K { m() { this.Object.assign(this, { d: 2 }); } }\n"
+            "window.onload = K.prototype.m;\n"
+        ),
+        "a.js",
+        "d",
+    ),
     # Closed rather than left to R11 (#691 ruling, section 4).
     "T19": (_writer("export class K { m() { this.eval(s); } }\n"), "a.js", "d"),
     "T20": (
@@ -1995,3 +2039,22 @@ def test_receiver_chain_writes_record_the_name_not_a_wildcard() -> None:
         )
         == []
     )
+
+
+def test_writer_through_this_in_a_constructor_still_resolves(tmp_path: Path) -> None:
+    """C-1 control (M13): in a class constructor ``this`` is the instance, so
+    ``this.Object.assign(this, …)`` writes no global."""
+    root = _write(
+        tmp_path,
+        {
+            "a.js": _SCRIPT_A,
+            "b.js": _ESM_DECOY,
+            "c.js": (
+                "export class K { constructor() { this.Object.assign(this, { d: 2 }); } }\n"
+            ),
+        },
+    )
+    off, on = _edge(_edges(root), "a.js", "d")
+    assert off["resolution"] == "ambiguous"
+    assert on["resolution"] == "resolved"
+    assert on["provenance"]["call_rules"] == ["t1.lexical"]

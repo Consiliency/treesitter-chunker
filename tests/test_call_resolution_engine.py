@@ -576,7 +576,7 @@ def test_rule_and_reason_vocabularies() -> None:
         "trait",
     } == engine.NON_CALLABLE_KINDS
     assert {"stub", "unmapped", "no-binding-fact", "unbound"} <= KNOWN_NONE_REASONS
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "8", "python": "1"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "1"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
