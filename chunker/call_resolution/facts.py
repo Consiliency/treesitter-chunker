@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"4"`` for the ``js`` family, whose analyzer is real,
+Schema (fact version ``"5"`` for the ``js`` family, whose analyzer is real,
 and ``"1"`` for ``python``, still the stub):
 
 ``version``
@@ -75,9 +75,17 @@ logger = logging.getLogger(__name__)
 # js "3": script globals, script-goal lookups, namespace merging and
 # inherited ambient status (plan PR 3).
 # js "4": t1.js_hoist, in its own change so it can be reverted alone (PR 3).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "4", "python": "1"}
+# js "5": the #691 panel fold (misparsed blocks, implicit globals in modules,
+# exported namespaces merged, receiver ``this`` writes, more global-object
+# names and code evaluators).
+# A version number is never reused: reverting a change that altered the
+# facts takes a new, higher version, so no cache record written under one
+# set of facts is read under another. The digest test rejects a decrease.
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "5", "python": "1"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
+# Extensions that make a JavaScript/TypeScript file an ES module.
+_MODULE_SUFFIXES = frozenset({".mjs", ".mts"})
 
 TIER1_NONE_REASONS = (
     "unbound",
@@ -119,7 +127,9 @@ TIER2_NONE_REASONS = (
     "attr-submodule-conflict",
 )
 # Reasons that exist only at interim heads (section 7.6).
-INTERIM_NONE_REASONS = ("stub", "script-goal-deferred", "namespace-deferred")
+# ``script-goal-deferred`` and ``namespace-deferred`` existed only at the PR 2
+# head; PR 3 replaced them, so they are no longer valid outcomes.
+INTERIM_NONE_REASONS = ("stub",)
 KNOWN_NONE_REASONS = frozenset(
     TIER1_NONE_REASONS + TIER2_NONE_REASONS + INTERIM_NONE_REASONS
 )
@@ -180,8 +190,12 @@ def compute_scope_facts(
     source: bytes,
     call_facts: Sequence[Mapping[str, Any]],
     symbols: Sequence[Sequence[Any]],
+    suffix: str = "",
 ) -> dict[str, Any]:
     """Re-parse ``source`` and return the file's scope facts.
+
+    ``suffix`` is the file's lower-case extension: ``.mjs`` and ``.mts``
+    files are always ES modules, whatever their syntax.
 
     ``source`` is the buffer symbol-fact extraction already read, so callee
     spans match the call facts. Python source with a lone CR is parsed through
@@ -207,7 +221,12 @@ def compute_scope_facts(
         if root.has_error:
             logger.debug("call resolution: %s tree has errors", language)
             return fallback
-        partial = analyzer(root, source, language, call_facts)
+        if family == "js" and suffix in _MODULE_SUFFIXES:
+            partial = js_scope.analyze(
+                root, source, language, call_facts, goal="module"
+            )
+        else:
+            partial = analyzer(root, source, language, call_facts)
         # Normalizing and validating the analyzer's output is inside the
         # guard too: malformed output fails closed instead of raising.
         facts = {

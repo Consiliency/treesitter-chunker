@@ -92,6 +92,9 @@ NAMED_TIER1_JS_TESTS = (
     "test_js_hoist_near_misses_end_to_end",
     "test_namespace_merging_end_to_end",
     "test_inherited_ambient_end_to_end",
+    # #691 panel fold.
+    "test_panel_691_cases_keep_their_off_mode_edge",
+    "test_misparsed_blocks_make_the_file_unsupported",
 )
 # Live reasons no committed fixture produces, each covered by a named test on
 # a tree the test writes (the president's #689 ruling, B-1).
@@ -466,6 +469,11 @@ SCRIPT_LOCAL = {
         ([("s.js", "javascript", False, [])], True),
         # Other families never share JS globals.
         ([("s.py", "python", False, []), ("s.go", "go", False, [])], False),
+        # A file that can carry inline scripts may declare any global (B5).
+        ([("index.html", "html", False, [])], True),
+        ([("page.php", "php", False, [])], True),
+        ([("README.md", "markdown", False, [])], True),
+        ([("feed.xml", "xml", False, [])], True),
     ],
 )
 def test_script_global_check(
@@ -565,7 +573,7 @@ def test_rule_and_reason_vocabularies() -> None:
         "trait",
     } == engine.NON_CALLABLE_KINDS
     assert {"stub", "unmapped", "no-binding-fact", "unbound"} <= KNOWN_NONE_REASONS
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "4", "python": "1"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "5", "python": "1"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
@@ -774,6 +782,18 @@ def test_proving_families_have_reviewed_allowlists() -> None:
 # Scope-fact digests (4.6)
 
 
+def _version_key(version: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in str(version).split("."))
+
+
+def test_fact_versions_never_go_down_from_main() -> None:
+    """A version is never reused: each family's version is at least the one
+    pinned in the committed digests (#691 panel B3)."""
+    pinned = json.loads(harness.SCOPE_FACTS_DIGESTS.read_text(encoding="utf-8"))
+    for family, version in CALL_RESOLUTION_FACT_VERSIONS.items():
+        assert _version_key(version) >= _version_key(pinned[family]["version"])
+
+
 def digest_problems(
     pinned: dict[str, Any], current: dict[str, Any]
 ) -> list[tuple[str, str]]:
@@ -797,6 +817,15 @@ def digest_problems(
                 (
                     "unbumped",
                     f"{family} facts changed without a version bump: {changed[:5]}",
+                )
+            )
+        if _version_key(new["version"]) < _version_key(old["version"]):
+            # A version number is never reused, so it never goes down: a
+            # revert takes a new, higher version (#691 panel B3).
+            problems.append(
+                (
+                    "downgrade",
+                    f"{family} version went down: {old['version']} -> {new['version']}",
                 )
             )
         if old["version"] != new["version"] or set(old["files"]) != set(new["files"]):
@@ -832,3 +861,4 @@ def test_digest_rule_applies_only_to_shared_files() -> None:
     assert kinds(current("2", {"a": "1", "b": "X"})) == {"regenerate"}
     assert kinds(current("1", {"a": "1", "b": "2", "c": "3"})) == {"regenerate"}
     assert kinds(current("1", {"a": "1"})) == {"regenerate"}
+    assert kinds(current("0", {"a": "1", "b": "2"})) == {"downgrade", "regenerate"}

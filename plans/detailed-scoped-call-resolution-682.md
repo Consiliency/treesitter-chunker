@@ -300,7 +300,11 @@ These all give `supported: false` for the file:
   (PR 2, Codex review of treesitter-chunker#689). Names are compared by
   their source spelling, so an escaped parameter, write or `eval` would
   otherwise be missed. Backslashes in strings, templates, regexes, comments
-  and JSX text do not count.
+  and JSX text do not count;
+- a JS/TS file with a statement-level, unparenthesized object literal
+  (PR 3, #691 panel A1). Valid JavaScript never has one, but tree-sitter
+  parses `{ L: function d() {} }` that way without an error, which would
+  hide a block-level declaration.
 
 None of them adds anything to `facts["errors"]` or diagnostics, and none
 raises, even with `fail_fast`. A debug log line is allowed. A file with
@@ -486,24 +490,40 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
 - **Script goal and `script_globals`:**
   - `script_globals` holds the `var`, `let`, `const`, `class` and `function`
     top-level names of every script-goal JS/TS file.
-  - It also holds any assignment in a script-goal file to an identifier with no
+  - It also holds any assignment, in any JS/TS file, to an identifier with no
     declaration on its scope chain in that file (an implicit global), not only
-    top-level ones.
+    top-level ones. In a module (strict code) such a write reassigns a global
+    another script declared (PR 3, #691 panel A2).
   - `window.x =`, `globalThis.x =` and `self.x =` count as declarations of `x`
     in a file of either goal.
-  - **Fail closed (PR 3).** So do `global.x =`, alias chains
-    (`window.top.x =`), string-literal keys (`globalThis["x"] =`), every
-    write form (compound, update, pattern, `for … of` target, `delete`), and
-    `this.x =` wherever `this` may be the global object in a script (the top
-    level, sloppy functions and object-literal methods, but never class
-    code). An alias counts when nothing binds it, or only a script's top
-    level does (`var self;` there is the global object's own property). A
-    write the analysis cannot read gives the wildcard `*`, which declares
+  - **Fail closed (PR 3).** So do `global.x =`, `top.x =`, `parent.x =`,
+    `frames.x =`, `<any>.defaultView.x =`, alias chains (`window.top.x =`),
+    string-literal keys (`globalThis["x"] =`), and every write form
+    (compound, update, pattern, `for … of` target, `delete`). An alias counts
+    when nothing binds it, or only a script's top level does (`var self;`
+    there is the global object's own property).
+  - **`this.x =`** counts in a file of either goal wherever `this` comes
+    from a non-arrow function or method, because a host may pass the global
+    object as the receiver even to strict code (`setTimeout(K.prototype.m)`,
+    `window.m()`; #691 panel A4). Excluded: class constructors, field
+    initializers, static blocks and a module top level. A literal subscript
+    key writes that key; a non-literal key gives `*`. At a script top level,
+    in sloppy functions and in object-literal methods, `this` used as a value
+    gives `*` too.
+  - A write the analysis cannot read gives the wildcard `*`, which declares
     every name: a non-literal key; the global object used as a value
-    (`f(window)`, `const g = globalThis`, `window[k]()`, `{ window }`); and
-    any reference to `eval`, `Function`, `execScript`, or a timer given
-    source text. An **unsupported** JS/TS file in the run counts as `*`,
-    because its globals are unknown.
+    (`f(window)`, `const g = globalThis`, `window[k]()`, `{ window }`,
+    `const w = document.defaultView`); any reference to `eval`, `Function`
+    or `execScript`; a called, `new`-ed or handed-on `x.constructor` (which
+    reaches the function constructors), or its `.call`/`.apply`/`.bind`;
+    and `setTimeout`/`setInterval` used other than as a direct callee (an
+    alias, `.call`, `Reflect.apply`) or called with a first argument that is
+    not certainly a function (a function or arrow expression, or a name the
+    file proves to be a local function that is not a script top level).
+    An **unsupported** JS/TS file in the run counts as `*`, because its
+    globals are unknown, and so does every in-run file of a language that
+    can carry inline scripts (HTML, XML, PHP, Markdown, reStructuredText;
+    #691 panel B5).
   - In a script, a global-object write of `x` (or `*`) also makes that
     file's top-level binding of `x` (or of every name) `reassigned`.
   - A lookup that lands on a script-goal top level narrows only if no other
@@ -518,18 +538,29 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     js-block-fn and js-eval-with therefore keep their own reasons and stay in
     PR 2.
   - Files outside the run are not scanned (risk R9): HTML-included scripts,
-    `dist/`, `node_modules`, and scripts loaded by other means.
+    `dist/`, `node_modules`, `.mjs`/`.cjs` files and inline `<script>` in
+    `.vue` and `.svelte` files (not collected), and scripts loaded by other
+    means. Strict code given the global object as `this` through a call the
+    analysis cannot see, open-ended global-object references and string-code
+    paths no syntactic rule closes are risk R11. Resolution therefore holds
+    within the run only.
 - **CommonJS files stay script goal** (R2). That is conservative: the
   script-global check only adds `none`, and hoisting works the same inside the
   CommonJS wrapper.
 - **TS namespaces.** A lookup through a namespace body gives
   `none(namespace-merged)` when the namespace has more than one declaration in
-  the run, or lives in a script-goal file. In a module, declarations merge only
-  within the file, so they are counted in the declaring scope (PR 3), and an
-  enum declaration of the same name counts too. A dotted namespace
+  the run, or lives in a script-goal file. In a module, other declarations of
+  the namespace are counted in its declaring scope (PR 3), and an enum
+  declaration of the same name counts too. A module-level namespace the
+  module exports (an `export` modifier, an `export { … }` clause including
+  `as` aliases, or `export =`) is always merged, because TS module
+  augmentation (`declare module './a' { namespace N { … } }`) merges into it
+  from another file (#691 panel A3); `export default N` and a namespace the
+  module does not export cannot be augmented. A dotted namespace
   (`namespace A.B`, whose body also sees the members of every `A` and `A.B`),
   `declare module 'm'` and `declare global` bodies are always treated as
-  merged. A lookup that ends unbound inside a merged body also gives
+  merged; for those two ambient bodies the rule is defensive, since they hold
+  no calls. A lookup that ends unbound inside a merged body also gives
   `namespace-merged`: another declaration may bind the name. An exported
   `const` in a namespace body is `expression-bound`, because tsc rewrites its
   uses to properties of the namespace object.
@@ -1188,7 +1219,9 @@ compares the analyzer's output with them.
 | unsupported file | named end-to-end failure-mode tests (R-3; listed below the table) |
 | escaped names (unsupported file, 5.3) | `test_escaped_names_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on trees the test writes (11.2) |
 | TS `using` / `await using` (fail closed, 7.5) | `test_using_near_miss_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on a tree the test writes (a committed tree would change the off-mode baseline, 11.2) |
-| stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2) |
+| stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2); PR 3 drops the latter two from the vocabulary |
+| script-global, namespace-merged, t1.js_hoist, inherited ambient (PR 3) | also `test_script_global_end_to_end`, `test_script_global_controls_end_to_end`, `test_js_hoist_end_to_end`, `test_js_hoist_near_misses_end_to_end`, `test_namespace_merging_end_to_end` and `test_inherited_ambient_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on trees the tests write (11.2) |
+| #691 panel classes A1–A6, B5 (PR 3) | `test_panel_691_cases_keep_their_off_mode_edge` and `test_misparsed_blocks_make_the_file_unsupported` in `tests/test_call_resolution_tier1_js.py`; `test_editing_another_file_reruns_the_script_global_check` in `tests/test_call_resolution_cache.py` |
 | external-module | ts-bare-specifier, ts-external-import-kind |
 | outside-root | py-relative-root |
 | module-not-found | js-importer-ext-order (use3), py-namespace-dir, py-ancestor-module-shadow |
@@ -1483,7 +1516,8 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | R6 | A directory's `package.json` changes TS resolution | Accept. The NIT to record such directories is **rejected** (A14): `package.json` is not a collected file, so reading it would make per-file facts depend on a file outside the cache key. |
 | R7 | Python extension modules shadow `.py` | Accept. |
 | R8 | Interim behavior between PRs | Experimental label, plus a per-head CHANGELOG statement (4.5). |
-| R9 | Scripts outside the run (HTML-included, `dist/`, `node_modules`) can redefine a global | Accept: they are not scanned. |
+| R9 | Scripts outside the run can redefine a global: HTML-included scripts outside the run, `dist/`, `node_modules`, `.mjs` and `.cjs` files, and inline `<script>` in `.vue` and `.svelte` files (none of these is collected) | Accept: they are not scanned. In-run HTML, XML, PHP, Markdown and reStructuredText files count as declaring every global (PR 3). |
+| R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers) | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
 | R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) is not tracked | Accept. This is the same kind of risk as the module-scope preference the issue asks for. |
 
 **Owner notice** (informational, from the ruling): these are delegated
@@ -1657,3 +1691,28 @@ row; each only adds `none`.
 | Mapped `arguments` aliasing | §7.2 reassignment |
 | Namespace merging counted per declaring scope; enums, dotted names, `declare module` and `declare global` always merged; exported namespace `const` is `expression-bound` | §7.2 TS namespaces |
 | Ambient status at any depth under `declare`; `ambient` before `namespace-merged` | §7.2 ambient status |
+
+**Reverting `t1.js_hoist`.** Reverting the hoisting commit alone leaves a
+consistent tree: rt-js and js-hoist-fnbody go back to their pre-hoist rows
+(rt-js ambiguous over k.js:3 and k.js:6, js-hoist-fnbody narrowed to the two
+`g.d` declarations), which then contradict §8 and §10 until the plan is
+amended. The revert must take a new, higher `js` fact version: **a version
+number is never reused**, so no on-mode cache record written under one set
+of facts is read under another. The digest test rejects a version decrease.
+
+### PR 3: #691 panel fold
+
+Every item only adds `none`; no expected row changes. `js` fact version 5.
+
+| Item | Applied in |
+| --- | --- |
+| A1: a statement-level object literal (misparsed labelled block) makes the file unsupported | §5.3 |
+| A2: implicit globals count in any JS/TS file | §7.2 script goal |
+| A3: exported module-level namespaces are always merged (module augmentation) | §7.2 TS namespaces |
+| A4: `this.x =` from non-arrow functions and methods counts in either goal | §7.2 script goal |
+| A5: `top`, `parent`, `frames`, `<any>.defaultView` | §7.2 script goal |
+| A6, Codex 4649855600 and 4649855604: `x.constructor` and timer uses | §7.2 script goal |
+| B5: in-run HTML, XML, PHP, Markdown and reStructuredText count as `*` | §7.2 script goal; R9 |
+| A7, C3, C5: R9 widened; R11 added | §7.2; §15 |
+| A8: `.mjs`/`.mts` files are modules | §5.2 note in the code (not collected yet) |
+| B3: version numbers are never reused | Appendix B (above); `facts.py`; digest test |

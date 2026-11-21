@@ -124,11 +124,25 @@ RULE_JS_HOIST = "t1.js_hoist"
 GLOBAL_WILDCARD = "*"
 # Identifiers that name the global object when nothing in the file binds
 # them, and the properties of the global object that are the global object.
-_GLOBAL_OBJECTS = frozenset({"window", "globalThis", "self", "global"})
-_GLOBAL_OBJECT_PROPERTIES = _GLOBAL_OBJECTS | {"top", "parent", "frames"}
+_GLOBAL_OBJECTS = frozenset(
+    {"window", "globalThis", "self", "global", "top", "parent", "frames"}
+)
+_GLOBAL_OBJECT_PROPERTIES = _GLOBAL_OBJECTS
+# ``<any>.defaultView`` (``document.defaultView``) is the global object too.
+_DEFAULT_VIEW = "defaultView"
 # Globals that run source text as code, which can write any global.
 _CODE_EVALUATORS = frozenset({"eval", "Function", "execScript"})
 _STRING_TIMERS = frozenset({"setTimeout", "setInterval"})
+# ``x.constructor`` reaches the function constructors (``[].constructor
+# .constructor``, ``(async () => {}).constructor``), so calling it, or handing
+# it on, may run source text; and so may ``.call``/``.apply``/``.bind`` of a
+# code evaluator or timer.
+_CONSTRUCTOR = "constructor"
+_INVOKERS = frozenset({"call", "apply", "bind"})
+# Timer arguments that are certainly functions, never source text.
+_FUNCTION_ARGUMENTS = frozenset(
+    {"function_expression", "arrow_function", "generator_function"}
+)
 # Uses of the global object that neither write through it nor hand it on.
 _INERT_UNARY = frozenset({"typeof", "void", "!"})
 _COMPARISONS = frozenset({"===", "!==", "==", "!=", "instanceof", "in"})
@@ -369,12 +383,14 @@ def unwrap(node: Any) -> Any:
 class _Analysis:
     """Scopes and bindings of one file, and lookups through them."""
 
-    def __init__(self, root: Any, source: bytes, language: str) -> None:
+    def __init__(
+        self, root: Any, source: bytes, language: str, goal: str | None = None
+    ) -> None:
         self.root = root
         self.source = source
         self.language = language
         self.typescript = language in _TS_LANGUAGES
-        self.goal = program_goal(root)
+        self.goal = goal or program_goal(root)
         self.scopes: dict[tuple[int, str], _Scope] = {}
         self.assignment_targets: list[Any] = []
         self.eval_calls: list[Any] = []
@@ -420,7 +436,8 @@ class _Analysis:
         self.program = program
         self._statements(root, program, program, 0)
         # Assignments to a name no scope of the file declares are implicit
-        # globals in a script (section 7.2).
+        # globals: in a script they declare it, and in a module (strict) they
+        # write a global another script declared (section 7.2).
         self.implicit_globals: set[str] = set()
         for target in self.assignment_targets:
             name = _text(target, source)
@@ -429,18 +446,19 @@ class _Analysis:
                 scope.reassigned.add(name)
             else:
                 self.implicit_globals.add(name)
-        self._global_object_pass()
-        if self.goal == "script":
-            # A script's top level is the global object: writing a global
-            # through it reassigns the top-level binding of that name.
-            program.reassigned.update(self.global_writes)
-            program.reassigned_all = self.global_wildcard
         for call in self.eval_calls:
             # A direct eval can declare or assign any binding visible from its
             # site, so every scope from there out to ``program`` is dynamic.
             for _, _, scope in self._chain(call):
                 if scope is not None:
                     scope.dynamic = True
+        self.exported_names = self._exported_names() if self.goal == "module" else set()
+        self._global_object_pass()
+        if self.goal == "script":
+            # A script's top level is the global object: writing a global
+            # through it reassigns the top-level binding of that name.
+            program.reassigned.update(self.global_writes)
+            program.reassigned_all = self.global_wildcard
 
     # -- building -----------------------------------------------------------
 
@@ -852,16 +870,24 @@ class _Analysis:
             kind = node.type
             if kind in ("identifier", "shorthand_property_identifier"):
                 name = _text(node, self.source)
-                if (
+                if _declaration_name(node):
+                    # A name being declared (a parameter of a bodyless TS
+                    # signature or function type binds no scope) is no use.
+                    pass
+                elif (
                     name in _GLOBAL_OBJECTS or name in _CODE_EVALUATORS
                 ) and self._refers_to_global(node, name):
                     if name in _CODE_EVALUATORS:
                         self.global_wildcard = True
                     else:
                         self._global_object_use(node)
+                elif name in _STRING_TIMERS and self._refers_to_global(node, name):
+                    self._timer_use(node)
             elif kind == "this":
                 if self._maybe_global_this(node):
                     self._global_object_use(node)
+            elif kind in _MEMBER_ACCESS:
+                self._member_use(node)
             elif kind in ("assignment_expression", "augmented_assignment_expression"):
                 self._global_write(node.child_by_field_name("left"))
             elif kind == "update_expression":
@@ -873,8 +899,6 @@ class _Analysis:
                 operator = node.child_by_field_name("operator")
                 if operator is not None and operator.type == "delete":
                     self._global_write(node.child_by_field_name("argument"))
-            elif kind == "call_expression":
-                self._string_timer(node)
             stack.extend(node.named_children)
 
     def _refers_to_global(self, ident: Any, name: str) -> bool:
@@ -884,8 +908,13 @@ class _Analysis:
         scope = self._binding_scope(ident, name)
         return scope is None or (scope is self.program and self.goal == "script")
 
-    def _is_global_object(self, node: Any) -> bool:
-        """Whether an expression is (an alias chain of) the global object."""
+    def _is_global_object(self, node: Any, *, receiver: bool = False) -> bool:
+        """Whether an expression is (an alias chain of) the global object.
+
+        With ``receiver``, for the object of a write, ``this`` also counts
+        wherever a host call may pass the global object as the receiver
+        (:meth:`_receiver_this`), in code of either goal.
+        """
         node = unwrap(node)
         if node is None:
             return False
@@ -893,15 +922,149 @@ class _Analysis:
             name = _text(node, self.source)
             return name in _GLOBAL_OBJECTS and self._refers_to_global(node, name)
         if node.type == "this":
-            return self._maybe_global_this(node)
+            return self._maybe_global_this(node) or (
+                receiver and self._receiver_this(node)
+            )
         if node.type == "member_expression":
             prop = node.child_by_field_name("property")
-            return (
-                prop is not None
-                and _text(prop, self.source) in _GLOBAL_OBJECT_PROPERTIES
+            name = _text(prop, self.source) if prop is not None else ""
+            return name == _DEFAULT_VIEW or (
+                name in _GLOBAL_OBJECT_PROPERTIES
+                and self._is_global_object(node.child_by_field_name("object"))
+            )
+        if node.type == "subscript_expression":
+            key = self._literal_key(node.child_by_field_name("index"))
+            return key == _DEFAULT_VIEW or (
+                key in _GLOBAL_OBJECT_PROPERTIES
                 and self._is_global_object(node.child_by_field_name("object"))
             )
         return False
+
+    def _receiver_this(self, node: Any) -> bool:
+        """Whether ``this`` may be the global object passed as a receiver.
+
+        Hosts call functions with the global object as ``this``
+        (``setTimeout(K.prototype.m)``, ``window.m()``), strict code
+        included. Any ``this`` that comes from a non-arrow function or method
+        may be it, except in a class constructor, a field initializer or a
+        static block, and at a module top level (A4, #691 panel).
+        """
+        child, current = node, node.parent
+        while current is not None:
+            kind = current.type
+            if kind in _NON_ARROW_FUNCTIONS:
+                parameters = current.child_by_field_name("parameters")
+                if _same(child, current.child_by_field_name("body")) or _same(
+                    child, parameters
+                ):
+                    if kind != "method_definition":
+                        return True
+                    name = current.child_by_field_name("name")
+                    return not (
+                        current.parent is not None
+                        and current.parent.type == "class_body"
+                        and name is not None
+                        and _text(name, self.source) == _CONSTRUCTOR
+                    )
+            elif kind in _FIELDS:
+                if child.type != "computed_property_name":
+                    return False
+            elif kind == "class_static_block":
+                return False
+            elif kind == "program":
+                return self.goal == "script"
+            child, current = current, current.parent
+        return False
+
+    def _member_key(self, node: Any) -> str | None:
+        """A member access's property name, or a subscript's literal key."""
+        if node.type == "member_expression":
+            prop = node.child_by_field_name("property")
+            return _text(prop, self.source) if prop is not None else None
+        return self._literal_key(node.child_by_field_name("index"))
+
+    def _member_use(self, node: Any) -> None:
+        """Member accesses that reach the global object or a code evaluator:
+        ``document.defaultView`` used as a value, ``G.setTimeout`` and
+        ``G['setTimeout']``, and ``x.constructor`` called or handed on."""
+        key = self._member_key(node)
+        if key == _DEFAULT_VIEW:
+            self._global_object_use(node)
+        elif key == _CONSTRUCTOR:
+            self._evaluator_use(node)
+        elif key in _STRING_TIMERS and self._is_global_object(
+            node.child_by_field_name("object")
+        ):
+            self._timer_use(node)
+
+    def _use_site(self, node: Any) -> tuple[Any, Any]:
+        """``(expression, parent)``: ``node`` with its transparent wrappers,
+        and the node that uses it."""
+        current = node
+        while current.parent is not None and current.parent.type in (
+            _TRANSPARENT_WRAPPERS
+        ):
+            current = current.parent
+        return current, current.parent
+
+    def _inert_use(self, current: Any, parent: Any) -> bool:
+        """``typeof x``, ``!x``, ``x === y`` and the like only read ``x``."""
+        if parent is None:
+            return False
+        if parent.type == "type_query":
+            return True
+        operator = parent.child_by_field_name("operator")
+        operator_text = _text(operator, self.source) if operator is not None else ""
+        return (
+            parent.type == "unary_expression" and operator_text in _INERT_UNARY
+        ) or (parent.type == "binary_expression" and operator_text in _COMPARISONS)
+
+    def _evaluator_use(self, node: Any) -> None:
+        """``x.constructor`` may be a function constructor: calling it, or
+        using it as a value, may run source text (``*``). Reading a property
+        of it (``.name``, ``.prototype``) does not, except ``.call``,
+        ``.apply`` and ``.bind``; a nested ``.constructor`` is checked on its
+        own."""
+        current, parent = self._use_site(node)
+        if (
+            parent is not None
+            and parent.type in _MEMBER_ACCESS
+            and _same(parent.child_by_field_name("object"), current)
+        ):
+            key = self._member_key(parent)
+            if key is None or key in _INVOKERS:
+                self.global_wildcard = True
+            return
+        if self._inert_use(current, parent):
+            return
+        self.global_wildcard = True
+
+    def _timer_use(self, node: Any) -> None:
+        """A timer runs a string first argument as source text. Only a direct
+        call whose first argument is certainly a function is safe: a
+        function or arrow expression, or a name the file proves to be a
+        local function. Any other use (an alias, ``.call``, ``.apply``,
+        ``Reflect.apply``) gives ``*``."""
+        current, parent = self._use_site(node)
+        if self._inert_use(current, parent):
+            return
+        if (
+            parent is None
+            or parent.type != "call_expression"
+            or not _same(parent.child_by_field_name("function"), current)
+        ):
+            self.global_wildcard = True
+            return
+        arguments = parent.child_by_field_name("arguments")
+        named = arguments.named_children if arguments is not None else []
+        first = unwrap(named[0]) if named else None
+        if first is None or first.type in _FUNCTION_ARGUMENTS:
+            return
+        if first.type == "identifier":
+            outcome = self.lookup(first)
+            if outcome["outcome"] == "local" and "global" not in outcome:
+                return
+        self.global_wildcard = True
 
     def _literal_key(self, node: Any) -> str | None:
         """The text of a plain string literal key, or ``None``."""
@@ -923,7 +1086,7 @@ class _Analysis:
             current = stack.pop()
             if current.type in _MEMBER_ACCESS:
                 obj = current.child_by_field_name("object")
-                if self._is_global_object(obj):
+                if self._is_global_object(obj, receiver=True):
                     if current.type == "member_expression":
                         prop = current.child_by_field_name("property")
                         if prop is not None:
@@ -965,11 +1128,10 @@ class _Analysis:
                     return
                 if kind == "subscript_expression":
                     key = self._literal_key(parent.child_by_field_name("index"))
-                    if (
-                        key is None
-                        or key in _CODE_EVALUATORS
-                        or key in _GLOBAL_OBJECT_PROPERTIES
-                    ):
+                    if key in _GLOBAL_OBJECT_PROPERTIES:
+                        current = parent
+                        continue
+                    if key is None or key in _CODE_EVALUATORS:
                         self.global_wildcard = True
                     return
             if kind == "type_query":
@@ -1014,44 +1176,19 @@ class _Analysis:
             child, current = current, current.parent
         return True
 
-    def _string_timer(self, node: Any) -> None:
-        """``setTimeout("…")`` and ``setInterval("…")`` run source text."""
-        function = unwrap(node.child_by_field_name("function"))
-        if function is None:
-            return
-        if function.type == "identifier":
-            name = _text(function, self.source)
-            if name not in _STRING_TIMERS or not self._refers_to_global(function, name):
-                return
-        elif function.type == "member_expression":
-            prop = function.child_by_field_name("property")
-            if prop is None or _text(prop, self.source) not in _STRING_TIMERS:
-                return
-            if not self._is_global_object(function.child_by_field_name("object")):
-                return
-        else:
-            return
-        arguments = node.child_by_field_name("arguments")
-        first = arguments.named_children[0] if arguments is not None else None
-        if first is not None and unwrap(first).type in (
-            "string",
-            "template_string",
-            "binary_expression",
-        ):
-            self.global_wildcard = True
-
     def script_globals(self) -> list[str]:
         """The globals this file declares or may write (section 7.2)."""
         names = set(self.global_writes)
         if self.global_wildcard:
             names.add(GLOBAL_WILDCARD)
+        # Implicit globals count in a file of either goal (A2, #691 panel).
+        names.update(self.implicit_globals)
         if self.goal == "script":
             names.update(
                 name
                 for name, bindings in self.program.bindings.items()
                 if any(binding.cls != TYPE_ONLY for binding in bindings)
             )
-            names.update(self.implicit_globals)
         for scope in self.global_blocks:
             names.update(scope.bindings)
         return sorted(names)
@@ -1130,6 +1267,39 @@ class _Analysis:
         # A merged namespace's other declarations may bind the name.
         return _none(NAMESPACE_MERGED if through_merged else "unbound")
 
+    def _exported_names(self) -> set[str]:
+        """Names a module exports from its top level in a form that module
+        augmentation can merge into: an ``export`` modifier, an
+        ``export { … }`` clause (either side of ``as``) or ``export =``.
+        ``export default`` is left out; any other identifier in an export
+        statement without a declaration counts (fail closed)."""
+        names: set[str] = set()
+        for statement in self.root.named_children:
+            if statement.type != "export_statement":
+                continue
+            declaration = statement.child_by_field_name("declaration")
+            if declaration is not None:
+                if declaration.type == "ambient_declaration":
+                    declaration = next(iter(declaration.named_children), None)
+                if declaration is not None and declaration.type in _NAMESPACES:
+                    name = declaration.child_by_field_name("name")
+                    while name is not None and name.type == "nested_identifier":
+                        name = next(iter(name.named_children), None)
+                    if name is not None and name.type == "identifier":
+                        names.add(_text(name, self.source))
+                continue
+            if _has_token(statement, "default") or statement.child_by_field_name(
+                "source"
+            ):
+                continue
+            stack = list(statement.named_children)
+            while stack:
+                current = stack.pop()
+                if current.type == "identifier":
+                    names.add(_text(current, self.source))
+                stack.extend(current.named_children)
+        return names
+
     def _merged(self, scope: _Scope) -> bool:
         """Whether a namespace body is merged (section 7.2): its namespace
         has another declaration, or lives in a script, where namespaces are
@@ -1139,6 +1309,11 @@ class _Analysis:
             return True
         declaring = scope.merge_scope
         if declaring is None:
+            return True
+        if declaring is self.program and scope.merge_name in self.exported_names:
+            # TS module augmentation (``declare module './a' { namespace N
+            # {...} }``) merges into an exported namespace from another file
+            # (A3, #691 panel).
             return True
         declarations = [
             binding
@@ -1278,6 +1453,50 @@ class _Analysis:
         )
 
 
+# Parents under which an identifier is a binding pattern, not a reference.
+_PATTERN_PARENTS = frozenset({"array_pattern", "object_pattern", "rest_pattern"})
+# ``(parent, field)``: the field of the parent that names a declaration.
+_DECLARATION_FIELDS = frozenset(
+    {
+        ("required_parameter", "pattern"),
+        ("optional_parameter", "pattern"),
+        ("assignment_pattern", "left"),
+        ("object_assignment_pattern", "left"),
+        ("pair_pattern", "value"),
+        ("variable_declarator", "name"),
+        ("arrow_function", "parameter"),
+        ("catch_clause", "parameter"),
+        ("function_declaration", "name"),
+        ("generator_function_declaration", "name"),
+        ("function_expression", "name"),
+        ("generator_function", "name"),
+        ("function_signature", "name"),
+        ("class_declaration", "name"),
+        ("abstract_class_declaration", "name"),
+        ("class", "name"),
+        ("import_specifier", "name"),
+        ("import_specifier", "alias"),
+    }
+)
+_DECLARATION_PARENTS = frozenset(
+    {"formal_parameters", "namespace_import", "import_clause", "import_require_clause"}
+)
+
+
+def _declaration_name(node: Any) -> bool:
+    """Whether an identifier is a name being declared, not a reference."""
+    parent = node.parent
+    if parent is None:
+        return False
+    if parent.type in _PATTERN_PARENTS or parent.type in _DECLARATION_PARENTS:
+        return True
+    return any(
+        _same(parent.child_by_field_name(field_name), node)
+        for kind, field_name in _DECLARATION_FIELDS
+        if kind == parent.type
+    )
+
+
 def _inside_class(node: Any) -> bool:
     """Whether ``node`` is class code, which is always strict."""
     current = node.parent
@@ -1353,18 +1572,50 @@ def escaped_name(root: Any, source: bytes) -> Any:
     return None
 
 
+class MisparsedBlockError(ValueError):
+    """A statement-level object literal: a misparsed block; fail closed."""
+
+
+def misparsed_block(root: Any) -> Any:
+    """The first ``expression_statement`` whose expression is an
+    unparenthesized object literal, or ``None``.
+
+    Valid JavaScript never has one (a statement cannot start with ``{``),
+    but tree-sitter parses ``{ L: function d() {} }`` that way without an
+    error, which would hide a block-level declaration (A1, #691 panel).
+    """
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        if node.type == "expression_statement":
+            named = node.named_children
+            if named and named[0].type == "object":
+                return node
+        stack.extend(node.named_children)
+    return None
+
+
 def analyze(
     root: Any,
     source: bytes,
     language: str,
     call_facts: Sequence[Mapping[str, Any]],
+    goal: str | None = None,
 ) -> dict[str, Any]:
-    """Return partial scope facts: the goal and one outcome per call."""
+    """Return partial scope facts: the goal and one outcome per call.
+
+    ``goal`` overrides the goal the file's syntax implies, for an extension
+    that fixes it (``.mjs``/``.mts`` are always modules).
+    """
     escaped = escaped_name(root, source)
     if escaped is not None:
         msg = f"escaped name in a {escaped.type} at byte {escaped.start_byte}"
         raise EscapedIdentifierError(msg)
-    analysis = _Analysis(root, source, language)
+    misparsed = misparsed_block(root)
+    if misparsed is not None:
+        msg = f"statement-level object literal at byte {misparsed.start_byte}"
+        raise MisparsedBlockError(msg)
+    analysis = _Analysis(root, source, language, goal)
     bindings: dict[str, Any] = {}
     for fact in call_facts:
         start = int(fact["callee_byte_start"])

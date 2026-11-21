@@ -16,8 +16,9 @@ filesystem access. The engine narrows call relationships in place:
    proves nothing. A ``local`` outcome that lands on a script-goal top level
    (it carries ``global``) proves its group only if no other file of the run
    declares that name in its ``script_globals``, none may write a global of
-   any name, and no other JavaScript/TypeScript file is unsupported (its
-   globals are unknown); otherwise it is ``none(script-global)`` (7.2).
+   any name, no other JavaScript/TypeScript file is unsupported (its globals
+   are unknown) and no file of a language that can carry inline scripts is
+   in the run; otherwise it is ``none(script-global)`` (7.2).
 3. **Filters (7.1).** ``t1.family`` then ``t1.kind`` remove candidates of
    another language family or of a non-callable kind. They apply only when two
    or more candidates remain, or when the single survivor is proven by ``P``.
@@ -56,6 +57,12 @@ KNOWN_RULE_IDS = (
 BINDING_RULE_IDS = frozenset({RULE_LEXICAL, RULE_IMPORT, RULE_NAMESPACE})
 # A ``script_globals`` entry for a file that may write a global of any name.
 GLOBAL_WILDCARD = "*"
+# Collected languages whose files can carry inline scripts (``<script>``,
+# event-handler attributes) the analysis never reads: each such file in the
+# run counts as declaring every global (B5, #691 panel).
+INLINE_SCRIPT_LANGUAGES = frozenset(
+    {"html", "xml", "php", "markdown", "restructuredtext"}
+)
 # Group rules (7.4) refine a binding's group; they never apply alone.
 GROUP_RULE_IDS = frozenset({RULE_TS_OVERLOAD, RULE_JS_HOIST})
 FILTER_RULE_IDS = frozenset({RULE_KIND, RULE_FAMILY})
@@ -110,7 +117,8 @@ class RunContext:
     # is ``files``; assembly never touches the filesystem.
     language_filter: str | None = None
     # Script globals (7.2): the files declaring each name, and the files
-    # whose globals are unknown (a wildcard, or an unsupported JS/TS file).
+    # whose globals are unknown (a wildcard, an unsupported JS/TS file, or a
+    # file that can carry inline scripts).
     global_declarers: Mapping[str, frozenset[str]] = field(default_factory=dict)
     unknown_globals: frozenset[str] = frozenset()
 
@@ -168,6 +176,9 @@ def build_run_context(
     declarers: defaultdict[str, set[str]] = defaultdict(set)
     unknown: set[str] = set()
     for path, file_context in files.items():
+        if file_context.language in INLINE_SCRIPT_LANGUAGES:
+            unknown.add(path)
+            continue
         if language_family(file_context.language) != "js":
             continue
         if not file_context.supported or GLOBAL_WILDCARD in file_context.script_globals:
@@ -194,15 +205,23 @@ def script_global_outcome(
     Only a ``local`` outcome that landed on a script-goal top level carries
     ``global``; it becomes ``none(script-global)`` when another file of the
     run declares that name as a script global, may write a global of any
-    name, or is an unsupported JavaScript/TypeScript file.
+    name, is an unsupported JavaScript/TypeScript file, or is a file of a
+    language that can carry inline scripts (HTML, XML, PHP, Markdown,
+    reStructuredText). This holds within the run only (plan R9, R11).
     """
     if outcome is None or outcome.get("outcome") != "local" or "global" not in outcome:
         return outcome
     name = str(outcome["global"])
-    others = (
-        context.global_declarers.get(name, frozenset()) | context.unknown_globals
-    ) - {file_context.path}
-    return _none("script-global") if others else outcome
+    path = file_context.path
+    declared = context.global_declarers.get(name, frozenset())
+    unknown = context.unknown_globals
+    conflict = (
+        len(declared) > 1
+        or bool(declared and path not in declared)
+        or len(unknown) > 1
+        or bool(unknown and path not in unknown)
+    )
+    return _none("script-global") if conflict else outcome
 
 
 def _join(

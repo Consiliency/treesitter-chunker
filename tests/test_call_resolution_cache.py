@@ -277,3 +277,50 @@ def test_semantic_on_mode_cold_and_warm_agree(tmp_path: Path) -> None:
     for record in _records(cache_dir):
         assert record["key_payload"]["call_resolution"] == MODE
         assert record["key_payload"]["semantic_schema_version"] == "3.1"
+
+
+@pytest.mark.parametrize("direction", ["add-global", "remove-global"])
+def test_editing_another_file_reruns_the_script_global_check(
+    tmp_path: Path, direction: str
+) -> None:
+    """#691 panel B2: a.js is cached, only b.js changes, and the warm run
+    applies the cross-file script-global check to a.js's cached facts: its
+    edge returns to the off-mode form (or resolves again), and warm output
+    equals a cold run of the edited tree."""
+    root = tmp_path / "tree"
+    root.mkdir()
+    cache_dir = tmp_path / "cache"
+    plain = "function init() { return 0; }\n"
+    writer = "function init() { d = function () { return 3; }; }\n"
+    (root / "a.js").write_text(
+        "function d() { return 1; }\nfunction g() { return d(); }\n",
+        encoding="utf-8",
+    )
+    (root / "c.js").write_text("export function d() { return 2; }\n", encoding="utf-8")
+    before, after = (plain, writer) if direction == "add-global" else (writer, plain)
+    (root / "b.js").write_text(before, encoding="utf-8")
+    first = extract_boundary_ir(
+        root, incremental=True, cache_dir=cache_dir, call_resolution=MODE
+    )
+    (root / "b.js").write_text(after, encoding="utf-8")
+    warm = extract_boundary_ir(
+        root, incremental=True, cache_dir=cache_dir, call_resolution=MODE
+    )
+    cold = extract_boundary_ir(root, call_resolution=MODE)
+    off = extract_boundary_ir(root)
+    assert dumps_boundary_ir(warm) == dumps_boundary_ir(cold)
+
+    def a_edge(document: dict[str, Any]) -> dict[str, Any]:
+        (edge,) = [
+            edge
+            for edge in document["edges"]
+            if edge["type"] == "calls" and edge["reference"] == "d"
+        ]
+        return edge
+
+    resolved, unresolved = (first, warm) if direction == "add-global" else (warm, first)
+    assert a_edge(resolved)["resolution"] == "resolved"
+    assert a_edge(resolved)["provenance"]["call_rules"] == ["t1.lexical"]
+    assert a_edge(unresolved)["resolution"] == "ambiguous"
+    if unresolved is warm:
+        assert a_edge(warm) == a_edge(off)
