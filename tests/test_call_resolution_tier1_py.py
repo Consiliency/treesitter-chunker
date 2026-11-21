@@ -1045,7 +1045,9 @@ def test_tabs_alone_are_unambiguous() -> None:
         ("pkg/__init__.py", {"pkg"}),
         ("__init__.py", set()),
         ("pkg\\sub\\mod.py", {"mod"}),
-        ("my-script.py", set()),
+        ("my-script.py", {"my-script"}),
+        ("pkg/my-pkg/__init__.py", {"my-pkg"}),
+        ("a.b.py", {"a.b", "a", "b"}),
     ],
 )
 def test_own_module_names(path: str, names: set[str]) -> None:
@@ -1207,7 +1209,7 @@ def test_panel_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> 
 
 NATURAL_UNMAPPED = {
     "del-call": "del f()",
-    "with-call-target": "with a as f():\n    pass",
+    "with-call-target": "with x as f():\n    pass",
     "type-attribute": "type(x).attr = v",
 }
 
@@ -1245,8 +1247,8 @@ def test_line_continuation_target_end_to_end(tmp_path: Path) -> None:
 
 
 def test_builtin_shadow_end_to_end(tmp_path: Path) -> None:
-    source = "def use():\n    return len('ab')\n\n\ndef len(*a):\n    return 1\n"
-    root = _tree(tmp_path, {"a.py": source, "b.py": "def len(*a):\n    return 2\n"})
+    source = "def use():\n    return len('ab')\n\n\ndef len(*args):\n    return 1\n"
+    root = _tree(tmp_path, {"a.py": source, "b.py": "def len(*args):\n    return 2\n"})
     off, on = _off_on(root)
     edge = _helper_edge(off, "len")
     assert edge["resolution"] == "ambiguous"
@@ -2486,3 +2488,695 @@ def test_unrelated_imports_and_strings_still_resolve() -> None:
     # Function-local lookups are unaffected by the module-scope rule.
     local = "NAME = 'a'\n\n\ndef use():\n    def helper():\n        return 1\n    return helper()\n"
     assert _outcome_at(local, "helper", "pkg/a.py")["outcome"] == "local"
+
+
+# ---------------------------------------------------------------------------
+# The president's re-check at f7f0b0bd (N-4 to N-6) and the R-5 family: names
+# matched whatever node spells them, raw own names, ``..`` from a root
+# ``__init__.py``, and attribute writes through any receiver.
+
+FOLD4_695: dict[str, tuple[str, dict[str, str]]] = {
+    "custom_loader_name": (
+        "R-5",
+        {
+            "__target__": "a.py",
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    import zzz\n"
+            "    zzz.helper = len\n",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n"
+            "\n"
+            "def me():\n"
+            "    pass\n",
+        },
+    ),
+    "kw_param_dict_unpack": (
+        "R-5",
+        {
+            "__target__": "pkg/a.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n"
+            "\n"
+            "def me():\n"
+            "    pass\n",
+            "pkg/__init__.py": "",
+            "pkg/a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    import pkg\n"
+            "    def g(a=None, **k):\n"
+            "        a.helper = len\n"
+            "    g(**pkg.__dict__)\n",
+        },
+    ),
+    "match_kw_frame_globals": (
+        "N-4",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "import inspect\n"
+            "def patch():\n"
+            "    match inspect.currentframe():\n"
+            "        case object(f_globals=g):\n"
+            "            g['helper'] = len\n",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+        },
+    ),
+    "match_kw_globals": (
+        "N-4",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    match use:\n"
+            "        case object(__globals__=g):\n"
+            "            g['helper'] = len\n",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+        },
+    ),
+    "match_kw_init_self": (
+        "N-4",
+        {
+            "__target__": "pkg/sub/__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "pkg/__init__.py": "",
+            "pkg/sub/__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    import pkg\n"
+            "    match pkg:\n"
+            "        case object(sub=m):\n"
+            "            m.helper = len\n",
+        },
+    ),
+    "match_kw_pattern": (
+        "N-4",
+        {
+            "__target__": "pkg/a.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n"
+            "\n"
+            "def me():\n"
+            "    pass\n",
+            "pkg/__init__.py": "",
+            "pkg/a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    import pkg\n"
+            "    match pkg:\n"
+            "        case object(a=m):\n"
+            "            m.helper = len\n",
+        },
+    ),
+    "match_kw_pattern_ns": (
+        "N-4",
+        {
+            "__target__": "pkg/a.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n"
+            "\n"
+            "def me():\n"
+            "    pass\n",
+            "pkg/a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    import pkg\n"
+            "    match pkg:\n"
+            "        case object(a=m):\n"
+            "            m.helper = len\n",
+        },
+    ),
+    "modules_spec_name": (
+        "R-5",
+        {
+            "a.py": "import collections\n"
+            "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "collections._sys.modules[__spec__.name if __spec__ "
+            "else __name__].helper = len\n"
+            "use()\n"
+        },
+    ),
+    "nonident_dir_init": (
+        "N-5",
+        {
+            "__target__": "my-pkg/__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n"
+            "\n"
+            "def me():\n"
+            "    pass\n",
+            "my-pkg/__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "from .helper import M\n",
+            "my-pkg/helper.py": "import sys, types\n"
+            "class M(types.ModuleType):\n"
+            "    def __call__(self, *a):\n"
+            "        return 'callable-module'\n"
+            "sys.modules[__name__].__class__ = M\n",
+        },
+    ),
+    "nonident_dir_init_abs": (
+        "N-5",
+        {
+            "__target__": "my-pkg/__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n"
+            "\n"
+            "def me():\n"
+            "    pass\n",
+            "my-pkg/__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    import sys\n"
+            "    from . import other\n"
+            "    other.up.helper = len\n",
+            "my-pkg/other.py": "import importlib\n"
+            "up = "
+            "importlib.import_module('my-pkg')\n",
+        },
+    ),
+    "nonident_nested_init": (
+        "N-5",
+        {
+            "__target__": "pkg/my-sub/__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "pkg/__init__.py": "",
+            "pkg/my-sub/__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "from .helper import M\n",
+            "pkg/my-sub/helper.py": "import sys, types\n"
+            "class M(types.ModuleType):\n"
+            "    def __call__(self, *a):\n"
+            "        return 'callable-module'\n"
+            "sys.modules[__name__].__class__ = "
+            "M\n",
+        },
+    ),
+    "nonident_stem_dict": (
+        "N-5",
+        {
+            "__target__": "pkg/my-mod.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n"
+            "\n"
+            "def me():\n"
+            "    pass\n",
+            "pkg/__init__.py": "",
+            "pkg/my-mod.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    import pkg\n"
+            "    pkg.__dict__['my-mod'].helper = len\n",
+        },
+    ),
+    "nonident_stem_getattr": (
+        "N-5",
+        {
+            "__target__": "pkg/my-mod.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n"
+            "\n"
+            "def me():\n"
+            "    pass\n",
+            "pkg/__init__.py": "",
+            "pkg/my-mod.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    import pkg\n"
+            "    getattr(pkg, 'my-mod').helper = "
+            "len\n",
+        },
+    ),
+    "pkgutil_resolve": (
+        "R-5",
+        {
+            "a.py": "import pkgutil\n"
+            "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    pkgutil.resolve_name(__name__).helper = len\n"
+            "\n"
+            "patch()\n"
+            "use()\n"
+        },
+    ),
+    "pydoc_locate": (
+        "R-5",
+        {
+            "a.py": "import pydoc\n"
+            "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    pydoc.locate(__name__).helper = len\n"
+            "\n"
+            "patch()\n"
+            "use()\n"
+        },
+    ),
+    "reexport_sibling": (
+        "R-5",
+        {
+            "__target__": "pkg/a.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n"
+            "\n"
+            "def me():\n"
+            "    pass\n",
+            "pkg/__init__.py": "",
+            "pkg/a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    from .sib import mod\n"
+            "    mod.helper = len\n",
+            "pkg/sib.py": "from . import a as mod\n",
+        },
+    ),
+    "reexport_sibling_func": (
+        "R-5",
+        {
+            "__target__": "pkg/a.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n"
+            "\n"
+            "def me():\n"
+            "    pass\n",
+            "pkg/__init__.py": "",
+            "pkg/a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    from .sib import me\n"
+            "    me().helper = len\n",
+            "pkg/sib.py": "def me():\n    import pkg.a\n    return pkg.a\n",
+        },
+    ),
+    "rootpar_self": (
+        "N-6",
+        {
+            "__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    from .. import rootpar_self as me\n"
+            "    me.helper = len\n",
+            "__target__": "__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+        },
+    ),
+    "rootpar_sub": (
+        "N-6",
+        {
+            "__init__.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "from ..rootpar_sub.helper import M\n",
+            "__target__": "__init__.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n",
+            "helper.py": "import sys, types\n"
+            "class M(types.ModuleType):\n"
+            "    def __call__(self, *a):\n"
+            "        return 'callable-module'\n"
+            "sys.modules[__name__].__class__ = M\n",
+        },
+    ),
+    "str_bytes_decode": (
+        "R-5",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    getattr(patch, b'__globals__'.decode())['helper'] "
+            "= len\n"
+            "patch()\n"
+            "use()\n"
+        },
+    ),
+    "str_fstring_nested": (
+        "R-5",
+        {
+            "__target__": "pkg/a.py",
+            "b.py": "def helper(*a):\n"
+            "    return 'decoy'\n"
+            "\n"
+            "def use():\n"
+            "    pass\n"
+            "\n"
+            "def patch():\n"
+            "    pass\n"
+            "\n"
+            "def me():\n"
+            "    pass\n",
+            "pkg/__init__.py": "",
+            "pkg/a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    import pkg\n"
+            "    getattr(pkg, f'{\"x\"}a'[-1]).helper = "
+            "len\n",
+        },
+    ),
+    "str_percent": (
+        "R-5",
+        {
+            "a.py": "def helper(*a):\n"
+            "    return 'mod'\n"
+            "\n"
+            "def use():\n"
+            "    return helper('ab')\n"
+            "\n"
+            "def patch():\n"
+            "    getattr(patch, '__%s__' % 'glob' 'als')['helper'] = "
+            "len\n"
+            "patch()\n"
+            "use()\n"
+        },
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD4_695))
+def test_fold4_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    _, spec = FOLD4_695[case]
+    files = dict(spec)
+    target = files.pop("__target__", "a.py")
+    files.setdefault("b.py", _decoys(files[target]))
+    root = _tree(tmp_path, files)
+    off, on = _off_on(root)
+    off_calls = [e for e in off["relationships"] if e["file"] == target]
+    assert any(edge["resolution"] == "ambiguous" for edge in off_calls), case
+    assert [e for e in on["relationships"] if e["file"] == target] == off_calls
+
+
+@pytest.mark.parametrize(
+    ("path", "form"),
+    [
+        # N-4: a name is an attribute lookup whatever node spells it.
+        (
+            "pkg/a.py",
+            "def patch():\n    match pkg:\n        case object(a=m):\n            m.__dict__.clear()",
+        ),
+        (
+            "a.py",
+            "def patch():\n    match use:\n        case object(__globals__=g):\n            g.clear()",
+        ),
+        (
+            "a.py",
+            "def patch():\n    match fr:\n        case object(f_globals=g):\n            g.clear()",
+        ),
+        ("a.py", "from inspect import getmodule"),
+        ("pkg/a.py", "x = dict(a=1)"),
+        ("pkg/a.py", "match v:\n    case pkg.a:\n        pass"),
+        # N-5: raw, non-identifier own names.
+        ("pkg/my-mod.py", "def patch():\n    getattr(pkg, 'my-mod').__dict__.clear()"),
+        ("my-pkg/__init__.py", "x = 'my-pkg'"),
+        # N-6: a root ``__init__.py`` reached through ``..``.
+        ("__init__.py", "def patch():\n    from .. import R as me"),
+        ("__init__.py", "from ..R.helper import M"),
+        # ``X[__name__]`` / getters on any receiver.
+        ("a.py", "def patch(m):\n    m[__name__].__dict__.clear()"),
+        ("a.py", "def patch(m):\n    m.get((__name__)).__dict__.clear()"),
+    ],
+)
+def test_fold4_rules_fail_closed(path: str, form: str) -> None:
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", path) == {
+        "outcome": "none",
+        "reason": "dynamic-scope",
+    }, (path, form)
+
+
+def test_f_locals_as_a_class_pattern_keyword_fails_closed_everywhere() -> None:
+    source = (
+        "def f(fr):\n    def helper():\n        return 1\n"
+        "    match fr:\n        case object(f_locals=fl):\n            fl.clear()\n"
+        "    return helper()\n"
+    )
+    assert reason(source) == "dynamic-scope"
+
+
+def test_nonidentifier_package_init_rebinds_submodules() -> None:
+    source = HELPER + "from .helper import M\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", "my-pkg/__init__.py") == {
+        "outcome": "none",
+        "reason": "mixed-bindings",
+    }
+    nested = _outcome_at(source, "helper", "pkg/my-sub/__init__.py")
+    assert nested["outcome"] == "none"
+
+
+def test_an_unknown_path_fails_closed() -> None:
+    """``compute_scope_facts`` without a path cannot know the own name."""
+    from chunker.call_resolution import facts
+
+    source = (HELPER + "def use():\n    return helper()\n").encode()
+    start = source.rindex(b"helper")
+    call = {"callee_byte_start": start, "callee_byte_end": start + 6}
+    unknown = facts.compute_scope_facts(
+        language="python", source=source, call_facts=[call], symbols=[]
+    )
+    known = facts.compute_scope_facts(
+        language="python", source=source, call_facts=[call], symbols=[], path="a.py"
+    )
+    key = f"{start}:{start + 6}"
+    assert unknown["bindings"][key] == {"outcome": "none", "reason": "dynamic-scope"}
+    assert known["bindings"][key]["outcome"] == "local"
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "def patch(mod):\n    mod.helper = len",
+        "def patch(mod):\n    mod.helper += 1",
+        "def patch(mod):\n    del mod.helper",
+        "def patch(mod):\n    mod.__dict__['helper'] = len",
+        "def patch(mod):\n    setattr(mod, 'helper', len)",
+        "def patch(mod):\n    delattr(mod, 'helper')",
+        "def patch(mod):\n    object.__setattr__(mod, 'helper', len)",
+        "def patch(mod):\n    mod.__dict__.update(helper=len)",
+        "def patch(mod):\n    mod.__dict__.update({'helper': len})",
+        "def patch(mod):\n    mod.__dict__.update(**{'helper': len})",
+        "def patch(mod):\n    mod.__dict__.setdefault('helper', len)",
+        "def patch(mod):\n    mod.__dict__.pop('helper')",
+        "def patch(mod):\n    mod.__dict__.__setitem__('helper', len)",
+        "def patch(mod):\n    for mod.helper in [len]:\n        pass",
+    ],
+)
+def test_attribute_writes_through_any_receiver_rebind(form: str) -> None:
+    """Any receiver may be this module, handed over by a sibling, a function
+    or a loader: a write of attribute ``helper`` is a non-definition binding
+    of the module's ``helper`` (#695 re-check R-5 family)."""
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", "pkg/a.py") == {
+        "outcome": "none",
+        "reason": "mixed-bindings",
+    }, form
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        # Reads, and names the analysis cannot confuse with a write.
+        "def patch(mod):\n    return mod.helper",
+        "match v:\n    case {'helper': h}:\n        pass",
+        "__all__ = ['helper']",
+        "class K:\n    __slots__ = ('helper',)",
+        "@decorate\ndef other():\n    return 1",
+        "def f(a, *a2, **kw):\n    return 0",
+        "def a():\n    return 0",
+    ],
+)
+def test_reads_and_bindings_still_resolve(form: str) -> None:
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", "pkg/a.py")["outcome"] == "local", form
+    # A parameter or ``def`` named like the module is a scope binding, not a
+    # lookup (a later load of that variable does over-trigger, by design).
+    param = (
+        HELPER + "def f(a, *a2):\n    return 0\n\n\ndef use():\n    return helper()\n"
+    )
+    assert _outcome_at(param, "helper", "pkg/a.py")["outcome"] == "local"

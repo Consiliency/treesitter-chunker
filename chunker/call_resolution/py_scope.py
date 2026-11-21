@@ -136,27 +136,37 @@ mangled spelling an enclosing class may give it (a non-definition binding),
 so ``_C__x`` spelled out elsewhere never proves past a mangled write.
 
 **The file's own module: one general fail-closed rule** (the president's
-re-check of #695, replacing per-shape fixes). The names that can denote this
-file's module are every suffix of its dotted module path relative to the run
-root and to every ancestor directory, because the root and any ancestor may
-be packages, regular or PEP 420 namespace packages. Every such name, and any
-longer path ending in one, ends with the file's own name: its stem, or the
-package directory's name for ``__init__.py`` (:class:`ModulePath`). So:
+re-checks of #695, replacing per-shape fixes). The names the import system
+derives from the path can denote this file's module: every suffix of its
+dotted module path relative to the run root and to every ancestor directory,
+because the root and any ancestor may be packages, regular or PEP 420
+namespace packages. Each of those, and any longer path ending in one, ends
+with the file's own name: its raw stem, or the package directory's raw name
+for ``__init__.py`` (:class:`ModulePath`; no identifier filter, since
+``my-mod`` is importable by ``importlib``). A loader may choose any other name
+(``spec_from_file_location``, ``runpy``); writes through such a module are
+covered by the attribute-write rule below, and the rest is plan risk R12. A
+file whose own name cannot be computed (no path) fails closed. So:
 
 - **Self-reference.** Module-scope lookups give ``dynamic-scope`` when the own
   name is a component of any import's path or imported names (absolute or
-  relative, after any dots, in any scope: ``import a``, ``import pkg.a.x``,
-  ``from . import a``, ``from ..sub import x`` in ``pkg/sub/__init__.py``), of
-  any attribute name (``R.a.helper = …`` through a parent package or the run
-  root itself), or of any constant string, alone or dotted (``getattr(pkg,
-  "a")``, ``pkg.__dict__["a"]``, ``NAME = "a"``), mirroring the rule for
-  dynamic attribute names. A root-level ``__init__.py`` has no own name in
-  the run, and treats every absolute import as a possible self-import; a
-  relative import cannot reach it. This over-triggers by design. Losing a
-  proof is fine; a wrong edge is not. The ways left to reach the module
-  object without spelling its name are other dynamic triggers (``__import__``,
-  ``importlib``, ``sys.modules``, ``globals()``, frames) or plan risks R10/R12
-  (another module, iteration over a package's namespace, ``gc``).
+  relative, after any dots, in any scope), of any identifier that is not a
+  parameter or ``def``/``class`` name (an attribute, a keyword argument, a
+  class pattern's keyword ``case object(a=m)``, a dotted name: whatever node
+  spells it), or of any constant string, alone or dotted. A root-level
+  ``__init__.py``, which includes any ``__init__.py`` run as a single file,
+  has no own name in the run: every absolute import, and every relative
+  import whose dots leave the run (``from .. import R``), may name it; only a
+  single-dot relative import cannot. This over-triggers by design. Losing a
+  proof is fine; a wrong edge is not.
+- **Attribute writes through any receiver.** The receiver may be this module,
+  handed over by a sibling's re-export, a function's return value, a
+  parameter or a loader. So writing attribute ``name`` of anything (``x.name
+  = v``, ``del x.name``, ``x["name"] = v`` with a constant key,
+  ``setattr``/``delattr``/``__setattr__``/``__setitem__`` with a constant
+  string, ``x.__dict__.update(name=v)``/``.update({"name": v})``/
+  ``.setdefault``/``.pop``) gives ``name`` a non-definition binding at module
+  scope, so a definition of ``name`` there never proves.
 - **Submodule rebinding.** In any ``__init__.py``, every import is resolved to
   a full dotted path (relative dots joined to this file's module path). Where
   the own name is followed by a component ``X`` (``import pkg.sub.X``,
@@ -164,8 +174,14 @@ package directory's name for ``__init__.py`` (:class:`ModulePath`). So:
   this package's global ``X``: a non-definition binding at module scope,
   also from a function.
 
-Redundant parentheses around ``__name__`` in ``X.modules[(__name__)]`` and the
-getters are ignored.
+Dynamic attribute names (``__globals__``, ``f_globals``, ``f_locals``,
+``f_builtins``, ``getmodule``) also count whatever node spells them, and
+``X[__name__]`` or ``X.get(__name__)`` (also ``__getitem__``, ``setdefault``,
+``pop``) on any receiver is dynamic. What is left to reach the module without
+spelling its name or writing through it by name is other dynamic triggers
+(``__import__``, ``importlib``, ``sys.modules``, ``globals()``, frames) or
+plan risks R10/R12 (another module, iteration over a package's namespace,
+``gc``, by-name submodule loading with a computed name).
 
 **Identifiers are compared by their source spelling, so a file with a
 non-ASCII identifier is not analyzed.** Python normalizes identifiers to
@@ -477,6 +493,21 @@ BUILTINS = BUILTINS_314 | PY2_BUILTINS | PLATFORM_BUILTINS
 # The package an import in a root-level ``__init__.py`` names with ``.``: its
 # own name is outside the run, so it stands for "this package".
 _SELF = "<this package>"
+# Calls that write an attribute or namespace key named by a string argument,
+# a keyword argument or a constant dict key (``X.__dict__.update(helper=f)``).
+_ATTRIBUTE_WRITERS = frozenset(
+    {
+        "setattr",
+        "delattr",
+        "__setattr__",
+        "__delattr__",
+        "__setitem__",
+        "__delitem__",
+        "update",
+        "setdefault",
+        "pop",
+    }
+)
 _IMPORT_STATEMENTS = frozenset(
     {"import_statement", "import_from_statement", "future_import_statement"}
 )
@@ -580,6 +611,8 @@ class _Analysis:
         self.dynamic = False
         self.frame_locals = False
         self.star = False
+        # Names written as an attribute or constant key of any receiver.
+        self.attribute_writes: set[str] = set()
         self.handlers: dict[str, Callable[[Any, _Scope, int], None]] = {
             "function_definition": self._function,
             "class_definition": self._class,
@@ -609,6 +642,13 @@ class _Analysis:
         self.module = self._scope(_MODULE, root, None, "scope")
         self._children(root, self.module, 0)
         self._scan_dynamic()
+        for name in sorted(self.attribute_writes):
+            # Any receiver may be this module: a non-definition binding of
+            # the written name at module scope (#695 re-check R-5 family).
+            self._module_write(name)
+        if self.module_path.unknown:
+            # Without a path the own name is unknown: fail closed.
+            self.dynamic = True
         for scope, name, binding in self.events:
             self._bind(scope, name, binding)
 
@@ -659,6 +699,18 @@ class _Analysis:
             scope.assigned.add(mangled)
             self.events.append((scope, mangled, _Binding(LOCAL)))
 
+    def _attribute_write(self, node: Any) -> None:
+        if node.type == "attribute":
+            attribute = node.child_by_field_name("attribute")
+            if attribute is not None:
+                self.attribute_writes.add(_text(attribute, self.source))
+            return
+        for index, child in enumerate(node.children):
+            if node.field_name_for_child(index) == "subscript":
+                value = _constant_string(child, self.source)
+                if value is not None:
+                    self.attribute_writes.add(value)
+
     def _module_write(self, name: str) -> None:
         """A non-definition binding of ``name`` at module scope."""
         self.module.assigned.add(name)
@@ -685,6 +737,11 @@ class _Analysis:
                 self._targets(child, scope, depth + 1, cls)
         elif kind in ("attribute", "subscript"):
             # ``x.y = v`` and ``x[i] = v`` write no name; their parts are read.
+            # But the receiver may be this module, handed over by any means
+            # (a sibling's re-export, a function's return value, a loader's
+            # name): the written attribute, or a constant key, is a possible
+            # write of this module's global of that name.
+            self._attribute_write(node)
             self.visit(node, scope, depth + 1)
         elif kind not in ("comment", "line_continuation"):
             scope.poisoned = True
@@ -1085,11 +1142,15 @@ class _Analysis:
                 value = _constant_string(node, source)
                 if value is not None:
                     self._literal_use(value)
-                    if set(value.split(".")) & self.own_names:
+                    if self._names_own_module(value):
                         # Any constant string naming this module, alone or as
                         # a component of a dotted path (``getattr(pkg, "a")``,
                         # ``pkg.__dict__["a"]``, ``NAME = "a"``; N-3).
                         self.dynamic = True
+            elif kind in ("subscript", "call"):
+                self._module_by_name(node)
+                if kind == "call":
+                    self._setattr_call(node)
             if kind in ("import_statement", "import_from_statement"):
                 self._import_use(node)
             stack.extend(node.named_children)
@@ -1098,20 +1159,23 @@ class _Analysis:
             parent = ident.parent
             if parent is None:
                 continue
+            # Attribute-like names count wherever an identifier spells them
+            # (#695 re-check N-4): an attribute, a keyword argument, a class
+            # pattern's keyword (``case object(__globals__=g)``), an import or
+            # dotted name, a definition's name. Over-triggering only fails
+            # closed.
+            if name in _DYNAMIC_ATTRIBUTES:
+                self.dynamic = True
+                self.frame_locals = self.frame_locals or name == _FRAME_LOCALS
+            if self._names_own_module(name) and not _scope_binding_name(ident):
+                # ``pkg.a.helper = …``, ``case object(a=m)``: a path through a
+                # parent package, which may be the run root itself.
+                self.dynamic = True
             if parent.type == "attribute" and _same(
                 ident, parent.child_by_field_name("attribute")
             ):
-                if name in _DYNAMIC_ATTRIBUTES:
-                    self.dynamic = True
-                    self.frame_locals = self.frame_locals or name == _FRAME_LOCALS
-                elif name == _SYS:
+                if name == _SYS:
                     self._sys_use(parent)
-                elif name == _SYS_MODULES:
-                    self._modules_use(parent)
-                elif name in self.own_names:
-                    # ``pkg.a.helper = …``: an attribute path through a parent
-                    # package, which may be the run root itself (N-2).
-                    self.dynamic = True
                 continue
             if parent.type == "keyword_argument" and _same(
                 ident, parent.child_by_field_name("name")
@@ -1128,6 +1192,16 @@ class _Analysis:
             elif name in main_names and not _import_context(ident):
                 # ``__main__.helper = len``, ``setattr(m, ...)``.
                 self.dynamic = True
+
+    def _names_own_module(self, text: str) -> bool:
+        """Whether a name, or a dotted constant string, may denote this
+        file's module: one of its components, or the whole text, is an own
+        name."""
+        if not self.own_names:
+            return False
+        return bool(set(text.split(".")) & self.own_names) or any(
+            "." in own and own in text for own in self.own_names
+        )
 
     def _literal_use(self, value: str) -> None:
         """A constant string naming a dynamic attribute counts as a mention
@@ -1163,52 +1237,89 @@ class _Analysis:
             if set(path) & self.own_names:
                 self.dynamic = True
         if self.module_path.root_init and (
-            node.type == "import_statement" or not module_text.startswith(".")
+            node.type == "import_statement"
+            or not module_text.startswith(".")
+            or module_text.startswith("..")
         ):
-            # B-4(c).
+            # B-4(c): a root-level ``__init__.py`` (also any ``__init__.py``
+            # run as a single file) has no own name in the run. An absolute
+            # import may name it, and so may a relative import whose dots
+            # leave the run (``from .. import R``; #695 re-check N-6): the
+            # root's parent may be a package. Only a single-dot relative
+            # import cannot reach it.
             self.dynamic = True
 
-    def _modules_use(self, node: Any) -> None:
-        """``X.modules[__name__]``, ``X.modules.get(__name__)`` and the like
-        reach this module through any receiver ``X``; other ``X.modules`` uses
-        are left to plan risk R12."""
-        parent = node.parent
-        if parent is None:
-            return
-        if parent.type == "subscript" and _same(
-            node, parent.child_by_field_name("value")
-        ):
+    def _module_by_name(self, node: Any) -> None:
+        """``X[__name__]`` and ``X.get(__name__)`` (also ``__getitem__``,
+        ``setdefault``, ``pop``) on any receiver may reach this module through
+        a modules mapping, however it was obtained (``sys.modules``,
+        ``collections._sys.modules``, a ``case object(modules=m)`` capture):
+        a key or first argument that mentions ``__name__`` is dynamic."""
+        if node.type == "subscript":
             keys = [
                 child
-                for index, child in enumerate(parent.children)
-                if parent.field_name_for_child(index) == "subscript"
+                for index, child in enumerate(node.children)
+                if node.field_name_for_child(index) == "subscript"
             ]
-            if any(_text(_unwrap(key), self.source) == "__name__" for key in keys):
+            if any(self._mentions_module_name(key) for key in keys):
                 self.dynamic = True
             return
-        if parent.type == "attribute" and _same(
-            node, parent.child_by_field_name("object")
-        ):
-            method = parent.child_by_field_name("attribute")
-            call = parent.parent
-            if (
-                method is not None
-                and _text(method, self.source) in _MODULE_GETTERS
-                and call is not None
-                and call.type == "call"
-                and _same(parent, call.child_by_field_name("function"))
-            ):
-                arguments = call.child_by_field_name("arguments")
-                first = (
-                    arguments.named_children[0]
-                    if arguments is not None and arguments.named_children
-                    else None
+        function = node.child_by_field_name("function")
+        if function is None or function.type != "attribute":
+            return
+        method = function.child_by_field_name("attribute")
+        if method is None or _text(method, self.source) not in _MODULE_GETTERS:
+            return
+        arguments = node.child_by_field_name("arguments")
+        first = (
+            arguments.named_children[0]
+            if arguments is not None and arguments.named_children
+            else None
+        )
+        if first is not None and self._mentions_module_name(first):
+            self.dynamic = True
+
+    def _setattr_call(self, node: Any) -> None:
+        """``setattr(x, "name", v)``, ``delattr``, ``x.__setattr__("name", v)``,
+        ``object.__setattr__(x, "name", v)`` and namespace mutators
+        (``x.__dict__.update(name=v)``, ``.update({"name": v})``,
+        ``.setdefault("name", v)``, ``.pop("name")``, ``__setitem__``) write
+        ``name`` of a receiver that may be this module."""
+        function = node.child_by_field_name("function")
+        if function is not None and function.type == "attribute":
+            function = function.child_by_field_name("attribute")
+        if function is None or _text(function, self.source) not in _ATTRIBUTE_WRITERS:
+            return
+        arguments = node.child_by_field_name("arguments")
+        for argument in arguments.named_children if arguments is not None else ():
+            if argument.type == "keyword_argument":
+                keyword = argument.child_by_field_name("name")
+                if keyword is not None:
+                    self.attribute_writes.add(_text(keyword, self.source))
+                continue
+            if argument.type == "dictionary_splat":
+                argument = (
+                    argument.named_children[0] if argument.named_children else argument
                 )
-                if (
-                    first is not None
-                    and _text(_unwrap(first), self.source) == "__name__"
-                ):
-                    self.dynamic = True
+            if argument.type == "dictionary":
+                for pair in argument.named_children:
+                    key = (
+                        pair.child_by_field_name("key") if pair.type == "pair" else None
+                    )
+                    value = (
+                        _constant_string(key, self.source) if key is not None else None
+                    )
+                    if value is not None:
+                        self.attribute_writes.add(value)
+                continue
+            value = _constant_string(argument, self.source)
+            if value is not None:
+                self.attribute_writes.add(value)
+
+    def _mentions_module_name(self, node: Any) -> bool:
+        return any(
+            _text(ident, self.source) == "__name__" for ident in _identifiers(node)
+        )
 
     def _sys_use(self, node: Any) -> None:
         """A use of the ``sys`` module: ``sys.modules``, a dunder attribute
@@ -1432,6 +1543,37 @@ def _unwrap(node: Any) -> Any:
     return node
 
 
+_PARAMETER_PARENTS = frozenset(
+    {
+        "parameters",
+        "lambda_parameters",
+        "typed_parameter",
+        "list_splat_pattern",
+        "dictionary_splat_pattern",
+    }
+)
+
+
+def _scope_binding_name(ident: Any) -> bool:
+    """Whether an identifier is a parameter or ``def``/``class`` name: a pure
+    scope binding, which can never look up an attribute by name. Every other
+    position, including any node type the grammar may add, counts for the
+    own-name rule."""
+    parent = ident.parent
+    if parent is None:
+        return False
+    if parent.type in _PARAMETER_PARENTS:
+        return True
+    if parent.type in (
+        "default_parameter",
+        "typed_default_parameter",
+        "function_definition",
+        "class_definition",
+    ):
+        return _same(ident, parent.child_by_field_name("name"))
+    return False
+
+
 def _import_context(node: Any) -> bool:
     """Whether a name sits in an import, ``global`` or ``nonlocal``
     statement (a binding position, not a use)."""
@@ -1633,12 +1775,17 @@ class ModulePath:
     # any longer path ending in one, may name the module: each ends with the
     # own name.
     components: tuple[str, ...] = ()
+    # No path at all: the own name cannot be computed, so module-scope
+    # lookups fail closed.
+    unknown: bool = False
 
 
 def module_path(path: str) -> ModulePath:
     """The :class:`ModulePath` of a root-relative display path."""
     parts = [part for part in path.replace("\\", "/").split("/") if part]
-    init = bool(parts) and parts[-1] == "__init__.py"
+    if not parts:
+        return ModulePath(unknown=True)
+    init = parts[-1] == "__init__.py"
     components = [*parts[:-1]]
     if parts and not init:
         components.append(parts[-1].rsplit(".", 1)[0])
@@ -1651,13 +1798,20 @@ def module_path(path: str) -> ModulePath:
 
 
 def own_module_names(path: str) -> frozenset[str]:
-    """The names a file's own module is imported by: its stem, or its
-    package's name for ``__init__.py``."""
+    """The names a file's own module is imported by: its raw stem, or its
+    package directory's raw name for ``__init__.py``.
+
+    No identifier filter (#695 re-check N-5): ``my-mod`` is importable by
+    ``importlib`` and loaders, and ``setattr(parent, "my-mod", module)``
+    still happens. A dotted stem also contributes its components.
+    """
     parts = path.replace("\\", "/").rstrip("/").split("/")
     stem = parts[-1].rsplit(".", 1)[0] if parts and parts[-1] else ""
     if stem == "__init__":
         stem = parts[-2] if len(parts) > 1 else ""
-    return frozenset({stem}) if stem.isidentifier() else frozenset()
+    if not stem:
+        return frozenset()
+    return frozenset({stem, *(part for part in stem.split(".") if part)})
 
 
 def analyze(
