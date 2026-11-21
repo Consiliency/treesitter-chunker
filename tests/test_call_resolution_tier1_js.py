@@ -1735,6 +1735,62 @@ PANEL_CASES: dict[str, tuple[dict[str, str], str, str]] = {
         "a.js",
         "d",
     ),
+    # B-1 (#691 ruling): a misparsed block glued to the next expression.
+    "W01": (_in_function(_DD + "\n  " + _LABEL + " [0];"), "a.js", "d"),
+    "W02": (_in_function(_DD + "\n  " + _LABEL + " (0);"), "a.js", "d"),
+    "W03": (_in_function(_DD + "\n  " + _LABEL + " +0;"), "a.js", "d"),
+    "W05": (_in_function(_DD + "\n  " + _LABEL + " `x`;"), "a.js", "d"),
+    "W06": (_in_function(_D1 + "\n  " + _LABEL + " [0];"), "a.js", "d"),
+    "W07": (_in_function(_DD + "\n  " + _LABEL + " /x/g;"), "a.js", "d"),
+    "W08": (_in_function(_D1 + "\n  " + _LABEL + " (0);", "ts"), "a.ts", "d"),
+    "W10": (
+        {
+            "a.js": (
+                "function d() { return 1; }\n" + _LABEL + " (0);\n"
+                "function caller() { return d(); }\n"
+            ),
+            "c.js": "export {};\n",
+        },
+        "a.js",
+        "d",
+    ),
+    # B-2: ``static constructor()`` is an ordinary static method.
+    "T01": (
+        _writer(
+            "export class K { static constructor() { this.d = function () {}; } }\n"
+            "window.onload = Reflect.get(K, 'constructor');\n"
+        ),
+        "a.js",
+        "d",
+    ),
+    "T01b": (
+        _writer(
+            "export class K { static constructor() { this.d = function () {}; } }\n",
+            "c.ts",
+        ),
+        "a.js",
+        "d",
+    ),
+    # B-3: receiver ``this`` through alias chains.
+    "T22": (_writer("export function o() { this.window.d = 1; }\n"), "a.js", "d"),
+    "T22b": (_writer("export function o() { this['self'].d = 1; }\n"), "a.js", "d"),
+    # Closed rather than left to R11 (#691 ruling, section 4).
+    "T19": (_writer("export class K { m() { this.eval(s); } }\n"), "a.js", "d"),
+    "T20": (
+        _writer("export class K { m() { this.setTimeout('d = 2'); } }\n"),
+        "a.js",
+        "d",
+    ),
+    "T25": (
+        _writer("export function o() { Object.assign(this, { d: 1 }); }\n"),
+        "a.js",
+        "d",
+    ),
+    "M26": (
+        _writer("export {};\nconst { constructor: F } = () => {};\nF('d = 1')();\n"),
+        "a.js",
+        "d",
+    ),
     # B5: an in-run HTML file may declare any global in an inline script.
     "G24e": (
         _writer("<script>function d() { return 3; }</script>\n", "c.html"),
@@ -1765,7 +1821,17 @@ def test_panel_691_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> 
 def test_misparsed_blocks_make_the_file_unsupported() -> None:
     """A1: a statement-level object literal refuses the file; a
     parenthesized object and a real block do not."""
-    for source in ("{ L: function d() {} }", "function f() { { L: d = 3 } }"):
+    for source in (
+        "{ L: function d() {} }",
+        "function f() { { L: d = 3 } }",
+        # B-1 (#691 ruling): the misparsed block glued to what follows.
+        "{ L: function d() {} } [0];",
+        "{ L: function d() {} } (0);",
+        "{ L: function d() {} } +0;",
+        "{ L: function d() {} } -0;",
+        "{ L: function d() {} } `x`;",
+        "{ L: function d() {} } /x/g;",
+    ):
         data = source.encode()
         root = get_parser("javascript").parse(data).root_node
         assert not root.has_error, source
@@ -1793,3 +1859,30 @@ def test_mjs_files_are_modules() -> None:
         for suffix in (".js", ".mjs", ".cjs")
     }
     assert goals == {".js": "script", ".mjs": "module", ".cjs": "script"}
+
+
+def test_markdown_and_rst_in_the_run_do_not_count(tmp_path: Path) -> None:
+    """The #691 ruling (3.1): a README or an ``.rst`` page runs nothing by
+    itself, so a script top level still resolves next to one."""
+    root = _write(
+        tmp_path,
+        {
+            "a.js": _SCRIPT_A,
+            "b.js": _ESM_DECOY,
+            "README.md": "# Read me\n\n<script>function d() {}</script>\n",
+        },
+    )
+    off, on = _edge(_edges(root), "a.js", "d")
+    assert off["resolution"] == "ambiguous"
+    assert on["resolution"] == "resolved"
+    assert on["provenance"]["call_rules"] == ["t1.lexical"]
+
+
+def test_static_constructor_is_not_the_class_constructor() -> None:
+    """B-2: only a non-static ``constructor`` method is excluded."""
+    assert "d" in script_globals(
+        "export class K { static constructor() { this.d = 1; } }"
+    )
+    assert "d" not in script_globals("export class K { constructor() { this.d = 1; } }")
+    # A string-named ``'constructor'()`` still counts (conservative).
+    assert "d" in script_globals("export class K { 'constructor'() { this.d = 1; } }")

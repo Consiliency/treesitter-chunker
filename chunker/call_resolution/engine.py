@@ -60,9 +60,9 @@ GLOBAL_WILDCARD = "*"
 # Collected languages whose files can carry inline scripts (``<script>``,
 # event-handler attributes) the analysis never reads: each such file in the
 # run counts as declaring every global (B5, #691 panel).
-INLINE_SCRIPT_LANGUAGES = frozenset(
-    {"html", "xml", "php", "markdown", "restructuredtext"}
-)
+# Markdown and reStructuredText run nothing themselves: their raw HTML runs
+# only in a page a site generator renders, outside the run (plan R9).
+INLINE_SCRIPT_LANGUAGES = frozenset({"html", "xml", "php"})
 # Group rules (7.4) refine a binding's group; they never apply alone.
 GROUP_RULE_IDS = frozenset({RULE_TS_OVERLOAD, RULE_JS_HOIST})
 FILTER_RULE_IDS = frozenset({RULE_KIND, RULE_FAMILY})
@@ -206,8 +206,8 @@ def script_global_outcome(
     ``global``; it becomes ``none(script-global)`` when another file of the
     run declares that name as a script global, may write a global of any
     name, is an unsupported JavaScript/TypeScript file, or is a file of a
-    language that can carry inline scripts (HTML, XML, PHP, Markdown,
-    reStructuredText). This holds within the run only (plan R9, R11).
+    language that can carry inline scripts (HTML, XML, PHP). This holds
+    within the run only (plan R9, R11).
     """
     if outcome is None or outcome.get("outcome") != "local" or "global" not in outcome:
         return outcome

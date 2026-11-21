@@ -138,6 +138,16 @@ _STRING_TIMERS = frozenset({"setTimeout", "setInterval"})
 # it on, may run source text; and so may ``.call``/``.apply``/``.bind`` of a
 # code evaluator or timer.
 _CONSTRUCTOR = "constructor"
+# Calls that write properties of their first argument by computed name.
+_PROPERTY_WRITERS = frozenset(
+    {
+        ("Object", "assign"),
+        ("Object", "defineProperty"),
+        ("Object", "defineProperties"),
+        ("Reflect", "set"),
+        ("Reflect", "defineProperty"),
+    }
+)
 _INVOKERS = frozenset({"call", "apply", "bind"})
 # Timer arguments that are certainly functions, never source text.
 _FUNCTION_ARGUMENTS = frozenset(
@@ -888,6 +898,18 @@ class _Analysis:
                     self._global_object_use(node)
             elif kind in _MEMBER_ACCESS:
                 self._member_use(node)
+            elif kind == "call_expression":
+                self._property_writer_call(node)
+            elif kind == "pair_pattern":
+                if self._member_key_name(node.child_by_field_name("key")) == (
+                    _CONSTRUCTOR
+                ):
+                    # ``const { constructor: F } = f`` reaches the function
+                    # constructors like ``f.constructor``.
+                    self.global_wildcard = True
+            elif kind == "shorthand_property_identifier_pattern":
+                if _text(node, self.source) == _CONSTRUCTOR:
+                    self.global_wildcard = True
             elif kind in ("assignment_expression", "augmented_assignment_expression"):
                 self._global_write(node.child_by_field_name("left"))
             elif kind == "update_expression":
@@ -930,13 +952,17 @@ class _Analysis:
             name = _text(prop, self.source) if prop is not None else ""
             return name == _DEFAULT_VIEW or (
                 name in _GLOBAL_OBJECT_PROPERTIES
-                and self._is_global_object(node.child_by_field_name("object"))
+                and self._is_global_object(
+                    node.child_by_field_name("object"), receiver=receiver
+                )
             )
         if node.type == "subscript_expression":
             key = self._literal_key(node.child_by_field_name("index"))
             return key == _DEFAULT_VIEW or (
                 key in _GLOBAL_OBJECT_PROPERTIES
-                and self._is_global_object(node.child_by_field_name("object"))
+                and self._is_global_object(
+                    node.child_by_field_name("object"), receiver=receiver
+                )
             )
         return False
 
@@ -959,12 +985,17 @@ class _Analysis:
                 ):
                     if kind != "method_definition":
                         return True
+                    # Only the class constructor is excluded: a non-static
+                    # method named ``constructor``. ``static constructor()``
+                    # is an ordinary static method (B-2, #691 ruling).
                     name = current.child_by_field_name("name")
                     return not (
                         current.parent is not None
                         and current.parent.type == "class_body"
                         and name is not None
+                        and name.type == "property_identifier"
                         and _text(name, self.source) == _CONSTRUCTOR
+                        and not _has_token(current, "static")
                     )
             elif kind in _FIELDS:
                 if child.type != "computed_property_name":
@@ -988,14 +1019,43 @@ class _Analysis:
         ``document.defaultView`` used as a value, ``G.setTimeout`` and
         ``G['setTimeout']``, and ``x.constructor`` called or handed on."""
         key = self._member_key(node)
+        obj = node.child_by_field_name("object")
         if key == _DEFAULT_VIEW:
             self._global_object_use(node)
         elif key == _CONSTRUCTOR:
             self._evaluator_use(node)
-        elif key in _STRING_TIMERS and self._is_global_object(
-            node.child_by_field_name("object")
-        ):
+        elif key in _STRING_TIMERS and self._is_global_object(obj, receiver=True):
             self._timer_use(node)
+        elif key in _CODE_EVALUATORS and self._is_global_object(obj, receiver=True):
+            # ``this.eval(s)``, ``this.Function(s)`` with a receiver ``this``.
+            self.global_wildcard = True
+
+    def _member_key_name(self, key: Any) -> str | None:
+        """A pattern or object key's name: an identifier or a plain string."""
+        if key is None:
+            return None
+        if key.type in ("property_identifier", "identifier"):
+            return _text(key, self.source)
+        return self._literal_key(key)
+
+    def _property_writer_call(self, node: Any) -> None:
+        """``Object.assign(G, …)``, ``Object.defineProperty(G, …)`` and the
+        like, where ``G`` is a receiver ``this`` (or the global object, which
+        :meth:`_global_object_use` already catches), may write any global."""
+        function = unwrap(node.child_by_field_name("function"))
+        if function is None or function.type != "member_expression":
+            return
+        obj = function.child_by_field_name("object")
+        prop = function.child_by_field_name("property")
+        if obj is None or prop is None or obj.type != "identifier":
+            return
+        name = (_text(obj, self.source), _text(prop, self.source))
+        if name not in _PROPERTY_WRITERS:
+            return
+        arguments = node.child_by_field_name("arguments")
+        named = arguments.named_children if arguments is not None else []
+        if named and self._is_global_object(named[0], receiver=True):
+            self.global_wildcard = True
 
     def _use_site(self, node: Any) -> tuple[Any, Any]:
         """``(expression, parent)``: ``node`` with its transparent wrappers,
@@ -1281,7 +1341,15 @@ class _Analysis:
             if declaration is not None:
                 if declaration.type == "ambient_declaration":
                     declaration = next(iter(declaration.named_children), None)
-                if declaration is not None and declaration.type in _NAMESPACES:
+                if declaration is not None and declaration.type == "import_alias":
+                    # ``export import Q = N``: fail closed on both names.
+                    stack = list(declaration.named_children)
+                    while stack:
+                        current = stack.pop()
+                        if current.type == "identifier":
+                            names.add(_text(current, self.source))
+                        stack.extend(current.named_children)
+                elif declaration is not None and declaration.type in _NAMESPACES:
                     name = declaration.child_by_field_name("name")
                     while name is not None and name.type == "nested_identifier":
                         name = next(iter(name.named_children), None)
@@ -1577,19 +1645,24 @@ class MisparsedBlockError(ValueError):
 
 
 def misparsed_block(root: Any) -> Any:
-    """The first ``expression_statement`` whose expression is an
-    unparenthesized object literal, or ``None``.
+    """The first ``expression_statement`` whose first token is ``{``, or
+    ``None``.
 
-    Valid JavaScript never has one (a statement cannot start with ``{``),
-    but tree-sitter parses ``{ L: function d() {} }`` that way without an
-    error, which would hide a block-level declaration (A1, #691 panel).
+    Valid JavaScript and TypeScript never have one (an expression statement
+    cannot start with ``{``), but tree-sitter parses a block such as
+    ``{ L: function d() {} }`` as an object literal without an error, alone
+    or glued to what follows on the line (``[0]``, ``(0)``, ``+0``, a
+    template, a regex). That would hide a block-level declaration (A1, #691
+    panel; B-1, the president's #691 ruling).
     """
     stack = [root]
     while stack:
         node = stack.pop()
         if node.type == "expression_statement":
-            named = node.named_children
-            if named and named[0].type == "object":
+            first = node
+            while first.child_count:
+                first = first.children[0]
+            if first.type == "{":
                 return node
         stack.extend(node.named_children)
     return None

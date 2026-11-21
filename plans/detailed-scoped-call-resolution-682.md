@@ -301,10 +301,11 @@ These all give `supported: false` for the file:
   their source spelling, so an escaped parameter, write or `eval` would
   otherwise be missed. Backslashes in strings, templates, regexes, comments
   and JSX text do not count;
-- a JS/TS file with a statement-level, unparenthesized object literal
-  (PR 3, #691 panel A1). Valid JavaScript never has one, but tree-sitter
-  parses `{ L: function d() {} }` that way without an error, which would
-  hide a block-level declaration.
+- a JS/TS file with an expression statement whose first token is `{`
+  (PR 3, #691 panel A1 and the president's B-1). Valid JavaScript never has
+  one, but tree-sitter parses `{ L: function d() {} }` as an object literal
+  without an error, alone or glued to what follows (`[0]`, `(0)`, `+0`, a
+  template, a regex), which would hide a block-level declaration.
 
 None of them adds anything to `facts["errors"]` or diagnostics, and none
 raises, even with `fail_fast`. A debug log line is allowed. A file with
@@ -506,7 +507,10 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     from a non-arrow function or method, because a host may pass the global
     object as the receiver even to strict code (`setTimeout(K.prototype.m)`,
     `window.m()`; #691 panel A4). Excluded: class constructors, field
-    initializers, static blocks and a module top level. A literal subscript
+    initializers, static blocks and a module top level (`static
+    constructor()` is an ordinary method and counts). Alias chains count
+    from a receiver `this` too (`this.window.x =`), as do `this.eval(…)`,
+    `this.setTimeout(…)` and `Object.assign(this, …)`. A literal subscript
     key writes that key; a non-literal key gives `*`. At a script top level,
     in sloppy functions and in object-literal methods, `this` used as a value
     gives `*` too.
@@ -515,15 +519,17 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     (`f(window)`, `const g = globalThis`, `window[k]()`, `{ window }`,
     `const w = document.defaultView`); any reference to `eval`, `Function`
     or `execScript`; a called, `new`-ed or handed-on `x.constructor` (which
-    reaches the function constructors), or its `.call`/`.apply`/`.bind`;
+    reaches the function constructors), or its `.call`/`.apply`/`.bind`,
+    or a `{ constructor: F }` pattern;
     and `setTimeout`/`setInterval` used other than as a direct callee (an
     alias, `.call`, `Reflect.apply`) or called with a first argument that is
     not certainly a function (a function or arrow expression, or a name the
     file proves to be a local function that is not a script top level).
     An **unsupported** JS/TS file in the run counts as `*`, because its
     globals are unknown, and so does every in-run file of a language that
-    can carry inline scripts (HTML, XML, PHP, Markdown, reStructuredText;
-    #691 panel B5).
+    can carry inline scripts (HTML, XML, PHP; #691 panel B5). Markdown and
+    reStructuredText do not count: they run nothing themselves (the
+    president's #691 ruling, 3.1).
   - In a script, a global-object write of `x` (or `*`) also makes that
     file's top-level binding of `x` (or of every name) `reassigned`.
   - A lookup that lands on a script-goal top level narrows only if no other
@@ -1221,7 +1227,7 @@ compares the analyzer's output with them.
 | TS `using` / `await using` (fail closed, 7.5) | `test_using_near_miss_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on a tree the test writes (a committed tree would change the off-mode baseline, 11.2) |
 | stub, script-goal-deferred, namespace-deferred | interim heads only (PR 1, PR 2); PR 3 drops the latter two from the vocabulary |
 | script-global, namespace-merged, t1.js_hoist, inherited ambient (PR 3) | also `test_script_global_end_to_end`, `test_script_global_controls_end_to_end`, `test_js_hoist_end_to_end`, `test_js_hoist_near_misses_end_to_end`, `test_namespace_merging_end_to_end` and `test_inherited_ambient_end_to_end` in `tests/test_call_resolution_tier1_js.py`, on trees the tests write (11.2) |
-| #691 panel classes A1–A6, B5 (PR 3) | `test_panel_691_cases_keep_their_off_mode_edge` and `test_misparsed_blocks_make_the_file_unsupported` in `tests/test_call_resolution_tier1_js.py`; `test_editing_another_file_reruns_the_script_global_check` in `tests/test_call_resolution_cache.py` |
+| #691 panel classes A1–A6, B5, and the president's B-1–B-3 (PR 3) | `test_panel_691_cases_keep_their_off_mode_edge`, `test_misparsed_blocks_make_the_file_unsupported`, `test_static_constructor_is_not_the_class_constructor` and `test_markdown_and_rst_in_the_run_do_not_count` in `tests/test_call_resolution_tier1_js.py`; `test_editing_another_file_reruns_the_script_global_check` in `tests/test_call_resolution_cache.py` |
 | external-module | ts-bare-specifier, ts-external-import-kind |
 | outside-root | py-relative-root |
 | module-not-found | js-importer-ext-order (use3), py-namespace-dir, py-ancestor-module-shadow |
@@ -1516,8 +1522,8 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | R6 | A directory's `package.json` changes TS resolution | Accept. The NIT to record such directories is **rejected** (A14): `package.json` is not a collected file, so reading it would make per-file facts depend on a file outside the cache key. |
 | R7 | Python extension modules shadow `.py` | Accept. |
 | R8 | Interim behavior between PRs | Experimental label, plus a per-head CHANGELOG statement (4.5). |
-| R9 | Scripts outside the run can redefine a global: HTML-included scripts outside the run, `dist/`, `node_modules`, `.mjs` and `.cjs` files, and inline `<script>` in `.vue` and `.svelte` files (none of these is collected) | Accept: they are not scanned. In-run HTML, XML, PHP, Markdown and reStructuredText files count as declaring every global (PR 3). |
-| R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers) | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
+| R9 | Scripts outside the run can redefine a global: HTML-included scripts outside the run, `dist/`, `node_modules`, `.mjs` and `.cjs` files, inline `<script>` in `.vue` and `.svelte` files (none of these is collected), and raw HTML in Markdown or reStructuredText that a site generator renders, which, like any generated page, is outside the run | Accept: they are not scanned. In-run HTML, XML and PHP files count as declaring every global (PR 3). |
+| R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: `const s = this; s.d = f` and other hand-offs of a receiver `this` (except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)`, which give `*`); `Reflect.get(f, 'constructor')` | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
 | R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) is not tracked | Accept. This is the same kind of risk as the module-scope preference the issue asks for. |
 
 **Owner notice** (informational, from the ruling): these are delegated
@@ -1712,7 +1718,19 @@ Every item only adds `none`; no expected row changes. `js` fact version 5.
 | A4: `this.x =` from non-arrow functions and methods counts in either goal | §7.2 script goal |
 | A5: `top`, `parent`, `frames`, `<any>.defaultView` | §7.2 script goal |
 | A6, Codex 4649855600 and 4649855604: `x.constructor` and timer uses | §7.2 script goal |
-| B5: in-run HTML, XML, PHP, Markdown and reStructuredText count as `*` | §7.2 script goal; R9 |
+| B5: in-run HTML, XML and PHP count as `*` (Markdown and reStructuredText dropped by the president's ruling, 3.1) | §7.2 script goal; R9 |
 | A7, C3, C5: R9 widened; R11 added | §7.2; §15 |
 | A8: `.mjs`/`.mts` files are modules | §5.2 note in the code (not collected yet) |
 | B3: version numbers are never reused | Appendix B (above); `facts.py`; digest test |
+
+### PR 3: the president's #691 ruling
+
+Every item only adds `none`; no expected row changes. `js` fact version 6.
+
+| Item | Applied in |
+| --- | --- |
+| B-1: an expression statement whose first token is `{` makes the file unsupported | §5.3 |
+| B-2: only a non-static `constructor` is excluded from the receiver `this` rule | §7.2 script goal |
+| B-3: receiver `this` through alias chains (`this.window.x =`, `this['self'].x =`) | §7.2 script goal |
+| 3.1: Markdown and reStructuredText no longer count as inline-script carriers | §7.2; R9 |
+| Section 4: `this.eval`/`this.setTimeout`, `Object.assign(this, …)` and `{ constructor: F }` give `*`; `export import Q = N` counts as an export; the rest named in R11 | §7.2; R11 |

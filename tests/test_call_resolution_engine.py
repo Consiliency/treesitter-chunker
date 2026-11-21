@@ -472,8 +472,11 @@ SCRIPT_LOCAL = {
         # A file that can carry inline scripts may declare any global (B5).
         ([("index.html", "html", False, [])], True),
         ([("page.php", "php", False, [])], True),
-        ([("README.md", "markdown", False, [])], True),
         ([("feed.xml", "xml", False, [])], True),
+        # Markdown and reStructuredText run nothing themselves: a page a site
+        # generator renders from them is outside the run (R9; #691 ruling).
+        ([("README.md", "markdown", False, []), ("doc.rst", "rst", False, [])], False),
+        ([("doc.rst", "restructuredtext", False, [])], False),
     ],
 )
 def test_script_global_check(
@@ -573,7 +576,7 @@ def test_rule_and_reason_vocabularies() -> None:
         "trait",
     } == engine.NON_CALLABLE_KINDS
     assert {"stub", "unmapped", "no-binding-fact", "unbound"} <= KNOWN_NONE_REASONS
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "5", "python": "1"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "6", "python": "1"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",

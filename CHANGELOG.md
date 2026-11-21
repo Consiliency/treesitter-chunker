@@ -42,8 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `defaultView` writes, and `this.x =` in functions and methods, in any
     file; `declare global`; a computed key, the global object used as a
     value, a code evaluator, a `constructor` call, a timer not given a
-    function, an unsupported JS/TS file, or an HTML, XML, PHP, Markdown or
-    reStructuredText file counts for every name). This holds within the run
+    function, an unsupported JS/TS file, or an HTML, XML or PHP file counts
+    for every name). This holds within the run
     only: scripts outside it, and global writes no syntactic rule sees, are
     not tracked (plan risks R9 and R11). A lookup through a merged TS
     namespace body (another declaration, an exported namespace that module
