@@ -507,9 +507,11 @@ def build_module_run(
         bindings = scope.get("module_bindings") or {}
         if bindings.get("symlink"):
             symlinks.add(path)
-        if not supported and not bindings:
-            # No text to scan (the file could not be read): its writes are
-            # unknown.
+        if not supported:
+            # E5-7: a JS/TS file tree-sitter cannot parse cleanly may load or
+            # write anything: a run-wide cause, scoped by O-2 like any other.
+            # Its own outgoing targets are unknown; incoming edges from
+            # parsed files still promote it.
             causes.append((CAUSE_UNPARSED_FILE, path))
         for name in bindings.get("shutoff", ()):
             causes.append((str(name), path))

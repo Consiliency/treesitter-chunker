@@ -315,11 +315,9 @@ trailing dot or space, and a path segment that is an 8.3 short name or contains
 `:` cannot be located, and URL schemes after stripping surrounding whitespace
 and control characters. `jest.mock`/`vi.mock` of a relative path
 counts as a write to that module for the mocking file's callers.
-A file the parser cannot read is scanned by a lexer: only a `require` or
-`import()` of one complete string literal is exempt (its target counts as
-written), any other loader spelling or any token the lexer cannot delimit or
-decode counts as rewriting any module, and every relative string literal
-counts as a write to its target. Wherever Tier 2 is off, the output equals `"structural"`. Python imports prove nothing yet.
+A JavaScript or TypeScript file the parser cannot read cleanly counts as
+rewriting any module (scoped like any other cause: test code affects only test
+callers unless production code reaches it). Wherever Tier 2 is off, the output equals `"structural"`. Python imports prove nothing yet.
 
 A narrowed edge changes only `target`, `resolution`, `candidates` and
 `metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and

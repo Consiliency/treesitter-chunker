@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"17"`` for the ``js`` family and ``"30"`` for
+Schema (fact version ``"18"`` for the ``js`` family and ``"30"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -118,6 +118,8 @@ logger = logging.getLogger(__name__)
 # js "16": PR 5 fold 6 (P5-20: ``filename_taints`` always go to the
 # engine's writer check, with no CommonJS shortcut).
 # js "17": PR 5 fold 8 (the lexer-level text scan of unparsed files).
+# js "18": PR 5 fold 9 (E5-7: no text scan, an unparsed JS/TS file has
+# empty ``module_bindings``; P5-44: module-level ``arguments`` uses).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -185,7 +187,7 @@ logger = logging.getLogger(__name__)
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "17", "python": "30"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "18", "python": "30"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -311,8 +313,8 @@ def compute_scope_facts(
 
     ``symlink`` says the file was collected through a symbolic link; Tier 2
     never resolves an import from or into such a file (E5-5). A JS/TS file
-    that cannot be analyzed keeps conservative ``module_bindings`` from a
-    scan of its text (E5-3).
+    that cannot be analyzed has no ``module_bindings``; the engine counts it
+    as a run-wide ``unparsed-file`` cause, scoped by O-2 (E5-7).
 
     ``suffix`` is the file's lower-case extension: ``.mjs`` and ``.mts``
     files are always ES modules, whatever their syntax. ``path`` is the
@@ -329,10 +331,7 @@ def compute_scope_facts(
     if language not in ANALYZED_LANGUAGES:
         return fallback
     family = language_family(language)
-    if family == "js":
-        from .js_modules import text_module_bindings
 
-        fallback["module_bindings"] = text_module_bindings(source, symlink)
     analyzer = _ANALYZERS.get(family or "")
     if analyzer is None:  # pragma: no cover - every analyzed family has one
         return fallback

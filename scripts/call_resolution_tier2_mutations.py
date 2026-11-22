@@ -30,7 +30,6 @@ JSM = CR + "js_modules.py"
 ENG = CR + "engine.py"
 JSS = CR + "js_scope.py"
 STR = CR + "js_strings.py"
-TXT = CR + "js_textscan.py"
 TESTS = (
     "tests/test_call_resolution_tier2_js.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
@@ -601,108 +600,23 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     ),
     ("p5-32-streams", MOD, '        or ":" in part\n', ""),
     ("p5-32-short-names", MOD, "        or _SHORT_NAME.match(base) is not None\n", ""),
-    # Fold 8 (Codex on 6d0aadd0): the lexer-level text scan.
-    (
-        "f8-literal-call-only",
-        TXT,
-        "            value = literal_call(position)\n            if value is not None:\n                load(value)\n            elif not typeof:",
-        "            value = literal_call(position)\n            if value is not None:\n                load(value)\n            elif False:",
-    ),
-    (
-        "f8-literal-call-closing-paren",
-        TXT,
-        '        if not (punct(position + 1, "(") and punct(position + 3, ")")):',
-        '        if not punct(position + 1, "("):',
-    ),
-    (
-        "f8-import-call",
-        TXT,
-        "                if value is None:\n                    shutoff.add(CAUSE_DYNAMIC_LOADER)\n                else:\n                    load(value)",
-        "                if value is not None:\n                    load(value)",
-    ),
-    # Not listed (f8-template-substitution): equivalent. A template with a
+    # Fold 8's text-scan mutations left with the scan (E5-7, fold 9).
     # substitution never sits alone between ``(`` and ``)``: its substitution's
     # tokens are emitted before it, so a loader call with one is never a
     # complete literal call anyway; the flag only stops a harmless taint.
-    (
-        "f8-relative-taints",
-        TXT,
-        "            elif _relative(value):\n                taints.add(value)",
-        "            elif False:\n                taints.add(value)",
-    ),
-    (
-        "f8-uncertain-is-a-cause",
-        TXT,
-        '            "shutoff": [CAUSE_UNPARSED_FILE],\n            "uncomputable": False,',
-        '            "shutoff": [],\n            "uncomputable": False,',
-    ),
-    # Not listed (f8-unterminated-string): equivalent. The string decoder
     # rejects a raw line terminator too, so the file is uncertain either way.
+    # Fold 9 (E5-7, P5-44).
     (
-        "f8-stray-backslash",
-        TXT,
-        '                if not text.startswith("\\\\u", index):\n                    raise _UncertainError("stray backslash")',
-        '                if not text.startswith("\\\\u", index):\n                    break',
+        "p5-44-arguments-loader",
+        JSM,
+        "                if not self._inert_operand(node):\n                    # P5-44",
+        "                if False:\n                    # P5-44",
     ),
     (
-        "f8-identifier-escapes",
-        TXT,
-        "                chars.append(chr(value))\n                index += width",
-        '                chars.append("?")\n                index += width',
-    ),
-    (
-        "f8-string-decoding",
-        TXT,
-        "                value = decode_js_string_sloppy(text[index : end + 1])",
-        "                value = text[index + 1 : end]",
-    ),
-    (
-        "f8-comments-skipped",
-        TXT,
-        '            elif text.startswith("//", index):\n                index = self._line_end(index)',
-        '            elif text.startswith("//", index):\n                index += 2',
-    ),
-    (
-        "f8-module-exports",
-        TXT,
-        '                typeof or (punct(position + 1, ".") and ident(position + 2, "exports"))',
-        "                typeof",
-    ),
-    (
-        "f8-module-system-strings",
-        TXT,
-        "            if any(name in part for part in parts for name in _MODULE_SYSTEM_NAMES):",
-        "            if False:",
-    ),
-    (
-        "f8-import-meta-glob",
-        TXT,
-        "                elif prop_name in _IMPORT_META_LOADERS:\n                    uncomputable = True",
-        "                elif prop_name in _IMPORT_META_LOADERS:\n                    pass",
-    ),
-    (
-        "f8-timers",
-        TXT,
-        "            if not safe:\n                shutoff.add(CAUSE_EVALUATOR)",
-        "            if False:\n                shutoff.add(CAUSE_EVALUATOR)",
-    ),
-    (
-        "f8-regex-detection",
-        TXT,
-        '            elif char == "/" and self._regex_allowed():',
-        '            elif char == "/" and False:',
-    ),
-    (
-        "f8-nested-templates",
-        TXT,
-        "                end = self._code(end + 2, inside_template=True)",
-        '                end = text.find("}", end) + 1',
-    ),
-    (
-        "f8-module-object",
-        TXT,
-        "                shutoff.add(CAUSE_MODULE_OBJECT)",
-        "                pass",
+        "p5-44-arguments-inert-list",
+        JSM,
+        "                if not self._inert_operand(node):\n                    # P5-44",
+        '                if node.parent is not None and node.parent.type == "call_expression":\n                    # P5-44',
     ),
     # Per-file module facts.
     (

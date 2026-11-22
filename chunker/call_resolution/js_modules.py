@@ -699,6 +699,11 @@ class _ModuleFacts:
         if text == "arguments" and module_level(node):
             if self.analysis._binding_scope(node, text) is None:
                 self.commonjs = True
+                if not self._inert_operand(node):
+                    # P5-44: the CommonJS wrapper's ``arguments`` holds
+                    # ``require`` (``arguments[1]``). Only ``typeof`` and an
+                    # equality operand leave it unused (a closed list).
+                    self.shutoff.add(CAUSE_DYNAMIC_LOADER)
 
     # -- fold 3: closed allow-lists for ``module`` imports and createRequire
 
@@ -1198,30 +1203,3 @@ def module_facts(
     facts.exports()
     facts.module_system()
     return facts.export_table(), facts.module_bindings()
-
-
-# -- text scan of a file the parser cannot read (E5-3) -----------------------
-
-
-def text_module_bindings(source: bytes, symlink: bool = False) -> dict[str, Any]:
-    """Conservative ``module_bindings`` for a JS/TS file whose tree has
-    errors (E5-3; fold 8). Lookups into it fail closed (``opaque``). The
-    lexer-level scan of :mod:`.js_textscan` decides the run-wide causes and
-    the taints: only a complete literal loader call is exempt, every
-    decoded relative literal taints its target, and anything the scan
-    cannot delimit or decode is an ``unparsed-file`` cause."""
-    from .js_textscan import scan
-
-    found = scan(source)
-    return {
-        "stars": [],
-        "commonjs": True,
-        "opaque": True,
-        "symlink": symlink,
-        "taints": list(found["taints"]),
-        "imports": list(found["taints"]),
-        "uncomputable": bool(found["uncomputable"]),
-        "filename_taints": [],
-        "ns_uses": [],
-        "shutoff": list(found["shutoff"]),
-    }

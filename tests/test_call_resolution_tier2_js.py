@@ -763,7 +763,7 @@ NEAR_MISSES: dict[str, tuple[dict[str, str], tuple[str, str], str, str | None]] 
         "run-tainted:evaluator",
         None,
     ),
-    # E5-3: a file the parser cannot read is scanned as text.
+    # E5-7: a file the parser cannot read is a run-wide cause.
     "unparsed-file-relative-literal-taints": (
         {
             "svc.ts": SVC,
@@ -771,19 +771,19 @@ NEAR_MISSES: dict[str, tuple[dict[str, str], tuple[str, str], str, str | None]] 
             "x.js": "require('./svc').t = 1;\nfunction (\n",
         },
         ("use.ts", "t"),
-        "commonjs",
+        "run-tainted:unparsed-file",
         None,
     ),
     "unparsed-file-trigger-spelling": (
         {"svc.ts": SVC, "use.ts": USE, "x.js": "createRequire;\nfunction (\n"},
         ("use.ts", "t"),
-        "run-tainted:module-system",
+        "run-tainted:unparsed-file",
         None,
     ),
     "unparsed-file-escaped-trigger-spelling": (
         {"svc.ts": SVC, "use.ts": USE, "x.js": "\\u0065val(s);\nfunction (\n"},
         ("use.ts", "t"),
-        "run-tainted:evaluator",
+        "run-tainted:unparsed-file",
         None,
     ),
     # CommonJS in the target module itself.
@@ -808,7 +808,7 @@ NEAR_MISSES: dict[str, tuple[dict[str, str], tuple[str, str], str, str | None]] 
     "target-top-level-arguments": (
         {"svc.ts": SVC + "arguments[0].t = () => 0;\n", "use.ts": USE},
         ("use.ts", "t"),
-        "commonjs",
+        "run-tainted:dynamic-loader",
         None,
     ),
     "target-export-equals": (
@@ -1864,7 +1864,7 @@ FOLD1_NEAR_MISSES: dict[
             "use.ts": USE.replace("./svc", "./index"),
         },
         ("use.ts", "t"),
-        "export-not-found",
+        "run-tainted:unparsed-file",
         None,
     ),
     "declare-global-export-makes-the-module-opaque": (
@@ -1987,12 +1987,6 @@ FOLD1_POSITIVES: dict[str, tuple[dict[str, str], tuple[str, str], str, list[str]
                 "globalThis.setInterval = saved;\n"
             ),
         },
-        ("use.ts", "t"),
-        "svc.ts",
-        [],
-    ),
-    "unparsed-file-without-triggers-or-literals": (
-        {"svc.ts": SVC, "use.ts": USE, "x.js": "function (\n"},
         ("use.ts", "t"),
         "svc.ts",
         [],
@@ -2122,25 +2116,6 @@ def test_the_shutoff_is_logged(
         in record.getMessage()
         for record in caplog.records
     )
-
-
-def test_text_scan_of_an_unparsed_file() -> None:
-    from chunker.call_resolution.js_modules import text_module_bindings
-
-    scanned = text_module_bindings(
-        b"import x from './a';\nrequire(\"../b/c\");\nsetTimeout(r, 1);\nf(\n"
-    )
-    assert scanned["taints"] == ["../b/c", "./a"]
-    assert scanned["shutoff"] == []
-    assert scanned["opaque"] is True
-    assert text_module_bindings(b"setTimeout('x');\n")["shutoff"] == [
-        "evaluator",
-        "unparsed-file",
-    ]
-    assert text_module_bindings(b"require(name)\n")["shutoff"] == [
-        "dynamic-loader",
-        "unparsed-file",
-    ]
 
 
 def test_symlinked_files_change_the_on_mode_cache_key() -> None:
@@ -3336,119 +3311,137 @@ def test_p5_32_ordinary_segments_stay_computable() -> None:
 
 
 # ---------------------------------------------------------------------------
-# PR 5 fold 8 (Codex on 6d0aadd0): the unparsed-file fallback is a lexer-
-# level scan. ``function (`` makes each ``x.js`` unparseable.
+# PR 5 fold 9 (executive ruling E5-7): no text scan. Every JS/TS file that
+# tree-sitter cannot parse cleanly is a run-wide ``unparsed-file`` cause,
+# scoped by O-2. ``function (`` makes each file unparseable.
 
 BROKEN = "\nfunction (\n"
-TEXT_SCAN_NEAR_MISSES = {
-    "codex-concatenation": (
-        "const m = require('./' + 'svc'); m.t = () => 2;",
-        "none(run-tainted:dynamic-loader)",
-    ),
-    "codex-escaped-relative": ("require('\\./svc').t = () => 2;", "none(commonjs)"),
-    "import-concatenation": (
-        "export const p = import('./' + x);",
-        "none(run-tainted:dynamic-loader)",
-    ),
-    "template-substitution": (
-        "require(`./${n}`).t = 0;",
-        "none(run-tainted:dynamic-loader)",
-    ),
-    "second-argument": (
-        "require('./svc', 1).t = 0;",
-        "none(run-tainted:dynamic-loader)",
-    ),
-    "escaped-identifier": (
-        "\\u0072equire(name).t = 0;",
-        "none(run-tainted:dynamic-loader)",
-    ),
-    "escaped-identifier-literal": ("\\u0072equire('./svc').t = 0;", "none(commonjs)"),
-    "escaped-quote-in-literal": (
-        "const s = 'it\\'s';\nrequire('./svc').t = 0;",
-        "none(commonjs)",
-    ),
-    "identifier-argument": (
-        "const p = './svc';\nrequire(p).t = 0;",
-        "none(run-tainted:dynamic-loader)",
-    ),
-    "unterminated-string": (
-        "const s = 'abc\nrequire('./other');",
-        "none(run-tainted:unparsed-file)",
-    ),
-    "jsx-apostrophe": ("const s = <p>Don't</p>;", "none(run-tainted:unparsed-file)"),
-    "stray-backslash": ("const a = 1 \\ 2;", "none(run-tainted:unparsed-file)"),
-    "unterminated-comment": ("/* never closed", "none(run-tainted:unparsed-file)"),
-    "module-object": ("register(module);", "none(run-tainted:module-object)"),
-    "create-require-in-string": (
-        "const k = 'createRequire';",
-        "none(run-tainted:module-system)",
-    ),
+# The Codex repros on 6d0aadd0 and the president's P5-40..P5-43/P5-45
+# escapes from the removed text scan.
+UNPARSED_ESCAPES = {
+    "codex-concatenation": "const m = require('./' + 'svc'); m.t = () => 2;",
+    "codex-escaped-relative": "require('\\./svc').t = () => 2;",
+    "p5-40-regex-after-paren": "if (c) /'/.test(s);\nrequire(name).t = 1;",
+    "p5-41-typeof-chain": "typeof require(name).t;",
+    "p5-42-unicode-space": "\u3000require(name).t = 1;",
+    "p5-43-html-comment": "<!-- x\nrequire(name).t = 1;",
+    "p5-45-hash-import": "import k from '#svc';\nk.t = 1;",
 }
 
 
-@pytest.mark.parametrize("case", sorted(TEXT_SCAN_NEAR_MISSES))
-def test_fold8_text_scan_near_misses(tmp_path: Path, case: str) -> None:
-    text, reason = TEXT_SCAN_NEAR_MISSES[case]
-    root = _write(
-        tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text + BROKEN}
-    )
+def _unparsed_tree(location: str, text: str) -> dict[str, str]:
+    return {
+        **OTHERS,
+        "svc.ts": SVC,
+        "use.ts": USE,
+        "use.test.ts": TEST_USE,
+        location: text + BROKEN,
+    }
+
+
+@pytest.mark.parametrize("case", sorted(UNPARSED_ESCAPES))
+def test_e5_7_unparsed_production_files_are_run_wide(tmp_path: Path, case: str) -> None:
+    """(a) An unparsed production file fails every caller closed."""
+    root = _write(tmp_path, _unparsed_tree("x.js", UNPARSED_ESCAPES[case]))
     facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
     assert facts["scope_facts"]["supported"] is False, case
-    off, _, on, label = _run(root, "use.ts", "t")
+    assert facts["scope_facts"]["module_bindings"] == {}, case
+    for caller in ("use.ts", "use.test.ts"):
+        off, _, on, label = _run(root, caller, "t")
+        assert on == off, (case, caller)
+        assert label == "none(run-tainted:unparsed-file)", (case, caller)
+
+
+@pytest.mark.parametrize("case", sorted(UNPARSED_ESCAPES))
+def test_e5_7_unparsed_test_files_are_test_scoped(tmp_path: Path, case: str) -> None:
+    """(b) The same file under ``tests/`` affects only test callers."""
+    root = _write(tmp_path, _unparsed_tree("tests/x.js", UNPARSED_ESCAPES[case]))
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", (case, label)
+    off, _, on, label = _run(root, "use.test.ts", "t")
     assert on == off, case
-    assert label == reason, case
+    assert label == "none(run-tainted:unparsed-file)", case
+
+
+@pytest.mark.parametrize(
+    "link",
+    ["import './tests/x';\n", "require('./tests/x');\n"],
+    ids=["import", "require"],
+)
+def test_e5_7_a_reached_unparsed_test_file_is_promoted(
+    tmp_path: Path, link: str
+) -> None:
+    """(c) A production file reaching an unparsed ``tests/`` file promotes
+    it, so its cause is run-wide (promotion uses the parsed file's edge)."""
+    tree = _unparsed_tree("tests/x.js", "const k = 1;")
+    tree["app.ts"] = link
+    root = _write(tmp_path, tree)
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == "none(run-tainted:unparsed-file)"
+
+
+def test_e5_7_clean_parsed_files_are_unaffected(tmp_path: Path) -> None:
+    """(d) The same content without the parse error leaves production
+    resolved (``require('./other')`` taints only ``./other``)."""
+    root = _write(
+        tmp_path,
+        {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": "require('./other');\n"},
+    )
+    facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
+    assert facts["scope_facts"]["supported"] is True
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", label
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        (
+            "arguments[1]('./s' + 'vc').t = () => 2;\n",
+            "none(run-tainted:dynamic-loader)",
+        ),
+        ("const a = arguments;\na[1](name);\n", "none(run-tainted:dynamic-loader)"),
+        ("f(arguments);\n", "none(run-tainted:dynamic-loader)"),
+    ],
+    ids=["president-repro", "alias", "passed-on"],
+)
+def test_p5_44_module_level_arguments(tmp_path: Path, text: str, reason: str) -> None:
+    """P5-44: at module level the CommonJS wrapper's ``arguments`` holds
+    ``require``; any use but ``typeof`` or an equality operand is a
+    ``dynamic-loader`` cause."""
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text})
+    facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
+    assert facts["scope_facts"]["supported"] is True
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == reason
 
 
 @pytest.mark.parametrize(
     "text",
     [
-        "require('./other');",
-        "// require(name)\nconst k = 1;",
-        "/* import(x) */ const k = 1;",
-        "const s = `a${`b${c}`}`;\nrequire('./other');",
-        "x = a / b / c;\ny = /re[/]g/g.test(z);",
-        "if (typeof require !== 'undefined') { module.exports = 1; }",
-        "import k from './other';\nexport * from './more';",
-        "setTimeout(r, 1);\nsetTimeout(() => 0, 2);",
-        "const q = /'/.test(s) && /\"/g.exec(t);",
+        "export function f() { return arguments[0]; }\n",
+        "export const k = typeof arguments;\n",
+        "export const j = (x: unknown) => x === arguments;\n",
     ],
-    ids=[
-        "literal-require",
-        "line-comment",
-        "block-comment",
-        "nested-templates",
-        "division-and-regex",
-        "typeof-and-module-exports",
-        "static-imports",
-        "timer-idioms",
-        "regex-with-quotes",
-    ],
+    ids=["function-own-arguments", "typeof", "equality"],
 )
-def test_fold8_clean_unparsed_files_leave_the_run_on(tmp_path: Path, text: str) -> None:
-    root = _write(
-        tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text + BROKEN}
-    )
-    facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
-    assert facts["scope_facts"]["supported"] is False
-    assert facts["scope_facts"]["module_bindings"]["shutoff"] == []
+def test_p5_44_controls(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
     _, _, on, label = _run(root, "use.ts", "t")
     assert on["resolution"] == "resolved", label
 
 
-def test_fold8_literal_require_taints_exactly() -> None:
-    from chunker.call_resolution.js_textscan import scan
-
-    assert scan(b"require('./svc').t = 0;" + BROKEN.encode()) == {
-        "taints": ["./svc"],
-        "shutoff": [],
-        "uncomputable": False,
-    }
-    assert scan(b"require('\\./svc');")["taints"] == ["./svc"]
-    assert scan(b"export const m = import.meta.glob('./x/*');")["uncomputable"] is True
-    assert scan(b"require('node:module');")["shutoff"] == [
-        "module-system",
-        "unparsed-file",
-    ]
+def test_p5_41_parsed_typeof_require_chain_is_a_loader(tmp_path: Path) -> None:
+    """The parsed path never exempts ``typeof require(...)…``."""
+    root = _write(
+        tmp_path,
+        {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": "typeof require(name).t;\n"},
+    )
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == "none(run-tainted:dynamic-loader)"
 
 
 def test_p5_37_short_name_after_trailing_dot_or_space() -> None:

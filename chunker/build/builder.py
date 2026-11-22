@@ -78,7 +78,6 @@ _REQUIRED_WHEEL_PAYLOAD = frozenset(
         "chunker/call_resolution/js_modules.py",
         "chunker/call_resolution/js_scope.py",
         "chunker/call_resolution/js_strings.py",
-        "chunker/call_resolution/js_textscan.py",
         "chunker/call_resolution/modules.py",
         "chunker/call_resolution/py_scope.py",
         "chunker/chunker.py",
