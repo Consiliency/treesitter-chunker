@@ -161,6 +161,9 @@ _FUNCTION_ARGUMENTS = frozenset(
 )
 # Uses of the global object that neither write through it nor hand it on.
 _INERT_UNARY = frozenset({"typeof", "void", "!"})
+# Tier 2 (fold 3, item 3): binary operators a ``.constructor`` read may be
+# an operand of without an evaluator cause.
+_SAFE_CONSTRUCTOR_OPERATORS = frozenset({"===", "!==", "==", "!=", "instanceof"})
 _COMPARISONS = frozenset({"===", "!==", "==", "!=", "instanceof", "in"})
 _NON_ARROW_FUNCTIONS = frozenset(
     {
@@ -1103,7 +1106,7 @@ class _Analysis:
         elif key == _DEFAULT_VIEW:
             self._global_object_use(node)
         elif key == _CONSTRUCTOR:
-            self._evaluator_use(node)
+            self._evaluator_use(node, constructor=True)
         elif key in _STRING_TIMERS and self._is_global_object(obj, receiver=True):
             self._timer_use(node)
         elif key in _CODE_EVALUATORS and self._is_global_object(obj, receiver=True):
@@ -1218,13 +1221,17 @@ class _Analysis:
             parent.type == "unary_expression" and operator_text in _INERT_UNARY
         ) or (parent.type == "binary_expression" and operator_text in _COMPARISONS)
 
-    def _evaluator_use(self, node: Any) -> None:
+    def _evaluator_use(self, node: Any, constructor: bool = False) -> None:
         """``x.constructor`` may be a function constructor: calling it, or
         using it as a value, may run source text (``*``). Reading a property
         of it (``.name``, ``.prototype``) does not, except ``.call``,
         ``.apply`` and ``.bind``; a nested ``.constructor`` is checked on its
         own."""
         current, parent = self._use_site(node)
+        if constructor and not self._safe_constructor_read(current, parent):
+            # Tier 2 (fold 3, item 3): only the closed list of positions in
+            # :meth:`_safe_constructor_read` leaves no evaluator cause.
+            self.evaluator = True
         if (
             parent is not None
             and parent.type in _MEMBER_ACCESS
@@ -1233,12 +1240,36 @@ class _Analysis:
             key = self._member_key(parent)
             if key is None or key in _INVOKERS:
                 self.global_wildcard = True
-                self.evaluator = True
+                self.evaluator = self.evaluator or not constructor
             return
         if self._inert_use(current, parent):
             return
         self.global_wildcard = True
-        self.evaluator = True
+        self.evaluator = self.evaluator or not constructor
+
+    def _safe_constructor_read(self, current: Any, parent: Any) -> bool:
+        """Fold 3, item 3: the closed list of safe positions for a
+        ``.constructor`` read. ``x.constructor.name`` reads a string;
+        ``===``/``!==``/``==``/``!=`` compare references and ``instanceof``
+        runs ``Function.prototype[Symbol.hasInstance]`` (a prototype-chain
+        walk); ``typeof`` returns a string. None calls the constructor, so
+        none can reach ``Function`` and run source text."""
+        if parent is None:
+            return False
+        if parent.type == "member_expression" and _same(
+            parent.child_by_field_name("object"), current
+        ):
+            prop = parent.child_by_field_name("property")
+            return (
+                prop is not None
+                and prop.type == "property_identifier"
+                and _text(prop, self.source) == "name"
+            )
+        operator = parent.child_by_field_name("operator")
+        text = _text(operator, self.source) if operator is not None else ""
+        if parent.type == "binary_expression":
+            return text in _SAFE_CONSTRUCTOR_OPERATORS
+        return parent.type == "unary_expression" and text == "typeof"
 
     def _timer_use(self, node: Any) -> None:
         """A timer runs a string first argument as source text. Only a direct

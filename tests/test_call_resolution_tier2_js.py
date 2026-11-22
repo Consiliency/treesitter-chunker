@@ -2371,3 +2371,224 @@ def test_an_uncomputable_production_edge_promotes_every_test_file(
     off, on, label = _edge_label(root, "use.ts")
     assert on == off
     assert label == "none(run-tainted:evaluator)"
+
+
+# ---------------------------------------------------------------------------
+# PR 5 fold 3: closed allow-lists for three run-wide causes. Runtime trace
+# (node v24.22.3, plan Appendix B fold 3): ``builtinModules`` and
+# ``isBuiltin`` are pure lookups; a literal ``r('./x')`` from
+# ``createRequire`` returns the module's exports and writes nothing;
+# ``x.constructor.name``, ``===``, ``instanceof`` and ``typeof`` never call
+# the constructor. Everything outside each list keeps its run-wide effect.
+
+FOLD3_SAFE = {
+    "inert-module-imports": (
+        "import { builtinModules, isBuiltin } from 'node:module';\n"
+        "export const b = builtinModules.includes('fs') && isBuiltin('fs');\n"
+        "console.log(builtinModules);\n"
+    ),
+    "type-only-module-import": "import type { Module } from 'module';\nexport let m: Module;\n",
+    "create-require-literal-calls": (
+        "import { createRequire } from 'node:module';\n"
+        "const r = createRequire(import.meta.url);\n"
+        "export const o = r('./other');\n"
+        "export const p = r.resolve('./more');\n"
+        "export const q = r(`lodash`);\n"
+    ),
+    "create-require-aliased": (
+        "import { createRequire as cr } from 'module';\n"
+        "export function load() { const req = cr(__filename); return req('./other'); }\n"
+    ),
+    "constructor-name-and-comparisons": (
+        "export function kind(x: any, K: any) {\n"
+        "  return [x.constructor.name, x.constructor === K, x.constructor != K,\n"
+        "    x instanceof x.constructor, typeof x.constructor];\n"
+        "}\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD3_SAFE))
+def test_fold3_safe_uses_leave_the_run_on(tmp_path: Path, case: str) -> None:
+    root = _write(
+        tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": FOLD3_SAFE[case]}
+    )
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert off["resolution"] == "ambiguous"
+    assert on["resolution"] == "resolved", (case, label)
+    facts = extract_symbol_facts_for_file(root / "x.ts", root, call_resolution=MODE)
+    assert facts["scope_facts"]["module_bindings"]["shutoff"] == [], case
+
+
+CR = "import { createRequire } from 'node:module';\n"
+FOLD3_UNSAFE = {
+    # Item 1: anything but the inert names (createRequire under item 2).
+    "module-namespace-import": (
+        "import * as m from 'node:module';\nexport const k = m;\n",
+        "module-system",
+    ),
+    "module-Module": (
+        "import { Module } from 'node:module';\nexport const k = Module;\n",
+        "module-system",
+    ),
+    "module-_load": (
+        "import { _load } from 'module';\nexport const k = _load;\n",
+        "module-system",
+    ),
+    "module-register": (
+        "import { register } from 'node:module';\nregister('./x');\n",
+        "module-system",
+    ),
+    "module-sync-builtin-esm-exports": (
+        "import { syncBuiltinESMExports } from 'node:module';\nsyncBuiltinESMExports();\n",
+        "module-system",
+    ),
+    "module-mixed-inert-and-other": (
+        "import { isBuiltin, Module } from 'node:module';\nexport const k = [isBuiltin, Module];\n",
+        "module-system",
+    ),
+    "module-inert-name-written": (
+        "import { isBuiltin } from 'node:module';\nisBuiltin = () => true;\n",
+        "module-system",
+    ),
+    "module-reexport": (
+        "export { builtinModules } from 'node:module';\n",
+        "module-system",
+    ),
+    "module-import-attributes": (
+        "import { isBuiltin } from 'node:module' with { type: 'js' };\nisBuiltin('x');\n",
+        "module-system",
+    ),
+    # Item 2: createRequire only as ``const r = createRequire(…)`` with
+    # literal calls and ``r.resolve(<literal>)``.
+    "create-require-non-literal-call": (
+        CR
+        + "const r = createRequire(import.meta.url);\nexport const f = (n: string) => r(n);\n",
+        "module-system",
+    ),
+    "create-require-cache": (
+        CR + "const r = createRequire(import.meta.url);\nexport const c = r.cache;\n",
+        "module-system",
+    ),
+    "create-require-main": (
+        CR + "const r = createRequire(import.meta.url);\nexport const m = r.main;\n",
+        "module-system",
+    ),
+    "create-require-passed-on": (
+        CR + "const r = createRequire(import.meta.url);\nconsole.log(r);\n",
+        "module-system",
+    ),
+    "create-require-resolve-non-literal": (
+        CR
+        + "const r = createRequire(import.meta.url);\nexport const f = (n: string) => r.resolve(n);\n",
+        "module-system",
+    ),
+    "create-require-let": (
+        CR + "let r = createRequire(import.meta.url);\nr('./other');\n",
+        "module-system",
+    ),
+    "create-require-var": (
+        CR + "var r = createRequire(import.meta.url);\nr('./other');\n",
+        "module-system",
+    ),
+    "create-require-immediate-call": (
+        CR + "createRequire(import.meta.url)('./other');\n",
+        "module-system",
+    ),
+    "create-require-aliased-value": (
+        CR + "const r = createRequire(import.meta.url), q = r;\nq('./other');\n",
+        "module-system",
+    ),
+    "create-require-of-module": (
+        CR + "const r = createRequire(import.meta.url);\nr('module');\n",
+        "module-system",
+    ),
+    # Item 3: ``.constructor`` outside the closed positions.
+    "constructor-argument": (
+        "export const k = (x: any) => expect(x.constructor);\n",
+        "evaluator",
+    ),
+    "constructor-assigned": (
+        "export const k = (x: any) => { const C = x.constructor; return C; };\n",
+        "evaluator",
+    ),
+    "constructor-returned": (
+        "export function k(x: any) { return x.constructor; }\n",
+        "evaluator",
+    ),
+    "constructor-element": (
+        "export const k = (x: any) => [x.constructor];\n",
+        "evaluator",
+    ),
+    "constructor-spread": (
+        "export const k = (x: any) => ({ ...x.constructor });\n",
+        "evaluator",
+    ),
+    "constructor-computed-key": (
+        "export const k = (x: any, o: any) => o[x.constructor];\n",
+        "evaluator",
+    ),
+    "constructor-prototype-read": (
+        "export const k = (x: any) => x.constructor.prototype;\n",
+        "evaluator",
+    ),
+    "constructor-computed-name-read": (
+        "export const k = (x: any) => x.constructor['name'];\n",
+        "evaluator",
+    ),
+    "constructor-negated": (
+        "export const k = (x: any) => !x.constructor;\n",
+        "evaluator",
+    ),
+    "constructor-logical-or": (
+        "export const k = (x: any, F: any) => new (x.constructor || F)();\n",
+        "evaluator",
+    ),
+    "create-require-duplicate-binding": (
+        CR + "var createRequire = (u: any) => 0;\n"
+        "const r = createRequire(1);\nr('./other');\n",
+        "module-system",
+    ),
+    "constructor-called": (
+        "export const k = (x: any) => x.constructor('s');\n",
+        "evaluator",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD3_UNSAFE))
+def test_fold3_unsafe_uses_stay_run_wide(tmp_path: Path, case: str) -> None:
+    text, cause = FOLD3_UNSAFE[case]
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == off, case
+    assert label == f"none(run-tainted:{cause})", case
+
+
+def test_fold3_create_require_literal_calls_taint_their_target(tmp_path: Path) -> None:
+    """A literal ``r('./x')`` taints its target like ``require``, with the
+    lenient normalization for rejected specifiers (E5-4)."""
+    for specifier in ("./svc", "./SVC.JS"):
+        root = _write(
+            tmp_path / specifier.strip("./").lower(),
+            {
+                **OTHERS,
+                "svc.ts": SVC,
+                "use.ts": USE,
+                "x.ts": CR
+                + f"const r = createRequire(import.meta.url);\nr('{specifier}').t = 0;\n",
+            },
+        )
+        off, structural, on, label = _run(root, "use.ts", "t")
+        assert on == off, specifier
+        assert label == "none(commonjs)", specifier
+
+
+def test_fold3_allow_lists_are_closed() -> None:
+    from chunker.call_resolution import js_modules, js_scope
+
+    assert frozenset({"builtinModules", "isBuiltin"}) == js_modules.INERT_MODULE_EXPORTS
+    assert (
+        frozenset({"===", "!==", "==", "!=", "instanceof"})
+        == js_scope._SAFE_CONSTRUCTOR_OPERATORS
+    )

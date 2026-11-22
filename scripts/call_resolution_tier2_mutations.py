@@ -309,8 +309,107 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "o2-imports-fact",
         JSM,
-        "                    else:\n                        self.imports.add(specifier)",
-        "                    else:\n                        pass",
+        "                    elif specifier not in _MODULE_SYSTEM_SPECIFIERS:\n                        self.imports.add(specifier)",
+        "                    elif specifier not in _MODULE_SYSTEM_SPECIFIERS:\n                        pass",
+    ),
+    # Fold 3: closed allow-lists for three run-wide causes.
+    (
+        "f3-inert-module-import",
+        JSM,
+        "                        and not self._inert_module_import(node)\n",
+        "",
+    ),
+    (
+        "f3-inert-names-open",
+        JSM,
+        "                    if imported in INERT_MODULE_EXPORTS:",
+        "                    if imported is not None:",
+    ),
+    (
+        "f3-inert-name-writes",
+        JSM,
+        "                        if any(self._written(use) for use in uses):\n                            return False",
+        "                        pass",
+    ),
+    (
+        "f3-default-or-namespace-import",
+        JSM,
+        '                if part.type != "named_imports":\n                    return False',
+        '                if part.type != "named_imports":\n                    continue',
+    ),
+    (
+        "f3-module-import-attributes",
+        JSM,
+        '        if any(child.type == "import_attribute" for child in statement.named_children):\n            return False',
+        "        pass",
+    ),
+    (
+        "f3-module-binding-defers",
+        JSM,
+        "                # statement's closed allow-list decides (fold 3).\n                return",
+        "                # statement's closed allow-list decides (fold 3).\n                pass",
+    ),
+    (
+        "f3-create-require-const",
+        JSM,
+        '            or not _has_token(declaration, "const")\n',
+        "",
+    ),
+    # Not listed (f3-create-require-initializer): equivalent, because the declarator's value and its const declaration are checked next, so the kind check is implied.
+    (
+        "f3-create-require-other-uses",
+        JSM,
+        "            else:\n                return False\n            literal = self._single_literal(arguments)",
+        "            else:\n                continue\n            literal = self._single_literal(arguments)",
+    ),
+    (
+        "f3-create-require-literal-only",
+        JSM,
+        "            if literal is None or literal in _MODULE_SYSTEM_SPECIFIERS:\n                return False\n            literals.append(literal)",
+        "            if literal is not None:\n                literals.append(literal)",
+    ),
+    (
+        "f3-create-require-taints",
+        JSM,
+        "        self.taints.update(literals)",
+        "        pass",
+    ),
+    (
+        "f3-resolve-literal-only",
+        JSM,
+        "                    None if self._single_literal(arguments) is None else arguments",
+        "                    arguments",
+    ),
+    (
+        "f3-uses-single-binding",
+        JSM,
+        "        if len(scope.bindings.get(name, ())) != 1:\n            return None\n",
+        "",
+    ),
+    (
+        "f3-constructor-safe-positions",
+        JSS,
+        "        if constructor and not self._safe_constructor_read(current, parent):",
+        "        if False:",
+    ),
+    (
+        "f3-constructor-name-only",
+        JSS,
+        '                and _text(prop, self.source) == "name"',
+        '                and _text(prop, self.source) != "call"',
+    ),
+    # Not listed (f3-constructor-non-computed): equivalent, because a subscript has no property field, so the .name check already fails for it.
+    (
+        "f3-constructor-operators-open",
+        JSS,
+        "            return text in _SAFE_CONSTRUCTOR_OPERATORS",
+        "            return True",
+    ),
+    (
+        "f3-constructor-unary-open",
+        JSS,
+        '        return parent.type == "unary_expression" and text == "typeof"',
+        '        return parent.type == "unary_expression"',
     ),
     # Per-file module facts.
     (
@@ -427,16 +526,13 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "import-from-module",
         JSM,
-        "                    if specifier is None or specifier in _MODULE_SYSTEM_SPECIFIERS:\n"
-        "                        self.shutoff.add(CAUSE_MODULE_SYSTEM)",
-        "                    if False:\n                        pass",
+        "                    if specifier is None or (\n                        specifier in _MODULE_SYSTEM_SPECIFIERS\n                        and not self._inert_module_import(node)\n                    ):\n                        self.shutoff.add(CAUSE_MODULE_SYSTEM)",
+        "                    if specifier is None:\n                        self.shutoff.add(CAUSE_MODULE_SYSTEM)",
     ),
     (
         "module-system-identifiers",
         JSM,
-        "            if scope is None or any(\n"
-        '                binding.cls == "import" for binding in scope.bindings.get(text, ())\n'
-        "            ):\n                self.shutoff.add(CAUSE_MODULE_SYSTEM)",
+        '            if scope is None or any(binding.cls == "import" for binding in bindings):\n                self.shutoff.add(CAUSE_MODULE_SYSTEM)',
         "            if False:\n                pass",
     ),
     (

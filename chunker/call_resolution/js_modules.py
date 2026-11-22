@@ -136,6 +136,12 @@ _IMPORT_META_READS = frozenset(
 # Names that reach the CommonJS module system from anywhere.
 _MODULE_SYSTEM_NAMES = frozenset({"mainModule", "createRequire", "getBuiltinModule"})
 _MODULE_SYSTEM_SPECIFIERS = frozenset({"module", "node:module"})
+# Fold 3, item 1: the only names an import from ``module`` may bind without
+# a run-wide cause (with ``createRequire`` under item 2). ``builtinModules``
+# is an array of names and ``isBuiltin(name)`` returns a boolean: neither
+# can load a module, reach a module record or rewrite an exports object
+# (Node's ``lib/internal/modules/helpers`` and ``lib/module.js``).
+INERT_MODULE_EXPORTS = frozenset({"builtinModules", "isBuiltin"})
 _COMMONJS_NAMES = frozenset({"exports", "module"})
 _EQUALITY = frozenset({"===", "!==", "==", "!="})
 # Ancestors that put an identifier in type space, where it reads nothing.
@@ -474,9 +480,12 @@ class _ModuleFacts:
                 source_node = node.child_by_field_name("source")
                 if source_node is not None:
                     specifier = decode_string_literal(source_node, self.source)
-                    if specifier is None or specifier in _MODULE_SYSTEM_SPECIFIERS:
+                    if specifier is None or (
+                        specifier in _MODULE_SYSTEM_SPECIFIERS
+                        and not self._inert_module_import(node)
+                    ):
                         self.shutoff.add(CAUSE_MODULE_SYSTEM)
-                    else:
+                    elif specifier not in _MODULE_SYSTEM_SPECIFIERS:
                         self.imports.add(specifier)
             elif kind in (
                 "identifier",
@@ -582,9 +591,16 @@ class _ModuleFacts:
             return
         if text in _MODULE_SYSTEM_NAMES:
             scope = self.analysis._binding_scope(node, text)
-            if scope is None or any(
-                binding.cls == "import" for binding in scope.bindings.get(text, ())
+            bindings = scope.bindings.get(text, ()) if scope is not None else ()
+            if any(
+                binding.cls == "import"
+                and (binding.info or {}).get("source") in _MODULE_SYSTEM_SPECIFIERS
+                for binding in bindings
             ):
+                # A binding imported from ``module`` itself: the import
+                # statement's closed allow-list decides (fold 3).
+                return
+            if scope is None or any(binding.cls == "import" for binding in bindings):
                 self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
         if text == "require":
@@ -611,6 +627,173 @@ class _ModuleFacts:
         if text == "arguments" and module_level(node):
             if self.analysis._binding_scope(node, text) is None:
                 self.commonjs = True
+
+    # -- fold 3: closed allow-lists for ``module`` imports and createRequire
+
+    def _uses(self, scope: Any, name: str) -> list[Any] | None:
+        """Every use of the binding of ``name`` in ``scope``, found by the
+        ordinary lookup at each use site; ``None`` when the scope binds the
+        name more than once or a use is not a plain identifier."""
+        from .js_scope import _declaration_name
+
+        if len(scope.bindings.get(name, ())) != 1:
+            return None
+        uses: list[Any] = []
+        for node in _walk(self.analysis.root):
+            if (
+                node.type
+                not in (
+                    "identifier",
+                    "shorthand_property_identifier",
+                    "shorthand_property_identifier_pattern",
+                )
+                or _text(node, self.source) != name
+            ):
+                continue
+            if node.type == "identifier" and _declaration_name(node):
+                continue
+            if self.analysis._binding_scope(node, name) is not scope:
+                continue
+            if node.type != "identifier":
+                return None
+            uses.append(node)
+        return uses
+
+    def _written(self, node: Any) -> bool:
+        return any(_same(node, target) for target in self.analysis.assignment_targets)
+
+    def _inert_module_import(self, statement: Any) -> bool:
+        """Fold 3, item 1: an import from ``module``/``node:module`` is inert
+        when it is type-only, or when every binding is a named import of
+        :data:`INERT_MODULE_EXPORTS` used only by reads and calls, or of
+        ``createRequire`` used only as a local require function (item 2).
+        A default or namespace import, any other name and import attributes
+        stay run-wide."""
+        if _has_token(statement, "type"):
+            return True
+        if any(child.type == "import_attribute" for child in statement.named_children):
+            return False
+        program = self.analysis.program
+        for clause in statement.named_children:
+            if clause.type != "import_clause":
+                continue
+            for part in clause.named_children:
+                if part.type != "named_imports":
+                    return False
+                for spec in part.named_children:
+                    if spec.type != "import_specifier":
+                        continue
+                    if _has_token(spec, "type"):
+                        continue
+                    imported = module_export_name(
+                        spec.child_by_field_name("name"), self.source
+                    )
+                    local = spec.child_by_field_name(
+                        "alias"
+                    ) or spec.child_by_field_name("name")
+                    if local is None or local.type != "identifier":
+                        return False
+                    uses = self._uses(program, _text(local, self.source))
+                    if uses is None:
+                        return False
+                    if imported in INERT_MODULE_EXPORTS:
+                        if any(self._written(use) for use in uses):
+                            return False
+                    elif imported == "createRequire":
+                        if not all(self._local_require(use) for use in uses):
+                            return False
+                    else:
+                        return False
+        return True
+
+    def _local_require(self, use: Any) -> bool:
+        """Fold 3, item 2: ``const r = createRequire(<anything>)``, with every
+        use of ``r`` (by lookup) a direct call with one literal argument,
+        which taints its target like ``require``, or ``r.resolve(<literal>)``."""
+        outer = _climb_wrappers(use)
+        call = outer.parent
+        if (
+            call is None
+            or call.type != "call_expression"
+            or not _same(call.child_by_field_name("function"), outer)
+        ):
+            return False
+        wrapped = _climb_wrappers(call)
+        declarator = wrapped.parent
+        if (
+            declarator is None
+            or declarator.type != "variable_declarator"
+            or not _same(declarator.child_by_field_name("value"), wrapped)
+        ):
+            return False
+        declaration = declarator.parent
+        name = declarator.child_by_field_name("name")
+        if (
+            declaration is None
+            or declaration.type != "lexical_declaration"
+            or not _has_token(declaration, "const")
+            or name is None
+            or name.type != "identifier"
+        ):
+            return False
+        text = _text(name, self.source)
+        scope = self.analysis._binding_scope(name, text)
+        if scope is None:
+            return False
+        uses = self._uses(scope, text)
+        if uses is None:
+            return False
+        literals: list[str] = []
+        for item in uses:
+            outer = _climb_wrappers(item)
+            parent = outer.parent
+            if parent is None:
+                return False
+            if parent.type == "call_expression" and _same(
+                parent.child_by_field_name("function"), outer
+            ):
+                arguments = parent
+            elif (
+                parent.type == "member_expression"
+                and _same(parent.child_by_field_name("object"), outer)
+                and _text(parent.child_by_field_name("property"), self.source)
+                == "resolve"
+                and parent.child_by_field_name("property").type == "property_identifier"
+            ):
+                wrapped_member = _climb_wrappers(parent)
+                arguments = wrapped_member.parent
+                if (
+                    arguments is None
+                    or arguments.type != "call_expression"
+                    or not _same(
+                        arguments.child_by_field_name("function"), wrapped_member
+                    )
+                ):
+                    return False
+                arguments = (
+                    None if self._single_literal(arguments) is None else arguments
+                )
+                if arguments is None:
+                    return False
+                continue
+            else:
+                return False
+            literal = self._single_literal(arguments)
+            if literal is None or literal in _MODULE_SYSTEM_SPECIFIERS:
+                return False
+            literals.append(literal)
+        # A literal call loads its target like ``require``: it taints it.
+        self.taints.update(literals)
+        return True
+
+    def _single_literal(self, call: Any) -> str | None:
+        arguments = call.child_by_field_name("arguments")
+        named = (
+            [child for child in arguments.named_children if child.type != "comment"]
+            if arguments is not None
+            else []
+        )
+        return _literal_value(named[0], self.source) if len(named) == 1 else None
 
     def _inert_operand(self, node: Any) -> bool:
         """``typeof x`` and an operand of ``===``/``!==``/``==``/``!=``: the

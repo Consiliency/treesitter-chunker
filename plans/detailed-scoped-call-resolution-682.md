@@ -1668,6 +1668,43 @@ Each rule only adds `none`.
   (`none(run-tainted:<cause>)`, `none(commonjs)`), and each cause is logged
   with its scope (production or test-scoped).
 
+**Fold 3: closed allow-lists for three run-wide causes** (the E-21
+approach). Each list lives in one place; every check uses the ordinary
+lookup at the use site; anything outside a list keeps its run-wide effect.
+
+1. **Imports from `module`/`node:module`** (`js_modules.INERT_MODULE_EXPORTS`).
+   Inert when the statement is type-only, or every binding is a named import
+   of `builtinModules` or `isBuiltin` used only by reads and calls (no
+   write), or of `createRequire` used as item 2 allows. Run-wide: a default
+   or namespace import, any other name (`Module`, `_load`, `register`,
+   `syncBuiltinESMExports`, …), import attributes, `export … from 'module'`,
+   and `require`/`import()` of `module`.
+2. **`createRequire`** (`js_modules._local_require`). Every use of the
+   imported binding must initialize one `const` name
+   (`const r = createRequire(<anything>)`, through parentheses), and every
+   use of `r`, found by lookup, must be a direct call with one string or
+   cooked-constant template argument, or `r.resolve(<literal>)`. A literal
+   call taints its target like `require` (with E5-4's lenient
+   normalization); `r('module')` is run-wide. Run-wide: a non-literal call,
+   `r.cache`, `r.main`, `r` passed on or aliased, a `let`/`var` binding, an
+   immediate `createRequire(x)('./a')`, and `createRequire` reached any other
+   way (a free identifier, a property, a string).
+3. **`.constructor`** (`js_scope._safe_constructor_read`,
+   `_SAFE_CONSTRUCTOR_OPERATORS`). Safe only as the object of a
+   non-computed `.name` read, an operand of `===`, `!==`, `==`, `!=` or
+   `instanceof`, or the argument of `typeof`. Every other position (a call,
+   an argument such as `expect(x.constructor)`, an assignment value, a
+   return, a container element, a spread, a computed key, any other member
+   read, `!`) stays an `evaluator` cause. Tier 1's own `*` wildcard is
+   unchanged.
+
+Runtime trace (node v24.22.3): `isBuiltin('fs')` and
+`builtinModules.includes('fs')` return values and change nothing; a literal
+`r('./svc.js')` returns the same exports object, leaves `r.cache` unchanged
+on a repeat and writes no export; `o.constructor.name`,
+`o.constructor === K`, `o instanceof o.constructor` and
+`typeof o.constructor` never call the constructor (0 calls on a spy class).
+
 ## 10. Fixtures
 
 ### 10.1 Layout, provenance and tool exclusions
@@ -3048,3 +3085,16 @@ row changes; the off-mode baseline is untouched.
 | Causes and taints scoped by caller; logged with their scope | §9.9; `ModuleRun.caller_taints`, `run_tainted_reason` |
 | R12 (TS/JS): misclassified files | §15 |
 | Pins: `test_test_file_causes_are_scoped_to_test_callers` (6), `test_production_causes_stay_run_wide`, `test_a_test_file_production_reaches_is_promoted`, `test_promotion_is_transitive` (4), `test_an_unreached_test_helper_stays_test_scoped`, `test_an_uncomputable_production_edge_promotes_every_test_file`, `test_test_classifier_entries`, `test_test_classifier_near_misses`, `test_test_classifier_is_closed`, `test_the_shutoff_log_names_its_scope`; 14 O-2 rule mutations | `tests/test_call_resolution_tier2_js.py`; `scripts/call_resolution_tier2_mutations.py` |
+
+### PR 5: fold 3 (closed allow-lists for three run-wide causes)
+
+`js` fact version 13; `python` stays 30 with unchanged digests. No expected
+row changes.
+
+| Item | Applied in |
+| --- | --- |
+| `module`/`node:module` imports: `builtinModules`, `isBuiltin` (reads and calls only), type-only imports | §9.9; `js_modules.INERT_MODULE_EXPORTS`, `_inert_module_import` |
+| `createRequire` as a local require function: one `const`, literal calls (which taint) and `r.resolve(<literal>)` | §9.9; `js_modules._local_require` |
+| `.constructor`: `.name`, `===`/`!==`/`==`/`!=`/`instanceof`, `typeof` | §9.9; `js_scope._safe_constructor_read` |
+| Runtime trace of each safe claim | §9.9 |
+| Pins: `test_fold3_safe_uses_leave_the_run_on` (5), `test_fold3_unsafe_uses_stay_run_wide` (31), `test_fold3_create_require_literal_calls_taint_their_target`, `test_fold3_allow_lists_are_closed`; 16 new rule mutations (two equivalent ones are recorded as such in the script) | `tests/test_call_resolution_tier2_js.py`; `scripts/call_resolution_tier2_mutations.py` |

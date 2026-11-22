@@ -294,7 +294,11 @@ object: a code evaluator, a non-literal `require` or `import()`, `createRequire`
 `mainModule`, `getBuiltinModule` or an import of `module`, the CommonJS
 `module` object handed on, or an unparsed file whose text spells one. Any such
 file in production code turns Tier 2 off for the whole run, and the cause is
-logged. Such a file in test code (a basename with a `.test.` or `.spec.`
+logged. Three uses are exempt by closed lists: an import of only
+`builtinModules` or `isBuiltin` from `module`; `const r = createRequire(…)`
+used only as `r('<literal>')` (which counts as a `require` of that path) or
+`r.resolve('<literal>')`; and a `.constructor` read used only for `.name`, an
+equality or `instanceof` comparison, or `typeof`. Such a file in test code (a basename with a `.test.` or `.spec.`
 segment, or a `__tests__`, `__mocks__`, `test` or `tests` directory) turns
 Tier 2 off only for calls made from test files, and so does any module write
 or escape spelled in test code. A test-named file that production code
