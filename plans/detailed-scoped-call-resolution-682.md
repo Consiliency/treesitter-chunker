@@ -1857,6 +1857,27 @@ wheel payload returns to 346 files.
 - **P5-37.** The 8.3 short-name match runs on the segment after the Win32
   trailing dot/space strip.
 
+**Fold 11 (the president's re-check at cc3c2d3d, P5-50).**
+
+- **P5-50.** tree-sitter-javascript reads two Annex B HTML-like comments as
+  code, with no error and no `html_comment` node: a `-->` after a
+  multi-line comment that contains a line break and starts after code, and
+  a `<!--` in the middle of a line. V8 (Script goal) makes the rest of the
+  line a comment, while tree-sitter can open a template or `/*` there that
+  hides the next lines, `require` writes included. So in a JavaScript file
+  (`.js`/`.jsx`; TypeScript has no HTML-like comments) each byte is marked
+  code or not: not code means inside a `comment`, `html_comment`,
+  `hash_bang_line`, `string`, `regex`, `jsx_text` or the text of a
+  `template_string` (a `template_substitution` is code again). The file is
+  unparsed (E5-7) when (a) a `<!--` starts on a code byte, or (b) a `-->`
+  starts on a code byte and every byte between the last line break before
+  it and the `-->` is whitespace or inside a comment (that line break may
+  sit inside a multi-line comment). A non-ASCII byte counts as whitespace
+  there (fail closed). Raw bytes are not scanned, so HTML text in strings,
+  templates and regexes is unaffected, and so is `while (i-->0)`. The
+  precise rule was chosen over the blunt "any `<!--`/`-->` on a code byte"
+  fallback; it costs nothing on the 8 measured trees.
+
 ## 10. Fixtures
 
 ### 10.1 Layout, provenance and tool exclusions
@@ -3342,3 +3363,14 @@ row changes.
 | P5-48 a module-scope declaration of `arguments` is a `dynamic-loader` cause | §9.9; `js_modules._ModuleFacts.module_system` |
 | P5-49 static field initializers and static blocks are module level | §9.9; `js_modules.module_level` |
 | Pins: `test_p5_47_misread_line_terminators_are_unparsed` (8), `test_p5_47_crlf_files_stay_parsed`, `test_p5_48_module_scope_arguments_declarations` (5), `test_p5_48_function_local_arguments_declaration_is_unaffected`, `test_p5_49_static_members_are_module_level` (3), `test_p5_49_static_field_this_makes_the_module_commonjs`, `test_p5_49_instance_members_stay_unaffected`; 7 new rule mutations | `tests/test_call_resolution_tier2_js.py`; `scripts/call_resolution_tier2_mutations.py` |
+
+### PR 5: fold 11 (the president's re-check at cc3c2d3d, P5-50)
+
+`js` fact version 20; `python` stays 30 with unchanged digests. No expected
+row changes.
+
+| Item | Applied in |
+| --- | --- |
+| P5-50 (a) a `<!--` on a code byte makes a JavaScript file unparsed | §9.9; `facts._hidden_html_comment` |
+| P5-50 (b) a `-->` on a code byte with only whitespace and comments before it on its line makes a JavaScript file unparsed | §9.9; `facts._hidden_html_comment` |
+| Pins: `test_p5_50_hidden_html_comments_are_unparsed` (8: the six repros and the two line-start controls), `test_p5_50_html_text_outside_code_stays_parsed` (8: the no-line-break control, strings, templates, regexes, `i-->0`, and the `.ts`/`.tsx` forms), `test_p5_50_substitution_in_a_template_is_code`; 4 new rule mutations | `tests/test_call_resolution_tier2_js.py`; `scripts/call_resolution_tier2_mutations.py` |

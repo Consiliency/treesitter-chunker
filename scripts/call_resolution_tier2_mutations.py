@@ -623,7 +623,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "p5-47-misread-terminators",
         FACTS,
-        '        if family == "js" and _misread_line_terminators(source, root):',
+        '        if family == "js" and _misread_line_terminators(source, root, language):',
         "        if False:",
     ),
     (
@@ -643,6 +643,30 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         FACTS,
         '        if node.type == "html_comment":\n            return True',
         "        if False:\n            return True",
+    ),
+    (
+        "p5-50-mid-line-open",
+        FACTS,
+        "        if code[index]:\n            return True",
+        "        if False:\n            return True",
+    ),
+    (
+        "p5-50-close-after-comment",
+        FACTS,
+        "        if code[index]:\n            line = ",
+        "        if False:\n            line = ",
+    ),
+    (
+        "p5-50-close-line-may-start-in-comment",
+        FACTS,
+        "                comment[at] or source[at]",
+        "                source[at]",
+    ),
+    (
+        "p5-50-template-substitution-is-code",
+        FACTS,
+        '                if child.type == "template_substitution":',
+        "                if False:",
     ),
     (
         "p5-48-module-scope-arguments",

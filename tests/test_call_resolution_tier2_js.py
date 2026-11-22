@@ -3595,3 +3595,69 @@ def test_p5_49_instance_members_stay_unaffected(tmp_path: Path) -> None:
     )
     _, _, on, label = _run(root, "use.ts", "t")
     assert on["resolution"] == "resolved", label
+
+
+# ---------------------------------------------------------------------------
+# PR 5 fold 11 (the president's re-check at cc3c2d3d, P5-50): Annex B
+# HTML-like comments that tree-sitter reads as code in JavaScript.
+
+P5_50_UNPARSED = {
+    "mlc-tpl.js": b"var x = 1;\nx /* c\n*/ --> `\n" + WRITE + b"//`;\n",
+    "mlc-blk.js": b"var x = 1;\nx /* c\n*/ --> /*\n" + WRITE + b"//*/ 0;\n",
+    "mid-open-tpl.js": b"var x = 1, y = 2;\nx <!--y, `\n" + WRITE + b"//`;\n",
+    "mid-open-blk.js": b"var x = 1, y = 2;\nx <!--y, /*\n" + WRITE + b"//*/ 0;\n",
+    "mlc-tpl-str.js": b"var x = 1;\nx /* c\n*/ --> `\n" + WRITE + b"//` + '';\n",
+    "mlc-shadow-tpl.js": (
+        b"var x = 1;\nx /* c\n*/ --> 0; var r = require('./other'); `\n"
+        + WRITE
+        + b"//`;\n"
+    ),
+    # Controls already unparsed: the comment starts the line.
+    "mlc-tpl-nox.js": b"/* c\n*/ --> `\n" + WRITE + b"//`;\n",
+    "mlc-tpl-ws.js": b"var x = 1;\nx\n  /* c\n*/ --> `\n" + WRITE + b"//`;\n",
+}
+
+
+@pytest.mark.parametrize("name", sorted(P5_50_UNPARSED))
+def test_p5_50_hidden_html_comments_are_unparsed(tmp_path: Path, name: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE})
+    _write_bytes(root, {name: P5_50_UNPARSED[name]})
+    facts = extract_symbol_facts_for_file(root / name, root, call_resolution=MODE)
+    assert facts["scope_facts"]["supported"] is False, name
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off, name
+    assert label == "none(run-tainted:unparsed-file)", name
+
+
+P5_50_PARSED = {
+    # No line break inside the comment: V8 also reads ``x-- > `...` ``.
+    "mlc-tpl-ctl-lf.js": b"var x = 1;\nx /* c */ --> `\n" + WRITE + b"//`;\n",
+    # HTML text outside code: strings, templates, regexes. (tree-sitter
+    # already reports an error for ``<!--`` or ``-->`` in JSX.)
+    "string.js": b"var s = '<!-- -->';\nvar u = \"-->\";\n",
+    "template.js": b"var s = `\n--> ${1} <!--`;\nvar t = `<!-- ${'-->'} -->`;\n",
+    "regex.js": b"var r = /<!--/, q = /-->/;\n",
+    # ``-->`` after code on its line is ``x-- >``.
+    "decrement.js": b"var i = 3;\nwhile (i-->0) {}\n",
+    # TypeScript has no HTML-like comments, and tsc agrees with tree-sitter.
+    "mid-open.ts": b"var x = 1, y = 2;\nx <!--y, `\n" + WRITE + b"//`;\n",
+    "mid-open.tsx": b"var x = 1, y = 2;\nx <!--y, `\n" + WRITE + b"//`;\n",
+    "mlc-tpl.ts": b"var x = 1;\nx /* c\n*/ --> `\n" + WRITE + b"//`;\n",
+}
+
+
+@pytest.mark.parametrize("name", sorted(P5_50_PARSED))
+def test_p5_50_html_text_outside_code_stays_parsed(tmp_path: Path, name: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE})
+    _write_bytes(root, {name: P5_50_PARSED[name]})
+    facts = extract_symbol_facts_for_file(root / name, root, call_resolution=MODE)
+    assert facts["scope_facts"]["supported"] is True, name
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", (name, label)
+
+
+def test_p5_50_substitution_in_a_template_is_code(tmp_path: Path) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE})
+    _write_bytes(root, {"x.js": b"var a = 1, b = 2;\nvar s = `${a <!--b}`;\n"})
+    facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
+    assert facts["scope_facts"]["supported"] is False
