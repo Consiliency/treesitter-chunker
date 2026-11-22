@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"18"`` for the ``js`` family and ``"30"`` for
+Schema (fact version ``"19"`` for the ``js`` family and ``"30"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -70,6 +70,7 @@ Schema (fact version ``"18"`` for the ``js`` family and ``"30"`` for
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
@@ -120,6 +121,9 @@ logger = logging.getLogger(__name__)
 # js "17": PR 5 fold 8 (the lexer-level text scan of unparsed files).
 # js "18": PR 5 fold 9 (E5-7: no text scan, an unparsed JS/TS file has
 # empty ``module_bindings``; P5-44: module-level ``arguments`` uses).
+# js "19": PR 5 fold 10 (P5-47 unparsed on lone CR, LS/PS or HTML-like
+# comments; P5-48 module-scope ``arguments`` declarations; P5-49 static
+# class members are module level).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -187,7 +191,7 @@ logger = logging.getLogger(__name__)
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "18", "python": "30"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "19", "python": "30"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -346,6 +350,12 @@ def compute_scope_facts(
         if root.has_error:
             logger.debug("call resolution: %s tree has errors", language)
             return fallback
+        if family == "js" and _misread_line_terminators(source, root):
+            # P5-47: tree-sitter runs a ``#!`` line, a ``//`` comment or an
+            # HTML-like comment past a JS line terminator it does not honour,
+            # with no error; the file counts as unparsed (E5-7).
+            logger.debug("call resolution: %s tree may hide code", language)
+            return fallback
         if family == "js" and suffix in _MODULE_SUFFIXES:
             partial = js_scope.analyze(
                 root, source, language, call_facts, goal="module", symlink=symlink
@@ -387,6 +397,25 @@ def compute_scope_facts(
         logger.debug("call resolution: %s analyzer failed: %r", language, exc)
         return fallback
     return facts
+
+
+_LONE_CR = re.compile(rb"\r(?!\n)")
+_LINE_SEPARATORS = (b"\xe2\x80\xa8", b"\xe2\x80\xa9")
+
+
+def _misread_line_terminators(source: bytes, root: Any) -> bool:
+    """P5-47: a lone CR, a U+2028 or U+2029 anywhere in the text, or any
+    ``html_comment`` node (TypeScript has no HTML-like comments, and
+    tree-sitter's runs past a lone CR)."""
+    if _LONE_CR.search(source) or any(sep in source for sep in _LINE_SEPARATORS):
+        return True
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        if node.type == "html_comment":
+            return True
+        stack.extend(node.children)
+    return False
 
 
 def _is_span_key(value: object) -> bool:

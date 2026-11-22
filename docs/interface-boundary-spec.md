@@ -315,8 +315,9 @@ trailing dot or space, and a path segment that is an 8.3 short name or contains
 `:` cannot be located, and URL schemes after stripping surrounding whitespace
 and control characters. `jest.mock`/`vi.mock` of a relative path
 counts as a write to that module for the mocking file's callers.
-A JavaScript or TypeScript file the parser cannot read cleanly counts as
-rewriting any module (scoped like any other cause: test code affects only test
+A JavaScript or TypeScript file the parser cannot read cleanly (including any
+file with a lone carriage return, U+2028, U+2029 or an HTML-like comment)
+counts as rewriting any module (scoped like any other cause: test code affects only test
 callers unless production code reaches it). Wherever Tier 2 is off, the output equals `"structural"`. Python imports prove nothing yet.
 
 A narrowed edge changes only `target`, `resolution`, `candidates` and

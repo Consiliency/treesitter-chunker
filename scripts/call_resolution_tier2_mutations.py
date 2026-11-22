@@ -30,6 +30,7 @@ JSM = CR + "js_modules.py"
 ENG = CR + "engine.py"
 JSS = CR + "js_scope.py"
 STR = CR + "js_strings.py"
+FACTS = CR + "facts.py"
 TESTS = (
     "tests/test_call_resolution_tier2_js.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
@@ -617,6 +618,49 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         JSM,
         "                if not self._inert_operand(node):\n                    # P5-44",
         '                if node.parent is not None and node.parent.type == "call_expression":\n                    # P5-44',
+    ),
+    # Fold 10 (the president's re-check at 9bcd20c1, P5-47..P5-49).
+    (
+        "p5-47-misread-terminators",
+        FACTS,
+        '        if family == "js" and _misread_line_terminators(source, root):',
+        "        if False:",
+    ),
+    (
+        "p5-47-lone-cr",
+        FACTS,
+        "    if _LONE_CR.search(source) or any(sep in source for sep in _LINE_SEPARATORS):",
+        "    if any(sep in source for sep in _LINE_SEPARATORS):",
+    ),
+    (
+        "p5-47-line-separators",
+        FACTS,
+        "    if _LONE_CR.search(source) or any(sep in source for sep in _LINE_SEPARATORS):",
+        "    if _LONE_CR.search(source):",
+    ),
+    (
+        "p5-47-html-comments",
+        FACTS,
+        '        if node.type == "html_comment":\n            return True',
+        "        if False:\n            return True",
+    ),
+    (
+        "p5-48-module-scope-arguments",
+        JSM,
+        '        if "arguments" in self.analysis.program.bindings:',
+        "        if False:",
+    ),
+    (
+        "p5-49-static-fields",
+        JSM,
+        '            if _same(child, current.child_by_field_name("value")) and not (\n                _has_token(current, "static")\n            ):',
+        '            if _same(child, current.child_by_field_name("value")):',
+    ),
+    (
+        "p5-49-static-blocks",
+        JSM,
+        "        child, current = current, current.parent\n    return True",
+        '        elif kind == "class_static_block":\n            return False\n        child, current = current, current.parent\n    return True',
     ),
     # Per-file module facts.
     (

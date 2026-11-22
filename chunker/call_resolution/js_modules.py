@@ -532,6 +532,11 @@ class _ModuleFacts:
             elif kind == "this":
                 if module_level(node):
                     self.commonjs = True
+        if "arguments" in self.analysis.program.bindings:
+            # P5-48: a module-scope declaration of ``arguments`` in any form
+            # (``var``, a function, ...) still names the CommonJS wrapper's
+            # object in sloppy code, whose ``arguments[1]`` is ``require``.
+            self.shutoff.add(CAUSE_DYNAMIC_LOADER)
         self._import_writes()
         self._namespace_uses()
 
@@ -1170,9 +1175,12 @@ def module_level(node: Any) -> bool:
 
     The Tier 1 scope rule, applied exhaustively: arrow functions inherit
     ``this``; a non-arrow function or method rebinds it for its parameters
-    and body, but not for a computed name or a decorator; a class field
-    initializer and a static block rebind it, but a computed field or
-    method key and the ``extends`` clause do not.
+    and body, but not for a computed name or a decorator; an instance field
+    initializer rebinds it (it runs in the constructor), but a computed field
+    or method key and the ``extends`` clause do not. P5-49: a **static**
+    field initializer and a static block count as module level, because tsc
+    below ES2022 hoists them to module scope (``C.r = arguments[1];``). The
+    walk is shared by the module-level ``this`` and ``arguments`` checks.
     """
     child, current = node, node.parent
     while current is not None:
@@ -1183,10 +1191,10 @@ def module_level(node: Any) -> bool:
             ):
                 return False
         elif kind in ("field_definition", "public_field_definition"):
-            if _same(child, current.child_by_field_name("value")):
+            if _same(child, current.child_by_field_name("value")) and not (
+                _has_token(current, "static")
+            ):
                 return False
-        elif kind == "class_static_block":
-            return False
         child, current = current, current.parent
     return True
 

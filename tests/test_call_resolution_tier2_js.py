@@ -1899,7 +1899,7 @@ FOLD1_POSITIVES: dict[str, tuple[dict[str, str], tuple[str, str], str, list[str]
         {
             "svc.ts": SVC
             + "export function f(this: any) { return this; }\n"
-            + "export class K { a = this; static { this.b = 1; } m() { return this; } }\n",
+            + "export class K { a = this; m() { return this; } }\n",
             "use.ts": USE,
         },
         ("use.ts", "t"),
@@ -3449,3 +3449,149 @@ def test_p5_37_short_name_after_trailing_dot_or_space() -> None:
     index = modules.ModuleIndex.build(["use.ts"], None)
     for segment in ("BUILD~1.", "BUILD~1 ", "node_m~1. "):
         assert modules.lenient_targets(index, f"./{segment}/w", "use.ts") is None
+
+
+# ---------------------------------------------------------------------------
+# PR 5 fold 10 (the president's re-check at 9bcd20c1, P5-47..P5-49). Files
+# are written as bytes so line terminators are exact on every OS.
+
+
+def _write_bytes(root: Path, files: dict[str, bytes]) -> Path:
+    for name, data in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    return root
+
+
+WRITE = b"require('./svc').t = () => 2;\n"
+P5_47_UNPARSED = {
+    "hashbang-cr.js": b"#!/usr/bin/env node\r" + WRITE,
+    "hashbang-ls.js": "#!/usr/bin/env node ".encode() + WRITE,
+    "hashbang-ps.js": "#!/usr/bin/env node ".encode() + WRITE,
+    "hashbang-cr.ts": b"#!/usr/bin/env node\rObject.assign(require('./svc'), { t: () => 2 });\n",
+    "hashbang-cr-esm.ts": (
+        b"#!/usr/bin/env node\rimport * as ns from './svc';\n"
+        b"Object.assign(ns, { t: () => 2 });\n"
+    ),
+    "html-open-cr.js": b"<!-- c\r" + WRITE,
+    "html-close-cr.js": b"var x = 1\n--> c\r" + WRITE,
+    "html-open.ts": b"var y = 2;\n<!--y, require('./svc').t = () => 2;\n",
+}
+
+
+@pytest.mark.parametrize("name", sorted(P5_47_UNPARSED))
+def test_p5_47_misread_line_terminators_are_unparsed(tmp_path: Path, name: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE})
+    _write_bytes(root, {name: P5_47_UNPARSED[name]})
+    facts = extract_symbol_facts_for_file(root / name, root, call_resolution=MODE)
+    assert facts["scope_facts"]["supported"] is False, name
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off, name
+    assert label == "none(run-tainted:unparsed-file)", name
+
+
+def test_p5_47_crlf_files_stay_parsed(tmp_path: Path) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE})
+    _write_bytes(
+        root, {"x.js": b"#!/usr/bin/env node\r\nrequire('./other');\r\n// c\r\n"}
+    )
+    facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
+    assert facts["scope_facts"]["supported"] is True
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", label
+
+
+P5_48_REPROS = {
+    "var": "var arguments;\narguments[1]('./s' + 'vc').t = () => 2;\n",
+    "var-self": "var arguments = arguments;\narguments[1]('./s' + 'vc').t = () => 2;\n",
+    "hoisted-var": "arguments[1]('./s' + 'vc').t = () => 2;\nvar arguments;\n",
+    "function-then-var": (
+        "function f() {}\nvar arguments;\n"
+        "const r = arguments[1]; r('./s' + 'vc').t = () => 2;\n"
+    ),
+    "function-declaration": "function arguments() {}\nexport const k = 1;\n",
+}
+
+
+@pytest.mark.parametrize("case", sorted(P5_48_REPROS))
+def test_p5_48_module_scope_arguments_declarations(tmp_path: Path, case: str) -> None:
+    root = _write(
+        tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": P5_48_REPROS[case]}
+    )
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off, case
+    assert label == "none(run-tainted:dynamic-loader)", case
+
+
+def test_p5_48_function_local_arguments_declaration_is_unaffected(
+    tmp_path: Path,
+) -> None:
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.js": "export function f() { var arguments; return arguments; }\n",
+        },
+    )
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", label
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        (
+            "class C { static r = (arguments as any)[1]; }\n"
+            "(C as any).r('./s' + 'vc').t = () => 2;\n",
+            "none(run-tainted:dynamic-loader)",
+        ),
+        (
+            "class C { static { (arguments as any)[1]('./s' + 'vc').t = () => 2; } }\n",
+            "none(run-tainted:dynamic-loader)",
+        ),
+        (
+            "class C { static { require('./svc').t = () => 2; } }\n",
+            "none(commonjs)",
+        ),
+    ],
+    ids=["static-field-arguments", "static-block-arguments", "static-block-require"],
+)
+def test_p5_49_static_members_are_module_level(
+    tmp_path: Path, text: str, reason: str
+) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == reason
+
+
+def test_p5_49_static_field_this_makes_the_module_commonjs(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC + "export class K { static s = (this as any).t = 0; }\n",
+            "use.ts": USE,
+        },
+    )
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == "none(commonjs)"
+
+
+def test_p5_49_instance_members_stay_unaffected(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC
+            + "export class K { a = this; m() { return arguments[0]; } }\n",
+            "use.ts": USE,
+            "x.ts": "export class J { b = 1; m() { return arguments[0]; } }\n",
+        },
+    )
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", label

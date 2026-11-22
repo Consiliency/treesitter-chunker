@@ -1833,6 +1833,27 @@ wheel payload returns to 346 files.
   equality operand (a closed list) is a `dynamic-loader` cause.
 - **P5-41 (parsed path).** `typeof require(<non-literal>)…` was never
   exempt there; a test pins the `dynamic-loader` cause.
+
+**Fold 10 (the president's re-check at 9bcd20c1, P5-47..P5-49).**
+
+- **P5-47.** tree-sitter's `hash_bang_line` and `html_comment` tokens run
+  past JS line terminators that V8 and TypeScript honour, with no error. So
+  a JS/TS file whose text contains a lone CR (one not followed by LF), a
+  U+2028 or a U+2029 anywhere, or whose tree has any `html_comment` node
+  (TypeScript has no HTML-like comments), is unparsed (E5-7). The check
+  sits next to `has_error` in `compute_scope_facts`. A CRLF file stays
+  parsed.
+- **P5-48.** In sloppy code a module-scope declaration of `arguments` (a
+  `var`, a function declaration, any binding the scope pass records at the
+  program scope) still names the CommonJS wrapper's object, so it is a
+  `dynamic-loader` cause. A function-local `var arguments` is not one.
+- **P5-49.** `module_level` (shared by the module-level `this` check and
+  the `arguments` checks) climbs through a **static** field initializer and
+  a static block, because tsc below ES2022 hoists them to module scope.
+  An instance field initializer runs in the constructor and still stops
+  the walk. The module-system names (`require`, `createRequire` and the
+  rest) never used this walk; the use-site lookup already treats a static
+  block like any other code.
 - **P5-37.** The 8.3 short-name match runs on the segment after the Win32
   trailing dot/space strip.
 
@@ -3309,3 +3330,15 @@ to 346 files. No expected row changes.
 | P5-44: module-level `arguments` uses other than `typeof`/equality are `dynamic-loader` | §9.9; `js_modules._ModuleFacts._name` |
 | P5-41: the parsed path's `typeof require(...)…` chain pinned | §9.9 |
 | Pins: `test_e5_7_unparsed_production_files_are_run_wide` (7: the Codex repros and P5-40..P5-43/P5-45), `test_e5_7_unparsed_test_files_are_test_scoped` (7), `test_e5_7_a_reached_unparsed_test_file_is_promoted` (2), `test_e5_7_clean_parsed_files_are_unaffected`, `test_p5_44_module_level_arguments` (3), `test_p5_44_controls` (3), `test_p5_41_parsed_typeof_require_chain_is_a_loader`; the fold-1 and fold-8 text-scan tests and mutations removed; 2 new rule mutations | `tests/test_call_resolution_tier2_js.py`; `scripts/call_resolution_tier2_mutations.py` |
+
+### PR 5: fold 10 (the president's re-check at 9bcd20c1, P5-47..P5-49)
+
+`js` fact version 19; `python` stays 30 with unchanged digests. No expected
+row changes.
+
+| Item | Applied in |
+| --- | --- |
+| P5-47 lone CR, U+2028/U+2029 or an `html_comment` node make a JS/TS file unparsed | §9.9; `facts._misread_line_terminators` |
+| P5-48 a module-scope declaration of `arguments` is a `dynamic-loader` cause | §9.9; `js_modules._ModuleFacts.module_system` |
+| P5-49 static field initializers and static blocks are module level | §9.9; `js_modules.module_level` |
+| Pins: `test_p5_47_misread_line_terminators_are_unparsed` (8), `test_p5_47_crlf_files_stay_parsed`, `test_p5_48_module_scope_arguments_declarations` (5), `test_p5_48_function_local_arguments_declaration_is_unaffected`, `test_p5_49_static_members_are_module_level` (3), `test_p5_49_static_field_this_makes_the_module_commonjs`, `test_p5_49_instance_members_stay_unaffected`; 7 new rule mutations | `tests/test_call_resolution_tier2_js.py`; `scripts/call_resolution_tier2_mutations.py` |
