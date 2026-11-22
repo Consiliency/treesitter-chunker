@@ -904,6 +904,37 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
       comments in implicit concatenations and parentheses, and an f-string
       whose interpolations are all constant strings is a constant (B-1,
       W-4: `getattr(helper, '__glo'  # c\n 'bals__')`, `f"__glo{'bals'}__"`).
+    - **One alias/readback/escape mechanism for every sensitive kind (#695
+      fold 22).** The sensitive kinds are a namespace dict, the mock module
+      (an import, an alias, `X.mock` for any `X`, `getattr(X, 'mock')`),
+      `patch` (an import, or `.patch` on the mock module or a fixture) and a
+      pytest-mock fixture (`mocker`, `module_mocker`, `class_mocker`,
+      `package_mocker`, `session_mocker`). For all four alike:
+      - **alias binding:** assignment, tuple/list/starred targets, walrus,
+        conditional and boolean operands, a `for` target, `with … as`, a
+        `match` capture, a class-body binding, `self.X = …`,
+        `global`/`nonlocal`, and `setattr(T, 'name', v)` with a constant
+        name make an alias of the kind the value carries (a value carries
+        a kind as itself or as an element of a tuple, list or set; a call,
+        attribute read or subscript of it does not, so
+        `list(ns.items())` and `C.__dict__.get('p')` are values, not the
+        namespace);
+      - **readback:** a name, an `X.<alias>` attribute, any call with a
+        constant argument naming an alias (`getattr(K, 'ns')`,
+        `type.__getattribute__(K, 'ns')`, `attrgetter('ns')(K)`) and a
+        subscript with such a constant key (`K.__dict__['ns']`) read the
+        kind back;
+      - **escape:** a sensitive value anywhere else fails closed: a call
+        argument (other than a namespace dict as the receiver of an unbound
+        mutator or `operator` writer), a container element, a return or
+        yield value, a default, a lambda body, a `with` item, a `for` or
+        comprehension iterable, and a binding a computed read can reach
+        (module or class scope, `global`, an attribute or subscript
+        target). So `_p(mocker, …)` and `[mocker][0]` fail closed; the
+        cost of `mocker` passed to any function was measured at 0 in the
+        repository's tests and the stdlib.
+      A constant `'mock'` string, like `'patch'`, fails closed in a file
+      that imports the mock module.
     - **Callees and receivers are classified after unwrapping parentheses
       (Codex 4656123247).** Parentheses are only a spelling: the rules above
       and the `X.modules.get(__name__)` getters look through any number of
@@ -2463,3 +2494,18 @@ Only adds `none`; no expected row changes. `python` fact version 23.
 | V-8: the guarantee narrowed to every write spelled in this file; R12 names library-internal writers (`update_wrapper`/`wraps`, `argparse`/`optparse`, `copy._reconstruct`, pickle BUILD), ancestor-package acquisition and pytest patchers under other names (#697/#699) | §7.3; §15 R12 |
 | Cost: CPython 3.14 non-test `Lib`: 0 of 595 files change (every file mentioning a resolver was already dynamic; the `_sys.modules` trigger newly hits 0). Harness against main unchanged (0 problems, 8 resolved + 1 narrowed, 43 PR 4 rows). The president's p48/p49 trees all fail closed except the three #697 patcher cases; p50's controls still resolve; `sn48_simplenamespace_init` (no runtime write) flips to fail closed. Two fold-14 controls that mentioned `pydoc.locate`/`resolve_name` now use other attributes | — |
 | Pins: `test_fold21_695_writes_and_triggers_keep_their_off_mode_edge` (29 cases on a handed-in module, each failing at bb8b75b4), `test_fold21_controls_still_resolve` (8). Mutation: B-4 attributes 6 failures, B-4 `getattr` 1, mock aliases 3, mocker aliases 1, non-receiver use 1, `'patch'` string 1, walrus 1, resolver names 3, `pydoc` attribute 1, `logging.config` attribute 1, `from pydoc` 1, `from logging.config` 1, resolver strings 1, `'__dict__'` key 1, `_sys.modules` 1 | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: fold 22 (re-check at 78812ad2, W-5..W-7; one mechanism for all sensitive kinds)
+
+Only adds `none`; no expected row changes. `python` fact version 24. The
+executive directed one shared mechanism instead of per-kind alias logic,
+because each round found a binding form handled for one sensitive kind and
+not another (W-6 is a mock-module spelling that `mocker` lacked).
+
+| Item | Applied in |
+| --- | --- |
+| One alias/readback/escape mechanism for a namespace dict, the mock module, `patch` and a pytest-mock fixture; the fold-18..21 per-kind alias and escape code (`_contains_namespace`, `_namespace_escape`, `_mock_aliases`, `_mock_receiver_use`, the patch hand-on loop) is replaced | §7.3 "One alias/readback/escape mechanism"; `py_scope._sensitive_rules`, `_sensitive`, `_escape`, `_contains_kind`, `_reachable_binding` |
+| W-5: `X.mock` for any `X` and `getattr(X, 'mock')` are the mock module; a constant `'mock'` fails closed in a file importing it. W-6: mocker aliases through every binding form, and `mocker` escaping (`[mocker][0]`, `_p(mocker, …)`) fail closed; `getattr(mocker, 'patch')` (W-8) is `patch` too. W-7: `K.__dict__['ns']`, `type.__getattribute__(K, 'ns')` and `attrgetter('ns')(K)` read an alias back | §7.3 |
+| A value carries a kind only as itself or a tuple/list/set element, not through a call, attribute read or subscript: removes the false namespace alias at `string/__init__.py` (`pattern = cls.__dict__.get('pattern', …)`) | `_contains_kind` |
+| Cost: CPython 3.14 non-test `Lib`: 0 of 595 files newly dynamic, 1 no longer (`string/__init__.py`, the false alias above); the repository's 359 test files: 0 change; `mocker` passed to any function: 0 occurrences in either corpus, so the full escape rule is kept. Harness against main unchanged (0 problems, 8 resolved + 1 narrowed, 43 PR 4 rows). The president's p48–p53 trees all fail closed except the two #697 patchers under other names (`mk48_other_param`, `mk48_fixture_typed`); `mk_local_func` (`_p(mocker, …)`) now fails closed as intended | — |
+| Pins: `test_fold22_695_president_probes_keep_their_off_mode_edge` (17 probe cases, each failing at 78812ad2), `test_fold22_695_cross_kind_matrix_fails_closed` (22 forms x 4 kinds = 88; 24 failed at 78812ad2), `test_fold22_controls_still_resolve` (6). Mutation: alias binding 29 failures, escape 30, `X.mock` 5, `'mock'` string 1, containment narrowing 2; readback and the reachable-binding escape back each other up (0 alone, 31 together), as do the `setattr` binding and escape (35 together) | `tests/test_call_resolution_tier1_py.py` |

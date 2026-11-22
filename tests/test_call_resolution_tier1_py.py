@@ -7026,3 +7026,195 @@ def test_fold21_695_writes_and_triggers_keep_their_off_mode_edge(
 def test_fold21_controls_still_resolve(pre: str, stmt: str) -> None:
     source = FOLD21_T.format(pre=pre, stmt=stmt)
     assert proof_text(source) == ["def helper(*a):\n    return 1"], stmt
+
+
+# ---------------------------------------------------------------------------
+# Fold 22 (the president's re-check at 78812ad2, W-5..W-7, and the executive
+# direction to unify): one alias/readback/escape mechanism for every
+# sensitive kind (a namespace dict, the mock module, ``patch``, a pytest-mock
+# fixture). The module is handed in, so no resolver trigger fires.
+
+FOLD22_T = (
+    "{pre}def helper(*a):\n    return 1\n\n\n"
+    "def replacement(*a):\n    return 2\n\n\n"
+    "def run(mod, mocker, client):\n    {stmt}\n    return helper()\n"
+)
+FOLD22_TARGET = "mod.__name__ + '.helper', replacement"
+
+# One case per president probe in W-5, W-6 and W-7.
+FOLD22_PROBES = {
+    # W-5: the mock module through an alias of the ``unittest`` package.
+    "w5-unittest-as": (
+        "import unittest as ut\nimport unittest.mock\n\n\n",
+        f"ut.mock.patch({FOLD22_TARGET}).start()",
+    ),
+    "w5-unittest-decorator": (
+        "import unittest as ut\nimport unittest.mock\n\n\n",
+        f"@ut.mock.patch({FOLD22_TARGET})\n    def g():\n        pass\n    g()",
+    ),
+    "w5-unittest-alias": (
+        "import unittest\nimport unittest.mock\n\n\n",
+        f"u = unittest\n    u.mock.patch({FOLD22_TARGET}).start()",
+    ),
+    "w5-unittest-class-attr": (
+        "import unittest\nimport unittest.mock\n\n\n",
+        f"class K:\n        ut = unittest\n    K.ut.mock.patch({FOLD22_TARGET}).start()",
+    ),
+    # W-5: a constant ``'mock'`` in a file that imports the mock module.
+    "w5-mock-namespace-key": (
+        "import unittest\nimport unittest.mock\n\n\n",
+        f"unittest.__dict__['mock'].patch({FOLD22_TARGET}).start()",
+    ),
+    "w5-getattr-mock": (
+        "import unittest\nimport unittest.mock\n\n\n",
+        f"getattr(unittest, 'mock').patch({FOLD22_TARGET}).start()",
+    ),
+    # W-6: mocker aliases beyond plain assignment.
+    "w6-mocker-tuple": ("", f"mm, _ = mocker, 0\n    mm.patch({FOLD22_TARGET})"),
+    "w6-mocker-walrus": ("", f"(mm := mocker).patch({FOLD22_TARGET})"),
+    "w6-mocker-conditional": (
+        "",
+        f"mm = mocker if mod else None\n    mm.patch({FOLD22_TARGET})",
+    ),
+    "w6-mocker-for": (
+        "",
+        f"for mm in (mocker,):\n        mm.patch({FOLD22_TARGET})",
+    ),
+    "w6-mocker-setattr": (
+        "",
+        f"class T:\n        pass\n    setattr(T, 'mm', mocker)\n    T.mm.patch({FOLD22_TARGET})",
+    ),
+    "w6-mocker-list": ("", f"[mocker][0].patch({FOLD22_TARGET})"),
+    "w6-mocker-local-helper": (
+        "def _p(x, t, r):\n    x.patch(t, r)\n\n\n",
+        f"_p(mocker, {FOLD22_TARGET})",
+    ),
+    "w8-getattr-mocker-patch": ("", f"getattr(mocker, 'patch')({FOLD22_TARGET})"),
+    # W-7: a class-body namespace alias read back through the class.
+    "w7-class-dict-update": (
+        "",
+        "class K:\n        ns = mod.__dict__\n"
+        "    K.__dict__['ns'].update(dict(helper=replacement))",
+    ),
+    "w7-class-dict-key": (
+        "",
+        "class K:\n        ns = mod.__dict__\n"
+        "    k = 'hel' + 'per'\n    K.__dict__['ns'][k] = replacement",
+    ),
+    "w7-type-getattribute": (
+        "",
+        "class K:\n        ns = mod.__dict__\n"
+        "    type.__getattribute__(K, 'ns').update(dict(helper=replacement))",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD22_PROBES))
+def test_fold22_695_president_probes_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    pre, stmt = FOLD22_PROBES[case]
+    source = FOLD22_T.format(pre=pre, stmt=stmt)
+    root = _tree(tmp_path, {"a.py": source, "b.py": FOLD19_DECOY})
+    off, on = _off_on(root)
+    edge = _fold19_edge(off, "a.py")
+    assert edge["resolution"] == "ambiguous", case
+    assert _fold19_edge(on, "a.py") == edge, case
+
+
+# The cross-kind matrix: every binding, readback and escape form x every
+# sensitive kind fails closed. ``{V}`` is the kind's value and ``{R}`` the
+# readback the form produces; each kind's use writes ``helper`` through it.
+FOLD22_KINDS = {
+    "namespace": ("", "mod.__dict__", "{R}.update(dict(helper=replacement))"),
+    "mock": (
+        "from unittest import mock\n\n\n",
+        "mock",
+        "{R}.patch(" + FOLD22_TARGET + ").start()",
+    ),
+    "patch": (
+        "from unittest import mock\n\n\n",
+        "mock.patch",
+        "{R}(" + FOLD22_TARGET + ").start()",
+    ),
+    "mocker": ("", "mocker", "{R}.patch(" + FOLD22_TARGET + ")"),
+}
+FOLD22_FORMS = {
+    # Alias binding.
+    "assign": ("a = {V}", "a"),
+    "tuple-target": ("a, _ = {V}, 0", "a"),
+    "list-target": ("[a, _] = [{V}, 0]", "a"),
+    "starred-target": ("a, *_ = {V}, 0", "a"),
+    "walrus": ("", "(a := {V})"),
+    "conditional": ("a = {V} if mod else None", "a"),
+    "boolean": ("a = {V} or None", "a"),
+    "for": ("for a in ({V},):\n        pass", "a"),
+    "with": (
+        "import contextlib\n    with contextlib.nullcontext({V}) as a:\n        pass",
+        "a",
+    ),
+    "match": ("match {V}:\n        case a:\n            pass", "a"),
+    "class-body": ("class K:\n        a = {V}", "K.a"),
+    "attribute-target": ("class T:\n        pass\n    t = T()\n    t.a = {V}", "t.a"),
+    "global": ("global A\n    A = {V}", "A"),
+    "nonlocal": (
+        "a = None\n    def _set():\n        nonlocal a\n        a = {V}\n    _set()",
+        "a",
+    ),
+    "setattr": ("class K:\n        pass\n    setattr(K, 'a', {V})", "K.a"),
+    # Readback.
+    "readback-getattr": ("class K:\n        a = {V}", "getattr(K, 'a')"),
+    "readback-getattribute": (
+        "class K:\n        a = {V}",
+        "type.__getattribute__(K, 'a')",
+    ),
+    "readback-subscript": ("class K:\n        a = {V}", "K.__dict__['a']"),
+    "readback-attrgetter": (
+        "import operator\n    class K:\n        a = {V}",
+        "operator.attrgetter('a')(K)",
+    ),
+    # Escape.
+    "escape-argument": ("def _id(x):\n        return x\n    a = _id({V})", "a"),
+    "escape-container": ("box = [{V}]", "box[0]"),
+    "escape-return": ("def g():\n        return {V}", "g()"),
+}
+FOLD22_MATRIX = sorted((kind, form) for kind in FOLD22_KINDS for form in FOLD22_FORMS)
+
+
+@pytest.mark.parametrize(("kind", "form"), FOLD22_MATRIX)
+def test_fold22_695_cross_kind_matrix_fails_closed(kind: str, form: str) -> None:
+    """Every binding, readback and escape form fails closed for every
+    sensitive kind (#695 fold 22): the class of bug where a form handled for
+    one kind is missed for another cannot recur."""
+    pre, value, use = FOLD22_KINDS[kind]
+    setup, readback = FOLD22_FORMS[form]
+    setup = setup.replace("{V}", value)
+    readback = readback.replace("{V}", value)
+    stmt = (setup + "\n    " if setup else "") + use.replace("{R}", readback)
+    if form == "global":
+        pre += "A = None\n\n\n"
+    source = FOLD22_T.format(pre=pre, stmt=stmt)
+    assert reason(source) == "dynamic-scope", (kind, form)
+
+
+@pytest.mark.parametrize(
+    ("pre", "stmt"),
+    [
+        # Ordinary ``.update`` aliases, a plain ``.patch(url)``, ``mock.Mock()``,
+        # a local ``def locate``.
+        ("", "d = {}\n    u = d.update\n    u({'x': 1})"),
+        ("", "u = 'http://x'\n    client.patch(u)"),
+        ("from unittest import mock\n\n\n", "m = mock.Mock()\n    m.foo(1)"),
+        ("", "def locate(*a):\n        return 0\n    locate(1)"),
+        # A namespace dict read through a call does not carry it
+        # (``multiprocessing/process.py``, ``string/__init__.py``).
+        (
+            "import signal\n\n\n",
+            "for name, num in list(signal.__dict__.items()):\n        x = (name, num)",
+        ),
+        ("", "class C:\n        pass\n    p = C.__dict__.get('p', None)\n    q = (p,)"),
+    ],
+)
+def test_fold22_controls_still_resolve(pre: str, stmt: str) -> None:
+    source = FOLD22_T.format(pre=pre, stmt=stmt)
+    assert proof_text(source) == ["def helper(*a):\n    return 1"], stmt
