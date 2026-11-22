@@ -17,7 +17,17 @@
      ],
      "caller": "f",
      "file": "u.ts",
+     "imports": {
+      "candidates": [
+       "k.ts:1:t",
+       "j.ts:1:t"
+      ],
+      "outcome": "none(external-module)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 2,
+     "pr": 5,
      "reference": "t",
      "today": {
       "candidate_ids": [

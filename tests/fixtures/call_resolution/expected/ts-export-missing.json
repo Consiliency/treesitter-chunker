@@ -17,7 +17,17 @@
      ],
      "caller": "f",
      "file": "use.ts",
+     "imports": {
+      "candidates": [
+       "a.ts:1:u",
+       "b.ts:1:u"
+      ],
+      "outcome": "none(export-not-found)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 2,
+     "pr": 5,
      "reference": "u",
      "today": {
       "candidate_ids": [

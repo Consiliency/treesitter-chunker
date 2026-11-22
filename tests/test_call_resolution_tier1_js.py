@@ -322,10 +322,12 @@ def test_value_imports_are_import_outcomes() -> None:
         "name": "a",
         "form": "named",
     }
+    # PR 5: a two-segment member callee records its member (Tier 2, 9.1).
     assert outcome(source, "ns.f")["binding"] == {
         "source": "./n",
         "name": "*",
         "form": "namespace",
+        "member": "f",
     }
 
 

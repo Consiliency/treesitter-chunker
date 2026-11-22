@@ -17,10 +17,12 @@ from chunker.core import chunk_file
 from chunker.exceptions import ParserInitError
 from chunker.parser import get_language_info
 from chunker.symbol_graph import (
+    _collected_through_symlink,
     assemble_symbol_graph,
     collect_source_files,
     extract_symbol_facts_for_file,
     extract_symbol_graph,
+    has_directory_symlink,
     validate_call_resolution,
 )
 from chunker.types import (
@@ -424,6 +426,7 @@ def _cache_key_payload(
     semantic_resolvers: tuple[SemanticResolver, ...] | None = None,
     semantic_min_confidence: float = 0.0,
     call_resolution: CallResolution = "name",
+    symlink: bool = False,
 ) -> dict[str, Any]:
     semantic_requested = semantic_resolvers is not None
     payload = {
@@ -458,12 +461,19 @@ def _cache_key_payload(
     if call_resolution != "name":
         payload["call_resolution"] = call_resolution
         payload["call_resolution_version"] = fact_version(language)
+        if symlink:
+            # The scope facts record a symlinked file (E5-5).
+            payload["call_resolution_symlink"] = True
     return payload
 
 
 # Cache-key fields for opt-in call resolution. They are present only when the
 # mode is not "name", and both key branches hash them.
-_CALL_RESOLUTION_KEY_FIELDS = ("call_resolution", "call_resolution_version")
+_CALL_RESOLUTION_KEY_FIELDS = (
+    "call_resolution",
+    "call_resolution_version",
+    "call_resolution_symlink",
+)
 
 
 def _build_boundary_cache_key(payload: dict[str, Any]) -> str:
@@ -916,6 +926,9 @@ def _assemble_boundary_ir(
         resolution_mode=resolution_mode,
         call_resolution=call_resolution,
         language_filter=language,
+        directory_symlinks=(
+            has_directory_symlink(root) if call_resolution == "imports" else None
+        ),
     )
     _add_duration(timing_spans, "graph_assembly_ms", started_at)
     diagnostics.extend(
@@ -1106,6 +1119,10 @@ def extract_boundary_ir(
     ``t1.js_hoist``), a script top level only when no other file of the run
     may declare the name as a global, and Python calls through the LEGB
     scope chain (``t1.lexical``; Python redefinitions never resolve).
+    ``"imports"`` also resolves JavaScript, TypeScript and TSX calls bound by
+    a relative ES import to the one exported definition that proves them
+    (``t2.import``, ``t2.namespace``); more than one file variant of the
+    specifier leaves the edge unchanged.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"
@@ -1435,6 +1452,8 @@ def _extract_boundary_ir_incremental(
                 semantic_resolvers=semantic_resolvers,
                 semantic_min_confidence=semantic_min_confidence,
                 call_resolution=call_resolution,
+                symlink=call_resolution != "name"
+                and _collected_through_symlink(file_path, root),
             )
         except ParserInitError:
             if fail_fast:

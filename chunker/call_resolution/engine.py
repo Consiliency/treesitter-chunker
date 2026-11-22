@@ -37,6 +37,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from .modules import ModuleRun, build_module_run, resolve_import
+
 RULE_LEXICAL = "t1.lexical"
 RULE_KIND = "t1.kind"
 RULE_FAMILY = "t1.family"
@@ -73,6 +75,9 @@ NON_CALLABLE_KINDS = frozenset(
 _JS_FAMILY_LANGUAGES = frozenset({"javascript", "typescript", "tsx"})
 _ANALYZED_LANGUAGES = _JS_FAMILY_LANGUAGES | {"python"}
 _BARE_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+# ``ns.f``: a namespace-import member call (Tier 2, section 9.1).
+_NAMESPACE_MEMBER = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)")
+MODE_IMPORTS = "imports"
 
 Declaration = tuple[str, int, int]
 
@@ -88,6 +93,12 @@ def language_family(language: str | None) -> str | None:
 def is_bare_identifier(reference: str) -> bool:
     """Whether a call reference is a plain identifier (Tier 1 eligible)."""
     return _BARE_IDENTIFIER.fullmatch(reference) is not None
+
+
+def namespace_member(reference: str) -> str | None:
+    """The member of a two-segment reference ``ns.f``, else ``None``."""
+    match = _NAMESPACE_MEMBER.fullmatch(reference)
+    return match.group(2) if match else None
 
 
 def _none(reason: str) -> dict[str, Any]:
@@ -121,6 +132,8 @@ class RunContext:
     # file that can carry inline scripts).
     global_declarers: Mapping[str, frozenset[str]] = field(default_factory=dict)
     unknown_globals: frozenset[str] = frozenset()
+    # Tier 2 (section 9): the run's module graph, in ``imports`` mode only.
+    modules: ModuleRun | None = None
 
 
 @dataclass(frozen=True)
@@ -152,8 +165,10 @@ def build_run_context(
     mode: str,
     *,
     language_filter: str | None = None,
+    directory_symlinks: bool | None = None,
 ) -> RunContext:
     """Index every file's scope facts by its display path."""
+    facts = list(facts)
     files: dict[str, FileContext] = {}
     for file_facts in facts:
         scope_facts = file_facts["scope_facts"]
@@ -192,6 +207,11 @@ def build_run_context(
         language_filter=language_filter,
         global_declarers={name: frozenset(paths) for name, paths in declarers.items()},
         unknown_globals=frozenset(unknown),
+        modules=(
+            build_module_run(facts, language_filter, directory_symlinks)
+            if mode == MODE_IMPORTS
+            else None
+        ),
     )
 
 
@@ -246,35 +266,87 @@ def _join(
     return frozenset(proven), outcome, tuple(str(rule) for rule in outcome["rules"])
 
 
+def _checked_proof(
+    outcome: Mapping[str, Any],
+    file_context: FileContext,
+    caller_family: str | None,
+    symbol_lookup: Mapping[str, Mapping[str, Any]],
+    binding_rule: str,
+) -> tuple[frozenset[str], Mapping[str, Any], tuple[str, ...]]:
+    """Join a ``local`` outcome in ``file_context`` and check its symbols."""
+    proven, joined, group_rules = _join(outcome, file_context, symbol_lookup)
+    if not proven:
+        return proven, joined, ()
+    # The engine enforces what the group rules promise (7.4): a proof
+    # names only callable symbols of the caller's family. Anything else
+    # fails closed, so a filter can never turn it into a resolution.
+    if any(
+        not _symbol_callable(symbol_lookup.get(symbol_id))
+        or _symbol_family(symbol_lookup.get(symbol_id)) != caller_family
+        for symbol_id in proven
+    ):
+        return frozenset(), _none("non-callable"), ()
+    extra = tuple(rule for rule in group_rules if rule in GROUP_RULE_IDS)
+    return proven, joined, (binding_rule, *extra)
+
+
 def proof(
     outcome: Mapping[str, Any] | None,
     mode: str,
     file_context: FileContext,
     symbol_lookup: Mapping[str, Mapping[str, Any]],
+    *,
+    context: RunContext | None = None,
+    member: str | None = None,
 ) -> tuple[frozenset[str], Mapping[str, Any], tuple[str, ...]]:
-    """``(P, final outcome, binding rule IDs)`` for one call (6.3)."""
+    """``(P, final outcome, binding rule IDs)`` for one call (6.3).
+
+    ``member`` is the property of a namespace member call (``ns.f()``).
+    """
     if outcome is None:
         return frozenset(), _none("no-binding-fact"), ()
     kind = outcome.get("outcome")
+    family = language_family(file_context.language)
     if kind == "local":
-        proven, joined, group_rules = _join(outcome, file_context, symbol_lookup)
-        if not proven:
-            return proven, joined, ()
-        # The engine enforces what the group rules promise (7.4): a proof
-        # names only callable symbols of the caller's family. Anything else
-        # fails closed, so a filter can never turn it into a resolution.
-        family = language_family(file_context.language)
-        if any(
-            not _symbol_callable(symbol_lookup.get(symbol_id))
-            or _symbol_family(symbol_lookup.get(symbol_id)) != family
-            for symbol_id in proven
-        ):
-            return frozenset(), _none("non-callable"), ()
-        extra = tuple(rule for rule in group_rules if rule in GROUP_RULE_IDS)
-        return proven, joined, (RULE_LEXICAL, *extra)
-    # An import outcome proves nothing in structural mode (6.3); the imports
-    # mode that resolves it is introduced by a later change.
-    return frozenset(), outcome, ()
+        if member is not None:
+            # Only a namespace import's member is eligible (9.1).
+            return frozenset(), outcome, ()
+        return _checked_proof(
+            outcome, file_context, family, symbol_lookup, RULE_LEXICAL
+        )
+    if (
+        kind != "import"
+        or mode != MODE_IMPORTS
+        or family != "js"
+        or context is None
+        or context.modules is None
+    ):
+        # An import outcome proves nothing in structural mode (6.3); Python
+        # import bindings are Tier 2 of a later change (section 9.4).
+        return frozenset(), outcome, ()
+    binding = outcome.get("binding") or {}
+    if member is not None and binding.get("member") != member:
+        # The reference and the tree must agree on the member (fail closed).
+        return frozenset(), _none("export-not-found"), ()
+    resolved = resolve_import(
+        context.modules,
+        file_context.path,
+        file_context.language,
+        binding,
+        member,
+    )
+    if resolved.get("outcome") != "local":
+        return frozenset(), resolved, ()
+    target = context.files.get(str(resolved.get("path")))
+    if target is None or not target.supported:
+        return frozenset(), _none("export-not-found"), ()
+    rule = RULE_NAMESPACE if member is not None else RULE_IMPORT
+    proven, joined, rules = _checked_proof(
+        resolved["local"], target, family, symbol_lookup, rule
+    )
+    if not proven:
+        return proven, joined, ()
+    return proven, outcome, rules
 
 
 def _symbol_family(symbol: Mapping[str, Any] | None) -> str | None:
@@ -354,17 +426,32 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         return not_eligible
     if relationship.get("resolution") != "ambiguous" or len(before) < 2:
         return not_eligible
-    if not is_bare_identifier(str(relationship.get("reference") or "")):
-        return not_eligible
-    raw = script_global_outcome(
-        context,
-        file_context,
-        file_context.bindings.get(
-            f"{relationship.get('callee_byte_start')}:{relationship.get('callee_byte_end')}"
-        ),
+    reference = str(relationship.get("reference") or "")
+    raw = file_context.bindings.get(
+        f"{relationship.get('callee_byte_start')}:{relationship.get('callee_byte_end')}"
     )
+    member: str | None = None
+    if not is_bare_identifier(reference):
+        # Tier 2: a two-segment member call whose head the lookup binds to a
+        # namespace import (9.1). Every other member call is untouched.
+        member = namespace_member(reference)
+        binding = (raw or {}).get("binding") or {}
+        if (
+            context.mode != MODE_IMPORTS
+            or member is None
+            or language_family(file_context.language) != "js"
+            or (raw or {}).get("outcome") != "import"
+            or binding.get("form") != "namespace"
+        ):
+            return not_eligible
+    raw = script_global_outcome(context, file_context, raw)
     proven, outcome, binding_rules = proof(
-        raw, context.mode, file_context, context.symbol_lookup
+        raw,
+        context.mode,
+        file_context,
+        context.symbol_lookup,
+        context=context,
+        member=member,
     )
     after, rules = narrow(
         before,

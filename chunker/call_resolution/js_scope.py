@@ -105,6 +105,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from . import allowlist
+from .js_strings import decode_string_literal, module_export_name
 
 # Deep trees fail closed with RecursionError (section 5.3). This counter
 # grows by one or two per tree level, and the pass uses up to three Python
@@ -160,6 +161,9 @@ _FUNCTION_ARGUMENTS = frozenset(
 )
 # Uses of the global object that neither write through it nor hand it on.
 _INERT_UNARY = frozenset({"typeof", "void", "!"})
+# Tier 2 (fold 3, item 3): binary operators a ``.constructor`` read may be
+# an operand of without an evaluator cause.
+_SAFE_CONSTRUCTOR_OPERATORS = frozenset({"===", "!==", "==", "!=", "instanceof"})
 _COMPARISONS = frozenset({"===", "!==", "==", "!=", "instanceof", "in"})
 _NON_ARROW_FUNCTIONS = frozenset(
     {
@@ -416,6 +420,11 @@ class _Analysis:
         # unknown name may be written (section 7.2).
         self.global_writes: set[str] = set()
         self.global_wildcard = False
+        # Tier 2 (E5-3): a route that may run source text with access to
+        # the module system: a code evaluator, the ``.constructor`` route to
+        # ``Function``, or a timer given a string or non-function. It never
+        # changes Tier 1 output.
+        self.evaluator = False
         self.handlers: dict[str, Callable[[Any, _Scope, _Scope, int], None]] = {
             "function_declaration": self._function,
             "generator_function_declaration": self._function,
@@ -717,8 +726,14 @@ class _Analysis:
 
     def _import(self, node: Any, var: _Scope, lex: _Scope, depth: int) -> None:
         type_only = _has_token(node, "type")
-        source_node = node.child_by_field_name("source")
-        source = _text(source_node, self.source)[1:-1] if source_node else ""
+        # The specifier's string value, decoded exactly; ``None`` fails
+        # closed (Tier 2, section 9.1).
+        source = decode_string_literal(node.child_by_field_name("source"), self.source)
+        # Import attributes (``with { type: "json" }``) select a module kind
+        # the resolution does not model.
+        attributes = any(
+            child.type == "import_attribute" for child in node.named_children
+        )
         for child in node.named_children:
             if child.type == "import_require_clause":
                 # ``import x = require()``: CommonJS is deferred (non-symbol).
@@ -728,18 +743,27 @@ class _Analysis:
                         break
             elif child.type == "import_clause":
                 for part in child.named_children:
-                    self._import_clause_part(part, lex, source, type_only)
+                    self._import_clause_part(part, lex, source, type_only, attributes)
         self._statements(node, var, lex, depth + 1)
 
     def _import_clause_part(
-        self, part: Any, lex: _Scope, source: str, type_only: bool
+        self,
+        part: Any,
+        lex: _Scope,
+        source: str | None,
+        type_only: bool,
+        attributes: bool,
     ) -> None:
         if part.type == "identifier":
-            self._bind_import(lex, part, source, "default", "default", type_only)
+            self._bind_import(
+                lex, part, source, "default", "default", type_only, attributes
+            )
         elif part.type == "namespace_import":
             for ident in part.named_children:
                 if ident.type == "identifier":
-                    self._bind_import(lex, ident, source, "*", "namespace", type_only)
+                    self._bind_import(
+                        lex, ident, source, "*", "namespace", type_only, attributes
+                    )
         elif part.type == "named_imports":
             for spec in part.named_children:
                 if spec.type != "import_specifier":
@@ -752,25 +776,35 @@ class _Analysis:
                     lex,
                     local,
                     source,
-                    _text(imported, self.source),
+                    # ``import {"a-b" as x}``: the string's value, decoded
+                    # exactly, never its source text (``None`` fails closed).
+                    module_export_name(imported, self.source),
                     "named",
                     type_only or _has_token(spec, "type"),
+                    attributes,
                 )
 
     def _bind_import(
         self,
         lex: _Scope,
         local: Any,
-        source: str,
-        imported: str,
+        source: str | None,
+        imported: str | None,
         form: str,
         type_only: bool,
+        attributes: bool,
     ) -> None:
         name = _text(local, self.source)
         if type_only:
             lex.bind(name, _Binding(TYPE_ONLY))
             return
+        if source is None or imported is None:
+            # A specifier or name that does not decode exactly fails closed.
+            lex.bind(name, _Binding(UNMAPPED))
+            return
         info = {"source": source, "name": imported, "form": form}
+        if attributes:
+            info["attributes"] = "with"
         lex.bind(name, _Binding(IMPORT, info=info))
 
     def _import_alias(self, node: Any, var: _Scope, lex: _Scope, depth: int) -> None:
@@ -894,6 +928,7 @@ class _Analysis:
                 ) and self._refers_to_global(node, name):
                     if name in _CODE_EVALUATORS:
                         self.global_wildcard = True
+                        self.evaluator = True
                     else:
                         self._global_object_use(node)
                 elif name in _STRING_TIMERS and self._refers_to_global(node, name):
@@ -913,9 +948,11 @@ class _Analysis:
                     # ``const { constructor: F } = f`` reaches the function
                     # constructors like ``f.constructor``.
                     self.global_wildcard = True
+                    self.evaluator = True
             elif kind == "shorthand_property_identifier_pattern":
                 if _text(node, self.source) == _CONSTRUCTOR:
                     self.global_wildcard = True
+                    self.evaluator = True
             elif kind in ("assignment_expression", "augmented_assignment_expression"):
                 self._global_write(node.child_by_field_name("left"))
             elif kind == "update_expression":
@@ -1065,15 +1102,17 @@ class _Analysis:
             self._evaluator_use(node)
             if self._is_global_object(obj, receiver=True):
                 self.global_wildcard = True
+                self.evaluator = True
         elif key == _DEFAULT_VIEW:
             self._global_object_use(node)
         elif key == _CONSTRUCTOR:
-            self._evaluator_use(node)
+            self._evaluator_use(node, constructor=True)
         elif key in _STRING_TIMERS and self._is_global_object(obj, receiver=True):
             self._timer_use(node)
         elif key in _CODE_EVALUATORS and self._is_global_object(obj, receiver=True):
             # ``this.eval(s)``, ``this.Function(s)`` with a receiver ``this``.
             self.global_wildcard = True
+            self.evaluator = True
 
     def _member_key_name(self, key: Any) -> str | None:
         """A pattern or object key's name: an identifier or a plain string."""
@@ -1182,13 +1221,17 @@ class _Analysis:
             parent.type == "unary_expression" and operator_text in _INERT_UNARY
         ) or (parent.type == "binary_expression" and operator_text in _COMPARISONS)
 
-    def _evaluator_use(self, node: Any) -> None:
+    def _evaluator_use(self, node: Any, constructor: bool = False) -> None:
         """``x.constructor`` may be a function constructor: calling it, or
         using it as a value, may run source text (``*``). Reading a property
         of it (``.name``, ``.prototype``) does not, except ``.call``,
         ``.apply`` and ``.bind``; a nested ``.constructor`` is checked on its
         own."""
         current, parent = self._use_site(node)
+        if constructor and not self._safe_constructor_read(current, parent):
+            # Tier 2 (fold 3, item 3): only the closed list of positions in
+            # :meth:`_safe_constructor_read` leaves no evaluator cause.
+            self.evaluator = True
         if (
             parent is not None
             and parent.type in _MEMBER_ACCESS
@@ -1197,10 +1240,36 @@ class _Analysis:
             key = self._member_key(parent)
             if key is None or key in _INVOKERS:
                 self.global_wildcard = True
+                self.evaluator = self.evaluator or not constructor
             return
         if self._inert_use(current, parent):
             return
         self.global_wildcard = True
+        self.evaluator = self.evaluator or not constructor
+
+    def _safe_constructor_read(self, current: Any, parent: Any) -> bool:
+        """Fold 3, item 3: the closed list of safe positions for a
+        ``.constructor`` read. ``x.constructor.name`` reads a string;
+        ``===``/``!==``/``==``/``!=`` compare references and ``instanceof``
+        runs ``Function.prototype[Symbol.hasInstance]`` (a prototype-chain
+        walk); ``typeof`` returns a string. None calls the constructor, so
+        none can reach ``Function`` and run source text."""
+        if parent is None:
+            return False
+        if parent.type == "member_expression" and _same(
+            parent.child_by_field_name("object"), current
+        ):
+            prop = parent.child_by_field_name("property")
+            return (
+                prop is not None
+                and prop.type == "property_identifier"
+                and _text(prop, self.source) == "name"
+            )
+        operator = parent.child_by_field_name("operator")
+        text = _text(operator, self.source) if operator is not None else ""
+        if parent.type == "binary_expression":
+            return text in _SAFE_CONSTRUCTOR_OPERATORS
+        return parent.type == "unary_expression" and text == "typeof"
 
     def _timer_use(self, node: Any) -> None:
         """A timer runs a string first argument as source text. Only a direct
@@ -1216,6 +1285,9 @@ class _Analysis:
             or parent.type != "call_expression"
             or not _same(parent.child_by_field_name("function"), current)
         ):
+            # Tier 2 (E5-3): only a call runs source text, and Node rejects a
+            # string timer; an alias or a saved/restored timer is not an
+            # evaluator by itself.
             self.global_wildcard = True
             return
         arguments = parent.child_by_field_name("arguments")
@@ -1224,9 +1296,15 @@ class _Analysis:
         if first is None or first.type in _FUNCTION_ARGUMENTS:
             return
         if first.type == "identifier":
+            # Tier 2 (E5-3): a name the file binds (a local, a parameter, the
+            # sleep idiom's ``resolve``) is not source text; a free name is.
+            if self._binding_scope(first, _text(first, self.source)) is None:
+                self.evaluator = True
             outcome = self.lookup(first)
             if outcome["outcome"] == "local" and "global" not in outcome:
                 return
+        else:
+            self.evaluator = True
         self.global_wildcard = True
 
     def _literal_key(self, node: Any) -> str | None:
@@ -1288,6 +1366,7 @@ class _Analysis:
                         continue
                     if name in _CODE_EVALUATORS:
                         self.global_wildcard = True
+                        self.evaluator = True
                     return
                 if kind == "subscript_expression":
                     key = self._member_key(parent)
@@ -1296,6 +1375,7 @@ class _Analysis:
                         continue
                     if key is None or key == _UNREADABLE_KEY or key in _CODE_EVALUATORS:
                         self.global_wildcard = True
+                        self.evaluator = True
                     return
             if kind == "type_query":
                 return
@@ -1429,6 +1509,19 @@ class _Analysis:
                 return self._decide(scope, name, bindings, through_merged)
         # A merged namespace's other declarations may bind the name.
         return _none(NAMESPACE_MERGED if through_merged else "unbound")
+
+    def top_level_outcome(self, name: str) -> dict[str, Any]:
+        """The outcome of a value lookup of ``name`` at the program scope:
+        what an export of the local ``name`` binds (Tier 2, section 9.3)."""
+        program = self.program
+        if program.dynamic:
+            return _none("dynamic-scope")
+        if program.poisoned:
+            return _none(UNMAPPED)
+        bindings = program.bindings.get(name)
+        if bindings:
+            return self._decide(program, name, bindings, False)
+        return _none("unbound")
 
     def _exported_names(self) -> set[str]:
         """Names a module exports from its top level in a form that module
@@ -1777,6 +1870,7 @@ def analyze(
     language: str,
     call_facts: Sequence[Mapping[str, Any]],
     goal: str | None = None,
+    symlink: bool = False,
 ) -> dict[str, Any]:
     """Return partial scope facts: the goal and one outcome per call.
 
@@ -1802,11 +1896,43 @@ def analyze(
             # the engine reports as no-binding-fact (5.4).
             continue
         head = _callee_head(node)
-        bindings[f"{start}:{end}"] = (
-            analysis.lookup(head) if head is not None else _none("unbound")
-        )
+        outcome = analysis.lookup(head) if head is not None else _none("unbound")
+        member = _namespace_member(node, head, source)
+        if member is not None and outcome.get("outcome") == "import":
+            # ``ns.f()`` (Tier 2, section 9.1): the property a two-segment
+            # member callee names, read from the tree.
+            outcome = {
+                **outcome,
+                "binding": {**outcome["binding"], "member": member},
+            }
+        bindings[f"{start}:{end}"] = outcome
+    from .js_modules import module_facts
+
+    exports, module_bindings = module_facts(analysis, symlink)
     return {
         "goal": analysis.goal,
         "bindings": bindings,
         "script_globals": analysis.script_globals(),
+        "exports": exports,
+        "module_bindings": module_bindings,
     }
+
+
+def _namespace_member(node: Any, head: Any, source: bytes) -> str | None:
+    """The property of a callee spelled exactly ``head.name``, else ``None``.
+
+    Parentheses, computed keys, private names, optional chains and longer
+    chains give ``None``: only ``ns.f()`` is a namespace member call.
+    """
+    if node.type != "member_expression" or head is None:
+        return None
+    obj = node.child_by_field_name("object")
+    prop = node.child_by_field_name("property")
+    if (
+        not _same(obj, head)
+        or prop is None
+        or prop.type != "property_identifier"
+        or any(child.type == "optional_chain" for child in node.children)
+    ):
+        return None
+    return _text(prop, source)

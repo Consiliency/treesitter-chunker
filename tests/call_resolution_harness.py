@@ -58,8 +58,8 @@ BOUNDARY_REPOS = ROOT / "tests" / "fixtures" / "boundary_ir" / "repos"
 SCOPE_FACTS_DIGESTS = FIXTURES / "scope_facts_digests.json"
 CAPTURE_SCRIPT = ROOT / "scripts" / "capture_call_resolution_off_baseline.py"
 
-# The on modes at this head. "imports" is added with Tier 2.
-ON_MODES = ("structural",)
+# The on modes at this head: Tier 1, and Tier 1 plus Tier 2 (PR 5).
+ON_MODES = ("structural", "imports")
 RESOLUTION_MODES = ("strict", "permissive")
 PROVENANCE_KEYS = ("call_resolution", "call_rules")
 CALL_MUTABLE_FIELDS = ("to", "resolution", "candidates", "is_internal", "provenance")

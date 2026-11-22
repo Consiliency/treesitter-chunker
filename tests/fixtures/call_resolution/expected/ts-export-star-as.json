@@ -17,7 +17,17 @@
      ],
      "caller": "u",
      "file": "use.ts",
+     "imports": {
+      "candidates": [
+       "other.ts:1:t",
+       "impl.ts:1:t"
+      ],
+      "outcome": "none(namespace-export)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 2,
+     "pr": 5,
      "reference": "t",
      "today": {
       "candidate_ids": [

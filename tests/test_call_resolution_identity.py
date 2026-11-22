@@ -124,19 +124,18 @@ def test_controls_are_identical_except_the_recorded_mode(tree: str, mode: str) -
 _PAIRS: dict[str, Any] = {}
 
 
-def _pair(run_id: str) -> dict[str, Any]:
+def _pair(run_id: str, mode: str = "structural") -> dict[str, Any]:
     """A real (off, on) pair, for the symbol graph and strict Boundary IR."""
-    if run_id not in _PAIRS:
+    key = f"{run_id}@{mode}"
+    if key not in _PAIRS:
         run = RUNS_BY_ID[run_id]
-        off, on = harness.symbol_graphs(run, "structural")
-        boundary_off, boundary_on = harness.boundary_documents(
-            run, "structural", "strict"
-        )
-        _PAIRS[run_id] = {
+        off, on = harness.symbol_graphs(run, mode)
+        boundary_off, boundary_on = harness.boundary_documents(run, mode, "strict")
+        _PAIRS[key] = {
             "graph": (off, on),
             "boundary": (boundary_off, boundary_on),
         }
-    return _PAIRS[run_id]
+    return _PAIRS[key]
 
 
 def _calls(graph: dict[str, Any]) -> list[dict[str, Any]]:
@@ -344,6 +343,97 @@ MUTATIONS = [
     ("M12", "mixed-family/default", BIR, _bir_resolved_wrong_candidates, {7}),
     ("M14", "mixed-family/default", SG, _sg_resolved_by_filter_only, {3}),
 ]
+
+
+def _is_tier2(edge: dict[str, Any]) -> bool:
+    rules = (edge.get("provenance") or {}).get("call_rules") or []
+    return bool({"t2.import", "t2.namespace"} & set(rules))
+
+
+def _sg_tier2_mode_mismatch(graph: dict[str, Any]) -> None:
+    harness.first(_calls(graph), _is_tier2)["provenance"][
+        "call_resolution"
+    ] = "structural"
+
+
+def _bir_tier2_mode_mismatch(document: dict[str, Any]) -> None:
+    harness.first(_syntax_calls(document), _is_tier2)["provenance"][
+        "call_resolution"
+    ] = "structural"
+
+
+def _sg_tier2_without_binding_rule(graph: dict[str, Any]) -> None:
+    harness.first(_calls(graph), _is_tier2)["provenance"]["call_rules"] = ["t1.family"]
+
+
+def _bir_tier2_without_binding_rule(document: dict[str, Any]) -> None:
+    harness.first(_syntax_calls(document), _is_tier2)["provenance"]["call_rules"] = [
+        "t1.family"
+    ]
+
+
+def _sg_tier2_retarget(graph: dict[str, Any]) -> None:
+    """Re-target a Tier 2 resolution to a symbol outside today's set (the
+    file's own caller ``u``)."""
+    edge = harness.first(_calls(graph), _is_tier2)
+    other = edge["from"]
+    edge["to"] = other
+    edge["candidates"] = [other]
+
+
+def _bir_tier2_retarget(document: dict[str, Any]) -> None:
+    edge = harness.first(_syntax_calls(document), _is_tier2)
+    other = edge["source"]
+    edge["target"] = other
+    edge["candidates"] = [other]
+
+
+# Mutation proofs on real ``imports``-mode pairs (PR 5): a Tier 2 resolved
+# edge (``t2.import`` in ts-barrel, ``t2.namespace`` in ts-namespace-import).
+IMPORTS_MUTATIONS = [
+    ("M3", "ts-barrel/default", SG, _sg_change_call_site_id, {2}),
+    ("M3", "ts-barrel/default", BIR, _bir_change_call_site_id, {6}),
+    ("M7", "ts-barrel/default", SG, _sg_tier2_retarget, {3}),
+    ("M7", "ts-barrel/default", BIR, _bir_tier2_retarget, {7}),
+    ("M7", "ts-namespace-import/default", SG, _sg_tier2_retarget, {3}),
+    ("M7", "ts-namespace-import/default", BIR, _bir_tier2_retarget, {7}),
+    ("M11", "ts-barrel/default", SG, _sg_extra_provenance_key, {2}),
+    ("M11", "ts-barrel/default", BIR, _bir_extra_provenance_key, {6}),
+    ("M14", "ts-barrel/default", SG, _sg_tier2_without_binding_rule, {3}),
+    ("M14", "ts-barrel/default", BIR, _bir_tier2_without_binding_rule, {7}),
+    ("M15", "ts-barrel/default", SG, _sg_tier2_mode_mismatch, {2}),
+    ("M15", "ts-barrel/default", BIR, _bir_tier2_mode_mismatch, {7}),
+]
+
+
+@pytest.mark.parametrize("run_id", sorted({item[1] for item in IMPORTS_MUTATIONS}))
+def test_imports_mutation_bases_pass_unmutated(run_id: str) -> None:
+    pair = _pair(run_id, "imports")
+    assert any(_is_tier2(edge) for edge in _calls(pair[SG][1]))
+    assert harness.symbol_graph_violations(*pair[SG], "imports") == []
+    assert harness.boundary_violations(*pair[BIR], "imports") == []
+
+
+@pytest.mark.parametrize(
+    ("name", "run_id", "representation", "mutation", "must_fail"),
+    IMPORTS_MUTATIONS,
+    ids=[f"{item[0]}-{item[1].split('/')[0]}-{item[2]}" for item in IMPORTS_MUTATIONS],
+)
+def test_imports_mutation_fails_its_checks(
+    name: str,
+    run_id: str,
+    representation: str,
+    mutation: harness.Mutation,
+    must_fail: set[int],
+) -> None:
+    off, on = _pair(run_id, "imports")[representation]
+    compare = (
+        harness.symbol_graph_violations
+        if representation == SG
+        else harness.boundary_violations
+    )
+    violations = compare(off, harness.mutated(on, mutation), "imports")
+    assert must_fail <= failed_checks(violations), (name, _describe(violations))
 
 
 @pytest.mark.parametrize("run_id", sorted({item[1] for item in MUTATIONS}))

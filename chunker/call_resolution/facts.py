@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"9"`` for the ``js`` family and ``"30"`` for
+Schema (fact version ``"20"`` for the ``js`` family and ``"30"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -35,7 +35,11 @@ Schema (fact version ``"9"`` for the ``js`` family and ``"30"`` for
     ``"global": <name>``: the engine proves it only if no other file of the
     run declares that name as a script global (section 7.2).
     The JS/TS import binding is ``{"source": <specifier>, "name": <imported
-    name, "default" or "*">, "form": "named" | "default" | "namespace"}``.
+    name, "default" or "*">, "form": "named" | "default" | "namespace"}``,
+    with the specifier and a quoted name decoded exactly (a literal that
+    does not decode binds ``none(unmapped)``), plus ``"attributes": "with"``
+    for an import with attributes and ``"member": <name>`` on the outcome of
+    a two-segment member callee ``ns.f()``.
     The Python import binding is ``{"form": "import", "module": <dotted
     name>}`` for ``import m [as y]``, or ``{"form": "from", "module":
     <module, with any leading dots>, "name": <imported name>}``.
@@ -53,7 +57,10 @@ Schema (fact version ``"9"`` for the ``js`` family and ``"30"`` for
     as a value, or a code evaluator (``eval``, ``Function``, ``execScript``,
     a timer given source text). Empty for Python.
 ``exports``, ``module_bindings``
-    Cross-file facts for later tiers; empty until an analyzer fills them.
+    JavaScript and TypeScript: the Tier 2 module facts of
+    :mod:`.js_modules` (the export table; star exports, CommonJS reach,
+    ``opaque`` and the modules the file may write). Empty for Python and
+    for an unsupported file.
 ``symbols``
     ``[[node_type, byte_start, byte_end, symbol_id], ...]``, one entry per
     symbol chunk of the file, in chunk order. The engine joins proof
@@ -63,6 +70,7 @@ Schema (fact version ``"9"`` for the ``js`` family and ``"30"`` for
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
@@ -92,6 +100,33 @@ logger = logging.getLogger(__name__)
 # js "8": literal-key access equals dot access at every name-matching site
 # (Codex 4652498471 on #691).
 # js "9": ``Object``/``Reflect`` reached through a receiver ``this`` (C-1).
+# js "10": Tier 2 module facts (plan PR 5): the export table, star exports,
+# CommonJS reach and taints; import specifiers and quoted names decoded
+# exactly; the member of a namespace member call.
+# js "11": PR 5 fold 1 (import-binding writes taint, ``this`` in exports and
+# at module level, verified namespace members, use-site lookups for
+# module-system names, run-wide causes, text scans of unparsed files,
+# symlinked files, cooked templates).
+# js "12": PR 5 fold 2 (O-2): every static specifier of a file
+# (``module_bindings["imports"]``) for the promotion fixpoint.
+# js "13": PR 5 fold 3: closed allow-lists for ``module`` imports
+# (``builtinModules``, ``isBuiltin``), ``createRequire`` local require
+# functions (literal calls taint) and ``.constructor`` positions.
+# js "14": PR 5 fold 4 (createRequire bases, test-framework module mocks,
+# ``import.meta.glob`` and ``uncomputable`` edges).
+# js "15": PR 5 fold 5 (P5-13: ``__filename`` and ``import.meta`` bases
+# unwritten and unbound; ``filename_taints``).
+# js "16": PR 5 fold 6 (P5-20: ``filename_taints`` always go to the
+# engine's writer check, with no CommonJS shortcut).
+# js "17": PR 5 fold 8 (the lexer-level text scan of unparsed files).
+# js "18": PR 5 fold 9 (E5-7: no text scan, an unparsed JS/TS file has
+# empty ``module_bindings``; P5-44: module-level ``arguments`` uses).
+# js "19": PR 5 fold 10 (P5-47 unparsed on lone CR, LS/PS or HTML-like
+# comments; P5-48 module-scope ``arguments`` declarations; P5-49 static
+# class members are module level).
+# js "20": PR 5 fold 11 (P5-50: in JavaScript, a ``<!--`` in code, or a
+# ``-->`` in code with only whitespace and comments before it on its line,
+# makes the file unparsed).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -159,7 +194,7 @@ logger = logging.getLogger(__name__)
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "9", "python": "30"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "30"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -200,6 +235,13 @@ TIER2_NONE_REASONS = (
     "star-conflict",
     "namespace-export",
     "commonjs",
+    # The run-wide shutoff (E5-3), one reason per cause.
+    "run-tainted:evaluator",
+    "run-tainted:dynamic-loader",
+    "run-tainted:module-system",
+    "run-tainted:module-object",
+    "run-tainted:unparsed-file",
+    "run-tainted:unresolvable-writer",
     "hop-limit",
     "cycle",
     "script-dir-shadow",
@@ -272,8 +314,14 @@ def compute_scope_facts(
     symbols: Sequence[Sequence[Any]],
     suffix: str = "",
     path: str = "",
+    symlink: bool = False,
 ) -> dict[str, Any]:
     """Re-parse ``source`` and return the file's scope facts.
+
+    ``symlink`` says the file was collected through a symbolic link; Tier 2
+    never resolves an import from or into such a file (E5-5). A JS/TS file
+    that cannot be analyzed has no ``module_bindings``; the engine counts it
+    as a run-wide ``unparsed-file`` cause, scoped by O-2 (E5-7).
 
     ``suffix`` is the file's lower-case extension: ``.mjs`` and ``.mts``
     files are always ES modules, whatever their syntax. ``path`` is the
@@ -290,6 +338,7 @@ def compute_scope_facts(
     if language not in ANALYZED_LANGUAGES:
         return fallback
     family = language_family(language)
+
     analyzer = _ANALYZERS.get(family or "")
     if analyzer is None:  # pragma: no cover - every analyzed family has one
         return fallback
@@ -304,9 +353,19 @@ def compute_scope_facts(
         if root.has_error:
             logger.debug("call resolution: %s tree has errors", language)
             return fallback
+        if family == "js" and _misread_line_terminators(source, root, language):
+            # P5-47: tree-sitter runs a ``#!`` line, a ``//`` comment or an
+            # HTML-like comment past a JS line terminator it does not honour,
+            # with no error; the file counts as unparsed (E5-7).
+            logger.debug("call resolution: %s tree may hide code", language)
+            return fallback
         if family == "js" and suffix in _MODULE_SUFFIXES:
             partial = js_scope.analyze(
-                root, source, language, call_facts, goal="module"
+                root, source, language, call_facts, goal="module", symlink=symlink
+            )
+        elif family == "js" and analyzer is js_scope.analyze:
+            partial = js_scope.analyze(
+                root, source, language, call_facts, symlink=symlink
             )
         elif family == "python" and analyzer is py_scope.analyze:
             partial = py_scope.analyze(
@@ -341,6 +400,88 @@ def compute_scope_facts(
         logger.debug("call resolution: %s analyzer failed: %r", language, exc)
         return fallback
     return facts
+
+
+_LONE_CR = re.compile(rb"\r(?!\n)")
+_LINE_SEPARATORS = (b"\xe2\x80\xa8", b"\xe2\x80\xa9")
+
+
+def _misread_line_terminators(source: bytes, root: Any, language: str) -> bool:
+    """P5-47: a lone CR, a U+2028 or U+2029 anywhere in the text, or any
+    ``html_comment`` node (TypeScript has no HTML-like comments, and
+    tree-sitter's runs past a lone CR). P5-50: in JavaScript, an HTML-like
+    comment tree-sitter reads as code (:func:`_hidden_html_comment`)."""
+    if _LONE_CR.search(source) or any(sep in source for sep in _LINE_SEPARATORS):
+        return True
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        if node.type == "html_comment":
+            return True
+        stack.extend(node.children)
+    return language.lower() == "javascript" and _hidden_html_comment(source, root)
+
+
+# Leaves whose bytes are not code (P5-50). A ``template_substitution`` inside
+# a ``template_string`` is code again.
+_COMMENT_LEAVES = frozenset({"comment", "html_comment", "hash_bang_line"})
+_TEXT_LEAVES = frozenset({"string", "template_string", "regex", "jsx_text"})
+_SPACE_BYTES = frozenset(b" \t\v\f")
+
+
+def _hidden_html_comment(source: bytes, root: Any) -> bool:
+    """P5-50: an Annex B HTML-like comment that tree-sitter reads as code.
+
+    V8 (Script goal) makes the rest of the line a comment at (a) a ``<!--``
+    anywhere in code, and (b) a ``-->`` in code with only whitespace and
+    comments before it on its line, where the line may begin inside a
+    multi-line comment. tree-sitter reads ``x <!--y`` or ``*/ -->`` as
+    operators, and what follows can open a template or comment that hides
+    the next lines. Only code bytes count, so HTML text in strings,
+    templates, regexes and JSX text is ignored. A non-ASCII byte counts as
+    whitespace before ``-->`` (fail closed)."""
+    if b"<!--" not in source and b"-->" not in source:
+        return False
+    code = bytearray(b"\x01") * len(source)
+    comment = bytearray(len(source))
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        start, end = node.start_byte, node.end_byte
+        if node.type in _COMMENT_LEAVES:
+            code[start:end] = bytes(end - start)
+            comment[start:end] = b"\x01" * (end - start)
+            continue
+        if node.type in _TEXT_LEAVES:
+            # Parents are marked before their children, so a substitution
+            # pushed below is re-marked as code after its template.
+            code[start:end] = bytes(end - start)
+            if node.type != "template_string":
+                continue
+            for child in node.children:
+                if child.type == "template_substitution":
+                    code[child.start_byte : child.end_byte] = b"\x01" * (
+                        child.end_byte - child.start_byte
+                    )
+                    stack.append(child)
+            continue
+        stack.extend(node.children)
+    index = source.find(b"<!--")
+    while index >= 0:
+        if code[index]:
+            return True
+        index = source.find(b"<!--", index + 1)
+    index = source.find(b"-->")
+    while index >= 0:
+        if code[index]:
+            line = max(source.rfind(b"\n", 0, index), source.rfind(b"\r", 0, index))
+            if all(
+                comment[at] or source[at] in _SPACE_BYTES or source[at] >= 0x80
+                for at in range(line + 1, index)
+            ):
+                return True
+        index = source.find(b"-->", index + 1)
+    return False
 
 
 def _is_span_key(value: object) -> bool:
@@ -395,6 +536,84 @@ def valid_outcome(value: object) -> bool:
     return False
 
 
+_MODULE_BINDING_KEYS = frozenset(
+    {
+        "stars",
+        "commonjs",
+        "opaque",
+        "symlink",
+        "taints",
+        "imports",
+        "uncomputable",
+        "filename_taints",
+        "ns_uses",
+        "shutoff",
+    }
+)
+_NS_USE_KINDS = frozenset({"read", "call"})
+
+
+def _valid_export_entry(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    kind = value.get("kind")
+    if kind == "local":
+        return (
+            set(value) == {"kind", "outcome", "this"}
+            and type(value["this"]) is bool
+            and valid_outcome(value["outcome"])
+        )
+    if kind == "reexport":
+        return (
+            set(value) == {"kind", "source", "name"}
+            and isinstance(value["source"], str)
+            and isinstance(value["name"], str)
+        )
+    if kind == "none":
+        return (
+            set(value) == {"kind", "reason"}
+            and isinstance(value["reason"], str)
+            and value["reason"] in KNOWN_NONE_REASONS
+        )
+    return False
+
+
+def valid_export_table(value: object) -> bool:
+    """Whether ``value`` is a well-formed JS/TS ``exports`` table."""
+    return isinstance(value, dict) and all(
+        isinstance(name, str) and _valid_export_entry(entry)
+        for name, entry in value.items()
+    )
+
+
+def valid_module_bindings(value: object) -> bool:
+    """Whether ``value`` is well-formed JS/TS ``module_bindings``."""
+    if not isinstance(value, dict) or set(value) != _MODULE_BINDING_KEYS:
+        return False
+    from .js_modules import SHUTOFF_CAUSES
+
+    return (
+        all(
+            isinstance(value[key], list)
+            and all(isinstance(item, str) for item in value[key])
+            for key in ("stars", "taints", "imports", "filename_taints", "shutoff")
+        )
+        and set(value["shutoff"]) <= set(SHUTOFF_CAUSES)
+        and isinstance(value["ns_uses"], list)
+        and all(
+            isinstance(use, list)
+            and len(use) == 3
+            and all(isinstance(item, str) for item in use)
+            and use[2] in _NS_USE_KINDS
+            for use in value["ns_uses"]
+        )
+        and all(
+            type(value[key]) is bool
+            for key in ("commonjs", "opaque", "symlink", "uncomputable")
+        )
+    )
+
+
 def valid_symbol_entry(value: object) -> bool:
     """Whether ``value`` is a well-formed ``symbols`` table entry."""
     return (
@@ -439,6 +658,15 @@ def valid_scope_facts(value: object, language: str | None) -> bool:
         return False
     if not isinstance(value["exports"], dict) or not isinstance(
         value["module_bindings"], dict
+    ):
+        return False
+    if language_family(language) == "js" and (
+        (supported and not valid_export_table(value["exports"]))
+        or (not supported and value["exports"])
+        or (
+            (supported or value["module_bindings"])
+            and not valid_module_bindings(value["module_bindings"])
+        )
     ):
         return False
     symbols = value["symbols"]

@@ -81,6 +81,32 @@ def _should_skip_path(path: Path) -> bool:
     return any(part in SKIP_PARTS for part in path.parts)
 
 
+def has_directory_symlink(path: str | Path) -> bool:
+    """Whether a directory symlink lies under ``path`` outside the skipped
+    directories (P5-2). Collection never follows one, so Tier 2's O-2
+    promotion cannot see what it reaches."""
+    import os
+
+    root = Path(path)
+    if not root.is_dir():
+        return False
+    try:
+        for current, directories, _ in os.walk(root, followlinks=False):
+            kept = []
+            for name in directories:
+                if name in SKIP_PARTS:
+                    continue
+                entry = Path(current) / name
+                # P5-16: a Windows directory junction behaves like a link.
+                if entry.is_symlink() or entry.is_junction():
+                    return True
+                kept.append(name)
+            directories[:] = kept
+    except OSError:
+        return True
+    return False
+
+
 def collect_source_files(path: str | Path, language: str | None = None) -> list[Path]:
     """Collect source files for a given path/language selection."""
     root = Path(path)
@@ -124,6 +150,21 @@ def _module_name(file_path: Path, root: Path) -> str:
     if parts and parts[-1] == "__init__":
         parts = parts[:-1]
     return ".".join(parts) if parts else file_path.stem
+
+
+def _collected_through_symlink(file_path: Path, root: Path) -> bool:
+    """Whether ``file_path``, or a directory between it and ``root``, is a
+    symbolic link (Tier 2 call resolution fails closed on it, E5-5)."""
+    base = root if root.is_dir() else root.parent
+    current = file_path
+    try:
+        while current != base and current != current.parent:
+            if current.is_symlink():
+                return True
+            current = current.parent
+    except OSError:
+        return True
+    return False
 
 
 def _display_file(file_path: Path, root: Path) -> str:
@@ -635,6 +676,7 @@ def extract_symbol_facts_for_file(
             symbols=symbol_spans,
             suffix=file_path.suffix.lower(),
             path=display_file,
+            symlink=_collected_through_symlink(file_path, root),
         )
     return facts
 
@@ -647,8 +689,13 @@ def assemble_symbol_graph(
     resolution_mode: ResolutionMode = "permissive",
     call_resolution: CallResolution = "name",
     language_filter: str | None = None,
+    directory_symlinks: bool | None = None,
 ) -> dict[str, Any]:
     """Assemble public symbol graph output from per-file facts.
+
+    ``directory_symlinks`` (``imports`` mode) says whether a directory
+    symlink lies under the run root (:func:`has_directory_symlink`); when it
+    is not ``False``, Tier 2 treats every test file as production (P5-2).
 
     ``call_resolution`` (experimental) narrows ambiguous call edges with the
     per-file ``scope_facts``, which every fact must then carry.
@@ -807,6 +854,7 @@ def assemble_symbol_graph(
                 symbol_lookup,
                 call_resolution,
                 language_filter=language_filter,
+                directory_symlinks=directory_symlinks,
             ),
         )
 
@@ -860,7 +908,11 @@ def extract_symbol_graph(
     the run may declare the name as a global. Python calls resolve through
     the LEGB scope chain (``t1.lexical``); Python redefinitions narrow to
     their group and never resolve. Elsewhere only the kind and family filters
-    (``t1.kind``, ``t1.family``) narrow.
+    (``t1.kind``, ``t1.family``) narrow. ``"imports"`` adds Tier 2: a
+    JavaScript, TypeScript or TSX call bound by a relative ES import resolves
+    to the one exported definition that proves it (``t2.import``,
+    ``t2.namespace``); more than one file variant of the specifier leaves the
+    edge unchanged.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"
@@ -904,6 +956,9 @@ def extract_symbol_graph(
         resolution_mode=resolution_mode,
         call_resolution=call_resolution,
         language_filter=language,
+        directory_symlinks=(
+            has_directory_symlink(root) if call_resolution == "imports" else None
+        ),
     )
 
 

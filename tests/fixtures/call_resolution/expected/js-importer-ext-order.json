@@ -18,7 +18,21 @@
      ],
      "caller": "a",
      "file": "use.js",
+     "imports": {
+      "candidate_ids": [
+       "29e80baff9876a18a0fb0d97e90dfe64fceb83c8"
+      ],
+      "candidates": [
+       "svc.js:1:t"
+      ],
+      "outcome": "import",
+      "resolution": "resolved",
+      "rules": [
+       "t2.import"
+      ]
+     },
      "line": 2,
+     "pr": 5,
      "reference": "t",
      "today": {
       "candidate_ids": [
@@ -44,7 +58,17 @@
      ],
      "caller": "b",
      "file": "use2.js",
+     "imports": {
+      "candidates": [
+       "svc.js:1:t",
+       "svc.ts:1:t"
+      ],
+      "outcome": "none(ambiguous-extension)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 2,
+     "pr": 5,
      "reference": "t",
      "today": {
       "candidate_ids": [
@@ -70,7 +94,17 @@
      ],
      "caller": "c",
      "file": "use3.js",
+     "imports": {
+      "candidates": [
+       "other.js:1:u",
+       "only.ts:1:u"
+      ],
+      "outcome": "none(module-not-found)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 2,
+     "pr": 5,
      "reference": "u",
      "today": {
       "candidate_ids": [

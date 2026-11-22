@@ -276,6 +276,51 @@ do module-level definitions of builtin names, class-body lookups in a class
 with a base or keyword argument, and every lookup in a file that mentions
 `f_locals`; monkeypatching from other modules is not tracked.
 
+With `"imports"`, everything `"structural"` does applies, and a JavaScript,
+TypeScript or TSX call whose callee a relative ES import binds (`import { t }`,
+a default import, or `ns.t()` on `import * as ns`) resolves when the
+specifier names exactly one file of the run, in TypeScript's candidate order,
+and that module's export table leads, within three re-export or `export *`
+hops, to one definition its own scope lookup proves (`t2.import`,
+`t2.namespace`). More than one file variant, a `.d.ts` target, a bare or
+non-relative specifier, a star conflict, a cycle, a reassigned export, and
+CommonJS reach (a module whose exports object CommonJS code or another file
+of the run may write) leave the edge unchanged. Specifiers and quoted names
+are compared by their exact string value. A sibling `<stem>.<segment>.<ext>`
+(a platform or module suffix such as `svc.ios.ts`) leaves the edge unchanged
+unless the segment is on a closed list of names no resolver uses (`test`,
+`spec`, `stories`, `types`, …). Some files can rewrite any module's exports
+object: a code evaluator, a non-literal `require` or `import()`, `createRequire`,
+`mainModule`, `getBuiltinModule` or an import of `module`, the CommonJS
+`module` object handed on, or an unparsed file whose text spells one. Any such
+file in production code turns Tier 2 off for the whole run, and the cause is
+logged. Three uses are exempt by closed lists: an import of only
+`builtinModules` or `isBuiltin` from `module`; `const r = createRequire(…)`
+used only as `r('<literal>')` (which counts as a `require` of that path) or
+`r.resolve('<literal>')`; and a `.constructor` read used only for `.name`, an
+equality or `instanceof` comparison, or `typeof`. Such a file in test code (a basename with a `.test.` or `.spec.`
+segment, or a `__tests__`, `__mocks__`, `test` or `tests` directory) turns
+Tier 2 off only for calls made from test files, and so does any module write
+or escape spelled in test code. A test-named file that production code
+imports, directly or transitively, counts as production. Every test file counts as
+production when a directory symlink lies under the root, or when production
+code uses a specifier that cannot be located (a `#` package import, an
+absolute path, a `file:` or `data:` URL, a path through a skipped directory
+such as `build/` or `node_modules/`, `import.meta.glob`, or `createRequire`
+with a base other than the file itself). A `createRequire` base counts as the
+file itself only when it is an unwritten `import.meta.url`/`filename`, or an
+unbound and unwritten `__filename` that no file of the run can redefine as a
+global. Skipped directories are matched case-insensitively, ignoring a
+trailing dot or space, and a path segment that is an 8.3 short name or contains
+`:` cannot be located, and URL schemes after stripping surrounding whitespace
+and control characters. `jest.mock`/`vi.mock` of a relative path
+counts as a write to that module for the mocking file's callers.
+A JavaScript or TypeScript file the parser cannot read cleanly (including any
+file with a lone carriage return, U+2028, U+2029 or an HTML-like comment,
+including a JavaScript `<!--` or `-->` that the parser reads as code)
+counts as rewriting any module (scoped like any other cause: test code affects only test
+callers unless production code reaches it). Wherever Tier 2 is off, the output equals `"structural"`. Python imports prove nothing yet.
+
 A narrowed edge changes only `target`, `resolution`, `candidates` and
 `metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and
 `provenance.call_rules` (the rule IDs that removed candidates, in application
