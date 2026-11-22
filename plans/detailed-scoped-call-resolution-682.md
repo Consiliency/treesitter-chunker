@@ -1810,6 +1810,44 @@ on a repeat and writes no export; `o.constructor.name`,
   matching the 8.3 short-name pattern `^[^~]{1,6}~[0-9]+(\.[^.]{0,3})?$`,
   is uncomputable.
 
+**Fold 8 (Codex on 6d0aadd0: the unparsed-file fallback).** The regex scan
+exempted any `require`/`import(` whose argument merely began with a quote
+(`require('./' + 'svc')`) and missed escaped relative literals
+(`require('\./svc')`). It is replaced by a lexer-level scan
+(`js_textscan.py`), chosen over the simpler alternative (d). That
+alternative would treat every static `import` keyword as a loader spelling
+and shut the whole run off for every unparsed ES-module file; graph-studio
+alone has 20. Static imports and exports always carry a literal specifier,
+and a lexer can tell them apart.
+
+- **Lexing.** The scan delimits comments, strings, templates (nested
+  `${…}` substitutions included), regular expressions (a `/` starts one
+  only where an expression may start), numbers, punctuators and
+  identifiers, decoding identifier escapes (`\u0072equire` is
+  `require`). Strings are decoded with `decode_js_string_sloppy`, and
+  template parts are cooked with the same decoder as the parsed path. A
+  token it cannot delimit or decode (an unterminated string, comment,
+  template or regular expression, a stray backslash, a bad escape, or JSX
+  text that opens a quote) makes the file an `unparsed-file` cause.
+- **Loader spellings** (a closed list of exemptions):
+  - `require( <one complete literal> )`, whose decoded value taints its
+    target leniently, and `typeof require`;
+  - a static `import`/`export` (its literal specifier taints, below),
+    `import( <one complete literal> )`, and the `import.meta` plain reads
+    (`glob`/`globEager` make the file `uncomputable`);
+  - `module.exports` and `typeof module`. `exports` writes only the file's
+    own exports object, which is already opaque and CommonJS.
+  - Every other occurrence is a run-wide cause: a concatenation, a
+    template with `${`, a second argument, an identifier argument,
+    `createRequire`/`mainModule`/`getBuiltinModule` (also inside a string),
+    `eval`/`Function`/`execScript`, a `.constructor` property or a
+    `'constructor'` key, and a timer called with something other than a
+    name or a function.
+- **Relative literals.** Every decoded string or substitution-free
+  template whose value is relative taints its target leniently.
+- **P5-37.** The 8.3 short-name match runs on the segment after the Win32
+  trailing dot/space strip.
+
 ## 10. Fixtures
 
 ### 10.1 Layout, provenance and tool exclusions
@@ -3255,3 +3293,17 @@ pass; `python` stays 30. No expected row changes.
 | Taint-source audit: every file-naming source feeds `edges[path]` or `uncomputable` | §9.9; `test_every_file_naming_source_promotes` |
 | P5-32 upper-casefold, `:` segments and 8.3 short names | §9.9; `modules._skipped`; R12 (TS/JS) |
 | Pins: `test_p5_27_filename_base_targets_promote` (2), `test_every_file_naming_source_promotes` (14), `test_p5_32_short_names_and_streams_are_uncomputable` (6), `test_p5_32_ordinary_segments_stay_computable`; 4 new rule mutations | `tests/test_call_resolution_tier2_js.py`; `scripts/call_resolution_tier2_mutations.py` |
+
+### PR 5: fold 8 (Codex on 6d0aadd0: discussion_r4659759218, r4659759224)
+
+`js` fact version 17 (the text scan's output); `python` stays 30 with
+unchanged digests. `js_textscan.py` joins the wheel payload (347 files). No
+expected row changes.
+
+| Item | Applied in |
+| --- | --- |
+| A lexer-level scan replaces the regex fallback: certain delimiting and decoding, or `unparsed-file` | §9.9; `js_textscan.py` |
+| Loader spellings exempt only as complete literal calls (plus `typeof`, static imports, `import.meta` reads, `module.exports`) | §9.9 |
+| Decoded relative literals taint | §9.9 |
+| P5-37 8.3 match after the trailing strip | §9.9; `modules._skipped` |
+| Pins: `test_fold8_text_scan_near_misses` (15, including both Codex repros), `test_fold8_clean_unparsed_files_leave_the_run_on` (8), `test_fold8_literal_require_taints_exactly`, `test_p5_37_short_name_after_trailing_dot_or_space`; 16 new rule mutations replacing the 3 regex ones (two more are recorded as equivalent) | `tests/test_call_resolution_tier2_js.py`; `scripts/call_resolution_tier2_mutations.py` |

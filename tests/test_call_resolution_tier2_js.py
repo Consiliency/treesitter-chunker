@@ -3410,6 +3410,7 @@ def test_fold8_text_scan_near_misses(tmp_path: Path, case: str) -> None:
         "if (typeof require !== 'undefined') { module.exports = 1; }",
         "import k from './other';\nexport * from './more';",
         "setTimeout(r, 1);\nsetTimeout(() => 0, 2);",
+        "const q = /'/.test(s) && /\"/g.exec(t);",
     ],
     ids=[
         "literal-require",
@@ -3420,6 +3421,7 @@ def test_fold8_text_scan_near_misses(tmp_path: Path, case: str) -> None:
         "typeof-and-module-exports",
         "static-imports",
         "timer-idioms",
+        "regex-with-quotes",
     ],
 )
 def test_fold8_clean_unparsed_files_leave_the_run_on(tmp_path: Path, text: str) -> None:
