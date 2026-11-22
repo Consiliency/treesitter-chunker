@@ -809,6 +809,22 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
       |= {'helper': len}`, and `update()` with a mapping that is not a
       literal (`D = dict(helper=len); mod.__dict__.update(D)`; re-check
       06f5dc32, G-3).
+    - **Callees and receivers are classified after unwrapping parentheses
+      (Codex 4656123247).** Parentheses are only a spelling: the rules above
+      and the `X.modules.get(__name__)` getters look through any number of
+      them, and through a comment inside them, around a callee, an
+      attribute callee or an argument. So `(setattr)(mod, 'helper', f)`,
+      `((setattr))(…)`, `(mod.__setattr__)('helper', f)`,
+      `(object.__setattr__)(…)`, `(mod.__dict__.update)({'helper': f})`,
+      `.update(({'helper': f}))`, `.update(**({'helper': f}))` and
+      `(x.modules.get)(__name__)` count. A trailing-comma tuple, `(setattr,)`,
+      is not a parenthesized callee. Identifier-based triggers (`exec`,
+      `globals`, `vars`, `sys`, the dynamic attributes and the file-wide
+      names) match any position already, so `(globals)()['x'] = v` and
+      `(sys).modules[__name__]` were never affected. An alias of a writer
+      (`w = setattr`, `(w := setattr)`, `functools.partial(setattr, mod)`,
+      `u = mod.__dict__.update`) is another write spelling and stays in R12
+      with `operator.setitem` (G-3).
     - **Names come from tokens (re-check N-7).** Every import name, dotted
       path and relative level is read from identifier and `.` tokens, never
       from raw node text, because whitespace, comments and backslash
@@ -2279,3 +2295,18 @@ were already wrong before fold 15.
 | S-4, named in R12 (treesitter-chunker#699): a catch-all `__getattr__` handing a function to `functools.update_wrapper`, whose `__annotate__` copy `annotationlib` runs under substitute globals | §15 R12 |
 | Flipped to fail closed (correct before, harmless): the probe controls `ta39_alias_class_ctrl`, `ca40_ctrl_no_write` and `ta39_alias_func_closure_ctrl`, all `type` values. `type X[helper] = helper()` changes reason from `parameter` to `dynamic-scope` | `test_type_statement_values_prove_nothing`; `test_type_parameters_bind_for_their_definition` |
 | Pins: the 16 S-2/S-3 trees end to end (`test_fold16_695_cases_keep_their_off_mode_edge`), one control per tree that still resolves (S-2: the call in a method body, `ca40_method_body_ctrl`; S-3: the install renamed, `af39_ctrl`; `test_fold16_controls_still_resolve`), 7 `type`-value forms, the pinned file-wide list. Mutation: dropping the `type`-value branch fails 20 tests, `__annotate_func__` 6 | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: Codex 4656123247 (fold 17, parenthesized callees)
+
+Only adds `none`; no expected row changes. `python` fact version 19. Codex
+P2 on `3341540f`: `(setattr)(mod, 'helper', replacement)` has a
+`parenthesized_expression` callee, so the attribute-write rule skipped it,
+and `return helper()` in the same function still proved the original
+`helper`. Blocking under the scope rule (spelled names, ordinary call
+semantics).
+
+| Item | Applied in |
+| --- | --- |
+| `_unwrap` gains a comment-skipping form; `_setattr_call` unwraps the callee before reading a bare or attribute writer name, and unwraps each argument and a `**` splat's operand; `_module_by_name` unwraps the getter callee | §7.3 "Callees and receivers are classified after unwrapping parentheses"; `py_scope._setattr_call`, `_module_by_name`, `_unwrap` |
+| Audited and left alone: identifier-based triggers in `_scan_dynamic` (any position), `_sys_use` (a parenthesized `sys` is handed on, so it already fails closed), assignment targets (`parenthesized_expression` is a target container), `_constant_string` (already unwraps), the `__main__` guard (strict allow-list keeps plain `_unwrap`), `_callee_head` (a parenthesized call-site callee already gives `unbound`) | — |
+| Pins: 14 cases that fail without the fix (`test_fold17_695_parenthesized_callees_keep_their_off_mode_edge`), 9 mixed forms that already failed closed, 3 controls that still resolve (a trailing-comma tuple, a write of another name). Mutation: dropping the `_setattr_call` callee unwrap fails 10 tests, its comment skipping 1, the argument unwrap 1, the splat unwrap 1, the `_module_by_name` unwrap 2 | `tests/test_call_resolution_tier1_py.py` |

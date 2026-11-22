@@ -6369,3 +6369,88 @@ def test_type_statement_values_prove_nothing(form: str) -> None:
     """A ``type`` value is evaluated lazily (PEP 695); in a class body it
     reads the live class namespace (#695 S-2), so it proves nothing."""
     assert reason(HELPER + form + "\n") == "dynamic-scope", form
+
+
+# ---------------------------------------------------------------------------
+# Codex 4656123247 (fold 17): callees and receivers are classified after
+# unwrapping parentheses. ``(setattr)(mod, 'helper', replacement)`` writes
+# ``helper`` of a module handed over as ``mod``; Python then calls
+# ``replacement`` from ``run``, and the analyzer must not prove ``helper``.
+
+CODEX_4656123247 = (
+    "def helper():\n    return 1\n\n\n"
+    "def replacement():\n    return 2\n\n\n"
+    "def run(mod):\n    {stmt}\n    return helper()\n"
+)
+
+# Each fails without the fix (the writer or module-getter check skipped a
+# parenthesized callee or argument).
+FOLD17_PARENTHESIZED = {
+    # The Codex repro and its nested and commented forms (``_setattr_call``,
+    # bare callee).
+    "codex": "(setattr)(mod, 'helper', replacement)",
+    "nested": "((setattr))(mod, 'helper', replacement)",
+    "comment": "(setattr  # write\n    )(mod, 'helper', replacement)",
+    "delattr": "(delattr)(mod, 'helper')",
+    # ``_setattr_call``, an attribute callee in parentheses.
+    "method": "(mod.__setattr__)('helper', replacement)",
+    "object-setattr": "(object.__setattr__)(mod, 'helper', replacement)",
+    "dict-update": "(mod.__dict__.update)({'helper': replacement})",
+    "dict-update-keyword": "(mod.__dict__.update)(helper=replacement)",
+    "dict-setitem": "(mod.__dict__.__setitem__)('helper', replacement)",
+    "getattr-dict-update": "(getattr(mod, '__dict__').update)({'helper': replacement})",
+    # ``_setattr_call``, a parenthesized argument.
+    "dict-argument": "mod.__dict__.update(({'helper': replacement}))",
+    "splat-argument": "mod.__dict__.update(**({'helper': replacement}))",
+    # ``_module_by_name``, a parenthesized getter callee.
+    "modules-get": "m = (mod.modules.get)(__name__)\n    m.__dict__.update(D)",
+    "modules-getitem": "(mod.modules.__getitem__)(__name__).__dict__.update(D)",
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD17_PARENTHESIZED))
+def test_fold17_695_parenthesized_callees_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    source = CODEX_4656123247.format(stmt=FOLD17_PARENTHESIZED[case])
+    root = _tree(tmp_path, {"a.py": source, "b.py": OTHER})
+    off, on = _off_on(root)
+    edge = _helper_edge(off)
+    assert edge["resolution"] == "ambiguous", case
+    assert _helper_edge(on) == edge, case
+
+
+@pytest.mark.parametrize(
+    "stmt",
+    [
+        # Mixed forms whose receiver alone is parenthesized: the callee is an
+        # attribute already, or an identifier rule sees the name anywhere.
+        "(mod).__setattr__('helper', replacement)",
+        "(getattr(mod, '__dict__')).update({'helper': replacement})",
+        "(vars(mod).update)({'helper': replacement})",
+        "(mod).helper = replacement",
+        "((mod.helper)) = replacement",
+        "setattr(mod, ('helper'), replacement)",
+        "(globals)()['helper'] = replacement",
+        "(exec)('helper = replacement')",
+        "import sys\n    (sys).modules[__name__].helper = replacement",
+    ],
+)
+def test_parenthesized_receivers_already_fail_closed(stmt: str) -> None:
+    result = outcome(CODEX_4656123247.format(stmt=stmt), "helper")
+    assert result["outcome"] == "none", (stmt, result)
+
+
+@pytest.mark.parametrize(
+    "stmt",
+    [
+        # A trailing-comma tuple is not a parenthesized callee (and calling
+        # it raises), and a write of another name proves nothing.
+        "(setattr,)(mod, 'helper', replacement)",
+        "(setattr)(mod, 'other', replacement)",
+        "(mod.__dict__.update)({'other': replacement})",
+    ],
+)
+def test_parenthesized_callee_controls_still_resolve(stmt: str) -> None:
+    source = CODEX_4656123247.format(stmt=stmt)
+    assert proof_text(source) == ["def helper():\n    return 1"], stmt

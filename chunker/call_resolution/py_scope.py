@@ -1567,6 +1567,11 @@ class _Analysis:
                 self.dynamic = True
             return
         function = node.child_by_field_name("function")
+        # Callees are classified after unwrapping parentheses:
+        # ``(x.modules.get)(__name__)`` (#695 Codex 4656123247).
+        function = (
+            _unwrap(function, skip_comments=True) if function is not None else None
+        )
         if function is None or function.type != "attribute":
             return
         method = function.child_by_field_name("attribute")
@@ -1586,22 +1591,33 @@ class _Analysis:
         ``object.__setattr__(x, "name", v)`` and namespace mutators
         (``x.__dict__.update(name=v)``, ``.update({"name": v})``,
         ``.setdefault("name", v)``, ``.pop("name")``, ``__setitem__``) write
-        ``name`` of a receiver that may be this module."""
+        ``name`` of a receiver that may be this module.
+
+        The callee and each argument are classified after unwrapping
+        parentheses: ``(setattr)(mod, "helper", f)``, ``((setattr))(...)``,
+        ``(mod.__setattr__)("helper", f)``, ``(mod.__dict__.update)(...)``,
+        ``.update(({"helper": f}))`` (#695 Codex 4656123247).
+        """
         function = node.child_by_field_name("function")
+        function = (
+            _unwrap(function, skip_comments=True) if function is not None else None
+        )
         if function is not None and function.type == "attribute":
             function = function.child_by_field_name("attribute")
         if function is None or _text(function, self.source) not in _ATTRIBUTE_WRITERS:
             return
         arguments = node.child_by_field_name("arguments")
         for argument in arguments.named_children if arguments is not None else ():
+            argument = _unwrap(argument, skip_comments=True)
             if argument.type == "keyword_argument":
                 keyword = argument.child_by_field_name("name")
                 if keyword is not None:
                     self.attribute_writes.add(_text(keyword, self.source))
                 continue
             if argument.type == "dictionary_splat":
-                argument = (
-                    argument.named_children[0] if argument.named_children else argument
+                argument = _unwrap(
+                    argument.named_children[0] if argument.named_children else argument,
+                    skip_comments=True,
                 )
             if argument.type == "dictionary":
                 for pair in argument.named_children:
@@ -1910,9 +1926,24 @@ def _from_import_bound_names(node: Any) -> list[Any]:
     return bound
 
 
-def _unwrap(node: Any) -> Any:
-    while node.type == "parenthesized_expression" and len(node.named_children) == 1:
-        node = node.named_children[0]
+def _unwrap(node: Any, skip_comments: bool = False) -> Any:
+    """``node`` without enclosing parentheses: ``((x))`` is ``x``. A tuple,
+    ``(x,)``, is not a parenthesized expression and stays as it is.
+
+    With ``skip_comments``, a comment inside the parentheses does not count
+    (``(setattr  # note\n)(...)``); callee and receiver classification uses
+    that form (#695 Codex 4656123247). The ``__main__`` guard's allow-list
+    keeps the strict form.
+    """
+    while node.type == "parenthesized_expression":
+        children = [
+            child
+            for child in node.named_children
+            if not (skip_comments and child.type == "comment")
+        ]
+        if len(children) != 1:
+            break
+        node = children[0]
     return node
 
 
