@@ -411,6 +411,92 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '        return parent.type == "unary_expression" and text == "typeof"',
         '        return parent.type == "unary_expression"',
     ),
+    # Fold 4 (the president's review, P5-1..P5-3 and item 4).
+    (
+        "p5-1-base-check",
+        JSM,
+        "        own_base = self._own_file_base(call)",
+        "        own_base = True",
+    ),
+    (
+        "p5-1-filename-lookup",
+        JSM,
+        '            return _text(base, self.source) == "__filename" and self._free_or_top(\n'
+        '                base, "__filename"\n            )',
+        '            return _text(base, self.source) == "__filename"',
+    ),
+    (
+        "p5-1-meta-list",
+        JSM,
+        "            and _text(prop, self.source) in _OWN_FILE_META",
+        '            and _text(prop, self.source) != ""',
+    ),
+    (
+        "p5-1-uncomputable-cause",
+        JSM,
+        "            self.uncomputable = True\n            self.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)\n        return True",
+        "            pass\n        return True",
+    ),
+    (
+        "p5-2-directory-symlinks",
+        MOD,
+        "    if directory_symlinks is not False:",
+        "    if False:",
+    ),
+    (
+        "p5-2-unknown-is-linked",
+        MOD,
+        "    if directory_symlinks is not False:",
+        "    if directory_symlinks:",
+    ),
+    (
+        "p5-3-module-mocks",
+        JSM,
+        "        if self._module_mock(node, function):\n            return\n",
+        "",
+    ),
+    (
+        "p5-3-mock-non-literal",
+        JSM,
+        "        if specifier is None:\n            self.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)\n        else:\n            self.taints.add(specifier)",
+        "        if specifier is not None:\n            self.taints.add(specifier)",
+    ),
+    (
+        "p5-3-framework-lookup",
+        JSM,
+        "        if scope is None:\n            return name if name in MODULE_MOCKS else None",
+        "        if True:\n            return name if name in MODULE_MOCKS else None",
+    ),
+    (
+        "p5-3-framework-imports",
+        JSM,
+        '                imported in MOCK_PACKAGES\n                and info.get("source") == MOCK_PACKAGES[imported]\n            ):\n                return str(imported)',
+        "                False\n            ):\n                return str(imported)",
+    ),
+    (
+        "p5-3-mock-list",
+        JSM,
+        "        if framework is None or _text(prop, self.source) not in MODULE_MOCKS[framework]:",
+        '        if framework is None or _text(prop, self.source) != "mock":',
+    ),
+    (
+        "item4-uncomputable-specifiers",
+        MOD,
+        "    if _uncomputable_specifier(specifier):",
+        "    if False:",
+    ),
+    (
+        "item4-uncomputable-files",
+        MOD,
+        "        if path in uncomputable:\n            # An edge whose targets cannot be computed (fold 4).\n            return frozenset(files)\n",
+        "",
+    ),
+    (
+        "item4-import-meta-glob",
+        JSM,
+        "        if name in _IMPORT_META_LOADERS:\n            self.uncomputable = True\n            return True",
+        "        if name in _IMPORT_META_LOADERS:\n            return True",
+    ),
     # Per-file module facts.
     (
         "type-only-entry",

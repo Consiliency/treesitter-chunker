@@ -22,6 +22,7 @@ from chunker.symbol_graph import (
     collect_source_files,
     extract_symbol_facts_for_file,
     extract_symbol_graph,
+    has_directory_symlink,
     validate_call_resolution,
 )
 from chunker.types import (
@@ -925,6 +926,9 @@ def _assemble_boundary_ir(
         resolution_mode=resolution_mode,
         call_resolution=call_resolution,
         language_filter=language,
+        directory_symlinks=(
+            has_directory_symlink(root) if call_resolution == "imports" else None
+        ),
     )
     _add_duration(timing_spans, "graph_assembly_ms", started_at)
     diagnostics.extend(

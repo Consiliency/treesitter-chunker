@@ -81,6 +81,30 @@ def _should_skip_path(path: Path) -> bool:
     return any(part in SKIP_PARTS for part in path.parts)
 
 
+def has_directory_symlink(path: str | Path) -> bool:
+    """Whether a directory symlink lies under ``path`` outside the skipped
+    directories (P5-2). Collection never follows one, so Tier 2's O-2
+    promotion cannot see what it reaches."""
+    import os
+
+    root = Path(path)
+    if not root.is_dir():
+        return False
+    try:
+        for current, directories, _ in os.walk(root, followlinks=False):
+            kept = []
+            for name in directories:
+                if name in SKIP_PARTS:
+                    continue
+                if (Path(current) / name).is_symlink():
+                    return True
+                kept.append(name)
+            directories[:] = kept
+    except OSError:
+        return True
+    return False
+
+
 def collect_source_files(path: str | Path, language: str | None = None) -> list[Path]:
     """Collect source files for a given path/language selection."""
     root = Path(path)
@@ -663,8 +687,13 @@ def assemble_symbol_graph(
     resolution_mode: ResolutionMode = "permissive",
     call_resolution: CallResolution = "name",
     language_filter: str | None = None,
+    directory_symlinks: bool | None = None,
 ) -> dict[str, Any]:
     """Assemble public symbol graph output from per-file facts.
+
+    ``directory_symlinks`` (``imports`` mode) says whether a directory
+    symlink lies under the run root (:func:`has_directory_symlink`); when it
+    is not ``False``, Tier 2 treats every test file as production (P5-2).
 
     ``call_resolution`` (experimental) narrows ambiguous call edges with the
     per-file ``scope_facts``, which every fact must then carry.
@@ -823,6 +852,7 @@ def assemble_symbol_graph(
                 symbol_lookup,
                 call_resolution,
                 language_filter=language_filter,
+                directory_symlinks=directory_symlinks,
             ),
         )
 
@@ -924,6 +954,9 @@ def extract_symbol_graph(
         resolution_mode=resolution_mode,
         call_resolution=call_resolution,
         language_filter=language,
+        directory_symlinks=(
+            has_directory_symlink(root) if call_resolution == "imports" else None
+        ),
     )
 
 

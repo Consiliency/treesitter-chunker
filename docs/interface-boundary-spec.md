@@ -302,7 +302,12 @@ equality or `instanceof` comparison, or `typeof`. Such a file in test code (a ba
 segment, or a `__tests__`, `__mocks__`, `test` or `tests` directory) turns
 Tier 2 off only for calls made from test files, and so does any module write
 or escape spelled in test code. A test-named file that production code
-imports, directly or transitively, counts as production.
+imports, directly or transitively, counts as production. Every test file counts as
+production when a directory symlink lies under the root, or when production
+code uses a specifier that cannot be located (a `#` package import, an
+absolute path or `file:` URL, `import.meta.glob`, or `createRequire` with a
+base other than the file itself). `jest.mock`/`vi.mock` of a relative path
+counts as a write to that module for the mocking file's callers.
 Wherever Tier 2 is off, the output equals `"structural"`. Python imports prove nothing yet.
 
 A narrowed edge changes only `target`, `resolution`, `candidates` and

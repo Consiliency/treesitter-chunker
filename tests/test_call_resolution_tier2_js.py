@@ -41,6 +41,7 @@ from chunker.symbol_graph import (
     collect_source_files,
     extract_symbol_facts_for_file,
     extract_symbol_graph,
+    has_directory_symlink,
 )
 
 MODE = "imports"
@@ -80,11 +81,20 @@ def _run(
     ]
     for item in facts:
         assert valid_scope_facts(item["scope_facts"], item["language"])
+    links = has_directory_symlink(root)
     graph = assemble_symbol_graph(
-        facts, total_files=len(facts), call_resolution=MODE, language_filter=language
+        facts,
+        total_files=len(facts),
+        call_resolution=MODE,
+        language_filter=language,
+        directory_symlinks=links,
     )
     context = engine.build_run_context(
-        facts, graph["symbol_lookup"], MODE, language_filter=language
+        facts,
+        graph["symbol_lookup"],
+        MODE,
+        language_filter=language,
+        directory_symlinks=links,
     )
     off = extract_symbol_graph(root, language)
     structural = extract_symbol_graph(root, language, call_resolution="structural")
@@ -1305,6 +1315,7 @@ def test_export_table_of_a_module(tmp_path: Path) -> None:
         "symlink": False,
         "taints": ["./n"],
         "imports": ["./n", "./r", "./s"],
+        "uncomputable": False,
         "ns_uses": [],
         "shutoff": [],
     }
@@ -2592,3 +2603,273 @@ def test_fold3_allow_lists_are_closed() -> None:
         frozenset({"===", "!==", "==", "!=", "instanceof"})
         == js_scope._SAFE_CONSTRUCTOR_OPERATORS
     )
+
+
+# ---------------------------------------------------------------------------
+# PR 5 fold 4 (the president's review at ec86f20c, P5-1..P5-3, item 4).
+
+# P5-1 repro 1 (``president/rt-createrequire-base``): Node resolves
+# ``r('./svc')`` from the createRequire base (``lib/``), not the importer.
+RT_CREATEREQUIRE_BASE = {
+    "app.ts": (
+        "import { createRequire } from 'node:module';\n"
+        "import * as path from 'node:path';\n"
+        "const r = createRequire(path.join(__dirname, 'lib', 'x.js'));\n"
+        "export function patch() { r('./svc').t = () => \"evil\"; }\n"
+    ),
+    "lib/svc.ts": 'export function t() { return "lib/svc.t"; }\n',
+    "other.ts": 'export function t() { return "other.t"; }\n',
+    "use.ts": (
+        "import { t } from './lib/svc';\n"
+        "import { patch } from './app';\n"
+        "export function u() { return t(); }\n"
+        'console.log("before:", u()); patch(); console.log("after :", u());\n'
+    ),
+}
+# P5-1 repro 2 (``president/rt-o2-createrequire``): production runs a test
+# file through a createRequire base under ``tests/``.
+RT_O2_CREATEREQUIRE = {
+    "app.ts": (
+        "import { createRequire } from 'node:module';\n"
+        "import * as path from 'node:path';\n"
+        "const r = createRequire(path.join(__dirname, 'tests', 'x.js'));\n"
+        "export function boot() { r('./setup'); }\n"
+    ),
+    "other.ts": 'export function t() { return "other.t"; }\n',
+    "svc.ts": 'export function t() { return "svc.t"; }\n',
+    "tests/setup.ts": "import * as ns from '../svc';\n(ns as any).t = () => \"evil\";\n",
+    "use.ts": (
+        "import { t } from './svc';\n"
+        "import { boot } from './app';\n"
+        "export function u() { return t(); }\n"
+        'console.log("before:", u()); boot(); console.log("after :", u());\n'
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    "tree", [RT_CREATEREQUIRE_BASE, RT_O2_CREATEREQUIRE], ids=["base", "o2"]
+)
+def test_p5_1_president_repros_fail_closed(
+    tmp_path: Path, tree: dict[str, str]
+) -> None:
+    root = _write(tmp_path, tree)
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert off["resolution"] == "ambiguous"
+    assert on == off
+    assert label == "none(run-tainted:unresolvable-writer)"
+
+
+P5_1_BASES = {
+    "dirname": "createRequire(__dirname)",
+    "import-meta-dirname": "createRequire(import.meta.dirname)",
+    "url-of-directory": "createRequire(new URL('./lib/', import.meta.url))",
+    "path-to-file-url": "createRequire(pathToFileURL(__filename))",
+    "variable": "createRequire(base)",
+    "path-join": "createRequire(path.join(here, 'x.js'))",
+}
+
+
+@pytest.mark.parametrize("case", sorted(P5_1_BASES))
+def test_p5_1_other_bases_make_targets_uncomputable(tmp_path: Path, case: str) -> None:
+    text = CR + f"const r = {P5_1_BASES[case]};\nexport const k = r('./other');\n"
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off, case
+    assert label == "none(run-tainted:unresolvable-writer)", case
+
+
+def test_p5_1_shadowed_filename_is_not_the_file(tmp_path: Path) -> None:
+    text = (
+        CR + "export function f(__filename: string) {\n"
+        "  const r = createRequire(__filename);\n  return r('./other');\n}\n"
+    )
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == "none(run-tainted:unresolvable-writer)"
+
+
+@pytest.mark.parametrize(
+    "base", ["import.meta.url", "import.meta.filename", "__filename"]
+)
+def test_p5_1_own_file_bases_taint_exactly(tmp_path: Path, base: str) -> None:
+    """The three own-file bases keep fold 3: a literal ``r('./svc')`` taints
+    ``./svc`` (``commonjs``); ``r('./other')`` leaves ``use.ts`` resolved."""
+    for target, resolved in (("./svc", False), ("./other", True)):
+        text = CR + f"const r = createRequire({base});\nr('{target}').t = 0;\n"
+        root = _write(
+            tmp_path / f"{target[2:]}-{base.replace('.', '-')}",
+            {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text},
+        )
+        off, _, on, label = _run(root, "use.ts", "t")
+        if resolved:
+            assert on["resolution"] == "resolved", (base, label)
+        else:
+            assert on == off, base
+            assert label == "none(commonjs)", base
+
+
+# P5-2 (``president/rt-o2-dirlink``): ``helpers -> tests``.
+RT_O2_DIRLINK = {
+    "app.ts": "import './helpers/w';\n",
+    "other.ts": "export function t() { return 'o'; }\n",
+    "svc.ts": "export function t() { return 'svc.t'; }\n",
+    "tests/w.ts": (
+        "import * as ns from '../svc';\n(ns as any).t = () => 'evil';\n"
+        "export const k = 1;\n"
+    ),
+    "use.ts": (
+        "import { t } from './svc';\nimport './app';\n"
+        "export function u() { return t(); }\nconsole.log(u());\n"
+    ),
+}
+
+
+def test_p5_2_directory_symlink_promotes_every_test_file(tmp_path: Path) -> None:
+    root = _write(tmp_path, RT_O2_DIRLINK)
+    _symlink_or_skip(root / "helpers", "tests")
+    assert has_directory_symlink(root)
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == "none(commonjs)"
+
+
+def test_p5_2_without_directory_symlinks_o2_scoping_holds(tmp_path: Path) -> None:
+    """The control: the same tree with no link keeps O-2 scoping (the test
+    writer is unreached, so production stays resolved)."""
+    root = _write(tmp_path, {**RT_O2_DIRLINK, "app.ts": "export {};\n"})
+    assert not has_directory_symlink(root)
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", label
+
+
+def test_p5_2_unknown_directory_symlinks_promote(tmp_path: Path) -> None:
+    """An assembly that does not say (``directory_symlinks=None``) treats
+    every test file as production."""
+    root = _write(
+        tmp_path,
+        {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.test.js": "eval(s);\n"},
+    )
+    facts = [
+        extract_symbol_facts_for_file(path, root, call_resolution=MODE)
+        for path in collect_source_files(root)
+    ]
+    run = modules.build_module_run(facts, None, None)
+    assert run.test_scope == frozenset()
+    assert modules.build_module_run(facts, None, False).test_scope == {"x.test.js"}
+
+
+# P5-3: test-framework module mocks.
+MOCK_CALLS = {
+    "jest.mock": ("jest.mock('../svc');\n", ""),
+    "jest.doMock": ("jest.doMock('../svc', () => ({}));\n", ""),
+    "jest.unstable_mockModule": (
+        "jest.unstable_mockModule('../svc', () => ({}));\n",
+        "",
+    ),
+    "jest.setMock": ("jest.setMock('../svc', {});\n", ""),
+    "vi.mock": ("vi.mock('../svc');\n", "import { vi } from 'vitest';\n"),
+    "vi.doMock": ("vi.doMock('../svc');\n", "import { vi } from 'vitest';\n"),
+    "jest-from-globals": (
+        "jest.mock('../svc');\n",
+        "import { jest } from '@jest/globals';\n",
+    ),
+    "aliased-vi": ("v.mock('../svc');\n", "import { vi as v } from 'vitest';\n"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(MOCK_CALLS))
+def test_p5_3_module_mocks_taint_for_test_callers(tmp_path: Path, case: str) -> None:
+    call, header = MOCK_CALLS[case]
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "tests/a.test.ts": header
+            + "import { t } from '../svc';\n"
+            + call
+            + "export function check() { return t(); }\n",
+        },
+    )
+    off, _, on, label = _run(root, "tests/a.test.ts", "t")
+    assert on == off, case
+    assert label == "none(commonjs)", case
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", (case, label)
+
+
+@pytest.mark.parametrize(
+    ("call", "reason"),
+    [
+        ("jest.mock(name);\n", "none(run-tainted:unresolvable-writer)"),
+        ("jest.mock('lodash');\n", "import"),
+        ("const jest = { mock(x: string) {} };\njest.mock('../svc');\n", "import"),
+    ],
+    ids=["non-literal", "bare-package", "shadowed-jest"],
+)
+def test_p5_3_mock_near_misses(tmp_path: Path, call: str, reason: str) -> None:
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "tests/a.test.ts": "import { t } from '../svc';\n"
+            + call
+            + "export function check() { return t(); }\n",
+        },
+    )
+    _, _, on, label = _run(root, "tests/a.test.ts", "t")
+    assert label == reason
+    assert (on["resolution"] == "resolved") is (reason == "import")
+    _, _, on, _ = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved"
+
+
+# Item 4: production edges whose targets cannot be computed promote every
+# test file; a test file's cause then reaches production callers.
+UNCOMPUTABLE_PRODUCTION = {
+    "package-imports": "import k from '#setup';\nexport const j = k;\n",
+    "import-meta-glob": "export const m = import.meta.glob('./tests/*.ts');\n",
+    "import-meta-glob-eager": "export const m = import.meta.globEager('./x/*.ts');\n",
+    "absolute-path": "import '/abs/setup.js';\n",
+    "drive-letter": "import 'C:/abs/setup.js';\n",
+    "file-url": "import 'file:///abs/setup.js';\n",
+}
+
+
+@pytest.mark.parametrize("case", sorted(UNCOMPUTABLE_PRODUCTION))
+def test_uncomputable_production_targets_promote_every_test_file(
+    tmp_path: Path, case: str
+) -> None:
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "app.ts": UNCOMPUTABLE_PRODUCTION[case],
+            "x.test.js": "eval(s);\n",
+        },
+    )
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off, case
+    assert label == "none(run-tainted:evaluator)", case
+
+
+def test_uncomputable_writer_specifiers(tmp_path: Path) -> None:
+    """A write through ``require('#x')`` or an absolute path cannot be
+    located: ``unresolvable-writer``."""
+    for name, text in (
+        ("hash", "require('#x').t = 0;\n"),
+        ("abs", "require('/x').t = 0;\n"),
+    ):
+        root = _write(
+            tmp_path / name, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text}
+        )
+        off, _, on, label = _run(root, "use.ts", "t")
+        assert on == off, name
+        assert label == "none(run-tainted:unresolvable-writer)", name

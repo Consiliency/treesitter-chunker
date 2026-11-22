@@ -131,8 +131,20 @@ SHUTOFF_CAUSES = (
 )
 # ``import.meta`` reads that load nothing.
 _IMPORT_META_READS = frozenset(
-    {"url", "dirname", "filename", "resolve", "env", "main", "hot", "glob"}
+    {"url", "dirname", "filename", "resolve", "env", "main", "hot"}
 )
+# Vite's ``import.meta.glob``/``globEager`` load every matched module: the
+# targets cannot be computed, so every test file is promoted (fold 4).
+_IMPORT_META_LOADERS = frozenset({"glob", "globEager"})
+# P5-1: ``import.meta`` properties that name the file itself.
+_OWN_FILE_META = frozenset({"url", "filename"})
+# P5-3: test-framework module mocks (a closed list), by the framework's
+# global name and the packages that export it.
+MODULE_MOCKS: dict[str, frozenset[str]] = {
+    "jest": frozenset({"mock", "doMock", "unstable_mockModule", "setMock"}),
+    "vi": frozenset({"mock", "doMock"}),
+}
+MOCK_PACKAGES = {"jest": "@jest/globals", "vi": "vitest"}
 # Names that reach the CommonJS module system from anywhere.
 _MODULE_SYSTEM_NAMES = frozenset({"mainModule", "createRequire", "getBuiltinModule"})
 _MODULE_SYSTEM_SPECIFIERS = frozenset({"module", "node:module"})
@@ -239,6 +251,9 @@ class _ModuleFacts:
         # Every static specifier (imports, re-exports): the import graph
         # that promotes a test file a production file reaches (O-2).
         self.imports: set[str] = set()
+        # Edges whose targets cannot be computed (fold 4): a production file
+        # with one promotes every test file (O-2).
+        self.uncomputable = False
         self.ns_uses: set[tuple[str, str, str]] = set()
         # Run-wide causes (E5-3): routes that may rewrite any module's
         # exports object. The Tier 1 ``*`` wildcard alone is not one.
@@ -527,12 +542,17 @@ class _ModuleFacts:
         if parent is None or parent.type != "member_expression":
             return False
         prop = parent.child_by_field_name("property")
-        return (
-            _same(parent.child_by_field_name("object"), outer)
-            and prop is not None
-            and prop.type == "property_identifier"
-            and _text(prop, self.source) in _IMPORT_META_READS
-        )
+        if (
+            not _same(parent.child_by_field_name("object"), outer)
+            or prop is None
+            or prop.type != "property_identifier"
+        ):
+            return False
+        name = _text(prop, self.source)
+        if name in _IMPORT_META_LOADERS:
+            self.uncomputable = True
+            return True
+        return name in _IMPORT_META_READS
 
     def _free_or_top(self, node: Any, name: str) -> bool:
         """Whether the ordinary lookup at ``node`` finds no binding of
@@ -546,6 +566,8 @@ class _ModuleFacts:
 
         function = unwrap(node.child_by_field_name("function"))
         if function is None:
+            return
+        if self._module_mock(node, function):
             return
         is_require = function.type == "identifier" and (
             _text(function, self.source) == "require"
@@ -575,6 +597,55 @@ class _ModuleFacts:
         # A literal ``require`` taints whatever binds the name: an AMD
         # ``require`` parameter loads modules too.
         self.taints.add(specifier)
+
+    def _module_mock(self, call: Any, function: Any) -> bool:
+        """P5-3: ``jest.mock('<x>')`` and the rest of :data:`MODULE_MOCKS`,
+        with ``jest``/``vi`` free or imported from ``@jest/globals``/
+        ``vitest`` (by the ordinary lookup). The mocked module is replaced
+        for the callers in the mocking file's scope: a relative literal
+        taints it; a non-literal is an unresolvable writer; a bare
+        specifier names a package outside the run."""
+        if function.type != "member_expression":
+            return False
+        from .js_scope import unwrap
+
+        obj = unwrap(function.child_by_field_name("object"))
+        prop = function.child_by_field_name("property")
+        if obj is None or obj.type != "identifier" or prop is None:
+            return False
+        framework = self._framework(obj)
+        if framework is None or _text(prop, self.source) not in MODULE_MOCKS[framework]:
+            return False
+        arguments = call.child_by_field_name("arguments")
+        named = (
+            [child for child in arguments.named_children if child.type != "comment"]
+            if arguments is not None
+            else []
+        )
+        specifier = _literal_value(named[0], self.source) if named else None
+        if specifier is None:
+            self.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+        else:
+            self.taints.add(specifier)
+        return True
+
+    def _framework(self, node: Any) -> str | None:
+        """``jest`` or ``vi`` when ``node`` names the framework object."""
+        name = _text(node, self.source)
+        scope = self.analysis._binding_scope(node, name)
+        if scope is None:
+            return name if name in MODULE_MOCKS else None
+        for binding in scope.bindings.get(name, ()):
+            info = binding.info or {}
+            if binding.cls != "import":
+                continue
+            imported = info.get("name")
+            if (
+                imported in MOCK_PACKAGES
+                and info.get("source") == MOCK_PACKAGES[imported]
+            ):
+                return str(imported)
+        return None
 
     def _taint_literal(self, node: Any) -> None:
         specifier = _literal_value(node, self.source)
@@ -740,6 +811,10 @@ class _ModuleFacts:
         scope = self.analysis._binding_scope(name, text)
         if scope is None:
             return False
+        # P5-1: Node resolves ``r('<lit>')`` from the base given to
+        # createRequire, so only the importer's own file is a base whose
+        # targets this resolution computes.
+        own_base = self._own_file_base(call)
         uses = self._uses(scope, text)
         if uses is None:
             return False
@@ -782,9 +857,47 @@ class _ModuleFacts:
             if literal is None or literal in _MODULE_SYSTEM_SPECIFIERS:
                 return False
             literals.append(literal)
-        # A literal call loads its target like ``require``: it taints it.
-        self.taints.update(literals)
+        if own_base:
+            # A literal call loads its target like ``require``: it taints it.
+            self.taints.update(literals)
+        elif literals:
+            # Another base: the targets cannot be computed (P5-1).
+            self.uncomputable = True
+            self.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
         return True
+
+    def _own_file_base(self, call: Any) -> bool:
+        """P5-1: the closed list of createRequire bases that name the
+        importer's own file: ``import.meta.url``, ``import.meta.filename``
+        and ``__filename`` (free, or bound only at the top level)."""
+        arguments = call.child_by_field_name("arguments")
+        named = (
+            [child for child in arguments.named_children if child.type != "comment"]
+            if arguments is not None
+            else []
+        )
+        if len(named) != 1:
+            return False
+        from .js_scope import unwrap
+
+        base = unwrap(named[0])
+        if base is None:
+            return False
+        if base.type == "identifier":
+            return _text(base, self.source) == "__filename" and self._free_or_top(
+                base, "__filename"
+            )
+        if base.type != "member_expression":
+            return False
+        obj = unwrap(base.child_by_field_name("object"))
+        prop = base.child_by_field_name("property")
+        return (
+            obj is not None
+            and obj.type == "meta_property"
+            and prop is not None
+            and prop.type == "property_identifier"
+            and _text(prop, self.source) in _OWN_FILE_META
+        )
 
     def _single_literal(self, call: Any) -> str | None:
         arguments = call.child_by_field_name("arguments")
@@ -956,6 +1069,7 @@ class _ModuleFacts:
             "symlink": self.symlink,
             "taints": sorted(self.taints),
             "imports": sorted(self.imports),
+            "uncomputable": self.uncomputable,
             "ns_uses": [list(use) for use in sorted(self.ns_uses)],
             "shutoff": sorted(self.shutoff),
         }
@@ -1107,6 +1221,7 @@ def text_module_bindings(source: bytes, symlink: bool = False) -> dict[str, Any]
         "symlink": symlink,
         "taints": sorted(taints),
         "imports": sorted(taints),
+        "uncomputable": False,
         "ns_uses": [],
         "shutoff": sorted(shutoff),
     }

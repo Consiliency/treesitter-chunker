@@ -165,6 +165,7 @@ def build_run_context(
     mode: str,
     *,
     language_filter: str | None = None,
+    directory_symlinks: bool | None = None,
 ) -> RunContext:
     """Index every file's scope facts by its display path."""
     facts = list(facts)
@@ -207,7 +208,9 @@ def build_run_context(
         global_declarers={name: frozenset(paths) for name, paths in declarers.items()},
         unknown_globals=frozenset(unknown),
         modules=(
-            build_module_run(facts, language_filter) if mode == MODE_IMPORTS else None
+            build_module_run(facts, language_filter, directory_symlinks)
+            if mode == MODE_IMPORTS
+            else None
         ),
     )
 

@@ -291,6 +291,10 @@ def lenient_targets(
     ``None`` when the target cannot be computed (it leaves the root);
     ``()`` for a bare specifier, which is R12 (treesitter-chunker#702).
     """
+    if _uncomputable_specifier(specifier):
+        # Fold 4: a package ``imports`` alias (``#x``), an absolute path or a
+        # ``file:`` URL may name any file of the run.
+        return None
     if specifier not in (".", "..") and not specifier.startswith(
         ("./", "../", ".\\", "..\\")
     ):
@@ -326,6 +330,14 @@ def lenient_targets(
                 if path not in found:
                     found.append(path)
     return tuple(found)
+
+
+def _uncomputable_specifier(specifier: str) -> bool:
+    return specifier.startswith(("#", "/", "\\", "file:")) or (
+        len(specifier) > 2
+        and specifier[0].isalpha()
+        and specifier[1:3] in (":/", ":\\")
+    )
 
 
 def existing_candidates(
@@ -431,7 +443,9 @@ class ModuleRun:
 
 
 def build_module_run(
-    facts: Sequence[Mapping[str, Any]], language_filter: str | None
+    facts: Sequence[Mapping[str, Any]],
+    language_filter: str | None,
+    directory_symlinks: bool | None = None,
 ) -> ModuleRun:
     """Index the run's JS/TS files, the tainted modules and the run-wide
     causes (E5-1, E5-3, E5-4), scoped by the caller (O-2)."""
@@ -441,6 +455,7 @@ def build_module_run(
     files: dict[str, ModuleFile] = {}
     taints: list[tuple[str, str]] = []
     edges: dict[str, list[str]] = {}
+    uncomputable: set[str] = set()
     ns_uses: list[tuple[str, str | None, str, str, str]] = []
     causes: list[tuple[str, str]] = []
     symlinks: set[str] = set()
@@ -462,6 +477,8 @@ def build_module_run(
             causes.append((str(name), path))
         for specifier in bindings.get("taints", ()):
             taints.append((path, str(specifier)))
+        if bindings.get("uncomputable"):
+            uncomputable.add(path)
         edges[path] = [
             str(specifier)
             for key in ("imports", "taints", "stars")
@@ -480,7 +497,13 @@ def build_module_run(
         )
     run_paths = sorted(str(item.get("path") or "") for item in facts)
     index = ModuleIndex.build(sorted(files), language_filter, run_paths, symlinks)
-    production = _production_files(index, files, edges, symlinks)
+    if directory_symlinks is not False:
+        # P5-2: a directory symlink under the root (or not knowing) means a
+        # production import may reach a test file through a path the run
+        # never collected, so every test file is production.
+        production = frozenset(files)
+    else:
+        production = _production_files(index, files, edges, symlinks, uncomputable)
     tainted: dict[bool, set[str]] = {True: set(), False: set()}
 
     def taint(path: str, specifier: str) -> None:
@@ -536,6 +559,7 @@ def _production_files(
     files: Mapping[str, ModuleFile],
     edges: Mapping[str, Sequence[str]],
     symlinks: set[str],
+    uncomputable: set[str] = frozenset(),  # type: ignore[assignment]
 ) -> frozenset[str]:
     """O-2 promotion: the fixpoint of production files over the import
     graph (static imports, re-exports, literal ``require``/``import()`` and
@@ -547,6 +571,9 @@ def _production_files(
     pending = sorted(production)
     while pending:
         path = pending.pop()
+        if path in uncomputable:
+            # An edge whose targets cannot be computed (fold 4).
+            return frozenset(files)
         for specifier in edges.get(path, ()):
             targets = (
                 None if path in symlinks else lenient_targets(index, specifier, path)
