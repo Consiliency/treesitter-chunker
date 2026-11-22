@@ -285,8 +285,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "o2-promotion-static-imports",
         MOD,
-        '            for key in ("imports", "taints", "stars")',
-        '            for key in ("taints", "stars")',
+        '            for key in ("imports", "taints", "stars", "filename_taints")',
+        '            for key in ("taints", "stars", "filename_taints")',
     ),
     (
         "o2-classifier-directories",
@@ -564,14 +564,14 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "p5-21-casefold",
         MOD,
-        '    return part.rstrip(". ").casefold() in SKIPPED_DIRECTORIES',
-        '    return part.rstrip(". ") in SKIPPED_DIRECTORIES',
+        "        base.casefold() in SKIPPED_DIRECTORIES\n        or base.upper().casefold() in SKIPPED_DIRECTORIES\n",
+        "        base in SKIPPED_DIRECTORIES\n        or base.upper() in SKIPPED_DIRECTORIES\n",
     ),
     (
         "p5-21-win32-trailing",
         MOD,
-        '    return part.rstrip(". ").casefold() in SKIPPED_DIRECTORIES',
-        "    return part.casefold() in SKIPPED_DIRECTORIES",
+        '    base = part.rstrip(". ")\n',
+        "    base = part\n",
     ),
     (
         "url-whitespace-strip",
@@ -585,6 +585,21 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '    specifier = _URL_NOISE.sub("", specifier.strip(_C0_AND_SPACE))',
         "    specifier = specifier.strip(_C0_AND_SPACE)",
     ),
+    # Fold 7 (the president's re-check at ae5f53a5, P5-27, P5-32).
+    (
+        "p5-27-filename-taints-edges",
+        MOD,
+        '            for key in ("imports", "taints", "stars", "filename_taints")',
+        '            for key in ("imports", "taints", "stars")',
+    ),
+    (
+        "p5-32-upper-casefold",
+        MOD,
+        "        or base.upper().casefold() in SKIPPED_DIRECTORIES\n",
+        "",
+    ),
+    ("p5-32-streams", MOD, '        or ":" in part\n', ""),
+    ("p5-32-short-names", MOD, "        or _SHORT_NAME.match(part) is not None\n", ""),
     # Per-file module facts.
     (
         "type-only-entry",

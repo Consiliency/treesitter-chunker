@@ -3222,3 +3222,114 @@ def test_url_whitespace_is_stripped_before_the_scheme(specifier: str) -> None:
     removes every tab, LF and CR, so these are ``file:`` URLs."""
     index = modules.ModuleIndex.build(["use.ts"], None)
     assert modules.lenient_targets(index, specifier, "use.ts") is None
+
+
+# ---------------------------------------------------------------------------
+# PR 5 fold 7 (the president's re-check at ae5f53a5, P5-27, P5-32).
+
+O2_CR = {
+    "other.ts": 'export function t() { return "other.t"; }\n',
+    "svc.ts": 'export function t() { return "svc.t"; }\n',
+    "tests/w.ts": "require('../svc').t = () => \"evil\";\n",
+    "use.ts": (
+        "import { t } from './svc';\nimport './app';\n"
+        "export function u() { return t(); }\n"
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    "hint", ["void this;\n", ""], ids=["o2-cr-this", "o2-cr-plain"]
+)
+def test_p5_27_filename_base_targets_promote(tmp_path: Path, hint: str) -> None:
+    """``createRequire(__filename)`` literal targets are O-2 edges: production
+    ``app.ts`` loads ``tests/w.ts``, which is promoted, so its write reaches
+    production callers."""
+    app = (
+        "import { createRequire } from 'node:module';\n"
+        + hint
+        + "const r = createRequire(__filename);\nr('./tests/w');\n"
+    )
+    root = _write(tmp_path, {**O2_CR, "app.ts": app})
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert off["resolution"] == "ambiguous"
+    assert on == off
+    assert label == "none(commonjs)"
+
+
+# The taint-source audit (fold 7): every way a production file can name a
+# file feeds the O-2 promotion graph, so production loading ``tests/w.ts``
+# through any of them makes its write reach production callers.
+PROMOTING_SOURCES = {
+    "static-import": "import './tests/w';\n",
+    "export-from": "export { k } from './tests/w';\n",
+    "export-star": "export * from './tests/w';\n",
+    "export-star-as": "export * as ns from './tests/w';\n",
+    "literal-require": "require('./tests/w');\n",
+    "template-require": "require(`./tests/w`);\n",
+    "literal-dynamic-import": "export const p = import('./tests/w');\n",
+    "import-equals-require": "import w = require('./tests/w');\nexport const k = w;\n",
+    "rejected-specifier": "require('./tests/W.JS?x');\n",
+    "create-require-meta": CR
+    + "const r = createRequire(import.meta.url);\nr('./tests/w');\n",
+    "create-require-filename": CR
+    + "const r = createRequire(__filename);\nr('./tests/w');\n",
+    "module-mock": "jest.mock('./tests/w');\n",
+    "named-import": "import { k } from './tests/w';\nexport const j = k;\n",
+    "namespace-import": "import * as w from './tests/w';\nexport const j = w.k;\n",
+}
+
+
+@pytest.mark.parametrize("source", sorted(PROMOTING_SOURCES))
+def test_every_file_naming_source_promotes(tmp_path: Path, source: str) -> None:
+    root = _write(
+        tmp_path,
+        {
+            **O2_CR,
+            "tests/w.ts": "require('../svc').t = () => 'evil';\nexport const k = 1;\n",
+            "app.ts": PROMOTING_SOURCES[source],
+        },
+    )
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off, source
+    assert label == "none(commonjs)", source
+
+
+@pytest.mark.parametrize(
+    "segment",
+    [
+        "BUILD~1",
+        "node_m~1",
+        "dist~12.abc",
+        "build::$INDEX_ALLOCATION",
+        "a:b",
+        "bu\u0131ld",
+    ],
+)
+def test_p5_32_short_names_and_streams_are_uncomputable(
+    tmp_path: Path, segment: str
+) -> None:
+    """P5-32: an 8.3 short name may alias any directory (``BUILD~1`` for
+    ``build``), and a segment with ``:`` may be an NTFS stream, so both are
+    uncomputable."""
+    index = modules.ModuleIndex.build(["use.ts"], None)
+    specifier = f"./{segment}/helpers/w"
+    assert modules.lenient_targets(index, specifier, "use.ts") is None
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.js": f"require('{specifier}').t = 0;\n",
+        },
+    )
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off, segment
+    assert label == "none(run-tainted:unresolvable-writer)", segment
+
+
+def test_p5_32_ordinary_segments_stay_computable() -> None:
+    index = modules.ModuleIndex.build(["lib/w.ts", "my~lib/w.ts"], None)
+    assert modules.lenient_targets(index, "./lib/w", "use.ts") == ("lib/w.ts",)
+    assert modules.lenient_targets(index, "./my~lib/w", "use.ts") == ("my~lib/w.ts",)

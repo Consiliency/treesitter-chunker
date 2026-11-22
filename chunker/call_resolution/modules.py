@@ -120,6 +120,7 @@ _EXTENSIONS = (".ts", ".tsx", ".d.ts", ".js", ".jsx")
 _UNCOLLECTED_SUFFIXES = (".mjs", ".cjs", ".mts", ".cts")
 _UNREAD_CHARACTERS = frozenset("?#%\\")
 _SCHEME = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*):")
+_SHORT_NAME = re.compile(r"[^~]{1,6}~[0-9]+(\.[^.]{0,3})?$")
 _C0_AND_SPACE = "".join(chr(code) for code in range(0x21))
 _URL_NOISE = re.compile(r"[\t\n\r]")
 _UNCOMPUTABLE_SCHEMES = frozenset({"file", "data"})
@@ -342,9 +343,18 @@ def lenient_targets(
 
 
 def _skipped(part: str) -> bool:
-    """P5-21: a path segment names a skipped directory on a case-insensitive
-    file system, or after Win32 strips a trailing dot or space."""
-    return part.rstrip(". ").casefold() in SKIPPED_DIRECTORIES
+    """P5-21/P5-32: a path segment that may name a skipped directory: after
+    case folding (and upper-casing, for case mappings that fold apart) and
+    after Win32 strips a trailing dot or space; any segment with ``:`` (an
+    NTFS stream such as ``build::$INDEX_ALLOCATION``); and any 8.3 short
+    name (``BUILD~1``), which may alias any directory."""
+    base = part.rstrip(". ")
+    return (
+        base.casefold() in SKIPPED_DIRECTORIES
+        or base.upper().casefold() in SKIPPED_DIRECTORIES
+        or ":" in part
+        or _SHORT_NAME.match(part) is not None
+    )
 
 
 def _uncomputable_specifier(specifier: str) -> bool:
@@ -516,7 +526,9 @@ def build_module_run(
             filename_writers = True
         edges[path] = [
             str(specifier)
-            for key in ("imports", "taints", "stars")
+            # P5-27: every source that can name a file feeds the O-2 graph,
+            # ``createRequire(__filename)`` literal targets included.
+            for key in ("imports", "taints", "stars", "filename_taints")
             for specifier in bindings.get(key, ())
         ]
         for use in bindings.get("ns_uses", ()):
