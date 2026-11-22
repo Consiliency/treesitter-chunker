@@ -186,19 +186,19 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "module-commonjs-flag",
         MOD,
-        "    if module.commonjs or path in run.tainted:",
-        "    if path in run.tainted:",
+        "    if module.commonjs or path in taints:",
+        "    if path in taints:",
     ),
     (
         "module-taints",
         MOD,
-        "    if module.commonjs or path in run.tainted:",
+        "    if module.commonjs or path in taints:",
         "    if module.commonjs:",
     ),
     (
         "run-wide-shutoff",
         MOD,
-        "    shutoff = run_tainted_reason(run)\n    if shutoff is not None:\n        return _none(shutoff)\n",
+        "    shutoff = run_tainted_reason(run, importer)\n    if shutoff is not None:\n        return _none(shutoff)\n",
         "",
     ),
     (
@@ -210,21 +210,20 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "rejected-taints-dropped",
         MOD,
-        "        targets = None if path in symlinks else lenient_targets(index, specifier, path)",
-        '        targets = existing_candidates(index, specifier, path, "typescript")',
+        "        targets = None if path in symlinks else lenient_targets(index, specifier, path)\n        if targets is None:\n            # The written",
+        '        targets = None if path in symlinks else existing_candidates(index, specifier, path, "typescript")\n        if targets is None:\n            # The written',
     ),
     (
         "unresolvable-writer",
         MOD,
-        "            # The written module cannot be computed (E5-4).\n"
-        "            cause(CAUSE_UNRESOLVABLE_WRITER, path)\n            continue",
-        "            continue",
+        "            causes.append((CAUSE_UNRESOLVABLE_WRITER, path))\n        else:",
+        "            pass\n        else:",
     ),
     (
         "namespace-member-verified",
         MOD,
-        "        if not verified:\n            targets = lenient_targets(index, specifier, path)",
-        "        if False:\n            targets = lenient_targets(index, specifier, path)",
+        "        if not verified:\n            taint(path, specifier)",
+        "        if False:\n            taint(path, specifier)",
     ),
     (
         "namespace-call-this",
@@ -235,8 +234,83 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "unparsed-without-text",
         MOD,
-        "            cause(CAUSE_UNPARSED_FILE, path)\n",
+        "            causes.append((CAUSE_UNPARSED_FILE, path))\n",
         "            pass\n",
+    ),
+    # Owner decision O-2 (fold 2): scope by caller, promotion.
+    (
+        "o2-test-causes-run-wide",
+        MOD,
+        "    if importer is not None and importer in run.test_scope:",
+        "    if True:",
+    ),
+    (
+        "o2-test-causes-ignored",
+        MOD,
+        "        active.update(run.test_shutoff)",
+        "        pass",
+    ),
+    (
+        "o2-test-taints-for-all",
+        MOD,
+        "        if importer in self.test_scope:\n            return self.tainted | self.test_tainted",
+        "        if True:\n            return self.tainted | self.test_tainted",
+    ),
+    (
+        "o2-test-taints-ignored",
+        MOD,
+        "            return self.tainted | self.test_tainted",
+        "            return self.tainted",
+    ),
+    (
+        "o2-taint-origin",
+        MOD,
+        "            tainted[path in production].update(targets)",
+        "            tainted[False].update(targets)",
+    ),
+    (
+        "o2-cause-origin",
+        MOD,
+        "        shutoff[path in production].setdefault(name, path)",
+        "        shutoff[False].setdefault(name, path)",
+    ),
+    ("o2-promotion", MOD, "    pending = sorted(production)\n", "    pending = []\n"),
+    ("o2-promotion-transitive", MOD, "                pending.append(target)\n", ""),
+    (
+        "o2-promotion-uncomputable",
+        MOD,
+        "            reached = set(files) if targets is None else set(targets)",
+        "            reached = set() if targets is None else set(targets)",
+    ),
+    (
+        "o2-promotion-static-imports",
+        MOD,
+        '            for key in ("imports", "taints", "stars")',
+        '            for key in ("taints", "stars")',
+    ),
+    (
+        "o2-classifier-directories",
+        MOD,
+        "    if any(part in TEST_DIRECTORIES for part in directories):\n        return True\n",
+        "",
+    ),
+    (
+        "o2-classifier-names",
+        MOD,
+        '    return any(part in TEST_NAME_SEGMENTS for part in name.split(".")[1:-1])',
+        "    return False",
+    ),
+    (
+        "o2-classifier-case",
+        MOD,
+        '    return any(part in TEST_NAME_SEGMENTS for part in name.split(".")[1:-1])',
+        '    return any(part.lower() in TEST_NAME_SEGMENTS for part in name.split(".")[1:-1])',
+    ),
+    (
+        "o2-imports-fact",
+        JSM,
+        "                    else:\n                        self.imports.add(specifier)",
+        "                    else:\n                        pass",
     ),
     # Per-file module facts.
     (

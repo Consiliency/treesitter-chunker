@@ -42,13 +42,21 @@ interface and a function of one name merge.
     allow-listed position, ``require(<string>)``, ``import(<string>)`` and
     ``import x = require(<string>)`` taint the module they name. The engine
     gives every lookup through a tainted module ``none(commonjs)``.
-``taint_all``
-    The file may write any module's exports: ``require`` or ``import()``
-    used other than with one string argument, ``module`` used other than as
-    ``module.exports``, the names ``mainModule``, ``createRequire`` and
-    ``getBuiltinModule``, an import of ``module`` or ``node:module``, a
-    specifier that does not decode, or a code evaluator or other global-object
-    escape (the analysis's ``*`` script global, section 7.2).
+``imports``
+    Every static specifier (imports, re-exports): with ``taints`` and
+    ``stars``, the import graph the engine uses to promote a test file that
+    production code reaches (owner decision O-2).
+``ns_uses``
+    ``[specifier, member, "read" | "call"]`` for each allow-listed
+    ``ns.member`` use; the engine requires a verified export, and for a call
+    one whose declarations never mention ``this`` (E5-1).
+``symlink``
+    The file was collected through a symbolic link (E5-5).
+``shutoff``
+    Run-wide causes (E5-3): ``evaluator``, ``dynamic-loader``,
+    ``module-system``, ``module-object``, ``unparsed-file`` (text scan of a
+    file with parse errors). Under O-2 a cause in a test file applies only
+    to callers in test files.
 
 Uses of the sensitive values (a namespace import, ``require``, ``module``)
 are classified by a closed allow-list after unwrapping parentheses and TS
@@ -222,6 +230,9 @@ class _ModuleFacts:
         self.opaque = False
         self.symlink = symlink
         self.taints: set[str] = set()
+        # Every static specifier (imports, re-exports): the import graph
+        # that promotes a test file a production file reaches (O-2).
+        self.imports: set[str] = set()
         self.ns_uses: set[tuple[str, str, str]] = set()
         # Run-wide causes (E5-3): routes that may rewrite any module's
         # exports object. The Tier 1 ``*`` wildcard alone is not one.
@@ -359,6 +370,7 @@ class _ModuleFacts:
                 # ``export … from './m' with {…}`` still reads ``./m``.
                 self.taints.add(specifier)
             return
+        self.imports.add(specifier)
         if specifier in _MODULE_SYSTEM_SPECIFIERS:
             self.shutoff.add(CAUSE_MODULE_SYSTEM)
         type_only = _has_token(statement, "type")
@@ -464,6 +476,8 @@ class _ModuleFacts:
                     specifier = decode_string_literal(source_node, self.source)
                     if specifier is None or specifier in _MODULE_SYSTEM_SPECIFIERS:
                         self.shutoff.add(CAUSE_MODULE_SYSTEM)
+                    else:
+                        self.imports.add(specifier)
             elif kind in (
                 "identifier",
                 "shorthand_property_identifier",
@@ -758,6 +772,7 @@ class _ModuleFacts:
             "opaque": self.opaque,
             "symlink": self.symlink,
             "taints": sorted(self.taints),
+            "imports": sorted(self.imports),
             "ns_uses": [list(use) for use in sorted(self.ns_uses)],
             "shutoff": sorted(self.shutoff),
         }
@@ -908,6 +923,7 @@ def text_module_bindings(source: bytes, symlink: bool = False) -> dict[str, Any]
         "opaque": True,
         "symlink": symlink,
         "taints": sorted(taints),
+        "imports": sorted(taints),
         "ns_uses": [],
         "shutoff": sorted(shutoff),
     }

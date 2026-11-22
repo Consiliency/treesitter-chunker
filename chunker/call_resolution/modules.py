@@ -85,6 +85,13 @@ SKIPPED_DIRECTORIES = frozenset(
     }
 )
 HOP_LIMIT = 3
+# Owner decision O-2 ("scope by caller"): the closed, case-sensitive,
+# path-based test-file classifier. A file is test code when a basename
+# segment between dots is ``test`` or ``spec`` (``svc.test.ts``,
+# ``svc.spec.tsx``), or a directory segment is exactly one of
+# TEST_DIRECTORIES. A test file any production file reaches is production.
+TEST_NAME_SEGMENTS = frozenset({"test", "spec"})
+TEST_DIRECTORIES = frozenset({"__tests__", "__mocks__", "test", "tests"})
 # Middle segments of a sibling ``<stem>.<segment>.<ext>`` that no resolver
 # picks for ``<stem>``. Any other segment may be a platform or module suffix
 # (React Native's ``svc.ios.ts``, TypeScript ``moduleSuffixes``) that a
@@ -197,6 +204,14 @@ def _stem(path: str) -> str | None:
         if lower.endswith(extension):
             return path[: -len(extension)]
     return None
+
+
+def is_test_path(path: str) -> bool:
+    """Whether a display path names test code by the O-2 classifier."""
+    *directories, name = path.split("/")
+    if any(part in TEST_DIRECTORIES for part in directories):
+        return True
+    return any(part in TEST_NAME_SEGMENTS for part in name.split(".")[1:-1])
 
 
 def is_relative(specifier: str) -> bool:
@@ -393,32 +408,42 @@ class ModuleRun:
 
     index: ModuleIndex
     files: Mapping[str, ModuleFile]
+    # Modules whose exports a production file may write (every caller).
     tainted: frozenset[str] = frozenset()
-    # Run-wide causes (E5-3), each with the first file that has it.
+    # Run-wide causes (E5-3) in production files, each with the first file.
     shutoff: Mapping[str, str] = field(default_factory=dict)
+    # O-2: taints and run-wide causes that originate in test files apply
+    # only to callers in test files.
+    test_tainted: frozenset[str] = frozenset()
+    test_shutoff: Mapping[str, str] = field(default_factory=dict)
+    # Test-classified files no production file reaches.
+    test_scope: frozenset[str] = frozenset()
 
     @property
     def taint_all(self) -> bool:
         return bool(self.shutoff)
+
+    def caller_taints(self, importer: str) -> frozenset[str]:
+        """The tainted modules a call from ``importer`` must avoid."""
+        if importer in self.test_scope:
+            return self.tainted | self.test_tainted
+        return self.tainted
 
 
 def build_module_run(
     facts: Sequence[Mapping[str, Any]], language_filter: str | None
 ) -> ModuleRun:
     """Index the run's JS/TS files, the tainted modules and the run-wide
-    causes (E5-1, E5-3, E5-4)."""
+    causes (E5-1, E5-3, E5-4), scoped by the caller (O-2)."""
     from .engine import language_family
     from .js_modules import CAUSE_UNPARSED_FILE, CAUSE_UNRESOLVABLE_WRITER
 
     files: dict[str, ModuleFile] = {}
     taints: list[tuple[str, str]] = []
+    edges: dict[str, list[str]] = {}
     ns_uses: list[tuple[str, str | None, str, str, str]] = []
-    shutoff: dict[str, str] = {}
+    causes: list[tuple[str, str]] = []
     symlinks: set[str] = set()
-
-    def cause(name: str, path: str) -> None:
-        shutoff.setdefault(name, path)
-
     for item in sorted(facts, key=lambda fact: str(fact.get("path") or "")):
         scope = item.get("scope_facts") or {}
         language = scope.get("language")
@@ -432,11 +457,16 @@ def build_module_run(
         if not supported and not bindings:
             # No text to scan (the file could not be read): its writes are
             # unknown.
-            cause(CAUSE_UNPARSED_FILE, path)
+            causes.append((CAUSE_UNPARSED_FILE, path))
         for name in bindings.get("shutoff", ()):
-            cause(str(name), path)
+            causes.append((str(name), path))
         for specifier in bindings.get("taints", ()):
             taints.append((path, str(specifier)))
+        edges[path] = [
+            str(specifier)
+            for key in ("imports", "taints", "stars")
+            for specifier in bindings.get(key, ())
+        ]
         for use in bindings.get("ns_uses", ()):
             ns_uses.append((path, language, str(use[0]), str(use[1]), str(use[2])))
         files[path] = ModuleFile(
@@ -450,14 +480,19 @@ def build_module_run(
         )
     run_paths = sorted(str(item.get("path") or "") for item in facts)
     index = ModuleIndex.build(sorted(files), language_filter, run_paths, symlinks)
-    tainted: set[str] = set()
-    for path, specifier in taints:
+    production = _production_files(index, files, edges, symlinks)
+    tainted: dict[bool, set[str]] = {True: set(), False: set()}
+
+    def taint(path: str, specifier: str) -> None:
         targets = None if path in symlinks else lenient_targets(index, specifier, path)
         if targets is None:
             # The written module cannot be computed (E5-4).
-            cause(CAUSE_UNRESOLVABLE_WRITER, path)
-            continue
-        tainted.update(targets)
+            causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
+        else:
+            tainted[path in production].update(targets)
+
+    for path, specifier in taints:
+        taint(path, specifier)
     structural = ModuleRun(index, files)
     for path, language, specifier, member, kind in ns_uses:
         # E5-1 (A2/B-5): ``ns.name`` must be a verified export, and
@@ -465,23 +500,62 @@ def build_module_run(
         target, _ = resolve_specifier(index, specifier, path, language)
         verified = False
         if target is not None:
-            found = _lookup(structural, target, member, 0, (), taints=False)
+            found = _lookup(structural, target, member, 0, (), None)
             if isinstance(found, _Found):
                 outcome = found.outcome
                 verified = kind != "call" or (
                     outcome.get("outcome") == "local" and outcome.get("this") is False
                 )
         if not verified:
-            targets = lenient_targets(index, specifier, path)
-            if targets is None:
-                cause(CAUSE_UNRESOLVABLE_WRITER, path)
-            else:
-                tainted.update(targets)
-    for name, path in sorted(shutoff.items()):
-        logger.info(
-            "call resolution: Tier 2 is off for this run (%s in %s)", name, path
-        )
-    return ModuleRun(index, files, frozenset(tainted), dict(shutoff))
+            taint(path, specifier)
+    shutoff: dict[bool, dict[str, str]] = {True: {}, False: {}}
+    for name, path in causes:
+        shutoff[path in production].setdefault(name, path)
+    for in_production, found_causes in shutoff.items():
+        for name, path in sorted(found_causes.items()):
+            logger.info(
+                "call resolution: Tier 2 is off for %s (%s in %s, %s)",
+                "this run" if in_production else "callers in test files",
+                name,
+                path,
+                "production" if in_production else "test-scoped",
+            )
+    return ModuleRun(
+        index,
+        files,
+        frozenset(tainted[True]),
+        dict(shutoff[True]),
+        frozenset(tainted[False]),
+        dict(shutoff[False]),
+        frozenset(files) - production,
+    )
+
+
+def _production_files(
+    index: ModuleIndex,
+    files: Mapping[str, ModuleFile],
+    edges: Mapping[str, Sequence[str]],
+    symlinks: set[str],
+) -> frozenset[str]:
+    """O-2 promotion: the fixpoint of production files over the import
+    graph (static imports, re-exports, literal ``require``/``import()`` and
+    taints, each resolved leniently). Every file a production file reaches
+    is production, whatever its name. A specifier whose target cannot be
+    computed (outside the root, or from a symlinked file) promotes every
+    test file, which keeps the result sound."""
+    production = {path for path in files if not is_test_path(path)}
+    pending = sorted(production)
+    while pending:
+        path = pending.pop()
+        for specifier in edges.get(path, ()):
+            targets = (
+                None if path in symlinks else lenient_targets(index, specifier, path)
+            )
+            reached = set(files) if targets is None else set(targets)
+            for target in sorted(reached - production):
+                production.add(target)
+                pending.append(target)
+    return frozenset(production)
 
 
 @dataclass(frozen=True)
@@ -502,29 +576,36 @@ class _Unknown:
 _NOT_FOUND = None
 
 
-def run_tainted_reason(run: ModuleRun) -> str | None:
-    """``run-tainted:<cause>`` for the first run-wide cause, or ``None``."""
+def run_tainted_reason(run: ModuleRun, importer: str | None = None) -> str | None:
+    """``run-tainted:<cause>`` for the first run-wide cause that applies to a
+    call from ``importer`` (O-2: test-scoped causes apply only to callers in
+    test files), or ``None``."""
     from .js_modules import SHUTOFF_CAUSES
 
+    active = dict(run.shutoff)
+    if importer is not None and importer in run.test_scope:
+        active.update(run.test_shutoff)
     for name in SHUTOFF_CAUSES:
-        if name in run.shutoff:
+        if name in active:
             return f"run-tainted:{name}"
     return None
 
 
-def _module_reason(run: ModuleRun, path: str, taints: bool = True) -> str | None:
+def _module_reason(
+    run: ModuleRun, path: str, taints: frozenset[str] | None
+) -> str | None:
     """Why lookups in module ``path`` fail closed, or ``None``.
 
-    With ``taints`` off (verifying namespace uses), only the module's own
-    shape counts.
+    ``taints`` are the tainted modules for the caller (O-2); ``None`` when
+    verifying namespace uses, where only the module's own shape counts.
     """
     module = run.files.get(path)
     if module is None or not module.supported or module.opaque:
         return "export-not-found"
-    if not taints:
+    if taints is None:
         return None
     # The run-wide shutoff is checked once, in :func:`resolve_import`.
-    if module.commonjs or path in run.tainted:
+    if module.commonjs or path in taints:
         return "commonjs"
     return None
 
@@ -535,7 +616,7 @@ def _lookup(
     name: str,
     hops: int,
     seen: tuple[tuple[str, str], ...],
-    taints: bool = True,
+    taints: frozenset[str] | None,
 ) -> _Found | _Unknown | None:
     """Look up export ``name`` in module ``path`` (9.3).
 
@@ -576,7 +657,7 @@ def _entry_result(
     entry: Mapping[str, Any],
     hops: int,
     seen: tuple[tuple[str, str], ...],
-    taints: bool = True,
+    taints: frozenset[str] | None,
 ) -> Mapping[str, Any]:
     kind = entry.get("kind")
     if kind == "none":
@@ -627,7 +708,7 @@ def _follow(
     name: str,
     hops: int,
     seen: tuple[tuple[str, str], ...],
-    taints: bool = True,
+    taints: frozenset[str] | None,
 ) -> Mapping[str, Any]:
     target, failure = resolve_specifier(
         run.index, specifier, module.path, module.language
@@ -660,7 +741,7 @@ def resolve_import(
     (``ns.f()``); a namespace binding without one, or a named binding with
     one, is not resolved.
     """
-    shutoff = run_tainted_reason(run)
+    shutoff = run_tainted_reason(run, importer)
     if shutoff is not None:
         return _none(shutoff)
     if binding.get("attributes") is not None:
@@ -679,4 +760,4 @@ def resolve_import(
     )
     if target is None:
         return _none(failure or "module-not-found")
-    return _result(_lookup(run, target, name, 0, ()))
+    return _result(_lookup(run, target, name, 0, (), run.caller_taints(importer)))

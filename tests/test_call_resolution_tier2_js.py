@@ -1304,6 +1304,7 @@ def test_export_table_of_a_module(tmp_path: Path) -> None:
         "opaque": False,
         "symlink": False,
         "taints": ["./n"],
+        "imports": ["./n", "./r", "./s"],
         "ns_uses": [],
         "shutoff": [],
     }
@@ -2101,7 +2102,8 @@ def test_the_shutoff_is_logged(
     with caplog.at_level("INFO", logger="chunker.call_resolution.modules"):
         extract_symbol_graph(root, call_resolution=MODE)
     assert any(
-        "Tier 2 is off for this run (evaluator in x.js)" in record.getMessage()
+        "Tier 2 is off for this run (evaluator in x.js, production)"
+        in record.getMessage()
         for record in caplog.records
     )
 
@@ -2144,3 +2146,224 @@ def test_symlinked_files_change_the_on_mode_cache_key() -> None:
     assert adapter._build_boundary_cache_key(plain) != (
         adapter._build_boundary_cache_key(linked)
     )
+
+
+# ---------------------------------------------------------------------------
+# PR 5 fold 2: owner decision O-2 ("scope by caller"). Causes and taints that
+# originate in test files apply only to callers in test files; a test file a
+# production file reaches is production.
+
+TEST_USE = "import { t } from './svc';\nexport function v() { return t(); }\n"
+O2_TEST_CAUSES = {
+    "create-require": (
+        "x.test.ts",
+        "import { createRequire } from 'node:module';\nexport const r = createRequire;\n",
+        "none(run-tainted:module-system)",
+    ),
+    "non-literal-import": (
+        "x.test.ts",
+        "export const p = (n: string) => import(n);\n",
+        "none(run-tainted:dynamic-loader)",
+    ),
+    "constructor-route": (
+        "__tests__/x.ts",
+        "export const k = (() => 0).constructor('s');\n",
+        "none(run-tainted:evaluator)",
+    ),
+    "import-binding-write": (
+        "evil.test.js",
+        "import { t } from './svc';\nexport function w() { t = 9; }\n",
+        "none(commonjs)",
+    ),
+    "jest-spy-on-namespace": (
+        "svc.spec.ts",
+        "import * as ns from './svc';\njest.spyOn(ns, 't');\n",
+        "none(commonjs)",
+    ),
+    "rejected-specifier-taint": (
+        "test/x.js",
+        "require('../SVC.JS').t = 0;\n",
+        "none(commonjs)",
+    ),
+}
+
+
+def _edge_label(
+    root: Path, file: str
+) -> tuple[dict[str, Any], dict[str, Any], str | None]:
+    off, _, on, label = _run(root, file, "t")
+    return off, on, label
+
+
+@pytest.mark.parametrize("case", sorted(O2_TEST_CAUSES))
+def test_test_file_causes_are_scoped_to_test_callers(tmp_path: Path, case: str) -> None:
+    """O-2 (a), (b): a cause or taint in a test file leaves a production
+    caller's edge resolved and fails a test caller's edge closed."""
+    name, text, reason = O2_TEST_CAUSES[case]
+    root = _write(
+        tmp_path,
+        {**OTHERS, "svc.ts": SVC, "use.ts": USE, "use.test.ts": TEST_USE, name: text},
+    )
+    off, on, label = _edge_label(root, "use.ts")
+    assert off["resolution"] == "ambiguous"
+    assert on["resolution"] == "resolved", (case, label)
+    off, on, label = _edge_label(root, "use.test.ts")
+    assert on == off, case
+    assert label == reason, case
+
+
+def test_production_causes_stay_run_wide(tmp_path: Path) -> None:
+    """O-2 (f): a cause in a production file fails every caller closed."""
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "use.test.ts": TEST_USE,
+            "x.ts": "export const r = (n: string) => import(n);\n",
+        },
+    )
+    for file in ("use.ts", "use.test.ts"):
+        off, on, label = _edge_label(root, file)
+        assert on == off, file
+        assert label == "none(run-tainted:dynamic-loader)", file
+
+
+def test_a_test_file_production_reaches_is_promoted(tmp_path: Path) -> None:
+    """O-2 (c): a production file imports ``tests/helper.ts``, which holds a
+    run-wide cause, so production edges fail closed too."""
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE
+            + "import { h } from './tests/helper';\nexport const k = h;\n",
+            "tests/helper.ts": "export const h = 1;\neval('0');\n",
+        },
+    )
+    off, on, label = _edge_label(root, "use.ts")
+    assert on == off
+    assert label == "none(run-tainted:evaluator)"
+
+
+@pytest.mark.parametrize("link", ["import", "require", "reexport", "rejected"])
+def test_promotion_is_transitive(tmp_path: Path, link: str) -> None:
+    """O-2 (d): production -> ``tests/a.ts`` -> ``tests/b.ts`` (two hops,
+    through each kind of edge) promotes ``b``, whose cause is run-wide."""
+    second = {
+        "import": "import './b';\n",
+        "require": "require('./b');\n",
+        "reexport": "export * from './b';\n",
+        "rejected": "require('./B.JS?x');\n",
+    }[link]
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE + "import './tests/a';\n",
+            "tests/a.js": second,
+            "tests/b.js": "export const b = 1;\nconst r = require;\n",
+        },
+    )
+    off, on, label = _edge_label(root, "use.ts")
+    assert on == off, link
+    assert label == "none(run-tainted:dynamic-loader)", link
+
+
+def test_an_unreached_test_helper_stays_test_scoped(tmp_path: Path) -> None:
+    """The control for promotion: the same helper, imported only by a test
+    file, leaves production edges resolved."""
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "use.test.ts": TEST_USE + "import './tests/helper';\n",
+            "tests/helper.ts": "export const h = 1;\neval('0');\n",
+        },
+    )
+    off, on, label = _edge_label(root, "use.ts")
+    assert on["resolution"] == "resolved"
+    off, on, label = _edge_label(root, "use.test.ts")
+    assert label == "none(run-tainted:evaluator)"
+
+
+TEST_PATHS = [
+    "svc.test.ts",
+    "svc.spec.tsx",
+    "a/svc.test.d.ts",
+    "__tests__/svc.ts",
+    "a/__mocks__/svc.js",
+    "test/svc.ts",
+    "a/tests/b/svc.ts",
+]
+NOT_TEST_PATHS = [
+    "contest.ts",
+    "testing/svc.ts",
+    "latest.ts",
+    "my.tests.ts",
+    "Test/svc.ts",
+    "test.ts",
+    "spec.ts",
+    "svc.Test.ts",
+    "e2e/svc.ts",
+    "a/testdata/svc.ts",
+]
+
+
+@pytest.mark.parametrize("path", TEST_PATHS)
+def test_test_classifier_entries(path: str) -> None:
+    """O-2 (e): every entry of the closed classifier."""
+    assert modules.is_test_path(path)
+
+
+@pytest.mark.parametrize("path", NOT_TEST_PATHS)
+def test_test_classifier_near_misses(path: str) -> None:
+    assert not modules.is_test_path(path)
+
+
+def test_test_classifier_is_closed() -> None:
+    assert frozenset({"test", "spec"}) == modules.TEST_NAME_SEGMENTS
+    assert (
+        frozenset({"__tests__", "__mocks__", "test", "tests"})
+        == modules.TEST_DIRECTORIES
+    )
+
+
+def test_the_shutoff_log_names_its_scope(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    root = _write(
+        tmp_path,
+        {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.test.js": "eval(s);\n"},
+    )
+    with caplog.at_level("INFO", logger="chunker.call_resolution.modules"):
+        extract_symbol_graph(root, call_resolution=MODE)
+    assert any(
+        "Tier 2 is off for callers in test files (evaluator in x.test.js, "
+        "test-scoped)" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+def test_an_uncomputable_production_edge_promotes_every_test_file(
+    tmp_path: Path,
+) -> None:
+    """A production specifier whose target cannot be computed (it leaves the
+    root) may name any file, so every test file becomes production."""
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE + "import '../outside/x';\n",
+            "x.test.js": "eval(s);\n",
+        },
+    )
+    off, on, label = _edge_label(root, "use.ts")
+    assert on == off
+    assert label == "none(run-tainted:evaluator)"

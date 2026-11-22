@@ -293,8 +293,13 @@ unless the segment is on a closed list of names no resolver uses (`test`,
 object: a code evaluator, a non-literal `require` or `import()`, `createRequire`,
 `mainModule`, `getBuiltinModule` or an import of `module`, the CommonJS
 `module` object handed on, or an unparsed file whose text spells one. Any such
-file in the run turns Tier 2 off for the whole run, and the cause is logged.
-The output then equals `"structural"`. Python imports prove nothing yet.
+file in production code turns Tier 2 off for the whole run, and the cause is
+logged. Such a file in test code (a basename with a `.test.` or `.spec.`
+segment, or a `__tests__`, `__mocks__`, `test` or `tests` directory) turns
+Tier 2 off only for calls made from test files, and so does any module write
+or escape spelled in test code. A test-named file that production code
+imports, directly or transitively, counts as production.
+Wherever Tier 2 is off, the output equals `"structural"`. Python imports prove nothing yet.
 
 A narrowed edge changes only `target`, `resolution`, `candidates` and
 `metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and
