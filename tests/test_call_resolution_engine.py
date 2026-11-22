@@ -166,6 +166,8 @@ NAMED_TIER1_PY_TESTS = (
     "test_fold17_695_parenthesized_callees_keep_their_off_mode_edge",
     # Fold 18: writer aliases, namespace mutators, operator writers, |=.
     "test_fold18_695_writer_aliases_keep_their_off_mode_edge",
+    # Fold 19 (E-19): computed writes closed at the write site.
+    "test_fold19_695_computed_writes_keep_their_off_mode_edge",
 )
 # Expected rows per plan PR (10.1): a row that loses its finalization fails
 # the pin (#695 panel B7).
@@ -643,7 +645,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "20"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "21"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",

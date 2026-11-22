@@ -3500,7 +3500,9 @@ def test_codex_4654363963_end_to_end(tmp_path: Path) -> None:
         "    class K:\n        del mod.__helper",
         "    class K:\n        mod.__helper += 1",
         "    class K:\n        def m(self):\n            mod.__helper = replacement",
-        "    class K:\n        f = lambda: setattr(mod, 'x', 1) or mod.__dict__",
+        # (Control below. Since fold 19 a namespace dict escaping through a
+        # lambda body fails closed, so the control reads it instead.)
+        "    class K:\n        f = lambda: setattr(mod, 'x', 1) or mod.__dict__.get('x')",
         "    class Outer:\n        class K:\n            mod.__helper = replacement",
         "    class K:\n        g = (lambda: [mod for mod.__helper in [replacement]])",
         "    class K:\n        def m(self):\n            global __helper\n            mod.__helper = 1",
@@ -6344,7 +6346,33 @@ def test_fold16_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) ->
     assert _helper_edge(on) == _helper_edge(off), case
 
 
-@pytest.mark.parametrize("case", sorted(FOLD16_695))
+# Since fold 19 (W-1) a writer with a computed name fails closed on any
+# receiver, so these S-2 controls, which keep the tree's computed write, fail
+# closed too; the rest still resolve.
+FOLD16_COMPUTED_CONTROLS = frozenset(
+    {
+        "ca40_func_param_name",
+        "ca40_generic_alias",
+        "ca40_generic_class",
+        "ca40_in_function",
+        "ca40_instance_class",
+        "ca40_kw_dict_items",
+        "ca40_nested_class",
+        "ca40_set_name",
+        "ca40_var_name",
+        "ta39_alias_class_dict_update",
+    }
+)
+
+
+@pytest.mark.parametrize("case", sorted(FOLD16_COMPUTED_CONTROLS))
+def test_fold16_computed_write_controls_fail_closed(tmp_path: Path, case: str) -> None:
+    root = _tree(tmp_path, {"a.py": _fold16_control(case), "b.py": OTHER})
+    off, on = _off_on(root)
+    assert _helper_edge(on) == _helper_edge(off), case
+
+
+@pytest.mark.parametrize("case", sorted(set(FOLD16_695) - FOLD16_COMPUTED_CONTROLS))
 def test_fold16_controls_still_resolve(tmp_path: Path, case: str) -> None:
     source = _fold16_control(case)
     assert "type X" not in source and "__annotate_func__" not in source, case
@@ -6556,13 +6584,238 @@ def test_namespace_subscript_writes_were_already_caught(stmt: str) -> None:
         # file that names no namespace dict.
         "import operator\n    cache = {}\n    operator.setitem(cache, 'x', 1)",
         "import operator, functools\n    f = functools.partial(operator.setitem, {})",
-        # Defining ``__setattr__`` and calling the writer directly.
+        # Defining ``__setattr__`` and calling the writer directly with a
+        # constant name (a computed name fails closed since fold 19, W-1).
         "class K:\n        def __setattr__(self, k, v):\n"
-        "            super().__setattr__(k, v)",
-        # A namespace dict read, and a literal write of another name.
-        "n = len(mod.__dict__)\n    mod.__dict__.update({'other': replacement})",
+        "            super().__setattr__('x', v)",
+        # A namespace dict read, and a literal write of another name (passing
+        # it to a call escapes since fold 19, W-2).
+        "n = mod.__dict__.get('x')\n    mod.__dict__.update({'other': replacement})",
     ],
 )
 def test_ordinary_mutator_aliases_still_resolve(stmt: str) -> None:
     source = CODEX_4656123247.format(stmt=stmt)
     assert proof_text(source) == ["def helper():\n    return 1"], stmt
+
+
+# ---------------------------------------------------------------------------
+# Fold 19 (the president's re-check at 1d6cbb17, U-3..U-5, and executive
+# ruling E-19): computed writes are closed at the write site. B-1/W-4
+# constant strings through comments, parentheses and constant f-strings;
+# B-2 unbound mutators, mutators taken by name, conditional/boolean/tuple/
+# match aliases; W-1 a writer with a computed name on any receiver; W-2 a
+# namespace dict that escapes; W-3 ``unittest.mock`` patches with a computed
+# target. The probe trees are the president's own (``mine/p44.py``..``p47.py``),
+# each wrong at 1d6cbb17 under a runtime trace.
+
+FOLD19_T = (
+    "def helper(*a):\n    return 1\n\n\n"
+    "def replacement(*a):\n    return 2\n\n\n"
+    "def run(mod):\n    {stmt}\n    return helper()\n"
+)
+FOLD19_H = "def helper(*a):\n    return 1\n\n\ndef replacement(*a):\n    return 2\n\n\n"
+FOLD19_R = "\n\ndef run():\n    return helper()\n"
+FOLD19_DECOY = "def helper(*a):\n    return 3\n"
+
+FOLD19_RUN = {
+    "f17_comment_concat": "setattr(mod, 'hel'  # c\n        'per', replacement)",
+    "f17_comment_plus": "setattr(mod, 'hel' + ('per'  # c\n        ), replacement)",
+    "f18_attrgetter_update": "import operator\n    operator.attrgetter('__dict__.update')(mod)({'helper': replacement})",
+    "f18_attrgetter_update_D": "import operator\n    D = dict(helper=replacement)\n    operator.attrgetter('__dict__.update')(mod)(D)",
+    "f18_chainmap": "import collections\n    D = dict(helper=replacement)\n    collections.ChainMap(mod.__dict__).update(D)",
+    "f18_chainmap_k": "import collections\n    k = 'helper'\n    collections.ChainMap(mod.__dict__)[k] = replacement",
+    "f18_comprehension": "D = dict(helper=replacement)\n    [d.update(D) for d in [mod.__dict__]]",
+    "f18_conditional_recv": "D = dict(helper=replacement)\n    (mod.__dict__ if mod else {}).update(D)",
+    "f18_default_recv": "D = dict(helper=replacement)\n    def g(d=mod.__dict__):\n        d.update(D)\n    g()",
+    "f18_dict_ior": "D = dict(helper=replacement)\n    dict.__ior__(mod.__dict__, D)",
+    "f18_dict_or_eq_alias": "D = dict(helper=replacement)\n    x = [mod.__dict__]\n    x[0] |= D",
+    "f18_dict_update": "D = dict(helper=replacement)\n    dict.update(mod.__dict__, D)",
+    "f18_for_target": "D = dict(helper=replacement)\n    for d in [mod.__dict__]:\n        d.update(D)",
+    "f18_getattr_update_D": "D = dict(helper=replacement)\n    getattr(mod.__dict__, 'update')(D)",
+    "f18_inplace_or": "import operator\n    D = dict(helper=replacement)\n    operator.__ior__(mod.__dict__, D)",
+    "f18_lambda_recv": "D = dict(helper=replacement)\n    (lambda d: d.update(D))(mod.__dict__)",
+    "f18_list_elem": "D = dict(helper=replacement)\n    [mod.__dict__][0].update(D)",
+    "f18_match_capture": "D = dict(helper=replacement)\n    match mod.__dict__:\n        case d:\n            d.update(D)",
+    "f18_methodcaller_update": "import operator\n    operator.methodcaller('update', {'helper': replacement})(mod.__dict__)",
+    "f18_methodcaller_update_ref": "import operator\n    D = {'helper': replacement}\n    operator.methodcaller('update', D)(mod.__dict__)",
+    "f18_or_recv": "D = dict(helper=replacement)\n    (mod.__dict__ or {}).update(D)",
+    "f18_setattr_computed": "n = 'helper'\n    setattr(mod, n, replacement)",
+    "f18_splat_all_var": "t = (mod, 'helper', replacement)\n    setattr(*t)",
+    "f18_splat_var": "t = ('helper', replacement)\n    setattr(mod, *t)",
+    "f18_tuple_unpack": "D = dict(helper=replacement)\n    d, = (mod.__dict__,)\n    d.update(D)",
+    "f18_tuple_unpack2": "D = dict(helper=replacement)\n    d, e = mod.__dict__, 0\n    d.update(D)",
+    "f18_type_update": "D = dict(helper=replacement)\n    type(mod.__dict__).update(mod.__dict__, D)",
+    "f18_with_as": "import contextlib\n    D = dict(helper=replacement)\n    with contextlib.nullcontext(mod.__dict__) as d:\n        d.update(D)",
+    "al_cond_assign": "D = dict(helper=replacement)\n    d = mod.__dict__ if mod else {}\n    d.update(D)",
+    "al_getattr_setattr_comment": "getattr(mod, '__set'  # c\n        'attr__')('helper', replacement)",
+    "al_pkgdict_values": "D = dict(helper=replacement)\n    import collections\n    collections.ChainMap(mod.__dict__).maps[0].update(D)",
+    "mp_patch_dict_handed": "from unittest import mock\n    mock.patch.dict(mod.__dict__, helper=replacement).start()",
+    "mp_patch_dict_handed_D": "from unittest import mock\n    D = dict(helper=replacement)\n    mock.patch.dict(mod.__dict__, D).start()",
+    "mp_patch_object_handed": "from unittest import mock\n    mock.patch.object(mod, 'helper', replacement).start()",
+}
+FOLD19_MODULE = {
+    "acq_collections_sys_modules": "import collections\nm = collections._sys.modules[helper.__module__]\nn = 'helper'\nsetattr(m, n, replacement)\n",
+    "acq_comment_globals": "g = getattr(helper, '__glo'  # c\n    'bals__')\nn = 'helper'\ng[n] = replacement\n",
+    "acq_logging_resolve": "import logging.config\nm = logging.config._resolve(__name__)\nn = 'helper'\nsetattr(m, n, replacement)\n",
+    "acq_mock_patch_dict": "from unittest import mock\nD = dict(helper=replacement)\nmock.patch.dict(__name__ + '.__dict__', D).start()\n",
+    "acq_mock_patch_dict_lit": "from unittest import mock\nmock.patch.dict(__name__ + '.__dict__', {'helper': replacement}).start()\n",
+    "acq_mock_patch_fstring": "from unittest import mock\nmock.patch(f'{__name__}.helper', replacement).start()\n",
+    "acq_mock_patch_module_attr": "from unittest import mock\nmock.patch(helper.__module__ + '.' + 'helper', replacement).start()\n",
+    "acq_mock_patch_name_concat": "from unittest import mock\nmock.patch(__name__ + '.helper', replacement).start()\n",
+    "acq_mock_patch_object": "from unittest import mock\nimport pkgutil\nmock.patch.object(pkgutil.resolve_name(__name__), 'helper', replacement).start()\n",
+    "acq_pickle_find_class": "import pickle, io\nm = pickle.Unpickler(io.BytesIO()).find_class('pkgutil', 'resolve_name')(__name__)\nn = 'helper'\nsetattr(m, n, replacement)\n",
+    "acq_pydoc_locate_module": "import pydoc\nm = pydoc.locate(run.__module__) if 0 else pydoc.locate(helper.__module__)\nn = 'helper'\nsetattr(m, n, replacement)\n",
+    "acq_pydoc_safeimport": "import pydoc\nm = pydoc.safeimport(__name__)\nn = 'helper'\nsetattr(m, n, replacement)\n",
+    "acq_resolve_name_module": "import pkgutil\nm = pkgutil.resolve_name(helper.__module__)\nn = 'helper'\nsetattr(m, n, replacement)\n",
+    "acq_resolve_name_name": "import pkgutil\nm = pkgutil.resolve_name(__name__)\nn = 'helper'\nsetattr(m, n, replacement)\n",
+    "acq_spec_name": "import pkgutil\nm = pkgutil.resolve_name(__spec__.name)\nn = 'helper'\nsetattr(m, n, replacement)\n",
+    "cs_concat_comment": "g = getattr(helper, '__glo'  # c\n    'bals__')\nn = 'helper'\ng[n] = replacement\n",
+    "cs_concat_comment_paren": "g = getattr(helper, ('__glo'  # c\n    'bals__'))\nn = 'helper'\ng[n] = replacement\n",
+    "cs_fstring_const_interp": "g = getattr(helper, f\"__glo{'bals'}__\")\nn = 'helper'\ng[n] = replacement\n",
+    "cs_plus_paren_comment": "g = getattr(helper, '__glo' + ('bals__'  # c\n    ))\nn = 'helper'\ng[n] = replacement\n",
+}
+FOLD19_TREES = {
+    "acq_pkg_getattr_rpartition": {
+        "pkg/__init__.py": "",
+        "pkg/a.py": "def helper(*a):\n    return 1\n\n\ndef replacement(*a):\n    return 2\n\n\nimport pkg\n\ndef run():\n    m = getattr(pkg, __name__.rpartition('.')[2])\n    n = 'helper'\n    setattr(m, n, replacement)\n    return helper()\n",
+    },
+    "acq_pkg_modname_module": {
+        "pkg/__init__.py": "",
+        "pkg/a.py": "def helper(*a):\n    return 1\n\n\ndef replacement(*a):\n    return 2\n\n\nimport pkg\n\ndef run():\n    m = getattr(pkg, helper.__module__.split('.')[-1])\n    n = 'helper'\n    setattr(m, n, replacement)\n    return helper()\n",
+    },
+    "acq_pkg_rel_parent": {
+        "pkg/__init__.py": "",
+        "pkg/a.py": "def helper(*a):\n    return 1\n\n\ndef replacement(*a):\n    return 2\n\n\nfrom . import __name__ as _x\nimport pkgutil\n\ndef run():\n    m = pkgutil.resolve_name(__package__ + ':' + helper.__module__.rpartition('.')[2])\n    n = 'helper'\n    setattr(m, n, replacement)\n    return helper()\n",
+    },
+    "pk_parent_dict_values": {
+        "pkg/__init__.py": "",
+        "pkg/a.py": "def helper(*a):\n    return 1\n\n\ndef replacement(*a):\n    return 2\n\n\nimport pkg\n\ndef run():\n    for m in list(pkg.__dict__.values()):\n        if getattr(m, '__file__', None) == __file__:\n            n = 'helper'\n            setattr(m, n, replacement)\n    return helper()\n",
+    },
+}
+
+
+# One case per W rule beyond the probes (W-1 spellings, W-2 positions, W-3
+# import forms), in ``run(mod)`` form.
+FOLD19_RULES = {
+    # B-2a: ``operator.__iadd__`` (and ``__ior__``) with a literal mapping
+    # records its keys on any receiver.
+    "b2a-iadd-any-receiver": "import operator\n"
+    "    operator.__iadd__(mod, {'helper': replacement})",
+    # B-2c: ``methodcaller`` with a mutator name in a file naming a
+    # namespace dict, applied without passing the dict.
+    "b2c-methodcaller": "x = mod.__dict__.get('x')\n    import operator\n"
+    "    operator.methodcaller('update', dict(helper=replacement))(mod)",
+    "w1-bound": "n = 'helper'\n    mod.__setattr__(n, replacement)",
+    "w1-unbound": "n = 'helper'\n    object.__setattr__(mod, n, replacement)",
+    "w1-delattr": "n = 'helper'\n    delattr(mod, n)",
+    "w1-parenthesized": "n = 'helper'\n    (setattr)(mod, n, replacement)",
+    "w2-return": "def g():\n        return mod.__dict__\n    g().update(dict(helper=replacement))",
+    "w2-yield": "def g():\n        yield mod.__dict__\n    next(g()).update(dict(helper=replacement))",
+    "w2-attribute-target": "class K:\n        pass\n    K.ns = mod.__dict__\n"
+    "    K.ns.update(dict(helper=replacement))",
+    "w2-keyword": "def g(ns):\n        ns.update(dict(helper=replacement))\n    g(ns=mod.__dict__)",
+    "w2-walrus-argument": "def g(ns):\n        ns.update(dict(helper=replacement))\n"
+    "    g(d := mod.__dict__)",
+    "b2-walrus-receiver": "(d := mod.__dict__).update(dict(helper=replacement))",
+    "w3-decorator": "from unittest import mock\n"
+    "    @mock.patch(mod.__name__ + '.helper', replacement)\n    def g():\n        pass",
+    "w3-from-import-alias": "from unittest.mock import patch as p\n"
+    "    p(mod.__name__ + '.helper', replacement).start()",
+    "w3-dotted": "import unittest.mock\n"
+    "    unittest.mock.patch(mod.__name__ + '.helper', replacement).start()",
+    "w3-handed-on": "from unittest import mock\n    p = mock.patch\n"
+    "    p(mod.__name__ + '.helper', replacement).start()",
+    "w3-object-constant": "from unittest import mock\n"
+    "    mock.patch.object(mod, 'helper', replacement).start()",
+    "w3-multiple": "from unittest import mock\n"
+    "    mock.patch.multiple(mod, helper=replacement).start()",
+}
+
+
+def _fold19_edge(graph: dict[str, Any], target: str) -> dict[str, Any]:
+    (edge,) = (
+        edge
+        for edge in graph["relationships"]
+        if edge["type"] == "calls"
+        and edge["file"] == target
+        and edge["reference"] == "helper"
+    )
+    return edge
+
+
+def _fold19_tree(case: str) -> tuple[dict[str, str], str]:
+    if case in FOLD19_RUN:
+        return {"a.py": FOLD19_T.format(stmt=FOLD19_RUN[case])}, "a.py"
+    if case in FOLD19_RULES:
+        return {"a.py": FOLD19_T.format(stmt=FOLD19_RULES[case])}, "a.py"
+    if case in FOLD19_MODULE:
+        return {"a.py": FOLD19_H + FOLD19_MODULE[case] + FOLD19_R}, "a.py"
+    files = dict(FOLD19_TREES[case])
+    return files, "pkg/a.py"
+
+
+FOLD19_CASES = sorted(
+    set(FOLD19_RUN) | set(FOLD19_MODULE) | set(FOLD19_TREES) | set(FOLD19_RULES)
+)
+
+
+@pytest.mark.parametrize("case", FOLD19_CASES)
+def test_fold19_695_computed_writes_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    files, target = _fold19_tree(case)
+    files["b.py"] = FOLD19_DECOY
+    root = _tree(tmp_path, files)
+    off, on = _off_on(root)
+    edge = _fold19_edge(off, target)
+    assert edge["resolution"] == "ambiguous", case
+    assert _fold19_edge(on, target) == edge, case
+
+
+@pytest.mark.parametrize(
+    "stmt",
+    [
+        # Constant-name writers on ordinary receivers record one name.
+        "class K:\n        pass\n    setattr(K, 'x', 1)",
+        "class K:\n        pass\n    K().__setattr__('x', 1)",
+        "class K:\n        pass\n    object.__setattr__(K(), 'x', 1)",
+        # Ordinary ``.update`` aliases and computed writes elsewhere.
+        "d = {}\n    u = d.update\n    u({'helper': 1})",
+        "k = 'helper'\n    cache = {}\n    cache[k] = 1",
+        # Namespace dict reads.
+        "x = mod.__dict__.get('x')\n    y = 'x' in mod.__dict__\n"
+        "    z = list(mod.__dict__.keys())",
+        # ``unittest.mock`` with constant targets elsewhere, and a ``patch``
+        # method that is not ``unittest.mock``'s.
+        "from unittest import mock\n    mock.patch('os.getcwd', len).start()",
+        "from unittest import mock\n    class K:\n        x = 1\n"
+        "    mock.patch.object(K, 'x', 2).start()",
+        "class S:\n        def patch(self, url):\n            pass\n"
+        "    u = 'http://x'\n    S().patch(u)",
+        # An f-string with a computed interpolation is no constant.
+        "n = 'x'\n    v = getattr(mod, f'{n}')",
+    ],
+)
+def test_fold19_controls_still_resolve(stmt: str) -> None:
+    source = FOLD19_T.format(stmt=stmt)
+    assert proof_text(source) == ["def helper(*a):\n    return 1"], stmt
+
+
+@pytest.mark.parametrize(
+    ("text", "value"),
+    [
+        ("'__glo'  # c\n  'bals__'", "__globals__"),
+        ("('__glo'  # c\n  'bals__')", "__globals__"),
+        ("'__glo' + ('bals__'  # c\n  )", "__globals__"),
+        ("f\"__glo{'bals'}__\"", "__globals__"),
+        ('f\'a{{b}}{"c" "d"}\'', "a{b}cd"),
+        ("f'{x}'", None),
+        ("f'{\"c\"!r}'", None),
+        ("f'{\"c\":>3}'", None),
+    ],
+)
+def test_fold19_constant_strings(text: str, value: str | None) -> None:
+    source = f"x = ({text})\n".encode()
+    root = get_parser("python").parse(source).root_node
+    right = root.named_children[0].named_children[0].child_by_field_name("right")
+    assert py_scope._constant_string(right, source) == value
