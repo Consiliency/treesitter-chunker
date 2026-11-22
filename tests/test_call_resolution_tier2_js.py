@@ -1316,6 +1316,7 @@ def test_export_table_of_a_module(tmp_path: Path) -> None:
         "taints": ["./n"],
         "imports": ["./n", "./r", "./s"],
         "uncomputable": False,
+        "filename_taints": [],
         "ns_uses": [],
         "shutoff": [],
     }
@@ -2873,3 +2874,270 @@ def test_uncomputable_writer_specifiers(tmp_path: Path) -> None:
         off, _, on, label = _run(root, "use.ts", "t")
         assert on == off, name
         assert label == "none(run-tainted:unresolvable-writer)", name
+
+
+# ---------------------------------------------------------------------------
+# PR 5 fold 5 (the president's re-check at 3344e9db, P5-13, P5-14, P5-16,
+# P5-18). Trees after ``president/rt-p13-*``: ``use.ts`` imports ``t`` from
+# ``./lib/svc`` and calls the writer.
+
+LIB_TREE = {
+    "lib/svc.ts": 'export function t() { return "lib/svc.t"; }\n',
+    "other.ts": 'export function t() { return "other.t"; }\n',
+    "use.ts": (
+        "import { t } from './lib/svc';\nimport { patch } from './app';\n"
+        "export function u() { return t(); }\n"
+    ),
+}
+PATCH = "export function patch() { r('./lib/svc').t = () => 'evil'; }\n"
+P5_13_NEAR_MISSES = {
+    "var-filename": (
+        {
+            "app.ts": CR + "import * as path from 'node:path';\n"
+            "var __filename = path.join(__dirname, 'lib', 'x.js');\n"
+            "const r = createRequire(__filename);\n" + PATCH
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+    "assign-filename": (
+        {
+            "app.ts": CR
+            + "__filename = 'elsewhere/x.js';\nconst r = createRequire(__filename);\n"
+            + PATCH
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+    "commonjs-assign-filename": (
+        {
+            "app.ts": CR
+            + "__filename = 'elsewhere/x.js';\nconst r = createRequire(__filename);\n"
+            + PATCH
+            + "exports.k = 1;\n"
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+    "filename-written-late": (
+        {
+            "app.ts": CR + "const r = createRequire(__filename);\n"
+            "function f() { __filename = 'elsewhere/x.js'; }\nf();\n" + PATCH
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+    "filename-destructured": (
+        {
+            "app.ts": CR + "const r = createRequire(__filename);\n"
+            "export function f(o: any) { ({ __filename } = o); }\n" + PATCH
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+    "import-filename": (
+        {
+            "paths.ts": "export const f = 'lib/x.js';\n",
+            "app.ts": CR + "import { f as __filename } from './paths';\n"
+            "const r = createRequire(__filename);\n" + PATCH,
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+    "const-filename": (
+        {
+            "app.ts": CR
+            + "const __filename = 'lib/x.js';\nconst r = createRequire(__filename);\n"
+            + PATCH
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+    "meta-write": (
+        {
+            "app.ts": CR
+            + "(import.meta as any).url = new URL('../lib/x.js', import.meta.url).href;\n"
+            "const r = createRequire(import.meta.url);\n" + PATCH
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+    "meta-destructured-write": (
+        {
+            "app.ts": CR
+            + "export function g(o: any) { ({ u: (import.meta as any).url } = o); }\n"
+            "const r = createRequire(import.meta.filename);\n" + PATCH
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+    "global-filename-writer": (
+        {
+            "app.ts": CR + "const r = createRequire(__filename);\n" + PATCH,
+            "setg.ts": "export {};\n(globalThis as any).__filename = 'lib/x.js';\n",
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+    "script-var-filename-writer": (
+        {
+            "app.ts": CR + "const r = createRequire(__filename);\n" + PATCH,
+            "setg.js": "var __filename = 'lib/x.js';\n",
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+    "global-object-escape-writer": (
+        {
+            "app.ts": CR + "const r = createRequire(__filename);\n" + PATCH,
+            "setg.ts": "export const g: any = globalThis;\n",
+        },
+        "none(run-tainted:unresolvable-writer)",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(P5_13_NEAR_MISSES))
+def test_p5_13_bases_that_may_name_another_file(tmp_path: Path, case: str) -> None:
+    files, reason = P5_13_NEAR_MISSES[case]
+    root = _write(tmp_path, {**LIB_TREE, **files})
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert off["resolution"] == "ambiguous"
+    assert on == off, case
+    assert label == reason, case
+
+
+def test_p5_13_unwritten_import_meta_url_taints_exactly(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        {
+            **LIB_TREE,
+            "app.ts": CR + "const r = createRequire(import.meta.url);\n" + PATCH,
+        },
+    )
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == "none(commonjs)"
+
+
+@pytest.mark.parametrize("writer", [False, True], ids=["no-writer", "global-writer"])
+def test_p5_13_commonjs_free_filename_taints_exactly(
+    tmp_path: Path, writer: bool
+) -> None:
+    """A free, unwritten ``__filename`` in a CommonJS file is the wrapper's
+    parameter: it taints ``./lib/svc`` exactly, whether or not another file
+    writes a global ``__filename`` (P5-13 (c))."""
+    files = {
+        "app.ts": CR
+        + "const r = createRequire(__filename);\n"
+        + PATCH
+        + "exports.k = 1;\n"
+    }
+    if writer:
+        files["setg.ts"] = "export {};\n(globalThis as any).__filename = 'x.js';\n"
+    root = _write(tmp_path, {**LIB_TREE, **files})
+    facts = extract_symbol_facts_for_file(root / "app.ts", root, call_resolution=MODE)
+    bindings = facts["scope_facts"]["module_bindings"]
+    assert bindings["commonjs"] is True
+    assert bindings["filename_taints"] == []
+    assert "./lib/svc" in bindings["taints"]
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == "none(commonjs)"
+
+
+def test_p5_13_esm_free_filename_taints_without_writers(tmp_path: Path) -> None:
+    """The ES-module case: no run file writes a global ``__filename``, so the
+    conditional taint applies."""
+    root = _write(
+        tmp_path,
+        {**LIB_TREE, "app.ts": CR + "const r = createRequire(__filename);\n" + PATCH},
+    )
+    facts = extract_symbol_facts_for_file(root / "app.ts", root, call_resolution=MODE)
+    assert facts["scope_facts"]["module_bindings"]["filename_taints"] == ["./lib/svc"]
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == "none(commonjs)"
+
+
+# P5-14: a production specifier through a skipped directory.
+SKIPDIR_TREE = {
+    "other.ts": "export function t() { return 'o'; }\n",
+    "svc.ts": "export function t() { return 'svc.t'; }\n",
+    "tests/w.ts": "import * as ns from '../svc';\n(ns as any).t = () => 'evil';\n",
+    "use.ts": (
+        "import { t } from './svc';\nimport './app';\n"
+        "export function u() { return t(); }\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("skipped", ["build", "node_modules"])
+def test_p5_14_specifier_through_a_skipped_directory(
+    tmp_path: Path, skipped: str
+) -> None:
+    root = _write(
+        tmp_path, {**SKIPDIR_TREE, "app.ts": f"import './{skipped}/helpers/w';\n"}
+    )
+    (root / skipped).mkdir()
+    _symlink_or_skip(root / skipped / "helpers", str(Path("..") / "tests"))
+    assert not has_directory_symlink(root)
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off, skipped
+    assert label == "none(commonjs)", skipped
+
+
+def test_p5_14_control_gen_link_fails_closed_through_the_flag(tmp_path: Path) -> None:
+    root = _write(tmp_path, {**SKIPDIR_TREE, "app.ts": "import './gen/helpers/w';\n"})
+    (root / "gen").mkdir()
+    _symlink_or_skip(root / "gen" / "helpers", str(Path("..") / "tests"))
+    assert has_directory_symlink(root)
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == "none(commonjs)"
+
+
+def test_p5_14_write_through_a_skipped_directory_is_unresolvable(
+    tmp_path: Path,
+) -> None:
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.js": "require('./dist/a').t = 0;\n",
+        },
+    )
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off
+    assert label == "none(run-tainted:unresolvable-writer)"
+
+
+@pytest.mark.parametrize(
+    "specifier",
+    ["FILE:///abs/tests/w.js", "File:///abs/w.js", "data:text/javascript,import 'x'"],
+)
+def test_p5_18_schemes_are_case_insensitive_and_data_is_uncomputable(
+    tmp_path: Path, specifier: str
+) -> None:
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "app.ts": f'import "{specifier}";\n',
+            "x.test.js": "eval(s);\n",
+        },
+    )
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off, specifier
+    assert label == "none(run-tainted:evaluator)", specifier
+    assert (
+        modules.lenient_targets(modules.ModuleIndex.build([], None), specifier, "x.js")
+        is None
+    )
+
+
+def test_p5_16_directory_junctions_count_as_links(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Windows directory junction is not a symlink to ``is_symlink()``;
+    ``has_directory_symlink`` also asks ``is_junction()``."""
+    root = _write(tmp_path, {"a/x.ts": "export {};\n", "b/y.ts": "export {};\n"})
+    assert not has_directory_symlink(root)
+    original = Path.is_junction
+    monkeypatch.setattr(
+        Path, "is_junction", lambda self: self.name == "b" or original(self)
+    )
+    assert has_directory_symlink(root)

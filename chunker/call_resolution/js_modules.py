@@ -254,6 +254,8 @@ class _ModuleFacts:
         # Edges whose targets cannot be computed (fold 4): a production file
         # with one promotes every test file (O-2).
         self.uncomputable = False
+        # P5-13: literal targets of ``createRequire(__filename)``.
+        self.filename_taints: set[str] = set()
         self.ns_uses: set[tuple[str, str, str]] = set()
         # Run-wide causes (E5-3): routes that may rewrite any module's
         # exports object. The Tier 1 ``*`` wildcard alone is not one.
@@ -857,7 +859,12 @@ class _ModuleFacts:
             if literal is None or literal in _MODULE_SYSTEM_SPECIFIERS:
                 return False
             literals.append(literal)
-        if own_base:
+        if own_base == "filename":
+            # P5-13 (c): a free ``__filename`` is the CommonJS wrapper's
+            # parameter in a CommonJS file; elsewhere the engine taints these
+            # only if no run file can write a global ``__filename``.
+            self.filename_taints.update(literals)
+        elif own_base:
             # A literal call loads its target like ``require``: it taints it.
             self.taints.update(literals)
         elif literals:
@@ -866,10 +873,14 @@ class _ModuleFacts:
             self.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
         return True
 
-    def _own_file_base(self, call: Any) -> bool:
-        """P5-1: the closed list of createRequire bases that name the
-        importer's own file: ``import.meta.url``, ``import.meta.filename``
-        and ``__filename`` (free, or bound only at the top level)."""
+    def _own_file_base(self, call: Any) -> str | bool:
+        """P5-1/P5-13: the closed list of createRequire bases that name the
+        importer's own file. ``import.meta.url`` and ``import.meta.filename``
+        when the file writes no ``import.meta`` property (``True``);
+        ``__filename`` when the lookup finds no binding of it in the file
+        and nothing in the file writes it (``"filename"``: the engine also
+        requires that no run file can write a global ``__filename`` unless
+        the file is CommonJS)."""
         arguments = call.child_by_field_name("arguments")
         named = (
             [child for child in arguments.named_children if child.type != "comment"]
@@ -884,9 +895,16 @@ class _ModuleFacts:
         if base is None:
             return False
         if base.type == "identifier":
-            return _text(base, self.source) == "__filename" and self._free_or_top(
-                base, "__filename"
-            )
+            if (
+                _text(base, self.source) != "__filename"
+                or self.analysis._binding_scope(base, "__filename") is not None
+                or any(
+                    _text(target, self.source) == "__filename"
+                    for target in self.analysis.assignment_targets
+                )
+            ):
+                return False
+            return "filename"
         if base.type != "member_expression":
             return False
         obj = unwrap(base.child_by_field_name("object"))
@@ -897,7 +915,41 @@ class _ModuleFacts:
             and prop is not None
             and prop.type == "property_identifier"
             and _text(prop, self.source) in _OWN_FILE_META
+            and not self._import_meta_written()
         )
+
+    def _import_meta_written(self) -> bool:
+        """P5-13 (b): any ``import.meta.<p>`` in a write position (an
+        assignment, compound or destructuring target, an update, a
+        ``for … of/in`` head or a ``delete``)."""
+        for node in _walk(self.analysis.root):
+            if node.type != "meta_property":
+                continue
+            child, current = node, node.parent
+            while current is not None and current.type not in (
+                "expression_statement",
+                "statement_block",
+                "program",
+            ):
+                field = _field_of(current, child)
+                if (
+                    current.type
+                    in (
+                        "assignment_expression",
+                        "augmented_assignment_expression",
+                        "for_in_statement",
+                    )
+                    and field == "left"
+                ):
+                    return True
+                if current.type == "update_expression":
+                    return True
+                if current.type == "unary_expression":
+                    operator = current.child_by_field_name("operator")
+                    if operator is not None and operator.type == "delete":
+                        return True
+                child, current = current, current.parent
+        return False
 
     def _single_literal(self, call: Any) -> str | None:
         arguments = call.child_by_field_name("arguments")
@@ -1062,6 +1114,9 @@ class _ModuleFacts:
         return None
 
     def module_bindings(self) -> dict[str, Any]:
+        if self.commonjs or self.analysis.goal == "script":
+            # A CommonJS file: ``__filename`` is the wrapper's parameter.
+            self.taints.update(self.filename_taints)
         return {
             "stars": list(self.stars),
             "commonjs": self.commonjs or self.analysis.goal == "script",
@@ -1070,6 +1125,11 @@ class _ModuleFacts:
             "taints": sorted(self.taints),
             "imports": sorted(self.imports),
             "uncomputable": self.uncomputable,
+            "filename_taints": (
+                []
+                if self.commonjs or self.analysis.goal == "script"
+                else sorted(self.filename_taints)
+            ),
             "ns_uses": [list(use) for use in sorted(self.ns_uses)],
             "shutoff": sorted(self.shutoff),
         }
@@ -1222,6 +1282,7 @@ def text_module_bindings(source: bytes, symlink: bool = False) -> dict[str, Any]
         "taints": sorted(taints),
         "imports": sorted(taints),
         "uncomputable": False,
+        "filename_taints": [],
         "ns_uses": [],
         "shutoff": sorted(shutoff),
     }

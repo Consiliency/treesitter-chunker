@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"14"`` for the ``js`` family and ``"30"`` for
+Schema (fact version ``"15"`` for the ``js`` family and ``"30"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -113,6 +113,8 @@ logger = logging.getLogger(__name__)
 # functions (literal calls taint) and ``.constructor`` positions.
 # js "14": PR 5 fold 4 (createRequire bases, test-framework module mocks,
 # ``import.meta.glob`` and ``uncomputable`` edges).
+# js "15": PR 5 fold 5 (P5-13: ``__filename`` and ``import.meta`` bases
+# unwritten and unbound; ``filename_taints``).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -180,7 +182,7 @@ logger = logging.getLogger(__name__)
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "14", "python": "30"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "15", "python": "30"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -446,6 +448,7 @@ _MODULE_BINDING_KEYS = frozenset(
         "taints",
         "imports",
         "uncomputable",
+        "filename_taints",
         "ns_uses",
         "shutoff",
     }
@@ -496,7 +499,7 @@ def valid_module_bindings(value: object) -> bool:
         all(
             isinstance(value[key], list)
             and all(isinstance(item, str) for item in value[key])
-            for key in ("stars", "taints", "imports", "shutoff")
+            for key in ("stars", "taints", "imports", "filename_taints", "shutoff")
         )
         and set(value["shutoff"]) <= set(SHUTOFF_CAUSES)
         and isinstance(value["ns_uses"], list)

@@ -96,7 +96,9 @@ def has_directory_symlink(path: str | Path) -> bool:
             for name in directories:
                 if name in SKIP_PARTS:
                     continue
-                if (Path(current) / name).is_symlink():
+                entry = Path(current) / name
+                # P5-16: a Windows directory junction behaves like a link.
+                if entry.is_symlink() or entry.is_junction():
                     return True
                 kept.append(name)
             directories[:] = kept

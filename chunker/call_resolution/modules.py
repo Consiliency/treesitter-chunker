@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import logging
 import posixpath
+import re
 import unicodedata
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -118,6 +119,8 @@ INERT_SUFFIXES = frozenset(
 _EXTENSIONS = (".ts", ".tsx", ".d.ts", ".js", ".jsx")
 _UNCOLLECTED_SUFFIXES = (".mjs", ".cjs", ".mts", ".cts")
 _UNREAD_CHARACTERS = frozenset("?#%\\")
+_SCHEME = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*):")
+_UNCOMPUTABLE_SCHEMES = frozenset({"file", "data"})
 
 
 def _none(reason: str) -> dict[str, Any]:
@@ -314,6 +317,10 @@ def lenient_targets(
         )
         if base == ".." or base.startswith(("../", "/")):
             return None
+        if any(part in SKIPPED_DIRECTORIES for part in base.split("/")):
+            # P5-14: the path crosses a directory the run never collects (or
+            # scans for links), so a symlink there may reach any file.
+            return None
         bases = [] if directory_only else [base]
         stem = _stem(base)
         if stem is not None:
@@ -333,11 +340,16 @@ def lenient_targets(
 
 
 def _uncomputable_specifier(specifier: str) -> bool:
-    return specifier.startswith(("#", "/", "\\", "file:")) or (
+    """``#x``, an absolute path, a drive letter, or a ``file:`` or ``data:``
+    URL in any case (P5-18): each may name any file of the run."""
+    if specifier.startswith(("#", "/", "\\")) or (
         len(specifier) > 2
         and specifier[0].isalpha()
         and specifier[1:3] in (":/", ":\\")
-    )
+    ):
+        return True
+    scheme = _SCHEME.match(specifier)
+    return scheme is not None and scheme.group(1).lower() in _UNCOMPUTABLE_SCHEMES
 
 
 def existing_candidates(
@@ -449,13 +461,18 @@ def build_module_run(
 ) -> ModuleRun:
     """Index the run's JS/TS files, the tainted modules and the run-wide
     causes (E5-1, E5-3, E5-4), scoped by the caller (O-2)."""
-    from .engine import language_family
+    from .engine import INLINE_SCRIPT_LANGUAGES, language_family
     from .js_modules import CAUSE_UNPARSED_FILE, CAUSE_UNRESOLVABLE_WRITER
 
     files: dict[str, ModuleFile] = {}
     taints: list[tuple[str, str]] = []
     edges: dict[str, list[str]] = {}
     uncomputable: set[str] = set()
+    filename_taints: list[tuple[str, str]] = []
+    filename_writers = any(
+        str((item.get("scope_facts") or {}).get("language")) in INLINE_SCRIPT_LANGUAGES
+        for item in facts
+    )
     ns_uses: list[tuple[str, str | None, str, str, str]] = []
     causes: list[tuple[str, str]] = []
     symlinks: set[str] = set()
@@ -479,6 +496,13 @@ def build_module_run(
             taints.append((path, str(specifier)))
         if bindings.get("uncomputable"):
             uncomputable.add(path)
+        for specifier in bindings.get("filename_taints", ()):
+            filename_taints.append((path, str(specifier)))
+        if not supported or {"__filename", "*"} & set(
+            scope.get("script_globals") or ()
+        ):
+            # P5-13 (c): this file may write a global ``__filename``.
+            filename_writers = True
         edges[path] = [
             str(specifier)
             for key in ("imports", "taints", "stars")
@@ -495,6 +519,13 @@ def build_module_run(
             commonjs=bool(bindings.get("commonjs")),
             opaque=bool(bindings.get("opaque")) or not supported,
         )
+    for path, specifier in filename_taints:
+        if filename_writers:
+            # ``__filename`` may name another file: uncomputable (P5-13).
+            causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
+            uncomputable.add(path)
+        else:
+            taints.append((path, specifier))
     run_paths = sorted(str(item.get("path") or "") for item in facts)
     index = ModuleIndex.build(sorted(files), language_filter, run_paths, symlinks)
     if directory_symlinks is not False:

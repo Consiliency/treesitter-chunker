@@ -418,13 +418,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        own_base = self._own_file_base(call)",
         "        own_base = True",
     ),
-    (
-        "p5-1-filename-lookup",
-        JSM,
-        '            return _text(base, self.source) == "__filename" and self._free_or_top(\n'
-        '                base, "__filename"\n            )',
-        '            return _text(base, self.source) == "__filename"',
-    ),
+    # p5-1-filename-lookup: superseded by the p5-13 ``__filename`` checks.
     (
         "p5-1-meta-list",
         JSM,
@@ -496,6 +490,73 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         JSM,
         "        if name in _IMPORT_META_LOADERS:\n            self.uncomputable = True\n            return True",
         "        if name in _IMPORT_META_LOADERS:\n            return True",
+    ),
+    # Fold 5 (the president's re-check at 3344e9db, P5-13..P5-18).
+    (
+        "p5-13-filename-unbound",
+        JSM,
+        '                or self.analysis._binding_scope(base, "__filename") is not None\n',
+        "",
+    ),
+    (
+        "p5-13-filename-unwritten",
+        JSM,
+        '                or any(\n                    _text(target, self.source) == "__filename"\n                    for target in self.analysis.assignment_targets\n                )\n',
+        "",
+    ),
+    (
+        "p5-13-filename-global-writers",
+        MOD,
+        "        if filename_writers:\n            # ``__filename`` may name another file: uncomputable (P5-13).",
+        "        if False:\n            # ``__filename`` may name another file: uncomputable (P5-13).",
+    ),
+    (
+        "p5-13-script-globals-writers",
+        MOD,
+        '        if not supported or {"__filename", "*"} & set(',
+        "        if not supported or set() & set(",
+    ),
+    (
+        "p5-13-commonjs-wrapper",
+        JSM,
+        "            self.taints.update(self.filename_taints)",
+        "            pass",
+    ),
+    (
+        "p5-13-meta-unwritten",
+        JSM,
+        "            and not self._import_meta_written()\n",
+        "",
+    ),
+    (
+        "p5-13-meta-destructuring",
+        JSM,
+        '                    and field == "left"\n                ):\n                    return True',
+        '                    and field == "left"\n                    and child.type == "member_expression"\n                ):\n                    return True',
+    ),
+    (
+        "p5-14-skipped-directory",
+        MOD,
+        '        if any(part in SKIPPED_DIRECTORIES for part in base.split("/")):\n            # P5-14',
+        "        if False:\n            # P5-14",
+    ),
+    (
+        "p5-18-scheme-case",
+        MOD,
+        "    return scheme is not None and scheme.group(1).lower() in _UNCOMPUTABLE_SCHEMES",
+        "    return scheme is not None and scheme.group(1) in _UNCOMPUTABLE_SCHEMES",
+    ),
+    (
+        "p5-18-data-scheme",
+        MOD,
+        '_UNCOMPUTABLE_SCHEMES = frozenset({"file", "data"})',
+        '_UNCOMPUTABLE_SCHEMES = frozenset({"file"})',
+    ),
+    (
+        "p5-16-junctions",
+        "chunker/symbol_graph.py",
+        "                if entry.is_symlink() or entry.is_junction():",
+        "                if entry.is_symlink():",
     ),
     # Per-file module facts.
     (
