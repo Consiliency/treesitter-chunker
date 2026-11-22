@@ -353,7 +353,7 @@ def _skipped(part: str) -> bool:
         base.casefold() in SKIPPED_DIRECTORIES
         or base.upper().casefold() in SKIPPED_DIRECTORIES
         or ":" in part
-        or _SHORT_NAME.match(part) is not None
+        or _SHORT_NAME.match(base) is not None
     )
 
 

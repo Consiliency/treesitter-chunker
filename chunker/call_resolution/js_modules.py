@@ -66,7 +66,6 @@ each use site, so a shadowing binding is never mistaken for it.
 
 from __future__ import annotations
 
-import re
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
@@ -1203,82 +1202,26 @@ def module_facts(
 
 # -- text scan of a file the parser cannot read (E5-3) -----------------------
 
-_TEXT_TRIGGERS = (
-    (re.compile(r"\beval\b|\bFunction\b|\bexecScript\b"), CAUSE_EVALUATOR),
-    (
-        re.compile(r"[.\[]\s*['\"`]?constructor\b|['\"`]constructor['\"`]"),
-        CAUSE_EVALUATOR,
-    ),
-    (
-        re.compile(
-            r"\bset(?:Timeout|Interval)\s*\((?!\s*(?:[A-Za-z_$][\w$]*\s*[,)]"
-            r"|async\b|function\b|\())"
-        ),
-        CAUSE_EVALUATOR,
-    ),
-    (
-        re.compile(r"\b(?:createRequire|mainModule|getBuiltinModule)\b"),
-        CAUSE_MODULE_SYSTEM,
-    ),
-    (re.compile(r"['\"`](?:node:)?module['\"`]"), CAUSE_MODULE_SYSTEM),
-    (
-        re.compile(
-            r"(?<!typeof )\brequire\b(?!\s*\(\s*['\"`]|\s*\.\s*resolve\s*\("
-            r"|\s*\.\s*main\s*[=!]=)"
-        ),
-        CAUSE_DYNAMIC_LOADER,
-    ),
-    (re.compile(r"\bimport\s*\((?!\s*['\"`])"), CAUSE_DYNAMIC_LOADER),
-    (
-        re.compile(r"\bimport\s*\.\s*meta\s*(?:\.\s*require\b|\[)"),
-        CAUSE_DYNAMIC_LOADER,
-    ),
-    (
-        re.compile(r"(?<!typeof )(?<![=!]== )\bmodule\b(?!\s*\.\s*exports\b)"),
-        CAUSE_MODULE_OBJECT,
-    ),
-)
-_TEXT_LITERAL = re.compile(r"(['\"`])((?:\.\.?)(?:/[^'\"`\n]*)?)\1")
-_TEXT_ESCAPE = re.compile(r"\\(?:u\{[0-9A-Fa-f]+\}|u[0-9A-Fa-f]{4}|x[0-9A-Fa-f]{2})")
-
-
-def _unescape_text(text: str) -> str:
-    def replace(match: re.Match[str]) -> str:
-        raw = match.group(0)
-        digits = raw[3:-1] if raw.startswith("\\u{") else raw[2:]
-        value = int(digits, 16)
-        return chr(value) if value <= 0x10FFFF and not 0xD800 <= value <= 0xDFFF else ""
-
-    return _TEXT_ESCAPE.sub(replace, text)
-
 
 def text_module_bindings(source: bytes, symlink: bool = False) -> dict[str, Any]:
     """Conservative ``module_bindings`` for a JS/TS file whose tree has
-    errors (E5-3). Lookups into it fail closed (``opaque``); any spelling of
-    a run-wide route in its text (also after decoding ``\\u``/``\\x``
-    escapes) is a run-wide cause, and every relative string literal in it
-    taints the modules it may name."""
-    text = source.decode("utf-8", errors="replace")
-    views = (text, _unescape_text(text))
-    shutoff: set[str] = set()
-    taints: set[str] = set()
-    for view in views:
-        for pattern, cause in _TEXT_TRIGGERS:
-            if pattern.search(view):
-                shutoff.add(cause)
-        for match in _TEXT_LITERAL.finditer(view):
-            taints.add(match.group(2))
-    if shutoff:
-        shutoff.add(CAUSE_UNPARSED_FILE)
+    errors (E5-3; fold 8). Lookups into it fail closed (``opaque``). The
+    lexer-level scan of :mod:`.js_textscan` decides the run-wide causes and
+    the taints: only a complete literal loader call is exempt, every
+    decoded relative literal taints its target, and anything the scan
+    cannot delimit or decode is an ``unparsed-file`` cause."""
+    from .js_textscan import scan
+
+    found = scan(source)
     return {
         "stars": [],
         "commonjs": True,
         "opaque": True,
         "symlink": symlink,
-        "taints": sorted(taints),
-        "imports": sorted(taints),
-        "uncomputable": False,
+        "taints": list(found["taints"]),
+        "imports": list(found["taints"]),
+        "uncomputable": bool(found["uncomputable"]),
         "filename_taints": [],
         "ns_uses": [],
-        "shutoff": sorted(shutoff),
+        "shutoff": list(found["shutoff"]),
     }

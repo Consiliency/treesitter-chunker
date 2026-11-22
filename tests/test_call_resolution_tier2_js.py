@@ -3333,3 +3333,124 @@ def test_p5_32_ordinary_segments_stay_computable() -> None:
     index = modules.ModuleIndex.build(["lib/w.ts", "my~lib/w.ts"], None)
     assert modules.lenient_targets(index, "./lib/w", "use.ts") == ("lib/w.ts",)
     assert modules.lenient_targets(index, "./my~lib/w", "use.ts") == ("my~lib/w.ts",)
+
+
+# ---------------------------------------------------------------------------
+# PR 5 fold 8 (Codex on 6d0aadd0): the unparsed-file fallback is a lexer-
+# level scan. ``function (`` makes each ``x.js`` unparseable.
+
+BROKEN = "\nfunction (\n"
+TEXT_SCAN_NEAR_MISSES = {
+    "codex-concatenation": (
+        "const m = require('./' + 'svc'); m.t = () => 2;",
+        "none(run-tainted:dynamic-loader)",
+    ),
+    "codex-escaped-relative": ("require('\\./svc').t = () => 2;", "none(commonjs)"),
+    "import-concatenation": (
+        "export const p = import('./' + x);",
+        "none(run-tainted:dynamic-loader)",
+    ),
+    "template-substitution": (
+        "require(`./${n}`).t = 0;",
+        "none(run-tainted:dynamic-loader)",
+    ),
+    "second-argument": (
+        "require('./svc', 1).t = 0;",
+        "none(run-tainted:dynamic-loader)",
+    ),
+    "escaped-identifier": (
+        "\\u0072equire(name).t = 0;",
+        "none(run-tainted:dynamic-loader)",
+    ),
+    "escaped-identifier-literal": ("\\u0072equire('./svc').t = 0;", "none(commonjs)"),
+    "escaped-quote-in-literal": (
+        "const s = 'it\\'s';\nrequire('./svc').t = 0;",
+        "none(commonjs)",
+    ),
+    "identifier-argument": (
+        "const p = './svc';\nrequire(p).t = 0;",
+        "none(run-tainted:dynamic-loader)",
+    ),
+    "unterminated-string": (
+        "const s = 'abc\nrequire('./other');",
+        "none(run-tainted:unparsed-file)",
+    ),
+    "jsx-apostrophe": ("const s = <p>Don't</p>;", "none(run-tainted:unparsed-file)"),
+    "stray-backslash": ("const a = 1 \\ 2;", "none(run-tainted:unparsed-file)"),
+    "unterminated-comment": ("/* never closed", "none(run-tainted:unparsed-file)"),
+    "module-object": ("register(module);", "none(run-tainted:module-object)"),
+    "create-require-in-string": (
+        "const k = 'createRequire';",
+        "none(run-tainted:module-system)",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(TEXT_SCAN_NEAR_MISSES))
+def test_fold8_text_scan_near_misses(tmp_path: Path, case: str) -> None:
+    text, reason = TEXT_SCAN_NEAR_MISSES[case]
+    root = _write(
+        tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text + BROKEN}
+    )
+    facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
+    assert facts["scope_facts"]["supported"] is False, case
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off, case
+    assert label == reason, case
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "require('./other');",
+        "// require(name)\nconst k = 1;",
+        "/* import(x) */ const k = 1;",
+        "const s = `a${`b${c}`}`;\nrequire('./other');",
+        "x = a / b / c;\ny = /re[/]g/g.test(z);",
+        "if (typeof require !== 'undefined') { module.exports = 1; }",
+        "import k from './other';\nexport * from './more';",
+        "setTimeout(r, 1);\nsetTimeout(() => 0, 2);",
+    ],
+    ids=[
+        "literal-require",
+        "line-comment",
+        "block-comment",
+        "nested-templates",
+        "division-and-regex",
+        "typeof-and-module-exports",
+        "static-imports",
+        "timer-idioms",
+    ],
+)
+def test_fold8_clean_unparsed_files_leave_the_run_on(tmp_path: Path, text: str) -> None:
+    root = _write(
+        tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text + BROKEN}
+    )
+    facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
+    assert facts["scope_facts"]["supported"] is False
+    assert facts["scope_facts"]["module_bindings"]["shutoff"] == []
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", label
+
+
+def test_fold8_literal_require_taints_exactly() -> None:
+    from chunker.call_resolution.js_textscan import scan
+
+    assert scan(b"require('./svc').t = 0;" + BROKEN.encode()) == {
+        "taints": ["./svc"],
+        "shutoff": [],
+        "uncomputable": False,
+    }
+    assert scan(b"require('\\./svc');")["taints"] == ["./svc"]
+    assert scan(b"export const m = import.meta.glob('./x/*');")["uncomputable"] is True
+    assert scan(b"require('node:module');")["shutoff"] == [
+        "module-system",
+        "unparsed-file",
+    ]
+
+
+def test_p5_37_short_name_after_trailing_dot_or_space() -> None:
+    """P5-37: Win32 strips a trailing dot or space before the 8.3 match."""
+    index = modules.ModuleIndex.build(["use.ts"], None)
+    for segment in ("BUILD~1.", "BUILD~1 ", "node_m~1. "):
+        assert modules.lenient_targets(index, f"./{segment}/w", "use.ts") is None
