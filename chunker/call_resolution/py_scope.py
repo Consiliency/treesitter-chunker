@@ -716,6 +716,12 @@ _OPERATOR_WRITERS = frozenset(
     }
 )
 _NAMESPACE_DICT = "__dict__"
+# pytest-mock's fixtures, whose ``.patch`` is ``unittest.mock.patch`` (#695
+# fold 20).
+_MOCKER_NAMES = frozenset(
+    {"mocker", "module_mocker", "class_mocker", "package_mocker", "session_mocker"}
+)
+_PATCH_METHODS = ("object", "dict", "multiple")
 _IMPORT_STATEMENTS = frozenset(
     {"import_statement", "import_from_statement", "future_import_statement"}
 )
@@ -2232,15 +2238,13 @@ class _Analysis:
         lookups dynamic, a constant ``patch.object`` attribute and the
         ``patch.multiple`` keywords are attribute writes, and ``patch`` handed
         on fails closed. A constant ``patch("a.helper")`` keeps the own-name
-        rule."""
-        if (
-            not mock_names
-            and not patch_names
-            and not any(
-                _text(ident, self.source) == "unittest" for ident in identifiers
-            )
-        ):
-            return
+        rule.
+
+        Fold 20 adds receiver-based patchers: any ``X.patch.object``,
+        ``X.patch.dict`` or ``X.patch.multiple`` chain, whatever ``X`` is, and
+        ``.patch`` on a pytest-mock fixture (``mocker``, ``module_mocker``,
+        ``class_mocker``, ``package_mocker``, ``session_mocker``). A plain
+        ``.patch(url)`` on any other receiver is untouched."""
         for node in calls:
             function = node.child_by_field_name("function")
             if function is None:
@@ -2254,9 +2258,12 @@ class _Analysis:
                 method = _text(attribute, self.source) if attribute is not None else ""
                 receiver = function.child_by_field_name("object")
                 if (
-                    method in ("object", "dict", "multiple")
+                    method in _PATCH_METHODS
                     and receiver is not None
-                    and self._is_patch(receiver, mock_names, patch_names)
+                    and (
+                        self._is_patch(receiver, mock_names, patch_names)
+                        or _is_patch_attribute(receiver, self.source)
+                    )
                 ):
                     kind = method
             if kind is not None:
@@ -2271,6 +2278,18 @@ class _Analysis:
         candidates += [
             node for node in attributes if self._is_patch(node, mock_names, patch_names)
         ]
+        # ``X.patch.object`` for any ``X`` (fold 20): handed on fails closed.
+        for node in attributes:
+            attribute = node.child_by_field_name("attribute")
+            receiver = node.child_by_field_name("object")
+            if (
+                attribute is not None
+                and _text(attribute, self.source) in _PATCH_METHODS
+                and receiver is not None
+                and _is_patch_attribute(receiver, self.source)
+                and _callee_call(node) is None
+            ):
+                self.dynamic = True
         for node in candidates:
             if _callee_call(node) is not None:
                 continue
@@ -2305,7 +2324,10 @@ class _Analysis:
         if receiver is None:
             return False
         if receiver.type == "identifier":
-            return bool(_spellings(receiver, self.source) & mock_names)
+            # ``mock.patch``, and a pytest-mock fixture's ``mocker.patch``.
+            return bool(
+                _spellings(receiver, self.source) & (mock_names | _MOCKER_NAMES)
+            )
         if receiver.type == "attribute":
             inner = receiver.child_by_field_name("attribute")
             head = receiver.child_by_field_name("object")
@@ -2976,6 +2998,15 @@ def _match_captures(match: Any) -> list[Any]:
             continue
         stack.extend(current.named_children)
     return found
+
+
+def _is_patch_attribute(node: Any, source: bytes) -> bool:
+    """Whether ``node`` is ``X.patch`` for any ``X`` (through parentheses)."""
+    node = _unwrap(node, skip_comments=True)
+    if node.type != "attribute":
+        return False
+    attribute = node.child_by_field_name("attribute")
+    return attribute is not None and _text(attribute, source) == "patch"
 
 
 def _callee_call(node: Any) -> Any:

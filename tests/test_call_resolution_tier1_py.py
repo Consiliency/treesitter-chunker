@@ -6819,3 +6819,65 @@ def test_fold19_constant_strings(text: str, value: str | None) -> None:
     root = get_parser("python").parse(source).root_node
     right = root.named_children[0].named_children[0].child_by_field_name("right")
     assert py_scope._constant_string(right, source) == value
+
+
+# ---------------------------------------------------------------------------
+# Fold 20: receiver-based patchers join W-3. Any ``X.patch.object``,
+# ``X.patch.dict`` or ``X.patch.multiple`` chain (a), ``.patch`` on a
+# pytest-mock fixture (b), and either handed on (c) follow ``unittest.mock``'s
+# rules: a computed target or attribute fails closed, a constant
+# ``patch.object`` attribute and ``patch.multiple`` keywords are writes.
+
+FOLD20_T = (
+    "def helper(*a):\n    return 1\n\n\n"
+    "def replacement(*a):\n    return 2\n\n\n"
+    "def run(mod, x, mocker, module_mocker, session_mocker, client):\n"
+    "    n = 'helper'\n    {stmt}\n    return helper()\n"
+)
+
+FOLD20_PATCHERS = {
+    # (a) ``X.patch.object``/``dict``/``multiple`` for any ``X``.
+    "a-object-computed": "x.patch.object(mod, n, replacement)",
+    "a-object-constant": "x.patch.object(mod, 'helper', replacement)",
+    "a-dict-computed": "t = mod\n    x.patch.dict(t, helper=replacement)",
+    "a-multiple": "x.patch.multiple(mod, helper=replacement)",
+    "a-parenthesized": "(x.patch).object(mod, n, replacement)",
+    # (b) ``.patch`` on a pytest-mock fixture.
+    "b-mocker": "mocker.patch(mod.__name__ + '.helper', replacement)",
+    "b-module-mocker": "module_mocker.patch(mod.__name__ + '.helper', replacement)",
+    "b-session-mocker-object": "session_mocker.patch.object(mod, n, replacement)",
+    "b-parenthesized": "(mocker).patch(mod.__name__ + '.helper', replacement)",
+    # (c) handed on.
+    "c-mocker-patch": "p = mocker.patch\n    p(mod.__name__ + '.helper', replacement)",
+    "c-any-object": "o = x.patch.object\n    o(mod, 'helper', replacement)",
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD20_PATCHERS))
+def test_fold20_695_receiver_patchers_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    source = FOLD20_T.format(stmt=FOLD20_PATCHERS[case])
+    root = _tree(tmp_path, {"a.py": source, "b.py": FOLD19_DECOY})
+    off, on = _off_on(root)
+    edge = _fold19_edge(off, "a.py")
+    assert edge["resolution"] == "ambiguous", case
+    assert _fold19_edge(on, "a.py") == edge, case
+
+
+@pytest.mark.parametrize(
+    "stmt",
+    [
+        # A plain ``.patch(url)`` on other receivers (HTTP clients).
+        "u = 'http://x'\n    client.patch(u)",
+        "u = 'http://x'\n    x.patch(u, json={})",
+        "import requests\n    u = 'http://x'\n    requests.patch(u, data=n)",
+        # Patchers with constant targets or another attribute name.
+        "mocker.patch('os.getcwd', len)",
+        "x.patch.object(client, 'other', 1)",
+        "mocker.patch.multiple(client, other=1)",
+    ],
+)
+def test_fold20_plain_patch_calls_still_resolve(stmt: str) -> None:
+    source = FOLD20_T.format(stmt=stmt)
+    assert proof_text(source) == ["def helper(*a):\n    return 1"], stmt
