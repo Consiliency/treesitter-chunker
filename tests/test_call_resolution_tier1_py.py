@@ -7218,11 +7218,8 @@ def test_fold22_695_cross_kind_matrix_fails_closed(kind: str, form: str) -> None
         ("from unittest import mock\n\n\n", "m = mock.Mock()\n    m.foo(1)"),
         ("", "def locate(*a):\n        return 0\n    locate(1)"),
         # A namespace dict read through a call does not carry it
-        # (``multiprocessing/process.py``, ``string/__init__.py``).
-        (
-            "import signal\n\n\n",
-            "for name, num in list(signal.__dict__.items()):\n        x = (name, num)",
-        ),
+        # (``string/__init__.py``). ``signal.__dict__.items()``
+        # (``multiprocessing/process.py``) fails closed since fold 24 (Y-6).
         ("", "class C:\n        pass\n    p = C.__dict__.get('p', None)\n    q = (p,)"),
     ],
 )
@@ -7373,8 +7370,6 @@ FOLD23_SAFE = {
     "ns-subscript-read": ("", "x = mod.__dict__['other']"),
     "ns-get": ("", "x = mod.__dict__.get('other', None)"),
     "ns-keys": ("", "x = list(mod.__dict__.keys())"),
-    "ns-values": ("", "x = list(mod.__dict__.values())"),
-    "ns-items": ("", "x = list(mod.__dict__.items())"),
     "ns-in": ("", "x = 'other' in mod.__dict__"),
     "ns-len": ("", "x = len(mod.__dict__)"),
     # Namespace writes of another name, as statements.
@@ -7429,3 +7424,225 @@ def test_fold23_695_allow_list_entries_still_resolve(case: str) -> None:
 def test_fold23_695_allow_listed_writes_record_their_name(stmt: str) -> None:
     source = FOLD22_T.format(pre="", stmt=stmt)
     assert reason(source) == "mixed-bindings", stmt
+
+
+# ---------------------------------------------------------------------------
+# Fold 24 (the president's re-check at e9c087d9, Y-5 and Y-6): an import of
+# the mock module or ``patch``, in any spelling and at any scope, is an alias
+# (its readbacks carry the kind), and ``values()``/``items()`` on a namespace
+# dict are off THE CLOSED ALLOW-LIST.
+
+FOLD24_PROBES = {
+    # Y-5: the file's own import read back through the module or a class.
+    "y5-attr-patch-canon": (
+        "from unittest.mock import patch\n\n\n",
+        f"mod.patch({FOLD22_TARGET}).start()",
+    ),
+    "y5-attr-mock-as": (
+        "from unittest import mock as mk\n\n\n",
+        f"mod.mk.patch({FOLD22_TARGET}).start()",
+    ),
+    "y5-attr-patch-as-object": (
+        "from unittest.mock import patch as P\n\n\n",
+        "k = 'hel' + 'per'\n    mod.P.object(mod, k, replacement).start()",
+    ),
+    "y5-attr-import-as": (
+        "import unittest.mock as um\n\n\n",
+        f"mod.um.patch({FOLD22_TARGET}).start()",
+    ),
+    "y5-attr-patch-as": (
+        "from unittest.mock import patch as P\n\n\n",
+        f"mod.P({FOLD22_TARGET}).start()",
+    ),
+    "y5-getattr-import-as": (
+        "import unittest.mock as um\n\n\n",
+        f"getattr(mod, 'um').patch({FOLD22_TARGET}).start()",
+    ),
+    "y5-ns-subscript-import-as": (
+        "import unittest.mock as um\n\n\n",
+        f"mod.__dict__['um'].patch({FOLD22_TARGET}).start()",
+    ),
+    "y5-ns-get-import-as": (
+        "import unittest.mock as um\n\n\n",
+        f"mod.__dict__.get('um').patch({FOLD22_TARGET}).start()",
+    ),
+    "y5-ns-subscript-patch-as": (
+        "from unittest.mock import patch as P\n\n\n",
+        f"mod.__dict__['P']({FOLD22_TARGET}).start()",
+    ),
+    "y5-ns-get-patch-as": (
+        "from unittest.mock import patch as P\n\n\n",
+        f"mod.__dict__.get('P')({FOLD22_TARGET}).start()",
+    ),
+    "y5-match-keyword-import-as": (
+        "import unittest.mock as um\n\n\n",
+        "match mod:\n        case object(um=x):\n"
+        f"            x.patch({FOLD22_TARGET}).start()",
+    ),
+    "y5-class-mock-as": (
+        "class K:\n    from unittest import mock as mk\n\n\n",
+        f"K.mk.patch({FOLD22_TARGET}).start()",
+    ),
+    "y5-class-patch-as": (
+        "class K:\n    from unittest.mock import patch as P\n\n\n",
+        f"K.P({FOLD22_TARGET}).start()",
+    ),
+    # Y-6: iterating the namespace hands over the file's own sensitive values.
+    "y6-items-patch-as": (
+        "from unittest.mock import patch as P\n\n\n",
+        "[v for kk, v in mod.__dict__.items() if kk == 'P'][0]"
+        f"({FOLD22_TARGET}).start()",
+    ),
+    "y6-items-patch-as-loop": (
+        "from unittest.mock import patch as P\n\n\n",
+        "for kk, v in mod.__dict__.items():\n        if kk == 'P':\n"
+        f"            v({FOLD22_TARGET}).start()",
+    ),
+    "y6-items-import-as": (
+        "import unittest.mock as um\n\n\n",
+        "for kk, v in mod.__dict__.items():\n        if kk == 'u' + 'm':\n"
+        f"            v.patch({FOLD22_TARGET}).start()",
+    ),
+    "y6-items-patch-canon-join": (
+        "from unittest.mock import patch\n\n\n",
+        "for kk, v in mod.__dict__.items():\n        if kk == 'patc' + chr(104):\n"
+        f"            v({FOLD22_TARGET}).start()",
+    ),
+    "y6-values-mock-canon": (
+        FOLD23_MOCK,
+        "for v in mod.__dict__.values():\n"
+        "        if getattr(v, '__name__', '') == 'unittest.' + 'mo' + chr(99) + 'k':\n"
+        f"            v.patch({FOLD22_TARGET}).start()",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD24_PROBES))
+def test_fold24_695_president_probes_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    pre, stmt = FOLD24_PROBES[case]
+    source = FOLD22_T.format(pre=pre, stmt=stmt)
+    root = _tree(tmp_path, {"a.py": source, "b.py": FOLD19_DECOY})
+    off, on = _off_on(root)
+    edge = _fold19_edge(off, "a.py")
+    assert edge["resolution"] == "ambiguous", case
+    assert _fold19_edge(on, "a.py") == edge, case
+
+
+# The completeness matrix's "import binding read back" rows: every import
+# spelling of the mock module or ``patch``, read back by every readback form.
+FOLD24_IMPORTS = {
+    "from-unittest-import-mock": ("from unittest import mock", "mock", "mock"),
+    "from-unittest-import-mock-as": ("from unittest import mock as mk", "mk", "mock"),
+    "import-unittest-mock-as": ("import unittest.mock as um", "um", "mock"),
+    "import-mock": ("import mock", "mock", "mock"),
+    "import-mock-as": ("import mock as mk", "mk", "mock"),
+    "from-unittest-mock-import-patch": (
+        "from unittest.mock import patch",
+        "patch",
+        "patch",
+    ),
+    "from-unittest-mock-import-patch-as": (
+        "from unittest.mock import patch as P",
+        "P",
+        "patch",
+    ),
+    "from-mock-import-patch": ("from mock import patch", "patch", "patch"),
+    "from-mock-import-patch-as": ("from mock import patch as P", "P", "patch"),
+}
+FOLD24_READBACKS = {
+    "attribute": "mod.{N}",
+    "getattr": "getattr(mod, '{N}')",
+    "ns-subscript": "mod.__dict__['{N}']",
+    "ns-get": "mod.__dict__.get('{N}')",
+    "match-keyword": "match mod:\n        case object({N}=x):\n            pass\n    x",
+    "class-attribute": "K.{N}",
+}
+FOLD24_MATRIX = sorted(
+    (spelling, form) for spelling in FOLD24_IMPORTS for form in FOLD24_READBACKS
+)
+
+
+@pytest.mark.parametrize(("spelling", "form"), FOLD24_MATRIX)
+def test_fold24_695_import_bindings_are_aliases(spelling: str, form: str) -> None:
+    statement, name, kind = FOLD24_IMPORTS[spelling]
+    readback = FOLD24_READBACKS[form].replace("{N}", name)
+    use = (
+        f"{readback}.patch({FOLD22_TARGET}).start()"
+        if kind == "mock"
+        else f"{readback}({FOLD22_TARGET}).start()"
+    )
+    pre = (
+        f"class K:\n    {statement}\n\n\n"
+        if form == "class-attribute"
+        else f"{statement}\n\n\n"
+    )
+    source = FOLD22_T.format(pre=pre, stmt=use)
+    assert reason(source) == "dynamic-scope", (spelling, form)
+
+
+# Y-6: ``values()`` and ``items()`` are off the list for every kind, whether
+# or not the file imports the mock module.
+@pytest.mark.parametrize(
+    ("kind", "method"),
+    sorted((kind, method) for kind in FOLD23_VALUES for method in ("values", "items")),
+)
+def test_fold24_695_namespace_iteration_fails_closed(kind: str, method: str) -> None:
+    pre, value = FOLD23_VALUES[kind]
+    source = FOLD22_T.format(pre=pre, stmt=f"x = list({value}.{method}())")
+    assert reason(source) == "dynamic-scope", (kind, method)
+
+
+def test_fold24_695_stdlib_signal_items_fails_closed() -> None:
+    # ``multiprocessing/process.py``: the one stdlib file Y-6 costs.
+    source = FOLD22_T.format(
+        pre="import signal\n\n\n",
+        stmt="for name, num in list(signal.__dict__.items()):\n        x = (name, num)",
+    )
+    assert reason(source) == "dynamic-scope"
+
+
+@pytest.mark.parametrize(
+    ("pre", "stmt"),
+    [
+        # A plain ``.patch(url)`` with a computed URL in a file that imports
+        # ``patch`` under another name, or imports only the mock module.
+        (
+            "from unittest.mock import patch as P\n\n\n",
+            "u = 'http://x'\n    client.patch(u)",
+        ),
+        ("import unittest.mock as um\n\n\n", "u = 'http://x'\n    client.patch(u)"),
+        (FOLD23_MOCK, "u = 'http://x'\n    client.patch(u)"),
+        # With a constant URL even beside the canonical ``patch`` import.
+        ("from unittest.mock import patch\n\n\n", "client.patch('http://x')"),
+        # Direct uses of the import names stay on the list.
+        ("from unittest.mock import patch as P\n\n\n", "P('os.getcwd', len).start()"),
+        ("from unittest import mock as mk\n\n\n", "m = mk.Mock()\n    m.foo(1)"),
+        (
+            "import unittest.mock as um\n\n\n",
+            "um.patch.object(client, 'other', 1).start()",
+        ),
+        ("class K:\n    from unittest import mock as mk\n\n\n", "x = 1"),
+        # ``keys()`` stays: keys are strings.
+        ("from unittest.mock import patch\n\n\n", "x = list(mod.__dict__.keys())"),
+        (
+            "from unittest.mock import patch as P\n\n\n",
+            "x = sorted(mod.__dict__.keys())",
+        ),
+    ],
+)
+def test_fold24_695_controls_still_resolve(pre: str, stmt: str) -> None:
+    source = FOLD22_T.format(pre=pre, stmt=stmt)
+    assert proof_text(source) == ["def helper(*a):\n    return 1"], stmt
+
+
+def test_fold24_695_canonical_patch_import_makes_any_x_patch_patch() -> None:
+    # The A-4 cost: beside ``from unittest.mock import patch``, ``X.patch``
+    # is spelled like the readback ``mod.patch``, so a computed target fails
+    # closed whatever ``X`` is (0 stdlib and repository test files).
+    source = FOLD22_T.format(
+        pre="from unittest.mock import patch\n\n\n",
+        stmt="u = 'http://x'\n    client.patch(u)",
+    )
+    assert reason(source) == "dynamic-scope"

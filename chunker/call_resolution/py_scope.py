@@ -728,9 +728,13 @@ _NS, _MOCK, _PATCH, _MOCKER = "namespace", "mock", "patch", "mocker"
 _KINDS = (_NS, _MOCK, _PATCH, _MOCKER)
 # THE CLOSED ALLOW-LIST of safe uses of a sensitive value (#695 fold 23,
 # executive ruling E-21 A-1). Every use not listed here fails closed (A-2).
-# A namespace dict: pure reads (result ordinary), and recognized writes with
-# constant keys or literal mappings, used only as expression statements.
-_NS_READS = frozenset({"get", "keys", "values", "items"})
+# A namespace dict: pure reads whose result names nothing sensitive (a value
+# by constant key, which the alias sets gate, or the keys), and recognized
+# writes with constant keys or literal mappings, used only as expression
+# statements. ``values()`` and ``items()`` are off the list: they hand over
+# every value, the file's own ``patch`` or mock module among them (fold 24,
+# Y-6).
+_NS_READS = frozenset({"get", "keys"})
 _NS_WRITES = frozenset({"update", "setdefault", "pop"})
 # The mock module's constructors and constants.
 _MOCK_SAFE = frozenset(
@@ -1955,7 +1959,9 @@ class _Analysis:
         conditional and boolean operands, a ``for`` target, ``with … as``, a
         ``match`` capture, a class-body binding, ``self.X = …``,
         ``global``/``nonlocal``, and ``setattr(T, "name", v)`` with a
-        constant name (flow-insensitive, transitive).
+        constant name (flow-insensitive, transitive). Every import of the
+        mock module or ``patch``, in any spelling and at any scope, is an
+        alias too (fold 24, Y-5).
 
         **Readback.** A name, an ``X.<alias>`` attribute, any call with a
         constant argument naming an alias (``getattr(K, "ns")``,
@@ -1963,37 +1969,24 @@ class _Analysis:
         subscript with such a constant key (``K.__dict__["ns"]``) read the
         kind back (:meth:`_sensitive`).
 
-        **Escape.** A sensitive value anywhere else fails closed: a call
-        argument (other than a namespace dict as the receiver of an unbound
-        mutator or ``operator`` writer), a container element, a return or
-        yield value, a default, a lambda body, a ``with`` item, a ``for`` or
-        comprehension iterable, and a binding a computed read can reach (at
-        module or class scope, ``global``, or an attribute or subscript
-        target).
+        **Uses.** A sensitive value's every use must be on THE CLOSED
+        ALLOW-LIST (:meth:`_safe_use`, fold 23); anything else fails closed,
+        for example a call argument (other than a namespace dict as the
+        receiver of an unbound mutator or ``operator`` writer), a container
+        element, a return or yield value, a default, a lambda body, a
+        ``with`` item, a ``for`` or comprehension iterable, and a binding a
+        computed read can reach (at module or class scope, ``global``, or an
+        attribute or subscript target).
         """
-        # A class-pattern keyword reads an attribute of the subject
-        # (``case object(__dict__=x)`` is ``x = subject.__dict__``): a keyword
-        # naming a sensitive attribute or an alias is off the allow-list,
-        # whatever the subject (fold 23, X-6).
-        sensitive_names = {_NAMESPACE_DICT, "mock", "patch"}.union(
-            *self.aliases.values()
-        )
-        for match in matches:
-            stack = [match]
-            while stack:
-                current = stack.pop()
-                stack.extend(current.named_children)
-                if current.type != "keyword_pattern" or not current.named_children:
-                    continue
-                keyword = current.named_children[0]
-                if _spellings(keyword, self.source) & sensitive_names:
-                    self.dynamic = True
-                    return
+        # Import bindings are aliases (fold 24, Y-5): a module- or
+        # class-scope import of the mock module or ``patch``, in any spelling,
+        # can be read back (``m.mk``, ``getattr(m, "P")``, ``ns["P"]``,
+        # ``K.mk``, ``case object(um=x)``).
+        self.aliases[_MOCK] |= self.mock_import_names
+        self.aliases[_PATCH] |= self.patch_import_names
         present = {
             kind: self._kind_present(kind, attributes, identifiers) for kind in _KINDS
         }
-        if not any(present.values()):
-            return
         named: list[tuple[str, Any]] = []
         for node in calls:
             function = node.child_by_field_name("function")
@@ -2026,7 +2019,7 @@ class _Analysis:
                     changed = True
         if self.aliases[_NS]:
             self.namespace_seen = True
-        # The same check for keywords naming an alias (fold 23, X-6).
+        # A class-pattern keyword reads an attribute of the subject
         # (``case object(__dict__=x)`` is ``x = subject.__dict__``): a keyword
         # naming a sensitive attribute or an alias is off the allow-list,
         # whatever the subject (fold 23, X-6).
@@ -2044,6 +2037,8 @@ class _Analysis:
                 if _spellings(keyword, self.source) & sensitive_names:
                     self.dynamic = True
                     return
+        if not any(present.values()) and not any(self.aliases.values()):
+            return
         nodes = identifiers + attributes + calls + subscripts
         for kind in _KINDS:
             if not present[kind] and not self.aliases[kind]:
@@ -2086,7 +2081,7 @@ class _Analysis:
         itself, or an element of a tuple, list or set, through parentheses,
         starred forms, walrus values and conditional or boolean operands. A
         call, attribute read or subscript of it does not carry it
-        (``list(ns.items())``); a sensitive value passed as an argument
+        (``list(ns.keys())``); a sensitive value passed as an argument
         escapes instead."""
         stack = [node]
         while stack:
@@ -2208,7 +2203,7 @@ class _Analysis:
         - an alias binding: the value assigned (or walrus-bound) to one
           name a computed read cannot reach (a function local);
         - a namespace dict: ``ns[c]`` with constant keys (read, target,
-          ``del``), ``ns.get(c, …)``, ``ns.keys()``/``values()``/``items()``,
+          ``del``), ``ns.get(c, …)``, ``ns.keys()``,
           ``c in ns``, ``len(ns)``; ``ns.update/setdefault/pop(…)``, the
           unbound ``dict.``/``operator`` writers with ``ns`` first, and
           ``ns |= …``, as expression statements (their constant names are
@@ -2218,6 +2213,8 @@ class _Analysis:
         - a fixture: ``mocker.<name>`` for a name in ``_MOCKER_SAFE``, and
           ``mocker.patch``;
         - ``patch``: called, or ``patch.object/dict/multiple`` called (W-3).
+        An import binding is safe here because its name is an alias, so every
+        readback of it is checked in turn (fold 24, Y-5).
         """
         if node.type == "identifier" and _binding_position(node):
             return True
