@@ -65,7 +65,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "skipped-directory",
         MOD,
-        '        if any(part in SKIPPED_DIRECTORIES for part in candidate.split("/")):\n'
+        '        if any(_skipped(part) for part in candidate.split("/")):\n'
         '            return None, "unknown-variant"\n',
         "",
     ),
@@ -498,12 +498,10 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '                or self.analysis._binding_scope(base, "__filename") is not None\n',
         "",
     ),
-    (
-        "p5-13-filename-unwritten",
-        JSM,
-        '                or any(\n                    _text(target, self.source) == "__filename"\n                    for target in self.analysis.assignment_targets\n                )\n',
-        "",
-    ),
+    # Not listed (p5-13-filename-unwritten): equivalent since fold 6 (P5-20).
+    # A write to a free ``__filename`` anywhere in the file is an implicit
+    # global, so the run-wide writer check (c) already fails it closed; the
+    # in-file check (b) stays as a second guard.
     (
         "p5-13-filename-global-writers",
         MOD,
@@ -516,12 +514,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '        if not supported or {"__filename", "*"} & set(',
         "        if not supported or set() & set(",
     ),
-    (
-        "p5-13-commonjs-wrapper",
-        JSM,
-        "            self.taints.update(self.filename_taints)",
-        "            pass",
-    ),
+    # p5-13-commonjs-wrapper: the shortcut it disabled is gone (P5-20).
     (
         "p5-13-meta-unwritten",
         JSM,
@@ -537,7 +530,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "p5-14-skipped-directory",
         MOD,
-        '        if any(part in SKIPPED_DIRECTORIES for part in base.split("/")):\n            # P5-14',
+        '        if any(_skipped(part) for part in base.split("/")):\n            # P5-14',
         "        if False:\n            # P5-14",
     ),
     (
@@ -557,6 +550,40 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "chunker/symbol_graph.py",
         "                if entry.is_symlink() or entry.is_junction():",
         "                if entry.is_symlink():",
+    ),
+    # Fold 6 (the president's re-check at 9d180a97, P5-20, P5-21).
+    (
+        "p5-20-commonjs-shortcut",
+        JSM,
+        "    def module_bindings(self) -> dict[str, Any]:\n",
+        "    def module_bindings(self) -> dict[str, Any]:\n"
+        '        if self.commonjs or self.analysis.goal == "script":\n'
+        "            self.taints.update(self.filename_taints)\n"
+        "            self.filename_taints = set()\n",
+    ),
+    (
+        "p5-21-casefold",
+        MOD,
+        '    return part.rstrip(". ").casefold() in SKIPPED_DIRECTORIES',
+        '    return part.rstrip(". ") in SKIPPED_DIRECTORIES',
+    ),
+    (
+        "p5-21-win32-trailing",
+        MOD,
+        '    return part.rstrip(". ").casefold() in SKIPPED_DIRECTORIES',
+        "    return part.casefold() in SKIPPED_DIRECTORIES",
+    ),
+    (
+        "url-whitespace-strip",
+        MOD,
+        '    specifier = _URL_NOISE.sub("", specifier.strip(_C0_AND_SPACE))',
+        '    specifier = _URL_NOISE.sub("", specifier)',
+    ),
+    (
+        "url-whitespace-noise",
+        MOD,
+        '    specifier = _URL_NOISE.sub("", specifier.strip(_C0_AND_SPACE))',
+        "    specifier = specifier.strip(_C0_AND_SPACE)",
     ),
     # Per-file module facts.
     (

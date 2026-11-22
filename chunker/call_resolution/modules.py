@@ -120,6 +120,8 @@ _EXTENSIONS = (".ts", ".tsx", ".d.ts", ".js", ".jsx")
 _UNCOLLECTED_SUFFIXES = (".mjs", ".cjs", ".mts", ".cts")
 _UNREAD_CHARACTERS = frozenset("?#%\\")
 _SCHEME = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*):")
+_C0_AND_SPACE = "".join(chr(code) for code in range(0x21))
+_URL_NOISE = re.compile(r"[\t\n\r]")
 _UNCOMPUTABLE_SCHEMES = frozenset({"file", "data"})
 
 
@@ -317,7 +319,7 @@ def lenient_targets(
         )
         if base == ".." or base.startswith(("../", "/")):
             return None
-        if any(part in SKIPPED_DIRECTORIES for part in base.split("/")):
+        if any(_skipped(part) for part in base.split("/")):
             # P5-14: the path crosses a directory the run never collects (or
             # scans for links), so a symlink there may reach any file.
             return None
@@ -339,9 +341,18 @@ def lenient_targets(
     return tuple(found)
 
 
+def _skipped(part: str) -> bool:
+    """P5-21: a path segment names a skipped directory on a case-insensitive
+    file system, or after Win32 strips a trailing dot or space."""
+    return part.rstrip(". ").casefold() in SKIPPED_DIRECTORIES
+
+
 def _uncomputable_specifier(specifier: str) -> bool:
     """``#x``, an absolute path, a drive letter, or a ``file:`` or ``data:``
-    URL in any case (P5-18): each may name any file of the run."""
+    URL in any case (P5-18): each may name any file of the run. As in WHATWG
+    URL parsing, leading and trailing C0 controls and spaces are stripped and
+    every tab, LF and CR is removed first."""
+    specifier = _URL_NOISE.sub("", specifier.strip(_C0_AND_SPACE))
     if specifier.startswith(("#", "/", "\\")) or (
         len(specifier) > 2
         and specifier[0].isalpha()
@@ -386,7 +397,7 @@ def resolve_specifier(
     for candidate in candidates:
         if not index.collected(candidate):
             return None, "unknown-variant"
-        if any(part in SKIPPED_DIRECTORIES for part in candidate.split("/")):
+        if any(_skipped(part) for part in candidate.split("/")):
             return None, "unknown-variant"
         if any(path != candidate for path in index.folded.get(_fold(candidate), ())):
             # A case-insensitive file system would find this file too.

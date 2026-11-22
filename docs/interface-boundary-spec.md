@@ -310,7 +310,9 @@ such as `build/` or `node_modules/`, `import.meta.glob`, or `createRequire`
 with a base other than the file itself). A `createRequire` base counts as the
 file itself only when it is an unwritten `import.meta.url`/`filename`, or an
 unbound and unwritten `__filename` that no file of the run can redefine as a
-global. `jest.mock`/`vi.mock` of a relative path
+global. Skipped directories are matched case-insensitively, ignoring a
+trailing dot or space, and URL schemes after stripping surrounding whitespace
+and control characters. `jest.mock`/`vi.mock` of a relative path
 counts as a write to that module for the mocking file's callers.
 Wherever Tier 2 is off, the output equals `"structural"`. Python imports prove nothing yet.
 

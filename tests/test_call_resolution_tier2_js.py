@@ -3013,9 +3013,9 @@ def test_p5_13_unwritten_import_meta_url_taints_exactly(tmp_path: Path) -> None:
 def test_p5_13_commonjs_free_filename_taints_exactly(
     tmp_path: Path, writer: bool
 ) -> None:
-    """A free, unwritten ``__filename`` in a CommonJS file is the wrapper's
-    parameter: it taints ``./lib/svc`` exactly, whether or not another file
-    writes a global ``__filename`` (P5-13 (c))."""
+    """P5-20: CommonJS hints in the file do not bypass the run-wide writer
+    check. With no writer the base taints ``./lib/svc`` exactly; with a
+    global ``__filename`` writer it fails closed."""
     files = {
         "app.ts": CR
         + "const r = createRequire(__filename);\n"
@@ -3028,11 +3028,50 @@ def test_p5_13_commonjs_free_filename_taints_exactly(
     facts = extract_symbol_facts_for_file(root / "app.ts", root, call_resolution=MODE)
     bindings = facts["scope_facts"]["module_bindings"]
     assert bindings["commonjs"] is True
-    assert bindings["filename_taints"] == []
-    assert "./lib/svc" in bindings["taints"]
+    assert bindings["filename_taints"] == ["./lib/svc"]
+    assert "./lib/svc" not in bindings["taints"]
     off, _, on, label = _run(root, "use.ts", "t")
     assert on == off
-    assert label == "none(commonjs)"
+    expected = "none(run-tainted:unresolvable-writer)" if writer else "none(commonjs)"
+    assert label == expected
+
+
+# P5-20 repros (``president/f5/cjsmis-*``): a CommonJS hint in an ES module.
+CJSMIS = {
+    "lib/svc.ts": 'export function t() { return "lib/svc.t"; }\n',
+    "other.ts": 'export function t() { return "other.t"; }\n',
+    "setg.ts": (
+        "import * as path from 'node:path';\n"
+        "(globalThis as any).__filename = path.join(__dirname, 'lib', 'x.js');\n"
+    ),
+    "use.ts": (
+        "import { t } from './lib/svc';\nimport './setg';\n"
+        "import { patch } from './esm/app.js';\n"
+        "export function u() { return t(); }\n"
+    ),
+    "esm/package.json": '{"type":"module"}\n',
+}
+
+
+@pytest.mark.parametrize(
+    "hint",
+    ["void this;\n", 'if (typeof exports === "object") { console.log("cjs"); }\n'],
+    ids=["this", "typeof-exports"],
+)
+def test_p5_20_commonjs_hints_do_not_bypass_the_writer_check(
+    tmp_path: Path, hint: str
+) -> None:
+    app = (
+        "import { createRequire } from 'node:module';\n"
+        + hint
+        + "const r = createRequire(__filename);\n"
+        "export function patch() { r('./svc').t = () => \"evil\"; }\n"
+    )
+    root = _write(tmp_path, {**CJSMIS, "esm/app.js": app})
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert off["resolution"] == "ambiguous"
+    assert on == off
+    assert label == "none(run-tainted:unresolvable-writer)"
 
 
 def test_p5_13_esm_free_filename_taints_without_writers(tmp_path: Path) -> None:
@@ -3141,3 +3180,45 @@ def test_p5_16_directory_junctions_count_as_links(
         Path, "is_junction", lambda self: self.name == "b" or original(self)
     )
     assert has_directory_symlink(root)
+
+
+@pytest.mark.parametrize(
+    "spelling", ["Build", "NODE_MODULES", "Dist", "build.", "build "]
+)
+def test_p5_21_skipped_directories_match_case_and_win32_forms(
+    tmp_path: Path, spelling: str
+) -> None:
+    """P5-21: ``./Build/…``, ``./NODE_MODULES/…``, ``./Dist/…``,
+    ``./build./…`` and ``./build /…`` reach a skipped directory on a
+    case-insensitive or Win32 file system, so they are uncomputable."""
+    index = modules.ModuleIndex.build(["use.ts"], None)
+    specifier = f"./{spelling}/helpers/w"
+    assert modules.lenient_targets(index, specifier, "use.ts") is None
+    root = _write(
+        tmp_path,
+        {
+            **OTHERS,
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.js": f"require('{specifier}').t = 0;\n",
+        },
+    )
+    off, _, on, label = _run(root, "use.ts", "t")
+    assert on == off, spelling
+    assert label == "none(run-tainted:unresolvable-writer)", spelling
+
+
+@pytest.mark.parametrize(
+    "specifier",
+    [
+        " file:///abs/w.js",
+        "\tfile:///abs/w.js",
+        "fi\tle:///abs/w.js",
+        "file:\n///abs/w.js",
+    ],
+)
+def test_url_whitespace_is_stripped_before_the_scheme(specifier: str) -> None:
+    """WHATWG URL parsing strips C0 controls and spaces at the ends and
+    removes every tab, LF and CR, so these are ``file:`` URLs."""
+    index = modules.ModuleIndex.build(["use.ts"], None)
+    assert modules.lenient_targets(index, specifier, "use.ts") is None

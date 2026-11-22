@@ -860,9 +860,8 @@ class _ModuleFacts:
                 return False
             literals.append(literal)
         if own_base == "filename":
-            # P5-13 (c): a free ``__filename`` is the CommonJS wrapper's
-            # parameter in a CommonJS file; elsewhere the engine taints these
-            # only if no run file can write a global ``__filename``.
+            # P5-13 (c), P5-20: the engine taints these only if no run file
+            # can write a global ``__filename``.
             self.filename_taints.update(literals)
         elif own_base:
             # A literal call loads its target like ``require``: it taints it.
@@ -1114,9 +1113,10 @@ class _ModuleFacts:
         return None
 
     def module_bindings(self) -> dict[str, Any]:
-        if self.commonjs or self.analysis.goal == "script":
-            # A CommonJS file: ``__filename`` is the wrapper's parameter.
-            self.taints.update(self.filename_taints)
+        # P5-20: no CommonJS shortcut. A file on this path imports from
+        # ``module`` (ESM syntax), so CommonJS hints never prove that
+        # ``__filename`` is the wrapper's parameter; the engine's run-wide
+        # writer check always decides.
         return {
             "stars": list(self.stars),
             "commonjs": self.commonjs or self.analysis.goal == "script",
@@ -1125,11 +1125,7 @@ class _ModuleFacts:
             "taints": sorted(self.taints),
             "imports": sorted(self.imports),
             "uncomputable": self.uncomputable,
-            "filename_taints": (
-                []
-                if self.commonjs or self.analysis.goal == "script"
-                else sorted(self.filename_taints)
-            ),
+            "filename_taints": sorted(self.filename_taints),
             "ns_uses": [list(use) for use in sorted(self.ns_uses)],
             "shutoff": sorted(self.shutoff),
         }
