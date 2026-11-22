@@ -6793,9 +6793,8 @@ def test_fold19_695_computed_writes_keep_their_off_mode_edge(
         # Ordinary ``.update`` aliases and computed writes elsewhere.
         "d = {}\n    u = d.update\n    u({'helper': 1})",
         "k = 'helper'\n    cache = {}\n    cache[k] = 1",
-        # Namespace dict reads.
-        "x = mod.__dict__.get('x')\n    y = 'x' in mod.__dict__\n"
-        "    z = list(mod.__dict__.keys())",
+        # Namespace dict reads (``keys()`` fails closed since fold 27).
+        "x = mod.__dict__.get('x')\n    y = 'x' in mod.__dict__\n    z = len(mod.__dict__)",
         # ``unittest.mock`` with constant targets elsewhere, and a ``patch``
         # method that is not ``unittest.mock``'s.
         "from unittest import mock\n    mock.patch('os.getcwd', len).start()",
@@ -7369,7 +7368,6 @@ FOLD23_SAFE = {
     # Namespace reads.
     "ns-subscript-read": ("", "x = mod.__dict__['other']"),
     "ns-get": ("", "x = mod.__dict__.get('other', None)"),
-    "ns-keys": ("", "x = list(mod.__dict__.keys())"),
     "ns-in": ("", "x = 'other' in mod.__dict__"),
     "ns-len": ("", "x = len(mod.__dict__)"),
     # Namespace writes of another name, as statements.
@@ -7624,12 +7622,7 @@ def test_fold24_695_stdlib_signal_items_fails_closed() -> None:
             "um.patch.object(client, 'other', 1).start()",
         ),
         ("class K:\n    from unittest import mock as mk\n\n\n", "x = 1"),
-        # ``keys()`` stays: keys are strings.
-        ("from unittest.mock import patch\n\n\n", "x = list(mod.__dict__.keys())"),
-        (
-            "from unittest.mock import patch as P\n\n\n",
-            "x = sorted(mod.__dict__.keys())",
-        ),
+        # (Two ``keys()`` controls moved to fold 27, where they fail closed.)
     ],
 )
 def test_fold24_695_controls_still_resolve(pre: str, stmt: str) -> None:
@@ -7928,3 +7921,121 @@ def test_fold26_695_unrelated_writes_keep_the_entry(
 ) -> None:
     source = FOLD26_T.format(pre=pre, post=post, stmt=stmt)
     assert proof_text(source) == ["def helper(*args):\n    return 1"], (post, stmt)
+
+
+# ---------------------------------------------------------------------------
+# Fold 27 (Codex 4657978945 at 4758e2cc): an A-1 read may treat its result as
+# ordinary only when that result cannot reach the namespace. A keys view's
+# ``.mapping`` is a proxy of the namespace itself, so ``keys()`` leaves
+# ``_NS_READS`` (option (i): 0 stdlib and 0 repository test files).
+
+FOLD27_P = "from unittest.mock import patch as P\n\n\n"
+FOLD27_TARGET = "mod.__name__ + '.helper', replacement"
+FOLD27_PROBES = {
+    "codex-4657978945": (
+        "from unittest.mock import patch\n\n\n",
+        "next(reversed(mod.__dict__.keys().mapping.values()))"
+        f"({FOLD27_TARGET}).start()",
+    ),
+    "keys-view-variable": (
+        FOLD27_P,
+        "kv = mod.__dict__.keys()\n"
+        f"    next(reversed(kv.mapping.values()))({FOLD27_TARGET}).start()",
+    ),
+    "keys-view-walrus": (
+        FOLD27_P,
+        "if (kv := mod.__dict__.keys()):\n"
+        f"        next(reversed(kv.mapping.values()))({FOLD27_TARGET}).start()",
+    ),
+    "keys-view-conditional": (
+        FOLD27_P,
+        "kv = mod.__dict__.keys() if mod else None\n"
+        f"    next(reversed(kv.mapping.values()))({FOLD27_TARGET}).start()",
+    ),
+    "keys-mapping-subscript": (
+        FOLD27_P,
+        f"mod.__dict__.keys().mapping['P']({FOLD27_TARGET}).start()",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD27_PROBES))
+def test_fold27_695_namespace_views_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    pre, stmt = FOLD27_PROBES[case]
+    source = FOLD26_T.format(pre=pre, post="", stmt=stmt)
+    root = _tree(tmp_path, {"a.py": source, "b.py": FOLD19_DECOY})
+    off, on = _off_on(root)
+    edge = _fold19_edge(off, "a.py")
+    assert edge["resolution"] == "ambiguous", case
+    assert _fold19_edge(on, "a.py") == edge, case
+
+
+# Every use of ``keys()`` fails closed now, the former fold-19/fold-24
+# controls among them; ``ns["__builtins__"]`` and ``ns["__dict__"]`` already
+# did (dynamic-attribute literals): ``__builtins__`` can rebind ``len``.
+@pytest.mark.parametrize(
+    ("pre", "stmt"),
+    [
+        ("", "x = list(mod.__dict__.keys())"),
+        ("from unittest.mock import patch\n\n\n", "x = list(mod.__dict__.keys())"),
+        (FOLD27_P, "x = sorted(mod.__dict__.keys())"),
+        ("", "for k in mod.__dict__.keys():\n        x = k"),
+        ("", "x = len(mod.__dict__.keys())"),
+        ("", "x = mod.__dict__.keys().mapping"),
+        ("", "x = mod.__dict__['__builtins__']"),
+        ("", "x = mod.__dict__.get('__builtins__')"),
+        ("", "x = mod.__dict__['__dict__']"),
+    ],
+)
+def test_fold27_695_namespace_view_reads_fail_closed(pre: str, stmt: str) -> None:
+    source = FOLD26_T.format(pre=pre, post="", stmt=stmt)
+    assert reason(source) == "dynamic-scope", stmt
+
+
+# ``__loader__`` and ``__spec__`` hold no namespace: a module they load is an
+# ordinary module, whose writes are recorded or fail closed on any receiver.
+@pytest.mark.parametrize(
+    ("stmt", "expected"),
+    [
+        (
+            "m2 = mod.__dict__['__loader__'].load_module(mod.__name__)\n"
+            "    m2.helper = replacement",
+            "mixed-bindings",
+        ),
+        (
+            "k = 'hel' + 'per'\n"
+            "    m2 = mod.__dict__['__loader__'].load_module(mod.__name__)\n"
+            "    m2.__dict__[k] = replacement",
+            "dynamic-scope",
+        ),
+        (
+            "k = 'hel' + 'per'\n    sp = mod.__dict__['__spec__']\n"
+            "    m2 = sp.loader.load_module(sp.name)\n"
+            "    m2.__dict__.update({k: replacement})",
+            "dynamic-scope",
+        ),
+    ],
+)
+def test_fold27_695_loader_modules_are_tracked(stmt: str, expected: str) -> None:
+    source = FOLD26_T.format(pre="", post="", stmt=stmt)
+    assert reason(source) == expected, stmt
+
+
+# Results that cannot reach the namespace still resolve.
+@pytest.mark.parametrize(
+    "stmt",
+    [
+        "x = len(mod.__dict__)",
+        "x = 'other' in mod.__dict__",
+        "x = 'other' not in mod.__dict__",
+        "x = mod.__dict__['other']",
+        "x = mod.__dict__.get('other', None)",
+        "x = mod.__dict__['__loader__']",
+        "x = mod.__dict__.get('__spec__', None)",
+    ],
+)
+def test_fold27_695_unreachable_results_still_resolve(stmt: str) -> None:
+    source = FOLD26_T.format(pre="", post="", stmt=stmt)
+    assert proof_text(source) == ["def helper(*args):\n    return 1"], stmt

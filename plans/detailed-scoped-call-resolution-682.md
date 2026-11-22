@@ -953,12 +953,26 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
         its readbacks is checked in turn, fold 24), and an alias binding:
         the value assigned or walrus-bound to one name a computed read
         cannot reach (a function local);
-      - **namespace dict, pure reads** whose result names nothing
-        sensitive: `ns[c]` with constant keys and `ns.get(c, …)` (a key
-        naming an alias is a readback), `ns.keys()`, `c in ns`,
-        `c not in ns`, `len(ns)`. **`ns.values()` and `ns.items()` are off
-        the list** (fold 24, Y-6): they hand over every value, the file's
-        own `patch` or mock module among them, in any file;
+      - **namespace dict, pure reads** whose result cannot reach the
+        namespace: `ns[c]` with constant keys and `ns.get(c, …)` (a key
+        naming an alias is a readback; `'__builtins__'` and `'__dict__'`
+        keys are dynamic-attribute literals and fail closed), `c in ns`,
+        `c not in ns`, `len(ns)`. **THE RULE for results** (fold 27, Codex
+        4657978945): an A-1 read may treat its result as ordinary only
+        when that result cannot reach the namespace at run time. An int
+        (`len`) or a bool (`in`, `not in`) cannot; a stored value by
+        constant key can reach it only through a spelled acquisition the
+        other rules track (`__globals__`, `__dict__`, an alias, a module
+        whose writes are recorded on any receiver); `'__loader__'` and
+        `'__spec__'` hold no namespace (a module they load is such an
+        ordinary module). A view, iterator or proxy of the namespace is
+        not ordinary: **`ns.values()` and `ns.items()`** (fold 24, Y-6)
+        and **`ns.keys()`** (fold 27: a keys view's `.mapping` is a proxy
+        of the namespace itself) are off the list, in any file. Option (i),
+        removing `keys`, cost 0 of 638 stdlib and 0 of 488 repository test
+        files, the same as option (ii), treating its result as the
+        namespace kind. The fold-23 `c not in ns` entry never matched (the
+        grammar reads `not in` as one token); fold 27 fixes it;
       - **namespace dict, recognized writes**, as expression statements
         only, with constant keys or literal mappings recorded and anything
         else failing closed in the write rules: `ns[c] = v`, `del ns[c]`,
@@ -2692,3 +2706,29 @@ namespace. Pre-existing (wrong at ab49156a too).
 | Audit of A-1 entries reading a module attribute: `operator.<writer>` (fixed) and `from operator import <writer> [as s]` (fixed); `dict.<method>` cannot be reassigned (`TypeError: cannot set 'update' attribute of immutable type 'dict'`; `dict.__dict__` is a read-only mappingproxy); `mock.<constructor>`/`mock.patch`/`patch.object` are uses of sensitive kinds, whose `__dict__` and assignment are off the list (fail closed); `_MOCKER_SAFE` members receive no sensitive value; `len` relies on `builtins.len`, which any `builtins` mention or recorded `len` write already covers | — |
 | Cost: 0 of 638 supported non-test stdlib files and 0 of 488 supported repository test files change against 1b4d112f. Harness against main unchanged (byte-identical `cmp`). The president's p60–p62 match his `fix25` outputs exactly (all seven AA-4 cases and `op_monkey_dict_update` fail closed, nothing else changes); p44–p58 and panel A (38) unchanged | — |
 | Pins: `test_fold26_695_rebound_operator_members_keep_their_off_mode_edge` (9: the p62 repro, the five other AA-4 spellings, a from-import alias whose member is written first, and `delitem`/`__setitem__` members; all 9 wrong at 1b4d112f), `test_fold26_695_unrelated_writes_keep_the_entry` (6 controls: no write, writes of `attrgetter`, of another writer member `delitem`/`iadd`, an unrelated attribute write, and the from-import alias). Mutation: attribute-member reliance removed 8 failures, from-import member reliance removed 1, every writer relied on (over-broad) 2 | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: fold 27 (Codex 4657978945 at 4758e2cc: an allow-listed read's result must not reach the namespace)
+
+Only adds `none`; no expected row changes. `python` fact version 29.
+`ns.keys()` was allow-listed with an ordinary result, but a `dict_keys`
+view's `.mapping` is a mappingproxy of the namespace itself, so
+`next(reversed(mod.__dict__.keys().mapping.values()))` recovered the
+file's own `patch` import, defeating Y-6.
+
+| `_NS_READS` / A-1 read | Result at run time | Decision |
+| --- | --- | --- |
+| `len(ns)` | int | safe (kept) |
+| `c in ns`, `c not in ns` | bool | safe (kept); the `not in` check never matched before (one grammar token) and now does |
+| `ns[c]`, `ns.get(c, …)` | the stored value | safe for ordinary names (kept): alias names, the mock/`patch` names and the `'__dict__'` key are readbacks; values reach the namespace only through spelled acquisitions the other rules track |
+| `ns['__builtins__']`, `ns.get('__builtins__')` | builtins module or dict (can rebind `len`) | already fail closed: `__builtins__` is a dynamic-attribute literal |
+| `ns['__dict__']` | — | already fails closed (dynamic-attribute literal) |
+| `ns['__loader__']`, `ns['__spec__']` | loader, `ModuleSpec`: no namespace reference | safe (kept): a module they load (`load_module`, `spec.loader`) is an ordinary module whose writes are recorded or fail closed on any receiver (pinned) |
+| `ns.keys()` | a view with `.mapping` (namespace proxy) | **removed** from `_NS_READS`, option (i) |
+| `ns.values()`, `ns.items()` | views of every value | removed in fold 24 |
+
+| Item | Applied in |
+| --- | --- |
+| Option (i), removing `keys`, cost 0 of 638 supported non-test stdlib files and 0 of 488 supported repository test files; option (ii), treating `ns.keys()` as the namespace kind, cost the same. The rule picks (i) at a cost of 1 file or less | `py_scope._NS_READS` |
+| Flipped: the fold-19 control's `z = list(mod.__dict__.keys())` became `z = len(mod.__dict__)`; the fold-23 `ns-keys` entry and the two fold-24 `keys()` controls were retired and re-pinned as failing closed | `tests/test_call_resolution_tier1_py.py` |
+| Cost: 0 and 0 against 4758e2cc with the `not in` fix included. Harness against main unchanged (byte-identical `cmp`); the president's p44–p62 trees and panel A (38) unchanged | — |
+| Pins: `test_fold27_695_namespace_views_keep_their_off_mode_edge` (5: the Codex repro, `.mapping` through a keys view in a variable, a walrus and a conditional, and `ns.keys().mapping['P']`; 4 wrong at 4758e2cc, the fifth already caught as an alias readback), `test_fold27_695_namespace_view_reads_fail_closed` (9, including `__builtins__` and `__dict__`), `test_fold27_695_loader_modules_are_tracked` (3), `test_fold27_695_unreachable_results_still_resolve` (7 controls). Mutation: `keys` back in `_NS_READS` 10 failures, the old `not in` check 1, `get` removed 8 | `tests/test_call_resolution_tier1_py.py` |

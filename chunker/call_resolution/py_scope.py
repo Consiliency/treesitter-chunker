@@ -728,13 +728,15 @@ _NS, _MOCK, _PATCH, _MOCKER = "namespace", "mock", "patch", "mocker"
 _KINDS = (_NS, _MOCK, _PATCH, _MOCKER)
 # THE CLOSED ALLOW-LIST of safe uses of a sensitive value (#695 fold 23,
 # executive ruling E-21 A-1). Every use not listed here fails closed (A-2).
-# A namespace dict: pure reads whose result names nothing sensitive (a value
-# by constant key, which the alias sets gate, or the keys), and recognized
-# writes with constant keys or literal mappings, used only as expression
-# statements. ``values()`` and ``items()`` are off the list: they hand over
-# every value, the file's own ``patch`` or mock module among them (fold 24,
-# Y-6).
-_NS_READS = frozenset({"get", "keys"})
+# A namespace dict: pure reads whose result cannot reach the namespace (a
+# value by constant key, which the alias sets and the dynamic-attribute
+# literals gate), and recognized writes with constant keys or literal
+# mappings, used only as expression statements. ``values()`` and ``items()``
+# are off the list: they hand over every value, the file's own ``patch`` or
+# mock module among them (fold 24, Y-6). So is ``keys()``: a keys view's
+# ``.mapping`` is a proxy of the namespace itself (fold 27, Codex
+# 4657978945).
+_NS_READS = frozenset({"get"})
 _NS_WRITES = frozenset({"update", "setdefault", "pop"})
 # The mock module's constructors and constants.
 _MOCK_SAFE = frozenset(
@@ -2087,7 +2089,7 @@ class _Analysis:
         itself, or an element of a tuple, list or set, through parentheses,
         starred forms, walrus values and conditional or boolean operands. A
         call, attribute read or subscript of it does not carry it
-        (``list(ns.keys())``); a sensitive value passed as an argument
+        (``ns.get("p")``); a sensitive value passed as an argument
         escapes instead."""
         stack = [node]
         while stack:
@@ -2209,7 +2211,7 @@ class _Analysis:
         - an alias binding: the value assigned (or walrus-bound) to one
           name a computed read cannot reach (a function local);
         - a namespace dict: ``ns[c]`` with constant keys (read, target,
-          ``del``), ``ns.get(c, …)``, ``ns.keys()``,
+          ``del``), ``ns.get(c, …)``,
           ``c in ns``, ``len(ns)``; ``ns.update/setdefault/pop(…)``, the
           unbound ``dict.``/``operator`` writers with ``ns`` first, and
           ``ns |= …``, as expression statements (their constant names are
@@ -2289,8 +2291,10 @@ class _Analysis:
                 _constant_string(key, self.source) is not None for key in keys
             )
         if kind_of == "comparison_operator":
+            # ``not in`` is one token, whose text may hold any whitespace
+            # (fold 27: the fold-23 check never matched it).
             operators = [
-                _text(child, self.source)
+                " ".join(_text(child, self.source).split())
                 for child in parent.children
                 if not child.is_named
             ]
@@ -2298,7 +2302,7 @@ class _Analysis:
             return (
                 len(operands) == 2
                 and _same(current, operands[1])
-                and operators in (["in"], ["not", "in"])
+                and operators in (["in"], ["not in"])
             )
         if kind_of == "augmented_assignment":
             operator = parent.child_by_field_name("operator")

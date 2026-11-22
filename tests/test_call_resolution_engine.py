@@ -186,6 +186,8 @@ NAMED_TIER1_PY_TESTS = (
     "test_fold25_695_verified_callees_still_resolve",
     "test_fold26_695_rebound_operator_members_keep_their_off_mode_edge",
     "test_fold26_695_unrelated_writes_keep_the_entry",
+    "test_fold27_695_namespace_views_keep_their_off_mode_edge",
+    "test_fold27_695_unreachable_results_still_resolve",
 )
 # Expected rows per plan PR (10.1): a row that loses its finalization fails
 # the pin (#695 panel B7).
@@ -663,7 +665,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "28"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "29"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
