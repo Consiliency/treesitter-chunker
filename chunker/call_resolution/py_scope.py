@@ -726,6 +726,33 @@ _PATCH_METHODS = ("object", "dict", "multiple")
 # 22): a namespace dict, the mock module, ``patch`` and a pytest-mock fixture.
 _NS, _MOCK, _PATCH, _MOCKER = "namespace", "mock", "patch", "mocker"
 _KINDS = (_NS, _MOCK, _PATCH, _MOCKER)
+# THE CLOSED ALLOW-LIST of safe uses of a sensitive value (#695 fold 23,
+# executive ruling E-21 A-1). Every use not listed here fails closed (A-2).
+# A namespace dict: pure reads (result ordinary), and recognized writes with
+# constant keys or literal mappings, used only as expression statements.
+_NS_READS = frozenset({"get", "keys", "values", "items"})
+_NS_WRITES = frozenset({"update", "setdefault", "pop"})
+# The mock module's constructors and constants.
+_MOCK_SAFE = frozenset(
+    {
+        "Mock",
+        "MagicMock",
+        "AsyncMock",
+        "NonCallableMock",
+        "PropertyMock",
+        "call",
+        "ANY",
+        "sentinel",
+        "DEFAULT",
+        "create_autospec",
+        "mock_open",
+        "seal",
+    }
+)
+# A pytest-mock fixture's non-patch public helpers.
+_MOCKER_SAFE = frozenset({"spy", "stub", "Mock", "MagicMock", "resetall", "stopall"})
+# ``patch``'s methods (called, with W-3 semantics).
+_PATCH_SAFE = frozenset(_PATCH_METHODS)
 # Stdlib string-to-module resolvers (#695 fold 21, E-20): a mention in any
 # position fails closed, like ``importlib``. These names are rare enough to
 # count in every spelling; ``locate`` counts on ``pydoc`` and ``_resolve``/
@@ -1903,36 +1930,10 @@ class _Analysis:
         readbacks and escapes (W-2) are the shared mechanism of
         :meth:`_sensitive_rules` (fold 22).
         """
-        for node in attributes:
-            attribute = node.child_by_field_name("attribute")
-            if attribute is None:
-                continue
-            names = _spellings(attribute, self.source)
-            receiver = node.child_by_field_name("object")
-            if (
-                names & _NAMESPACE_MUTATORS
-                and receiver is not None
-                and self._namespace_receiver(receiver)
-                and _callee_call(node) is None
-            ):
-                # ``u = mod.__dict__.update``, ``map(vars(m).__setitem__, …)``.
-                self.dynamic = True
         for node in calls:
             self._namespace_call(node, operator_names)
         for node in augmented:
             self._namespace_ior(node)
-        for node in self.subscript_targets:
-            receiver = node.child_by_field_name("value")
-            if receiver is None or not self._namespace_receiver(receiver):
-                continue
-            keys = [
-                child
-                for index, child in enumerate(node.children)
-                if node.field_name_for_child(index) == "subscript"
-            ]
-            if any(_constant_string(key, self.source) is None for key in keys):
-                # ``mod.__dict__[k] = f``: a computed key of a namespace.
-                self.dynamic = True
 
     # -- sensitive kinds: one alias/readback/escape mechanism (fold 22) ------
 
@@ -1970,6 +1971,24 @@ class _Analysis:
         module or class scope, ``global``, or an attribute or subscript
         target).
         """
+        # A class-pattern keyword reads an attribute of the subject
+        # (``case object(__dict__=x)`` is ``x = subject.__dict__``): a keyword
+        # naming a sensitive attribute or an alias is off the allow-list,
+        # whatever the subject (fold 23, X-6).
+        sensitive_names = {_NAMESPACE_DICT, "mock", "patch"}.union(
+            *self.aliases.values()
+        )
+        for match in matches:
+            stack = [match]
+            while stack:
+                current = stack.pop()
+                stack.extend(current.named_children)
+                if current.type != "keyword_pattern" or not current.named_children:
+                    continue
+                keyword = current.named_children[0]
+                if _spellings(keyword, self.source) & sensitive_names:
+                    self.dynamic = True
+                    return
         present = {
             kind: self._kind_present(kind, attributes, identifiers) for kind in _KINDS
         }
@@ -1999,11 +2018,6 @@ class _Analysis:
                 for target, value in bindings:
                     if self._contains_kind(value, kind):
                         found |= _binding_names(target, self.source)
-                for match in matches:
-                    subject = match.child_by_field_name("subject")
-                    if subject is not None and self._contains_kind(subject, kind):
-                        for ident in _match_captures(match):
-                            found |= _spellings(ident, self.source)
                 for name, value in named:
                     if self._contains_kind(value, kind):
                         found.add(name)
@@ -2012,12 +2026,32 @@ class _Analysis:
                     changed = True
         if self.aliases[_NS]:
             self.namespace_seen = True
+        # The same check for keywords naming an alias (fold 23, X-6).
+        # (``case object(__dict__=x)`` is ``x = subject.__dict__``): a keyword
+        # naming a sensitive attribute or an alias is off the allow-list,
+        # whatever the subject (fold 23, X-6).
+        sensitive_names = {_NAMESPACE_DICT, "mock", "patch"}.union(
+            *self.aliases.values()
+        )
+        for match in matches:
+            stack = [match]
+            while stack:
+                current = stack.pop()
+                stack.extend(current.named_children)
+                if current.type != "keyword_pattern" or not current.named_children:
+                    continue
+                keyword = current.named_children[0]
+                if _spellings(keyword, self.source) & sensitive_names:
+                    self.dynamic = True
+                    return
         nodes = identifiers + attributes + calls + subscripts
         for kind in _KINDS:
             if not present[kind] and not self.aliases[kind]:
                 continue
             for node in nodes:
-                if self._sensitive(node, kind) and self._escape(
+                if node.type == "identifier" and _name_part(node):
+                    continue  # the ``ns`` of ``K.ns``: part of a larger read
+                if self._sensitive(node, kind) and not self._safe_use(
                     node, kind, operator_names
                 ):
                     self.dynamic = True
@@ -2163,9 +2197,30 @@ class _Analysis:
             return bool(keys & aliases)  # ``K.__dict__["ns"]``
         return False
 
-    def _escape(self, node: Any, kind: str, operator_names: set[str]) -> bool:
-        """Whether a sensitive value escapes: the position it reaches through
-        parentheses, walrus values and conditional or boolean operands."""
+    def _safe_use(self, node: Any, kind: str, operator_names: set[str]) -> bool:
+        """Whether a sensitive value's use is on THE CLOSED ALLOW-LIST
+        (#695 fold 23, E-21 A-1); every other use fails closed (A-2).
+
+        The value is followed through parentheses, walrus values and
+        conditional or boolean operands. Safe uses:
+
+        - a binding position (a parameter, a target, an import, a pattern);
+        - an alias binding: the value assigned (or walrus-bound) to one
+          name a computed read cannot reach (a function local);
+        - a namespace dict: ``ns[c]`` with constant keys (read, target,
+          ``del``), ``ns.get(c, …)``, ``ns.keys()``/``values()``/``items()``,
+          ``c in ns``, ``len(ns)``; ``ns.update/setdefault/pop(…)``, the
+          unbound ``dict.``/``operator`` writers with ``ns`` first, and
+          ``ns |= …``, as expression statements (their constant names are
+          recorded; anything else fails closed in the write rules);
+        - the mock module: ``mock.<name>`` for a name in ``_MOCK_SAFE``, and
+          ``mock.patch``;
+        - a fixture: ``mocker.<name>`` for a name in ``_MOCKER_SAFE``, and
+          ``mocker.patch``;
+        - ``patch``: called, or ``patch.object/dict/multiple`` called (W-3).
+        """
+        if node.type == "identifier" and _binding_position(node):
+            return True
         current = node
         parent = current.parent
         while parent is not None:
@@ -2177,57 +2232,106 @@ class _Analysis:
                 if not _same(current, parent.child_by_field_name("value")):
                     break
                 name = parent.child_by_field_name("name")
-                if name is not None and self._reachable_binding(name):
-                    return True
+                if name is None or self._reachable_binding(name):
+                    return False
             elif parent.type not in ("conditional_expression", "boolean_operator"):
                 break
             current, parent = parent, parent.parent
         if parent is None:
             return False
         kind_of = parent.type
-        if kind_of == "argument_list":
-            if kind == _NS:
-                return not self._mutator_receiver(parent, current, operator_names)
-            return True
-        if kind_of == "keyword_argument":
-            return (
-                parent.parent is not None
-                and parent.parent.type == "argument_list"
-                and _same(current, parent.child_by_field_name("value"))
-            )
-        if kind_of in ("list_splat", "dictionary_splat"):
-            return parent.parent is not None and parent.parent.type == "argument_list"
-        if kind_of in (
-            "list",
-            "tuple",
-            "set",
-            "expression_list",
-            "pair",
-            "return_statement",
-            "yield",
-            "with_item",
-        ):
-            return True
-        if kind_of in ("default_parameter", "typed_default_parameter"):
-            return _same(current, parent.child_by_field_name("value"))
-        if kind_of == "lambda":
-            return _same(current, parent.child_by_field_name("body"))
-        if kind_of == "as_pattern":
-            return parent.parent is not None and parent.parent.type == "with_item"
-        if kind_of in ("for_statement", "for_in_clause"):
-            return _same(current, parent.child_by_field_name("right"))
-        if kind_of in _COMPREHENSIONS:
-            return _same(current, parent.child_by_field_name("body"))
         if kind_of == "assignment":
             left = parent.child_by_field_name("left")
             if left is None or not _same(current, parent.child_by_field_name("right")):
                 return False
-            return _has_attribute_target(left) or any(
-                self._reachable_binding(ident) for ident in _target_names(left)
+            left = _unwrap(left, skip_comments=True)
+            return left.type == "identifier" and not self._reachable_binding(left)
+        if kind_of == "attribute" and _same(
+            current, parent.child_by_field_name("object")
+        ):
+            attribute = parent.child_by_field_name("attribute")
+            name = _text(attribute, self.source) if attribute is not None else ""
+            call = _callee_call(parent)
+            if kind == _NS:
+                if name in _NS_WRITES:
+                    return call is not None and _statement_call(call)
+                if name not in _NS_READS or call is None:
+                    return False
+                if name == "get":
+                    arguments = _call_arguments(call)
+                    return bool(arguments) and (
+                        _constant_string(arguments[0], self.source) is not None
+                    )
+                return True
+            if kind == _MOCK:
+                return name in _MOCK_SAFE or name == "patch"
+            if kind == _MOCKER:
+                return name in _MOCKER_SAFE or name == "patch"
+            return name in _PATCH_SAFE and call is not None
+        if kind_of == "call" and _same(current, parent.child_by_field_name("function")):
+            return kind == _PATCH
+        if kind_of == "decorator":
+            return False
+        if kind != _NS:
+            return False
+        if kind_of == "subscript" and _same(
+            current, parent.child_by_field_name("value")
+        ):
+            keys = [
+                child
+                for index, child in enumerate(parent.children)
+                if parent.field_name_for_child(index) == "subscript"
+            ]
+            return bool(keys) and all(
+                _constant_string(key, self.source) is not None for key in keys
             )
-        if kind_of == "match_statement":
-            return any(
-                self._reachable_binding(ident) for ident in _match_captures(parent)
+        if kind_of == "comparison_operator":
+            operators = [
+                _text(child, self.source)
+                for child in parent.children
+                if not child.is_named
+            ]
+            operands = [c for c in parent.named_children if c.type != "comment"]
+            return (
+                len(operands) == 2
+                and _same(current, operands[1])
+                and operators in (["in"], ["not", "in"])
+            )
+        if kind_of == "augmented_assignment":
+            operator = parent.child_by_field_name("operator")
+            return (
+                _same(current, parent.child_by_field_name("left"))
+                and operator is not None
+                and _text(operator, self.source) == "|="
+            )
+        if kind_of == "argument_list":
+            call = parent.parent
+            function = (
+                call.child_by_field_name("function") if call is not None else None
+            )
+            if function is None:
+                return False
+            function = _unwrap(function, skip_comments=True)
+            arguments = [c for c in parent.named_children if c.type != "comment"]
+            if (
+                function.type == "identifier"
+                and _text(function, self.source) == "len"
+                and len(arguments) == 1
+            ):
+                return True
+            first = arguments[0] if arguments else None
+            if first is None or not _same(first, current) or not _statement_call(call):
+                return False
+            if function.type == "attribute":
+                attribute = function.child_by_field_name("attribute")
+                names = (
+                    _spellings(attribute, self.source)
+                    if attribute is not None
+                    else set()
+                )
+                return bool(names & (_NAMESPACE_MUTATORS | _OPERATOR_WRITERS))
+            return function.type == "identifier" and bool(
+                _spellings(function, self.source) & operator_names
             )
         return False
 
@@ -2246,33 +2350,6 @@ class _Analysis:
             return True
         scope = self.scopes.get((current.id, "scope"))
         return scope is not None and _text(ident, self.source) in scope.globals
-
-    def _mutator_receiver(
-        self, arguments: Any, node: Any, operator_names: set[str]
-    ) -> bool:
-        """Whether ``node`` is the receiver (first positional argument) of an
-        unbound namespace mutator or an ``operator`` writer, which the write
-        rules read (``dict.update(ns, D)``, ``operator.setitem(ns, k, f)``)."""
-        first = next(
-            (child for child in arguments.named_children if child.type != "comment"),
-            None,
-        )
-        if first is None or not _same(first, node):
-            return False
-        call = arguments.parent
-        function = call.child_by_field_name("function") if call is not None else None
-        if function is None:
-            return False
-        function = _unwrap(function, skip_comments=True)
-        if function.type == "attribute":
-            attribute = function.child_by_field_name("attribute")
-            names = (
-                _spellings(attribute, self.source) if attribute is not None else set()
-            )
-            return bool(names & (_NAMESPACE_MUTATORS | _OPERATOR_WRITERS))
-        if function.type == "identifier":
-            return bool(_spellings(function, self.source) & operator_names)
-        return False
 
     def _namespace_receiver(self, node: Any) -> bool:
         return self._sensitive(node, _NS)
@@ -3258,18 +3335,6 @@ def _has_attribute_target(target: Any) -> bool:
     return False
 
 
-def _match_captures(match: Any) -> list[Any]:
-    found: list[Any] = []
-    stack = [match]
-    while stack:
-        current = stack.pop()
-        if current.type == "case_pattern":
-            found.extend(_pattern_captures(current))
-            continue
-        stack.extend(current.named_children)
-    return found
-
-
 def _is_patch_attribute(node: Any, source: bytes) -> bool:
     """Whether ``node`` is ``X.patch`` for any ``X`` (through parentheses)."""
     node = _unwrap(node, skip_comments=True)
@@ -3277,6 +3342,63 @@ def _is_patch_attribute(node: Any, source: bytes) -> bool:
         return False
     attribute = node.child_by_field_name("attribute")
     return attribute is not None and _text(attribute, source) == "patch"
+
+
+def _name_part(ident: Any) -> bool:
+    """Whether an identifier is the name of an attribute (``ns`` in
+    ``K.ns``) or of a keyword argument: part of a larger node, not a value."""
+    parent = ident.parent
+    if parent is None:
+        return False
+    if parent.type == "attribute":
+        return _same(ident, parent.child_by_field_name("attribute"))
+    if parent.type == "keyword_argument":
+        return _same(ident, parent.child_by_field_name("name"))
+    return False
+
+
+def _binding_position(ident: Any) -> bool:
+    """Whether an identifier is bound here rather than used: a parameter, a
+    ``def``/``class`` name, an import, an assignment, ``for``, ``with`` or
+    walrus target, ``global``/``nonlocal``/``del``, or a pattern capture."""
+    if _scope_binding_name(ident) or _import_context(ident):
+        return True
+    current = ident
+    parent = ident.parent
+    while parent is not None and parent.type in (
+        "pattern_list",
+        "tuple_pattern",
+        "list_pattern",
+        "list_splat_pattern",
+        "parenthesized_expression",
+        "as_pattern_target",
+    ):
+        current, parent = parent, parent.parent
+    if parent is None:
+        return False
+    if parent.type in ("assignment", "for_statement", "for_in_clause"):
+        return _same(current, parent.child_by_field_name("left"))
+    if parent.type == "named_expression":
+        return _same(current, parent.child_by_field_name("name"))
+    if parent.type in ("global_statement", "nonlocal_statement", "delete_statement"):
+        return True
+    if parent.type == "as_pattern":
+        return _same(current, parent.child_by_field_name("alias"))
+    node = parent
+    while node is not None and node.type not in ("case_clause", "block", "module"):
+        if node.type == "case_pattern":
+            return True
+        node = node.parent
+    return False
+
+
+def _statement_call(call: Any) -> bool:
+    """Whether a call's result is discarded: the whole expression of an
+    expression statement (through parentheses)."""
+    parent = call.parent
+    while parent is not None and parent.type == "parenthesized_expression":
+        parent = parent.parent
+    return parent is not None and parent.type == "expression_statement"
 
 
 def _binding_names(target: Any, source: bytes) -> set[str]:

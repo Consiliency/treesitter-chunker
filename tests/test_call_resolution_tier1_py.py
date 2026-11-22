@@ -3145,6 +3145,18 @@ def test_an_unknown_path_fails_closed() -> None:
     assert known["bindings"][key]["outcome"] == "local"
 
 
+def test_namespace_dunder_writes_fail_closed() -> None:
+    """Since fold 23 (E-21 A-2) a dunder on a namespace dict is off the
+    allow-list: ``mod.__dict__.__setitem__('helper', len)`` fails closed as
+    ``dynamic-scope`` instead of being recorded (``mixed-bindings``)."""
+    form = "def patch(mod):\n    mod.__dict__.__setitem__('helper', len)"
+    source = HELPER + form + "\n\n\ndef use():\n    return helper()\n"
+    assert _outcome_at(source, "helper", "pkg/a.py") == {
+        "outcome": "none",
+        "reason": "dynamic-scope",
+    }
+
+
 @pytest.mark.parametrize(
     "form",
     [
@@ -3160,7 +3172,6 @@ def test_an_unknown_path_fails_closed() -> None:
         "def patch(mod):\n    mod.__dict__.update(**{'helper': len})",
         "def patch(mod):\n    mod.__dict__.setdefault('helper', len)",
         "def patch(mod):\n    mod.__dict__.pop('helper')",
-        "def patch(mod):\n    mod.__dict__.__setitem__('helper', len)",
         "def patch(mod):\n    for mod.helper in [len]:\n        pass",
     ],
 )
@@ -7218,3 +7229,203 @@ def test_fold22_695_cross_kind_matrix_fails_closed(kind: str, form: str) -> None
 def test_fold22_controls_still_resolve(pre: str, stmt: str) -> None:
     source = FOLD22_T.format(pre=pre, stmt=stmt)
     assert proof_text(source) == ["def helper(*a):\n    return 1"], stmt
+
+
+# ---------------------------------------------------------------------------
+# Fold 23 (the president's re-check at 515de38e, X-5..X-7, and executive
+# ruling E-21): the uses of a sensitive value are a CLOSED ALLOW-LIST
+# (``py_scope._NS_READS``/``_NS_WRITES``/``_MOCK_SAFE``/``_MOCKER_SAFE``/
+# ``_PATCH_SAFE`` and ``_safe_use``); every other use fails closed.
+
+FOLD23_MOCK = "from unittest import mock\n\n\n"
+FOLD23_PROBES = {
+    # X-5: ``__ior__``/``ior`` returns the namespace itself.
+    "x5-ior-method": (
+        "",
+        "k = 'hel' + 'per'\n    x = mod.__dict__.__ior__({})\n    x[k] = replacement",
+    ),
+    "x5-ior-inline": (
+        "",
+        "k = 'hel' + 'per'\n    mod.__dict__.__ior__({})[k] = replacement",
+    ),
+    "x5-dict-ior": (
+        "",
+        "k = 'hel' + 'per'\n    x = dict.__ior__(mod.__dict__, {})\n    x[k] = replacement",
+    ),
+    "x5-operator-ior": (
+        "",
+        "import operator\n    k = 'hel' + 'per'\n"
+        "    x = operator.ior(mod.__dict__, {})\n    x[k] = replacement",
+    ),
+    "x5-operator-dunder-ior": (
+        "",
+        "import operator\n    k = 'hel' + 'per'\n"
+        "    x = operator.__ior__(mod.__dict__, {})\n    x[k] = replacement",
+    ),
+    "x5-from-operator-ior": (
+        "from operator import ior\n\n\n",
+        "k = 'hel' + 'per'\n    x = ior(mod.__dict__, {})\n    x[k] = replacement",
+    ),
+    # X-6: class-pattern keywords read an attribute of the subject.
+    "x6-match-dict-subscript": (
+        "",
+        "k = 'hel' + 'per'\n    match mod:\n        case object(__dict__=x):\n"
+        "            x[k] = replacement",
+    ),
+    "x6-match-dict-update": (
+        "",
+        "k = 'hel' + 'per'\n    match mod:\n        case object(__dict__=x):\n"
+        "            x.update({k: replacement})",
+    ),
+    "x6-match-dict-later": (
+        "",
+        "k = 'hel' + 'per'\n    match mod:\n        case object(__dict__=x):\n"
+        "            pass\n    x[k] = replacement",
+    ),
+    "x6-match-mock-patch": (
+        FOLD23_MOCK,
+        f"match mock:\n        case object(patch=p):\n            p({FOLD22_TARGET}).start()",
+    ),
+    "x6-match-mocker-patch": (
+        "",
+        f"match mocker:\n        case object(patch=p):\n            p({FOLD22_TARGET})",
+    ),
+    "x6-match-unittest-mock": (
+        "import unittest\nimport unittest.mock\n\n\n",
+        f"match unittest:\n        case object(mock=x):\n            x.patch({FOLD22_TARGET}).start()",
+    ),
+    # X-7: ``patch`` read back through ``__call__`` or ``__get__``.
+    "x7-mocker-patch-call": ("", f"mocker.patch.__call__({FOLD22_TARGET})"),
+    "x7-mocker-patch-call-alias": (
+        "",
+        f"p = mocker.patch.__call__\n    p({FOLD22_TARGET})",
+    ),
+    "x7-mock-patch-call": (
+        FOLD23_MOCK,
+        f"mock.patch.__call__({FOLD22_TARGET}).start()",
+    ),
+    "x7-mock-patch-call-alias": (
+        FOLD23_MOCK,
+        f"p = mock.patch\n    p.__call__({FOLD22_TARGET}).start()",
+    ),
+    "x7-patch-call": (
+        "from unittest.mock import patch\n\n\n",
+        f"patch.__call__({FOLD22_TARGET}).start()",
+    ),
+    "x7-patch-get": (
+        FOLD23_MOCK,
+        f"p = mock.patch.__get__(None, object)\n    p({FOLD22_TARGET}).start()",
+    ),
+    # X-8: ``mocker.mock_module`` is the mock module.
+    "x8-mocker-mock-module": ("", f"mocker.mock_module.patch({FOLD22_TARGET}).start()"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD23_PROBES))
+def test_fold23_695_president_probes_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    pre, stmt = FOLD23_PROBES[case]
+    source = FOLD22_T.format(pre=pre, stmt=stmt)
+    root = _tree(tmp_path, {"a.py": source, "b.py": FOLD19_DECOY})
+    off, on = _off_on(root)
+    edge = _fold19_edge(off, "a.py")
+    assert edge["resolution"] == "ambiguous", case
+    assert _fold19_edge(on, "a.py") == edge, case
+
+
+# The allow-list is closed: per kind, uses not on it fail closed.
+FOLD23_VALUES = {
+    "namespace": ("", "mod.__dict__"),
+    "mock": (FOLD23_MOCK, "mock"),
+    "patch": (FOLD23_MOCK, "mock.patch"),
+    "mocker": ("", "mocker"),
+}
+FOLD23_UNLISTED = {
+    "dunder-call": "x = {V}.__call__",
+    "dunder-get": "x = {V}.__get__",
+    "dunder-ior-used": "x = {V}.__ior__({{}})",
+    "dunder-class": "x = {V}.__class__",
+    "copy": "x = {V}.copy()",
+    "fromkeys": "x = {V}.fromkeys(['a'])",
+    "dunder-or": "x = {V}.__or__({{}})",
+    "mock-module": "x = {V}.mock_module",
+    "foo": "x = {V}.foo",
+    "match-subject": "match {V}:\n        case _:\n            pass",
+    "bare-statement": "{V}",
+}
+FOLD23_COMPLETENESS = sorted(
+    (kind, use) for kind in FOLD23_VALUES for use in FOLD23_UNLISTED
+)
+
+
+@pytest.mark.parametrize(("kind", "use"), FOLD23_COMPLETENESS)
+def test_fold23_695_allow_list_is_closed(kind: str, use: str) -> None:
+    pre, value = FOLD23_VALUES[kind]
+    stmt = FOLD23_UNLISTED[use].replace("{V}", value).replace("{{}}", "{}")
+    source = FOLD22_T.format(pre=pre, stmt=stmt)
+    assert reason(source) == "dynamic-scope", (kind, use)
+
+
+# Each A-1 entry, used safely, still resolves (or records its constant name).
+FOLD23_SAFE = {
+    # Namespace reads.
+    "ns-subscript-read": ("", "x = mod.__dict__['other']"),
+    "ns-get": ("", "x = mod.__dict__.get('other', None)"),
+    "ns-keys": ("", "x = list(mod.__dict__.keys())"),
+    "ns-values": ("", "x = list(mod.__dict__.values())"),
+    "ns-items": ("", "x = list(mod.__dict__.items())"),
+    "ns-in": ("", "x = 'other' in mod.__dict__"),
+    "ns-len": ("", "x = len(mod.__dict__)"),
+    # Namespace writes of another name, as statements.
+    "ns-update": ("", "mod.__dict__.update({'other': 1})"),
+    "ns-setdefault": ("", "mod.__dict__.setdefault('other', 1)"),
+    "ns-pop": ("", "mod.__dict__.pop('other', None)"),
+    "ns-subscript-write": ("", "mod.__dict__['other'] = 1"),
+    "ns-del": ("", "del mod.__dict__['other']"),
+    "ns-ior": ("", "ns = mod.__dict__\n    ns |= {'other': 1}"),
+    "ns-dict-update": ("", "dict.update(mod.__dict__, {'other': 1})"),
+    "ns-operator-setitem": (
+        "",
+        "import operator\n    operator.setitem(mod.__dict__, 'other', 1)",
+    ),
+    "ns-alias": ("", "ns = mod.__dict__\n    x = ns.get('other')"),
+    # The mock module's constructors and constants.
+    **{
+        f"mock-{name}": (FOLD23_MOCK, f"x = mock.{name}")
+        for name in sorted(py_scope._MOCK_SAFE)
+    },
+    # A fixture's helpers.
+    **{
+        f"mocker-{name}": ("", f"x = mocker.{name}")
+        for name in sorted(py_scope._MOCKER_SAFE)
+    },
+    # ``patch`` with constant targets elsewhere.
+    "patch-call": (FOLD23_MOCK, "mock.patch('os.getcwd', len).start()"),
+    "patch-object": (FOLD23_MOCK, "mock.patch.object(client, 'other', 1).start()"),
+    "patch-dict": (FOLD23_MOCK, "mock.patch.dict('os.environ', {'X': '1'}).start()"),
+    "patch-multiple": (FOLD23_MOCK, "mock.patch.multiple(client, other=1).start()"),
+    "mocker-patch": ("", "mocker.patch('os.getcwd', len)"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD23_SAFE))
+def test_fold23_695_allow_list_entries_still_resolve(case: str) -> None:
+    pre, stmt = FOLD23_SAFE[case]
+    source = FOLD22_T.format(pre=pre, stmt=stmt)
+    assert proof_text(source) == ["def helper(*a):\n    return 1"], case
+
+
+@pytest.mark.parametrize(
+    "stmt",
+    [
+        "mod.__dict__.update({'helper': 1})",
+        "mod.__dict__.setdefault('helper', 1)",
+        "mod.__dict__['helper'] = 1",
+        "ns = mod.__dict__\n    ns |= {'helper': 1}",
+        "import operator\n    operator.setitem(mod.__dict__, 'helper', 1)",
+    ],
+)
+def test_fold23_695_allow_listed_writes_record_their_name(stmt: str) -> None:
+    source = FOLD22_T.format(pre="", stmt=stmt)
+    assert reason(source) == "mixed-bindings", stmt

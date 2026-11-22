@@ -176,6 +176,9 @@ NAMED_TIER1_PY_TESTS = (
     # Fold 22: one alias/readback/escape mechanism for every sensitive kind.
     "test_fold22_695_president_probes_keep_their_off_mode_edge",
     "test_fold22_695_cross_kind_matrix_fails_closed",
+    # Fold 23 (E-21): the closed allow-list of sensitive-value uses.
+    "test_fold23_695_president_probes_keep_their_off_mode_edge",
+    "test_fold23_695_allow_list_is_closed",
 )
 # Expected rows per plan PR (10.1): a row that loses its finalization fails
 # the pin (#695 panel B7).
@@ -653,7 +656,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "24"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "25"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",

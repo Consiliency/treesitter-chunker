@@ -924,17 +924,50 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
         `type.__getattribute__(K, 'ns')`, `attrgetter('ns')(K)`) and a
         subscript with such a constant key (`K.__dict__['ns']`) read the
         kind back;
-      - **escape:** a sensitive value anywhere else fails closed: a call
-        argument (other than a namespace dict as the receiver of an unbound
-        mutator or `operator` writer), a container element, a return or
-        yield value, a default, a lambda body, a `with` item, a `for` or
-        comprehension iterable, and a binding a computed read can reach
-        (module or class scope, `global`, an attribute or subscript
-        target). So `_p(mocker, …)` and `[mocker][0]` fail closed; the
-        cost of `mocker` passed to any function was measured at 0 in the
-        repository's tests and the stdlib.
+      - **use:** since fold 23 the uses of a sensitive value are THE CLOSED
+        ALLOW-LIST below; the fold-22 escape deny-list is gone.
       A constant `'mock'` string, like `'patch'`, fails closed in a file
       that imports the mock module.
+    - **THE RULE for sensitive values: a closed allow-list (#695 fold 23,
+      executive ruling E-21).** A value of a sensitive kind (followed
+      through parentheses, walrus values and conditional or boolean
+      operands) may appear only in these uses; **every other use fails
+      closed** (module-scope `dynamic-scope`): any other attribute,
+      including every dunder (`__call__`, `__get__`, `__ior__`,
+      `__class__`, `__or__`), any other method (`copy`, `fromkeys`), any
+      other call or argument position, a container, a return, a `match`
+      subject, a bare expression statement. The tables live in one place
+      in `py_scope.py` (`_NS_READS`, `_NS_WRITES`, `_MOCK_SAFE`,
+      `_MOCKER_SAFE`, `_PATCH_SAFE`, read by `_safe_use`):
+      - **every kind:** a binding position (parameter, target, import,
+        pattern capture), and an alias binding: the value assigned or
+        walrus-bound to one name a computed read cannot reach (a function
+        local);
+      - **namespace dict, pure reads** (result ordinary): `ns[c]` with
+        constant keys, `ns.get(c, …)`, `ns.keys()`, `ns.values()`,
+        `ns.items()`, `c in ns`, `c not in ns`, `len(ns)`;
+      - **namespace dict, recognized writes**, as expression statements
+        only, with constant keys or literal mappings recorded and anything
+        else failing closed in the write rules: `ns[c] = v`, `del ns[c]`,
+        `ns.update(…)`, `ns.setdefault(c, …)`, `ns.pop(c, …)`, `ns |= …`,
+        and the unbound `dict.`/`operator` writers with `ns` first
+        (`dict.update(ns, …)`, `operator.setitem(ns, c, v)`);
+      - **mock module:** `mock.Mock`, `MagicMock`, `AsyncMock`,
+        `NonCallableMock`, `PropertyMock`, `call`, `ANY`, `sentinel`,
+        `DEFAULT`, `create_autospec`, `mock_open`, `seal`, and
+        `mock.patch`;
+      - **pytest-mock fixture:** `mocker.spy`, `stub`, `Mock`, `MagicMock`,
+        `resetall`, `stopall`, and `mocker.patch`;
+      - **`patch`:** called (`patch(…)`, `@patch(…)`), or
+        `patch.object`/`patch.dict`/`patch.multiple` called, with W-3
+        semantics.
+      A class-pattern keyword reads an attribute of the subject, so a
+      keyword naming `__dict__`, `mock`, `patch` or an alias fails closed
+      whatever the subject (`case object(__dict__=x)`). A binding a
+      computed read can reach (module or class scope, `global`, an
+      attribute or subscript target) still fails closed (fold 22). Cost
+      against fold 22: 0 of 595 stdlib files and 0 of 359 repository test
+      files change.
     - **Callees and receivers are classified after unwrapping parentheses
       (Codex 4656123247).** Parentheses are only a spelling: the rules above
       and the `X.modules.get(__name__)` getters look through any number of
@@ -2509,3 +2542,20 @@ not another (W-6 is a mock-module spelling that `mocker` lacked).
 | A value carries a kind only as itself or a tuple/list/set element, not through a call, attribute read or subscript: removes the false namespace alias at `string/__init__.py` (`pattern = cls.__dict__.get('pattern', …)`) | `_contains_kind` |
 | Cost: CPython 3.14 non-test `Lib`: 0 of 595 files newly dynamic, 1 no longer (`string/__init__.py`, the false alias above); the repository's 359 test files: 0 change; `mocker` passed to any function: 0 occurrences in either corpus, so the full escape rule is kept. Harness against main unchanged (0 problems, 8 resolved + 1 narrowed, 43 PR 4 rows). The president's p48–p53 trees all fail closed except the two #697 patchers under other names (`mk48_other_param`, `mk48_fixture_typed`); `mk_local_func` (`_p(mocker, …)`) now fails closed as intended | — |
 | Pins: `test_fold22_695_president_probes_keep_their_off_mode_edge` (17 probe cases, each failing at 78812ad2), `test_fold22_695_cross_kind_matrix_fails_closed` (22 forms x 4 kinds = 88; 24 failed at 78812ad2), `test_fold22_controls_still_resolve` (6). Mutation: alias binding 29 failures, escape 30, `X.mock` 5, `'mock'` string 1, containment narrowing 2; readback and the reachable-binding escape back each other up (0 alone, 31 together), as do the `setattr` binding and escape (35 together) | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: fold 23 (re-check at 515de38e, X-5..X-7; executive ruling E-21)
+
+Only adds `none`; no expected row changes. `python` fact version 25. Six
+rounds after 3341540f showed that a deny-list of escaping uses does not
+converge (X-5: `__ior__` returns the namespace, a fold-22 regression; X-6:
+`match` class-pattern keywords; X-7: `patch.__call__`/`__get__`). E-21
+inverts the classification to a closed allow-list, as fold 11 did for the
+`__main__` guard.
+
+| Item | Applied in |
+| --- | --- |
+| THE CLOSED ALLOW-LIST of sensitive-value uses (A-1), every other use failing closed (A-2): binding positions and local alias bindings; namespace pure reads and statement-only recognized writes; `_MOCK_SAFE`, `_MOCKER_SAFE`, `_PATCH_SAFE`; class-pattern keywords naming `__dict__`/`mock`/`patch`/an alias fail closed | §7.3 "THE RULE for sensitive values"; `py_scope._NS_READS`, `_NS_WRITES`, `_MOCK_SAFE`, `_MOCKER_SAFE`, `_PATCH_SAFE`, `_safe_use` |
+| Deleted as redundant: the fold-22 escape deny-list (`_escape`), `_mutator_receiver`, `match`-capture aliasing, the fold-18 extraction loop and the computed-subscript loop | `py_scope.py` |
+| Flipped (still fails closed, reason changes): `mod.__dict__.__setitem__('helper', len)` goes from `mixed-bindings` to `dynamic-scope` (a dunder is off the list; pinned in `test_namespace_dunder_writes_fail_closed`). Probe control `ns_dictsplat_ctrl` (`x = {**m.__dict__}`, a copy) now fails closed: a dict splat is not on A-1, reported rather than added (cost 0) | `tests/test_call_resolution_tier1_py.py` |
+| Cost (A-4): 0 of 595 stdlib files and 0 of 359 repository test files change against 515de38e. Harness against main unchanged (0 problems, 8 resolved + 1 narrowed, 43 PR 4 rows). The president's p44–p56 trees all fail closed except the two #697 patchers under other names; panel A keeps 38 resolutions | — |
+| Pins: `test_fold23_695_president_probes_keep_their_off_mode_edge` (19: every X-5/X-6/X-7 probe and `mocker.mock_module`, all wrong at 515de38e), `test_fold23_695_allow_list_is_closed` (11 unlisted uses x 4 kinds = 44), `test_fold23_695_allow_list_entries_still_resolve` (39, one per A-1 entry), `test_fold23_695_allow_listed_writes_record_their_name` (5). Mutation: `_NS_READS` 10 failures, `_NS_WRITES` 12, `_MOCK_SAFE` 14, `_MOCKER_SAFE` 6, `_PATCH_SAFE` 6, A-2 (allow everything) 101, class-pattern keywords 4 | `tests/test_call_resolution_tier1_py.py` |
