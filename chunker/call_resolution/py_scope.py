@@ -677,8 +677,36 @@ _ATTRIBUTE_WRITERS = frozenset(
         "update",
         "setdefault",
         "pop",
+        "__ior__",
     }
 )
+# Writers whose mention anywhere but as the callee of a direct call hands
+# them on (``w = setattr``, ``partial(setattr, mod)``, ``(w := setattr)``):
+# the write they make is no longer visible, so module-scope lookups fail
+# closed (#695 fold 18).
+_WRITER_NAMES = frozenset({"setattr", "delattr", "__setattr__", "__delattr__"})
+# Mutators of a namespace dict (``mod.__dict__``, ``vars(mod)``,
+# ``getattr(mod, "__dict__")``): taken off the receiver without a call
+# (``u = mod.__dict__.update``) they fail closed; the writing ones, called
+# with anything but literal names, fail closed too.
+_NAMESPACE_MUTATORS = frozenset(
+    {
+        "update",
+        "setdefault",
+        "pop",
+        "popitem",
+        "clear",
+        "__setitem__",
+        "__delitem__",
+        "__ior__",
+    }
+)
+_NAMESPACE_WRITES = frozenset({"update", "setdefault", "__setitem__", "__ior__"})
+# ``operator`` functions that write a mapping given as their first argument.
+_OPERATOR_WRITERS = frozenset(
+    {"setitem", "delitem", "__setitem__", "__delitem__", "ior", "iadd"}
+)
+_NAMESPACE_DICT = "__dict__"
 _IMPORT_STATEMENTS = frozenset(
     {"import_statement", "import_from_statement", "future_import_statement"}
 )
@@ -784,6 +812,15 @@ class _Analysis:
         self.star = False
         # Names written as an attribute or constant key of any receiver.
         self.attribute_writes: set[str] = set()
+        # Subscript targets (``x[k] = v``, ``del x[k]``), checked once the
+        # namespace aliases are known (#695 fold 18).
+        self.subscript_targets: list[Any] = []
+        # A ``__dict__`` attribute or constant string appears in the file, and
+        # an ``operator`` writer is handed on (fold 18 rule 3).
+        self.namespace_seen = False
+        self.operator_escape = False
+        # Names assigned a namespace receiver (``d = mod.__dict__``).
+        self.namespace_aliases: set[str] = set()
         self.handlers: dict[str, Callable[[Any, _Scope, int], None]] = {
             "function_definition": self._function,
             "class_definition": self._class,
@@ -879,6 +916,7 @@ class _Analysis:
                 # (Codex 4654363963). Record every runtime spelling.
                 self.attribute_writes.update(_spellings(attribute, self.source))
             return
+        self.subscript_targets.append(node)
         for index, child in enumerate(node.children):
             if node.field_name_for_child(index) == "subscript":
                 value = _constant_string(child, self.source)
@@ -1296,10 +1334,32 @@ class _Analysis:
         main_names = set(_MAIN_NAMES)
         main_strings: list[Any] = []
         identifiers: list[Any] = []
+        # Fold 18: calls, attributes, ``|=`` statements and namespace aliases,
+        # classified once every alias is known.
+        calls: list[Any] = []
+        attributes: list[Any] = []
+        augmented: list[Any] = []
+        bindings: list[tuple[Any, Any]] = []
+        operator_names = set(_OPERATOR_WRITERS)
         stack = [self.root]
         while stack:
             node = stack.pop()
             kind = node.type
+            if kind == "attribute":
+                attributes.append(node)
+            elif kind == "augmented_assignment":
+                augmented.append(node)
+            elif kind in ("assignment", "named_expression"):
+                target = node.child_by_field_name(
+                    "left" if kind == "assignment" else "name"
+                )
+                value = node.child_by_field_name(
+                    "right" if kind == "assignment" else "value"
+                )
+                while value is not None and value.type == "assignment":
+                    value = value.child_by_field_name("right")
+                if target is not None and value is not None:
+                    bindings.append((_unwrap(target, skip_comments=True), value))
             if kind == "identifier":
                 identifiers.append(node)
             elif kind == "aliased_import":
@@ -1334,6 +1394,7 @@ class _Analysis:
                 self._module_by_name(node)
                 if kind == "call":
                     self._setattr_call(node)
+                    calls.append(node)
             if kind in ("import_statement", "import_from_statement"):
                 self._import_use(node)
                 self._class_body_module_import(node)
@@ -1342,6 +1403,27 @@ class _Analysis:
                     if kind == "import_from_statement"
                     else (0, [])
                 )
+                if not dots and module_parts == ["operator"]:
+                    # ``from operator import setitem as s`` (fold 18 rule 3).
+                    for child in node.named_children:
+                        name_node = (
+                            child.child_by_field_name("name")
+                            if child.type == "aliased_import"
+                            else child
+                        )
+                        parts = (
+                            _dotted_parts(name_node, source)
+                            if name_node is not None
+                            else []
+                        )
+                        if parts[-1:] and parts[-1] in _OPERATOR_WRITERS:
+                            bound = (
+                                child.child_by_field_name("alias")
+                                if child.type == "aliased_import"
+                                else name_node
+                            )
+                            if bound is not None:
+                                operator_names.update(_spellings(bound, source))
                 if (
                     not dots
                     and len(module_parts) == 1
@@ -1357,6 +1439,7 @@ class _Analysis:
         for node in main_strings:
             if not self._main_guard(node):
                 self.dynamic = True
+        self._namespace_rules(calls, attributes, augmented, bindings, operator_names)
         for ident in identifiers:
             name = _text(ident, source)
             parent = ident.parent
@@ -1370,6 +1453,8 @@ class _Analysis:
             # source one and each mangled ``_Class__x`` one (Codex
             # 4654363963), whether or not CPython mangles that position.
             spellings = _spellings(ident, source)
+            if spellings & (_WRITER_NAMES | operator_names | _OPERATOR_WRITERS):
+                self._writer_mention(ident, spellings, operator_names)
             if spellings & _DYNAMIC_ATTRIBUTES:
                 self.dynamic = True
             if spellings & _FILE_WIDE_NAMES:
@@ -1409,6 +1494,10 @@ class _Analysis:
             elif spellings & main_names and not _import_context(ident):
                 # ``__main__.helper = len``, ``setattr(m, ...)``.
                 self.dynamic = True
+        if self.operator_escape and self.namespace_seen:
+            # An ``operator`` writer handed on in a file that names a
+            # namespace dict (fold 18 rule 3).
+            self.dynamic = True
 
     def _main_guard(self, node: Any) -> bool:
         """Whether a ``__main__`` constant is exempt: a positive allow-list
@@ -1509,6 +1598,14 @@ class _Analysis:
         parts = set(_NAME_SEPARATORS.split(value))
         if parts & _LITERAL_DYNAMIC:
             self.dynamic = True
+        if parts & _WRITER_NAMES:
+            # ``getattr(mod, "__setattr__")``: a writer reached by name (fold
+            # 18 rule 1).
+            self.dynamic = True
+        if _NAMESPACE_DICT in parts:
+            self.namespace_seen = True
+        if parts & _OPERATOR_WRITERS:
+            self.operator_escape = True
         if parts & _FILE_WIDE_NAMES:
             self.dynamic = True
             self.frame_locals = True
@@ -1614,6 +1711,19 @@ class _Analysis:
                 if keyword is not None:
                     self.attribute_writes.add(_text(keyword, self.source))
                 continue
+            if argument.type == "list_splat":
+                # ``setattr(mod, *("helper", f))``: the constants of a literal
+                # sequence (#695 fold 18).
+                inner = argument.named_children[0] if argument.named_children else None
+                inner = (
+                    _unwrap(inner, skip_comments=True) if inner is not None else None
+                )
+                if inner is not None and inner.type in ("tuple", "list"):
+                    for element in inner.named_children:
+                        value = _constant_string(element, self.source)
+                        if value is not None:
+                            self.attribute_writes.add(value)
+                continue
             if argument.type == "dictionary_splat":
                 argument = _unwrap(
                     argument.named_children[0] if argument.named_children else argument,
@@ -1633,6 +1743,228 @@ class _Analysis:
             value = _constant_string(argument, self.source)
             if value is not None:
                 self.attribute_writes.add(value)
+
+    # -- namespace writes (#695 fold 18) ------------------------------------
+
+    def _namespace_rules(
+        self,
+        calls: list[Any],
+        attributes: list[Any],
+        augmented: list[Any],
+        bindings: list[tuple[Any, Any]],
+        operator_names: set[str],
+    ) -> None:
+        """Writes through a namespace dict that the attribute-write rule does
+        not read: a mutator taken off the receiver, a write with a computed
+        key or mapping, ``|=``, and the ``operator`` writers.
+
+        A **namespace receiver** is ``x.__dict__``, ``vars(x)``, a call with
+        a ``"__dict__"`` constant argument (``getattr(x, "__dict__")``), any
+        of these in parentheses, or a name assigned one of them anywhere in
+        the file (``d = mod.__dict__``; flow-insensitive). Its writes with
+        literal names are recorded; any other write fails closed.
+        """
+        changed = True
+        while changed:
+            changed = False
+            for target, value in bindings:
+                if target.type != "identifier" or not self._namespace_receiver(value):
+                    continue
+                names = _spellings(target, self.source) - self.namespace_aliases
+                if names:
+                    self.namespace_aliases |= names
+                    changed = True
+        if self.namespace_aliases:
+            self.namespace_seen = True
+        for node in attributes:
+            attribute = node.child_by_field_name("attribute")
+            if attribute is None:
+                continue
+            names = _spellings(attribute, self.source)
+            if _NAMESPACE_DICT in names:
+                self.namespace_seen = True
+            receiver = node.child_by_field_name("object")
+            if (
+                names & _NAMESPACE_MUTATORS
+                and receiver is not None
+                and self._namespace_receiver(receiver)
+                and _callee_call(node) is None
+            ):
+                # ``u = mod.__dict__.update``, ``map(vars(m).__setitem__, …)``.
+                self.dynamic = True
+        for node in calls:
+            self._namespace_call(node, operator_names)
+        for node in augmented:
+            self._namespace_ior(node)
+        for node in self.subscript_targets:
+            receiver = node.child_by_field_name("value")
+            if receiver is None or not self._namespace_receiver(receiver):
+                continue
+            keys = [
+                child
+                for index, child in enumerate(node.children)
+                if node.field_name_for_child(index) == "subscript"
+            ]
+            if any(_constant_string(key, self.source) is None for key in keys):
+                # ``mod.__dict__[k] = f``: a computed key of a namespace.
+                self.dynamic = True
+
+    def _namespace_receiver(self, node: Any) -> bool:
+        node = _unwrap(node, skip_comments=True)
+        if node.type == "identifier":
+            return bool(_spellings(node, self.source) & self.namespace_aliases)
+        if node.type == "attribute":
+            attribute = node.child_by_field_name("attribute")
+            return attribute is not None and _text(attribute, self.source) == (
+                _NAMESPACE_DICT
+            )
+        if node.type == "call":
+            function = node.child_by_field_name("function")
+            function = (
+                _unwrap(function, skip_comments=True) if function is not None else None
+            )
+            if function is not None and function.type == "identifier":
+                if _text(function, self.source) == "vars":
+                    return True
+            return any(
+                _constant_string(argument, self.source) == _NAMESPACE_DICT
+                for argument in _call_arguments(node)
+            )
+        return False
+
+    def _namespace_call(self, node: Any, operator_names: set[str]) -> None:
+        function = node.child_by_field_name("function")
+        if function is None:
+            return
+        function = _unwrap(function, skip_comments=True)
+        arguments = _call_arguments(node)
+        if function.type == "attribute":
+            attribute = function.child_by_field_name("attribute")
+            receiver = function.child_by_field_name("object")
+            name = _text(attribute, self.source) if attribute is not None else ""
+            if (
+                name in _NAMESPACE_WRITES
+                and receiver is not None
+                and self._namespace_receiver(receiver)
+                and not self._literal_namespace_write(name, arguments)
+            ):
+                # ``mod.__dict__.update(D)``, ``vars(m).setdefault(k, f)``.
+                self.dynamic = True
+            if name in _OPERATOR_WRITERS:
+                self._operator_write(arguments)
+        elif function.type == "identifier":
+            if _spellings(function, self.source) & operator_names:
+                self._operator_write(arguments)
+
+    def _literal_namespace_write(self, name: str, arguments: list[Any]) -> bool:
+        """Whether a namespace mutator call names every key it writes as a
+        constant (the attribute-write rule then records them)."""
+        if name == "update":
+            return all(self._literal_mapping(argument) for argument in arguments)
+        if name == "__ior__":
+            return len(arguments) == 1 and self._literal_mapping(arguments[0])
+        return bool(arguments) and (
+            _constant_string(arguments[0], self.source) is not None
+        )
+
+    def _literal_mapping(self, node: Any) -> bool:
+        node = _unwrap(node, skip_comments=True)
+        if node.type == "keyword_argument":
+            return True
+        if node.type == "dictionary_splat":
+            inner = node.named_children[0] if node.named_children else node
+            return self._literal_mapping(inner)
+        if node.type != "dictionary":
+            return False
+        for pair in node.named_children:
+            if pair.type == "comment":
+                continue
+            key = pair.child_by_field_name("key") if pair.type == "pair" else None
+            if key is None or _constant_string(key, self.source) is None:
+                return False
+        return True
+
+    def _operator_write(self, arguments: list[Any]) -> None:
+        """``operator.setitem(x, "name", f)`` and the other ``operator``
+        writers: a constant key (or a literal mapping for ``ior``/``iadd``)
+        is a write of that name on any receiver, like ``x["name"] = f``; on a
+        namespace receiver anything else fails closed."""
+        if not arguments:
+            return
+        namespace = self._namespace_receiver(arguments[0])
+        key = _unwrap(arguments[1], skip_comments=True) if len(arguments) > 1 else None
+        if key is None:
+            if namespace:
+                self.dynamic = True
+            return
+        value = _constant_string(key, self.source)
+        if value is not None:
+            self.attribute_writes.add(value)
+            return
+        if key.type == "dictionary" and self._literal_mapping(key):
+            for pair in key.named_children:
+                pair_key = (
+                    pair.child_by_field_name("key") if pair.type == "pair" else None
+                )
+                text = (
+                    _constant_string(pair_key, self.source)
+                    if pair_key is not None
+                    else None
+                )
+                if text is not None:
+                    self.attribute_writes.add(text)
+            return
+        if namespace:
+            self.dynamic = True
+
+    def _namespace_ior(self, node: Any) -> None:
+        """``x |= {"name": f}`` writes ``name`` of any receiver, like
+        ``x.update({"name": f})``; on a namespace receiver any other right
+        side fails closed."""
+        operator = node.child_by_field_name("operator")
+        if operator is None or _text(operator, self.source) != "|=":
+            return
+        left = node.child_by_field_name("left")
+        right = node.child_by_field_name("right")
+        if left is None or right is None:
+            return
+        right = _unwrap(right, skip_comments=True)
+        literal = right.type == "dictionary" and self._literal_mapping(right)
+        if literal:
+            for pair in right.named_children:
+                key = pair.child_by_field_name("key") if pair.type == "pair" else None
+                text = _constant_string(key, self.source) if key is not None else None
+                if text is not None:
+                    self.attribute_writes.add(text)
+        elif self._namespace_receiver(left):
+            self.dynamic = True
+
+    def _writer_mention(
+        self, ident: Any, spellings: set[str], operator_names: set[str]
+    ) -> None:
+        """A writer named anywhere but as the callee of a direct call is
+        handed on: ``w = setattr``, ``partial(setattr, mod)``,
+        ``f = object.__setattr__`` (rule 1, fail closed); an ``operator``
+        writer handed on fails closed when the file names a namespace dict
+        (rule 3)."""
+        parent = ident.parent
+        if parent is None or _scope_binding_name(ident) or _import_context(ident):
+            return
+        if parent.type == "keyword_argument" and _same(
+            ident, parent.child_by_field_name("name")
+        ):
+            return
+        is_attribute = parent.type == "attribute" and _same(
+            ident, parent.child_by_field_name("attribute")
+        )
+        callee = parent if is_attribute else ident
+        if _callee_call(callee) is not None:
+            return
+        if spellings & _WRITER_NAMES:
+            self.dynamic = True
+        operator = (spellings & _OPERATOR_WRITERS) if is_attribute else set()
+        if operator or (not is_attribute and spellings & operator_names):
+            self.operator_escape = True
 
     def _mentions_module_name(self, node: Any) -> bool:
         return any(
@@ -2141,6 +2473,34 @@ def _in_first_iterable(node: Any, ident: Any) -> bool:
     left = clause.child_by_field_name("left")
     start = left.end_byte if left is not None else clause.start_byte
     return bool(start <= ident.start_byte and ident.end_byte <= clause.end_byte)
+
+
+def _callee_call(node: Any) -> Any:
+    """The call whose callee ``node`` is, through any parentheses, or
+    ``None``."""
+    current = node
+    parent = current.parent
+    while parent is not None and parent.type == "parenthesized_expression":
+        named = [c for c in parent.named_children if c.type != "comment"]
+        if len(named) != 1:
+            return None
+        current, parent = parent, parent.parent
+    if parent is not None and parent.type == "call":
+        if _same(current, parent.child_by_field_name("function")):
+            return parent
+    return None
+
+
+def _call_arguments(node: Any) -> list[Any]:
+    """A call's arguments, unwrapped, without comments."""
+    arguments = node.child_by_field_name("arguments")
+    if arguments is None:
+        return []
+    return [
+        _unwrap(child, skip_comments=True)
+        for child in arguments.named_children
+        if child.type != "comment"
+    ]
 
 
 def _callee_head(node: Any) -> Any:

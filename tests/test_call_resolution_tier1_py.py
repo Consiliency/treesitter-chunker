@@ -5649,7 +5649,9 @@ FOLD13_CONTROLS = {
     + "D = dict(helper=len)\nn = getattr(print, '__name__')\n"
     + DEF13
     + "run()\n",
-    "n31_self_ior": LATE13 + "b = {}\nb |= {'helper': len}\n" + DEF13 + "run()\n",
+    # ``x |= {"helper": …}`` writes ``helper`` of any receiver since fold 18,
+    # like ``x.update({…})``; the control writes another name.
+    "n31_self_ior": LATE13 + "b = {}\nb |= {'other': len}\n" + DEF13 + "run()\n",
     "l5_update_wrapper_dict_builtins": "import functools\n"
     + LATE13
     + "functools.update_wrapper(run, type('S', (), dict(helper=len)), "
@@ -5846,7 +5848,7 @@ FOLD14_CONTROLS = {
     + "run()\n",
     "q34_site_builtins_ior": "import site\n"
     + LATE13
-    + "x = site.getsitepackages\nb = {}\nb |= {'helper': len}\n"
+    + "x = site.getsitepackages\nb = {}\nb |= {'other': len}\n"
     + DEF13
     + "run()\n",
     "q34_mock_patch_builtins": "from unittest import mock\n"
@@ -5861,12 +5863,11 @@ FOLD14_CONTROLS = {
     + "run()\n",
     "q34_pydoc_locate_builtins": "import pydoc\n"
     + LATE13
-    + "D = dict(helper=len)\npydoc.locate('os').__dict__.update(D)\n"
+    + "D = dict(helper=len)\npydoc.locate('os').__dict__.update({'other': len})\n"
     + DEF13
     + "run()\n",
-    "q34_resolve_name_builtins": "import pkgutil\n"
-    + LATE13
-    + "D = dict(helper=len)\npkgutil.resolve_name('os.path').__dict__.update(D)\n"
+    "q34_resolve_name_builtins": "import pkgutil\n" + LATE13 + "D = dict(helper=len)\n"
+    "pkgutil.resolve_name('os.path').__dict__.update({'other': len})\n"
     + DEF13
     + "run()\n",
     "q34_enum_bltns_update": "import enum\n"
@@ -6323,7 +6324,13 @@ def _fold16_control(case: str) -> str:
     _, source = FOLD16_695[case]
     old, new = _FOLD16_EDITS.get(case, ("    type X = helper('ab')\n", None))
     assert old in source, case
-    return source.replace(old, _S2_METHOD if new is None else new)
+    source = source.replace(old, _S2_METHOD if new is None else new)
+    # Since fold 18 a literal ``*`` splat's constants are recorded like plain
+    # arguments (``setattr(K, *('helper', len))`` writes ``helper`` of any
+    # receiver), so these controls write another name.
+    return source.replace("*('helper', len)", "*('other', len)").replace(
+        "*['helper', len]", "*['other', len]"
+    )
 
 
 @pytest.mark.parametrize("case", sorted(FOLD16_695))
@@ -6444,13 +6451,118 @@ def test_parenthesized_receivers_already_fail_closed(stmt: str) -> None:
 @pytest.mark.parametrize(
     "stmt",
     [
-        # A trailing-comma tuple is not a parenthesized callee (and calling
-        # it raises), and a write of another name proves nothing.
-        "(setattr,)(mod, 'helper', replacement)",
+        # A write of another name proves nothing. (A trailing-comma tuple,
+        # ``(setattr,)``, is not a parenthesized callee; since fold 18 the
+        # tuple element hands ``setattr`` on and fails closed.)
         "(setattr)(mod, 'other', replacement)",
         "(mod.__dict__.update)({'other': replacement})",
     ],
 )
 def test_parenthesized_callee_controls_still_resolve(stmt: str) -> None:
+    source = CODEX_4656123247.format(stmt=stmt)
+    assert proof_text(source) == ["def helper():\n    return 1"], stmt
+
+
+# ---------------------------------------------------------------------------
+# Fold 18 (executive ruling on the fold-17 alias question): a writer handed
+# on, a namespace mutator taken off its receiver, a computed write through a
+# namespace dict, the ``operator`` writers and ``|=`` all use only spelled
+# names and ordinary binding and call semantics, so each blocks. ``run(mod)``
+# writes ``helper`` of the module handed over as ``mod``; Python then calls
+# ``replacement``, and the analyzer must not prove ``helper``.
+
+FOLD18_ALIASES = {
+    # Rule 1: a writer anywhere but as the callee of a direct call.
+    "r1-assign": "w = setattr\n    w(mod, 'helper', replacement)",
+    "r1-walrus": "(w := setattr)(mod, 'helper', replacement)",
+    "r1-conditional": "(setattr if mod else delattr)(mod, 'helper', replacement)",
+    "r1-list-index": "[setattr][0](mod, 'helper', replacement)",
+    "r1-tuple": "(setattr,)[0](mod, 'helper', replacement)",
+    "r1-partial": "import functools\n    functools.partial(setattr, mod)('helper', replacement)",
+    "r1-map": "list(map(setattr, [mod], ['helper'], [replacement]))",
+    "r1-default": "def g(s=setattr):\n        return s\n    g()(mod, 'helper', replacement)",
+    "r1-object-setattr": "f = object.__setattr__\n    f(mod, 'helper', replacement)",
+    "r1-bound-setattr": "f = mod.__setattr__\n    f('helper', replacement)",
+    "r1-delattr": "d = delattr\n    d(mod, 'helper')",
+    "r1-string": "getattr(mod, '__setattr__')('helper', replacement)",
+    # Literal ``*`` splats in a writer call (the constants are recorded).
+    "splat": "setattr(mod, *('helper', replacement))",
+    # Rule 2: a namespace mutator taken off its receiver.
+    "r2-update": "u = mod.__dict__.update\n    u({'helper': replacement})",
+    "r2-getattr-dict": "u = getattr(mod, '__dict__').update\n    u(helper=replacement)",
+    "r2-setitem": "s = (mod.__dict__).__setitem__\n    s('helper', replacement)",
+    "r2-setdefault": "s = mod.__dict__.setdefault\n    s('helper', replacement)",
+    "r2-ior": "i = mod.__dict__.__ior__\n    i({'helper': replacement})",
+    "r2-alias-receiver": "d = mod.__dict__\n    u = d.update\n    u({'helper': replacement})",
+    # Computed writes through a namespace dict.
+    "ns-update-mapping": "D = dict(helper=replacement)\n    mod.__dict__.update(D)",
+    "ns-alias-update": "d = mod.__dict__\n    d.update(dict(helper=replacement))",
+    "ns-computed-key": "k = 'helper'\n    mod.__dict__[k] = replacement",
+    "ns-setdefault-key": "k = 'helper'\n    getattr(mod, '__dict__').setdefault(k, replacement)",
+    # Rule 3: ``operator`` writers.
+    "r3-setitem": "import operator\n    operator.setitem(mod.__dict__, 'helper', replacement)",
+    "r3-from-import": "from operator import setitem as put\n"
+    "    put(mod.__dict__, 'helper', replacement)",
+    "r3-computed-key": "import operator\n    k = 'helper'\n"
+    "    operator.setitem(mod.__dict__, k, replacement)",
+    "r3-ior": "import operator\n    operator.ior(mod.__dict__, {'helper': replacement})",
+    "r3-ior-computed": "import operator\n"
+    "    operator.ior(mod.__dict__, dict(helper=replacement))",
+    "r3-handed-on": "import operator, functools\n"
+    "    functools.partial(operator.setitem, mod.__dict__)('helper', replacement)",
+    # Rule 4: ``|=``.
+    "r4-ior": "mod.__dict__ |= {'helper': replacement}",
+    "r4-alias-ior": "d = mod.__dict__\n    d |= {'helper': replacement}",
+    "r4-ior-computed": "mod.__dict__ |= dict(helper=replacement)",
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD18_ALIASES))
+def test_fold18_695_writer_aliases_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    source = CODEX_4656123247.format(stmt=FOLD18_ALIASES[case])
+    root = _tree(tmp_path, {"a.py": source, "b.py": OTHER})
+    off, on = _off_on(root)
+    edge = _helper_edge(off)
+    assert edge["resolution"] == "ambiguous", case
+    assert _helper_edge(on) == edge, case
+
+
+@pytest.mark.parametrize(
+    "stmt",
+    [
+        # Rule 4: already caught before fold 18 (``vars`` is a trigger, a
+        # constant subscript key is an attribute write).
+        "vars(mod)['helper'] = replacement",
+        "mod.__dict__['helper'] = replacement",
+    ],
+)
+def test_namespace_subscript_writes_were_already_caught(stmt: str) -> None:
+    result = outcome(CODEX_4656123247.format(stmt=stmt), "helper")
+    assert result["outcome"] == "none", (stmt, result)
+
+
+@pytest.mark.parametrize(
+    "stmt",
+    [
+        # Mutator aliases and computed writes on ordinary receivers stay.
+        "d = {}\n    u = d.update\n    u({'x': 1})",
+        "cache = {}\n    p = cache.pop\n    p('helper', None)",
+        "seen = {}\n    D = {}\n    seen.update(D)",
+        "s = set()\n    s |= {1}",
+        "k = 'x'\n    cache = {}\n    cache[k] = 1",
+        # ``operator`` writers on an ordinary receiver, or handed on in a
+        # file that names no namespace dict.
+        "import operator\n    cache = {}\n    operator.setitem(cache, 'x', 1)",
+        "import operator, functools\n    f = functools.partial(operator.setitem, {})",
+        # Defining ``__setattr__`` and calling the writer directly.
+        "class K:\n        def __setattr__(self, k, v):\n"
+        "            super().__setattr__(k, v)",
+        # A namespace dict read, and a literal write of another name.
+        "n = len(mod.__dict__)\n    mod.__dict__.update({'other': replacement})",
+    ],
+)
+def test_ordinary_mutator_aliases_still_resolve(stmt: str) -> None:
     source = CODEX_4656123247.format(stmt=stmt)
     assert proof_text(source) == ["def helper():\n    return 1"], stmt
