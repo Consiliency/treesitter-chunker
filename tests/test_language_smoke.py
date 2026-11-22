@@ -24,6 +24,7 @@ import subprocess
 import sys
 import warnings
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -108,8 +109,32 @@ def test_every_pack_language_loads(language: str) -> None:
     assert status == LOADS, f"{language} failed to load under the pinned stack: {error}"
 
 
-def test_deadline_expiry_is_not_reported_as_load_failure() -> None:
+def _stall_probes_at(monkeypatch: pytest.MonkeyPatch, *deadlines: float) -> None:
+    """Make probes run under ``deadlines`` a child that cannot finish in time.
+
+    A real ``python`` probe can finish inside a 1 ms deadline when the parent
+    is descheduled between spawning the child and starting its timeout clock
+    (treesitter-chunker#700). Swapping in a sleeping child keeps the real
+    subprocess kill path under test without depending on scheduler timing.
+    Probes under any other deadline run unchanged.
+    """
+    real_run = subprocess.run
+
+    def run(
+        args: Any, *posargs: Any, timeout: float | None = None, **kwargs: Any
+    ) -> Any:
+        if timeout in deadlines:
+            args = [sys.executable, "-c", "import time; time.sleep(60)"]
+        return real_run(args, *posargs, timeout=timeout, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", run)
+
+
+def test_deadline_expiry_is_not_reported_as_load_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A killed probe is ``deadline_expired``; a real load error is not."""
+    _stall_probes_at(monkeypatch, 0.001)
     status, error = load_language("python", deadline=0.001)
     assert status == DEADLINE_EXPIRED
     assert error == "parse exceeded the 0.001-second hard-kill deadline"
@@ -127,6 +152,7 @@ def test_confirm_load_retries_only_a_deadline_expiry(
     assert status == FAILS_TO_LOAD
 
     monkeypatch.setattr(language_smoke, "LOAD_DEADLINE_SECONDS", 0.001)
+    _stall_probes_at(monkeypatch, 0.001)
     with pytest.warns(
         language_smoke.LoadDeadlineRescued,
         match=r"python: first probe failed \(parse exceeded the 0\.001-second",
@@ -134,6 +160,7 @@ def test_confirm_load_retries_only_a_deadline_expiry(
         assert confirm_load("python") == (LOADS, None)
 
     monkeypatch.setattr(language_smoke, "LOAD_TOLERANT_DEADLINE_SECONDS", 0.002)
+    _stall_probes_at(monkeypatch, 0.001, 0.002)
     with warnings.catch_warnings():
         warnings.simplefilter("error", language_smoke.LoadDeadlineRescued)
         status, error = confirm_load("python")
