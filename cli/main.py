@@ -55,6 +55,7 @@ class ResolutionModeOption(str, Enum):
 class CallResolutionOption(str, Enum):
     name = "name"
     structural = "structural"
+    imports = "imports"
 
 
 if HAS_DEBUG:
@@ -121,7 +122,9 @@ def boundary(
             "files; it currently resolves JS/TS calls whose target a lexical "
             "binding proves (a script top level only when no other file in the "
             "run may declare the name as a global), and Python calls through "
-            "the LEGB scope chain (never a redefinition)"
+            "the LEGB scope chain (never a redefinition). "
+            "'imports' also resolves JS/TS calls through relative import "
+            "bindings to the one exported definition they prove"
         ),
     ),
     quiet: bool = typer.Option(

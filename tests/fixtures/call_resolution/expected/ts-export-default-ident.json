@@ -17,7 +17,21 @@
      ],
      "caller": "u",
      "file": "use.ts",
+     "imports": {
+      "candidate_ids": [
+       "65843e797de6763422fb7d8829719dae2d5208b1"
+      ],
+      "candidates": [
+       "svc.ts:1:t"
+      ],
+      "outcome": "import",
+      "resolution": "resolved",
+      "rules": [
+       "t2.import"
+      ]
+     },
      "line": 2,
+     "pr": 5,
      "reference": "t",
      "today": {
       "candidate_ids": [

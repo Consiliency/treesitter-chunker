@@ -860,7 +860,11 @@ def extract_symbol_graph(
     the run may declare the name as a global. Python calls resolve through
     the LEGB scope chain (``t1.lexical``); Python redefinitions narrow to
     their group and never resolve. Elsewhere only the kind and family filters
-    (``t1.kind``, ``t1.family``) narrow.
+    (``t1.kind``, ``t1.family``) narrow. ``"imports"`` adds Tier 2: a
+    JavaScript, TypeScript or TSX call bound by a relative ES import resolves
+    to the one exported definition that proves it (``t2.import``,
+    ``t2.namespace``); more than one file variant of the specifier leaves the
+    edge unchanged.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"

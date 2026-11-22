@@ -105,6 +105,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from . import allowlist
+from .js_strings import decode_string_literal, module_export_name
 
 # Deep trees fail closed with RecursionError (section 5.3). This counter
 # grows by one or two per tree level, and the pass uses up to three Python
@@ -717,8 +718,14 @@ class _Analysis:
 
     def _import(self, node: Any, var: _Scope, lex: _Scope, depth: int) -> None:
         type_only = _has_token(node, "type")
-        source_node = node.child_by_field_name("source")
-        source = _text(source_node, self.source)[1:-1] if source_node else ""
+        # The specifier's string value, decoded exactly; ``None`` fails
+        # closed (Tier 2, section 9.1).
+        source = decode_string_literal(node.child_by_field_name("source"), self.source)
+        # Import attributes (``with { type: "json" }``) select a module kind
+        # the resolution does not model.
+        attributes = any(
+            child.type == "import_attribute" for child in node.named_children
+        )
         for child in node.named_children:
             if child.type == "import_require_clause":
                 # ``import x = require()``: CommonJS is deferred (non-symbol).
@@ -728,18 +735,27 @@ class _Analysis:
                         break
             elif child.type == "import_clause":
                 for part in child.named_children:
-                    self._import_clause_part(part, lex, source, type_only)
+                    self._import_clause_part(part, lex, source, type_only, attributes)
         self._statements(node, var, lex, depth + 1)
 
     def _import_clause_part(
-        self, part: Any, lex: _Scope, source: str, type_only: bool
+        self,
+        part: Any,
+        lex: _Scope,
+        source: str | None,
+        type_only: bool,
+        attributes: bool,
     ) -> None:
         if part.type == "identifier":
-            self._bind_import(lex, part, source, "default", "default", type_only)
+            self._bind_import(
+                lex, part, source, "default", "default", type_only, attributes
+            )
         elif part.type == "namespace_import":
             for ident in part.named_children:
                 if ident.type == "identifier":
-                    self._bind_import(lex, ident, source, "*", "namespace", type_only)
+                    self._bind_import(
+                        lex, ident, source, "*", "namespace", type_only, attributes
+                    )
         elif part.type == "named_imports":
             for spec in part.named_children:
                 if spec.type != "import_specifier":
@@ -752,25 +768,35 @@ class _Analysis:
                     lex,
                     local,
                     source,
-                    _text(imported, self.source),
+                    # ``import {"a-b" as x}``: the string's value, decoded
+                    # exactly, never its source text (``None`` fails closed).
+                    module_export_name(imported, self.source),
                     "named",
                     type_only or _has_token(spec, "type"),
+                    attributes,
                 )
 
     def _bind_import(
         self,
         lex: _Scope,
         local: Any,
-        source: str,
-        imported: str,
+        source: str | None,
+        imported: str | None,
         form: str,
         type_only: bool,
+        attributes: bool,
     ) -> None:
         name = _text(local, self.source)
         if type_only:
             lex.bind(name, _Binding(TYPE_ONLY))
             return
+        if source is None or imported is None:
+            # A specifier or name that does not decode exactly fails closed.
+            lex.bind(name, _Binding(UNMAPPED))
+            return
         info = {"source": source, "name": imported, "form": form}
+        if attributes:
+            info["attributes"] = "with"
         lex.bind(name, _Binding(IMPORT, info=info))
 
     def _import_alias(self, node: Any, var: _Scope, lex: _Scope, depth: int) -> None:
@@ -1430,6 +1456,19 @@ class _Analysis:
         # A merged namespace's other declarations may bind the name.
         return _none(NAMESPACE_MERGED if through_merged else "unbound")
 
+    def top_level_outcome(self, name: str) -> dict[str, Any]:
+        """The outcome of a value lookup of ``name`` at the program scope:
+        what an export of the local ``name`` binds (Tier 2, section 9.3)."""
+        program = self.program
+        if program.dynamic:
+            return _none("dynamic-scope")
+        if program.poisoned:
+            return _none(UNMAPPED)
+        bindings = program.bindings.get(name)
+        if bindings:
+            return self._decide(program, name, bindings, False)
+        return _none("unbound")
+
     def _exported_names(self) -> set[str]:
         """Names a module exports from its top level in a form that module
         augmentation can merge into: an ``export`` modifier, an
@@ -1802,11 +1841,43 @@ def analyze(
             # the engine reports as no-binding-fact (5.4).
             continue
         head = _callee_head(node)
-        bindings[f"{start}:{end}"] = (
-            analysis.lookup(head) if head is not None else _none("unbound")
-        )
+        outcome = analysis.lookup(head) if head is not None else _none("unbound")
+        member = _namespace_member(node, head, source)
+        if member is not None and outcome.get("outcome") == "import":
+            # ``ns.f()`` (Tier 2, section 9.1): the property a two-segment
+            # member callee names, read from the tree.
+            outcome = {
+                **outcome,
+                "binding": {**outcome["binding"], "member": member},
+            }
+        bindings[f"{start}:{end}"] = outcome
+    from .js_modules import module_facts
+
+    exports, module_bindings = module_facts(analysis)
     return {
         "goal": analysis.goal,
         "bindings": bindings,
         "script_globals": analysis.script_globals(),
+        "exports": exports,
+        "module_bindings": module_bindings,
     }
+
+
+def _namespace_member(node: Any, head: Any, source: bytes) -> str | None:
+    """The property of a callee spelled exactly ``head.name``, else ``None``.
+
+    Parentheses, computed keys, private names, optional chains and longer
+    chains give ``None``: only ``ns.f()`` is a namespace member call.
+    """
+    if node.type != "member_expression" or head is None:
+        return None
+    obj = node.child_by_field_name("object")
+    prop = node.child_by_field_name("property")
+    if (
+        not _same(obj, head)
+        or prop is None
+        or prop.type != "property_identifier"
+        or any(child.type == "optional_chain" for child in node.children)
+    ):
+        return None
+    return _text(prop, source)

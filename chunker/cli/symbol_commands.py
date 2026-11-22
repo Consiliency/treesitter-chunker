@@ -65,7 +65,9 @@ def setup_symbol_parser(subparsers: argparse._SubParsersAction) -> None:
             "TypeScript and TSX files; it currently resolves JS/TS calls whose "
             "target a lexical binding proves (a script top level only when no "
             "other file in the run may declare the name as a global), and "
-            "Python calls through the LEGB scope chain (never a redefinition)"
+            "Python calls through the LEGB scope chain (never a redefinition). "
+            "'imports' also resolves JS/TS calls through relative import "
+            "bindings to the one exported definition they prove"
         ),
     )
     extract_parser.set_defaults(func=cmd_extract_symbols)

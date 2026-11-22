@@ -276,6 +276,18 @@ do module-level definitions of builtin names, class-body lookups in a class
 with a base or keyword argument, and every lookup in a file that mentions
 `f_locals`; monkeypatching from other modules is not tracked.
 
+With `"imports"`, everything `"structural"` does applies, and a JavaScript,
+TypeScript or TSX call whose callee a relative ES import binds (`import { t }`,
+a default import, or `ns.t()` on `import * as ns`) resolves when the
+specifier names exactly one file of the run, in TypeScript's candidate order,
+and that module's export table leads, within three re-export or `export *`
+hops, to one definition its own scope lookup proves (`t2.import`,
+`t2.namespace`). More than one file variant, a `.d.ts` target, a bare or
+non-relative specifier, a star conflict, a cycle, a reassigned export, and
+CommonJS reach (a module whose exports object CommonJS code or another file
+of the run may write) leave the edge unchanged. Specifiers and quoted names
+are compared by their exact string value. Python imports prove nothing yet.
+
 A narrowed edge changes only `target`, `resolution`, `candidates` and
 `metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and
 `provenance.call_rules` (the rule IDs that removed candidates, in application

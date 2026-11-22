@@ -17,7 +17,18 @@
      ],
      "caller": "f",
      "file": "use.ts",
+     "imports": {
+      "candidates": [
+       "eq.ts:1:t",
+       "other.ts:1:t",
+       "svc.js:1:t"
+      ],
+      "outcome": "none(commonjs)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 2,
+     "pr": 5,
      "reference": "t",
      "today": {
       "candidate_ids": [
@@ -45,7 +56,18 @@
      ],
      "caller": "g",
      "file": "use2.ts",
+     "imports": {
+      "candidates": [
+       "eq.ts:1:t",
+       "other.ts:1:t",
+       "svc.js:1:t"
+      ],
+      "outcome": "none(local-variable)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 2,
+     "pr": 5,
      "reference": "t",
      "today": {
       "candidate_ids": [

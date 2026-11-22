@@ -39,12 +39,29 @@ MODE = "structural"
 
 # The plan PR this head implements (section 13.1). Expected-table rows of a
 # later PR that record an expectation for this head carry ``interim``.
-HEAD_PR = 4
+HEAD_PR = 5
 # Rules and reasons this head produces, each with a case in the expected
 # tables (10.6). Each later PR adds its own. ``stub`` left the vocabulary
 # when the Python analyzer landed (PR 4); ``unmapped`` and ``no-binding-fact``
 # are covered by the named tests below.
 LIVE_RULES = {"t1.kind", "t1.family", "t1.lexical", "t1.ts_overload", "t1.js_hoist"}
+# PR 5: Tier 2 for TS/JS, asserted in ``imports`` mode.
+IMPORTS_MODE = "imports"
+LIVE_IMPORTS_RULES = {"t2.import", "t2.namespace"}
+LIVE_IMPORTS_REASONS = {
+    "external-module",
+    "module-not-found",
+    "unknown-variant",
+    "ambiguous-extension",
+    "dts-target",
+    "export-not-found",
+    "star-conflict",
+    "namespace-export",
+    "commonjs",
+    "hop-limit",
+    "cycle",
+    "local-variable",
+}
 LIVE_REASONS = {
     "unbound",
     "parameter",
@@ -195,6 +212,8 @@ NAMED_TIER1_PY_TESTS = (
 # Expected rows per plan PR (10.1): a row that loses its finalization fails
 # the pin (#695 panel B7).
 EXPECTED_ROWS_PER_PR = {1: 55, 2: 55, 3: 6, 4: 43}
+# Rows with an ``imports`` field, per plan PR (PR 5: Tier 2 for TS/JS).
+EXPECTED_IMPORTS_ROWS_PER_PR = {5: 31}
 # Grammars per analyzer family, for the allow-list review rule.
 FAMILY_GRAMMARS = {"js": ("javascript", "typescript", "tsx"), "python": ("python",)}
 
@@ -668,7 +687,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "30"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "10", "python": "30"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
@@ -764,6 +783,124 @@ def test_expected_tables_hold_at_this_head(tree: str) -> None:
                 # Labels cannot tell two symbols on one line apart.
                 assert expected["candidate_ids"] == edge["candidates"], label
             assert isinstance(record.get("pr"), int), label
+
+
+def _imports_mode(run: Any) -> tuple[list[dict[str, Any]], dict[str, Any], Any]:
+    facts = [
+        extract_symbol_facts_for_file(
+            file_path, run.path, run.language, call_resolution=IMPORTS_MODE
+        )
+        for file_path in collect_source_files(run.path, run.language)
+    ]
+    off_facts = [
+        {key: value for key, value in item.items() if key != "scope_facts"}
+        for item in facts
+    ]
+    off = assemble_symbol_graph(
+        off_facts, total_files=len(facts), language_filter=run.language
+    )
+    graph = assemble_symbol_graph(
+        facts,
+        total_files=len(facts),
+        call_resolution=IMPORTS_MODE,
+        language_filter=run.language,
+    )
+    context = engine.build_run_context(
+        facts, graph["symbol_lookup"], IMPORTS_MODE, language_filter=run.language
+    )
+    return off["relationships"], graph, context
+
+
+@pytest.mark.parametrize("tree", TREES)
+def test_expected_imports_tables_hold_at_this_head(tree: str) -> None:
+    """``imports`` mode (Tier 1 + Tier 2, PR 5): a row's ``imports`` field,
+    else its ``structural`` field (``= structural``), else unchanged.
+
+    The recorded outcome is the engine's decision outcome: for an import
+    binding, ``import`` when it proves a target, otherwise the Tier 2
+    ``none`` reason (9.8).
+    """
+    table = _table(tree)
+    for run in (run for run in RUNS if run.tree == tree):
+        off_relationships, graph, context = _imports_mode(run)
+        symbols = graph["symbol_lookup"]
+        edges = [edge for edge in graph["relationships"] if edge["type"] == "calls"]
+        off_edges = [edge for edge in off_relationships if edge["type"] == "calls"]
+        records = table["runs"][run.label]["calls"]
+        assert [edge["call_site_id"] for edge in edges] == [
+            record["call_site_id"] for record in records
+        ]
+        for edge, off_edge, record in zip(edges, off_edges, records, strict=True):
+            label = (
+                f"{run.run_id} {record['file']}:{record['line']} {record['reference']}"
+            )
+            file_context = context.files[edge["file"]]
+            raw = engine.script_global_outcome(
+                context,
+                file_context,
+                file_context.bindings.get(
+                    f"{edge['callee_byte_start']}:{edge['callee_byte_end']}"
+                ),
+            )
+            decision = engine.decide(context, off_edge)
+            outcome = (
+                decision.outcome
+                if decision.eligible and decision.outcome is not None
+                else raw
+            )
+            if outcome is not None and outcome.get("outcome") == "local":
+                outcome = {"outcome": "local"}
+            actual = {
+                "outcome": _outcome_label(outcome),
+                "resolution": edge["resolution"],
+                "candidates": [
+                    f"{symbols[c]['file']}:{symbols[c]['line']}:{symbols[c]['qualified_name']}"
+                    for c in edge["candidates"]
+                ],
+                "rules": edge["provenance"].get("call_rules", []),
+            }
+            expected = record.get(IMPORTS_MODE) or record.get(MODE)
+            if expected is None:
+                assert edge["resolution"] == record["today"]["resolution"], label
+                assert edge["candidates"] == record["today"]["candidate_ids"], label
+                assert "call_rules" not in edge["provenance"], label
+                continue
+            assert {key: expected[key] for key in actual} == actual, label
+            if "candidate_ids" in expected:
+                assert expected["candidate_ids"] == edge["candidates"], label
+            if IMPORTS_MODE in record:
+                assert record["pr"] == 5, label
+
+
+def test_expected_imports_rows_per_pr_are_pinned() -> None:
+    counts: dict[int, int] = {}
+    rules: set[str] = set()
+    reasons: set[str] = set()
+    for tree in TREES:
+        for run in _table(tree)["runs"].values():
+            for record in run["calls"]:
+                expected = record.get(IMPORTS_MODE)
+                if expected is None:
+                    continue
+                counts[record["pr"]] = counts.get(record["pr"], 0) + 1
+                assert set(expected) <= {
+                    "outcome",
+                    "resolution",
+                    "candidates",
+                    "candidate_ids",
+                    "rules",
+                }, tree
+                assert set(expected["rules"]) <= set(engine.KNOWN_RULE_IDS), tree
+                rules.update(expected["rules"])
+                if expected["outcome"].startswith("none("):
+                    reasons.add(expected["outcome"][5:-1])
+                # Tier 2 rows of PR 5 leave ``structural`` unchanged.
+                assert MODE not in record, tree
+    assert counts == EXPECTED_IMPORTS_ROWS_PER_PR
+    # Traceability (10.6) for the Tier 2 rules and reasons live at this head.
+    assert rules >= LIVE_IMPORTS_RULES
+    assert reasons >= LIVE_IMPORTS_REASONS
+    assert reasons <= KNOWN_NONE_REASONS
 
 
 def test_expected_rows_per_pr_are_pinned() -> None:

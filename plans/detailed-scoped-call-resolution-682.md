@@ -22,7 +22,7 @@ naming any version, are separate owner questions.
 | What it fixes | Collisions among candidates the resolver already found. It does not add missing edges or repair wrong single-candidate edges (Q1, Q8). |
 | Where facts come from | A new per-file scope pass, run only when the option is on. The metadata extractors are not changed. |
 | Redefinition policy | An **executive decision that Greenfield accepted in writing** (section 8). It is stricter than the issue's Python rule. Python redefinitions are never resolved. Plain-JS hoisted function declarations resolve to the last one (`t1.js_hoist`, in its own PR). TS duplicate bodies stay ambiguous. A TS overload set resolves to its implementation. |
-| Extension collisions | When a relative import matches more than one file variant, the result is `none` (ruling 2.2). Owner question O-1 is open with default (a) applied. |
+| Extension collisions | When a relative import matches more than one file variant, the result is `none` (ruling 2.2). **O-1 decided (a) by the owner** (PR 5): the edge is left unchanged. |
 | IDs | No ID input changes. `definition_id`, `node_id`, `#N` and `call_site_id` are byte-identical on and off. A harness proves it for every fixture, on both the symbol graph and Boundary IR. |
 | Schema and cache | Boundary IR stays at `3.0`, and the new provenance keys are additive. On-mode `parity_digest` changes, which Greenfield accepted. Off-mode cache keys are unchanged. Switching modes on one cache directory is a cold run in both directions. |
 | Delivery | Seven strictly sequential PRs (0–6). All of Tier 1 merges before any Tier 2. Only PR 6 closes treesitter-chunker#682. No heavy local runs on dev0; full validation runs in CI. No release. |
@@ -1330,6 +1330,29 @@ option fixes collisions, not missing edges** (Q1).
 | `import type …`, `import { type a }` | not a value binding (`none(type-only)`) |
 | `import x = require()`, `const x = require()`, `import()` | `none` (non-symbol binding; CommonJS is deferred) |
 
+**Applied in PR 5:**
+
+- **Exact string values (owner rule).** A module specifier and a quoted
+  import or export name (`import {"a-b" as x}`, `export {x as "y"}`) are
+  compared by their ECMAScript string value, decoded exactly for strict
+  code (`\xHH`, `\uHHHH`, `\u{…}`, single-character escapes, line
+  continuations, `\0`). A literal that does not decode exactly (a legacy
+  octal escape, `\8`, a malformed escape, a lone surrogate, which
+  `IsStringWellFormedUnicode` rejects) fails closed: on the import side the
+  binding is `none(unmapped)`, on the export side the module is opaque
+  (every lookup in it gives `export-not-found`). Raw source text is never
+  compared. Identifiers keep their source spelling, because a file that
+  spells any name with an escape is unsupported (5.3).
+- **Namespace member calls.** `ns.f()` is eligible only when the reference
+  is exactly two segments, the analyzer records the member from the tree
+  (a plain `property_identifier`; parentheses, computed keys, private
+  names, optional chains and longer chains record none) and the head's
+  lookup is a namespace import. A mismatch between the reference and the
+  recorded member fails closed (`export-not-found`). Calling the namespace
+  itself (`ns()`) is `non-callable`. Every other member call stays
+  ineligible in both modes, so the filters never touch it.
+- **Import attributes** (`with { type: "json" }`) give `unknown-variant`.
+
 ### 9.2 TS/JS module resolution (ruling 2.2)
 
 - Only relative specifiers are resolved. Bare specifiers, `node_modules`,
@@ -1356,6 +1379,33 @@ option fixes collisions, not missing edges** (Q1).
   `.cts` are not collected.
 - A directory's `package.json` (`main`, `types`, `exports`) is not read (R6).
 
+**Applied in PR 5** (each only adds `none`):
+
+- `/`-absolute specifiers and anything with a scheme (`node:`, URLs) are
+  `external-module`. Specifiers containing `?`, `#`, `%`, `\`, an empty
+  segment (`//`) or a trailing `/`, and a JS/TS extension that is not
+  lower case (`./svc.JS`), are read differently by toolchains:
+  `unknown-variant`.
+- A `.js` or `.jsx` specifier also lists `p.js/index.<ext>` (TypeScript
+  tries that directory after the file), which can only add ambiguity.
+- A candidate that a run file matches only after case folding and NFC
+  normalization gives `unknown-variant`: a case-insensitive file system
+  would find that file.
+- **Platform and module suffixes.** A run file `<stem>.<segment>.<ext>`
+  next to a candidate `<stem>.<ext>` gives `ambiguous-extension` unless the
+  segment is on a closed allow-list of names no resolver uses as a suffix
+  (`test`, `spec`, `stories`, `story`, `bench`, `d`, `types`, `styles`,
+  `mock`, `mocks`, `fixture`, `fixtures`, `e2e`, `config`). React Native
+  picks `svc.ios.ts` before `svc.ts`, and TypeScript `moduleSuffixes` does
+  the same.
+- **Directory imports.** When the target is a `p/index.<ext>` candidate and
+  `p/package.json` is in the run, or a language filter leaves `.json`
+  uncollected, the result is `unknown-variant`: TypeScript and Node read
+  that `package.json` (`types`, `main`) first.
+- The copies of the collected extensions and skipped directories in
+  `modules.py` are pinned against `chunker.auto` and `symbol_graph` by a
+  test.
+
 ### 9.3 TS/JS export lookup and re-exports
 
 For name `x` in target module M:
@@ -1375,6 +1425,49 @@ For name `x` in target module M:
    `none(hop-limit)`; a cycle → `none(cycle)`. The limit is documented in the
    spec section, not in the fact version. It is pinned by `ts-reexport-3hop`
    (resolves) and `ts-reexport-4hop` (unchanged).
+
+**Applied in PR 5:**
+
+- **The export table** is read from a closed list of top-level export
+  statement forms; any other form makes the module opaque
+  (`export-not-found`). `export default function|class x` and
+  `export { y as default }` bind the local; `export default <identifier>`
+  (through parentheses and TS wrappers) looks the identifier up; any other
+  default expression is `expression-bound`. Type-space exports
+  (`export interface`, `export type T =`, `export type { … }`,
+  `export { type x }`) give `type-only` only when no value export has the
+  name, since a TS interface and a function merge. Two different value
+  exports of one name give `mixed-bindings`. `export as namespace X` is
+  ignored (it declares a UMD global only).
+- **Live bindings** are covered by the exporting module's Tier 1 lookup:
+  any write of the binding anywhere in that module (`export let f; f = …`,
+  a setter function) gives `reassigned`; `export let f = () => …` is
+  `expression-bound`.
+- **Stars.** A star source that cannot be resolved or read (external,
+  missing, ambiguous, CommonJS, opaque, unsupported, a cycle, the hop
+  limit) fails the whole lookup closed with its reason, because it might
+  provide the name. Stars never provide `default`. A star step counts as a
+  hop.
+- **CommonJS reach** (executive scope rule, §15 R12). When TS or a bundler
+  emits CommonJS, `import { t }` reads `exports.t` at call time and the
+  exports object is shared and mutable. A module gives `commonjs` wherever
+  a lookup reaches it (the first target or any hop) when: it is
+  script-goal, has `export =`, or mentions `exports`, `module`, a
+  top-level `this` or a top-level `arguments`; or another file of the run
+  may write its exports object. A file taints a module through a namespace
+  import used outside a closed allow-list of read positions of `ns.name`
+  (call, `new`, argument, member object, initializer, return, operand,
+  array or object value, assignment right side, type position; each use
+  found by the ordinary lookup at its site, after unwrapping parentheses
+  and TS wrappers), `export * as x from`, and any `require(<string>)`,
+  `import(<string>)` or `import x = require(<string>)` (every candidate the
+  specifier may name, under either importer language). A file taints every
+  module (`taint_all`) through `require` or `import()` used any other way,
+  `module` other than `module.exports`, the names `mainModule`,
+  `createRequire` and `getBuiltinModule` (also as string keys), an import
+  of `module`/`node:module`, an undecodable specifier, the `*` script
+  global (code evaluators and global-object escapes, 7.2), or by being an
+  unsupported JS/TS file.
 
 ### 9.4 Python import bindings
 
@@ -1433,7 +1526,9 @@ For name `x` in target module M:
 ### 9.7 What stays ambiguous or unresolved
 
 - **TS/JS:** everything listed in 9.2–9.3 as `none`, plus nested namespace
-  chains (`ns.sub.f`).
+  chains (`ns.sub.f`), `ns?.f()`, `ns["f"]()`, CommonJS modules and
+  `require` bindings, and the routes named in §15 R12 (TS/JS)
+  (treesitter-chunker#702).
 - **Python:** star imports, conditional imports (narrow only), `importlib` and
   `__import__`, `sys.path` changes, other roots, external packages, module
   `__getattr__`, `.pyi` stubs and extension modules.
@@ -1446,6 +1541,11 @@ For name `x` in target module M:
 `ambiguous-extension`, `dts-target`, `export-not-found`, `star-conflict`,
 `namespace-export`, `commonjs`, `type-only`, `hop-limit`, `cycle`,
 `script-dir-shadow`, `attr-submodule-conflict`, `conditional`, `star-import`.
+PR 5 also reports Tier 1 reasons where they fit: the target module's own
+lookup reason (`reassigned`, `expression-bound`, `ambient`, …),
+`mixed-bindings` for a duplicate export name, `expression-bound` for a
+default expression, `non-callable` for a called namespace object and
+`unmapped` for an import literal that does not decode.
 
 ## 10. Fixtures
 
@@ -1533,7 +1633,7 @@ final expectation. Every Today cell is from main.
 | probe | over.ts:6 g → f | amb {f@1, f@2, f@3} | **resolved over.ts:3 f** | = | t1.lexical, t1.ts_overload | 2 |
 | probe | over.ts:6 g → new Box | amb {interface Box@4, class Box@5} | **resolved class Box@5** | = | t1.lexical | 2 |
 | probe | svc.ts:2 caller → t (×2) | amb {svc.ts t, svc.tsx t} | **resolved svc.ts t** | = | t1.lexical | 2 |
-| probe | use.ts:2 user → t | amb {svc.ts t, svc.tsx t} | = (import) | = | ambiguous-extension (O-1 default) | 5 |
+| probe | use.ts:2 user → t | amb {svc.ts t, svc.tsx t} | = (import) | = | ambiguous-extension (O-1 (a), owner decision) | 5 |
 | probe (py root) | c.py:4 use → helper | amb {a.py helper, b.py helper} | = (import) | **resolved a.py helper** | t2.import | 6 |
 | probe (py root) | pkg/__init__.py:5 call_k → k | amb {pkg.py k, pkg/__init__.py k} | **resolved pkg/__init__.py k** | = | t1.lexical | 4 |
 | probe (py root) | redef.py:11 caller → d | amb {d@1, d@4} | = | = | group = C0 | 4 |
@@ -1749,6 +1849,7 @@ compares the analyzer's output with them.
 | cycle | ts-reexport-cycle |
 | script-dir-shadow | py-script-dir-import, probe one-root (`probe-r9/` as root) |
 | attr-submodule-conflict | py-attr-vs-submodule |
+| Tier 2 TS/JS fail-closed classes (PR 5): string decoding, specifier forms, suffix siblings, directory `package.json`, export forms, stars, namespace escapes, CommonJS reach | `test_tier2_positives_resolve_end_to_end`, `test_tier2_near_misses_keep_their_off_mode_edge`, `test_other_member_calls_are_not_eligible` and the unit tests in `tests/test_call_resolution_tier2_js.py`, on trees the tests write (11.2); the `imports` fields of the expected tables (`test_expected_imports_tables_hold_at_this_head`) |
 
 **Generated coverage for the three reasons no valid tree produces (R-3).**
 
@@ -1946,7 +2047,7 @@ treesitter-chunker#682; **only PR 6 closes it**. The executive sizes each panel.
 | **2** | **Tier 1 TS/JS core:** scope chain, class-body skip, parameter scope, self-binding, position independence, block functions → `none`, reassignment, module-goal lookups, `t1.ts_overload`, duplicate-body groups, the JS/TS allow-list. Script-goal top levels, namespace bodies and ambient handling give interim `none`. **Panel note (N-1):** an exported function yields both an `export_statement` chunk and the inner function chunk; the join must pick the one that carries the symbol (5.4), or every exported positive fails closed as `unmapped`. | PR 2 rows (r9-ts) |
 | **3** | **`t1.js_hoist` and globals:** hoisting with Annex B, `script_globals` including implicit globals, script-goal lookups, TS namespace merging, inherited ambient status. | PR 3 rows (rt-js) |
 | **4** | **Tier 1 Python.** | PR 4 rows |
-| **5** | **Tier 2 TS/JS.** Introduces `imports`. Applies the O-1 decision (default (a)). | PR 5 rows |
+| **5** | **Tier 2 TS/JS.** Introduces `imports`. Applies the owner's O-1 decision (a). | PR 5 rows |
 | **6** | **Tier 2 Python.** Closes treesitter-chunker#682. Removes the experimental label if the owner agrees. | PR 6 rows |
 
 ### 13.2 Test lanes
@@ -2020,7 +2121,7 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | Q6 | `.d.ts` targets | Accept: `none(dts-target)`. |
 | Q7 | Hop limit | 3 hops, pinned by the 3- and 4-hop fixtures for TS and Python. Not part of the fact version. |
 | Q8 | Wrong single-candidate edges, and proofs whose binding is not in C0 | Out of scope. Follow-up issue filed by the executive as treesitter-chunker#685 ("Call resolution: demote wrong single-candidate edges caused by qualified-name-first matching"). |
-| **O-1** | **Owner question, non-blocking; answer before PR 5 merges.** When `./svc` matches more than one file (for example `svc.ts` and `svc.tsx`), toolchains disagree: tsc and Vite pick `svc.ts`, esbuild and Bun pick `svc.tsx`. **(a) default, applied:** leave the edge unchanged; the probe `use.ts` call stays ambiguous. (b) Pick `svc.ts` by TypeScript's order. (c) Pick as in (b), but tag the edge `t2.import_ext_order`. | **Default (a) is in effect** unless the owner overrides it before PR 5 merges. If (b) or (c) is chosen, PR 5 changes the probe `use.ts` row and the ts-ext-collision rows accordingly. |
+| **O-1** | **Decided by the owner: (a)** (relayed by the executive for PR 5). When `./svc` matches more than one file (for example `svc.ts` and `svc.tsx`), toolchains disagree: tsc and Vite pick `svc.ts`, esbuild and Bun pick `svc.tsx`. **(a), decided:** leave the edge unchanged (`none(ambiguous-extension)`); the probe `use.ts` call stays ambiguous. Resolve only when exactly one file variant exists. Rejected: (b) pick `svc.ts` by TypeScript's order; (c) as (b), tagged `t2.import_ext_order`. | **Closed.** PR 5 applies (a): the probe `use.ts` row, the ts-ext-collision rows, js-importer-ext-order `use2` and ts-dts give `ambiguous-extension`. |
 | R1 | The analyzer misses a binding form | Fail closed; the allow-list test (7.5). |
 | R2 | JS goal detection. CommonJS files stay script goal (a top-level `require(` also occurs in AMD browser scripts). | Accept. Misclassification only adds `none` through the script-global check; hoisting behaves the same inside a CommonJS wrapper. |
 | R3 | A third parse per file when on | Opt-in only. Record timings in each PR. |
@@ -2033,6 +2134,7 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: a computed call on a receiver `this` that may be an indirect `eval` (`this[k](s)`, `this['ev' + 'al'](s)`; `*` would switch off script-top resolution in about 52 of 1136 npm files); hand-offs of a receiver `this` through a variable or an expression (`const s = this; s.d = f`, `const w = this.window; w.d = f`, `(0, this).d =`, `(c ? this : o).d =`, `(c || this).d =`, the receiver argument of `Reflect.set(o, 'd', v, this)`, `Object.assign(...[this], …)`), except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)` with `this` first, which give `*`; `Reflect.get(f, 'constructor')`, and computed keys that may reach `constructor` on arbitrary objects (`x[k](s)`, `x['constr' + 'uctor'](s)`, `f[['constructor']](s)`, `const { [k]: F } = f`); writer hand-offs the analysis cannot identify syntactically (`const a = Object.assign; a(this, …)`, `Reflect.apply(Object.assign, null, [this, …])`, `Object['assign'](...[this], …)`, and a helper given `this`: `h(this)`) | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
 | R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) is not tracked | Accept. This is the same kind of risk as the module-scope preference the issue asks for. |
 | R12 | Python run-time binding no syntactic rule sees (PR 4). **Scope rule** (executive decision, #695 re-check at 606c689f): in Tier 1 Python, a wrong resolved edge in the same file blocks if it can be produced using only names or constant strings that appear in the file, through ordinary binding, attribute or call semantics. Reflective access to interpreter internals is treated differently: that is, objects obtained by introspection rather than spelled out, such as `gc` referents, `inspect.getmembers`, `dir()` plus `getattr`, code objects from `dis`/`monitoring`, frames, and the builtins module reached via `__self__`/`__builtins__`. Such a route gets a trigger when a small one closes it. Otherwise it is named here, filed as a follow-up issue (treesitter-chunker#699), and does not block. **String-code execution through stdlib helpers** is the `exec` family by another name and stays here, like the JS string-code paths of R11 (executive ruling at the 8fd7c1a2 re-check, P-4; treesitter-chunker#699): a constant program a library runs, for example `cProfile.run('helper = len')` and `cProfile.runctx`, `profile.run`, `bdb.Bdb().run`, `trace.Trace().run`, `timeit.timeit('import __main__ as m; m.helper = len')`, `code.InteractiveInterpreter().runsource(…)`, `doctest.testmod()` on the file's own docstrings, and `pickle.loads(b'c__main__\n__dict__\n.')` or `pickle.loads(b'cbuiltins\n__dict__\n.')`. Also here: a third-party module that re-exports `builtins` under another name (the stdlib's one alias, `enum.bltns`, is a trigger; treesitter-chunker#699). Named by the re-check at 14e8f044 (Q-4, Q-7; treesitter-chunker#699): a resolver given a module name taken from `X.__module__`, a computed string (`pydoc.locate(int.__module__).__dict__.update(D)`, `mock.patch(run.__module__ + '.helper', len)`); and `annotationlib.ForwardRef.evaluate` or `typing.evaluate_forward_ref` on a constant string, which is the string-code family above. Named by the re-check at a6734480 (S-4; treesitter-chunker#699): a class with a catch-all `__getattr__` handing a function to `functools.update_wrapper`/`wraps`, whose `__annotate__` copy `annotationlib` then runs under substitute globals (the member name is computed, so no trigger is spelled). Routes that cannot change a proven binding, by the Codex 4655078224 audit: parameter defaults (`__defaults__`, `__kwdefaults__`; parameter lookups never prove); `__func__` (read-only; a rebinding through the function it yields still needs a code object or a cell); `__wrapped__` (introspection metadata only); frames from `sys.settrace`/`setprofile`, `inspect.currentframe`, `sys._getframe` and `sys._current_frames` (`inspect.getgeneratorlocals`/`getcoroutinelocals`/`getasyncgenlocals` and `getargvalues(frame).locals` return the live `f_locals` proxy and are triggers, #695 P-3b; so is `pdb.Pdb().curframe_locals`, #695 Q-3; other frame routes rebind only through `f_locals`/`f_globals`/`f_builtins`/`f_code`, all triggers, or through a computed attribute name, which stays here: `[v for k, v in inspect.getmembers(fr) if k.endswith('_locals')][0]['helper'] = len`, or the same with `dir()` plus `getattr`); any C extension module other than `ctypes`. `__self__` is not such a route: `len.__self__` is the `builtins` module, which is writable, so `__self__` and `__builtins__` are dynamic attributes in every spelling (#695 O-3b). Heap walking (`gc.get_referents`/`get_referrers`/`get_objects`) gets no trigger (it would cost panel A's correct `gc_referrers` resolution) and stays here under `gc` tricks, among them a gc-found globals dict written with a spelling the attribute-write rule does not list (`g = [o for o in gc.get_referents(run) if type(o) is dict][0]; g.update(D)`) and gc-found code or cells run under `type(f)(…)`. Named by the re-check at 606c689f (O-3, O-5): computed-name member walks on functions and frames (`inspect.getmembers`, `dir` plus `getattr`); a function rebuilt with a positional closure tuple (and code) taken from `gc` or `inspect.getmembers` (`type(invoke)(code, {}, None, None, cells)`, with no `closure=` keyword); `runpy` re-running the file (`runpy.run_path(__file__, init_globals={'helper': len}, run_name='x')`); recompiling or unmarshalling the file's own source (a second instance of the module); and a same-file `gettext.install()` ahead of a module-level definition that has not run yet. Also: a helper in another module that writes its caller's globals or locals through frames (`sys._getframe(1).f_globals` or `.f_locals` there, not here; #695 panel A2) or `exec(code, mod.__dict__)`; computed strings beyond constant literals (`'__glo' + name`); `X.modules` uses other than `X.modules[__name__]` and its getters (`m = collections._sys.modules; m[__name__]`); `gc` tricks, and C-level access other than through `ctypes`/`pythonapi`; replacing a function's `__code__` (the edge still names the right definition, which then runs other code). Named by the president's #695 ruling (section 4): same-file resolvers that take the module name as a value, `pkgutil.resolve_name(__name__).helper = len`, `pydoc.locate(__name__).helper = len` and `mock.patch(__name__ + '.helper', len)` self-patches; other computed strings (`'%s' % …`, `b'…'.decode()`, including `b'__main__.helper'.decode()`, and an f-string with an interpolation and a `__main__` part, `f'__main__.{h}'`; #695 L-2); `X.modules[__spec__.name]` and other `X.modules` keys, including through a `sys` class attribute or alias with a computed key (`K.ss.modules[k]`, `getattr(K, '_K__s').modules[k]`); `from sys import __dict__ as sd` with a computed key (`sd[''.join(['mod', 'ules'])][k]`; #695 J-3); **cross-file submodule rebinding** (another module importing `pkg.X` sets `pkg/__init__.py`'s global `X` with no write in any source of `pkg/__init__.py`); **builtins injected from another module** (`gettext.install()`, or `builtins.X = …` elsewhere) ahead of a module-level definition that has not run yet, also an R10 item for the deferred follow-up. Also: reaching the module without spelling its name by iterating a package's namespace (`for m in pkg.__dict__.values()` (which fails closed since fold 24), `inspect.getmembers(pkg)`, `pkgutil.iter_modules`, and `g(**pkg.__dict__)`). Named by the re-check at f7f0b0bd (R-5); same-file writes through these in the spellings the attribute-write rule lists (§7.3) fail closed. Fold 18 (executive ruling) moved the former "other write spellings" out of here: writer aliases, `operator.setitem`, `|=` and non-literal `update()` on a namespace dict now fail closed (§7.3). **Computed writes are closed at the write site** (fold 19, executive ruling E-19, which withdraws E-18b): a writer with a computed name on any receiver (W-1), a namespace dict that escapes (W-2) and a `unittest.mock` or pytest-mock patch with a computed target (W-3, extended to receiver-based patchers in fold 20) fail closed (§7.3), so the module or namespace acquisitions this entry names (resolvers given the module name as a value or `X.__module__`, `X.modules` with a computed key, iterating a package's namespace, a module handed over) matter only together with a write, and every write **spelled in this file** is either recorded (a constant name, on any receiver) or fails closed (narrowed by E-20). **What stays here for writes** is reflective and string-code only: heap walking, computed-name member walks and the other reflective routes above, and string-code execution (P-4); treesitter-chunker#699. **Named by E-20 (fold 21; #699):** attribute writes performed inside library functions on an object handed to them, non-blocking as an analog of P-4 (the writing semantics belong to the library): `functools.update_wrapper`/`wraps` (`update_wrapper(m, types.SimpleNamespace(helper=f), assigned=())`), `argparse`/`optparse` namespaces (`parse_args([...], namespace=m)`, `values=m`), `copy._reconstruct`, pickle's BUILD, and third-party equivalents; ancestor-package acquisition with a computed name (`getattr(pkg, __name__.rpartition('.')[2])` in a package submodule) and iterating a package's namespace; `X._sys.modules` is a trigger since fold 21. Pytest framework patchers under other names (an arbitrary `.patch` parameter, a typed `MockerFixture` parameter, `getattr(mocker, 'patch')`) stay #697/#699. Also here: the module object handed over by another module (a sibling re-export, a function returning it, a parameter); a module loaded under a loader-chosen name (`importlib.util.spec_from_file_location`, `runpy` with a custom name); and by-name submodule loading with a computed name in `__init__.py` (`pkgutil.walk_packages(__path__, __name__ + '.')`), which rebinds a package global with no write in the source. Self-references that spell the module's name are no longer here: they give `dynamic-scope` (#695 panel A7, the ruling's B-4 and the general rule of its re-check) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
+| R12 (TS/JS, PR 5) | Tier 2 routes no syntactic rule in the run's JS/TS files sees, under the same scope rule (filed as treesitter-chunker#702): bare-specifier aliases into the run (package self-reference, workspace symlinks, tsconfig `paths`) used to write a module's exports object, since taints follow only relative specifiers; resolution configured outside JS/TS files (`package.json` `browser` maps, bundler aliases and extension lists, tsconfig `rootDirs`, `moduleSuffixes` with a segment on the inert list); uncollected siblings a bundler prefers (`.mjs`, `.mts`, `.cjs`, `.json`; also R9); loader hooks (`Module._extensions`, `register()`), `vm`/`process.binding` string code (the R11 family) and build-time transforms. Every cheap trigger the PR 5 review found is closed in §9.1–9.3 | Accept: Tier 2 holds within what the run's JS/TS files show syntactically. |
 
 **Owner notice** (informational, from the ruling): these are delegated
 decisions, all stricter than or consistent with the issue:
@@ -2040,7 +2142,7 @@ decisions, all stricter than or consistent with the issue:
 - JS hoisting resolves to the last declaration;
 - Python redefinitions never resolve;
 - kind or family filtering alone never resolves an edge;
-- extension collisions give `none` (subject to O-1).
+- extension collisions give `none` (O-1 decided (a) by the owner).
 
 ## 16. Acceptance criteria for this plan
 
@@ -2765,8 +2867,28 @@ scopes. The same held for `dict.update` and `operator.setitem`.
 | --- | --- |
 | `_builtin_name` and `_stdlib_name` record each verified use; `_verify_callees` runs once the binding events are applied and looks each one up from its use site with `lookup()`: a builtin must give `none(unbound)`, a stdlib name an `import` outcome whose binding is the tracked `import <module>` (or `from <module> import <writer>`). Otherwise the file goes `dynamic-scope` (A-2) | `py_scope._verify_callees`, `_builtin_name`, `_stdlib_name` |
 | Belt and braces: the binding-event check stays (stricter: it refuses bindings in scopes the lookup does not consult; removing it fails 15 tests); the recorded-write check stays for writer members (removing it fails 10); for builtin names it is redundant with the lookup (a recorded write is a module `local-variable` binding) | — |
-| Lookup failure reasons and their verification tests: `class-scope-bound` for an open namespace (metaclass, inherited `__prepare__` via a base, a keyword; 12 probes) and for a binding in the class; `dynamic-scope` for an annotation use; `unmapped` for a mangled alias; `star-import`; `conditional` and `mixed-bindings` imports; `local-variable` for a recorded write; `builtin-shadow`. Unreachable at a use site: a poisoned scope (every node kind is classified), a missing `nonlocal` target (a syntax error), the `__class__` cell (it cannot be spelled `len`/`dict`/`operator`), and `dynamic-scope` from a class body or frame locals (the file is already dynamic) | `tests/test_call_resolution_tier1_py.py` |
+| Lookup failure reasons and their verification tests: `class-scope-bound` for an open namespace (metaclass, inherited `__prepare__` via a base, a keyword; 12 probes) and for a binding in the class; `dynamic-scope` for an annotation use; `unmapped` for a mangled alias; `star-import`; `conditional` and `mixed-bindings` imports; `local-variable` for a recorded write; `builtin-shadow`. Reachable but fail closed (the president's AD-4): a poisoned scope and the `__class__` cell give `none` at the use site, so verification fails closed. Unreachable at a use site: a missing `nonlocal` target (a syntax error) and `dynamic-scope` from a class body or frame locals (the file is already dynamic) | `tests/test_call_resolution_tier1_py.py` |
 | Runtime trace (fold-28 probes, 51 cases): the 12 open-class body and first-iterable cases run the replacement and were WRONG at 0e96b12f; they fail closed now. Methods and comprehension bodies in open classes, plain classes and function scope run the builtin and resolve. Nothing else changes | — |
 | Cost: 0 of 638 supported non-test stdlib files and 0 of 488 supported repository test files change against 0e96b12f. Harness against main unchanged (byte-identical `cmp`); the president's p44–p62 and panel A (38) unchanged | — |
 | AC nits: the alias paragraph's example is `ns.get('p')`; the `'__dict__'` wording is "subscript key" | §7.3 |
 | Pins: `test_fold28_695_open_class_callees_keep_their_off_mode_edge` (12: the Codex repro and `len`/`dict.update`/`operator.setitem` in a metaclass, an inherited-`__prepare__` and a keyword class body, plus three first iterables; all wrong at 0e96b12f), `test_fold28_695_class_nested_scopes_still_resolve` (12: methods and comprehension bodies), `test_fold28_695_plain_scopes_still_resolve` (9 controls), `test_fold28_695_lookup_failures_fail_verification` (9 reasons; 6 only the lookup catches). Mutation: no use-site lookup 19 failures, builtin verified by any `none` 13, event check removed 15, recorded-write check removed 10 | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 5: Tier 2 TS/JS
+
+`call_resolution="imports"` is introduced. `js` fact version 10 (the export
+table, star exports, CommonJS reach and taints, exact decoding, the member
+of a namespace member call); `python` stays 30. All 31 PR 5 rows of §10
+hold as planned (10 resolve, 21 stay unchanged), asserted by their
+`imports` fields. `structural` output is byte-identical to main on every
+harness run.
+
+| Item | Applied in |
+| --- | --- |
+| O-1 decided (a) by the owner: more than one existing variant gives `ambiguous-extension`; resolve only when exactly one exists | §1; §9.2; §10.2; §13.1; §15 O-1 and owner notice |
+| Owner rule: specifiers and quoted names decoded exactly per ECMAScript, or fail closed; raw text never compared | §9.1 (`chunker/call_resolution/js_strings.py`) |
+| Executive scope rule (R12): each cheap trigger closed (CommonJS reach, taints, specifier forms, suffix siblings, directory `package.json`); the rest named | §9.2; §9.3; §15 R12 (TS/JS), treesitter-chunker#702 |
+| PR 4 lessons designed in: sensitive-value uses (namespace imports, `require`, `module`) classified by closed allow-lists after unwrapping wrappers; namespace uses found by the ordinary lookup at the use site; every import form treated alike | §9.3 (`chunker/call_resolution/js_modules.py`) |
+| Namespace member calls: two segments, member read from the tree, reference and tree must agree | §9.1; `engine.decide`, `engine.proof` |
+| Plan nit (the president's AD-4): fold 28's `__class__` and poisoned-scope reasons are reachable but fail closed | Appendix B, fold 28 |
+| Lanes: `tests/test_call_resolution_tier2_js.py` in `CI_SMOKE_TESTS` and `run_platform_core.py` | §13.2 |
+| Pins: `test_tier2_positives_resolve_end_to_end` (26), `test_tier2_near_misses_keep_their_off_mode_edge` (65), `test_expected_imports_tables_hold_at_this_head`, `test_expected_imports_rows_per_pr_are_pinned` (`{5: 31}`), imports-mode mutation proofs M3, M7, M11, M14, M15 in `tests/test_call_resolution_identity.py`. Rule mutations: 35 of 35 killed (each rule disabled in turn fails a named test) | `tests/test_call_resolution_tier2_js.py`; `tests/test_call_resolution_engine.py`; `tests/test_call_resolution_identity.py` |

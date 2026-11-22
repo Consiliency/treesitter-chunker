@@ -17,7 +17,21 @@
      ],
      "caller": "u",
      "file": "use.ts",
+     "imports": {
+      "candidate_ids": [
+       "a6ec565ebf998845ef692f97091959a974bbe63b"
+      ],
+      "candidates": [
+       "a.ts:1:t"
+      ],
+      "outcome": "import",
+      "resolution": "resolved",
+      "rules": [
+       "t2.import"
+      ]
+     },
      "line": 2,
+     "pr": 5,
      "reference": "t",
      "today": {
       "candidate_ids": [
@@ -43,7 +57,21 @@
      ],
      "caller": "u",
      "file": "use.ts",
+     "imports": {
+      "candidate_ids": [
+       "11526085b52bb79a2f69780b626a60652b1db8eb"
+      ],
+      "candidates": [
+       "b.ts:1:v"
+      ],
+      "outcome": "import",
+      "resolution": "resolved",
+      "rules": [
+       "t2.import"
+      ]
+     },
      "line": 2,
+     "pr": 5,
      "reference": "v",
      "today": {
       "candidate_ids": [

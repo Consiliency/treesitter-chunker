@@ -11,6 +11,9 @@ Modules:
 - :mod:`.engine`: eligibility, the binding-proof algorithm, the kind and
   family filters and provenance (pure functions, no filesystem access);
 - :mod:`.js_scope` and :mod:`.py_scope`: the per-language analyzers;
+- :mod:`.js_modules` and :mod:`.js_strings`: the JS/TS module facts and the
+  exact decoding of string specifiers and quoted names (Tier 2);
+- :mod:`.modules`: Tier 2 module resolution and export lookup for JS/TS;
 - :mod:`.allowlist`: the binding allow-list.
 
 At this head both analyzers implement Tier 1 (plan section 13.1, PRs 2-4).
@@ -19,7 +22,9 @@ and ``t1.js_hoist``, script globals checked across the run's files, TS
 namespace merging and inherited ambient status. The Python analyzer has the
 LEGB scope chain with class scopes (ruling A10), comprehension and
 type-parameter scopes, ``global``/``nonlocal`` redirects and ``t1.lexical``;
-Python redefinitions narrow to their group and never resolve.
+Python redefinitions narrow to their group and never resolve. Tier 2 for
+JS/TS (``imports`` mode, PR 5) resolves relative ES import bindings through
+the target module's export table (sections 9.1-9.3).
 """
 
 from __future__ import annotations

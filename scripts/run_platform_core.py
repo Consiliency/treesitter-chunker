@@ -91,6 +91,8 @@ COMMON_TESTS = [
     # Call-resolution identity harness: off/on identity on every OS
     # (treesitter-chunker#682, plan section 13.2).
     "tests/test_call_resolution_identity.py",
+    # Tier 2 TS/JS: path-based module resolution on every OS (plan 13.2).
+    "tests/test_call_resolution_tier2_js.py",
     "tests/test_reference_fixture_oracle.py",
     "tests/test_boundary_ir_incremental_runtime.py",
     "tests/test_boundary_cache_key.py",

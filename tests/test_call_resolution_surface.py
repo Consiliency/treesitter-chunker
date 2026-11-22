@@ -39,7 +39,7 @@ MODE = "structural"
 
 
 def test_types_and_reexport() -> None:
-    assert CALL_RESOLUTION_MODES == ("name", "structural")
+    assert CALL_RESOLUTION_MODES == ("name", "structural", "imports")
     assert get_args(CallResolution) == CALL_RESOLUTION_MODES
     assert boundary_types.CALL_RESOLUTION_MODES is CALL_RESOLUTION_MODES
     assert boundary_types.CallResolution is CallResolution
@@ -73,7 +73,9 @@ def test_language_filter_is_keyword_only() -> None:
     assert parameter.default is None
 
 
-@pytest.mark.parametrize("value", ["imports", "scoped", "", None, "STRUCTURAL"])
+@pytest.mark.parametrize(
+    "value", ["import", "scoped", "", None, "STRUCTURAL", "IMPORTS"]
+)
 def test_unknown_values_raise(value: object, tmp_path: Path) -> None:
     source = KIND_FILTER / "x.ts"
     for call in (
@@ -268,9 +270,15 @@ def test_cli_symbols_extract_flag(tmp_path: Path) -> None:
     assert "Experimental" in extract.format_help()
     defaults = parser.parse_args(["symbols", "extract", str(KIND_FILTER)])
     assert defaults.call_resolution == "name"
-    with pytest.raises(SystemExit):
+    assert (
         parser.parse_args(
             ["symbols", "extract", str(KIND_FILTER), "--call-resolution", "imports"]
+        ).call_resolution
+        == "imports"
+    )
+    with pytest.raises(SystemExit):
+        parser.parse_args(
+            ["symbols", "extract", str(KIND_FILTER), "--call-resolution", "scoped"]
         )
     output = tmp_path / "out.json"
     args = parser.parse_args(
@@ -305,7 +313,7 @@ def test_cli_boundary_flag(tmp_path: Path) -> None:
     root = tmp_path / "tree"
     shutil.copytree(KIND_FILTER, root)
     outputs = {}
-    for mode in ("name", MODE):
+    for mode in ("name", MODE, "imports"):
         output = tmp_path / f"{mode}.json"
         result = runner.invoke(
             app,
@@ -315,7 +323,8 @@ def test_cli_boundary_flag(tmp_path: Path) -> None:
         outputs[mode] = json.loads(output.read_text(encoding="utf-8"))
     assert "call_resolution" not in outputs["name"]["run"]["options"]
     assert outputs[MODE]["run"]["options"]["call_resolution"] == MODE
-    result = runner.invoke(app, ["boundary", str(root), "--call-resolution", "imports"])
+    assert outputs["imports"]["run"]["options"]["call_resolution"] == "imports"
+    result = runner.invoke(app, ["boundary", str(root), "--call-resolution", "scoped"])
     assert result.exit_code != 0
 
 
@@ -331,6 +340,10 @@ def test_cli_help_states_the_current_head() -> None:
         assert "may declare the name as a global" in text, module
         assert "does not resolve Python calls" not in text, module
         assert "the LEGB scope chain (never a redefinition)" in text, module
+        # PR 5: 'imports' adds Tier 2 for JS/TS import bindings.
+        assert (
+            "'imports' also resolves JS/TS calls through relative import" in text
+        ), module
 
 
 def test_experimental_label_and_spec_text() -> None:
@@ -348,8 +361,16 @@ def test_experimental_label_and_spec_text() -> None:
     assert "t1.js_hoist" in unreleased
     assert "script_globals" in unreleased
     assert "within the run" in unreleased
+    # PR 5: Tier 2 for TS/JS.
+    assert '`"imports"` is not available yet' not in unreleased
+    assert "t2.import" in unreleased and "owner decision O-1" in unreleased
     spec = (ROOT / "docs" / "interface-boundary-spec.md").read_text(encoding="utf-8")
     assert "### Call resolution extension (experimental)" in spec
     assert "Resolution remains heuristic and does not\nestablish" not in spec
-    for phrase in ("consumers key edges on `id`", "parity_digest", "run.options"):
+    for phrase in (
+        "consumers key edges on `id`",
+        "parity_digest",
+        "run.options",
+        "`t2.namespace`",
+    ):
         assert phrase in spec

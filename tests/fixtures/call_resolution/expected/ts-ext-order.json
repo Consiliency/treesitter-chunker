@@ -17,7 +17,21 @@
      ],
      "caller": "a",
      "file": "use.ts",
+     "imports": {
+      "candidate_ids": [
+       "fbdf891b11906e5bbf43b9232b427edc1375cf5a"
+      ],
+      "candidates": [
+       "svc.ts:1:t"
+      ],
+      "outcome": "import",
+      "resolution": "resolved",
+      "rules": [
+       "t2.import"
+      ]
+     },
      "line": 3,
+     "pr": 5,
      "reference": "t",
      "today": {
       "candidate_ids": [
@@ -43,7 +57,21 @@
      ],
      "caller": "a",
      "file": "use.ts",
+     "imports": {
+      "candidate_ids": [
+       "73d9dbf3503183561207ec0526f053cc52237bd6"
+      ],
+      "candidates": [
+       "lib/index.ts:1:u"
+      ],
+      "outcome": "import",
+      "resolution": "resolved",
+      "rules": [
+       "t2.import"
+      ]
+     },
      "line": 3,
+     "pr": 5,
      "reference": "u",
      "today": {
       "candidate_ids": [

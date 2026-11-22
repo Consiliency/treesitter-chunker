@@ -31,10 +31,10 @@ RESOLUTION_STATUSES: tuple[ResolutionStatus, ...] = (
 RESOLUTION_MODES: tuple[ResolutionMode, ...] = ("strict", "permissive")
 # Opt-in scope-aware call resolution (treesitter-chunker#682), experimental.
 # ``"name"`` is today's name-only resolution and the default. The values are
-# cumulative. ``"imports"`` (Tier 2) is added by a later change; until then it
-# is rejected like any other unknown value.
-CallResolution: TypeAlias = Literal["name", "structural"]
-CALL_RESOLUTION_MODES: tuple[CallResolution, ...] = ("name", "structural")
+# cumulative: ``"structural"`` is Tier 1 and ``"imports"`` is Tier 1 plus
+# Tier 2 (import bindings).
+CallResolution: TypeAlias = Literal["name", "structural", "imports"]
+CALL_RESOLUTION_MODES: tuple[CallResolution, ...] = ("name", "structural", "imports")
 
 
 def compute_text_hash16(text: str) -> str:

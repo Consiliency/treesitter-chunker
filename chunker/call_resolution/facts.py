@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"9"`` for the ``js`` family and ``"30"`` for
+Schema (fact version ``"10"`` for the ``js`` family and ``"30"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -35,7 +35,11 @@ Schema (fact version ``"9"`` for the ``js`` family and ``"30"`` for
     ``"global": <name>``: the engine proves it only if no other file of the
     run declares that name as a script global (section 7.2).
     The JS/TS import binding is ``{"source": <specifier>, "name": <imported
-    name, "default" or "*">, "form": "named" | "default" | "namespace"}``.
+    name, "default" or "*">, "form": "named" | "default" | "namespace"}``,
+    with the specifier and a quoted name decoded exactly (a literal that
+    does not decode binds ``none(unmapped)``), plus ``"attributes": "with"``
+    for an import with attributes and ``"member": <name>`` on the outcome of
+    a two-segment member callee ``ns.f()``.
     The Python import binding is ``{"form": "import", "module": <dotted
     name>}`` for ``import m [as y]``, or ``{"form": "from", "module":
     <module, with any leading dots>, "name": <imported name>}``.
@@ -53,7 +57,10 @@ Schema (fact version ``"9"`` for the ``js`` family and ``"30"`` for
     as a value, or a code evaluator (``eval``, ``Function``, ``execScript``,
     a timer given source text). Empty for Python.
 ``exports``, ``module_bindings``
-    Cross-file facts for later tiers; empty until an analyzer fills them.
+    JavaScript and TypeScript: the Tier 2 module facts of
+    :mod:`.js_modules` (the export table; star exports, CommonJS reach,
+    ``opaque`` and the modules the file may write). Empty for Python and
+    for an unsupported file.
 ``symbols``
     ``[[node_type, byte_start, byte_end, symbol_id], ...]``, one entry per
     symbol chunk of the file, in chunk order. The engine joins proof
@@ -92,6 +99,9 @@ logger = logging.getLogger(__name__)
 # js "8": literal-key access equals dot access at every name-matching site
 # (Codex 4652498471 on #691).
 # js "9": ``Object``/``Reflect`` reached through a receiver ``this`` (C-1).
+# js "10": Tier 2 module facts (plan PR 5): the export table, star exports,
+# CommonJS reach and taints; import specifiers and quoted names decoded
+# exactly; the member of a namespace member call.
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -159,7 +169,7 @@ logger = logging.getLogger(__name__)
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "9", "python": "30"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "10", "python": "30"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -395,6 +405,51 @@ def valid_outcome(value: object) -> bool:
     return False
 
 
+_MODULE_BINDING_KEYS = frozenset({"stars", "commonjs", "opaque", "taints", "taint_all"})
+
+
+def _valid_export_entry(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    kind = value.get("kind")
+    if kind == "local":
+        return set(value) == {"kind", "outcome"} and valid_outcome(value["outcome"])
+    if kind == "reexport":
+        return (
+            set(value) == {"kind", "source", "name"}
+            and isinstance(value["source"], str)
+            and isinstance(value["name"], str)
+        )
+    if kind == "none":
+        return (
+            set(value) == {"kind", "reason"}
+            and isinstance(value["reason"], str)
+            and value["reason"] in KNOWN_NONE_REASONS
+        )
+    return False
+
+
+def valid_export_table(value: object) -> bool:
+    """Whether ``value`` is a well-formed JS/TS ``exports`` table."""
+    return isinstance(value, dict) and all(
+        isinstance(name, str) and _valid_export_entry(entry)
+        for name, entry in value.items()
+    )
+
+
+def valid_module_bindings(value: object) -> bool:
+    """Whether ``value`` is well-formed JS/TS ``module_bindings``."""
+    if not isinstance(value, dict) or set(value) != _MODULE_BINDING_KEYS:
+        return False
+    return (
+        isinstance(value["stars"], list)
+        and all(isinstance(item, str) for item in value["stars"])
+        and isinstance(value["taints"], list)
+        and all(isinstance(item, str) for item in value["taints"])
+        and all(type(value[key]) is bool for key in ("commonjs", "opaque", "taint_all"))
+    )
+
+
 def valid_symbol_entry(value: object) -> bool:
     """Whether ``value`` is a well-formed ``symbols`` table entry."""
     return (
@@ -439,6 +494,15 @@ def valid_scope_facts(value: object, language: str | None) -> bool:
         return False
     if not isinstance(value["exports"], dict) or not isinstance(
         value["module_bindings"], dict
+    ):
+        return False
+    if (
+        supported
+        and language_family(language) == "js"
+        and not (
+            valid_export_table(value["exports"])
+            and valid_module_bindings(value["module_bindings"])
+        )
     ):
         return False
     symbols = value["symbols"]

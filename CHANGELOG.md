@@ -88,8 +88,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `metadata.call_resolution` record the mode. On-mode `parity_digest`
     changes, and on-mode cache keys add the mode and a per-language-family
     fact version.
-  - `"imports"` is not available yet and raises `ValueError`, like any unknown
-    value.
+  - `"imports"` (Tier 2) does everything `"structural"` does and also
+    resolves JavaScript, TypeScript and TSX calls whose callee is bound by a
+    relative ES import: `import { t }`, a default import, or `ns.t()` on
+    `import * as ns`. The specifier resolves in TypeScript's order to
+    exactly one file of the run; **if more than one variant exists
+    (`svc.ts` and `svc.tsx`, `p.js` and `p/index.ts`), the edge is left
+    unchanged** (owner decision O-1). The exported name is then followed
+    through the target's export table, up to three re-export or `export *`
+    hops, to the one definition the target's own scope lookup proves
+    (`t2.import`, `t2.namespace`). Specifiers and quoted names are compared
+    by their exact string value; a literal that does not decode exactly
+    fails closed. Bare specifiers, `node_modules`, path aliases,
+    `package.json` fields, `.d.ts` targets, `.mjs`/`.cjs`/`.mts`/`.cts`,
+    platform-suffixed siblings (`svc.ios.ts`), star conflicts, cycles,
+    live bindings the exporter reassigns, default expressions, and CommonJS
+    (a script-goal or `module`/`exports` module, `export =`, and any module
+    another file may write through `require`, `import()` or an escaping
+    namespace import; any unsupported JS/TS file or code evaluator in the
+    run) never resolve. Python imports prove nothing yet. This holds within
+    the run only (plan risk R12, treesitter-chunker#702).
 
   IDs (`definition_id`, node IDs, `#N` suffixes and `call_site_id`) are
   identical with the option on and off. The option and its behavior may change

@@ -17,7 +17,17 @@
      ],
      "caller": "u",
      "file": "use.ts",
+     "imports": {
+      "candidates": [
+       "h1.ts:1:helper",
+       "h2.ts:1:helper"
+      ],
+      "outcome": "import",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 2,
+     "pr": 5,
      "reference": "helper",
      "today": {
       "candidate_ids": [

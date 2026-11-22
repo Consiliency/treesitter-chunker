@@ -1106,6 +1106,10 @@ def extract_boundary_ir(
     ``t1.js_hoist``), a script top level only when no other file of the run
     may declare the name as a global, and Python calls through the LEGB
     scope chain (``t1.lexical``; Python redefinitions never resolve).
+    ``"imports"`` also resolves JavaScript, TypeScript and TSX calls bound by
+    a relative ES import to the one exported definition that proves them
+    (``t2.import``, ``t2.namespace``); more than one file variant of the
+    specifier leaves the edge unchanged.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"
