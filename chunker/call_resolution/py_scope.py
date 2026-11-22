@@ -2333,9 +2333,15 @@ class _Analysis:
                 receiver = _unwrap(receiver, skip_comments=True)
                 if names & _NAMESPACE_MUTATORS and self._builtin_name(receiver, "dict"):
                     return True  # ``dict.update(ns, …)``
-                return bool(names & _OPERATOR_WRITERS) and self._stdlib_name(
+                if names & _OPERATOR_WRITERS and self._stdlib_name(
                     receiver, "operator"
-                )  # ``operator.setitem(ns, …)``
+                ):
+                    # ``operator.setitem(ns, …)`` relies on the member too: a
+                    # recorded write of ``setitem`` (``operator.__dict__
+                    # .update(setitem=f)``) rebinds it (fold 26, AA-4).
+                    self.relied_names |= names & _OPERATOR_WRITERS
+                    return True
+                return False
             return self._stdlib_name(function, "operator", _OPERATOR_WRITERS)
         return False
 
@@ -2385,9 +2391,8 @@ class _Analysis:
             return False
         name = _text(node, self.source)
         sites = self._binding_sites_of(name)
-        if not sites or not all(
-            _imports_from(site, self.source, module, members) for site in sites
-        ):
+        imported = [_imports_from(site, self.source, module, members) for site in sites]
+        if not sites or not all(imported):
             return False
         if any(
             bound == name and binding.cls != IMPORT
@@ -2395,6 +2400,10 @@ class _Analysis:
         ):
             return False
         self.relied_names.add(name)
+        if members is not None:
+            # ``from operator import setitem as s`` relies on the module's
+            # ``setitem`` member as well as on ``s`` (fold 26, AA-4).
+            self.relied_names.update(member for member in imported if member)
         return True
 
     def _reachable_binding(self, ident: Any) -> bool:
@@ -3465,18 +3474,19 @@ def _statement_call(call: Any) -> bool:
 
 def _imports_from(
     ident: Any, source: bytes, module: str, members: frozenset[str] | None
-) -> bool:
-    """Whether a binding identifier is bound by ``import <module> [as x]``
-    (``members`` is ``None``) or by ``from <module> import <member> [as x]``
-    for a member in ``members``."""
+) -> str | None:
+    """The module (``members`` is ``None``) or imported member a binding
+    identifier is bound to by ``import <module> [as x]`` or by ``from
+    <module> import <member> [as x]`` for a member in ``members``; ``None``
+    for any other binding."""
     statement = ident.parent
     while statement is not None and statement.type not in _IMPORT_STATEMENTS:
         statement = statement.parent
     if statement is None:
-        return False
+        return None
     if members is None:
         if statement.type != "import_statement":
-            return False
+            return None
         for child in statement.named_children:
             if child.type == "aliased_import":
                 alias = child.child_by_field_name("alias")
@@ -3487,22 +3497,24 @@ def _imports_from(
                     and name is not None
                     and _dotted_parts(name, source) == [module]
                 ):
-                    return True
+                    return module
             elif child.type == "dotted_name" and child.named_children:
                 if _same(child.named_children[0], ident):
-                    return _dotted_parts(child, source)[:1] == [module]
-        return False
+                    if _dotted_parts(child, source)[:1] == [module]:
+                        return module
+                    return None
+        return None
     if statement.type != "import_from_statement":
-        return False
+        return None
     dots, parts = _module_parts(statement, source)
     if dots or parts != [module]:
-        return False
+        return None
     for last, bound in _from_import_names(statement, source):
         if bound.type == "dotted_name" and bound.named_children:
             bound = bound.named_children[0]  # ``from operator import setitem``
         if _same(bound, ident) and last in members:
-            return True
-    return False
+            return last
+    return None
 
 
 def _binding_names(target: Any, source: bytes) -> set[str]:

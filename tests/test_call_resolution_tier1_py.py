@@ -7813,3 +7813,118 @@ def test_fold25_695_shadowed_setattr_body_writes_are_recorded() -> None:
         stmt="setattr(mod, 'other', replacement)",
     )
     assert reason(source) == "mixed-bindings"
+
+
+# ---------------------------------------------------------------------------
+# Fold 26 (the president's re-check at 1b4d112f, AA-4): an allow-listed entry
+# that relies on a member of a verified stdlib module relies on the member
+# too. A recorded write of ``setitem`` (``operator.__dict__.update(setitem=
+# evil)``) rebinds what ``operator.setitem(ns, …)`` or ``from operator import
+# setitem as s`` calls, so it fails closed.
+
+FOLD26_T = (
+    "{pre}def helper(*args):\n    return 1\n\n\n"
+    "def replacement(*args):\n    return 2\n\n\n"
+    "def evil(d, *args, **kw):\n    return 0\n\n\n"
+    "{post}def run(mod, client):\n    {stmt}\n    return helper()\n"
+)
+FOLD26_OP = "operator.setitem(mod.__dict__, 'other', 1)"
+FOLD26_PROBES = {
+    # p62 ``ns_update_kw`` (= p61 ``op_monkey_dict_update``).
+    "p62-repro": (
+        "import operator\n\n\n",
+        "operator.__dict__.update(setitem=evil)\n\n\n",
+        FOLD26_OP,
+    ),
+    "dict-update-of-namespace": (
+        "import operator\n\n\n",
+        "dict.update(operator.__dict__, setitem=evil)\n\n\n",
+        FOLD26_OP,
+    ),
+    "getattr-namespace": (
+        "import operator\n\n\n",
+        "getattr(operator, '__dict__').update(setitem=evil)\n\n\n",
+        FOLD26_OP,
+    ),
+    "write-in-run": (
+        "import operator\n\n\n",
+        "",
+        f"operator.__dict__.update(setitem=evil)\n    {FOLD26_OP}",
+    ),
+    "handed-in-module": (
+        "import operator\n\n\n",
+        "",
+        f"mod.OP.__dict__.update(setitem=evil)\n    {FOLD26_OP}",
+    ),
+    "alias-ior": (
+        "import operator as op\n\n\n",
+        "op.__dict__.update(ior=evil)\n\n\n",
+        "op.ior(mod.__dict__, {'other': 1})",
+    ),
+    # The generalization: a from-import relies on the member it imports.
+    "from-import-alias-member-written-first": (
+        "import operator as o2\n\n\n",
+        "o2.__dict__.update(setitem=evil)\n\n"
+        "from operator import setitem as s\n\n\n",
+        "s(mod.__dict__, 'other', 1)",
+    ),
+    "delitem-member": (
+        "import operator\n\n\n",
+        "operator.__dict__.update(delitem=evil)\n\n\n",
+        "operator.delitem(mod.__dict__, 'other')",
+    ),
+    "dunder-setitem-member": (
+        "import operator\n\n\n",
+        "operator.__dict__.update(__setitem__=evil)\n\n\n",
+        "operator.__setitem__(mod.__dict__, 'other', 1)",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD26_PROBES))
+def test_fold26_695_rebound_operator_members_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    pre, post, stmt = FOLD26_PROBES[case]
+    source = FOLD26_T.format(pre=pre, post=post, stmt=stmt)
+    root = _tree(tmp_path, {"a.py": source, "b.py": FOLD19_DECOY})
+    off, on = _off_on(root)
+    edge = _fold19_edge(off, "a.py")
+    assert edge["resolution"] == "ambiguous", case
+    assert _fold19_edge(on, "a.py") == edge, case
+
+
+# Recorded writes of other names, or of another writer member, do not flip
+# the entry: only the member the call relies on counts.
+@pytest.mark.parametrize(
+    ("pre", "post", "stmt"),
+    [
+        ("import operator\n\n\n", "", FOLD26_OP),
+        (
+            "import operator\n\n\n",
+            "operator.__dict__.update(attrgetter=evil)\n\n\n",
+            FOLD26_OP,
+        ),
+        (
+            "import operator\n\n\n",
+            "operator.__dict__.update(delitem=evil)\n\n\n",
+            FOLD26_OP,
+        ),
+        ("import operator\n\n\n", "", f"client.other = evil\n    {FOLD26_OP}"),
+        (
+            "from operator import setitem as s\n\n\n",
+            "",
+            "client.other = evil\n    s(mod.__dict__, 'other', 1)",
+        ),
+        (
+            "import operator as op\n\n\n",
+            "op.__dict__.update(iadd=evil)\n\n\n",
+            "op.ior(mod.__dict__, {'other': 1})",
+        ),
+    ],
+)
+def test_fold26_695_unrelated_writes_keep_the_entry(
+    pre: str, post: str, stmt: str
+) -> None:
+    source = FOLD26_T.format(pre=pre, post=post, stmt=stmt)
+    assert proof_text(source) == ["def helper(*args):\n    return 1"], (post, stmt)

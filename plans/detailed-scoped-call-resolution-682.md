@@ -988,7 +988,17 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
       into a namespace by a recorded write (`m.len = f`,
       `ns['dict'] = C`). `operator` and its writers must come from
       `import operator [as op]` or `from operator import <writer> [as s]`,
-      every binding of the name being such an import. Otherwise the use
+      every binding of the name being such an import. **A writer relied on
+      through a module attribute or a from-import is relied on by its
+      member name too** (fold 26, AA-4): `operator.setitem(ns, …)` and
+      `from operator import setitem as s` rely on the module's `setitem`,
+      so a recorded write of `setitem` anywhere in the file
+      (`operator.__dict__.update(setitem=f)`, through an alias, `getattr`,
+      `dict.update` or a handed-in module) fails closed; writes of other
+      names do not. `operator` is the only verified stdlib module an
+      entry reads a member of: builtin `dict` methods cannot be
+      reassigned (an immutable type), and the mock module and `patch`
+      are sensitive kinds whose `__dict__` is off the list. Otherwise the use
       is off the list and fails closed (A-2): so a same-file
       `def len(d): d.update(…)`, a class `U.update(ns, …)`, a bare
       `setitem(ns, …)` with no import, and `dict = client` all fail
@@ -2665,3 +2675,20 @@ repository test files change against ab49156a. Harness against main
 unchanged (byte-identical `cmp`: 0 problems, 8 resolved + 1 narrowed, 43
 PR 4 rows). The president's p44–p58 trees are unchanged against fold 24;
 panel A keeps 38 resolutions.
+
+### PR 4: fold 26 (re-check at 1b4d112f, AA-4: writer members relied on by name)
+
+Only adds `none`; no expected row changes. `python` fact version 28.
+`_stdlib_name(receiver, "operator")` verified the `operator` binding but
+not the writer member: `operator.__dict__.update(setitem=evil)` is a
+recorded write of `setitem` (a constant keyword spelled in this file), and
+`operator.setitem(m.__dict__, 'x', 1)` then calls `evil` with the
+namespace. Pre-existing (wrong at ab49156a too).
+
+| Item | Applied in |
+| --- | --- |
+| The attribute branch of `_safe_use` adds the writer member to `relied_names` (`names & _OPERATOR_WRITERS`), so a recorded write of it fails closed (the president's fix) | `py_scope._safe_use` |
+| Generalized: `_stdlib_name` with members adds the imported member as well as the bound name (`from operator import setitem as s` relies on `setitem` and `s`; a write of `setitem` before the import was missed) | `py_scope._stdlib_name`, `_imports_from` (returns the module or member) |
+| Audit of A-1 entries reading a module attribute: `operator.<writer>` (fixed) and `from operator import <writer> [as s]` (fixed); `dict.<method>` cannot be reassigned (`TypeError: cannot set 'update' attribute of immutable type 'dict'`; `dict.__dict__` is a read-only mappingproxy); `mock.<constructor>`/`mock.patch`/`patch.object` are uses of sensitive kinds, whose `__dict__` and assignment are off the list (fail closed); `_MOCKER_SAFE` members receive no sensitive value; `len` relies on `builtins.len`, which any `builtins` mention or recorded `len` write already covers | — |
+| Cost: 0 of 638 supported non-test stdlib files and 0 of 488 supported repository test files change against 1b4d112f. Harness against main unchanged (byte-identical `cmp`). The president's p60–p62 match his `fix25` outputs exactly (all seven AA-4 cases and `op_monkey_dict_update` fail closed, nothing else changes); p44–p58 and panel A (38) unchanged | — |
+| Pins: `test_fold26_695_rebound_operator_members_keep_their_off_mode_edge` (9: the p62 repro, the five other AA-4 spellings, a from-import alias whose member is written first, and `delitem`/`__setitem__` members; all 9 wrong at 1b4d112f), `test_fold26_695_unrelated_writes_keep_the_entry` (6 controls: no write, writes of `attrgetter`, of another writer member `delitem`/`iadd`, an unrelated attribute write, and the from-import alias). Mutation: attribute-member reliance removed 8 failures, from-import member reliance removed 1, every writer relied on (over-broad) 2 | `tests/test_call_resolution_tier1_py.py` |
