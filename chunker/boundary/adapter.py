@@ -17,6 +17,7 @@ from chunker.core import chunk_file
 from chunker.exceptions import ParserInitError
 from chunker.parser import get_language_info
 from chunker.symbol_graph import (
+    _collected_through_symlink,
     assemble_symbol_graph,
     collect_source_files,
     extract_symbol_facts_for_file,
@@ -424,6 +425,7 @@ def _cache_key_payload(
     semantic_resolvers: tuple[SemanticResolver, ...] | None = None,
     semantic_min_confidence: float = 0.0,
     call_resolution: CallResolution = "name",
+    symlink: bool = False,
 ) -> dict[str, Any]:
     semantic_requested = semantic_resolvers is not None
     payload = {
@@ -458,12 +460,19 @@ def _cache_key_payload(
     if call_resolution != "name":
         payload["call_resolution"] = call_resolution
         payload["call_resolution_version"] = fact_version(language)
+        if symlink:
+            # The scope facts record a symlinked file (E5-5).
+            payload["call_resolution_symlink"] = True
     return payload
 
 
 # Cache-key fields for opt-in call resolution. They are present only when the
 # mode is not "name", and both key branches hash them.
-_CALL_RESOLUTION_KEY_FIELDS = ("call_resolution", "call_resolution_version")
+_CALL_RESOLUTION_KEY_FIELDS = (
+    "call_resolution",
+    "call_resolution_version",
+    "call_resolution_symlink",
+)
 
 
 def _build_boundary_cache_key(payload: dict[str, Any]) -> str:
@@ -1439,6 +1448,8 @@ def _extract_boundary_ir_incremental(
                 semantic_resolvers=semantic_resolvers,
                 semantic_min_confidence=semantic_min_confidence,
                 call_resolution=call_resolution,
+                symlink=call_resolution != "name"
+                and _collected_through_symlink(file_path, root),
             )
         except ParserInitError:
             if fail_fast:

@@ -105,9 +105,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     live bindings the exporter reassigns, default expressions, and CommonJS
     (a script-goal or `module`/`exports` module, `export =`, and any module
     another file may write through `require`, `import()` or an escaping
-    namespace import; any unsupported JS/TS file or code evaluator in the
-    run) never resolve. Python imports prove nothing yet. This holds within
-    the run only (plan risk R12, treesitter-chunker#702).
+    namespace import or an import-binding write) never resolve. Neither does anything when some file of the run can
+    rewrite any module's exports object (a code evaluator, a non-literal
+    `require` or `import()`, `createRequire`, `mainModule`,
+    `getBuiltinModule`, an import of `module`, the `module` object handed on,
+    or an unparsed file whose text spells one): Tier 2 is then off for the
+    run, and the cause is logged. Python imports prove nothing yet. This
+    holds within the run only (plan risk R12, treesitter-chunker#702).
 
   IDs (`definition_id`, node IDs, `#N` suffixes and `call_site_id`) are
   identical with the option on and off. The option and its behavior may change

@@ -58,10 +58,16 @@ each use site, so a shadowing binding is never mistaken for it.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
-from .js_strings import decode_string_literal, module_export_name
+from .js_strings import (
+    cook_template,
+    decode_js_string_sloppy,
+    decode_string_literal,
+    module_export_name,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
     from .js_scope import _Analysis
@@ -100,10 +106,30 @@ _NON_ARROW_FUNCTIONS = frozenset(
         "method_definition",
     }
 )
+# Run-wide causes (E5-3): the ``none(run-tainted:<cause>)`` reasons.
+CAUSE_EVALUATOR = "evaluator"
+CAUSE_DYNAMIC_LOADER = "dynamic-loader"
+CAUSE_MODULE_SYSTEM = "module-system"
+CAUSE_MODULE_OBJECT = "module-object"
+CAUSE_UNPARSED_FILE = "unparsed-file"
+CAUSE_UNRESOLVABLE_WRITER = "unresolvable-writer"
+SHUTOFF_CAUSES = (
+    CAUSE_EVALUATOR,
+    CAUSE_DYNAMIC_LOADER,
+    CAUSE_MODULE_SYSTEM,
+    CAUSE_MODULE_OBJECT,
+    CAUSE_UNPARSED_FILE,
+    CAUSE_UNRESOLVABLE_WRITER,
+)
+# ``import.meta`` reads that load nothing.
+_IMPORT_META_READS = frozenset(
+    {"url", "dirname", "filename", "resolve", "env", "main", "hot", "glob"}
+)
 # Names that reach the CommonJS module system from anywhere.
 _MODULE_SYSTEM_NAMES = frozenset({"mainModule", "createRequire", "getBuiltinModule"})
 _MODULE_SYSTEM_SPECIFIERS = frozenset({"module", "node:module"})
 _COMMONJS_NAMES = frozenset({"exports", "module"})
+_EQUALITY = frozenset({"===", "!==", "==", "!="})
 # Ancestors that put an identifier in type space, where it reads nothing.
 _TYPE_CONTEXTS = frozenset(
     {
@@ -139,6 +165,11 @@ _READ_POSITIONS = frozenset(
         ("array", None),
         ("assignment_expression", "right"),
         ("augmented_assignment_expression", "right"),
+        # Cost reliefs (fold 1): reads under CommonJS emit too.
+        ("extends_clause", "value"),
+        ("jsx_self_closing_element", "name"),
+        ("jsx_opening_element", "name"),
+        ("jsx_closing_element", "name"),
     }
 )
 
@@ -182,15 +213,21 @@ def _climb_wrappers(node: Any) -> Any:
 class _ModuleFacts:
     """Collects one file's ``exports`` and ``module_bindings``."""
 
-    def __init__(self, analysis: _Analysis) -> None:
+    def __init__(self, analysis: _Analysis, symlink: bool = False) -> None:
         self.analysis = analysis
         self.source = analysis.source
         self.entries: dict[str, list[tuple[Any, ...]]] = {}
         self.stars: list[str] = []
         self.commonjs = False
         self.opaque = False
+        self.symlink = symlink
         self.taints: set[str] = set()
-        self.taint_all = bool(analysis.global_wildcard)
+        self.ns_uses: set[tuple[str, str, str]] = set()
+        # Run-wide causes (E5-3): routes that may rewrite any module's
+        # exports object. The Tier 1 ``*`` wildcard alone is not one.
+        self.shutoff: set[str] = set()
+        if analysis.evaluator:
+            self.shutoff.add(CAUSE_EVALUATOR)
 
     # -- exports (section 9.3) ----------------------------------------------
 
@@ -317,10 +354,13 @@ class _ModuleFacts:
         ):
             self.opaque = True
             if specifier is None:
-                self.taint_all = True
+                self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            elif is_relative_specifier(specifier):
+                # ``export … from './m' with {…}`` still reads ``./m``.
+                self.taints.add(specifier)
             return
         if specifier in _MODULE_SYSTEM_SPECIFIERS:
-            self.taint_all = True
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
         type_only = _has_token(statement, "type")
         for child in statement.named_children:
             if child.type == "namespace_export":
@@ -380,12 +420,34 @@ class _ModuleFacts:
         kind = entry[0]
         if kind == "local":
             outcome = self.analysis.top_level_outcome(str(entry[1]))
-            return {"kind": "local", "outcome": outcome}
+            return {
+                "kind": "local",
+                "outcome": outcome,
+                # E5-1 (A2/B-5): ``ns.f()`` passes the exports object as
+                # ``this`` under CommonJS emit, so a proven declaration that
+                # mentions ``this`` or ``super`` anywhere is not callable
+                # through a namespace.
+                "this": self._mentions_this(outcome),
+            }
         if kind == "reexport":
             return {"kind": "reexport", "source": entry[1], "name": entry[2]}
         return {"kind": "none", "reason": entry[1]}
 
-    # -- CommonJS reach and taints ------------------------------------------
+    def _mentions_this(self, outcome: dict[str, Any]) -> bool:
+        if outcome.get("outcome") != "local":
+            return False
+        root = self.analysis.root
+        for node_type, start, end in outcome.get("proof", ()):
+            node = root.descendant_for_byte_range(int(start), int(end))
+            while node is not None and node.type != node_type:
+                node = node.parent
+            if node is None or (node.start_byte, node.end_byte) != (start, end):
+                return True
+            if any(item.type in ("this", "super") for item in _walk(node)):
+                return True
+        return False
+
+    # -- CommonJS reach, taints and run-wide causes ------------------------
 
     def module_system(self) -> None:
         analysis = self.analysis
@@ -395,31 +457,66 @@ class _ModuleFacts:
             if kind == "call_expression":
                 self._loader_call(node, handled)
             elif kind == "import_require_clause":
-                self._taint_specifier(node.child_by_field_name("source"))
+                self._taint_literal(node.child_by_field_name("source"))
             elif kind == "import_statement":
                 source_node = node.child_by_field_name("source")
                 if source_node is not None:
                     specifier = decode_string_literal(source_node, self.source)
                     if specifier is None or specifier in _MODULE_SYSTEM_SPECIFIERS:
-                        self.taint_all = True
+                        self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind in (
                 "identifier",
-                "property_identifier",
                 "shorthand_property_identifier",
                 "shorthand_property_identifier_pattern",
             ):
                 self._name(node, handled)
+            elif kind == "property_identifier":
+                if _text(node, self.source) in _MODULE_SYSTEM_NAMES:
+                    # A property cannot be looked up (its receiver may be an
+                    # alias of ``process``): matched by name.
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "string":
-                if decode_string_literal(node, self.source) in _MODULE_SYSTEM_NAMES:
-                    self.taint_all = True
+                # Matched on the value sloppy code gives the literal (legacy
+                # octal escapes decode); a malformed literal fails closed.
+                value = decode_js_string_sloppy(_text(node, self.source))
+                if value is None or value in _MODULE_SYSTEM_NAMES:
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "template_string":
-                text = _text(node, self.source)
-                if any(name in text for name in _MODULE_SYSTEM_NAMES):
-                    self.taint_all = True
+                cooked = cook_template(node, self.source)
+                if cooked is None or any(
+                    name in part for part in cooked for name in _MODULE_SYSTEM_NAMES
+                ):
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            elif kind == "meta_property":
+                if not self._inert_import_meta(node):
+                    self.shutoff.add(CAUSE_DYNAMIC_LOADER)
             elif kind == "this":
-                if self._top_level(node):
+                if module_level(node):
                     self.commonjs = True
+        self._import_writes()
         self._namespace_uses()
+
+    def _inert_import_meta(self, node: Any) -> bool:
+        """``import.meta.url`` and other plain reads; Bun's
+        ``import.meta.require``, a computed key or a bare use is not."""
+        outer = _climb_wrappers(node)
+        parent = outer.parent
+        if parent is None or parent.type != "member_expression":
+            return False
+        prop = parent.child_by_field_name("property")
+        return (
+            _same(parent.child_by_field_name("object"), outer)
+            and prop is not None
+            and prop.type == "property_identifier"
+            and _text(prop, self.source) in _IMPORT_META_READS
+        )
+
+    def _free_or_top(self, node: Any, name: str) -> bool:
+        """Whether the ordinary lookup at ``node`` finds no binding of
+        ``name``, or the program's own (E5-2): only then can the name be
+        the CommonJS wrapper's ``module``, ``exports`` or ``require``."""
+        scope = self.analysis._binding_scope(node, name)
+        return scope is None or scope is self.analysis.program
 
     def _loader_call(self, node: Any, handled: set[int]) -> None:
         from .js_scope import unwrap
@@ -432,6 +529,9 @@ class _ModuleFacts:
         )
         if not is_require and function.type != "import":
             return
+        if function.type == "import" and _in_type_position(node):
+            # ``typeof import('./x')`` is erased at emit.
+            return
         if is_require:
             handled.add(function.id)
         arguments = node.child_by_field_name("arguments")
@@ -440,43 +540,104 @@ class _ModuleFacts:
             if arguments is not None
             else []
         )
-        if len(named) != 1 or named[0].type != "string":
-            self.taint_all = True
+        literal = named[0] if len(named) == 1 else None
+        specifier = _literal_value(literal, self.source)
+        if specifier is None:
+            if not is_require or self._free_or_top(function, "require"):
+                self.shutoff.add(CAUSE_DYNAMIC_LOADER)
             return
-        self._taint_specifier(named[0])
+        if specifier in _MODULE_SYSTEM_SPECIFIERS:
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            return
+        # A literal ``require`` taints whatever binds the name: an AMD
+        # ``require`` parameter loads modules too.
+        self.taints.add(specifier)
 
-    def _taint_specifier(self, node: Any) -> None:
-        specifier = decode_string_literal(node, self.source)
+    def _taint_literal(self, node: Any) -> None:
+        specifier = _literal_value(node, self.source)
         if specifier is None or specifier in _MODULE_SYSTEM_SPECIFIERS:
-            self.taint_all = True
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
         self.taints.add(specifier)
 
     def _name(self, node: Any, handled: set[int]) -> None:
-        text = _text(node, self.source)
-        if text in _MODULE_SYSTEM_NAMES:
-            self.taint_all = True
-            return
-        if node.type == "property_identifier":
-            return
-        if text == "require" and node.id not in handled:
-            from .js_scope import _declaration_name
+        from .js_scope import _declaration_name
 
-            if not _declaration_name(node):
-                # ``require.cache``, an alias of ``require``, ``require`` passed
-                # on: any module's exports may be reached.
-                self.taint_all = True
+        text = _text(node, self.source)
+        if node.type == "identifier" and _declaration_name(node):
+            return
+        if text in _MODULE_SYSTEM_NAMES:
+            scope = self.analysis._binding_scope(node, text)
+            if scope is None or any(
+                binding.cls == "import" for binding in scope.bindings.get(text, ())
+            ):
+                self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            return
+        if text == "require":
+            if (
+                node.id not in handled
+                and self._free_or_top(node, text)
+                and not self._inert_require(node)
+            ):
+                # ``require.cache``, an alias of ``require``, ``require``
+                # passed on: any module's exports may be reached.
+                self.shutoff.add(CAUSE_DYNAMIC_LOADER)
             return
         if text in _COMMONJS_NAMES:
+            if not self._free_or_top(node, text):
+                return
             self.commonjs = True
-            if text == "module" and not self._module_exports(node):
-                self.taint_all = True
+            if (
+                text == "module"
+                and not self._module_exports(node)
+                and not self._inert_operand(node)
+            ):
+                self.shutoff.add(CAUSE_MODULE_OBJECT)
             return
-        if text == "arguments" and self._top_level(node):
-            self.commonjs = True
+        if text == "arguments" and module_level(node):
+            if self.analysis._binding_scope(node, text) is None:
+                self.commonjs = True
+
+    def _inert_operand(self, node: Any) -> bool:
+        """``typeof x`` and an operand of ``===``/``!==``/``==``/``!=``: the
+        value is compared, never handed on (a closed allow-list)."""
+        outer = _climb_wrappers(node)
+        parent = outer.parent
+        if parent is None:
+            return False
+        operator = parent.child_by_field_name("operator")
+        text = _text(operator, self.source) if operator is not None else ""
+        return (parent.type == "unary_expression" and text == "typeof") or (
+            parent.type == "binary_expression" and text in _EQUALITY
+        )
+
+    def _inert_require(self, node: Any) -> bool:
+        """``typeof require``, ``require.resolve(…)`` (a path string) and
+        ``require.main`` compared (``require.main === module``)."""
+        if self._inert_operand(node):
+            return True
+        outer = _climb_wrappers(node)
+        member = outer.parent
+        if member is None or member.type != "member_expression":
+            return False
+        prop = member.child_by_field_name("property")
+        if not _same(member.child_by_field_name("object"), outer) or prop is None:
+            return False
+        name = _text(prop, self.source)
+        wrapped = _climb_wrappers(member)
+        parent = wrapped.parent
+        if name == "resolve":
+            return (
+                parent is not None
+                and parent.type == "call_expression"
+                and _same(parent.child_by_field_name("function"), wrapped)
+            )
+        return name == "main" and self._inert_operand(member)
 
     def _module_exports(self, node: Any) -> bool:
         """Whether ``module`` is the object of ``module.exports``."""
+        if node.type != "identifier":
+            return False
         outer = _climb_wrappers(node)
         parent = outer.parent
         if parent is None or parent.type != "member_expression":
@@ -489,35 +650,45 @@ class _ModuleFacts:
             and _text(prop, self.source) == "exports"
         )
 
-    @staticmethod
-    def _top_level(node: Any) -> bool:
-        """Whether ``this`` or ``arguments`` belongs to no non-arrow function
-        or class member: the module's own (the CommonJS wrapper's) value."""
-        current = node.parent
-        while current is not None:
-            if current.type in _NON_ARROW_FUNCTIONS or current.type in (
-                "class_body",
-                "class_static_block",
-            ):
-                return False
-            current = current.parent
-        return True
+    def _import_binding(self, node: Any, name: str) -> dict[str, Any] | None:
+        """The import binding the ordinary lookup at ``node`` finds."""
+        from .js_scope import IMPORT
+
+        scope = self.analysis._binding_scope(node, name)
+        if scope is not self.analysis.program:
+            return None
+        for binding in scope.bindings.get(name, ()):
+            if binding.cls == IMPORT:
+                return dict(binding.info or {})
+        return None
+
+    def _import_writes(self) -> None:
+        """E5-1 (A1): a write to an import binding (assignment, compound or
+        logical assignment, update, destructuring, a ``for … of/in`` head,
+        through casts) is ``svc_1.t = …`` under CommonJS emit: it taints
+        the binding's module."""
+        for target in self.analysis.assignment_targets:
+            name = _text(target, self.source)
+            info = self._import_binding(target, name)
+            if info is not None:
+                self.taints.add(str(info.get("source", "")))
 
     def _namespace_uses(self) -> None:
-        """Taint the module of a namespace import used outside the allow-list."""
-        from .js_scope import IMPORT, _declaration_name
+        """Taint the module of a namespace import used outside the read
+        allow-list; record every allow-listed ``ns.name`` for the engine,
+        which checks the name is a verified export (E5-1)."""
+        from .js_scope import _declaration_name
 
-        analysis = self.analysis
-        program = analysis.program
+        program = self.analysis.program
         namespaces: dict[str, str] = {}
         for name, bindings in program.bindings.items():
             for binding in bindings:
                 info = binding.info or {}
-                if binding.cls == IMPORT and info.get("form") == "namespace":
+                if binding.cls == "import" and info.get("form") == "namespace":
                     namespaces[name] = str(info.get("source", ""))
         if not namespaces:
             return
-        for node in _walk(analysis.root):
+        for node in _walk(self.analysis.root):
             if node.type not in (
                 "identifier",
                 "shorthand_property_identifier",
@@ -532,60 +703,211 @@ class _ModuleFacts:
                     continue
             # The ordinary lookup at the use site decides which binding the
             # name means; a shadowing binding is not the namespace.
-            if analysis._binding_scope(node, name) is not program:
+            if self.analysis._binding_scope(node, name) is not program:
                 continue
-            if not self._safe_namespace_use(node):
+            use = self._namespace_use(node)
+            if use is None:
                 self.taints.add(namespaces[name])
+            elif use[0] != "type":
+                self.ns_uses.add((namespaces[name], use[1], use[0]))
 
-    def _safe_namespace_use(self, node: Any) -> bool:
+    def _namespace_use(self, node: Any) -> tuple[str, str] | None:
+        """``(kind, member)`` for an allow-listed use: ``("call", f)`` for
+        ``ns.f(…)``, ``("read", f)`` for a read of ``ns.f``, ``("type", "")``
+        in type space; ``None`` for anything else."""
         if node.type != "identifier":
-            return False
-        current = node.parent
-        while current is not None and current.type not in (
-            "expression_statement",
-            "program",
-            "statement_block",
-        ):
-            if current.type in _TYPE_CONTEXTS:
-                return True
-            current = current.parent
+            return None
+        if _in_type_position(node):
+            return ("type", "")
         outer = _climb_wrappers(node)
         member = outer.parent
         if member is None or member.type != "member_expression":
-            return False
+            return None
         prop = member.child_by_field_name("property")
         if (
             not _same(member.child_by_field_name("object"), outer)
             or prop is None
             or prop.type != "property_identifier"
         ):
-            return False
+            return None
+        name = _text(prop, self.source)
         wrapped = _climb_wrappers(member)
         parent = wrapped.parent
         if parent is None:
-            return False
+            return None
+        field = _field_of(parent, wrapped)
+        if parent.type == "call_expression" and field == "function":
+            # The callee's ``this`` is the namespace (also ``(ns.f)()``).
+            return ("call", name)
         if parent.type == "unary_expression":
             operator = parent.child_by_field_name("operator")
-            return operator is not None and operator.type != "delete"
-        field = _field_of(parent, wrapped)
-        return (parent.type, field) in _READ_POSITIONS or (
+            if operator is not None and operator.type != "delete":
+                return ("read", name)
+            return None
+        if (parent.type, field) in _READ_POSITIONS or (
             parent.type,
             None,
-        ) in _READ_POSITIONS
+        ) in _READ_POSITIONS:
+            return ("read", name)
+        return None
 
     def module_bindings(self) -> dict[str, Any]:
         return {
             "stars": list(self.stars),
             "commonjs": self.commonjs or self.analysis.goal == "script",
             "opaque": self.opaque,
+            "symlink": self.symlink,
             "taints": sorted(self.taints),
-            "taint_all": self.taint_all,
+            "ns_uses": [list(use) for use in sorted(self.ns_uses)],
+            "shutoff": sorted(self.shutoff),
         }
 
 
-def module_facts(analysis: _Analysis) -> tuple[dict[str, Any], dict[str, Any]]:
+def _in_type_position(node: Any) -> bool:
+    """Whether ``node`` sits in type space (erased at emit)."""
+    current = node.parent
+    while current is not None and current.type not in (
+        "expression_statement",
+        "program",
+        "statement_block",
+    ):
+        if current.type in _TYPE_CONTEXTS:
+            return True
+        current = current.parent
+    return False
+
+
+def _literal_value(node: Any, source: bytes) -> str | None:
+    """A string literal's value, or a substitution-free template's cooked
+    text; ``None`` otherwise."""
+    if node is None:
+        return None
+    if node.type == "string":
+        return decode_string_literal(node, source)
+    if node.type == "template_string" and not any(
+        part.type == "template_substitution" for part in node.named_children
+    ):
+        cooked = cook_template(node, source)
+        return cooked[0] if cooked else None
+    return None
+
+
+def module_level(node: Any) -> bool:
+    """Whether ``this`` (or ``arguments``) at ``node`` is the module's own
+    value: the CommonJS wrapper's ``exports`` (E5-1, B-4).
+
+    The Tier 1 scope rule, applied exhaustively: arrow functions inherit
+    ``this``; a non-arrow function or method rebinds it for its parameters
+    and body, but not for a computed name or a decorator; a class field
+    initializer and a static block rebind it, but a computed field or
+    method key and the ``extends`` clause do not.
+    """
+    child, current = node, node.parent
+    while current is not None:
+        kind = current.type
+        if kind in _NON_ARROW_FUNCTIONS:
+            if _same(child, current.child_by_field_name("body")) or _same(
+                child, current.child_by_field_name("parameters")
+            ):
+                return False
+        elif kind in ("field_definition", "public_field_definition"):
+            if _same(child, current.child_by_field_name("value")):
+                return False
+        elif kind == "class_static_block":
+            return False
+        child, current = current, current.parent
+    return True
+
+
+def is_relative_specifier(specifier: str) -> bool:
+    return specifier in (".", "..") or specifier.startswith(("./", "../"))
+
+
+def module_facts(
+    analysis: _Analysis, symlink: bool = False
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """``(exports, module_bindings)`` for one analyzed JS/TS file."""
-    facts = _ModuleFacts(analysis)
+    facts = _ModuleFacts(analysis, symlink)
     facts.exports()
     facts.module_system()
     return facts.export_table(), facts.module_bindings()
+
+
+# -- text scan of a file the parser cannot read (E5-3) -----------------------
+
+_TEXT_TRIGGERS = (
+    (re.compile(r"\beval\b|\bFunction\b|\bexecScript\b"), CAUSE_EVALUATOR),
+    (
+        re.compile(r"[.\[]\s*['\"`]?constructor\b|['\"`]constructor['\"`]"),
+        CAUSE_EVALUATOR,
+    ),
+    (
+        re.compile(
+            r"\bset(?:Timeout|Interval)\s*\((?!\s*(?:[A-Za-z_$][\w$]*\s*[,)]"
+            r"|async\b|function\b|\())"
+        ),
+        CAUSE_EVALUATOR,
+    ),
+    (
+        re.compile(r"\b(?:createRequire|mainModule|getBuiltinModule)\b"),
+        CAUSE_MODULE_SYSTEM,
+    ),
+    (re.compile(r"['\"`](?:node:)?module['\"`]"), CAUSE_MODULE_SYSTEM),
+    (
+        re.compile(
+            r"(?<!typeof )\brequire\b(?!\s*\(\s*['\"`]|\s*\.\s*resolve\s*\("
+            r"|\s*\.\s*main\s*[=!]=)"
+        ),
+        CAUSE_DYNAMIC_LOADER,
+    ),
+    (re.compile(r"\bimport\s*\((?!\s*['\"`])"), CAUSE_DYNAMIC_LOADER),
+    (
+        re.compile(r"\bimport\s*\.\s*meta\s*(?:\.\s*require\b|\[)"),
+        CAUSE_DYNAMIC_LOADER,
+    ),
+    (
+        re.compile(r"(?<!typeof )(?<![=!]== )\bmodule\b(?!\s*\.\s*exports\b)"),
+        CAUSE_MODULE_OBJECT,
+    ),
+)
+_TEXT_LITERAL = re.compile(r"(['\"`])((?:\.\.?)(?:/[^'\"`\n]*)?)\1")
+_TEXT_ESCAPE = re.compile(r"\\(?:u\{[0-9A-Fa-f]+\}|u[0-9A-Fa-f]{4}|x[0-9A-Fa-f]{2})")
+
+
+def _unescape_text(text: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        raw = match.group(0)
+        digits = raw[3:-1] if raw.startswith("\\u{") else raw[2:]
+        value = int(digits, 16)
+        return chr(value) if value <= 0x10FFFF and not 0xD800 <= value <= 0xDFFF else ""
+
+    return _TEXT_ESCAPE.sub(replace, text)
+
+
+def text_module_bindings(source: bytes, symlink: bool = False) -> dict[str, Any]:
+    """Conservative ``module_bindings`` for a JS/TS file whose tree has
+    errors (E5-3). Lookups into it fail closed (``opaque``); any spelling of
+    a run-wide route in its text (also after decoding ``\\u``/``\\x``
+    escapes) is a run-wide cause, and every relative string literal in it
+    taints the modules it may name."""
+    text = source.decode("utf-8", errors="replace")
+    views = (text, _unescape_text(text))
+    shutoff: set[str] = set()
+    taints: set[str] = set()
+    for view in views:
+        for pattern, cause in _TEXT_TRIGGERS:
+            if pattern.search(view):
+                shutoff.add(cause)
+        for match in _TEXT_LITERAL.finditer(view):
+            taints.add(match.group(2))
+    if shutoff:
+        shutoff.add(CAUSE_UNPARSED_FILE)
+    return {
+        "stars": [],
+        "commonjs": True,
+        "opaque": True,
+        "symlink": symlink,
+        "taints": sorted(taints),
+        "ns_uses": [],
+        "shutoff": sorted(shutoff),
+    }

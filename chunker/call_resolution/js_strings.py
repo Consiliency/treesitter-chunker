@@ -57,15 +57,61 @@ def decode_js_string(raw: str) -> str | None:
     """The value of the string literal ``raw`` (quotes included), or ``None``."""
     if len(raw) < 2 or raw[0] not in "'\"" or raw[-1] != raw[0]:
         return None
-    body = raw[1:-1]
+    return _decode_body(raw[1:-1], raw[0], template=False)
+
+
+def cook_template(node: Any, source: bytes) -> list[str] | None:
+    """The cooked text of each literal part of a tree-sitter
+    ``template_string`` (between substitutions), or ``None`` when a part
+    does not cook exactly. Template parts follow the string escapes, except
+    that raw line terminators are allowed (CR and CRLF cook to LF)."""
+    if node is None or node.type != "template_string":
+        return None
+    try:
+        raw = source[node.start_byte : node.end_byte].decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    if len(raw) < 2 or raw[0] != "`" or raw[-1] != "`":
+        return None
+    # The raw text between substitutions, one entry per literal part.
+    pieces: list[str] = []
+    cursor = node.start_byte + 1
+    for part in node.named_children:
+        if part.type == "template_substitution":
+            pieces.append(source[cursor : part.start_byte].decode("utf-8", "replace"))
+            cursor = part.end_byte
+    pieces.append(source[cursor : node.end_byte - 1].decode("utf-8", "replace"))
+    parts: list[str] = []
+    for text in pieces:
+        cooked = _decode_body(text, "`", template=True)
+        if cooked is None:
+            return None
+        parts.append(cooked)
+    return parts
+
+
+def decode_js_string_sloppy(raw: str) -> str | None:
+    """The value ``raw`` has in sloppy (script) code, for name matching:
+    legacy octal escapes and ``\\8``/``\\9`` decode, and a lone surrogate
+    is kept as it is. ``None`` only for a malformed literal."""
+    if len(raw) < 2 or raw[0] not in "'\"" or raw[-1] != raw[0]:
+        return None
+    return _decode_body(raw[1:-1], raw[0], template=False, sloppy=True)
+
+
+def _decode_body(
+    body: str, quote: str, *, template: bool, sloppy: bool = False
+) -> str | None:
+    if template:
+        body = body.replace("\r\n", "\n").replace("\r", "\n")
     units: list[int] = []
     index = 0
     length = len(body)
     while index < length:
         char = body[index]
-        if char in "\n\r":
+        if char in "\n\r" and not template:
             return None
-        if char == raw[0]:
+        if char == quote:
             # An unescaped closing quote inside the body: not one literal.
             return None
         if char != "\\":
@@ -94,6 +140,20 @@ def decode_js_string(raw: str) -> str | None:
         ):
             units.append(0)
             index += 1
+            continue
+        if escape in "0123456789" and sloppy:
+            if escape in "89":
+                units.append(ord(escape))
+                index += 1
+                continue
+            digits = escape
+            limit = 3 if escape in "0123" else 2
+            while len(digits) < limit and body[
+                index + len(digits) : index + len(digits) + 1
+            ] in tuple("01234567"):
+                digits += body[index + len(digits)]
+            units.append(int(digits, 8))
+            index += len(digits)
             continue
         if escape in "0123456789":
             # Legacy octal, \8 and \9: syntax errors in strict (module) code.
@@ -135,6 +195,8 @@ def decode_js_string(raw: str) -> str | None:
         else:
             units.append(code)
         index += 1
+    if sloppy:
+        return "".join(chr(unit) for unit in units)
     return _well_formed(units)
 
 

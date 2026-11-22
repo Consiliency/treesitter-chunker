@@ -286,7 +286,15 @@ hops, to one definition its own scope lookup proves (`t2.import`,
 non-relative specifier, a star conflict, a cycle, a reassigned export, and
 CommonJS reach (a module whose exports object CommonJS code or another file
 of the run may write) leave the edge unchanged. Specifiers and quoted names
-are compared by their exact string value. Python imports prove nothing yet.
+are compared by their exact string value. A sibling `<stem>.<segment>.<ext>`
+(a platform or module suffix such as `svc.ios.ts`) leaves the edge unchanged
+unless the segment is on a closed list of names no resolver uses (`test`,
+`spec`, `stories`, `types`, …). Some files can rewrite any module's exports
+object: a code evaluator, a non-literal `require` or `import()`, `createRequire`,
+`mainModule`, `getBuiltinModule` or an import of `module`, the CommonJS
+`module` object handed on, or an unparsed file whose text spells one. Any such
+file in the run turns Tier 2 off for the whole run, and the cause is logged.
+The output then equals `"structural"`. Python imports prove nothing yet.
 
 A narrowed edge changes only `target`, `resolution`, `candidates` and
 `metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and

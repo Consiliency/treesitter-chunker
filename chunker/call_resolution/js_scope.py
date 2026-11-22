@@ -417,6 +417,11 @@ class _Analysis:
         # unknown name may be written (section 7.2).
         self.global_writes: set[str] = set()
         self.global_wildcard = False
+        # Tier 2 (E5-3): a route that may run source text with access to
+        # the module system: a code evaluator, the ``.constructor`` route to
+        # ``Function``, or a timer given a string or non-function. It never
+        # changes Tier 1 output.
+        self.evaluator = False
         self.handlers: dict[str, Callable[[Any, _Scope, _Scope, int], None]] = {
             "function_declaration": self._function,
             "generator_function_declaration": self._function,
@@ -920,6 +925,7 @@ class _Analysis:
                 ) and self._refers_to_global(node, name):
                     if name in _CODE_EVALUATORS:
                         self.global_wildcard = True
+                        self.evaluator = True
                     else:
                         self._global_object_use(node)
                 elif name in _STRING_TIMERS and self._refers_to_global(node, name):
@@ -939,9 +945,11 @@ class _Analysis:
                     # ``const { constructor: F } = f`` reaches the function
                     # constructors like ``f.constructor``.
                     self.global_wildcard = True
+                    self.evaluator = True
             elif kind == "shorthand_property_identifier_pattern":
                 if _text(node, self.source) == _CONSTRUCTOR:
                     self.global_wildcard = True
+                    self.evaluator = True
             elif kind in ("assignment_expression", "augmented_assignment_expression"):
                 self._global_write(node.child_by_field_name("left"))
             elif kind == "update_expression":
@@ -1091,6 +1099,7 @@ class _Analysis:
             self._evaluator_use(node)
             if self._is_global_object(obj, receiver=True):
                 self.global_wildcard = True
+                self.evaluator = True
         elif key == _DEFAULT_VIEW:
             self._global_object_use(node)
         elif key == _CONSTRUCTOR:
@@ -1100,6 +1109,7 @@ class _Analysis:
         elif key in _CODE_EVALUATORS and self._is_global_object(obj, receiver=True):
             # ``this.eval(s)``, ``this.Function(s)`` with a receiver ``this``.
             self.global_wildcard = True
+            self.evaluator = True
 
     def _member_key_name(self, key: Any) -> str | None:
         """A pattern or object key's name: an identifier or a plain string."""
@@ -1223,10 +1233,12 @@ class _Analysis:
             key = self._member_key(parent)
             if key is None or key in _INVOKERS:
                 self.global_wildcard = True
+                self.evaluator = True
             return
         if self._inert_use(current, parent):
             return
         self.global_wildcard = True
+        self.evaluator = True
 
     def _timer_use(self, node: Any) -> None:
         """A timer runs a string first argument as source text. Only a direct
@@ -1242,6 +1254,9 @@ class _Analysis:
             or parent.type != "call_expression"
             or not _same(parent.child_by_field_name("function"), current)
         ):
+            # Tier 2 (E5-3): only a call runs source text, and Node rejects a
+            # string timer; an alias or a saved/restored timer is not an
+            # evaluator by itself.
             self.global_wildcard = True
             return
         arguments = parent.child_by_field_name("arguments")
@@ -1250,9 +1265,15 @@ class _Analysis:
         if first is None or first.type in _FUNCTION_ARGUMENTS:
             return
         if first.type == "identifier":
+            # Tier 2 (E5-3): a name the file binds (a local, a parameter, the
+            # sleep idiom's ``resolve``) is not source text; a free name is.
+            if self._binding_scope(first, _text(first, self.source)) is None:
+                self.evaluator = True
             outcome = self.lookup(first)
             if outcome["outcome"] == "local" and "global" not in outcome:
                 return
+        else:
+            self.evaluator = True
         self.global_wildcard = True
 
     def _literal_key(self, node: Any) -> str | None:
@@ -1314,6 +1335,7 @@ class _Analysis:
                         continue
                     if name in _CODE_EVALUATORS:
                         self.global_wildcard = True
+                        self.evaluator = True
                     return
                 if kind == "subscript_expression":
                     key = self._member_key(parent)
@@ -1322,6 +1344,7 @@ class _Analysis:
                         continue
                     if key is None or key == _UNREADABLE_KEY or key in _CODE_EVALUATORS:
                         self.global_wildcard = True
+                        self.evaluator = True
                     return
             if kind == "type_query":
                 return
@@ -1816,6 +1839,7 @@ def analyze(
     language: str,
     call_facts: Sequence[Mapping[str, Any]],
     goal: str | None = None,
+    symlink: bool = False,
 ) -> dict[str, Any]:
     """Return partial scope facts: the goal and one outcome per call.
 
@@ -1853,7 +1877,7 @@ def analyze(
         bindings[f"{start}:{end}"] = outcome
     from .js_modules import module_facts
 
-    exports, module_bindings = module_facts(analysis)
+    exports, module_bindings = module_facts(analysis, symlink)
     return {
         "goal": analysis.goal,
         "bindings": bindings,

@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"10"`` for the ``js`` family and ``"30"`` for
+Schema (fact version ``"11"`` for the ``js`` family and ``"30"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -102,6 +102,10 @@ logger = logging.getLogger(__name__)
 # js "10": Tier 2 module facts (plan PR 5): the export table, star exports,
 # CommonJS reach and taints; import specifiers and quoted names decoded
 # exactly; the member of a namespace member call.
+# js "11": PR 5 fold 1 (import-binding writes taint, ``this`` in exports and
+# at module level, verified namespace members, use-site lookups for
+# module-system names, run-wide causes, text scans of unparsed files,
+# symlinked files, cooked templates).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -169,7 +173,7 @@ logger = logging.getLogger(__name__)
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "10", "python": "30"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "11", "python": "30"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -210,6 +214,13 @@ TIER2_NONE_REASONS = (
     "star-conflict",
     "namespace-export",
     "commonjs",
+    # The run-wide shutoff (E5-3), one reason per cause.
+    "run-tainted:evaluator",
+    "run-tainted:dynamic-loader",
+    "run-tainted:module-system",
+    "run-tainted:module-object",
+    "run-tainted:unparsed-file",
+    "run-tainted:unresolvable-writer",
     "hop-limit",
     "cycle",
     "script-dir-shadow",
@@ -282,8 +293,14 @@ def compute_scope_facts(
     symbols: Sequence[Sequence[Any]],
     suffix: str = "",
     path: str = "",
+    symlink: bool = False,
 ) -> dict[str, Any]:
     """Re-parse ``source`` and return the file's scope facts.
+
+    ``symlink`` says the file was collected through a symbolic link; Tier 2
+    never resolves an import from or into such a file (E5-5). A JS/TS file
+    that cannot be analyzed keeps conservative ``module_bindings`` from a
+    scan of its text (E5-3).
 
     ``suffix`` is the file's lower-case extension: ``.mjs`` and ``.mts``
     files are always ES modules, whatever their syntax. ``path`` is the
@@ -300,6 +317,10 @@ def compute_scope_facts(
     if language not in ANALYZED_LANGUAGES:
         return fallback
     family = language_family(language)
+    if family == "js":
+        from .js_modules import text_module_bindings
+
+        fallback["module_bindings"] = text_module_bindings(source, symlink)
     analyzer = _ANALYZERS.get(family or "")
     if analyzer is None:  # pragma: no cover - every analyzed family has one
         return fallback
@@ -316,7 +337,11 @@ def compute_scope_facts(
             return fallback
         if family == "js" and suffix in _MODULE_SUFFIXES:
             partial = js_scope.analyze(
-                root, source, language, call_facts, goal="module"
+                root, source, language, call_facts, goal="module", symlink=symlink
+            )
+        elif family == "js" and analyzer is js_scope.analyze:
+            partial = js_scope.analyze(
+                root, source, language, call_facts, symlink=symlink
             )
         elif family == "python" and analyzer is py_scope.analyze:
             partial = py_scope.analyze(
@@ -405,7 +430,10 @@ def valid_outcome(value: object) -> bool:
     return False
 
 
-_MODULE_BINDING_KEYS = frozenset({"stars", "commonjs", "opaque", "taints", "taint_all"})
+_MODULE_BINDING_KEYS = frozenset(
+    {"stars", "commonjs", "opaque", "symlink", "taints", "ns_uses", "shutoff"}
+)
+_NS_USE_KINDS = frozenset({"read", "call"})
 
 
 def _valid_export_entry(value: object) -> bool:
@@ -413,7 +441,11 @@ def _valid_export_entry(value: object) -> bool:
         return False
     kind = value.get("kind")
     if kind == "local":
-        return set(value) == {"kind", "outcome"} and valid_outcome(value["outcome"])
+        return (
+            set(value) == {"kind", "outcome", "this"}
+            and type(value["this"]) is bool
+            and valid_outcome(value["outcome"])
+        )
     if kind == "reexport":
         return (
             set(value) == {"kind", "source", "name"}
@@ -441,12 +473,24 @@ def valid_module_bindings(value: object) -> bool:
     """Whether ``value`` is well-formed JS/TS ``module_bindings``."""
     if not isinstance(value, dict) or set(value) != _MODULE_BINDING_KEYS:
         return False
+    from .js_modules import SHUTOFF_CAUSES
+
     return (
-        isinstance(value["stars"], list)
-        and all(isinstance(item, str) for item in value["stars"])
-        and isinstance(value["taints"], list)
-        and all(isinstance(item, str) for item in value["taints"])
-        and all(type(value[key]) is bool for key in ("commonjs", "opaque", "taint_all"))
+        all(
+            isinstance(value[key], list)
+            and all(isinstance(item, str) for item in value[key])
+            for key in ("stars", "taints", "shutoff")
+        )
+        and set(value["shutoff"]) <= set(SHUTOFF_CAUSES)
+        and isinstance(value["ns_uses"], list)
+        and all(
+            isinstance(use, list)
+            and len(use) == 3
+            and all(isinstance(item, str) for item in use)
+            and use[2] in _NS_USE_KINDS
+            for use in value["ns_uses"]
+        )
+        and all(type(value[key]) is bool for key in ("commonjs", "opaque", "symlink"))
     )
 
 
@@ -496,12 +540,12 @@ def valid_scope_facts(value: object, language: str | None) -> bool:
         value["module_bindings"], dict
     ):
         return False
-    if (
-        supported
-        and language_family(language) == "js"
-        and not (
-            valid_export_table(value["exports"])
-            and valid_module_bindings(value["module_bindings"])
+    if language_family(language) == "js" and (
+        (supported and not valid_export_table(value["exports"]))
+        or (not supported and value["exports"])
+        or (
+            (supported or value["module_bindings"])
+            and not valid_module_bindings(value["module_bindings"])
         )
     ):
         return False

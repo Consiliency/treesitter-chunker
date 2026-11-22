@@ -661,7 +661,7 @@ NEAR_MISSES: dict[str, tuple[dict[str, str], tuple[str, str], str, str | None]] 
     "require-non-literal": (
         {"svc.ts": SVC, "use.ts": USE, "x.js": "require(name).t = 1;\n"},
         ("use.ts", "t"),
-        "commonjs",
+        "run-tainted:dynamic-loader",
         None,
     ),
     "require-alias": (
@@ -671,7 +671,7 @@ NEAR_MISSES: dict[str, tuple[dict[str, str], tuple[str, str], str, str | None]] 
             "x.js": "const r = require;\nr('./svc').t = 1;\n",
         },
         ("use.ts", "t"),
-        "commonjs",
+        "run-tainted:dynamic-loader",
         None,
     ),
     "require-cache": (
@@ -681,7 +681,7 @@ NEAR_MISSES: dict[str, tuple[dict[str, str], tuple[str, str], str, str | None]] 
             "x.js": "Object.values(require.cache)[0].exports.t = 1;\n",
         },
         ("use.ts", "t"),
-        "commonjs",
+        "run-tainted:dynamic-loader",
         None,
     ),
     "dynamic-import-of-target": (
@@ -701,7 +701,7 @@ NEAR_MISSES: dict[str, tuple[dict[str, str], tuple[str, str], str, str | None]] 
             "x.ts": "export const p = import(name);\n",
         },
         ("use.ts", "t"),
-        "commonjs",
+        "run-tainted:dynamic-loader",
         None,
     ),
     "import-equals-require": (
@@ -721,7 +721,7 @@ NEAR_MISSES: dict[str, tuple[dict[str, str], tuple[str, str], str, str | None]] 
             "x.js": "module.children[0].exports.t = 1;\n",
         },
         ("use.ts", "t"),
-        "commonjs",
+        "run-tainted:module-object",
         None,
     ),
     "create-require": (
@@ -734,7 +734,7 @@ NEAR_MISSES: dict[str, tuple[dict[str, str], tuple[str, str], str, str | None]] 
             ),
         },
         ("use.ts", "t"),
-        "commonjs",
+        "run-tainted:module-system",
         None,
     ),
     "main-module": (
@@ -744,19 +744,36 @@ NEAR_MISSES: dict[str, tuple[dict[str, str], tuple[str, str], str, str | None]] 
             "x.js": "process['mainModule'].require('./svc').t = 1;\n",
         },
         ("use.ts", "t"),
-        "commonjs",
+        "run-tainted:module-system",
         None,
     ),
     "code-evaluator": (
         {"svc.ts": SVC, "use.ts": USE, "x.js": "eval(source);\n"},
         ("use.ts", "t"),
+        "run-tainted:evaluator",
+        None,
+    ),
+    # E5-3: a file the parser cannot read is scanned as text.
+    "unparsed-file-relative-literal-taints": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.js": "require('./svc').t = 1;\nfunction (\n",
+        },
+        ("use.ts", "t"),
         "commonjs",
         None,
     ),
-    "unsupported-js-file": (
-        {"svc.ts": SVC, "use.ts": USE, "x.js": "function (\n"},
+    "unparsed-file-trigger-spelling": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "createRequire;\nfunction (\n"},
         ("use.ts", "t"),
-        "commonjs",
+        "run-tainted:module-system",
+        None,
+    ),
+    "unparsed-file-escaped-trigger-spelling": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "\\u0065val(s);\nfunction (\n"},
+        ("use.ts", "t"),
+        "run-tainted:evaluator",
         None,
     ),
     # CommonJS in the target module itself.
@@ -1146,7 +1163,8 @@ def test_candidate_lists_follow_typescript_order(specifier: str, language: str) 
         ("node:fs", "external-module"),
         ("https://x/y.js", "external-module"),
         ("../x", "outside-root"),
-        ("./a/../../x", "outside-root"),
+        ("./a/../../x", "unknown-variant"),
+        ("../../x", "outside-root"),
         ("./x.mjs", "unknown-variant"),
         ("./x.cts", "unknown-variant"),
         ("./x\\y", "unknown-variant"),
@@ -1201,6 +1219,24 @@ def test_member_must_match_the_tree() -> None:
     [
         {},
         {"stars": [], "commonjs": False, "opaque": False, "taints": []},
+        {
+            "stars": [],
+            "commonjs": False,
+            "opaque": False,
+            "symlink": False,
+            "taints": [],
+            "ns_uses": [],
+            "shutoff": ["no-such-cause"],
+        },
+        {
+            "stars": [],
+            "commonjs": False,
+            "opaque": False,
+            "symlink": False,
+            "taints": [],
+            "ns_uses": [["./svc", "t", "write"]],
+            "shutoff": [],
+        },
         {
             "stars": [1],
             "commonjs": False,
@@ -1261,12 +1297,15 @@ def test_export_table_of_a_module(tmp_path: Path) -> None:
     assert exports["I"] == {"kind": "none", "reason": "type-only"}
     assert exports["ns"] == {"kind": "none", "reason": "namespace-export"}
     assert exports["y"] == {"kind": "reexport", "source": "./r", "name": "x"}
+    assert exports["a"]["this"] is False
     assert scope["module_bindings"] == {
         "stars": ["./s"],
         "commonjs": False,
         "opaque": False,
+        "symlink": False,
         "taints": ["./n"],
-        "taint_all": False,
+        "ns_uses": [],
+        "shutoff": [],
     }
 
 
@@ -1310,3 +1349,798 @@ def test_tier2_in_boundary_ir_incremental_runs(tmp_path: Path) -> None:
     edited = run(incremental=True, cache_dir=cache_dir)
     assert use_edge(edited)["resolution"] == "ambiguous"
     assert edited == run()
+
+
+# ---------------------------------------------------------------------------
+# PR 5 fold 1 (the president's rulings E5-1..E5-5 on #703). Each case is a
+# panel repro or a write form of one, on trees the tests write (11.2).
+
+NS_USE = "import * as ns from './svc';\nexport function u() { return ns.t(); }\n"
+FOLD1_NEAR_MISSES: dict[
+    str, tuple[dict[str, str], tuple[str, str], str, str | None]
+] = {
+    # E5-1, A1: a write to an import binding is ``svc_1.t = …`` under
+    # CommonJS emit, so it taints the exporting module, in any file.
+    "import-write-cast": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "evil.ts": (
+                "import { t } from './svc';\n"
+                "export function w() { (t as any) = () => 9; }\n"
+            ),
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "import-write-js": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "evil.js": "import { t } from './svc';\nexport function w() { t = 9; }\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "import-write-default": (
+        {
+            "svc.ts": SVC + "export default function d() { return 4; }\n",
+            "use.ts": USE,
+            "evil.js": "import d from './svc';\nexport function w() { d = 9; }\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "import-write-compound": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "evil.js": "import { t } from './svc';\nexport function w() { t += 1; }\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "import-write-logical": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "evil.js": "import { t } from './svc';\nexport function w() { t ||= 1; }\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "import-write-update": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "evil.js": "import { t } from './svc';\nexport function w() { t++; }\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "import-write-destructuring": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "evil.js": (
+                "import { t } from './svc';\n"
+                "export function w(o) { ({ t } = o); [t] = [o]; }\n"
+            ),
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "import-write-for-of": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "evil.js": (
+                "import { t } from './svc';\n"
+                "export function w(xs) { for (t of xs) {} }\n"
+            ),
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    # E5-1, A2/B-5: ``ns.f()`` passes the exports object as ``this``.
+    "namespace-call-of-this-function": (
+        {
+            "svc.ts": SVC + "export function reset(this: any) { this.t = () => 9; }\n",
+            "use.ts": USE,
+            "mut.ts": "import * as ns from './svc';\nexport function m() { ns.reset(); }\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "namespace-call-this-in-nested-arrow": (
+        {
+            "svc.ts": SVC
+            + "export function reset(this: any) { [1].map(() => this); }\n",
+            "use.ts": USE,
+            "mut.ts": "import * as ns from './svc';\nexport function m() { (ns.reset)(); }\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "namespace-call-this-through-reexport": (
+        {
+            "impl.ts": "export function reset(this: any) { this.t = () => 9; }\n",
+            "svc.ts": SVC + "export { reset } from './impl';\n",
+            "use.ts": USE,
+            "mut.ts": "import * as ns from './svc';\nexport function m() { ns.reset(); }\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "namespace-define-getter": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "mut.js": (
+                "import * as ns from './svc';\n"
+                "export function m() { ns.__defineGetter__('t', () => 0); }\n"
+            ),
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "namespace-proto-read": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "mut.ts": "import * as ns from './svc';\nexport const p = ns.__proto__;\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "namespace-unknown-member-read": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "mut.ts": "import * as ns from './svc';\nexport const p = (ns as any).missing;\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "namespace-augmented-member-write": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "mut.js": "import * as ns from './svc';\nns.t += 1;\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "namespace-logical-member-write": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "mut.js": "import * as ns from './svc';\nns.t &&= 1;\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "namespace-binding-write": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "mut.js": "import * as ns from './svc';\nexport function m() { ns = 1; }\n",
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    # E5-1, B-4: module-level ``this`` wherever a top-level evaluation
+    # reaches it.
+    "module-this-in-computed-key": (
+        {
+            "svc.ts": SVC
+            + "export const o = { [((this as any).t = () => 9, 'k')]() {} };\n",
+            "use.ts": USE,
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "module-this-in-class-computed-key": (
+        {
+            "svc.js": SVC + "export class K { [(this.t = 0, 'k')]() {} }\n",
+            "use.ts": USE,
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "module-this-in-field-computed-key": (
+        {
+            "svc.js": SVC + "export class K { [(this.t = 0, 'k')] = 1; }\n",
+            "use.ts": USE,
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "module-this-in-extends": (
+        {
+            "svc.js": SVC + "export class K extends (this.t = 0, Object) {}\n",
+            "use.ts": USE,
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "module-this-in-arrow-default": (
+        {
+            "svc.js": SVC + "((a = (this.t = 0)) => a)();\n",
+            "use.ts": USE,
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    # E5-3: each run-wide cause gives its own reason.
+    "timer-string": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "setTimeout('code', 1);\n"},
+        ("use.ts", "t"),
+        "run-tainted:evaluator",
+        None,
+    ),
+    "timer-free-name": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "setTimeout(handler, 1);\n"},
+        ("use.ts", "t"),
+        "run-tainted:evaluator",
+        None,
+    ),
+    "function-constructor-route": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "(() => 0).constructor('s')();\n"},
+        ("use.ts", "t"),
+        "run-tainted:evaluator",
+        None,
+    ),
+    "require-of-module": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "const m = require('module');\n"},
+        ("use.ts", "t"),
+        "run-tainted:module-system",
+        None,
+    ),
+    "dynamic-import-of-node-module": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.ts": "export const p = import('node:module');\n",
+        },
+        ("use.ts", "t"),
+        "run-tainted:module-system",
+        None,
+    ),
+    "import-from-module": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.ts": "import m from 'module';\nexport const k = m;\n",
+        },
+        ("use.ts", "t"),
+        "run-tainted:module-system",
+        None,
+    ),
+    "undecodable-import-specifier": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.ts": "import k from './\\8';\nexport const j = k;\n",
+        },
+        ("use.ts", "t"),
+        "run-tainted:module-system",
+        None,
+    ),
+    "get-builtin-module-identifier": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "getBuiltinModule('fs');\n"},
+        ("use.ts", "t"),
+        "run-tainted:module-system",
+        None,
+    ),
+    "main-module-identifier": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "export const m = mainModule;\n"},
+        ("use.ts", "t"),
+        "run-tainted:module-system",
+        None,
+    ),
+    "create-require-identifier": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "export const r = createRequire;\n"},
+        ("use.ts", "t"),
+        "run-tainted:module-system",
+        None,
+    ),
+    "module-system-name-in-template": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "export const k = `main\\x4dodule`;\n"},
+        ("use.ts", "t"),
+        "run-tainted:module-system",
+        None,
+    ),
+    "module-system-name-legacy-octal": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "const k = 'mainM\\157dule';\n"},
+        ("use.ts", "t"),
+        "run-tainted:module-system",
+        None,
+    ),
+    "bun-import-meta-require": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.ts": "export const m = import.meta.require('./other');\n",
+        },
+        ("use.ts", "t"),
+        "run-tainted:dynamic-loader",
+        None,
+    ),
+    "module-object-other-than-exports": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "module.require('./svc');\n"},
+        ("use.ts", "t"),
+        "run-tainted:module-object",
+        None,
+    ),
+    "require-main-require": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "require.main.require(name);\n"},
+        ("use.ts", "t"),
+        "run-tainted:dynamic-loader",
+        None,
+    ),
+    "module-handed-on": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "register(module);\n"},
+        ("use.ts", "t"),
+        "run-tainted:module-object",
+        None,
+    ),
+    # E5-4: a taint whose specifier the resolver rejects still taints.
+    "rejected-taint-trailing-slash": (
+        {
+            "lib/index.ts": SVC,
+            "use.ts": USE.replace("./svc", "./lib"),
+            "mut.ts": (
+                "import * as ns from './lib/';\n"
+                "export function m() { (ns as any).t = 0; }\n"
+            ),
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "rejected-taint-dot": (
+        {
+            "lib/index.ts": SVC,
+            "use.ts": USE.replace("./svc", "./lib"),
+            "lib/mut.ts": (
+                "import * as ns from '.';\nexport function m() { (ns as any).t = 0; }\n"
+            ),
+        },
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "rejected-taint-query": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "require('./svc?x').t = 0;\n"},
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "rejected-taint-hash": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "require('./svc#x').t = 0;\n"},
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "rejected-taint-case": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "require('./SVC.JS').t = 0;\n"},
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "rejected-taint-percent": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "require('./%73vc').t = 0;\n"},
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "rejected-taint-backslash": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "require('.\\\\svc').t = 0;\n"},
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "rejected-taint-dot-segment": (
+        {"svc.ts": SVC, "use.ts": USE, "sub/x.js": "require('./../svc').t = 0;\n"},
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    "rejected-taint-outside-root": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "require('../elsewhere/svc').t = 0;\n"},
+        ("use.ts", "t"),
+        "run-tainted:unresolvable-writer",
+        None,
+    ),
+    "template-require-taints": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "require(`./svc`).t = 0;\n"},
+        ("use.ts", "t"),
+        "commonjs",
+        None,
+    ),
+    # E5-5: cheap fail-closed rules.
+    "dot-segment-directory": (
+        {
+            "lib.ts": SVC,
+            "lib/other.ts": "export function t() { return 8; }\n",
+            "use.ts": USE.replace("./svc", "./lib/."),
+        },
+        ("use.ts", "t"),
+        "unknown-variant",
+        None,
+    ),
+    "dotdot-segment-directory": (
+        {
+            "pkg.ts": SVC,
+            "pkg/x/a.ts": "export {};\n",
+            "use.ts": USE.replace("./svc", "./pkg/x/.."),
+        },
+        ("use.ts", "t"),
+        "unknown-variant",
+        None,
+    ),
+    "bare-dot": (
+        {"index.ts": SVC, "use.ts": USE.replace("./svc", ".")},
+        ("use.ts", "t"),
+        "unknown-variant",
+        None,
+    ),
+    "bare-dotdot": (
+        {"index.ts": SVC, "sub/use.ts": USE.replace("./svc", "..")},
+        ("sub/use.ts", "t"),
+        "unknown-variant",
+        None,
+    ),
+    "exact-file-of-another-extension": (
+        {
+            "svc.css": ".t { color: red; }\n",
+            "svc.css.ts": SVC,
+            "use.ts": USE.replace("./svc", "./svc.css"),
+        },
+        ("use.ts", "t"),
+        "unknown-variant",
+        None,
+    ),
+    "non-inert-sibling-segment": (
+        {
+            "svc.ts": SVC,
+            "svc.foo.ts": "export function t() { return 7; }\n",
+            "use.ts": USE,
+        },
+        ("use.ts", "t"),
+        "ambiguous-extension",
+        None,
+    ),
+    "attributes-on-a-reexport-hop": (
+        {
+            "svc.ts": SVC,
+            "index.ts": "import { t } from './svc' with { type: 'json' };\nexport { t };\n",
+            "use.ts": USE.replace("./svc", "./index"),
+        },
+        ("use.ts", "t"),
+        "unknown-variant",
+        None,
+    ),
+    "attributes-on-export-from": (
+        {
+            "svc.ts": SVC,
+            "index.ts": "export { t } from './svc' with { type: 'json' };\n",
+            "use.ts": USE.replace("./svc", "./index"),
+        },
+        ("use.ts", "t"),
+        "export-not-found",
+        None,
+    ),
+    "declare-global-export-makes-the-module-opaque": (
+        {
+            "svc.ts": SVC + "export declare global { function q(): void }\n",
+            "use.ts": USE,
+        },
+        ("use.ts", "t"),
+        "export-not-found",
+        None,
+    ),
+}
+
+FOLD1_POSITIVES: dict[str, tuple[dict[str, str], tuple[str, str], str, list[str]]] = {
+    "write-to-a-shadowing-local-is-not-an-import-write": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "w.js": "import { t } from './svc';\nexport function w(t) { t = 1; }\n",
+        },
+        ("use.ts", "t"),
+        "svc.ts",
+        [],
+    ),
+    "namespace-call-of-this-free-function": (
+        {"svc.ts": SVC, "use.ts": NS_USE},
+        ("use.ts", "ns.t"),
+        "svc.ts",
+        [],
+    ),
+    "this-inside-functions-and-class-members-is-not-module-level": (
+        {
+            "svc.ts": SVC
+            + "export function f(this: any) { return this; }\n"
+            + "export class K { a = this; static { this.b = 1; } m() { return this; } }\n",
+            "use.ts": USE,
+        },
+        ("use.ts", "t"),
+        "svc.ts",
+        [],
+    ),
+    "local-module-and-require-names": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.ts": (
+                "export function plan(module: string) { return module.length; }\n"
+                "export function load(require: any, n: string) { return require(n); }\n"
+                "export function e(exports: any) { exports.x = 1; }\n"
+                "export function g() { const createRequire = 1; return createRequire; }\n"
+            ),
+        },
+        ("use.ts", "t"),
+        "svc.ts",
+        [],
+    ),
+    "sleep-idiom-and-global-object-reads": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.ts": (
+                "export const sleep = (ms: number) =>\n"
+                "  new Promise((r) => setTimeout(r, ms));\n"
+                "export const w = typeof window !== 'undefined' ? window : undefined;\n"
+                "export const g = globalThis;\n"
+            ),
+        },
+        ("use.ts", "t"),
+        "svc.ts",
+        [],
+    ),
+    "type-position-import-is-erased": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.ts": "export let a: typeof import('./svc');\n",
+        },
+        ("use.ts", "t"),
+        "svc.ts",
+        [],
+    ),
+    "namespace-extends-and-jsx-reads": (
+        {
+            "svc.tsx": SVC
+            + "export class Base {}\nexport function Comp() { return null; }\n",
+            "use.tsx": (
+                "import * as ns from './svc';\n"
+                "export class C extends ns.Base {}\n"
+                "export const e = <ns.Comp />;\n"
+                "export const f = <ns.Comp></ns.Comp>;\n"
+                "export function u() { return ns.t(); }\n"
+            ),
+            "other.tsx": "export function t() { return 2; }\n",
+        },
+        ("use.tsx", "ns.t"),
+        "svc.tsx",
+        [],
+    ),
+    "inert-commonjs-idioms": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.js": (
+                "if (require.main === module) { main(); }\n"
+                "const here = require.resolve('./other');\n"
+                "const cjs = typeof require !== 'undefined' && typeof module;\n"
+            ),
+        },
+        ("use.ts", "t"),
+        "svc.ts",
+        [],
+    ),
+    "saved-and-restored-timer": (
+        {
+            "svc.ts": SVC,
+            "use.ts": USE,
+            "x.ts": (
+                "const saved = globalThis.setInterval;\n"
+                "(globalThis as any).setInterval = (fn: () => unknown) => 0;\n"
+                "globalThis.setInterval = saved;\n"
+            ),
+        },
+        ("use.ts", "t"),
+        "svc.ts",
+        [],
+    ),
+    "unparsed-file-without-triggers-or-literals": (
+        {"svc.ts": SVC, "use.ts": USE, "x.js": "function (\n"},
+        ("use.ts", "t"),
+        "svc.ts",
+        [],
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD1_NEAR_MISSES))
+def test_fold1_near_misses_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    files, (file, reference), reason, language = FOLD1_NEAR_MISSES[case]
+    root = _write(tmp_path, {**OTHERS, **files})
+    off, structural, on, label = _run(root, file, reference, language)
+    assert off["resolution"] == "ambiguous", case
+    assert structural == off, case
+    assert on == off, (case, label)
+    assert label == f"none({reason})", case
+    assert reason in KNOWN_NONE_REASONS
+
+
+@pytest.mark.parametrize("case", sorted(FOLD1_POSITIVES))
+def test_fold1_positives_resolve_end_to_end(tmp_path: Path, case: str) -> None:
+    files, (file, reference), target, group_rules = FOLD1_POSITIVES[case]
+    root = _write(tmp_path, {**OTHERS, **files})
+    off, structural, on, label = _run(root, file, reference)
+    assert off["resolution"] == "ambiguous", case
+    assert structural == off, case
+    assert on["resolution"] == "resolved", (case, label)
+    assert _resolved_file(on, root) == target, case
+    binding_rule = "t2.namespace" if "." in reference else "t2.import"
+    assert on["provenance"]["call_rules"] == [binding_rule, *group_rules], case
+
+
+def test_inert_sibling_segments_are_a_closed_list() -> None:
+    """Q1 (keep, all panels): the allow-list is closed; any other segment,
+    a platform name or not, fails closed."""
+    assert (
+        frozenset(
+            {
+                "test",
+                "spec",
+                "stories",
+                "story",
+                "bench",
+                "d",
+                "types",
+                "styles",
+                "mock",
+                "mocks",
+                "fixture",
+                "fixtures",
+                "e2e",
+                "config",
+            }
+        )
+        == modules.INERT_SUFFIXES
+    )
+
+
+def _symlink_or_skip(link: Path, target: str) -> None:
+    try:
+        link.symlink_to(target)
+    except (OSError, NotImplementedError):
+        pytest.skip("symbolic links are not available")
+
+
+@pytest.mark.parametrize("which", ["importer", "target", "writer"])
+def test_symlinked_files_fail_closed(tmp_path: Path, which: str) -> None:
+    """E5-5 (A4): Node resolves a symlinked file's imports from its real
+    path, tsc from the link; a symlinked importer, target or writer fails
+    closed."""
+    files = {**OTHERS, "real/svc.ts": SVC, "real/use.ts": USE, "real/x.js": "1;\n"}
+    root = _write(tmp_path, files)
+    if which == "importer":
+        _symlink_or_skip(root / "use.ts", "real/use.ts")
+        (root / "svc.ts").write_text(SVC, encoding="utf-8")
+        file, reason = "use.ts", "unknown-variant"
+    elif which == "target":
+        _symlink_or_skip(root / "real" / "lib.ts", "svc.ts")
+        (root / "real" / "use.ts").write_text(
+            USE.replace("./svc", "./lib"), encoding="utf-8"
+        )
+        file, reason = "real/use.ts", "unknown-variant"
+    else:
+        (root / "real" / "w").mkdir()
+        (root / "real" / "w" / "x.js").write_text(
+            "require('./svc').t = 0;\n", encoding="utf-8"
+        )
+        _symlink_or_skip(root / "real" / "y.js", "w/x.js")
+        file, reason = "real/use.ts", "run-tainted:unresolvable-writer"
+    off, structural, on, label = _run(root, file, "t")
+    assert off["resolution"] == "ambiguous"
+    assert on == off
+    assert label == f"none({reason})"
+
+
+def test_unparsed_file_without_text_shuts_off_the_run() -> None:
+    """A JS/TS file with no scope facts to read (``module_bindings`` empty)
+    is an unknown writer: ``run-tainted:unparsed-file``."""
+    facts = [
+        {
+            "path": "x.js",
+            "scope_facts": {
+                "language": "javascript",
+                "supported": False,
+                "module_bindings": {},
+            },
+        }
+    ]
+    run = modules.build_module_run(facts, None)
+    assert modules.run_tainted_reason(run) == "run-tainted:unparsed-file"
+
+
+def test_the_shutoff_is_logged(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    root = _write(
+        tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": "eval(s);\n"}
+    )
+    with caplog.at_level("INFO", logger="chunker.call_resolution.modules"):
+        extract_symbol_graph(root, call_resolution=MODE)
+    assert any(
+        "Tier 2 is off for this run (evaluator in x.js)" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+def test_text_scan_of_an_unparsed_file() -> None:
+    from chunker.call_resolution.js_modules import text_module_bindings
+
+    scanned = text_module_bindings(
+        b"import x from './a';\nrequire(\"../b/c\");\nsetTimeout(r, 1);\nf(\n"
+    )
+    assert scanned["taints"] == ["../b/c", "./a"]
+    assert scanned["shutoff"] == []
+    assert scanned["opaque"] is True
+    assert text_module_bindings(b"setTimeout('x');\n")["shutoff"] == [
+        "evaluator",
+        "unparsed-file",
+    ]
+    assert text_module_bindings(b"require(name)\n")["shutoff"] == [
+        "dynamic-loader",
+        "unparsed-file",
+    ]
+
+
+def test_symlinked_files_change_the_on_mode_cache_key() -> None:
+    from chunker.boundary import adapter
+
+    common = {
+        "display_path": "a.ts",
+        "content_hash": "0" * 64,
+        "language": "typescript",
+        "resolution_mode": "permissive",
+        "fail_fast": False,
+    }
+    plain = adapter._cache_key_payload(**common, call_resolution=MODE)
+    linked = adapter._cache_key_payload(**common, call_resolution=MODE, symlink=True)
+    off = adapter._cache_key_payload(**common, symlink=True)
+    assert "call_resolution_symlink" not in plain
+    assert linked["call_resolution_symlink"] is True
+    assert "call_resolution_symlink" not in off
+    assert adapter._build_boundary_cache_key(plain) != (
+        adapter._build_boundary_cache_key(linked)
+    )

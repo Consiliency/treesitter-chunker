@@ -50,11 +50,15 @@ unknown).
 
 from __future__ import annotations
 
+import logging
 import posixpath
 import unicodedata
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import unquote
+
+logger = logging.getLogger(__name__)
 
 # Extensions of the JS family and the language that collects each
 # (``chunker.auto.ZeroConfigAPI.EXTENSION_MAP``; a test pins the copy).
@@ -133,6 +137,8 @@ class ModuleIndex:
     run_paths: frozenset[str] = frozenset()
     # Folded directory -> folded names of the JS/TS files in it.
     names: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    # JS/TS files collected through a symlink (E5-5).
+    symlinks: frozenset[str] = frozenset()
 
     @classmethod
     def build(
@@ -140,6 +146,7 @@ class ModuleIndex:
         paths: Sequence[str],
         language_filter: str | None,
         run_paths: Sequence[str] = (),
+        symlinks: Sequence[str] | set[str] = (),
     ) -> ModuleIndex:
         folded: dict[str, set[str]] = {}
         names: dict[str, set[str]] = {}
@@ -153,6 +160,7 @@ class ModuleIndex:
             language_filter=language_filter.lower() if language_filter else None,
             run_paths=frozenset(run_paths) | frozenset(paths),
             names={key: frozenset(value) for key, value in names.items()},
+            symlinks=frozenset(symlinks),
         )
 
     def suffixed_sibling(self, candidates: Sequence[str]) -> bool:
@@ -195,16 +203,33 @@ def is_relative(specifier: str) -> bool:
     return specifier.startswith(("./", "../"))
 
 
+def _dot_segment(specifier: str) -> bool:
+    """A ``.`` or ``..`` segment after the leading ``./`` or ``../`` prefix
+    (E5-5, A3/B-3): TypeScript and Node read ``./lib/.`` and ``./x/..`` as
+    directories, never as files."""
+    rest = specifier
+    if rest.startswith("./"):
+        rest = rest[2:]
+    else:
+        while rest.startswith("../"):
+            rest = rest[3:]
+    return any(part in (".", "..") for part in rest.split("/"))
+
+
 def candidate_list(
     specifier: str, importer: str, importer_language: str | None
 ) -> tuple[tuple[str, ...], str | None]:
     """``(candidates, reason)``: the root-relative candidates, or a reason."""
+    if specifier in (".", ".."):
+        # A directory import of the importer's own or parent directory.
+        return (), "unknown-variant"
     if not is_relative(specifier):
         return (), "external-module"
     if (
         _UNREAD_CHARACTERS & set(specifier)
         or specifier.endswith("/")
         or "//" in specifier
+        or _dot_segment(specifier)
     ):
         return (), "unknown-variant"
     joined = posixpath.join(posixpath.dirname(importer), specifier)
@@ -239,6 +264,55 @@ def candidate_list(
     ), None
 
 
+def lenient_targets(
+    index: ModuleIndex, specifier: str, importer: str
+) -> tuple[str, ...] | None:
+    """Every run file a taint specifier may name under any toolchain (E5-4).
+
+    Rejected forms still taint: a query or hash is cut, ``\\`` becomes
+    ``/``, percent escapes are decoded (both spellings are tried), empty
+    segments collapse, a trailing ``/``, ``.`` or ``..`` means a directory,
+    extensions are matched in any case and paths after case folding.
+    ``None`` when the target cannot be computed (it leaves the root);
+    ``()`` for a bare specifier, which is R12 (treesitter-chunker#702).
+    """
+    if specifier not in (".", "..") and not specifier.startswith(
+        ("./", "../", ".\\", "..\\")
+    ):
+        return ()
+    spellings = {specifier, unquote(specifier)}
+    found: list[str] = []
+    for spelling in sorted(spellings):
+        text = spelling.replace("\\", "/")
+        for mark in ("?", "#"):
+            text = text.split(mark, 1)[0]
+        while "//" in text:
+            text = text.replace("//", "/")
+        parts = text.split("/")
+        directory_only = text.endswith("/") or parts[-1] in (".", "..")
+        base = posixpath.normpath(
+            posixpath.join(posixpath.dirname(importer), text.rstrip("/") or ".")
+        )
+        if base == ".." or base.startswith(("../", "/")):
+            return None
+        bases = [] if directory_only else [base]
+        stem = _stem(base)
+        if stem is not None:
+            bases.append(stem)
+        candidates: list[str] = [base]
+        for item in bases:
+            candidates.extend(f"{item}{ext}" for ext in _EXTENSIONS)
+        prefix = "" if base == "." else f"{base}/"
+        candidates.extend(f"{prefix}index{ext}" for ext in _EXTENSIONS)
+        if stem is not None:
+            candidates.extend(f"{stem}/index{ext}" for ext in _EXTENSIONS)
+        for candidate in candidates:
+            for path in sorted(index.folded.get(_fold(candidate), ())):
+                if path not in found:
+                    found.append(path)
+    return tuple(found)
+
+
 def existing_candidates(
     index: ModuleIndex, specifier: str, importer: str, language: str | None
 ) -> tuple[str, ...]:
@@ -256,9 +330,20 @@ def resolve_specifier(
     index: ModuleIndex, specifier: str, importer: str, language: str | None
 ) -> tuple[str | None, str | None]:
     """``(path, None)`` for the one target file, or ``(None, reason)``."""
+    if importer in index.symlinks:
+        # Node resolves a symlinked file's imports from its real path, tsc
+        # from the link (E5-5, A4): toolchains disagree.
+        return None, "unknown-variant"
     candidates, reason = candidate_list(specifier, importer, language)
     if reason is not None:
         return None, reason
+    requested = posixpath.normpath(
+        posixpath.join(posixpath.dirname(importer), specifier)
+    )
+    if requested in index.run_paths and requested not in candidates:
+        # ``./svc.vue`` beside ``svc.vue.ts``: a loader would read the exact
+        # file (E5-5).
+        return None, "unknown-variant"
     for candidate in candidates:
         if not index.collected(candidate):
             return None, "unknown-variant"
@@ -273,10 +358,9 @@ def resolve_specifier(
     if not existing:
         return None, "module-not-found"
     target = existing[0]
+    if target in index.symlinks:
+        return None, "unknown-variant"
     directory = target.rpartition("/")[0]
-    requested = posixpath.normpath(
-        posixpath.join(posixpath.dirname(importer), specifier)
-    )
     if directory == requested and (
         f"{directory}/package.json" in index.run_paths
         or index.language_filter is not None
@@ -310,19 +394,32 @@ class ModuleRun:
     index: ModuleIndex
     files: Mapping[str, ModuleFile]
     tainted: frozenset[str] = frozenset()
-    taint_all: bool = False
+    # Run-wide causes (E5-3), each with the first file that has it.
+    shutoff: Mapping[str, str] = field(default_factory=dict)
+
+    @property
+    def taint_all(self) -> bool:
+        return bool(self.shutoff)
 
 
 def build_module_run(
     facts: Sequence[Mapping[str, Any]], language_filter: str | None
 ) -> ModuleRun:
-    """Index the run's JS/TS files and compute the tainted modules."""
+    """Index the run's JS/TS files, the tainted modules and the run-wide
+    causes (E5-1, E5-3, E5-4)."""
     from .engine import language_family
+    from .js_modules import CAUSE_UNPARSED_FILE, CAUSE_UNRESOLVABLE_WRITER
 
     files: dict[str, ModuleFile] = {}
-    taints: list[tuple[str, str | None, str]] = []
-    taint_all = False
-    for item in facts:
+    taints: list[tuple[str, str]] = []
+    ns_uses: list[tuple[str, str | None, str, str, str]] = []
+    shutoff: dict[str, str] = {}
+    symlinks: set[str] = set()
+
+    def cause(name: str, path: str) -> None:
+        shutoff.setdefault(name, path)
+
+    for item in sorted(facts, key=lambda fact: str(fact.get("path") or "")):
         scope = item.get("scope_facts") or {}
         language = scope.get("language")
         if language_family(language) != "js":
@@ -330,33 +427,61 @@ def build_module_run(
         path = str(item.get("path") or "")
         supported = bool(scope.get("supported"))
         bindings = scope.get("module_bindings") or {}
-        if not supported:
-            # Its writes are unknown (section 5.3).
-            taint_all = True
-            files[path] = ModuleFile(path, language, False)
-            continue
+        if bindings.get("symlink"):
+            symlinks.add(path)
+        if not supported and not bindings:
+            # No text to scan (the file could not be read): its writes are
+            # unknown.
+            cause(CAUSE_UNPARSED_FILE, path)
+        for name in bindings.get("shutoff", ()):
+            cause(str(name), path)
+        for specifier in bindings.get("taints", ()):
+            taints.append((path, str(specifier)))
+        for use in bindings.get("ns_uses", ()):
+            ns_uses.append((path, language, str(use[0]), str(use[1]), str(use[2])))
         files[path] = ModuleFile(
             path=path,
             language=language,
-            supported=True,
-            exports=scope.get("exports") or {},
+            supported=supported,
+            exports=scope.get("exports") or {} if supported else {},
             stars=tuple(str(spec) for spec in bindings.get("stars", ())),
             commonjs=bool(bindings.get("commonjs")),
-            opaque=bool(bindings.get("opaque")),
+            opaque=bool(bindings.get("opaque")) or not supported,
         )
-        if bindings.get("taint_all"):
-            taint_all = True
-        for specifier in bindings.get("taints", ()):
-            taints.append((path, language, str(specifier)))
     run_paths = sorted(str(item.get("path") or "") for item in facts)
-    index = ModuleIndex.build(sorted(files), language_filter, run_paths)
+    index = ModuleIndex.build(sorted(files), language_filter, run_paths, symlinks)
     tainted: set[str] = set()
-    for path, language, specifier in taints:
-        if is_relative(specifier):
-            # Every file the specifier may name, under any toolchain.
-            tainted.update(existing_candidates(index, specifier, path, language))
-            tainted.update(existing_candidates(index, specifier, path, "typescript"))
-    return ModuleRun(index, files, frozenset(tainted), taint_all)
+    for path, specifier in taints:
+        targets = None if path in symlinks else lenient_targets(index, specifier, path)
+        if targets is None:
+            # The written module cannot be computed (E5-4).
+            cause(CAUSE_UNRESOLVABLE_WRITER, path)
+            continue
+        tainted.update(targets)
+    structural = ModuleRun(index, files)
+    for path, language, specifier, member, kind in ns_uses:
+        # E5-1 (A2/B-5): ``ns.name`` must be a verified export, and
+        # ``ns.f()`` must reach a declaration that never mentions ``this``.
+        target, _ = resolve_specifier(index, specifier, path, language)
+        verified = False
+        if target is not None:
+            found = _lookup(structural, target, member, 0, (), taints=False)
+            if isinstance(found, _Found):
+                outcome = found.outcome
+                verified = kind != "call" or (
+                    outcome.get("outcome") == "local" and outcome.get("this") is False
+                )
+        if not verified:
+            targets = lenient_targets(index, specifier, path)
+            if targets is None:
+                cause(CAUSE_UNRESOLVABLE_WRITER, path)
+            else:
+                tainted.update(targets)
+    for name, path in sorted(shutoff.items()):
+        logger.info(
+            "call resolution: Tier 2 is off for this run (%s in %s)", name, path
+        )
+    return ModuleRun(index, files, frozenset(tainted), dict(shutoff))
 
 
 @dataclass(frozen=True)
@@ -377,12 +502,29 @@ class _Unknown:
 _NOT_FOUND = None
 
 
-def _module_reason(run: ModuleRun, path: str) -> str | None:
-    """Why lookups in module ``path`` fail closed, or ``None``."""
+def run_tainted_reason(run: ModuleRun) -> str | None:
+    """``run-tainted:<cause>`` for the first run-wide cause, or ``None``."""
+    from .js_modules import SHUTOFF_CAUSES
+
+    for name in SHUTOFF_CAUSES:
+        if name in run.shutoff:
+            return f"run-tainted:{name}"
+    return None
+
+
+def _module_reason(run: ModuleRun, path: str, taints: bool = True) -> str | None:
+    """Why lookups in module ``path`` fail closed, or ``None``.
+
+    With ``taints`` off (verifying namespace uses), only the module's own
+    shape counts.
+    """
     module = run.files.get(path)
     if module is None or not module.supported or module.opaque:
         return "export-not-found"
-    if module.commonjs or run.taint_all or path in run.tainted:
+    if not taints:
+        return None
+    # The run-wide shutoff is checked once, in :func:`resolve_import`.
+    if module.commonjs or path in run.tainted:
         return "commonjs"
     return None
 
@@ -393,6 +535,7 @@ def _lookup(
     name: str,
     hops: int,
     seen: tuple[tuple[str, str], ...],
+    taints: bool = True,
 ) -> _Found | _Unknown | None:
     """Look up export ``name`` in module ``path`` (9.3).
 
@@ -402,14 +545,14 @@ def _lookup(
         return _Unknown("cycle")
     if hops > HOP_LIMIT:
         return _Unknown("hop-limit")
-    reason = _module_reason(run, path)
+    reason = _module_reason(run, path, taints)
     if reason is not None:
         return _Unknown(reason)
     module = run.files[path]
     seen = (*seen, (path, name))
     entry = module.exports.get(name)
     if entry is not None:
-        return _Found(_entry_result(run, module, entry, hops, seen), path)
+        return _Found(_entry_result(run, module, entry, hops, seen, taints), path)
     if name == "default":
         return _NOT_FOUND
     found: list[_Found] = []
@@ -417,7 +560,7 @@ def _lookup(
         target, failure = resolve_specifier(run.index, specifier, path, module.language)
         if target is None:
             return _Unknown(failure or "module-not-found")
-        result = _lookup(run, target, name, hops + 1, seen)
+        result = _lookup(run, target, name, hops + 1, seen, taints)
         if isinstance(result, _Unknown):
             return result
         if result is not None:
@@ -433,6 +576,7 @@ def _entry_result(
     entry: Mapping[str, Any],
     hops: int,
     seen: tuple[tuple[str, str], ...],
+    taints: bool = True,
 ) -> Mapping[str, Any]:
     kind = entry.get("kind")
     if kind == "none":
@@ -445,13 +589,17 @@ def _entry_result(
             str(entry.get("name")),
             hops + 1,
             seen,
+            taints,
         )
     if kind == "local":
         outcome = entry.get("outcome") or {}
         if outcome.get("outcome") == "local":
-            if "global" in outcome:
-                return _none("commonjs")
-            return {"outcome": "local", "path": module.path, "local": outcome}
+            return {
+                "outcome": "local",
+                "path": module.path,
+                "local": outcome,
+                "this": entry.get("this") is not False,
+            }
         if outcome.get("outcome") == "import":
             binding = outcome.get("binding") or {}
             if binding.get("attributes") is not None:
@@ -465,6 +613,7 @@ def _entry_result(
                 str(binding.get("name")),
                 hops + 1,
                 seen,
+                taints,
             )
         if outcome.get("outcome") == "none":
             return _none(str(outcome.get("reason")))
@@ -478,13 +627,14 @@ def _follow(
     name: str,
     hops: int,
     seen: tuple[tuple[str, str], ...],
+    taints: bool = True,
 ) -> Mapping[str, Any]:
     target, failure = resolve_specifier(
         run.index, specifier, module.path, module.language
     )
     if target is None:
         return _none(failure or "module-not-found")
-    return _result(_lookup(run, target, name, hops, seen))
+    return _result(_lookup(run, target, name, hops, seen, taints))
 
 
 def _result(found: _Found | _Unknown | None) -> Mapping[str, Any]:
@@ -505,10 +655,14 @@ def resolve_import(
     """Resolve one import binding (9.1) to a proof in its target module.
 
     Returns ``{"outcome": "local", "path": <target file>, "local": <the
-    target's local outcome>}`` or a ``none`` outcome. ``member`` is the
-    property of a namespace member call (``ns.f()``); a namespace binding
-    without one, or a named binding with one, is not resolved.
+    target's local outcome>, "this": <whether it mentions this>}`` or a
+    ``none`` outcome. ``member`` is the property of a namespace member call
+    (``ns.f()``); a namespace binding without one, or a named binding with
+    one, is not resolved.
     """
+    shutoff = run_tainted_reason(run)
+    if shutoff is not None:
+        return _none(shutoff)
     if binding.get("attributes") is not None:
         return _none("unknown-variant")
     form = binding.get("form")

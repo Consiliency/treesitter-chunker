@@ -126,6 +126,21 @@ def _module_name(file_path: Path, root: Path) -> str:
     return ".".join(parts) if parts else file_path.stem
 
 
+def _collected_through_symlink(file_path: Path, root: Path) -> bool:
+    """Whether ``file_path``, or a directory between it and ``root``, is a
+    symbolic link (Tier 2 call resolution fails closed on it, E5-5)."""
+    base = root if root.is_dir() else root.parent
+    current = file_path
+    try:
+        while current != base and current != current.parent:
+            if current.is_symlink():
+                return True
+            current = current.parent
+    except OSError:
+        return True
+    return False
+
+
 def _display_file(file_path: Path, root: Path) -> str:
     from .boundary.impact import normalize_boundary_path
 
@@ -635,6 +650,7 @@ def extract_symbol_facts_for_file(
             symbols=symbol_spans,
             suffix=file_path.suffix.lower(),
             path=display_file,
+            symlink=_collected_through_symlink(file_path, root),
         )
     return facts
 

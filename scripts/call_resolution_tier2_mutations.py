@@ -1,0 +1,528 @@
+"""Rule mutations for Tier 2 TS/JS call resolution (treesitter-chunker#682 PR 5).
+
+Each mutation disables one rule by a single textual edit. The script copies
+the checkout to a temporary directory, checks that the unmutated copy passes,
+then applies each mutation alone and runs the Tier 2 tests and the
+``imports`` expected-table test serially. A mutation is *killed* when a test
+fails. The script prints one tab-separated line per mutation and exits
+non-zero if any mutation survives or does not apply.
+
+Usage (Python 3.14, from the repository root)::
+
+    uv run --locked --all-extras python scripts/call_resolution_tier2_mutations.py
+
+Run it only with headroom: it runs the narrow Tier 2 tests once per mutation,
+serially.
+"""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+CR = "chunker/call_resolution/"
+MOD = CR + "modules.py"
+JSM = CR + "js_modules.py"
+ENG = CR + "engine.py"
+JSS = CR + "js_scope.py"
+STR = CR + "js_strings.py"
+TESTS = (
+    "tests/test_call_resolution_tier2_js.py",
+    "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
+)
+
+# (id, file, old text, new text). The old text must occur in the file.
+MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    # Module resolution (9.2, E5-5).
+    (
+        "O1-more-than-one",
+        MOD,
+        "if len(existing) > 1 or index.suffixed_sibling(candidates):",
+        "if index.suffixed_sibling(candidates):",
+    ),
+    (
+        "suffixed-sibling",
+        MOD,
+        "if len(existing) > 1 or index.suffixed_sibling(candidates):",
+        "if len(existing) > 1:",
+    ),
+    (
+        "inert-list-open",
+        MOD,
+        "if middle is not None and middle not in INERT_SUFFIXES:",
+        'if middle in ("ios", "android", "native", "web"):',
+    ),
+    (
+        "uncollected-extension",
+        MOD,
+        '        if not index.collected(candidate):\n            return None, "unknown-variant"\n',
+        "",
+    ),
+    (
+        "skipped-directory",
+        MOD,
+        '        if any(part in SKIPPED_DIRECTORIES for part in candidate.split("/")):\n'
+        '            return None, "unknown-variant"\n',
+        "",
+    ),
+    (
+        "case-fold",
+        MOD,
+        "        if any(path != candidate for path in index.folded.get(_fold(candidate), ())):",
+        "        if False:",
+    ),
+    (
+        "dts-target",
+        MOD,
+        '    if target.lower().endswith(".d.ts"):\n        return None, "dts-target"',
+        "    pass",
+    ),
+    (
+        "directory-package-json",
+        MOD,
+        "    if directory == requested and (",
+        "    if False and (",
+    ),
+    (
+        "uppercase-extension",
+        MOD,
+        "        # ``./svc.JS``: toolchains disagree on whether it is an extension.\n"
+        '        return (), "unknown-variant"',
+        "        pass",
+    ),
+    (
+        "unread-characters",
+        MOD,
+        "        _UNREAD_CHARACTERS & set(specifier)\n",
+        "        False\n",
+    ),
+    ("trailing-slash", MOD, '        or specifier.endswith("/")\n', ""),
+    ("empty-segment", MOD, '        or "//" in specifier\n', ""),
+    ("dot-segment", MOD, "        or _dot_segment(specifier)\n", ""),
+    (
+        "bare-dot",
+        MOD,
+        '    if specifier in (".", ".."):\n'
+        "        # A directory import of the importer's own or parent directory.\n"
+        '        return (), "unknown-variant"\n',
+        "",
+    ),
+    (
+        "outside-root",
+        MOD,
+        'if base == ".." or base.startswith(("../", "/")):\n        return (), "outside-root"',
+        "if False:\n        pass",
+    ),
+    (
+        "js-importer-exact",
+        MOD,
+        '    if importer_language == "javascript" and explicit:\n        return (base,), None\n',
+        "",
+    ),
+    (
+        "exact-file-other-extension",
+        MOD,
+        "    if requested in index.run_paths and requested not in candidates:",
+        "    if False:",
+    ),
+    ("symlinked-importer", MOD, "    if importer in index.symlinks:", "    if False:"),
+    ("symlinked-target", MOD, "    if target in index.symlinks:", "    if False:"),
+    # Export lookup (9.3).
+    (
+        "hop-limit",
+        MOD,
+        '    if hops > HOP_LIMIT:\n        return _Unknown("hop-limit")\n',
+        "",
+    ),
+    (
+        "cycle",
+        MOD,
+        '    if (path, name) in seen:\n        return _Unknown("cycle")\n',
+        '    if len(seen) > 50:\n        return _Unknown("cycle")\n',
+    ),
+    (
+        "star-conflict",
+        MOD,
+        '    if len(found) > 1:\n        return _Found(_none("star-conflict"))\n',
+        "",
+    ),
+    (
+        "star-source-failure",
+        MOD,
+        '        if target is None:\n            return _Unknown(failure or "module-not-found")\n'
+        "        result",
+        "        if target is None:\n            continue\n        result",
+    ),
+    (
+        "star-excludes-default",
+        MOD,
+        '    if name == "default":\n        return _NOT_FOUND\n',
+        "",
+    ),
+    (
+        "explicit-beats-star",
+        MOD,
+        "    entry = module.exports.get(name)\n    if entry is not None:",
+        "    entry = module.exports.get(name)\n    if entry is not None and not module.stars:",
+    ),
+    (
+        "attributes-on-import",
+        MOD,
+        '    if binding.get("attributes") is not None:\n        return _none("unknown-variant")\n'
+        "    form",
+        "    form",
+    ),
+    (
+        "attributes-on-hop",
+        MOD,
+        '            if binding.get("attributes") is not None:\n'
+        '                return _none("unknown-variant")\n            if binding.get("form")',
+        '            if binding.get("form")',
+    ),
+    (
+        "module-commonjs-flag",
+        MOD,
+        "    if module.commonjs or path in run.tainted:",
+        "    if path in run.tainted:",
+    ),
+    (
+        "module-taints",
+        MOD,
+        "    if module.commonjs or path in run.tainted:",
+        "    if module.commonjs:",
+    ),
+    (
+        "run-wide-shutoff",
+        MOD,
+        "    shutoff = run_tainted_reason(run)\n    if shutoff is not None:\n        return _none(shutoff)\n",
+        "",
+    ),
+    (
+        "opaque-module",
+        MOD,
+        "    if module is None or not module.supported or module.opaque:",
+        "    if module is None or not module.supported:",
+    ),
+    (
+        "rejected-taints-dropped",
+        MOD,
+        "        targets = None if path in symlinks else lenient_targets(index, specifier, path)",
+        '        targets = existing_candidates(index, specifier, path, "typescript")',
+    ),
+    (
+        "unresolvable-writer",
+        MOD,
+        "            # The written module cannot be computed (E5-4).\n"
+        "            cause(CAUSE_UNRESOLVABLE_WRITER, path)\n            continue",
+        "            continue",
+    ),
+    (
+        "namespace-member-verified",
+        MOD,
+        "        if not verified:\n            targets = lenient_targets(index, specifier, path)",
+        "        if False:\n            targets = lenient_targets(index, specifier, path)",
+    ),
+    (
+        "namespace-call-this",
+        MOD,
+        '                    outcome.get("outcome") == "local" and outcome.get("this") is False',
+        '                    outcome.get("outcome") == "local"',
+    ),
+    (
+        "unparsed-without-text",
+        MOD,
+        "            cause(CAUSE_UNPARSED_FILE, path)\n",
+        "            pass\n",
+    ),
+    # Per-file module facts.
+    (
+        "type-only-entry",
+        JSM,
+        '                table[name] = {"kind": "none", "reason": "type-only"}',
+        "                continue",
+    ),
+    (
+        "duplicate-export",
+        JSM,
+        "            if len(values) > 1:",
+        "            if False:",
+    ),
+    (
+        "default-expression",
+        JSM,
+        '                self._add("default", ("none", "expression-bound"))',
+        "                pass",
+    ),
+    (
+        "declaration-fallback-opaque",
+        JSM,
+        '            self._add("default" if default else local, ("local", local))\n'
+        "            return\n        self.opaque = True",
+        '            self._add("default" if default else local, ("local", local))\n'
+        "            return",
+    ),
+    # Not listed: ``export … from … with {…}`` in ``_reexport``. Both bundled
+    # grammars reject it (a parse error), so the file is text-scanned and
+    # opaque, and that branch is unreachable today (equivalent mutation).
+    (
+        "namespace-allow-list",
+        JSM,
+        "            if use is None:\n                self.taints.add(namespaces[name])",
+        "            if False:\n                self.taints.add(namespaces[name])",
+    ),
+    (
+        "namespace-use-lookup",
+        JSM,
+        "            if self.analysis._binding_scope(node, name) is not program:\n                continue\n",
+        "",
+    ),
+    (
+        "namespace-augmented-left",
+        JSM,
+        '        ("augmented_assignment_expression", "right"),\n',
+        '        ("augmented_assignment_expression", None),\n',
+    ),
+    (
+        "this-flag",
+        JSM,
+        '                "this": self._mentions_this(outcome),',
+        '                "this": False,',
+    ),
+    (
+        "import-writes",
+        JSM,
+        '            if info is not None:\n                self.taints.add(str(info.get("source", "")))',
+        "            pass",
+    ),
+    (
+        "module-level-this",
+        JSM,
+        '            elif kind == "this":\n                if module_level(node):\n'
+        "                    self.commonjs = True",
+        '            elif kind == "this":\n                pass',
+    ),
+    (
+        "computed-key-this",
+        JSM,
+        '            if _same(child, current.child_by_field_name("body")) or _same(\n'
+        '                child, current.child_by_field_name("parameters")\n            ):',
+        "            if True:",
+    ),
+    (
+        "require-taint",
+        JSM,
+        "        # ``require`` parameter loads modules too.\n        self.taints.add(specifier)",
+        "        # ``require`` parameter loads modules too.\n        pass",
+    ),
+    (
+        "require-non-call",
+        JSM,
+        "                # passed on: any module's exports may be reached.\n"
+        "                self.shutoff.add(CAUSE_DYNAMIC_LOADER)",
+        "                # passed on: any module's exports may be reached.\n                pass",
+    ),
+    (
+        "require-use-site-lookup",
+        JSM,
+        '            if not is_require or self._free_or_top(function, "require"):',
+        "            if not is_require:",
+    ),
+    (
+        "module-use-site-lookup",
+        JSM,
+        "            if not self._free_or_top(node, text):\n                return\n            self.commonjs = True",
+        "            self.commonjs = True",
+    ),
+    (
+        "module-object",
+        JSM,
+        "                self.shutoff.add(CAUSE_MODULE_OBJECT)\n            return",
+        "                pass\n            return",
+    ),
+    (
+        "module-system-specifier",
+        JSM,
+        "        if specifier in _MODULE_SYSTEM_SPECIFIERS:\n            self.shutoff.add(CAUSE_MODULE_SYSTEM)\n"
+        "            return\n",
+        "",
+    ),
+    (
+        "import-from-module",
+        JSM,
+        "                    if specifier is None or specifier in _MODULE_SYSTEM_SPECIFIERS:\n"
+        "                        self.shutoff.add(CAUSE_MODULE_SYSTEM)",
+        "                    if False:\n                        pass",
+    ),
+    (
+        "module-system-identifiers",
+        JSM,
+        "            if scope is None or any(\n"
+        '                binding.cls == "import" for binding in scope.bindings.get(text, ())\n'
+        "            ):\n                self.shutoff.add(CAUSE_MODULE_SYSTEM)",
+        "            if False:\n                pass",
+    ),
+    (
+        "module-system-templates",
+        JSM,
+        "                if cooked is None or any(\n"
+        "                    name in part for part in cooked for name in _MODULE_SYSTEM_NAMES\n"
+        "                ):",
+        "                if False:",
+    ),
+    (
+        "module-system-strings-sloppy",
+        JSM,
+        "                value = decode_js_string_sloppy(_text(node, self.source))",
+        "                value = decode_string_literal(node, self.source) or ''",
+    ),
+    (
+        "import-meta-require",
+        JSM,
+        "                if not self._inert_import_meta(node):",
+        "                if False:",
+    ),
+    (
+        "type-position-import",
+        JSM,
+        '        if function.type == "import" and _in_type_position(node):\n'
+        "            # ``typeof import('./x')`` is erased at emit.\n            return\n",
+        "",
+    ),
+    (
+        "text-scan-triggers",
+        JSM,
+        "            if pattern.search(view):\n                shutoff.add(cause)",
+        "            pass",
+    ),
+    (
+        "text-scan-literals",
+        JSM,
+        "        for match in _TEXT_LITERAL.finditer(view):\n            taints.add(match.group(2))",
+        "        pass",
+    ),
+    (
+        "text-scan-unescape",
+        JSM,
+        "    views = (text, _unescape_text(text))",
+        "    views = (text,)",
+    ),
+    # Engine eligibility.
+    (
+        "member-agrees",
+        ENG,
+        '    if member is not None and binding.get("member") != member:',
+        "    if False:",
+    ),
+    (
+        "namespace-form-only",
+        ENG,
+        '            or binding.get("form") != "namespace"\n',
+        "",
+    ),
+    # Evaluators (E5-3).
+    (
+        "timer-free-name",
+        JSS,
+        "            if self._binding_scope(first, _text(first, self.source)) is None:\n"
+        "                self.evaluator = True",
+        "            pass",
+    ),
+    (
+        "timer-non-function",
+        JSS,
+        "        else:\n            self.evaluator = True\n        self.global_wildcard = True",
+        "        self.global_wildcard = True",
+    ),
+    # Exact decoding.
+    (
+        "specifier-decoded",
+        JSS,
+        'source = decode_string_literal(node.child_by_field_name("source"), self.source)',
+        "source = (lambda n: n and self.source[n.start_byte + 1 : n.end_byte - 1]"
+        '.decode())(node.child_by_field_name("source"))',
+    ),
+    (
+        "names-decoded",
+        STR,
+        '    if node.type == "string":\n        return decode_string_literal(node, source)',
+        '    if node.type == "string":\n        return source[node.start_byte + 1 : node.end_byte - 1].decode()',
+    ),
+)
+
+
+def _pytest(root: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-p",
+            "no:cacheprovider",
+            "-q",
+            "-x",
+            "-rf",
+            "-o",
+            "addopts=--tb=no",
+            *TESTS,
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=900,
+        check=False,
+    )
+
+
+def main() -> int:
+    with tempfile.TemporaryDirectory(prefix="tier2-mutations-") as tmp:
+        copy = Path(tmp) / "repo"
+        copy.mkdir()
+        for name in ("chunker", "tests", "scripts"):
+            shutil.copytree(ROOT / name, copy / name)
+        shutil.copy2(ROOT / "pyproject.toml", copy / "pyproject.toml")
+        baseline = _pytest(copy)
+        if baseline.returncode != 0:
+            print(baseline.stdout[-2000:])
+            print("baseline fails; no mutation is meaningful", file=sys.stderr)
+            return 2
+        bad = 0
+        for ident, relative, old, new in MUTATIONS:
+            path = copy / relative
+            original = path.read_text(encoding="utf-8")
+            if original.count(old) != 1:
+                print(f"NOT-APPLIED\t{ident}\t{relative}")
+                bad += 1
+                continue
+            path.write_text(original.replace(old, new, 1), encoding="utf-8")
+            try:
+                result = _pytest(copy)
+            finally:
+                path.write_text(original, encoding="utf-8")
+            failed = next(
+                (
+                    line.removeprefix("FAILED ")
+                    for line in result.stdout.splitlines()
+                    if line.startswith("FAILED ")
+                ),
+                "",
+            )
+            if result.returncode not in (0, 1):
+                # A collection or import error is not a kill: the edit broke
+                # the copy instead of disabling a rule.
+                print(f"BROKEN\t{ident}\texit {result.returncode}")
+                bad += 1
+                continue
+            killed = result.returncode == 1
+            bad += not killed
+            print(f"{'KILLED' if killed else 'SURVIVED'}\t{ident}\t{failed}")
+        total = len(MUTATIONS)
+        print(f"{total - bad}/{total} killed")
+        return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
