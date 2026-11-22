@@ -8039,3 +8039,165 @@ def test_fold27_695_loader_modules_are_tracked(stmt: str, expected: str) -> None
 def test_fold27_695_unreachable_results_still_resolve(stmt: str) -> None:
     source = FOLD26_T.format(pre="", post="", stmt=stmt)
     assert proof_text(source) == ["def helper(*args):\n    return 1"], stmt
+
+
+# ---------------------------------------------------------------------------
+# Fold 28 (Codex 4658232413 at 0e96b12f): allow-listed callees are verified
+# by the ordinary lookup at the use site. A class body with a base or keyword
+# runs in a namespace a metaclass's ``__prepare__`` fills, so ``len``,
+# ``dict`` or ``operator`` there may be anything: the lookup gives
+# ``class-scope-bound`` and the use fails closed. Methods and comprehension
+# bodies skip the class namespace, so they still resolve (runtime-traced in
+# the fold-28 probes: the builtin runs).
+
+FOLD28_PRE = (
+    "import operator\n\n\n"
+    "class EvilNS:\n    @staticmethod\n    def update(*args):\n        return evil(*args)\n\n"
+    "    @staticmethod\n    def setitem(*args):\n        return evil(*args)\n\n\n"
+    "class Meta(type):\n    @classmethod\n    def __prepare__(mcls, name, bases, **kw):\n"
+    "        return {'len': evil, 'dict': EvilNS, 'operator': EvilNS}\n\n\n"
+    "class Base(metaclass=Meta):\n    pass\n\n\n"
+)
+FOLD28_USES = {
+    "len": "value = len(mod.__dict__)",
+    "dict": "dict.update(mod.__dict__, {'other': 1})",
+    "operator": "operator.setitem(mod.__dict__, 'other', 1)",
+}
+FOLD28_OPEN = {
+    "metaclass": "class K(metaclass=Meta):",
+    "inherited-prepare": "class K(Base):",
+    "keyword": "class K(Base, flag=1):",
+}
+FOLD28_PROBES = {
+    **{
+        (
+            "codex-4658232413"
+            if (head, use) == ("metaclass", "len")
+            else f"{head}-{use}"
+        ): (f"{FOLD28_OPEN[head]}\n        {FOLD28_USES[use]}")
+        for head in FOLD28_OPEN
+        for use in FOLD28_USES
+    },
+    # A comprehension's first iterable runs in the class scope.
+    **{
+        f"{head}-len-first-iterable": (
+            f"{FOLD28_OPEN[head]}\n        value = [x for x in (len(mod.__dict__),)]"
+        )
+        for head in FOLD28_OPEN
+    },
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD28_PROBES))
+def test_fold28_695_open_class_callees_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    source = FOLD26_T.format(pre=FOLD28_PRE, post="", stmt=FOLD28_PROBES[case])
+    root = _tree(tmp_path, {"a.py": source, "b.py": FOLD19_DECOY})
+    off, on = _off_on(root)
+    edge = _fold19_edge(off, "a.py")
+    assert edge["resolution"] == "ambiguous", case
+    assert _fold19_edge(on, "a.py") == edge, case
+
+
+def _fold28_method(head: str, use: str) -> str:
+    body = FOLD28_USES[use]
+    body = body if use != "len" else body.replace("value = ", "return ")
+    return f"{head}\n        def f(self):\n            {body}\n    K().f()"
+
+
+# Inside an open class, a method body and a comprehension body skip the class
+# namespace: Python calls the builtin (traced), and the lookup agrees.
+FOLD28_NESTED = {
+    **{
+        f"{head}-{use}-method": _fold28_method(FOLD28_OPEN[head], use)
+        for head in FOLD28_OPEN
+        for use in FOLD28_USES
+    },
+    **{
+        f"{head}-len-comprehension": (
+            f"{FOLD28_OPEN[head]}\n        value = [len(mod.__dict__) for _ in (1,)]"
+        )
+        for head in FOLD28_OPEN
+    },
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD28_NESTED))
+def test_fold28_695_class_nested_scopes_still_resolve(case: str) -> None:
+    source = FOLD26_T.format(pre=FOLD28_PRE, post="", stmt=FOLD28_NESTED[case])
+    assert proof_text(source) == ["def helper(*args):\n    return 1"], case
+
+
+# Controls: a plain class (no base, no keyword), its methods, and function
+# scope still resolve.
+FOLD28_PLAIN = {
+    **{
+        f"plain-class-{use}": f"class K:\n        {FOLD28_USES[use]}"
+        for use in FOLD28_USES
+    },
+    **{f"plain-method-{use}": _fold28_method("class K:", use) for use in FOLD28_USES},
+    **{f"function-{use}": FOLD28_USES[use] for use in FOLD28_USES},
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD28_PLAIN))
+def test_fold28_695_plain_scopes_still_resolve(case: str) -> None:
+    source = FOLD26_T.format(pre=FOLD28_PRE, post="", stmt=FOLD28_PLAIN[case])
+    assert proof_text(source) == ["def helper(*args):\n    return 1"], case
+
+
+# Every reason the ordinary lookup fails closed that a use site can reach
+# fails the verification too, so the use is off the list (the file goes
+# ``dynamic-scope``; a star import alone would give ``star-import``).
+@pytest.mark.parametrize(
+    ("reason_name", "pre", "stmt"),
+    [
+        (
+            "class-scope-bound (open namespace)",
+            FOLD28_PRE,
+            FOLD28_PROBES["keyword-len"],
+        ),
+        (
+            "class-scope-bound (bound in the class)",
+            "",
+            "class K:\n        len = print\n        value = len(mod.__dict__)",
+        ),
+        (
+            "dynamic-scope (annotation)",
+            "",
+            "def g(x: len(mod.__dict__)):\n        return x",
+        ),
+        (
+            "unmapped (mangled name)",
+            "from operator import setitem as __w\n\n\n",
+            "class K:\n        __w(mod.__dict__, 'other', 1)",
+        ),
+        ("star-import", "from os import *\n\n\n", "value = len(mod.__dict__)"),
+        (
+            "conditional (import)",
+            "if __debug__:\n    import operator\n\n\n",
+            "operator.setitem(mod.__dict__, 'other', 1)",
+        ),
+        (
+            "mixed-bindings (two imports)",
+            "import operator\nimport operator\n\n\n",
+            "operator.setitem(mod.__dict__, 'other', 1)",
+        ),
+        (
+            "local-variable (recorded write)",
+            "",
+            "client.len = print\n    value = len(mod.__dict__)",
+        ),
+        (
+            "builtin-shadow (module definition)",
+            "def len(*args):\n    return 0\n\n\n",
+            "value = len(mod.__dict__)",
+        ),
+    ],
+)
+def test_fold28_695_lookup_failures_fail_verification(
+    reason_name: str, pre: str, stmt: str
+) -> None:
+    source = FOLD26_T.format(pre=pre, post="", stmt=stmt)
+    assert reason(source) == "dynamic-scope", reason_name

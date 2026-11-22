@@ -917,7 +917,7 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
         name make an alias of the kind the value carries (a value carries
         a kind as itself or as an element of a tuple, list or set; a call,
         attribute read or subscript of it does not, so
-        `list(ns.keys())` and `C.__dict__.get('p')` are values, not the
+        `ns.get('p')` and `C.__dict__.get('p')` are values, not the
         namespace). **Every import of the mock module or `patch` is an
         alias too** (fold 24, Y-5), in any spelling and at any scope:
         `import mock`, `import mock as mk`, `from unittest import mock
@@ -955,8 +955,9 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
         cannot reach (a function local);
       - **namespace dict, pure reads** whose result cannot reach the
         namespace: `ns[c]` with constant keys and `ns.get(c, …)` (a key
-        naming an alias is a readback; `'__builtins__'` and `'__dict__'`
-        keys are dynamic-attribute literals and fail closed), `c in ns`,
+        naming an alias is a readback; a `'__builtins__'` string is a
+        dynamic-attribute literal and a `'__dict__'` subscript key is an
+        acquisition trigger, both failing closed), `c in ns`,
         `c not in ns`, `len(ns)`. **THE RULE for results** (fold 27, Codex
         4657978945): an A-1 read may treat its result as ordinary only
         when that result cannot reach the namespace at run time. An int
@@ -1002,7 +1003,25 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
       into a namespace by a recorded write (`m.len = f`,
       `ns['dict'] = C`). `operator` and its writers must come from
       `import operator [as op]` or `from operator import <writer> [as s]`,
-      every binding of the name being such an import. **A writer relied on
+      every binding of the name being such an import. **Allow-listed
+      callees are verified by the ordinary lookup at the use site** (fold
+      28, Codex 4658232413): once the scopes are complete, the name is
+      looked up from the use exactly as an ordinary edge would be, and a
+      builtin must give `none(unbound)` (unbound on the path), a stdlib
+      name its tracked import binding. Every reason the lookup fails
+      closed therefore fails the verification too: an open class
+      namespace on the path (a base or keyword, so `__prepare__` or
+      `__missing__` may supply the name: `class K(metaclass=M): len(ns)`)
+      or a binding in the class (`class-scope-bound`), an annotation or a
+      dynamic file (`dynamic-scope`), a mangled name (`unmapped`), a star
+      import, a conditional or doubled import (`conditional`,
+      `mixed-bindings`), a recorded write (`local-variable`) and a module
+      definition (`builtin-shadow`). A method or comprehension body inside
+      such a class skips the class namespace, as Python does, and still
+      resolves. The binding-event check above stays as the stricter belt
+      (it also refuses bindings in scopes the lookup never consults); for
+      builtin names the recorded-write check is now redundant with the
+      lookup, and for writer members it is still needed. **A writer relied on
       through a module attribute or a from-import is relied on by its
       member name too** (fold 26, AA-4): `operator.setitem(ns, …)` and
       `from operator import setitem as s` rely on the module's `setitem`,
@@ -2732,3 +2751,22 @@ file's own `patch` import, defeating Y-6.
 | Flipped: the fold-19 control's `z = list(mod.__dict__.keys())` became `z = len(mod.__dict__)`; the fold-23 `ns-keys` entry and the two fold-24 `keys()` controls were retired and re-pinned as failing closed | `tests/test_call_resolution_tier1_py.py` |
 | Cost: 0 and 0 against 4758e2cc with the `not in` fix included. Harness against main unchanged (byte-identical `cmp`); the president's p44–p62 trees and panel A (38) unchanged | — |
 | Pins: `test_fold27_695_namespace_views_keep_their_off_mode_edge` (5: the Codex repro, `.mapping` through a keys view in a variable, a walrus and a conditional, and `ns.keys().mapping['P']`; 4 wrong at 4758e2cc, the fifth already caught as an alias readback), `test_fold27_695_namespace_view_reads_fail_closed` (9, including `__builtins__` and `__dict__`), `test_fold27_695_loader_modules_are_tracked` (3), `test_fold27_695_unreachable_results_still_resolve` (7 controls). Mutation: `keys` back in `_NS_READS` 10 failures, the old `not in` check 1, `get` removed 8 | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: fold 28 (Codex 4658232413 at 0e96b12f: verification by the ordinary lookup at the use site)
+
+Only adds `none`; no expected row changes. `python` fact version 30. In a
+class body with a custom metaclass, `__prepare__` can supply `len`, so
+`class K(metaclass=Meta): value = len(mod.__dict__)` handed the namespace to
+`evil`. The event-based `_builtin_name` accepted it, because the allow-list
+verification did not use the lookup that refuses proofs in open class
+scopes. The same held for `dict.update` and `operator.setitem`.
+
+| Item | Applied in |
+| --- | --- |
+| `_builtin_name` and `_stdlib_name` record each verified use; `_verify_callees` runs once the binding events are applied and looks each one up from its use site with `lookup()`: a builtin must give `none(unbound)`, a stdlib name an `import` outcome whose binding is the tracked `import <module>` (or `from <module> import <writer>`). Otherwise the file goes `dynamic-scope` (A-2) | `py_scope._verify_callees`, `_builtin_name`, `_stdlib_name` |
+| Belt and braces: the binding-event check stays (stricter: it refuses bindings in scopes the lookup does not consult; removing it fails 15 tests); the recorded-write check stays for writer members (removing it fails 10); for builtin names it is redundant with the lookup (a recorded write is a module `local-variable` binding) | — |
+| Lookup failure reasons and their verification tests: `class-scope-bound` for an open namespace (metaclass, inherited `__prepare__` via a base, a keyword; 12 probes) and for a binding in the class; `dynamic-scope` for an annotation use; `unmapped` for a mangled alias; `star-import`; `conditional` and `mixed-bindings` imports; `local-variable` for a recorded write; `builtin-shadow`. Unreachable at a use site: a poisoned scope (every node kind is classified), a missing `nonlocal` target (a syntax error), the `__class__` cell (it cannot be spelled `len`/`dict`/`operator`), and `dynamic-scope` from a class body or frame locals (the file is already dynamic) | `tests/test_call_resolution_tier1_py.py` |
+| Runtime trace (fold-28 probes, 51 cases): the 12 open-class body and first-iterable cases run the replacement and were WRONG at 0e96b12f; they fail closed now. Methods and comprehension bodies in open classes, plain classes and function scope run the builtin and resolve. Nothing else changes | — |
+| Cost: 0 of 638 supported non-test stdlib files and 0 of 488 supported repository test files change against 0e96b12f. Harness against main unchanged (byte-identical `cmp`); the president's p44–p62 and panel A (38) unchanged | — |
+| AC nits: the alias paragraph's example is `ns.get('p')`; the `'__dict__'` wording is "subscript key" | §7.3 |
+| Pins: `test_fold28_695_open_class_callees_keep_their_off_mode_edge` (12: the Codex repro and `len`/`dict.update`/`operator.setitem` in a metaclass, an inherited-`__prepare__` and a keyword class body, plus three first iterables; all wrong at 0e96b12f), `test_fold28_695_class_nested_scopes_still_resolve` (12: methods and comprehension bodies), `test_fold28_695_plain_scopes_still_resolve` (9 controls), `test_fold28_695_lookup_failures_fail_verification` (9 reasons; 6 only the lookup catches). Mutation: no use-site lookup 19 failures, builtin verified by any `none` 13, event check removed 15, recorded-write check removed 10 | `tests/test_call_resolution_tier1_py.py` |

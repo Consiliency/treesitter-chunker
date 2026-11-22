@@ -894,6 +894,10 @@ class _Analysis:
         self.identifier_nodes: list[Any] = []
         self.binding_sites: dict[str, list[Any]] | None = None
         self.relied_names: set[str] = set()
+        # Fold 28: each verified callee, checked once the scopes are complete
+        # by the ordinary lookup at its use site (module ``None`` for a
+        # builtin).
+        self.verifications: list[tuple[Any, str | None, frozenset[str] | None]] = []
         self.handlers: dict[str, Callable[[Any, _Scope, int], None]] = {
             "function_definition": self._function,
             "class_definition": self._class,
@@ -932,6 +936,34 @@ class _Analysis:
             self.dynamic = True
         for scope, name, binding in self.events:
             self._bind(scope, name, binding)
+        self._verify_callees()
+
+    def _verify_callees(self) -> None:
+        """Verify every allow-listed callee by the ordinary lookup at its use
+        site (#695 fold 28, Codex 4658232413): a builtin must look up as
+        ``none(unbound)`` (bound nowhere on the path, no open class
+        namespace, no dynamic scope, no star import, no builtin shadow, no
+        recorded write); a stdlib name must look up as its tracked import.
+        Anything else makes the use off the list (A-2): fail closed."""
+        for node, module, members in self.verifications:
+            result = self.lookup(node)
+            if module is None:
+                verified = result == {"outcome": "none", "reason": "unbound"}
+            else:
+                binding = (
+                    result.get("binding") or {}
+                    if result.get("outcome") == "import"
+                    else {}
+                )
+                verified = binding.get("module") == module and (
+                    binding.get("form") == "import"
+                    if members is None
+                    else binding.get("form") == "from"
+                    and binding.get("name") in members
+                )
+            if not verified:
+                self.dynamic = True
+                return
 
     # -- building -----------------------------------------------------------
 
@@ -2382,6 +2414,7 @@ class _Analysis:
         if any(bound == name for _scope, bound, _binding in self.events):
             return False
         self.relied_names.add(name)
+        self.verifications.append((node, None, None))
         return True
 
     def _stdlib_name(
@@ -2404,6 +2437,7 @@ class _Analysis:
         ):
             return False
         self.relied_names.add(name)
+        self.verifications.append((node, module, members))
         if members is not None:
             # ``from operator import setitem as s`` relies on the module's
             # ``setitem`` member as well as on ``s`` (fold 26, AA-4).
