@@ -2040,10 +2040,14 @@ def test_inert_sibling_segments_are_a_closed_list() -> None:
 
 
 def _symlink_or_skip(link: Path, target: str) -> None:
+    """A relative symlink; the target uses the OS separator (Windows does
+    not follow ``/`` in a symlink target)."""
     try:
         link.symlink_to(target)
     except (OSError, NotImplementedError):
         pytest.skip("symbolic links are not available")
+    if not link.exists():
+        pytest.skip("the symbolic link does not resolve on this host")
 
 
 @pytest.mark.parametrize("which", ["importer", "target", "writer"])
@@ -2054,7 +2058,7 @@ def test_symlinked_files_fail_closed(tmp_path: Path, which: str) -> None:
     files = {**OTHERS, "real/svc.ts": SVC, "real/use.ts": USE, "real/x.js": "1;\n"}
     root = _write(tmp_path, files)
     if which == "importer":
-        _symlink_or_skip(root / "use.ts", "real/use.ts")
+        _symlink_or_skip(root / "use.ts", str(Path("real") / "use.ts"))
         (root / "svc.ts").write_text(SVC, encoding="utf-8")
         file, reason = "use.ts", "unknown-variant"
     elif which == "target":
@@ -2068,7 +2072,7 @@ def test_symlinked_files_fail_closed(tmp_path: Path, which: str) -> None:
         (root / "real" / "w" / "x.js").write_text(
             "require('./svc').t = 0;\n", encoding="utf-8"
         )
-        _symlink_or_skip(root / "real" / "y.js", "w/x.js")
+        _symlink_or_skip(root / "real" / "y.js", str(Path("w") / "x.js"))
         file, reason = "real/use.ts", "run-tainted:unresolvable-writer"
     off, structural, on, label = _run(root, file, "t")
     assert off["resolution"] == "ambiguous"
