@@ -120,8 +120,8 @@ def boundary(
             "calls to bare names in Python, JavaScript, TypeScript and TSX "
             "files; it currently resolves JS/TS calls whose target a lexical "
             "binding proves (a script top level only when no other file in the "
-            "run may declare the name as a global), and does not resolve "
-            "Python calls"
+            "run may declare the name as a global), and Python calls through "
+            "the LEGB scope chain (never a redefinition)"
         ),
     ),
     quiet: bool = typer.Option(

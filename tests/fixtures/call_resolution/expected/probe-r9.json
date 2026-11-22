@@ -221,7 +221,18 @@
      "caller": "call_k",
      "file": "py/pkg/__init__.py",
      "line": 5,
+     "pr": 4,
      "reference": "k",
+     "structural": {
+      "candidates": [
+       "py/pkg/__init__.py:1:k"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "4c84213a2c1821bfc2781842a86023543375be3f",
@@ -271,7 +282,17 @@
      "caller": "caller",
      "file": "py/redef.py",
      "line": 11,
+     "pr": 4,
      "reference": "d",
+     "structural": {
+      "candidates": [
+       "py/redef.py:1:d",
+       "py/redef.py:4:d"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "3cea486b314a1211942722d9c00ff970110bc7c3",
@@ -329,7 +350,18 @@
      "caller": "call_k",
      "file": "pkg/__init__.py",
      "line": 5,
+     "pr": 4,
      "reference": "k",
+     "structural": {
+      "candidates": [
+       "pkg/__init__.py:1:k"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "860df25f131fbaab91b025d617d80d063ba6c9e4",
@@ -379,7 +411,17 @@
      "caller": "caller",
      "file": "redef.py",
      "line": 11,
+     "pr": 4,
      "reference": "d",
+     "structural": {
+      "candidates": [
+       "redef.py:1:d",
+       "redef.py:4:d"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "b1efaf3948a2007ef3c5eae7c59656c96c2b9e53",

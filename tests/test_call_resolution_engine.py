@@ -39,14 +39,13 @@ MODE = "structural"
 
 # The plan PR this head implements (section 13.1). Expected-table rows of a
 # later PR that record an expectation for this head carry ``interim``.
-HEAD_PR = 3
+HEAD_PR = 4
 # Rules and reasons this head produces, each with a case in the expected
-# tables (10.6). Each later PR adds its own. ``stub`` stays until the Python
-# analyzer lands; ``unmapped`` and ``no-binding-fact`` are covered by the
-# named tests below.
+# tables (10.6). Each later PR adds its own. ``stub`` left the vocabulary
+# when the Python analyzer landed (PR 4); ``unmapped`` and ``no-binding-fact``
+# are covered by the named tests below.
 LIVE_RULES = {"t1.kind", "t1.family", "t1.lexical", "t1.ts_overload", "t1.js_hoist"}
 LIVE_REASONS = {
-    "stub",
     "unbound",
     "parameter",
     "local-variable",
@@ -62,6 +61,10 @@ LIVE_REASONS = {
     "type-only",
     "script-global",
     "namespace-merged",
+    # PR 4: Python.
+    "conditional",
+    "class-scope-bound",
+    "star-import",
 }
 # Named generated-coverage tests (plan 10.6, R-3) that exist at this head.
 NAMED_FAILURE_MODE_TESTS = (
@@ -74,6 +77,9 @@ NAMED_FAILURE_MODE_TESTS = (
     "test_unmapped_missing_symbol",
     "test_unmapped_unclassified_node",
     "test_unsupported_deep_nesting_js",
+    # PR 4: the Python analyzer's named tests (plan 10.6).
+    "test_unmapped_duplicate_key",
+    "test_unsupported_deep_nesting",
 )
 # Named end-to-end near-misses on trees the test writes, because a committed
 # tree would change the off-mode baseline (plan 10.6, 11.2): B7 and ``using``.
@@ -98,15 +104,97 @@ NAMED_TIER1_JS_TESTS = (
 )
 # Live reasons no committed fixture produces, each covered by a named test on
 # a tree the test writes (the president's #689 ruling, B-1).
-TEST_WRITTEN_REASONS = {"enum-scope": "test_enum_scope_end_to_end"}
-# Named tests the plan assigns to later heads (panel C2). Each moves to the
-# live list when its analyzer lands.
-DEFERRED_FAILURE_MODE_TESTS = {
-    "test_unmapped_duplicate_key": "PR 4",
-    "test_unsupported_deep_nesting": "PR 4",
+TEST_WRITTEN_REASONS = {
+    "enum-scope": "test_enum_scope_end_to_end",
+    # PR 4 (#695 panel A3): no committed fixture shadows a builtin.
+    "builtin-shadow": "test_builtin_shadow_end_to_end",
 }
-# Families whose analyzer is still the PR 1 stub.
-STUB_FAMILIES = {"python"}
+# Named tests the plan assigns to later heads (panel C2). Each moved to the
+# live list when its analyzer landed; none is left.
+DEFERRED_FAILURE_MODE_TESTS: dict[str, str] = {}
+# Named Python end-to-end tests on trees the test writes, because a committed
+# tree would change the off-mode baseline (plan 10.6, 11.2).
+NAMED_TIER1_PY_TESTS = (
+    "test_decorated_definitions_keep_their_off_mode_edge",
+    "test_non_ascii_identifiers_make_the_file_unsupported",
+    "test_dynamic_binding_forms_keep_their_off_mode_edge",
+    "test_write_forms_keep_their_off_mode_edge",
+    "test_python_positives_end_to_end",
+    # The #695 panel fold.
+    "test_panel_695_cases_keep_their_off_mode_edge",
+    "test_natural_unmapped_forms_keep_their_off_mode_edge",
+    "test_line_continuation_target_end_to_end",
+    "test_builtin_shadow_end_to_end",
+    # The president's #695 ruling (B-1 to B-6).
+    "test_ruling_695_cases_keep_their_off_mode_edge",
+    "test_whitespace_differential_has_no_silent_misparse",
+    # The president's re-check (N-1 to N-3): the general self-reference rule.
+    "test_recheck_695_cases_keep_their_off_mode_edge",
+    # The re-check at f7f0b0bd (N-4 to N-6) and the R-5 family.
+    "test_fold4_695_cases_keep_their_off_mode_edge",
+    # The re-check at 06f5dc32 (N-7): names from tokens.
+    "test_fold5_695_cases_keep_their_off_mode_edge",
+    # Codex 4654363963: mangled names from class code.
+    "test_codex_4654363963_end_to_end",
+    # The re-check at 13c38360 (I-3): mangled sys/__main__ aliases.
+    "test_fold7_695_cases_keep_their_off_mode_edge",
+    # The re-check at eae66582 (J-3): __main__ via class attributes and
+    # from-imports.
+    "test_fold8_695_cases_keep_their_off_mode_edge",
+    # The re-check at f2b38014 (K-3): "__main__" constant strings.
+    "test_fold9_695_cases_keep_their_off_mode_edge",
+    # The re-check at 3b2d8fae (L-2): the narrowed __main__ guard.
+    "test_fold10_695_cases_keep_their_off_mode_edge",
+    # The re-check at 8006c72c (M-2): the positive allow-list.
+    "test_fold11_695_cases_keep_their_off_mode_edge",
+    # Codex 4655078224: closure cells and code objects.
+    "test_codex_4655078224_closure_rebinding_end_to_end",
+    # The re-check at 606c689f (O-3): code objects from dis/monitoring and
+    # builtins reached as an attribute.
+    "test_fold13_695_cases_keep_their_off_mode_edge",
+    # The re-check at 8fd7c1a2 (P-2/P-3): the builtins module by name, the
+    # profiler's code objects and inspect's frame-locals helpers.
+    "test_fold14_695_cases_keep_their_off_mode_edge",
+    # The re-check at 14e8f044 (Q-2/Q-3): calls in annotations, and more
+    # code-object, live-locals and annotationlib routes.
+    "test_fold15_695_cases_keep_their_off_mode_edge",
+    # The re-check at a6734480 (S-2/S-3): class-body ``type`` values and
+    # ``__annotate_func__``.
+    "test_fold16_695_cases_keep_their_off_mode_edge",
+    # Codex 4656123247: callees and receivers classified after unwrapping
+    # parentheses.
+    "test_fold17_695_parenthesized_callees_keep_their_off_mode_edge",
+    # Fold 18: writer aliases, namespace mutators, operator writers, |=.
+    "test_fold18_695_writer_aliases_keep_their_off_mode_edge",
+    # Fold 19 (E-19): computed writes closed at the write site.
+    "test_fold19_695_computed_writes_keep_their_off_mode_edge",
+    # Fold 20: receiver-based patchers (pytest-mock, any X.patch.object).
+    "test_fold20_695_receiver_patchers_keep_their_off_mode_edge",
+    # Fold 21 (E-20): namespace aliases as attributes, mock aliases,
+    # resolver mentions.
+    "test_fold21_695_writes_and_triggers_keep_their_off_mode_edge",
+    # Fold 22: one alias/readback/escape mechanism for every sensitive kind.
+    "test_fold22_695_president_probes_keep_their_off_mode_edge",
+    "test_fold22_695_cross_kind_matrix_fails_closed",
+    # Fold 23 (E-21): the closed allow-list of sensitive-value uses.
+    "test_fold23_695_president_probes_keep_their_off_mode_edge",
+    "test_fold23_695_allow_list_is_closed",
+    "test_fold24_695_president_probes_keep_their_off_mode_edge",
+    "test_fold24_695_import_bindings_are_aliases",
+    "test_fold24_695_namespace_iteration_fails_closed",
+    "test_fold25_695_shadowed_allowlist_callees_keep_their_off_mode_edge",
+    "test_fold25_695_verified_callees_still_resolve",
+    "test_fold26_695_rebound_operator_members_keep_their_off_mode_edge",
+    "test_fold26_695_unrelated_writes_keep_the_entry",
+    "test_fold27_695_namespace_views_keep_their_off_mode_edge",
+    "test_fold27_695_unreachable_results_still_resolve",
+    "test_fold28_695_open_class_callees_keep_their_off_mode_edge",
+    "test_fold28_695_class_nested_scopes_still_resolve",
+    "test_fold28_695_plain_scopes_still_resolve",
+)
+# Expected rows per plan PR (10.1): a row that loses its finalization fails
+# the pin (#695 panel B7).
+EXPECTED_ROWS_PER_PR = {1: 55, 2: 55, 3: 6, 4: 43}
 # Grammars per analyzer family, for the allow-list review rule.
 FAMILY_GRAMMARS = {"js": ("javascript", "typescript", "tsx"), "python": ("python",)}
 
@@ -414,7 +502,7 @@ def _context(language: str = "typescript", supported: bool = True) -> engine.Run
                 "scope_facts": {
                     "language": language,
                     "supported": supported,
-                    "bindings": {"3:4": {"outcome": "none", "reason": "stub"}},
+                    "bindings": {"3:4": {"outcome": "none", "reason": "unbound"}},
                     "symbols": [],
                 },
             }
@@ -514,7 +602,7 @@ def test_decide_narrows_an_eligible_edge_and_rewrites_it() -> None:
     decisions = engine.narrow_relationships([relationship], _context())
     decision = decisions[relationship["call_site_id"]]
     assert decision.eligible and decision.changed
-    assert decision.outcome == {"outcome": "none", "reason": "stub"}
+    assert decision.outcome == {"outcome": "none", "reason": "unbound"}
     assert relationship["candidates"] == ["ts_fn_a", "ts_fn_b"]
     assert relationship["resolution"] == "ambiguous"
     assert relationship["to"] == "t"
@@ -575,8 +663,12 @@ def test_rule_and_reason_vocabularies() -> None:
         "struct",
         "trait",
     } == engine.NON_CALLABLE_KINDS
-    assert {"stub", "unmapped", "no-binding-fact", "unbound"} <= KNOWN_NONE_REASONS
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "1"}
+    assert {"unmapped", "no-binding-fact", "unbound"} <= KNOWN_NONE_REASONS
+    # Interim reasons leave the vocabulary once replaced (stub at PR 4).
+    assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
+        KNOWN_NONE_REASONS
+    )
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "30"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
@@ -620,12 +712,9 @@ def _on_mode(run: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
 def test_expected_tables_hold_at_this_head(tree: str) -> None:
     """Rows with a ``structural`` field match it; every other row is unchanged.
 
-    At this head the JS/TS analyzer is real and the Python analyzer is still
-    the stub: every Python call has the outcome ``none(stub)``, and no JS/TS
-    call has it.
+    At this head both analyzers are real.
     """
     table = _table(tree)
-    stub = {"outcome": "none", "reason": "stub"}
     for run in (run for run in RUNS if run.tree == tree):
         facts, graph = _on_mode(run)
         scope = {item["path"]: item["scope_facts"] for item in facts}
@@ -634,9 +723,6 @@ def test_expected_tables_hold_at_this_head(tree: str) -> None:
         context = engine.build_run_context(facts, graph["symbol_lookup"], MODE)
         for item in facts:
             assert valid_scope_facts(item["scope_facts"], item["language"])
-            is_stub = engine.language_family(item["language"]) in STUB_FAMILIES
-            for outcome in item["scope_facts"]["bindings"].values():
-                assert (outcome == stub) is is_stub, item["path"]
         symbols = graph["symbol_lookup"]
         edges = [edge for edge in graph["relationships"] if edge["type"] == "calls"]
         records = table["runs"][run.label]["calls"]
@@ -678,6 +764,16 @@ def test_expected_tables_hold_at_this_head(tree: str) -> None:
                 # Labels cannot tell two symbols on one line apart.
                 assert expected["candidate_ids"] == edge["candidates"], label
             assert isinstance(record.get("pr"), int), label
+
+
+def test_expected_rows_per_pr_are_pinned() -> None:
+    counts: dict[int, int] = {}
+    for tree in TREES:
+        for run in _table(tree)["runs"].values():
+            for record in run["calls"]:
+                if record.get(MODE) is not None:
+                    counts[record["pr"]] = counts.get(record["pr"], 0) + 1
+    assert counts == EXPECTED_ROWS_PER_PR
 
 
 def test_expected_records_use_the_known_vocabulary() -> None:
@@ -735,6 +831,10 @@ def test_live_rules_and_reasons_have_cases() -> None:
 
     for name in NAMED_TIER1_JS_TESTS:
         assert callable(getattr(tier1_js, name, None)), name
+    from tests import test_call_resolution_tier1_py as tier1_py
+
+    for name in NAMED_TIER1_PY_TESTS:
+        assert callable(getattr(tier1_py, name, None)), name
     # Every reason the analyzers emit on the fixtures is a live reason; the
     # two the engine itself produces are covered by the named tests.
     emitted = {
@@ -748,7 +848,9 @@ def test_live_rules_and_reasons_have_cases() -> None:
         emitted - covered
     )
     assert set(TEST_WRITTEN_REASONS) <= KNOWN_NONE_REASONS
-    assert set(TEST_WRITTEN_REASONS.values()) <= set(NAMED_TIER1_JS_TESTS)
+    assert set(TEST_WRITTEN_REASONS.values()) <= set(NAMED_TIER1_JS_TESTS) | set(
+        NAMED_TIER1_PY_TESTS
+    )
     assert not set(NAMED_FAILURE_MODE_TESTS) & set(DEFERRED_FAILURE_MODE_TESTS)
     assert set(DEFERRED_FAILURE_MODE_TESTS.values()) <= {"PR 2", "PR 4"}
     for name in DEFERRED_FAILURE_MODE_TESTS:
@@ -760,9 +862,9 @@ def test_live_rules_and_reasons_have_cases() -> None:
 def test_proving_families_have_reviewed_allowlists() -> None:
     """A family whose analyzer proves anything has reviewed grammars (7.5).
 
-    The JS/TS analyzer emits real outcomes, so javascript, typescript and
-    tsx must be classified in full; the Python stub emits only
-    ``none(stub)`` until its analyzer and review land together.
+    Both analyzers emit real outcomes, so javascript, typescript, tsx and
+    python must be classified in full (the Python review landed with its
+    analyzer, PR 4).
     """
     from chunker.call_resolution.allowlist import REVIEWED_LANGUAGES
 
@@ -770,12 +872,10 @@ def test_proving_families_have_reviewed_allowlists() -> None:
     proving: set[str] = set()
     for _, item in harness.fixture_scope_facts():
         family = engine.language_family(item["language"])
-        for outcome in item["scope_facts"]["bindings"].values():
-            if outcome != {"outcome": "none", "reason": "stub"}:
-                assert family is not None
-                proving.add(family)
-    assert "js" in proving
-    assert not proving & STUB_FAMILIES
+        if item["scope_facts"]["bindings"]:
+            assert family is not None
+            proving.add(family)
+    assert {"js", "python"} <= proving
     for family in sorted(proving):
         missing = set(FAMILY_GRAMMARS[family]) - REVIEWED_LANGUAGES
         assert not missing, f"{family} proves bindings; review {sorted(missing)}"

@@ -24,7 +24,7 @@
       "candidates": [
        "svc.py:14:C.c"
       ],
-      "outcome": "none(stub)",
+      "outcome": "none(parameter)",
       "resolution": "resolved",
       "rules": []
      },
@@ -75,7 +75,17 @@
      "caller": "d",
      "file": "svc.py",
      "line": 23,
+     "pr": 4,
      "reference": "d",
+     "structural": {
+      "candidates": [
+       "svc.py:18:d",
+       "svc.py:22:d"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "0de792bed499be0d05b2d0ee621b71ffea7755cc",
@@ -101,7 +111,17 @@
      "caller": "uses_c2",
      "file": "svc.py",
      "line": 27,
+     "pr": 4,
      "reference": "C",
+     "structural": {
+      "candidates": [
+       "svc.py:5:C",
+       "svc.py:10:C"
+      ],
+      "outcome": "local",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "2cd29bb65fb18731eb66f5b4ca8c3440bc350b83",
@@ -131,7 +151,7 @@
      "reference": "C().c",
      "structural": {
       "candidates": [],
-      "outcome": "none(stub)",
+      "outcome": "none(unbound)",
       "resolution": "unresolved",
       "rules": []
      },

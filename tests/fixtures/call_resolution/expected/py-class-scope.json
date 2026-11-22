@@ -24,7 +24,7 @@
       "candidates": [
        "a.py:1:helper"
       ],
-      "outcome": "none(stub)",
+      "outcome": "local",
       "resolution": "resolved",
       "rules": []
      },

@@ -42,7 +42,17 @@
      "caller": "outer",
      "file": "a.py",
      "line": 14,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "b.py:2:f.helper",
+       "a.py:2:outer.helper"
+      ],
+      "outcome": "none(mixed-bindings)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "3eec569010d2d94dd264c6c0fa77c5de52a3c38b",
@@ -68,7 +78,18 @@
      "caller": "f",
      "file": "b.py",
      "line": 5,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "b.py:2:f.helper"
+      ],
+      "outcome": "local",
+      "resolution": "resolved",
+      "rules": [
+       "t1.lexical"
+      ]
+     },
      "today": {
       "candidate_ids": [
        "3eec569010d2d94dd264c6c0fa77c5de52a3c38b",

@@ -329,6 +329,8 @@ def test_cli_help_states_the_current_head() -> None:
         assert '"Experimental: call-edge resolution' in text, module
         assert "except at script top levels" not in text, module
         assert "may declare the name as a global" in text, module
+        assert "does not resolve Python calls" not in text, module
+        assert "the LEGB scope chain (never a redefinition)" in text, module
 
 
 def test_experimental_label_and_spec_text() -> None:
@@ -338,8 +340,10 @@ def test_experimental_label_and_spec_text() -> None:
     unreleased = changelog.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
     assert "**Experimental:**" in unreleased
     assert "call_resolution" in unreleased
-    # The per-head statement (plan 4.5) at PR 3.
-    assert "Python calls are not resolved yet" in unreleased
+    # The per-head statement (plan 4.5) at PR 4.
+    assert "Python calls are not resolved yet" not in unreleased
+    assert "**Python redefinitions never resolve**" in unreleased
+    assert "non-ASCII identifier" in unreleased
     assert "t1.ts_overload" in unreleased
     assert "t1.js_hoist" in unreleased
     assert "script_globals" in unreleased

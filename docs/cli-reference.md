@@ -110,9 +110,11 @@ when a lexical binding in the caller's file proves its one target
 (`t1.lexical`; `t1.ts_overload` for a TS overload set; `t1.js_hoist` for the
 last of repeated plain-JavaScript function declarations). A script-goal top
 level resolves only when no other file of the run may declare the name as a
-global, and merged TS namespace bodies never resolve. Python callers are not
-resolved yet, and only the symbol-kind and language-family filters narrow
-them. Narrowed edges carry
+global, and merged TS namespace bodies never resolve. For Python callers it
+resolves an edge when the LEGB scope chain proves one unconditional,
+undecorated definition (`t1.lexical`); redefinitions narrow to their group
+and never resolve. Elsewhere only the symbol-kind and language-family filters
+narrow. Narrowed edges carry
 `provenance.call_resolution`
 and `provenance.call_rules`, and `run.options.call_resolution` records the mode.
 Use a separate `--cache-dir` per mode: switching modes on one cache directory is a

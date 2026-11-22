@@ -25,7 +25,7 @@
        "a.py:10:B.run",
        "a.py:2:A.run"
       ],
-      "outcome": "none(stub)",
+      "outcome": "none(parameter)",
       "resolution": "ambiguous",
       "rules": []
      },
@@ -61,7 +61,7 @@
        "a.py:10:B.run",
        "a.py:2:A.run"
       ],
-      "outcome": "none(stub)",
+      "outcome": "none(parameter)",
       "resolution": "ambiguous",
       "rules": []
      },

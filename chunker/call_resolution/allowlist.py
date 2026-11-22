@@ -16,10 +16,9 @@ can never add an unreviewed binding form that narrows an edge.
 ``tests/test_call_resolution_allowlist.py`` enumerates the kinds of each loaded
 ``Language`` and fails on any unclassified kind of a reviewed grammar.
 
-The JavaScript, TypeScript and TSX grammars are reviewed (the JS/TS
-analyzer, :mod:`.js_scope`, consults this list for every node it visits).
-Python is still a stub and unreviewed; its analyzer change adds its
-classification and lists it in :data:`REVIEWED_LANGUAGES`.
+All four grammars are reviewed: the JS/TS analyzer, :mod:`.js_scope`, and
+the Python analyzer, :mod:`.py_scope`, consult this list for every node they
+visit.
 
 Named explicitly by the plan: TS ``import_alias`` is handled as a non-symbol
 binding; ``for (const/let ... of/in)`` is ``for_in_statement``; JavaScript's
@@ -278,17 +277,154 @@ _TS_COMMON: dict[str, Entry] = {
     "union_type": _NB,
 }
 
-# {grammar: {node kind: Entry}}. Python is unreviewed until its analyzer
-# lands, so its kinds all fail closed.
+# Python (plan 7.3). Blocks open no scope; every write form binds in the
+# scope it runs in (``handled``), and everything else is ``non-binding``.
+_PY_SCOPE = Entry(HANDLED, "scope")
+_PY_PATTERN = Entry(HANDLED, "pattern: binds as its target, parameter or case")
+_PY_LOCAL = Entry(HANDLED, "local-variable")
+_PY_IMPORT = Entry(HANDLED, "import")
+_PYTHON: dict[str, Entry] = {
+    "aliased_import": _PY_IMPORT,
+    "argument_list": _NB,
+    "as_pattern": Entry(HANDLED, "local-variable: a with/except alias or case capture"),
+    "as_pattern_target": _PY_PATTERN,
+    "assert_statement": _NB,
+    "assignment": Entry(HANDLED, "local-variable: assignment and annotated targets"),
+    "attribute": _NB,
+    "augmented_assignment": Entry(HANDLED, "local-variable: augmented assignment"),
+    "await": _NB,
+    "binary_operator": _NB,
+    "block": _NB,
+    "boolean_operator": _NB,
+    "break_statement": _NB,
+    "call": _NB,
+    "case_clause": _NB,
+    "case_pattern": Entry(HANDLED, "local-variable: match capture"),
+    "chevron": _NB,
+    "class_definition": Entry(HANDLED, "symbol, and a class scope"),
+    "class_pattern": _PY_PATTERN,
+    "comment": _NB,
+    "comparison_operator": _NB,
+    "complex_pattern": _NB,
+    "concatenated_string": _NB,
+    "conditional_expression": _NB,
+    "constrained_type": _NB,
+    "continue_statement": _NB,
+    "decorated_definition": Entry(
+        HANDLED, "a decorated def or class binds the decorator's result"
+    ),
+    "decorator": _NB,
+    "default_parameter": Entry(HANDLED, "parameter"),
+    "delete_statement": Entry(HANDLED, "local-variable: del"),
+    "dict_pattern": _PY_PATTERN,
+    "dictionary": _NB,
+    "dictionary_comprehension": _PY_SCOPE,
+    "dictionary_splat": _NB,
+    "dictionary_splat_pattern": Entry(HANDLED, "parameter"),
+    "dotted_name": _NB,
+    "elif_clause": _NB,
+    "ellipsis": _NB,
+    "else_clause": _NB,
+    "escape_interpolation": _NB,
+    "escape_sequence": _NB,
+    "except_clause": Entry(HANDLED, "local-variable: except name"),
+    "exec_statement": Entry(HANDLED, "dynamic-scope: the Python 2 exec statement"),
+    "expression_list": _NB,
+    "expression_statement": _NB,
+    "false": _NB,
+    "finally_clause": _NB,
+    "float": _NB,
+    "for_in_clause": Entry(HANDLED, "local-variable: comprehension target"),
+    "for_statement": Entry(HANDLED, "local-variable: loop target"),
+    "format_expression": _NB,
+    "format_specifier": _NB,
+    "function_definition": Entry(HANDLED, "symbol, and a function scope"),
+    "future_import_statement": _PY_IMPORT,
+    "generator_expression": _PY_SCOPE,
+    "generic_type": _NB,
+    "global_statement": Entry(HANDLED, "redirect: global"),
+    "identifier": _NB,
+    "if_clause": _NB,
+    "if_statement": _NB,
+    "import_from_statement": _PY_IMPORT,
+    "import_prefix": _NB,
+    "import_statement": _PY_IMPORT,
+    "integer": _NB,
+    "interpolation": _NB,
+    "keyword_argument": _NB,
+    "keyword_pattern": _PY_PATTERN,
+    "keyword_separator": _NB,
+    "lambda": Entry(HANDLED, "scope: lambda parameters"),
+    "lambda_parameters": Entry(HANDLED, "parameter"),
+    "line_continuation": _NB,
+    "list": _NB,
+    "list_comprehension": _PY_SCOPE,
+    "list_pattern": _PY_PATTERN,
+    "list_splat": _NB,
+    "list_splat_pattern": _PY_PATTERN,
+    "match_statement": _NB,
+    "member_type": _NB,
+    "module": _PY_SCOPE,
+    "named_expression": Entry(HANDLED, "local-variable: walrus"),
+    "none": _NB,
+    "nonlocal_statement": Entry(HANDLED, "redirect: nonlocal"),
+    "not_operator": _NB,
+    "pair": _NB,
+    "parameters": Entry(HANDLED, "parameter"),
+    "parenthesized_expression": _NB,
+    "parenthesized_list_splat": _NB,
+    "pass_statement": _NB,
+    "pattern_list": _PY_PATTERN,
+    "positional_separator": _NB,
+    "print_statement": _NB,
+    "raise_statement": _NB,
+    "relative_import": _NB,
+    "return_statement": _NB,
+    "set": _NB,
+    "set_comprehension": _PY_SCOPE,
+    "slice": _NB,
+    "splat_pattern": _PY_PATTERN,
+    "splat_type": _NB,
+    "string": _NB,
+    "string_content": _NB,
+    "string_end": _NB,
+    "string_start": _NB,
+    "subscript": _NB,
+    "true": _NB,
+    "try_statement": _NB,
+    "tuple": _NB,
+    "tuple_pattern": _PY_PATTERN,
+    "type": _NB,
+    "type_alias_statement": Entry(
+        HANDLED, "local-variable, and a type-parameter scope when generic"
+    ),
+    "type_conversion": _NB,
+    "type_parameter": Entry(HANDLED, "parameter: PEP 695 type parameters"),
+    "typed_default_parameter": Entry(HANDLED, "parameter"),
+    "typed_parameter": Entry(HANDLED, "parameter"),
+    "unary_operator": _NB,
+    "union_pattern": _PY_PATTERN,
+    "union_type": _NB,
+    "while_statement": _NB,
+    "wildcard_import": Entry(HANDLED, "star-import"),
+    "with_clause": _NB,
+    "with_item": Entry(HANDLED, "local-variable: with target"),
+    "with_statement": _NB,
+    "yield": _NB,
+}
+
+# {grammar: {node kind: Entry}}.
 ALLOWLIST: dict[str, dict[str, Entry]] = {
     "javascript": {**_JS_COMMON, **_JSX, **_JS_ONLY},
     "typescript": {**_JS_COMMON, **_TS_COMMON, "type_assertion": _NB},
     "tsx": {**_JS_COMMON, **_TS_COMMON, **_JSX},
-    "python": {},
+    "python": _PYTHON,
 }
 
 # Grammars whose every named node kind must be classified.
-REVIEWED_LANGUAGES: frozenset[str] = frozenset({"javascript", "typescript", "tsx"})
+REVIEWED_LANGUAGES: frozenset[str] = frozenset(
+    {"javascript", "typescript", "tsx", "python"}
+)
 
 _UNCLASSIFIED = Entry(FAIL_CLOSED, "unclassified")
 

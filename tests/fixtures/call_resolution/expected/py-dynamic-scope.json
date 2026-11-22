@@ -18,7 +18,19 @@
      "caller": "go",
      "file": "a1.py",
      "line": 6,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a1.py:1:helper",
+       "a4.py:4:helper",
+       "a3.py:1:helper",
+       "a2.py:1:helper"
+      ],
+      "outcome": "none(dynamic-scope)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "1fda38f714a36163bfd3f964d68dfbda812d3bf9",
@@ -48,7 +60,19 @@
      "caller": "go",
      "file": "a2.py",
      "line": 6,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a1.py:1:helper",
+       "a4.py:4:helper",
+       "a3.py:1:helper",
+       "a2.py:1:helper"
+      ],
+      "outcome": "none(dynamic-scope)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "1fda38f714a36163bfd3f964d68dfbda812d3bf9",
@@ -78,7 +102,19 @@
      "caller": "go",
      "file": "a3.py",
      "line": 6,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a1.py:1:helper",
+       "a4.py:4:helper",
+       "a3.py:1:helper",
+       "a2.py:1:helper"
+      ],
+      "outcome": "none(dynamic-scope)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "1fda38f714a36163bfd3f964d68dfbda812d3bf9",
@@ -108,7 +144,19 @@
      "caller": "go",
      "file": "a4.py",
      "line": 9,
+     "pr": 4,
      "reference": "helper",
+     "structural": {
+      "candidates": [
+       "a1.py:1:helper",
+       "a4.py:4:helper",
+       "a3.py:1:helper",
+       "a2.py:1:helper"
+      ],
+      "outcome": "none(dynamic-scope)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "today": {
       "candidate_ids": [
        "1fda38f714a36163bfd3f964d68dfbda812d3bf9",
