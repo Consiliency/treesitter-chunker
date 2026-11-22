@@ -722,6 +722,13 @@ _MOCKER_NAMES = frozenset(
     {"mocker", "module_mocker", "class_mocker", "package_mocker", "session_mocker"}
 )
 _PATCH_METHODS = ("object", "dict", "multiple")
+# Stdlib string-to-module resolvers (#695 fold 21, E-20): a mention in any
+# position fails closed, like ``importlib``. These names are rare enough to
+# count in every spelling; ``locate`` counts on ``pydoc`` and ``_resolve``/
+# ``_importer`` on ``logging.config`` only.
+_RESOLVER_NAMES = frozenset({"resolve_name", "safeimport", "find_class"})
+_PYDOC_RESOLVERS = frozenset({"locate", "safeimport"})
+_LOGGING_RESOLVERS = frozenset({"_resolve", "_importer"})
 _IMPORT_STATEMENTS = frozenset(
     {"import_statement", "import_from_statement", "future_import_statement"}
 )
@@ -836,6 +843,11 @@ class _Analysis:
         self.operator_escape = False
         # Names assigned a namespace receiver (``d = mod.__dict__``).
         self.namespace_aliases: set[str] = set()
+        # Fold 21: a constant ``"patch"`` string, and the mock-module and
+        # pytest-mock names found by alias propagation (B-5).
+        self.patch_string_seen = False
+        self.mock_aliases: set[str] = set()
+        self.mocker_names: set[str] = set(_MOCKER_NAMES)
         self.handlers: dict[str, Callable[[Any, _Scope, int], None]] = {
             "function_definition": self._function,
             "class_definition": self._class,
@@ -1361,6 +1373,9 @@ class _Analysis:
         # ``patch``.
         mock_names: set[str] = set()
         patch_names: set[str] = set()
+        # Fold 21 (E-20): names bound to ``pydoc`` and ``logging.config``.
+        pydoc_names: set[str] = set()
+        logging_config_names: set[str] = set()
         stack = [self.root]
         while stack:
             node = stack.pop()
@@ -1418,6 +1433,13 @@ class _Analysis:
                         # ``pkg.__dict__["a"]``, ``NAME = "a"``; N-3).
                         self.dynamic = True
             elif kind in ("subscript", "call"):
+                if kind == "subscript" and any(
+                    _constant_string(child, source) == _NAMESPACE_DICT
+                    for index, child in enumerate(node.children)
+                    if node.field_name_for_child(index) == "subscript"
+                ):
+                    # ``type.__dict__["__dict__"].__get__(m)`` (fold 21, V-7).
+                    self.dynamic = True
                 self._module_by_name(node)
                 if kind == "call":
                     self._setattr_call(node)
@@ -1435,6 +1457,18 @@ class _Analysis:
                     for last, bound in _from_import_names(node, source):
                         if last in _OPERATOR_WRITERS:
                             operator_names.update(_spellings(bound, source))
+                if not dots and module_parts == ["pydoc"]:
+                    for last, _bound in _from_import_names(node, source):
+                        if last in _PYDOC_RESOLVERS:
+                            self.dynamic = True  # ``from pydoc import locate``
+                if not dots and module_parts == ["logging"]:
+                    for last, bound in _from_import_names(node, source):
+                        if last == "config":
+                            logging_config_names.update(_spellings(bound, source))
+                if not dots and module_parts == ["logging", "config"]:
+                    for last, _bound in _from_import_names(node, source):
+                        if last in _LOGGING_RESOLVERS:
+                            self.dynamic = True
                 if not dots and module_parts == ["unittest"]:
                     # ``from unittest import mock as m`` (fold 19 W-3).
                     for last, bound in _from_import_names(node, source):
@@ -1466,6 +1500,12 @@ class _Analysis:
                             mock_names.update(_spellings(alias, source))
                         elif parts == ["mock"]:
                             mock_names.add("mock")
+                        if parts == ["pydoc"]:
+                            pydoc_names.update(
+                                _spellings(alias, source) if alias else {"pydoc"}
+                            )
+                        if parts == ["logging", "config"] and alias:
+                            logging_config_names.update(_spellings(alias, source))
                 if (
                     not dots
                     and len(module_parts) == 1
@@ -1484,7 +1524,10 @@ class _Analysis:
         self._namespace_rules(
             calls, attributes, augmented, bindings, matches, identifiers, operator_names
         )
-        self._mock_rules(calls, attributes, identifiers, mock_names, patch_names)
+        self._resolver_rules(attributes, identifiers, pydoc_names, logging_config_names)
+        self._mock_rules(
+            calls, attributes, identifiers, bindings, mock_names, patch_names
+        )
         for ident in identifiers:
             name = _text(ident, source)
             parent = ident.parent
@@ -1651,6 +1694,11 @@ class _Analysis:
             self.namespace_seen = True
         if parts & _OPERATOR_WRITERS:
             self.operator_escape = True
+        if parts & _RESOLVER_NAMES:
+            # ``getattr(pkgutil, "resolve_name")`` (fold 21, E-20).
+            self.dynamic = True
+        if "patch" in parts:
+            self.patch_string_seen = True
         if parts & _FILE_WIDE_NAMES:
             self.dynamic = True
             self.frame_locals = True
@@ -2010,8 +2058,13 @@ class _Analysis:
             return bool(_spellings(node, self.source) & self.namespace_aliases)
         if node.type == "attribute":
             attribute = node.child_by_field_name("attribute")
-            return attribute is not None and _text(attribute, self.source) == (
-                _NAMESPACE_DICT
+            if attribute is None:
+                return False
+            # ``x.__dict__``, and a namespace alias read back as an attribute:
+            # a module-level ``NS`` as ``m.NS``, a class-body ``ns`` as
+            # ``K.ns`` or ``self.ns`` (fold 21, B-4).
+            return _text(attribute, self.source) == _NAMESPACE_DICT or bool(
+                _spellings(attribute, self.source) & self.namespace_aliases
             )
         if node.type == "call":
             function = node.child_by_field_name("function")
@@ -2021,6 +2074,14 @@ class _Analysis:
             if function is not None and function.type == "identifier":
                 if _text(function, self.source) == "vars":
                     return True
+                arguments = _call_arguments(node)
+                if (
+                    _text(function, self.source) == "getattr"
+                    and len(arguments) > 1
+                    and _constant_string(arguments[1], self.source)
+                    in self.namespace_aliases
+                ):
+                    return True  # ``getattr(m, "NS")`` (B-4)
             return any(
                 _constant_string(argument, self.source) == _NAMESPACE_DICT
                 for argument in _call_arguments(node)
@@ -2224,11 +2285,137 @@ class _Analysis:
 
     # -- unittest.mock (#695 fold 19, W-3) ----------------------------------
 
+    def _resolver_rules(
+        self,
+        attributes: list[Any],
+        identifiers: list[Any],
+        pydoc_names: set[str],
+        logging_config_names: set[str],
+    ) -> None:
+        """A stdlib string-to-module resolver mentioned in any position fails
+        closed, like ``importlib`` (fold 21, E-20): ``resolve_name``,
+        ``safeimport`` and ``find_class`` in every spelling, ``locate`` on
+        ``pydoc``, ``_resolve``/``_importer`` on ``logging.config`` (their
+        from-imports are handled with the import)."""
+        for ident in identifiers:
+            if _spellings(ident, self.source) & _RESOLVER_NAMES:
+                self.dynamic = True
+                return
+        for node in attributes:
+            attribute = node.child_by_field_name("attribute")
+            receiver = node.child_by_field_name("object")
+            if attribute is None or receiver is None:
+                continue
+            name = _text(attribute, self.source)
+            receiver = _unwrap(receiver, skip_comments=True)
+            if name == _SYS_MODULES and (
+                (
+                    receiver.type == "identifier"
+                    and _text(receiver, self.source) == "_sys"
+                )
+                or (
+                    receiver.type == "attribute"
+                    and receiver.child_by_field_name("attribute") is not None
+                    and _text(receiver.child_by_field_name("attribute"), self.source)
+                    == "_sys"
+                )
+            ):
+                # ``collections._sys.modules[X.__module__]``: another module's
+                # private ``sys`` (fold 21, E-20; 0 extra stdlib files).
+                self.dynamic = True
+            if name in _PYDOC_RESOLVERS and receiver.type == "identifier":
+                if _spellings(receiver, self.source) & pydoc_names:
+                    self.dynamic = True
+            if name in _LOGGING_RESOLVERS:
+                if receiver.type == "identifier" and (
+                    _spellings(receiver, self.source) & logging_config_names
+                ):
+                    self.dynamic = True
+                elif receiver.type == "attribute":
+                    inner = receiver.child_by_field_name("attribute")
+                    head = receiver.child_by_field_name("object")
+                    if (
+                        inner is not None
+                        and _text(inner, self.source) == "config"
+                        and head is not None
+                        and _text(_unwrap(head, skip_comments=True), self.source)
+                        == "logging"
+                    ):
+                        self.dynamic = True
+
+    def _mock_aliases(
+        self,
+        bindings: list[tuple[Any, Any]],
+        mock_names: set[str],
+    ) -> None:
+        """Mock-module and pytest-mock names bound by assignment, walrus,
+        tuple targets, class bodies or ``self.X = …`` (fold 21, B-5),
+        flow-insensitively."""
+        changed = True
+        while changed:
+            changed = False
+            for target, value in bindings:
+                value = _unwrap(value, skip_comments=True)
+                if self._mock_expression(value, mock_names):
+                    sink = self.mock_aliases
+                elif self._mocker_expression(value):
+                    sink = self.mocker_names
+                else:
+                    continue
+                names: set[str] = set()
+                if target.type == "attribute":
+                    attribute = target.child_by_field_name("attribute")
+                    if attribute is not None:
+                        names = _spellings(attribute, self.source)
+                else:
+                    for ident in _target_names(target):
+                        names |= _spellings(ident, self.source)
+                if names - sink:
+                    sink |= names
+                    changed = True
+
+    def _mock_expression(self, node: Any, mock_names: set[str]) -> bool:
+        """``mock`` (an import), one of its aliases, an attribute holding one
+        (``K.mk``, ``self.mk``) or ``unittest.mock``."""
+        node = _unwrap(node, skip_comments=True)
+        if node.type == "named_expression":
+            value = node.child_by_field_name("value")
+            return value is not None and self._mock_expression(value, mock_names)
+        if node.type == "identifier":
+            return bool(
+                _spellings(node, self.source) & (mock_names | self.mock_aliases)
+            )
+        if node.type != "attribute":
+            return False
+        attribute = node.child_by_field_name("attribute")
+        head = node.child_by_field_name("object")
+        if attribute is None:
+            return False
+        if _spellings(attribute, self.source) & self.mock_aliases:
+            return True
+        return (
+            _text(attribute, self.source) == "mock"
+            and head is not None
+            and _text(_unwrap(head, skip_comments=True), self.source) == "unittest"
+        )
+
+    def _mocker_expression(self, node: Any) -> bool:
+        node = _unwrap(node, skip_comments=True)
+        if node.type == "identifier":
+            return bool(_spellings(node, self.source) & self.mocker_names)
+        if node.type == "attribute":
+            attribute = node.child_by_field_name("attribute")
+            return attribute is not None and bool(
+                _spellings(attribute, self.source) & self.mocker_names
+            )
+        return False
+
     def _mock_rules(
         self,
         calls: list[Any],
         attributes: list[Any],
         identifiers: list[Any],
+        bindings: list[tuple[Any, Any]],
         mock_names: set[str],
         patch_names: set[str],
     ) -> None:
@@ -2244,7 +2431,31 @@ class _Analysis:
         ``X.patch.dict`` or ``X.patch.multiple`` chain, whatever ``X`` is, and
         ``.patch`` on a pytest-mock fixture (``mocker``, ``module_mocker``,
         ``class_mocker``, ``package_mocker``, ``session_mocker``). A plain
-        ``.patch(url)`` on any other receiver is untouched."""
+        ``.patch(url)`` on any other receiver is untouched.
+
+        Fold 21 (B-5): mock-module and pytest-mock aliases are tracked; a
+        mock-module name used anywhere but as the receiver of an attribute
+        access, a direct callee or the value of an alias binding fails closed
+        (``getattr(mock, "patch")``, ``attrgetter("patch")(mock)``), and so
+        does a constant ``"patch"`` string in a file that imports the mock
+        module."""
+        self._mock_aliases(bindings, mock_names)
+        mock_imported = bool(mock_names or patch_names) or any(
+            self._mock_expression(node, set()) for node in attributes
+        )
+        if mock_imported and self.patch_string_seen:
+            self.dynamic = True
+        mock_uses = [
+            ident
+            for ident in identifiers
+            if _spellings(ident, self.source) & (mock_names | self.mock_aliases)
+            and not _import_context(ident)
+            and not _scope_binding_name(ident)
+        ]
+        mock_uses += [node for node in attributes if self._mock_expression(node, set())]
+        for node in mock_uses:
+            if not self._mock_receiver_use(node):
+                self.dynamic = True
         for node in calls:
             function = node.child_by_field_name("function")
             if function is None:
@@ -2323,21 +2534,40 @@ class _Analysis:
         receiver = _unwrap(receiver, skip_comments=True) if receiver else None
         if receiver is None:
             return False
-        if receiver.type == "identifier":
-            # ``mock.patch``, and a pytest-mock fixture's ``mocker.patch``.
-            return bool(
-                _spellings(receiver, self.source) & (mock_names | _MOCKER_NAMES)
+        # ``mock.patch`` (an import or an alias, also ``K.mk.patch``),
+        # ``unittest.mock.patch``, and a pytest-mock fixture's ``.patch``
+        # (``mocker``, ``mm = mocker``, ``self.mocker``).
+        return self._mock_expression(receiver, mock_names) or self._mocker_expression(
+            receiver
+        )
+
+    def _mock_receiver_use(self, node: Any) -> bool:
+        """Whether a mock-module name is used as an attribute receiver, a
+        direct callee, an alias binding's value or its own binding."""
+        current = node
+        parent = current.parent
+        while parent is not None and parent.type == "parenthesized_expression":
+            current, parent = parent, parent.parent
+        if parent is None:
+            return True
+        if parent.type == "attribute":
+            # The receiver (``mock.patch``), or the attribute name itself.
+            return True
+        if _callee_call(current) is not None:
+            return True
+        if parent.type in ("assignment", "named_expression"):
+            left = parent.child_by_field_name(
+                "left" if parent.type == "assignment" else "name"
             )
-        if receiver.type == "attribute":
-            inner = receiver.child_by_field_name("attribute")
-            head = receiver.child_by_field_name("object")
-            return (
-                inner is not None
-                and _text(inner, self.source) == "mock"
-                and head is not None
-                and _unwrap(head, skip_comments=True).type == "identifier"
-                and _text(_unwrap(head, skip_comments=True), self.source) == "unittest"
+            right = parent.child_by_field_name(
+                "right" if parent.type == "assignment" else "value"
             )
+            if right is not None and _same(current, right):
+                return True  # ``mk = mock`` (tracked)
+            if left is not None and _same(current, _unwrap(left)):
+                return True  # rebinding the name
+        if parent.type in ("pattern_list", "tuple_pattern", "list_pattern"):
+            return True
         return False
 
     def _patch_call(self, node: Any, kind: str) -> None:

@@ -5863,15 +5863,15 @@ FOLD14_CONTROLS = {
     + "D = dict(helper=len)\nmock.patch.dict('os.environ', D).start()\n"
     + DEF13
     + "run()\n",
+    # Since fold 21 (E-20) any mention of ``pydoc.locate`` or
+    # ``resolve_name`` fails closed, so these controls use another attribute.
     "q34_pydoc_locate_builtins": "import pydoc\n"
     + LATE13
-    + "D = dict(helper=len)\npydoc.locate('os').__dict__.update({'other': len})\n"
+    + "D = dict(helper=len)\nx = pydoc.render_doc\n"
     + DEF13
     + "run()\n",
     "q34_resolve_name_builtins": "import pkgutil\n" + LATE13 + "D = dict(helper=len)\n"
-    "pkgutil.resolve_name('os.path').__dict__.update({'other': len})\n"
-    + DEF13
-    + "run()\n",
+    "x = pkgutil.iter_modules\n" + DEF13 + "run()\n",
     "q34_enum_bltns_update": "import enum\n"
     + LATE13
     + "D = dict(helper=len)\nx = enum.Enum\n"
@@ -6880,4 +6880,149 @@ def test_fold20_695_receiver_patchers_keep_their_off_mode_edge(
 )
 def test_fold20_plain_patch_calls_still_resolve(stmt: str) -> None:
     source = FOLD20_T.format(stmt=stmt)
+    assert proof_text(source) == ["def helper(*a):\n    return 1"], stmt
+
+
+# ---------------------------------------------------------------------------
+# Fold 21 (the president's re-check at bb8b75b4, V-4/V-5/V-7, and executive
+# ruling E-20). B-4: a namespace alias read back as an attribute (``m.NS``,
+# ``K.ns``, ``self.ns``, ``getattr(K, 'ns')``) is a namespace receiver. B-5:
+# mock-module and pytest-mock aliases are tracked, a mock-module name in any
+# other position fails closed, and so does a constant ``'patch'`` in a file
+# importing the mock module. E-20: stdlib resolver mentions, a ``'__dict__'``
+# subscript key and ``X._sys.modules`` fail closed. The module is handed in
+# (``run(mod)``) so that no resolver trigger fires in the B-4/B-5 cases.
+
+FOLD21_T = (
+    "{pre}def helper(*a):\n    return 1\n\n\n"
+    "def replacement(*a):\n    return 2\n\n\n"
+    "def run(mod, mocker, client):\n    {stmt}\n    return helper()\n"
+)
+FOLD21_MOCK = "from unittest import mock\n\n\n"
+FOLD21_TARGET = "mod.__name__ + '.helper', replacement"
+
+FOLD21_CASES = {
+    # B-4 (the six V-4 shapes, on a handed-in module).
+    "b4-global-alias": (
+        "NS = None\n\n\n",
+        "global NS\n    NS = mod.__dict__\n    mod.NS.update(dict(helper=replacement))",
+    ),
+    "b4-module-level": (
+        "import types\nNS = types.ModuleType('x').__dict__\n\n\n",
+        "mod.NS.update(dict(helper=replacement))",
+    ),
+    "b4-class-body-subscript": (
+        "",
+        "class K:\n        ns = mod.__dict__\n    k = 'helper'\n    K.ns[k] = replacement",
+    ),
+    "b4-class-body-update": (
+        "",
+        "class K:\n        ns = mod.__dict__\n    K.ns.update(dict(helper=replacement))",
+    ),
+    "b4-class-body-getattr-dict": (
+        "",
+        "class K:\n        ns = getattr(mod, '__dict__')\n"
+        "    K.ns.update(dict(helper=replacement))",
+    ),
+    "b4-self": (
+        "",
+        "class K:\n        ns = mod.__dict__\n        def put(self, D):\n"
+        "            self.ns.update(D)\n    K().put(dict(helper=replacement))",
+    ),
+    "b4-getattr-alias": (
+        "",
+        "class K:\n        ns = mod.__dict__\n"
+        "    getattr(K, 'ns').update(dict(helper=replacement))",
+    ),
+    # B-5 (the V-5 shapes, and the pytest-mock aliases).
+    "b5-alias": (FOLD21_MOCK, f"mk = mock\n    mk.patch({FOLD21_TARGET}).start()"),
+    "b5-walrus": (FOLD21_MOCK, f"(mk := mock).patch({FOLD21_TARGET}).start()"),
+    "b5-tuple": (
+        FOLD21_MOCK,
+        f"mk, x = mock, 1\n    mk.patch({FOLD21_TARGET}).start()",
+    ),
+    "b5-class-attr": (
+        FOLD21_MOCK,
+        f"class K:\n        mk = mock\n    K.mk.patch({FOLD21_TARGET}).start()",
+    ),
+    "b5-self-attr": (
+        FOLD21_MOCK,
+        "class T:\n        def __init__(self):\n            self.mk = mock\n"
+        f"    T().mk.patch({FOLD21_TARGET}).start()",
+    ),
+    "b5-getattr": (FOLD21_MOCK, f"getattr(mock, 'patch')({FOLD21_TARGET}).start()"),
+    "b5-attrgetter": (
+        FOLD21_MOCK,
+        f"import operator\n    operator.attrgetter('patch')(mock)({FOLD21_TARGET}).start()",
+    ),
+    "b5-namespace-key": (
+        FOLD21_MOCK,
+        f"mock.__dict__['patch']({FOLD21_TARGET}).start()",
+    ),
+    "b5-mocker-alias": ("", f"mm = mocker\n    mm.patch({FOLD21_TARGET})"),
+    "b5-self-mocker": (
+        "",
+        "class T:\n        def __init__(self, mocker):\n            self.mocker = mocker\n"
+        f"    T(mocker).mocker.patch({FOLD21_TARGET})",
+    ),
+    # E-20 triggers.
+    "t-resolve-name": ("", "import pkgutil\n    x = pkgutil.resolve_name"),
+    "t-from-pkgutil": ("", "from pkgutil import resolve_name as rn"),
+    "t-pydoc-locate": ("", "import pydoc\n    x = pydoc.locate"),
+    "t-from-pydoc": ("", "from pydoc import locate"),
+    "t-pydoc-safeimport": ("", "import pydoc as p\n    x = p.safeimport"),
+    "t-logging-resolve": ("", "import logging.config\n    x = logging.config._resolve"),
+    "t-logging-importer": ("", "from logging import config\n    x = config._importer"),
+    "t-from-logging-config": ("", "from logging.config import _resolve"),
+    "t-find-class": ("", "import pickle\n    x = pickle.Unpickler.find_class"),
+    "t-resolver-string": (
+        "",
+        "import pkgutil\n    x = getattr(pkgutil, 'resolve_name')",
+    ),
+    "t-dict-key": ("", "import types\n    d = types.ModuleType.__dict__['__dict__']"),
+    "t-sys-modules": (
+        "",
+        "import collections\n    m = collections._sys.modules[helper.__module__]",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD21_CASES))
+def test_fold21_695_writes_and_triggers_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    pre, stmt = FOLD21_CASES[case]
+    source = FOLD21_T.format(pre=pre, stmt=stmt)
+    root = _tree(tmp_path, {"a.py": source, "b.py": FOLD19_DECOY})
+    off, on = _off_on(root)
+    edge = _fold19_edge(off, "a.py")
+    assert edge["resolution"] == "ambiguous", case
+    assert _fold19_edge(on, "a.py") == edge, case
+
+
+@pytest.mark.parametrize(
+    ("pre", "stmt"),
+    [
+        # Unrelated functions and methods named like the resolvers.
+        ("", "def locate(*a):\n        return 0\n    locate(1)"),
+        (
+            "",
+            "class G:\n        def locate(self):\n            return 0\n    G().locate()",
+        ),
+        (
+            "",
+            "class G:\n        def _resolve(self):\n            return 0\n    G()._resolve()",
+        ),
+        # A plain ``.patch(url)``, and ordinary ``.update`` aliases.
+        ("", "u = 'http://x'\n    client.patch(u)"),
+        ("", "d = {}\n    u = d.update\n    u({'x': 1})"),
+        # The mock module used as a receiver, and ``'patch'`` without it.
+        (FOLD21_MOCK, "m = mock.Mock()\n    m.patch('x')"),
+        ("", "x = 'patch'"),
+        # A class attribute that is no namespace alias.
+        ("", "class K:\n        ns = {}\n    K.ns.update(dict(x=1))"),
+    ],
+)
+def test_fold21_controls_still_resolve(pre: str, stmt: str) -> None:
+    source = FOLD21_T.format(pre=pre, stmt=stmt)
     assert proof_text(source) == ["def helper(*a):\n    return 1"], stmt
