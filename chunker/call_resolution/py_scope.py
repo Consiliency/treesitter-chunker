@@ -887,6 +887,11 @@ class _Analysis:
         self.namespace_aliases = self.aliases[_NS]
         self.mock_import_names: set[str] = set()
         self.patch_import_names: set[str] = set()
+        # Fold 25: every identifier, binding sites by name, and the names an
+        # allow-listed callee relies on being the builtin or stdlib object.
+        self.identifier_nodes: list[Any] = []
+        self.binding_sites: dict[str, list[Any]] | None = None
+        self.relied_names: set[str] = set()
         self.handlers: dict[str, Callable[[Any, _Scope, int], None]] = {
             "function_definition": self._function,
             "class_definition": self._class,
@@ -1582,6 +1587,7 @@ class _Analysis:
                 self.dynamic = True
         self.mock_import_names = mock_names
         self.patch_import_names = patch_names
+        self.identifier_nodes = identifiers
         self._sensitive_rules(
             calls,
             attributes,
@@ -1589,13 +1595,16 @@ class _Analysis:
             subscripts,
             bindings,
             matches,
-            operator_names,
         )
         self._namespace_rules(calls, attributes, augmented, operator_names)
         self._resolver_rules(attributes, identifiers, pydoc_names, logging_config_names)
         self._mock_rules(
             calls, attributes, identifiers, bindings, mock_names, patch_names
         )
+        if self.relied_names & self.attribute_writes:
+            # A recorded write of a name an allow-listed callee relies on
+            # (``mod.len = f``, ``ns["dict"] = C``) rebinds it (fold 25).
+            self.dynamic = True
         for ident in identifiers:
             name = _text(ident, source)
             parent = ident.parent
@@ -1949,7 +1958,6 @@ class _Analysis:
         subscripts: list[Any],
         bindings: list[tuple[Any, Any]],
         matches: list[Any],
-        operator_names: set[str],
     ) -> None:
         """One mechanism for every sensitive kind: a namespace dict, the mock
         module, ``patch`` and a pytest-mock fixture (#695 fold 22).
@@ -2046,9 +2054,7 @@ class _Analysis:
             for node in nodes:
                 if node.type == "identifier" and _name_part(node):
                     continue  # the ``ns`` of ``K.ns``: part of a larger read
-                if self._sensitive(node, kind) and not self._safe_use(
-                    node, kind, operator_names
-                ):
+                if self._sensitive(node, kind) and not self._safe_use(node, kind):
                     self.dynamic = True
                     return
 
@@ -2192,7 +2198,7 @@ class _Analysis:
             return bool(keys & aliases)  # ``K.__dict__["ns"]``
         return False
 
-    def _safe_use(self, node: Any, kind: str, operator_names: set[str]) -> bool:
+    def _safe_use(self, node: Any, kind: str) -> bool:
         """Whether a sensitive value's use is on THE CLOSED ALLOW-LIST
         (#695 fold 23, E-21 A-1); every other use fails closed (A-2).
 
@@ -2310,27 +2316,86 @@ class _Analysis:
                 return False
             function = _unwrap(function, skip_comments=True)
             arguments = [c for c in parent.named_children if c.type != "comment"]
-            if (
-                function.type == "identifier"
-                and _text(function, self.source) == "len"
-                and len(arguments) == 1
-            ):
+            # Every callee below is verified by binding (fold 25): ``len``
+            # and ``dict`` must be the builtins, ``operator`` and its writers
+            # must come from a tracked import of ``operator``.
+            if len(arguments) == 1 and self._builtin_name(function, "len"):
                 return True
             first = arguments[0] if arguments else None
             if first is None or not _same(first, current) or not _statement_call(call):
                 return False
             if function.type == "attribute":
                 attribute = function.child_by_field_name("attribute")
-                names = (
-                    _spellings(attribute, self.source)
-                    if attribute is not None
-                    else set()
-                )
-                return bool(names & (_NAMESPACE_MUTATORS | _OPERATOR_WRITERS))
-            return function.type == "identifier" and bool(
-                _spellings(function, self.source) & operator_names
-            )
+                receiver = function.child_by_field_name("object")
+                if attribute is None or receiver is None:
+                    return False
+                names = _spellings(attribute, self.source)
+                receiver = _unwrap(receiver, skip_comments=True)
+                if names & _NAMESPACE_MUTATORS and self._builtin_name(receiver, "dict"):
+                    return True  # ``dict.update(ns, …)``
+                return bool(names & _OPERATOR_WRITERS) and self._stdlib_name(
+                    receiver, "operator"
+                )  # ``operator.setitem(ns, …)``
+            return self._stdlib_name(function, "operator", _OPERATOR_WRITERS)
         return False
+
+    def _binding_sites_of(self, name: str) -> list[Any]:
+        """The identifiers that bind ``name`` anywhere in the file, by
+        syntax: where :meth:`_stdlib_name` checks each binding's import."""
+        if self.binding_sites is None:
+            sites: dict[str, list[Any]] = {}
+            for ident in self.identifier_nodes:
+                parent = ident.parent
+                augmented = (
+                    parent is not None
+                    and parent.type == "augmented_assignment"
+                    and _same(ident, parent.child_by_field_name("left"))
+                )
+                if augmented or _binding_position(ident):
+                    sites.setdefault(_text(ident, self.source), []).append(ident)
+            self.binding_sites = sites
+        return self.binding_sites.get(name, [])
+
+    def _builtin_name(self, node: Any, name: str) -> bool:
+        """Whether ``node`` is the builtin ``name`` (fold 25): spelled so, and
+        bound nowhere in the file (no definition, class, assignment,
+        import, parameter, ``global``/``nonlocal``, ``for``/``with``/
+        ``except`` target, comprehension variable, pattern capture or
+        ``del``). A recorded write of the name into a namespace is checked
+        once every rule has run (``relied_names``); a star import already
+        makes every module-scope lookup ``star-import``."""
+        if node.type != "identifier" or _text(node, self.source) != name:
+            return False
+        # The rules run before the binding events are applied to the scopes,
+        # so the events are the scope pass's complete record (every node kind
+        # is classified, so no binding form escapes it).
+        if any(bound == name for _scope, bound, _binding in self.events):
+            return False
+        self.relied_names.add(name)
+        return True
+
+    def _stdlib_name(
+        self, node: Any, module: str, members: frozenset[str] | None = None
+    ) -> bool:
+        """Whether ``node`` names ``module`` (``import operator [as op]``) or,
+        with ``members``, one of them (``from operator import setitem
+        [as s]``), every binding of the name in the file being such an
+        import (fold 25)."""
+        if node.type != "identifier":
+            return False
+        name = _text(node, self.source)
+        sites = self._binding_sites_of(name)
+        if not sites or not all(
+            _imports_from(site, self.source, module, members) for site in sites
+        ):
+            return False
+        if any(
+            bound == name and binding.cls != IMPORT
+            for _scope, bound, binding in self.events
+        ):
+            return False
+        self.relied_names.add(name)
+        return True
 
     def _reachable_binding(self, ident: Any) -> bool:
         """Whether a name binding is reachable by a computed read: at module
@@ -3396,6 +3461,48 @@ def _statement_call(call: Any) -> bool:
     while parent is not None and parent.type == "parenthesized_expression":
         parent = parent.parent
     return parent is not None and parent.type == "expression_statement"
+
+
+def _imports_from(
+    ident: Any, source: bytes, module: str, members: frozenset[str] | None
+) -> bool:
+    """Whether a binding identifier is bound by ``import <module> [as x]``
+    (``members`` is ``None``) or by ``from <module> import <member> [as x]``
+    for a member in ``members``."""
+    statement = ident.parent
+    while statement is not None and statement.type not in _IMPORT_STATEMENTS:
+        statement = statement.parent
+    if statement is None:
+        return False
+    if members is None:
+        if statement.type != "import_statement":
+            return False
+        for child in statement.named_children:
+            if child.type == "aliased_import":
+                alias = child.child_by_field_name("alias")
+                name = child.child_by_field_name("name")
+                if (
+                    alias is not None
+                    and _same(alias, ident)
+                    and name is not None
+                    and _dotted_parts(name, source) == [module]
+                ):
+                    return True
+            elif child.type == "dotted_name" and child.named_children:
+                if _same(child.named_children[0], ident):
+                    return _dotted_parts(child, source)[:1] == [module]
+        return False
+    if statement.type != "import_from_statement":
+        return False
+    dots, parts = _module_parts(statement, source)
+    if dots or parts != [module]:
+        return False
+    for last, bound in _from_import_names(statement, source):
+        if bound.type == "dotted_name" and bound.named_children:
+            bound = bound.named_children[0]  # ``from operator import setitem``
+        if _same(bound, ident) and last in members:
+            return True
+    return False
 
 
 def _binding_names(target: Any, source: bytes) -> set[str]:

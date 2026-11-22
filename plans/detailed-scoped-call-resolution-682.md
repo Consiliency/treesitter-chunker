@@ -964,7 +964,8 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
         else failing closed in the write rules: `ns[c] = v`, `del ns[c]`,
         `ns.update(…)`, `ns.setdefault(c, …)`, `ns.pop(c, …)`, `ns |= …`,
         and the unbound `dict.`/`operator` writers with `ns` first
-        (`dict.update(ns, …)`, `operator.setitem(ns, c, v)`);
+        (`dict.update(ns, …)`, `operator.setitem(ns, c, v)`,
+        `from operator import setitem`);
       - **mock module:** `mock.Mock`, `MagicMock`, `AsyncMock`,
         `NonCallableMock`, `PropertyMock`, `call`, `ANY`, `sentinel`,
         `DEFAULT`, `create_autospec`, `mock_open`, `seal`, and
@@ -976,7 +977,30 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
         semantics.
       A class-pattern keyword reads an attribute of the subject, so a
       keyword naming `__dict__`, `mock`, `patch` or an alias fails closed
-      whatever the subject (`case object(__dict__=x)`). A binding a
+      whatever the subject (`case object(__dict__=x)`). **Allow-listed
+      callees are verified by binding** (fold 25, Codex 4657695001): an
+      entry that hands a sensitive value to a callee named by spelling is
+      safe only if the name is that object. `len` and `dict` must be the
+      builtins: bound nowhere in the file (no `def`, `class`, assignment,
+      import, parameter, `global`/`nonlocal`, `for`/`with`/`except`
+      target, comprehension variable, pattern capture, type parameter or
+      `del`, read from the scope pass's binding record) and never written
+      into a namespace by a recorded write (`m.len = f`,
+      `ns['dict'] = C`). `operator` and its writers must come from
+      `import operator [as op]` or `from operator import <writer> [as s]`,
+      every binding of the name being such an import. Otherwise the use
+      is off the list and fails closed (A-2): so a same-file
+      `def len(d): d.update(…)`, a class `U.update(ns, …)`, a bare
+      `setitem(ns, …)` with no import, and `dict = client` all fail
+      closed. `type(ns).update(ns, …)` already fails closed (the inner
+      `type(ns)` is an argument). Producers and writers named by spelling
+      (`vars(x)`, `getattr(x, '__dict__')`, `setattr`, the mock module,
+      `patch`) only over-recognize when shadowed, which fails closed; the
+      module object a shadowed `setattr` receives is no sensitive kind,
+      since its writes in a same-file body are recorded or fail closed on
+      any receiver, and in a library they are R12 (#699). `c in ns` is
+      syntax, so it calls the real dict. Cost: 0 of 638 stdlib and 0 of
+      488 repository test files change. A binding a
       computed read can reach (module or class scope, `global`, an
       attribute or subscript target) still fails closed (fold 22). Cost
       against fold 22: 0 of 595 stdlib files and 0 of 359 repository test
@@ -2592,3 +2616,52 @@ findings were pre-existing (wrong at 515de38e too).
 | Flipped: fold-22 control `list(signal.__dict__.items())` (`multiprocessing/process.py`) now fails closed (pinned in `test_fold24_695_stdlib_signal_items_fails_closed`); fold-23 entries `ns-values`/`ns-items` leave `test_fold23_695_allow_list_entries_still_resolve` | `tests/test_call_resolution_tier1_py.py` |
 | Cost (A-4) against e9c087d9, over 638 supported non-test stdlib files and 488 supported repository test files: Y-5 0 and 0; Y-6 1 stdlib file (6 of 29 identifier-callee calls in `multiprocessing/process.py`) and 0 test files; the conditional Y-6 option would have cost 0 and 0. Beside the canonical `from unittest.mock import patch`, a computed-target `X.patch(u)` on any receiver fails closed (pinned); under `patch as P` or a mock-module import it still resolves (controls). Harness against main unchanged (0 problems, 8 resolved + 1 narrowed, 43 PR 4 rows). The president's p44–p58 trees: exactly the 18 Y-5/Y-6 cases change, all now fail closed; only the two #697 patchers under other names remain wrong; panel A keeps 38 resolutions | — |
 | Pins: `test_fold24_695_president_probes_keep_their_off_mode_edge` (18: every Y-5 and Y-6 probe, all wrong at e9c087d9), `test_fold24_695_import_bindings_are_aliases` (the completeness matrix's "import binding read back" rows: 9 import spellings x 6 readbacks = 54), `test_fold24_695_namespace_iteration_fails_closed` (2 methods x 4 kinds = 8), `test_fold24_695_stdlib_signal_items_fails_closed` (1), `test_fold24_695_controls_still_resolve` (10), `test_fold24_695_canonical_patch_import_makes_any_x_patch_patch` (1). Mutation: import seeding removed 48 failures, `values`/`items` back in `_NS_READS` 8, the class-pattern keyword check 14, `keys` removed 4 | `tests/test_call_resolution_tier1_py.py` |
+
+### PR 4: fold 25 (Codex 4657695001 at ab49156a: allow-listed callees verified by binding)
+
+Only adds `none`; no expected row changes. `python` fact version 27. The
+Codex P2 showed `len(ns)` allow-listed by spelling only: a same-file
+`def len(d): d.update(dict(helper=replacement))` received the namespace as
+a plain parameter, and `helper()` got a wrong proof. The audit found the
+same hole wider: the unbound mutator entry checked no receiver at all
+(`U.update(ns, …)`), and bare `_OPERATOR_WRITERS` names counted without an
+import.
+
+| Entry | Binding check | Test |
+| --- | --- | --- |
+| `len(ns)` | `_builtin_name(len)`: no binding event for `len` anywhere, no recorded write of `len` | `len-*` shadows (9 forms), `codex-4657695001` |
+| `dict.update/setdefault/pop/__setitem__/__delitem__/__ior__(ns, …)` (also `clear`/`popitem`, which fail closed anyway) | `_builtin_name(dict)` on the receiver; any other receiver fails closed | `dict-*` shadows (6 methods x 9 forms), `other-receiver` |
+| `type(ns).update(ns, …)` | none needed: the inner `type(ns)` puts the namespace in an argument position, which fails closed | `type-of-namespace` |
+| `operator.setitem/delitem/ior/iadd/…(ns, …)`, `import operator as op` | `_stdlib_name(operator)`: every binding of the receiver name is `import operator [as x]` | `operator-*` shadows (4 entries x 9 forms), `other-module-as-operator` |
+| `from operator import setitem [as s]` | `_stdlib_name(operator, _OPERATOR_WRITERS)`: every binding is `from operator import <writer> [as x]`; a bare writer name with no import fails closed | `from-operator-*` shadows (2 x 9), `bare-writer-no-import`, `from-other-module` |
+| `c in ns`, `ns[c]`, `ns.get/keys`, `ns \|= …`, `ns.<writer>(…)` | none needed: syntax or methods of the real dict | — |
+| `getattr(x, '__dict__')`, `vars(x)` producers | none needed: shadowing only over-recognizes (fails closed); an alias (`g = getattr`, `v = vars`) is already dynamic or recognized by the constant `'__dict__'` | `test_fold25_695_shadowed_producers_still_fail_closed` |
+| `setattr`/`delattr` recorded writes | none needed: a shadowed `setattr` over-records its constant name; the module it receives is no sensitive kind (same-file body writes on it are recorded or fail closed on any receiver; a library's are R12, #699) | `test_fold25_695_shadowed_producers_still_fail_closed`, `test_fold25_695_shadowed_setattr_body_writes_are_recorded` |
+| mock constructors, `_MOCKER_SAFE`, `patch` | none needed: the kinds require tracked imports or fixture names, the uses receive no sensitive value, and a rebound `patch` import still counts as `patch` (over-recognition) | `test_fold25_695_shadowed_producers_still_fail_closed` |
+
+The nine shadowing forms are `def`, assignment, import alias, parameter,
+`for` target, `global`, a recorded write (`m.<name> = print`), a tuple
+`with` target and a type parameter. The binding record is the scope pass's
+event list: the sensitive-kind rules run before events are applied to the
+scopes, so `scope.bindings` is still empty then. The `builtin-shadow`
+lookup rule is not reusable here: it decides a module-level lookup of a
+builtin name, not whether the name is bound anywhere.
+
+Pins: `test_fold25_695_shadowed_allowlist_callees_keep_their_off_mode_edge`
+(123: the Codex repro, 5 receiver/import probes, 13 entries x 9 shadowing
+forms; 98 of the 123 were wrong at ab49156a),
+`test_fold25_695_verified_callees_still_resolve` (13),
+`test_fold25_695_verified_callees_record_their_name` (3),
+`test_fold25_695_shadowed_producers_still_fail_closed` (5),
+`test_fold25_695_shadowed_setattr_body_writes_are_recorded` (1). Mutation
+(narrow suite): `len` by spelling 9 failures, `dict` receiver unchecked 49,
+`operator` receiver unchecked 54, from-imported writer by spelling 7,
+recorded-write check removed 12, binding events ignored for builtins 50,
+`_stdlib_name` accepting any import among the bindings 6, `_stdlib_name`
+ignoring non-import binding events 4.
+
+Cost: 0 of 638 supported non-test stdlib files and 0 of 488 supported
+repository test files change against ab49156a. Harness against main
+unchanged (byte-identical `cmp`: 0 problems, 8 resolved + 1 narrowed, 43
+PR 4 rows). The president's p44–p58 trees are unchanged against fold 24;
+panel A keeps 38 resolutions.

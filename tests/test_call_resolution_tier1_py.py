@@ -7646,3 +7646,170 @@ def test_fold24_695_canonical_patch_import_makes_any_x_patch_patch() -> None:
         stmt="u = 'http://x'\n    client.patch(u)",
     )
     assert reason(source) == "dynamic-scope"
+
+
+# ---------------------------------------------------------------------------
+# Fold 25 (Codex 4657695001 at ab49156a): an allow-listed callee is verified
+# by binding. ``len`` and ``dict`` must be the builtins (bound nowhere in the
+# file, no recorded write of the name), ``operator`` and its writers must come
+# from a tracked import of ``operator`` and nothing else.
+
+FOLD25_CODEX = "def len(d):\n    d.update(dict(helper=replacement))\n    return 0\n\n\n"
+# One allow-list entry per callee spelled by name: (relied name, imports, use).
+FOLD25_ENTRIES = {
+    "len": ("len", "", "x = len(mod.__dict__)"),
+    "dict-update": ("dict", "", "dict.update(mod.__dict__, {'other': 1})"),
+    "dict-setdefault": ("dict", "", "dict.setdefault(mod.__dict__, 'other', 1)"),
+    "dict-pop": ("dict", "", "dict.pop(mod.__dict__, 'other', None)"),
+    "dict-setitem": ("dict", "", "dict.__setitem__(mod.__dict__, 'other', 1)"),
+    "dict-delitem": ("dict", "", "dict.__delitem__(mod.__dict__, 'other')"),
+    "dict-ior": ("dict", "", "dict.__ior__(mod.__dict__, {'other': 1})"),
+    "operator-setitem": (
+        "operator",
+        "import operator\n\n\n",
+        "operator.setitem(mod.__dict__, 'other', 1)",
+    ),
+    "operator-delitem": (
+        "operator",
+        "import operator\n\n\n",
+        "operator.delitem(mod.__dict__, 'other')",
+    ),
+    "operator-ior": (
+        "operator",
+        "import operator\n\n\n",
+        "operator.ior(mod.__dict__, {'other': 1})",
+    ),
+    "operator-as": (
+        "op",
+        "import operator as op\n\n\n",
+        "op.setitem(mod.__dict__, 'other', 1)",
+    ),
+    "from-operator-setitem": (
+        "setitem",
+        "from operator import setitem\n\n\n",
+        "setitem(mod.__dict__, 'other', 1)",
+    ),
+    "from-operator-as": (
+        "s",
+        "from operator import setitem as s\n\n\n",
+        "s(mod.__dict__, 'other', 1)",
+    ),
+}
+# Each shadowing binding form of the relied name ``{N}``.
+FOLD25_SHADOWS = {
+    "def": "def {N}(*a, **k):\n    return 0\n\n\n",
+    "assignment": "{N} = print\n\n\n",
+    "import-alias": "from os import getcwd as {N}\n\n\n",
+    "parameter": "def shadow({N}):\n    return {N}\n\n\n",
+    "for-target": "for {N} in (print,):\n    pass\n\n\n",
+    "global": "def shadow():\n    global {N}\n    {N} = print\n\n\n",
+    "recorded-write": "def shadow(m):\n    m.{N} = print\n\n\n",
+    # Bound only in the scope pass's view (not a syntactic binding position).
+    "with-tuple-target": "with open(__file__) as (a, {N}):\n    pass\n\n\n",
+    "type-parameter": "def shadow[{N}]():\n    return 0\n\n\n",
+}
+FOLD25_PROBES = {
+    "codex-4657695001": (FOLD25_CODEX, "len(mod.__dict__)"),
+    "type-of-namespace": ("", "type(mod.__dict__).update(mod.__dict__, {'other': 1})"),
+    "other-receiver": (
+        "class U:\n    @staticmethod\n    def update(d, *a):\n"
+        "        d.update(dict(helper=replacement))\n\n\n",
+        "U.update(mod.__dict__, {'other': 1})",
+    ),
+    "bare-writer-no-import": ("", "setitem(mod.__dict__, 'other', 1)"),
+    "from-other-module": (
+        "from os import setitem\n\n\n",
+        "setitem(mod.__dict__, 'other', 1)",
+    ),
+    "other-module-as-operator": (
+        "import os as operator\n\n\n",
+        "operator.setitem(mod.__dict__, 'other', 1)",
+    ),
+    **{
+        f"{entry}-{shadow}": (
+            imports + FOLD25_SHADOWS[shadow].replace("{N}", name),
+            use,
+        )
+        for entry, (name, imports, use) in FOLD25_ENTRIES.items()
+        for shadow in FOLD25_SHADOWS
+    },
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD25_PROBES))
+def test_fold25_695_shadowed_allowlist_callees_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    pre, stmt = FOLD25_PROBES[case]
+    source = FOLD22_T.format(pre=pre, stmt=stmt)
+    root = _tree(tmp_path, {"a.py": source, "b.py": FOLD19_DECOY})
+    off, on = _off_on(root)
+    edge = _fold19_edge(off, "a.py")
+    assert edge["resolution"] == "ambiguous", case
+    assert _fold19_edge(on, "a.py") == edge, case
+
+
+# Unshadowed, every entry still resolves.
+@pytest.mark.parametrize("entry", sorted(FOLD25_ENTRIES))
+def test_fold25_695_verified_callees_still_resolve(entry: str) -> None:
+    _name, imports, use = FOLD25_ENTRIES[entry]
+    source = FOLD22_T.format(pre=imports, stmt=use)
+    assert proof_text(source) == ["def helper(*a):\n    return 1"], entry
+
+
+# ... and a verified writer still records the name it writes.
+@pytest.mark.parametrize(
+    ("pre", "stmt"),
+    [
+        ("", "dict.update(mod.__dict__, {'helper': 1})"),
+        ("import operator\n\n\n", "operator.setitem(mod.__dict__, 'helper', 1)"),
+        ("from operator import setitem\n\n\n", "setitem(mod.__dict__, 'helper', 1)"),
+    ],
+)
+def test_fold25_695_verified_callees_record_their_name(pre: str, stmt: str) -> None:
+    source = FOLD22_T.format(pre=pre, stmt=stmt)
+    assert reason(source) == "mixed-bindings", stmt
+
+
+# Producers and writers named by spelling over-recognize when shadowed, so
+# they stay closed: a shadowed ``vars``/``getattr`` still yields a namespace
+# kind; a shadowed ``setattr`` still records its constant name, and the
+# module it receives is no sensitive kind (a same-file body's writes on it
+# are recorded or fail closed on any receiver); a rebound ``patch`` import
+# still counts as ``patch``.
+@pytest.mark.parametrize(
+    ("pre", "stmt"),
+    [
+        (
+            "def vars(o):\n    return {}\n\n\n",
+            "k = 'hel' + 'per'\n    vars(mod)[k] = replacement",
+        ),
+        (
+            "def getattr(o, n):\n    return {}\n\n\n",
+            "k = 'hel' + 'per'\n    getattr(mod, '__dict__')[k] = replacement",
+        ),
+        (
+            "def setattr(o, n, v):\n    o.__dict__.update({n: v})\n\n\n",
+            "setattr(mod, 'other', replacement)",
+        ),
+        (
+            "def setattr(o, n, v):\n    vars(o)[n] = v\n\n\n",
+            "setattr(mod, 'other', replacement)",
+        ),
+        (
+            "from unittest.mock import patch\n\n\npatch = print\n\n\n",
+            f"patch({FOLD22_TARGET})",
+        ),
+    ],
+)
+def test_fold25_695_shadowed_producers_still_fail_closed(pre: str, stmt: str) -> None:
+    source = FOLD22_T.format(pre=pre, stmt=stmt)
+    assert reason(source) == "dynamic-scope", stmt
+
+
+def test_fold25_695_shadowed_setattr_body_writes_are_recorded() -> None:
+    source = FOLD22_T.format(
+        pre="def setattr(o, n, v):\n    o.helper = v\n\n\n",
+        stmt="setattr(mod, 'other', replacement)",
+    )
+    assert reason(source) == "mixed-bindings"
