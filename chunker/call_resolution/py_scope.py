@@ -29,6 +29,10 @@ runs an annotation scope again under substitute globals for the
 ``typing.get_type_hints``, ``inspect.signature`` and
 ``functools.singledispatch`` use: a call there may reach a stand-in
 (``annotationlib._Stringifier``), not the binding the lookup would prove.
+The value of a ``type`` statement is evaluated lazily as well (PEP 695), and
+in a class body it reads the live class namespace through ``__classdict__``,
+so a later write to the class whose attribute name is not a literal at the
+write site rebinds it: it proves nothing either (#695 re-check at a6734480).
 
 **Class scope (ruling A10 as modified).** Code that runs directly in a class
 body (class-level statements, method decorators, defaults and annotations,
@@ -410,7 +414,9 @@ _FRAME_LOCALS = "f_locals"
 # ``bdb.Bdb`` caches (``code_linenos``); ``pdb.Pdb().curframe_locals``, the
 # live ``f_locals`` proxy; and ``annotationlib.call_annotate_function``,
 # ``call_evaluate_function`` and ``__annotate__``, which rebuild a user
-# function from its ``__code__`` under substitute globals. Objects reached by introspection rather than by a spelled
+# function from its ``__code__`` under substitute globals, and
+# ``__annotate_func__``, the class-dict key behind ``type.__annotate__``
+# (#695 re-check at a6734480, S-3). Objects reached by introspection rather than by a spelled
 # name stay in plan risk R12: heap walking (``gc`` referents, for example a
 # found globals dict written with ``update(D)``, or found code or cells run
 # under ``type(f)(...)``) and computed member names (``inspect.getmembers``,
@@ -453,6 +459,7 @@ _FILE_WIDE_NAMES = frozenset(
         "call_annotate_function",
         "call_evaluate_function",
         "__annotate__",
+        "__annotate_func__",
     }
 )
 # A keyword argument that hands a function or code object a new closure.
@@ -1850,8 +1857,8 @@ def _spellings(ident: Any, source: bytes) -> set[str]:
 
 def _in_annotation(ident: Any) -> bool:
     """Whether ``ident`` lies in an annotation: the ``type`` of a typed
-    parameter, a typed default parameter or an annotated assignment, or a
-    function's return annotation."""
+    parameter, a typed default parameter or an annotated assignment, a
+    function's return annotation, or the value of a ``type`` statement."""
     child = ident
     node = ident.parent
     while node is not None:
@@ -1861,6 +1868,12 @@ def _in_annotation(ident: Any) -> bool:
                 return True
         elif kind == "function_definition":
             if _same(child, node.child_by_field_name("return_type")):
+                return True
+        elif kind == "type_alias_statement":
+            # A ``type`` value is evaluated lazily too (PEP 695); in a class
+            # body it reads the live class namespace through
+            # ``__classdict__`` (#695 re-check at a6734480, S-2).
+            if _same(child, node.child_by_field_name("right")):
                 return True
         child, node = node, node.parent
     return False

@@ -158,6 +158,9 @@ NAMED_TIER1_PY_TESTS = (
     # The re-check at 14e8f044 (Q-2/Q-3): calls in annotations, and more
     # code-object, live-locals and annotationlib routes.
     "test_fold15_695_cases_keep_their_off_mode_edge",
+    # The re-check at a6734480 (S-2/S-3): class-body ``type`` values and
+    # ``__annotate_func__``.
+    "test_fold16_695_cases_keep_their_off_mode_edge",
 )
 # Expected rows per plan PR (10.1): a row that loses its finalization fails
 # the pin (#695 panel B7).
@@ -635,7 +638,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "17"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "9", "python": "18"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",

@@ -257,8 +257,10 @@ def test_type_parameters_bind_for_their_definition() -> None:
     # Lookups from a generic function's defaults also pass through them.
     default = HELPER + "def f[helper](x=helper()):\n    return x\n"
     assert reason(default) == "parameter"
+    # A ``type`` value proves nothing before the type-parameter step (#695
+    # re-check at a6734480, S-2).
     alias = HELPER + "type X[helper] = helper()\n"
-    assert reason(alias) == "parameter"
+    assert reason(alias) == "dynamic-scope"
     # Other names continue outward.
     assert proof_text(HELPER + "def f[T]():\n    return helper()\n") == PROOF
 
@@ -5466,6 +5468,9 @@ FILE_WIDE_NAMES = (
     "call_annotate_function",
     "call_evaluate_function",
     "__annotate__",
+    # The #695 re-check at a6734480 (S-3): the class-dict key behind
+    # ``type.__annotate__``.
+    "__annotate_func__",
 )
 
 
@@ -6168,3 +6173,199 @@ def test_annotations_prove_nothing(annotation: str) -> None:
 )
 def test_values_next_to_annotations_still_resolve(form: str) -> None:
     assert proof_text(HELPER + form + "\n") == PROOF, form
+
+
+# ---------------------------------------------------------------------------
+# The #695 re-check at a6734480 (S-2, S-3): a class-body ``type`` value reads
+# the live class namespace through ``__classdict__`` (PEP 695), so a later
+# class write whose attribute name is not a literal at the write site
+# rebinds it (S-2); ``__annotate_func__`` is the class-dict key behind
+# ``type.__annotate__`` (S-3). Each tree is the ruling's own and
+# runtime-traced: a6734480 proved ``a.py``'s ``helper``, and Python called
+# ``len`` or a stand-in instead.
+
+DEF16 = "def helper(*a):\n    return int\n"
+ALIAS16 = "\nclass K:\n    type X = helper('ab')\n\n"
+RUN16 = (
+    "def run(fmt=1, _n=[0]):\n    _n[0] += 1\n    if _n[0] == 1:\n"
+    "        raise NotImplementedError\n    if _n[0] == 2:\n        raise ValueError\n"
+    "    return helper('ab')\n\n"
+)
+STRING16 = (
+    "try:\n    annotationlib.get_annotations(K, format=annotationlib.Format.STRING)\n"
+    "except Exception:\n    pass\n"
+)
+
+FOLD16_695: dict[str, tuple[str, str]] = {
+    "ca40_var_name": (
+        "S-2",
+        DEF16 + ALIAS16 + "n = 'helper'\nsetattr(K, n, len)\nv = K.X.__value__\n",
+    ),
+    "ca40_star_args": (
+        "S-2",
+        DEF16 + ALIAS16 + "setattr(K, *('helper', len))\nv = K.X.__value__\n",
+    ),
+    "ca40_type_setattr_star": (
+        "S-2",
+        DEF16 + ALIAS16 + "type.__setattr__(K, *['helper', len])\nv = K.X.__value__\n",
+    ),
+    "ca40_kw_dict_items": (
+        "S-2",
+        DEF16
+        + ALIAS16
+        + "for k, f in dict(helper=len).items():\n    setattr(K, k, f)\n"
+        "v = K.X.__value__\n",
+    ),
+    "ca40_func_param_name": (
+        "S-2",
+        DEF16 + ALIAS16 + "def put(cls, name, f):\n    setattr(cls, name, f)\n\n"
+        "put(K, 'helper', len)\nv = K.X.__value__\n",
+    ),
+    "ca40_instance_class": (
+        "S-2",
+        DEF16
+        + ALIAS16
+        + "n = 'helper'\nsetattr(type(K()), n, len)\nv = K.X.__value__\n",
+    ),
+    "ca40_set_name": (
+        "S-2",
+        DEF16 + "\nclass D:\n    def __set_name__(self, owner, name):\n"
+        "        setattr(owner, name[:-1], len)\n\n"
+        "class K:\n    type X = helper('ab')\n    helperx = D()\n\nv = K.X.__value__\n",
+    ),
+    "ca40_generic_alias": (
+        "S-2",
+        DEF16 + "\nclass K:\n    type X[T] = helper('ab')\n\n"
+        "n = 'helper'\nsetattr(K, n, len)\nv = K.X.__value__\n",
+    ),
+    "ca40_nested_class": (
+        "S-2",
+        DEF16 + "\nclass O:\n    class K:\n        type X = helper('ab')\n\n"
+        "n = 'helper'\nsetattr(O.K, n, len)\nv = O.K.X.__value__\n",
+    ),
+    "ca40_generic_class": (
+        "S-2",
+        DEF16 + "\nclass K[T]:\n    type X = helper('ab')\n\n"
+        "n = 'helper'\nsetattr(K, n, len)\nv = K.X.__value__\n",
+    ),
+    "ca40_in_function": (
+        "S-2",
+        DEF16 + "\ndef run():\n    class K:\n        type X = helper('ab')\n"
+        "    n = 'helper'\n    setattr(K, n, len)\n    return K.X.__value__\n\nrun()\n",
+    ),
+    "ta39_alias_class_dict_update": (
+        "S-2",
+        DEF16 + ALIAS16 + "for name, f in [('helper', len)]:\n    setattr(K, name, f)\n"
+        "v = K.X.__value__\n",
+    ),
+    "af39_class_body_annotate_func": (
+        "S-3",
+        DEF16
+        + "\n"
+        + RUN16
+        + "import annotationlib\nclass K:\n    __annotate_func__ = run\n"
+        + STRING16,
+    ),
+    "af39_attr_annotate_func": (
+        "S-3",
+        DEF16
+        + "\n"
+        + RUN16
+        + "import annotationlib\nclass K:\n    pass\nK.__annotate_func__ = run\n"
+        + STRING16,
+    ),
+    "af39_type3_annotate_func": (
+        "S-3",
+        DEF16
+        + "\n"
+        + RUN16
+        + "import annotationlib\nK = type('K', (), {'__annotate_func__': run})\n"
+        + STRING16,
+    ),
+    "af39_namedtuple_annotate_func": (
+        "S-3",
+        DEF16
+        + "\n"
+        + RUN16
+        + "from typing import NamedTuple\ntry:\n    class P(NamedTuple):\n"
+        "        __annotate_func__ = run\nexcept Exception:\n    pass\n",
+    ),
+}
+
+# One control per tree: for S-2 the same write with the call in a method
+# body, which a later class write cannot reach (``ca40_method_body_ctrl``);
+# for S-3 the ``__annotate_func__`` install renamed (``af39_ctrl``).
+_FOLD16_EDITS = {
+    "ca40_generic_alias": ("    type X[T] = helper('ab')\n", None),
+    "ca40_nested_class": (
+        "        type X = helper('ab')\n",
+        "        def m(self):\n            return helper('ab')\n",
+    ),
+    "ca40_in_function": (
+        "        type X = helper('ab')\n",
+        "        def m(self):\n            return helper('ab')\n",
+    ),
+    "af39_class_body_annotate_func": (
+        "    __annotate_func__ = run\n",
+        "    attr = run\n",
+    ),
+    "af39_attr_annotate_func": ("K.__annotate_func__ = run\n", "K.attr = run\n"),
+    "af39_type3_annotate_func": ("{'__annotate_func__': run}", "{'attr': run}"),
+    "af39_namedtuple_annotate_func": (
+        "        __annotate_func__ = run\n",
+        "        attr = run\n",
+    ),
+}
+_S2_METHOD = "    def m(self):\n        return helper('ab')\n"
+
+
+def _fold16_control(case: str) -> str:
+    _, source = FOLD16_695[case]
+    old, new = _FOLD16_EDITS.get(case, ("    type X = helper('ab')\n", None))
+    assert old in source, case
+    return source.replace(old, _S2_METHOD if new is None else new)
+
+
+@pytest.mark.parametrize("case", sorted(FOLD16_695))
+def test_fold16_695_cases_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    _, source = FOLD16_695[case]
+    root = _tree(tmp_path, {"a.py": source, "b.py": _decoys(source)})
+    off, on = _off_on(root)
+    # Only the ``helper`` edge: ``ca40_set_name``'s local class ``D`` resolves
+    # correctly against its decoy.
+    assert _helper_edge(off)["resolution"] == "ambiguous", case
+    assert _helper_edge(on) == _helper_edge(off), case
+
+
+@pytest.mark.parametrize("case", sorted(FOLD16_695))
+def test_fold16_controls_still_resolve(tmp_path: Path, case: str) -> None:
+    source = _fold16_control(case)
+    assert "type X" not in source and "__annotate_func__" not in source, case
+    root = _tree(tmp_path, {"a.py": source, "b.py": OTHER})
+    off, on = _off_on(root)
+    assert _helper_edge(off)["resolution"] == "ambiguous", case
+    on_edge = _helper_edge(on)
+    assert on_edge["resolution"] == "resolved", case
+    assert on_edge["provenance"]["call_rules"] == ["t1.lexical"]
+    (target,) = on_edge["candidates"]
+    assert on["symbol_lookup"][target]["file"] == "a.py"
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "class K:\n    type X = helper()",
+        "class K:\n    type X[T] = helper()",
+        "class K[T]:\n    type X = helper()",
+        "class K:\n    type X = list[helper()]",
+        "def f():\n    type X = helper()\n    return X",
+        # Correct resolutions given up (no later write): ``ta39_alias_class_ctrl``,
+        # ``ca40_ctrl_no_write`` and ``ta39_alias_func_closure_ctrl``.
+        "class K:\n    type X = helper('ab')\n\nv = K.X.__value__",
+        "def outer():\n    type X = helper('ab')\n    return X.__value__",
+    ],
+)
+def test_type_statement_values_prove_nothing(form: str) -> None:
+    """A ``type`` value is evaluated lazily (PEP 695); in a class body it
+    reads the live class namespace (#695 S-2), so it proves nothing."""
+    assert reason(HELPER + form + "\n") == "dynamic-scope", form
