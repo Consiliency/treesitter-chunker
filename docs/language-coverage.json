@@ -49,14 +49,9 @@
       "load": "loads"
     },
     "asm": {
-      "extraction": "load_only",
-      "load": "loads"
-    },
-    "assembly": {
-      "extraction": "extraction_gap",
+      "extraction": "empty",
       "kinds": [],
-      "load": "fails_to_load",
-      "load_error": "no pack grammar enumerated under this name",
+      "load": "loads",
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.asm"
     },
@@ -1190,14 +1185,6 @@
       "extraction": "load_only",
       "load": "loads"
     },
-    "raku": {
-      "extraction": "extraction_gap",
-      "kinds": [],
-      "load": "fails_to_load",
-      "load_error": "no pack grammar enumerated under this name",
-      "node_count": 0,
-      "sample": "tests/fixtures/language_smoke/samples/sample.raku"
-    },
     "rasi": {
       "extraction": "load_only",
       "load": "loads"
@@ -1238,14 +1225,6 @@
       "extraction": "load_only",
       "load": "loads"
     },
-    "restructuredtext": {
-      "extraction": "extraction_gap",
-      "kinds": [],
-      "load": "fails_to_load",
-      "load_error": "no pack grammar enumerated under this name",
-      "node_count": 0,
-      "sample": "tests/fixtures/language_smoke/samples/sample.rst"
-    },
     "robot": {
       "extraction": "load_only",
       "load": "loads"
@@ -1263,8 +1242,11 @@
       "load": "loads"
     },
     "rst": {
-      "extraction": "load_only",
-      "load": "loads"
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.rst"
     },
     "rtf": {
       "extraction": "load_only",
@@ -1753,11 +1735,11 @@
     "tree_sitter_language_pack": "==1.20.0"
   },
   "summary": {
-    "advertised_no_pack_grammar": 3,
+    "advertised_no_pack_grammar": 0,
     "extraction": {
-      "empty": 15,
-      "extraction_gap": 4,
-      "load_only": 327,
+      "empty": 17,
+      "extraction_gap": 1,
+      "load_only": 325,
       "rich": 20,
       "sparse": 8
     },

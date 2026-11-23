@@ -2,8 +2,9 @@
 
 Each mutation disables one rule by a single textual edit. The script copies
 the checkout to a temporary directory, checks that the unmutated copy passes,
-then applies each mutation alone and runs the Tier 2 tests and the
-``imports`` expected-table test serially. A mutation is *killed* when a test
+then applies each mutation alone and runs the Tier 2 tests, the
+``imports`` expected-table test and the treesitter-chunker#694 Tier 1
+property-writer pins serially. A mutation is *killed* when a test
 fails. The script prints one tab-separated line per mutation and exits
 non-zero if any mutation survives or does not apply.
 
@@ -34,6 +35,10 @@ FACTS = CR + "facts.py"
 TESTS = (
     "tests/test_call_resolution_tier2_js.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
+    # treesitter-chunker#694 pins for the property-writer mutations below.
+    "tests/test_call_resolution_tier1_js.py::test_694_writer_invokers_fail_closed",
+    "tests/test_call_resolution_tier1_js.py::test_694_writer_invokers_on_other_targets_are_not_wildcards",
+    "tests/test_call_resolution_tier1_js.py::test_717_main_writer_wildcards_are_kept",
 )
 
 # (id, file, old text, new text). The old text must occur in the file.
@@ -972,6 +977,69 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         JSS,
         "        else:\n            self.evaluator = True\n        self.global_wildcard = True",
         "        self.global_wildcard = True",
+    ),
+    # Property writers behind commas and invokers (treesitter-chunker#694).
+    (
+        "694-comma-callee",
+        JSS,
+        '    while current is not None and current.type == "sequence_expression":',
+        "    while False:",
+    ),
+    (
+        "694-comma-namespace",
+        JSS,
+        "        node = _callee(node)\n        if node is None:\n            return None\n",
+        "        node = unwrap(node)\n        if node is None:\n            return None\n",
+    ),
+    (
+        "694-bind-then-call",
+        JSS,
+        '            if self._member_key(bound) != "bind":\n                return []',
+        "            return []",
+    ),
+    (
+        "694-nested-invoker",
+        JSS,
+        "            targets.extend(self._writer_targets(obj, arguments[1:]))",
+        "            targets.extend(arguments[1:2] if self._is_property_writer(obj) else [])",
+    ),
+    (
+        "694-reflect-apply",
+        JSS,
+        "                targets.extend(self._writer_targets(arguments[0], listed))",
+        "                pass",
+    ),
+    (
+        "694-computed-invoker-chain",
+        JSS,
+        "        elif invoker in (None, _UNREADABLE_KEY) and self._writer_chain(obj):",
+        "        elif invoker in (None, _UNREADABLE_KEY) and self._is_property_writer(obj):",
+    ),
+    (
+        "694-comment-arguments",
+        JSS,
+        '    return [child for child in node.named_children if child.type != "comment"]\n\n\ndef _array_items',
+        "    return list(node.named_children)\n\n\ndef _array_items",
+    ),
+    (
+        "694-target-comma",
+        JSS,
+        "            or self._is_global_object(_callee(target), receiver=True)",
+        "            or self._is_global_object(target, receiver=True)",
+    ),
+    (
+        # The #717 review: main's positional detector is a floor; dropping
+        # it loses ``*`` on ``Object.assign.call(/* c */ this, this ?? {}, …)``.
+        "717-positional-floor",
+        JSS,
+        "        if self._positional_writer_call(node):",
+        "        if False:",
+    ),
+    (
+        "694-control-target",
+        JSS,
+        "            targets.extend(arguments[:1])",
+        "            targets.extend(arguments[:2])",
     ),
     # Exact decoding.
     (

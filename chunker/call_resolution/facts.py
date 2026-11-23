@@ -132,6 +132,14 @@ logger = logging.getLogger(__name__)
 # js "20": PR 5 fold 11 (P5-50: in JavaScript, a ``<!--`` in code, or a
 # ``-->`` in code with only whitespace and comments before it on its line,
 # makes the file unparsed).
+# js "21": treesitter-chunker#694: property-writer calls look through
+# parentheses and commas at every level (``(0, Object.assign).call(null,
+# this, …)``, ``(0, Object).assign``), nested ``.call``/``.apply``/``.bind``
+# and a bound writer called later (``Object.assign.bind(null)(this, …)``),
+# ``Reflect.apply(Object.assign, null, [this, …])`` and comments between
+# arguments; each such call on a receiver ``this`` now gives ``*``. The
+# positional reading of "20" still runs and is never overridden, so this
+# version flags every call "20" flagged (the #717 review).
 # js "22": stack-introspection tokens can expose the CommonJS wrapper,
 # and ``with`` can shadow lexical lookup (treesitter-chunker#718).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
