@@ -142,7 +142,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     allows specific static members and operand positions on the unbound
     global and checks the uses of aliases bound by a static import of the
     process module, in a file where no scope binds `require`; a `require`
-    call of it always disables cross-module resolution.
+    call of it always disables cross-module resolution, and so does a
+    write to the CommonJS `require`, including a destructuring element,
+    default or loop head such as `[require] = [f]`.
     Writes to those members, `on`/`once` other than a discarded call with
     arrow listeners, and loose equality other than against `null` still
     disable it, since each can hand `process` to user code.

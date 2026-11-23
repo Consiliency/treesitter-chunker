@@ -293,7 +293,9 @@ are compared by their exact string value. A sibling `<stem>.<segment>.<ext>`
 (a platform or module suffix such as `svc.ios.ts`) leaves the edge unchanged
 unless the segment is on a closed list of names no resolver uses (`test`,
 `spec`, `stories`, `types`, …). Some files can rewrite any module's exports
-object: a code evaluator, a non-literal `require` or `import()`, `createRequire`,
+object: a code evaluator, a non-literal `require` or `import()`, a write to
+the CommonJS wrapper's `require` (including a destructuring element, default
+or `for…of`/`for…in` head, which declares nothing), `createRequire`,
 `mainModule`, `getBuiltinModule` or an import of `module`, the CommonJS
 `module` object handed on, a stack-introspection trigger, a `with` statement,
 or an unparsed JS/TS file. Stack-introspection triggers include the global
@@ -325,13 +327,18 @@ Constructor access and dynamic indexing through these members can still
 disable Tier 2. A load of `process` or `node:process` is a module-system
 cause unless it is a static `import` whose bound names are used only in these
 closed positions, in a file where no scope binds `require` (a CommonJS emit
-calls the program-scope `require` with the specifier). A `require` call or
+calls the program-scope `require` with the specifier). A default or namespace
+binding named `process` is not exempt: `import process from "node:process"`
+is a cause, while `import proc from "node:process"` can be exempt. A `require` call or
 `import … = require(…)` of either specifier is always a cause: in an ES
 module a free `require` is a lookup on the global object, which another file
 can set. The exempt members are safe unless a built-in prototype is patched:
 `send` (outside an IPC child), `on`, `once` and `exit` reach `process` through
 inherited lookups on `Object.prototype` or `EventEmitter.prototype`, which
-Node's own code also performs with no `process` token (plan risk R12).
+Node's own code also performs with no `process` token, and with
+`esModuleInterop` the emitted `this.__importDefault` helper lookup falls
+through to `Object.prototype` and receives the static import's `process`
+(plan risk R12).
 
 Any such file in production code turns Tier 2 off for the whole run, and the cause is
 logged. Three uses are exempt by closed lists: an import of only

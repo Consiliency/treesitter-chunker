@@ -366,6 +366,13 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        else:\n"
         "            self._mark_node_builtin_load(specifier)\n",
     ),
+    # R-699-9: a pattern or loop-head write to ``require`` is a loader cause.
+    (
+        "r699-9-require-pattern-write",
+        JSM,
+        '            if _text(target, self.source) == "require" and self._free_or_top(\n',
+        '            if _text(target, self.source) == "require!" and self._free_or_top(\n',
+    ),
     (
         "r699-7-global-require-import-equals",
         JSM,

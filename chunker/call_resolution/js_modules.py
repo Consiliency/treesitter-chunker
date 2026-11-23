@@ -657,6 +657,16 @@ class _ModuleFacts:
             # (``var``, a function, ...) still names the CommonJS wrapper's
             # object in sloppy code, whose ``arguments[1]`` is ``require``.
             self.shutoff.add(CAUSE_DYNAMIC_LOADER)
+        for target in self.analysis.assignment_targets:
+            # R-699-9: a write to the CommonJS wrapper's ``require`` through a
+            # pattern element, a default or a loop head (``[require] = [f]``,
+            # ``({ a: require } = o)``, ``for ([require] of xs)``) declares
+            # nothing, yet ``f`` then receives every later static import's
+            # specifier, ``"process"`` included.
+            if _text(target, self.source) == "require" and self._free_or_top(
+                target, "require"
+            ):
+                self.shutoff.add(CAUSE_DYNAMIC_LOADER)
         self._import_writes()
         self._namespace_uses()
 

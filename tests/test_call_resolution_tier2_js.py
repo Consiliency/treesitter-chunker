@@ -4703,6 +4703,111 @@ def test_r699_7_global_require_route(tmp_path: Path, name: str, text: str) -> No
     assert label == "none(run-tainted:module-system)"
 
 
+# R-699-9: a write to the CommonJS wrapper's ``require`` through a pattern
+# element, a default or a loop head declares nothing, so no scope binds
+# ``require``; tsc emits imports in source order, so the replacement then
+# receives the exempt static import's literal ``"process"``. Each tree below
+# is a tsc 5.9.3 ``--module commonjs`` emit that printed EVIL under node
+# v24.22.3 while the head 643d3314 and main resolved the call
+# (723-fable-recheck2/hunt2.py in the wave-3 evidence). Any assignment target
+# spelled ``require`` that is free or program-scope is a ``dynamic-loader``
+# cause.
+G_LOADER = (
+    f"(x) => {{\n{LEAK}"
+    '  return { default: { cwd() { return "/"; } }, cwd() { return "/"; } };\n}'
+)
+G_IMPORT = 'import p from "process";\np.cwd();\n'
+G_TAIL = f"leak{EVIL}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            f"let leak;\n[require] = [{G_LOADER}];\n{G_IMPORT}{G_TAIL}",
+            id="g-array-assign",
+        ),
+        pytest.param(
+            f"let leak;\n({{ a: require }} = {{ a: {G_LOADER} }});\n{G_IMPORT}{G_TAIL}",
+            id="g-object-assign",
+        ),
+        pytest.param(
+            f"let leak;\n[require = {G_LOADER}] = [];\n{G_IMPORT}{G_TAIL}",
+            id="g-array-default",
+        ),
+        pytest.param(
+            f"let leak;\n[[require]] = [[{G_LOADER}]];\n{G_IMPORT}{G_TAIL}",
+            id="g-nested-array",
+        ),
+        pytest.param(
+            f"let leak;\nfor ([require] of [[{G_LOADER}]]);\n{G_IMPORT}{G_TAIL}",
+            id="g-for-of-pattern",
+        ),
+        pytest.param(
+            f"let leak;\nfunction f() {{\n  [require] = [{G_LOADER}];\n}}\nf();\n"
+            f"{G_IMPORT}{G_TAIL}",
+            id="g-fn-array-assign",
+        ),
+        pytest.param(
+            f"let leak;\n[require] = [{G_LOADER}];\n"
+            f'import p from "process";\ntypeof p;\n{G_TAIL}',
+            id="g-array-assign-typeof",
+        ),
+        pytest.param(
+            f"let leak;\n[require] = [{G_LOADER}];\n"
+            f'import * as p from "process";\np.cwd();\n{G_TAIL}',
+            id="g-array-assign-star",
+        ),
+    ],
+)
+def test_r699_9_require_pattern_write_route_trees(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "w.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:dynamic-loader)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("[...require] = [];", id="array-rest"),
+        pytest.param("({ ...require } = {});", id="object-rest"),
+        pytest.param("({ a: [require] } = { a: [1] });", id="nested-object-array"),
+        pytest.param("for ({ a: require } of [{ a: 1 }]);", id="for-of-object"),
+        pytest.param("for ([require] in { a: 1 });", id="for-in-array"),
+        pytest.param(
+            "[require] = [() => ({ t: () => 2 })];\n"
+            "import { t } from './svc';\nexport const r = t();\n",
+            id="own-import-no-process",
+        ),
+    ],
+)
+def test_r699_9_require_pattern_write_is_a_cause(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:dynamic-loader)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(f"let requirf;\n[requirf] = [1];\n{G_IMPORT}", id="other-name"),
+        pytest.param(
+            "function f() {\n  let require;\n  [require] = [1];\n  return require;\n}\n",
+            id="nested-local-require",
+        ),
+        pytest.param("const o: any = {};\n[o.require] = [1];\n", id="member-target"),
+    ],
+)
+def test_r699_9_other_pattern_writes_keep_tier2(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert structural == off
+    assert on["resolution"] == "resolved", label
+    assert _resolved_file(on, root) == "svc.ts"
+
+
 def test_p5_37_short_name_after_trailing_dot_or_space() -> None:
     """P5-37: Win32 strips a trailing dot or space before the 8.3 match."""
     index = modules.ModuleIndex.build(["use.ts"], None)
