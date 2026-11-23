@@ -158,6 +158,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   identical with the option on and off. The option and its behavior may change
   until treesitter-chunker#682 is complete.
 
+### Fixed
+
+- Symbol graph extraction orders source files by case-sensitive path components
+  on every platform (treesitter-chunker#687).
+
 ## [7.0.0] - 2026-11-19
 
 This major release requires Python 3.14 (treesitter-chunker#599) and includes
