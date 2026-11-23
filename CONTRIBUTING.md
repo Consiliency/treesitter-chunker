@@ -152,6 +152,11 @@ uv run --locked --with toml --all-extras python scripts/run_platform_core.py --p
 uv run --locked --with toml --all-extras python scripts/run_full_suite.py
 ```
 
+The full and platform-core runners print pytest skip reasons. CI and release
+validation also upload skip reports as artifacts. To write the same JSON report
+locally, set `CHUNKER_PYTEST_SKIP_REPORT` to an output filename in an existing
+directory. Each row contains the pytest `nodeid` and `reason`.
+
 Use representative full-suite coverage to find behavior gaps; do not use
 unsupported coverage claims or a blanket 95% requirement. Coverage slices
 under treesitter-chunker#69 are accepted by their stated behavior contracts

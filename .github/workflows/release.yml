@@ -62,16 +62,25 @@ jobs:
         prefetch(list(get_args(SupportedLanguage)))
         PY
     - name: Validate source and full test tier
+      id: validate
       env:
         # Dedicated hosted runner: admit the 4-worker scaling measurement, as
         # the scheduled full tier does (treesitter-chunker#669).
         CHUNKER_PERF_ADMITTED_SCALING: '1'
+        CHUNKER_PYTEST_SKIP_REPORT: ${{ runner.temp }}/full-suite-skips.json
       run: |
         uv run --locked --all-extras ruff check chunker/ chunker/build/ cli/ tests/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py --exclude archive --exclude logs --exclude site
         uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/ tools/governed_group.py tools/governed_scope.py tools/sync_governed_test_transport.py
         uv run --locked --all-extras python scripts/mypy_gate.py
         uv run --locked --all-extras mypy --follow-imports=silent --allow-untyped-defs --allow-incomplete-defs --allow-untyped-calls --check-untyped-defs --no-pretty --no-error-summary --show-error-codes tools/sync_governed_test_transport.py
         uv run --locked --all-extras python scripts/run_full_suite.py
+
+    - name: Upload release full-suite skip report
+      if: ${{ !cancelled() && (steps.validate.outcome == 'success' || steps.validate.outcome == 'failure') }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: full-suite-skips-release
+        path: ${{ runner.temp }}/full-suite-skips.json
 
   build-distributions:
     name: Build release distributions
