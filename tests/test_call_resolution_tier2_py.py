@@ -933,6 +933,38 @@ CAUSES: dict[str, tuple[str, str]] = {
         "evaluator",
     ),
     "py8-exec-alias": ("from builtins import exec as run\n", "evaluator"),
+    # R-699-3: a module binding of a code builtin never proves (BLOCKING 1),
+    # a from-import of a checked module's name out of any module binds the
+    # module (BLOCKING 2), the dispatchers evaluate string annotations
+    # (BLOCKING 4), and ``getmodule`` reaches ``builtins``.
+    "r3-compile-self-alias": (
+        "compile = compile\n"
+        "G = type(lambda: 0)(compile('import svc; svc.t = len', '<s>', 'exec'), {})\n",
+        "evaluator",
+    ),
+    "r3-walrus-compile": ("(compile := compile)\n", "evaluator"),
+    "r3-breakpoint-self-alias": (
+        "breakpoint = breakpoint\nbreakpoint()\n",
+        "evaluator",
+    ),
+    "r3-pickle-from-reexport": (
+        "from logging.handlers import pickle as pk\n\nX = pk.loads(b'')\n",
+        "evaluator",
+    ),
+    "r3-runpy-from-reexport": (
+        "from multiprocessing.spawn import runpy\n\nrunpy.run_path('x', {})\n",
+        "evaluator",
+    ),
+    "r3-singledispatch-alias": (
+        "import functools\n\nA = \"__import__('svc').__setattr__('t', len) or int\"\n\n\n"
+        "@functools.singledispatch\ndef sd(x):\n    pass\n\n\n"
+        "def g(x: A):\n    pass\n\n\nsd.register(g)\n",
+        "evaluator",
+    ),
+    "r3-getmodule-exec": (
+        "import inspect\n\ninspect.getmodule(len).exec('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
 }
 
 
@@ -1141,6 +1173,59 @@ def test_s2_causes_follow_o2(tmp_path: Path, writer: str, cause: str) -> None:
     off, _structural, on, label = _run(promoted, "use.py", "t")
     assert on == off
     assert label == f"none(run-tainted:{cause})"
+
+
+# R-699-3 (Sol BLOCKING on #727): the shared classifier keeps every PR 6
+# ``evaluator`` cause. The full lookup with the frame and annotation rules
+# leaves these ``eval`` uses possibly the builtin, although the use-site
+# proof finds a parameter or a local definition.
+PR6_EVALUATOR_READERS = {
+    "frame-read-eval-parameter": (
+        "def generator():\n    yield\n\n\n"
+        "value = generator().gi_frame.f_locals.get('x')\n\n\n"
+        "def f(eval):\n    return eval('1')\n"
+    ),
+    "lazy-annotation-local-eval": (
+        "def f():\n    def eval(value):\n        return value\n\n"
+        "    def g(x: eval('1')):\n        return x\n\n    return g\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(PR6_EVALUATOR_READERS))
+def test_s2_keeps_pr6_evaluator_causes(tmp_path: Path, case: str) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": USE,
+            **OTHER,
+            "reader.py": PR6_EVALUATOR_READERS[case],
+        },
+    )
+    facts = extract_symbol_facts_for_file(
+        root / "reader.py", root, None, call_resolution=MODE
+    )
+    assert facts["scope_facts"]["module_bindings"]["shutoff"] == ["evaluator"], case
+    off, _structural, on, label = _run(root, "use.py", "t")
+    assert on == off and on["resolution"] == "ambiguous", case
+    assert label == "none(run-tainted:evaluator)", case
+
+
+def test_s2_parameter_eval_without_frame_rule_is_no_cause(tmp_path: Path) -> None:
+    """The control: with no frame or annotation rule the parameter proves
+    the use, as in PR 6."""
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": USE,
+            **OTHER,
+            "reader.py": "def f(eval):\n    return eval('1')\n",
+        },
+    )
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import"
 
 
 def test_s2_causes_are_recorded_in_imports_mode_facts(tmp_path: Path) -> None:

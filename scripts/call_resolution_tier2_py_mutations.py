@@ -37,7 +37,9 @@ TESTS = (
     T1 + "test_string_code_fails_closed_file_wide",
     T1 + "test_string_code_controls_still_resolve",
     T1 + "test_own_bindings_of_code_builtins_leave_function_proofs_alone",
-    T1 + "test_module_level_import_of_a_code_builtin_is_builtin_shadow",
+    T1 + "test_module_level_binding_of_a_code_builtin_is_builtin_shadow",
+    T1 + "test_string_code_local_controls_still_resolve",
+    T1 + "test_stdlib_reexports_hold_and_fail_closed",
     T1 + "test_string_code_inside_the_function_defeats_its_own_proof",
     T1 + "test_mock_scoped_computed_getters_fail_closed",
     T1 + "test_computed_getters_outside_mock_files_or_constant_still_resolve",
@@ -325,8 +327,115 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "generic-module-acquisition",
         PYS,
-        '        if value.split(".")[0] in _GENERIC_MODULE_STRINGS and self._acquired(node):',
+        "        if components[0] in _GENERIC_MODULE_STRINGS and (\n"
+        "            len(components) > 1 or self._acquired(node)\n"
+        "        ):",
         "        if False:",
+    ),
+    # R-699-3 (the #727 fold).
+    (
+        "r3-legacy-evaluator",
+        PYM,
+        "    if analysis.string_code or analysis.legacy_evaluator():",
+        "    if analysis.string_code:",
+    ),
+    (
+        "r3-legacy-evaluator-lookup",
+        PYS,
+        "            outcome = self.lookup(node)\n"
+        '            if outcome.get("outcome") == "none" and outcome.get("reason") not in (\n'
+        "                _OWN_BINDING_REASONS\n            ):\n                return True",
+        "            outcome = self._use_lookup(node)\n"
+        '            if outcome.get("outcome") == "none" and outcome.get("reason") not in (\n'
+        "                _OWN_BINDING_REASONS\n            ):\n                return True",
+    ),
+    (
+        "r3-b1-module-binding-dominance",
+        PYS,
+        "        return scope is None or scope.kind in (_MODULE, _CLASS)",
+        "        return scope is None",
+    ),
+    (
+        "r3-b2-from-import-reexport",
+        PYS,
+        "        if module not in _CHECKED_MODULES and member in _CHECKED_MODULES:",
+        "        if False:",
+    ),
+    (
+        "r3-b2-generic-from-stdlib",
+        PYS,
+        "            if stdlib and last in _STRING_CODE_MODULES:",
+        "            if False:",
+    ),
+    (
+        "r3-b3-dotted-generic",
+        PYS,
+        "            len(components) > 1 or self._acquired(node)",
+        "            self._acquired(node)",
+    ),
+    (
+        "r3-b3-name-keyword",
+        PYS,
+        '        if parent.type == "keyword_argument":\n            name = parent',
+        "        if False:\n            name = parent",
+    ),
+    (
+        "r3-b3-resolver-attribute",
+        PYS,
+        "        if method in _ACQUIRERS | _STRING_RESOLVERS:",
+        "        if method in _ACQUIRERS:",
+    ),
+    (
+        "r3-b3-resolver-name",
+        PYS,
+        "            return _text(callee, self.source) in _ACQUIRERS | _STRING_RESOLVERS",
+        "            return _text(callee, self.source) in _ACQUIRERS",
+    ),
+    (
+        "r3-b3-factory-key",
+        PYS,
+        '        if parent.type == "pair":',
+        "        if False:",
+    ),
+    (
+        "r3-b4-singledispatch",
+        PYS,
+        '        "singledispatch",\n        "singledispatchmethod",\n',
+        '        "singledispatchmethod",\n',
+    ),
+    (
+        "r3-getmodule",
+        PYS,
+        '        "f_builtins",\n        "getmodule",\n',
+        '        "f_builtins",\n',
+    ),
+    (
+        "r3-computed-acquisition",
+        PYS,
+        "            if spellings & _BUILTINS_REACH or self._computed_acquisition(ident):",
+        "            if spellings & _BUILTINS_REACH:",
+    ),
+    (
+        "r3-computed-acquisition-own-name",
+        PYS,
+        '        if key.type == "identifier" and _text(key, self.source) == "__name__":\n'
+        "            return False\n",
+        "",
+    ),
+    (
+        "r3-re-receiver-exempt",
+        PYS,
+        "                if self.builtins_reach and not self._re_receiver(node):",
+        "                if self.builtins_reach:",
+    ),
+    (
+        "r3-re-receiver-any",
+        PYS,
+        "        return bool(\n"
+        '            outcome.get("outcome") == "import"\n'
+        '            and binding.get("form") == "import"\n'
+        '            and binding.get("bound") == _RE_MODULE\n        )',
+        "        return True",
     ),
     (
         "py5-mock-getattr",
@@ -400,7 +509,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "    return True\n",
     ),
     (
-        "runpy",
+        "runpy-loader",
         PYM,
         "        head in _LOADER_MODULES\n",
         "        False\n",

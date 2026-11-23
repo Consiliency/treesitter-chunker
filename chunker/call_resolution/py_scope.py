@@ -179,23 +179,29 @@ makes every lookup ``dynamic-scope``, function scopes included:
 - the builtins ``exec``, ``eval``, ``execfile``, ``compile`` and
   ``breakpoint``, and the Python 2 ``exec`` statement. A use is the builtin
   unless the ordinary lookup at the use site proves the file's own binding
-  (a parameter, a local, a function-local import from another module); an
-  import from ``builtins`` counts, and so does a module-level ``from re
-  import compile`` (``builtin-shadow``: a call that runs before it gets the
-  builtin). As an attribute or a constant string they count only in a file
-  that reaches the builtins namespace (``builtins.exec``,
-  ``len.__self__.eval``), so ``model.eval()`` is not one;
+  and that binding dominates the use (ruling R-699-3): any binding in a
+  function scope does (a parameter, a local, a function-local import from
+  another module). No module or class binding does, since a call may run
+  before it and get the builtin: a module-level ``from re import compile``
+  (``builtin-shadow``), ``compile = compile``, ``(compile := compile)``; an
+  import from ``builtins`` counts anywhere. As an attribute or a constant
+  string they count only in a file that reaches the builtins namespace
+  (``builtins.exec``, ``len.__self__.eval``, ``inspect.getmodule(len)``, a
+  module acquired by a computed name), so ``model.eval()`` is not one, and
+  neither is ``re.compile`` on a proven ``re`` import;
 - absolute imports of ``cProfile``, ``profile``, ``bdb``, ``pdb``,
   ``trace``, ``code``, ``codeop``, ``doctest``, ``marshal`` and
   ``multiprocessing.reduction``; the names in :data:`_STRING_CODE_NAMES` in
   any position (``shelve``, the unpicklers, ``sys.breakpointhook``, the
-  annotation evaluators, a loader's ``get_code`` and its kin, with the
-  standard library's re-exports such as ``doctest.pdb``); ``marshal`` as an
-  attribute or a name imported from a stdlib module; ``runpy`` as an
+  annotation evaluators and ``singledispatch``/``singledispatchmethod``, a
+  loader's ``get_code`` and its kin, with the standard library's re-exports
+  such as ``doctest.pdb``); ``marshal``, ``code``, ``trace`` and ``profile``
+  as an attribute or a name imported from a stdlib module; ``runpy`` as an
   attribute;
 - ``pickle``, ``_pickle``, ``timeit`` and ``runpy`` by member allow-list:
-  every use of a name an import of one binds, and an attribute named
-  ``pickle`` on any receiver, must read a listed member (``pickle.dumps``,
+  every use of a name an import of one binds (``from logging.handlers
+  import pickle`` binds the module), and an attribute named ``pickle`` on
+  any receiver, must read a listed member (``pickle.dumps``,
   ``timeit.default_timer``, ``runpy.run_path(p)`` called directly with one
   positional argument and only ``run_name``/``alter_sys``); anything else
   (``loads``, an alias, an argument, a star import, a class attribute)
@@ -204,12 +210,16 @@ makes every lookup ``dynamic-scope``, function scopes included:
   cannot be folded, and any mention of ``__annotations__`` other than a
   closed list of reads (``get_type_hints`` evaluates what is written there,
   and ``singledispatch.register`` calls it);
-- a constant that is a dotted name naming any of the above, and a generic
-  module name (``"code"``) as the literal name of an acquisition
-  (``import_module("code")``, ``sys.modules["code"]``).
+- a constant that is a dotted name naming any of the above, a generic
+  module name (``"code"``) as the first of two or more dotted components
+  (``"timeit:timeit"``), and alone as the literal name of an acquisition
+  (``import_module(name="code")``, ``sys.modules["code"]``,
+  ``pkgutil.resolve_name("code")``, a ``logging.config`` ``"()"`` value).
 
-The same classifier gives Tier 2 its ``evaluator`` cause, and any code-object
-name (:data:`_CODE_OBJECT_NAMES`) its ``module-object`` cause. In a file that
+The same classifier gives Tier 2 its ``evaluator`` cause (with PR 6's
+full-lookup test of ``exec``/``eval``/``execfile`` kept,
+:meth:`_Analysis.legacy_evaluator`), and any code-object name
+(:data:`_CODE_OBJECT_NAMES`) its ``module-object`` cause. In a file that
 imports or aliases the mock module, ``patch`` or a pytest-mock fixture, a
 computed attribute read (``getattr`` by lookup, ``attrgetter``,
 ``methodcaller``, ``getattr_static``, ``__getattribute__`` with a name that
@@ -598,6 +608,12 @@ _STRING_CODE_NAMES = frozenset(
         "exec_module",
         "load_module",
         "read_code",
+        # R-699-3 (BLOCKING 4): ``register`` evaluates every ``str``
+        # annotation value through ``get_type_hints``, nested in a generic
+        # (``List["..."]``) or bound to a name first, so the dispatchers
+        # themselves are the unspelled annotation evaluators.
+        "singledispatch",
+        "singledispatchmethod",
     }
 )
 # An absolute import whose first component is one of these: the module, not
@@ -613,7 +629,10 @@ _STRING_CODE_PATHS = frozenset({("multiprocessing", "reduction")})
 # attribute on anything (``pstats.marshal``, ``zipimport.marshal``), as a
 # constant-string component, and as a name imported from a standard-library
 # module (``from pstats import marshal``); a third-party ``marshal`` function
-# imported by name (``from flask_restful import marshal``) is not it.
+# imported by name (``from flask_restful import marshal``) is not it. The
+# generic module names below count the same way as a name imported from a
+# standard-library module (R-699-3: ``from pdb import code``); a third-party
+# ``trace`` or ``code`` (``from opentelemetry import trace``) is not it.
 _MARSHAL = "marshal"
 # Modules whose uses are checked against a member allow-list at the use site
 # (plan mechanism 2): every use of a name an import of one binds must read a
@@ -648,31 +667,64 @@ _RUNPY = "runpy"
 # (``trace.pickle``, ``logging.handlers.pickle``,
 # ``multiprocessing.reduction.pickle``): its use is checked like the module's.
 # An attribute named ``runpy`` (``multiprocessing.spawn.runpy``) fails closed.
+# A from-import of a checked module's name out of any other module (R-699-3,
+# BLOCKING 2: ``from logging.handlers import pickle as pk``, ``from
+# multiprocessing.spawn import runpy``) binds the module itself, and its uses
+# are checked like those of ``import pickle as pk``.
 _PICKLE_ATTRIBUTES = frozenset({"pickle", "_pickle"})
 # Constant strings naming a checked module (``getattr(trace, "pickle")``,
 # ``importlib.import_module("runpy")``) fail closed. The generic module names
-# are ordinary words (``d["code"]``), so they fail closed only as the literal
-# module name of an acquisition: the first argument of ``import_module`` or
-# ``__import__``, or the key of ``X.modules[...]`` / ``X.modules.get(...)``
-# (also ``pop``, ``setdefault``, ``__getitem__``). A name stored first and
-# passed later is a computed acquisition (plan R12, class (b)).
+# are ordinary words (``d["code"]``), so alone they fail closed only as the
+# literal module name of an acquisition: the first argument or ``name=``
+# keyword of ``import_module`` or ``__import__``, the key of
+# ``X.modules[...]`` / ``X.modules.get(...)`` (also ``pop``, ``setdefault``,
+# ``__getitem__``), the first argument or ``name=`` keyword of a string
+# resolver (``pkgutil.resolve_name``, ``pydoc.locate``/``safeimport``), or
+# the value of a ``logging.config`` factory key ``"()"``. As the first
+# component of a dotted constant with two or more components (``"code.X"``,
+# ``"timeit:timeit"``) they fail closed anywhere (R-699-3, BLOCKING 3). A
+# name stored first and passed later is a computed acquisition (plan R12,
+# class (b)).
 _MODULE_STRINGS = frozenset({"pickle", "_pickle", "runpy"})
 _GENERIC_MODULE_STRINGS = frozenset({"code", "trace", "profile", "timeit"})
 _ACQUIRERS = frozenset({"import_module", "__import__"})
+_STRING_RESOLVERS = frozenset({"resolve_name", "locate", "safeimport"})
+_FACTORY_KEY = "()"
+_NAME_KEYWORD = "name"
+_DOTTED_SPLIT = re.compile(r"[.:]")
 # A constant that is a dotted name (``.`` or ``:`` between identifiers).
 _DOTTED_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*")
 # Builtins that run source, build a code object or reach ``pdb``. A use is
 # the builtin unless the ordinary lookup at the use site proves the file's
-# own binding (fold 25): an import from ``builtins`` counts, ``from re import
-# compile`` does not. As an attribute or a constant string they count only in
-# a file that reaches the builtins namespace (``builtins.exec``,
-# ``len.__self__.eval``, ``f.f_builtins["compile"]``); no other stdlib module
-# exposes them (runtime scan, CPython 3.14), and ``model.eval()`` is not one.
+# own binding and it dominates the use (fold 25, R-699-3 BLOCKING 1): a
+# binding in a function scope, including an import from a module other than
+# ``builtins``. No module or class binding does, since a use may run before
+# it (``compile = compile``, ``(compile := compile)``, ``from re import
+# compile``). As
+# an attribute or a constant string they count only in a file that reaches
+# the builtins namespace (``builtins.exec``, ``len.__self__.eval``,
+# ``f.f_builtins["compile"]``, ``inspect.getmodule(len).exec``); no other
+# stdlib module exposes them (runtime scan, CPython 3.14), ``model.eval()``
+# is not one, and neither is ``re.compile`` on a receiver the ordinary
+# lookup proves is an import of ``re``.
 _CODE_BUILTINS = frozenset({"exec", "eval", "execfile", "compile", "breakpoint"})
 _BUILTIN_MODULES = frozenset({"builtins", "__builtin__"})
 _BUILTINS_REACH = frozenset(
-    {"builtins", "__builtins__", "__builtin__", "bltns", "__self__", "f_builtins"}
+    {
+        "builtins",
+        "__builtins__",
+        "__builtin__",
+        "bltns",
+        "__self__",
+        "f_builtins",
+        "getmodule",
+    }
 )
+# The builtins whose prior Tier 2 ``evaluator`` cause (PR 6) every later
+# classifier must keep: the full lookup with the frame and annotation rules
+# (R-699-3, the two cause-preservation regressions).
+_LEGACY_EVALUATORS = frozenset({"exec", "eval", "execfile"})
+_RE_MODULE = "re"
 # A function's annotations dict: a string written into it is evaluated
 # against the function's globals by ``typing.get_type_hints``, which
 # ``functools.singledispatch.register`` calls internally (B-5). Only a closed
@@ -1150,6 +1202,8 @@ class _Analysis:
         self.builtins_reach = False
         self.string_checks: list[tuple[str, Any]] = []
         self.checked_bindings: dict[str, list[Mapping[str, str]]] = {}
+        # The scope the last :meth:`_use_lookup` decided in.
+        self.use_decided: _Scope | None = None
         # Plan PY-5 (module scope only), applied with the S2 flags.
         self.computed_getter = False
         self.handlers: dict[str, Callable[[Any, _Scope, int], None]] = {
@@ -2001,7 +2055,7 @@ class _Analysis:
         getattr_attribute = False
         for ident in identifiers:
             spellings = _spellings(ident, source)
-            if spellings & _BUILTINS_REACH:
+            if spellings & _BUILTINS_REACH or self._computed_acquisition(ident):
                 self.builtins_reach = True
             if spellings & _STRING_CODE_NAMES:
                 self._fire("name")
@@ -2017,7 +2071,11 @@ class _Analysis:
                 and _same(ident, parent.child_by_field_name("attribute"))
             )
             if attribute_name:
-                if name in _CODE_BUILTINS:
+                if name == "compile":
+                    # ``builtins.compile``, unless ``re.compile`` on a proven
+                    # ``re`` import (R-699-3 cost NIT).
+                    self.string_checks.append(("attribute:compile", parent))
+                elif name in _CODE_BUILTINS:
                     builtin_mentions.append(name)  # ``builtins.exec``
                 elif name == _RUNPY:
                     self._fire("runpy")  # ``multiprocessing.spawn.runpy``
@@ -2051,6 +2109,77 @@ class _Analysis:
         if getattr_attribute and self.builtins_reach:
             self.computed_getter = True
 
+    def _computed_acquisition(self, ident: Any) -> bool:
+        """Whether ``ident`` acquires a module by a name that is not a
+        constant string, so the module may be ``builtins``
+        (``importlib.import_module(len.__module__).exec``,
+        ``sys.modules[int.__module__].exec``; R-699-3): ``import_module`` or
+        ``__import__`` handed on or called with a computed first argument or
+        ``name=`` keyword, or ``X.modules`` subscripted or read with a
+        getter by a computed key other than ``__name__``."""
+        name = _text(ident, self.source)
+        parent = ident.parent
+        attribute = (
+            parent is not None
+            and parent.type == "attribute"
+            and _same(ident, parent.child_by_field_name("attribute"))
+        )
+        if name in _ACQUIRERS:
+            if _binding_position(ident) or (_name_part(ident) and not attribute):
+                return False
+            call = _callee_call(parent if attribute else ident)
+            if call is None:
+                return True  # handed on
+            arguments = _call_arguments(call)
+            first = next(
+                (
+                    argument
+                    for argument in arguments
+                    if argument.type not in ("keyword_argument", "comment")
+                ),
+                None,
+            )
+            if first is None:
+                first = next(
+                    (
+                        argument.child_by_field_name("value")
+                        for argument in arguments
+                        if argument.type == "keyword_argument"
+                        and _text(argument.child_by_field_name("name"), self.source)
+                        == _NAME_KEYWORD
+                    ),
+                    None,
+                )
+            return first is None or _constant_string(first, self.source) is None
+        if name != _SYS_MODULES or not attribute:
+            return False
+        outer = parent
+        while (
+            outer.parent is not None and outer.parent.type == "parenthesized_expression"
+        ):
+            outer = outer.parent
+        above = outer.parent
+        key = None
+        if above is not None and above.type == "subscript":
+            if _same(above.child_by_field_name("value"), outer):
+                key = above.child_by_field_name("subscript")
+        elif above is not None and above.type == "attribute":
+            method = above.child_by_field_name("attribute")
+            call = _callee_call(above)
+            if (
+                method is not None
+                and _text(method, self.source) in _MODULE_GETTERS
+                and call is not None
+            ):
+                arguments = _call_arguments(call)
+                key = arguments[0] if arguments else None
+        if key is None:
+            return False
+        key = _unwrap(key, skip_comments=True)
+        if key.type == "identifier" and _text(key, self.source) == "__name__":
+            return False
+        return _constant_string(key, self.source) is None
+
     def _checked_bindings(self) -> dict[str, list[Mapping[str, str]]]:
         """Every name an import of a checked module (``pickle``, ``timeit``,
         ``runpy``) binds, with its import records. A from-import of a member
@@ -2062,10 +2191,10 @@ class _Analysis:
             info = binding.info
             if binding.cls != IMPORT or not info:
                 continue
-            module = _checked_module(info)
-            if module is None:
+            target = _checked_import(info)
+            if target is None:
                 continue
-            member = info.get("name") if info.get("form") == "from" else None
+            module, member = target
             if member is not None and member not in _CHECKED_MODULES[module]:
                 self._fire("checked")  # ``from pickle import loads``
                 continue
@@ -2115,6 +2244,8 @@ class _Analysis:
                 self._fire("import")
             if stdlib and last == _MARSHAL:
                 self._fire("marshal")  # ``from pstats import marshal``
+            if stdlib and last in _STRING_CODE_MODULES:
+                self._fire("import")  # ``from pdb import code`` (R-699-3)
             if module in _BUILTIN_MODULES and last in _CODE_BUILTINS:
                 self._fire("builtin")  # ``from builtins import exec as run``
             if (
@@ -2158,16 +2289,24 @@ class _Analysis:
             return
         if parts & (_STRING_CODE_NAMES | _MODULE_STRINGS | {_ANNOTATIONS, _MARSHAL}):
             self._fire("string")
-        if value.split(".")[0] in _GENERIC_MODULE_STRINGS and self._acquired(node):
-            self._fire("string")  # ``importlib.import_module("code")``
+        components = _DOTTED_SPLIT.split(value)
+        if components[0] in _GENERIC_MODULE_STRINGS and (
+            len(components) > 1 or self._acquired(node)
+        ):
+            # ``"timeit:timeit"``, ``importlib.import_module(name="code")``
+            # (R-699-3, BLOCKING 3).
+            self._fire("string")
         if parts & _BUILTINS_REACH:
             self.builtins_reach = True
         builtin_mentions.extend(parts & _CODE_BUILTINS)
 
     def _acquired(self, node: Any) -> bool:
         """Whether a constant string is the literal module name of an
-        acquisition: the first argument of ``import_module``/``__import__``,
-        or the key of a ``.modules`` subscript or getter."""
+        acquisition: the first argument or ``name=`` keyword of
+        ``import_module``/``__import__`` or of a string resolver
+        (``resolve_name``, ``locate``, ``safeimport``), the key of a
+        ``.modules`` subscript or getter, or the value of a ``"()"`` factory
+        key (``logging.config.dictConfig``)."""
         outer = node
         while (
             outer.parent is not None and outer.parent.type == "parenthesized_expression"
@@ -2176,6 +2315,25 @@ class _Analysis:
         parent = outer.parent
         if parent is None:
             return False
+        if parent.type == "pair":
+            key = parent.child_by_field_name("key")
+            return (
+                _same(parent.child_by_field_name("value"), outer)
+                and key is not None
+                and _constant_string(key, self.source) == _FACTORY_KEY
+            )
+        keyword = False
+        if parent.type == "keyword_argument":
+            name = parent.child_by_field_name("name")
+            if (
+                name is None
+                or _text(name, self.source) != _NAME_KEYWORD
+                or not _same(parent.child_by_field_name("value"), outer)
+            ):
+                return False
+            keyword, outer, parent = True, parent, parent.parent
+            if parent is None:
+                return False
         if parent.type == "subscript":
             value = parent.child_by_field_name("value")
             return (
@@ -2188,19 +2346,21 @@ class _Analysis:
         if parent.type != "argument_list" or parent.parent is None:
             return False
         arguments = [c for c in parent.named_children if c.type != "comment"]
-        if not arguments or not _same(arguments[0], outer):
+        if not keyword and (not arguments or not _same(arguments[0], outer)):
             return False
         callee = parent.parent.child_by_field_name("function")
         callee = _unwrap(callee, skip_comments=True) if callee is not None else None
         if callee is None:
             return False
         if callee.type == "identifier":
-            return _text(callee, self.source) in _ACQUIRERS
+            return _text(callee, self.source) in _ACQUIRERS | _STRING_RESOLVERS
         if callee.type != "attribute":
             return False
         method = _text(callee.child_by_field_name("attribute"), self.source)
-        if method in _ACQUIRERS:
+        if method in _ACQUIRERS | _STRING_RESOLVERS:
             return True
+        if keyword:
+            return False
         receiver = _unwrap(callee.child_by_field_name("object"), skip_comments=True)
         return (
             method in _MODULE_GETTERS
@@ -2296,7 +2456,9 @@ class _Analysis:
         saved = (self.frame_locals, self.decided)
         self.frame_locals = False
         try:
-            return self.lookup(ident, annotations=False)
+            outcome = self.lookup(ident, annotations=False)
+            self.use_decided = self.decided
+            return outcome
         finally:
             self.frame_locals, self.decided = saved
 
@@ -2307,15 +2469,60 @@ class _Analysis:
         )
 
     def _is_builtin(self, ident: Any) -> bool:
-        """Whether a code builtin's use may be the builtin: anything but the
-        file's own binding or an import from another module."""
+        """Whether a builtin's use may be the builtin (R-699-3, BLOCKING 1):
+        anything but a binding of the file's own that dominates the use. In
+        a function scope every binding does (a use that runs first raises
+        ``UnboundLocalError`` or ``NameError``): a ``def`` or ``class``, a
+        parameter, a variable, an expression binding, or an import from a
+        module other than ``builtins``; a value handed in from this file
+        spells the builtin and fires itself. At module or class scope a use
+        may run before any binding and get the builtin, so none proves: the
+        lookup gives ``builtin-shadow`` for module definitions and imports,
+        and a variable or walrus binding (``compile = compile``, a use before
+        ``compile = re.compile``) fails closed here."""
         outcome = self._use_lookup(ident)
-        if self._own_binding(outcome):
-            return False
+        scope = self.use_decided
         if outcome.get("outcome") == "import":
             binding = outcome.get("binding") or {}
             return binding.get("module") in _BUILTIN_MODULES
-        return True
+        if not self._own_binding(outcome):
+            return True
+        return scope is None or scope.kind in (_MODULE, _CLASS)
+
+    def _re_receiver(self, attribute: Any) -> bool:
+        """Whether ``X.compile``'s receiver is a name the ordinary lookup
+        proves is an import of the ``re`` module (``import re [as r]``)."""
+        receiver = attribute.child_by_field_name("object")
+        receiver = _unwrap(receiver, skip_comments=True) if receiver else None
+        if receiver is None or receiver.type != "identifier":
+            return False
+        outcome = self._use_lookup(receiver)
+        binding = outcome.get("binding") or {}
+        return bool(
+            outcome.get("outcome") == "import"
+            and binding.get("form") == "import"
+            and binding.get("bound") == _RE_MODULE
+        )
+
+    def legacy_evaluator(self) -> bool:
+        """Whether a use of ``exec``, ``eval`` or ``execfile`` may be the
+        builtin by the full lookup at the end of the analysis, the frame and
+        annotation rules included: PR 6's Tier 2 ``evaluator`` test, which
+        the shared classifier must keep (R-699-3). A frame rule or a lazy
+        annotation makes the lookup inconclusive, so a local definition or a
+        parameter there no longer proves the use is not the builtin. Tier 1
+        is unaffected: those lookups already fail closed."""
+        for kind, node in self.string_checks:
+            if kind != "builtin" or _text(node, self.source) not in (
+                _LEGACY_EVALUATORS
+            ):
+                continue
+            outcome = self.lookup(node)
+            if outcome.get("outcome") == "none" and outcome.get("reason") not in (
+                _OWN_BINDING_REASONS
+            ):
+                return True
+        return False
 
     def _verify_string_code(self) -> None:
         """The use-site half of the classifier (#699 S2), once the scopes are
@@ -2326,6 +2533,9 @@ class _Analysis:
         for kind, node in self.string_checks:
             if kind == "builtin":
                 if self._is_builtin(node):
+                    self._fire("builtin")
+            elif kind == "attribute:compile":
+                if self.builtins_reach and not self._re_receiver(node):
                     self._fire("builtin")
             elif kind == "getattr":
                 if self._is_builtin(node):
@@ -2355,7 +2565,7 @@ class _Analysis:
             return True
         if outcome.get("outcome") == "import":
             binding = outcome.get("binding") or {}
-            infos = [binding] if _checked_module(binding) is not None else []
+            infos = [binding] if _checked_import(binding) is not None else []
         else:
             infos = [
                 info
@@ -2363,10 +2573,10 @@ class _Analysis:
                 for info in checked.get(spelling, ())
             ]
         for info in infos:
-            module = _checked_module(info)
-            assert module is not None
-            if info.get("form") == "from":
-                member = info.get("name")
+            found = _checked_import(info)
+            assert found is not None
+            module, member = found
+            if member is not None:
                 if module == _RUNPY and not self._plain_runpy_call(ident):
                     return False
                 if member not in _CHECKED_MODULES[module]:
@@ -4127,12 +4337,23 @@ def _in_first_iterable(node: Any, ident: Any) -> bool:
     return bool(start <= ident.start_byte and ident.end_byte <= clause.end_byte)
 
 
-def _checked_module(info: Mapping[str, str]) -> str | None:
+def _checked_import(info: Mapping[str, str]) -> tuple[str, str | None] | None:
     """The checked module (``pickle``, ``_pickle``, ``timeit``, ``runpy``)
-    an import record binds, as the module (``import pickle [as p]``) or a
-    member (``from pickle import dumps``), or ``None``."""
-    module = info.get("bound") if info.get("form") == "import" else info.get("module")
-    return module if module in _CHECKED_MODULES else None
+    an import record binds and the member it binds (``None`` for the module
+    itself): the module (``import pickle [as p]``, or a from-import of the
+    module's name out of any other module, R-699-3: ``from logging.handlers
+    import pickle``) or a member (``from pickle import dumps``); ``None``
+    for any other import."""
+    if info.get("form") == "import":
+        module, member = info.get("bound"), None
+    else:
+        module, member = info.get("module"), info.get("name")
+        if module not in _CHECKED_MODULES and member in _CHECKED_MODULES:
+            module, member = member, None
+    if module not in _CHECKED_MODULES:
+        return None
+    assert module is not None
+    return module, member
 
 
 def _from_import_names(node: Any, source: bytes) -> list[tuple[str, Any]]:

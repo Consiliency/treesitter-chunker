@@ -76,8 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (`exec`, `eval`, `compile`, `breakpoint()`, `cProfile`/`pdb`/`trace`/
     `timeit`/`doctest`-style helpers, `pickle` loads, `shelve`, `marshal`,
     loader `get_code`/`exec_module`, `runpy` with `init_globals`,
-    `get_type_hints`, string annotations that call, `__annotations__` writes)
-    resolves no call at all, function-local ones included, because such code
+    `get_type_hints`, `singledispatch`, string annotations that call,
+    `__annotations__` writes; a module-level variable of a code builtin's
+    name, `compile = compile`, does not hide the builtin) resolves no call at all, function-local ones included, because such code
     can write its caller's locals through the frame; in `imports` mode it is
     also a run-wide `evaluator` cause, and any code-object source (`__code__`,
     `__closure__`, `FunctionType`, ...; reads included) a `module-object`

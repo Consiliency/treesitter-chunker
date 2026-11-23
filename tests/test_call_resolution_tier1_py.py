@@ -5945,12 +5945,15 @@ def test_fold14_controls_pair_with_the_trees() -> None:
 # ``pdb`` or ``bdb``, or ``get_type_hints``) after dropping the reflective
 # name their fold tested: the helper alone fails closed since
 # treesitter-chunker#699 S2 (plan PY-1, PY-2), so the edge stays as off.
+# ``a38_singledispatch_late`` keeps ``functools.singledispatch``, an
+# annotation evaluator since R-699-3 (BLOCKING 4).
 S2_FLIPPED_CONTROLS = frozenset(
     {
         "q34_cprofile_getstats_code",
         "a37_typing_hints_late",
         "p38_pdb_curframe_locals",
         "t38_bdb_code_linenos",
+        "a38_singledispatch_late",
     }
 )
 
@@ -8354,6 +8357,60 @@ STRING_CODE_FORMS: dict[str, str] = {
     # A generic module name by string, in a file that acquires modules by
     # name.
     "code-by-import-module": "import importlib\nm = importlib.import_module('code')",
+    # R-699-3 BLOCKING 1: no module or class binding of a code builtin
+    # dominates a use, so a variable or walrus binding proves nothing.
+    "compile-self-alias": "compile = compile\nc = compile(s, 'x', 'exec')",
+    "compile-walrus-self-alias": "(compile := compile)\nc = compile(s, 'x', 'exec')",
+    "compile-before-module-assign": "c = compile(s, 'x', 'exec')\ncompile = re.compile",
+    "compile-class-alias": "class K:\n    compile = compile",
+    "compile-global-redirect": (
+        "def g():\n    global compile\n    compile = re.compile\n    return compile('x')"
+    ),
+    "breakpoint-self-alias": "breakpoint = breakpoint",
+    "breakpoint-before-module-def": "breakpoint()\nbreakpoint = print",
+    "compile-for-target": "for compile in [compile]:\n    compile(s, 'x', 'exec')",
+    # BLOCKING 2: a from-import of a checked module's name out of any module
+    # binds the module itself.
+    "pickle-from-reexport": "from logging.handlers import pickle as pk\nx = pk.loads(b'')",
+    "pickle-from-reexport-local": (
+        "def f():\n    from pickletools import pickle\n    return pickle.loads(b'')"
+    ),
+    "pickle-from-reexport-value": "from tracemalloc import pickle\np = pickle",
+    "pickle-from-relative": "from . import pickle\nx = pickle.loads(b'')",
+    "runpy-from-reexport": (
+        "from multiprocessing.spawn import runpy\nrunpy.run_path(p, {'helper': len}, 'x')"
+    ),
+    "timeit-from-reexport": "from somewhere import timeit\ntimeit.timeit('x')",
+    "trace-from-stdlib": "from logging import trace",
+    # BLOCKING 3: generic module names in a dotted constant, by keyword and
+    # through the string resolvers.
+    "code-import-module-keyword": (
+        "import importlib\nm = importlib.import_module(name='code')"
+    ),
+    "code-dunder-import-keyword": "m = __import__(name='code')",
+    "code-resolve-name-colon": (
+        "import pkgutil\nm = pkgutil.resolve_name('code:InteractiveInterpreter')"
+    ),
+    "code-resolve-name-lone": "import pkgutil\nm = pkgutil.resolve_name('code')",
+    "code-resolve-name-from": "from pkgutil import resolve_name\nm = resolve_name('code')",
+    "timeit-pydoc-locate": "import pydoc\nf = pydoc.locate('timeit.timeit')",
+    "timeit-dictconfig-factory": (
+        "logging.config.dictConfig({'filters': {'f': {'()': 'timeit.timeit'}}})"
+    ),
+    "profile-factory-lone": "d = {'()': 'profile'}",
+    "trace-dotted-constant": "x = 'trace.Trace'",
+    # BLOCKING 4: the dispatchers evaluate string annotation values.
+    "singledispatch": "from functools import singledispatch",
+    "singledispatchmethod-attr": "m = functools.singledispatchmethod(f)",
+    # SHOULD 1: builtins reached through ``getmodule`` or a module acquired
+    # by a computed name.
+    "exec-getmodule": "import inspect\ninspect.getmodule(len).exec('x')",
+    "exec-import-module-computed": (
+        "import importlib\nimportlib.import_module(len.__module__).exec('x')"
+    ),
+    "exec-sys-modules-computed": "import sys\nsys.modules[len.__module__].exec('x')",
+    "eval-modules-get-computed": "import sys\nsys.modules.get(n).eval('x')",
+    "compile-attr-unproven-receiver": "import builtins\nx = builtins.len\np = rx.compile('x')",
 }
 
 
@@ -8408,6 +8465,14 @@ STRING_CODE_CONTROLS: dict[str, str] = {
     ),
     "generic-strings": "x = {'code': 1, 'trace': 2, 'profile': 3, 'timeit': 4}",
     "prose-strings": "msg = 'runpy.run_path or pdb.set_trace: refused'",
+    # R-699-3: function-scope bindings of a code builtin dominate the use.
+    "compile-local-variable": "def g():\n    compile = str\n    return compile(1)",
+    # A from-import of a checked module's name on its allow-list.
+    "pickle-from-reexport-dumps": "from logging.handlers import pickle\nx = pickle.dumps(1)",
+    "runpy-from-reexport-plain": "from multiprocessing.spawn import runpy\nrunpy.run_path('x')",
+    # A generic word that is no acquisition, and an acquisition by constant.
+    "generic-name-keyword": "x = f(name='code')",
+    "generic-factory-other": "d = {'()': 'json.JSONDecoder', 'code': 'x'}",
 }
 
 
@@ -8422,6 +8487,33 @@ def test_string_code_controls_still_resolve(case: str) -> None:
         + "def use():\n    return helper()\n"
     )
     assert proof_text(module) == PROOF, case
+
+
+# R-699-3 controls in files whose module-scope lookups main already makes
+# dynamic (a mention of ``builtins`` or ``X.modules``): the function-local
+# proof stands.
+STRING_CODE_LOCAL_CONTROLS: dict[str, str] = {
+    # ``re.compile`` on a proven ``re`` import, in a file that reaches the
+    # builtins namespace (cost NIT).
+    "re-compile-builtins-reach": (
+        "def g():\n    import builtins\n    import re\n"
+        "    return builtins.len, re.compile('x')"
+    ),
+    "re-compile-alias-builtins-reach": (
+        "def g():\n    import builtins\n    import re as rx\n"
+        "    return builtins.len, rx.compile('x')"
+    ),
+    # A module acquired by its own name or a constant is not ``builtins``.
+    "sys-modules-own-name": "def g(sys, m):\n    return sys.modules[__name__], m.eval()",
+    "sys-modules-constant": "def g(sys, m):\n    return sys.modules['json'], m.eval()",
+    "modules-get-constant": "def g(sys, m):\n    return sys.modules.get('json'), m.eval()",
+}
+
+
+@pytest.mark.parametrize("case", sorted(STRING_CODE_LOCAL_CONTROLS))
+def test_string_code_local_controls_still_resolve(case: str) -> None:
+    source = STRING_CODE_LOCAL_CONTROLS[case] + "\n\n\n" + LOCAL_PROOF
+    assert proof_text(source) == ["def helper():\n        return 1"], case
 
 
 @pytest.mark.parametrize(
@@ -8441,12 +8533,20 @@ def test_own_bindings_of_code_builtins_leave_function_proofs_alone(form: str) ->
     ]
 
 
-def test_module_level_import_of_a_code_builtin_is_builtin_shadow() -> None:
-    """``from re import compile`` at module level shadows the builtin only
-    once it runs: a call that runs first gets the builtin ``compile``, so the
-    use fails closed. In a function the import binds a local."""
-    source = "from re import compile\np = compile('x')\n\n\n" + LOCAL_PROOF
-    assert reason(source) == "dynamic-scope"
+@pytest.mark.parametrize(
+    "form",
+    [
+        "from re import compile\np = compile('x')",
+        "compile = re.compile\np = compile('x')",
+        "(compile := re.compile)\np = compile('x')",
+    ],
+)
+def test_module_level_binding_of_a_code_builtin_is_builtin_shadow(form: str) -> None:
+    """A module-level import, variable or walrus binding shadows the builtin
+    only once it runs: a call that runs first gets the builtin ``compile``,
+    so the use fails closed (R-699-3 BLOCKING 1, ``ctl_module_compile_re``
+    flips). In a function the binding is a local."""
+    assert reason(form + "\n\n\n" + LOCAL_PROOF) == "dynamic-scope", form
 
 
 @pytest.mark.parametrize(
@@ -8582,6 +8682,7 @@ def test_string_code_lists_are_pinned() -> None:
             "get_type_hints", "eval_str", "ForwardRef",
             "evaluate_forward_ref", "_eval_type", "get_code",
             "source_to_code", "exec_module", "load_module", "read_code",
+            "singledispatch", "singledispatchmethod",
         }
     ) == py_scope._STRING_CODE_NAMES  # fmt: skip
     assert (
@@ -8607,6 +8708,17 @@ def test_string_code_lists_are_pinned() -> None:
         }
     ) == py_scope._PICKLE_SAFE  # fmt: skip
     assert frozenset({"run_name", "alter_sys"}) == py_scope._RUNPY_KEYWORDS
+    assert frozenset(
+        {"builtins", "__builtins__", "__builtin__", "bltns", "__self__",
+         "f_builtins", "getmodule"}
+    ) == py_scope._BUILTINS_REACH  # fmt: skip
+    assert frozenset({"exec", "eval", "execfile"}) == py_scope._LEGACY_EVALUATORS
+    assert frozenset({"code", "trace", "profile", "timeit"}) == (
+        py_scope._GENERIC_MODULE_STRINGS
+    )
+    assert frozenset({"resolve_name", "locate", "safeimport"}) == (
+        py_scope._STRING_RESOLVERS
+    )
     # B-1: every code-object name is also a Tier 1 file-wide name.
     assert py_scope._CODE_OBJECT_NAMES <= py_scope._FILE_WIDE_NAMES
 
@@ -8671,6 +8783,13 @@ def test_stdlib_reexports_hold_and_fail_closed(
     if attribute == "code":
         spelled = f"import {module} as {alias}\nx = {alias}.code.InteractiveConsole"
     assert reason(spelled + "\n\n\n" + LOCAL_PROOF) == "dynamic-scope", spelled
+    # R-699-3 BLOCKING 2: the from-import of the same object, used off the
+    # module's allow-list, fails closed too.
+    first, _, rest = attribute.partition(".")
+    imported = f"from {module} import {first} as _r\nx = _r.{rest or 'loads'}"
+    if first == "code":
+        imported = f"from {module} import code as _r\nx = _r.InteractiveConsole"
+    assert reason(imported + "\n\n\n" + LOCAL_PROOF) == "dynamic-scope", imported
 
 
 # Runtime-traced trees (CPython 3.14.10). ``a.py`` calls ``helper``; ``b.py``

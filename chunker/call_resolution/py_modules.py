@@ -1051,7 +1051,10 @@ def _scan_causes(
     # ``pickle.loads`` included); a code-object source, reads included, is a
     # ``module-object`` cause (B-1, reversing #705 Q2: ``type(f)(code, g)()``
     # runs a code object with neither ``exec`` nor ``eval``).
-    if analysis.string_code:
+    # The full-lookup test PR 6 used for ``exec``/``eval``/``execfile`` is
+    # kept too (R-699-3): a frame rule or a lazy annotation leaves the use
+    # possibly the builtin even where the use-site proof excludes it.
+    if analysis.string_code or analysis.legacy_evaluator():
         facts.shutoff.add(CAUSE_EVALUATOR)
     if analysis.code_objects:
         facts.shutoff.add(CAUSE_MODULE_OBJECT)
