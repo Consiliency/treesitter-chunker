@@ -2,10 +2,11 @@
 
 Each mutation disables one rule by a single textual edit. The script copies
 the checkout to a temporary directory, checks that the unmutated copy passes,
-then applies each mutation alone and runs the Tier 2 Python tests and the
-``imports`` expected-table test serially. A mutation is *killed* when a test
-fails. The script prints one tab-separated line per mutation and exits
-non-zero if any mutation survives or does not apply.
+then applies each mutation alone and runs the Tier 2 Python tests, the
+``imports`` expected-table test and the shared K-3 main-string regressions
+serially. A mutation is *killed* when a test fails. The script prints one
+tab-separated line per mutation and exits non-zero if any mutation survives
+or does not apply.
 
 Usage (Python 3.14, from the repository root)::
 
@@ -26,10 +27,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CR = "chunker/call_resolution/"
 PYM = CR + "py_modules.py"
+PYS = CR + "py_scope.py"
 ENG = CR + "engine.py"
 TESTS = (
     "tests/test_call_resolution_tier2_py.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
+    "tests/test_call_resolution_tier1_py.py::test_main_format_strings_fail_closed",
+    "tests/test_call_resolution_tier1_py.py::test_main_string_components_fail_closed",
+    "tests/test_call_resolution_tier1_py.py::test_scope_facts_ignore_the_warnings_filters",
+    "tests/test_call_resolution_tier1_py.py::test_decode_literal_matches_cpython",
+    "tests/test_call_resolution_tier1_py.py::test_constant_fstrings_match_cpython_through_the_tree",
+    "tests/test_call_resolution_tier1_py.py::test_main_substring_rule_is_sound_against_cpython",
+    "tests/test_call_resolution_tier1_py.py::test_main_anywhere_in_an_fstring_fails_closed",
+    "tests/test_call_resolution_tier1_py.py::test_fstring_without_main_resolves",
+    "tests/test_call_resolution_tier1_py.py::test_unreadable_fstring_bytes_fail_closed",
+    "tests/test_call_resolution_tier1_py.py::test_main_needs_a_whole_component",
+    "tests/test_call_resolution_tier1_py.py::test_main_guard_resolves_the_call_in_its_body",
 )
 
 # (id, file, old text, new text). The old text must occur in the file once.
@@ -651,10 +664,134 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "            if False:",
     ),
     (
+        # The guard exemption now lives in the shared K-3 verdict (R-698-2).
         "b-main-guard",
+        PYS,
+        "if main_kind == _MAIN_INTERPOLATED or not self._main_guard(node):",
+        "if main_kind == _MAIN_INTERPOLATED:",
+    ),
+    # K-3 main-string classifier (treesitter-chunker#698, R-698-1).
+    (
+        "main-component-split",
+        PYS,
+        '_MAIN_COMPONENTS = re.compile(r"[.:{}\\[\\]!()$%\\s]")',
+        '_MAIN_COMPONENTS = re.compile(r"[.:]")',
+    ),
+    (
+        "main-percent-fields",
+        PYS,
+        '_MAIN_COMPONENTS = re.compile(r"[.:{}\\[\\]!()$%\\s]")',
+        '_MAIN_COMPONENTS = re.compile(r"[.:{}\\[\\]!$%\\s]")',
+    ),
+    (
+        "main-template-identifier",
+        PYS,
+        '(match["named"] or match["braced"]) in _MAIN_NAMES',
+        "False",
+    ),
+    (
+        "main-fstring-tstring-parts",
+        PYS,
+        "    if _interpolated_names_main(node, source):\n        return _MAIN_INTERPOLATED",
+        "    if False:\n        return _MAIN_INTERPOLATED",
+    ),
+    # One K-3 classifier for both tiers (treesitter-chunker#698, R-698-2 B-1).
+    (
+        "imports-main-string-shared",
         PYM,
-        "and not analysis._main_guard(node):",
-        "and False:",
+        "    if analysis.main_string:",
+        "    if False:",
+    ),
+    (
+        "main-string-scan",
+        PYS,
+        "                main_kind = _main_string(node, source, value)",
+        "                main_kind = None",
+    ),
+    (
+        "main-string-constant",
+        PYS,
+        "    if value is not None and _names_main(value):\n        return _MAIN_CONSTANT",
+        "    if False:\n        return _MAIN_CONSTANT",
+    ),
+    (
+        "main-string-tier1-dynamic",
+        PYS,
+        "        if self.main_string:\n            self.dynamic = True",
+        "        if False:\n            self.dynamic = True",
+    ),
+    # S-1 decoder (R-698-2): no ``ast`` and no warnings state.
+    (
+        "s1-invalid-escape-keeps-backslash",
+        PYS,
+        "    # An invalid escape keeps its backslash (a ``SyntaxWarning``).\n"
+        "    return char, index + 1",
+        "    # An invalid escape keeps its backslash (a ``SyntaxWarning``).\n"
+        '    return "", index + 1',
+    ),
+    (
+        "s1-named-sequence",
+        PYS,
+        "        if len(named) != 1:\n            # A named sequence",
+        "        if False:\n            # A named sequence",
+    ),
+    # R-698-3: the f-string and t-string substring rule (it replaces the
+    # piece reader, and with it the re-check 2 spec-gap mutation).
+    (
+        "r698-3-brace-view",
+        PYS,
+        '            views += (view, view.replace("{", "").replace("}", ""))',
+        "            views += (view,)",
+    ),
+    (
+        "r698-3-decode-view",
+        PYS,
+        "        for view in (base, _decode_escapes(base)):",
+        "        for view in (base,):",
+    ),
+    (
+        "r698-3-mp-main",
+        PYS,
+        "    return any(name in view for view in views for name in _MAIN_NAMES)",
+        "    return any(_MAIN in view for view in views)",
+    ),
+    (
+        "r698-3-adjacent-join",
+        PYS,
+        "                _string_sources(child, source, parts)\n        return",
+        "                _string_sources(child, source, parts)\n"
+        '                parts.append("\\0")\n        return',
+    ),
+    (
+        "r698-3-plus-join",
+        PYS,
+        "            _string_sources(left, source, parts)\n"
+        "            _string_sources(right, source, parts)",
+        "            _string_sources(left, source, parts)\n"
+        '            parts.append("\\0")\n'
+        "            _string_sources(right, source, parts)",
+    ),
+    (
+        "r698-3-plain-strings-keep-classifier",
+        PYS,
+        "    if not _has_interpolated(node, source):\n        return False\n    parts",
+        "    if False:\n        return False\n    parts",
+    ),
+    (
+        # A raw string's final ``\"`` folded into the end token is content
+        # in the constant-interpolation f-string reader too.
+        "b2-constant-fstring-folded-end",
+        PYS,
+        "            if not raw.endswith(quote):\n"
+        "                return None\n"
+        "            raw = raw[: len(raw) - len(quote)]\n",
+        "            continue\n",
+    ),
+    (
+        "main-undecodable-fails-closed",
+        PYS,
+        "    except _UndecodableError:\n        return True",
+        "    except _UndecodableError:\n        return False",
     ),
     (
         "b-sys-dunder",

@@ -1735,6 +1735,131 @@ def test_fold2_rules_each_have_a_failing_case(tmp_path: Path, case: str) -> None
     assert label == f"none({label_reason})", case
 
 
+# R-698-2 B-1 (treesitter-chunker#698): the run-wide ``__main__`` writer
+# check uses the K-3 classifier Tier 1 uses. ``use.py`` runs as the script;
+# ``w.py`` hands ``"__main__"`` to a callback that rebinds ``t`` there.
+MAIN_WRITER_USE = (
+    "from svc import t\nimport w\n\n\ndef u():\n    return t()\n\n\n"
+    "if __name__ == '__main__':\n    w.go()\n    print('RESULT', u())\n"
+)
+MAIN_WRITER_P = (
+    "import doctest\n\n\nclass P:\n"
+    "    def __getitem__(self, key):\n"
+    "        m = doctest._normalize_module(key)\n"
+    "        m.t = lambda: 'patched'\n        return ''\n\n"
+    "    def __format__(self, spec):\n"
+    "        m = doctest._normalize_module(spec)\n"
+    "        m.t = lambda: 'patched'\n        return ''\n\n\n"
+)
+# ``R.__format__`` hands the last dotted part of its spec to the resolver,
+# so a spec such as ``'=x.__main__'`` (CPython's reading of B-3) rebinds.
+MAIN_WRITER_R = (
+    "class R:\n"
+    "    def __format__(self, spec):\n"
+    "        m = doctest._normalize_module(spec.rpartition('.')[2].strip())\n"
+    "        m.t = lambda: 'patched'\n        return ''\n\n\n"
+    "r = R()\nx = e = ''\n\n\n"
+)
+MAIN_WRITERS = {
+    # The re-check's repros (714-opus-5-5-recheck.md §4): CPython 3.14 prints
+    # ``RESULT patched`` for each.
+    "stored-percent-template": "T = '%(__main__)s'\n\n\ndef go():\n    T % P()\n",
+    "fstring-spec": "def go():\n    return f'{P():__main__}'\n",
+    "stored-format-index": "T = '{0[__main__]}'\n\n\ndef go():\n    T.format(P())\n",
+    "stored-template": (
+        "import string\n\nT = '$__main__'\n\n\n"
+        "def go():\n    string.Template(T).substitute(P())\n"
+    ),
+    "tstring-spec": (
+        "def go():\n"
+        "    for i in t'{P():__main__}'.interpolations:\n"
+        "        format(i.value, i.format_spec)\n"
+    ),
+    "concatenated-percent": "T = '%(' '__main__)s'\n\n\ndef go():\n    T % P()\n",
+    # Re-check 2 B-2: a backslash-newline before a spec's closing brace is a
+    # line continuation, so CPython hands ``"__main__"`` to ``__format__``.
+    "fstring-spec-continuation": "def go():\n    return f'{P():__main__\\\n}'\n",
+    "tstring-spec-continuation": (
+        "def go():\n"
+        "    for i in t'{P():__main__\\\n}'.interpolations:\n"
+        "        format(i.value, i.format_spec)\n"
+    ),
+    "triple-spec-continuation": "def go():\n    return f'''{P():__main__\\\n}'''\n",
+    "nested-field-spec-continuation": (
+        "def go():\n    return f'{P():{\"\"}__main__\\\n}'\n"
+    ),
+    # Control: the plain string the run-wide rule always caught.
+    "plain": "T = '__main__'\n\n\ndef go():\n    P()[T]\n",
+    # R-698-3 (re-check 3 B-3, B-4): tree-sitter reads a walrus or a nested
+    # field where CPython reads spec text; ``R`` keeps the last dotted part.
+    "walrus-spec": MAIN_WRITER_R + "def go():\n    return f'{r:=x.__main__}'\n",
+    "walrus-spec-comment": (
+        MAIN_WRITER_R + "def go():\n    return f'''{r:= 1 # .__main__\n}'''\n"
+    ),
+    "doubled-brace-after-field": (
+        MAIN_WRITER_R + "def go():\n    return f'{r:{e}{{x.__main__}}}'\n"
+    ),
+    "doubled-brace-comment": (
+        MAIN_WRITER_R + "def go():\n    return f'''{r:{e}{{1 # .__main__\n}}}'''\n"
+    ),
+    # B-5: CPython drops the comment from the debug text.
+    "debug-comment": (
+        "class S:\n    __main__ = 0\n\n\n"
+        "def go():\n"
+        "    s = f'{S.__main__#c\n=}'\n"
+        "    format(P(), s.split('.')[1].split()[0])\n"
+    ),
+    # S-2: a t-string hands its expression text to user code.
+    "tstring-expression": (
+        "class S:\n    __main__ = 0\n\n\n"
+        "def go():\n"
+        "    for i in t'{S.__main__}'.interpolations:\n"
+        "        format(P(), i.expression.rpartition('.')[2])\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("writer", sorted(MAIN_WRITERS))
+def test_main_writer_strings_shut_off_imports(tmp_path: Path, writer: str) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": MAIN_WRITER_USE,
+            "w.py": MAIN_WRITER_P + MAIN_WRITERS[writer],
+            **OTHER,
+        },
+    )
+    off, structural, on, label = _run(root, "use.py", "t")
+    assert on == off == structural
+    assert label == "none(run-tainted:module-object)"
+
+
+@pytest.mark.parametrize(
+    "writer",
+    [
+        "T = '%(other)s'\n\n\ndef go():\n    T % P()\n",
+        # R-698-3: an f-string naming ``__name__`` but not ``__main__``.
+        "def go():\n    return f'{__name__}'\n",
+    ],
+)
+def test_main_writer_control_resolves(tmp_path: Path, writer: str) -> None:
+    """Without a main component the same run resolves, and the script guard
+    in ``use.py`` stays exempt."""
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": MAIN_WRITER_USE,
+            "w.py": MAIN_WRITER_P + writer,
+            **OTHER,
+        },
+    )
+    off, _structural, on, label = _run(root, "use.py", "t")
+    assert label == "import"
+    assert _target(on, root) == "svc.py"
+
+
 def test_fold2_python2_exec_statement_is_an_evaluator(tmp_path: Path) -> None:
     """The Python 2 ``exec`` statement the grammar accepts is an evaluator,
     or the file does not parse; either way Tier 2 is off."""
