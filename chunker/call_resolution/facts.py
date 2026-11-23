@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"20"`` for the ``js`` family and ``"38"`` for
+Schema (fact version ``"20"`` for the ``js`` family and ``"39"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -197,6 +197,11 @@ logger = logging.getLogger(__name__)
 # or a from-import is relied on by name; a recorded write of it fails closed).
 # python "29": fold 27 (Codex 4657978945: an allow-listed read's result must
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
+# python "39": treesitter-chunker#707: a function-scope sensitive alias (E-21)
+# is reachable when its function's locals may be read as a dict: a
+# ``locals()`` or no-argument ``vars()`` call inside it, ``locals``/``vars``
+# as a value, an attribute or a constant string anywhere in the file, or a
+# file-wide frame trigger (``f_locals`` reads included).
 # python "38": PR 6 fold 7 (#705 P6-21, P6-22): a constant name (patcher
 # method or ``getfixturevalue``) counts in any spelling ``_constant_string``
 # decodes, as a positional argument, a keyword value or a subscript key.
@@ -239,7 +244,7 @@ logger = logging.getLogger(__name__)
 # run-wide causes and parse hazards (``module_bindings``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "38"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "39"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.

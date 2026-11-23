@@ -3168,3 +3168,145 @@ def test_fold8_clean_reexports_still_resolve(tmp_path: Path, case: str) -> None:
     _off, _structural, on, label = _run(root, file, reference)
     assert on["resolution"] == "resolved" and label == "import", case
     assert _target(on, root) == "a/b.py", case
+
+
+# ---------------------------------------------------------------------------
+# treesitter-chunker#707: a function-local alias of a patcher (E-21) is
+# reachable when its function's locals may be read as a dict. The
+# president's ``f5_mock_locals`` (#705 review) hands ``p = mock.patch`` out
+# through ``return locals()``; ``tests/test_b.py`` reads it back and patches
+# ``svc.t``. ``runtime`` is what pytest printed on CPython 3.14.10 for each
+# tree (``helpers_mp.py`` as shown, ``test_b.py`` as below).
+
+_I707_TEST = (
+    'import calls\nfrom helpers_mp import make\nfrom other import t as _evil\nNAME = "t"\n'
+    'def test_go():\n    {use}\n    print("RAN", calls.go())\n'
+)
+_I707_ESCAPE = 'make()["p"](f"svc.{NAME}", _evil).start()'
+_I707_MOCK = "from unittest import mock\n"
+ISSUE707_BLOCKING: dict[str, tuple[str, str]] = {
+    "f5_mock_locals": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n    return locals()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "vars_no_argument": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n    return vars()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # PEP 709 inlines the comprehension: its ``locals()`` is ``make``'s.
+    "list_comprehension": (
+        _I707_MOCK
+        + "def make():\n    p = mock.patch\n    return [locals() for _ in [0]][0]\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # A nested function's ``locals()`` holds the free variables it reads.
+    "nested_free_variable": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n    def g():\n"
+        "        x = p\n        return locals()\n    return g()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # The builtin as a value, called later from ``make``'s frame.
+    "module_alias": (
+        _I707_MOCK + "L = locals\ndef make():\n    p = mock.patch\n    return L()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "partial": (
+        _I707_MOCK + "import functools\ndef make():\n    p = mock.patch\n"
+        "    return functools.partial(locals)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # The builtin as an attribute or by constant name.
+    "attribute": (
+        _I707_MOCK
+        + "def make():\n    p = mock.patch\n    return len.__self__.locals()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "getattr_constant": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n"
+        "    return getattr(len.__self__, 'locals')()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # A frame's locals read with a computed key (Tier 2 lets ``f_locals``
+    # reads pass as no module write).
+    "getframe_f_locals_get": (
+        _I707_MOCK + "import sys\ndef make():\n    p = mock.patch\n"
+        "    return {k: sys._getframe().f_locals.get(k) for k in ['p']}\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "currentframe_f_locals_subscript": (
+        _I707_MOCK + "import inspect\ndef make():\n    p = mock.patch\n"
+        "    return {k: inspect.currentframe().f_locals[k] for k in ['p']}\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+}
+
+
+def _i707_root(tmp_path: Path, helper: str, use: str) -> Path:
+    return _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "tests/helpers_mp.py": helper,
+            "tests/test_b.py": _I707_TEST.replace("{use}", use),
+        },
+    )
+
+
+@pytest.mark.parametrize("case", sorted(ISSUE707_BLOCKING))
+def test_issue707_local_patcher_alias_escapes_through_locals(
+    tmp_path: Path, case: str
+) -> None:
+    """treesitter-chunker#707: ``p = mock.patch`` in a function is on the
+    E-21 allow-list only while no computed read reaches ``p``. A
+    ``locals()`` or no-argument ``vars()`` call in the function (also in a
+    comprehension or nested function), ``locals`` as a value, an attribute or
+    a constant name anywhere in the file, or a frame's ``f_locals`` makes
+    every local of the function reachable, like ``globals()`` at module
+    scope. pytest printed ``RAN OTHER.t`` in every tree; main 64bae100
+    resolved ``svc.t`` to ``svc.py``."""
+    helper, _runtime = ISSUE707_BLOCKING[case]
+    root = _i707_root(tmp_path, helper, _I707_ESCAPE)
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    assert label == "none(run-tainted:unresolvable-writer)", case
+
+
+ISSUE707_CONTROLS: dict[str, str] = {
+    # The same alias with no ``locals()`` (CPython: ``RAN SVC.t``).
+    "no_locals": _I707_MOCK + "def make():\n    p = mock.patch\n    return {}\n",
+    # ``vars(obj)`` reads ``obj.__dict__``, not the frame.
+    "vars_with_argument": _I707_MOCK
+    + "def make():\n    p = mock.patch\n    n = len(vars(make))\n    return {}\n",
+    # The use-site lookup proves a local definition: not the builtin.
+    "local_def_named_locals": _I707_MOCK + "def make():\n    def locals():\n"
+    "        return {}\n    p = mock.patch\n    return locals()\n",
+}
+
+
+@pytest.mark.parametrize("case", sorted(ISSUE707_CONTROLS))
+def test_issue707_controls_still_resolve(tmp_path: Path, case: str) -> None:
+    root = _i707_root(tmp_path, ISSUE707_CONTROLS[case], "make()")
+    _off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on["resolution"] == "resolved" and label == "import", case
+    assert _target(on, root) == "svc.py", case
+
+
+ISSUE707_FAIL_CLOSED: dict[str, str] = {
+    # ``locals`` bound by assignment is not proven to be other than the
+    # builtin (CPython: ``dict()``, ``RAN SVC.t``): a harmless loss.
+    "local_assignment_named_locals": _I707_MOCK
+    + "def make():\n    locals = dict\n    p = mock.patch\n    return locals()\n",
+    # A class body's ``locals()`` is its namespace, without ``make``'s
+    # locals (CPython 3.14), but any reader inside the function counts.
+    "class_body": _I707_MOCK + "def make():\n    p = mock.patch\n    class K:\n"
+    "        d = locals()\n    return K.d\n",
+}
+
+
+@pytest.mark.parametrize("case", sorted(ISSUE707_FAIL_CLOSED))
+def test_issue707_conservative_readers_fail_closed(tmp_path: Path, case: str) -> None:
+    root = _i707_root(tmp_path, ISSUE707_FAIL_CLOSED[case], "make()")
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on == off, case
+    assert label == "none(run-tainted:unresolvable-writer)", case

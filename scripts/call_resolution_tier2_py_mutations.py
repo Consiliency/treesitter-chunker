@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CR = "chunker/call_resolution/"
 PYM = CR + "py_modules.py"
 ENG = CR + "engine.py"
+PYS = CR + "py_scope.py"
 TESTS = (
     "tests/test_call_resolution_tier2_py.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
@@ -737,6 +738,50 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     # (a splat makes the ``setattr`` argument a value, an escape, which taints
     # more), and ``unresolvable-writer-assembly`` (the unreachable branch is
     # removed; every recorded taint reference is absolute).
+    # treesitter-chunker#707: a function's locals read as a dict make its
+    # sensitive aliases reachable.
+    (
+        "707-locals-reachable",
+        PYS,
+        "        return self._locals_reachable(current)\n",
+        "        return False\n",
+    ),
+    (
+        "707-frame-locals",
+        PYS,
+        "        if self.frame_locals:\n            return True\n        for reader, by_lookup",
+        "        for reader, by_lookup",
+    ),
+    (
+        "707-value-readers",
+        PYS,
+        "            if call is None:\n                readers.append((None, False))\n",
+        "            if call is None:\n",
+    ),
+    (
+        "707-constant-readers",
+        PYS,
+        "            if constants & _LOCALS_READERS:\n",
+        "            if False:\n",
+    ),
+    (
+        "707-use-site-lookup",
+        PYS,
+        '        return outcome.get("outcome") != "local"\n',
+        "        return False\n",
+    ),
+    (
+        "707-lookup-ignored",
+        PYS,
+        '        return outcome.get("outcome") != "local"\n',
+        "        return True\n",
+    ),
+    (
+        "707-vars-argument",
+        PYS,
+        "                continue  # ``vars(obj)`` reads ``obj.__dict__``\n",
+        "                pass\n",
+    ),
 )
 
 

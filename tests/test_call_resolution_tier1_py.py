@@ -8201,3 +8201,38 @@ def test_fold28_695_lookup_failures_fail_verification(
 ) -> None:
     source = FOLD26_T.format(pre=pre, post="", stmt=stmt)
     assert reason(source) == "dynamic-scope", reason_name
+
+
+# ---------------------------------------------------------------------------
+# treesitter-chunker#707: a function-local alias of a sensitive value is
+# reachable when the function's locals may be read as a dict. A bare
+# ``locals``/``vars`` already makes the file dynamic (``_DYNAMIC_NAMES``);
+# these spellings did not: ``client.locals()`` may be the builtin (any module
+# can re-export it) and returns ``run``'s locals, ``p`` among them.
+@pytest.mark.parametrize(
+    "reader",
+    [
+        "client.locals()",
+        "client.vars()",
+        "getattr(client, 'locals')()",
+        "client.__dict__['vars']()",
+    ],
+)
+def test_issue707_locals_reader_makes_local_alias_reachable(reader: str) -> None:
+    for pre, value in (FOLD23_VALUES["patch"], FOLD23_VALUES["mocker"]):
+        stmt = f"p = {value}\n    client.use({reader})"
+        source = FOLD22_T.format(pre=pre, stmt=stmt)
+        assert reason(source) == "dynamic-scope", (value, reader)
+
+
+@pytest.mark.parametrize(
+    "stmt",
+    [
+        "p = mock.patch\n    client.use(client.vars_())",
+        "p = mock.patch\n    client.use(client.local())",
+        "p = mock.patch\n    client.use(client.get('locals_'))",
+    ],
+)
+def test_issue707_other_readers_keep_the_local_alias_safe(stmt: str) -> None:
+    source = FOLD22_T.format(pre=FOLD23_MOCK, stmt=stmt)
+    assert proof_text(source) == ["def helper(*a):\n    return 1"], stmt
