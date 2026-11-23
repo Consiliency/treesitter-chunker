@@ -149,6 +149,16 @@ MOCK_PACKAGES = {"jest": "@jest/globals", "vi": "vitest"}
 # Names that reach the CommonJS module system from anywhere.
 _MODULE_SYSTEM_NAMES = frozenset({"mainModule", "createRequire", "getBuiltinModule"})
 _STACK_KEYS = frozenset({"caller", "getFunction"})
+_STACK_NAME_TOKENS = frozenset(
+    {
+        "identifier",
+        "property_identifier",
+        "shorthand_property_identifier",
+        "shorthand_property_identifier_pattern",
+        "statement_identifier",
+        "type_identifier",
+    }
+)
 _MODULE_SYSTEM_SPECIFIERS = frozenset({"module", "node:module"})
 # Fold 3, item 1: the only names an import from ``module`` may bind without
 # a run-wide cause (with ``createRequire`` under item 2). ``builtinModules``
@@ -491,7 +501,9 @@ class _ModuleFacts:
         handled: set[int] = set()
         for node in _walk(analysis.root):
             kind = node.type
-            if kind == "call_expression":
+            if kind in _STACK_NAME_TOKENS:
+                self._name(node, handled)
+            elif kind == "call_expression":
                 self._loader_call(node, handled)
             elif kind == "with_statement":
                 # Lookups in this body can reach properties on the with object
@@ -510,20 +522,6 @@ class _ModuleFacts:
                         self.shutoff.add(CAUSE_MODULE_SYSTEM)
                     elif specifier not in _MODULE_SYSTEM_SPECIFIERS:
                         self.imports.add(specifier)
-            elif kind in (
-                "identifier",
-                "shorthand_property_identifier",
-                "shorthand_property_identifier_pattern",
-            ):
-                self._name(node, handled)
-            elif kind == "property_identifier":
-                name = _text(node, self.source)
-                if name in _MODULE_SYSTEM_NAMES:
-                    # A property cannot be looked up (its receiver may be an
-                    # alias of ``process``): matched by name.
-                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
-                elif self._stack_key_use(node, name):
-                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "string":
                 # Matched on the value sloppy code gives the literal (legacy
                 # octal escapes decode); a malformed literal fails closed.
@@ -531,7 +529,8 @@ class _ModuleFacts:
                 if (
                     value is None
                     or value in _MODULE_SYSTEM_NAMES
-                    or self._stack_key_use(node, value)
+                    or value in _STACK_KEYS
+                    or self._stack_trace_hook(node, value)
                 ):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "template_string":
@@ -541,8 +540,13 @@ class _ModuleFacts:
                     or any(
                         name in part for part in cooked for name in _MODULE_SYSTEM_NAMES
                     )
-                    or (len(cooked) == 1 and self._stack_key_use(node, cooked[0]))
+                    or any(part in _STACK_KEYS for part in cooked)
+                    or (len(cooked) == 1 and self._stack_trace_hook(node, cooked[0]))
                 ):
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            elif kind == "regex_pattern":
+                pattern = _text(node, self.source)
+                if any(name in pattern for name in _STACK_KEYS):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "meta_property":
                 if not self._inert_import_meta(node):
@@ -558,38 +562,61 @@ class _ModuleFacts:
         self._import_writes()
         self._namespace_uses()
 
-    def _stack_key_use(self, node: Any, name: str) -> bool:
-        """Stack introspection may expose a CommonJS wrapper (treesitter-chunker#718).
+    def _lexical_stack_name(self, node: Any, name: str) -> bool:
+        """Exempt variable and parameter names whose use is lexical."""
+        from .js_scope import PARAMETER
 
-        A literal stack key can flow through ordinary bindings and calls.
-        An unquoted property name must be a property read or destructuring
-        key. The stack-formatting hook still needs the global Error receiver.
-        """
-        if name not in _STACK_KEYS and name != "prepareStackTrace":
+        if node.type != "identifier":
             return False
-        if _in_type_position(node):
+        parent = node.parent
+        if parent is not None:
+            if parent.type in ("jsx_namespace_name", "namespace_export"):
+                return False
+            if parent.type == "export_statement" and any(
+                child.type == "namespace" for child in parent.children
+            ):
+                return False
+            if parent.type == "export_specifier":
+                # The exported name and a re-export's source name are keys.
+                statement = parent.parent.parent
+                if (
+                    parent.child_by_field_name("alias") is None
+                    or not _same(parent.child_by_field_name("name"), node)
+                    or statement.child_by_field_name("source") is not None
+                ):
+                    return False
+            if parent.type.startswith("jsx_") and _same(
+                parent.child_by_field_name("name"), node
+            ):
+                return False
+            if (
+                parent.type in ("required_parameter", "optional_parameter")
+                and _same(parent.child_by_field_name("pattern"), node)
+                and any(
+                    child.type
+                    in ("accessibility_modifier", "readonly", "override_modifier")
+                    for child in parent.children
+                )
+            ):
+                # A TS parameter property also names a class member.
+                return False
+        scope = self.analysis._binding_scope(node, name)
+        return scope is not None and all(
+            binding.lexical_name or binding.cls == PARAMETER
+            for binding in scope.bindings[name]
+        )
+
+    def _stack_trace_hook(self, node: Any, name: str) -> bool:
+        """Match a stack-formatting hook only on the global Error receiver."""
+        if name != "prepareStackTrace" or _in_type_position(node):
             return False
-        if name in _STACK_KEYS and node.type != "property_identifier":
-            return True
         outer = _climb_wrappers(node)
         parent = outer.parent
-        if parent is None:
-            return False
-        if (parent.type, _field_of(parent, outer)) in (
-            ("member_expression", "property"),
-            ("subscript_expression", "index"),
-        ):
-            return name != "prepareStackTrace" or self._global_builtin(
-                parent.child_by_field_name("object"), "Error"
-            )
-        if name == "prepareStackTrace":
-            return False
-        if parent.type == "computed_property_name":
-            outer, parent = parent, parent.parent
-        if parent is None:
-            return False
-        return parent.type == "pair_pattern" and _same(
-            parent.child_by_field_name("key"), outer
+        return (
+            parent is not None
+            and (parent.type, _field_of(parent, outer))
+            in (("member_expression", "property"), ("subscript_expression", "index"))
+            and self._global_builtin(parent.child_by_field_name("object"), "Error")
         )
 
     def _global_builtin(self, node: Any, name: str) -> bool:
@@ -732,15 +759,19 @@ class _ModuleFacts:
         from .js_scope import _declaration_name
 
         text = _text(node, self.source)
-        if node.type == "identifier" and _declaration_name(node):
+        if text in _STACK_KEYS:
+            if not self._lexical_stack_name(node, text):
+                self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
-        if (
-            node.type == "shorthand_property_identifier_pattern"
-            and text in _STACK_KEYS
-            and node.parent is not None
-            and node.parent.type in ("object_pattern", "object_assignment_pattern")
-        ):
-            self.shutoff.add(CAUSE_MODULE_SYSTEM)
+        if node.type == "property_identifier":
+            # A property cannot be looked up (its receiver may be an alias
+            # of ``process``): match the name.
+            if text in _MODULE_SYSTEM_NAMES or self._stack_trace_hook(node, text):
+                self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            return
+        if node.type in ("statement_identifier", "type_identifier"):
+            return
+        if node.type == "identifier" and _declaration_name(node):
             return
         if text in _MODULE_SYSTEM_NAMES:
             scope = self.analysis._binding_scope(node, text)

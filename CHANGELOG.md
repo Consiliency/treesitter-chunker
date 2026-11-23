@@ -112,8 +112,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     stack introspection through `caller`, `getFunction` or
     `Error.prepareStackTrace`, a `with` statement (treesitter-chunker#718),
     or an unparsed JS/TS file): Tier 2 records the cause and disables
-    cross-module resolution for the affected callers. Cooked string
-    literals equal to `caller` or `getFunction` count in any value position.
+    cross-module resolution for the affected callers. Identifiers spelled
+    `caller` or `getFunction`, cooked string or template tokens equal to
+    either name, and regex patterns containing either name trigger the
+    cause. Lexical variable and parameter bindings and their references
+    are exempt.
     Causes confined to test files apply only to test callers (O-2). This
     holds within the run only (plan risk
     R12, treesitter-chunker#702).

@@ -40,10 +40,10 @@ TESTS = (
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     # Stack introspection (treesitter-chunker#718).
     (
-        "718-caller-member",
+        "718-property-name-token",
         JSM,
-        '            ("member_expression", "property"),',
-        '            ("member_expression", "unused"),',
+        '        "property_identifier",\n        "shorthand_property_identifier",',
+        '        "shorthand_property_identifier",',
     ),
     (
         "718-get-function",
@@ -54,14 +54,14 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "718-cooked-keys",
         JSM,
-        "                    or (len(cooked) == 1 and self._stack_key_use(node, cooked[0]))\n",
+        "                    or any(part in _STACK_KEYS for part in cooked)\n",
         "",
     ),
     (
         "718-constant-stack-keys",
         JSM,
-        '        if name in _STACK_KEYS and node.type != "property_identifier":',
-        '        if name == "getFunction" and node.type != "property_identifier":',
+        "                    or value in _STACK_KEYS\n",
+        "",
     ),
     (
         "718-with-statement",
@@ -72,33 +72,79 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "718-type-position",
         JSM,
-        "        if _in_type_position(node):\n            return False\n"
-        '        if name in _STACK_KEYS and node.type != "property_identifier":',
-        '        if name in _STACK_KEYS and node.type != "property_identifier":',
+        "        if text in _STACK_KEYS:",
+        "        if text in _STACK_KEYS and not _in_type_position(node):",
     ),
     (
         "718-pair-pattern",
         JSM,
-        '        return parent.type == "pair_pattern" and _same(',
-        '        return parent.type == "unused" and _same(',
+        "            if not self._lexical_stack_name(node, text):",
+        '            if node.parent.type != "pair_pattern" and not self._lexical_stack_name(node, text):',
     ),
     (
         "718-shorthand-pattern",
         JSM,
-        '            node.type == "shorthand_property_identifier_pattern"\n'
-        "            and text in _STACK_KEYS",
-        '            node.type == "unused"\n            and text in _STACK_KEYS',
+        '        "shorthand_property_identifier_pattern",\n        "statement_identifier",',
+        '        "statement_identifier",',
+    ),
+    (
+        "718-shorthand-expression",
+        JSM,
+        '        "shorthand_property_identifier",\n        "shorthand_property_identifier_pattern",',
+        '        "shorthand_property_identifier_pattern",',
+    ),
+    (
+        "718-regex-substring",
+        JSM,
+        "                if any(name in pattern for name in _STACK_KEYS):",
+        "                if pattern in _STACK_KEYS:",
+    ),
+    (
+        "718-binding-kind",
+        JSM,
+        "            binding.lexical_name or binding.cls == PARAMETER",
+        "            True",
+    ),
+    (
+        "718-variable-exemption",
+        JSM,
+        "            binding.lexical_name or binding.cls == PARAMETER",
+        "            binding.cls == PARAMETER",
+    ),
+    (
+        "718-parameter-exemption",
+        JSM,
+        "            binding.lexical_name or binding.cls == PARAMETER",
+        "            binding.lexical_name",
     ),
     (
         "718-prepare-stack-trace",
         JSM,
-        'if name not in _STACK_KEYS and name != "prepareStackTrace":',
-        "if name not in _STACK_KEYS:",
+        '        if name != "prepareStackTrace" or _in_type_position(node):',
+        "        if True:",
     ),
     (
         "718-shadowed-builtin",
         JSM,
         "and self.analysis._refers_to_global(\n                node, name\n            )",
+        "",
+    ),
+    (
+        "718-sibling-builtin-shadow",
+        JSM,
+        "self.analysis._refers_to_global(\n                node, name\n            )",
+        "not any(name in scope.bindings for scope in self.analysis.scopes.values())",
+    ),
+    (
+        "718-shadowed-global-object",
+        JSS,
+        "return name in _GLOBAL_OBJECTS and self._refers_to_global(node, name)",
+        "return name in _GLOBAL_OBJECTS",
+    ),
+    (
+        "718-non-global-error-receiver",
+        JSM,
+        ' and self.analysis._is_global_object(\n            node.child_by_field_name("object"), receiver=True\n        )',
         "",
     ),
     # Module resolution (9.2, E5-5).

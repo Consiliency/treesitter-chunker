@@ -292,9 +292,13 @@ unless the segment is on a closed list of names no resolver uses (`test`,
 `spec`, `stories`, `types`, …). Some files can rewrite any module's exports
 object: a code evaluator, a non-literal `require` or `import()`, `createRequire`,
 `mainModule`, `getBuiltinModule` or an import of `module`, the CommonJS
-`module` object handed on, a stack-introspection trigger, or an unparsed JS/TS
-file. Stack-introspection triggers include `caller` property access, V8
-CallSite `getFunction`, and use of the global `Error.prepareStackTrace` hook.
+`module` object handed on, a stack-introspection trigger, a `with` statement,
+or an unparsed JS/TS file. Stack-introspection triggers include the global
+`Error.prepareStackTrace` hook, identifier tokens spelled `caller` or
+`getFunction` in any role, cooked string or template tokens equal to either
+name, and regular-expression patterns containing either name. A lexical
+`let`, `const`, `var`, or parameter binding and references to that binding
+are exempt. A shorthand property still spells a property key.
 Any such file in production code turns Tier 2 off for the whole run, and the cause is
 logged. Three uses are exempt by closed lists: an import of only
 `builtinModules` or `isBuiltin` from `module`; `const r = createRequire(…)`

@@ -1553,7 +1553,8 @@ default expression, `non-callable` for a called namespace object and
 `unmapped` for an import literal that does not decode. Fold 1 adds
 `run-tainted:evaluator`, `run-tainted:dynamic-loader`,
 `run-tainted:module-system`, `run-tainted:module-object`,
-`run-tainted:unparsed-file` and `run-tainted:unresolvable-writer` (9.9).
+`run-tainted:unparsed-file`, `run-tainted:unresolvable-writer`, and
+`run-tainted:dynamic-scope` (9.9).
 PR 6 (Python, 9.10) adds `module-escape` (a module another file may write
 wholly), `module-getattr` (fold 2, E6-3: a package's module `__getattr__`
 may answer a submodule name) and reports `reassigned` for a name another file writes,

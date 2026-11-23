@@ -132,8 +132,8 @@ logger = logging.getLogger(__name__)
 # js "20": PR 5 fold 11 (P5-50: in JavaScript, a ``<!--`` in code, or a
 # ``-->`` in code with only whitespace and comments before it on its line,
 # makes the file unparsed).
-# js "22": stack introspection can reach the CommonJS wrapper, and ``with``
-# can shadow lexical lookup (treesitter-chunker#718).
+# js "22": stack-introspection tokens can expose the CommonJS wrapper,
+# and ``with`` can shadow lexical lookup (treesitter-chunker#718).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute

@@ -3452,6 +3452,8 @@ def test_p5_44_controls(tmp_path: Path, text: str) -> None:
         "Error.prepareStackTrace = (error, frames) => frames;",
         r"globalThis.Error[`prepare\u0053tackTrace`] = (_, frames) => frames;",
         "Error.prepareStackTrace = (_, frames) => frames; Error.captureStackTrace({});",
+        "{ const Error = {}; } Error.prepareStackTrace = (error, frames) => frames;",
+        "function f(Error) {} Error.prepareStackTrace = (error, frames) => frames;",
     ],
     ids=[
         "caller",
@@ -3469,6 +3471,8 @@ def test_p5_44_controls(tmp_path: Path, text: str) -> None:
         "prepare-stack-trace",
         "computed-prepare-stack-trace",
         "capture-with-hook",
+        "sibling-block-error-shadow",
+        "sibling-function-error-shadow",
     ],
 )
 def test_718_stack_introspection(tmp_path: Path, text: str) -> None:
@@ -3485,8 +3489,16 @@ def test_718_stack_introspection(tmp_path: Path, text: str) -> None:
     "text",
     [
         "function inspect(caller, getFunction) { return caller(getFunction); }",
-        "const labels = {caller: 'caller-name'};",
+        "let caller; var getFunction; caller = getFunction;",
+        "const caller = () => 1; caller();",
+        "const { key: caller } = obj; caller();",
+        "for (let caller of items) { caller(); }",
+        "try {} catch (caller) { caller(); }",
+        "const caller = 1; export { caller as other };",
+        "const labels = {name: 'caller-name', other: `myGetFunction`};",
         "function inspect(Error) { Error.prepareStackTrace = () => ''; }",
+        "function f(globalThis) { globalThis.Error.prepareStackTrace = (e, s) => s; }",
+        "const foo = {}; foo.Error.prepareStackTrace = (e, s) => s;",
         "Error.captureStackTrace({});",
     ],
 )
@@ -3566,6 +3578,128 @@ def test_718_constant_stack_keys(tmp_path: Path, text: str) -> None:
 
 
 @pytest.mark.parametrize(
+    ("filename", "text"),
+    [
+        pytest.param(
+            "x.ts",
+            "enum K { caller }\n"
+            "function g(): any { return (g as any)[K[0]].arguments[1]; }\n"
+            "(g() as any)('./svc').t = () => 'EVIL';\n",
+            id="E03-enum-reverse-index",
+        ),
+        pytest.param(
+            "x.js",
+            "const o = { caller: 1 };\n"
+            "function g() { return g[Object.keys(o)[0]].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H10-obj-key-keys",
+        ),
+        pytest.param(
+            "x.js",
+            "const o = { caller() {} };\n"
+            "function g() { return g[Object.keys(o)[0]].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H11-obj-method-keys",
+        ),
+        pytest.param(
+            "x.js",
+            "const caller = 1;\n"
+            "function g() { return g[Object.keys({ caller })[0]].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H12-obj-shorthand-keys",
+        ),
+        pytest.param(
+            "x.js",
+            "class A { caller() {} }\n"
+            "function g() { return g[Object.getOwnPropertyNames(A.prototype)[1]].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H13-class-method-names",
+        ),
+        pytest.param(
+            "x.js",
+            "function caller() {}\n"
+            "function g() { return g[caller.name].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H14-fn-name",
+        ),
+        pytest.param(
+            "x.js",
+            "const E = Error; E.prepareStackTrace = (e, s) => s; const fr = new Error().stack; E.prepareStackTrace = undefined;\n"
+            "const o = { getFunction: 1 };\n"
+            "fr[0][Object.keys(o)[0]]().arguments[1]('./svc').t = () => 'EVIL';\n",
+            id="H15-getFunction-obj-key",
+        ),
+        pytest.param(
+            "x.js",
+            "class A { static caller = 1 }\n"
+            "function g() { return g[Object.keys(A)[0]].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H16-class-static-field-keys",
+        ),
+        pytest.param(
+            "x.js",
+            "const E = Error; E.prepareStackTrace = (e, s) => s; const fr = new Error().stack; E.prepareStackTrace = undefined;\n"
+            "const getFunction = 0;\n"
+            "fr[0][Object.keys({ getFunction })[0]]().arguments[1]('./svc').t = () => 'EVIL';\n",
+            id="H17-var-name-shorthand-getFunction",
+        ),
+        pytest.param(
+            "x.js",
+            "function g() { return g[/caller/.source].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H20-regex-source",
+        ),
+        pytest.param(
+            "x.js",
+            "function g() { const k = Object.getOwnPropertyNames(g).find(n => /^caller$/.test(n)); return g[k].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H21-regex-filter",
+        ),
+        pytest.param(
+            "x.js",
+            "const E = Error; E.prepareStackTrace = (e, s) => s; const fr = new Error().stack; E.prepareStackTrace = undefined;\n"
+            "const P = Object.getPrototypeOf(fr[0]); const m = Object.getOwnPropertyNames(P).find(n => /^getFunction$/.test(n));\n"
+            "fr[0][m]().arguments[1]('./svc').t = () => 'EVIL';\n",
+            id="H22-regex-filter-getFunction",
+        ),
+        pytest.param("x.ts", "class caller {}", id="class-name"),
+        pytest.param("x.js", "caller();", id="free-name"),
+        pytest.param(
+            "x.js",
+            "{ let caller = 0; } caller();",
+            id="sibling-variable-does-not-exempt",
+        ),
+        pytest.param(
+            "x.js", "let other = 0; export { other as caller };", id="export-name"
+        ),
+        pytest.param(
+            "x.js", "const caller = 0; export { caller };", id="export-shorthand"
+        ),
+        pytest.param(
+            "x.js",
+            "const caller = 0; export * as caller from './svc';",
+            id="export-namespace",
+        ),
+        pytest.param(
+            "x.ts",
+            "class C { constructor(readonly caller: number) {} }",
+            id="parameter-property",
+        ),
+        pytest.param(
+            "x.tsx", "const caller = 0; const x = <caller />;", id="jsx-intrinsic"
+        ),
+        pytest.param("x.ts", "type caller = number;", id="type-name"),
+        pytest.param("x.js", "const key = `caller${suffix}`;", id="template-part"),
+    ],
+)
+def test_718_stack_name_tokens(tmp_path: Path, filename: str, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, filename: text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
     "text",
     [
         pytest.param(
@@ -3621,10 +3755,11 @@ def test_718_with_statement(tmp_path: Path, text: str) -> None:
         "type F = 'getFunction';",
     ],
 )
-def test_718_type_space_controls(tmp_path: Path, text: str) -> None:
+def test_718_type_space_tokens(tmp_path: Path, text: str) -> None:
     root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
-    _, _, on, label = _run(root, "use.ts", "t")
-    assert on["resolution"] == "resolved", label
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
 
 
 @pytest.mark.parametrize("promoted", [False, True])

@@ -173,7 +173,7 @@
        "pkg/svc.ts:1:t",
        "pkg/svc.tsx:1:t"
       ],
-      "outcome": "none(ambiguous-extension)",
+      "outcome": "none(run-tainted:module-system)",
       "resolution": "ambiguous",
       "rules": []
      },
