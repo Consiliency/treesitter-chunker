@@ -641,6 +641,8 @@ class _Program:
         if kind == "pair":
             options += ["first", "first", "unpack", "starunpack"]
         op = rng.choice(options)
+        if op == "classattr" and ("locals()" in expr or "vars()" in expr):
+            op = "alias"  # a class body's ``locals()`` is the class namespace
         if op == "classattr":
             cls = self.fresh("C")
             self.emit(f"class {cls}:")
