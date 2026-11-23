@@ -888,12 +888,10 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "                if name not in self.mockers:",
         "                if False:",
     ),
-    (
-        "e6-9-getfixturevalue-mocker",
-        PYM,
-        "    mockers = _MOCKER_NAMES | patchers.mockers",
-        "    mockers = _MOCKER_NAMES",
-    ),
+    # ("e6-9-getfixturevalue-mocker" is retired: treesitter-chunker#699 S4,
+    # PY-10, makes ``X.patch`` a patcher on any receiver, so the fixture-name
+    # check in ``_scan_patchers`` it disabled is gone; the fixture's escapes
+    # stay, killed by "e6-9-mp-alias-fixpoint" and "p6-5-...".)
     (
         "e6-9-computed-fixture-name",
         PYM,

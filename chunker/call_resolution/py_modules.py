@@ -1647,17 +1647,16 @@ def _scan_patchers(
 
     source = analysis.source
     patchers = patchers if patchers is not None else _Patchers(analysis)
-    mockers = _MOCKER_NAMES | patchers.mockers
 
     def is_patch(node: Any, names: Sequence[str]) -> bool:
         if node is not None and analysis._sensitive(node, ps._PATCH):
             return True
         if node is not None and ps._is_patch_attribute(node, source):
-            return True  # PY-10: any receiver
-        return bool(names) and (
-            names[-1] == "patch"
-            and (len(names) == 1 or "mock" in names[:-1] or names[0] in mockers)
-        )
+            # PY-10: ``X.patch`` on any receiver, which subsumes the former
+            # name checks (``mock.patch``, a fixture's or a fixture alias's
+            # ``.patch``).
+            return True
+        return list(names) == ["patch"]  # a bare ``patch``
 
     stack = [analysis.root]
     while stack:

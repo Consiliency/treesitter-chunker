@@ -4017,7 +4017,9 @@ S4_CAUSES: dict[str, tuple[str, str]] = {
         "module-object",
     ),
     "f9-getargvalues": (
-        "import inspect\n\n\ndef f(fr):\n    return inspect.getargvalues(fr).locals\n",
+        # ``ArgInfo`` is a named tuple: ``[3]`` is ``.locals`` with no
+        # ``locals`` token spelled.
+        "import inspect\n\n\ndef f(fr):\n    return inspect.getargvalues(fr)[3]\n",
         "module-object",
     ),
     "f9-getgeneratorlocals": (
@@ -4858,3 +4860,63 @@ def test_s4_traced_controls_still_resolve(tmp_path: Path, case: str) -> None:
     off, _structural, on, label = _run(root, file, reference)
     assert off["resolution"] == "ambiguous", case
     assert on["resolution"] == "resolved" and label == "import", case
+
+
+# Patcher rules that PY-10 now overlaps: every earlier row of theirs also
+# spells a computed ``.patch(...)``, which is a cause on any receiver since
+# #699 S4, so these rows spell no ``.patch`` and keep each rule observable
+# (and its mutation killed). A pytest-mock fixture taken by name and handed
+# on (#705 P6-5, E6-9), a ``getfixturevalue`` reached as an attribute or by
+# string (P6-12, P6-15), and a ``mocker`` parameter whose function's locals
+# are handed out (R-707-1 BLOCKING-2).
+_S4_KEEP = "import calls\n\n\ndef keep(x):\n    return x\n\n\n"
+S4_PATCHER_RULES_WITHOUT_PATCH: dict[str, str] = {
+    "fixture-handed-on": (
+        _S4_KEEP
+        + 'def test_go(request):\n    keep(request.getfixturevalue("mocker"))\n'
+    ),
+    "fixture-alias-handed-on": (
+        _S4_KEEP + "def test_go(request):\n"
+        '    m = request.getfixturevalue("mocker")\n    keep(m)\n'
+    ),
+    "getfixturevalue-attribute": (
+        _S4_KEEP + "def test_go(request):\n    g = request.getfixturevalue\n"
+        '    g("mocker").stopall()\n'
+    ),
+    "getfixturevalue-string": (
+        _S4_KEEP + "def test_go(request):\n"
+        '    getattr(request, "getfixturevalue")("mocker").stopall()\n'
+    ),
+    "mocker-parameter-locals": (
+        _S4_KEEP + "def test_go(mocker):\n    keep(locals())\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(S4_PATCHER_RULES_WITHOUT_PATCH))
+def test_s4_overlapped_patcher_rules_still_fire(tmp_path: Path, case: str) -> None:
+    root = _write(
+        tmp_path,
+        {**_SVC_OTHER, "tests/test_b.py": S4_PATCHER_RULES_WITHOUT_PATCH[case]},
+    )
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    assert label == "none(run-tainted:unresolvable-writer)", case
+
+
+def test_s4_fixture_kept_without_escape_is_no_cause(tmp_path: Path) -> None:
+    """The control: the same fixture fetched by name and used on its
+    allow-list (``stopall``) is no cause."""
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "tests/test_b.py": (
+                "import calls\n\n\ndef test_go(request):\n"
+                '    request.getfixturevalue("mocker").stopall()\n'
+            ),
+        },
+    )
+    _off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on["resolution"] == "resolved" and label == "import"
