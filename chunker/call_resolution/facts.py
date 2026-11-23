@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"22"`` for the ``js`` family and ``"38"`` for
+Schema (fact version ``"23"`` for the ``js`` family and ``"38"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -142,6 +142,8 @@ logger = logging.getLogger(__name__)
 # version flags every call "20" flagged (the #717 review).
 # js "22": stack-introspection tokens can expose the CommonJS wrapper,
 # and ``with`` can shadow lexical lookup (treesitter-chunker#718).
+# js "23": Node evaluator modules and process tokens or imports can expose
+# run-wide writes (treesitter-chunker#702).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -249,7 +251,7 @@ logger = logging.getLogger(__name__)
 # run-wide causes and parse hazards (``module_bindings``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "22", "python": "38"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "38"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.

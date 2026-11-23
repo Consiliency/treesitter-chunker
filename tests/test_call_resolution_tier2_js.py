@@ -3806,6 +3806,127 @@ def test_p5_41_parsed_typeof_require_chain_is_a_loader(tmp_path: Path) -> None:
     assert label == "none(run-tainted:dynamic-loader)"
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("import * as v from 'node:vm';", id="static-import"),
+        pytest.param("export { Script } from 'vm';", id="reexport"),
+        pytest.param("require('node:repl');", id="require"),
+        pytest.param("import(`inspector`);", id="dynamic-import"),
+        pytest.param(
+            "import v = require('node:inspector/promises');", id="import-equals"
+        ),
+        pytest.param(
+            CR + "const r = createRequire(__filename); r('node:vm');",
+            id="create-require",
+        ),
+        pytest.param("import 'node:inspector';", id="side-effect-import"),
+        pytest.param("import 'repl';", id="bare-repl"),
+        pytest.param("import 'node:repl';", id="node-repl"),
+        pytest.param("import 'inspector/promises';", id="bare-inspector-promises"),
+    ],
+)
+def test_702_evaluator_loads(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:evaluator)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("process.env;", id="global-read"),
+        pytest.param("globalThis?.process;", id="optional-member"),
+        pytest.param("globalThis['process'];", id="bracket"),
+        pytest.param("Reflect.get(globalThis, 'process');", id="reflect-get"),
+        pytest.param("const { process: p } = globalThis;", id="destructure"),
+        pytest.param(
+            "Object.getOwnPropertyDescriptor(globalThis, 'process').get();",
+            id="descriptor",
+        ),
+        pytest.param(r"const key = 'pr\u006fcess';", id="cooked-string"),
+        pytest.param("globalThis[`process`];", id="template"),
+        pytest.param("const key = /^process$/;", id="regex"),
+        pytest.param("function process() {}", id="function-name"),
+        pytest.param("class process {}", id="class-name"),
+        pytest.param("const process = 1; const o = { process };", id="shorthand"),
+        pytest.param("{ let process = 0; } process.env;", id="sibling-binding"),
+        pytest.param("require('node:process');", id="require"),
+        pytest.param("const p = require('node:process');", id="bound-require"),
+        pytest.param("import p from 'node:process';", id="default-import"),
+        pytest.param("import * as p from 'node:process';", id="namespace-import"),
+        pytest.param("import { env as e } from 'node:process';", id="named-import"),
+        pytest.param("import p = require('node:process');", id="import-equals"),
+        pytest.param("export { env } from 'node:process';", id="reexport"),
+        pytest.param("import('node:process');", id="dynamic-import"),
+    ],
+)
+def test_702_process_tokens_and_loads(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "const process = { env: {} }; process.env;",
+        "function f(process: { env: unknown }) { return process.env; }",
+        "const vm = { run() {} }; vm.run();",
+        "const binding = 'contextify';",
+        "import type { Script } from 'node:vm';",
+        "import type p from 'node:process';",
+        "import type v = require('node:vm');",
+        "export type { Script } from 'node:vm';",
+        "type T = typeof import('node:vm');",
+        "const text = 'node:vm';",
+        "const text = 'node:process';",
+        CR + "const r = createRequire(__filename); r.resolve('node:vm');",
+    ],
+)
+def test_702_inert_uses_keep_tier2(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert structural == off
+    assert on["resolution"] == "resolved", label
+    assert _resolved_file(on, root) == "svc.ts"
+
+
+@pytest.mark.parametrize("promoted", [False, True])
+@pytest.mark.parametrize(
+    ("text", "cause"),
+    [
+        ("import 'node:vm';", "evaluator"),
+        ("process.env;", "module-system"),
+    ],
+)
+def test_702_causes_follow_test_scope(
+    tmp_path: Path, promoted: bool, text: str, cause: str
+) -> None:
+    test_use = USE.replace("./svc", "../svc")
+    files = {
+        **OTHERS,
+        "svc.ts": SVC,
+        "use.ts": USE,
+        "tests/use.test.ts": test_use,
+        "tests/w.ts": text,
+    }
+    if promoted:
+        files["app.ts"] = "import './tests/w';"
+    root = _write(tmp_path, files)
+    _, _, test_edge, test_label = _run(root, "tests/use.test.ts", "t")
+    assert test_edge["resolution"] == "ambiguous"
+    assert test_label == f"none(run-tainted:{cause})"
+    _, _, prod_edge, prod_label = _run(root, "use.ts", "t")
+    if promoted:
+        assert prod_edge["resolution"] == "ambiguous"
+        assert prod_label == test_label
+    else:
+        assert prod_edge["resolution"] == "resolved", prod_label
+
+
 def test_p5_37_short_name_after_trailing_dot_or_space() -> None:
     """P5-37: Win32 strips a trailing dot or space before the 8.3 match."""
     index = modules.ModuleIndex.build(["use.ts"], None)

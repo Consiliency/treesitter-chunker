@@ -43,6 +43,65 @@ TESTS = (
 
 # (id, file, old text, new text). The old text must occur in the file.
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    # Node builtin loads and process tokens (treesitter-chunker#702).
+    (
+        "702-evaluator-specifier",
+        JSM,
+        'for name in ("vm", "repl", "inspector", "inspector/promises")',
+        'for name in ("vm", "repl", "inspector")',
+    ),
+    (
+        "702-evaluator-reexport",
+        JSM,
+        "        if not type_only:\n            self._mark_node_builtin_load(specifier)\n"
+        "        if specifier is None or any(",
+        "        if specifier is None or any(",
+    ),
+    (
+        "702-evaluator-static-import",
+        JSM,
+        '                    if not _has_token(node, "type"):\n'
+        "                        self._mark_node_builtin_load(specifier)\n",
+        "",
+    ),
+    (
+        "702-evaluator-import-or-require-call",
+        JSM,
+        "        self._mark_node_builtin_load(specifier)\n"
+        "        # A literal ``require`` taints whatever binds the name:",
+        "        # A literal ``require`` taints whatever binds the name:",
+    ),
+    (
+        "702-evaluator-import-equals",
+        JSM,
+        "        if not type_only:\n            self._mark_node_builtin_load(specifier)\n"
+        "        self.taints.add(specifier)",
+        "        self.taints.add(specifier)",
+    ),
+    (
+        "702-evaluator-create-require",
+        JSM,
+        "            self._mark_node_builtin_load(literal)\n",
+        "",
+    ),
+    (
+        "702-process-token",
+        JSM,
+        '_MODULE_SYSTEM_TOKEN_NAMES = frozenset({"caller", "getFunction", "process"})',
+        '_MODULE_SYSTEM_TOKEN_NAMES = frozenset({"caller", "getFunction"})',
+    ),
+    (
+        "702-prefixed-process-specifier",
+        JSM,
+        '_PROCESS_SPECIFIERS = frozenset({"process", "node:process"})',
+        '_PROCESS_SPECIFIERS = frozenset({"process"})',
+    ),
+    (
+        "702-process-lexical-exemption",
+        JSM,
+        "            if not self._lexical_token_name(node, text):",
+        '            if text == "process" or not self._lexical_token_name(node, text):',
+    ),
     # Stack introspection (treesitter-chunker#718).
     (
         "718-property-name-token",
@@ -53,19 +112,19 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "718-get-function",
         JSM,
-        '_STACK_KEYS = frozenset({"caller", "getFunction"})',
-        '_STACK_KEYS = frozenset({"caller"})',
+        '_MODULE_SYSTEM_TOKEN_NAMES = frozenset({"caller", "getFunction", "process"})',
+        '_MODULE_SYSTEM_TOKEN_NAMES = frozenset({"caller", "process"})',
     ),
     (
         "718-cooked-keys",
         JSM,
-        "                    or any(part in _STACK_KEYS for part in cooked)\n",
+        "                    or any(part in _MODULE_SYSTEM_TOKEN_NAMES for part in cooked)\n",
         "",
     ),
     (
         "718-constant-stack-keys",
         JSM,
-        "                    or value in _STACK_KEYS\n",
+        "                    or value in _MODULE_SYSTEM_TOKEN_NAMES\n",
         "",
     ),
     (
@@ -77,14 +136,14 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "718-type-position",
         JSM,
-        "        if text in _STACK_KEYS:",
-        "        if text in _STACK_KEYS and not _in_type_position(node):",
+        "        if text in _MODULE_SYSTEM_TOKEN_NAMES:",
+        "        if text in _MODULE_SYSTEM_TOKEN_NAMES and not _in_type_position(node):",
     ),
     (
         "718-pair-pattern",
         JSM,
-        "            if not self._lexical_stack_name(node, text):",
-        '            if node.parent.type != "pair_pattern" and not self._lexical_stack_name(node, text):',
+        "            if not self._lexical_token_name(node, text):",
+        '            if node.parent.type != "pair_pattern" and not self._lexical_token_name(node, text):',
     ),
     (
         "718-shorthand-pattern",
@@ -101,8 +160,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "718-regex-substring",
         JSM,
-        "                if any(name in pattern for name in _STACK_KEYS):",
-        "                if pattern in _STACK_KEYS:",
+        "                if any(name in pattern for name in _MODULE_SYSTEM_TOKEN_NAMES):",
+        "                if pattern in _MODULE_SYSTEM_TOKEN_NAMES:",
     ),
     (
         "718-binding-kind",
@@ -480,8 +539,12 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "f3-create-require-literal-only",
         JSM,
-        "            if literal is None or literal in _MODULE_SYSTEM_SPECIFIERS:\n                return False\n            literals.append(literal)",
-        "            if literal is not None:\n                literals.append(literal)",
+        "            if literal is None or literal in _MODULE_SYSTEM_SPECIFIERS:\n"
+        "                return False\n            self._mark_node_builtin_load(literal)\n"
+        "            literals.append(literal)",
+        "            if literal is not None:\n"
+        "                self._mark_node_builtin_load(literal)\n"
+        "                literals.append(literal)",
     ),
     (
         "f3-create-require-taints",

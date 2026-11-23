@@ -148,8 +148,8 @@ MODULE_MOCKS: dict[str, frozenset[str]] = {
 MOCK_PACKAGES = {"jest": "@jest/globals", "vi": "vitest"}
 # Names that reach the CommonJS module system from anywhere.
 _MODULE_SYSTEM_NAMES = frozenset({"mainModule", "createRequire", "getBuiltinModule"})
-_STACK_KEYS = frozenset({"caller", "getFunction"})
-_STACK_NAME_TOKENS = frozenset(
+_MODULE_SYSTEM_TOKEN_NAMES = frozenset({"caller", "getFunction", "process"})
+_MODULE_SYSTEM_NAME_TOKENS = frozenset(
     {
         "identifier",
         "property_identifier",
@@ -160,6 +160,12 @@ _STACK_NAME_TOKENS = frozenset(
     }
 )
 _MODULE_SYSTEM_SPECIFIERS = frozenset({"module", "node:module"})
+_PROCESS_SPECIFIERS = frozenset({"process", "node:process"})
+_EVALUATOR_SPECIFIERS = frozenset(
+    prefix + name
+    for prefix in ("", "node:")
+    for name in ("vm", "repl", "inspector", "inspector/promises")
+)
 # Fold 3, item 1: the only names an import from ``module`` may bind without
 # a run-wide cause (with ``createRequire`` under item 2). ``builtinModules``
 # is an array of names and ``isBuiltin(name)`` returns a boolean: neither
@@ -395,6 +401,9 @@ class _ModuleFacts:
 
     def _reexport(self, statement: Any, source_node: Any) -> None:
         specifier = decode_string_literal(source_node, self.source)
+        type_only = _has_token(statement, "type")
+        if not type_only:
+            self._mark_node_builtin_load(specifier)
         if specifier is None or any(
             child.type == "import_attribute" for child in statement.named_children
         ):
@@ -408,7 +417,6 @@ class _ModuleFacts:
         self.imports.add(specifier)
         if specifier in _MODULE_SYSTEM_SPECIFIERS:
             self.shutoff.add(CAUSE_MODULE_SYSTEM)
-        type_only = _has_token(statement, "type")
         for child in statement.named_children:
             if child.type == "namespace_export":
                 # ``export * as x from``: a namespace object, never callable.
@@ -496,12 +504,18 @@ class _ModuleFacts:
 
     # -- CommonJS reach, taints and run-wide causes ------------------------
 
+    def _mark_node_builtin_load(self, specifier: str | None) -> None:
+        if specifier in _EVALUATOR_SPECIFIERS:
+            self.shutoff.add(CAUSE_EVALUATOR)
+        elif specifier in _PROCESS_SPECIFIERS:
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
+
     def module_system(self) -> None:
         analysis = self.analysis
         handled: set[int] = set()
         for node in _walk(analysis.root):
             kind = node.type
-            if kind in _STACK_NAME_TOKENS:
+            if kind in _MODULE_SYSTEM_NAME_TOKENS:
                 self._name(node, handled)
             elif kind == "call_expression":
                 self._loader_call(node, handled)
@@ -510,11 +524,16 @@ class _ModuleFacts:
                 # before consulting lexical bindings.
                 self.shutoff.add(CAUSE_DYNAMIC_SCOPE)
             elif kind == "import_require_clause":
-                self._taint_literal(node.child_by_field_name("source"))
+                self._taint_literal(
+                    node.child_by_field_name("source"),
+                    type_only=_has_token(node.parent, "type"),
+                )
             elif kind == "import_statement":
                 source_node = node.child_by_field_name("source")
                 if source_node is not None:
                     specifier = decode_string_literal(source_node, self.source)
+                    if not _has_token(node, "type"):
+                        self._mark_node_builtin_load(specifier)
                     if specifier is None or (
                         specifier in _MODULE_SYSTEM_SPECIFIERS
                         and not self._inert_module_import(node)
@@ -529,7 +548,7 @@ class _ModuleFacts:
                 if (
                     value is None
                     or value in _MODULE_SYSTEM_NAMES
-                    or value in _STACK_KEYS
+                    or value in _MODULE_SYSTEM_TOKEN_NAMES
                     or self._stack_trace_hook(node, value)
                 ):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
@@ -540,13 +559,13 @@ class _ModuleFacts:
                     or any(
                         name in part for part in cooked for name in _MODULE_SYSTEM_NAMES
                     )
-                    or any(part in _STACK_KEYS for part in cooked)
+                    or any(part in _MODULE_SYSTEM_TOKEN_NAMES for part in cooked)
                     or (len(cooked) == 1 and self._stack_trace_hook(node, cooked[0]))
                 ):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "regex_pattern":
                 pattern = _text(node, self.source)
-                if any(name in pattern for name in _STACK_KEYS):
+                if any(name in pattern for name in _MODULE_SYSTEM_TOKEN_NAMES):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "meta_property":
                 if not self._inert_import_meta(node):
@@ -562,7 +581,7 @@ class _ModuleFacts:
         self._import_writes()
         self._namespace_uses()
 
-    def _lexical_stack_name(self, node: Any, name: str) -> bool:
+    def _lexical_token_name(self, node: Any, name: str) -> bool:
         """Exempt variable and parameter names whose use is lexical."""
         from .js_scope import PARAMETER
 
@@ -695,6 +714,7 @@ class _ModuleFacts:
         if specifier in _MODULE_SYSTEM_SPECIFIERS:
             self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
+        self._mark_node_builtin_load(specifier)
         # A literal ``require`` taints whatever binds the name: an AMD
         # ``require`` parameter loads modules too.
         self.taints.add(specifier)
@@ -748,19 +768,21 @@ class _ModuleFacts:
                 return str(imported)
         return None
 
-    def _taint_literal(self, node: Any) -> None:
+    def _taint_literal(self, node: Any, *, type_only: bool) -> None:
         specifier = _literal_value(node, self.source)
         if specifier is None or specifier in _MODULE_SYSTEM_SPECIFIERS:
             self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
+        if not type_only:
+            self._mark_node_builtin_load(specifier)
         self.taints.add(specifier)
 
     def _name(self, node: Any, handled: set[int]) -> None:
         from .js_scope import _declaration_name
 
         text = _text(node, self.source)
-        if text in _STACK_KEYS:
-            if not self._lexical_stack_name(node, text):
+        if text in _MODULE_SYSTEM_TOKEN_NAMES:
+            if not self._lexical_token_name(node, text):
                 self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
         if node.type == "property_identifier":
@@ -974,6 +996,7 @@ class _ModuleFacts:
             literal = self._single_literal(arguments)
             if literal is None or literal in _MODULE_SYSTEM_SPECIFIERS:
                 return False
+            self._mark_node_builtin_load(literal)
             literals.append(literal)
         if own_base == "filename":
             # P5-13 (c), P5-20: the engine taints these only if no run file
