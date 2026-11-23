@@ -43,24 +43,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `.patch` is a patcher on any receiver: `X.patch(...)` with a target that
     is not a constant string, `X.patch` handed on, and a constant `"patch"`
     naming a member by string (`getattr(X, "patch")`) fail closed, and in
-    `imports` mode are an `unresolvable-writer` cause. So is a name imported
-    as `patch`, or as one of `unittest.mock`'s private patchers (`_patch`,
-    `_patch_multiple`, `_patch_object`, `_patch_dict`), from any module and
-    under any alias, also when it reaches a file through a star import or a
-    re-export under another name, a private patcher read or called on any
-    receiver (`mk._patch_multiple(...)`), and a match-statement class
-    pattern that
-    reads `patch` or a `MonkeyPatch` method (`case object(patch=p)`).
+    `imports` mode are an `unresolvable-writer` cause. So are:
+    - a constant string exactly `"patch"` in any position: an argument, a
+      list or tuple element, `__match_args__`, a mapping-pattern key, a
+      comparison;
+    - `unittest.mock`'s private patchers `_patch`, `_patch_multiple`,
+      `_patch_object`, `_patch_dict` and their target resolver
+      `_get_target`, spelled anywhere: a name, an attribute on any
+      receiver (read or written), an import or alias name, a keyword, a
+      class-pattern keyword, or a word of any constant string;
+    - a name imported as `patch` from any module under any alias;
+    - a re-export of `patch` under another name, followed through
+      from-imports at any scope (module, function, class body, relative)
+      and star imports only. A re-export read as a module attribute
+      (`import compat; compat.pp(...)`) is not followed;
+    - a match-statement class pattern that reads `patch` or a `MonkeyPatch`
+      method (`case object(patch=p)`).
+
     `@router.patch("/items")` with a constant route is unaffected;
-  - **cost in production code:** in a production file, a `"patch"` string
-    in any call argument or subscript key, or a `.patch` call whose first
-    argument is not a constant string, turns Python Tier 2 off for the whole
-    run, not only for that file. Examples are an argparse subcommand
-    `sub.add_parser("patch")`, an HTTP call `requests.patch(f"…/{i}")` or
+  - **cost in production code:** in a production file, any of these turns
+    Python Tier 2 off for the whole run, not only for that file:
+    - a `"patch"` string in any position;
+    - a `.patch` call whose first argument is not a constant string;
+    - a read or write of an attribute named like a private patcher, such
+      as `self._patch.start()` or `self._patch = ...`.
+
+    Examples are an argparse subcommand `sub.add_parser("patch")`, a semver
+    field list `["major", "minor", "patch"]`, an HTTP method list
+    `["get", "patch"]`, an HTTP call `requests.patch(f"…/{i}")` or
     `session.request(method="patch", url=u)`. In a test file the same
-    spelling costs only the proofs of test callers (an HTTP client's
-    `client.patch(f"/items/{i}")`). On the four trees measured for this
-    change the cost is 0 resolved edges;
+    spelling costs only the proofs of test callers. In `structural` mode a
+    `"patch"` string or a private patcher name makes every lookup in that
+    file prove nothing. On the four trees measured for this change the
+    production cost is 0 resolved edges and the test cost is 26 edges (one
+    pmcp test file holds `"FROM_PATCH": "patch"`);
   - in `imports` mode, any spelling of a frame's `f_locals` (reads
     included) or of the frame-locals proxies `getargvalues`,
     `getgeneratorlocals`, `getcoroutinelocals`, `getasyncgenlocals` and

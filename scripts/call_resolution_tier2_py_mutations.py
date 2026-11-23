@@ -71,6 +71,7 @@ TESTS = (
     T1 + "test_r10_imported_patch_multiple_fails_closed",
     T1 + "test_r10_imported_patcher_controls_still_resolve",
     T1 + "test_r11_private_patchers_on_any_receiver_fail_closed",
+    T1 + "test_r12_patch_tokens_fail_closed",
 )
 
 # (id, file, old text, new text). The old text must occur in the file once.
@@ -1584,19 +1585,6 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "                    # treesitter-chunker#699 R-699-10 item 2",
     ),
     (
-        "r10-private-patchers-alias",
-        PYS,
-        "                        if last in _PATCHER_IMPORT_NAMES:",
-        '                        if last == "patch":',
-    ),
-    (
-        "r10-private-patchers-dynamic",
-        PYS,
-        "                        if last in _PRIVATE_PATCHERS:\n"
-        "                            self.dynamic = True\n",
-        "",
-    ),
-    (
         "r10-class-pattern-keyword",
         PYM,
         "            if ps._spellings(keyword, source) & _CLASS_PATTERN_PATCHERS:",
@@ -1620,42 +1608,67 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "                if builder.exposes_patcher(node, None):",
         "                if False:",
     ),
+    # Ruling R-699-12.
     (
-        "r10-reexport-patcher",
-        PYM,
-        "                ] not in _patcher_import_names() and builder.patcher_binding(",
-        "                ] not in _patcher_import_names() and False and builder.patcher_binding(",
-    ),
-    (
-        "r10-reexport-follows-one-hop",
-        PYM,
-        "        return any(\n            self.exposes_patcher(start, name)\n",
-        "        return False and any(\n            self.exposes_patcher(start, name)\n",
-    ),
-    (
-        "r10-exposed-token-names",
-        PYM,
-        "            in ps._PATCHER_IMPORT_NAMES\n            for bound, bindings in file.module_imports.items()",
-        '            in ("patch",)\n            for bound, bindings in file.module_imports.items()',
-    ),
-    (
-        "r11-private-patcher-tier2",
-        PYM,
-        "            and ps._text(member, source) in ps._PRIVATE_PATCHERS",
-        "            and False",
-    ),
-    (
-        "r11-private-patcher-tier1",
+        "r12-private-identifier-tier1",
         PYS,
-        "                and _text(attribute, self.source) in _PRIVATE_PATCHERS",
-        "                and False",
+        "            if spellings & _PRIVATE_PATCH_TOKENS:\n                self.dynamic = True",
+        "            if False:\n                self.dynamic = True",
     ),
     (
-        "r11-private-patcher-write-exempt",
+        "r12-private-identifier-tier2",
         PYM,
-        "            and node.id not in analysis.attribute_targets\n"
-        "            and ps._text(member, source) in ps._PRIVATE_PATCHERS",
-        "            and ps._text(member, source) in ps._PRIVATE_PATCHERS",
+        "            ps._spellings(node, source) & ps._PRIVATE_PATCH_TOKENS",
+        "            False",
+    ),
+    (
+        "r12-token-string-tier1",
+        PYS,
+        "            ) or _patch_token_string(node, self.source):",
+        "            ):",
+    ),
+    (
+        "r12-token-string-tier2",
+        PYM,
+        "        if ps._patch_token_string(node, source):",
+        "        if False:",
+    ),
+    (
+        "r12-patch-exact-string",
+        PYS,
+        "    return value == _PATCH or bool(",
+        "    return bool(",
+    ),
+    (
+        "r12-private-string-words",
+        PYS,
+        "        set(_TOKEN_WORDS.split(value)) & _PRIVATE_PATCH_TOKENS",
+        "        set()",
+    ),
+    (
+        "r12-get-target-token",
+        PYS,
+        '"_patch_dict", "_get_target"}',
+        '"_patch_dict"}',
+    ),
+    (
+        "r12-whole-literal",
+        PYS,
+        "        return False  # judged as part of the whole literal",
+        "        pass",
+    ),
+    (
+        "r12-larger-constant",
+        PYS,
+        "        return False  # judged as part of the larger constant (``'pat' + 'ch'``)",
+        "        pass",
+    ),
+    (
+        "r12-reexport-any-scope",
+        PYM,
+        "            if any(\n                builder.exposes_patcher(start, name)\n"
+        "                for start in builder.targets(module, path)\n            ):",
+        "            if False:",
     ),
 )
 

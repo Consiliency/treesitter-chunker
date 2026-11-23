@@ -5007,6 +5007,79 @@ R10_CAUSES["r11-patch-dict-on-receiver"] = (
     "def go(mk, d):\n    mk._patch_dict(d, t=len).start()\n",
     "unresolvable-writer",
 )
+# Ruling R-699-12 items 1 and 2: the private patchers and ``_get_target``
+# in any role, and ``"patch"`` exactly in any position.
+R10_CAUSES.update(
+    {
+        "r12-private-getattr": (
+            "def go(mk, m):\n    getattr(mk, '_patch_multiple')(m, t=len).start()\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-getattr-joined": (
+            "def go(mk, m):\n    getattr(mk, '_pa' 'tch_multiple')(m, t=len)\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-fstring": (
+            "def go(mk, m):\n    getattr(mk, f\"{'_patch'}_multiple\")(m, t=len)\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-methodcaller": (
+            "import operator\n\nM = operator.methodcaller('_patch_object', 1)\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-class-pattern": (
+            "def go(mk, m):\n    match mk:\n        case object(_patch_multiple=p):\n"
+            "            p(m, t=len)\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-mapping-key": (
+            "def go(mk, m):\n    match vars(mk):\n        case {'_patch_dict': p}:\n"
+            "            p(m)\n",
+            "unresolvable-writer",
+        ),
+        "r12-get-target-import": (
+            "from unittest.mock import _get_target\n\n\ndef go(n):\n"
+            "    g, at = _get_target(n)\n    g().t = len\n",
+            "unresolvable-writer",
+        ),
+        "r12-get-target-receiver": (
+            "def go(mk, n):\n    g, at = mk._get_target(n)\n    setattr(g(), 't', len)\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-attribute-write": (
+            "class K:\n    pass\n\n\nK._patch = 3\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-definition": (
+            "def _get_target(t):\n    return t\n",
+            "unresolvable-writer",
+        ),
+        "r12-match-args": (
+            "class K:\n    __match_args__ = ('patch',)\n",
+            "unresolvable-writer",
+        ),
+        "r12-mapping-key": (
+            "def go(mk, n):\n    match vars(mk):\n        case {'patch': p}:\n"
+            "            p(n, len)\n",
+            "unresolvable-writer",
+        ),
+        "r12-list-element": ("M = ['get', 'patch']\n", "unresolvable-writer"),
+        # A dotted component in a member-naming position (PY-10), which the
+        # exact-string rule does not see.
+        "r12-attrgetter-dotted": (
+            "import operator\n\nG = operator.attrgetter('m.patch')\n",
+            "unresolvable-writer",
+        ),
+        "r12-comparison": (
+            "def go(d):\n    return [v for k, v in d.items() if k == 'patch']\n",
+            "unresolvable-writer",
+        ),
+        "r12-name-in-variable": (
+            "def go(mk, n):\n    m = 'patch'\n    getattr(mk, m)(n, len)\n",
+            "unresolvable-writer",
+        ),
+    }
+)
 for _method in ("setattr", "delattr", "setitem", "delitem", "syspath_prepend"):
     R10_CAUSES[f"class-pattern-{_method}"] = (
         f"def go(mk, n):\n    match mk:\n        case object({_method}=s):\n"
@@ -5047,9 +5120,19 @@ R10_REEXPORTS: dict[str, dict[str, str]] = {
         "compat2.py": _R10_COMPAT_PP,
         "w.py": "from compat import pp\n",
     },
-    "private-star": {
-        "compat.py": "from unittest.mock import _patch_multiple as pm\n",
-        "w.py": "from compat import *\n",
+    # R-699-12 item 3: the from-import at any scope.
+    "function-scope": {
+        "compat.py": _R10_COMPAT_PP,
+        "w.py": "def go(n):\n    from compat import pp as zz\n\n    zz(n, len)\n",
+    },
+    "class-scope": {
+        "compat.py": _R10_COMPAT_PP,
+        "w.py": "class K:\n    from compat import pp\n",
+    },
+    "relative-function-scope": {
+        "pkg/__init__.py": "",
+        "pkg/compat.py": _R10_COMPAT_PP,
+        "pkg/w.py": "def go(n):\n    from .compat import pp\n\n    pp(n, len)\n",
     },
 }
 
@@ -5085,9 +5168,9 @@ def test_r10_reexported_patcher_is_test_scoped(tmp_path: Path) -> None:
 
 
 R10_CONTROLS: dict[str, dict[str, str]] = {
-    # R-699-11: writing ``X._patch`` reads no patcher.
-    "private-attribute-write": {
-        "w.py": "class K:\n    pass\n\n\nK._patch = 3\n",
+    # R-699-12 item 2 matches ``"patch"`` exactly, not as a substring.
+    "patch-substring": {
+        "w.py": "M = ['patches', 'patch-1', '/v1/patch', 'patch' 'es', 'patch' + 'es']\n"
     },
     "star-no-patcher": {
         "compat.py": "def pp(u):\n    return u\n",
@@ -5500,3 +5583,262 @@ def test_r10_traced_controls_still_resolve(tmp_path: Path, case: str) -> None:
     off, _structural, on, label = _run(root, "use.py", "t")
     assert off["resolution"] == "ambiguous", case
     assert on["resolution"] == "resolved" and label == "import", case
+
+
+# Ruling R-699-12, the Fable re-check's trees (``733-fable-recheck/``),
+# runtime-traced: CPython 3.14.10 printed ``runtime: 2`` in each while
+# 26a119b8 resolved ``use.py``'s ``t``. Module-attribute reads of a
+# re-export (``compat.pp``, ``import_module("compat").pp``) are R12.
+_R12_MAIN_MOCK = (
+    "import unittest.mock\n\nimport use\nimport w\n\n"
+    'w.go(unittest.mock)\nprint("runtime:", use.run())\n'
+)
+R12_TRACED: dict[str, tuple[dict[str, str], str]] = {
+    "d_class_pattern_private": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    match mk:\n        case object(_patch_multiple=p):\n            p("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "d_class_pattern_private_get_target": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    match mk:\n        case object(_get_target=gt, _patch=p):\n            g, at = gt(f"svc.{NAME}")\n            p(g, at, len, None, False, None, None, None, {}).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "d_class_pattern_match_args": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'class M(type):\n    def __instancecheck__(cls, o):\n        return True\n\n\nclass K(metaclass=M):\n    __match_args__ = (\'patch\',)\n\n\nNAME = "t"\n\n\ndef go(mk):\n    match mk:\n        case K(p):\n            p(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "d_mapping_pattern_dict": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    match mk.__dict__:\n        case {\'patch\': p}:\n            p(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_mapping_pattern_vars": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    match vars(mk):\n        case {\'patch\': p}:\n            p(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_dict_items_compare": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    for k, v in mk.__dict__.items():\n        if k == \'patch\':\n            v(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_getattr_private_literal": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    getattr(mk, \'_patch_multiple\')("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_getattr_private_concat": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    getattr(mk, \'_patch\' \'_multiple\')("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_getattr_patch_get_target": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": "NAME = \"t\"\n\n\ndef go(mk):\n    g, at = mk._get_target(f\"svc.{NAME}\")\n    getattr(mk, '_pa' 'tch')(g, at, len, None, False, None, None, None, {}).start()\n",
+        },
+        "unresolvable-writer",
+    ),
+    "e_getattr_both_strings": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": "NAME = \"t\"\n\n\ndef go(mk):\n    g, at = getattr(mk, '_get_target')(f\"svc.{NAME}\")\n    getattr(mk, '_pa' 'tch')(g, at, len, None, False, None, None, None, {}).start()\n",
+        },
+        "unresolvable-writer",
+    ),
+    "e_attrgetter_private": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'import operator\n\nNAME = "t"\n\n\ndef go(mk):\n    operator.attrgetter(\'_patch_multiple\')(mk)("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_methodcaller_private": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'import operator\n\nNAME = "t"\n\n\ndef go(mk):\n    operator.methodcaller(\'_patch_multiple\', "s" + "vc", t=len)(mk).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_getattribute_private": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    mk.__getattribute__(\'_patch_multiple\')("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_fstring_private": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    getattr(mk, f\'_patch_multiple\')("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "f_get_target_setattr": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    g, at = mk._get_target(f"svc.{NAME}")\n    setattr(g(), at, len)\n',
+        },
+        "unresolvable-writer",
+    ),
+    "f_get_target_attr_write": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    g, at = mk._get_target(f"svc.{NAME}")\n    g().t = len\n',
+        },
+        "unresolvable-writer",
+    ),
+    "f_from_mock_get_target_write": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'from unittest.mock import _get_target\n\nNAME = "t"\n\n\ndef go():\n    g, at = _get_target(f"svc.{NAME}")\n    g().t = len\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_get_target_from_as": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'from unittest.mock import _get_target as gt\n\nNAME = "t"\n\n\ndef go():\n    g, at = gt(f"svc.{NAME}")\n    g().t = len\n',
+        },
+        "unresolvable-writer",
+    ),
+    "c_function_scope_from": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from unittest.mock import patch as pp\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go():\n    from compat import pp\n    pp(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "c_class_scope_from": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from unittest.mock import patch as pp\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go():\n    class K:\n        from compat import pp\n    K.pp(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_function_scope_from_as": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from unittest.mock import patch as pp\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go():\n    from compat import pp as zz\n    zz(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_function_scope_private": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from unittest.mock import _patch_multiple as pm\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go():\n    from compat import pm\n    pm("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_relative_function_scope": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R10_MAIN_GO,
+            "pkg/__init__.py": "",
+            "pkg/compat.py": "from unittest.mock import patch as pp\n",
+            "pkg/user.py": 'NAME = "t"\n\n\ndef run():\n    from .compat import pp\n\n    pp(f"svc.{NAME}", len).start()\n',
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go():\n    from pkg.user import run\n    run()\n',
+        },
+        "unresolvable-writer",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(R12_TRACED))
+def test_r12_traced_routes_fail_closed(tmp_path: Path, case: str) -> None:
+    files, cause = R12_TRACED[case]
+    root = _write(tmp_path, files)
+    off, _structural, on, label = _run(root, "use.py", "t")
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    assert label == f"none(run-tainted:{cause})", case

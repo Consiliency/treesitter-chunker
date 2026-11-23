@@ -6291,8 +6291,6 @@ PATCH_ANY_RECEIVER_CONTROLS = {
     "        return 1\n    return h",
     "constant-object": "def run(x, client):\n    x.patch.object(client, 'other', 1)",
     "attribute-write": "class K:\n    pass\nK.patch = 3",
-    "list-element": "M = ['get', 'patch']",
-    "comparison": "def run(n):\n    return n == 'patch'",
     "url-word": "def run(client):\n    client.get('/v1/patch')",
     # A ``.patch`` the mock rules recognise is an alias they check use by
     # use (E-21), not a hand-off.
@@ -6391,6 +6389,47 @@ def test_r11_private_patchers_on_any_receiver_fail_closed(case: str) -> None:
     assert reason(source) == "dynamic-scope", case
 
 
+# Ruling R-699-12 (the Fable re-check of #733): the private patchers and
+# ``_get_target`` are tokens in ANY role (item 1), and a constant string
+# exactly ``"patch"`` is a token in any position (item 2, adopted at 0
+# production edges on the four measured trees). Fable's ``h_t1_*`` and
+# ``j_t1_*`` trees printed ``runtime: 2`` on CPython 3.14.10 while
+# 26a119b8 proved ``helper``. ``list-element``, ``comparison`` and
+# ``x = 'patch'`` were controls before item 2.
+R12_PATCH_STRINGS = {
+    "private-getattr": "def run(mk):\n    getattr(mk, '_patch_multiple')(__name__, helper=len)",
+    "private-getattr-joined": "def run(mk):\n    getattr(mk, '_pa' 'tch_multiple')(__name__, helper=len)",
+    "private-fstring": "def run(mk):\n    getattr(mk, f\"{'_patch'}_multiple\")(__name__, helper=len)",
+    "private-attrgetter": "import operator\ndef run(mk):\n"
+    "    operator.attrgetter('_patch_multiple')(mk)(__name__, helper=len)",
+    "private-methodcaller": "import operator\ndef run(mk):\n"
+    "    operator.methodcaller('_patch_multiple', __name__, helper=len)(mk)",
+    "private-getattribute": "def run(mk):\n"
+    "    mk.__getattribute__('_patch_multiple')(__name__, helper=len)",
+    "get-target-string": "def run(mk):\n    g, at = getattr(mk, '_get_target')(__name__ + '.helper')\n"
+    "    getattr(mk, '_pa' 'tch')(g, at, len, None, False, None, None, None, {})",
+    "private-class-pattern": "def run(mk):\n    match mk:\n"
+    "        case object(_patch_multiple=p):\n            p(__name__, helper=len)",
+    "private-attribute-write": "class K:\n    pass\nK._patch = 3",
+    "private-definition": "def _get_target(t):\n    return t",
+    "match-args": "class K:\n    __match_args__ = ('patch',)",
+    "mapping-pattern": "def run(mk):\n    match vars(mk):\n        case {'patch': p}:\n"
+    "            p(__name__ + '.helper', len)",
+    "list-element": "M = ['get', 'patch']",
+    "comparison": "def run(n):\n    return n == 'patch'",
+    "assignment": "x = 'patch'",
+    "joined": "x = 'pat' + 'ch'",
+}
+
+
+@pytest.mark.parametrize("case", sorted(R12_PATCH_STRINGS))
+def test_r12_patch_tokens_fail_closed(case: str) -> None:
+    source = (
+        HELPER + R12_PATCH_STRINGS[case] + "\n\n\ndef use():\n    return helper()\n"
+    )
+    assert reason(source) == "dynamic-scope", case
+
+
 R10_IMPORTED_PATCHER_CONTROLS = {
     "constant-target": "from compat import patch as pp\ndef run():\n"
     "    pp('os.getcwd', len).start()",
@@ -6398,8 +6437,8 @@ R10_IMPORTED_PATCHER_CONTROLS = {
     "    patch('/items/' + str(i))",
     "other-name": "from compat import patched\ndef run():\n    patched(__name__ + '.x')",
     "module-named-patch": "import patch\ndef run():\n    return patch",
-    # R-699-11: an attribute write reads no patcher.
-    "private-attribute-write": "class K:\n    pass\nK._patch = 3",
+    # R-699-12 item 2 matches ``"patch"`` exactly, not as a substring.
+    "patch-substring": "M = ['patches', 'patch-1', '/v1/patch', 'patch' 'es', 'patch' + 'es']",
 }
 
 
@@ -7908,9 +7947,9 @@ def test_fold21_695_writes_and_triggers_keep_their_off_mode_edge(
         # Ordinary ``.update`` aliases (a plain ``.patch(url)`` with a
         # computed URL fails closed since #699 PY-10).
         ("", "d = {}\n    u = d.update\n    u({'x': 1})"),
-        # The mock module used as a receiver, and ``'patch'`` without it.
+        # The mock module used as a receiver. (``x = 'patch'`` fails closed
+        # since R-699-12 item 2: ``R12_PATCH_STRINGS``.)
         (FOLD21_MOCK, "m = mock.Mock()\n    m.patch('x')"),
-        ("", "x = 'patch'"),
         # A class attribute that is no namespace alias.
         ("", "class K:\n        ns = {}\n    K.ns.update(dict(x=1))"),
     ],

@@ -1209,15 +1209,23 @@ _MOCKER_NAMES = frozenset(
     {"mocker", "module_mocker", "class_mocker", "package_mocker", "session_mocker"}
 )
 _PATCH_METHODS = ("object", "dict", "multiple")
-# treesitter-chunker#699 R-699-10 item 2: import names that are patcher
-# tokens in both tiers, from any module and under any alias: ``patch`` and
-# ``unittest.mock``'s private patchers (``_patch`` with ``_get_target``,
-# ``_patch_multiple``, ``_patch_object``, ``_patch_dict``), which apply a
-# patch with no public name spelled.
-_PRIVATE_PATCHERS = frozenset(
-    {"_patch", "_patch_multiple", "_patch_object", "_patch_dict"}
+# treesitter-chunker#699 R-699-12 item 1 (after R-699-10 and R-699-11):
+# ``unittest.mock``'s private patchers and the target resolver they share are
+# patcher tokens in ANY role, in both tiers: an identifier (a name, an
+# attribute on any receiver, an import or alias name, a keyword, a
+# class-pattern keyword, a definition), or a word of any constant string
+# (``getattr(mk, '_pa' 'tch')``, a mapping-pattern key, an f-string). They
+# apply a patch, or hand out the target module (``_get_target`` returns
+# ``partial(pkgutil.resolve_name, ...)``), with no public name spelled, and
+# they are rare enough that no position needs to be told apart.
+_PRIVATE_PATCH_TOKENS = frozenset(
+    {"_patch", "_patch_multiple", "_patch_object", "_patch_dict", "_get_target"}
 )
-_PATCHER_IMPORT_NAMES = _PRIVATE_PATCHERS | {"patch"}
+# R-699-12 item 2: a constant string exactly ``"patch"`` in any position
+# (an argument, a list or tuple element, ``__match_args__``, a mapping-pattern
+# key, a comparison operand) names the patcher by string; in the member-naming
+# positions (``py_modules._argument_string``) a dotted component counts too.
+_PATCH = "patch"
 # Builtins that hand over the calling frame's locals as a dict (#707):
 # ``locals()``, and ``vars()`` with no argument. Called in a function, they
 # make every local of that frame reachable by a computed read, the way
@@ -1225,7 +1233,7 @@ _PATCHER_IMPORT_NAMES = _PRIVATE_PATCHERS | {"patch"}
 _LOCALS_READERS = frozenset({"locals", "vars"})
 # The sensitive kinds one alias/readback/escape mechanism tracks (#695 fold
 # 22): a namespace dict, the mock module, ``patch`` and a pytest-mock fixture.
-_NS, _MOCK, _PATCH, _MOCKER = "namespace", "mock", "patch", "mocker"
+_NS, _MOCK, _MOCKER = "namespace", "mock", "mocker"
 _KINDS = (_NS, _MOCK, _PATCH, _MOCKER)
 # THE CLOSED ALLOW-LIST of safe uses of a sensitive value (#695 fold 23,
 # executive ruling E-21 A-1). Every use not listed here fails closed (A-2).
@@ -2170,20 +2178,16 @@ class _Analysis:
                     self.mock_imported = True
                 if kind == "import_from_statement":
                     # treesitter-chunker#699 R-699-10 item 2: an import name
-                    # spelled ``patch`` or as a private mock patcher is a
-                    # patcher token whatever module it comes from and
-                    # whatever alias it takes (``from compat import patch as
-                    # pp``, ``@patch(...)`` from a re-exporting module). Its
-                    # bound name joins the ``patch`` alias set, so W-3 and
-                    # the closed allow-list check every use, in Tier 1 and,
-                    # through :meth:`_sensitive`, in Tier 2. A private
-                    # patcher (``_patch_multiple``) is also dynamic outright:
-                    # its arguments are not ``patch``'s.
+                    # spelled ``patch`` is a patcher whatever module it comes
+                    # from and whatever alias it takes (``from compat import
+                    # patch as pp``, ``@patch(...)`` from a re-exporting
+                    # module). Its bound name joins the ``patch`` alias set,
+                    # so W-3 and the closed allow-list check every use, in
+                    # Tier 1 and, through :meth:`_sensitive`, in Tier 2. The
+                    # private patchers are tokens in any role (R-699-12).
                     for last, bound in _from_import_names(node, source):
-                        if last in _PATCHER_IMPORT_NAMES:
+                        if last == _PATCH:
                             patch_names.update(_spellings(bound, source))
-                        if last in _PRIVATE_PATCHERS:
-                            self.dynamic = True
                 if kind == "import_statement":
                     for child in node.named_children:
                         name_node = (
@@ -2270,6 +2274,8 @@ class _Analysis:
             if spellings & _FILE_WIDE_NAMES:
                 self.dynamic = True
                 self.frame_locals = True
+            if spellings & _PRIVATE_PATCH_TOKENS:
+                self.dynamic = True  # R-699-12 item 1, any role
             if not _scope_binding_name(ident) and any(
                 self._names_own_module(spelling) for spelling in spellings
             ):
@@ -4341,30 +4347,25 @@ class _Analysis:
                 # (PY-10); a recognised one is an alias whose every use the
                 # closed allow-list checks.
                 self.dynamic = True
-            if (
-                attribute is not None
-                and _text(attribute, self.source) in _PRIVATE_PATCHERS
-                and node.id not in self.attribute_targets
-            ):
-                # R-699-11: ``X._patch_multiple(...)``, ``X._get_target`` with
-                # ``X._patch(...)`` on any receiver (a handed-in ``mock``),
-                # read or called, like ``.patch`` on any receiver (PY-10).
-                self.dynamic = True
         for node in self._patch_name_strings():
             self.dynamic = True  # ``getattr(X, "patch")`` (PY-10)
             break
 
     def _patch_name_strings(self) -> Iterator[Any]:
-        """Every constant ``"patch"`` that names a member by string
-        (:func:`py_modules._argument_string`: a call argument, positional or
-        a keyword value, or a subscript key), whole or as a dotted
-        component (``attrgetter("m.patch")``; PY-10)."""
+        """Every constant string that names a patcher: ``"patch"`` that
+        names a member by string (:func:`py_modules._argument_string`: a
+        call argument, positional or a keyword value, or a subscript key),
+        whole or as a dotted component (``attrgetter("m.patch")``; PY-10),
+        and any constant string (:func:`_patch_token_string`) exactly
+        ``"patch"`` or with a private patcher token as a word (R-699-12)."""
         stack = [self.root]
         while stack:
             node = stack.pop()
             stack.extend(node.named_children)
             value = py_modules._argument_string(node, self.source)
-            if value is not None and "patch" in _TOKEN_PARTS.split(value):
+            if (
+                value is not None and _PATCH in _TOKEN_PARTS.split(value)
+            ) or _patch_token_string(node, self.source):
                 yield node
 
     def _is_patch(self, node: Any, mock_names: set[str], patch_names: set[str]) -> bool:
@@ -4814,6 +4815,35 @@ def _import_context(node: Any) -> bool:
     return context is not None and (
         context.type in _IMPORT_STATEMENTS
         or context.type in ("global_statement", "nonlocal_statement")
+    )
+
+
+def _patch_token_string(node: Any, source: bytes) -> bool:
+    """R-699-12 items 1 and 2: whether ``node`` is a whole constant string
+    (a literal, adjacent literals, ``+``, an f-string of constants) that is
+    exactly ``"patch"`` or has a private patcher token as a word, in any
+    position."""
+    if node.type not in (
+        "string",
+        "concatenated_string",
+        "binary_operator",
+        "parenthesized_expression",
+    ):
+        return False
+    parent = node.parent
+    if parent is not None and parent.type == "concatenated_string":
+        return False  # judged as part of the whole literal
+    if (
+        parent is not None
+        and parent.type in ("binary_operator", "parenthesized_expression")
+        and _constant_string(parent, source) is not None
+    ):
+        return False  # judged as part of the larger constant (``'pat' + 'ch'``)
+    value = _constant_string(node, source)
+    if value is None:
+        return False
+    return value == _PATCH or bool(
+        set(_TOKEN_WORDS.split(value)) & _PRIVATE_PATCH_TOKENS
     )
 
 

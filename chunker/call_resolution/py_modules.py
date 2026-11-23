@@ -1739,17 +1739,19 @@ def _scan_patch_reads(analysis: Any, facts: _Facts) -> None:
         if value is not None and "patch" in ps._TOKEN_PARTS.split(value):
             facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
             return
-        member = (
-            node.child_by_field_name("attribute") if node.type == "attribute" else None
-        )
-        if (
-            member is not None
-            and node.id not in analysis.attribute_targets
-            and ps._text(member, source) in ps._PRIVATE_PATCHERS
+        if ps._patch_token_string(node, source):
+            # R-699-12 items 1 and 2: ``"patch"`` exactly in any position
+            # (``__match_args__ = ("patch",)``, ``case {"patch": p}``), or a
+            # private patcher as a word of any constant string
+            # (``getattr(mk, "_pa" "tch")``).
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
+        if node.type == "identifier" and (
+            ps._spellings(node, source) & ps._PRIVATE_PATCH_TOKENS
         ):
-            # R-699-11: a private mock patcher read or called on any receiver
-            # (``mk._patch(g, at, f, ...)`` on a handed-in ``unittest.mock``),
-            # the PY-10 rule for ``.patch``.
+            # R-699-12 item 1: a private patcher (or ``_get_target``) in any
+            # identifier role: a name, an attribute on any receiver (R-699-11),
+            # an import or alias name, a keyword, a class-pattern keyword.
             facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
             return
         if node.type == "keyword_pattern" and node.named_children:
@@ -2101,34 +2103,21 @@ class _Builder:
                     found |= self.exposed(start, seen)
         return found
 
-    def patcher_binding(self, binding: Mapping[str, Any], importer: str) -> bool:
-        """R-699-10 item 2: whether an import binding may hold a patcher
-        token: a from-import of a name Tier 1 lists
-        (``py_scope._PATCHER_IMPORT_NAMES``), or of a run module's binding of
-        one under another name (``from unittest.mock import patch as pp``
-        read back as ``from compat import pp``).
+    def exposes_patcher(self, node: str, name: str | None) -> bool:
+        """R-699-10 item 2, R-699-12 item 3: whether module ``node`` binds
+        ``patch`` by a module-scope from-import under ``name`` (``from
+        unittest.mock import patch as pp``, read back by ``from node import
+        pp`` at any scope), or under any name (``None``: what ``from node
+        import *`` may hand over; underscore names and ``__all__`` are not
+        narrowed, which only fails closed). A private patcher needs no
+        following: it is a token of the file that binds it (R-699-12).
 
         One hop is enough. Every run file in a longer chain (``compat``
         re-exporting ``compat2``'s ``pp``, or star-importing it) records the
         same cause for its own hop, and O-2 promotion makes that file
-        production whenever a production file imports it."""
-        from . import py_scope as ps
-
-        if binding.get("form") != "from":
-            return False
-        name = str(binding.get("name") or "").split(".")[-1]
-        if name in ps._PATCHER_IMPORT_NAMES:
-            return True
-        return any(
-            self.exposes_patcher(start, name)
-            for start in self.targets(str(binding.get("module") or ""), importer)
-        )
-
-    def exposes_patcher(self, node: str, name: str | None) -> bool:
-        """Whether module ``node`` binds a patcher token by a module-scope
-        from-import under ``name``, or under any name (``None``: what ``from
-        node import *`` may hand over; underscore names and ``__all__`` are
-        not narrowed, which only fails closed)."""
+        production whenever a production file imports it. Reading the
+        re-export as a module attribute (``compat.pp``,
+        ``import_module("compat").pp``) is not followed (R12)."""
         from . import py_scope as ps
 
         path = self.modules.get(node)
@@ -2137,8 +2126,7 @@ class _Builder:
             return False
         return any(
             binding.get("form") == "from"
-            and str(binding.get("name") or "").split(".")[-1]
-            in ps._PATCHER_IMPORT_NAMES
+            and str(binding.get("name") or "").split(".")[-1] == ps._PATCH
             for bound, bindings in file.module_imports.items()
             if name is None or bound == name
             for binding in bindings
@@ -2182,10 +2170,21 @@ class _Builder:
             whole.update(current)
 
 
-def _patcher_import_names() -> frozenset[str]:
+def _private_patch_tokens() -> frozenset[str]:
     from . import py_scope as ps
 
-    return ps._PATCHER_IMPORT_NAMES
+    return ps._PRIVATE_PATCH_TOKENS
+
+
+def _split_import_ref(ref: str) -> tuple[str, str]:
+    """``(module reference, last name)`` of an import reference
+    (:func:`_scan_imports`: ``compat.pp``, ``.pp``, ``..pkg.compat.pp``)."""
+    dots = len(ref) - len(ref.lstrip("."))
+    rest = ref[dots:]
+    if "." not in rest:
+        return "." * dots, rest
+    module, name = rest.rsplit(".", 1)
+    return "." * dots + module, name
 
 
 def _production(
@@ -2287,17 +2286,19 @@ def build_py_module_run(
                     # (``pp(f"svc.{NAME}", f)``): an ``unresolvable-writer``
                     # of the importing file, scoped by O-2.
                     causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
-        for bindings_of_name in (bindings.get("module_imports") or {}).values():
-            for binding in bindings_of_name:
-                # A run module's re-export of a patcher under another name
-                # (``from compat import pp``). A name spelled as a token is
-                # the file's own W-3 rules (``from compat import patch``).
-                if str(binding.get("name") or "").split(".")[
-                    -1
-                ] not in _patcher_import_names() and builder.patcher_binding(
-                    binding, path
-                ):
-                    causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
+        for ref in bindings.get("imports", ()):
+            # R-699-12 item 3: ``from compat import pp`` at any scope (module,
+            # function, class body; relative too), where ``compat`` binds
+            # ``patch`` as ``pp``. A name spelled ``patch`` is the file's own
+            # W-3 rules, a private patcher its own token.
+            module, name = _split_import_ref(str(ref))
+            if name == "patch" or name in _private_patch_tokens():
+                continue
+            if any(
+                builder.exposes_patcher(start, name)
+                for start in builder.targets(module, path)
+            ):
+                causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
     for scope in (True, False):
         pending = sorted(whole[scope])
         while pending:
