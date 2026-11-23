@@ -3012,6 +3012,83 @@ decisions, all stricter than or consistent with the issue:
 - kind or family filtering alone never resolves an edge;
 - extension collisions give `none` (O-1 decided (a) by the owner).
 
+### R12. Runtime routes outside the binding model
+
+The tables below supersede the original R12 entries above for route status.
+
+The Tier 1 Python scope rule from the treesitter-chunker#695 review
+(606c689f) treats a wrong same-file resolution as blocking when ordinary
+binding, attribute or call semantics can produce it using names or constant
+strings spelled in the file. The review allows named residuals for reflective
+routes when a small trigger cannot close them. Tier 2 applies the same
+principle to the collected files. A run-wide cause shuts off Tier 2.
+Recognized writes to identifiable Python modules can also suppress their own
+Tier 1 module-scope proofs (R10).
+
+Class (a) uses a fixed trigger at the use site. Class (b) is a documented
+limit. Class (c) needs configuration or broader program modelling and stays
+in R12. R-699-1 calls for one follow-up tracker for class (c), including J4.
+The issue column records where each route was reported or assigned. The
+[call resolution guide](../docs/call-resolution.md) describes the limits for
+users.
+
+#### Python
+
+| Route | Class | Status | Tracking issue |
+| --- | --- | --- | --- |
+| P1–P2. Heap walking through `gc.get_referents`, `get_referrers` or `get_objects` to find writable namespaces, code or closure cells | (a) | Planned in both tiers (PY-7, B-7) | treesitter-chunker#699 |
+| P3, P22. Member walks with `inspect.getmembers` or `dir()` plus `getattr`, including computed frame, code and namespace names, and frames obtained from outside the run | (b) | Documented limit. Spelled heap-walking calls are covered by the planned P1–P2 rule. | treesitter-chunker#699 |
+| P4–P5. `runpy` with custom globals, recompiling or unmarshalling the file, and rebuilding functions using code objects or closure cells | (a) | Planned (PY-3, PY-8, B-1, B-2) | treesitter-chunker#699 |
+| P6. `gettext.install()` and `sys.displayhook` | (a) | Planned (PY-4) | treesitter-chunker#699 |
+| P7. Standard-library code runners and payload evaluators, including profilers, debuggers, `timeit`, `doctest`, `pickle.loads`, `ForkingPickler`, `shelve` and `breakpoint` | (a) | Planned (PY-1, PY-8, B-2, B-4) | treesitter-chunker#699 |
+| Pickled data received through `multiprocessing` IPC, such as `Connection.recv()` | (b) | Documented limit (R-699-1, B-4) | treesitter-chunker#699 |
+| P8. An installed package re-exports `builtins` under another name | (b) | Documented limit. The standard-library alias `enum.bltns` already has a trigger. | treesitter-chunker#699 |
+| P9. Resolvers taking a module name from `X.__module__` | Closed | Closed at the write site (folds 19 and 21) | treesitter-chunker#699 |
+| P10. Forward references or string annotations evaluated through `typing`, including `__annotations__` writes and `singledispatch.register` | (a) | Planned (PY-2, B-5) | treesitter-chunker#699 |
+| P11. Catch-all `__getattr__` supplies a function to `update_wrapper` for later use as `__annotate__` | (b) | Documented limit | treesitter-chunker#699 |
+| P12. Library writes to objects passed to `update_wrapper`/`wraps`, `argparse`/`optparse`, `copy._reconstruct`, pickle BUILD or equivalents | (b) | Documented limit. Passing a tracked module is already an escape in `imports`. | treesitter-chunker#699 |
+| P13. Computed module acquisition, such as `getattr(pkg, __name__.rpartition('.')[2])`, a computed `sys.modules` key through an alias, or iterating package members | (b) | Documented limit. Spelled writes fail closed at the write site. `X._sys.modules` is a trigger since fold 21. | treesitter-chunker#699 |
+| P14–P15. Patchers under unrecognized names and module-supplied `patch` values via computed `getattr` | (a) | Planned (PY-10, PY-5). Computed targets on recognized patchers and spelled MonkeyPatch methods already fail closed. | treesitter-chunker#699 |
+| Computed pytest fixture or patcher method names that reach the lookup through variables, splats, containers or runtime formatting | (b) | Documented limit. Constant spellings covered by E6-9b and fold 7 already fail closed. | treesitter-chunker#699 |
+| P16. Following a non-literal `import_module` result through aliases to narrow its effects | Precision | Deferred | treesitter-chunker#699 |
+| P17. A writer with an unknown target module affects a Tier 1 proof, including `exec(code, mod.__dict__)` with a computed module | (c) | Open (R10, ruling Q1) | treesitter-chunker#699 |
+| P18. A cross-file closure-cell write changes the target of a Tier 2 edge | (a) | Planned (PY-6) | treesitter-chunker#699 |
+| P19. A cross-file closure-cell or caller-frame write changes the target of a Tier 1 function-local edge | (c) | Open in both modes (R-699-1, Q11) | treesitter-chunker#699 |
+| P20–P21. Cross-file frame access, live locals proxies, and an aliased `locals`/`vars` builtin re-exported across files | (a) | Planned (PY-9, B-6). Includes a callee accessing its caller's frame, including via debugger or tracing hooks another module installs (`sys.settrace`, `sys.breakpointhook`). | treesitter-chunker#699, treesitter-chunker#707 |
+| A function-local patcher alias escapes through `locals()`, no-argument `vars()`, or recognized reads of a frame's locals | (a) | Pending in treesitter-chunker#721 | treesitter-chunker#707 |
+| Constant `__main__` and `__mp_main__` format fields, including stored string templates and literal portions of f-strings and t-strings | (a) | Pending in treesitter-chunker#714 | treesitter-chunker#698 |
+| P23. Bytes `%` templates, runtime-built templates and `Template` subclasses with unsupported delimiters | (b) | Documented limit | treesitter-chunker#699 |
+| P23. A formatting callback cuts `__main__` out of a larger component, such as a format spec containing `x__main__` | (b) | Documented limit (R-698-1) | treesitter-chunker#699 |
+| P23. A name joined across a replacement field, such as `f'{P():__ma{""}in__}'` | (b) | Documented limit (R-698-2) | treesitter-chunker#699 |
+| A file exposes its import bindings through its own namespace, for example through `globals()` or `locals()` | (a) | Planned (R-706-1) | treesitter-chunker#724 |
+| A helper returns an imported module and code writes through the result | (a) | Tracking of returned modules planned (R-706-1) | treesitter-chunker#706 |
+| A function's body is replaced through `__code__` | (b) | The definition can still be the right binding. Spelled writes of `__code__`, `__closure__`, `__defaults__` and `__kwdefaults__` already cause Tier 2 shutoff (PR 6, N-1). | treesitter-chunker#699 |
+| Cross-file submodule rebinding, including loading by a computed name in `__init__.py`, and cross-file builtin injection outside recognized triggers | (c) | Open | treesitter-chunker#699 |
+| Modules loaded under a loader-chosen name or acquired by configured plugins | (c) | Open. Named module escapes are already tracked. | treesitter-chunker#699 |
+| Startup hooks, `.pth` files, debuggers or tracing hooks installed outside the run, native access invisible to the scan, and extension or `.pyc`-only modules shadowing `.py` | (b) | Documented limit (R7) | treesitter-chunker#699 |
+| Pytest `pythonpath`, `rootdir`, `python_files` and import-mode settings | (c) | Open | treesitter-chunker#699 |
+| A package star import rebinds a submodule that name mode already resolved | Baseline | Outside the remove-only pass (PR 6, P6-8) | treesitter-chunker#685 |
+
+#### TypeScript and JavaScript
+
+| Route | Class | Status | Tracking issue |
+| --- | --- | --- | --- |
+| J1. Bare-specifier aliases into the run through package self-reference, workspace links or tsconfig `paths` | (c) | Open | treesitter-chunker#702 |
+| J2. `package.json` maps, bundler aliases and extension lists, tsconfig `rootDirs` and `moduleSuffixes`, or sibling files preferred by an external resolver | (c) | Open (R6) | treesitter-chunker#702 |
+| J3a. Code evaluated through `vm`, `inspector` or `repl` builtins | (a) | Planned (JS-1) | treesitter-chunker#702 |
+| Third-party re-exports of `vm` | (b) | Documented limit | treesitter-chunker#702 |
+| J3b, J6. `process.binding` and reflective lookups with a spelled `process` token or specifier | (a) | Planned (JS-2, R-699-2 and R-718-3) | treesitter-chunker#702 |
+| J3c. `Module._extensions` and loader registration through the visible module system | Closed | Covered by existing module-system causes | treesitter-chunker#702 |
+| J3d. Node startup flags, Babel plugins and macros, or flag-enabled test module mocks | (b) | Documented limit | treesitter-chunker#702 |
+| J4. Writers in uncollected `.mjs`/`.cjs`/`.mts`/`.cts` files or files excluded by a language filter | (c) | Open. Needs facts-only collection or other broader modelling. | treesitter-chunker#702 |
+| J5. Build output such as `.next/` collected as source | (b) | Documented limit | treesitter-chunker#702 |
+| `caller` or `getFunction` spelled in the source, including in local bindings and decoded JSX text or attribute values, or a parsed `with` statement | (a) | Pending in treesitter-chunker#720 (R-718-3) | treesitter-chunker#718 |
+| J7. Stack keys without a full spelling, such as `/^cal+er$/` or names loaded from JSON, and computed properties or reflective calls recovered through data flow | (b) | Documented limit (see also R11) | treesitter-chunker#702 |
+| O-2 classification misses, such as config-only production entry points under `test/`, and mocks outside the closed list such as `jest.requireMock` or `vi.importMock` | (c) | Open. Test paths outside the classifier, such as `e2e/`, already count as production. | treesitter-chunker#702 |
+| Package `#` aliases, absolute and URL specifiers, `import.meta.glob`, unknown `createRequire` bases, short Windows names, and directory symlinks | Closed | Test files count as production when such paths cannot be located (see §9.9) | treesitter-chunker#702 |
+| Collected JS/TS files the parser cannot read cleanly | Closed | Covered by `unparsed-file` since E5-7 | treesitter-chunker#702 |
+| AMD `require` parameters called with a computed name and loader methods obtained through computed keys | (b) | Documented limit where no cause fires. Unreadable computed property keys can already record `evaluator`. | treesitter-chunker#702 |
+
 ## 16. Acceptance criteria for this plan
 
 - Rules per tier and language, with the binding-proof invariant (sections 6–9).
