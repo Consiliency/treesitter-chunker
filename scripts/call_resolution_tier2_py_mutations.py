@@ -836,6 +836,12 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        if False:\n            return None",
     ),
     (
+        "ns-f_builtins-route",
+        PYM,
+        '"__self__", "f_builtins"}',
+        '"__self__"}',
+    ),
+    (
         "ns-builtin-strings",
         PYM,
         "            builtin_strings = True",

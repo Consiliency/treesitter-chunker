@@ -3331,6 +3331,12 @@ NAMESPACE_HANDOUT: dict[str, dict[str, str]] = {
             '    m["svc"].t = other.t\n'
         ),
     },
+    "f_builtins-globals": {
+        "use.py": (
+            "import sys\nimport svc\nimport other\n\n\ndef go():\n"
+            '    sys._getframe(0).f_builtins["globals"]()["svc"].t = other.t\n'
+        ),
+    },
     "f_globals-by-string": {
         "use.py": (
             "import sys\nimport svc\nimport other\n\n\ndef go():\n"

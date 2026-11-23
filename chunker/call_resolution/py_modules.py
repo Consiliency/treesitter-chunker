@@ -1224,12 +1224,13 @@ _ANNOTATION_EVALUATORS = frozenset(
 _NAMESPACE_NAMES = _NAMESPACE_ATTRIBUTES | _ANNOTATION_EVALUATORS
 # A frame's namespace dicts, read by a constant key (:func:`_frame_read_keys`).
 _FRAME_DICTS = frozenset({"f_locals", "f_globals"})
-# Names that reach the ``builtins`` module, on which ``X.globals()`` or
-# ``X.exec(code)`` is the builtin itself (``builtins.globals()`` returns the
+# Names that reach the ``builtins`` module or a frame's builtins dict, on
+# which ``X.globals()`` or ``X.exec(code)`` is the builtin itself
+# (``builtins.globals()`` and ``frame.f_builtins["globals"]()`` return the
 # caller's globals). Another receiver's ``.eval()`` (``model.eval()``) or
 # ``.globals`` (a Jinja environment) is not.
 _BUILTINS_ROUTES = frozenset(
-    {"builtins", "__builtins__", "__builtin__", "bltns", "__self__"}
+    {"builtins", "__builtins__", "__builtin__", "bltns", "__self__", "f_builtins"}
 )
 _SPLATS = frozenset({"list_splat", "dictionary_splat"})
 
