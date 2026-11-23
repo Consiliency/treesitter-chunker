@@ -444,7 +444,11 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "e6-9-mp-receiver",
         PYM,
+        '            last in ("setattr", "delattr")\n'
+        "            and receiver is not None\n"
         "            and patchers.kind(receiver) == _INSTANCE",
+        '            last in ("setattr", "delattr")\n'
+        "            and receiver is not None\n"
         "            and False",
     ),
     (
@@ -524,12 +528,6 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        if False:",
     ),
     (
-        "p6-5-test-files-only",
-        PYM,
-        "    if test_file:\n        _scan_patcher_escapes(analysis, facts, patchers)",
-        "    if True:\n        _scan_patcher_escapes(analysis, facts, patchers)",
-    ),
-    (
         "e6-9-mp-method-allow-list",
         PYM,
         '            return name in _MP_METHODS if kind == _INSTANCE else name == "context"',
@@ -538,8 +536,47 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "e6-9-annotation-allowed",
         PYM,
-        '            if above.type == "type":',
-        "            if False:",
+        '        if above is not None and above.type == "type":',
+        "        if False:",
+    ),
+    # Fold 5 (#705 P6-10..P6-15; E6-9a).
+    (
+        "p6-10-syspath-prepend",
+        PYM,
+        "            # ``SHADOW.t`` (``f4_mp_syspath_prepend``).\n"
+        "            facts.shutoff.add(CAUSE_MODULE_SYSTEM)",
+        "            # ``SHADOW.t`` (``f4_mp_syspath_prepend``).\n            pass",
+    ),
+    (
+        "p6-11-unreachable-alias-only",
+        PYM,
+        'return target.type == "identifier" and not self.analysis._reachable_binding(',
+        'return target.type == "identifier" or self.analysis._reachable_binding(',
+    ),
+    (
+        "p6-12-getfixturevalue-attribute",
+        PYM,
+        '            elif node.type == "attribute" and self._fixture_attribute(node):',
+        "            elif False:",
+    ),
+    (
+        "p6-15-getfixturevalue-string",
+        PYM,
+        '            elif node.type == "string" and (',
+        "            elif False and (",
+    ),
+    (
+        "p6-13-every-file",
+        PYM,
+        "    _scan_patcher_escapes(analysis, facts, patchers)\n    hazard",
+        "    if not analysis.dynamic:\n"
+        "        _scan_patcher_escapes(analysis, facts, patchers)\n    hazard",
+    ),
+    (
+        "p6-14-annotation-chain",
+        PYM,
+        "        while above is not None and above.type in _ANNOTATION_PARTS:",
+        '        while above is not None and above.type not in ("type", "block", "module"):',
     ),
     (
         "e6-6-first-attribute-write",

@@ -2165,9 +2165,8 @@ stops recurring; every rule only adds `none`.
   `[mock.patch][0](…)`, `functools.partial(patch, …)` and
   `helper(monkeypatch)` (`f3_patch_as_arg`, `f3_patch_decorator_arg`,
   `f3_patch_list_escape`, `f3_patch_partial`, `f3_mp_param`). Allowed calls
-  with constant targets keep their exact taints. In production files
-  nothing changes: Tier 1's E-21 already makes such a file dynamic, and
-  pytest does not run it.
+  with constant targets keep their exact taints. (Fold 4 left production
+  files out; E6-9a, below, withdraws that.)
 - **E6-9 / P6-7, fixtures by name.** `request.getfixturevalue('<name>')`
   with `monkeypatch` yields a `MonkeyPatch`, and with a pytest-mock fixture
   name (`mocker`, `class_mocker`, `module_mocker`, `package_mocker`,
@@ -2178,10 +2177,50 @@ stops recurring; every rule only adds `none`.
 - **P6-9 (method).** The Boundary IR hash includes the checkout's absolute
   path, so head-vs-main comparisons are run from one path.
 
+**Fold 5 (the president's re-check P6-10..P6-16; executive ruling E6-9a).**
+Every rule only adds `none`.
+
+- **E6-9a / P6-13, the patcher-escape scan runs in every Python file.**
+  Fold 4 said production files needed none because Tier 1's E-21 makes the
+  hand-off file dynamic. That holds only for the file's own lookups: the
+  hidden write still reaches another module. Production `main.py` ran
+  `OTHER.t` after production `app.py` did `run(patch)`,
+  `helper(pytest.MonkeyPatch())` or `[pytest.MonkeyPatch()][0].setattr(…)`
+  (`f4_prod_patch_param`, `f4_prod_mp_param`, `f4_prod_mp_list`). The cause
+  stays scoped by O-2 through the file's own classification. The
+  `getfixturevalue` rules below apply in every file too, under the same
+  scoping; production code does not call `getfixturevalue`.
+- **P6-10, `syspath_prepend` is `module-system`.** `monkeypatch.
+  syspath_prepend(p)` is `sys.path.insert(0, p)` plus
+  `importlib.invalidate_caches()`; pytest ran `shadow/svc.py`'s `t`
+  (`f4_mp_syspath_prepend`; the plain `sys.path.insert` control
+  `f4_ctl_syspath_insert` was already a cause). It stays on the allow-list
+  only so that it is not also an escape.
+- **P6-11, MonkeyPatch aliases mirror Tier 1.** An assignment, walrus or
+  `with … as` alias is safe only for a binding no computed read reaches
+  (Tier 1's `_reachable_binding` is false: a function local, not a module or
+  class global or a `global`-declared name). A module-level `MP =
+  pytest.MonkeyPatch()` that the test imports (`f4_mp_global_cross`,
+  `f4_mp_global_attr`) is now an escape.
+- **P6-12 and P6-15, `getfixturevalue` by alias or by name.** An
+  `X.getfixturevalue` attribute that is not the callee of a direct call
+  (`g = request.getfixturevalue`, `f4_mp_getfixture_alias`), and the
+  constant string `"getfixturevalue"` (`getattr(request,
+  "getfixturevalue")`, `f4_mp_getattr_method`), count as a computed fixture
+  name: an `unresolvable-writer` cause.
+- **P6-14, annotations.** A patcher in an annotation is safe only when it is
+  the annotation itself or sits in an `attribute`/`subscript`/
+  `generic_type`/union chain of it, with no call or argument list in
+  between: `def inner(a: helper(monkeypatch))` runs `helper` when the
+  annotations are evaluated (`f4_mp_annot_eval`).
+- **P6-16: no change** (`chdir`, `setenv`, `delenv` cannot redirect an
+  import without a relative `sys.path` entry, every source of which is
+  already `module-system`).
+
 **Real-tree outcome (owner decision O-3: shipped as designed).** Python Tier 2
 gains nothing on the measured trees. `imports` is compared with `structural`
 on git-tracked `.py` files, with Python 3.14, at PR 6 fold 2 and again at
-folds 3 and 4 (every resolved, gain and loss count identical; the
+folds 3, 4 and 5 (every resolved, gain and loss count identical; the
 treesitter-chunker rows use a copy of the newest head, whose own new code adds
 ambiguous edges); each row names
 its extraction root (the `sys.path` entry). "ambiguous" counts off-mode
@@ -3738,7 +3777,7 @@ row changes.
 ### PR 6: Tier 2 Python (treesitter-chunker#682, closes #682 and #697)
 
 `python` fact version 31 at the first PR 6 head (32 at fold 1, 33 at fold 2,
-34 at fold 3, 35 at fold 4;
+34 at fold 3, 35 at fold 4, 36 at fold 5;
 `js` stays 20 with unchanged digests). 18 expected
 rows gain an `imports` field (`{5: 31, 6: 18}`): 9 positives (7 resolve, 2
 narrow to their import group) and 9 near-misses.
@@ -3814,3 +3853,17 @@ fixture outputs are identical to fold 3.
 | P6-7: `getfixturevalue` of a patcher fixture yields that kind; a computed name is a cause | §9.10; `py_modules._Patchers` |
 | P6-8: off-mode residual, no change | §15 R12 (Python, PR 6) |
 | Pins: `test_fold4_patcher_values_are_test_scoped_causes` (9: the six president's trees, `f3_mp_getfixture`, a `getfixturevalue("mocker")` row and a computed fixture name; each with what pytest printed), `test_fold4_allow_listed_patcher_uses_keep_their_exact_taints` (3), `test_fold4_production_patcher_values_are_no_cause`; 10 new rule mutations, one replaced (102 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+
+### PR 6: fold 5 (the president's re-check P6-10..P6-16; executive ruling E6-9a)
+
+`python` fact version 36; `js` stays at 20. No expected row changes. The
+fixture outputs are identical to fold 4.
+
+| Item | Applied in |
+| --- | --- |
+| E6-9a / P6-13: the patcher-escape scan runs in every Python file; causes O-2-scoped by the file's own classification | §9.10; `py_modules.module_facts`, `_scan_patcher_escapes` |
+| P6-10: `syspath_prepend` on a MonkeyPatch is `module-system` | §9.10; `py_modules._scan_patchers` |
+| P6-11: MonkeyPatch aliases safe only as unreachable bindings | §9.10; `py_modules._Patchers._local_alias`, `safe_use` |
+| P6-12, P6-15: `getfixturevalue` by alias or `getattr` is a computed fixture | §9.10; `py_modules._Patchers` |
+| P6-14: annotation positions without a call in between | §9.10; `py_modules._ANNOTATION_PARTS`, `_Patchers.safe_use` |
+| Pins: `test_fold5_president_cases_keep_their_off_mode_edge` (9 president's trees, each with what CPython 3.14 or pytest printed), `test_fold5_syspath_insert_control`, `test_fold5_production_patcher_causes_stay_production_scoped`, `test_fold5_local_aliases_and_plain_annotations_stay_safe`; fold 4's production control removed (E6-9a); 6 new rule mutations, one removed (107 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |

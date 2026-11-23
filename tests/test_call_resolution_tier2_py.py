@@ -2285,23 +2285,224 @@ def test_fold4_allow_listed_patcher_uses_keep_their_exact_taints(
     assert on["resolution"] == "resolved" and label == "import", case
 
 
-def test_fold4_production_patcher_values_are_no_cause(tmp_path: Path) -> None:
-    """E6-9 in production: the same hand-off in a production file records no
-    cause (Tier 1's E-21 already makes that file dynamic, and pytest never
-    runs it), so production and test callers keep their proofs."""
-    test_file = FOLD4_BLOCKING["f3_patch_as_arg"][0]
+# ---------------------------------------------------------------------------
+# Fold 5 (#705 P6-10..P6-15; executive ruling E6-9a): the president's ``f4_*``
+# trees, verbatim apart from ``svc.py``/``other.py``/``tests/calls.py`` (as in
+# ``_SVC_OTHER``). ``runtime`` is what CPython 3.14.10 printed: ``python -B -E
+# -s -m pytest -q -s -p no:cacheprovider --rootdir=. tests`` for a test tree,
+# ``python -B -E -s main.py`` for a production one. In every row a function
+# other than the one fold 4's ``imports`` edge named ran.
+# ``(extra files, (file, reference), reason, runtime)``.
+
+_F4_HEAD = 'import calls\nfrom other import t as _evil\nNAME = "t"\n'
+_F4_MAIN = 'import app\nimport svc\ndef go(): return svc.t()\nprint("RAN", go())\n'
+FOLD5_BLOCKING: dict[str, tuple[dict[str, str], tuple[str, str], str, str]] = {
+    # P6-10: ``syspath_prepend`` writes ``sys.path``.
+    "f4_mp_syspath_prepend": (
+        {
+            "shadow/svc.py": 'def t(): return "SHADOW.t"\n',
+            "tests/test_b.py": (
+                "import os\ndef test_go(monkeypatch):\n"
+                '    monkeypatch.syspath_prepend(os.path.join(os.path.dirname(__file__), "..", "shadow"))\n'
+                '    import calls\n    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "run-tainted:module-system",
+        "RAN SHADOW.t / 1 passed",
+    ),
+    # P6-11: a module-level MonkeyPatch another file imports.
+    "f4_mp_global_cross": (
+        {
+            "tests/helpers_mp.py": "import pytest\nMP = pytest.MonkeyPatch()\n",
+            "tests/test_b.py": (
+                "import calls\nfrom helpers_mp import MP\nfrom other import t as _evil\n"
+                'NAME = "t"\ndef test_go():\n    MP.setattr(f"svc.{NAME}", _evil)\n'
+                '    print("RAN", calls.go())\n    MP.undo()\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f4_mp_global_attr": (
+        {
+            "tests/helpers_mp.py": "import pytest\nMP = pytest.MonkeyPatch()\n",
+            "tests/test_b.py": (
+                "import calls\nimport helpers_mp\nfrom other import t as _evil\n"
+                'NAME = "t"\ndef test_go():\n'
+                '    helpers_mp.MP.setattr(f"svc.{NAME}", _evil)\n'
+                '    print("RAN", calls.go())\n    helpers_mp.MP.undo()\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # P6-12 and P6-15: ``getfixturevalue`` reached without a direct call.
+    "f4_mp_getfixture_alias": (
+        {
+            "tests/test_b.py": _F4_HEAD
+            + "def test_go(request):\n    g = request.getfixturevalue\n"
+            '    mp = g("monkeypatch")\n    mp.setattr(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        ("tests/calls.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f4_mp_getattr_method": (
+        {
+            "tests/test_b.py": _F4_HEAD + "def test_go(request):\n"
+            '    mp = getattr(request, "getfixturevalue")("monkeypatch")\n'
+            '    mp.setattr(f"svc.{NAME}", _evil)\n    print("RAN", calls.go())\n'
+        },
+        ("tests/calls.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # P6-13 (E6-9a): production hand-offs reach production callers.
+    "f4_prod_patch_param": (
+        {
+            "app.py": (
+                "from unittest.mock import patch\nfrom other import t as _evil\n"
+                'NAME = "t"\ndef run(p):\n    p(f"svc.{NAME}", _evil).start()\n'
+                "run(patch)\n"
+            ),
+            "main.py": _F4_MAIN,
+        },
+        ("main.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t",
+    ),
+    "f4_prod_mp_param": (
+        {
+            "app.py": (
+                "import pytest\nfrom other import t as _evil\n"
+                'NAME = "t"\ndef helper(mp):\n    mp.setattr(f"svc.{NAME}", _evil)\n'
+                "helper(pytest.MonkeyPatch())\n"
+            ),
+            "main.py": _F4_MAIN,
+        },
+        ("main.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t",
+    ),
+    "f4_prod_mp_list": (
+        {
+            "app.py": (
+                "import pytest\nfrom other import t as _evil\n"
+                'NAME = "t"\nL = [pytest.MonkeyPatch()]\n'
+                'L[0].setattr(f"svc.{NAME}", _evil)\n'
+            ),
+            "main.py": _F4_MAIN,
+        },
+        ("main.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t",
+    ),
+    # P6-14: a call inside an annotation hands the fixture on.
+    "f4_mp_annot_eval": (
+        {
+            "tests/test_b.py": _F4_HEAD + "def helper(mp):\n"
+            '    mp.setattr(f"svc.{NAME}", _evil)\n    return int\n'
+            "def test_go(monkeypatch):\n"
+            "    def inner(a: helper(monkeypatch)): pass\n"
+            "    inner.__annotations__\n"
+            '    print("RAN", calls.go())\n'
+        },
+        ("tests/calls.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD5_BLOCKING))
+def test_fold5_president_cases_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    """#705 P6-10..P6-15 and E6-9a, each president's tree with what CPython
+    3.14 or pytest printed in its ``runtime`` field:
+
+    - P6-10 (``f4_mp_syspath_prepend``): ``monkeypatch.syspath_prepend(p)``
+      is ``sys.path.insert(0, p)``; ``import calls`` then found
+      ``shadow/svc.py`` and printed ``SHADOW.t``, so it is ``module-system``.
+    - P6-11 (``f4_mp_global_cross``, ``f4_mp_global_attr``): a module-level
+      ``MP = pytest.MonkeyPatch()`` is imported by the test, which patches
+      ``svc.t`` through it.
+    - P6-12, P6-15 (``f4_mp_getfixture_alias``, ``f4_mp_getattr_method``):
+      ``getfixturevalue`` reached through an alias or ``getattr`` returned the
+      ``monkeypatch`` fixture.
+    - P6-13 (``f4_prod_*``): production ``app.py`` hands a patcher on, and
+      production ``main.py`` then ran ``OTHER.t``; the cause now applies to
+      production callers too.
+    - P6-14 (``f4_mp_annot_eval``): evaluating ``inner.__annotations__``
+      called ``helper(monkeypatch)``.
+    """
+    files, (file, reference), reason, _runtime = FOLD5_BLOCKING[case]
+    root = _write(tmp_path, {**_SVC_OTHER, **files})
+    off, _structural, on, label = _run(root, file, reference)
+    assert on == off, case
+    assert label == f"none({reason})", case
+
+
+def test_fold5_syspath_insert_control(tmp_path: Path) -> None:
+    """P6-10 control (``f4_ctl_syspath_insert``, pytest: ``RAN SHADOW.t``):
+    the plain ``sys.path.insert`` that ``syspath_prepend`` equals was
+    already a ``module-system`` cause."""
     root = _write(
         tmp_path,
         {
             **_SVC_OTHER,
-            "use.py": "from svc import t\n\n\ndef u():\n    return t()\n",
-            "tools/patching.py": test_file.replace("import calls\n", ""),
+            "shadow/svc.py": 'def t(): return "SHADOW.t"\n',
+            "tests/test_b.py": (
+                "import os, sys\ndef test_go():\n"
+                '    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shadow"))\n'
+                '    import calls\n    print("RAN", calls.go())\n'
+            ),
+        },
+    )
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on == off
+    assert label == "none(run-tainted:module-system)"
+
+
+def test_fold5_production_patcher_causes_stay_production_scoped(
+    tmp_path: Path,
+) -> None:
+    """E6-9a under O-2: a test file's patcher escape still reaches only test
+    callers, while a production file's reaches every caller (above)."""
+    files = dict(FOLD5_BLOCKING["f4_prod_mp_param"][0])
+    files["tests/test_app.py"] = files.pop("app.py")
+    files["main.py"] = "import svc\ndef go(): return svc.t()\n"
+    root = _write(tmp_path, {**_SVC_OTHER, **files})
+    _off, _structural, on, label = _run(root, "main.py", "svc.t")
+    assert on["resolution"] == "resolved" and label == "import"
+    _off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert label == "none(run-tainted:unresolvable-writer)"
+
+
+def test_fold5_local_aliases_and_plain_annotations_stay_safe(
+    tmp_path: Path,
+) -> None:
+    """Controls for P6-11 and P6-14: a function-local alias, a ``with ... as``
+    local and plain annotations (``pytest.MonkeyPatch``, ``list[...]``,
+    ``... | None``) record no cause."""
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "tests/test_b.py": (
+                "import pytest\nfrom pytest import MonkeyPatch\n"
+                "def test_go(monkeypatch: pytest.MonkeyPatch,"
+                " other: list[MonkeyPatch] | None = None):\n"
+                "    mp = monkeypatch\n    mp.setenv('X', '1')\n"
+                "    with monkeypatch.context() as m:\n        m.delenv('X')\n"
+                "    local = MonkeyPatch()\n    local.undo()\n"
+            ),
         },
     )
     facts, _graph, _context_ = _context(root)
-    (item,) = [item for item in facts if item["path"] == "tools/patching.py"]
-    assert (
-        "unresolvable-writer" not in item["scope_facts"]["module_bindings"]["shutoff"]
-    )
-    _off, _structural, on, label = _run(root, "use.py", "t")
-    assert on["resolution"] == "resolved" and label == "import"
+    (item,) = [item for item in facts if item["path"] == "tests/test_b.py"]
+    assert item["scope_facts"]["module_bindings"]["shutoff"] == []

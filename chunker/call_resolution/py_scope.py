@@ -3818,7 +3818,7 @@ def analyze(
     own = path or ""
     own_ref = py_modules.dotted_name(own)[0] if own.endswith(".py") else ""
     exports, module_bindings = py_modules.module_facts(
-        analysis, groups, chains, own_ref, test_file=py_modules.is_test_path(own)
+        analysis, groups, chains, own_ref
     )
     return {
         "goal": "module",

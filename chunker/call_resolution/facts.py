@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"20"`` for the ``js`` family and ``"35"`` for
+Schema (fact version ``"20"`` for the ``js`` family and ``"36"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -197,6 +197,12 @@ logger = logging.getLogger(__name__)
 # or a from-import is relied on by name; a recorded write of it fails closed).
 # python "29": fold 27 (Codex 4657978945: an allow-listed read's result must
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
+# python "36": PR 6 fold 5 (#705 P6-10..P6-15, E6-9a): the patcher-escape
+# scan runs in every file (causes O-2-scoped by the file's own
+# classification); ``syspath_prepend`` on a MonkeyPatch is ``module-system``;
+# MonkeyPatch aliases must be unreachable bindings; ``getfixturevalue``
+# reached by alias or by ``getattr`` is a computed fixture; an annotation is
+# safe only with no call in between.
 # python "35": PR 6 fold 4 (#705 E6-9): pytest's ``MonkeyPatch`` is a patcher
 # kind (imports of it under any alias, ``MonkeyPatch()``/``.context()``,
 # ``getfixturevalue``; no substring rule), and in a test file a patcher value
@@ -225,7 +231,7 @@ logger = logging.getLogger(__name__)
 # run-wide causes and parse hazards (``module_bindings``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "35"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "36"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
