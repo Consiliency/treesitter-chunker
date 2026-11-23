@@ -2743,6 +2743,29 @@ FOLD6_BLOCKING: dict[str, tuple[dict[str, str], str]] = {
         },
         "(pytest-mock: mocker.patch is unittest.mock.patch)",
     ),
+    # P6-12 and P6-15 for pytest-mock: ``getfixturevalue`` through an alias
+    # or ``getattr`` fetching ``mocker``, whose ``.patch`` is ``patch``
+    # (rule rows: pytest-mock is not installed in the measuring venv). The
+    # MonkeyPatch forms of these trees close by E6-9b alone.
+    "getfixturevalue-alias-mocker": (
+        {
+            "tests/test_b.py": _F5_HEAD + "def test_go(request):\n"
+            "    g = request.getfixturevalue\n"
+            '    m = g("mocker")\n'
+            '    m.patch(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "(pytest-mock: mocker.patch is unittest.mock.patch)",
+    ),
+    "getfixturevalue-getattr-mocker": (
+        {
+            "tests/test_b.py": _F5_HEAD + "def test_go(request):\n"
+            '    m = getattr(request, "getfixturevalue")("mocker")\n'
+            '    m.patch(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "(pytest-mock: mocker.patch is unittest.mock.patch)",
+    ),
 }
 
 
