@@ -108,7 +108,7 @@ def has_directory_symlink(path: str | Path) -> bool:
 
 
 def collect_source_files(path: str | Path, language: str | None = None) -> list[Path]:
-    """Collect source files for a given path/language selection."""
+    """Collect source files in case-sensitive path-component order."""
     root = Path(path)
     if not root.exists():
         return []
@@ -126,7 +126,7 @@ def collect_source_files(path: str | Path, language: str | None = None) -> list[
         and not _should_skip_path(file_path)
         and file_path.suffix.lower() in extensions
     ]
-    return sorted(files)
+    return sorted(files, key=lambda p: p.parts)
 
 
 def _detect_language(

@@ -160,6 +160,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Symbol graph extraction orders source files by case-sensitive path components
+  on every platform (treesitter-chunker#687).
 - Automatic detection uses the language pack's `rst` and `asm` grammar
   names for `.rst`, `.asm`, and `.s` files (treesitter-chunker#692). These
   files now parse with their grammars instead of failing to load, so

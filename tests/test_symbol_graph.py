@@ -1,8 +1,38 @@
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+from unittest.mock import Mock
 
 import pytest
 
+from chunker import symbol_graph
 from chunker.symbol_graph import extract_symbol_graph
+
+
+def test_collect_source_files_uses_case_sensitive_path_components(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class WindowsSourceFile(PureWindowsPath):
+        def is_file(self) -> bool:
+            return True
+
+    root = Mock(spec=Path)
+    root.exists.return_value = True
+    root.is_file.return_value = False
+    root.rglob.return_value = [
+        WindowsSourceFile("project/app.py"),
+        WindowsSourceFile("project/D.py"),
+        WindowsSourceFile("project/D/sub.py"),
+        WindowsSourceFile("project/other.py"),
+    ]
+    monkeypatch.setattr(symbol_graph, "Path", lambda _: root)
+
+    files = symbol_graph.collect_source_files("project", "python")
+
+    assert [path.parts[1:] for path in files] == [
+        ("D", "sub.py"),
+        ("D.py",),
+        ("app.py",),
+        ("other.py",),
+    ]
 
 
 @pytest.mark.parametrize(
