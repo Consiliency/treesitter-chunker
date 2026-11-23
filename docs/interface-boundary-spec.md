@@ -292,8 +292,10 @@ unless the segment is on a closed list of names no resolver uses (`test`,
 `spec`, `stories`, `types`, …). Some files can rewrite any module's exports
 object: a code evaluator, a non-literal `require` or `import()`, `createRequire`,
 `mainModule`, `getBuiltinModule` or an import of `module`, the CommonJS
-`module` object handed on, or an unparsed file whose text spells one. Any such
-file in production code turns Tier 2 off for the whole run, and the cause is
+`module` object handed on, a stack-introspection trigger, or an unparsed JS/TS
+file. Stack-introspection triggers include `caller` property access, V8
+CallSite `getFunction`, and use of the global `Error.prepareStackTrace` hook.
+Any such file in production code turns Tier 2 off for the whole run, and the cause is
 logged. Three uses are exempt by closed lists: an import of only
 `builtinModules` or `isBuiltin` from `module`; `const r = createRequire(…)`
 used only as `r('<literal>')` (which counts as a `require` of that path) or

@@ -3433,6 +3433,94 @@ def test_p5_44_controls(tmp_path: Path, text: str) -> None:
     assert on["resolution"] == "resolved", label
 
 
+# Each snippet isolates a syntax trigger in a file unrelated to the import.
+@pytest.mark.parametrize(
+    "text",
+    [
+        "function inspect() { return inspect.caller; }",
+        "function inspect() { return arguments.callee.caller; }",
+        "function inspect(fn) { return fn?.['caller']; }",
+        r"function inspect(fn) { return fn[`c\u0061ller`]; }",
+        "function inspect(fn) { return Reflect.get(fn, 'caller'); }",
+        "Object.getOwnPropertyDescriptor(Function.prototype, 'caller');",
+        "function inspect(fn) { const {caller: frame} = fn; return frame; }",
+        "function inspect(fn) { const {caller} = fn; return caller; }",
+        "function inspect(frame) { return frame.getFunction(); }",
+        "function inspect(frame) { return frame['getFunction'](); }",
+        r"function inspect(frame) { return frame[`get\u0046unction`](); }",
+        r"const key = `get\u0046unction`;",
+        "Error.prepareStackTrace = (error, frames) => frames;",
+        r"globalThis.Error[`prepare\u0053tackTrace`] = (_, frames) => frames;",
+        "Error.prepareStackTrace = (_, frames) => frames; Error.captureStackTrace({});",
+    ],
+    ids=[
+        "caller",
+        "callee-caller",
+        "computed-caller",
+        "cooked-caller",
+        "reflect-get",
+        "descriptor",
+        "destructure",
+        "shorthand-destructure",
+        "get-function",
+        "computed-get-function",
+        "cooked-get-function",
+        "constant-get-function",
+        "prepare-stack-trace",
+        "computed-prepare-stack-trace",
+        "capture-with-hook",
+    ],
+)
+def test_718_stack_introspection(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text})
+    facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
+    assert "module-system" in facts["scope_facts"]["module_bindings"]["shutoff"]
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    # A computed escape or Function reference may already report evaluator.
+    assert label in {"none(run-tainted:module-system)", "none(run-tainted:evaluator)"}
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "function inspect(caller, getFunction) { return caller(getFunction); }",
+        "const labels = {caller: 'caller'};",
+        "function inspect(Reflect, fn) { return Reflect.get(fn, 'caller'); }",
+        "function inspect(Object, fn) { return Object.getOwnPropertyDescriptor(fn, 'caller'); }",
+        "function inspect(Error) { Error.prepareStackTrace = () => ''; }",
+        "Error.captureStackTrace({});",
+    ],
+)
+def test_718_stack_introspection_controls(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text})
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", label
+
+
+@pytest.mark.parametrize("promoted", [False, True])
+def test_718_stack_introspection_test_scope(tmp_path: Path, promoted: bool) -> None:
+    files = {
+        **OTHERS,
+        "svc.ts": SVC,
+        "use.ts": USE,
+        "tests/use.test.ts": USE.replace("./svc", "../svc"),
+        "tests/frames.js": "function inspect(frame) { return frame.getFunction(); }",
+    }
+    if promoted:
+        files["app.ts"] = "import './tests/frames';"
+    root = _write(tmp_path, files)
+    _, _, test_edge, test_label = _run(root, "tests/use.test.ts", "t")
+    assert test_edge["resolution"] == "ambiguous"
+    assert test_label == "none(run-tainted:module-system)"
+    _, _, prod_edge, prod_label = _run(root, "use.ts", "t")
+    if promoted:
+        assert prod_edge["resolution"] == "ambiguous"
+        assert prod_label == test_label
+    else:
+        assert prod_edge["resolution"] == "resolved", prod_label
+
+
 def test_p5_41_parsed_typeof_require_chain_is_a_loader(tmp_path: Path) -> None:
     """The parsed path never exempts ``typeof require(...)…``."""
     root = _write(

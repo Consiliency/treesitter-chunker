@@ -109,8 +109,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     rewrite any module's exports object (a code evaluator, a non-literal
     `require` or `import()`, `createRequire`, `mainModule`,
     `getBuiltinModule`, an import of `module`, the `module` object handed on,
-    or an unparsed file whose text spells one): Tier 2 is then off for the
-    run, and the cause is logged. This holds within the run only (plan risk
+    stack introspection through `caller`, `getFunction` or
+    `Error.prepareStackTrace` (treesitter-chunker#718), or an unparsed JS/TS
+    file): Tier 2 is then off for the run, and the cause is logged. This
+    holds within the run only (plan risk
     R12, treesitter-chunker#702).
     In Python files `"imports"` also resolves calls bound by an import:
     `from m import t`, relative forms, a function-local import, and member

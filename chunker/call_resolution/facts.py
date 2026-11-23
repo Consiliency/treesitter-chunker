@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"20"`` for the ``js`` family and ``"38"`` for
+Schema (fact version ``"22"`` for the ``js`` family and ``"38"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -129,6 +129,7 @@ logger = logging.getLogger(__name__)
 # js "19": PR 5 fold 10 (P5-47 unparsed on lone CR, LS/PS or HTML-like
 # comments; P5-48 module-scope ``arguments`` declarations; P5-49 static
 # class members are module level).
+# js "22": stack introspection can reach the CommonJS wrapper (treesitter-chunker#718).
 # js "20": PR 5 fold 11 (P5-50: in JavaScript, a ``<!--`` in code, or a
 # ``-->`` in code with only whitespace and comments before it on its line,
 # makes the file unparsed).
@@ -239,7 +240,7 @@ logger = logging.getLogger(__name__)
 # run-wide causes and parse hazards (``module_bindings``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "38"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "22", "python": "38"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.

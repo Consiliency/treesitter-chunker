@@ -38,6 +38,49 @@ TESTS = (
 
 # (id, file, old text, new text). The old text must occur in the file.
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    # Stack introspection (treesitter-chunker#718).
+    (
+        "718-caller-member",
+        JSM,
+        '            ("member_expression", "property"),',
+        '            ("member_expression", "unused"),',
+    ),
+    (
+        "718-get-function",
+        JSM,
+        'if name not in ("caller", "getFunction", "prepareStackTrace"):',
+        'if name not in ("caller", "prepareStackTrace"):',
+    ),
+    (
+        "718-cooked-keys",
+        JSM,
+        "                    or (len(cooked) == 1 and self._stack_key_use(node, cooked[0]))\n",
+        "",
+    ),
+    (
+        "718-reflect-get",
+        JSM,
+        '("Reflect", "get"), ',
+        "",
+    ),
+    (
+        "718-descriptor",
+        JSM,
+        ', ("Object", "getOwnPropertyDescriptor")',
+        ",",
+    ),
+    (
+        "718-prepare-stack-trace",
+        JSM,
+        'if name not in ("caller", "getFunction", "prepareStackTrace"):',
+        'if name not in ("caller", "getFunction"):',
+    ),
+    (
+        "718-shadowed-builtin",
+        JSM,
+        "and self.analysis._refers_to_global(\n                node, name\n            )",
+        "",
+    ),
     # Module resolution (9.2, E5-5).
     (
         "O1-more-than-one",
