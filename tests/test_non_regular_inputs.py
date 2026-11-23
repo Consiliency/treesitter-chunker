@@ -124,7 +124,16 @@ def test_batch_rejects_explicit_fifo_and_processes_regular_files(
     tmp_path, fifo, regular
 ):
     result = _run(
-        "batch", str(fifo), str(regular), "-l", "python", "--json", "-q", cwd=tmp_path
+        "batch",
+        "--parallel",
+        "2",
+        str(fifo),
+        str(regular),
+        "-l",
+        "python",
+        "--json",
+        "-q",
+        cwd=tmp_path,
     )
     assert result.returncode == 1, (result.stdout, result.stderr)
     assert MESSAGE in result.stderr
@@ -137,6 +146,8 @@ def test_batch_rejects_explicit_fifo_and_processes_regular_files(
 def test_batch_stdin_path_list_rejects_fifo(tmp_path, fifo, regular):
     result = _run(
         "batch",
+        "--parallel",
+        "2",
         "--stdin",
         "-l",
         "python",
@@ -154,7 +165,16 @@ def test_batch_stdin_path_list_rejects_fifo(tmp_path, fifo, regular):
 @pytest.mark.parametrize("recursive", ["-r", "-R"])
 def test_batch_directory_walk_skips_fifo(tmp_path, fifo, regular, recursive):
     result = _run(
-        "batch", str(tmp_path), recursive, "-l", "python", "--json", "-q", cwd=tmp_path
+        "batch",
+        "--parallel",
+        "2",
+        str(tmp_path),
+        recursive,
+        "-l",
+        "python",
+        "--json",
+        "-q",
+        cwd=tmp_path,
     )
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert {c["file_path"] for c in json.loads(result.stdout)} == {str(regular)}
@@ -382,7 +402,17 @@ def test_debug_repl_load_rejects_fifo(tmp_path, fifo):
 @requires_mkfifo
 @pytest.mark.parametrize("source", ["paths", "stdin"])
 def test_batch_excluded_fifo_is_not_reported(tmp_path, fifo, regular, source):
-    args = ["batch", "-l", "python", "--json", "-q", "--exclude", "*/input.py"]
+    args = [
+        "batch",
+        "--parallel",
+        "2",
+        "-l",
+        "python",
+        "--json",
+        "-q",
+        "--exclude",
+        "*/input.py",
+    ]
     if source == "stdin":
         result = _run(*args, "--stdin", cwd=tmp_path, stdin=f"{fifo}\n{regular}\n")
     else:

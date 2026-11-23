@@ -155,7 +155,7 @@ class Class_{i}:
 """,
             )
         file_paths = list(tmp_path.glob("*.py"))
-        results = chunk_files_parallel(file_paths, language="python", num_workers=3)
+        results = chunk_files_parallel(file_paths, language="python", num_workers=2)
         all_chunks = [item for chunks in results.values() for item in chunks]
         assert len(all_chunks) >= 10
         output_file = tmp_path / "parallel_output.jsonl"
@@ -244,6 +244,8 @@ class TestCLIIntegration:
                 "-m",
                 "cli.main",
                 "batch",
+                "--parallel",
+                "2",
                 str(test_dir),
                 "--pattern",
                 "*.py",
