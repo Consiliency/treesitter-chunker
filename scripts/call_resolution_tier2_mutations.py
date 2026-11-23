@@ -67,18 +67,16 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "702-evaluator-import-or-require-call",
         JSM,
-        "        else:\n"
-        "            self._mark_node_builtin_load(specifier)\n"
+        "        self._mark_node_builtin_load(specifier)\n"
         "        # A literal ``require`` taints whatever binds the name:",
         "        # A literal ``require`` taints whatever binds the name:",
     ),
     (
         "702-evaluator-import-equals",
         JSM,
-        "                        else:\n"
-        "                            self._mark_node_builtin_load(specifier)\n"
+        "                        self._mark_node_builtin_load(specifier)\n"
         "                    self.taints.add(specifier)",
-        "                    self.taints.add(specifier)",
+        "                        pass\n                    self.taints.add(specifier)",
     ),
     (
         "702-evaluator-create-require",
@@ -359,9 +357,9 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        if specifier in _PROCESS_SPECIFIERS and is_require:\n"
         "            declarator = _climb_wrappers(node).parent\n"
         "            name = (\n"
-        "                declarator.child_by_field_name(\"name\")\n"
+        '                declarator.child_by_field_name("name")\n'
         "                if declarator is not None\n"
-        "                and declarator.type == \"variable_declarator\"\n"
+        '                and declarator.type == "variable_declarator"\n'
         "                else None\n"
         "            )\n"
         "            self._mark_process_load(literal, [name], handled)\n"
@@ -379,7 +377,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "                                [\n"
         "                                    c\n"
         "                                    for c in node.named_children\n"
-        "                                    if c.type == \"identifier\"\n"
+        '                                    if c.type == "identifier"\n'
         "                                ][:1],\n"
         "                                handled,\n"
         "                            )\n"
