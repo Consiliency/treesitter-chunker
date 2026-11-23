@@ -78,7 +78,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     loader `get_code`/`exec_module`, `runpy` with `init_globals`,
     `get_type_hints`, `singledispatch`, string annotations that call,
     `__annotations__` writes; a module-level variable of a code builtin's
-    name, `compile = compile`, does not hide the builtin) resolves no call at all, function-local ones included, because such code
+    name, `compile = compile`, does not hide the builtin, and neither does a
+    Python 2 form CPython 3 reads differently, such as `except A, exec:`;
+    `code`, `trace` or `profile` imported from another package count unless
+    every use reads a name the stdlib module lacks, so `from opentelemetry
+    import trace` stays inert) resolves no call at all, function-local ones included, because such code
     can write its caller's locals through the frame; in `imports` mode it is
     also a run-wide `evaluator` cause, and any code-object source (`__code__`,
     `__closure__`, `FunctionType`, ...; reads included) a `module-object`

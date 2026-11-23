@@ -965,6 +965,42 @@ CAUSES: dict[str, tuple[str, str]] = {
         "import inspect\n\ninspect.getmodule(len).exec('import svc; svc.t = len')\n",
         "evaluator",
     ),
+    # R-699-5: a phantom binding proves nothing (BLOCKING 1); a resolver's
+    # constant fires on any part, and entry points are resolvers (BLOCKING
+    # 2); a non-stdlib re-export of a generic module is checked (SHOULD 1).
+    "r5-listcomp-leak-exec": (
+        "def f():\n    [exec for exec in [print]]\n"
+        "    exec('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "r5-except-comma-exec": (
+        "def f():\n    try:\n        pass\n    except KeyError, exec:\n"
+        "        pass\n    exec('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "r5-tparam-bound-exec": (
+        "def f[T: exec]():\n    exec('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "r5-pickle-listcomp": (
+        "import pickle\n\n\ndef f(b):\n    [pickle for pickle in []]\n"
+        "    return pickle.loads(b)\n",
+        "evaluator",
+    ),
+    "r5-resolve-name-newline": (
+        "import pkgutil\n\nF = pkgutil.resolve_name('timeit:timeit\\n')\n",
+        "evaluator",
+    ),
+    "r5-entrypoint-spaces": (
+        "from importlib.metadata import EntryPoint\n\n"
+        "F = EntryPoint(name='x', value='timeit : timeit', group='g').load()\n",
+        "evaluator",
+    ),
+    "r5-project-reexport": (
+        "from compat import code\n\n"
+        "code.InteractiveInterpreter().runsource('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
 }
 
 
@@ -998,6 +1034,10 @@ def test_run_wide_causes_fail_closed(tmp_path: Path, case: str) -> None:
         "import re\n\nP = re.compile('x')\n",
         "def f(m):\n    return m.eval()\n",
         "def f(g):\n    return g.__annotations__.get('x')\n",
+        # R-699-5: a real binding beside a phantom one, and a third-party
+        # ``trace`` read off the stdlib module's attribute table.
+        "def f():\n    eval = str\n    [eval for eval in []]\n    return eval('1')\n",
+        "from opentelemetry import trace\n\nT = trace.get_tracer(__name__)\n",
     ],
 )
 def test_routes_that_cannot_change_a_module_attribute_are_no_cause(

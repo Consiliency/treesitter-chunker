@@ -351,8 +351,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "r3-b1-module-binding-dominance",
         PYS,
-        "        return scope is None or scope.kind in (_MODULE, _CLASS)",
-        "        return scope is None",
+        "            or scope.kind in (_MODULE, _CLASS)\n",
+        "",
     ),
     (
         "r3-b2-from-import-reexport",
@@ -376,8 +376,10 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "r3-b3-name-keyword",
         PYS,
-        '        if parent.type == "keyword_argument":\n            name = parent',
-        "        if False:\n            name = parent",
+        '        if parent.type == "keyword_argument":\n'
+        '            name = parent.child_by_field_name("name")\n            if (\n',
+        '        if False:\n            name = parent.child_by_field_name("name")\n'
+        "            if (\n",
     ),
     (
         "r3-b3-resolver-attribute",
@@ -436,6 +438,110 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '            and binding.get("form") == "import"\n'
         '            and binding.get("bound") == _RE_MODULE\n        )',
         "        return True",
+    ),
+    # R-699-5 (the second #727 fold).
+    (
+        "r5-b1-phantom-listcomp-leak",
+        PYS,
+        "                        self._targets(part, scope, depth + 1, phantom=True)",
+        "                        self._targets(part, scope, depth + 1)",
+    ),
+    (
+        "r5-b1-phantom-except-comma",
+        PYS,
+        "                self._targets(child, scope, depth + 1, phantom=True)",
+        "                self._targets(child, scope, depth + 1)",
+    ),
+    (
+        "r5-b1-phantom-type-parameter-bound",
+        PYS,
+        "                inner, ident, _Binding(PARAMETER, phantom=ident.id not in names)",
+        "                inner, ident, _Binding(PARAMETER)",
+    ),
+    (
+        "r5-b1-type-parameter-name-is-real",
+        PYS,
+        "                inner, ident, _Binding(PARAMETER, phantom=ident.id not in names)",
+        "                inner, ident, _Binding(PARAMETER, phantom=True)",
+    ),
+    (
+        "r5-b1-type-parameter-splat-name",
+        PYS,
+        '                "splat_type",\n                "list_splat",\n',
+        '                "splat_type",\n',
+    ),
+    (
+        "r5-b1-real-binding-builtin",
+        PYS,
+        "            or not self._real_binding(scope, _text(ident, self.source))\n",
+        "",
+    ),
+    (
+        "r5-b1-real-binding-checked",
+        PYS,
+        "        if self._own_binding(outcome) and self._real_binding(\n"
+        "            self.use_decided, _text(ident, self.source)\n        ):",
+        "        if self._own_binding(outcome):",
+    ),
+    (
+        "r5-b2-acquired-before-gate",
+        PYS,
+        "        if acquired and set(_ACQUIRED_PARTS.split(value)) & _ACQUIRED_MODULES:",
+        "        if False:",
+    ),
+    (
+        "r5-b2-split-every-separator",
+        PYS,
+        '_ACQUIRED_PARTS = re.compile(r"[^A-Za-z0-9_]+")',
+        '_ACQUIRED_PARTS = re.compile(r"[.:]")',
+    ),
+    (
+        "r5-b2-entry-point",
+        PYS,
+        "        if self._entry_point_value(outer, parent):",
+        "        if False:",
+    ),
+    (
+        "r5-b2-entry-point-positional",
+        PYS,
+        "            return index is not None and index != 0",
+        "            return False",
+    ),
+    (
+        "r5-b2-entry-point-keyword",
+        PYS,
+        "                return keyword in _ENTRY_POINT_KEYWORDS",
+        "                return False",
+    ),
+    (
+        "r5-b2-entry-point-parse",
+        PYS,
+        "        if method != _ENTRY_POINT_PARSE or receiver is None:",
+        "        if True:",
+    ),
+    (
+        "r5-s1-reexport-checked",
+        PYS,
+        '        elif member in _REEXPORT_CHECKED and not _stdlib_path(module or ""):',
+        "        elif False:",
+    ),
+    (
+        "r5-s1-reexport-attribute-table",
+        PYS,
+        "                _dunder(name) or name in _GENERIC_MODULE_ATTRIBUTES[module]",
+        "                _dunder(name)",
+    ),
+    (
+        "r5-s1-reexport-dunder",
+        PYS,
+        "                _dunder(name) or name in _GENERIC_MODULE_ATTRIBUTES[module]",
+        "                name in _GENERIC_MODULE_ATTRIBUTES[module]",
+    ),
+    (
+        "r5-nit-test-package",
+        PYS,
+        '_S2_STDLIB_MODULES = py_modules.STDLIB_MODULES | {"test"}',
+        "_S2_STDLIB_MODULES = py_modules.STDLIB_MODULES",
     ),
     (
         "py5-mock-getattr",

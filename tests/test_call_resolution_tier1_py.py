@@ -8413,6 +8413,96 @@ STRING_CODE_FORMS: dict[str, str] = {
     "exec-sys-modules-computed": "import sys\nsys.modules[len.__module__].exec('x')",
     "eval-modules-get-computed": "import sys\nsys.modules.get(n).eval('x')",
     "compile-attr-unproven-receiver": "import builtins\nx = builtins.len\np = rx.compile('x')",
+    # R-699-5 BLOCKING 1: a phantom binding (the Python 2 list-comprehension
+    # leak, ``except A, B:``, a type-parameter bound or constraint) proves
+    # nothing; CPython 3.14 runs the builtin or the module.
+    "exec-listcomp-leak": "def g():\n    [exec for exec in [print]]\n    exec('x')",
+    "eval-listcomp-leak": "def g():\n    [eval for eval in [print]]\n    eval('x')",
+    "exec-listcomp-first-iterable": (
+        "def g():\n    [x for x in [exec('x')] for exec in [print]]"
+    ),
+    "exec-except-comma": (
+        "def g():\n    try:\n        pass\n    except KeyError, exec:\n"
+        "        pass\n    exec('x')"
+    ),
+    "exec-tparam-bound": "def g[T: exec]():\n    exec('x')",
+    "compile-tparam-constraints": (
+        "def g[T: (compile, int)]():\n    return compile(s, 'x', 'exec')"
+    ),
+    "exec-class-tparam-bound": "class K[T: exec]:\n    exec('x')",
+    "pickle-listcomp-phantom": (
+        "import pickle\n\n\ndef g():\n    [pickle for pickle in []]\n"
+        "    return pickle.loads(b'')"
+    ),
+    "pickle-alias-listcomp-phantom": (
+        "import pickle as pk\n\n\ndef g():\n    [pk for pk in []]\n"
+        "    return pk.loads(b'')"
+    ),
+    "pickle-except-comma-phantom": (
+        "import pickle\n\n\ndef g():\n    try:\n        pass\n"
+        "    except KeyError, pickle:\n        pass\n    return pickle.loads(b'')"
+    ),
+    "pickle-tparam-phantom": (
+        "import pickle\n\n\ndef g[T: pickle]():\n    return pickle.loads(b'')"
+    ),
+    "timeit-listcomp-phantom": (
+        "import timeit\n\n\ndef g():\n    [timeit for timeit in []]\n"
+        "    return timeit.timeit(s, number=1)"
+    ),
+    # R-699-5 BLOCKING 2: a resolver's constant fires on any string-code
+    # module name among its parts, before the dotted-name gate; entry points
+    # are resolvers.
+    "timeit-resolve-name-newline": (
+        "import pkgutil\nf = pkgutil.resolve_name('timeit:timeit\\n')"
+    ),
+    "timeit-locate-double-dot": "import pydoc\nf = pydoc.locate('timeit..timeit')",
+    "timeit-locate-leading-dot": "import pydoc\nf = pydoc.locate('.timeit.timeit')",
+    "timeit-locate-trailing-dot": "import pydoc\nf = pydoc.locate('timeit.timeit.')",
+    "timeit-dictconfig-ext": "d = {'()': 'ext://timeit.timeit'}",
+    "code-resolve-name-colon-only": "import pkgutil\nm = pkgutil.resolve_name('code:')",
+    "pickle-resolve-name-newline": (
+        "import pkgutil\nf = pkgutil.resolve_name('pickle:loads\\n')"
+    ),
+    "timeit-entrypoint-spaces": (
+        "from importlib.metadata import EntryPoint\n"
+        "f = EntryPoint(name='x', value='timeit : timeit', group='g').load()"
+    ),
+    "timeit-entrypoint-extras": (
+        "from importlib.metadata import EntryPoint\n"
+        "f = EntryPoint(name='x', value='timeit:timeit [x]', group='g').load()"
+    ),
+    "timeit-entrypoint-positional": (
+        "from importlib import metadata\n"
+        "f = metadata.EntryPoint('x', 'timeit : timeit', 'g').load()"
+    ),
+    "code-entrypoint-module-name": (
+        "import pkg_resources\n"
+        "f = pkg_resources.EntryPoint('x', module_name='code', attrs=('interact',))"
+    ),
+    "timeit-entrypoint-parse": (
+        "import pkg_resources\n"
+        "f = pkg_resources.EntryPoint.parse('x = timeit : timeit').load()"
+    ),
+    # R-699-5 SHOULD 1: a from-import of ``code``, ``trace`` or ``profile``
+    # out of a non-stdlib module is checked against the closed allow-list.
+    "code-project-reexport": "from compat import code\nx = code.InteractiveInterpreter()",
+    "trace-package-reexport": "from pkg import trace\ntrace.Trace(count=0).run(s)",
+    "profile-relative-reexport": "from .compat import profile\nprofile.run(s)",
+    "trace-third-party-table-attribute": "from opentelemetry import trace\nx = trace.Trace",
+    "trace-reexport-passed": "from opentelemetry import trace\nf(trace)",
+    "trace-reexport-alias": "from opentelemetry import trace\nt = trace",
+    "trace-reexport-getattr": "from opentelemetry import trace\nx = getattr(trace, n)",
+    "trace-reexport-subscript": "from opentelemetry import trace\nx = trace[0]",
+    "code-reexport-dunder": "from compat import code\nx = code.__dict__",
+    "profile-reexport-decorator": (
+        "from line_profiler import profile\n\n\n@profile\ndef f():\n    pass"
+    ),
+    "trace-reexport-class-scope": "class K:\n    from opentelemetry import trace",
+    "code-reexport-local-alias": (
+        "def g():\n    from compat import code as c\n    return c.interact()"
+    ),
+    # R-699-5 NIT: CPython's ``test`` package is standard library.
+    "profile-from-test-package": "from test.test_profile import profile",
 }
 
 
@@ -8482,6 +8572,19 @@ STRING_CODE_CONTROLS: dict[str, str] = {
     ),
     "timeit-default-timer-string": "x = 'timeit.default_timer'",
     "generic-factory-other": "d = {'()': 'json.JSONDecoder', 'code': 'x'}",
+    # R-699-5 SHOULD 1: a non-stdlib from-import of ``code``, ``trace`` or
+    # ``profile`` whose every use reads an attribute the stdlib module lacks.
+    "otel-trace-get-tracer": (
+        "from opentelemetry import trace\ntracer = trace.get_tracer(__name__)"
+    ),
+    "otel-trace-members": (
+        "from opentelemetry import trace\n"
+        "x = (trace.Span, trace.StatusCode.OK, trace.set_tracer_provider)"
+    ),
+    "project-code-attribute": "from .models import code\nx = code.VALUE",
+    "otel-trace-local": (
+        "def g():\n    from opentelemetry import trace\n    return trace.get_tracer(n)"
+    ),
 }
 
 
@@ -8516,6 +8619,13 @@ STRING_CODE_LOCAL_CONTROLS: dict[str, str] = {
     "sys-modules-own-name": "def g(sys, m):\n    return sys.modules[__name__], m.eval()",
     "sys-modules-constant": "def g(sys, m):\n    return sys.modules['json'], m.eval()",
     "modules-get-constant": "def g(sys, m):\n    return sys.modules.get('json'), m.eval()",
+    # R-699-5 BLOCKING 2: entry points and resolvers given other modules
+    # (a resolver or loader mention already makes module scope dynamic).
+    "entrypoint-other-module": (
+        "from importlib.metadata import EntryPoint\n"
+        "f = EntryPoint(name='code', value='pkg.cli : main', group='g').load()"
+    ),
+    "resolver-other-module": "import pkgutil\nf = pkgutil.resolve_name('json:loads\\n')",
 }
 
 
@@ -8531,6 +8641,12 @@ def test_string_code_local_controls_still_resolve(case: str) -> None:
         "def g(eval):\n    return eval(1)",
         "def g():\n    eval = str\n    return eval(1)",
         "def g(exec):\n    return exec('x')",
+        # R-699-5: a real binding beside a phantom one proves; so does a
+        # type parameter's own name (a ``TypeVar``, not the builtin).
+        "def g():\n    eval = str\n    [eval for eval in []]\n    return eval(1)",
+        "def g():\n    exec = print\n    [exec for exec in []]\n    return exec('x')",
+        "def g[exec]():\n    return exec('x')",
+        "def g[T: int, *exec]():\n    return exec('x')",
     ],
 )
 def test_own_bindings_of_code_builtins_leave_function_proofs_alone(form: str) -> None:

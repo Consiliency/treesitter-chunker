@@ -67,7 +67,10 @@ so lookups never depend on position. Every write form binds:
   inside a target is only a token. The grammar also accepts
   Python 2, so ``except E, e`` binds ``e`` and a list comprehension's
   targets also bind in the enclosing scope (Python 2 leaked them); the extra
-  binding can only fail closed;
+  binding can only fail closed. Such a binding, and a type parameter's bound,
+  constraints or default, is *phantom*: CPython 3.14 does not make it, so it
+  never proves the file's own binding of a builtin or a checked module
+  (R-699-5);
 - ``import`` and ``from … import`` (including ``as`` and ``__future__``): an
   ``import`` outcome, which proves nothing in ``structural`` mode.
 
@@ -633,8 +636,26 @@ _STRING_CODE_PATHS = frozenset({("multiprocessing", "reduction")})
 # imported by name (``from flask_restful import marshal``) is not it. The
 # generic module names below count the same way as a name imported from a
 # standard-library module (R-699-3: ``from pdb import code``); a third-party
-# ``trace`` or ``code`` (``from opentelemetry import trace``) is not it.
+# ``trace`` or ``code`` (``from opentelemetry import trace``) is checked by
+# :data:`_REEXPORT_CHECKED` instead (R-699-5).
 _MARSHAL = "marshal"
+# R-699-5 SHOULD 1: a from-import of ``code``, ``trace`` or ``profile`` out of
+# a module that is not in the standard library, relative imports included
+# (``from compat import code``, ``from .compat import profile``, ``from
+# opentelemetry import trace``), may re-export the stdlib module. Its uses are
+# checked against a closed allow-list: each must read an attribute absent
+# from that module's pinned table (:data:`_GENERIC_MODULE_ATTRIBUTES`) and
+# not a dunder (``trace.get_tracer(...)`` stays inert). An attribute read in
+# the table, passing the name on, an alias, a computed ``getattr`` or a
+# subscript fires (:meth:`_Analysis._safe_module_use`).
+_REEXPORT_CHECKED = frozenset({"code", "trace", "profile"})
+# The names an absolute import counts as standard library for the S2
+# classifier: :data:`py_modules.STDLIB_MODULES` and ``test``, CPython's own
+# test package, which ``sys.stdlib_module_names`` leaves out and many builds
+# do not ship (R-699-5 NIT: ``from test.test_profile import profile``). Tier 2
+# module resolution keeps the shared table, so a project ``test`` package
+# still resolves there.
+_S2_STDLIB_MODULES = py_modules.STDLIB_MODULES | {"test"}
 # Modules whose uses are checked against a member allow-list at the use site
 # (plan mechanism 2): every use of a name an import of one binds must read a
 # listed member. ``pickle``'s dump side and constants; ``timeit``'s clock;
@@ -695,6 +716,10 @@ _GENERIC_MODULE_STRINGS = frozenset({"code", "trace", "profile", "timeit"})
 # Every non-dunder attribute of the four modules on CPython 3.12, 3.13 and
 # 3.14 (``dir()``; pinned against the running interpreter), less
 # ``timeit.default_timer``, which is on ``timeit``'s member allow-list.
+# CPython 3.15 adds ``profile.warnings`` and ``timeit.default_target_time``
+# (R-699-5 SHOULD 2): the first is the ``warnings`` module, the second an
+# integer, and reading either runs no code, so leaving them out is
+# harmless. The pin test reports them once the project tests on 3.15.
 _GENERIC_MODULE_ATTRIBUTES: Mapping[str, frozenset[str]] = {
     "code": frozenset(
         {
@@ -774,6 +799,30 @@ _ACQUIRERS = frozenset({"import_module", "__import__"})
 _STRING_RESOLVERS = frozenset({"resolve_name", "locate", "safeimport"})
 _FACTORY_KEY = "()"
 _NAME_KEYWORD = "name"
+# An entry point names its object by a constant ``module:attr [extras]``
+# that ``.load()`` imports (R-699-5, BLOCKING 2): ``importlib.metadata``'s
+# ``EntryPoint(name, value, group)`` and ``pkg_resources``'
+# ``EntryPoint(name, module_name, ...)`` (the second positional argument or
+# these keywords), and ``EntryPoint.parse("n = module:attr")``.
+_ENTRY_POINT = "EntryPoint"
+_ENTRY_POINT_KEYWORDS = frozenset({"value", "module_name"})
+_ENTRY_POINT_PARSE = "parse"
+_ENTRY_POINT_PARSE_KEYWORDS = frozenset({"src"})
+# In an acquisition position a constant is split on every character that
+# cannot be part of an identifier (R-699-5, BLOCKING 2): ``.``, ``:``, ``/``,
+# whitespace, the ``ext://`` prefix of a ``logging.config`` value and an
+# entry point's ``[extras]``. Resolvers drop empty parts (``"timeit..x"``,
+# ``".timeit.x"``) and strip whitespace (``"timeit : timeit"``), and
+# ``pkgutil.resolve_name``'s pattern accepts a trailing newline, so any
+# string-code module name among the parts fires.
+_ACQUIRED_PARTS = re.compile(r"[^A-Za-z0-9_]+")
+_ACQUIRED_MODULES = (
+    _GENERIC_MODULE_STRINGS
+    | _MODULE_STRINGS
+    | _STRING_CODE_MODULES
+    | _STRING_CODE_NAMES
+    | {_MARSHAL}
+)
 _DOTTED_SPLIT = re.compile(r"[.:]")
 # A constant that is a dotted name (``.`` or ``:`` between identifiers).
 _DOTTED_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*")
@@ -783,7 +832,8 @@ _DOTTED_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)
 # binding in a function scope, including an import from a module other than
 # ``builtins``. No module or class binding does, since a use may run before
 # it (``compile = compile``, ``(compile := compile)``, ``from re import
-# compile``). As
+# compile``). A phantom binding (:class:`_Binding`) is no proof: one real
+# binding of the name in the deciding scope is needed (R-699-5). As
 # an attribute or a constant string they count only in a file that reaches
 # the builtins namespace (``builtins.exec``, ``len.__self__.eval``,
 # ``f.f_builtins["compile"]``, ``inspect.getmodule(len).exec``); no other
@@ -1184,6 +1234,14 @@ class _Binding:
     conditional: bool = False
     decorated: bool = False
     info: Mapping[str, str] | None = None
+    # A binding the scope pass records only to fail closed, which CPython
+    # 3.14 does not make (R-699-5, BLOCKING 1): the Python 2 list
+    # comprehension leak, the ``B`` of ``except A, B:`` (a second exception
+    # class under PEP 758, so a read) and every identifier of a type-parameter
+    # list (a bound such as ``T: exec`` reads ``exec``). It shadows like any
+    # binding, but never proves that a builtin's or a checked module's name
+    # is the file's own: that needs a real binding in the deciding scope.
+    phantom: bool = False
 
 
 _IMPLICIT = _Binding(LOCAL)
@@ -1402,7 +1460,9 @@ class _Analysis:
             # CPython binds ``_C__x`` for ``__x`` inside class ``C`` (B-1): the
             # mangled spelling gets a non-definition binding too.
             scope.assigned.add(mangled)
-            self.events.append((scope, mangled, _Binding(LOCAL)))
+            self.events.append(
+                (scope, mangled, _Binding(LOCAL, phantom=binding.phantom))
+            )
 
     def _attribute_write(self, node: Any) -> None:
         if node.type == "attribute":
@@ -1434,17 +1494,25 @@ class _Analysis:
             current = current.parent
         return False
 
-    def _targets(self, node: Any, scope: _Scope, depth: int, cls: str = LOCAL) -> None:
-        """Bind every name a target writes; fail closed on unknown forms."""
+    def _targets(
+        self,
+        node: Any,
+        scope: _Scope,
+        depth: int,
+        cls: str = LOCAL,
+        phantom: bool = False,
+    ) -> None:
+        """Bind every name a target writes; fail closed on unknown forms.
+        ``phantom`` marks bindings CPython does not make (:class:`_Binding`)."""
         if depth > MAX_DEPTH:
             msg = "Python scope analysis exceeds safe traversal depth"
             raise RecursionError(msg)
         kind = node.type
         if kind == "identifier":
-            self._record(scope, node, _Binding(cls))
+            self._record(scope, node, _Binding(cls, phantom=phantom))
         elif kind in _TARGET_CONTAINERS:
             for child in node.named_children:
-                self._targets(child, scope, depth + 1, cls)
+                self._targets(child, scope, depth + 1, cls, phantom)
         elif kind in ("attribute", "subscript"):
             # ``x.y = v`` and ``x[i] = v`` write no name; their parts are read.
             # But the receiver may be this module, handed over by any means
@@ -1468,9 +1536,14 @@ class _Analysis:
     ) -> _Scope:
         inner = self._scope(_TYPE_PARAMS, node, scope, "tparams")
         # Every identifier in the list binds, bounds included: an extra
-        # binding can only fail closed.
+        # binding can only fail closed. Only a parameter's own name is a
+        # binding CPython makes; a bound, a constraint or a default is read,
+        # so its identifiers are phantom (R-699-5).
+        names = {ident.id for ident in _type_parameter_names(params)}
         for ident in _identifiers(params):
-            self._record(inner, ident, _Binding(PARAMETER))
+            self._record(
+                inner, ident, _Binding(PARAMETER, phantom=ident.id not in names)
+            )
         self.visit(params, inner, depth + 1)
         return inner
 
@@ -1591,8 +1664,9 @@ class _Analysis:
                     if node.type == "list_comprehension":
                         # Python 2 leaks list-comprehension targets into the
                         # enclosing scope; the grammar accepts Python 2, and
-                        # the extra binding can only fail closed.
-                        self._targets(part, scope, depth + 1)
+                        # the extra binding can only fail closed. CPython 3
+                        # does not make it, so it is phantom (R-699-5).
+                        self._targets(part, scope, depth + 1, phantom=True)
                 else:
                     self.visit(part, iterable_scope, depth + 1)
 
@@ -1633,8 +1707,9 @@ class _Analysis:
         seen_value = False
         for name, child in self._fields(node):
             if name == "value" and seen_value:
-                # Python 2 ``except E, e:`` binds ``e``.
-                self._targets(child, scope, depth + 1)
+                # Python 2 ``except E, e:`` binds ``e``. On 3.14 the form is
+                # PEP 758's ``except (E, e):``, a read, so it is phantom.
+                self._targets(child, scope, depth + 1, phantom=True)
                 continue
             seen_value = seen_value or name == "value"
             self.visit(child, scope, depth + 1)
@@ -2317,7 +2392,7 @@ class _Analysis:
             self._fire("import")
             return
         module = ".".join(parts)
-        stdlib = parts[0] in py_modules.STDLIB_MODULES
+        stdlib = parts[0] in _S2_STDLIB_MODULES
         if module in _CHECKED_MODULES and any(
             child.type == "wildcard_import" for child in node.children
         ):
@@ -2368,6 +2443,13 @@ class _Analysis:
         parts = set(_NAME_SEPARATORS.split(value))
         if parts & _CODE_OBJECT_NAMES:
             self.code_objects = True
+        acquired = self._acquired(node)
+        if acquired and set(_ACQUIRED_PARTS.split(value)) & _ACQUIRED_MODULES:
+            # Before the dotted-name gate (R-699-5, BLOCKING 2):
+            # ``pkgutil.resolve_name("timeit:timeit\n")``,
+            # ``pydoc.locate(".timeit.timeit")``, ``{"()": "ext://timeit.x"}``,
+            # ``EntryPoint(value="timeit : timeit")``.
+            self._fire("string")
         if not _DOTTED_NAME.fullmatch(value):
             return
         if parts & (_STRING_CODE_NAMES | _MODULE_STRINGS | {_ANNOTATIONS, _MARSHAL}):
@@ -2382,7 +2464,7 @@ class _Analysis:
                     or components[1] in _GENERIC_MODULE_ATTRIBUTES[head]
                 )
             )
-            or self._acquired(node)
+            or acquired
         ):
             # ``"timeit:timeit"``, ``importlib.import_module(name="code")``
             # (R-699-3, BLOCKING 3).
@@ -2396,8 +2478,9 @@ class _Analysis:
         acquisition: the first argument or ``name=`` keyword of
         ``import_module``/``__import__`` or of a string resolver
         (``resolve_name``, ``locate``, ``safeimport``), the key of a
-        ``.modules`` subscript or getter, or the value of a ``"()"`` factory
-        key (``logging.config.dictConfig``)."""
+        ``.modules`` subscript or getter, the value of a ``"()"`` factory
+        key (``logging.config.dictConfig``), or an entry point's value
+        (:data:`_ENTRY_POINT`; R-699-5)."""
         outer = node
         while (
             outer.parent is not None and outer.parent.type == "parenthesized_expression"
@@ -2413,6 +2496,8 @@ class _Analysis:
                 and key is not None
                 and _constant_string(key, self.source) == _FACTORY_KEY
             )
+        if self._entry_point_value(outer, parent):
+            return True
         keyword = False
         if parent.type == "keyword_argument":
             name = parent.child_by_field_name("name")
@@ -2459,6 +2544,63 @@ class _Analysis:
             and _text(receiver.child_by_field_name("attribute"), self.source)
             == _SYS_MODULES
         )
+
+    def _entry_point_value(self, outer: Any, parent: Any) -> bool:
+        """Whether ``outer`` is the module path an entry point loads:
+        ``EntryPoint(n, "mod:attr", g)`` (any positional argument after the
+        first, or ``value=``/``module_name=``) and
+        ``EntryPoint.parse("n = mod:attr")`` (the first argument or
+        ``src=``), on any receiver (R-699-5, BLOCKING 2)."""
+        keyword = None
+        if parent.type == "keyword_argument":
+            name = parent.child_by_field_name("name")
+            if name is None or not _same(parent.child_by_field_name("value"), outer):
+                return False
+            keyword = _text(name, self.source)
+            outer, parent = parent, parent.parent
+        if parent is None or parent.type != "argument_list" or parent.parent is None:
+            return False
+        callee = parent.parent.child_by_field_name("function")
+        callee = _unwrap(callee, skip_comments=True) if callee is not None else None
+        if callee is None:
+            return False
+        receiver = None
+        if callee.type == "identifier":
+            method = _text(callee, self.source)
+        elif callee.type == "attribute":
+            method = _text(callee.child_by_field_name("attribute"), self.source)
+            receiver = _unwrap(callee.child_by_field_name("object"), skip_comments=True)
+        else:
+            return False
+        index: int | None = None
+        if keyword is None:
+            positional = [
+                child
+                for child in parent.named_children
+                if child.type not in ("comment", "keyword_argument")
+            ]
+            for position, child in enumerate(positional):
+                if _same(child, outer):
+                    index = position
+                    break
+                if child.type in ("list_splat", "parenthesized_list_splat"):
+                    index = -1  # after a splat: any position
+                    break
+        if method == _ENTRY_POINT:
+            if keyword is not None:
+                return keyword in _ENTRY_POINT_KEYWORDS
+            return index is not None and index != 0
+        if method != _ENTRY_POINT_PARSE or receiver is None:
+            return False
+        if receiver.type == "attribute":
+            receiver = receiver.child_by_field_name("attribute")
+        if receiver is None or receiver.type != "identifier":
+            return False
+        if _text(receiver, self.source) != _ENTRY_POINT:
+            return False
+        if keyword is not None:
+            return keyword in _ENTRY_POINT_PARSE_KEYWORDS
+        return index is not None and index <= 0
 
     def _computed_getter(self, callee: Any, name: str) -> None:
         """Plan PY-5: ``attrgetter``, ``methodcaller``, ``getattr_static`` or
@@ -2578,7 +2720,19 @@ class _Analysis:
             return binding.get("module") in _BUILTIN_MODULES
         if not self._own_binding(outcome):
             return True
-        return scope is None or scope.kind in (_MODULE, _CLASS)
+        return (
+            scope is None
+            or scope.kind in (_MODULE, _CLASS)
+            or not self._real_binding(scope, _text(ident, self.source))
+        )
+
+    @staticmethod
+    def _real_binding(scope: _Scope | None, name: str) -> bool:
+        """Whether ``scope`` binds ``name`` by a binding CPython makes: a
+        phantom one alone (:class:`_Binding`) proves nothing (R-699-5)."""
+        return scope is not None and any(
+            not binding.phantom for binding in scope.bindings.get(name, ())
+        )
 
     def _re_receiver(self, attribute: Any) -> bool:
         """Whether ``X.compile``'s receiver is a name the ordinary lookup
@@ -2652,7 +2806,9 @@ class _Analysis:
         that module's allow-list, for every import binding the ordinary
         lookup leaves possible."""
         outcome = self._use_lookup(ident)
-        if self._own_binding(outcome):
+        if self._own_binding(outcome) and self._real_binding(
+            self.use_decided, _text(ident, self.source)
+        ):
             return True
         if outcome.get("outcome") == "import":
             binding = outcome.get("binding") or {}
@@ -2693,6 +2849,10 @@ class _Analysis:
             return False
         member = parent.child_by_field_name("attribute")
         name = _text(member, self.source) if member is not None else ""
+        if module in _REEXPORT_CHECKED:
+            return bool(name) and not (
+                _dunder(name) or name in _GENERIC_MODULE_ATTRIBUTES[module]
+            )
         if name not in _CHECKED_MODULES[module]:
             return False
         return module != _RUNPY or self._plain_runpy_call(parent)
@@ -3909,7 +4069,7 @@ class _Analysis:
         if target is not scope:
             # A write through ``global`` or ``nonlocal`` is a non-definition
             # binding of the scope it lands in (section 7.3).
-            binding = _Binding(LOCAL)
+            binding = _Binding(LOCAL, phantom=binding.phantom)
         assert target is not None
         target.bind(name, binding)
 
@@ -4396,6 +4556,41 @@ def _identifiers(node: Any) -> list[Any]:
     return found
 
 
+def _type_parameter_names(params: Any) -> list[Any]:
+    """The name of each parameter in a ``type_parameter`` list (``T`` of
+    ``T``, ``T: B``, ``*T``, ``**T``), not the identifiers of its bound,
+    constraints or default. The grammar parses a default (``U = int``) as an
+    error node: a parameter after one, or inside one, gets no name here,
+    which only makes its bindings phantom."""
+    found: list[Any] = []
+    after_separator = False
+    for child in params.children:
+        if child.type in ("[", ","):
+            after_separator = True
+            continue
+        if child.type == "comment":
+            continue
+        if child.type == "type" and after_separator:
+            inner = child.named_children[0] if child.named_children else None
+            if inner is not None and inner.type == "constrained_type":
+                head = inner.named_children[0] if inner.named_children else None
+                inner = None
+                if head is not None and head.type == "type" and head.named_children:
+                    inner = head.named_children[0]
+            elif inner is not None and inner.type in (
+                "splat_type",
+                "list_splat",
+                "dictionary_splat",
+            ):
+                inner = next(
+                    (c for c in inner.named_children if c.type == "identifier"), None
+                )
+            if inner is not None and inner.type == "identifier":
+                found.append(inner)
+        after_separator = False
+    return found
+
+
 def _pattern_captures(node: Any) -> list[Any]:
     found: list[Any] = []
     stack = [node]
@@ -4434,17 +4629,29 @@ def _checked_import(info: Mapping[str, str]) -> tuple[str, str | None] | None:
     itself): the module (``import pickle [as p]``, or a from-import of the
     module's name out of any other module, R-699-3: ``from logging.handlers
     import pickle``) or a member (``from pickle import dumps``); ``None``
-    for any other import."""
+    for any other import. A from-import of ``code``, ``trace`` or
+    ``profile`` out of a module outside the standard library binds that
+    module's name under the closed allow-list of
+    :data:`_REEXPORT_CHECKED` (R-699-5)."""
     if info.get("form") == "import":
         module, member = info.get("bound"), None
     else:
         module, member = info.get("module"), info.get("name")
         if module not in _CHECKED_MODULES and member in _CHECKED_MODULES:
             module, member = member, None
+        elif member in _REEXPORT_CHECKED and not _stdlib_path(module or ""):
+            return member, None
     if module not in _CHECKED_MODULES:
         return None
     assert module is not None
     return module, member
+
+
+def _stdlib_path(module: str) -> bool:
+    """Whether an import record's module path starts with a standard-library
+    name (:data:`_S2_STDLIB_MODULES`). A relative path (``.compat``) starts
+    with an empty component, so it never does."""
+    return module.split(".", 1)[0] in _S2_STDLIB_MODULES
 
 
 def _from_import_names(node: Any, source: bytes) -> list[tuple[str, Any]]:
