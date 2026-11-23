@@ -1268,6 +1268,104 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     # (a splat makes the ``setattr`` argument a value, an escape, which taints
     # more), and ``unresolvable-writer-assembly`` (the unreachable branch is
     # removed; every recorded taint reference is absolute).
+    # treesitter-chunker#707: a function's locals read as a dict make its
+    # sensitive aliases reachable.
+    # R-707-1: a local alias's own binding passes ``_safe_use`` too, so the
+    # binding-position rule (``707-parameter-readable``) covers the alias
+    # path in ``_reachable_binding``; this mutation disables both at once.
+    (
+        "707-locals-reachable",
+        PYS,
+        '        name is relied on and checked by :meth:`_verify_callees`."""\n',
+        '        name is relied on and checked by :meth:`_verify_callees`."""\n'
+        "        return False\n",
+    ),
+    (
+        "707-frame-locals",
+        PYS,
+        "        if self.frame_locals:\n            return True\n        for reader, by_lookup",
+        "        for reader, by_lookup",
+    ),
+    (
+        "707-value-readers",
+        PYS,
+        "            if call is None:\n                readers.append((None, False))\n",
+        "            if call is None:\n",
+    ),
+    (
+        "707-constant-readers",
+        PYS,
+        '            if ({value} | set(re.split(r"[.:\\[\\]]", value))) & _LOCALS_READERS:\n',
+        "            if False:\n",
+    ),
+    (
+        "707-use-site-lookup",
+        PYS,
+        '        return outcome.get("outcome") != "local"\n',
+        "        return False\n",
+    ),
+    (
+        "707-lookup-ignored",
+        PYS,
+        '        return outcome.get("outcome") != "local"\n',
+        "        return True\n",
+    ),
+    (
+        "707-vars-argument",
+        PYS,
+        "                continue  # ``vars(obj)`` reads ``obj.__dict__``\n",
+        "                pass\n",
+    ),
+    # R-707-1 (#721 review): constant strings are tokens (any position, any
+    # dotted, ``:`` or bracket component), import names count, and a local
+    # parameter is reachable like an alias. Sonnet SHOULD-1..3: containment,
+    # the splat guard and the keyword-name skip.
+    (
+        "707-constant-components",
+        PYS,
+        '            if ({value} | set(re.split(r"[.:\\[\\]]", value))) & _LOCALS_READERS:\n',
+        "            if {value} & _LOCALS_READERS:\n",
+    ),
+    (
+        "707-constant-positions",
+        PYS,
+        '            if node.type not in ("string", "concatenated_string", "binary_operator"):\n',
+        '            if node.type not in ("string", "concatenated_string", "binary_operator")'
+        ' or node.parent.type not in ("argument_list", "subscript"):\n',
+    ),
+    (
+        "707-import-names",
+        PYS,
+        "                ):\n                    readers.append((None, False))\n"
+        "                continue\n",
+        "                ):\n                    pass\n                continue\n",
+    ),
+    (
+        "707-parameter-readable",
+        PYS,
+        "            return not self._local_binding_readable(node)\n",
+        "            return True\n",
+    ),
+    (
+        "707-reader-containment",
+        PYS,
+        "            ):\n                continue\n            if not by_lookup:",
+        "            ):\n                pass\n            if not by_lookup:",
+    ),
+    (
+        "707-vars-splat",
+        PYS,
+        'not in ("list_splat", "dictionary_splat", "keyword_argument")',
+        'not in ("keyword_argument",)',
+    ),
+    (
+        "707-keyword-name",
+        PYS,
+        "            ):\n                continue\n"
+        '            attribute = parent.type == "attribute" and _same(\n',
+        "            ):\n                pass\n"
+        '            attribute = parent.type == "attribute" and _same(\n',
+    ),
 )
 
 

@@ -24,6 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decoded without `ast.literal_eval`, so call resolution facts no longer
   depend on the process warning filters (for example
   `-W error::SyntaxWarning`).
+- Python call resolution no longer trusts a patcher alias (`p = mock.patch`)
+  or a pytest-mock `mocker` parameter local to a function whose locals can be
+  read as a dict: `locals()` or a no-argument `vars()` in the function
+  (comprehensions and nested functions included), `locals`/`vars` as a
+  value, an attribute, an imported name or in any constant string anywhere
+  in the file (`attrgetter('__self__.locals')`, `N = 'locals'`), or a frame's
+  `f_locals`. Such a patcher can be handed out and patch a module from
+  another file, so the run's Tier 2 proofs fail closed
+  (treesitter-chunker#707).
 
 ### Added
 

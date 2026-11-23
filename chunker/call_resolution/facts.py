@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"23"`` for the ``js`` family and ``"40"`` for
+Schema (fact version ``"23"`` for the ``js`` family and ``"41"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -279,7 +279,15 @@ logger = logging.getLogger(__name__)
 # With the R-699-3, R-699-5 and R-699-6 folds (every constant among the
 # arguments of ``import_module``/``__import__`` is an acquisition position).
 # Unreleased as "39" on the #727 branch; renumbered after #714 took "39".
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "40"}
+# python "41": treesitter-chunker#707: a function-scope sensitive alias (E-21)
+# is reachable when its function's locals may be read as a dict: a
+# ``locals()`` or no-argument ``vars()`` call inside it, ``locals``/``vars``
+# as a value, an attribute, an imported name or in any constant string
+# (exactly or as a dotted, ``:`` or bracket component; R-707-1) anywhere in
+# the file, or a file-wide frame trigger (``f_locals`` reads included); a
+# parameter or other binding of such a function is reachable too (R-707-1).
+# Unreleased as "39" on the #721 branch; renumbered after #714 and #727.
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "41"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
