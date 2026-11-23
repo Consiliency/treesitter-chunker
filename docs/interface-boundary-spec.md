@@ -323,7 +323,15 @@ these members (assignment, compound or logical assignment, `++`/`--`,
 since a method installed there runs with `this` set to `process`.
 Constructor access and dynamic indexing through these members can still
 disable Tier 2. A load of `process` or `node:process` is a module-system
-cause unless every bound name is used only in these closed positions.
+cause unless it is a static `import` whose bound names are used only in these
+closed positions, in a file where no scope binds `require` (a CommonJS emit
+calls the program-scope `require` with the specifier). A `require` call or
+`import … = require(…)` of either specifier is always a cause: in an ES
+module a free `require` is a lookup on the global object, which another file
+can set. The exempt members are safe unless a built-in prototype is patched:
+`send` (outside an IPC child), `on`, `once` and `exit` reach `process` through
+inherited lookups on `Object.prototype` or `EventEmitter.prototype`, which
+Node's own code also performs with no `process` token (plan risk R12).
 
 Any such file in production code turns Tier 2 off for the whole run, and the cause is
 logged. Three uses are exempt by closed lists: an import of only

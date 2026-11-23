@@ -49,9 +49,9 @@ invalidate proofs for just that module or a specific name.
 
 | Cause | Example |
 | --- | --- |
-| `evaluator` | Running code with Python `exec` or JavaScript `new Function`. |
+| `evaluator` | Running code with Python `exec` or JavaScript `new Function`, or loading Node's `vm`, `repl` or `inspector` modules. |
 | `dynamic-loader` | Loading a path chosen at runtime, such as `require(path)` or Python `import_module(name)`. |
-| `module-system` | Changing how modules are found or cached, such as changing Python's `sys.path` or using Node's module machinery to change the module cache. |
+| `module-system` | Changing how modules are found or cached, such as changing Python's `sys.path` or using Node's module machinery to change the module cache. In JS/TS, any mention of Node's `process` counts too, because `process.binding`, `process.mainModule` and a search of its keys reach the loader. A few safe uses of the global are exempt, such as reading `process.env` or `process.argv`. Aliases from a static import of `process` that are used the same way are exempt as well. Loading `process` through a `require` call always counts. |
 | `module-object` | Exposing a writable namespace, such as accessing a Python function's `__globals__` or handing the CommonJS `module` object to a helper. |
 | `unparsed-file` | A collected file that the analyzer cannot read or parse safely. |
 | `unresolvable-writer` | A patch or export write whose target cannot be located. |
@@ -96,8 +96,6 @@ outside those rules.
 | Python imports exposed through a namespace | Passing `globals()` or `locals()` to a helper can let it reach and modify an imported module. | [treesitter-chunker#724](https://github.com/Consiliency/treesitter-chunker/issues/724) |
 | Python helpers that return imported modules | Returning an import already counts as exposing it to other code. More precise tracking is planned for which module a helper returns and how the caller uses it. | [treesitter-chunker#706](https://github.com/Consiliency/treesitter-chunker/issues/706) |
 | Python format strings that name the main module | A stored template or a literal part of an f-string or t-string can expose `__main__` or `__mp_main__` to a formatting callback. | [treesitter-chunker#714](https://github.com/Consiliency/treesitter-chunker/pull/714) |
-| Node builtins that run source text | Direct imports of Node's `vm`, `repl` and `inspector` can evaluate code that changes another module. | [treesitter-chunker#723](https://github.com/Consiliency/treesitter-chunker/pull/723) |
-| Node's `process` object | Code can reach the loader through `process.binding` or find a module-system property by enumerating the keys of `process`. This includes obtaining `process` through a lookup on `globalThis`. | [treesitter-chunker#723](https://github.com/Consiliency/treesitter-chunker/pull/723) |
 | JavaScript access to the calling function and dynamic scope | Code can use a key such as `caller` or `getFunction` to reach a function on the stack, or use a `with` statement to change a lookup. | [treesitter-chunker#718](https://github.com/Consiliency/treesitter-chunker/issues/718) |
 
 ### Runtime behavior the source scan can miss
@@ -108,6 +106,8 @@ outside those rules.
 | Code or names supplied as data | A third-party evaluator runs a downloaded string, a worker sends pickled data to a Python `Connection.recv()`, or a JS program reads `caller` or `getFunction` from JSON. Python bytes `%` templates, runtime-built templates and `string.Template` subclasses with a custom delimiter such as `#` can hide a `__main__` lookup. A formatting callback can also cut `__main__` out of a larger component or receive a name joined across a replacement field. |
 | Writes inside a library | `functools.update_wrapper` writes to an object passed to it, or `argparse` populates a supplied namespace. A catch-all `__getattr__` can also supply an annotation hook to `update_wrapper`. Known Python module escapes are tracked in `imports`. |
 | Capabilities obtained outside the run | An installed package can re-export Python's `builtins` under another name or hide access to Node's code evaluation APIs. Native extensions and startup hooks such as `sitecustomize` can also change bindings. |
+| Patched built-in prototypes | An `Object.prototype` getter named `send`, or a replacement for `EventEmitter.prototype.on`, `once` or `emit`, receives `process` as `this` when code checks `process.send`, calls `process.on(…)` or calls `process.exit()`. The exempt `process` uses are safe unless a built-in prototype is patched. Node's own code makes the same inherited lookups without any `process` token, for example when `new Buffer()` reads `noDeprecation`. |
+| `process` reached without its name | A lookup on `globalThis` with a key built at runtime, such as `"pro" + "cess"` or a parameter, finds `process` without spelling it. The same applies to keys read from data. |
 | Replacement function bodies | After `f.__code__ = other.__code__`, the edge can still name `f`, the right definition, even though calling it runs different code. |
 | Runtime and build flags | Node's `--require`, `--import` or `NODE_OPTIONS` can preload code. Babel plugins and macros can change the code before it runs. |
 | Generated files collected as source | A build directory such as `.next/` can be scanned alongside the source. Point extraction at the source directories when analyzing the source program. |

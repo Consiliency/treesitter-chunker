@@ -140,7 +140,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     Node evaluator loads and non-exempt `process` tokens also disable
     cross-module resolution (treesitter-chunker#702). The process rule
     allows specific static members and operand positions on the unbound
-    global and checks the uses of aliases imported from the process module.
+    global and checks the uses of aliases bound by a static import of the
+    process module, in a file where no scope binds `require`; a `require`
+    call of it always disables cross-module resolution.
     Writes to those members, `on`/`once` other than a discarded call with
     arrow listeners, and loose equality other than against `null` still
     disable it, since each can hand `process` to user code.
