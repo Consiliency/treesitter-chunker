@@ -2088,15 +2088,17 @@ class _Builder:
                     found |= self.exposed(start, seen)
         return found
 
-    def patcher_binding(
-        self, binding: Mapping[str, Any], importer: str, seen: set[tuple[str, str]]
-    ) -> bool:
+    def patcher_binding(self, binding: Mapping[str, Any], importer: str) -> bool:
         """R-699-10 item 2: whether an import binding may hold a patcher
-        token, a from-import of a name Tier 1 lists
-        (``py_scope._PATCHER_IMPORT_NAMES``), followed through the run
-        modules that re-export it under another name (``from unittest.mock
-        import patch as pp`` read back as ``from compat import pp``) and
-        through their star sources."""
+        token: a from-import of a name Tier 1 lists
+        (``py_scope._PATCHER_IMPORT_NAMES``), or of a run module's binding of
+        one under another name (``from unittest.mock import patch as pp``
+        read back as ``from compat import pp``).
+
+        One hop is enough. Every run file in a longer chain (``compat``
+        re-exporting ``compat2``'s ``pp``, or star-importing it) records the
+        same cause for its own hop, and O-2 promotion makes that file
+        production whenever a production file imports it."""
         from . import py_scope as ps
 
         if binding.get("form") != "from":
@@ -2105,34 +2107,28 @@ class _Builder:
         if name in ps._PATCHER_IMPORT_NAMES:
             return True
         return any(
-            self.exposes_patcher(start, name, seen)
+            self.exposes_patcher(start, name)
             for start in self.targets(str(binding.get("module") or ""), importer)
         )
 
-    def exposes_patcher(
-        self, node: str, name: str | None, seen: set[tuple[str, str]]
-    ) -> bool:
-        """Whether module ``node`` binds a patcher token under ``name``, or
-        under any name (``None``: what ``from node import *`` may hand
-        over; underscore names and ``__all__`` are not narrowed, which only
-        fails closed)."""
-        key = (node, "*" if name is None else name)
-        if key in seen:
-            return False
-        seen.add(key)
+    def exposes_patcher(self, node: str, name: str | None) -> bool:
+        """Whether module ``node`` binds a patcher token by a module-scope
+        from-import under ``name``, or under any name (``None``: what ``from
+        node import *`` may hand over; underscore names and ``__all__`` are
+        not narrowed, which only fails closed)."""
+        from . import py_scope as ps
+
         path = self.modules.get(node)
         file = self.files.get(path) if path is not None else None
-        if path is None or file is None:
+        if file is None:
             return False
-        for bound, bindings in file.module_imports.items():
-            if name is not None and bound != name:
-                continue
-            if any(self.patcher_binding(b, path, seen) for b in bindings):
-                return True
         return any(
-            self.exposes_patcher(start, name, seen)
-            for star in file.stars
-            for start in self.targets(star, path)
+            binding.get("form") == "from"
+            and str(binding.get("name") or "").split(".")[-1]
+            in ps._PATCHER_IMPORT_NAMES
+            for bound, bindings in file.module_imports.items()
+            if name is None or bound == name
+            for binding in bindings
         )
 
     # -- taints -----------------------------------------------------------
@@ -2272,7 +2268,7 @@ def build_py_module_run(
         for star in bindings.get("stars", ()):
             for node in builder.targets(str(star), path):
                 whole[scope].update(builder.exposed(node))
-                if builder.exposes_patcher(node, None, set()):
+                if builder.exposes_patcher(node, None):
                     # R-699-10 item 2: ``from compat import *`` hands over
                     # a patcher under a name this file never spells as one
                     # (``pp(f"svc.{NAME}", f)``): an ``unresolvable-writer``
@@ -2286,7 +2282,7 @@ def build_py_module_run(
                 if str(binding.get("name") or "").split(".")[
                     -1
                 ] not in _patcher_import_names() and builder.patcher_binding(
-                    binding, path, set()
+                    binding, path
                 ):
                     causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
     for scope in (True, False):

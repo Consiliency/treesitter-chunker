@@ -1616,7 +1616,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "r10-star-patcher",
         PYM,
-        "                if builder.exposes_patcher(node, None, set()):",
+        "                if builder.exposes_patcher(node, None):",
         "                if False:",
     ),
     (
@@ -1626,20 +1626,16 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "                ] not in _patcher_import_names() and False and builder.patcher_binding(",
     ),
     (
-        "r10-reexport-follows-stars",
+        "r10-reexport-follows-one-hop",
         PYM,
-        "        return any(\n            self.exposes_patcher(start, name, seen)\n"
-        "            for star in file.stars",
-        "        return False and any(\n            self.exposes_patcher(start, name, seen)\n"
-        "            for star in file.stars",
+        "        return any(\n            self.exposes_patcher(start, name)\n",
+        "        return False and any(\n            self.exposes_patcher(start, name)\n",
     ),
     (
-        "r10-reexport-follows-chains",
+        "r10-exposed-token-names",
         PYM,
-        "        return any(\n            self.exposes_patcher(start, name, seen)\n"
-        '            for start in self.targets(str(binding.get("module") or ""), importer)',
-        "        return False and any(\n            self.exposes_patcher(start, name, seen)\n"
-        '            for start in self.targets(str(binding.get("module") or ""), importer)',
+        "            in ps._PATCHER_IMPORT_NAMES\n            for bound, bindings in file.module_imports.items()",
+        '            in ("patch",)\n            for bound, bindings in file.module_imports.items()',
     ),
 )
 
