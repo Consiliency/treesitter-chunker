@@ -43,6 +43,368 @@ TESTS = (
 
 # (id, file, old text, new text). The old text must occur in the file.
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    # Node builtin loads and process tokens (treesitter-chunker#702).
+    (
+        "702-evaluator-specifier",
+        JSM,
+        'for name in ("vm", "repl", "inspector", "inspector/promises")',
+        'for name in ("vm", "repl", "inspector")',
+    ),
+    (
+        "702-evaluator-reexport",
+        JSM,
+        "        if not type_only:\n            self._mark_node_builtin_load(specifier)\n"
+        "        if specifier is None or any(",
+        "        if specifier is None or any(",
+    ),
+    (
+        "702-evaluator-static-import",
+        JSM,
+        '                    elif not _has_token(node, "type"):\n'
+        "                        self._mark_node_builtin_load(specifier)\n",
+        "",
+    ),
+    (
+        "702-evaluator-import-or-require-call",
+        JSM,
+        "        self._mark_node_builtin_load(specifier)\n"
+        "        # A literal ``require`` taints whatever binds the name:",
+        "        # A literal ``require`` taints whatever binds the name:",
+    ),
+    (
+        "702-evaluator-import-equals",
+        JSM,
+        "                        self._mark_node_builtin_load(specifier)\n"
+        "                    self.taints.add(specifier)",
+        "                        pass\n                    self.taints.add(specifier)",
+    ),
+    (
+        "702-evaluator-create-require",
+        JSM,
+        "            self._mark_node_builtin_load(literal)\n",
+        "",
+    ),
+    (
+        "702-process-token",
+        JSM,
+        '_MODULE_SYSTEM_TOKEN_NAMES = frozenset({"caller", "getFunction", "process"})',
+        '_MODULE_SYSTEM_TOKEN_NAMES = frozenset({"caller", "getFunction"})',
+    ),
+    (
+        "702-prefixed-process-specifier",
+        JSM,
+        '_PROCESS_SPECIFIERS = frozenset({"process", "node:process"})',
+        '_PROCESS_SPECIFIERS = frozenset({"process"})',
+    ),
+    (
+        "702-process-restore-lexical-exemption",
+        JSM,
+        '            if text == "process":\n',
+        '            if text == "process":\n'
+        '                if node.type == "identifier" and self.analysis._binding_scope(node, text) is not None:\n'
+        "                    return\n",
+    ),
+    (
+        "702-process-right-and-exempt",
+        JSM,
+        'return operator == "&&" and _same(parent.child_by_field_name("left"), outer)',
+        'return operator == "&&"',
+    ),
+    (
+        "702-process-member-list-open",
+        JSM,
+        "        if name not in _INERT_PROCESS_MEMBERS:",
+        '        if name == "binding":',
+    ),
+    (
+        "702-process-allow-denied-member",
+        JSM,
+        "_INERT_PROCESS_MEMBERS = frozenset(\n    {",
+        '_INERT_PROCESS_MEMBERS = frozenset(\n    {\n        "binding",',
+    ),
+    (
+        "702-process-send",
+        JSM,
+        '        "send",  # Sends an IPC message to the parent and reports send status.\n',
+        "",
+    ),
+    (
+        "702-process-static-member-exemption",
+        JSM,
+        "        if name not in _INERT_PROCESS_MEMBERS:",
+        "        if True:",
+    ),
+    (
+        "702-process-typeof-exemption",
+        JSM,
+        '            return self._operator(parent) == "typeof"\n',
+        "            return False\n",
+    ),
+    (
+        "702-process-equality-exemption",
+        JSM,
+        '            if operator in ("===", "!=="):\n                return True\n',
+        "",
+    ),
+    (
+        "702-process-left-and-exemption",
+        JSM,
+        'return operator == "&&" and _same(parent.child_by_field_name("left"), outer)',
+        'return operator == "||" and _same(parent.child_by_field_name("left"), outer)',
+    ),
+    # R-699-4: the allow-list must not hand the process object back.
+    (
+        "r699-4-loose-null-exemption",
+        JSM,
+        "                return self._null_literal(parent, outer)\n",
+        "                return False\n",
+    ),
+    (
+        "r699-4-loose-equality-any-operand",
+        JSM,
+        '        return other is not None and other.type == "null"\n',
+        "        return other is not None\n",
+    ),
+    (
+        "r699-4-write-check",
+        JSM,
+        "        if self._member_written(member):\n",
+        "        if False:\n",
+    ),
+    (
+        "r699-4-write-assignment",
+        JSM,
+        '            if kind in (\n                "assignment_expression",\n',
+        "            if kind in (\n",
+    ),
+    (
+        "r699-4-write-compound-assignment",
+        JSM,
+        '                "augmented_assignment_expression",\n                "for_in_statement",\n',
+        '                "for_in_statement",\n',
+    ),
+    (
+        "r699-4-write-for-head",
+        JSM,
+        '                "augmented_assignment_expression",\n                "for_in_statement",\n',
+        '                "augmented_assignment_expression",\n',
+    ),
+    (
+        "r699-4-write-update",
+        JSM,
+        '            if kind == "update_expression":\n                return True\n',
+        "",
+    ),
+    (
+        "r699-4-write-delete",
+        JSM,
+        '                return self._operator(parent) == "delete"\n',
+        "                return False\n",
+    ),
+    (
+        "r699-4-write-pattern-steps",
+        JSM,
+        "            if kind in _WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
+        "            if kind in _WRAPPERS:\n",
+    ),
+    (
+        "r699-4-write-wrapper-steps",
+        JSM,
+        "            if kind in _WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
+        "            if kind in _WRITE_PATTERN_STEPS:\n",
+    ),
+    (
+        "r699-4-write-field-steps",
+        JSM,
+        "            field = _WRITE_FIELD_STEPS.get(kind)\n",
+        "            field = None\n",
+    ),
+    (
+        "r699-4-write-field-side",
+        JSM,
+        "                if not _same(parent.child_by_field_name(field), current):\n"
+        "                    return False\n",
+        "",
+    ),
+    (
+        "r699-4-listener-members",
+        JSM,
+        "        if name in _PROCESS_LISTENER_MEMBERS:\n",
+        "        if False:\n",
+    ),
+    (
+        "r699-4-listener-call",
+        JSM,
+        '        if call is None or call.type != "call_expression":\n            return False\n',
+        "        if call is None:\n            return False\n",
+    ),
+    (
+        "r699-4-listener-discarded",
+        JSM,
+        '        if statement is None or statement.type != "expression_statement":\n'
+        "            return False\n",
+        "",
+    ),
+    (
+        "r699-4-listener-arrows",
+        JSM,
+        '                and listener.type == "arrow_function"\n',
+        "                and True\n",
+    ),
+    (
+        "r699-4-listener-arity",
+        JSM,
+        "            len(named) >= 2\n",
+        "            len(named) >= 1\n",
+    ),
+    (
+        "r699-4-listener-spread-event",
+        JSM,
+        '            and named[0].type != "spread_element"\n',
+        "",
+    ),
+    (
+        "r699-4-one-walk",
+        JSM,
+        "        for node in self._name_index().get(name, ()):\n",
+        "        for node in [\n"
+        "            n\n"
+        "            for n in _walk(self.analysis.root)\n"
+        "            if n.type in _USE_NAME_TOKENS and _text(n, self.source) == name\n"
+        "        ]:\n",
+    ),
+    # R-699-7: a ``require`` bound in the file voids every process load.
+    (
+        "r699-7-bound-require",
+        JSM,
+        "        if not names or self._require_rebound():\n",
+        "        if not names:\n",
+    ),
+    (
+        "r699-7-bound-require-type-only",
+        JSM,
+        "                binding.cls != TYPE_ONLY and not binding.ambient\n",
+        "                not binding.ambient\n",
+    ),
+    (
+        "r699-7-bound-require-ambient",
+        JSM,
+        "                binding.cls != TYPE_ONLY and not binding.ambient\n",
+        "                binding.cls != TYPE_ONLY\n",
+    ),
+    (
+        "702-process-computed-reach",
+        JSM,
+        "            and self.analysis._member_key(access) is None\n",
+        "            and False\n",
+    ),
+    (
+        "702-process-inert-load",
+        JSM,
+        "        handled.add(literal.id)\n",
+        "        self.shutoff.add(CAUSE_MODULE_SYSTEM)\n",
+    ),
+    (
+        "702-process-b3-reflect-get",
+        JSM,
+        "                value = decode_js_string_sloppy(_text(node, self.source))\n",
+        "                value = decode_js_string_sloppy(_text(node, self.source))\n"
+        '                if (value == "process" and node.parent.type == "arguments"\n'
+        '                    and b"Reflect.get(" in node.parent.parent.text):\n'
+        '                    value = ""\n',
+    ),
+    (
+        "702-process-b3-descriptor",
+        JSM,
+        "                value = decode_js_string_sloppy(_text(node, self.source))\n",
+        "                value = decode_js_string_sloppy(_text(node, self.source))\n"
+        '                if (value == "process" and node.parent.type == "arguments"\n'
+        '                    and b"Object.getOwnPropertyDescriptor(" in node.parent.parent.text):\n'
+        '                    value = ""\n',
+    ),
+    (
+        "702-process-b3-destructure",
+        JSM,
+        '            if text == "process":\n',
+        '            if text == "process":\n'
+        '                if node.parent.type == "pair_pattern":\n'
+        "                    return\n",
+    ),
+    (
+        "702-process-b3-global-alias",
+        JSM,
+        '            if text == "process":\n',
+        '            if text == "process":\n'
+        '                if node.type == "property_identifier" and node.parent.text == b"g.process":\n'
+        "                    return\n",
+    ),
+    (
+        "702-process-b3-sloppy-this",
+        JSM,
+        '            if text == "process":\n',
+        '            if text == "process":\n'
+        '                if node.type == "property_identifier" and node.parent.text == b"this.process":\n'
+        "                    return\n",
+    ),
+    # R-699-7, global ``require``: restore the exemption for a ``require``
+    # call of ``process`` bound to a declared name (it replaces the
+    # 702-process-b3-bare-require mutation, whose code is gone).
+    (
+        "r699-7-global-require-call",
+        JSM,
+        "        # literal. Only a static import is the loader in either goal.\n"
+        "        self._mark_node_builtin_load(specifier)\n",
+        "        if specifier in _PROCESS_SPECIFIERS and is_require:\n"
+        "            declarator = _climb_wrappers(node).parent\n"
+        "            name = (\n"
+        '                declarator.child_by_field_name("name")\n'
+        "                if declarator is not None\n"
+        '                and declarator.type == "variable_declarator"\n'
+        "                else None\n"
+        "            )\n"
+        "            self._mark_process_load(literal, [name], handled)\n"
+        "        else:\n"
+        "            self._mark_node_builtin_load(specifier)\n",
+    ),
+    # R-699-9: a pattern or loop-head write to ``require`` is a loader cause.
+    (
+        "r699-9-require-pattern-write",
+        JSM,
+        '            if _text(target, self.source) == "require" and self._free_or_top(\n',
+        '            if _text(target, self.source) == "require!" and self._free_or_top(\n',
+    ),
+    (
+        "r699-7-global-require-import-equals",
+        JSM,
+        "                        # a global lookup in an ES module (R-699-7).\n"
+        "                        self._mark_node_builtin_load(specifier)\n",
+        "                        if specifier in _PROCESS_SPECIFIERS:\n"
+        "                            self._mark_process_load(\n"
+        "                                source_node,\n"
+        "                                [\n"
+        "                                    c\n"
+        "                                    for c in node.named_children\n"
+        '                                    if c.type == "identifier"\n'
+        "                                ][:1],\n"
+        "                                handled,\n"
+        "                            )\n"
+        "                        else:\n"
+        "                            self._mark_node_builtin_load(specifier)\n",
+    ),
+    (
+        "702-process-jsx-text-entities",
+        JSM,
+        "            for value in decode_jsx_text(raw)\n",
+        "            for value in decode_jsx_text(raw)\n"
+        '            if "process" not in value or "process" in raw\n',
+    ),
+    (
+        "702-process-jsx-attribute-entities",
+        JSM,
+        "                    for value in decode_jsx_text(_text(node, self.source)[1:-1])\n",
+        "                    for value in decode_jsx_text(_text(node, self.source)[1:-1])\n"
+        '                    if value != "process" or "process" in _text(node, self.source)\n',
+    ),
     # Stack introspection (treesitter-chunker#718).
     (
         "718-property-name-token",
@@ -53,19 +415,19 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "718-get-function",
         JSM,
-        '_STACK_KEYS = frozenset({"caller", "getFunction"})',
-        '_STACK_KEYS = frozenset({"caller"})',
+        '_MODULE_SYSTEM_TOKEN_NAMES = frozenset({"caller", "getFunction", "process"})',
+        '_MODULE_SYSTEM_TOKEN_NAMES = frozenset({"caller", "process"})',
     ),
     (
         "718-cooked-keys",
         JSM,
-        "                    or any(part in _STACK_KEYS for part in cooked)\n",
+        "                    or any(part in _MODULE_SYSTEM_TOKEN_NAMES for part in cooked)\n",
         "",
     ),
     (
         "718-constant-stack-keys",
         JSM,
-        "                    or value in _STACK_KEYS\n",
+        "                    or value in _MODULE_SYSTEM_TOKEN_NAMES\n",
         "",
     ),
     (
@@ -77,8 +439,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "718-type-position",
         JSM,
-        "        if text in _STACK_KEYS:",
-        "        if text in _STACK_KEYS and not _in_type_position(node):",
+        "        if text in _MODULE_SYSTEM_TOKEN_NAMES:",
+        "        if text in _MODULE_SYSTEM_TOKEN_NAMES and not _in_type_position(node):",
     ),
     (
         "718-shorthand-pattern",
@@ -95,17 +457,18 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "718-regex-substring",
         JSM,
-        "                if any(name in pattern for name in _STACK_KEYS):",
-        "                if pattern in _STACK_KEYS:",
+        "                if any(name in pattern for name in _MODULE_SYSTEM_TOKEN_NAMES):",
+        "                if pattern in _MODULE_SYSTEM_TOKEN_NAMES:",
     ),
     # R-718-3: no lexical exemption; JSX strings decode character references.
     (
         "718-r3-restore-lexical-exemption",
         JSM,
-        "            # or an export key.\n            self.shutoff.add(CAUSE_MODULE_SYSTEM)",
-        "            # or an export key.\n"
-        '            if node.type != "identifier" or self.analysis._binding_scope(node, text) is None:\n'
-        "                self.shutoff.add(CAUSE_MODULE_SYSTEM)",
+        "            self.shutoff.add(CAUSE_MODULE_SYSTEM)\n"
+        '            return\n        if node.type == "property_identifier":',
+        '            if text == "process" or node.type != "identifier" or self.analysis._binding_scope(node, text) is None:\n'
+        "                self.shutoff.add(CAUSE_MODULE_SYSTEM)\n"
+        '            return\n        if node.type == "property_identifier":',
     ),
     (
         "718-r3-skip-jsx-text",
@@ -495,8 +858,12 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "f3-create-require-literal-only",
         JSM,
-        "            if literal is None or literal in _MODULE_SYSTEM_SPECIFIERS:\n                return False\n            literals.append(literal)",
-        "            if literal is not None:\n                literals.append(literal)",
+        "            if literal is None or literal in _MODULE_SYSTEM_SPECIFIERS:\n"
+        "                return False\n            self._mark_node_builtin_load(literal)\n"
+        "            literals.append(literal)",
+        "            if literal is not None:\n"
+        "                self._mark_node_builtin_load(literal)\n"
+        "                literals.append(literal)",
     ),
     (
         "f3-create-require-taints",

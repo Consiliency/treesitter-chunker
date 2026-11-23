@@ -8,7 +8,17 @@ import sys
 
 
 def main() -> int:
-    cmd = [sys.executable, "-m", "pytest", "-q", "tests", "spec_tests"]
+    cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "-rfEs",
+        "-p",
+        "scripts.pytest_skip_report",
+        "tests",
+        "spec_tests",
+    ]
     print("Running nightly full suite: tests and spec_tests")
     return subprocess.run(cmd, check=False).returncode
 

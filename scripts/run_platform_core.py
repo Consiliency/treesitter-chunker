@@ -139,7 +139,16 @@ def main() -> int:
     args = parser.parse_args()
 
     tests = tests_for_platform(args.platform)
-    cmd = [sys.executable, "-m", "pytest", "-xq", *tests]
+    cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-xq",
+        "-rfEs",
+        "-p",
+        "scripts.pytest_skip_report",
+        *tests,
+    ]
     if args.platform == "linux":
         cmd += ["--cov=chunker", "--cov-report=xml"]
     print(f"Running platform core batch for {args.platform}:")
