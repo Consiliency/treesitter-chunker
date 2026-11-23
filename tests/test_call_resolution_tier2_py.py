@@ -1767,6 +1767,18 @@ MAIN_WRITERS = {
         "        format(i.value, i.format_spec)\n"
     ),
     "concatenated-percent": "T = '%(' '__main__)s'\n\n\ndef go():\n    T % P()\n",
+    # Re-check 2 B-2: a backslash-newline before a spec's closing brace is a
+    # line continuation, so CPython hands ``"__main__"`` to ``__format__``.
+    "fstring-spec-continuation": "def go():\n    return f'{P():__main__\\\n}'\n",
+    "tstring-spec-continuation": (
+        "def go():\n"
+        "    for i in t'{P():__main__\\\n}'.interpolations:\n"
+        "        format(i.value, i.format_spec)\n"
+    ),
+    "triple-spec-continuation": "def go():\n    return f'''{P():__main__\\\n}'''\n",
+    "nested-field-spec-continuation": (
+        "def go():\n    return f'{P():{\"\"}__main__\\\n}'\n"
+    ),
     # Control: the plain string the run-wide rule always caught.
     "plain": "T = '__main__'\n\n\ndef go():\n    P()[T]\n",
 }

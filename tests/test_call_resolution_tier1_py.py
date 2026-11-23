@@ -4316,6 +4316,16 @@ MAIN_FORMAT_CASES = {
     "tstring-concat": "patch_main(t'__ma' t'in__.{h}')",
     "tstring-escaped": r"patch_main(t'\x5f_main__.{h}')",
     "fstring-plus-literal": "patch_main(f'{\"\"}__ma' + 'in__.' + h)",
+    # Re-check 2 B-2: tree-sitter ends a format spec before a trailing
+    # newline, but CPython reads the backslash-newline before the closing
+    # brace as a line continuation and hands over ``"__main__"``.
+    "fstring-spec-continuation": "f'{P():__main__\\\n}'",
+    "tstring-spec-continuation": (
+        "[format(i.value, i.format_spec) for i in t'{P():__main__\\\n}'.interpolations]"
+    ),
+    "triple-spec-continuation": "f'''{P():__main__\\\n}'''",
+    "nested-field-spec-continuation": "f'{P():{\"\"}__main__\\\n}'",
+    "inner-spec-continuation": "f'{P():{P():__main__\\\n}}'",
 }
 
 # The runtime probe supplies the callback, so the source isolates the
@@ -4392,6 +4402,89 @@ def test_main_string_components_fail_closed(form: str) -> None:
 )
 def test_main_needs_a_whole_component(form: str) -> None:
     assert proof_text(HELPER + form + "\nhelper()\n") == PROOF
+
+
+class _SpecRecorder:
+    def __init__(self, seen: list[str]) -> None:
+        self.seen = seen
+
+    def __format__(self, spec: str) -> str:
+        self.seen.append(spec)
+        return ""
+
+
+def test_string_runs_match_cpython_through_the_tree() -> None:
+    """The literal runs and format specs the K-3 rule reads from the
+    tree-sitter tree are the strings CPython delivers (re-check 2 B-2).
+
+    :func:`test_decode_literal_matches_cpython` feeds the decoder text that
+    is already split, so it cannot see where the tree's node boundaries cut
+    a piece; tree-sitter ends a format spec before a trailing newline, for
+    one. This parses each seeded f- or t-string, runs ``_string_runs`` and
+    compares the result with what CPython 3.14 delivers to ``__format__``
+    and as the literal parts. A piece the rule cannot decode fails closed
+    and is skipped; every decoded piece must match.
+    """
+    import random
+    import warnings
+
+    parser = get_parser("python")
+    literal = ["a", "_", "__main__", "\\", "\\\n", "\\\r\n", "\n", "\r\n", " "]
+    literal += ["\\x5f", "\\N{LOW LINE}", "\\d", "\\'", "'", '"', "{{", "}}", "é"]
+    spec_atoms = [*(atom for atom in literal if atom not in ("{{", "}}")), ":", "!"]
+    spec_atoms.append("{y}")
+    rng = random.Random(714)
+
+    def piece(atoms: list[str], size: int) -> str:
+        return "".join(rng.choice(atoms) for _ in range(rng.randint(0, size)))
+
+    checked = 0
+    for _ in range(4000):
+        prefix = rng.choice(["f", "t", "rf", "Rt", "F"])
+        quote = rng.choice(["'", '"', "'" * 3, '"' * 3])
+        spec = ":" + piece(spec_atoms, 4) if rng.random() < 0.8 else ""
+        body = piece(literal, 3) + "{v" + spec + "}" + piece(literal, 3)
+        text = prefix + quote + body + quote
+        seen: list[str] = []
+        env: dict[str, Any] = {"v": _SpecRecorder(seen), "y": ""}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                value = eval(compile(text, "<case>", "eval"), env)  # noqa: S307
+            except SyntaxError:
+                continue
+        if "t" in prefix.lower():
+            strings = "".join(value.strings)
+            specs = [i.format_spec for i in value.interpolations]
+        else:
+            strings, specs = value, seen
+        data = ("V = " + text + "\n").encode("utf-8")
+        root = parser.parse(data).root_node
+        if root.has_error:
+            continue
+        node = root.named_children[0].named_children[0].child_by_field_name("right")
+        assert node is not None, text
+        assert node.type in ("string", "concatenated_string"), text
+        # The literal parts are read by child text, so a string's children
+        # must tile it with no byte left out.
+        for string in [node, *node.named_children]:
+            if string.type == "string":
+                kids = string.children
+                edges = [string.start_byte] + [
+                    edge for kid in kids for edge in (kid.start_byte, kid.end_byte)
+                ]
+                edges.append(string.end_byte)
+                assert edges[::2] == edges[1::2], text
+        runs: list[str] = []
+        rule_specs: list[str] = []
+        try:
+            py_scope._string_runs(node, data, runs, rule_specs)
+        except py_scope._UndecodableError:
+            continue
+        assert "".join(runs) == strings, text
+        assert "".join(rule_specs) == "".join(specs), text
+        checked += 1
+    assert checked > 1000
 
 
 @pytest.mark.parametrize(

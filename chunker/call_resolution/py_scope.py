@@ -3429,7 +3429,9 @@ def _decode_literal(prefix: str, quote: str, content: str) -> str | None:
     process-global state other threads share. ``\\N{...}`` names come from
     the host ``unicodedata``, as the compiler's do. Newlines are translated
     as the tokenizer does. The text is one literal token from the tree, so a
-    delimiter inside ``content`` ends it early and gives ``None``.
+    delimiter inside ``content`` ends it early and gives ``None``; the main
+    protection, though, is that the caller passes the delimiter it read from
+    the token's own opening quote.
     """
     if prefix not in ("", "r", "u") or quote not in ("'", '"', "'''", '"""'):
         return None
@@ -3606,7 +3608,13 @@ def _interpolation_runs(
                     _extend_run(spec, _decode_piece(plain, quote, gap))
                     _interpolation_runs(part, source, plain, quote, spec, specs)
                     position = part.end_byte
-            gap = source[position : child.end_byte].decode("utf-8")
+            # The last gap runs to the closing brace, not to the node's end:
+            # tree-sitter ends the spec before a trailing newline, so
+            # ``f"{x:__main__\\<newline>}"`` would otherwise lose the line
+            # continuation CPython reads (#698, re-check 2 B-2).
+            close = child.next_sibling
+            end = close.start_byte if close is not None else child.end_byte
+            gap = source[position:end].decode("utf-8")
             _extend_run(spec, _decode_piece(plain, quote, gap))
             specs.extend(spec)
     runs.append("")

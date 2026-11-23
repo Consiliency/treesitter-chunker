@@ -36,6 +36,7 @@ TESTS = (
     "tests/test_call_resolution_tier1_py.py::test_main_string_components_fail_closed",
     "tests/test_call_resolution_tier1_py.py::test_scope_facts_ignore_the_warnings_filters",
     "tests/test_call_resolution_tier1_py.py::test_decode_literal_matches_cpython",
+    "tests/test_call_resolution_tier1_py.py::test_string_runs_match_cpython_through_the_tree",
 )
 
 # (id, file, old text, new text). The old text must occur in the file once.
@@ -727,6 +728,14 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         PYS,
         "            if len(named) != 1:\n                # A named sequence",
         "            if False:\n                # A named sequence",
+    ),
+    (
+        # Re-check 2 B-2: a spec's last gap runs to the closing brace, so a
+        # trailing backslash-newline stays a line continuation.
+        "b2-spec-gap-to-closing-brace",
+        PYS,
+        "            end = close.start_byte if close is not None else child.end_byte",
+        "            end = child.end_byte",
     ),
     (
         "main-undecodable-fails-closed",
