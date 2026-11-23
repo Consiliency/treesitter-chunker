@@ -30,6 +30,15 @@ def test_extension_map_uses_pack_manifest_names(
     assert (extension, language) == (".baml", "baml") or language in pack_manifest
 
 
+@pytest.mark.parametrize(
+    "language", sorted(set(ZeroConfigAPI.SHEBANG_PATTERNS.values()))
+)
+def test_shebang_patterns_use_pack_manifest_names(
+    language: str, pack_manifest: set[str]
+) -> None:
+    assert language in pack_manifest
+
+
 class MockRegistry:
     """Mock implementation of UniversalRegistryContract for testing."""
 
