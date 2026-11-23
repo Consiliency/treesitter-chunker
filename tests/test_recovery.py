@@ -9,7 +9,6 @@ import gc
 import json
 import os
 import queue
-import random
 import subprocess
 import sys
 import threading
@@ -295,80 +294,59 @@ class TestStatePersistence:
 
     @classmethod
     def test_distributed_state_sync(cls, tmp_path):
-        """Test multi-process state synchronization."""
+        """Test that concurrent workers preserve every update to shared state."""
         state_file = tmp_path / "shared_state.json"
         lock_file = tmp_path / "state.lock"
 
         def update_state(worker_id, item):
             """Update shared state with locking."""
-            max_retries = 50
-            for _retry in range(max_retries):
-                if not lock_file.exists():
-                    try:
-                        lock_file.touch(exist_ok=False)
-                        break
-                    except FileExistsError:
-                        pass
-                time.sleep(0.01)
-            else:
-                raise RuntimeError("Could not acquire lock")
+            deadline = time.monotonic() + 10
+            while True:
+                try:
+                    lock_file.touch(exist_ok=False)
+                    break
+                except FileExistsError:
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError(
+                            f"{worker_id} could not acquire {lock_file} for {item}"
+                        ) from None
+                    time.sleep(0.01)
             try:
-                if state_file.exists() and state_file.stat().st_size > 0:
-                    with Path(state_file).open(encoding="utf-8") as f:
-                        try:
-                            state = json.load(f)
-                        except json.JSONDecodeError:
-                            state = {"workers": {}, "items": []}
+                if state_file.exists():
+                    state = json.loads(state_file.read_text(encoding="utf-8"))
                 else:
                     state = {"workers": {}, "items": []}
-                if worker_id not in state["workers"]:
-                    state["workers"][worker_id] = []
-                state["workers"][worker_id].append(item)
+                state["workers"].setdefault(worker_id, []).append(item)
                 state["items"].append(item)
-                temp_file = (
-                    state_file.parent
-                    / f"tmp_{worker_id}_{random.randint(1000, 9999)}.json"
-                )
-                with Path(temp_file).open("w", encoding="utf-8") as f:
+                temp_file = state_file.with_suffix(".tmp")
+                with temp_file.open("w", encoding="utf-8") as f:
                     json.dump(state, f)
                     f.flush()
                     os.fsync(f.fileno())
                 temp_file.replace(state_file)
             finally:
-                if lock_file.exists():
-                    with contextlib.suppress(FileNotFoundError):
-                        lock_file.unlink()
+                lock_file.unlink()
 
         def worker(worker_id, items):
             for item in items:
-                try:
-                    update_state(worker_id, item)
-                    time.sleep(0.01)
-                except (OSError, FileNotFoundError, IndexError) as e:
-                    print(f"Worker {worker_id} error: {e}")
+                update_state(worker_id, item)
 
-        items_per_worker = 5
-        workers = []
-        for i in range(3):
-            items = [f"worker{i}_item{j}" for j in range(items_per_worker)]
-            t = threading.Thread(target=worker, args=(f"worker{i}", items))
-            workers.append(t)
-            t.start()
-        for t in workers:
-            t.join()
-        if state_file.exists():
-            with Path(state_file).open(encoding="utf-8") as f:
-                final_state = json.load(f)
-            assert len(final_state["workers"]) >= 1
-            assert len(final_state["items"]) >= 5
-            all_items = [
-                item
-                for worker_items in final_state["workers"].values()
-                for item in worker_items
+        expected = {
+            f"worker{i}": [f"worker{i}_item{j}" for j in range(5)] for i in range(3)
+        }
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [
+                executor.submit(worker, worker_id, items)
+                for worker_id, items in expected.items()
             ]
-            assert len(all_items) == len(final_state["items"])
-        else:
-            pytest.skip("Workers failed to create state file")
+            for future in futures:
+                future.result()
+
+        final_state = json.loads(state_file.read_text(encoding="utf-8"))
+        assert final_state["workers"] == expected
+        assert sorted(final_state["items"]) == sorted(
+            item for items in expected.values() for item in items
+        )
 
 
 class TestPartialProcessing:
