@@ -124,7 +124,10 @@ def boundary(
             "run may declare the name as a global), and Python calls through "
             "the LEGB scope chain (never a redefinition). "
             "'imports' also resolves JS/TS calls through relative import "
-            "bindings to the one exported definition they prove"
+            "bindings, and Python calls through import bindings and module "
+            "member chains, to the one definition they prove; for Python it "
+            "can resolve fewer calls than 'structural' where other files may "
+            "write a module's globals"
         ),
     ),
     quiet: bool = typer.Option(

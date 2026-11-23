@@ -71,7 +71,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "attr-submodule-conflict",
         PYM,
-        "    if entry is not None and submodule is not None:",
+        "    if entry is not None and (submodule is not None or probe is not None):",
         "    if False:",
     ),
     ("hop-limit", PYM, "    if hops > HOP_LIMIT:", "    if False:"),
@@ -92,8 +92,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "taint-in-tier1",
         PYM,
-        "            reason = run.taint_reason(caller, caller, name)",
-        "            reason = None",
+        "    reason = run.taint_reason(caller, caller, name)\n    if reason is not None:\n        return reason\n    file = run.files.get(caller)",
+        "    file = run.files.get(caller)",
     ),
     (
         "write-position",
@@ -158,8 +158,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "writer-script-directory",
         PYM,
-        "            if local in self.nodes:\n                found.add(local)",
-        "            if local in self.nodes:\n                pass",
+        "                if local in self.nodes:\n                    found.add(local)",
+        "                if local in self.nodes:\n                    pass",
     ),
     (
         "class-scope-exposure",
@@ -252,8 +252,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "unparsed-cause",
         PYM,
-        '            if not supported or bindings.get("unparsed"):',
-        "            if not supported:",
+        '            if not supported or bindings.get("unparsed") or not bindings:',
+        "            if not supported or not bindings:",
     ),
     ("lone-cr", PYM, '    if _LONE_CR.search(source):\n        return "lone-cr"\n', ""),
     (
@@ -309,6 +309,227 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        bindings = list(py_file.groups.get(key, ())) if key else []",
         "        bindings = []",
     ),
+    # PR 6 fold 2 (#705 E6-1..E6-8).
+    (
+        "e6-1-own-binding",
+        ENG,
+        "            py_modules.own_binding_reason(run, file_context.path, head)\n"
+        "            if head\n            else None",
+        "            None",
+    ),
+    (
+        "e6-1-package-submodule-binding",
+        PYM,
+        "    if file is not None and file.package:\n        base = caller",
+        "    if False:\n        base = caller",
+    ),
+    (
+        "e6-1-tier1-own-binding",
+        PYM,
+        "            reason = own_binding_reason(run, caller, name)",
+        "            reason = run.taint_reason(caller, caller, name)",
+    ),
+    (
+        "e6-2-module-imports-recorded",
+        PYM,
+        "        if scope.kind == ps._MODULE or name in scope.globals:",
+        "        if False:",
+    ),
+    (
+        "e6-2-module-imports-attr",
+        PYM,
+        "        for binding in file.module_imports.get(name, ()):\n"
+        "            # E6-2: any import binding of the name, proven or not.\n"
+        '            found |= self.binding_values(binding, path or "", seen)',
+        "        pass",
+    ),
+    (
+        "e6-2-module-imports-exposed",
+        PYM,
+        "            for bindings in file.module_imports.values():\n"
+        "                for binding in bindings:\n"
+        '                    found |= self.binding_values(binding, path or "", set())',
+        "            pass",
+    ),
+    (
+        "e6-3-import-as-attribute",
+        PYM,
+        "        if isinstance(start, _Module) and len(parts) > 1:",
+        "        if False:",
+    ),
+    (
+        "e6-3-own-submodule-allowed",
+        PYM,
+        "        if submodule is not None and _own_submodule_import(file, entry, name):",
+        "        if False:",
+    ),
+    (
+        "e6-3-module-getattr",
+        PYM,
+        '        if file.package and "__getattr__" in file.exports:',
+        "        if False:",
+    ),
+    (
+        "a-3-dynamic-package-submodule",
+        PYM,
+        '            return submodule if file.missing == "export-not-found" else file.missing',
+        "            return submodule",
+    ),
+    (
+        "s-1-skipped-submodule-probe",
+        PYM,
+        "            # name) may still exist.\n            probe = found",
+        "            # name) may still exist.\n            pass",
+    ),
+    (
+        "e6-4-pytest-basedir",
+        PYM,
+        "    if is_test_path(importer):\n        current = directory",
+        "    if False:\n        current = directory",
+    ),
+    (
+        "e6-5-computed-patch",
+        PYM,
+        "            if first is None or constant is None:\n"
+        "                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)",
+        "            if False:\n                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)",
+    ),
+    (
+        "e6-5-computed-patch-object",
+        PYM,
+        "            if second is None or ps._constant_string(second, source) is None:",
+        "            if False:",
+    ),
+    (
+        "e6-5-computed-monkeypatch",
+        PYM,
+        "            if string_form and constant is None:",
+        "            if False:",
+    ),
+    (
+        "e6-5-whole-module-patch-target",
+        PYM,
+        "        elif method:\n            if constant is not None:",
+        "        elif method:\n            if False:",
+    ),
+    (
+        "e6-6-first-attribute-write",
+        PYM,
+        '        if position == "write" and len(chain) > 1:',
+        "        if False:",
+    ),
+    (
+        "e6-7-path-read-safe",
+        PYM,
+        '        "__path__",\n        "__spec__",',
+        '        "__spec__",',
+    ),
+    (
+        "e6-8-tier2-only-in-imports",
+        CR + "facts.py",
+        '                tier2=mode in (None, "imports"),',
+        "                tier2=True,",
+    ),
+    (
+        "e6-8-missing-module-facts-fail-closed",
+        PYM,
+        '            if not supported or bindings.get("unparsed") or not bindings:',
+        '            if not supported or bindings.get("unparsed"):',
+    ),
+    # Panel B's surviving extra mutations (#705 S3), now killed.
+    (
+        "b-string-module-object-names",
+        PYM,
+        '            if parts & (_MODULE_OBJECT_NAMES - {"__main__", "__mp_main__"}):',
+        "            if False:",
+    ),
+    (
+        "b-string-f-locals",
+        PYM,
+        "            if _FRAME_LOCALS in parts:",
+        "            if False:",
+    ),
+    (
+        "b-main-guard",
+        PYM,
+        "and not analysis._main_guard(node):",
+        "and False:",
+    ),
+    (
+        "b-sys-dunder",
+        PYM,
+        "        elif ps._dunder(member):\n            facts.shutoff.add(CAUSE_MODULE_SYSTEM)\n",
+        "",
+    ),
+    (
+        "b-loader-paths",
+        PYM,
+        "        or tuple(path[:3]) in _LOADER_PATHS\n        or tuple(path[:2]) in _LOADER_PATHS\n",
+        "",
+    ),
+    (
+        "b-resolver-identifier",
+        PYM,
+        "        if spellings & _RESOLVER_NAMES:\n            facts.shutoff.add(CAUSE_DYNAMIC_LOADER)\n"
+        "        if name in _EVALUATORS",
+        "        if name in _EVALUATORS",
+    ),
+    (
+        "b-relative-import-module",
+        PYM,
+        '            facts.taints.add((absolute, "*"))',
+        "            pass",
+    ),
+    (
+        "b-dunder-import-head",
+        PYM,
+        '                facts.taints.add((value.split(".")[0], "*"))',
+        "                pass",
+    ),
+    (
+        "b-inert-comparison-ops",
+        PYM,
+        '            op in ("is", "is not", "not") for op in operators',
+        "            True for op in operators",
+    ),
+    (
+        "b-promotion-string-edges",
+        PYM,
+        '        refs += [str(string) for string in bindings.get("strings", ())]\n',
+        "",
+    ),
+    (
+        "b-promotion-taint-edges",
+        PYM,
+        '        refs += [str(taint[0]) for taint in bindings.get("taints", ())]\n',
+        "",
+    ),
+    (
+        "b-coding-second-line",
+        PYM,
+        "    for line in lines[:2]:",
+        "    for line in lines[:1]:",
+    ),
+    (
+        "b-ctrl-z",
+        PYM,
+        '_HAZARD_BYTES = (b"\\x00", b"\\x0b", b"\\x1a")',
+        '_HAZARD_BYTES = (b"\\x00", b"\\x0b")',
+    ),
+    (
+        "b-missing-reason-fact",
+        PYM,
+        '        if missing.get("reason") == "unbound"',
+        "        if True",
+    ),
+    # Equivalent (recorded, not run): ``continuation`` (tree-sitter reports
+    # every malformed continuation as an error first), ``own-name-acquisition``
+    # (``sys.modules[__name__]`` already makes the file dynamic in Tier 1, so
+    # its exports fail closed), ``chain-matches-reference`` (the tree's chain
+    # and the reference are built from the same tokens), ``setattr-splat``
+    # (a splat makes the ``setattr`` argument a value, an escape, which taints
+    # more), and ``unresolvable-writer-assembly`` (the unreachable branch is
+    # removed; every recorded taint reference is absolute).
 )
 
 

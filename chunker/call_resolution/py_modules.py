@@ -117,6 +117,10 @@ SHUTOFF_CAUSES = (
 # Reasons of a tainted name or module.
 REASON_NAME_TAINT = "reassigned"
 REASON_MODULE_TAINT = "module-escape"
+# A package with a module-level ``__getattr__`` (PEP 562): ``from pkg import
+# sub``, ``import pkg.sub as m`` and ``pkg.sub`` call it before the
+# submodule is imported, so the attribute may be anything (#705 E6-3).
+REASON_MODULE_GETATTR = "module-getattr"
 
 # Owner decision O-2, the Python test classifier: closed, case-sensitive and
 # path-based. A basename ``test_*.py``, ``*_test.py`` or ``conftest.py``
@@ -288,7 +292,20 @@ _RESOLVER_NAMES = frozenset({"resolve_name", "safeimport", "find_class"})
 # dunder (``__dict__``, ``__setattr__``, ``__class__``, ``__spec__``,
 # ``__loader__``, ``__path__``) taints the module wholly.
 _SAFE_DUNDERS = frozenset(
-    {"__name__", "__qualname__", "__doc__", "__file__", "__module__", "__version__"}
+    {
+        "__name__",
+        "__qualname__",
+        "__doc__",
+        "__file__",
+        "__module__",
+        "__version__",
+        # #705 E6-7: a read of a package's search path or spec hands out a
+        # list of directories or a spec, not the module namespace. Changing
+        # ``__path__`` redirects later imports, which the ``module-system``
+        # cause on any ``__path__`` spelling already covers.
+        "__path__",
+        "__spec__",
+    }
 )
 # Outcomes of a use-site lookup that prove the name is the file's own
 # binding, not the builtin or an import.
@@ -425,6 +442,11 @@ def module_facts(
         else str(missing.get("reason") or "export-not-found")
     )
     import_infos: dict[str, list[Mapping[str, str]]] = {}
+    # #705 E6-2: every import binding that lands in the module namespace,
+    # whatever the Tier 1 lookup of the name says (conditional, repeated, in
+    # a dynamic file): another file may reach the module it holds as an
+    # attribute of this one.
+    module_imports: dict[str, list[dict[str, str]]] = {}
     for scope, name, binding in analysis.events:
         if binding.cls != ps.IMPORT or not binding.info:
             continue
@@ -432,13 +454,19 @@ def module_facts(
         if info.get("module") == "__future__":
             continue
         import_infos.setdefault(name, []).append(info)
+        if scope.kind == ps._MODULE or name in scope.globals:
+            entry = dict(info)
+            if entry not in module_imports.setdefault(name, []):
+                module_imports[name].append(entry)
         if scope.kind == ps._CLASS or name in scope.globals or name in scope.nonlocals:
             # A class attribute (``K.svc``) or a binding redirected to another
             # scope holds the module where no use rule sees it.
             facts.uses.add(_record(info, "value", ()))
+    own_submodules = _own_submodules(analysis)
     _scan_imports(analysis, facts)
     _scan_uses(analysis, facts, import_infos)
     _scan_causes(analysis, facts, import_infos, own_ref)
+    _scan_patchers(analysis, facts)
     hazard = parse_hazard(source, analysis.root)
     module_bindings = {
         "imports": sorted(facts.imports),
@@ -453,8 +481,48 @@ def module_facts(
             key: [dict(info) for info in value] for key, value in groups.items()
         },
         "chains": {key: list(value) for key, value in chains.items()},
+        "module_imports": {
+            name: module_imports[name] for name in sorted(module_imports)
+        },
+        "own_submodules": own_submodules,
     }
     return exports, module_bindings
+
+
+def _own_submodules(analysis: Any) -> list[str]:
+    """In a package ``__init__.py``, the names whose only module-scope
+    bindings are unconditional imports of the package's own submodule of that
+    name (``from . import b``) and the writes those imports make: the name
+    then holds that submodule (#705 E6-3). Any other binding (a definition,
+    an assignment, an attribute write by any receiver, a conditional or other
+    import) leaves it out."""
+    from . import py_scope as ps
+
+    if not analysis.module_path.package_init:
+        return []
+    own = set(analysis.own_names) | {ps._SELF}
+    found: list[str] = []
+    for name, bindings in sorted(analysis.module.bindings.items()):
+        imports = [binding for binding in bindings if binding.cls == ps.IMPORT]
+        others = [binding for binding in bindings if binding.cls != ps.IMPORT]
+        if not imports or any(binding.conditional for binding in imports):
+            continue
+        if any(binding.cls != ps.LOCAL for binding in others):
+            continue
+        if len(others) != analysis.submodule_writes.get(name, 0):
+            continue
+
+        def own_import(info: Mapping[str, str]) -> bool:
+            module = str(info.get("module") or "")
+            return (
+                info.get("form") == "from"
+                and info.get("name") == name
+                and (module == "." or module.rpartition(".")[2] in own)
+            )
+
+        if all(own_import(binding.info or {}) for binding in imports):
+            found.append(name)
+    return found
 
 
 def _record(
@@ -1083,6 +1151,106 @@ def _frame_locals_read(analysis: Any, ident: Any) -> bool:
     return _operand_of_in(parent)
 
 
+# pytest-mock fixture names whose ``.patch`` is ``unittest.mock.patch``.
+_MOCKER_NAMES = frozenset(
+    {"mocker", "module_mocker", "class_mocker", "package_mocker", "session_mocker"}
+)
+
+
+def _callee_names(call: Any, source: bytes) -> list[str] | None:
+    """The dotted names of a call's callee (``mock.patch.object`` gives
+    ``["mock", "patch", "object"]``), through parentheses; ``None`` unless
+    it is an identifier or a plain attribute chain."""
+    from . import py_scope as ps
+
+    node = call.child_by_field_name("function")
+    node = ps._unwrap(node, skip_comments=True) if node is not None else None
+    names: list[str] = []
+    while node is not None and node.type == "attribute":
+        attribute = node.child_by_field_name("attribute")
+        if attribute is None:
+            return None
+        names.append(ps._text(attribute, source))
+        node = node.child_by_field_name("object")
+        node = ps._unwrap(node, skip_comments=True) if node is not None else None
+    if node is None or node.type != "identifier":
+        return None
+    names.append(ps._text(node, source))
+    return list(reversed(names))
+
+
+def _scan_patchers(analysis: Any, facts: _Facts) -> None:
+    """Patcher targets (#705 E6-5), a closed list of callees:
+    ``unittest.mock``/``mock`` ``patch`` (``mock.patch``, a pytest-mock
+    fixture's ``.patch``, a bare ``patch``), ``X.patch.object``,
+    ``X.patch.dict``, ``X.patch.multiple``, and ``setattr``/``delattr`` on a
+    receiver whose name contains ``monkeypatch``. A string target that is
+    not a constant names a module the rules cannot compute: an
+    ``unresolvable-writer`` cause (scoped by O-2 like any cause). So is a
+    ``patch.object`` attribute that is not a constant. A constant string
+    target taints the module it names wholly (``patch.multiple('svc', ...)``
+    rebinds several of its globals), besides the dotted-string rule."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    stack = [analysis.root]
+    while stack:
+        node = stack.pop()
+        stack.extend(node.named_children)
+        if node.type != "call":
+            continue
+        names = _callee_names(node, source)
+        if not names:
+            continue
+        arguments = [
+            argument
+            for argument in ps._call_arguments(node)
+            if argument.type not in ("keyword_argument", "comment")
+        ]
+        first = arguments[0] if arguments else None
+        constant = ps._constant_string(first, source) if first is not None else None
+        last = names[-1]
+        patch = last == "patch" and (
+            len(names) == 1 or "mock" in names[:-1] or names[0] in _MOCKER_NAMES
+        )
+        method = (
+            len(names) >= 2
+            and names[-2] == "patch"
+            and last
+            in (
+                "object",
+                "dict",
+                "multiple",
+            )
+        )
+        monkeypatch = (
+            len(names) >= 2
+            and last in ("setattr", "delattr")
+            and "monkeypatch" in names[-2]
+        )
+        if patch:
+            if first is None or constant is None:
+                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            else:
+                facts.taints.add((constant.replace(":", "."), "*"))
+        elif method and last == "object":
+            second = arguments[1] if len(arguments) > 1 else None
+            if second is None or ps._constant_string(second, source) is None:
+                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+        elif method:
+            if constant is not None:
+                facts.taints.add((constant.replace(":", "."), "*"))
+        elif monkeypatch:
+            # The string form takes the target first: ``setattr("m.t", v)``
+            # (two arguments) and ``delattr("m.t")`` (one); the object form
+            # takes one more.
+            string_form = len(arguments) == (2 if last == "setattr" else 1)
+            if string_form and constant is None:
+                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            elif string_form and constant is not None:
+                facts.taints.add((constant.replace(":", "."), "*"))
+
+
 def import_group(
     analysis: Any, head: Any, outcome: Mapping[str, Any]
 ) -> list[dict[str, str]]:
@@ -1142,6 +1310,10 @@ class PyFile:
     stars: tuple[str, ...] = ()
     groups: Mapping[str, Any] = field(default_factory=dict)
     chains: Mapping[str, Any] = field(default_factory=dict)
+    # Every import binding landing in the module namespace, by name (E6-2).
+    module_imports: Mapping[str, Any] = field(default_factory=dict)
+    # Names a package's ``__init__.py`` binds only to its own submodule.
+    own_submodules: frozenset[str] = frozenset()
     # Proof declaration -> the module-scope name it is exported under.
     exported: Mapping[tuple[str, int, int], frozenset[str]] = field(
         default_factory=dict
@@ -1236,19 +1408,22 @@ class _Builder:
                             int(declaration[2]),
                         )
                         exported.setdefault(key, set()).add(str(name))
-            if not supported or bindings.get("unparsed"):
+            if not supported or bindings.get("unparsed") or not bindings:
+                # No module facts (a record of another mode) is unknown too.
                 self.unsupported.add(path)
             self.bindings[path] = bindings
             self.files[path] = PyFile(
                 path=path,
                 dotted=dotted,
                 package=package,
-                supported=supported and not bindings.get("unparsed"),
+                supported=supported and bool(bindings) and not bindings.get("unparsed"),
                 exports=exports,
                 missing=str(bindings.get("missing") or "export-not-found"),
                 stars=tuple(str(star) for star in bindings.get("stars", ())),
                 groups=bindings.get("groups") or {},
                 chains=bindings.get("chains") or {},
+                module_imports=bindings.get("module_imports") or {},
+                own_submodules=frozenset(bindings.get("own_submodules") or ()),
                 exported={key: frozenset(names) for key, names in exported.items()},
             )
             if dotted:
@@ -1299,6 +1474,9 @@ class _Builder:
         entry = file.exports.get(name)
         if isinstance(entry, Mapping) and entry.get("outcome") == "import":
             found |= self.binding_values(entry.get("binding") or {}, path or "", seen)
+        for binding in file.module_imports.get(name, ()):
+            # E6-2: any import binding of the name, proven or not.
+            found |= self.binding_values(binding, path or "", seen)
         for star in file.stars:
             for start in self.targets(star, path or ""):
                 found |= self.attr_values(start, name, seen)
@@ -1332,13 +1510,14 @@ class _Builder:
 
     def starts(self, dotted: str, writer: str = "") -> set[str]:
         """The run nodes an absolute dotted name may denote: the root-relative
-        module, and the one in the writer's own directory below the root."""
+        module, and the one in each directory a script or pytest puts first
+        on ``sys.path`` for the writer (:func:`shadow_directories`)."""
         found = {dotted} if dotted in self.nodes else set()
-        directory = writer.split("/")[:-1]
-        if directory and dotted:
-            local = ".".join([*directory, dotted])
-            if local in self.nodes:
-                found.add(local)
+        if dotted:
+            for directory in shadow_directories(set(self.files), writer):
+                local = ".".join([*directory, dotted])
+                if local in self.nodes:
+                    found.add(local)
         return found
 
     def exposed(self, node: str, seen: set[str] | None = None) -> set[str]:
@@ -1360,6 +1539,9 @@ class _Builder:
                     found |= self.binding_values(
                         entry.get("binding") or {}, path or "", set()
                     )
+            for bindings in file.module_imports.values():
+                for binding in bindings:
+                    found |= self.binding_values(binding, path or "", set())
             for star in file.stars:
                 for start in self.targets(star, path or ""):
                     found |= self.exposed(start, seen)
@@ -1378,6 +1560,11 @@ class _Builder:
     ) -> None:
         """Taint what one module-object use may write or escape."""
         current = self.targets(base_ref, writer)
+        if position == "write" and len(chain) > 1:
+            # E6-6: a write through an attribute chain rooted at the module
+            # (``svc.t.__code__ = ...``) changes what ``svc.t`` holds or runs.
+            for node in current:
+                names.setdefault(node, set()).add(chain[0])
         for index, name in enumerate(chain):
             if (
                 name.startswith("__")
@@ -1476,9 +1663,8 @@ def build_py_module_run(
                 whole[scope],
             )
         for ref, name in bindings.get("taints", ()):
-            if builder.absolute(str(ref), path) is None:
-                causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
-                continue
+            # Every recorded taint reference is absolute (the analyzer makes a
+            # relative ``import_module`` absolute or records a cause).
             for node in builder.targets(str(ref), path):
                 if name == "*":
                     whole[scope].add(node)
@@ -1581,6 +1767,23 @@ def _resolve_parts(
     return found if found is not None else "module-not-found"
 
 
+def shadow_directories(files: set[str], importer: str) -> list[list[str]]:
+    """The directories below the root that may come first on ``sys.path`` for
+    ``importer``: its own (a script run directly), and for a test file
+    (:func:`is_test_path`) every directory up to and including the first
+    ancestor without ``__init__.py``, pytest's ``rootdir`` insertion in
+    ``prepend`` mode (#705 E6-4). The root itself is never one."""
+    directory = importer.split("/")[:-1]
+    found: list[list[str]] = [directory] if directory else []
+    if is_test_path(importer):
+        current = directory
+        while current and "/".join(current) + "/__init__.py" in files:
+            current = current[:-1]
+            if current:
+                found.append(current)
+    return found
+
+
 def resolve_module(run: PyModuleRun, ref: str, importer: str) -> _Module | str:
     """The module an import names from ``importer`` (9.5), or a reason."""
     if ref.startswith("."):
@@ -1601,8 +1804,7 @@ def resolve_module(run: PyModuleRun, ref: str, importer: str) -> _Module | str:
     parts = [part for part in ref.split(".") if part]
     if not parts:
         return "module-not-found"
-    directory = importer.split("/")[:-1]
-    if directory:
+    for directory in shadow_directories(set(run.files), importer):
         stem = "/".join([*directory, parts[0]])
         if (
             f"{stem}.py" in run.files
@@ -1638,13 +1840,20 @@ def _attribute(
         return "hop-limit"
     seen = (*seen, key)
     submodule: _Module | None = None
+    probe: str | None = None
     directory = value.dotted.replace(".", "/") if value.dotted else ""
     if value.path is None or value.path.endswith("__init__.py"):
         found = _resolve_parts(run, directory.split("/") if directory else [], [name])
         if isinstance(found, _Module):
             submodule = found
+        elif found != "module-not-found":
+            # S-1: a submodule the resolver cannot read (a skipped-directory
+            # name) may still exist.
+            probe = found
     if value.path is None:
-        return submodule if submodule is not None else "export-not-found"
+        if submodule is not None:
+            return submodule
+        return probe or "export-not-found"
     reason = run.taint_reason(caller, value.path, name)
     if reason is not None:
         return reason
@@ -1652,10 +1861,19 @@ def _attribute(
     if file is None or not file.supported:
         return "export-not-found"
     entry = file.exports.get(name)
-    if entry is not None and submodule is not None:
+    if entry is not None and (submodule is not None or probe is not None):
+        if submodule is not None and _own_submodule_import(file, entry, name):
+            # ``from . import b`` in ``a/__init__.py`` binds its own submodule.
+            return submodule
         return "attr-submodule-conflict"
     if entry is None:
-        return submodule if submodule is not None else file.missing
+        if file.package and "__getattr__" in file.exports:
+            # E6-3: PEP 562 ``__getattr__`` answers before the submodule loads.
+            return REASON_MODULE_GETATTR
+        if submodule is not None:
+            # A-3: a module that may bind names at run time may bind this one.
+            return submodule if file.missing == "export-not-found" else file.missing
+        return probe or file.missing
     kind = entry.get("outcome")
     if kind == "local":
         return _Local(value.path, entry)
@@ -1674,6 +1892,36 @@ def _attribute(
     return str(entry.get("reason") or "export-not-found")
 
 
+def _own_submodule_import(file: PyFile, entry: Mapping[str, Any], name: str) -> bool:
+    """Whether a package binds ``name`` only to its own submodule of that
+    name (the analyzer's ``own_submodules``; #705 E6-3)."""
+    del entry
+    return file.package and name in file.own_submodules
+
+
+def own_binding_reason(run: PyModuleRun, caller: str, name: str) -> str | None:
+    """Why a module-scope name of the caller's own module may not hold what
+    its binding says (#705 E6-1): another file's write of it, or, in a
+    package ``__init__.py``, a submodule of that name, which importing it sets
+    as the package's global (A-4)."""
+    reason = run.taint_reason(caller, caller, name)
+    if reason is not None:
+        return reason
+    file = run.files.get(caller)
+    if file is not None and file.package:
+        base = caller.split("/")[:-1]
+        found = _resolve_parts(run, base, [name])
+        if isinstance(found, _Module) or found != "module-not-found":
+            entry = file.exports.get(name)
+            if not (
+                isinstance(found, _Module)
+                and isinstance(entry, Mapping)
+                and _own_submodule_import(file, entry, name)
+            ):
+                return "attr-submodule-conflict"
+    return None
+
+
 def resolve_import(
     run: PyModuleRun,
     importer: str,
@@ -1690,14 +1938,31 @@ def resolve_import(
     if shutoff is not None:
         return _none(shutoff)
     if binding.get("form") == "import":
-        start = resolve_module(run, str(binding.get("bound") or ""), importer)
+        bound = str(binding.get("bound") or "")
+        start = resolve_module(run, bound, importer)
         names = list(chain)
+        parts = bound.split(".")
+        if isinstance(start, _Module) and len(parts) > 1:
+            # E6-3: ``import a.b as m`` binds ``getattr(a, "b")`` (CPython 3.7+
+            # ``IMPORT_FROM``), so every component after the first is an
+            # attribute of its package, checked like one; it must be a module.
+            head = resolve_module(run, parts[0], importer)
+            value: _Module | _Local | str = head
+            for part in parts[1:]:
+                if not isinstance(value, _Module):
+                    break
+                value = _attribute(run, importer, value, part, 0, ())
+            if isinstance(value, str):
+                return _none(value)
+            if not isinstance(value, _Module):
+                return _none("attr-submodule-conflict")
+            start = value
     else:
         start = resolve_module(run, str(binding.get("module") or ""), importer)
         names = [str(binding.get("name") or ""), *chain]
     if not isinstance(start, _Module):
         return _none(start)
-    value: _Module | _Local | str = start
+    value = start
     for name in names:
         if not isinstance(value, _Module):
             return _none("export-not-found")
@@ -1724,7 +1989,7 @@ def tier1_reason(
     for declaration in proof:
         key = (str(declaration[0]), int(declaration[1]), int(declaration[2]))
         for name in sorted(file.exported.get(key, ())):
-            reason = run.taint_reason(caller, caller, name)
+            reason = own_binding_reason(run, caller, name)
             if reason is not None:
                 return reason
     return None

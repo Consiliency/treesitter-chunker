@@ -1107,3 +1107,659 @@ def test_structural_mode_ignores_tier2_facts(tmp_path: Path) -> None:
     ]
     assert edge["resolution"] == "resolved"
     assert edge["provenance"]["call_rules"] == ["t1.lexical"]
+
+
+# ---------------------------------------------------------------------------
+# PR 6 fold 2 (#705 president rulings E6-1..E6-8). Each blocking case is a
+# panel repro: ``(files, (file, reference), expected label, driver, runtime)``.
+# ``driver`` is the program the panel ran; ``runtime`` is what CPython 3.14
+# printed (checked with ``python -I -B -c <driver>`` in the tree): the
+# function the edge would have named does NOT run, so the edge must keep its
+# off-mode form. ``svc.t`` returns 1 and ``other.t`` returns 2.
+
+PATCHER = "from other import t as o\n"
+FOLD2_BLOCKING: dict[str, tuple[dict[str, str], tuple[str, str], str, str, str]] = {
+    # E6-1 (A-1, B1): another file writes the importer's own global.
+    "e6-1-name-write": (
+        {"patch.py": "import use\n" + PATCHER + "use.t = o\n"},
+        ("use.py", "t"),
+        "reassigned",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    "e6-1-setattr": (
+        {"patch.py": "import use\n" + PATCHER + "setattr(use, 't', o)\n"},
+        ("use.py", "t"),
+        "reassigned",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    "e6-1-patch-string": (
+        {
+            "patch.py": "from unittest import mock\n"
+            + PATCHER
+            + "mock.patch('use.t', o).start()\n"
+        },
+        ("use.py", "t"),
+        "reassigned",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    "e6-1-escape": (
+        {
+            "patch.py": "import use\n"
+            + PATCHER
+            + "def fix(m):\n    m.t = o\n\n\nfix(use)\n"
+        },
+        ("use.py", "t"),
+        "module-escape",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    "e6-1-module-rebind": (
+        {
+            "use.py": "import svc\n\n\ndef u():\n    return svc.t()\n",
+            "patch.py": "import use\nimport other\nuse.svc = other\n",
+        },
+        ("use.py", "svc.t"),
+        "reassigned",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    # E6-1 (A-4): importing ``pkg.tool`` sets ``pkg/__init__.py``'s ``tool``.
+    "e6-1-init-submodule": (
+        {
+            "util.py": "def t():\n    return 1\n",
+            "pkg/__init__.py": "import util as tool\n\n\ndef run():\n    return tool.t()\n",
+            "pkg/tool.py": "def t():\n    return 2\n",
+            "main.py": "import pkg.tool\nimport pkg\n",
+        },
+        ("pkg/__init__.py", "tool.t"),
+        "attr-submodule-conflict",
+        "import pkg.tool, pkg; print(pkg.run())",
+        "2 (pkg/tool.py's t runs)",
+    ),
+    # E6-2 (B2): the intermediary's import is not proven by its own lookup.
+    "e6-2-try-except": (
+        {
+            "mid.py": "try:\n    import svc\nexcept ImportError:\n    svc = None\n",
+            "patch.py": "import mid\n" + PATCHER + "mid.svc.t = o\n",
+        },
+        ("use.py", "t"),
+        "reassigned",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    "e6-2-if": (
+        {
+            "mid.py": "import os\n\nif os.sep:\n    import svc\n",
+            "patch.py": "import mid\n" + PATCHER + "mid.svc.t = o\n",
+        },
+        ("use.py", "t"),
+        "reassigned",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    "e6-2-twice": (
+        {
+            "mid.py": "import svc\nimport svc\n",
+            "patch.py": "import mid\n" + PATCHER + "mid.svc.t = o\n",
+        },
+        ("use.py", "t"),
+        "reassigned",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    "e6-2-globals": (
+        {
+            "mid.py": "import svc\n\nG = globals()\n",
+            "patch.py": "import mid\n" + PATCHER + "mid.svc.t = o\n",
+        },
+        ("use.py", "t"),
+        "reassigned",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    "e6-2-whole-escape": (
+        {
+            "mid.py": "import os\n\nif os.sep:\n    import svc\n",
+            "patch.py": "import mid\n"
+            + PATCHER
+            + "def fix(m):\n    m.svc.t = o\n\n\nfix(mid)\n",
+        },
+        ("use.py", "t"),
+        "module-escape",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    "e6-2-star": (
+        {
+            "mid.py": "import os\n\nif os.sep:\n    import svc\n",
+            "patch.py": "from mid import *\n" + PATCHER + "svc.t = o\n",
+        },
+        ("use.py", "t"),
+        "module-escape",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    "e6-2-alias": (
+        {
+            "mid.py": "import os\n\nif os.sep:\n    import svc\n",
+            "patch.py": "from mid import svc as s\n" + PATCHER + "s.t = o\n",
+        },
+        ("use.py", "t"),
+        "reassigned",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    # E6-3 (A-2, B4): ``import a.b as m`` binds ``getattr(a, "b")``.
+    "e6-3-import-as-class": (
+        {
+            "a/__init__.py": "from . import b\nfrom .impl import Cfg as b\n",
+            "a/b.py": "def t():\n    return 1\n",
+            "a/impl.py": "class Cfg:\n    @staticmethod\n    def t():\n        return 3\n",
+            "use.py": "import a.b as m\n\n\ndef u():\n    return m.t()\n",
+        },
+        ("use.py", "m.t"),
+        "attr-submodule-conflict",
+        "import use; print(use.u())",
+        "3 (Cfg.t runs)",
+    ),
+    "e6-3-from-b-import-b": (
+        {
+            "a/__init__.py": "from .b import b\n",
+            "a/b.py": (
+                "def t():\n    return 1\n\n\nclass b:\n    @staticmethod\n"
+                "    def t():\n        return 3\n"
+            ),
+            "use.py": "import a.b as m\n\n\ndef u():\n    return m.t()\n",
+        },
+        ("use.py", "m.t"),
+        "attr-submodule-conflict",
+        "import use; print(use.u())",
+        "3 (class b's t runs)",
+    ),
+    "e6-3-rebound-to-another-module": (
+        {
+            "a/__init__.py": "from . import b\nimport other as b\n",
+            "a/b.py": "def t():\n    return 1\n",
+            "use.py": "import a.b as m\n\n\ndef u():\n    return m.t()\n",
+        },
+        ("use.py", "m.t"),
+        "attr-submodule-conflict",
+        "import use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    # E6-3 (A-3, B3): PEP 562 ``__getattr__`` answers before the submodule.
+    "e6-3-getattr-from-import": (
+        {
+            "pkg/__init__.py": (
+                "class _Fake:\n    @staticmethod\n    def t():\n        return 3\n\n\n"
+                "def __getattr__(name):\n    if name == 'sub':\n        return _Fake\n"
+                "    raise AttributeError(name)\n"
+            ),
+            "pkg/sub.py": "def t():\n    return 1\n",
+            "use.py": "from pkg import sub\n\n\ndef u():\n    return sub.t()\n",
+        },
+        ("use.py", "sub.t"),
+        "module-getattr",
+        "import use; print(use.u())",
+        "3 (_Fake.t runs)",
+    ),
+    "e6-3-getattr-chain": (
+        {
+            "pkg/__init__.py": (
+                "def __getattr__(name):\n    if name == 'sub':\n"
+                "        from . import _fast as mod\n        return mod\n"
+                "    raise AttributeError(name)\n"
+            ),
+            "pkg/sub.py": "def t():\n    return 1\n",
+            "pkg/_fast.py": "def t():\n    return 3\n",
+            "use.py": "import pkg\n\n\ndef u():\n    return pkg.sub.t()\n",
+        },
+        ("use.py", "pkg.sub.t"),
+        "module-getattr",
+        "import use; print(use.u())",
+        "3 (pkg/_fast.py's t runs)",
+    ),
+    "e6-3-getattr-import-as": (
+        {
+            "pkg/__init__.py": (
+                "def __getattr__(name):\n    if name == 'sub':\n"
+                "        from . import _fast as mod\n        return mod\n"
+                "    raise AttributeError(name)\n"
+            ),
+            "pkg/sub.py": "def t():\n    return 1\n",
+            "pkg/_fast.py": "def t():\n    return 3\n",
+            "use.py": "import pkg.sub as m\n\n\ndef u():\n    return m.t()\n",
+        },
+        ("use.py", "m.t"),
+        "module-getattr",
+        "import use; print(use.u())",
+        # Here ``IMPORT_NAME`` loads ``pkg.sub`` first, so CPython runs
+        # ``pkg/sub.py``'s ``t`` (prints 1); ruling E6-3 still fails every
+        # submodule access through a ``__getattr__`` package closed.
+        "1 (pkg/sub.py's t runs; closed by ruling E6-3, not a wrong edge)",
+    ),
+    # E6-4 (A-5): pytest's ``rootdir`` insertion of an ancestor directory.
+    "e6-4-pytest-basedir": (
+        {
+            "svc.py": SVC,
+            "tests/svc.py": "def t():\n    return 2\n",
+            "tests/unit/__init__.py": "",
+            "tests/unit/test_x.py": (
+                "from svc import t\n\n\ndef test_which():\n    return t()\n"
+            ),
+        },
+        ("tests/unit/test_x.py", "t"),
+        "script-dir-shadow",
+        "pytest -q tests/unit/test_x.py (prepend mode)",
+        "tests/svc.py's t runs (pytest inserts tests/)",
+    ),
+    # E6-6 (B-S2): a write through a chain rooted at the module.
+    "e6-6-code-write": (
+        {"patch.py": "import svc\n" + PATCHER + "svc.t.__code__ = o.__code__\n"},
+        ("use.py", "t"),
+        "reassigned",
+        "import patch, use; print(use.u())",
+        "2 (other.t's code runs)",
+    ),
+    # E6-5 (B-S1): a constant patch target naming a whole module.
+    "e6-5-patch-multiple": (
+        {
+            "patch.py": "from unittest import mock\n"
+            + PATCHER
+            + "mock.patch.multiple('svc', t=o).start()\n"
+        },
+        ("use.py", "t"),
+        "module-escape",
+        "import patch, use; print(use.u())",
+        "2 (other.t runs)",
+    ),
+    # S-1: a submodule whose name the collector skips for directories.
+    "s-1-skipped-name-submodule": (
+        {
+            "pkg/__init__.py": "def build():\n    return 1\n",
+            "pkg/build.py": "",
+            "loader.py": "import pkg.build\n",
+            "other.py": "def build():\n    return 2\n",
+            "use.py": "from pkg import build\n\n\ndef u():\n    return build()\n",
+        },
+        ("use.py", "build"),
+        "attr-submodule-conflict",
+        "import loader, use; print(use.u())",
+        "TypeError: 'module' object is not callable (pkg.build is the module)",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD2_BLOCKING))
+def test_fold2_blocking_cases_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    """#705 E6-1..E6-6 and S-1: each panel repro, whose CPython 3.14 run is
+    recorded in its ``runtime`` field (a function other than the one the
+    edge would name runs), keeps its off-mode edge in ``imports`` mode."""
+    extra, (file, reference), reason, _driver, _runtime = FOLD2_BLOCKING[case]
+    root = _write(tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, **extra})
+    off, structural, on, label = _run(root, file, reference)
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    assert label == f"none({reason})", case
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "e6-1-name-write",
+        "e6-2-try-except",
+        "e6-2-whole-escape",
+        "e6-2-star",
+        "e6-6-code-write",
+        "e6-5-patch-multiple",
+    ],
+)
+def test_fold2_written_module_loses_its_own_tier1_proof(
+    tmp_path: Path, case: str
+) -> None:
+    """The written module's own module-scope proof (``svc.py`` ``run`` ->
+    ``t``) fails closed too where ``svc.t`` is written (E6-2, E6-6); for
+    E6-1 the written module is ``use.py``, whose ``u`` -> ``t`` is a Tier 2
+    proof, so ``svc.py`` stays resolved."""
+    extra = FOLD2_BLOCKING[case][0]
+    root = _write(tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, **extra})
+    _off, structural, on, _label = _run(root, "svc.py", "t")
+    assert structural["resolution"] == "resolved"
+    if case == "e6-1-name-write":
+        assert on["resolution"] == "resolved"
+    else:
+        assert on["resolution"] == "ambiguous", case
+
+
+FOLD2_CONTROLS: dict[str, tuple[dict[str, str], tuple[str, str], str]] = {
+    # E6-3: a package binding its own submodule still resolves.
+    "own-submodule-import": (
+        {
+            "a/__init__.py": "from . import b\n",
+            "a/b.py": "def t():\n    return 1\n",
+            "use.py": "import a.b as m\n\n\ndef u():\n    return m.t()\n",
+        },
+        ("use.py", "m.t"),
+        "a/b.py",
+    ),
+    # E6-4: a production importer below the root only shadows its own dir.
+    "production-importer-below-root": (
+        {
+            "src/__init__.py": "",
+            "src/app/__init__.py": "",
+            "src/app/main.py": "from svc import t\n\n\ndef u():\n    return t()\n",
+            "src/svc.py": "def t():\n    return 2\n",
+        },
+        ("src/app/main.py", "t"),
+        "svc.py",
+    ),
+    # E6-7: plain reads of safe dunders are no escape.
+    "safe-dunder-reads": (
+        {
+            "w.py": (
+                "import svc\n\nINFO = (svc.__file__, svc.__name__, svc.__spec__, "
+                "svc.__doc__)\n"
+            )
+        },
+        ("use.py", "t"),
+        "svc.py",
+    ),
+    # E6-5: an HTTP client's ``.patch(url)`` is no patcher.
+    "http-patch-is-no-patcher": (
+        {"w.py": "import requests\n\n\ndef f(url):\n    return requests.patch(url)\n"},
+        ("use.py", "t"),
+        "svc.py",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD2_CONTROLS))
+def test_fold2_controls_still_resolve(tmp_path: Path, case: str) -> None:
+    extra, (file, reference), target = FOLD2_CONTROLS[case]
+    root = _write(tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, **extra})
+    _off, _structural, on, label = _run(root, file, reference)
+    assert on["resolution"] == "resolved", (case, label)
+    assert _target(on, root) == target
+
+
+def test_fold2_package_path_read_keeps_the_packages_own_proofs(
+    tmp_path: Path,
+) -> None:
+    """E6-7: a read of ``pkg.__path__`` is a ``module-system`` cause (Tier 2
+    off) but no escape: ``pkg/__init__.py``'s own Tier 1 proof stays."""
+    root = _write(
+        tmp_path,
+        {
+            "pkg/__init__.py": SVC,
+            **OTHER,
+            "w.py": "import pkg\n\nWHERE = list(pkg.__path__)\n",
+        },
+    )
+    _off, structural, on, _label = _run(root, "pkg/__init__.py", "t")
+    assert structural["resolution"] == "resolved"
+    assert on["resolution"] == "resolved"
+
+
+FOLD2_CAUSES: dict[str, tuple[dict[str, str], str, str]] = {
+    # E6-5 (A-6): computed patcher targets, scoped to test callers by O-2.
+    "computed-patch": (
+        {
+            "tests/test_b.py": (
+                "from unittest import mock\n\nNAME = 't'\n\n\ndef test_go():\n"
+                "    with mock.patch(f'svc.{NAME}', len):\n        pass\n"
+            )
+        },
+        "tests/calls.py",
+        "unresolvable-writer",
+    ),
+    "computed-monkeypatch": (
+        {
+            "tests/test_m.py": "def test_m(monkeypatch, n):\n    monkeypatch.setattr(n, len)\n"
+        },
+        "tests/calls.py",
+        "unresolvable-writer",
+    ),
+    "computed-patch-object": (
+        {
+            "tests/test_o.py": (
+                "from unittest import mock\nimport svc\n\n\ndef test_o(n):\n"
+                "    mock.patch.object(svc, n)\n"
+            )
+        },
+        "tests/calls.py",
+        "unresolvable-writer",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD2_CAUSES))
+def test_fold2_computed_patcher_targets_are_test_scoped_causes(
+    tmp_path: Path, case: str
+) -> None:
+    """E6-5 (A-6, CPython 3.14 under pytest: ``tests/calls.py`` ``go`` runs
+    ``other.t`` while patched): a computed target is an
+    ``unresolvable-writer`` for test callers; production callers keep their
+    proof (O-2)."""
+    extra, test_caller, cause = FOLD2_CAUSES[case]
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": USE,
+            **OTHER,
+            test_caller: "import svc\n\n\ndef go():\n    return svc.t()\n",
+            **extra,
+        },
+    )
+    off, _structural, on, label = _run(root, test_caller, "svc.t")
+    assert on == off
+    assert label == f"none(run-tainted:{cause})"
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import"
+
+
+def test_fold2_structural_facts_carry_no_tier2_tables(tmp_path: Path) -> None:
+    """E6-8: the Python module facts are computed only in ``imports`` mode;
+    ``structural`` facts carry empty tables (as on main), and an ``imports``
+    assembly fed facts without them fails closed (``unparsed-file``)."""
+    root = _write(tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER})
+    files = collect_source_files(root, None)
+    structural = [
+        extract_symbol_facts_for_file(path, root, None, call_resolution="structural")
+        for path in files
+    ]
+    imports = [
+        extract_symbol_facts_for_file(path, root, None, call_resolution=MODE)
+        for path in files
+    ]
+    for item in structural:
+        assert item["scope_facts"]["exports"] == {}
+        assert item["scope_facts"]["module_bindings"] == {}
+        assert valid_scope_facts(item["scope_facts"], item["language"])
+    assert all(item["scope_facts"]["module_bindings"] for item in imports)
+    for left, right in zip(structural, imports, strict=True):
+        assert left["scope_facts"]["bindings"] == right["scope_facts"]["bindings"]
+    run = py_modules.build_py_module_run(structural, False)
+    assert run.shutoff.get("unparsed-file")
+
+
+FOLD2_MUTATION_GAPS: dict[str, tuple[dict[str, str | bytes], str, str]] = {
+    # Panel B's surviving extra mutations (S3), each pinned here.
+    "string-module-object-names": (
+        {"w.py": "def f(o):\n    return getattr(o, '__globals__')\n"},
+        "t",
+        "run-tainted:module-object",
+    ),
+    "string-f-locals": (
+        {"w.py": "def f(fr):\n    return getattr(fr, 'f_locals')\n"},
+        "t",
+        "run-tainted:module-object",
+    ),
+    "main-string": ({"w.py": "WHO = '__main__'\n"}, "t", "run-tainted:module-object"),
+    "sys-dunder": (
+        {"w.py": "import sys\n\nD = sys.__dict__\n"},
+        "t",
+        "run-tainted:module-system",
+    ),
+    "pydoc-locate": (
+        {"w.py": "import pydoc\n\n\ndef f(n):\n    return pydoc.locate(n)\n"},
+        "t",
+        "run-tainted:dynamic-loader",
+    ),
+    "pydoc-importfile": (
+        {"w.py": "import pydoc\n\n\ndef f(p):\n    return pydoc.importfile(p)\n"},
+        "t",
+        "run-tainted:dynamic-loader",
+    ),
+    "pkgutil-get-loader": (
+        {"w.py": "import pkgutil\n\n\ndef f(n):\n    return pkgutil.get_loader(n)\n"},
+        "t",
+        "run-tainted:dynamic-loader",
+    ),
+    "logging-config-importer": (
+        {
+            "w.py": (
+                "import logging.config\n\n\ndef f(n):\n"
+                "    return logging.config._importer(n)\n"
+            )
+        },
+        "t",
+        "run-tainted:dynamic-loader",
+    ),
+    "resolver-identifier": (
+        {"w.py": "def f(g, x):\n    resolve_name = g\n    return resolve_name(x)\n"},
+        "t",
+        "run-tainted:dynamic-loader",
+    ),
+    "relative-import-module": (
+        {
+            "pkg/__init__.py": "",
+            "pkg/x.py": SVC,
+            "use.py": "from pkg.x import t\n\n\ndef u():\n    return t()\n",
+            "w.py": "import importlib\n\nM = importlib.import_module('.x', 'pkg')\n",
+        },
+        "t",
+        "module-escape",
+    ),
+    "dunder-import-head": (
+        {
+            "a/__init__.py": SVC,
+            "a/b.py": "",
+            "use.py": "from a import t\n\n\ndef u():\n    return t()\n",
+            "w.py": "A = __import__('a.b')\n",
+        },
+        "t",
+        "module-escape",
+    ),
+    "comparison-escape": (
+        {"w.py": "import svc\n\nSAME = svc == 1\n"},
+        "t",
+        "module-escape",
+    ),
+    "promotion-through-a-string": (
+        {
+            "app.py": "TARGET = 'tests.helpers.f'\n",
+            "tests/__init__.py": "",
+            "tests/helpers.py": "def f(s):\n    exec(s)\n",
+        },
+        "t",
+        "run-tainted:evaluator",
+    ),
+    "promotion-through-an-acquisition": (
+        {
+            "app.py": "import importlib\n\nH = importlib.import_module('tests.helpers')\n",
+            "tests/__init__.py": "",
+            "tests/helpers.py": "def f(s):\n    exec(s)\n",
+        },
+        "t",
+        "run-tainted:evaluator",
+    ),
+    "promotion-through-a-patch-target": (
+        {
+            # A one-component constant patcher target is a taint only (no
+            # import edge, no dotted string): ``patch.multiple`` imports
+            # ``test_helpers`` in production, so it is production.
+            "app.py": (
+                "from unittest import mock\n\n"
+                "P = mock.patch.multiple('test_helpers', f=len)\n"
+            ),
+            "test_helpers.py": "def f(s):\n    exec(s)\n",
+        },
+        "t",
+        "run-tainted:evaluator",
+    ),
+    "coding-second-line": (
+        {"w.py": b"#!/usr/bin/env python\n# coding: latin-1\nx = 1\n"},
+        "t",
+        "run-tainted:unparsed-file",
+    ),
+    "ctrl-z": ({"w.py": b"x = 1\n# \x1a\n"}, "t", "run-tainted:unparsed-file"),
+    "missing-name-of-a-dynamic-module": (
+        {
+            "svc.py": "G = globals()\n",
+            "a.py": SVC,
+            "b.py": "def t():\n    return 3\n",
+        },
+        "t",
+        "dynamic-scope",
+    ),
+    "submodule-of-a-dynamic-package": (
+        {
+            "pkg/__init__.py": "G = globals()\n",
+            "pkg/sub.py": SVC,
+            "use.py": "from pkg import sub\n\n\ndef u():\n    return sub.t()\n",
+        },
+        "sub.t",
+        "dynamic-scope",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD2_MUTATION_GAPS))
+def test_fold2_rules_each_have_a_failing_case(tmp_path: Path, case: str) -> None:
+    """Panel B's 20 surviving mutations (#705 S3): every rule they disabled
+    now has a case that changes when the rule is removed."""
+    extra, reference, label_reason = FOLD2_MUTATION_GAPS[case]
+    root = _write(tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, **extra})
+    off, _structural, on, label = _run(root, "use.py", reference)
+    assert on == off, case
+    assert label == f"none({label_reason})", case
+
+
+def test_fold2_python2_exec_statement_is_an_evaluator(tmp_path: Path) -> None:
+    """The Python 2 ``exec`` statement the grammar accepts is an evaluator,
+    or the file does not parse; either way Tier 2 is off."""
+    root = _write(
+        tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, "w.py": 'exec "x = 1"\n'}
+    )
+    off, _structural, on, label = _run(root, "use.py", "t")
+    assert on == off
+    assert label in (
+        "none(run-tainted:evaluator)",
+        "none(run-tainted:unparsed-file)",
+    )
+
+
+def test_fold2_init_definition_shadowed_by_a_submodule(tmp_path: Path) -> None:
+    """E6-1 (A-4), Tier 1 side: in ``imports`` mode a package ``__init__``'s
+    own proof of ``tool`` fails closed when ``pkg/tool.py`` exists, because
+    importing ``pkg.tool`` anywhere sets the package global ``tool`` to the
+    submodule (CPython 3.14: after ``import pkg.tool``, ``pkg.tool`` is the
+    module and ``pkg.run()`` raises ``TypeError``)."""
+    root = _write(
+        tmp_path,
+        {
+            "pkg/__init__.py": "def tool():\n    return 1\n\n\ndef run():\n    return tool()\n",
+            "pkg/tool.py": "",
+            "other.py": "def tool():\n    return 2\n",
+        },
+    )
+    off, structural, on, label = _run(root, "pkg/__init__.py", "tool")
+    assert structural["resolution"] == "resolved"
+    assert on == off
+    assert label == "none(attr-submodule-conflict)"

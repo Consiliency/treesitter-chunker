@@ -677,6 +677,7 @@ def extract_symbol_facts_for_file(
             suffix=file_path.suffix.lower(),
             path=display_file,
             symlink=_collected_through_symlink(file_path, root),
+            mode=call_resolution,
         )
     return facts
 
@@ -912,7 +913,13 @@ def extract_symbol_graph(
     JavaScript, TypeScript or TSX call bound by a relative ES import resolves
     to the one exported definition that proves it (``t2.import``,
     ``t2.namespace``); more than one file variant of the specifier leaves the
-    edge unchanged.
+    edge unchanged. A Python call bound by an import (``from m import t``,
+    ``m.t()``, ``pkg.mod.t()``) resolves when the module resolves from the
+    root to one file whose binding proves one definition; two or more imports
+    of the name narrow to their group. Other files' potential writes to a
+    module's globals make the written names unprovable, the module's own
+    ``"structural"`` proofs included, so Python ``"imports"`` can resolve
+    fewer calls than ``"structural"``.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"

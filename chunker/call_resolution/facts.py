@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"20"`` for the ``js`` family and ``"32"`` for
+Schema (fact version ``"20"`` for the ``js`` family and ``"33"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -197,6 +197,11 @@ logger = logging.getLogger(__name__)
 # or a from-import is relied on by name; a recorded write of it fails closed).
 # python "29": fold 27 (Codex 4657978945: an allow-listed read's result must
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
+# python "33": PR 6 fold 2 (#705 E6-1..E6-8): ``module_imports`` (every
+# import binding in the module namespace), patcher targets (computed ones a
+# cause, constant ones a whole-module taint), write chains taint their first
+# attribute, ``__path__``/``__spec__`` reads are safe, and the Tier 2 module
+# facts are computed only in ``imports`` mode (empty otherwise).
 # python "32": PR 6 fold 1 (#705 Q2): ``compile`` alone is no evaluator
 # cause; the fixtures' digests are unchanged, but a file that only compiles
 # source loses its ``evaluator`` shutoff.
@@ -207,7 +212,7 @@ logger = logging.getLogger(__name__)
 # run-wide causes and parse hazards (``module_bindings``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "32"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "33"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -255,8 +260,11 @@ TIER2_NONE_REASONS = (
     "run-tainted:module-object",
     "run-tainted:unparsed-file",
     "run-tainted:unresolvable-writer",
-    # Tier 2 Python (PR 6): a module another file may write wholly (#697).
+    # Tier 2 Python (PR 6): a module another file may write wholly (#697),
+    # and a package whose module ``__getattr__`` answers a submodule name
+    # (#705 E6-3).
     "module-escape",
+    "module-getattr",
     "hop-limit",
     "cycle",
     "script-dir-shadow",
@@ -330,8 +338,14 @@ def compute_scope_facts(
     suffix: str = "",
     path: str = "",
     symlink: bool = False,
+    mode: str | None = None,
 ) -> dict[str, Any]:
     """Re-parse ``source`` and return the file's scope facts.
+
+    ``mode`` is the run's ``call_resolution``. A Python file's Tier 2 module
+    facts (``exports``, ``module_bindings``) are computed only for
+    ``"imports"`` (or when no mode is given); other modes never read them
+    (#705 E6-8).
 
     ``symlink`` says the file was collected through a symbolic link; Tier 2
     never resolves an import from or into such a file (E5-5). A JS/TS file
@@ -389,6 +403,7 @@ def compute_scope_facts(
                 language,
                 call_facts,
                 path=path,
+                tier2=mode in (None, "imports"),
             )
         else:
             partial = analyzer(root, source, language, call_facts)
@@ -641,6 +656,8 @@ _PY_MODULE_BINDING_KEYS = frozenset(
         "missing",
         "groups",
         "chains",
+        "module_imports",
+        "own_submodules",
     }
 )
 _PY_USE_POSITIONS = frozenset({"write", "call", "value"})
@@ -695,6 +712,19 @@ def valid_py_module_bindings(value: object) -> bool:
         and all(
             _is_span_key(key) and _strings(items) and bool(items)
             for key, items in chains.items()
+        )
+        and _strings(value["own_submodules"])
+        and isinstance(value["module_imports"], dict)
+        and all(
+            isinstance(name, str)
+            and isinstance(items, list)
+            and bool(items)
+            and all(
+                isinstance(item, dict)
+                and all(isinstance(v, str) for v in item.values())
+                for item in items
+            )
+            for name, items in value["module_imports"].items()
         )
     )
 
@@ -754,10 +784,17 @@ def valid_scope_facts(value: object, language: str | None) -> bool:
         )
     ):
         return False
+    # A Python file's module facts exist only in ``imports``-mode records
+    # (#705 E6-8): both tables are empty, or both are well formed.
+    tier2_tables = bool(value["exports"]) or bool(value["module_bindings"])
     if language_family(language) == "python" and (
-        (supported and not valid_py_exports(value["exports"]))
-        or (supported and not valid_py_module_bindings(value["module_bindings"]))
-        or (not supported and (value["exports"] or value["module_bindings"]))
+        (supported and tier2_tables and not valid_py_exports(value["exports"]))
+        or (
+            supported
+            and tier2_tables
+            and not valid_py_module_bindings(value["module_bindings"])
+        )
+        or (not supported and tier2_tables)
     ):
         return False
     symbols = value["symbols"]

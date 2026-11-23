@@ -309,12 +309,14 @@ def proof(
     context: RunContext | None = None,
     member: str | None = None,
     span_key: str | None = None,
+    head: str | None = None,
 ) -> tuple[frozenset[str], Mapping[str, Any], tuple[str, ...]]:
     """``(P, final outcome, binding rule IDs)`` for one call (6.3).
 
     ``member`` is the property of a namespace member call (``ns.f()``);
     ``span_key`` the call's callee span key (Python import groups and member
-    chains are keyed by it).
+    chains are keyed by it); ``head`` the reference's first name, the
+    caller's own binding a Python Tier 2 proof starts from.
     """
     if outcome is None:
         return frozenset(), _none("no-binding-fact"), ()
@@ -351,6 +353,7 @@ def proof(
             context,
             context.py_modules,
             span_key if span_key is not None else _span_key(file_context, outcome),
+            head,
         )
     if (
         kind != "import"
@@ -394,13 +397,24 @@ def _python_proof(
     context: RunContext,
     run: py_modules.PyModuleRun,
     key: str | None,
+    head: str | None = None,
 ) -> tuple[frozenset[str], Mapping[str, Any], tuple[str, ...]]:
     """Tier 2 Python (9.4-9.6): an import binding, or a group of two or more
     imports (which narrows but resolves only when every member proves the
-    same definitions), followed by the call's member chain."""
+    same definitions), followed by the call's member chain. The caller's own
+    binding of ``head`` must hold what the import put there (#705 E6-1):
+    another file may write it, and a package's submodule import sets it."""
     py_file = run.files.get(file_context.path)
     if py_file is None:
         return frozenset(), outcome, ()
+    if outcome.get("outcome") == "import" or (key and key in py_file.groups):
+        reason = (
+            py_modules.own_binding_reason(run, file_context.path, head)
+            if head
+            else None
+        )
+        if reason is not None:
+            return frozenset(), _none(reason), ()
     chain = list(py_file.chains.get(key, ())) if key else []
     if outcome.get("outcome") == "import":
         bindings = [outcome.get("binding") or {}]
@@ -564,6 +578,7 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
             f"{relationship.get('callee_byte_start')}:"
             f"{relationship.get('callee_byte_end')}"
         ),
+        head=reference.partition(".")[0] or None,
     )
     after, rules = narrow(
         before,

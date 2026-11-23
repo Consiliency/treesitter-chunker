@@ -876,6 +876,9 @@ class _Analysis:
         # decided in (a group of imports there narrows in ``imports`` mode).
         self.attribute_targets: set[int] = set()
         self.decided: _Scope | None = None
+        # Module-scope writes made by submodule imports in ``__init__.py``,
+        # counted per name (#705 E6-3: a package's own submodule import).
+        self.submodule_writes: dict[str, int] = {}
         # Subscript targets (``x[k] = v``, ``del x[k]``), checked once the
         # namespace aliases are known (#695 fold 18).
         self.subscript_targets: list[Any] = []
@@ -1324,6 +1327,9 @@ class _Analysis:
             for index in range(1, len(path)):
                 if path[index - 1] in own:
                     self._module_write(path[index])
+                    self.submodule_writes[path[index]] = (
+                        self.submodule_writes.get(path[index], 0) + 1
+                    )
                     # In class code an import name may also be mangled.
                     for mangled in _mangled_names(node, path[index], self.source):
                         self._module_write(mangled)
@@ -3759,8 +3765,12 @@ def analyze(
     language: str,
     call_facts: Sequence[Mapping[str, Any]],
     path: str | None = None,
+    tier2: bool = True,
 ) -> dict[str, Any]:
     """Return partial scope facts: the goal and one outcome per call.
+
+    With ``tier2`` (``imports`` mode), also the Tier 2 module facts of
+    :mod:`.py_modules`; other modes never read them (#705 E6-8).
 
     ``path`` is the file's root-relative display path (:func:`module_path`).
     Without one (``None`` or ``""``) the own name is unknown, and module-scope
@@ -3794,7 +3804,7 @@ def analyze(
         key = f"{start}:{end}"
         outcome = analysis.lookup(head) if head is not None else _none("unbound")
         bindings[key] = outcome
-        if head is None:
+        if head is None or not tier2:
             continue
         group = py_modules.import_group(analysis, head, outcome)
         if group:
@@ -3803,6 +3813,8 @@ def analyze(
             chain = py_modules.member_chain(node, head, source)
             if chain is not None:
                 chains[key] = chain
+    if not tier2:
+        return {"goal": "module", "bindings": bindings}
     own = path or ""
     own_ref = py_modules.dotted_name(own)[0] if own.endswith(".py") else ""
     exports, module_bindings = py_modules.module_facts(
