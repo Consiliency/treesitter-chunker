@@ -1465,8 +1465,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "s4-patch-tier2-any-receiver",
         PYM,
         "        if node is not None and ps._is_patch_attribute(node, source):\n"
-        "            return True  # PY-10: any receiver\n",
-        "",
+        "            # PY-10: ``X.patch`` on any receiver",
+        "        if False:\n            # PY-10: ``X.patch`` on any receiver",
     ),
     (
         "s4-patch-tier2-call-receiver",
