@@ -282,7 +282,12 @@ with a base or keyword argument, and every lookup in a file that mentions
 `eval`, `compile`, `breakpoint()`, `cProfile`/`pdb`/`timeit`-style helpers,
 `pickle.loads`, `shelve`, `marshal`, `get_type_hints`, string annotations
 that call, `__annotations__` writes, `runpy` with `init_globals`, a loader's
-`get_code`); monkeypatching from other modules is not tracked.
+`get_code`) or walks the heap (`gc` other than its collector controls and
+counters, `get_referents`, `get_referrers` or `get_objects` anywhere). A
+`.patch` call on any receiver with a target that is not a constant string,
+`.patch` handed on, or `"patch"` naming a member by string makes the file's
+module-scope lookups prove nothing; monkeypatching from other modules is not
+tracked.
 
 With `"imports"`, everything `"structural"` does applies, and a JavaScript,
 TypeScript or TSX call whose callee a relative ES import binds (`import { t }`,
@@ -397,6 +402,11 @@ any module (`exec`, `eval`, `compile`, any of the string-code triggers
 above, a code object or closure such as `f.__code__` (reads included), a
 non-literal loader, other `importlib` uses, `runpy`, `sys.modules` other
 than a literal key, `sys.path` changes, `__globals__`, frame globals,
+any frame-locals spelling (`f_locals` reads included, `getargvalues`,
+`getgeneratorlocals`, `getcoroutinelocals`, `getasyncgenlocals`,
+`curframe_locals`), `locals` or `vars` as a value, an imported name or a
+constant string, a closure cell's `cell_contents` other than a read, heap
+walking with `gc`, a `.patch` call with a computed target on any receiver,
 `builtins`, `__main__`) or that tree-sitter and
 CPython may read differently turns Python Tier 2 off, scoped like the
 JavaScript causes (test files: `test_*.py`, `*_test.py`, `conftest.py`, or a

@@ -33,6 +33,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `f_locals`. Such a patcher can be handed out and patch a module from
   another file, so the run's Tier 2 proofs fail closed
   (treesitter-chunker#707).
+- Python call resolution now fails closed on four more routes that can make
+  a proven call run other code (treesitter-chunker#699):
+  - `gc` used other than through its collector controls and counters
+    (`collect`, `disable`, `get_count`, `set_debug`, `is_tracked`, ...),
+    or `get_referents`, `get_referrers` or `get_objects` spelled anywhere,
+    resolves no call in that file, function-local ones included, and is a
+    run-wide `module-object` cause in `imports` mode;
+  - `.patch` is a patcher on any receiver: `X.patch(...)` with a target that
+    is not a constant string, `X.patch` handed on, and a constant `"patch"`
+    naming a member by string (`getattr(X, "patch")`) fail closed, and in
+    `imports` mode are an `unresolvable-writer` cause. An HTTP client's
+    `client.patch(f"/items/{i}")` in a test file now costs that file's test
+    callers their proofs; `@router.patch("/items")` with a constant route is
+    unaffected;
+  - in `imports` mode, any spelling of a frame's `f_locals` (reads
+    included) or of the frame-locals proxies `getargvalues`,
+    `getgeneratorlocals`, `getcoroutinelocals`, `getasyncgenlocals` and
+    `curframe_locals`, `locals` or `vars` used as a value, an imported
+    name or a constant string, and a closure cell's `cell_contents` other
+    than a plain read are run-wide `module-object` causes, so a file that
+    reads another file's frame (`gi_frame`, `cr_frame`, `tb_frame`,
+    `inspect.trace()`) and applies a patcher found there shuts off Tier 2.
 
 ### Added
 

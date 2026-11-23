@@ -696,11 +696,53 @@ _PICKLE_SAFE = frozenset(
 )
 _RUNPY_RUNNERS = frozenset({"run_path", "run_module"})
 _RUNPY_KEYWORDS = frozenset({"run_name", "alter_sys"})
+# treesitter-chunker#699 PY-7 (ruling R-699-1 Q2, reversing the #695
+# re-check's "no trigger for ``gc``"): ``gc`` walks the heap, so
+# ``gc.get_referents(f)`` hands over a function's globals dict, code object
+# and closure cells, ``gc.get_referrers(x)`` the dicts and frames that hold
+# ``x``, ``gc.get_objects()`` every tracked object and ``gc.garbage`` what
+# ``DEBUG_SAVEALL`` keeps alive. Only the collector's controls and counters
+# are on the list; ``callbacks`` is off with them. Every member of ``gc`` on
+# CPython 3.14 is in exactly one of the two sets (pinned against ``dir(gc)``).
+_GC = "gc"
+_GC_SAFE = frozenset(
+    {
+        "collect",
+        "enable",
+        "disable",
+        "isenabled",
+        "freeze",
+        "unfreeze",
+        "get_freeze_count",
+        "get_count",
+        "get_threshold",
+        "set_threshold",
+        "get_stats",
+        "get_debug",
+        "set_debug",
+        "is_tracked",
+        "is_finalized",
+        "DEBUG_COLLECTABLE",
+        "DEBUG_LEAK",
+        "DEBUG_SAVEALL",
+        "DEBUG_STATS",
+        "DEBUG_UNCOLLECTABLE",
+    }
+)
+_GC_UNSAFE = frozenset(
+    {"get_referents", "get_referrers", "get_objects", "garbage", "callbacks"}
+)
+# The heap walkers count as tokens in every position (an identifier,
+# attribute, import or keyword name, or a constant-string component; the
+# R-724-1 token rule): ``from compat import get_referents``,
+# ``getattr(g, "get_referrers")``, ``attrgetter("gc.get_objects")``.
+_GC_WALKERS = frozenset({"get_referents", "get_referrers", "get_objects"})
 _CHECKED_MODULES: Mapping[str, frozenset[str]] = {
     "pickle": _PICKLE_SAFE,
     "_pickle": _PICKLE_SAFE,
     "timeit": frozenset({"default_timer"}),
     "runpy": _RUNPY_RUNNERS,
+    _GC: _GC_SAFE,
 }
 _RUNPY = "runpy"
 # An attribute named ``pickle`` on any receiver is the module
@@ -844,6 +886,13 @@ _ACQUIRED_MODULES = (
     | {_MARSHAL}
 )
 _DOTTED_SPLIT = re.compile(r"[.:]")
+# Components of a constant string for the token rules (R-724-1, R-707-1): a
+# dotted, ``:`` or bracket path (``"gc.get_objects"``, ``"d[f_locals]"``).
+_TOKEN_PARTS = re.compile(r"[.:\[\]]")
+# Words of a constant string, for the distinctive names whose every mention
+# counts (PY-6, PY-7, PY-9): any run of characters that is not part of an
+# identifier separates them (``"0.f_locals[p]"``, ``"{0.gi_frame.f_locals}"``).
+_TOKEN_WORDS = re.compile(r"[^A-Za-z0-9_]+")
 # A constant that is a dotted name (``.`` or ``:`` between identifiers).
 _DOTTED_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*")
 # Builtins that run source, build a code object or reach ``pdb``. A use is
@@ -1370,6 +1419,10 @@ class _Analysis:
         # scopes are complete (:meth:`_verify_string_code`).
         self.string_code: set[str] = set()
         self.code_objects = False
+        # treesitter-chunker#699 PY-7: a use of ``gc`` off its member list or
+        # a heap-walker token (Tier 1 fails closed file-wide; Tier 2 records
+        # a ``module-object`` cause, B-7).
+        self.heap_walk = False
         self.builtins_reach = False
         self.string_checks: list[tuple[str, Any]] = []
         self.checked_bindings: dict[str, list[Mapping[str, str]]] = {}
@@ -2267,6 +2320,8 @@ class _Analysis:
                 self._fire("name")
             if spellings & _CODE_OBJECT_NAMES:
                 self.code_objects = True
+            if spellings & _GC_WALKERS:
+                self.heap_walk = True  # PY-7, token level
             if _ANNOTATIONS in spellings and not self._attribute_read(ident):
                 self._fire("annotations")
             name = _text(ident, source)
@@ -2290,6 +2345,11 @@ class _Analysis:
                 elif name in _PICKLE_ATTRIBUTES:
                     if parent.id not in self.attribute_targets:
                         self.string_checks.append(("module:pickle", parent))
+                elif name == _GC:
+                    # ``timeit.gc``, ``trace.gc``, ``X.gc`` for any ``X``: the
+                    # module's member list applies (PY-7).
+                    if parent.id not in self.attribute_targets:
+                        self.string_checks.append(("module:gc", parent))
                 elif mock_file and name == "getattr":
                     getattr_attribute = True  # ``builtins.getattr``
                 if mock_file and name in _COMPUTED_GETTERS:
@@ -2402,13 +2462,13 @@ class _Analysis:
                 continue
             module, member = target
             if member is not None and member not in _CHECKED_MODULES[module]:
-                self._fire("checked")  # ``from pickle import loads``
+                self._fire_checked(module)  # ``from pickle import loads``
                 continue
             hidden = (
                 scope.kind == _CLASS or name in scope.globals or name in scope.nonlocals
             )
             if hidden and (member is None or module == _RUNPY):
-                self._fire("checked")  # ``class K: import pickle as pk``
+                self._fire_checked(module)  # ``class K: import pickle as pk``
                 continue
             found.setdefault(name, []).append(info)
         return found
@@ -2444,7 +2504,7 @@ class _Analysis:
         if module in _CHECKED_MODULES and any(
             child.type == "wildcard_import" for child in node.children
         ):
-            self._fire("checked")  # ``from pickle import *``
+            self._fire_checked(module)  # ``from pickle import *``
         for last, bound in _from_import_names(node, source):
             if tuple([*parts, *last.split(".")][:2]) in _STRING_CODE_PATHS:
                 self._fire("import")
@@ -2491,7 +2551,14 @@ class _Analysis:
         parts = set(_NAME_SEPARATORS.split(value))
         if parts & _CODE_OBJECT_NAMES:
             self.code_objects = True
+        if set(_TOKEN_WORDS.split(value)) & _GC_WALKERS:
+            # PY-7, token level: ``getattr(g, "get_referents")``,
+            # ``attrgetter("gc.get_objects")``.
+            self.heap_walk = True
         acquired = self._acquired(node)
+        if acquired and _GC in _ACQUIRED_PARTS.split(value):
+            # ``importlib.import_module("gc")``, ``sys.modules["gc"]``.
+            self.heap_walk = True
         if acquired and set(_ACQUIRED_PARTS.split(value)) & _ACQUIRED_MODULES:
             # Before the dotted-name gate (R-699-5, BLOCKING 2):
             # ``pkgutil.resolve_name("timeit:timeit\n")``,
@@ -2873,26 +2940,43 @@ class _Analysis:
             elif kind == "module:pickle":
                 if not self._safe_module_use(node, "pickle"):
                     self._fire("checked")
+            elif kind == "module:gc":
+                if not self._safe_module_use(node, _GC):
+                    self.heap_walk = True
             elif kind == "checked":
-                if not self._checked_use(node, checked):
-                    self._fire("checked")
+                failed = self._checked_violation(node, checked)
+                if failed is not None:
+                    self._fire_checked(failed)
         if computed_getter:
             self.dynamic = True
         if self.string_code:
             self.dynamic = True
             self.frame_locals = True
+        if self.heap_walk:
+            # PY-7: a heap walk reaches a function's globals dict, code
+            # object and closure cells, so function scopes fail closed too.
+            self.dynamic = True
+            self.frame_locals = True
 
-    def _checked_use(
+    def _fire_checked(self, module: str) -> None:
+        """A use of a checked module off its member list: string code for
+        ``pickle``, ``timeit`` and ``runpy``, a heap walk for ``gc``."""
+        if module == _GC:
+            self.heap_walk = True
+        else:
+            self._fire("checked")
+
+    def _checked_violation(
         self, ident: Any, checked: Mapping[str, list[Mapping[str, str]]]
-    ) -> bool:
-        """Whether a use of a name an import of a checked module binds is on
-        that module's allow-list, for every import binding the ordinary
-        lookup leaves possible."""
+    ) -> str | None:
+        """The checked module whose allow-list a use of a name an import of a
+        checked module binds is off, for some import binding the ordinary
+        lookup leaves possible, or ``None`` when every one allows it."""
         outcome = self._use_lookup(ident)
         if self._own_binding(outcome) and self._real_binding(
             self.use_decided, _text(ident, self.source)
         ):
-            return True
+            return None
         if outcome.get("outcome") == "import":
             binding = outcome.get("binding") or {}
             infos = [binding] if _checked_import(binding) is not None else []
@@ -2908,12 +2992,12 @@ class _Analysis:
             module, member = found
             if member is not None:
                 if module == _RUNPY and not self._plain_runpy_call(ident):
-                    return False
+                    return module
                 if member not in _CHECKED_MODULES[module]:
-                    return False
+                    return module
             elif not self._safe_module_use(ident, module):
-                return False
-        return True
+                return module
+        return None
 
     def _safe_module_use(self, node: Any, module: str) -> bool:
         """Whether an expression denoting a checked module reads a listed
@@ -4167,7 +4251,21 @@ class _Analysis:
         :meth:`_sensitive_rules`; ``X.mock`` counts for any ``X``. A constant
         ``"patch"`` or ``"mock"`` string in a file that imports the mock
         module fails closed (``getattr(mock, "patch")``,
-        ``getattr(unittest, "mock")``, ``mock.__dict__["patch"]``)."""
+        ``getattr(unittest, "mock")``, ``mock.__dict__["patch"]``).
+
+        treesitter-chunker#699 PY-10 (ruling R-699-1 Q6, in the E6-9b style):
+        ``.patch`` is a patcher on ANY receiver, since which value is the
+        mock module or a fixture cannot be proven (a parameter, a fixture
+        under another name, ``getattr(mocker, "patch")``). A direct call
+        ``X.patch(...)`` gets the W-3 semantics, so a computed target fails
+        closed and a constant one keeps the own-name rule
+        (``@router.patch("/items")`` stays inert); ``X.patch`` read any other
+        way (handed on, aliased, ``X.patch.__call__``) and a constant
+        ``"patch"`` naming a member by string (a call argument or subscript
+        key: ``getattr(X, "patch")``, ``methodcaller("patch", t)``,
+        ``vars(type(X))["patch"]``) fail closed, unless the mock rules
+        recognise ``X`` (its aliases are then checked use by use). Writing
+        ``X.patch = v`` reads no patcher."""
         if self.mock_imported and (self.patch_string_seen or self.mock_string_seen):
             self.dynamic = True
         for node in calls:
@@ -4178,6 +4276,8 @@ class _Analysis:
             kind = None
             if self._is_patch(function, mock_names, patch_names):
                 kind = "patch"
+            elif _is_patch_attribute(function, self.source):
+                kind = "patch"  # ``X.patch(...)`` for any ``X`` (PY-10)
             elif function.type == "attribute":
                 attribute = function.child_by_field_name("attribute")
                 method = _text(attribute, self.source) if attribute is not None else ""
@@ -4208,6 +4308,33 @@ class _Analysis:
                 and _callee_call(node) is None
             ):
                 self.dynamic = True
+            if (
+                attribute is not None
+                and _text(attribute, self.source) == "patch"
+                and node.id not in self.attribute_targets
+                and not _patch_applied(node, self.source)
+                and not self._sensitive(node, _PATCH)
+            ):
+                # ``p = X.patch`` for an ``X`` the mock rules do not recognise
+                # (PY-10); a recognised one is an alias whose every use the
+                # closed allow-list checks.
+                self.dynamic = True
+        for node in self._patch_name_strings():
+            self.dynamic = True  # ``getattr(X, "patch")`` (PY-10)
+            break
+
+    def _patch_name_strings(self) -> Iterator[Any]:
+        """Every constant ``"patch"`` that names a member by string
+        (:func:`py_modules._argument_string`: a call argument, positional or
+        a keyword value, or a subscript key), whole or as a dotted
+        component (``attrgetter("m.patch")``; PY-10)."""
+        stack = [self.root]
+        while stack:
+            node = stack.pop()
+            stack.extend(node.named_children)
+            value = py_modules._argument_string(node, self.source)
+            if value is not None and "patch" in _TOKEN_PARTS.split(value):
+                yield node
 
     def _is_patch(self, node: Any, mock_names: set[str], patch_names: set[str]) -> bool:
         """``patch`` from the mock module or a fixture, or an alias of it."""
@@ -5249,6 +5376,30 @@ def _has_attribute_target(target: Any) -> bool:
             return True
         stack.extend(current.named_children)
     return False
+
+
+def _patch_applied(node: Any, source: bytes) -> bool:
+    """Whether ``X.patch`` (``node``) is applied where it is read: called
+    directly, or the receiver of a directly called ``.object``, ``.dict`` or
+    ``.multiple`` (through parentheses)."""
+    if _callee_call(node) is not None:
+        return True
+    outer = node
+    while outer.parent is not None and outer.parent.type == "parenthesized_expression":
+        outer = outer.parent
+    parent = outer.parent
+    if (
+        parent is None
+        or parent.type != "attribute"
+        or not _same(outer, parent.child_by_field_name("object"))
+    ):
+        return False
+    method = parent.child_by_field_name("attribute")
+    return (
+        method is not None
+        and _text(method, source) in _PATCH_METHODS
+        and _callee_call(parent) is not None
+    )
 
 
 def _is_patch_attribute(node: Any, source: bytes) -> bool:

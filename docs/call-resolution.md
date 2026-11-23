@@ -52,9 +52,9 @@ invalidate proofs for just that module or a specific name.
 | `evaluator` | Running code with Python `exec` or JavaScript `new Function`, or loading Node's `vm`, `repl` or `inspector` modules. |
 | `dynamic-loader` | Loading a path chosen at runtime, such as `require(path)` or Python `import_module(name)`. In JS/TS, replacing the CommonJS `require` counts too, including through a destructuring write such as `[require] = [f]`, because the replacement receives every later import's specifier. |
 | `module-system` | Changing how modules are found or cached, such as changing Python's `sys.path` or using Node's module machinery to change the module cache. In JS/TS, any mention of Node's `process` counts too, because `process.binding`, `process.mainModule` and a search of its keys reach the loader. A few safe uses of the global are exempt, such as reading `process.env` or `process.argv`. A default or namespace alias from a static import of `process` that is used the same way is exempt as well, unless the alias is itself named `process`: `import process from "node:process"` counts, while `import proc from "node:process"` can be exempt. Loading `process` through a `require` call always counts. |
-| `module-object` | Exposing a writable namespace, such as accessing a Python function's `__globals__` or handing the CommonJS `module` object to a helper. |
+| `module-object` | Exposing a writable namespace, such as accessing a Python function's `__globals__`, reading a frame's `f_locals`, walking the heap with `gc`, or handing the CommonJS `module` object to a helper. |
 | `unparsed-file` | A collected file that the analyzer cannot read or parse safely. |
-| `unresolvable-writer` | A patch or export write whose target cannot be located. |
+| `unresolvable-writer` | A patch or export write whose target cannot be located. In Python this includes a `.patch` call on any receiver with a computed target, so an HTTP client's `client.patch(f"/items/{i}")` counts too. |
 
 ### Test scoping
 
@@ -84,9 +84,6 @@ outside those rules.
 
 | Route | Example | Tracked in |
 | --- | --- | --- |
-| Python patch calls on other receivers | A `.patch` call can replace a target even when the receiver is a parameter with a name the tool does not recognize. | [treesitter-chunker#699](https://github.com/Consiliency/treesitter-chunker/issues/699) |
-| Python heap walking | Code can use `gc.get_referents`, `gc.get_referrers` or `gc.get_objects` to find a namespace, code object or closure cell. | [treesitter-chunker#699](https://github.com/Consiliency/treesitter-chunker/issues/699) |
-| Python closure cells and frames across files | Another file can rewrite a closure cell used by an import proof, read its caller's frame locals, or receive a frame or a re-exported `locals` or `vars` function. Frame access can also come through `sys.settrace` or `sys.breakpointhook` installed by another module. | [treesitter-chunker#699](https://github.com/Consiliency/treesitter-chunker/issues/699) |
 | Python imports exposed through a namespace | Passing `globals()` or `locals()` to a helper can let it reach and modify an imported module. | [treesitter-chunker#724](https://github.com/Consiliency/treesitter-chunker/issues/724) |
 | Python helpers that return imported modules | Returning an import already counts as exposing it to other code. More precise tracking is planned for which module a helper returns and how the caller uses it. | [treesitter-chunker#706](https://github.com/Consiliency/treesitter-chunker/issues/706) |
 
