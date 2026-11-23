@@ -44,12 +44,11 @@ RESIDUALS = ("c02-", "c05-", "c06-")
 # module name held in a binding (g05, the c06 family), a second instance of
 # the getter's module loaded by spec (g09; twin t03), the caller's frame
 # through a generator or a traceback read in a file that does not import the
-# module (i03r, j23r; the c02 family), and a module from a function-local
-# ``import`` held in a closure cell (t01; with an unused getter in the tree,
-# i01t). The twins are wrong on main too. Since the re-stack on #726's
-# R-724-1 token rule, i02t, i03, j23 and t02 are ambiguous: their reader
-# spells ``getclosurevars`` or ``f_locals`` and imports ``svc``, which it
-# then hands out; i03r and j23r keep the frame route pinned.
+# module (i03r, j23r; the c02 family). The twins are wrong on main too.
+# Since the re-stack on #726's R-724-1 token rule, i03 and j23 are ambiguous:
+# their reader spells ``f_locals`` and imports ``svc``, which it then hands
+# out; i03r and j23r keep the frame route pinned. The closure-cell twins of a
+# function-local ``import`` (t01, t02, i01t, i02t) are closed by R-706-3.
 RESIDUAL_TREES = frozenset(
     {
         *(
@@ -58,8 +57,6 @@ RESIDUAL_TREES = frozenset(
                 "g05-import-module-const-name",
                 "g09-find-spec-loader",
                 "t03-spec-loader-twin",
-                "t01-closure-local-import-twin",
-                "i01t-closure-cell-main-twin",
             )
         ),
         "review3:i03r-gen-frame-helper-reader",
@@ -117,9 +114,10 @@ def _replaced(printed: str) -> bool:
 @pytest.mark.parametrize("case", sorted(CASES))
 def test_review_trees(tmp_path: Path, case: str) -> None:
     """The plan battery (118 trees), the plan reviews' attack trees,
-    Sol's slice-1 repros and the R-706-2 trees: CPython prints what was
-    recorded, the probe edge resolves exactly as recorded, and no replaced
-    function's edge resolves outside the named residuals. The battery
+    Sol's slice-1 repros, the R-706-2 trees and the R-706-3 (review3)
+    trees: CPython prints what was recorded, the probe edge resolves exactly
+    as recorded, and no replaced function's edge resolves outside the named
+    residuals. The battery
     controls (a01-a24 but a12 and a20) resolve: a rule that always escapes
     fails here."""
     probe, printed, expected, files = CASES[case]
@@ -196,6 +194,33 @@ NAMED_BLOCKERS = (
         )
     ),
     *sorted(name for name in CASES if name.startswith("review2:gen-")),
+    # R-706-3: a function-local import binding read from a nested scope (a
+    # closure, lambda, comprehension or class body), written through the
+    # cell from another module, with or without a getter in the tree, and
+    # whatever the reader imports.
+    *(
+        f"review2:{name}"
+        for name in (
+            "t01-closure-local-import-twin",
+            "t02-getclosurevars-local-import-twin",
+            "i01t-closure-cell-main-twin",
+            "i02t-getclosurevars-main-twin",
+        )
+    ),
+    *(
+        f"review3:{name}"
+        for name in (
+            "t01r-closure-local-import-helper-reader",
+            "t02r-getclosurevars-local-import-helper-reader",
+            "t05-lambda-local-import",
+            "t06-comprehension-local-import",
+            "t07-from-import-submodule-closure",
+            "t08-dotted-local-import-closure",
+            "t09-class-body-local-import",
+            "t12-conditional-local-import-closure",
+            "t13-local-import-reassigned-closure",
+        )
+    ),
 )
 
 

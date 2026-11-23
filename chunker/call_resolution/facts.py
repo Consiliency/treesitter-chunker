@@ -209,8 +209,11 @@ logger = logging.getLogger(__name__)
 # what a module-level function may return), ``ref`` records for its returns,
 # and result records (``result-<p>``/``own-<p>``) for every use of a call
 # that may invoke one, followed through member calls and function-local
-# aliases; H1 gates getters and aliases in files that reach their
-# namespace. Only ``imports``-mode facts change.
+# aliases; H1 (#724's token check plus a constant-key frame read,
+# ``frame_locals`` and a route to the builtins) gates getters and aliases in
+# files that reach their namespace. R-706-3: a read of a function-local
+# import from a nested scope records a ``value`` use. Only ``imports``-mode
+# facts change.
 # python "39": treesitter-chunker#724, R-724-1: a file in which any token
 # spells a namespace-reaching name (``globals``, ``f_globals``,
 # ``__import__``, ``builtins``, ``__spec__``, ...; any role, any constant

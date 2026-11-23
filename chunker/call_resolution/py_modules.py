@@ -61,8 +61,10 @@ package ``__init__.py`` hands out its submodules too
 whose object is provably not the file's namespace (R-724-2:
 ``exec(code, mod.__dict__)`` and ``spec.loader.exec_module(mod)`` on a
 fresh module local, ``__import__`` of a constant foreign module; see
-:func:`_not_own_namespace`).
-A module returned by a *tracked getter* (a plain module-level ``def`` in a
+:func:`_not_own_namespace`). A read of a function-local import binding from
+a nested scope is an escape too: a closure cell is reachable from another
+module (R-706-3, :func:`_nested_import_read`). A module returned by a
+*tracked getter* (a plain module-level ``def`` in a
 file that passes H1, :func:`_introspects`) is no escape: its uses are
 followed through the call result, member calls and function-local aliases
 (a read from a nested scope is an escape: a closure cell is reachable from
@@ -851,9 +853,15 @@ def _scan_uses(
     """Record every use of an imported name (#697): writes, and the reads
     that may escape a module object or reach a dunder. A tracked getter's
     own return of an import-rooted chain (#706) is recorded in
-    ``facts.getters`` and as a ``ref`` record instead of a ``value`` use."""
+    ``facts.getters`` and as a ``ref`` record instead of a ``value`` use. A
+    read of a function-local import binding from a nested scope is a
+    ``value`` use (:func:`_nested_import_read`)."""
     from . import py_scope as ps
 
+    local_imports: dict[str, list[Any]] = {}
+    for scope, name, binding in analysis.events:
+        if binding.cls == ps.IMPORT and scope.kind == ps._FUNCTION:
+            local_imports.setdefault(name, []).append(scope)
     for ident in analysis.identifier_nodes:
         if (
             ps._name_part(ident)
@@ -864,6 +872,10 @@ def _scan_uses(
             continue
         infos = _candidates(analysis, ident, import_infos)
         if not infos:
+            continue
+        if local_imports and _nested_import_read(analysis, ident, local_imports):
+            for info in infos:
+                facts.uses.add(_record(info, "value", ()))
             continue
         position = _classify_use(analysis, ident)
         if position is None:
@@ -890,6 +902,44 @@ def _scan_uses(
             continue
         for info in infos:
             facts.uses.add(_record(info, kind, chain))
+
+
+def _nested_import_read(
+    analysis: Any, ident: Any, local_imports: Mapping[str, Sequence[Any]]
+) -> bool:
+    """Executive ruling R-706-3: whether ``ident`` may read a function-local
+    import binding from a scope nested in that function (a closure, lambda,
+    comprehension or class body, or a method in one). The capture puts the
+    module in a cell another module can read and write
+    (``fn.__closure__[i].cell_contents``,
+    ``inspect.getclosurevars(fn).nonlocals``), so the read hands the module
+    out, as for a getter-result alias (R-706-2 B1).
+
+    When the lookup proves an import binding, the scope it decides in must be
+    a function other than the read's innermost scope. Otherwise any function
+    that imports a spelling of the name and encloses the read counts.
+    ``local_imports`` maps each name to the function scopes that import it."""
+    from . import py_scope as ps
+
+    holders = [
+        scope
+        for name in ps._spellings(ident, analysis.source)
+        for scope in local_imports.get(name, ())
+    ]
+    if not holders:
+        return False
+    chain = list(analysis._chain(ident))
+    if not chain:
+        return False
+    outcome = analysis.lookup(ident)
+    if outcome.get("outcome") == "import":
+        decided = analysis.decided
+        return bool(
+            decided is not None
+            and decided.kind == ps._FUNCTION
+            and decided is not chain[0]
+        )
+    return any(scope is not chain[0] and scope in chain for scope in holders)
 
 
 def _dotted(info: Mapping[str, str]) -> list[str] | None:

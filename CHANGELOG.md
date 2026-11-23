@@ -186,7 +186,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   count as writes or escapes), including member calls on it and local
   aliases; a local alias read from a nested function, lambda or
   comprehension is an escape, since another module can write through the
-  closure cell (treesitter-chunker#706). On the `spec` repository this recovers 734
+  closure cell (treesitter-chunker#706). For the same reason, a read of a
+  function-local `import` from a nested function, lambda, comprehension or
+  class body is now an escape of that module too (executive ruling
+  R-706-3). On the `spec` repository this recovers 734
   of 947 lost resolutions; a module-scope alias (`x = mod.sub`) is still an
   escape (treesitter-chunker#725). The Python fact version moves to 40.
 - Symbol graph extraction orders source files by case-sensitive path components

@@ -1165,6 +1165,32 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "    if not paths:\n        return False\n    path = sorted(paths)[-1]",
     ),
     # treesitter-chunker#706 slice 1: tracked getters and call results.
+    # Executive ruling R-706-3: a function-local import read from a nested
+    # scope is an escape.
+    (
+        "nested-import-read",
+        PYM,
+        "        if local_imports and _nested_import_read(analysis, ident, local_imports):",
+        "        if False and _nested_import_read(analysis, ident, local_imports):",
+    ),
+    (
+        "nested-import-fallback",
+        PYM,
+        "    return any(scope is not chain[0] and scope in chain for scope in holders)",
+        "    return False",
+    ),
+    (
+        "nested-import-own-scope",
+        PYM,
+        "            and decided.kind == ps._FUNCTION\n            and decided is not chain[0]\n",
+        "            and decided.kind == ps._FUNCTION\n",
+    ),
+    (
+        "nested-import-function-kind",
+        PYM,
+        "            decided is not None\n            and decided.kind == ps._FUNCTION\n",
+        "            decided is not None\n",
+    ),
     (
         "getter-decorated",
         PYM,
@@ -1372,6 +1398,9 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     # registry, a rebinding) with no wrong edge, only correct gains. The
     # conditional restriction is a conservative choice no soundness test
     # separates.
+    # Not run for R-706-3: the fallback's ``scope in chain`` conjunct only
+    # keeps a read precise when an unrelated function imports the name and
+    # the lookup cannot tell; dropping it adds escapes, never removes one.
     # H1's ``analysis.frame_locals`` clause (a file that may write a
     # function's locals) is equivalent since the re-stack on R-724-1: every
     # name that sets it and reaches a getter or a result alias (``f_locals``,
