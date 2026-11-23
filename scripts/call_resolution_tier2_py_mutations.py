@@ -407,8 +407,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "e6-5-computed-monkeypatch",
         PYM,
-        "            if string_form and constant is None:",
-        "            if False:",
+        "        if constant is None:\n            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)\n        else:\n            facts.taints.add",
+        "        if False:\n            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)\n        else:\n            facts.taints.add",
     ),
     (
         "e6-5-whole-module-patch-target",
@@ -440,16 +440,6 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         PYM,
         "        if node is not None and analysis._sensitive(node, ps._PATCH):",
         "        if False:",
-    ),
-    (
-        "e6-9-mp-receiver",
-        PYM,
-        '            last in ("setattr", "delattr")\n'
-        "            and receiver is not None\n"
-        "            and patchers.kind(receiver) == _INSTANCE",
-        '            last in ("setattr", "delattr")\n'
-        "            and receiver is not None\n"
-        "            and False",
     ),
     (
         "p6-3-computed-method-target",
@@ -486,27 +476,15 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     ),
     # Fold 4 (#705 E6-9: P6-5, P6-6, P6-7).
     (
-        "e6-9-mp-import-alias",
-        PYM,
-        "                            self.classes.update(ps._spellings(bound, self.source))",
-        "                            pass",
-    ),
-    (
         "e6-9-mp-alias-fixpoint",
         PYM,
-        "                if name not in self.names[kind]:",
+        "                if name not in self.mockers:",
         "                if False:",
-    ),
-    (
-        "e6-9-getfixturevalue-instance",
-        PYM,
-        "            if value == _MP_FIXTURE:\n                return _INSTANCE\n",
-        "",
     ),
     (
         "e6-9-getfixturevalue-mocker",
         PYM,
-        "    mockers = _MOCKER_NAMES | patchers.names[_FIXTURE_MOCKER]",
+        "    mockers = _MOCKER_NAMES | patchers.mockers",
         "    mockers = _MOCKER_NAMES",
     ),
     (
@@ -522,36 +500,17 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "            if False:",
     ),
     (
-        "p6-5-monkeypatch-escapes",
+        "p6-5-fixture-mocker-escapes",
         PYM,
-        "        if patcher is not None and not patchers.safe_use(node, patcher):",
-        "        if False:",
-    ),
-    (
-        "e6-9-mp-method-allow-list",
-        PYM,
-        '            return name in _MP_METHODS if kind == _INSTANCE else name == "context"',
-        "            return False",
-    ),
-    (
-        "e6-9-annotation-allowed",
-        PYM,
-        '        if above is not None and above.type == "type":',
+        "        if patchers.kind(node) is not None and not analysis._safe_use(node, ps._MOCKER):",
         "        if False:",
     ),
     # Fold 5 (#705 P6-10..P6-15; E6-9a).
     (
         "p6-10-syspath-prepend",
         PYM,
-        "            # ``SHADOW.t`` (``f4_mp_syspath_prepend``).\n"
-        "            facts.shutoff.add(CAUSE_MODULE_SYSTEM)",
-        "            # ``SHADOW.t`` (``f4_mp_syspath_prepend``).\n            pass",
-    ),
-    (
-        "p6-11-unreachable-alias-only",
-        PYM,
-        'return target.type == "identifier" and not self.analysis._reachable_binding(',
-        'return target.type == "identifier" or self.analysis._reachable_binding(',
+        "        if method == _SYSPATH_METHOD:\n            facts.shutoff.add(CAUSE_MODULE_SYSTEM)\n            continue",
+        "        if method == _SYSPATH_METHOD:\n            continue",
     ),
     (
         "p6-12-getfixturevalue-attribute",
@@ -562,8 +521,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "p6-15-getfixturevalue-string",
         PYM,
-        '            elif node.type == "string" and (',
-        "            elif False and (",
+        "            elif _argument_string(node, self.source) == _GETFIXTUREVALUE:",
+        "            elif False:",
     ),
     (
         "p6-13-every-file",
@@ -572,23 +531,48 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "    if not analysis.dynamic:\n"
         "        _scan_patcher_escapes(analysis, facts, patchers)\n    hazard",
     ),
+    # Fold 6 (#705 E6-9b: MonkeyPatch methods on any receiver).
     (
-        "p6-14-annotation-chain",
+        "e6-9b-receiver-kind",
         PYM,
-        "        while above is not None and above.type in _ANNOTATION_PARTS:",
-        '        while above is not None and above.type not in ("type", "block", "module"):',
+        "        if _operator_module(analysis, receiver):\n            continue",
+        '        if ps._text(receiver, source) != "monkeypatch":\n            continue',
     ),
     (
-        "e6-9-fixture-parameter-seed",
+        "e6-9b-method-name-string",
         PYM,
-        "                        self.names[_INSTANCE].add(_MP_FIXTURE)",
-        "                        pass",
+        "        if name in _WRITE_METHODS:\n            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)",
+        "        if False:\n            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)",
     ),
     (
-        "e6-9-fixture-not-by-spelling",
+        "e6-9b-syspath-name-string",
         PYM,
-        "            _INSTANCE: set(),",
-        "            _INSTANCE: {_MP_FIXTURE},",
+        "        elif name == _SYSPATH_METHOD:",
+        "        elif False:",
+    ),
+    (
+        "e6-9b-method-reference",
+        PYM,
+        "        if call is None:\n            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)",
+        "        if call is None:\n            pass",
+    ),
+    (
+        "e6-9b-second-argument",
+        PYM,
+        "        if ps._constant_string(positional[1], source) is None:",
+        "        if False:",
+    ),
+    (
+        "e6-9b-keyword-target",
+        PYM,
+        "                and ps._text(key, source) in _MP_FIXTURE_ARGUMENTS",
+        "                and False",
+    ),
+    (
+        "e6-9b-splat",
+        PYM,
+        '        if argument.type in ("list_splat", "dictionary_splat"):',
+        "        if False:",
     ),
     (
         "e6-6-first-attribute-write",

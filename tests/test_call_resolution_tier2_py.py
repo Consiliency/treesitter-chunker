@@ -2523,9 +2523,10 @@ def test_fold5_plain_getfixturevalue_constant_is_no_cause(tmp_path: Path) -> Non
 
 
 def test_fold5_a_local_named_monkeypatch_is_no_fixture(tmp_path: Path) -> None:
-    """E6-9 seeds the fixture from a parameter named ``monkeypatch``; an
-    ordinary local of that spelling (this tool's own ``monkeypatch = ...``
-    flag, read in an ``elif``) is no patcher and records no cause."""
+    """An ordinary local spelled ``monkeypatch`` (this tool's own
+    ``monkeypatch = ...`` flag, read in an ``elif``) records no cause: fold 5
+    seeded the fixture from a parameter only, and since fold 6 (E6-9b) only
+    the MonkeyPatch methods themselves are matched."""
     root = _write(
         tmp_path,
         {
@@ -2539,3 +2540,303 @@ def test_fold5_a_local_named_monkeypatch_is_no_fixture(tmp_path: Path) -> None:
     facts, _graph, _context_ = _context(root)
     (item,) = [item for item in facts if item["path"] == "flags.py"]
     assert item["scope_facts"]["module_bindings"]["shutoff"] == []
+
+
+# ---------------------------------------------------------------------------
+# Fold 6 (#705 P6-17, P6-18; executive ruling E6-9b): the president's ``f5_*``
+# trees, verbatim apart from ``svc.py``/``other.py``/``tests/calls.py`` (as in
+# ``_SVC_OTHER``), and five spellings of the method name itself. ``runtime``
+# is what pytest 8.4.1 printed on CPython 3.14.10 (``python -B -E -s -m
+# pytest -q -s -p no:cacheprovider --rootdir=. tests``); in every tree fold 5
+# resolved ``tests/calls.py``'s ``svc.t`` to ``svc.py`` while ``other.t`` ran.
+
+_F5_HEAD = 'import calls\nfrom other import t as _evil\nNAME = "t"\n'
+FOLD6_BLOCKING: dict[str, tuple[dict[str, str], str]] = {
+    # P6-17: pytest delivery routes.
+    "f5_usefix_funcargs": (
+        {
+            "tests/test_b.py": "import calls\nimport pytest\nfrom other import t as _evil\n"
+            'NAME = "t"\n@pytest.mark.usefixtures("monkeypatch")\n'
+            "def test_go(request):\n"
+            '    mp = request.node.funcargs["monkeypatch"]\n'
+            '    mp.setattr(f"svc.{NAME}", _evil)\n    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f5_autouse_funcargs": (
+        {
+            "tests/conftest.py": "import pytest\n@pytest.fixture(autouse=True)\n"
+            "def _iso(monkeypatch):\n    pass\n",
+            "tests/test_b.py": _F5_HEAD + "def test_go(request):\n"
+            '    request.node.funcargs["monkeypatch"].setattr(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n',
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f5_hook_fixture_setup": (
+        {
+            "tests/conftest.py": "import pytest\nfrom other import t as _evil\n"
+            'NAME = "t"\n@pytest.hookimpl(wrapper=True)\n'
+            "def pytest_fixture_setup(fixturedef, request):\n    value = yield\n"
+            '    if fixturedef.argname == "monkeypatch":\n'
+            '        value.setattr(f"svc.{NAME}", _evil)\n    return value\n',
+            "tests/test_b.py": "import calls\nimport pytest\n"
+            '@pytest.mark.usefixtures("monkeypatch")\n'
+            'def test_go():\n    print("RAN", calls.go())\n',
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    # P6-17: introspection.
+    "f5_closure_cell": (
+        {
+            "tests/helpers_mp.py": "import pytest\ndef make():\n    mp = None\n"
+            "    def init():\n        nonlocal mp\n        mp = pytest.MonkeyPatch()\n"
+            "    init()\n    return init\n",
+            "tests/test_b.py": "import calls\nfrom helpers_mp import make\n"
+            'from other import t as _evil\nNAME = "t"\ndef test_go():\n'
+            '    make().__closure__[0].cell_contents.setattr(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n',
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f5_frame_locals": (
+        {
+            "tests/helpers_mp.py": "import pytest, sys\ndef make():\n"
+            "    mp = pytest.MonkeyPatch()\n    return sys._getframe()\n",
+            "tests/test_b.py": "import calls\nfrom helpers_mp import make\n"
+            'from other import t as _evil\nNAME = "t"\ndef test_go():\n'
+            '    make().f_locals["mp"].setattr(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n',
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f5_frame_walk": (
+        {
+            "tests/helpers_x.py": "import sys\nfrom other import t as _evil\n"
+            'NAME = "t"\ndef poke():\n'
+            '    sys._getframe(1).f_locals["monkeypatch"].setattr(f"svc.{NAME}", _evil)\n',
+            "tests/test_b.py": "import calls\nfrom helpers_x import poke\n"
+            'def test_go(monkeypatch):\n    poke()\n    print("RAN", calls.go())\n',
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f5_locals_dict": (
+        {
+            "tests/test_b.py": _F5_HEAD + "def helper(d):\n"
+            '    d["monkeypatch"].setattr(f"svc.{NAME}", _evil)\n'
+            "def test_go(monkeypatch):\n    helper(locals())\n"
+            '    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f5_hints_locals": (
+        {
+            "tests/test_b.py": "import calls, typing\nfrom other import t as _evil\n"
+            'NAME = "t"\ndef helper(mp):\n    mp.setattr(f"svc.{NAME}", _evil)\n'
+            "    return int\ndef test_go(monkeypatch):\n"
+            '    def inner(a: "helper(monkeypatch)"): pass\n'
+            "    typing.get_type_hints(inner, localns=locals())\n"
+            '    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    # P6-18: string spellings of ``getfixturevalue``; each ends in a
+    # spelled ``mp.setattr(...)``.
+    "f5_str_var": (
+        {
+            "tests/test_b.py": _F5_HEAD + 'FN = "getfixturevalue"\n'
+            "def test_go(request):\n"
+            '    mp = getattr(request, FN)("monkeypatch")\n'
+            '    mp.setattr(f"svc.{NAME}", _evil)\n    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f5_str_tuple": (
+        {
+            "tests/test_b.py": _F5_HEAD + "def test_go(request):\n"
+            '    for n in ("getfixturevalue",):\n'
+            '        mp = getattr(request, n)("monkeypatch")\n'
+            '    mp.setattr(f"svc.{NAME}", _evil)\n    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f5_str_concat": (
+        {
+            "tests/test_b.py": _F5_HEAD + "def test_go(request):\n"
+            '    mp = getattr(request, "getfixture" + "value")("monkeypatch")\n'
+            '    mp.setattr(f"svc.{NAME}", _evil)\n    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f5_str_subscript2": (
+        {
+            "tests/test_b.py": _F5_HEAD + "def test_go(request):\n"
+            '    mp = type(request).__mro__[1].__dict__["getfixturevalue"](request, "monkeypatch")\n'
+            '    mp.setattr(f"svc.{NAME}", _evil)\n    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    # E6-9b: the method name without a direct call on a receiver.
+    "f6_getattr_setattr": (
+        {
+            "tests/test_b.py": _F5_HEAD + "def test_go(monkeypatch):\n"
+            '    getattr(monkeypatch, "setattr")(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f6_methodcaller": (
+        {
+            "tests/test_b.py": "import operator\n"
+            + _F5_HEAD
+            + "def test_go(monkeypatch):\n"
+            '    operator.methodcaller("setattr", f"svc.{NAME}", _evil)(monkeypatch)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f6_method_reference": (
+        {
+            "tests/test_b.py": _F5_HEAD + "def test_go(monkeypatch):\n"
+            "    s = monkeypatch.setattr\n"
+            '    s(f"svc.{NAME}", _evil)\n    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f6_unbound_class": (
+        {
+            "tests/test_b.py": "import pytest\n"
+            + _F5_HEAD
+            + "def test_go(monkeypatch):\n"
+            '    pytest.MonkeyPatch.setattr(monkeypatch, f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f6_keyword_target": (
+        {
+            "tests/test_b.py": _F5_HEAD + "def test_go(monkeypatch):\n"
+            '    monkeypatch.setattr(target=f"svc.{NAME}", name=_evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f6_splat": (
+        {
+            "tests/test_b.py": _F5_HEAD + "def test_go(monkeypatch):\n"
+            '    ARGS = (f"svc.{NAME}", _evil)\n'
+            "    monkeypatch.setattr(*ARGS)\n"
+            '    print("RAN", calls.go())\n'
+        },
+        "RAN OTHER.t / 1 passed",
+    ),
+    # A pytest-mock fixture fetched by name and handed on: its ``.patch`` runs
+    # where no rule sees it (pytest-mock is not installed in the measuring
+    # venv; this row records the rule).
+    "getfixturevalue-mocker-escape": (
+        {
+            "tests/test_b.py": _F5_HEAD + "def helper(m):\n"
+            '    m.patch(f"svc.{NAME}", _evil)\n'
+            "def test_go(request):\n"
+            '    helper(request.getfixturevalue("mocker"))\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "(pytest-mock: mocker.patch is unittest.mock.patch)",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD6_BLOCKING))
+def test_fold6_monkeypatch_methods_on_any_receiver(tmp_path: Path, case: str) -> None:
+    """#705 E6-9b. A ``MonkeyPatch`` reaches a write with no seed spelled:
+    ``request.node.funcargs["monkeypatch"]`` (with ``usefixtures`` or an
+    autouse fixture), a ``pytest_fixture_setup`` hook's ``value``, a closure
+    cell, a frame's ``f_locals`` (its own or a caller's), ``locals()`` and
+    ``get_type_hints(localns=locals())`` evaluating a string annotation
+    (P6-17); and ``getfixturevalue`` through a variable, a loop, a
+    concatenation or the class ``__dict__`` (P6-18). Every route ends in a
+    spelled ``.setattr(...)``, or in the method name as a string
+    (``getattr(mp, "setattr")``, ``methodcaller("setattr", ...)``), a method
+    reference, the unbound ``MonkeyPatch.setattr(mp, ...)`` or a ``target=``
+    keyword. pytest printed ``RAN OTHER.t`` in every tree. The method is now
+    matched on any receiver: test callers get ``unresolvable-writer``."""
+    files, _runtime = FOLD6_BLOCKING[case]
+    root = _write(tmp_path, {**_SVC_OTHER, **files})
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on == off, case
+    assert label == "none(run-tainted:unresolvable-writer)", case
+
+
+FOLD6_CONTROLS: dict[str, tuple[str, str | None]] = {
+    # ``operator.setitem`` keeps its treatment: the namespace dict is a
+    # whole-module escape of ``svc`` (no cause).
+    "operator-setitem": (
+        "import operator\nimport svc\nfrom other import t as _evil\n"
+        "def f():\n    operator.setitem(svc.__dict__, 't', _evil)\n",
+        "module-escape",
+    ),
+    # The builtin ``setattr`` is a bare call: a named write of ``svc.t``.
+    "builtin-setattr": (
+        "import svc\nfrom other import t as _evil\n"
+        "def f():\n    setattr(svc, 't', _evil)\n",
+        "reassigned",
+    ),
+    # Constant string and object forms on any receiver keep exact taints.
+    "constant-string-form": (
+        "from other import t as _evil\n"
+        "def f(anything):\n    anything.setattr('svc.t', _evil)\n",
+        "reassigned",
+    ),
+    "object-form-constant-name": (
+        "import svc\nfrom other import t as _evil\n"
+        "def f(anything):\n    anything.setattr(svc, 't', _evil)\n",
+        "module-escape",
+    ),
+    # ``setitem``/``delitem`` on a plain dict add nothing.
+    "setitem-on-a-dict": (
+        "def f(anything, d):\n    anything.setitem(d, 'k', 1)\n    anything.delitem(d, 'k')\n",
+        None,
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD6_CONTROLS))
+def test_fold6_controls_keep_their_treatment(tmp_path: Path, case: str) -> None:
+    """E6-9b controls: ``operator.setitem`` (excluded by the Tier 1 lookup),
+    the builtin ``setattr`` and constant targets keep their exact taints and
+    record no cause; ``setitem`` on a plain mapping records nothing."""
+    writer, reason = FOLD6_CONTROLS[case]
+    root = _write(tmp_path, {**_SVC_OTHER, "use.py": USE, "w.py": writer})
+    facts, _graph, _context_ = _context(root)
+    (item,) = [item for item in facts if item["path"] == "w.py"]
+    assert item["scope_facts"]["module_bindings"]["shutoff"] == [], case
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    if reason is None:
+        assert on["resolution"] == "resolved" and label == "import", case
+    else:
+        assert label == f"none({reason})", case
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "    request.node.funcargs['monkeypatch'].syspath_prepend('shadow')\n",
+        "    getattr(request.node.funcargs['monkeypatch'], 'syspath_prepend')('shadow')\n",
+    ],
+)
+def test_fold6_syspath_prepend_on_any_receiver(tmp_path: Path, line: str) -> None:
+    """E6-9b, P6-10 on any receiver: ``request.node.funcargs["monkeypatch"]
+    .syspath_prepend(p)``, also by name through ``getattr``, is a
+    ``module-system`` cause, scoped by O-2."""
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "use.py": USE,
+            "tests/test_b.py": "def test_go(request):\n" + line,
+        },
+    )
+    _off, _structural, _on, label = _run(root, "tests/calls.py", "svc.t")
+    assert label == "none(run-tainted:module-system)"
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import"

@@ -479,6 +479,7 @@ def module_facts(
     _scan_causes(analysis, facts, import_infos, own_ref)
     patchers = _Patchers(analysis)
     _scan_patchers(analysis, facts, patchers)
+    _scan_patch_methods(analysis, facts)
     _scan_patcher_escapes(analysis, facts, patchers)
     hazard = parse_hazard(source, analysis.root)
     module_bindings = {
@@ -1221,106 +1222,52 @@ def _callee_names(call: Any, source: bytes) -> list[str] | None:
     return list(reversed(names))
 
 
-# #705 E6-9: pytest's ``MonkeyPatch`` as a patcher kind beside Tier 1's mock
-# module, ``patch`` and ``mocker`` (E-21). Its closed allow-list of uses: the
-# methods below called on an instance, ``MonkeyPatch()`` and
-# ``MonkeyPatch.context()`` called on the class, a binding position, an
-# annotation, and an alias binding (assignment, walrus, ``with ... as``).
-_MP_METHODS = frozenset(
-    {
-        "setattr",
-        "delattr",
-        "setitem",
-        "delitem",
-        "setenv",
-        "delenv",
-        "syspath_prepend",
-        "chdir",
-        "undo",
-        "context",
-    }
-)
-_MP_FIXTURE = "monkeypatch"
-_MP_CLASS = "MonkeyPatch"
-_MP_MODULES = (["pytest"], ["_pytest", "monkeypatch"])
+# #705 E6-9b: the methods of pytest's ``MonkeyPatch`` that can redirect a
+# name or an import, matched by name on ANY receiver. Proving which receiver
+# is a MonkeyPatch cannot be done (pytest hands it out through
+# ``request.node.funcargs``, autouse fixtures, ``pytest_fixture_setup`` hooks,
+# closure cells, frames and ``locals()``; P6-17), but every route ends in a
+# spelled method call or a spelled method name.
+_WRITE_METHODS = frozenset({"setattr", "delattr"})
+_SYSPATH_METHOD = "syspath_prepend"
+# ``setitem``/``delitem`` take the mapping as a value, which the #697 use
+# rules already classify (``vars(svc)``, ``svc.__dict__``, ``sys.modules``,
+# ``f_globals``), so their name adds nothing.
+_PATCH_METHOD_NAMES = _WRITE_METHODS | {"setitem", "delitem", _SYSPATH_METHOD}
+_MP_FIXTURE_ARGUMENTS = frozenset({"target", "name"})
 _GETFIXTUREVALUE = "getfixturevalue"
-_CLASS, _INSTANCE, _FIXTURE_MOCKER = "class", "instance", "mocker"
-_PARAMETER_LISTS = frozenset({"parameters", "lambda_parameters"})
-
-
-def _parameter_name(parameter: Any) -> Any:
-    """The name node of one parameter (plain, typed, defaulted), or
-    ``None``."""
-    if parameter.type == "identifier":
-        return parameter
-    if parameter.type in ("default_parameter", "typed_default_parameter"):
-        return parameter.child_by_field_name("name")
-    if parameter.type == "typed_parameter" and parameter.named_children:
-        first = parameter.named_children[0]
-        return first if first.type == "identifier" else None
-    return None
-
-
-# P6-14: the nodes an annotation may pass through between ``type`` and a
-# patcher: no call, no argument list.
-_ANNOTATION_PARTS = frozenset(
-    {
-        "attribute",
-        "subscript",
-        "generic_type",
-        "type_parameter",
-        "parenthesized_expression",
-        "binary_operator",
-    }
-)
+_FIXTURE_MOCKER = "mocker"
 
 
 class _Patchers:
-    """The pytest patcher values of one file (#705 E6-9, P6-6, P6-7).
+    """The pytest-mock fixtures one file obtains by name (#705 P6-7, P6-12,
+    P6-15): ``request.getfixturevalue('<pytest-mock fixture>')`` yields a
+    fixture whose ``.patch`` is ``patch``; it and every name bound from it by
+    assignment, walrus or ``with ... as`` is a *mocker* value, whose uses
+    Tier 1's ``_MOCKER`` allow-list decides. A ``getfixturevalue`` call with a
+    computed name, an ``X.getfixturevalue`` attribute that is not called
+    directly and the constant ``"getfixturevalue"`` as a call argument may
+    fetch any fixture (``computed_fixture``).
 
-    A ``MonkeyPatch`` *class* is any name a ``from pytest import
-    MonkeyPatch`` or ``from _pytest.monkeypatch import MonkeyPatch`` binds (in
-    any alias), the bare name ``MonkeyPatch`` and any ``X.MonkeyPatch``
-    attribute (so every alias of either module). An *instance* is the
-    ``monkeypatch`` fixture, a call of the class, an ``X.context()`` call on
-    either, ``request.getfixturevalue("monkeypatch")``, and, to a fixpoint,
-    every name bound from one by assignment, walrus or ``with ... as``. A
-    ``getfixturevalue`` of a pytest-mock fixture name yields a *mocker*,
-    whose uses Tier 1's ``_MOCKER`` allow-list decides. No spelling is matched
-    by substring (fold 3's ``monkeypatch`` substring rule is gone)."""
+    Fold 6 (E6-9b) removed the ``MonkeyPatch`` instance and class kinds of
+    folds 3-5 (the ``monkeypatch`` parameter seed, ``MonkeyPatch`` imports,
+    ``MonkeyPatch()``/``.context()``, their alias fixpoint, the
+    ``MonkeyPatch`` allow-list with its unreachable-alias and annotation
+    rules): :func:`_scan_patch_methods` matches the methods themselves."""
 
     def __init__(self, analysis: Any) -> None:
         from . import py_scope as ps
 
         self.analysis = analysis
         self.source = analysis.source
-        self.classes: set[str] = {_MP_CLASS}
-        self.names: dict[str, set[str]] = {
-            _INSTANCE: set(),
-            _CLASS: self.classes,
-            _FIXTURE_MOCKER: set(),
-        }
+        self.mockers: set[str] = set()
         self.computed_fixture = False
         pairs: list[tuple[Any, Any]] = []
         stack = [analysis.root]
         while stack:
             node = stack.pop()
             stack.extend(node.named_children)
-            if node.type in _PARAMETER_LISTS:
-                # The fixture is injected as a parameter named
-                # ``monkeypatch`` (E6-9); another binding of that spelling
-                # is an ordinary name.
-                for parameter in node.named_children:
-                    name = _parameter_name(parameter)
-                    if name is not None and ps._text(name, self.source) == _MP_FIXTURE:
-                        self.names[_INSTANCE].add(_MP_FIXTURE)
-            if node.type == "import_from_statement":
-                dots, parts = ps._module_parts(node, self.source)
-                if not dots and parts in _MP_MODULES:
-                    for last, bound in ps._from_import_names(node, self.source):
-                        if last == _MP_CLASS:
-                            self.classes.update(ps._spellings(bound, self.source))
-            elif node.type == "assignment":
+            if node.type == "assignment":
                 pairs.append(
                     (
                         node.child_by_field_name("left"),
@@ -1342,14 +1289,10 @@ class _Patchers:
                 if first is None or ps._constant_string(first, self.source) is None:
                     self.computed_fixture = True
             elif node.type == "attribute" and self._fixture_attribute(node):
-                # P6-12: ``g = request.getfixturevalue; g("monkeypatch")``.
+                # P6-12: ``g = request.getfixturevalue; g("mocker")``.
                 self.computed_fixture = True
-            elif node.type == "string" and (
-                node.parent is not None
-                and node.parent.type == "argument_list"
-                and ps._constant_string(node, self.source) == _GETFIXTUREVALUE
-            ):
-                # P6-15: ``getattr(request, "getfixturevalue")("monkeypatch")``
+            elif _argument_string(node, self.source) == _GETFIXTUREVALUE:
+                # P6-15: ``getattr(request, "getfixturevalue")("mocker")``
                 # (any call taking the name: ``getattr``, ``attrgetter``,
                 # ``methodcaller``); a plain constant names nothing.
                 self.computed_fixture = True
@@ -1357,10 +1300,7 @@ class _Patchers:
         while changed:
             changed = False
             for target, value in pairs:
-                if target is None or value is None:
-                    continue
-                kind = self.kind(value)
-                if kind is None:
+                if target is None or value is None or self.kind(value) is None:
                     continue
                 target = ps._unwrap(target, skip_comments=True)
                 if target.type == "as_pattern_target" and target.named_children:
@@ -1368,8 +1308,8 @@ class _Patchers:
                 if target.type != "identifier":
                     continue
                 name = ps._text(target, self.source)
-                if name not in self.names[kind]:
-                    self.names[kind].add(name)
+                if name not in self.mockers:
+                    self.mockers.add(name)
                     changed = True
 
     def _fixture_attribute(self, node: Any) -> bool:
@@ -1398,136 +1338,172 @@ class _Patchers:
         )
 
     def kind(self, node: Any) -> str | None:
-        """The patcher kind a value has, or ``None``."""
+        """``_FIXTURE_MOCKER`` for a pytest-mock fixture value, else
+        ``None``."""
         from . import py_scope as ps
 
         node = ps._unwrap(node, skip_comments=True)
         if node.type == "identifier":
-            name = ps._text(node, self.source)
-            for kind in (_INSTANCE, _CLASS, _FIXTURE_MOCKER):
-                if name in self.names[kind]:
-                    return kind
-            return None
-        if node.type == "attribute":
-            attribute = node.child_by_field_name("attribute")
-            if attribute is not None and ps._text(attribute, self.source) == _MP_CLASS:
-                return _CLASS
-            return None
-        if node.type != "call":
-            return None
-        function = node.child_by_field_name("function")
-        function = ps._unwrap(function, skip_comments=True) if function else None
-        if function is None:
-            return None
-        if self.kind(function) == _CLASS:
-            return _INSTANCE  # ``MonkeyPatch()``
-        if function.type != "attribute":
-            return None
-        attribute = function.child_by_field_name("attribute")
-        receiver = function.child_by_field_name("object")
-        name = ps._text(attribute, self.source) if attribute is not None else ""
-        if name == "context" and receiver is not None:
-            if self.kind(receiver) in (_CLASS, _INSTANCE):
-                return _INSTANCE  # ``MonkeyPatch.context()``, ``mp.context()``
-        if name == _GETFIXTUREVALUE:
+            return (
+                _FIXTURE_MOCKER if ps._text(node, self.source) in self.mockers else None
+            )
+        if node.type == "call" and self._fixture_call(node):
             first = _first_argument(node)
             value = ps._constant_string(first, self.source) if first else None
-            if value == _MP_FIXTURE:
-                return _INSTANCE
             if value in _MOCKER_NAMES:
                 return _FIXTURE_MOCKER
         return None
 
-    def _local_alias(self, target: Any) -> bool:
-        """P6-11: an alias binding is safe only where Tier 1's is: one name
-        no computed read reaches (a function local, not a module or class
-        global and not ``global``-declared). Another file can import a
-        module-level ``MP = pytest.MonkeyPatch()`` and patch through it
-        (the president's ``f4_mp_global_cross``/``f4_mp_global_attr`` ran
-        ``OTHER.t`` under pytest)."""
-        from . import py_scope as ps
 
-        if target is None:
-            return False
-        target = ps._unwrap(target, skip_comments=True)
-        if target.type == "as_pattern_target" and target.named_children:
-            target = target.named_children[0]
-        return target.type == "identifier" and not self.analysis._reachable_binding(
-            target
-        )
+def _argument_string(node: Any, source: bytes) -> str | None:
+    """A constant string passed directly as a call argument, or ``None``."""
+    from . import py_scope as ps
 
-    def safe_use(self, node: Any, kind: str) -> bool:
-        """Whether a patcher value's use is on the closed allow-list."""
-        from . import py_scope as ps
+    if node.type != "string" or node.parent is None:
+        return None
+    if node.parent.type != "argument_list":
+        return None
+    return ps._constant_string(node, source)
 
-        if kind == _FIXTURE_MOCKER:
-            return bool(self.analysis._safe_use(node, ps._MOCKER))
-        if node.type == "identifier" and ps._binding_position(node):
-            return True
-        above = node.parent
-        while above is not None and above.type in _ANNOTATION_PARTS:
-            above = above.parent
-        if above is not None and above.type == "type":
-            # ``monkeypatch: pytest.MonkeyPatch``, ``list[MonkeyPatch]``. P6-14:
-            # no call or argument list may sit in between (``a:
-            # helper(monkeypatch)`` runs ``helper`` when evaluated).
-            return True
-        current, parent = node, node.parent
-        while parent is not None and parent.type == "parenthesized_expression":
-            current, parent = parent, parent.parent
-        if parent is None:
-            return False
-        if parent.type == "assignment":
-            if not ps._same(current, parent.child_by_field_name("right")):
-                return False
-            return self._local_alias(parent.child_by_field_name("left"))
-        if parent.type == "named_expression":
-            if not ps._same(current, parent.child_by_field_name("value")):
-                return False
-            return self._local_alias(parent.child_by_field_name("name"))
-        if parent.type == "as_pattern":
-            # ``with mp.context() as m``: ``m`` is an alias.
-            return self._local_alias(parent.child_by_field_name("alias"))
-        if parent.type == "with_item":
-            return True  # ``with mp.context():`` binds nothing
-        if parent.type == "attribute" and ps._same(
-            current, parent.child_by_field_name("object")
-        ):
-            attribute = parent.child_by_field_name("attribute")
-            name = ps._text(attribute, self.source) if attribute is not None else ""
-            if ps._callee_call(parent) is None:
-                return False
-            return name in _MP_METHODS if kind == _INSTANCE else name == "context"
-        if parent.type == "call" and ps._same(
-            current, parent.child_by_field_name("function")
-        ):
-            return kind == _CLASS
+
+def _operator_module(analysis: Any, receiver: Any) -> bool:
+    """Whether the ordinary Tier 1 lookup resolves a receiver to the
+    ``operator`` module (``operator.setitem`` is a namespace writer Tier 1
+    already handles; E6-9b)."""
+    from . import py_scope as ps
+
+    receiver = ps._unwrap(receiver, skip_comments=True)
+    if receiver.type != "identifier":
         return False
+    outcome = analysis.lookup(receiver)
+    binding = outcome.get("binding") or {}
+    return (
+        outcome.get("outcome") == "import"
+        and binding.get("form") == "import"
+        and binding.get("module") == "operator"
+    )
+
+
+def _scan_patch_methods(analysis: Any, facts: _Facts) -> None:
+    """#705 E6-9b: in every Python file (causes O-2-scoped by the file's own
+    classification), ``X.setattr``, ``X.delattr``, ``X.setitem``,
+    ``X.delitem`` and ``X.syspath_prepend`` are handled as calls on a pytest
+    ``MonkeyPatch``, whatever ``X`` is (a name, subscript, call or
+    attribute), unless Tier 1 resolves ``X`` to the ``operator`` module.
+
+    - ``setattr``/``delattr``: the string form (``setattr("m.t", v)``, two
+      positional arguments; ``delattr("m.t")``, one) with a constant target
+      taints the module it names wholly; with any other target it is an
+      ``unresolvable-writer``. With more positional arguments (the object
+      form ``setattr(obj, "name", v)``, or an unbound
+      ``MonkeyPatch.setattr(mp, "m.t", v)``), the second one must be a
+      constant: a computed name is an ``unresolvable-writer``, a constant
+      one is the dotted-string rule's or the object's escape (``svc`` as an
+      argument is a whole-module escape). A ``target=``/``name=`` keyword
+      must be constant, and a ``*``/``**`` splat is an
+      ``unresolvable-writer``.
+    - ``syspath_prepend`` is ``sys.path.insert(0, p)`` plus
+      ``importlib.invalidate_caches()``: a ``module-system`` cause (P6-10).
+    - ``setitem``/``delitem``: no cause of their own (see
+      ``_PATCH_METHOD_NAMES``).
+    - The same names reached without a direct call (``s = mp.setattr``) or as
+      a constant call argument (``getattr(mp, "setattr")``,
+      ``operator.methodcaller("setattr", ...)``) are an
+      ``unresolvable-writer``, or ``module-system`` for ``syspath_prepend``.
+
+    pytest ran ``OTHER.t`` for each of the president's P6-17 trees (the
+    MonkeyPatch obtained through ``request.node.funcargs`` with
+    ``usefixtures`` or an autouse fixture, a ``pytest_fixture_setup`` hook, a
+    closure cell, a frame's ``f_locals``, a caller's frame, ``locals()`` and
+    ``get_type_hints(localns=locals())``), and for the P6-18 string spellings
+    of ``getfixturevalue``: each ends in a spelled ``.setattr(...)``."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    stack = [analysis.root]
+    while stack:
+        node = stack.pop()
+        stack.extend(node.named_children)
+        name = _argument_string(node, source)
+        if name in _WRITE_METHODS:
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+        elif name == _SYSPATH_METHOD:
+            facts.shutoff.add(CAUSE_MODULE_SYSTEM)
+        if node.type != "attribute":
+            continue
+        attribute = node.child_by_field_name("attribute")
+        receiver = node.child_by_field_name("object")
+        method = ps._text(attribute, source) if attribute is not None else ""
+        if method not in _PATCH_METHOD_NAMES or receiver is None:
+            continue
+        if _operator_module(analysis, receiver):
+            continue
+        call = ps._callee_call(node)
+        if method == _SYSPATH_METHOD:
+            facts.shutoff.add(CAUSE_MODULE_SYSTEM)
+            continue
+        if method not in _WRITE_METHODS:
+            continue
+        if call is None:
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            continue
+        _patch_method_call(call, method, facts, source)
+
+
+def _patch_method_call(call: Any, method: str, facts: _Facts, source: bytes) -> None:
+    """One ``X.setattr(...)``/``X.delattr(...)`` call (:func:`_scan_patch_methods`)."""
+    from . import py_scope as ps
+
+    arguments = ps._call_arguments(call)
+    positional: list[Any] = []
+    for argument in arguments:
+        if argument.type in ("list_splat", "dictionary_splat"):
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
+        if argument.type == "keyword_argument":
+            key = argument.child_by_field_name("name")
+            value = argument.child_by_field_name("value")
+            if (
+                key is not None
+                and ps._text(key, source) in _MP_FIXTURE_ARGUMENTS
+                and (value is None or ps._constant_string(value, source) is None)
+            ):
+                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+                return
+            continue
+        if argument.type != "comment":
+            positional.append(argument)
+    string_form = 2 if method == "setattr" else 1
+    if len(positional) == string_form:
+        constant = ps._constant_string(positional[0], source)
+        if constant is None:
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+        else:
+            facts.taints.add((constant.replace(":", "."), "*"))
+    elif len(positional) > string_form:
+        if ps._constant_string(positional[1], source) is None:
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
 
 
 def _scan_patcher_escapes(analysis: Any, facts: _Facts, patchers: _Patchers) -> None:
     """#705 E6-9 (P6-5), amended by E6-9a (P6-13): in every Python file, a
-    patcher value (Tier 1's
-    mock module, ``patch`` and ``mocker`` kinds, decided by Tier 1's alias sets
-    and its E-21 closed allow-list :meth:`.py_scope._Analysis._safe_use`, and
-    :class:`_Patchers`' ``MonkeyPatch`` and fixture kinds) used anywhere off
-    its allow-list is an ``unresolvable-writer`` cause, scoped by O-2: the
-    call that applies it is out of sight. pytest ran ``OTHER.t`` for each
-    of the president's trees: ``run(patch)`` (``f3_patch_as_arg``),
-    ``@deco(mock.patch)`` (``f3_patch_decorator_arg``), ``[mock.patch]``
-    (``f3_patch_list_escape``), ``functools.partial(patch, ...)``
-    (``f3_patch_partial``) and ``helper(monkeypatch)`` (``f3_mp_param``). So
-    is a ``getfixturevalue`` call with a computed fixture name (P6-7), an
-    ``X.getfixturevalue`` attribute that is not called directly (P6-12) and
-    the constant string ``"getfixturevalue"`` (P6-15).
+    patcher value (Tier 1's mock module, ``patch`` and ``mocker`` kinds,
+    decided by Tier 1's alias sets and its E-21 closed allow-list
+    :meth:`.py_scope._Analysis._safe_use`, and a pytest-mock fixture obtained
+    by name, :class:`_Patchers`) used anywhere off its allow-list is an
+    ``unresolvable-writer`` cause, scoped by O-2: the call that applies it is
+    out of sight. pytest ran ``OTHER.t`` for each of the president's trees:
+    ``run(patch)`` (``f3_patch_as_arg``), ``@deco(mock.patch)``
+    (``f3_patch_decorator_arg``), ``[mock.patch]`` (``f3_patch_list_escape``)
+    and ``functools.partial(patch, ...)`` (``f3_patch_partial``). So is any
+    computed fixture lookup (:class:`_Patchers`).
 
     E6-9a (P6-13): production files are scanned too. Tier 1's E-21 makes the
     hand-off file dynamic for its own lookups, but the hidden write still
-    reaches another module: production ``main.py`` ran ``OTHER.t`` after
-    ``app.py`` did ``run(patch)``, ``helper(pytest.MonkeyPatch())`` or
-    ``[pytest.MonkeyPatch()][0].setattr(...)`` (``f4_prod_patch_param``,
-    ``f4_prod_mp_param``, ``f4_prod_mp_list``). The cause is scoped by O-2
-    through the file's own classification."""
+    reaches another module (``f4_prod_patch_param``). The cause is scoped by
+    O-2 through the file's own classification. MonkeyPatch values need no
+    escape rule since fold 6: :func:`_scan_patch_methods` sees their
+    methods."""
     from . import py_scope as ps
 
     if patchers.computed_fixture:
@@ -1547,8 +1523,7 @@ def _scan_patcher_escapes(analysis: Any, facts: _Facts, patchers: _Patchers) -> 
                 return
         if node.type == "subscript":
             continue
-        patcher = patchers.kind(node)
-        if patcher is not None and not patchers.safe_use(node, patcher):
+        if patchers.kind(node) is not None and not analysis._safe_use(node, ps._MOCKER):
             facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
             return
 
@@ -1559,8 +1534,8 @@ def _scan_patchers(
     """Patcher targets (#705 E6-5), a closed list of callees:
     ``unittest.mock``/``mock`` ``patch`` (``mock.patch``, a pytest-mock
     fixture's ``.patch``, a bare ``patch``), ``X.patch.object``,
-    ``X.patch.dict``, ``X.patch.multiple``, and ``setattr``/``delattr`` on a
-    pytest ``MonkeyPatch``. A string target that is not a constant names a
+    ``X.patch.dict`` and ``X.patch.multiple`` (``MonkeyPatch`` methods are
+    :func:`_scan_patch_methods`, since fold 6 on any receiver). A string target that is not a constant names a
     module the rules cannot compute: an ``unresolvable-writer`` cause (scoped
     by O-2 like any cause). So is a ``patch.object`` attribute that is not a
     constant, and a first argument of ``patch.multiple``/``patch.dict`` that
@@ -1573,13 +1548,10 @@ def _scan_patchers(
     _sensitive`): the mock-module names (``from unittest import mock as m``
     gives ``m.patch``), the ``patch`` names (``from unittest.mock import
     patch as p``), and every local alias of the mock module, ``patch`` or a
-    pytest-mock fixture, besides the literal spellings above. A
-    ``MonkeyPatch`` receiver is any value :class:`_Patchers` gives the
-    instance kind (``mp = monkeypatch``, ``MP()`` for ``from pytest import
-    MonkeyPatch as MP``, ``request.getfixturevalue("monkeypatch")``; #705
-    E6-9), and a ``getfixturevalue`` of a pytest-mock fixture name holds a
-    fixture whose ``.patch`` is ``patch``. The president's trees ``h3a``/``h3b``/``h6`` ran
-    ``OTHER.t`` under pytest through exactly these spellings, and ``h3c``
+    pytest-mock fixture, besides the literal spellings above; a
+    ``getfixturevalue`` of a pytest-mock fixture name holds a fixture whose
+    ``.patch`` is ``patch`` (:class:`_Patchers`). The president's trees
+    ``h3a``/``h3b`` ran ``OTHER.t`` under pytest through these spellings, and ``h3c``
     through ``patch.multiple(MOD, t=...)`` with a computed ``MOD``. A
     ``patch`` method of anything else (``requests.patch(url)``) is no
     patcher."""
@@ -1587,7 +1559,7 @@ def _scan_patchers(
 
     source = analysis.source
     patchers = patchers if patchers is not None else _Patchers(analysis)
-    mockers = _MOCKER_NAMES | patchers.names[_FIXTURE_MOCKER]
+    mockers = _MOCKER_NAMES | patchers.mockers
 
     def is_patch(node: Any, names: Sequence[str]) -> bool:
         if node is not None and analysis._sensitive(node, ps._PATCH):
@@ -1612,11 +1584,6 @@ def _scan_patchers(
             else None
         )
         names = _callee_names(node, source)
-        spelled = bool(names)
-        if not names and function is not None and receiver is not None:
-            # ``MonkeyPatch().setattr(...)``: only the method name is spelled.
-            attribute = function.child_by_field_name("attribute")
-            names = [ps._text(attribute, source)] if attribute is not None else None
         if not names:
             continue
         arguments = [
@@ -1627,27 +1594,13 @@ def _scan_patchers(
         first = arguments[0] if arguments else None
         constant = ps._constant_string(first, source) if first is not None else None
         last = names[-1]
-        patch = spelled and is_patch(function, names)
+        patch = is_patch(function, names)
         method = (
-            spelled
-            and len(names) >= 2
+            len(names) >= 2
             and receiver is not None
             and last in ("object", "dict", "multiple")
             and is_patch(receiver, names[:-1])
         )
-        monkeypatch = (
-            last in ("setattr", "delattr")
-            and receiver is not None
-            and patchers.kind(receiver) == _INSTANCE
-        )
-        if (
-            last == "syspath_prepend"
-            and receiver is not None
-            and patchers.kind(receiver) == _INSTANCE
-        ):
-            # P6-10: ``sys.path.insert(0, p)`` by another name; pytest ran
-            # ``SHADOW.t`` (``f4_mp_syspath_prepend``).
-            facts.shutoff.add(CAUSE_MODULE_SYSTEM)
         if patch:
             if first is None or constant is None:
                 facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
@@ -1664,15 +1617,6 @@ def _scan_patchers(
                 # P6-3: ``patch.multiple(MOD, t=f)`` with a computed ``MOD``
                 # (and ``patch.dict`` alike) names a target no rule computes.
                 facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
-        elif monkeypatch:
-            # The string form takes the target first: ``setattr("m.t", v)``
-            # (two arguments) and ``delattr("m.t")`` (one); the object form
-            # takes one more.
-            string_form = len(arguments) == (2 if last == "setattr" else 1)
-            if string_form and constant is None:
-                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
-            elif string_form and constant is not None:
-                facts.taints.add((constant.replace(":", "."), "*"))
 
 
 def import_group(
