@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Python structural call resolution now detects `__main__` self-references
+  in f-string literal parts and format specs and in constant templates
+  used with `str.format`, `str.format_map`, `%` and `string.Template`
+  (treesitter-chunker#698).
+
 ### Added
 
 - **Experimental:** opt-in scope-aware call resolution, `call_resolution`

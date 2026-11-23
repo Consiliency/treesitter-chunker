@@ -197,6 +197,8 @@ logger = logging.getLogger(__name__)
 # or a from-import is relied on by name; a recorded write of it fails closed).
 # python "29": fold 27 (Codex 4657978945: an allow-listed read's result must
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
+# python "39": K-3 also sees main names in f-string parts and constant
+# format templates (treesitter-chunker#698).
 # python "38": PR 6 fold 7 (#705 P6-21, P6-22): a constant name (patcher
 # method or ``getfixturevalue``) counts in any spelling ``_constant_string``
 # decodes, as a positional argument, a keyword value or a subscript key.
@@ -239,7 +241,7 @@ logger = logging.getLogger(__name__)
 # run-wide causes and parse hazards (``module_bindings``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "38"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "39"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.

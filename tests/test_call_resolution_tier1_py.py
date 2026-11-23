@@ -4263,6 +4263,67 @@ def test_main_and_own_name_strings_fail_closed(path: str, form: str) -> None:
     }, form
 
 
+MAIN_FORMAT_CASES = {
+    "fstring-spec": "f'{P():__main__}'",
+    "format": "'{:__main__}'.format(P())",
+    "format-map": "'{__main__}'.format_map(P())",
+    "percent": "'%(__main__)s' % P()",
+    "template": "string.Template('$__main__').substitute(P())",
+    "m23_fstring_interp": "patch_main(f'__main__.{h}')",
+    "nested-spec": "f'{P():{P():__main__}}'",
+    "escaped-spec": r"f'{P():\x5f\x5fmain__}'",
+    "format-index": "'{0[__main__]}'.format(P())",
+    "format-attribute": "'{0.__main__}'.format(P())",
+    "format-conversion": "'{__main__!s}'.format_map(P())",
+    "unbound-format-map": "str.format_map('{__main__}', P())",
+    "folded-percent": "('%(' + '__ma' 'in__)s') % P()",
+    "safe-substitute": "string.Template(template='${__main__}').safe_substitute(P())",
+    "template-suffix": "string.Template('$__main__!').substitute(P())",
+    "template-import-alias": "from string import Template as T\nT('$__main__').substitute(P())",
+}
+
+# The runtime probe supplies the callback, so the source isolates the
+# format string as the only module-rebinding signal visible to Tier 1.
+MAIN_FORMAT_SOURCE = """\
+from format_probe import patch_main
+import string
+
+def helper(*args):
+    return 'original'
+
+class P:
+    __format__ = lambda self, spec: patch_main(spec) if spec else ''
+    __getitem__ = lambda self, key: patch_main(key)
+    __getattr__ = lambda self, attr: patch_main(attr)
+
+h = ''.join(('hel', 'per'))
+"""
+
+
+@pytest.mark.parametrize("form", MAIN_FORMAT_CASES.values(), ids=MAIN_FORMAT_CASES)
+def test_main_format_strings_fail_closed(form: str) -> None:
+    source = MAIN_FORMAT_SOURCE + form + "\nresult = helper('ab')\n"
+    assert reason(source) == "dynamic-scope"
+
+
+def test_main_guard_resolves_the_call_in_its_body() -> None:
+    source = HELPER + "if __name__ == '__main__':\n    helper()\n"
+    assert proof_text(source) == PROOF
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "f'{obj:prefix__main__}'",
+        "'{prefix__main__}'.format_map(obj)",
+        "template = '{__main__}'",
+        "string.Template('$$__main__').substitute(obj)",
+    ],
+)
+def test_main_format_requires_a_component_at_a_format_site(form: str) -> None:
+    assert proof_text(HELPER + form + "\nhelper()\n") == PROOF
+
+
 @pytest.mark.parametrize(
     "form",
     [

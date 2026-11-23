@@ -146,7 +146,10 @@ every other comparison, ``in``, chain, ``match`` form, or guard in a function,
 method or class fails closed; ``__mp_main__``, the name a multiprocessing
 spawn child imports the script under, counts as ``__main__``, and constant
 strings split on ``.`` and ``:`` (``pkgutil.resolve_name("pkg.mod:attr")``)
-for this rule, the own-name rule and the dynamic attribute names;
+for this rule, the own-name rule and the dynamic attribute names. The main
+name also counts in decoded f-string literal parts and format specs,
+including nested specs, and in constant templates for ``format``,
+``format_map``, ``%`` and ``string.Template`` (treesitter-chunker#698);
 ``X.modules[__name__]`` or
 ``X.modules.get(__name__)`` (also ``__getitem__``, ``setdefault``, ``pop``)
 through any receiver ``X``; an import of the file's own module (``import a``
@@ -281,6 +284,7 @@ import ast
 import re
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
+from string import Template
 from typing import Any
 
 from . import allowlist, py_modules
@@ -1460,6 +1464,7 @@ class _Analysis:
         sys_names = {_SYS}
         main_names = set(_MAIN_NAMES)
         main_strings: list[Any] = []
+        template_names = {"Template"}
         identifiers: list[Any] = []
         # Fold 18: calls, attributes, ``|=`` statements and namespace aliases,
         # classified once every alias is known.
@@ -1533,7 +1538,7 @@ class _Analysis:
                 value = _constant_string(node, source)
                 if value is not None:
                     self._literal_use(value)
-                    if set(_NAME_SEPARATORS.split(value)) & _MAIN_NAMES:
+                    if _names_main(value):
                         # ``"__main__"`` names this module by string when the
                         # file runs as a script (``mock.patch("__main__.f")``,
                         # ``pydoc.locate("__main__")``,
@@ -1546,6 +1551,10 @@ class _Analysis:
                         # a component of a dotted path (``getattr(pkg, "a")``,
                         # ``pkg.__dict__["a"]``, ``NAME = "a"``; N-3).
                         self.dynamic = True
+                if _fstring_names_main(node, source) or _percent_template_names_main(
+                    node, source
+                ):
+                    self.dynamic = True
             elif kind in ("subscript", "call"):
                 if kind == "subscript":
                     subscripts.append(node)
@@ -1573,6 +1582,10 @@ class _Analysis:
                     for last, bound in _from_import_names(node, source):
                         if last in _OPERATOR_WRITERS:
                             operator_names.update(_spellings(bound, source))
+                if not dots and module_parts == ["string"]:
+                    for last, bound in _from_import_names(node, source):
+                        if last == "Template":
+                            template_names.update(_spellings(bound, source))
                 if not dots and module_parts == ["pydoc"]:
                     for last, _bound in _from_import_names(node, source):
                         if last in _PYDOC_RESOLVERS:
@@ -1641,6 +1654,10 @@ class _Analysis:
         for node in main_strings:
             if not self._main_guard(node):
                 self.dynamic = True
+        if not self.dynamic and any(
+            _main_format_call(node, source, template_names) for node in calls
+        ):
+            self.dynamic = True
         self.mock_import_names = mock_names
         self.patch_import_names = patch_names
         self.identifier_nodes = identifiers
@@ -3312,6 +3329,101 @@ def _constant_string(node: Any, source: bytes) -> str | None:
     except (SyntaxError, ValueError):
         return None
     return value if isinstance(value, str) else None
+
+
+def _names_main(value: str) -> bool:
+    return any(part in _MAIN_NAMES for part in _NAME_SEPARATORS.split(value))
+
+
+def _fstring_names_main(node: Any, source: bytes) -> bool:
+    strings = node.named_children if node.type == "concatenated_string" else (node,)
+    if not any(
+        string.type == "string"
+        and any(child.type == "interpolation" for child in string.named_children)
+        for string in strings
+    ):
+        return False
+    # CPython's expression parser decodes escapes and separates literal text
+    # from replacement fields, including those inside format specs.
+    try:
+        expression = ast.parse(f"({_text(node, source)})", mode="eval")
+    except (SyntaxError, ValueError):
+        return False
+    return any(
+        isinstance(part, ast.Constant)
+        and isinstance(part.value, str)
+        and _names_main(part.value)
+        for joined in ast.walk(expression)
+        if isinstance(joined, ast.JoinedStr)
+        for part in joined.values
+    )
+
+
+_FORMAT_FIELDS = re.compile(r"[{}\[\]!]")
+_PERCENT_FIELDS = re.compile(r"[()]")
+
+
+def _main_in_template(node: Any, source: bytes, delimiters: re.Pattern[str]) -> bool:
+    # Format punctuation can bound a field, key or spec that user code sees
+    # on its own. Treat those pieces conservatively as K-3 components.
+    value = _constant_string(node, source)
+    return value is not None and any(
+        _names_main(part) for part in delimiters.split(value)
+    )
+
+
+def _percent_template_names_main(node: Any, source: bytes) -> bool:
+    if node.type != "binary_operator":
+        return False
+    operator = node.child_by_field_name("operator")
+    left = node.child_by_field_name("left")
+    return (
+        operator is not None
+        and operator.type == "%"
+        and left is not None
+        and _main_in_template(left, source, _PERCENT_FIELDS)
+    )
+
+
+def _main_format_call(node: Any, source: bytes, template_names: set[str]) -> bool:
+    function = node.child_by_field_name("function")
+    if function is None:
+        return False
+    function = _unwrap(function, skip_comments=True)
+    if function.type == "attribute":
+        name_node = function.child_by_field_name("attribute")
+        receiver = function.child_by_field_name("object")
+    else:
+        name_node = function
+        receiver = None
+    if name_node is None:
+        return False
+    name = _text(name_node, source)
+    if receiver is not None and name in ("format", "format_map"):
+        # Bound calls carry the template on the receiver. Unbound calls
+        # (str.format_map(template, mapping)) pass it as the first argument.
+        return _main_in_template(receiver, source, _FORMAT_FIELDS) or any(
+            _main_in_template(arg, source, _FORMAT_FIELDS)
+            for arg in _call_arguments(node)[:1]
+        )
+    if name == "Template" or (
+        function.type == "identifier" and _spellings(name_node, source) & template_names
+    ):
+        # The constructed Template can be stored before substitute or
+        # safe_substitute is called, so classify it at construction.
+        for arg in _call_arguments(node):
+            if arg.type == "keyword_argument":
+                keyword = arg.child_by_field_name("name")
+                if keyword is None or _text(keyword, source) != "template":
+                    continue
+                arg = arg.child_by_field_name("value")
+            value = _constant_string(arg, source) if arg is not None else None
+            if value is not None and any(
+                _names_main(match["named"] or match["braced"] or "")
+                for match in Template.pattern.finditer(value)
+            ):
+                return True
+    return False
 
 
 def _constant_fstring(node: Any, source: bytes) -> str | None:
