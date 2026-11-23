@@ -517,6 +517,12 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '_HAZARD_BYTES = (b"\\x00", b"\\x0b")',
     ),
     (
+        "b-exec-statement",
+        PYM,
+        '        if kind == "exec_statement":\n            facts.shutoff.add(CAUSE_EVALUATOR)',
+        '        if kind == "exec_statement":\n            pass',
+    ),
+    (
         "b-missing-reason-fact",
         PYM,
         '        if missing.get("reason") == "unbound"',
