@@ -33,6 +33,7 @@ class SkipReport:
             {"nodeid": nodeid, "reason": reason}
             for nodeid, reason in sorted(self.skips)
         ]
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(
             json.dumps(rows, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )

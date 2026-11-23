@@ -81,6 +81,7 @@ jobs:
       with:
         name: full-suite-skips-release
         path: ${{ runner.temp }}/full-suite-skips.json
+        if-no-files-found: warn
 
   build-distributions:
     name: Build release distributions

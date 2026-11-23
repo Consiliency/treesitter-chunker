@@ -250,6 +250,7 @@ jobs:
         with:
           name: full-suite-skips-linux
           path: ${{ runner.temp }}/full-suite-skips.json
+          if-no-files-found: warn
 
   platform:
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -500,6 +501,7 @@ jobs:
       with:
         name: platform-core-skips-${{ matrix.platform-family }}
         path: ${{ runner.temp }}/platform-core-skips.json
+        if-no-files-found: warn
 
     - name: Full suite on primary Python
       id: full-suite
@@ -517,6 +519,7 @@ jobs:
       with:
         name: full-suite-skips-${{ matrix.platform-family }}
         path: ${{ runner.temp }}/full-suite-skips.json
+        if-no-files-found: warn
 
     - name: Upload coverage
       if: runner.os == 'Linux'
