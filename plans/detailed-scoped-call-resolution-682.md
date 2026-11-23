@@ -772,7 +772,13 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     `f'{P():__main__}'`, `t'__main__.{h}'`, `t'__main__'`). They are decoded
     from the tree-sitter node, not by `ast.parse`, so the facts do not depend
     on the host Python's grammar, and a piece tree-sitter accepts that the
-    decoder cannot read fails closed. Escapes in every constant string are
+    decoder cannot read fails closed. A spec's last piece runs to the
+    closing brace, not to the node's end: tree-sitter ends the spec before a
+    trailing newline, and CPython reads the backslash-newline before the
+    brace as a line continuation (`f'{P():__main__\`, newline, `}'` hands
+    over `'__main__'`). Likewise, a raw string's final `\"` that tree-sitter
+    folds into the end token is content (re-check 2 B-2). Escapes in every
+    constant string are
     decoded by a small decoder, not `ast.literal_eval`, so the facts do not
     depend on the process warning filters either (`-W error::SyntaxWarning`
     makes an invalid escape such as `'\d'` a `SyntaxError`; R-698-2 S-1).
