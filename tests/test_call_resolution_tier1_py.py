@@ -8503,6 +8503,35 @@ STRING_CODE_FORMS: dict[str, str] = {
     ),
     # R-699-5 NIT: CPython's ``test`` package is standard library.
     "profile-from-test-package": "from test.test_profile import profile",
+    # R-699-6: every constant among the arguments of ``import_module`` or
+    # ``__import__`` is an acquisition position. An empty name after the dots
+    # resolves to the ``package`` argument or to ``__package__``/``__name__``
+    # in ``globals``; CPython 3.14 returns the stdlib module and runs the
+    # payload (i10, i13, i14).
+    "trace-import-module-package": (
+        "import importlib\nm = importlib.import_module('.', 'trace')"
+    ),
+    "code-import-module-package-dotted": (
+        "import importlib\nm = importlib.import_module('..', 'code.x')"
+    ),
+    "timeit-import-module-package-keyword": (
+        "import importlib\nm = importlib.import_module('.', package='timeit')"
+    ),
+    "profile-import-module-from-package": (
+        "from importlib import import_module\nm = import_module('.', 'profile')"
+    ),
+    "trace-dunder-import-globals-package": (
+        "m = __import__('', {'__package__': 'trace'}, None, [], 1)"
+    ),
+    "profile-dunder-import-globals-name": (
+        "m = __import__('', {'__name__': 'profile.x'}, None, [], 1)"
+    ),
+    "code-dunder-import-globals-keyword": (
+        "import importlib\n"
+        "m = importlib.__import__('', globals={'__package__': 'code'}, level=1)"
+    ),
+    # R-699-6: ``name=`` still counts for a string resolver.
+    "code-resolve-name-keyword": "import pkgutil\nm = pkgutil.resolve_name(name='code')",
 }
 
 

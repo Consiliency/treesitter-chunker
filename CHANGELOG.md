@@ -82,7 +82,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     Python 2 form CPython 3 reads differently, such as `except A, exec:`;
     `code`, `trace` or `profile` imported from another package count unless
     every use reads a name the stdlib module lacks, so `from opentelemetry
-    import trace` stays inert) resolves no call at all, function-local ones included, because such code
+    import trace` stays inert; a module named by any constant passed to
+    `import_module`/`__import__`, its `package` argument and `globals`
+    included, counts) resolves no call at all, function-local ones included, because such code
     can write its caller's locals through the frame; in `imports` mode it is
     also a run-wide `evaluator` cause, and any code-object source (`__code__`,
     `__closure__`, `FunctionType`, ...; reads included) a `module-object`

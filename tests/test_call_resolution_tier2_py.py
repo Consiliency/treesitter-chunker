@@ -1001,6 +1001,24 @@ CAUSES: dict[str, tuple[str, str]] = {
         "code.InteractiveInterpreter().runsource('import svc; svc.t = len')\n",
         "evaluator",
     ),
+    # R-699-6: the ``package`` argument and ``__import__``'s ``globals`` name
+    # the module when the name after the dots is empty (i10, i13, i14).
+    "r6-import-module-package": (
+        "import importlib\n\n"
+        "importlib.import_module('.', 'trace').Trace(count=0, trace=0)"
+        ".run('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "r6-dunder-import-package": (
+        "__import__('', {'__package__': 'trace'}, None, [], 1)"
+        ".Trace(count=0, trace=0).run('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "r6-dunder-import-name": (
+        "__import__('', {'__name__': 'profile.x'}, None, [], 1)"
+        ".run('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
 }
 
 

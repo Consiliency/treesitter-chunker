@@ -697,8 +697,10 @@ _PICKLE_ATTRIBUTES = frozenset({"pickle", "_pickle"})
 # Constant strings naming a checked module (``getattr(trace, "pickle")``,
 # ``importlib.import_module("runpy")``) fail closed. The generic module names
 # are ordinary words (``d["code"]``), so alone they fail closed only as the
-# literal module name of an acquisition: the first argument or ``name=``
-# keyword of ``import_module`` or ``__import__``, the key of
+# literal module name of an acquisition: any constant among the arguments
+# of ``import_module`` or ``__import__``, at any depth (R-699-6: the
+# ``package`` argument and the ``globals`` dict name the module when the
+# name after the dots is empty), the key of
 # ``X.modules[...]`` / ``X.modules.get(...)`` (also ``pop``, ``setdefault``,
 # ``__getitem__``), the first argument or ``name=`` keyword of a string
 # resolver (``pkgutil.resolve_name``, ``pydoc.locate``/``safeimport``), or
@@ -2480,7 +2482,14 @@ class _Analysis:
         (``resolve_name``, ``locate``, ``safeimport``), the key of a
         ``.modules`` subscript or getter, the value of a ``"()"`` factory
         key (``logging.config.dictConfig``), or an entry point's value
-        (:data:`_ENTRY_POINT`; R-699-5)."""
+        (:data:`_ENTRY_POINT`; R-699-5). Every constant among the arguments
+        of ``import_module``/``__import__``, at any depth, is one too
+        (R-699-6): an empty name after the dots resolves to the ``package``
+        argument, or to ``__package__``/``__name__`` in ``__import__``'s
+        ``globals``, so ``import_module(".", "trace")`` and ``__import__("",
+        {"__package__": "trace"}, None, [], 1)`` return the stdlib module."""
+        if self._in_acquirer_call(node):
+            return True
         outer = node
         while (
             outer.parent is not None and outer.parent.type == "parenthesized_expression"
@@ -2544,6 +2553,34 @@ class _Analysis:
             and _text(receiver.child_by_field_name("attribute"), self.source)
             == _SYS_MODULES
         )
+
+    def _in_acquirer_call(self, node: Any) -> bool:
+        """Whether ``node`` lies anywhere among the arguments of an
+        ``import_module`` or ``__import__`` call, by a bare name or an
+        attribute (``importlib.import_module``, ``importlib.__import__``):
+        the name, the ``package``, the ``globals`` dict and its values, the
+        ``fromlist``, positional or keyword (R-699-6). No leading-dot
+        exemption: a project module named ``trace`` may re-export the stdlib
+        one (R-699-5 SHOULD 1)."""
+        child, parent = node, node.parent
+        while parent is not None:
+            if parent.type == "call" and _same(
+                parent.child_by_field_name("arguments"), child
+            ):
+                callee = parent.child_by_field_name("function")
+                callee = (
+                    _unwrap(callee, skip_comments=True) if callee is not None else None
+                )
+                if callee is not None and callee.type == "attribute":
+                    callee = callee.child_by_field_name("attribute")
+                if (
+                    callee is not None
+                    and callee.type == "identifier"
+                    and _text(callee, self.source) in _ACQUIRERS
+                ):
+                    return True
+            child, parent = parent, parent.parent
+        return False
 
     def _entry_point_value(self, outer: Any, parent: Any) -> bool:
         """Whether ``outer`` is the module path an entry point loads:

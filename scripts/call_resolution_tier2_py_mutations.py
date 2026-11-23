@@ -543,6 +543,32 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '_S2_STDLIB_MODULES = py_modules.STDLIB_MODULES | {"test"}',
         "_S2_STDLIB_MODULES = py_modules.STDLIB_MODULES",
     ),
+    # R-699-6 (the third #727 fold).
+    (
+        "r6-acquirer-any-argument",
+        PYS,
+        "        if self._in_acquirer_call(node):\n            return True\n",
+        "",
+    ),
+    (
+        "r6-acquirer-attribute-callee",
+        PYS,
+        '                if callee is not None and callee.type == "attribute":\n'
+        '                    callee = callee.child_by_field_name("attribute")\n',
+        "",
+    ),
+    (
+        "r6-acquirer-any-depth",
+        PYS,
+        "        while parent is not None:\n"
+        '            if parent.type == "call" and _same(\n'
+        '                parent.child_by_field_name("arguments"), child\n',
+        "        while parent is not None:\n"
+        '            if parent.type == "dictionary":\n'
+        "                return False\n"
+        '            if parent.type == "call" and _same(\n'
+        '                parent.child_by_field_name("arguments"), child\n',
+    ),
     (
         "py5-mock-getattr",
         PYS,
