@@ -429,6 +429,7 @@ def module_facts(
     groups: Mapping[str, Sequence[Mapping[str, str]]],
     chains: Mapping[str, Sequence[str]],
     own_ref: str,
+    test_file: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """``(exports, module_bindings)`` for one analyzed Python file.
 
@@ -477,7 +478,10 @@ def module_facts(
     own_submodules = _own_submodules(analysis, own_ref, facts.stars)
     _scan_uses(analysis, facts, import_infos)
     _scan_causes(analysis, facts, import_infos, own_ref)
-    _scan_patchers(analysis, facts)
+    patchers = _Patchers(analysis)
+    _scan_patchers(analysis, facts, patchers)
+    if test_file:
+        _scan_patcher_escapes(analysis, facts, patchers)
     hazard = parse_hazard(source, analysis.root)
     module_bindings = {
         "imports": sorted(facts.imports),
@@ -1219,73 +1223,251 @@ def _callee_names(call: Any, source: bytes) -> list[str] | None:
     return list(reversed(names))
 
 
-def _monkeypatch_aliases(analysis: Any) -> set[str]:
-    """The local names that hold a pytest ``MonkeyPatch`` (#705 P6-3): any
-    name whose spelling contains ``monkeypatch`` (any case: the
-    ``monkeypatch`` fixture, ``pytest.MonkeyPatch()``), and, to a fixpoint,
-    every name bound by an assignment, a walrus or a ``with ... as`` from a
-    value rooted at one (``mp = monkeypatch``, ``with
-    monkeypatch.context() as m``)."""
+# #705 E6-9: pytest's ``MonkeyPatch`` as a patcher kind beside Tier 1's mock
+# module, ``patch`` and ``mocker`` (E-21). Its closed allow-list of uses: the
+# methods below called on an instance, ``MonkeyPatch()`` and
+# ``MonkeyPatch.context()`` called on the class, a binding position, an
+# annotation, and an alias binding (assignment, walrus, ``with ... as``).
+_MP_METHODS = frozenset(
+    {
+        "setattr",
+        "delattr",
+        "setitem",
+        "delitem",
+        "setenv",
+        "delenv",
+        "syspath_prepend",
+        "chdir",
+        "undo",
+        "context",
+    }
+)
+_MP_FIXTURE = "monkeypatch"
+_MP_CLASS = "MonkeyPatch"
+_MP_MODULES = (["pytest"], ["_pytest", "monkeypatch"])
+_GETFIXTUREVALUE = "getfixturevalue"
+_CLASS, _INSTANCE, _FIXTURE_MOCKER = "class", "instance", "mocker"
+
+
+class _Patchers:
+    """The pytest patcher values of one file (#705 E6-9, P6-6, P6-7).
+
+    A ``MonkeyPatch`` *class* is any name a ``from pytest import
+    MonkeyPatch`` or ``from _pytest.monkeypatch import MonkeyPatch`` binds (in
+    any alias), the bare name ``MonkeyPatch`` and any ``X.MonkeyPatch``
+    attribute (so every alias of either module). An *instance* is the
+    ``monkeypatch`` fixture, a call of the class, an ``X.context()`` call on
+    either, ``request.getfixturevalue("monkeypatch")``, and, to a fixpoint,
+    every name bound from one by assignment, walrus or ``with ... as``. A
+    ``getfixturevalue`` of a pytest-mock fixture name yields a *mocker*,
+    whose uses Tier 1's ``_MOCKER`` allow-list decides. No spelling is matched
+    by substring (fold 3's ``monkeypatch`` substring rule is gone)."""
+
+    def __init__(self, analysis: Any) -> None:
+        from . import py_scope as ps
+
+        self.analysis = analysis
+        self.source = analysis.source
+        self.classes: set[str] = {_MP_CLASS}
+        self.names: dict[str, set[str]] = {
+            _INSTANCE: {_MP_FIXTURE},
+            _CLASS: self.classes,
+            _FIXTURE_MOCKER: set(),
+        }
+        self.computed_fixture = False
+        pairs: list[tuple[Any, Any]] = []
+        stack = [analysis.root]
+        while stack:
+            node = stack.pop()
+            stack.extend(node.named_children)
+            if node.type == "import_from_statement":
+                dots, parts = ps._module_parts(node, self.source)
+                if not dots and parts in _MP_MODULES:
+                    for last, bound in ps._from_import_names(node, self.source):
+                        if last == _MP_CLASS:
+                            self.classes.update(ps._spellings(bound, self.source))
+            elif node.type == "assignment":
+                pairs.append(
+                    (
+                        node.child_by_field_name("left"),
+                        node.child_by_field_name("right"),
+                    )
+                )
+            elif node.type == "named_expression":
+                pairs.append(
+                    (
+                        node.child_by_field_name("name"),
+                        node.child_by_field_name("value"),
+                    )
+                )
+            elif node.type == "as_pattern":
+                value = node.named_children[0] if node.named_children else None
+                pairs.append((node.child_by_field_name("alias"), value))
+            elif node.type == "call" and self._fixture_call(node):
+                first = _first_argument(node)
+                if first is None or ps._constant_string(first, self.source) is None:
+                    self.computed_fixture = True
+        changed = True
+        while changed:
+            changed = False
+            for target, value in pairs:
+                if target is None or value is None:
+                    continue
+                kind = self.kind(value)
+                if kind is None:
+                    continue
+                target = ps._unwrap(target, skip_comments=True)
+                if target.type == "as_pattern_target" and target.named_children:
+                    target = target.named_children[0]
+                if target.type != "identifier":
+                    continue
+                name = ps._text(target, self.source)
+                if name not in self.names[kind]:
+                    self.names[kind].add(name)
+                    changed = True
+
+    def _fixture_call(self, node: Any) -> bool:
+        from . import py_scope as ps
+
+        function = node.child_by_field_name("function")
+        function = ps._unwrap(function, skip_comments=True) if function else None
+        if function is None or function.type != "attribute":
+            return False
+        attribute = function.child_by_field_name("attribute")
+        return (
+            attribute is not None
+            and ps._text(attribute, self.source) == _GETFIXTUREVALUE
+        )
+
+    def kind(self, node: Any) -> str | None:
+        """The patcher kind a value has, or ``None``."""
+        from . import py_scope as ps
+
+        node = ps._unwrap(node, skip_comments=True)
+        if node.type == "identifier":
+            name = ps._text(node, self.source)
+            for kind in (_INSTANCE, _CLASS, _FIXTURE_MOCKER):
+                if name in self.names[kind]:
+                    return kind
+            return None
+        if node.type == "attribute":
+            attribute = node.child_by_field_name("attribute")
+            if attribute is not None and ps._text(attribute, self.source) == _MP_CLASS:
+                return _CLASS
+            return None
+        if node.type != "call":
+            return None
+        function = node.child_by_field_name("function")
+        function = ps._unwrap(function, skip_comments=True) if function else None
+        if function is None:
+            return None
+        if self.kind(function) == _CLASS:
+            return _INSTANCE  # ``MonkeyPatch()``
+        if function.type != "attribute":
+            return None
+        attribute = function.child_by_field_name("attribute")
+        receiver = function.child_by_field_name("object")
+        name = ps._text(attribute, self.source) if attribute is not None else ""
+        if name == "context" and receiver is not None:
+            if self.kind(receiver) in (_CLASS, _INSTANCE):
+                return _INSTANCE  # ``MonkeyPatch.context()``, ``mp.context()``
+        if name == _GETFIXTUREVALUE:
+            first = _first_argument(node)
+            value = ps._constant_string(first, self.source) if first else None
+            if value == _MP_FIXTURE:
+                return _INSTANCE
+            if value in _MOCKER_NAMES:
+                return _FIXTURE_MOCKER
+        return None
+
+    def safe_use(self, node: Any, kind: str) -> bool:
+        """Whether a patcher value's use is on the closed allow-list."""
+        from . import py_scope as ps
+
+        if kind == _FIXTURE_MOCKER:
+            return bool(self.analysis._safe_use(node, ps._MOCKER))
+        if node.type == "identifier" and ps._binding_position(node):
+            return True
+        above = node.parent
+        while above is not None and above.type not in ("block", "module"):
+            if above.type == "type":
+                return True  # ``monkeypatch: pytest.MonkeyPatch``
+            above = above.parent
+        current, parent = node, node.parent
+        while parent is not None and parent.type == "parenthesized_expression":
+            current, parent = parent, parent.parent
+        if parent is None:
+            return False
+        if parent.type == "assignment":
+            left = parent.child_by_field_name("left")
+            left = ps._unwrap(left, skip_comments=True) if left is not None else None
+            return (
+                left is not None
+                and left.type == "identifier"
+                and ps._same(current, parent.child_by_field_name("right"))
+            )
+        if parent.type == "named_expression":
+            return ps._same(current, parent.child_by_field_name("value"))
+        if parent.type in ("as_pattern", "with_item"):
+            return True  # ``with mp.context() as m``: ``m`` is an alias
+        if parent.type == "attribute" and ps._same(
+            current, parent.child_by_field_name("object")
+        ):
+            attribute = parent.child_by_field_name("attribute")
+            name = ps._text(attribute, self.source) if attribute is not None else ""
+            if ps._callee_call(parent) is None:
+                return False
+            return name in _MP_METHODS if kind == _INSTANCE else name == "context"
+        if parent.type == "call" and ps._same(
+            current, parent.child_by_field_name("function")
+        ):
+            return kind == _CLASS
+        return False
+
+
+def _scan_patcher_escapes(analysis: Any, facts: _Facts, patchers: _Patchers) -> None:
+    """#705 E6-9 (P6-5): in a test-classified file, a patcher value (Tier 1's
+    mock module, ``patch`` and ``mocker`` kinds, decided by Tier 1's alias sets
+    and its E-21 closed allow-list :meth:`.py_scope._Analysis._safe_use`, and
+    :class:`_Patchers`' ``MonkeyPatch`` and fixture kinds) used anywhere off
+    its allow-list is an ``unresolvable-writer`` cause, scoped by O-2: the
+    call that applies it is out of sight. pytest ran ``OTHER.t`` for each
+    of the president's trees: ``run(patch)`` (``f3_patch_as_arg``),
+    ``@deco(mock.patch)`` (``f3_patch_decorator_arg``), ``[mock.patch]``
+    (``f3_patch_list_escape``), ``functools.partial(patch, ...)``
+    (``f3_patch_partial``) and ``helper(monkeypatch)`` (``f3_mp_param``). So
+    is a ``getfixturevalue`` call with a computed fixture name (P6-7).
+
+    Production files keep their behaviour: there Tier 1 already makes the
+    file dynamic for the same uses (E-21), and pytest never runs them."""
     from . import py_scope as ps
 
-    source = analysis.source
-    pairs: list[tuple[Any, Any]] = []
+    if patchers.computed_fixture:
+        facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+        return
     stack = [analysis.root]
     while stack:
         node = stack.pop()
         stack.extend(node.named_children)
-        if node.type == "assignment":
-            pairs.append(
-                (node.child_by_field_name("left"), node.child_by_field_name("right"))
-            )
-        elif node.type == "named_expression":
-            pairs.append(
-                (node.child_by_field_name("name"), node.child_by_field_name("value"))
-            )
-        elif node.type == "as_pattern":
-            target = node.child_by_field_name("alias")
-            value = node.named_children[0] if node.named_children else None
-            pairs.append((target, value))
-    aliases: set[str] = set()
-
-    def rooted(value: Any) -> bool:
-        while value is not None:
-            value = ps._unwrap(value, skip_comments=True)
-            if value.type == "identifier":
-                text = ps._text(value, source)
-                return "monkeypatch" in text.lower() or text in aliases
-            if value.type == "call":
-                value = value.child_by_field_name("function")
-            elif value.type == "attribute":
-                attribute = value.child_by_field_name("attribute")
-                if attribute is not None and "monkeypatch" in (
-                    ps._text(attribute, source).lower()
-                ):
-                    return True
-                value = value.child_by_field_name("object")
-            else:
-                return False
-        return False
-
-    changed = True
-    while changed:
-        changed = False
-        for target, value in pairs:
-            if target is None or value is None or not rooted(value):
-                continue
-            target = ps._unwrap(target, skip_comments=True)
-            if target.type == "as_pattern_target" and target.named_children:
-                target = target.named_children[0]
-            if target.type != "identifier":
-                continue
-            name = ps._text(target, source)
-            if name not in aliases:
-                aliases.add(name)
-                changed = True
-    return aliases
+        if node.type not in ("identifier", "attribute", "call", "subscript"):
+            continue
+        if node.type == "identifier" and (ps._name_part(node) or _in_import(node)):
+            continue
+        for kind in (ps._MOCK, ps._PATCH, ps._MOCKER):
+            if analysis._sensitive(node, kind) and not analysis._safe_use(node, kind):
+                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+                return
+        if node.type == "subscript":
+            continue
+        patcher = patchers.kind(node)
+        if patcher is not None and not patchers.safe_use(node, patcher):
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
 
 
-def _scan_patchers(analysis: Any, facts: _Facts) -> None:
+def _scan_patchers(
+    analysis: Any, facts: _Facts, patchers: _Patchers | None = None
+) -> None:
     """Patcher targets (#705 E6-5), a closed list of callees:
     ``unittest.mock``/``mock`` ``patch`` (``mock.patch``, a pytest-mock
     fixture's ``.patch``, a bare ``patch``), ``X.patch.object``,
@@ -1304,8 +1486,11 @@ def _scan_patchers(analysis: Any, facts: _Facts) -> None:
     gives ``m.patch``), the ``patch`` names (``from unittest.mock import
     patch as p``), and every local alias of the mock module, ``patch`` or a
     pytest-mock fixture, besides the literal spellings above. A
-    ``MonkeyPatch`` receiver is any name :func:`_monkeypatch_aliases` finds
-    (``mp = monkeypatch``). The president's trees ``h3a``/``h3b``/``h6`` ran
+    ``MonkeyPatch`` receiver is any value :class:`_Patchers` gives the
+    instance kind (``mp = monkeypatch``, ``MP()`` for ``from pytest import
+    MonkeyPatch as MP``, ``request.getfixturevalue("monkeypatch")``; #705
+    E6-9), and a ``getfixturevalue`` of a pytest-mock fixture name holds a
+    fixture whose ``.patch`` is ``patch``. The president's trees ``h3a``/``h3b``/``h6`` ran
     ``OTHER.t`` under pytest through exactly these spellings, and ``h3c``
     through ``patch.multiple(MOD, t=...)`` with a computed ``MOD``. A
     ``patch`` method of anything else (``requests.patch(url)``) is no
@@ -1313,13 +1498,14 @@ def _scan_patchers(analysis: Any, facts: _Facts) -> None:
     from . import py_scope as ps
 
     source = analysis.source
-    monkeypatches: set[str] | None = None
+    patchers = patchers if patchers is not None else _Patchers(analysis)
+    mockers = _MOCKER_NAMES | patchers.names[_FIXTURE_MOCKER]
 
     def is_patch(node: Any, names: Sequence[str]) -> bool:
         if node is not None and analysis._sensitive(node, ps._PATCH):
             return True
         return names[-1] == "patch" and (
-            len(names) == 1 or "mock" in names[:-1] or names[0] in _MOCKER_NAMES
+            len(names) == 1 or "mock" in names[:-1] or names[0] in mockers
         )
 
     stack = [analysis.root]
@@ -1327,9 +1513,6 @@ def _scan_patchers(analysis: Any, facts: _Facts) -> None:
         node = stack.pop()
         stack.extend(node.named_children)
         if node.type != "call":
-            continue
-        names = _callee_names(node, source)
-        if not names:
             continue
         function = node.child_by_field_name("function")
         function = (
@@ -1340,6 +1523,14 @@ def _scan_patchers(analysis: Any, facts: _Facts) -> None:
             if function is not None and function.type == "attribute"
             else None
         )
+        names = _callee_names(node, source)
+        spelled = bool(names)
+        if not names and function is not None and receiver is not None:
+            # ``MonkeyPatch().setattr(...)``: only the method name is spelled.
+            attribute = function.child_by_field_name("attribute")
+            names = [ps._text(attribute, source)] if attribute is not None else None
+        if not names:
+            continue
         arguments = [
             argument
             for argument in ps._call_arguments(node)
@@ -1348,17 +1539,19 @@ def _scan_patchers(analysis: Any, facts: _Facts) -> None:
         first = arguments[0] if arguments else None
         constant = ps._constant_string(first, source) if first is not None else None
         last = names[-1]
-        patch = is_patch(function, names)
+        patch = spelled and is_patch(function, names)
         method = (
-            len(names) >= 2
+            spelled
+            and len(names) >= 2
+            and receiver is not None
             and last in ("object", "dict", "multiple")
             and is_patch(receiver, names[:-1])
         )
-        monkeypatch = len(names) >= 2 and last in ("setattr", "delattr")
-        if monkeypatch and "monkeypatch" not in names[-2].lower():
-            if monkeypatches is None:
-                monkeypatches = _monkeypatch_aliases(analysis)
-            monkeypatch = len(names) == 2 and names[0] in monkeypatches
+        monkeypatch = (
+            last in ("setattr", "delattr")
+            and receiver is not None
+            and patchers.kind(receiver) == _INSTANCE
+        )
         if patch:
             if first is None or constant is None:
                 facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)

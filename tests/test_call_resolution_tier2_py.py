@@ -2110,3 +2110,198 @@ def test_fold3_conftest_basedir_reaches_the_writer_side(tmp_path: Path) -> None:
     assert structural["resolution"] == "resolved"
     assert on["resolution"] != "resolved"
     assert label == "none(reassigned)"
+
+
+# ---------------------------------------------------------------------------
+# Fold 4 (#705 E6-9: P6-5, P6-6, P6-7): the president's ``f3_*`` trees,
+# verbatim (``tests/test_b.py``; ``svc.py``, ``other.py`` and
+# ``tests/calls.py`` as in ``_SVC_OTHER``). ``runtime`` is what pytest
+# printed on CPython 3.14.10 (``python -B -E -s -m pytest -q -s -p
+# no:cacheprovider --rootdir=. tests``): ``tests/calls.py``'s ``go`` ran
+# ``other.t`` in every tree, while fold 3 resolved ``svc.t`` to ``svc.py``.
+
+_F3_HEAD = 'import calls\nfrom other import t as _evil\nNAME = "t"\n'
+FOLD4_BLOCKING: dict[str, tuple[str, str]] = {
+    # P6-5: a patcher handed on as a value.
+    "f3_patch_as_arg": (
+        "from unittest.mock import patch\n" + _F3_HEAD + "def run(p):\n"
+        '    with p(f"svc.{NAME}", _evil):\n'
+        "        return calls.go()\n"
+        "def test_go():\n"
+        '    print("RAN", run(patch))\n',
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f3_patch_decorator_arg": (
+        "from unittest import mock\n" + _F3_HEAD + "def deco(patcher):\n"
+        "    def wrap(fn):\n"
+        "        def inner():\n"
+        '            with patcher(f"svc.{NAME}", _evil):\n'
+        "                return fn()\n"
+        "        return inner\n"
+        "    return wrap\n"
+        "@deco(mock.patch)\n"
+        "def test_go():\n"
+        '    print("RAN", calls.go())\n',
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f3_patch_list_escape": (
+        "from unittest import mock\n" + _F3_HEAD + "PATCHERS = [mock.patch]\n"
+        "def test_go():\n"
+        '    with PATCHERS[0](f"svc.{NAME}", _evil):\n'
+        '        print("RAN", calls.go())\n',
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f3_patch_partial": (
+        "import functools\nfrom unittest.mock import patch\n"
+        + _F3_HEAD
+        + 'pp = functools.partial(patch, f"svc.{NAME}")\n'
+        "def test_go():\n"
+        "    with pp(_evil):\n"
+        '        print("RAN", calls.go())\n',
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f3_mp_param": (
+        _F3_HEAD + "def helper(mp):\n"
+        '    mp.setattr(f"svc.{NAME}", _evil)\n'
+        "def test_go(monkeypatch):\n"
+        "    helper(monkeypatch)\n"
+        '    print("RAN", calls.go())\n',
+        "RAN OTHER.t / 1 passed",
+    ),
+    # P6-6: ``MonkeyPatch`` imported under an alias.
+    "f3_mp_from_import": (
+        "from pytest import MonkeyPatch as MP\n" + _F3_HEAD + "def test_go():\n"
+        "    m = MP()\n"
+        '    m.setattr(f"svc.{NAME}", _evil)\n'
+        '    print("RAN", calls.go())\n'
+        "    m.undo()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # P6-7: a patcher fixture fetched by constant name.
+    "f3_mp_getfixture": (
+        _F3_HEAD + "def test_go(request):\n"
+        '    mp = request.getfixturevalue("monkeypatch")\n'
+        '    mp.setattr(f"svc.{NAME}", _evil)\n'
+        '    print("RAN", calls.go())\n',
+        "RAN OTHER.t / 1 passed",
+    ),
+    # P6-7: a pytest-mock fixture fetched by name; its ``.patch`` is
+    # ``unittest.mock.patch`` (pytest-mock is not installed in the measuring
+    # venv, so this row records the rule, not a pytest run).
+    "getfixturevalue-mocker": (
+        _F3_HEAD + "def test_go(request):\n"
+        '    m = request.getfixturevalue("mocker")\n'
+        '    m.patch(f"svc.{NAME}", _evil)\n'
+        '    print("RAN", calls.go())\n',
+        "(pytest-mock: mocker.patch is unittest.mock.patch)",
+    ),
+    # P6-7: a computed fixture name may fetch any patcher.
+    "computed-getfixturevalue": (
+        _F3_HEAD + 'FIX = "monkey" + "patch"\n'
+        "def test_go(request):\n"
+        "    request.getfixturevalue(FIX).setenv('X', '1')\n"
+        '    print("RAN", calls.go())\n',
+        "(no patch; the cause is the computed fixture name)",
+    ),
+}
+
+
+def _fold4_root(tmp_path: Path, test_file: str) -> Path:
+    return _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "use.py": "from svc import t\n\n\ndef u():\n    return t()\n",
+            "tests/test_b.py": test_file,
+        },
+    )
+
+
+@pytest.mark.parametrize("case", sorted(FOLD4_BLOCKING))
+def test_fold4_patcher_values_are_test_scoped_causes(tmp_path: Path, case: str) -> None:
+    """#705 E6-9. P6-5 (``f3_patch_as_arg``, ``f3_patch_decorator_arg``,
+    ``f3_patch_list_escape``, ``f3_patch_partial``, ``f3_mp_param``): a
+    patcher used off the E-21 closed allow-list (an argument, a decorator
+    argument, a container element, ``functools.partial``) is applied by a
+    call the rules cannot see. P6-6 (``f3_mp_from_import``): ``MP()`` for
+    ``from pytest import MonkeyPatch as MP`` is a ``MonkeyPatch``. P6-7:
+    ``request.getfixturevalue("monkeypatch")`` is one, and a computed fixture
+    name may be any patcher. In every president's tree pytest printed ``RAN
+    OTHER.t``. Test callers get ``unresolvable-writer``; the production
+    caller ``use.py`` keeps its proof (O-2)."""
+    test_file, _runtime = FOLD4_BLOCKING[case]
+    root = _fold4_root(tmp_path, test_file)
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on == off, case
+    assert label == "none(run-tainted:unresolvable-writer)", case
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import", case
+
+
+FOLD4_CONTROLS: dict[str, tuple[str, str]] = {
+    # The object form takes the module as an argument: today's whole-module
+    # escape of ``svc`` for test callers, no cause.
+    "monkeypatch-setattr-object": (
+        "import svc\nfrom other import t as _evil\n"
+        "def test_go(monkeypatch):\n    monkeypatch.setattr(svc, 't', _evil)\n",
+        "module-escape",
+    ),
+    # A constant target: today's taint of ``svc.t`` (the dotted string).
+    "mock-patch-constant": (
+        "from unittest import mock\nfrom other import t as _evil\n"
+        "def test_go():\n    with mock.patch('svc.t', _evil):\n        pass\n",
+        "reassigned",
+    ),
+    # Every allow-listed use at once, with a constant target.
+    "allow-listed-uses": (
+        "import pytest\nfrom unittest import mock\nfrom pytest import MonkeyPatch\n"
+        "from other import t as _evil\n"
+        "def test_go(monkeypatch: pytest.MonkeyPatch, mocker):\n"
+        "    monkeypatch.setenv('X', '1')\n"
+        "    with monkeypatch.context() as m:\n"
+        "        m.setattr('svc.t', _evil)\n"
+        "    mp = MonkeyPatch()\n    mp.undo()\n"
+        "    mocker.patch('svc.t', _evil)\n"
+        "    mock.MagicMock()\n",
+        "reassigned",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD4_CONTROLS))
+def test_fold4_allow_listed_patcher_uses_keep_their_exact_taints(
+    tmp_path: Path, case: str
+) -> None:
+    """E6-9 controls: allowed patcher uses with constant targets (or the
+    module as an object) keep today's exact taint, and no cause."""
+    test_file, reason = FOLD4_CONTROLS[case]
+    root = _fold4_root(tmp_path, test_file)
+    facts, _graph, _context_ = _context(root)
+    (item,) = [item for item in facts if item["path"] == "tests/test_b.py"]
+    assert item["scope_facts"]["module_bindings"]["shutoff"] == [], case
+    _off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert label == f"none({reason})", case
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import", case
+
+
+def test_fold4_production_patcher_values_are_no_cause(tmp_path: Path) -> None:
+    """E6-9 in production: the same hand-off in a production file records no
+    cause (Tier 1's E-21 already makes that file dynamic, and pytest never
+    runs it), so production and test callers keep their proofs."""
+    test_file = FOLD4_BLOCKING["f3_patch_as_arg"][0]
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "use.py": "from svc import t\n\n\ndef u():\n    return t()\n",
+            "tools/patching.py": test_file.replace("import calls\n", ""),
+        },
+    )
+    facts, _graph, _context_ = _context(root)
+    (item,) = [item for item in facts if item["path"] == "tools/patching.py"]
+    assert (
+        "unresolvable-writer" not in item["scope_facts"]["module_bindings"]["shutoff"]
+    )
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import"

@@ -442,10 +442,10 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        if False:",
     ),
     (
-        "p6-3-monkeypatch-aliases",
+        "e6-9-mp-receiver",
         PYM,
-        "            monkeypatch = len(names) == 2 and names[0] in monkeypatches",
-        "            monkeypatch = False",
+        "            and patchers.kind(receiver) == _INSTANCE",
+        "            and False",
     ),
     (
         "p6-3-computed-method-target",
@@ -478,6 +478,67 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "n-1-code-attribute-string",
         PYM,
         "            if value in _CODE_ATTRIBUTES:",
+        "            if False:",
+    ),
+    # Fold 4 (#705 E6-9: P6-5, P6-6, P6-7).
+    (
+        "e6-9-mp-import-alias",
+        PYM,
+        "                            self.classes.update(ps._spellings(bound, self.source))",
+        "                            pass",
+    ),
+    (
+        "e6-9-mp-alias-fixpoint",
+        PYM,
+        "                if name not in self.names[kind]:",
+        "                if False:",
+    ),
+    (
+        "e6-9-getfixturevalue-instance",
+        PYM,
+        "            if value == _MP_FIXTURE:\n                return _INSTANCE\n",
+        "",
+    ),
+    (
+        "e6-9-getfixturevalue-mocker",
+        PYM,
+        "    mockers = _MOCKER_NAMES | patchers.names[_FIXTURE_MOCKER]",
+        "    mockers = _MOCKER_NAMES",
+    ),
+    (
+        "e6-9-computed-fixture-name",
+        PYM,
+        "                    self.computed_fixture = True",
+        "                    pass",
+    ),
+    (
+        "p6-5-tier1-kind-escapes",
+        PYM,
+        "            if analysis._sensitive(node, kind) and not analysis._safe_use(node, kind):",
+        "            if False:",
+    ),
+    (
+        "p6-5-monkeypatch-escapes",
+        PYM,
+        "        if patcher is not None and not patchers.safe_use(node, patcher):",
+        "        if False:",
+    ),
+    (
+        "p6-5-test-files-only",
+        PYM,
+        "    if test_file:\n        _scan_patcher_escapes(analysis, facts, patchers)",
+        "    if True:\n        _scan_patcher_escapes(analysis, facts, patchers)",
+    ),
+    (
+        "e6-9-mp-method-allow-list",
+        PYM,
+        '            return name in _MP_METHODS if kind == _INSTANCE else name == "context"',
+        "            return False",
+    ),
+    (
+        "e6-9-annotation-allowed",
+        PYM,
+        '            if above.type == "type":',
         "            if False:",
     ),
     (
