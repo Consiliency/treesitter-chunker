@@ -160,16 +160,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Call resolution, `"imports"` mode (experimental): a Python file that reads
-  its own namespace (`globals()`, `locals()`, `vars()` with no argument,
-  `exec`/`eval` without explicit globals, a frame's `f_globals`, a
-  function's `__globals__`, `inspect.getmodule`, `__import__(__name__)`, or
-  a string annotation evaluated by `typing.get_type_hints`) now counts as
-  handing out every module it imports, so another file writing through that
-  namespace (`d["svc"].t = f`) makes the module's own calls unprovable
-  instead of resolving them wrongly (treesitter-chunker#724). `vars(obj)`
-  and `exec(code, d)` with explicit globals do not count. The Python fact
-  version moves to 39.
+- Call resolution, `"imports"` mode (experimental): a Python file in which
+  any token spells a namespace-reaching name (`globals`, `locals`, `vars`,
+  `f_globals`, `f_locals`, `f_builtins`, `__globals__`, `__import__`,
+  `getmodule`, `getclosurevars`, `__loader__`, `__spec__`, `load_module`,
+  `exec_module`, `get_field`, `builtins`, the annotation evaluators such as
+  `typing.get_type_hints`), as a name, attribute, keyword or constant
+  string, or that uses a bare `eval`/`exec` or imports `__main__`, now
+  counts as handing out every module it imports, so another file writing
+  through that namespace (`d["svc"].t = f`) makes the module's own calls
+  unprovable instead of resolving them wrongly (treesitter-chunker#724). A
+  package `__init__.py` hands out its submodules too, and a handed-out
+  `sys`, `importlib` or `builtins` shuts off cross-file resolution like
+  passing it on. The Python fact version moves to 39.
 - Symbol graph extraction orders source files by case-sensitive path components
   on every platform (treesitter-chunker#687).
 - Automatic detection uses the language pack's `rst` and `asm` grammar
