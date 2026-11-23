@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"22"`` for the ``js`` family and ``"39"`` for
+Schema (fact version ``"22"`` for the ``js`` family and ``"40"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -257,7 +257,20 @@ logger = logging.getLogger(__name__)
 # merge, R-698-3 replaced the f-/t-string piece reader: such a string counts
 # when a main name occurs anywhere in its decoded source text (same version,
 # unreleased; the fixtures' digests are unchanged).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "22", "python": "39"}
+# python "40": treesitter-chunker#699 S2 (plan 699-702 PY-1..PY-5, PY-8;
+# ruling R-699-1 B-1, B-2, B-4, B-5): code run from a string, a payload or
+# an annotation (stdlib string-code helpers, ``pickle``/``timeit``/``runpy``
+# by member allow-list, ``shelve``, unpicklers, ``breakpoint``, annotation
+# evaluators, string annotations, ``__annotations__`` writes, ``compile``,
+# ``marshal``, loader methods, and ``exec``/``eval``) fails closed file-wide
+# in Tier 1 and is a run-wide ``evaluator`` cause in Tier 2; every
+# code-object name, reads included, is a ``module-object`` cause (reversing
+# #705 Q2); the names ``gettext.install()`` puts into ``builtins`` are
+# ``builtin-shadow``; computed attribute reads in mock files fail closed.
+# With the R-699-3, R-699-5 and R-699-6 folds (every constant among the
+# arguments of ``import_module``/``__import__`` is an acquisition position).
+# Unreleased as "39" on the #727 branch; renumbered after #714 took "39".
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "22", "python": "40"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.

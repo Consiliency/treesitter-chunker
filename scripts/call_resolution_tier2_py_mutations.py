@@ -3,8 +3,8 @@
 Each mutation disables one rule by a single textual edit. The script copies
 the checkout to a temporary directory, checks that the unmutated copy passes,
 then applies each mutation alone and runs the Tier 2 Python tests, the
-``imports`` expected-table test and the shared K-3 main-string regressions
-serially. A mutation is *killed* when a test fails. The script prints one
+``imports`` expected-table test, the shared K-3 main-string regressions
+and the Tier 1 half of the shared S2 string-code classifier serially. A mutation is *killed* when a test fails. The script prints one
 tab-separated line per mutation and exits non-zero if any mutation survives
 or does not apply.
 
@@ -29,20 +29,37 @@ CR = "chunker/call_resolution/"
 PYM = CR + "py_modules.py"
 PYS = CR + "py_scope.py"
 ENG = CR + "engine.py"
+T1 = "tests/test_call_resolution_tier1_py.py::"
 TESTS = (
     "tests/test_call_resolution_tier2_py.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
-    "tests/test_call_resolution_tier1_py.py::test_main_format_strings_fail_closed",
-    "tests/test_call_resolution_tier1_py.py::test_main_string_components_fail_closed",
-    "tests/test_call_resolution_tier1_py.py::test_scope_facts_ignore_the_warnings_filters",
-    "tests/test_call_resolution_tier1_py.py::test_decode_literal_matches_cpython",
-    "tests/test_call_resolution_tier1_py.py::test_constant_fstrings_match_cpython_through_the_tree",
-    "tests/test_call_resolution_tier1_py.py::test_main_substring_rule_is_sound_against_cpython",
-    "tests/test_call_resolution_tier1_py.py::test_main_anywhere_in_an_fstring_fails_closed",
-    "tests/test_call_resolution_tier1_py.py::test_fstring_without_main_resolves",
-    "tests/test_call_resolution_tier1_py.py::test_unreadable_fstring_bytes_fail_closed",
-    "tests/test_call_resolution_tier1_py.py::test_main_needs_a_whole_component",
-    "tests/test_call_resolution_tier1_py.py::test_main_guard_resolves_the_call_in_its_body",
+    # treesitter-chunker#699 S2: the shared string-code classifier's Tier 1
+    # half (the list pins are left out, so behaviour must kill each one).
+    T1 + "test_string_code_fails_closed_file_wide",
+    T1 + "test_string_code_controls_still_resolve",
+    T1 + "test_own_bindings_of_code_builtins_leave_function_proofs_alone",
+    T1 + "test_module_level_binding_of_a_code_builtin_is_builtin_shadow",
+    T1 + "test_string_code_local_controls_still_resolve",
+    T1 + "test_stdlib_reexports_hold_and_fail_closed",
+    T1 + "test_string_code_inside_the_function_defeats_its_own_proof",
+    T1 + "test_mock_scoped_computed_getters_fail_closed",
+    T1 + "test_computed_getters_outside_mock_files_or_constant_still_resolve",
+    T1 + "test_installed_builtins_never_prove_at_module_level",
+    T1 + "test_each_string_code_name_counts_in_every_position",
+    T1 + "test_s2_traced_routes_keep_their_off_mode_edge",
+    T1 + "test_s2_installed_builtin_route_keeps_its_off_mode_edge",
+    # treesitter-chunker#698 (#714): the main-string classifier's Tier 1 pins.
+    T1 + "test_main_format_strings_fail_closed",
+    T1 + "test_main_string_components_fail_closed",
+    T1 + "test_scope_facts_ignore_the_warnings_filters",
+    T1 + "test_decode_literal_matches_cpython",
+    T1 + "test_constant_fstrings_match_cpython_through_the_tree",
+    T1 + "test_main_substring_rule_is_sound_against_cpython",
+    T1 + "test_main_anywhere_in_an_fstring_fails_closed",
+    T1 + "test_fstring_without_main_resolves",
+    T1 + "test_unreadable_fstring_bytes_fail_closed",
+    T1 + "test_main_needs_a_whole_component",
+    T1 + "test_main_guard_resolves_the_call_in_its_body",
 )
 
 # (id, file, old text, new text). The old text must occur in the file once.
@@ -189,17 +206,394 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        return []\n    return []",
     ),
     # Run-wide causes.
+    # #699 S2: Tier 2 reads the shared classifier (one classifier per side,
+    # the fold-8 precedent); ``compile`` is an evaluator since B-1.
     (
         "evaluator",
         PYM,
-        "        if name in _EVALUATORS and _builtin_at(analysis, ident):",
+        "    if analysis.string_code or analysis.legacy_evaluator():\n"
+        "        facts.shutoff.add(CAUSE_EVALUATOR)",
+        "    if False:\n        facts.shutoff.add(CAUSE_EVALUATOR)",
+    ),
+    (
+        "b1-code-objects-cause",
+        PYM,
+        "    if analysis.code_objects:\n        facts.shutoff.add(CAUSE_MODULE_OBJECT)",
+        "    if False:\n        facts.shutoff.add(CAUSE_MODULE_OBJECT)",
+    ),
+    (
+        "b1-code-reads",
+        PYS,
+        '        "__code__",\n        "gi_code",\n        "cr_code",\n        "ag_code",\n'
+        '        "f_code",\n        "co_code",\n        "co_names",\n        "co_consts",\n'
+        '        "co_varnames",\n        "co_freevars",\n        "co_cellvars",\n'
+        '        "dis",\n        "codeobj",',
+        '        "gi_code",\n        "cr_code",\n        "ag_code",\n'
+        '        "f_code",\n        "co_code",\n        "co_names",\n        "co_consts",\n'
+        '        "co_varnames",\n        "co_freevars",\n        "co_cellvars",\n'
+        '        "dis",\n        "codeobj",',
+    ),
+    (
+        "b1-compile-is-an-evaluator",
+        PYS,
+        '_CODE_BUILTINS = frozenset({"exec", "eval", "execfile", "compile", "breakpoint"})',
+        '_CODE_BUILTINS = frozenset({"exec", "eval", "execfile", "breakpoint"})',
+    ),
+    (
+        "b4-breakpoint",
+        PYS,
+        '_CODE_BUILTINS = frozenset({"exec", "eval", "execfile", "compile", "breakpoint"})',
+        '_CODE_BUILTINS = frozenset({"exec", "eval", "execfile", "compile"})',
+    ),
+    (
+        "py1-drop-name",
+        PYS,
+        '        "doctest",\n        "fileConfig",\n',
+        '        "doctest",\n',
+    ),
+    (
+        "py1-drop-module",
+        PYS,
+        '    {"cProfile", "profile", "bdb", "pdb", "trace", "code", "codeop", "doctest"}',
+        '    {"cProfile", "profile", "bdb", "pdb", "code", "codeop", "doctest"}',
+    ),
+    (
+        "py1-pickle-loads-safe",
+        PYS,
+        '        "dumps",\n        "dump",\n        "Pickler",',
+        '        "dumps",\n        "loads",\n        "dump",\n        "Pickler",',
+    ),
+    (
+        "py1-timeit-safe",
+        PYS,
+        '    "timeit": frozenset({"default_timer"}),',
+        '    "timeit": frozenset({"default_timer", "timeit"}),',
+    ),
+    (
+        "py1-skip-use-site-lookup",
+        PYS,
+        '        return outcome.get("outcome") == "local" or (\n'
+        '            outcome.get("outcome") == "none"\n'
+        '            and outcome.get("reason") in _OWN_BINDING_REASONS\n        )',
+        "        return False",
+    ),
+    (
+        "py1-pickle-any-receiver",
+        PYS,
+        "                    if parent.id not in self.attribute_targets:\n"
+        '                        self.string_checks.append(("module:pickle", parent))',
+        "                    pass",
+    ),
+    (
+        "b4-forkingpickler",
+        PYS,
+        '        "ForkingPickler",\n        "_ForkingPickler",\n',
+        '        "_ForkingPickler",\n',
+    ),
+    (
+        "py3-runpy-two-positional",
+        PYS,
+        "        return positional == 1\n",
+        "        return positional in (1, 2)\n",
+    ),
+    (
+        "py2-annotation-raw-text",
+        PYS,
+        '            and (value is None or "(" in value or ":=" in value)\n',
+        '            and ("(" in _text(node, source) or ":=" in _text(node, source))\n',
+    ),
+    (
+        "b5-annotations-write",
+        PYS,
+        "            if _ANNOTATIONS in spellings and not self._attribute_read(ident):",
+        "            if False:",
+    ),
+    (
+        "py8-file-wide",
+        PYS,
+        "        if self.string_code:\n            self.dynamic = True\n            self.frame_locals = True",
+        "        if self.string_code:\n            self.dynamic = True",
+    ),
+    (
+        "b2-marshal-attribute-module-only",
+        PYS,
+        '                    self._fire("marshal")  # ``pstats.marshal``',
+        "                    self.dynamic = True  # ``pstats.marshal``",
+    ),
+    (
+        "py8-exec-from-builtins",
+        PYS,
+        "            if module in _BUILTIN_MODULES and last in _CODE_BUILTINS:",
+        "            if False:",
+    ),
+    (
+        "builtins-reach-gate",
+        PYS,
+        "        if builtin_mentions and self.builtins_reach:",
+        "        if builtin_mentions:",
+    ),
+    (
+        "dotted-name-gate",
+        PYS,
+        "        if not _DOTTED_NAME.fullmatch(value):\n            return\n",
+        "",
+    ),
+    (
+        "generic-module-acquisition",
+        PYS,
+        "        if head in _GENERIC_MODULE_STRINGS and (",
+        "        if False and (",
+    ),
+    # R-699-3 (the #727 fold).
+    (
+        "r3-legacy-evaluator",
+        PYM,
+        "    if analysis.string_code or analysis.legacy_evaluator():",
+        "    if analysis.string_code:",
+    ),
+    (
+        "r3-legacy-evaluator-lookup",
+        PYS,
+        "            outcome = self.lookup(node)\n"
+        '            if outcome.get("outcome") == "none" and outcome.get("reason") not in (\n'
+        "                _OWN_BINDING_REASONS\n            ):\n                return True",
+        "            outcome = self._use_lookup(node)\n"
+        '            if outcome.get("outcome") == "none" and outcome.get("reason") not in (\n'
+        "                _OWN_BINDING_REASONS\n            ):\n                return True",
+    ),
+    (
+        "r3-b1-module-binding-dominance",
+        PYS,
+        "            or scope.kind in (_MODULE, _CLASS)\n",
+        "",
+    ),
+    (
+        "r3-b2-from-import-reexport",
+        PYS,
+        "        if module not in _CHECKED_MODULES and member in _CHECKED_MODULES:",
         "        if False:",
     ),
     (
-        "compile-is-no-evaluator",
-        PYM,
-        '_EVALUATORS = frozenset({"exec", "eval", "execfile"})',
-        '_EVALUATORS = frozenset({"exec", "eval", "compile", "execfile"})',
+        "r3-b2-generic-from-stdlib",
+        PYS,
+        "            if stdlib and last in _STRING_CODE_MODULES:",
+        "            if False:",
+    ),
+    (
+        "r3-b3-dotted-generic",
+        PYS,
+        "                    _dunder(components[1])\n"
+        "                    or components[1] in _GENERIC_MODULE_ATTRIBUTES[head]",
+        "                    False",
+    ),
+    (
+        "r3-b3-name-keyword",
+        PYS,
+        '        if parent.type == "keyword_argument":\n'
+        '            name = parent.child_by_field_name("name")\n            if (\n',
+        '        if False:\n            name = parent.child_by_field_name("name")\n'
+        "            if (\n",
+    ),
+    (
+        "r3-b3-resolver-attribute",
+        PYS,
+        "        if method in _ACQUIRERS | _STRING_RESOLVERS:",
+        "        if method in _ACQUIRERS:",
+    ),
+    (
+        "r3-b3-resolver-name",
+        PYS,
+        "            return _text(callee, self.source) in _ACQUIRERS | _STRING_RESOLVERS",
+        "            return _text(callee, self.source) in _ACQUIRERS",
+    ),
+    (
+        "r3-b3-factory-key",
+        PYS,
+        '        if parent.type == "pair":',
+        "        if False:",
+    ),
+    (
+        "r3-b4-singledispatch",
+        PYS,
+        '        "singledispatch",\n        "singledispatchmethod",\n',
+        '        "singledispatchmethod",\n',
+    ),
+    (
+        "r3-getmodule",
+        PYS,
+        '        "f_builtins",\n        "getmodule",\n    }\n)',
+        '        "f_builtins",\n    }\n)',
+    ),
+    (
+        "r3-computed-acquisition",
+        PYS,
+        "            if spellings & _BUILTINS_REACH or self._computed_acquisition(ident):",
+        "            if spellings & _BUILTINS_REACH:",
+    ),
+    (
+        "r3-computed-acquisition-own-name",
+        PYS,
+        '        if key.type == "identifier" and _text(key, self.source) == "__name__":\n'
+        "            return False\n",
+        "",
+    ),
+    (
+        "r3-re-receiver-exempt",
+        PYS,
+        "                if self.builtins_reach and not self._re_receiver(node):",
+        "                if self.builtins_reach:",
+    ),
+    (
+        "r3-re-receiver-any",
+        PYS,
+        "        return bool(\n"
+        '            outcome.get("outcome") == "import"\n'
+        '            and binding.get("form") == "import"\n'
+        '            and binding.get("bound") == _RE_MODULE\n        )',
+        "        return True",
+    ),
+    # R-699-5 (the second #727 fold).
+    (
+        "r5-b1-phantom-listcomp-leak",
+        PYS,
+        "                        self._targets(part, scope, depth + 1, phantom=True)",
+        "                        self._targets(part, scope, depth + 1)",
+    ),
+    (
+        "r5-b1-phantom-except-comma",
+        PYS,
+        "                self._targets(child, scope, depth + 1, phantom=True)",
+        "                self._targets(child, scope, depth + 1)",
+    ),
+    (
+        "r5-b1-phantom-type-parameter-bound",
+        PYS,
+        "                inner, ident, _Binding(PARAMETER, phantom=ident.id not in names)",
+        "                inner, ident, _Binding(PARAMETER)",
+    ),
+    (
+        "r5-b1-type-parameter-name-is-real",
+        PYS,
+        "                inner, ident, _Binding(PARAMETER, phantom=ident.id not in names)",
+        "                inner, ident, _Binding(PARAMETER, phantom=True)",
+    ),
+    (
+        "r5-b1-type-parameter-splat-name",
+        PYS,
+        '                "splat_type",\n                "list_splat",\n',
+        '                "splat_type",\n',
+    ),
+    (
+        "r5-b1-real-binding-builtin",
+        PYS,
+        "            or not self._real_binding(scope, _text(ident, self.source))\n",
+        "",
+    ),
+    (
+        "r5-b1-real-binding-checked",
+        PYS,
+        "        if self._own_binding(outcome) and self._real_binding(\n"
+        "            self.use_decided, _text(ident, self.source)\n        ):",
+        "        if self._own_binding(outcome):",
+    ),
+    (
+        "r5-b2-acquired-before-gate",
+        PYS,
+        "        if acquired and set(_ACQUIRED_PARTS.split(value)) & _ACQUIRED_MODULES:",
+        "        if False:",
+    ),
+    (
+        "r5-b2-split-every-separator",
+        PYS,
+        '_ACQUIRED_PARTS = re.compile(r"[^A-Za-z0-9_]+")',
+        '_ACQUIRED_PARTS = re.compile(r"[.:]")',
+    ),
+    (
+        "r5-b2-entry-point",
+        PYS,
+        "        if self._entry_point_value(outer, parent):",
+        "        if False:",
+    ),
+    (
+        "r5-b2-entry-point-positional",
+        PYS,
+        "            return index is not None and index != 0",
+        "            return False",
+    ),
+    (
+        "r5-b2-entry-point-keyword",
+        PYS,
+        "                return keyword in _ENTRY_POINT_KEYWORDS",
+        "                return False",
+    ),
+    (
+        "r5-b2-entry-point-parse",
+        PYS,
+        "        if method != _ENTRY_POINT_PARSE or receiver is None:",
+        "        if True:",
+    ),
+    (
+        "r5-s1-reexport-checked",
+        PYS,
+        '        elif member in _REEXPORT_CHECKED and not _stdlib_path(module or ""):',
+        "        elif False:",
+    ),
+    (
+        "r5-s1-reexport-attribute-table",
+        PYS,
+        "                _dunder(name) or name in _GENERIC_MODULE_ATTRIBUTES[module]",
+        "                _dunder(name)",
+    ),
+    (
+        "r5-s1-reexport-dunder",
+        PYS,
+        "                _dunder(name) or name in _GENERIC_MODULE_ATTRIBUTES[module]",
+        "                name in _GENERIC_MODULE_ATTRIBUTES[module]",
+    ),
+    (
+        "r5-nit-test-package",
+        PYS,
+        '_S2_STDLIB_MODULES = py_modules.STDLIB_MODULES | {"test"}',
+        "_S2_STDLIB_MODULES = py_modules.STDLIB_MODULES",
+    ),
+    # R-699-6 (the third #727 fold).
+    (
+        "r6-acquirer-any-argument",
+        PYS,
+        "        if self._in_acquirer_call(node):\n            return True\n",
+        "",
+    ),
+    (
+        "r6-acquirer-attribute-callee",
+        PYS,
+        '                if callee is not None and callee.type == "attribute":\n'
+        '                    callee = callee.child_by_field_name("attribute")\n',
+        "",
+    ),
+    (
+        "r6-acquirer-any-depth",
+        PYS,
+        "        while parent is not None:\n"
+        '            if parent.type == "call" and _same(\n'
+        '                parent.child_by_field_name("arguments"), child\n',
+        "        while parent is not None:\n"
+        '            if parent.type == "dictionary":\n'
+        "                return False\n"
+        '            if parent.type == "call" and _same(\n'
+        '                parent.child_by_field_name("arguments"), child\n',
+    ),
+    (
+        "py5-mock-getattr",
+        PYS,
+        '            elif mock_file and name == "getattr":\n'
+        '                self.string_checks.append(("getattr", ident))',
+        '            elif mock_file and name == "getattr":\n                pass',
+    ),
+    (
+        "py4-installed-builtins",
+        PYS,
+        "SHADOWED_NAMES = BUILTINS | INSTALLED_BUILTINS",
+        "SHADOWED_NAMES = BUILTINS",
     ),
     (
         "computed-import-module",
@@ -260,7 +654,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "    return True\n",
     ),
     (
-        "runpy",
+        "runpy-loader",
         PYM,
         "        head in _LOADER_MODULES\n",
         "        False\n",
@@ -809,8 +1203,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "b-resolver-identifier",
         PYM,
         "        if spellings & _RESOLVER_NAMES:\n            facts.shutoff.add(CAUSE_DYNAMIC_LOADER)\n"
-        "        if name in _EVALUATORS",
-        "        if name in _EVALUATORS",
+        '        if name == "__import__"',
+        '        if name == "__import__"',
     ),
     (
         "b-relative-import-module",
@@ -856,9 +1250,9 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     ),
     (
         "b-exec-statement",
-        PYM,
-        '        if kind == "exec_statement":\n            facts.shutoff.add(CAUSE_EVALUATOR)',
-        '        if kind == "exec_statement":\n            pass',
+        PYS,
+        '        self._fire("builtin")  # string code (#699 PY-8)',
+        "        pass",
     ),
     (
         "b-missing-reason-fact",

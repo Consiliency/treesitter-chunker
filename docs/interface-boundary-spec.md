@@ -275,9 +275,14 @@ For Python callers it proves bindings through the LEGB scope chain
 redefinitions narrow to their group and never resolve; module-scope and
 class-body lookups in a file that may bind names at run time (`exec`,
 `globals`, `sys.modules` and the like) or has a star import prove nothing, as
-do module-level definitions of builtin names, class-body lookups in a class
+do module-level definitions of builtin names (and of the names
+`gettext.install()` puts into `builtins`), class-body lookups in a class
 with a base or keyword argument, and every lookup in a file that mentions
-`f_locals`; monkeypatching from other modules is not tracked.
+`f_locals` or runs code from a string, a payload or an annotation (`exec`,
+`eval`, `compile`, `breakpoint()`, `cProfile`/`pdb`/`timeit`-style helpers,
+`pickle.loads`, `shelve`, `marshal`, `get_type_hints`, string annotations
+that call, `__annotations__` writes, `runpy` with `init_globals`, a loader's
+`get_code`); monkeypatching from other modules is not tracked.
 
 With `"imports"`, everything `"structural"` does applies, and a JavaScript,
 TypeScript or TSX call whose callee a relative ES import binds (`import { t }`,
@@ -351,9 +356,11 @@ literal `import_module('m')` or `sys.modules['m']`) makes the whole module,
 and every module it exposes, unprovable. That also applies to the written
 module's own module-level `"structural"` proofs, so `"imports"` can resolve
 fewer Python calls than `"structural"`. A Python file that may load or write
-any module (`exec`, `eval`, a non-literal loader, other `importlib` uses,
-`runpy`, `sys.modules` other than a literal key, `sys.path` changes,
-`__globals__`, frame globals, `builtins`, `__main__`) or that tree-sitter and
+any module (`exec`, `eval`, `compile`, any of the string-code triggers
+above, a code object or closure such as `f.__code__` (reads included), a
+non-literal loader, other `importlib` uses, `runpy`, `sys.modules` other
+than a literal key, `sys.path` changes, `__globals__`, frame globals,
+`builtins`, `__main__`) or that tree-sitter and
 CPython may read differently turns Python Tier 2 off, scoped like the
 JavaScript causes (test files: `test_*.py`, `*_test.py`, `conftest.py`, or a
 `tests` or `test` directory). On the real trees measured for
