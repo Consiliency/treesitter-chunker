@@ -3836,7 +3836,13 @@ def test_702_evaluator_loads(tmp_path: Path, text: str) -> None:
 @pytest.mark.parametrize(
     "text",
     [
-        pytest.param("process.env;", id="global-read"),
+        pytest.param("process.binding;", id="denied-member"),
+        pytest.param("process.hrtime;", id="member-outside-closed-list"),
+        pytest.param("process['env'];", id="computed-process-member"),
+        pytest.param("process.cwd[key];", id="computed-key-on-allowed-member"),
+        pytest.param("true && process;", id="right-of-and"),
+        pytest.param("process || null;", id="left-of-or"),
+        pytest.param("globalThis.process;", id="global-property"),
         pytest.param("globalThis?.process;", id="optional-member"),
         pytest.param("globalThis['process'];", id="bracket"),
         pytest.param("Reflect.get(globalThis, 'process');", id="reflect-get"),
@@ -3845,16 +3851,43 @@ def test_702_evaluator_loads(tmp_path: Path, text: str) -> None:
             "Object.getOwnPropertyDescriptor(globalThis, 'process').get();",
             id="descriptor",
         ),
+        pytest.param("const g = globalThis; g.process;", id="global-alias"),
+        pytest.param("function f() { return this.process; }", id="sloppy-this"),
         pytest.param(r"const key = 'pr\u006fcess';", id="cooked-string"),
         pytest.param("globalThis[`process`];", id="template"),
         pytest.param("const key = /^process$/;", id="regex"),
         pytest.param("function process() {}", id="function-name"),
         pytest.param("class process {}", id="class-name"),
+        pytest.param("const process = 1; void process;", id="lexical-binding"),
+        pytest.param("const process = () => 1;", id="inferred-function-name"),
+        pytest.param("const process = class {};", id="inferred-class-name"),
+        pytest.param("function f(process: number) { return process; }", id="parameter"),
+        pytest.param(
+            "function f(process: number) { return typeof process; }", id="bound-operand"
+        ),
+        pytest.param("const process = { env: {} }; process.env;", id="bound-member"),
+        pytest.param("export const process = 1;", id="exported-variable"),
+        pytest.param("const p = 1; export { p as process };", id="exported-name"),
         pytest.param("const process = 1; const o = { process };", id="shorthand"),
-        pytest.param("{ let process = 0; } process.env;", id="sibling-binding"),
+        pytest.param("{ let process = 0; } process;", id="sibling-binding"),
         pytest.param("require('node:process');", id="require"),
+        pytest.param("require('process');", id="bare-specifier"),
         pytest.param("const p = require('node:process');", id="bound-require"),
+        pytest.param(
+            "const p = require('process'); p.env; void p;", id="bound-require-escape"
+        ),
+        pytest.param(
+            "export const p = require('process'); p.env;", id="exported-require"
+        ),
         pytest.param("import p from 'node:process';", id="default-import"),
+        pytest.param(
+            "import process from 'node:process'; typeof process;", id="import-name"
+        ),
+        pytest.param("import 'node:process';", id="side-effect-import"),
+        pytest.param("import p from 'process'; p.hrtime;", id="import-denied-member"),
+        pytest.param(
+            "import p from 'process'; p.env; export { p };", id="exported-import"
+        ),
         pytest.param("import * as p from 'node:process';", id="namespace-import"),
         pytest.param("import { env as e } from 'node:process';", id="named-import"),
         pytest.param("import p = require('node:process');", id="import-equals"),
@@ -3872,8 +3905,67 @@ def test_702_process_tokens_and_loads(tmp_path: Path, text: str) -> None:
 @pytest.mark.parametrize(
     "text",
     [
-        "const process = { env: {} }; process.env;",
-        "function f(process: { env: unknown }) { return process.env; }",
+        "<span>process</span>;",
+        "<span>pr&#111;cess</span>;",
+        "<span>pr&#x6f;cess</span>;",
+        '<span title="pr&#111;cess" />;',
+    ],
+)
+def test_702_process_jsx_tokens(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.tsx": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize("access", [".constructor", "['constructor']"])
+def test_702_process_members_keep_evaluator_cause(tmp_path: Path, access: str) -> None:
+    root = _write(
+        tmp_path,
+        {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": f"process.cwd{access};"},
+    )
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:evaluator)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("process?.argv.length;", id="optional-global-member"),
+        pytest.param("process.cwd();", id="global-member"),
+        pytest.param("process.env.HOME;", id="environment"),
+        pytest.param("process.exit(0);", id="exit"),
+        pytest.param("process.on('exit', () => {});", id="listener"),
+        pytest.param("process.once('exit', () => {});", id="one-shot-listener"),
+        pytest.param("process.platform;", id="platform"),
+        pytest.param(
+            "if (process.send) process.send?.({ ready: true });", id="process-send"
+        ),
+        pytest.param("typeof process;", id="typeof"),
+        pytest.param("process === undefined;", id="strict-equality-left"),
+        pytest.param("undefined !== process;", id="strict-inequality-right"),
+        pytest.param("process == null;", id="loose-equality"),
+        pytest.param("null != process;", id="loose-inequality"),
+        pytest.param("process && true;", id="left-of-and"),
+        pytest.param("import p from 'node:process'; p.env;", id="safe-default-import"),
+        pytest.param(
+            "import * as p from 'process'; p?.argv;", id="safe-namespace-import"
+        ),
+        pytest.param(
+            "import { env as e } from 'node:process'; typeof e;", id="safe-named-import"
+        ),
+        pytest.param(
+            "function f() { return p.env; } const p = require('node:process');",
+            id="safe-bound-require",
+        ),
+        pytest.param(
+            "const p = require(`process`); p.env;",
+            id="safe-require-template",
+        ),
+        pytest.param(
+            "import p = require('process'); p && true;", id="safe-import-equals"
+        ),
         "const vm = { run() {} }; vm.run();",
         "const binding = 'contextify';",
         "import type { Script } from 'node:vm';",
@@ -3899,7 +3991,7 @@ def test_702_inert_uses_keep_tier2(tmp_path: Path, text: str) -> None:
     ("text", "cause"),
     [
         ("import 'node:vm';", "evaluator"),
-        ("process.env;", "module-system"),
+        ("process.binding;", "module-system"),
     ],
 )
 def test_702_causes_follow_test_scope(

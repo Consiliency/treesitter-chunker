@@ -60,23 +60,25 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "702-evaluator-static-import",
         JSM,
-        '                    if not _has_token(node, "type"):\n'
+        '                    elif not _has_token(node, "type"):\n'
         "                        self._mark_node_builtin_load(specifier)\n",
         "",
     ),
     (
         "702-evaluator-import-or-require-call",
         JSM,
-        "        self._mark_node_builtin_load(specifier)\n"
+        "        else:\n"
+        "            self._mark_node_builtin_load(specifier)\n"
         "        # A literal ``require`` taints whatever binds the name:",
         "        # A literal ``require`` taints whatever binds the name:",
     ),
     (
         "702-evaluator-import-equals",
         JSM,
-        "        if not type_only:\n            self._mark_node_builtin_load(specifier)\n"
-        "        self.taints.add(specifier)",
-        "        self.taints.add(specifier)",
+        "                        else:\n"
+        "                            self._mark_node_builtin_load(specifier)\n"
+        "                    self.taints.add(specifier)",
+        "                    self.taints.add(specifier)",
     ),
     (
         "702-evaluator-create-require",
@@ -97,10 +99,133 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '_PROCESS_SPECIFIERS = frozenset({"process"})',
     ),
     (
-        "702-process-lexical-exemption",
+        "702-process-restore-lexical-exemption",
         JSM,
-        "            if not self._lexical_token_name(node, text):",
-        '            if text == "process" or not self._lexical_token_name(node, text):',
+        '            if text == "process":\n',
+        '            if text == "process":\n'
+        "                if self._lexical_token_name(node, text):\n"
+        "                    return\n",
+    ),
+    (
+        "702-process-right-and-exempt",
+        JSM,
+        '                and _same(parent.child_by_field_name("left"), outer)\n',
+        "",
+    ),
+    (
+        "702-process-member-list-open",
+        JSM,
+        "        if prop is None or _text(prop, self.source) not in _INERT_PROCESS_MEMBERS:",
+        '        if prop is None or _text(prop, self.source) == "binding":',
+    ),
+    (
+        "702-process-allow-denied-member",
+        JSM,
+        "_INERT_PROCESS_MEMBERS = frozenset(\n    {",
+        '_INERT_PROCESS_MEMBERS = frozenset(\n    {\n        "binding",',
+    ),
+    (
+        "702-process-send",
+        JSM,
+        '        "send",  # Sends an IPC message to the parent and reports send status.\n',
+        "",
+    ),
+    (
+        "702-process-static-member-exemption",
+        JSM,
+        "        if prop is None or _text(prop, self.source) not in _INERT_PROCESS_MEMBERS:",
+        "        if True:",
+    ),
+    (
+        "702-process-typeof-exemption",
+        JSM,
+        'return (parent.type == "unary_expression" and text == "typeof") or (',
+        "return (",
+    ),
+    (
+        "702-process-equality-exemption",
+        JSM,
+        '            parent.type == "binary_expression" and text in _EQUALITY\n',
+        "            False\n",
+    ),
+    (
+        "702-process-left-and-exemption",
+        JSM,
+        '                and operator.type == "&&"\n',
+        '                and operator.type == "||"\n',
+    ),
+    (
+        "702-process-computed-reach",
+        JSM,
+        "            and self.analysis._member_key(access) is None\n",
+        "            and False\n",
+    ),
+    (
+        "702-process-inert-load",
+        JSM,
+        "        handled.add(literal.id)\n",
+        "        self.shutoff.add(CAUSE_MODULE_SYSTEM)\n",
+    ),
+    (
+        "702-process-b3-reflect-get",
+        JSM,
+        "                    value = decode_js_string_sloppy(raw)\n",
+        "                    value = decode_js_string_sloppy(raw)\n"
+        '                    if (value == "process" and node.parent.type == "arguments"\n'
+        '                        and b"Reflect.get(" in node.parent.parent.text):\n'
+        '                        value = ""\n',
+    ),
+    (
+        "702-process-b3-descriptor",
+        JSM,
+        "                    value = decode_js_string_sloppy(raw)\n",
+        "                    value = decode_js_string_sloppy(raw)\n"
+        '                    if (value == "process" and node.parent.type == "arguments"\n'
+        '                        and b"Object.getOwnPropertyDescriptor(" in node.parent.parent.text):\n'
+        '                        value = ""\n',
+    ),
+    (
+        "702-process-b3-destructure",
+        JSM,
+        '            if text == "process":\n',
+        '            if text == "process":\n'
+        '                if node.parent.type == "pair_pattern":\n'
+        "                    return\n",
+    ),
+    (
+        "702-process-b3-global-alias",
+        JSM,
+        '            if text == "process":\n',
+        '            if text == "process":\n'
+        '                if node.type == "property_identifier" and node.parent.text == b"g.process":\n'
+        "                    return\n",
+    ),
+    (
+        "702-process-b3-sloppy-this",
+        JSM,
+        '            if text == "process":\n',
+        '            if text == "process":\n'
+        '                if node.type == "property_identifier" and node.parent.text == b"this.process":\n'
+        "                    return\n",
+    ),
+    (
+        "702-process-b3-bare-require",
+        JSM,
+        "            self._mark_process_load(literal, names, handled)\n",
+        "            if not is_require or names != [None]:\n"
+        "                self._mark_process_load(literal, names, handled)\n",
+    ),
+    (
+        "702-process-jsx-text-entities",
+        JSM,
+        "        return unescape(raw).strip() in _MODULE_SYSTEM_TOKEN_NAMES",
+        "        return raw.strip() in _MODULE_SYSTEM_TOKEN_NAMES",
+    ),
+    (
+        "702-process-jsx-attribute-entities",
+        JSM,
+        "                    value = unescape(raw[1:-1])",
+        "                    value = raw[1:-1]",
     ),
     # Stack introspection (treesitter-chunker#718).
     (
@@ -142,8 +267,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "718-pair-pattern",
         JSM,
-        "            if not self._lexical_token_name(node, text):",
-        '            if node.parent.type != "pair_pattern" and not self._lexical_token_name(node, text):',
+        "            elif not self._lexical_token_name(node, text):",
+        '            elif node.parent.type != "pair_pattern" and not self._lexical_token_name(node, text):',
     ),
     (
         "718-shorthand-pattern",
@@ -998,8 +1123,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "module-system-strings-sloppy",
         JSM,
-        "                value = decode_js_string_sloppy(_text(node, self.source))",
-        "                value = decode_string_literal(node, self.source) or ''",
+        "                    value = decode_js_string_sloppy(raw)",
+        "                    value = decode_string_literal(node, self.source) or ''",
     ),
     (
         "import-meta-require",

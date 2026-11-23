@@ -67,6 +67,7 @@ each use site, so a shadowing binding is never mistaken for it.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from html import unescape
 from typing import TYPE_CHECKING, Any
 
 from .js_strings import (
@@ -161,6 +162,19 @@ _MODULE_SYSTEM_NAME_TOKENS = frozenset(
 )
 _MODULE_SYSTEM_SPECIFIERS = frozenset({"module", "node:module"})
 _PROCESS_SPECIFIERS = frozenset({"process", "node:process"})
+_JSX_TEXT_NODES = frozenset({"jsx_text", "html_character_reference"})
+_INERT_PROCESS_MEMBERS = frozenset(
+    {
+        "argv",  # Command-line argument strings.
+        "cwd",  # Returns the current directory's path.
+        "env",  # Reads and writes environment strings.
+        "exit",  # Terminates the process.
+        "on",  # Registers a process event listener.
+        "once",  # Registers a one-shot process event listener.
+        "platform",  # Platform name string.
+        "send",  # Sends an IPC message to the parent and reports send status.
+    }
+)
 _EVALUATOR_SPECIFIERS = frozenset(
     prefix + name
     for prefix in ("", "node:")
@@ -524,15 +538,38 @@ class _ModuleFacts:
                 # before consulting lexical bindings.
                 self.shutoff.add(CAUSE_DYNAMIC_SCOPE)
             elif kind == "import_require_clause":
-                self._taint_literal(
-                    node.child_by_field_name("source"),
-                    type_only=_has_token(node.parent, "type"),
-                )
+                source_node = node.child_by_field_name("source")
+                specifier = _literal_value(source_node, self.source)
+                if specifier is not None and specifier not in _MODULE_SYSTEM_SPECIFIERS:
+                    if not _has_token(node.parent, "type"):
+                        if specifier in _PROCESS_SPECIFIERS:
+                            name = next(
+                                (
+                                    c
+                                    for c in node.named_children
+                                    if c.type == "identifier"
+                                ),
+                                None,
+                            )
+                            self._mark_process_load(source_node, [name], handled)
+                        else:
+                            self._mark_node_builtin_load(specifier)
+                    self.taints.add(specifier)
+                else:
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "import_statement":
                 source_node = node.child_by_field_name("source")
                 if source_node is not None:
                     specifier = decode_string_literal(source_node, self.source)
-                    if not _has_token(node, "type"):
+                    if specifier in _PROCESS_SPECIFIERS and not _has_token(
+                        node, "type"
+                    ):
+                        self._mark_process_load(
+                            source_node,
+                            self._process_import_names(node),
+                            handled,
+                        )
+                    elif not _has_token(node, "type"):
                         self._mark_node_builtin_load(specifier)
                     if specifier is None or (
                         specifier in _MODULE_SYSTEM_SPECIFIERS
@@ -541,10 +578,15 @@ class _ModuleFacts:
                         self.shutoff.add(CAUSE_MODULE_SYSTEM)
                     elif specifier not in _MODULE_SYSTEM_SPECIFIERS:
                         self.imports.add(specifier)
-            elif kind == "string":
+            elif kind == "string" and node.id not in handled:
                 # Matched on the value sloppy code gives the literal (legacy
                 # octal escapes decode); a malformed literal fails closed.
-                value = decode_js_string_sloppy(_text(node, self.source))
+                raw = _text(node, self.source)
+                value: str | None
+                if node.parent is not None and node.parent.type == "jsx_attribute":
+                    value = unescape(raw[1:-1])
+                else:
+                    value = decode_js_string_sloppy(raw)
                 if (
                     value is None
                     or value in _MODULE_SYSTEM_NAMES
@@ -552,7 +594,7 @@ class _ModuleFacts:
                     or self._stack_trace_hook(node, value)
                 ):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
-            elif kind == "template_string":
+            elif kind == "template_string" and node.id not in handled:
                 cooked = cook_template(node, self.source)
                 if (
                     cooked is None
@@ -567,6 +609,8 @@ class _ModuleFacts:
                 pattern = _text(node, self.source)
                 if any(name in pattern for name in _MODULE_SYSTEM_TOKEN_NAMES):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            elif kind in _JSX_TEXT_NODES and self._jsx_text_token(node):
+                self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "meta_property":
                 if not self._inert_import_meta(node):
                     self.shutoff.add(CAUSE_DYNAMIC_LOADER)
@@ -580,6 +624,23 @@ class _ModuleFacts:
             self.shutoff.add(CAUSE_DYNAMIC_LOADER)
         self._import_writes()
         self._namespace_uses()
+
+    def _jsx_text_token(self, node: Any) -> bool:
+        # A JSX attribute's entities are already decoded with the full string.
+        if node.parent is None or node.parent.type != "jsx_element":
+            return False
+        previous = node.prev_named_sibling
+        if previous is not None and previous.type in _JSX_TEXT_NODES:
+            return False
+        # Tree-sitter splits one text value into text and entity siblings.
+        end = node.end_byte
+        sibling = node.next_named_sibling
+        while sibling is not None and sibling.type in _JSX_TEXT_NODES:
+            end = sibling.end_byte
+            sibling = sibling.next_named_sibling
+        raw = self.source[node.start_byte : end].decode("utf-8")
+        # Include JSX text surrounded by formatting whitespace.
+        return unescape(raw).strip() in _MODULE_SYSTEM_TOKEN_NAMES
 
     def _lexical_token_name(self, node: Any, name: str) -> bool:
         """Exempt variable and parameter names whose use is lexical."""
@@ -714,7 +775,11 @@ class _ModuleFacts:
         if specifier in _MODULE_SYSTEM_SPECIFIERS:
             self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
-        self._mark_node_builtin_load(specifier)
+        if specifier in _PROCESS_SPECIFIERS:
+            names = [self._require_binding(node)] if is_require else []
+            self._mark_process_load(literal, names, handled)
+        else:
+            self._mark_node_builtin_load(specifier)
         # A literal ``require`` taints whatever binds the name: an AMD
         # ``require`` parameter loads modules too.
         self.taints.add(specifier)
@@ -768,26 +833,22 @@ class _ModuleFacts:
                 return str(imported)
         return None
 
-    def _taint_literal(self, node: Any, *, type_only: bool) -> None:
-        specifier = _literal_value(node, self.source)
-        if specifier is None or specifier in _MODULE_SYSTEM_SPECIFIERS:
-            self.shutoff.add(CAUSE_MODULE_SYSTEM)
-            return
-        if not type_only:
-            self._mark_node_builtin_load(specifier)
-        self.taints.add(specifier)
-
     def _name(self, node: Any, handled: set[int]) -> None:
         from .js_scope import _declaration_name
 
         text = _text(node, self.source)
         if text in _MODULE_SYSTEM_TOKEN_NAMES:
-            if not self._lexical_token_name(node, text):
+            if text == "process":
+                if node.type != "identifier" or not (
+                    self.analysis._binding_scope(node, text) is None
+                    and self._inert_process_operand(node)
+                ):
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            elif not self._lexical_token_name(node, text):
                 self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
         if node.type == "property_identifier":
-            # A property cannot be looked up (its receiver may be an alias
-            # of ``process``): match the name.
+            # A property cannot be looked up: match the name.
             if text in _MODULE_SYSTEM_NAMES or self._stack_trace_hook(node, text):
                 self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
@@ -840,6 +901,99 @@ class _ModuleFacts:
                     self.shutoff.add(CAUSE_DYNAMIC_LOADER)
 
     # -- fold 3: closed allow-lists for ``module`` imports and createRequire
+
+    def _mark_process_load(
+        self, literal: Any, names: list[Any], handled: set[int]
+    ) -> None:
+        """Exempt a process load only if every bound name stays in safe uses."""
+        if not names:
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            return
+        for name in names:
+            if name is None or name.type != "identifier":
+                self.shutoff.add(CAUSE_MODULE_SYSTEM)
+                return
+            text = _text(name, self.source)
+            scope = self.analysis._binding_scope(name, text)
+            uses = self._uses(scope, text) if scope is not None else None
+            if not uses or not all(self._inert_process_operand(use) for use in uses):
+                self.shutoff.add(CAUSE_MODULE_SYSTEM)
+                return
+        handled.add(literal.id)
+
+    def _process_import_names(self, statement: Any) -> list[Any]:
+        if any(child.type == "import_attribute" for child in statement.named_children):
+            return []
+        names = []
+        for clause in statement.named_children:
+            if clause.type != "import_clause":
+                continue
+            for part in clause.named_children:
+                if part.type == "identifier":
+                    names.append(part)
+                elif part.type == "namespace_import":
+                    names.extend(
+                        c for c in part.named_children if c.type == "identifier"
+                    )
+                elif part.type == "named_imports":
+                    for spec in part.named_children:
+                        if spec.type == "import_specifier" and not _has_token(
+                            spec, "type"
+                        ):
+                            names.append(
+                                spec.child_by_field_name("alias")
+                                or spec.child_by_field_name("name")
+                            )
+        return names
+
+    def _require_binding(self, call: Any) -> Any:
+        outer = _climb_wrappers(call)
+        declarator = outer.parent
+        if (
+            declarator is None
+            or declarator.type != "variable_declarator"
+            or not _same(declarator.child_by_field_name("value"), outer)
+        ):
+            return None
+        declaration = declarator.parent
+        if declaration is None or (
+            declaration.parent is not None
+            and declaration.parent.type == "export_statement"
+        ):
+            return None
+        return declarator.child_by_field_name("name")
+
+    def _inert_process_operand(self, node: Any) -> bool:
+        if self._inert_operand(node):
+            return True
+        outer = _climb_wrappers(node)
+        parent = outer.parent
+        if parent is None:
+            return False
+        if parent.type == "binary_expression":
+            operator = parent.child_by_field_name("operator")
+            return (
+                operator is not None
+                and operator.type == "&&"
+                and _same(parent.child_by_field_name("left"), outer)
+            )
+        if parent.type != "member_expression" or not _same(
+            parent.child_by_field_name("object"), outer
+        ):
+            return False
+        prop = parent.child_by_field_name("property")
+        if prop is None or _text(prop, self.source) not in _INERT_PROCESS_MEMBERS:
+            return False
+        member = _climb_wrappers(parent)
+        access = member.parent
+        # E5-3 already covers constructor and escaped keys. A dynamic key
+        # on this receiver has no known spelling for that check.
+        return not (
+            access is not None
+            and access.type == "subscript_expression"
+            and _same(access.child_by_field_name("object"), member)
+            and self.analysis._member_key(access) is None
+        )
 
     def _uses(self, scope: Any, name: str) -> list[Any] | None:
         """Every use of the binding of ``name`` in ``scope``, found by the

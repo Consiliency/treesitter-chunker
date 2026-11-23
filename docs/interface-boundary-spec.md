@@ -299,6 +299,21 @@ or an unparsed JS/TS file. Stack-introspection triggers include the global
 name, and regular-expression patterns containing either name. A lexical
 `let`, `const`, `var`, or parameter binding and references to that binding
 are exempt. A shorthand property still spells a property key.
+
+Node loads of `vm`, `repl`, `inspector`, and `inspector/promises` are
+evaluator causes. A `process` identifier or property name, a cooked string
+or template token equal to `process`, JSX text or an attribute value that
+spells `process` after entity decoding, or a regular-expression pattern
+containing `process` is a module-system cause. This includes lexical
+bindings, since anonymous functions and classes can infer their runtime name
+from the binding. An unbound `process` identifier is exempt as an operand of
+`typeof` or equality, as the left operand of `&&`, or as the receiver of
+a plain or optional dot access to `argv`, `cwd`, `env`, `exit`, `on`,
+`once`, `platform`, or `send`. Constructor access and dynamic indexing
+through these members can still disable Tier 2. A load of `process` or
+`node:process` is a module-system cause unless every bound name is used
+only in these closed positions.
+
 Any such file in production code turns Tier 2 off for the whole run, and the cause is
 logged. Three uses are exempt by closed lists: an import of only
 `builtinModules` or `isBuiltin` from `module`; `const r = createRequire(…)`

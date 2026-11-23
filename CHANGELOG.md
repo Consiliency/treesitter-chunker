@@ -117,6 +117,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     either name, and regex patterns containing either name trigger the
     cause. Lexical variable and parameter bindings and their references
     are exempt.
+    Node evaluator loads and non-exempt `process` tokens also disable
+    cross-module resolution (treesitter-chunker#702). The process rule
+    allows specific static members and operand positions on the unbound
+    global and checks the uses of aliases imported from the process module.
     Causes confined to test files apply only to test callers (O-2). This
     holds within the run only (plan risk
     R12, treesitter-chunker#702).
