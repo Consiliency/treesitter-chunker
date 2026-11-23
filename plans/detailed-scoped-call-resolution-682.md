@@ -2094,21 +2094,22 @@ the import proofs themselves (9.4-9.6). `structural` output is unchanged.
 
 **Real-tree outcome (owner decision O-3: shipped as designed).** Python Tier 2
 gains nothing on the measured trees. `imports` is compared with `structural`
-on git-tracked `.py` files, with Python 3.14, at PR 6 fold 1. "ambiguous" counts
-off-mode ambiguous Python call edges; "S → I" is the resolved count under
-`structural` and then `imports` (gain / lost); "pot" is what Tier 2 would
-add with run-wide causes removed (a diagnostic only).
+on git-tracked `.py` files, with Python 3.14, at PR 6 fold 2; each row names
+its extraction root (the `sys.path` entry). "ambiguous" counts off-mode
+ambiguous Python call edges; "S → I" is the resolved count under
+`structural` and then `imports` (gain / lost); "pot" is what Tier 2 would add
+with run-wide causes removed (a diagnostic only).
 
-| Tree | Files | Prod ambiguous | Prod S → I (gain / lost) | Prod pot | Test ambiguous | Test S → I (gain / lost) | Test pot | Production causes |
+| Tree and root | Files | Prod ambiguous | Prod S → I (gain / lost) | Prod pot | Test ambiguous | Test S → I (gain / lost) | Test pot | Production causes |
 | --- | ---: | ---: | --- | ---: | ---: | --- | ---: | --- |
-| pmcp (repo) | 267 | 1772 | 110 → 110 (0 / 0) | 0 | 5580 | 908 → 908 (0 / 0) | 29 | dynamic-loader, evaluator, module-object, module-system |
-| pmcp (`src/` root) | 62 | 883 | 63 → 63 (0 / 0) | 1 | – | – | – | dynamic-loader, evaluator, module-object, module-system |
-| spec (repo) | 375 | 4676 | 2410 → 1463 (0 / 947) | 73 | 4026 | 1136 → 1114 (0 / 22) | 0 | dynamic-loader, evaluator, module-object, module-system |
-| spec (`src/` root) | 97 | 501 | 200 → 185 (0 / 15) | 28 | – | – | – | evaluator, module-object, module-system |
-| treesitter-chunker (repo, no fixtures) | 852 | 4958 | 411 → 411 (0 / 0) | 60 | 9831 | 1030 → 906 (0 / 124) | 92 | dynamic-loader, module-object, module-system |
-| treesitter-chunker (`chunker/` only) | 335 | 2880 | 258 → 258 (0 / 0) | 29 | – | – | – | dynamic-loader, module-object, module-system |
-| Code-Index-MCP (repo) | 1111 | 11573 | 279 → 240 (0 / 39) | 0 | 11468 | 797 → 797 (0 / 0) | 6 | dynamic-loader, evaluator, module-object, module-system, unparsed-file, unresolvable-writer |
-| Code-Index-MCP (`mcp_server/` only) | 290 | 6626 | 103 → 64 (0 / 39) | 0 | – | – | – | dynamic-loader, module-object, module-system, unparsed-file |
+| pmcp: root = repo | 267 | 1772 | 110 → 110 (0 / 0) | 0 | 5580 | 908 → 908 (0 / 0) | 29 | dynamic-loader, evaluator, module-object, module-system |
+| pmcp: root = `src/` | 62 | 883 | 63 → 63 (0 / 0) | 1 | – | – | – | dynamic-loader, evaluator, module-object, module-system |
+| spec: root = repo | 375 | 4676 | 2410 → 1463 (0 / 947) | 50 | 4026 | 1136 → 1114 (0 / 22) | 0 | dynamic-loader, evaluator, module-object, module-system |
+| spec: root = `src/` | 97 | 501 | 200 → 185 (0 / 15) | 6 | – | – | – | evaluator, module-object, module-system |
+| treesitter-chunker: root = repo, no fixtures | 852 | 4969 | 412 → 412 (0 / 0) | 59 | 9850 | 1030 → 906 (0 / 124) | 92 | dynamic-loader, module-object, module-system |
+| treesitter-chunker: root holds only `chunker/` | 335 | 2885 | 259 → 259 (0 / 0) | 29 | – | – | – | dynamic-loader, module-object, module-system |
+| Code-Index-MCP: root = repo | 1111 | 11573 | 279 → 279 (0 / 0) | 8 | 11468 | 797 → 797 (0 / 0) | 6 | dynamic-loader, evaluator, module-object, module-system, unparsed-file, unresolvable-writer |
+| Code-Index-MCP: root holds only `mcp_server/` | 290 | 6626 | 103 → 103 (0 / 0) | 7 | – | – | – | dynamic-loader, module-object, module-system, unparsed-file |
 
 Why the gain is zero, and what the losses are:
 
@@ -2119,16 +2120,30 @@ Why the gain is zero, and what the losses are:
     `getattr`;
   - `sys.path` inserts in scripts;
   - `sys.modules[__name__] = …`.
-
-  Taking `compile` off the evaluator list removed treesitter-chunker's only
-  `evaluator` cause, but its loaders remain.
 - **Small upside.** Even with the causes removed, Tier 2 would add 0 to 92
   edges per tree. Most ambiguous Python edges are member calls
   (`self.x()`, `obj.x()`), which Tier 2 never touches.
-- **Losses.** The losses are #697 taints, which apply to the written module's
-  Tier 1 module-scope proofs in `imports` mode. In `spec`,
-  `return intake, intake_graph` hands two submodules to callers, and the
-  closure follows what they import.
+- **Losses: potential writes the rules cannot rule out.** The losses are
+  #697 taints, which apply to the written module's Tier 1 module-scope proofs
+  in `imports` mode. No file of those trees performs such a write. In `spec`,
+  the whole −947 (and −22 for tests) comes from three functions that return
+  modules (`return intake, intake_graph`; `return spec_graph`; a lazily
+  imported `event_ingress`), repeated in its two bundled copies, plus the
+  exposure closure over what those modules import. Tracking returned modules
+  through call results is follow-up N2.
+- **Code-Index-MCP.** Its earlier −39 came from one read of
+  `mcp_server.__path__`. E6-7 makes that read safe, so the loss is now 0.
+
+**Cost (E6-8).** These figures are facts-extraction wall time for git-tracked
+`.py` files on a shared host. Before fold 2, `structural` paid for the Tier 2
+module facts; it no longer does:
+
+| Tree | Mode | Before fold 2 | `module_facts` before | After fold 2 | `module_facts` after |
+| --- | --- | ---: | ---: | ---: | ---: |
+| spec | `structural` | 8.8 s | 2.2 s | 6.3 s | 0 s |
+| spec | `imports` | 8.9 s | 2.4 s | 9.0 s | 2.5 s |
+| Code-Index-MCP | `structural` | 26.9 s | 5.9 s | 20.9 s | 0 s |
+| Code-Index-MCP | `imports` | 27.2 s | 6.0 s | 27.7 s | 6.6 s |
 
 ## 10. Fixtures
 
@@ -3664,3 +3679,20 @@ expected row changes.
 | Q2: `compile` alone is no evaluator cause | §9.10; `py_modules._EVALUATORS` |
 | Q3: the loader refinement is not applied (a possible future narrowing on #699) | §15 R12 (Python) |
 | Pins: `test_routes_that_cannot_change_a_module_attribute_are_no_cause` (a `compile`-only syntax check), `test_run_wide_causes_fail_closed[exec-compile]`; the `compile-is-no-evaluator` mutation | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+
+### PR 6: fold 2 (the president's rulings E6-1..E6-8 on #705)
+
+`python` fact version 33; `js` stays at 20. No expected row changes. The
+fixture outputs are identical to fold 1.
+
+| Item | Applied in |
+| --- | --- |
+| E6-1: a module's own bindings re-checked for Tier 2 proofs (A-1, B1); a package `__init__.py` name that is also a submodule conflicts, for Tier 2 and Tier 1 (A-4) | §9.10; `engine._python_proof`, `py_modules.own_binding_reason`, `tier1_reason` |
+| E6-2: every module-namespace import binding followed (`module_imports`) | §9.10; `py_modules.module_facts`, `_Builder.attr_values`, `_Builder.exposed` |
+| E6-3: `import a.b as m` as attribute access; own submodule imports (`own_submodules`); `module-getattr` | §9.8, §9.10; `py_modules.resolve_import`, `_attribute`, `_own_submodules` |
+| E6-4: pytest `rootdir` insertion for test importers | §9.10; `py_modules.shadow_directories` |
+| E6-5: patcher targets | §9.10; `py_modules._scan_patchers` |
+| E6-6: write chains taint their first attribute | §9.10; `_Builder.walk_use` |
+| E6-7: `__path__`/`__spec__` reads safe | §9.10; `py_modules._SAFE_DUNDERS` |
+| E6-8: module facts only in `imports`; S-1; mutation gaps; wording; CLI help and docstrings; measurement roots; this table's fact versions; "PR 4 finding O-3" | §9.10; `facts.compute_scope_facts`, `py_scope.analyze`, `_attribute`; `chunker/cli/symbol_commands.py`, `cli/main.py`, `chunker/symbol_graph.py`, `chunker/boundary/adapter.py` |
+| Pins: `test_fold2_blocking_cases_keep_their_off_mode_edge` (23 panel repros, each with its CPython 3.14 result), `test_fold2_written_module_loses_its_own_tier1_proof` (6), `test_fold2_controls_still_resolve` (4), `test_fold2_package_path_read_keeps_the_packages_own_proofs`, `test_fold2_computed_patcher_targets_are_test_scoped_causes` (3), `test_fold2_structural_facts_carry_no_tier2_tables`, `test_fold2_rules_each_have_a_failing_case` (19), `test_fold2_python2_exec_statement_is_an_evaluator`, `test_fold2_init_definition_shadowed_by_a_submodule`; 34 new rule mutations (81 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |

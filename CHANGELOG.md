@@ -134,9 +134,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     makes that name unprovable, and any other use (passed to a function,
     aliased, returned, `m.__dict__`, `vars(m)`, a class-level import, a
     literal `importlib.import_module('m')`, `__import__('m')` or
-    `sys.modules['m']`) makes the whole module, and every module it exposes,
-    unprovable, in `"imports"` mode also for that module's own module-level
-    `structural` proofs. Tier 2 is off for the run when a file may load or
+    `sys.modules['m']`) makes the whole module, and every module it exposes
+    (also through conditional or repeated imports), unprovable, in
+    `"imports"` mode also for that module's own module-level `structural`
+    proofs; a write to the importing module's own binding (`use.t = f`)
+    blocks the import proof too. `import a.b as m` reads what package `a`
+    binds as `b`, a package's module `__getattr__` makes its submodules
+    unprovable, test files also see pytest's `rootdir` insertion, and a
+    computed `mock.patch`/`monkeypatch.setattr` target turns Tier 2 off for
+    test callers. Tier 2 is off for the run when a file may load or
     write any module (`exec`, `eval`, a non-literal
     `import_module` or `__import__`, other `importlib` uses, `runpy`,
     `sys.modules` other than a literal key, `sys.path`/`meta_path`/

@@ -1971,9 +1971,7 @@ def resolve_import(
             return _none(value)
     if isinstance(value, _Module):
         return _none("non-callable")
-    if isinstance(value, _Local):
-        return {"outcome": "local", "path": value.path, "local": value.local}
-    return _none("export-not-found")  # pragma: no cover - the loop returns
+    return {"outcome": "local", "path": value.path, "local": value.local}
 
 
 def tier1_reason(
