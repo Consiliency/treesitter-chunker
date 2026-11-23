@@ -32,6 +32,9 @@ Decoded (ECMAScript 2025, 12.9.4 String Literals):
 
 from __future__ import annotations
 
+import html
+import html.entities
+import re
 from typing import Any
 
 _SIMPLE_ESCAPES = {
@@ -247,3 +250,29 @@ def module_export_name(node: Any, source: bytes) -> str | None:
         except UnicodeDecodeError:
             return None
     return None
+
+
+# JSX character references (treesitter-chunker#718, R-718-3): the JSX spec
+# decodes the XHTML entity set (HTML 4 plus ``apos``) and decimal or hex
+# numeric references, each ending in ``;``; any other ``&...`` stays literal.
+_JSX_ENTITY = re.compile(r"&(?:#([0-9]+)|#[xX]([0-9a-fA-F]+)|([A-Za-z0-9]+));")
+_JSX_NAMED = {**html.entities.name2codepoint, "apos": 0x27}
+
+
+def _jsx_entity(match: re.Match[str]) -> str:
+    decimal, hexadecimal, name = match.groups()
+    if name is not None:
+        code = _JSX_NAMED.get(name)
+    else:
+        code = int(decimal, 10) if decimal is not None else int(hexadecimal, 16)
+    if code is None or code > 0x10FFFF:
+        return match.group(0)
+    return chr(code)
+
+
+def decode_jsx_text(raw: str) -> tuple[str, ...]:
+    """The values JSX text or a JSX attribute string may have, for name
+    matching: decoded with the JSX spec's entity set and with
+    ``html.unescape`` (which also decodes HTML5 names and references with no
+    ``;``). A JS escape is not decoded: a backslash is literal in JSX."""
+    return (_JSX_ENTITY.sub(_jsx_entity, raw), html.unescape(raw))

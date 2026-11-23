@@ -81,12 +81,6 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        if text in _STACK_KEYS and not _in_type_position(node):",
     ),
     (
-        "718-pair-pattern",
-        JSM,
-        "            if not self._lexical_stack_name(node, text):",
-        '            if node.parent.type != "pair_pattern" and not self._lexical_stack_name(node, text):',
-    ),
-    (
         "718-shorthand-pattern",
         JSM,
         '        "shorthand_property_identifier_pattern",\n        "statement_identifier",',
@@ -104,23 +98,44 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "                if any(name in pattern for name in _STACK_KEYS):",
         "                if pattern in _STACK_KEYS:",
     ),
+    # R-718-3: no lexical exemption; JSX strings decode character references.
     (
-        "718-binding-kind",
+        "718-r3-restore-lexical-exemption",
         JSM,
-        "            binding.lexical_name or binding.cls == PARAMETER",
-        "            True",
+        "            # or an export key.\n            self.shutoff.add(CAUSE_MODULE_SYSTEM)",
+        "            # or an export key.\n"
+        '            if node.type != "identifier" or self.analysis._binding_scope(node, text) is None:\n'
+        "                self.shutoff.add(CAUSE_MODULE_SYSTEM)",
     ),
     (
-        "718-variable-exemption",
+        "718-r3-skip-jsx-text",
         JSM,
-        "            binding.lexical_name or binding.cls == PARAMETER",
-        "            binding.cls == PARAMETER",
+        "                self._jsx_text(node)",
+        "                pass",
     ),
     (
-        "718-parameter-exemption",
+        "718-r3-jsx-text-run",
         JSM,
-        "            binding.lexical_name or binding.cls == PARAMETER",
-        "            binding.lexical_name",
+        "            last.next_named_sibling is not None\n",
+        "            False\n",
+    ),
+    (
+        "718-r3-jsx-attribute-js-escapes",
+        JSM,
+        '            elif kind == "string" and _parent_type(node) == "jsx_attribute":',
+        "            elif False:",
+    ),
+    (
+        "718-r3-no-html-unescape",
+        STR,
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw), html.unescape(raw))",
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw),) * 2",
+    ),
+    (
+        "718-r3-no-jsx-spec-decode",
+        STR,
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw), html.unescape(raw))",
+        "    return (html.unescape(raw),) * 2",
     ),
     (
         "718-prepare-stack-trace",

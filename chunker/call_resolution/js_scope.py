@@ -265,9 +265,6 @@ class _Binding:
     statement: Any = None
     ambient: bool = False
     info: Mapping[str, str] | None = None
-    # A let/const/var binding or catch parameter. Function parameters have
-    # their own binding class.
-    lexical_name: bool = False
 
 
 @dataclass(eq=False)
@@ -565,29 +562,11 @@ class _Analysis:
             ambient = ambient or current.type == "ambient_declaration"
         return current, ambient
 
-    def _symbol(
-        self,
-        scope: _Scope,
-        name: str,
-        decl: Any,
-        kind: str,
-        *,
-        lexical_name: bool = False,
-    ) -> None:
+    def _symbol(self, scope: _Scope, name: str, decl: Any, kind: str) -> None:
         statement, ambient = self._statement_of(decl, scope)
         # Ambient status is inherited from enclosing ``declare`` blocks.
         ambient = ambient or scope.ambient or self.ambient_depth > 0
-        scope.bind(
-            name,
-            _Binding(
-                SYMBOL,
-                decl,
-                kind,
-                statement,
-                ambient,
-                lexical_name=lexical_name,
-            ),
-        )
+        scope.bind(name, _Binding(SYMBOL, decl, kind, statement, ambient))
 
     def _is_direct(self, decl: Any, var: _Scope, lex: _Scope) -> bool:
         """Whether ``decl`` is a statement directly in its var scope's body."""
@@ -711,16 +690,10 @@ class _Analysis:
             names = pattern_names(left)
             if keyword in ("const", "let", "using"):
                 for ident in names:
-                    block.bind(
-                        _text(ident, self.source),
-                        _Binding(LOCAL_VARIABLE, lexical_name=keyword != "using"),
-                    )
+                    block.bind(_text(ident, self.source), _Binding(LOCAL_VARIABLE))
             elif keyword == "var":
                 for ident in names:
-                    var.bind(
-                        _text(ident, self.source),
-                        _Binding(LOCAL_VARIABLE, lexical_name=True),
-                    )
+                    var.bind(_text(ident, self.source), _Binding(LOCAL_VARIABLE))
             elif kind is None:
                 self.assignment_targets.extend(write_targets(left))
             else:
@@ -732,15 +705,11 @@ class _Analysis:
         parameter = node.child_by_field_name("parameter")
         if parameter is not None:
             for ident in pattern_names(parameter):
-                scope.bind(
-                    _text(ident, self.source),
-                    _Binding(LOCAL_VARIABLE, lexical_name=True),
-                )
+                scope.bind(_text(ident, self.source), _Binding(LOCAL_VARIABLE))
         self._statements(node, var, scope, depth + 1)
 
     def _declaration(self, node: Any, var: _Scope, lex: _Scope, depth: int) -> None:
         target = var if node.type == "variable_declaration" else lex
-        lexical_name = node.type in ("lexical_declaration", "variable_declaration")
         declarators = [
             child
             for child in node.named_children
@@ -765,23 +734,14 @@ class _Analysis:
                     and not self._namespace_export(node, target)
                 ):
                     # 2.6(c): a single const bound to a function is a symbol.
-                    self._symbol(target, text, value, _FUNCTION, lexical_name=True)
+                    self._symbol(target, text, value, _FUNCTION)
                 elif value is not None and value.type in _EXPRESSION_FUNCTIONS:
-                    target.bind(
-                        text,
-                        _Binding(EXPRESSION_BOUND, lexical_name=lexical_name),
-                    )
+                    target.bind(text, _Binding(EXPRESSION_BOUND))
                 else:
-                    target.bind(
-                        text,
-                        _Binding(LOCAL_VARIABLE, lexical_name=lexical_name),
-                    )
+                    target.bind(text, _Binding(LOCAL_VARIABLE))
             else:
                 for ident in pattern_names(name):
-                    target.bind(
-                        _text(ident, self.source),
-                        _Binding(LOCAL_VARIABLE, lexical_name=lexical_name),
-                    )
+                    target.bind(_text(ident, self.source), _Binding(LOCAL_VARIABLE))
         self._statements(node, var, lex, depth + 1)
 
     @staticmethod

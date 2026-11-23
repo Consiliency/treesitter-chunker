@@ -72,6 +72,7 @@ from typing import TYPE_CHECKING, Any
 from .js_strings import (
     cook_template,
     decode_js_string_sloppy,
+    decode_jsx_text,
     decode_string_literal,
     module_export_name,
 )
@@ -159,6 +160,8 @@ _STACK_NAME_TOKENS = frozenset(
         "type_identifier",
     }
 )
+# Pieces of one JSX text run (R-718-3).
+_JSX_TEXT_PARTS = frozenset({"jsx_text", "html_character_reference"})
 _MODULE_SYSTEM_SPECIFIERS = frozenset({"module", "node:module"})
 # Fold 3, item 1: the only names an import from ``module`` may bind without
 # a run-wide cause (with ``createRequire`` under item 2). ``builtinModules``
@@ -218,6 +221,10 @@ def _same(left: Any, right: Any) -> bool:
 
 def _has_token(node: Any, token: str) -> bool:
     return any(not child.is_named and child.type == token for child in node.children)
+
+
+def _parent_type(node: Any) -> str | None:
+    return node.parent.type if node.parent is not None else None
 
 
 def _text(node: Any, source: bytes) -> str:
@@ -522,6 +529,16 @@ class _ModuleFacts:
                         self.shutoff.add(CAUSE_MODULE_SYSTEM)
                     elif specifier not in _MODULE_SYSTEM_SPECIFIERS:
                         self.imports.add(specifier)
+            elif kind in ("jsx_text", "html_character_reference"):
+                self._jsx_text(node)
+            elif kind == "string" and _parent_type(node) == "jsx_attribute":
+                # A JSX attribute string decodes HTML character references,
+                # not JS escapes (R-718-3).
+                if any(
+                    value in _MODULE_SYSTEM_NAMES or value in _STACK_KEYS
+                    for value in decode_jsx_text(_text(node, self.source)[1:-1])
+                ):
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "string":
                 # Matched on the value sloppy code gives the literal (legacy
                 # octal escapes decode); a malformed literal fails closed.
@@ -562,49 +579,32 @@ class _ModuleFacts:
         self._import_writes()
         self._namespace_uses()
 
-    def _lexical_stack_name(self, node: Any, name: str) -> bool:
-        """Exempt variable and parameter names whose use is lexical."""
-        from .js_scope import PARAMETER
+    def _jsx_text(self, node: Any) -> None:
+        """Substring-match one run of JSX text after entity decoding.
 
-        if node.type != "identifier":
-            return False
-        parent = node.parent
-        if parent is not None:
-            if parent.type in ("jsx_namespace_name", "namespace_export"):
-                return False
-            if parent.type == "export_statement" and any(
-                child.type == "namespace" for child in parent.children
-            ):
-                return False
-            if parent.type == "export_specifier":
-                # The exported name and a re-export's source name are keys.
-                statement = parent.parent.parent
-                if (
-                    parent.child_by_field_name("alias") is None
-                    or not _same(parent.child_by_field_name("name"), node)
-                    or statement.child_by_field_name("source") is not None
-                ):
-                    return False
-            if parent.type.startswith("jsx_") and _same(
-                parent.child_by_field_name("name"), node
-            ):
-                return False
-            if (
-                parent.type in ("required_parameter", "optional_parameter")
-                and _same(parent.child_by_field_name("pattern"), node)
-                and any(
-                    child.type
-                    in ("accessibility_modifier", "readonly", "override_modifier")
-                    for child in parent.children
-                )
-            ):
-                # A TS parameter property also names a class member.
-                return False
-        scope = self.analysis._binding_scope(node, name)
-        return scope is not None and all(
-            binding.lexical_name or binding.cls == PARAMETER
-            for binding in scope.bindings[name]
+        tree-sitter splits a run at each character reference; the run is
+        one string child at runtime. JSX whitespace folding only trims or
+        joins lines with a space, so it never makes a new substring."""
+        if _parent_type(node) not in ("jsx_element", "jsx_fragment"):
+            return
+        previous = node.prev_named_sibling
+        if previous is not None and previous.type in _JSX_TEXT_PARTS:
+            return
+        last = node
+        while (
+            last.next_named_sibling is not None
+            and last.next_named_sibling.type in _JSX_TEXT_PARTS
+        ):
+            last = last.next_named_sibling
+        raw = self.source[node.start_byte : last.end_byte].decode(
+            "utf-8", errors="replace"
         )
+        if any(
+            name in value
+            for value in decode_jsx_text(raw)
+            for name in (*_STACK_KEYS, *_MODULE_SYSTEM_NAMES)
+        ):
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
 
     def _stack_trace_hook(self, node: Any, name: str) -> bool:
         """Match a stack-formatting hook only on the global Error receiver."""
@@ -760,8 +760,10 @@ class _ModuleFacts:
 
         text = _text(node, self.source)
         if text in _STACK_KEYS:
-            if not self._lexical_stack_name(node, text):
-                self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            # Any role (R-718-3): a variable or parameter name also reaches
+            # runtime as a string, through a function's inferred ``.name``
+            # or an export key.
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
         if node.type == "property_identifier":
             # A property cannot be looked up (its receiver may be an alias
