@@ -17,7 +17,21 @@
      ],
      "caller": "go",
      "file": "app.py",
+     "imports": {
+      "candidate_ids": [
+       "835dc2f2db433d5673704d475aa3e5b1055dd747"
+      ],
+      "candidates": [
+       "pkg/impl.py:1:helper"
+      ],
+      "outcome": "import",
+      "resolution": "resolved",
+      "rules": [
+       "t2.import"
+      ]
+     },
      "line": 5,
+     "pr": 6,
      "reference": "helper",
      "today": {
       "candidate_ids": [

@@ -121,6 +121,7 @@ CI_SMOKE_TESTS = [
     "tests/test_call_resolution_tier1_py.py",
     # Tier 2 TS/JS import resolution (treesitter-chunker#682, PR 5).
     "tests/test_call_resolution_tier2_js.py",
+    "tests/test_call_resolution_tier2_py.py",
 ]
 
 

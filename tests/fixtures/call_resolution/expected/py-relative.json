@@ -17,7 +17,21 @@
      ],
      "caller": "go",
      "file": "pkg/sub/x.py",
+     "imports": {
+      "candidate_ids": [
+       "0bc3516dcc453f9e9039142b671e4bc146670255"
+      ],
+      "candidates": [
+       "pkg/util.py:1:helper"
+      ],
+      "outcome": "import",
+      "resolution": "resolved",
+      "rules": [
+       "t2.import"
+      ]
+     },
      "line": 5,
+     "pr": 6,
      "reference": "helper",
      "today": {
       "candidate_ids": [

@@ -37,6 +37,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from . import py_modules
 from .modules import ModuleRun, build_module_run, resolve_import
 
 RULE_LEXICAL = "t1.lexical"
@@ -77,6 +78,8 @@ _ANALYZED_LANGUAGES = _JS_FAMILY_LANGUAGES | {"python"}
 _BARE_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # ``ns.f``: a namespace-import member call (Tier 2, section 9.1).
 _NAMESPACE_MEMBER = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)")
+# ``m.f``, ``a.b.f``: a Python module member chain (Tier 2, section 9.4).
+_MEMBER_CHAIN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+")
 MODE_IMPORTS = "imports"
 
 Declaration = tuple[str, int, int]
@@ -134,6 +137,8 @@ class RunContext:
     unknown_globals: frozenset[str] = frozenset()
     # Tier 2 (section 9): the run's module graph, in ``imports`` mode only.
     modules: ModuleRun | None = None
+    # Tier 2 Python (9.4-9.6, PR 6), in ``imports`` mode only.
+    py_modules: py_modules.PyModuleRun | None = None
 
 
 @dataclass(frozen=True)
@@ -209,6 +214,11 @@ def build_run_context(
         unknown_globals=frozenset(unknown),
         modules=(
             build_module_run(facts, language_filter, directory_symlinks)
+            if mode == MODE_IMPORTS
+            else None
+        ),
+        py_modules=(
+            py_modules.build_py_module_run(facts, directory_symlinks)
             if mode == MODE_IMPORTS
             else None
         ),
@@ -298,21 +308,49 @@ def proof(
     *,
     context: RunContext | None = None,
     member: str | None = None,
+    span_key: str | None = None,
 ) -> tuple[frozenset[str], Mapping[str, Any], tuple[str, ...]]:
     """``(P, final outcome, binding rule IDs)`` for one call (6.3).
 
-    ``member`` is the property of a namespace member call (``ns.f()``).
+    ``member`` is the property of a namespace member call (``ns.f()``);
+    ``span_key`` the call's callee span key (Python import groups and member
+    chains are keyed by it).
     """
     if outcome is None:
         return frozenset(), _none("no-binding-fact"), ()
     kind = outcome.get("outcome")
     family = language_family(file_context.language)
+    python_run = (
+        family == "python"
+        and mode == MODE_IMPORTS
+        and context is not None
+        and context.py_modules is not None
+    )
     if kind == "local":
         if member is not None:
             # Only a namespace import's member is eligible (9.1).
             return frozenset(), outcome, ()
+        if python_run:
+            assert context is not None and context.py_modules is not None
+            # ``imports`` mode: another file may write the module global the
+            # proof names (#697), or a run-wide cause applies (PR 6).
+            reason = py_modules.tier1_reason(
+                context.py_modules, file_context.path, outcome.get("proof") or ()
+            )
+            if reason is not None:
+                return frozenset(), _none(reason), ()
         return _checked_proof(
             outcome, file_context, family, symbol_lookup, RULE_LEXICAL
+        )
+    if python_run:
+        assert context is not None and context.py_modules is not None
+        return _python_proof(
+            outcome,
+            file_context,
+            symbol_lookup,
+            context,
+            context.py_modules,
+            span_key if span_key is not None else _span_key(file_context, outcome),
         )
     if (
         kind != "import"
@@ -347,6 +385,54 @@ def proof(
     if not proven:
         return proven, joined, ()
     return proven, outcome, rules
+
+
+def _python_proof(
+    outcome: Mapping[str, Any],
+    file_context: FileContext,
+    symbol_lookup: Mapping[str, Mapping[str, Any]],
+    context: RunContext,
+    run: py_modules.PyModuleRun,
+    key: str | None,
+) -> tuple[frozenset[str], Mapping[str, Any], tuple[str, ...]]:
+    """Tier 2 Python (9.4-9.6): an import binding, or a group of two or more
+    imports (which narrows but resolves only when every member proves the
+    same definitions), followed by the call's member chain."""
+    py_file = run.files.get(file_context.path)
+    if py_file is None:
+        return frozenset(), outcome, ()
+    chain = list(py_file.chains.get(key, ())) if key else []
+    if outcome.get("outcome") == "import":
+        bindings = [outcome.get("binding") or {}]
+    else:
+        bindings = list(py_file.groups.get(key, ())) if key else []
+        if not bindings:
+            return frozenset(), outcome, ()
+    rule = RULE_NAMESPACE if chain else RULE_IMPORT
+    proven: set[str] = set()
+    for binding in bindings:
+        resolved = py_modules.resolve_import(run, file_context.path, binding, chain)
+        if resolved.get("outcome") != "local":
+            return frozenset(), resolved, ()
+        target = context.files.get(str(resolved.get("path")))
+        if target is None or not target.supported:
+            return frozenset(), _none("export-not-found"), ()
+        found, joined, _rules = _checked_proof(
+            resolved["local"], target, "python", symbol_lookup, rule
+        )
+        if not found:
+            return frozenset(), joined, ()
+        proven |= found
+    shown = outcome if outcome.get("outcome") == "import" else {"outcome": "import"}
+    return frozenset(proven), shown, (rule,)
+
+
+def _span_key(file_context: FileContext, outcome: Mapping[str, Any]) -> str | None:
+    """The callee span key of a binding outcome in its file."""
+    for key, value in file_context.bindings.items():
+        if value is outcome:
+            return str(key)
+    return None
 
 
 def _symbol_family(symbol: Mapping[str, Any] | None) -> str | None:
@@ -431,7 +517,29 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         f"{relationship.get('callee_byte_start')}:{relationship.get('callee_byte_end')}"
     )
     member: str | None = None
-    if not is_bare_identifier(reference):
+    family = language_family(file_context.language)
+    if family == "python" and not is_bare_identifier(reference):
+        # Tier 2 Python: a member chain whose head the lookup binds to an
+        # import (or a group of imports), with the chain read from the tree
+        # matching the reference exactly (9.4). Every other member call is
+        # untouched.
+        key = (
+            f"{relationship.get('callee_byte_start')}:"
+            f"{relationship.get('callee_byte_end')}"
+        )
+        run = context.py_modules
+        py_file = run.files.get(file_context.path) if run is not None else None
+        chain = py_file.chains.get(key) if py_file is not None else None
+        if (
+            context.mode != MODE_IMPORTS
+            or py_file is None
+            or not chain
+            or _MEMBER_CHAIN.fullmatch(reference) is None
+            or reference.split(".")[1:] != list(chain)
+            or ((raw or {}).get("outcome") != "import" and key not in py_file.groups)
+        ):
+            return not_eligible
+    elif not is_bare_identifier(reference):
         # Tier 2: a two-segment member call whose head the lookup binds to a
         # namespace import (9.1). Every other member call is untouched.
         member = namespace_member(reference)
@@ -452,6 +560,10 @@ def decide(context: RunContext, relationship: Mapping[str, Any]) -> Decision:
         context.symbol_lookup,
         context=context,
         member=member,
+        span_key=(
+            f"{relationship.get('callee_byte_start')}:"
+            f"{relationship.get('callee_byte_end')}"
+        ),
     )
     after, rules = narrow(
         before,

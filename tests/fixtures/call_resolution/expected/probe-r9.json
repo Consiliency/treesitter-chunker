@@ -204,7 +204,21 @@
      ],
      "caller": "use",
      "file": "py/c.py",
+     "imports": {
+      "candidate_ids": [
+       "1e2593527e3e30501fce7e6cbfb1bac5c2705b24",
+       "570a96f791e025185fb4f503d95bb32d99699ed4"
+      ],
+      "candidates": [
+       "py/a.py:1:helper",
+       "py/b.py:1:helper"
+      ],
+      "outcome": "none(script-dir-shadow)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 4,
+     "pr": 6,
      "reference": "helper",
      "today": {
       "candidate_ids": [
@@ -333,7 +347,21 @@
      ],
      "caller": "use",
      "file": "c.py",
+     "imports": {
+      "candidate_ids": [
+       "5d97167e581b853d48d3108e0a7c011a58a605d8"
+      ],
+      "candidates": [
+       "a.py:1:helper"
+      ],
+      "outcome": "import",
+      "resolution": "resolved",
+      "rules": [
+       "t2.import"
+      ]
+     },
      "line": 4,
+     "pr": 6,
      "reference": "helper",
      "today": {
       "candidate_ids": [

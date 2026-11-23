@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"20"`` for the ``js`` family and ``"30"`` for
+Schema (fact version ``"20"`` for the ``js`` family and ``"31"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -41,8 +41,10 @@ Schema (fact version ``"20"`` for the ``js`` family and ``"30"`` for
     for an import with attributes and ``"member": <name>`` on the outcome of
     a two-segment member callee ``ns.f()``.
     The Python import binding is ``{"form": "import", "module": <dotted
-    name>}`` for ``import m [as y]``, or ``{"form": "from", "module":
-    <module, with any leading dots>, "name": <imported name>}``.
+    name>, "bound": <the module the bound name denotes>}`` for ``import m
+    [as y]`` (``import a.b`` binds ``a``, ``import a.b as y`` binds
+    ``a.b``), or ``{"form": "from", "module": <module, with any leading
+    dots>, "name": <imported name>}``.
     A call whose callee span matches no node has no entry
     (``no-binding-fact``).
 ``script_globals``
@@ -59,8 +61,11 @@ Schema (fact version ``"20"`` for the ``js`` family and ``"30"`` for
 ``exports``, ``module_bindings``
     JavaScript and TypeScript: the Tier 2 module facts of
     :mod:`.js_modules` (the export table; star exports, CommonJS reach,
-    ``opaque`` and the modules the file may write). Empty for Python and
-    for an unsupported file.
+    ``opaque`` and the modules the file may write). Python: the Tier 2
+    module facts of :mod:`.py_modules` (every module-scope name's Tier 1
+    module lookup; imports, module-object uses, acquisitions, stars, dotted
+    strings, run-wide causes, parse hazards, import groups and member
+    chains). Empty for an unsupported file.
 ``symbols``
     ``[[node_type, byte_start, byte_end, symbol_id], ...]``, one entry per
     symbol chunk of the file, in chunk order. The engine joins proof
@@ -192,9 +197,14 @@ logger = logging.getLogger(__name__)
 # or a from-import is relied on by name; a recorded write of it fails closed).
 # python "29": fold 27 (Codex 4657978945: an allow-listed read's result must
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
+# python "31": Tier 2 Python (plan PR 6): the module-scope export table,
+# what ``import m`` binds (``bound``), import groups and member chains of
+# calls, every use of an imported module object (writes and escapes, #697),
+# literal module acquisitions, star imports, dotted constant strings,
+# run-wide causes and parse hazards (``module_bindings``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "30"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "31"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -242,6 +252,8 @@ TIER2_NONE_REASONS = (
     "run-tainted:module-object",
     "run-tainted:unparsed-file",
     "run-tainted:unresolvable-writer",
+    # Tier 2 Python (PR 6): a module another file may write wholly (#697).
+    "module-escape",
     "hop-limit",
     "cycle",
     "script-dir-shadow",
@@ -614,6 +626,76 @@ def valid_module_bindings(value: object) -> bool:
     )
 
 
+_PY_MODULE_BINDING_KEYS = frozenset(
+    {
+        "imports",
+        "uses",
+        "taints",
+        "stars",
+        "strings",
+        "shutoff",
+        "unparsed",
+        "missing",
+        "groups",
+        "chains",
+    }
+)
+_PY_USE_POSITIONS = frozenset({"write", "call", "value"})
+
+
+def _strings(value: object) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def valid_py_exports(value: object) -> bool:
+    """Whether ``value`` is a well-formed Python ``exports`` table."""
+    return isinstance(value, dict) and all(
+        isinstance(name, str) and valid_outcome(outcome)
+        for name, outcome in value.items()
+    )
+
+
+def valid_py_module_bindings(value: object) -> bool:
+    """Whether ``value`` is well-formed Python ``module_bindings``."""
+    if not isinstance(value, dict) or set(value) != _PY_MODULE_BINDING_KEYS:
+        return False
+    from .py_modules import SHUTOFF_CAUSES
+
+    groups = value["groups"]
+    chains = value["chains"]
+    return (
+        all(_strings(value[key]) for key in ("imports", "stars", "strings", "shutoff"))
+        and set(value["shutoff"]) <= set(SHUTOFF_CAUSES)
+        and isinstance(value["uses"], list)
+        and all(
+            _strings(use) and len(use) >= 2 and use[1] in _PY_USE_POSITIONS
+            for use in value["uses"]
+        )
+        and isinstance(value["taints"], list)
+        and all(_strings(taint) and len(taint) == 2 for taint in value["taints"])
+        and type(value["unparsed"]) is bool
+        and isinstance(value["missing"], str)
+        and value["missing"] in KNOWN_NONE_REASONS
+        and isinstance(groups, dict)
+        and all(
+            _is_span_key(key)
+            and isinstance(items, list)
+            and len(items) >= 2
+            and all(
+                isinstance(item, dict)
+                and all(isinstance(v, str) for v in item.values())
+                for item in items
+            )
+            for key, items in groups.items()
+        )
+        and isinstance(chains, dict)
+        and all(
+            _is_span_key(key) and _strings(items) and bool(items)
+            for key, items in chains.items()
+        )
+    )
+
+
 def valid_symbol_entry(value: object) -> bool:
     """Whether ``value`` is a well-formed ``symbols`` table entry."""
     return (
@@ -667,6 +749,12 @@ def valid_scope_facts(value: object, language: str | None) -> bool:
             (supported or value["module_bindings"])
             and not valid_module_bindings(value["module_bindings"])
         )
+    ):
+        return False
+    if language_family(language) == "python" and (
+        (supported and not valid_py_exports(value["exports"]))
+        or (supported and not valid_py_module_bindings(value["module_bindings"]))
+        or (not supported and (value["exports"] or value["module_bindings"]))
     ):
         return False
     symbols = value["symbols"]

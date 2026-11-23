@@ -17,7 +17,21 @@
      ],
      "caller": "go",
      "file": "app.py",
+     "imports": {
+      "candidate_ids": [
+       "969c7a10d07776913d7042e8fa406ee60039df24",
+       "d3cb897991b20481f19abb9a67bf7a7378ef23cc"
+      ],
+      "candidates": [
+       "other.py:1:helper",
+       "impl.py:1:helper"
+      ],
+      "outcome": "none(hop-limit)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 5,
+     "pr": 6,
      "reference": "helper",
      "today": {
       "candidate_ids": [

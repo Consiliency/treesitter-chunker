@@ -17,7 +17,21 @@
      ],
      "caller": "go",
      "file": "app.py",
+     "imports": {
+      "candidate_ids": [
+       "0bc3516dcc453f9e9039142b671e4bc146670255"
+      ],
+      "candidates": [
+       "pkg/util.py:1:helper"
+      ],
+      "outcome": "import",
+      "resolution": "resolved",
+      "rules": [
+       "t2.namespace"
+      ]
+     },
      "line": 6,
+     "pr": 6,
      "reference": "u.helper",
      "today": {
       "candidate_ids": [
@@ -43,7 +57,21 @@
      ],
      "caller": "go",
      "file": "app.py",
+     "imports": {
+      "candidate_ids": [
+       "0bc3516dcc453f9e9039142b671e4bc146670255"
+      ],
+      "candidates": [
+       "pkg/util.py:1:helper"
+      ],
+      "outcome": "import",
+      "resolution": "resolved",
+      "rules": [
+       "t2.namespace"
+      ]
+     },
      "line": 6,
+     "pr": 6,
      "reference": "pkg.util.helper",
      "today": {
       "candidate_ids": [

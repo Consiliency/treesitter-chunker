@@ -17,7 +17,23 @@
      ],
      "caller": "go",
      "file": "app.py",
+     "imports": {
+      "candidate_ids": [
+       "73add198c41bef6ef7c9378d77740836222ee506",
+       "8ec5fa5ddcc4f566f18df07e34263e74df81ad67"
+      ],
+      "candidates": [
+       "fast.py:1:helper",
+       "slow.py:1:helper"
+      ],
+      "outcome": "import",
+      "resolution": "ambiguous",
+      "rules": [
+       "t2.import"
+      ]
+     },
      "line": 8,
+     "pr": 6,
      "reference": "helper",
      "today": {
       "candidate_ids": [

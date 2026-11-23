@@ -40,13 +40,14 @@ MODE = "structural"
 
 # The plan PR this head implements (section 13.1). Expected-table rows of a
 # later PR that record an expectation for this head carry ``interim``.
-HEAD_PR = 5
+HEAD_PR = 6
 # Rules and reasons this head produces, each with a case in the expected
 # tables (10.6). Each later PR adds its own. ``stub`` left the vocabulary
 # when the Python analyzer landed (PR 4); ``unmapped`` and ``no-binding-fact``
 # are covered by the named tests below.
 LIVE_RULES = {"t1.kind", "t1.family", "t1.lexical", "t1.ts_overload", "t1.js_hoist"}
-# PR 5: Tier 2 for TS/JS, asserted in ``imports`` mode.
+# PR 5: Tier 2 for TS/JS, and PR 6: Tier 2 for Python, asserted in
+# ``imports`` mode.
 IMPORTS_MODE = "imports"
 LIVE_IMPORTS_RULES = {"t2.import", "t2.namespace"}
 LIVE_IMPORTS_REASONS = {
@@ -62,6 +63,11 @@ LIVE_IMPORTS_REASONS = {
     "hop-limit",
     "cycle",
     "local-variable",
+    # PR 6 (Python, 9.5-9.8).
+    "conditional",
+    "outside-root",
+    "script-dir-shadow",
+    "attr-submodule-conflict",
 }
 LIVE_REASONS = {
     "unbound",
@@ -213,8 +219,9 @@ NAMED_TIER1_PY_TESTS = (
 # Expected rows per plan PR (10.1): a row that loses its finalization fails
 # the pin (#695 panel B7).
 EXPECTED_ROWS_PER_PR = {1: 55, 2: 55, 3: 6, 4: 43}
-# Rows with an ``imports`` field, per plan PR (PR 5: Tier 2 for TS/JS).
-EXPECTED_IMPORTS_ROWS_PER_PR = {5: 31}
+# Rows with an ``imports`` field, per plan PR (PR 5: Tier 2 for TS/JS; PR 6:
+# Tier 2 for Python).
+EXPECTED_IMPORTS_ROWS_PER_PR = {5: 31, 6: 18}
 # Grammars per analyzer family, for the allow-list review rule.
 FAMILY_GRAMMARS = {"js": ("javascript", "typescript", "tsx"), "python": ("python",)}
 
@@ -688,7 +695,7 @@ def test_rule_and_reason_vocabularies() -> None:
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "20", "python": "30"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "20", "python": "31"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",
@@ -876,7 +883,7 @@ def test_expected_imports_tables_hold_at_this_head(tree: str) -> None:
             if "candidate_ids" in expected:
                 assert expected["candidate_ids"] == edge["candidates"], label
             if IMPORTS_MODE in record:
-                assert record["pr"] == 5, label
+                assert record["pr"] in (5, 6), label
 
 
 def test_expected_imports_rows_per_pr_are_pinned() -> None:

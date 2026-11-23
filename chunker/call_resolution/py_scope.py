@@ -283,7 +283,7 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import allowlist
+from . import allowlist, py_modules
 
 LANGUAGE = "python"
 # Deep trees fail closed with RecursionError (section 5.3). The counter grows
@@ -871,6 +871,11 @@ class _Analysis:
         self.star = False
         # Names written as an attribute or constant key of any receiver.
         self.attribute_writes: set[str] = set()
+        # Tier 2 (plan 9.4, PR 6): the attribute nodes written as targets
+        # (``svc.t = f``, ``del svc.t``), and the scope the last lookup
+        # decided in (a group of imports there narrows in ``imports`` mode).
+        self.attribute_targets: set[int] = set()
+        self.decided: _Scope | None = None
         # Subscript targets (``x[k] = v``, ``del x[k]``), checked once the
         # namespace aliases are known (#695 fold 18).
         self.subscript_targets: list[Any] = []
@@ -1014,6 +1019,7 @@ class _Analysis:
 
     def _attribute_write(self, node: Any) -> None:
         if node.type == "attribute":
+            self.attribute_targets.add(node.id)
             attribute = node.child_by_field_name("attribute")
             if attribute is not None:
                 # Inside a class, CPython mangles the attribute name too:
@@ -1335,8 +1341,18 @@ class _Analysis:
                 module = child
                 # ``import a.b`` binds ``a``: the first identifier token.
                 bound = next(iter(_identifier_children(child)), None)
-            text = ".".join(_dotted_parts(module, self.source)) if module else ""
-            self._import_binding(scope, node, bound, {"form": "import", "module": text})
+            parts = _dotted_parts(module, self.source) if module else []
+            text = ".".join(parts)
+            # ``bound``: the module the bound name denotes (Tier 2, 9.4):
+            # ``import a.b`` binds ``a`` to module ``a``, ``import a.b as m``
+            # binds ``m`` to module ``a.b``.
+            denotes = text if child.type == "aliased_import" else ".".join(parts[:1])
+            self._import_binding(
+                scope,
+                node,
+                bound,
+                {"form": "import", "module": text, "bound": denotes},
+            )
 
     def _import_from(self, node: Any, scope: _Scope, depth: int) -> None:
         self._submodule_writes(node)
@@ -2928,6 +2944,7 @@ class _Analysis:
     def lookup(self, ident: Any) -> dict[str, Any]:
         """The outcome of a value lookup of ``ident``'s name."""
         name = _text(ident, self.source)
+        self.decided = None
         if self.frame_locals:
             # ``frame.f_locals`` writes any function's locals (PEP 667).
             return _none("dynamic-scope")
@@ -2991,6 +3008,7 @@ class _Analysis:
         return self._decide(self.module, name)
 
     def _decide(self, scope: _Scope, name: str) -> dict[str, Any]:
+        self.decided = scope
         bindings = list(scope.bindings.get(name, ()))
         if scope.kind in (_MODULE, _CLASS) and _dunder(name):
             # Module and class namespaces bind dunder names implicitly.
@@ -3759,6 +3777,11 @@ def analyze(
         raise AmbiguousIndentationError(msg)
     analysis = _Analysis(root, source, module_path=module_path(path or ""))
     bindings: dict[str, Any] = {}
+    # Tier 2 (plan 9.4, PR 6): a call whose lookup met two or more imports
+    # and nothing else (they narrow to the group in ``imports`` mode), and
+    # the member chain of a member callee whose head is imported.
+    groups: dict[str, Any] = {}
+    chains: dict[str, Any] = {}
     for fact in call_facts:
         start = int(fact["callee_byte_start"])
         end = int(fact["callee_byte_end"])
@@ -3768,7 +3791,26 @@ def analyze(
             # engine reports as no-binding-fact (5.4).
             continue
         head = _callee_head(node)
-        bindings[f"{start}:{end}"] = (
-            analysis.lookup(head) if head is not None else _none("unbound")
-        )
-    return {"goal": "module", "bindings": bindings}
+        key = f"{start}:{end}"
+        outcome = analysis.lookup(head) if head is not None else _none("unbound")
+        bindings[key] = outcome
+        if head is None:
+            continue
+        group = py_modules.import_group(analysis, head, outcome)
+        if group:
+            groups[key] = group
+        if group or outcome.get("outcome") == IMPORT:
+            chain = py_modules.member_chain(node, head, source)
+            if chain is not None:
+                chains[key] = chain
+    own = path or ""
+    own_ref = py_modules.dotted_name(own)[0] if own.endswith(".py") else ""
+    exports, module_bindings = py_modules.module_facts(
+        analysis, groups, chains, own_ref
+    )
+    return {
+        "goal": "module",
+        "bindings": bindings,
+        "exports": exports,
+        "module_bindings": module_bindings,
+    }
