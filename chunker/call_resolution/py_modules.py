@@ -1547,16 +1547,14 @@ def _fresh_module_local(analysis: Any, ident: Any) -> bool:
 
     if ident is None or ident.type != "identifier":
         return False
-    source = analysis.source
-    name = ps._text(ident, source)
-    if ps._mangled_names(ident, name, source):
-        return False
+    name = ps._text(ident, analysis.source)
     scope = next(iter(analysis._chain(ident)), None)
     if scope is None or scope.kind != ps._FUNCTION:
         return False
     # The lookup decides in this function (a ``global`` or ``nonlocal``
-    # name, a poisoned scope and a file that may write a function's locals,
-    # ``f_locals`` or a closure cell, decide nowhere or elsewhere).
+    # name, a mangled name, a poisoned scope and a file that may write a
+    # function's locals, ``f_locals`` or a closure cell, decide nowhere or
+    # elsewhere).
     analysis.lookup(ident)
     if analysis.decided is not scope or len(scope.bindings.get(name, ())) != 1:
         return False

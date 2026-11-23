@@ -4863,6 +4863,22 @@ def test_namespace_exempt_use_hands_out_nothing(tmp_path: Path, source: str) -> 
             "    def f(self, code):\n        mod = __t.ModuleType('m')\n"
             "        exec(code, mod.__dict__)\n",
         ),
+        (
+            "r.py",
+            "import types\nprobe = types.ModuleType('m')\nspec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "from x import *\nimport importlib.util"
+            + _FRESH
+            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    spec.types = None\n"
+            "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
         # exec itself not the builtin.
         (
             "r.py",

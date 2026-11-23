@@ -1134,12 +1134,6 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "    if len(sites) > 1:\n        return False\n    (site,) = sites[:1] or [None]",
     ),
     (
-        "ns-exempt-fresh-receiver-mangled",
-        PYM,
-        "    name = ps._text(ident, source)\n    if ps._mangled_names(ident, name, source):",
-        "    name = ps._text(ident, source)\n    if False:",
-    ),
-    (
         "ns-exempt-factory-mangled",
         PYM,
         "    if ps._mangled_names(node, head, source):",
@@ -1179,7 +1173,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     # ``_positional_arguments`` (a keyword argument is no attribute,
     # identifier or constant, which each exempt position also requires), the
     # ``exec_module`` attribute-position check (a token that is no attribute
-    # name has no ``.loader`` object) and ``module_path.unknown`` (every test
+    # name has no ``.loader`` object), the receiver's mangled-name check (the
+    # lookup decides no mangled name) and ``module_path.unknown`` (every test
     # file has a path); ``continuation`` (tree-sitter reports
     # every malformed continuation as an error first), ``own-name-acquisition``
     # (``sys.modules[__name__]`` already makes the file dynamic in Tier 1, so
