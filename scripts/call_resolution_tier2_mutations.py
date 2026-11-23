@@ -43,6 +43,130 @@ TESTS = (
 
 # (id, file, old text, new text). The old text must occur in the file.
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    # Stack introspection (treesitter-chunker#718).
+    (
+        "718-property-name-token",
+        JSM,
+        '        "property_identifier",\n        "shorthand_property_identifier",',
+        '        "shorthand_property_identifier",',
+    ),
+    (
+        "718-get-function",
+        JSM,
+        '_STACK_KEYS = frozenset({"caller", "getFunction"})',
+        '_STACK_KEYS = frozenset({"caller"})',
+    ),
+    (
+        "718-cooked-keys",
+        JSM,
+        "                    or any(part in _STACK_KEYS for part in cooked)\n",
+        "",
+    ),
+    (
+        "718-constant-stack-keys",
+        JSM,
+        "                    or value in _STACK_KEYS\n",
+        "",
+    ),
+    (
+        "718-with-statement",
+        JSM,
+        "                self.shutoff.add(CAUSE_DYNAMIC_SCOPE)",
+        "                pass",
+    ),
+    (
+        "718-type-position",
+        JSM,
+        "        if text in _STACK_KEYS:",
+        "        if text in _STACK_KEYS and not _in_type_position(node):",
+    ),
+    (
+        "718-shorthand-pattern",
+        JSM,
+        '        "shorthand_property_identifier_pattern",\n        "statement_identifier",',
+        '        "statement_identifier",',
+    ),
+    (
+        "718-shorthand-expression",
+        JSM,
+        '        "shorthand_property_identifier",\n        "shorthand_property_identifier_pattern",',
+        '        "shorthand_property_identifier_pattern",',
+    ),
+    (
+        "718-regex-substring",
+        JSM,
+        "                if any(name in pattern for name in _STACK_KEYS):",
+        "                if pattern in _STACK_KEYS:",
+    ),
+    # R-718-3: no lexical exemption; JSX strings decode character references.
+    (
+        "718-r3-restore-lexical-exemption",
+        JSM,
+        "            # or an export key.\n            self.shutoff.add(CAUSE_MODULE_SYSTEM)",
+        "            # or an export key.\n"
+        '            if node.type != "identifier" or self.analysis._binding_scope(node, text) is None:\n'
+        "                self.shutoff.add(CAUSE_MODULE_SYSTEM)",
+    ),
+    (
+        "718-r3-skip-jsx-text",
+        JSM,
+        "                self._jsx_text(node)",
+        "                pass",
+    ),
+    (
+        "718-r3-jsx-text-run",
+        JSM,
+        "            last.next_named_sibling is not None\n",
+        "            False\n",
+    ),
+    (
+        "718-r3-jsx-attribute-js-escapes",
+        JSM,
+        '            elif kind == "string" and _parent_type(node) == "jsx_attribute":',
+        "            elif False:",
+    ),
+    (
+        "718-r3-no-html-unescape",
+        STR,
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw), html.unescape(raw))",
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw),) * 2",
+    ),
+    (
+        "718-r3-no-jsx-spec-decode",
+        STR,
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw), html.unescape(raw))",
+        "    return (html.unescape(raw),) * 2",
+    ),
+    (
+        "718-prepare-stack-trace",
+        JSM,
+        '        if name != "prepareStackTrace" or _in_type_position(node):',
+        "        if True:",
+    ),
+    (
+        "718-shadowed-builtin",
+        JSM,
+        "and self.analysis._refers_to_global(\n                node, name\n            )",
+        "",
+    ),
+    (
+        "718-sibling-builtin-shadow",
+        JSM,
+        "self.analysis._refers_to_global(\n                node, name\n            )",
+        "not any(name in scope.bindings for scope in self.analysis.scopes.values())",
+    ),
+    (
+        "718-shadowed-global-object",
+        JSS,
+        "return name in _GLOBAL_OBJECTS and self._refers_to_global(node, name)",
+        "return name in _GLOBAL_OBJECTS",
+    ),
+    (
+        "718-non-global-error-receiver",
+        JSM,
+        ' and self.analysis._is_global_object(\n            node.child_by_field_name("object"), receiver=True\n        )',
+        "",
+    ),
     # Module resolution (9.2, E5-5).
     (
         "O1-more-than-one",
@@ -818,10 +942,10 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "module-system-templates",
         JSM,
-        "                if cooked is None or any(\n"
-        "                    name in part for part in cooked for name in _MODULE_SYSTEM_NAMES\n"
-        "                ):",
-        "                if False:",
+        "                    or any(\n"
+        "                        name in part for part in cooked for name in _MODULE_SYSTEM_NAMES\n"
+        "                    )\n",
+        "",
     ),
     (
         "module-system-strings-sloppy",
