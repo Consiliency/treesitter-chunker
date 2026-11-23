@@ -3238,6 +3238,16 @@ ISSUE707_BLOCKING: dict[str, tuple[str, str]] = {
         "    return {k: inspect.currentframe().f_locals[k] for k in ['p']}\n",
         "RAN OTHER.t / 1 passed",
     ),
+    # A splat may be zero arguments: ``vars(*())`` is ``vars()`` (R-707-1,
+    # Sonnet SHOULD-2).
+    "vars_empty_splat": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n    return vars(*())\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "vars_empty_dictionary_splat": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n    return vars(**{})\n",
+        "RAN OTHER.t / 1 passed",
+    ),
 }
 
 
@@ -3281,6 +3291,17 @@ ISSUE707_CONTROLS: dict[str, str] = {
     # The use-site lookup proves a local definition: not the builtin.
     "local_def_named_locals": _I707_MOCK + "def make():\n    def locals():\n"
     "        return {}\n    p = mock.patch\n    return locals()\n",
+    # R-707-1 (Sonnet SHOULD-1): ``locals()`` in another function reads that
+    # function's frame, not ``make``'s (CPython: ``RAN SVC.t``).
+    "locals_in_other_function": _I707_MOCK
+    + "def make():\n    p = mock.patch\n    return {}\n"
+    "def other():\n    return locals()\n",
+    # R-707-1 (Sonnet SHOULD-3): a keyword named ``vars``/``locals`` reads no
+    # frame (CPython: ``RAN SVC.t``).
+    "keyword_named_vars": _I707_MOCK
+    + "def make():\n    p = mock.patch\n    return {'x': dict(vars=1)}\n",
+    "keyword_named_locals": _I707_MOCK
+    + "def make():\n    p = mock.patch\n    return {'x': dict(locals=1)}\n",
 }
 
 
@@ -3308,5 +3329,145 @@ ISSUE707_FAIL_CLOSED: dict[str, str] = {
 def test_issue707_conservative_readers_fail_closed(tmp_path: Path, case: str) -> None:
     root = _i707_root(tmp_path, ISSUE707_FAIL_CLOSED[case], "make()")
     off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on == off, case
+    assert label == "none(run-tainted:unresolvable-writer)", case
+
+
+# ---------------------------------------------------------------------------
+# R-707-1 (#721 Opus review, BLOCKING-1): ``locals``/``vars`` is a token
+# (R-724-1). Any constant string, matched exactly or as a dotted, ``:`` or
+# bracket component, and an imported name, make every function's locals
+# readable as a dict. ``runtime`` is what pytest printed on CPython 3.14.10
+# with ``tests/test_b.py`` reading ``p`` back as in ISSUE707_BLOCKING.
+_I707_COMPAT = {"tests/compat.py": "locals = locals\nvars = vars\n"}
+ISSUE707_TOKENS: dict[str, tuple[str, str]] = {
+    "attrgetter_dotted": (
+        _I707_MOCK + "import operator\ndef make():\n    p = mock.patch\n"
+        "    return operator.attrgetter('__self__.locals')(len)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "attrgetter_dotted_vars": (
+        _I707_MOCK + "import operator\ndef make():\n    p = mock.patch\n"
+        "    return operator.attrgetter('__self__.vars')(len)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "formatter_get_field": (
+        _I707_MOCK + "import string\ndef make():\n    p = mock.patch\n"
+        "    return string.Formatter().get_field("
+        "'0.__self__.locals', (len,), {})[0]()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "reduce_getattr_list": (
+        _I707_MOCK + "import functools\ndef make():\n    p = mock.patch\n"
+        "    return functools.reduce(getattr, ['__self__', 'locals'], len)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "constant_module_variable": (
+        _I707_MOCK + "N = 'locals'\ndef make():\n    p = mock.patch\n"
+        "    return getattr(len.__self__, N)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "constant_in_tuple_variable": (
+        _I707_MOCK + "N = ('locals',)\ndef make():\n    p = mock.patch\n"
+        "    return getattr(len.__self__, N[0])()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "constant_dict_value": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n"
+        "    return getattr(len.__self__, {'k': 'locals'}['k'])()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "constant_default_argument": (
+        _I707_MOCK + "def make(n='locals'):\n    p = mock.patch\n"
+        "    return getattr(len.__self__, n)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # ``compat.py`` re-exports the builtins; the token is spelled here.
+    "compat_import_as": (
+        _I707_MOCK + "from compat import locals as get\ndef make():\n"
+        "    p = mock.patch\n    return get()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "compat_vars_as": (
+        _I707_MOCK + "from compat import vars as v\ndef make():\n"
+        "    p = mock.patch\n    return v()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(ISSUE707_TOKENS))
+def test_r707_1_locals_tokens_make_local_alias_reachable(
+    tmp_path: Path, case: str
+) -> None:
+    """R-707-1 BLOCKING-1: pytest printed ``RAN OTHER.t`` in every tree;
+    main 64bae100 and #721 head 4cf523e3 resolved ``svc.t`` to ``svc.py``."""
+    helper, _runtime = ISSUE707_TOKENS[case]
+    root = _i707_root(tmp_path, helper, _I707_ESCAPE)
+    _write(root, _I707_COMPAT)
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    assert label == "none(run-tainted:unresolvable-writer)", case
+
+
+# R-707-1 (#721 Opus review, BLOCKING-2): a sensitive *parameter* (a
+# pytest-mock ``mocker``) of a function whose locals may be read as a dict is
+# reachable, like an alias. ``runtime`` is what pytest printed on CPython
+# 3.14.10 (pytest-mock replaced by a minimal ``mocker`` fixture plugin).
+_I707_PARAM_HEAD = 'import calls{imports}\nfrom other import t as _evil\nNAME = "t"\n'
+_I707_PARAM_PATCH = '.patch(f"svc.{NAME}", _evil)\n    print("RAN", calls.go())\n'
+ISSUE707_PARAMETERS: dict[str, tuple[str, str]] = {
+    "mocker_locals_subscript": (
+        _I707_PARAM_HEAD.format(imports="")
+        + 'def test_go(mocker):\n    d = locals(); d["mocker"]'
+        + _I707_PARAM_PATCH,
+        "RAN OTHER.t / 1 passed",
+    ),
+    "mocker_locals_get": (
+        _I707_PARAM_HEAD.format(imports="")
+        + 'def test_go(mocker):\n    locals().get("mocker")'
+        + _I707_PARAM_PATCH,
+        "RAN OTHER.t / 1 passed",
+    ),
+    "mocker_vars_subscript": (
+        _I707_PARAM_HEAD.format(imports="")
+        + 'def test_go(mocker):\n    vars()["mocker"]'
+        + _I707_PARAM_PATCH,
+        "RAN OTHER.t / 1 passed",
+    ),
+    "mocker_frame_f_locals": (
+        _I707_PARAM_HEAD.format(imports=", sys")
+        + 'def test_go(mocker):\n    sys._getframe().f_locals["mocker"]'
+        + _I707_PARAM_PATCH,
+        "RAN OTHER.t / 1 passed",
+    ),
+    "fixture_returns_locals": (
+        _I707_PARAM_HEAD.format(imports=", pytest")
+        + "@pytest.fixture\ndef env(mocker):\n    return locals()\n"
+        + 'def test_go(env):\n    env["mocker"]'
+        + _I707_PARAM_PATCH,
+        "RAN OTHER.t / 1 passed",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(ISSUE707_PARAMETERS))
+def test_r707_1_sensitive_parameter_escapes_through_locals(
+    tmp_path: Path, case: str
+) -> None:
+    """R-707-1 BLOCKING-2: pytest printed ``RAN OTHER.t`` in every tree;
+    main 64bae100 and #721 head 4cf523e3 resolved ``svc.t`` to ``svc.py``."""
+    test_b, _runtime = ISSUE707_PARAMETERS[case]
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "tests/helpers_mp.py": "def make():\n    return {}\n",
+            "tests/test_b.py": test_b,
+        },
+    )
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert off["resolution"] == "ambiguous", case
     assert on == off, case
     assert label == "none(run-tainted:unresolvable-writer)", case

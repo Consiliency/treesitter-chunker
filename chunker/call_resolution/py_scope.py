@@ -164,8 +164,8 @@ those attribute names or ``modules``, alone or as a part of a dotted path
 Python 2 ``exec`` statement. Inside a function, ``exec`` and ``locals()``
 cannot rebind a local, so without ``f_locals`` lookups that resolve in a
 function scope are unaffected (``locals()`` still reads every local, which
-makes a sensitive alias there reachable, #707); a class body's namespace is a dict they can
-write, so class-body lookups fail closed too. Monkeypatching from other
+makes a sensitive alias or parameter there reachable, #707); a class body's
+namespace is a dict they can write, so class-body lookups fail closed too. Monkeypatching from other
 modules (plan R10) and run-time paths no syntactic rule sees (plan R12:
 frame writes from another module, computed strings, other ``X.modules``
 uses, ``gc``/``ctypes`` tricks) are not tracked.
@@ -2302,7 +2302,10 @@ class _Analysis:
         readback of it is checked in turn (fold 24, Y-5).
         """
         if node.type == "identifier" and _binding_position(node):
-            return True
+            # #707 (R-707-1): a parameter (a pytest ``mocker``) or other
+            # local binding of a function whose locals may be read as a dict
+            # is reachable (``locals()["mocker"].patch(...)``).
+            return not self._local_binding_readable(node)
         current = node
         parent = current.parent
         while parent is not None:
@@ -2489,6 +2492,24 @@ class _Analysis:
             self.relied_names.update(member for member in imported if member)
         return True
 
+    def _local_binding_readable(self, ident: Any) -> bool:
+        """Whether a binding-position identifier is a local of a function
+        or lambda whose locals may be read as a dict (#707, R-707-1); a
+        module- or class-scope binding is handled by the alias rules."""
+        current = ident.parent
+        while current is not None and current.type not in (
+            "function_definition",
+            "lambda",
+            "class_definition",
+            "module",
+        ):
+            current = current.parent
+        return (
+            current is not None
+            and current.type in ("function_definition", "lambda")
+            and self._locals_reachable(current)
+        )
+
     def _reachable_binding(self, ident: Any) -> bool:
         """Whether a name binding is reachable by a computed read: at module
         or class scope, declared ``global`` in its function, or in a function
@@ -2519,9 +2540,12 @@ class _Analysis:
           enclosing scope counts too, which can only fail closed);
         - ``locals`` or ``vars`` anywhere in the file as a value rather than
           a callee (``L = locals``, ``functools.partial(locals)``), as an
-          attribute of anything (``len.__self__.locals()``) or as a constant
-          string argument or key (``getattr(b, "locals")``): called later,
-          from any frame, they read that frame's locals;
+          attribute of anything (``len.__self__.locals()``), as an imported
+          name (``from compat import locals as get``) or in any constant
+          string, exactly or as a dotted, ``:`` or bracket component
+          (``getattr(b, "locals")``, ``attrgetter("__self__.locals")``,
+          ``N = "locals"``; token level, as R-724-1): called later, from any
+          frame, they read that frame's locals;
         - a frame's locals through the file-wide triggers (``f_locals``, also
           read-only, ``getargvalues``, ...).
 
@@ -2578,6 +2602,23 @@ class _Analysis:
                 ident, parent.child_by_field_name("attribute")
             )
             if not attribute and _binding_position(ident):
+                # #707 (R-707-1): an imported name (``from compat import
+                # locals as get``) may be the builtin under another name
+                # (R-724-1: import names are tokens). A ``def``, parameter or
+                # target is left to the use-site lookup of a bare call.
+                ancestor = parent
+                while ancestor is not None and ancestor.type not in (
+                    "import_from_statement",
+                    "import_statement",
+                    "module",
+                    "block",
+                ):
+                    ancestor = ancestor.parent
+                if ancestor is not None and ancestor.type in (
+                    "import_from_statement",
+                    "import_statement",
+                ):
+                    readers.append((None, False))
                 continue
             node = parent if attribute else ident
             call = _callee_call(node)
@@ -2597,19 +2638,15 @@ class _Analysis:
         while stack:
             node = stack.pop()
             stack.extend(node.named_children)
-            if node.type == "call":
-                constants = _constant_arguments(node, source)
-            elif node.type == "subscript":
-                constants = {
-                    value
-                    for index, child in enumerate(node.children)
-                    if node.field_name_for_child(index) == "subscript"
-                    for value in [_constant_string(child, source)]
-                    if value is not None
-                }
-            else:
+            if node.type not in ("string", "concatenated_string", "binary_operator"):
                 continue
-            if constants & _LOCALS_READERS:
+            value = _constant_string(node, source)
+            if value is None:
+                continue
+            # #707 (R-707-1, token level as R-724-1): any constant string,
+            # anywhere, matched exactly or as a dotted, ``:`` or bracket
+            # component (``attrgetter('__self__.locals')``, ``N = 'locals'``).
+            if ({value} | set(re.split(r"[.:\[\]]", value))) & _LOCALS_READERS:
                 readers.append((None, False))
         self.locals_readers = readers
         return readers
