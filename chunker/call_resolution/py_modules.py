@@ -1892,7 +1892,7 @@ class _Builder:
         """The modules an import binding may denote."""
         if binding.get("form") == "import":
             bound = str(binding.get("bound") or binding.get("module") or "")
-            return self.starts(bound, importer)
+            return self.module_values(bound, importer)
         module = str(binding.get("module") or "")
         name = str(binding.get("name") or "")
         found: set[str] = set()
@@ -1911,6 +1911,28 @@ class _Builder:
         if ref.startswith("."):
             return {absolute} if absolute in self.nodes else set()
         return self.starts(absolute, writer)
+
+    def module_values(self, ref: str, writer: str) -> set[str]:
+        """THE writer-side reading of a module reference (#705 fold 8), the
+        over-approximating twin of :func:`_resolve_binding`: every run node
+        ``ref`` may denote, the module path (:meth:`targets`) and, for a dotted
+        absolute name, the attribute walk ``getattr(getattr(a, "b"), "c")``
+        that ``import a.b.c as m`` binds (E6-3), through every value an
+        attribute may hold (:meth:`attr_values`: submodules, every import
+        binding of the name, E6-2, and star sources). A use of ``m`` (``m.t =
+        f``, ``m`` handed on) and a re-export of it write what CPython bound,
+        not only ``a/b/c.py``."""
+        found = set(self.targets(ref, writer))
+        parts = ref.split(".")
+        if ref and not ref.startswith(".") and len(parts) > 1:
+            current = self.targets(parts[0], writer)
+            for part in parts[1:]:
+                following: set[str] = set()
+                for node in current:
+                    following |= self.attr_values(node, part, set())
+                current = following
+            found |= current
+        return found
 
     def starts(self, dotted: str, writer: str = "") -> set[str]:
         """The run nodes an absolute dotted name may denote: the root-relative
@@ -1963,7 +1985,7 @@ class _Builder:
         whole: set[str],
     ) -> None:
         """Taint what one module-object use may write or escape."""
-        current = self.targets(base_ref, writer)
+        current = self.module_values(base_ref, writer)
         if position == "write" and len(chain) > 1:
             # E6-6: a write through an attribute chain rooted at the module
             # (``svc.t.__code__ = ...``) changes what ``svc.t`` holds or runs.
@@ -2336,18 +2358,65 @@ def _attribute(
     if kind == "local":
         return _Local(value.path, entry)
     if kind == "import":
-        binding = entry.get("binding") or {}
-        if binding.get("form") == "import":
-            bound = str(binding.get("bound") or "")
-            module = resolve_module(run, bound, value.path)
-            return module if isinstance(module, _Module) else module
-        target = resolve_module(run, str(binding.get("module") or ""), value.path)
-        if not isinstance(target, _Module):
-            return target
-        return _attribute(
-            run, caller, target, str(binding.get("name") or ""), hops + 1, seen
+        # Fold 8: a re-export hop goes through the one binding resolver, with
+        # every check a direct import gets (Codex r4661935648).
+        return _resolve_binding(
+            run, caller, entry.get("binding") or {}, value.path, hops + 1, seen
         )
     return str(entry.get("reason") or "export-not-found")
+
+
+def _resolve_binding(
+    run: PyModuleRun,
+    caller: str,
+    binding: Mapping[str, Any],
+    importer: str,
+    hops: int,
+    seen: tuple[tuple[str, str], ...],
+) -> _Module | _Local | str:
+    """THE resolver of one import binding written in ``importer`` (#705 fold
+    8): the value the name holds, a module, a proof or a reason. Every proof
+    path uses it: a direct import in the caller (:func:`resolve_import`) and
+    every re-export hop through an intermediary (:func:`_attribute`), up to
+    the hop limit.
+
+    - ``import a`` / ``import a.b`` (which binds ``a``): the module
+      :func:`resolve_module` finds from ``importer`` (script-directory and
+      pytest shadowing, standard-library names, skipped directories).
+    - ``import a.b as m``: CPython 3.7+ ``IMPORT_FROM`` binds
+      ``getattr(a, "b")`` (E6-3), so after the dotted path resolves, every
+      component after the first is an attribute of its package, read by
+      :func:`_attribute` with every check (``attr-submodule-conflict``,
+      ``module-getattr``, own-submodule imports by full name, P6-1, and not
+      under a star import, P6-2, and each module's taints, E6-1/E6-2); the
+      result must be a module, else ``attr-submodule-conflict``.
+    - ``from M import n`` (relative or absolute): attribute ``n`` of module
+      ``M``, read the same way.
+
+    Fold 7 and earlier resolved a re-exported ``import a.b as m`` as the path
+    ``a.b``: with ``a/__init__.py`` doing ``from . import b`` and then ``from
+    vendor import impl as b``, ``from facade import m; m.t()`` proved
+    ``a/b.py:t`` while CPython ran ``vendor.impl.t``."""
+    if binding.get("form") == "import":
+        bound = str(binding.get("bound") or "")
+        start = resolve_module(run, bound, importer)
+        parts = [part for part in bound.split(".") if part]
+        if not isinstance(start, _Module) or len(parts) < 2:
+            return start
+        value: _Module | _Local | str = resolve_module(run, parts[0], importer)
+        for part in parts[1:]:
+            if not isinstance(value, _Module):
+                break
+            value = _attribute(run, caller, value, part, hops, seen)
+        if isinstance(value, str):
+            return value
+        if not isinstance(value, _Module):
+            return "attr-submodule-conflict"
+        return value
+    target = resolve_module(run, str(binding.get("module") or ""), importer)
+    if not isinstance(target, _Module):
+        return target
+    return _attribute(run, caller, target, str(binding.get("name") or ""), hops, seen)
 
 
 def _own_submodule_import(file: PyFile, entry: Mapping[str, Any], name: str) -> bool:
@@ -2397,33 +2466,10 @@ def resolve_import(
     shutoff = run.caller_shutoff(importer)
     if shutoff is not None:
         return _none(shutoff)
-    if binding.get("form") == "import":
-        bound = str(binding.get("bound") or "")
-        start = resolve_module(run, bound, importer)
-        names = list(chain)
-        parts = bound.split(".")
-        if isinstance(start, _Module) and len(parts) > 1:
-            # E6-3: ``import a.b as m`` binds ``getattr(a, "b")`` (CPython 3.7+
-            # ``IMPORT_FROM``), so every component after the first is an
-            # attribute of its package, checked like one; it must be a module.
-            head = resolve_module(run, parts[0], importer)
-            value: _Module | _Local | str = head
-            for part in parts[1:]:
-                if not isinstance(value, _Module):
-                    break
-                value = _attribute(run, importer, value, part, 0, ())
-            if isinstance(value, str):
-                return _none(value)
-            if not isinstance(value, _Module):
-                return _none("attr-submodule-conflict")
-            start = value
-    else:
-        start = resolve_module(run, str(binding.get("module") or ""), importer)
-        names = [str(binding.get("name") or ""), *chain]
-    if not isinstance(start, _Module):
-        return _none(start)
-    value = start
-    for name in names:
+    value = _resolve_binding(run, importer, binding, importer, 0, ())
+    if isinstance(value, str):
+        return _none(value)
+    for name in chain:
         if not isinstance(value, _Module):
             return _none("export-not-found")
         value = _attribute(run, importer, value, name, 0, ())

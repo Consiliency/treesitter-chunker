@@ -304,8 +304,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "caller-shutoff",
         PYM,
         "    shutoff = run.caller_shutoff(importer)\n    if shutoff is not None:\n"
-        "        return _none(shutoff)\n    if binding.get",
-        "    if binding.get",
+        "        return _none(shutoff)\n    value = _resolve_binding(",
+        "    value = _resolve_binding(",
     ),
     (
         "import-groups",
@@ -358,8 +358,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "e6-3-import-as-attribute",
         PYM,
-        "        if isinstance(start, _Module) and len(parts) > 1:",
-        "        if False:",
+        "        if not isinstance(start, _Module) or len(parts) < 2:",
+        "        if True:",
     ),
     (
         "e6-3-own-submodule-allowed",
@@ -592,6 +592,26 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         PYM,
         '    if parent.type == "subscript":',
         '    if parent.type == "subscript" and False:',
+    ),
+    # Fold 8 (#705, Codex r4661935648): one binding resolver.
+    (
+        "f8-reexport-bypasses-resolver",
+        PYM,
+        "        return _resolve_binding(\n"
+        '            run, caller, entry.get("binding") or {}, value.path, hops + 1, seen\n'
+        "        )",
+        '        binding = entry.get("binding") or {}\n'
+        '        if binding.get("form") == "import":\n'
+        '            return resolve_module(run, str(binding.get("bound") or ""), value.path)\n'
+        "        return _resolve_binding(\n"
+        "            run, caller, binding, value.path, hops + 1, seen\n"
+        "        )",
+    ),
+    (
+        "f8-writer-attribute-walk",
+        PYM,
+        "            found |= current\n",
+        "            pass\n",
     ),
     (
         "e6-6-first-attribute-write",

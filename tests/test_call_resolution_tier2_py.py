@@ -3022,3 +3022,149 @@ def test_fold7_other_constant_names_record_nothing(tmp_path: Path) -> None:
     facts, _graph, _context_ = _context(root)
     (item,) = [item for item in facts if item["path"] == "w.py"]
     assert item["scope_facts"]["module_bindings"]["shutoff"] == []
+
+
+# ---------------------------------------------------------------------------
+# Fold 8 (#705, Codex review r4661935648): a re-exported ``import a.b as m``
+# binding went around the E6-3 package-attribute check. Every tree has
+# ``a/__init__.py`` doing ``from . import b`` and then ``from vendor import
+# impl as b`` (so ``a.b`` is ``vendor.impl`` once the package is imported),
+# ``a/b.py: def t(): return "A.B.t"`` and ``vendor/impl.py: def t(): return
+# "VENDOR.impl.t"``. ``runtime`` is what ``python -B -E -s main.py`` printed
+# on CPython 3.14.10.
+
+_F8_BASE = {
+    "a/b.py": 'def t(): return "A.B.t"\n',
+    "vendor/__init__.py": "",
+    "vendor/impl.py": 'def t(): return "VENDOR.impl.t"\n',
+}
+_F8_SHADOW = {"a/__init__.py": "from . import b\nfrom vendor import impl as b\n"}
+FOLD8_BLOCKING: dict[str, tuple[dict[str, str], tuple[str, str], str, str]] = {
+    "codex_reexport_import_as": (
+        {
+            "facade.py": "import a.b as m\n",
+            "main.py": 'from facade import m\ndef go(): return m.t()\nprint("RAN", go())\n',
+        },
+        ("main.py", "m.t"),
+        "attr-submodule-conflict",
+        "RAN VENDOR.impl.t",
+    ),
+    "reexport_attribute_chain": (
+        {
+            "facade.py": "import a.b as m\n",
+            "main.py": 'import facade\ndef go(): return facade.m.t()\nprint("RAN", go())\n',
+        },
+        ("main.py", "facade.m.t"),
+        "attr-submodule-conflict",
+        "RAN VENDOR.impl.t",
+    ),
+    "reexport_two_hops": (
+        {
+            "facade.py": "import a.b as m\n",
+            "facade2.py": "from facade import m\n",
+            "main.py": 'from facade2 import m\ndef go(): return m.t()\nprint("RAN", go())\n',
+        },
+        ("main.py", "m.t"),
+        "attr-submodule-conflict",
+        "RAN VENDOR.impl.t",
+    ),
+    "reexport_alias": (
+        {
+            "facade.py": "import a.b as m\n",
+            "main.py": 'from facade import m as n\ndef go(): return n.t()\nprint("RAN", go())\n',
+        },
+        ("main.py", "n.t"),
+        "attr-submodule-conflict",
+        "RAN VENDOR.impl.t",
+    ),
+    "reexport_from_binding": (
+        {
+            "facade.py": "from a import b\n",
+            "main.py": 'from facade import b\ndef go(): return b.t()\nprint("RAN", go())\n',
+        },
+        ("main.py", "b.t"),
+        "attr-submodule-conflict",
+        "RAN VENDOR.impl.t",
+    ),
+    # The writer side: ``m`` is ``vendor.impl``, so ``m.t = o`` (directly or
+    # through ``facade.m``) writes ``vendor.impl.t``.
+    "writer_import_as": (
+        {
+            "other.py": 'def t(): return "OTHER.t"\n',
+            "w.py": "import a.b as m\nfrom other import t as o\nm.t = o\n",
+            "use.py": "from vendor.impl import t\ndef u(): return t()\n",
+            "main.py": 'import w, use\nprint("RAN", use.u())\n',
+        },
+        ("use.py", "t"),
+        "reassigned",
+        "RAN OTHER.t",
+    ),
+    "writer_through_facade": (
+        {
+            "other.py": 'def t(): return "OTHER.t"\n',
+            "facade.py": "import a.b as m\n",
+            "w.py": "import facade\nfrom other import t as o\nfacade.m.t = o\n",
+            "use.py": "from vendor.impl import t\ndef u(): return t()\n",
+            "main.py": 'import w, use\nprint("RAN", use.u())\n',
+        },
+        ("use.py", "t"),
+        "reassigned",
+        "RAN OTHER.t",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD8_BLOCKING))
+def test_fold8_reexported_bindings_use_the_one_resolver(
+    tmp_path: Path, case: str
+) -> None:
+    """#705 fold 8 (Codex r4661935648). ``import a.b as m`` binds
+    ``getattr(a, "b")``, which ``a/__init__.py`` rebound to ``vendor.impl``
+    after ``from . import b``; ``a.b`` is already in ``sys.modules``, so the
+    later import never resets it. CPython 3.14 printed ``RAN VENDOR.impl.t``
+    for ``from facade import m; m.t()``, ``facade.m.t()``, a two-hop
+    re-export, ``from facade import m as n`` and a re-exported ``from a
+    import b``, and ``RAN OTHER.t`` where ``m.t = o`` or ``facade.m.t = o``
+    wrote ``vendor.impl.t``. Fold 7 proved ``a/b.py:t`` for the re-exports and
+    left ``use.py``'s ``from vendor.impl import t`` resolved. Every binding
+    now goes through one resolver (``_resolve_binding``; on the writer side
+    ``_Builder.module_values``)."""
+    files, (file, reference), reason, _runtime = FOLD8_BLOCKING[case]
+    root = _write(tmp_path, {**_F8_BASE, **_F8_SHADOW, **files})
+    off, _structural, on, label = _run(root, file, reference)
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    assert label == f"none({reason})", case
+
+
+FOLD8_CONTROLS: dict[str, tuple[dict[str, str], tuple[str, str]]] = {
+    # CPython: ``RAN A.B.t``. The package binds ``b`` only by ``from . import
+    # b``, so the re-exported ``import a.b as m`` is the submodule.
+    "clean_reexport": (
+        {
+            "a/__init__.py": "from . import b\n",
+            "facade.py": "import a.b as m\n",
+            "main.py": 'from facade import m\ndef go(): return m.t()\nprint("RAN", go())\n',
+        },
+        ("main.py", "m.t"),
+    ),
+    # CPython: ``RAN A.B.t``. An empty ``__init__.py``, two hops.
+    "clean_two_hops": (
+        {
+            "a/__init__.py": "",
+            "facade.py": "import a.b as m\n",
+            "facade2.py": "from facade import m\n",
+            "main.py": 'from facade2 import m\ndef go(): return m.t()\nprint("RAN", go())\n',
+        },
+        ("main.py", "m.t"),
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD8_CONTROLS))
+def test_fold8_clean_reexports_still_resolve(tmp_path: Path, case: str) -> None:
+    files, (file, reference) = FOLD8_CONTROLS[case]
+    root = _write(tmp_path, {**_F8_BASE, **files})
+    _off, _structural, on, label = _run(root, file, reference)
+    assert on["resolution"] == "resolved" and label == "import", case
+    assert _target(on, root) == "a/b.py", case
