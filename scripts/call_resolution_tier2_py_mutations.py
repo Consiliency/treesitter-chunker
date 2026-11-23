@@ -579,6 +579,18 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '        while above is not None and above.type not in ("type", "block", "module"):',
     ),
     (
+        "e6-9-fixture-parameter-seed",
+        PYM,
+        "                        self.names[_INSTANCE].add(_MP_FIXTURE)",
+        "                        pass",
+    ),
+    (
+        "e6-9-fixture-not-by-spelling",
+        PYM,
+        "            _INSTANCE: set(),",
+        "            _INSTANCE: {_MP_FIXTURE},",
+    ),
+    (
         "e6-6-first-attribute-write",
         PYM,
         '        if position == "write" and len(chain) > 1:',

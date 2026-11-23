@@ -1245,6 +1245,22 @@ _MP_CLASS = "MonkeyPatch"
 _MP_MODULES = (["pytest"], ["_pytest", "monkeypatch"])
 _GETFIXTUREVALUE = "getfixturevalue"
 _CLASS, _INSTANCE, _FIXTURE_MOCKER = "class", "instance", "mocker"
+_PARAMETER_LISTS = frozenset({"parameters", "lambda_parameters"})
+
+
+def _parameter_name(parameter: Any) -> Any:
+    """The name node of one parameter (plain, typed, defaulted), or
+    ``None``."""
+    if parameter.type == "identifier":
+        return parameter
+    if parameter.type in ("default_parameter", "typed_default_parameter"):
+        return parameter.child_by_field_name("name")
+    if parameter.type == "typed_parameter" and parameter.named_children:
+        first = parameter.named_children[0]
+        return first if first.type == "identifier" else None
+    return None
+
+
 # P6-14: the nodes an annotation may pass through between ``type`` and a
 # patcher: no call, no argument list.
 _ANNOTATION_PARTS = frozenset(
@@ -1280,7 +1296,7 @@ class _Patchers:
         self.source = analysis.source
         self.classes: set[str] = {_MP_CLASS}
         self.names: dict[str, set[str]] = {
-            _INSTANCE: {_MP_FIXTURE},
+            _INSTANCE: set(),
             _CLASS: self.classes,
             _FIXTURE_MOCKER: set(),
         }
@@ -1290,6 +1306,14 @@ class _Patchers:
         while stack:
             node = stack.pop()
             stack.extend(node.named_children)
+            if node.type in _PARAMETER_LISTS:
+                # The fixture is injected as a parameter named
+                # ``monkeypatch`` (E6-9); another binding of that spelling
+                # is an ordinary name.
+                for parameter in node.named_children:
+                    name = _parameter_name(parameter)
+                    if name is not None and ps._text(name, self.source) == _MP_FIXTURE:
+                        self.names[_INSTANCE].add(_MP_FIXTURE)
             if node.type == "import_from_statement":
                 dots, parts = ps._module_parts(node, self.source)
                 if not dots and parts in _MP_MODULES:

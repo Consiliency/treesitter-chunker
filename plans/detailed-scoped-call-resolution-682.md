@@ -2189,7 +2189,13 @@ Every rule only adds `none`.
   (`f4_prod_patch_param`, `f4_prod_mp_param`, `f4_prod_mp_list`). The cause
   stays scoped by O-2 through the file's own classification. The
   `getfixturevalue` rules below apply in every file too, under the same
-  scoping; production code does not call `getfixturevalue`.
+  scoping; production code does not call `getfixturevalue`. The fixture
+  seed is a parameter named `monkeypatch` (as E6-9 says), not the spelling:
+  this tool's own local flag `monkeypatch = …` is no fixture. On the measured
+  trees the only new production cause is in treesitter-chunker:
+  `chunker/call_resolution/py_scope.py`, through Tier 1's own readback rule
+  (`mock_names.add("mock")` reads like `getattr(X, "mock")`), which Tier 1
+  also applies to that file; it costs no resolved edge.
 - **P6-10, `syspath_prepend` is `module-system`.** `monkeypatch.
   syspath_prepend(p)` is `sys.path.insert(0, p)` plus
   `importlib.invalidate_caches()`; pytest ran `shadow/svc.py`'s `t`

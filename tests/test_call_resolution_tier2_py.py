@@ -2520,3 +2520,22 @@ def test_fold5_plain_getfixturevalue_constant_is_no_cause(tmp_path: Path) -> Non
     facts, _graph, _context_ = _context(root)
     (item,) = [item for item in facts if item["path"] == "names.py"]
     assert item["scope_facts"]["module_bindings"]["shutoff"] == []
+
+
+def test_fold5_a_local_named_monkeypatch_is_no_fixture(tmp_path: Path) -> None:
+    """E6-9 seeds the fixture from a parameter named ``monkeypatch``; an
+    ordinary local of that spelling (this tool's own ``monkeypatch = ...``
+    flag, read in an ``elif``) is no patcher and records no cause."""
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "flags.py": (
+                "def f(names):\n    monkeypatch = 'setattr' in names\n"
+                "    if monkeypatch:\n        return [monkeypatch]\n    return []\n"
+            ),
+        },
+    )
+    facts, _graph, _context_ = _context(root)
+    (item,) = [item for item in facts if item["path"] == "flags.py"]
+    assert item["scope_facts"]["module_bindings"]["shutoff"] == []
