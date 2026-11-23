@@ -35,6 +35,37 @@ def test_collect_source_files_uses_case_sensitive_path_components(
     ]
 
 
+@pytest.mark.parametrize(
+    ("filename", "source"),
+    [
+        ("doc.rst", "Heading\n=======\n\nA paragraph.\n"),
+        ("code.asm", "global start\nstart:\n    mov eax, 1\n"),
+        ("code.s", ".text\n.globl start\nstart:\n    mov $1, %eax\n"),
+    ],
+)
+def test_extract_symbol_graph_with_pack_mapped_file(
+    tmp_path: Path, filename: str, source: str
+) -> None:
+    (tmp_path / filename).write_text(source, encoding="utf-8")
+    (tmp_path / "code.py").write_text("def example():\n    pass\n", encoding="utf-8")
+
+    graph = extract_symbol_graph(tmp_path)
+
+    assert graph["errors"] == []
+    assert graph["metadata"]["files_processed"] == 2
+    assert [symbol["name"] for symbol in graph["symbols"]["functions"]] == ["example"]
+
+
+def test_extract_symbol_graph_skips_raku_without_pack_grammar(tmp_path: Path) -> None:
+    (tmp_path / "code.raku").write_text('say "hello";\n', encoding="utf-8")
+    (tmp_path / "code.py").write_text("def example():\n    pass\n", encoding="utf-8")
+
+    graph = extract_symbol_graph(tmp_path)
+
+    assert graph["errors"] == []
+    assert graph["metadata"]["files_processed"] == 1
+
+
 def test_extract_symbol_graph_python_project(tmp_path: Path):
     (tmp_path / "auth").mkdir()
     (tmp_path / "auth" / "user.py").write_text(
