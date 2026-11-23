@@ -606,12 +606,14 @@ def test_non_dynamic_lookalikes_still_resolve(form: str) -> None:
 LOCAL_HELPER = "def f():\n    def helper():\n        return 1\n    return helper()\n"
 
 
-def test_exec_and_locals_leave_function_scopes_alone() -> None:
-    """``exec`` and ``locals()`` cannot rebind a function's locals; only
-    ``frame.f_locals`` can (below)."""
-    for form in ("exec('x')", "locals()['helper'] = len", "globals()['x'] = 1"):
+def test_locals_and_globals_leave_function_scopes_alone() -> None:
+    """``locals()`` and ``globals()`` cannot rebind a function's locals; only
+    ``frame.f_locals`` can (below). ``exec`` can since treesitter-chunker#699
+    PY-8: the string reaches its caller's frame (``sc_exec_frame_local``)."""
+    for form in ("locals()['helper'] = len", "globals()['x'] = 1"):
         source = form + "\n\n\n" + LOCAL_HELPER
         assert proof_text(source) == ["def helper():\n        return 1"], form
+    assert reason("exec('x')\n\n\n" + LOCAL_HELPER) == "dynamic-scope"
 
 
 @pytest.mark.parametrize(
@@ -6513,6 +6515,23 @@ def test_fold14_controls_pair_with_the_trees() -> None:
     assert set(FOLD14_CONTROLS) == set(FOLD14_695)
 
 
+# Controls that keep a stdlib string-code helper (an import of ``cProfile``,
+# ``pdb`` or ``bdb``, or ``get_type_hints``) after dropping the reflective
+# name their fold tested: the helper alone fails closed since
+# treesitter-chunker#699 S2 (plan PY-1, PY-2), so the edge stays as off.
+# ``a38_singledispatch_late`` keeps ``functools.singledispatch``, an
+# annotation evaluator since R-699-3 (BLOCKING 4).
+S2_FLIPPED_CONTROLS = frozenset(
+    {
+        "q34_cprofile_getstats_code",
+        "a37_typing_hints_late",
+        "p38_pdb_curframe_locals",
+        "t38_bdb_code_linenos",
+        "a38_singledispatch_late",
+    }
+)
+
+
 @pytest.mark.parametrize("case", sorted(FOLD14_CONTROLS))
 def test_fold14_controls_still_resolve(tmp_path: Path, case: str) -> None:
     source = FOLD14_CONTROLS[case]
@@ -6520,6 +6539,9 @@ def test_fold14_controls_still_resolve(tmp_path: Path, case: str) -> None:
     root = _tree(tmp_path, {"a.py": source, "b.py": other})
     off, on = _off_on(root)
     assert _helper_edge(off)["resolution"] == "ambiguous", case
+    if case in S2_FLIPPED_CONTROLS:
+        assert _helper_edge(on) == _helper_edge(off), case
+        return
     on_edge = _helper_edge(on)
     assert on_edge["resolution"] == "resolved", case
     assert on_edge["provenance"]["call_rules"] == ["t1.lexical"]
@@ -6719,6 +6741,9 @@ def test_fold15_controls_still_resolve(tmp_path: Path, case: str) -> None:
     root = _tree(tmp_path, {"a.py": source, "b.py": other})
     off, on = _off_on(root)
     assert _helper_edge(off)["resolution"] == "ambiguous", case
+    if case in S2_FLIPPED_CONTROLS:
+        assert _helper_edge(on) == _helper_edge(off), case
+        return
     on_edge = _helper_edge(on)
     assert on_edge["resolution"] == "resolved", case
     assert on_edge["provenance"]["call_rules"] == ["t1.lexical"]
@@ -8570,13 +8595,15 @@ def test_fold27_695_namespace_view_reads_fail_closed(pre: str, stmt: str) -> Non
 
 # ``__loader__`` and ``__spec__`` hold no namespace: a module they load is an
 # ordinary module, whose writes are recorded or fail closed on any receiver.
+# Since treesitter-chunker#699 PY-3 ``load_module`` itself fails closed
+# file-wide: it runs the module's code a second time.
 @pytest.mark.parametrize(
     ("stmt", "expected"),
     [
         (
             "m2 = mod.__dict__['__loader__'].load_module(mod.__name__)\n"
             "    m2.helper = replacement",
-            "mixed-bindings",
+            "dynamic-scope",
         ),
         (
             "k = 'hel' + 'per'\n"
@@ -8775,3 +8802,841 @@ def test_fold28_695_lookup_failures_fail_verification(
 ) -> None:
     source = FOLD26_T.format(pre=pre, post="", stmt=stmt)
     assert reason(source) == "dynamic-scope", reason_name
+
+
+# ---------------------------------------------------------------------------
+# treesitter-chunker#699 S2 (plan 699-702 PY-1..PY-5, PY-8; ruling R-699-1
+# B-1, B-2, B-4, B-5): code run from a string, a payload or an annotation,
+# and code objects. One classifier serves both tiers: each string-code
+# trigger fails closed file-wide in Tier 1 (a function-local proof
+# included: string code reaches its caller's frame, PEP 667) and is a
+# run-wide ``evaluator`` cause in Tier 2; every code-object name is a Tier 2
+# ``module-object`` cause (Tier 1 already treats them as file-wide).
+
+# Every spelling, each placed before a function-local proof (pinned here, not
+# read from the module). Runtime-traced representatives (CPython 3.14.10,
+# ``runtime: 2`` while main proved the file's own ``helper``) are in
+# ``S2_TRACED`` below.
+STRING_CODE_FORMS: dict[str, str] = {
+    # PY-1: helpers that run a string, any import spelling.
+    "cprofile": "import cProfile\ncProfile.run('x')",
+    "cprofile-alias": "import cProfile as cp",
+    "cprofile-from": "from cProfile import run as go",
+    "profile": "import profile",
+    "bdb": "import bdb",
+    "pdb-from": "from pdb import set_trace",
+    "trace": "import trace",
+    "code": "import code",
+    "codeop-dotted": "import codeop.x",
+    "doctest-local": "def f():\n    import doctest\n    doctest.testmod()",
+    # PY-1 re-exports (runtime scan of the CPython 3.14 standard library).
+    "doctest-pdb": "x = m.pdb",
+    "pdb-bdb": "x = m.bdb",
+    "cprofile-pyprofile": "x = m._pyprofile",
+    "traceback-codeop": "x = getattr(traceback, 'codeop')",
+    "fileconfig": "logging.config.fileConfig(f)",
+    "fileconfig-from": "from logging.config import fileConfig",
+    # PY-1: the pickle load side (the module by member allow-list).
+    "pickle-loads": "import pickle\npickle.loads(b'')",
+    "pickle-load": "import pickle\npickle.load(f)",
+    "pickle-alias": "import pickle as pk\npk.loads(b'')",
+    "pickle-from-loads": "from pickle import loads",
+    "pickle-star": "from pickle import *",
+    "pickle-value": "import pickle\nr = pickle",
+    "pickle-getattr": "import pickle\ngetattr(pickle, 'dumps')",
+    "pickle-underscore": "import _pickle\n_pickle.loads(b'')",
+    "pickle-local": "def f():\n    import pickle\n    return pickle.loads(b'')",
+    "pickle-class-attr": "class K:\n    import pickle as pk",
+    "pickle-global": "def f():\n    global pk\n    import pickle as pk",
+    "pickle-attr-any-receiver": "x = trace_mod.pickle.loads(b'')",
+    "pickle-attr-param": "def go(m, d):\n    return m.pickle.loads(d)",
+    "pickle-string": "x = getattr(handlers, 'pickle')",
+    "unpickler": "x = obj.Unpickler(f)",
+    "unpickler-private": "x = obj._Unpickler",
+    # B-4: unpicklers and pdb reached without pickle or pdb spelled.
+    "forkingpickler": "from multiprocessing.reduction import ForkingPickler",
+    "forkingpickler-private": "from multiprocessing.connection import _ForkingPickler",
+    "forkingpickler-attr": "x = ctx.reducer.ForkingPickler.loads(b'')",
+    "reduction-from": "from multiprocessing import reduction",
+    "reduction-import": "import multiprocessing.reduction",
+    "shelve": "import shelve",
+    "shelf": "x = s.Shelf(d)",
+    "shelf-dbfilename": "x = s.DbfilenameShelf",
+    "breakpoint": "breakpoint()",
+    "breakpoint-value": "b = breakpoint",
+    "breakpointhook": "import sys\nsys.breakpointhook()",
+    "breakpointhook-dunder": "x = sys.__breakpointhook__",
+    # PY-1: timeit by member allow-list.
+    "timeit": "import timeit\ntimeit.timeit('x')",
+    "timeit-alias": "import timeit as ti\nti.Timer('x')",
+    "timeit-from": "from timeit import timeit",
+    "timeit-value": "import timeit\nt = timeit",
+    # PY-2: annotation evaluators.
+    "get-type-hints": "typing.get_type_hints(f)",
+    "eval-str": "inspect.signature(f, eval_str=True)",
+    "forwardref": "x = annotationlib.ForwardRef('x')",
+    "evaluate-forward-ref": "typing.evaluate_forward_ref(r)",
+    "eval-type": "typing._eval_type(t, g, l)",
+    "annotation-call": 'def ann(x: "f()"):\n    pass',
+    "annotation-walrus-list": 'def ann(x: "[a := b]"):\n    pass',
+    "annotation-return": 'def ann() -> "f()":\n    pass',
+    "annotation-variable": 'x: "f()" = 1',
+    "annotation-adjacent": 'def ann(x: "f" "()"):\n    pass',
+    "annotation-escaped": 'def ann(x: "f\\x28)"):\n    pass',
+    "annotation-unfoldable": 'def ann(x: f"{y}"):\n    pass',
+    # B-5: writes to a function's annotations dict.
+    "annotations-subscript": "f.__annotations__['x'] = 's'",
+    "annotations-assign": "f.__annotations__ = {}",
+    "annotations-update": "f.__annotations__.update(x='s')",
+    "annotations-setattr": "setattr(f, '__annotations__', {})",
+    "annotations-alias": "a = f.__annotations__",
+    "annotations-del": "del f.__annotations__['x']",
+    # PY-3: a second instance of the module, and code objects.
+    "runpy-init-globals": "import runpy\nrunpy.run_path(p, {})",
+    "runpy-init-keyword": "import runpy\nrunpy.run_path(p, init_globals={})",
+    "runpy-three-positional": "import runpy\nrunpy.run_module(m, None, 'x')",
+    "runpy-value": "import runpy\nr = runpy.run_path",
+    "runpy-splat": "import runpy\nrunpy.run_path(*a)",
+    "runpy-double-splat": "import runpy\nrunpy.run_path(p, **k)",
+    "runpy-from": "from runpy import run_path\nrun_path(p, {})",
+    "runpy-private": "from runpy import _run_code",
+    "runpy-other-member": "import runpy\nrunpy._run_module_code(c)",
+    "runpy-attr": "x = spawn.runpy",
+    "runpy-string": "x = 'runpy'",
+    "compile": "c = compile(s, 'x', 'exec')",
+    "compile-from-builtins": "from builtins import compile as cc",
+    "compile-builtins-attr": "import builtins\nbuiltins.compile(s, 'x', 'exec')",
+    "compile-value": "cc = compile",
+    "marshal": "import marshal",
+    "marshal-from": "from marshal import loads",
+    "marshal-attr": "x = pstats.marshal",
+    "marshal-reexport-from": "from pstats import marshal",
+    "marshal-string": "x = 'marshal'",
+    "get-code": "c = __spec__.loader.get_code(__name__)",
+    "source-to-code": "x.source_to_code(b, p)",
+    "exec-module": "x.exec_module(m)",
+    "load-module": "x.load_module(n)",
+    "read-code": "pkgutil.read_code(f)",
+    "get-code-definition": "def get_code(self):\n    pass",
+    # PY-8: the builtins that run a string, now file-wide too.
+    "exec": "exec('x')",
+    "eval": "eval('x')",
+    "execfile": "execfile('x')",
+    "exec-statement": "exec 'x'",
+    "exec-value": "e = exec",
+    "exec-from-builtins": "from builtins import exec as run",
+    "exec-builtins-attr": "import builtins\nbuiltins.exec('x')",
+    "eval-self-attr": "x = len.__self__.eval",
+    "exec-builtins-string": "x = vars(builtins)['exec']",
+    # A generic module name by string, in a file that acquires modules by
+    # name.
+    "code-by-import-module": "import importlib\nm = importlib.import_module('code')",
+    # R-699-3 BLOCKING 1: no module or class binding of a code builtin
+    # dominates a use, so a variable or walrus binding proves nothing.
+    "compile-self-alias": "compile = compile\nc = compile(s, 'x', 'exec')",
+    "compile-walrus-self-alias": "(compile := compile)\nc = compile(s, 'x', 'exec')",
+    "compile-before-module-assign": "c = compile(s, 'x', 'exec')\ncompile = re.compile",
+    "compile-class-alias": "class K:\n    compile = compile",
+    "compile-global-redirect": (
+        "def g():\n    global compile\n    compile = re.compile\n    return compile('x')"
+    ),
+    "breakpoint-self-alias": "breakpoint = breakpoint",
+    "breakpoint-before-module-def": "breakpoint()\nbreakpoint = print",
+    "compile-for-target": "for compile in [compile]:\n    compile(s, 'x', 'exec')",
+    # BLOCKING 2: a from-import of a checked module's name out of any module
+    # binds the module itself.
+    "pickle-from-reexport": "from logging.handlers import pickle as pk\nx = pk.loads(b'')",
+    "pickle-from-reexport-local": (
+        "def f():\n    from pickletools import pickle\n    return pickle.loads(b'')"
+    ),
+    "pickle-from-reexport-value": "from tracemalloc import pickle\np = pickle",
+    "pickle-from-relative": "from . import pickle\nx = pickle.loads(b'')",
+    "runpy-from-reexport": (
+        "from multiprocessing.spawn import runpy\nrunpy.run_path(p, {'helper': len}, 'x')"
+    ),
+    "timeit-from-reexport": "from somewhere import timeit\ntimeit.timeit('x')",
+    "trace-from-stdlib": "from logging import trace",
+    # BLOCKING 3: generic module names in a dotted constant, by keyword and
+    # through the string resolvers.
+    "code-import-module-keyword": (
+        "import importlib\nm = importlib.import_module(name='code')"
+    ),
+    "code-dunder-import-keyword": "m = __import__(name='code')",
+    "code-resolve-name-colon": (
+        "import pkgutil\nm = pkgutil.resolve_name('code:InteractiveInterpreter')"
+    ),
+    "code-resolve-name-lone": "import pkgutil\nm = pkgutil.resolve_name('code')",
+    "code-resolve-name-from": "from pkgutil import resolve_name\nm = resolve_name('code')",
+    "timeit-pydoc-locate": "import pydoc\nf = pydoc.locate('timeit.timeit')",
+    "timeit-dictconfig-factory": (
+        "logging.config.dictConfig({'filters': {'f': {'()': 'timeit.timeit'}}})"
+    ),
+    "profile-factory-lone": "d = {'()': 'profile'}",
+    "trace-dotted-constant": "x = 'trace.Trace'",
+    "code-dotted-dunder": "x = 'code.__builtins__'",
+    "timeit-colon-constant": "x = ['timeit:timeit']",
+    # BLOCKING 4: the dispatchers evaluate string annotation values.
+    "singledispatch": "from functools import singledispatch",
+    "singledispatchmethod-attr": "m = functools.singledispatchmethod(f)",
+    # SHOULD 1: builtins reached through ``getmodule`` or a module acquired
+    # by a computed name.
+    "exec-getmodule": "import inspect\ninspect.getmodule(len).exec('x')",
+    "exec-import-module-computed": (
+        "import importlib\nimportlib.import_module(len.__module__).exec('x')"
+    ),
+    "exec-sys-modules-computed": "import sys\nsys.modules[len.__module__].exec('x')",
+    "eval-modules-get-computed": "import sys\nsys.modules.get(n).eval('x')",
+    "compile-attr-unproven-receiver": "import builtins\nx = builtins.len\np = rx.compile('x')",
+    # R-699-5 BLOCKING 1: a phantom binding (the Python 2 list-comprehension
+    # leak, ``except A, B:``, a type-parameter bound or constraint) proves
+    # nothing; CPython 3.14 runs the builtin or the module.
+    "exec-listcomp-leak": "def g():\n    [exec for exec in [print]]\n    exec('x')",
+    "eval-listcomp-leak": "def g():\n    [eval for eval in [print]]\n    eval('x')",
+    "exec-listcomp-first-iterable": (
+        "def g():\n    [x for x in [exec('x')] for exec in [print]]"
+    ),
+    "exec-except-comma": (
+        "def g():\n    try:\n        pass\n    except KeyError, exec:\n"
+        "        pass\n    exec('x')"
+    ),
+    "exec-tparam-bound": "def g[T: exec]():\n    exec('x')",
+    "compile-tparam-constraints": (
+        "def g[T: (compile, int)]():\n    return compile(s, 'x', 'exec')"
+    ),
+    "exec-class-tparam-bound": "class K[T: exec]:\n    exec('x')",
+    "pickle-listcomp-phantom": (
+        "import pickle\n\n\ndef g():\n    [pickle for pickle in []]\n"
+        "    return pickle.loads(b'')"
+    ),
+    "pickle-alias-listcomp-phantom": (
+        "import pickle as pk\n\n\ndef g():\n    [pk for pk in []]\n"
+        "    return pk.loads(b'')"
+    ),
+    "pickle-except-comma-phantom": (
+        "import pickle\n\n\ndef g():\n    try:\n        pass\n"
+        "    except KeyError, pickle:\n        pass\n    return pickle.loads(b'')"
+    ),
+    "pickle-tparam-phantom": (
+        "import pickle\n\n\ndef g[T: pickle]():\n    return pickle.loads(b'')"
+    ),
+    "timeit-listcomp-phantom": (
+        "import timeit\n\n\ndef g():\n    [timeit for timeit in []]\n"
+        "    return timeit.timeit(s, number=1)"
+    ),
+    # R-699-5 BLOCKING 2: a resolver's constant fires on any string-code
+    # module name among its parts, before the dotted-name gate; entry points
+    # are resolvers.
+    "timeit-resolve-name-newline": (
+        "import pkgutil\nf = pkgutil.resolve_name('timeit:timeit\\n')"
+    ),
+    "timeit-locate-double-dot": "import pydoc\nf = pydoc.locate('timeit..timeit')",
+    "timeit-locate-leading-dot": "import pydoc\nf = pydoc.locate('.timeit.timeit')",
+    "timeit-locate-trailing-dot": "import pydoc\nf = pydoc.locate('timeit.timeit.')",
+    "timeit-dictconfig-ext": "d = {'()': 'ext://timeit.timeit'}",
+    "code-resolve-name-colon-only": "import pkgutil\nm = pkgutil.resolve_name('code:')",
+    "pickle-resolve-name-newline": (
+        "import pkgutil\nf = pkgutil.resolve_name('pickle:loads\\n')"
+    ),
+    "timeit-entrypoint-spaces": (
+        "from importlib.metadata import EntryPoint\n"
+        "f = EntryPoint(name='x', value='timeit : timeit', group='g').load()"
+    ),
+    "timeit-entrypoint-extras": (
+        "from importlib.metadata import EntryPoint\n"
+        "f = EntryPoint(name='x', value='timeit:timeit [x]', group='g').load()"
+    ),
+    "timeit-entrypoint-positional": (
+        "from importlib import metadata\n"
+        "f = metadata.EntryPoint('x', 'timeit : timeit', 'g').load()"
+    ),
+    "code-entrypoint-module-name": (
+        "import pkg_resources\n"
+        "f = pkg_resources.EntryPoint('x', module_name='code', attrs=('interact',))"
+    ),
+    "timeit-entrypoint-parse": (
+        "import pkg_resources\n"
+        "f = pkg_resources.EntryPoint.parse('x = timeit : timeit').load()"
+    ),
+    # R-699-5 SHOULD 1: a from-import of ``code``, ``trace`` or ``profile``
+    # out of a non-stdlib module is checked against the closed allow-list.
+    "code-project-reexport": "from compat import code\nx = code.InteractiveInterpreter()",
+    "trace-package-reexport": "from pkg import trace\ntrace.Trace(count=0).run(s)",
+    "profile-relative-reexport": "from .compat import profile\nprofile.run(s)",
+    "trace-third-party-table-attribute": "from opentelemetry import trace\nx = trace.Trace",
+    "trace-reexport-passed": "from opentelemetry import trace\nf(trace)",
+    "trace-reexport-alias": "from opentelemetry import trace\nt = trace",
+    "trace-reexport-getattr": "from opentelemetry import trace\nx = getattr(trace, n)",
+    "trace-reexport-subscript": "from opentelemetry import trace\nx = trace[0]",
+    "code-reexport-dunder": "from compat import code\nx = code.__dict__",
+    "profile-reexport-decorator": (
+        "from line_profiler import profile\n\n\n@profile\ndef f():\n    pass"
+    ),
+    "trace-reexport-class-scope": "class K:\n    from opentelemetry import trace",
+    "code-reexport-local-alias": (
+        "def g():\n    from compat import code as c\n    return c.interact()"
+    ),
+    # R-699-5 NIT: CPython's ``test`` package is standard library.
+    "profile-from-test-package": "from test.test_profile import profile",
+    # R-699-6: every constant among the arguments of ``import_module`` or
+    # ``__import__`` is an acquisition position. An empty name after the dots
+    # resolves to the ``package`` argument or to ``__package__``/``__name__``
+    # in ``globals``; CPython 3.14 returns the stdlib module and runs the
+    # payload (i10, i13, i14).
+    "trace-import-module-package": (
+        "import importlib\nm = importlib.import_module('.', 'trace')"
+    ),
+    "code-import-module-package-dotted": (
+        "import importlib\nm = importlib.import_module('..', 'code.x')"
+    ),
+    "timeit-import-module-package-keyword": (
+        "import importlib\nm = importlib.import_module('.', package='timeit')"
+    ),
+    "profile-import-module-from-package": (
+        "from importlib import import_module\nm = import_module('.', 'profile')"
+    ),
+    "trace-dunder-import-globals-package": (
+        "m = __import__('', {'__package__': 'trace'}, None, [], 1)"
+    ),
+    "profile-dunder-import-globals-name": (
+        "m = __import__('', {'__name__': 'profile.x'}, None, [], 1)"
+    ),
+    "code-dunder-import-globals-keyword": (
+        "import importlib\n"
+        "m = importlib.__import__('', globals={'__package__': 'code'}, level=1)"
+    ),
+    # R-699-6: ``name=`` still counts for a string resolver.
+    "code-resolve-name-keyword": "import pkgutil\nm = pkgutil.resolve_name(name='code')",
+}
+
+
+@pytest.mark.parametrize("case", sorted(STRING_CODE_FORMS))
+def test_string_code_fails_closed_file_wide(case: str) -> None:
+    """Every string-code trigger makes every lookup of the file dynamic,
+    function scopes included (#699 PY-8 and B-2)."""
+    source = STRING_CODE_FORMS[case] + "\n\n\n" + LOCAL_PROOF
+    assert reason(source) == "dynamic-scope", case
+    module = (
+        STRING_CODE_FORMS[case]
+        + "\n\n\n"
+        + HELPER
+        + "def use():\n    return helper()\n"
+    )
+    assert reason(module) == "dynamic-scope", case
+
+
+# Uses on the allow-lists, lookalikes and the file's own bindings: the
+# function-local proof and a module-level proof both stand.
+STRING_CODE_CONTROLS: dict[str, str] = {
+    "pickle-dumps": "import pickle\nx = pickle.dumps(1)",
+    "pickle-alias-constant": "import pickle as pk\nx = pk.HIGHEST_PROTOCOL",
+    "pickle-from-safe": "from pickle import dumps, PicklingError",
+    "pickle-base-class": "import pickle\n\n\nclass E(pickle.PickleError):\n    pass",
+    "pickle-local-name": "pickle = None\nx = pickle",
+    "pickle-parameter-shadow": "import pickle\n\n\ndef g(pickle):\n    return pickle.loads(1)",
+    "pickle-attr-target": "o.pickle = 1",
+    "timeit-default-timer": "import timeit\nx = timeit.default_timer()",
+    "timeit-from-default-timer": "from timeit import default_timer",
+    "runpy-run-path": "import runpy\nrunpy.run_path('x')",
+    "runpy-run-module-keywords": (
+        "import runpy\nrunpy.run_module('m', run_name='y', alter_sys=True)"
+    ),
+    "runpy-from-run-path": "from runpy import run_path\nrun_path('x', run_name='y')",
+    "re-compile-local": "def g():\n    from re import compile\n    return compile('x')",
+    "re-compile-attr": "import re\np = re.compile('x')",
+    "breakpoint-local": "def g():\n    breakpoint = print\n    breakpoint()",
+    "eval-method": "self.eval()",
+    "exec-method": "model.exec()",
+    "attributes-named-code": "e = types.SimpleNamespace(code=1, trace=2)\nx = (e.code, e.trace)",
+    "sibling-code": "from . import code",
+    "otel-trace": "from opentelemetry import trace",
+    "third-party-marshal": "from flask_restful import marshal\nx = marshal(d, f)",
+    "json-loads": "import json\nx = json.loads('1')",
+    "annotations-get": "x = g.__annotations__.get('x')",
+    "annotations-in": "y = 'x' in g.__annotations__",
+    "annotations-read": "z = g.__annotations__['x']",
+    "annotation-strings": (
+        'def ann(x: "list[int]", y: "typing.Optional[str]" = None) -> "None":\n'
+        "    pass"
+    ),
+    "generic-strings": "x = {'code': 1, 'trace': 2, 'profile': 3, 'timeit': 4}",
+    "prose-strings": "msg = 'runpy.run_path or pdb.set_trace: refused'",
+    # R-699-3: function-scope bindings of a code builtin dominate the use.
+    "compile-local-variable": "def g():\n    compile = str\n    return compile(1)",
+    # A from-import of a checked module's name on its allow-list.
+    "pickle-from-reexport-dumps": "from logging.handlers import pickle\nx = pickle.dumps(1)",
+    "runpy-from-reexport-plain": "from multiprocessing.spawn import runpy\nrunpy.run_path('x')",
+    # A generic word that is no acquisition, and an acquisition by constant.
+    "generic-name-keyword": "x = f(name='code')",
+    # Dotted constants whose second component no generic module has: file
+    # names and other packages' members (this repository's
+    # ``tests/test_governed_scope.py``, Code-Index-MCP's ``baml_sdk``).
+    "generic-file-names": (
+        "x = ['trace.log', 'code.py', 'code:fixture', 'profile.json', 'trace.Options']"
+    ),
+    "timeit-default-timer-string": "x = 'timeit.default_timer'",
+    "generic-factory-other": "d = {'()': 'json.JSONDecoder', 'code': 'x'}",
+    # R-699-5 SHOULD 1: a non-stdlib from-import of ``code``, ``trace`` or
+    # ``profile`` whose every use reads an attribute the stdlib module lacks.
+    "otel-trace-get-tracer": (
+        "from opentelemetry import trace\ntracer = trace.get_tracer(__name__)"
+    ),
+    "otel-trace-members": (
+        "from opentelemetry import trace\n"
+        "x = (trace.Span, trace.StatusCode.OK, trace.set_tracer_provider)"
+    ),
+    "project-code-attribute": "from .models import code\nx = code.VALUE",
+    "otel-trace-local": (
+        "def g():\n    from opentelemetry import trace\n    return trace.get_tracer(n)"
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(STRING_CODE_CONTROLS))
+def test_string_code_controls_still_resolve(case: str) -> None:
+    source = STRING_CODE_CONTROLS[case] + "\n\n\n" + LOCAL_PROOF
+    assert proof_text(source) == ["def helper():\n        return 1"], case
+    module = (
+        STRING_CODE_CONTROLS[case]
+        + "\n\n\n"
+        + HELPER
+        + "def use():\n    return helper()\n"
+    )
+    assert proof_text(module) == PROOF, case
+
+
+# R-699-3 controls in files whose module-scope lookups main already makes
+# dynamic (a mention of ``builtins`` or ``X.modules``): the function-local
+# proof stands.
+STRING_CODE_LOCAL_CONTROLS: dict[str, str] = {
+    # ``re.compile`` on a proven ``re`` import, in a file that reaches the
+    # builtins namespace (cost NIT).
+    "re-compile-builtins-reach": (
+        "def g():\n    import builtins\n    import re\n"
+        "    return builtins.len, re.compile('x')"
+    ),
+    "re-compile-alias-builtins-reach": (
+        "def g():\n    import builtins\n    import re as rx\n"
+        "    return builtins.len, rx.compile('x')"
+    ),
+    # A module acquired by its own name or a constant is not ``builtins``.
+    "sys-modules-own-name": "def g(sys, m):\n    return sys.modules[__name__], m.eval()",
+    "sys-modules-constant": "def g(sys, m):\n    return sys.modules['json'], m.eval()",
+    "modules-get-constant": "def g(sys, m):\n    return sys.modules.get('json'), m.eval()",
+    # R-699-5 BLOCKING 2: entry points and resolvers given other modules
+    # (a resolver or loader mention already makes module scope dynamic).
+    "entrypoint-other-module": (
+        "from importlib.metadata import EntryPoint\n"
+        "f = EntryPoint(name='code', value='pkg.cli : main', group='g').load()"
+    ),
+    "resolver-other-module": "import pkgutil\nf = pkgutil.resolve_name('json:loads\\n')",
+}
+
+
+@pytest.mark.parametrize("case", sorted(STRING_CODE_LOCAL_CONTROLS))
+def test_string_code_local_controls_still_resolve(case: str) -> None:
+    source = STRING_CODE_LOCAL_CONTROLS[case] + "\n\n\n" + LOCAL_PROOF
+    assert proof_text(source) == ["def helper():\n        return 1"], case
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "def g(eval):\n    return eval(1)",
+        "def g():\n    eval = str\n    return eval(1)",
+        "def g(exec):\n    return exec('x')",
+        # R-699-5: a real binding beside a phantom one proves; so does a
+        # type parameter's own name (a ``TypeVar``, not the builtin).
+        "def g():\n    eval = str\n    [eval for eval in []]\n    return eval(1)",
+        "def g():\n    exec = print\n    [exec for exec in []]\n    return exec('x')",
+        "def g[exec]():\n    return exec('x')",
+        "def g[T: int, *exec]():\n    return exec('x')",
+    ],
+)
+def test_own_bindings_of_code_builtins_leave_function_proofs_alone(form: str) -> None:
+    """The use-site lookup proves the file's own binding, so the builtin is
+    not used. (Any mention of ``eval`` outside an attribute already makes
+    module-scope lookups dynamic, as on main.)"""
+    assert proof_text(form + "\n\n\n" + LOCAL_PROOF) == [
+        "def helper():\n        return 1"
+    ]
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "from re import compile\np = compile('x')",
+        "compile = re.compile\np = compile('x')",
+        "(compile := re.compile)\np = compile('x')",
+    ],
+)
+def test_module_level_binding_of_a_code_builtin_is_builtin_shadow(form: str) -> None:
+    """A module-level import, variable or walrus binding shadows the builtin
+    only once it runs: a call that runs first gets the builtin ``compile``,
+    so the use fails closed (R-699-3 BLOCKING 1, ``ctl_module_compile_re``
+    flips). In a function the binding is a local."""
+    assert reason(form + "\n\n\n" + LOCAL_PROOF) == "dynamic-scope", form
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "exec(\"import sys; sys._getframe(1).f_locals['helper'] = len\")",
+        "import pickle\n    pickle.loads(payload)",
+        "type(f)(compile(src, '<s>', 'exec'), {})()",
+        "import marshal\n    type(f)(marshal.loads(data), {})()",
+        "import timeit\n    timeit.timeit(src, number=1)",
+    ],
+)
+def test_string_code_inside_the_function_defeats_its_own_proof(form: str) -> None:
+    """``sc_exec_frame_local`` and the ``x8_*`` trees: the trigger sits in
+    the function whose local the string code writes."""
+    source = (
+        "def f():\n    def helper():\n        return 1\n    "
+        + form
+        + ("\n    return helper()\n")
+    )
+    assert reason(source) == "dynamic-scope", form
+
+
+def test_mock_scoped_computed_getters_fail_closed() -> None:
+    """Plan PY-5 (Z-4): in a file that imports or aliases the mock module,
+    ``patch`` or a pytest-mock fixture, a computed attribute read may return
+    the file's own ``patch``. Module-scope lookups fail closed."""
+    forms = (
+        "def run(m):\n    getattr(m, chr(80))",
+        "def run(m):\n    getattr(m, 'patc' + chr(104))",
+        "g = getattr",
+        "import operator\noperator.attrgetter(n)(m)",
+        "from operator import attrgetter as ag",
+        "import operator\noperator.methodcaller(n)(m)",
+        "import inspect\ninspect.getattr_static(m, n)",
+        "def run(m, n):\n    type.__getattribute__(m, n)",
+        "def run(m, n):\n    m.__getattribute__(n)",
+        "import inspect\nx = inspect.getmembers(m)",
+        "def run(m):\n    for k in dir(m):\n        getattr(m, k)",
+    )
+    for prefix in ("from unittest.mock import patch\n", "from unittest import mock\n"):
+        for form in forms:
+            source = (
+                prefix + form + "\n\n\n" + HELPER + "def use():\n    return helper()\n"
+            )
+            assert reason(source) == "dynamic-scope", (prefix, form)
+    fixture = "def test_x(mocker, n):\n    getattr(mocker, n)\n\n\n"
+    assert reason(fixture + HELPER + "def use():\n    return helper()\n") == (
+        "dynamic-scope"
+    )
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "from unittest import mock\nx = getattr(o, 'name', None)",
+        "from unittest import mock\nimport operator\nx = operator.attrgetter('a.b')(o)",
+        "from unittest import mock\nfrom operator import attrgetter",
+        "from unittest import mock\nx = mock.Mock()",
+        "def run(m, n):\n    return getattr(m, n)",
+        "import inspect\nx = inspect.getmembers(m)",
+        "from unittest import mock\n\n\ndef run(getattr, m, n):\n    return getattr(m, n)",
+    ],
+)
+def test_computed_getters_outside_mock_files_or_constant_still_resolve(
+    form: str,
+) -> None:
+    source = form + "\n\n\n" + HELPER + "def use():\n    return helper()\n"
+    assert proof_text(source) == PROOF, form
+
+
+def test_installed_builtins_never_prove_at_module_level() -> None:
+    """Plan PY-4: ``gettext.install()`` and ``sys.displayhook`` put these
+    names into ``builtins``; until a module-level definition runs, the name
+    is that builtin (``builtin-shadow``). A function-local one still
+    proves."""
+    assert (
+        frozenset({"_", "gettext", "ngettext", "pgettext", "npgettext"})
+        == py_scope.INSTALLED_BUILTINS
+    )
+    assert not py_scope.INSTALLED_BUILTINS & py_scope.BUILTINS
+    for name in sorted(py_scope.INSTALLED_BUILTINS):
+        source = (
+            f"def use():\n    return {name}('x')\n\n\nuse()\n\n\n"
+            f"def {name}(s):\n    return s\n"
+        )
+        assert reason(source, name) == "builtin-shadow", name
+        imported = f"from m import {name}\n\n\ndef use():\n    return {name}('x')\n"
+        assert reason(imported, name) == "builtin-shadow", name
+        local = f"def use():\n    def {name}(s):\n        return s\n    return {name}('x')\n"
+        assert proof_text(local, name) == [f"def {name}(s):\n        return s"]
+
+
+def test_installed_builtins_pin_matches_the_interpreter() -> None:
+    """The names ``install`` accepts on the running interpreter, and the one
+    ``sys.displayhook`` writes, are exactly ``INSTALLED_BUILTINS``."""
+    import subprocess
+    import sys
+
+    probe = (
+        "import builtins, gettext, sys\n"
+        "before = set(dir(builtins))\n"
+        "names = ['gettext', 'ngettext', 'pgettext', 'npgettext', 'lgettext',\n"
+        "         'lngettext', 'dgettext', 'dngettext', 'install', 'other']\n"
+        "for n in names:\n"
+        "    try:\n"
+        "        gettext.NullTranslations().install(names=[n])\n"
+        "    except Exception:\n"
+        "        pass\n"
+        "del builtins._\n"
+        "import io\nout, sys.stdout = sys.stdout, io.StringIO()\n"
+        "sys.displayhook(1)\nsys.stdout = out\n"
+        "print(*sorted(set(dir(builtins)) - before))\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", probe],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert frozenset(result.stdout.split()) == py_scope.INSTALLED_BUILTINS
+
+
+def test_generic_module_attributes_match_the_interpreter() -> None:
+    """Every non-dunder attribute of ``code``, ``profile``, ``timeit`` and
+    ``trace`` on the running interpreter is listed (``timeit.default_timer``
+    is on ``timeit``'s member allow-list instead)."""
+    import importlib
+
+    for name, listed in py_scope._GENERIC_MODULE_ATTRIBUTES.items():
+        module = importlib.import_module(name)
+        actual = {attribute for attribute in dir(module) if not _dunder15(attribute)}
+        if name == "timeit":
+            actual.discard("default_timer")
+        assert actual <= listed, (name, sorted(actual - listed))
+    assert set(py_scope._GENERIC_MODULE_ATTRIBUTES) == set(
+        py_scope._GENERIC_MODULE_STRINGS
+    )
+
+
+def _dunder15(name: str) -> bool:
+    return name.startswith("__") and name.endswith("__")
+
+
+def test_string_code_lists_are_pinned() -> None:
+    """Dropping or adding a name changes these sets; each name is tested in
+    ``STRING_CODE_FORMS`` or below."""
+    assert frozenset(
+        {
+            "cProfile", "bdb", "pdb", "_pyprofile", "codeop", "doctest",
+            "fileConfig", "Unpickler", "_Unpickler", "ForkingPickler",
+            "_ForkingPickler", "shelve", "Shelf", "DbfilenameShelf",
+            "BsdDbShelf", "breakpointhook", "__breakpointhook__",
+            "get_type_hints", "eval_str", "ForwardRef",
+            "evaluate_forward_ref", "_eval_type", "get_code",
+            "source_to_code", "exec_module", "load_module", "read_code",
+            "singledispatch", "singledispatchmethod",
+        }
+    ) == py_scope._STRING_CODE_NAMES  # fmt: skip
+    assert (
+        frozenset(
+            {"cProfile", "profile", "bdb", "pdb", "trace", "code", "codeop", "doctest"}
+        )
+        == py_scope._STRING_CODE_MODULES
+    )
+    assert (
+        frozenset({"exec", "eval", "execfile", "compile", "breakpoint"})
+        == py_scope._CODE_BUILTINS
+    )
+    assert dict(py_scope._CHECKED_MODULES) == {
+        "pickle": py_scope._PICKLE_SAFE,
+        "_pickle": py_scope._PICKLE_SAFE,
+        "timeit": frozenset({"default_timer"}),
+        "runpy": frozenset({"run_path", "run_module"}),
+    }
+    assert frozenset(
+        {
+            "dumps", "dump", "Pickler", "PickleBuffer", "HIGHEST_PROTOCOL",
+            "DEFAULT_PROTOCOL", "PickleError", "PicklingError", "UnpicklingError",
+        }
+    ) == py_scope._PICKLE_SAFE  # fmt: skip
+    assert frozenset({"run_name", "alter_sys"}) == py_scope._RUNPY_KEYWORDS
+    assert frozenset(
+        {"builtins", "__builtins__", "__builtin__", "bltns", "__self__",
+         "f_builtins", "getmodule"}
+    ) == py_scope._BUILTINS_REACH  # fmt: skip
+    assert frozenset({"exec", "eval", "execfile"}) == py_scope._LEGACY_EVALUATORS
+    assert frozenset({"code", "trace", "profile", "timeit"}) == (
+        py_scope._GENERIC_MODULE_STRINGS
+    )
+    assert frozenset({"resolve_name", "locate", "safeimport"}) == (
+        py_scope._STRING_RESOLVERS
+    )
+    # B-1: every code-object name is also a Tier 1 file-wide name.
+    assert py_scope._CODE_OBJECT_NAMES <= py_scope._FILE_WIDE_NAMES
+
+
+@pytest.mark.parametrize(
+    "name",
+    sorted(py_scope._STRING_CODE_NAMES),
+)
+def test_each_string_code_name_counts_in_every_position(name: str) -> None:
+    for mention in (f"x = obj.{name}", f"x = '{name}'", f"f({name}=1)"):
+        source = mention + "\n\n\n" + LOCAL_PROOF
+        assert reason(source) == "dynamic-scope", (name, mention)
+
+
+# The standard library's re-exports of a string-code helper (module globals
+# and class attributes), found by importing every 3.14 stdlib module
+# (``scripts/scan_stdlib_string_code_reexports.py``). Each still holds on the
+# running interpreter, and each spelling fails closed.
+STDLIB_REEXPORTS = (
+    ("cProfile", "_pyprofile", "profile"),
+    ("pdb", "bdb", "bdb"),
+    ("pdb", "code", "code"),
+    ("pdb", "codeop", "codeop"),
+    ("traceback", "codeop", "codeop"),
+    ("doctest", "pdb", "pdb"),
+    ("logging.handlers", "pickle", "pickle"),
+    ("multiprocessing.reduction", "pickle", "pickle"),
+    ("pickletools", "pickle", "pickle"),
+    ("trace", "pickle", "pickle"),
+    ("tracemalloc", "pickle", "pickle"),
+    ("multiprocessing.spawn", "runpy", "runpy"),
+    ("pstats", "marshal", "marshal"),
+    ("profile", "marshal", "marshal"),
+    ("modulefinder", "marshal", "marshal"),
+    ("zipimport", "marshal", "marshal"),
+    ("shelve", "Unpickler", "pickle.Unpickler"),
+    ("multiprocessing.reduction", "ForkingPickler.loads", "pickle.loads"),
+    ("multiprocessing.connection", "_ForkingPickler.loads", "pickle.loads"),
+    ("multiprocessing.queues", "_ForkingPickler.loads", "pickle.loads"),
+    ("multiprocessing.sharedctypes", "_ForkingPickler.loads", "pickle.loads"),
+    ("concurrent.interpreters._queues", "pickle", "pickle"),
+    ("importlib._bootstrap_external", "marshal", "marshal"),
+)
+
+
+@pytest.mark.parametrize(("module", "attribute", "target"), STDLIB_REEXPORTS)
+def test_stdlib_reexports_hold_and_fail_closed(
+    module: str, attribute: str, target: str
+) -> None:
+    import importlib
+
+    owner: Any = importlib.import_module(module)
+    for part in attribute.split("."):
+        owner = getattr(owner, part)
+    head, _, member = target.partition(".")
+    expected: Any = importlib.import_module(head)
+    if member:
+        expected = getattr(expected, member)
+    assert owner is expected, (module, attribute)
+    alias = module.replace(".", "_")
+    spelled = f"import {module} as {alias}\nx = {alias}.{attribute}"
+    if attribute == "code":
+        spelled = f"import {module} as {alias}\nx = {alias}.code.InteractiveConsole"
+    assert reason(spelled + "\n\n\n" + LOCAL_PROOF) == "dynamic-scope", spelled
+    # R-699-3 BLOCKING 2: the from-import of the same object, used off the
+    # module's allow-list, fails closed too.
+    first, _, rest = attribute.partition(".")
+    imported = f"from {module} import {first} as _r\nx = _r.{rest or 'loads'}"
+    if first == "code":
+        imported = f"from {module} import code as _r\nx = _r.InteractiveConsole"
+    assert reason(imported + "\n\n\n" + LOCAL_PROOF) == "dynamic-scope", imported
+
+
+# Runtime-traced trees (CPython 3.14.10). ``a.py`` calls ``helper``; ``b.py``
+# holds a second definition so the off-mode edge is ambiguous. Each prints
+# ``runtime: 2`` (``len`` ran) while main proved ``a.py``'s own ``helper``.
+# The trace and the full corpus (106 S2 trees from the plan and both plan
+# reviews) are in the PR's evidence.
+S2_B = "def helper(s):\n    return 'B'\n"
+S2_G = "def helper(s):\n    return 'DEF'\n\n\ndef run():\n    return helper('ab')\n\n\n"
+S2_LOCAL = (
+    "def run():\n    def helper(s):\n        return 'DEF'\n\n    {body}\n"
+    "    return helper('ab')\n\n\n"
+)
+S2_FRAME = "import sys; sys._getframe(1).f_locals['helper'] = len"
+S2_TRACED: dict[str, str] = {
+    "sc_cprofile_run": "import cProfile\n\n\n"
+    + S2_G
+    + "cProfile.run('helper = len')\n",
+    "sc_pickle_main_dict": "import pickle\n\n\n"
+    + S2_G
+    + "D = dict(helper=len)\npickle.loads(b'c__main__\\n__dict__\\n.').update(D)\n",
+    "sc_pickle_via_trace_attr": "import trace\n\n\n"
+    + S2_G
+    + "D = dict(helper=len)\ntrace.pickle.loads(b'c__main__\\n__dict__\\n.').update(D)\n",
+    "sc_timeit_from": "from timeit import timeit as T\n\n\n"
+    + S2_G
+    + "T('import __main__ as m; m.helper = len', number=1)\n",
+    "sc_inspect_get_annotations": "import inspect\n\n\n"
+    + S2_G
+    + "def ann(x: \"__import__('__main__').__setattr__('helper', len)\" = 0):\n"
+    "    pass\n\n\ninspect.get_annotations(ann, eval_str=True)\n",
+    "sc_singledispatch_string_annotation": "import functools\n\n\n"
+    + S2_G
+    + "@functools.singledispatch\ndef disp(x):\n    pass\n\n\n@disp.register\n"
+    "def _d(x: \"globals().__setitem__('helper', len) or int\"):\n    pass\n",
+    "x2_singledispatch_assigned_ann": "import functools\n\n\n"
+    + S2_G
+    + "@functools.singledispatch\ndef sd(x):\n    pass\n\n\ndef g(x: int):\n    pass\n\n\n"
+    "g.__annotations__['x'] = \"__import__('__main__').__setattr__('helper', len) or int\"\n"
+    "sd.register(g)\n",
+    "sc_compile_functype": S2_G
+    + "type(run)(compile('import __main__ as m; m.helper = len', '<s>', 'exec'), {})()\n",
+    "si_loader_get_code": "def run():\n    return helper('ab')\n\n\n"
+    "if __name__ == 'x':\n    pass\nelse:\n"
+    "    type(run)(__spec__.loader.get_code(__name__), "
+    "{'helper': len, '__name__': 'x'})()\n\n\ndef helper(s):\n    return 'DEF'\n",
+    "rf_runpy_init_globals": "import runpy\n\n\ndef run():\n    return helper('ab')\n\n\n"
+    "if __name__ != 'x':\n"
+    "    runpy.run_path(__file__, init_globals={'helper': len}, run_name='x')\n\n\n"
+    "def helper(s):\n    return 'DEF'\n",
+    "x1_breakpoint_stdin": "import io\nimport sys\n\n\n"
+    + S2_G
+    + "sys.stdin = io.StringIO('helper = len\\ncontinue\\n')\nbreakpoint()\n",
+    "sc_exec_frame_local": S2_LOCAL.format(body=f'exec("{S2_FRAME}")'),
+    "sol_exec_import_alias": "from builtins import exec as execute\n\n\n"
+    + S2_LOCAL.format(body=f'execute("{S2_FRAME}")'),
+    "x8_compile_functype_frame_local": S2_LOCAL.format(
+        body=f"type(run)(compile(\"{S2_FRAME}\", '<s>', 'exec'), {{}})()"
+    ),
+    "z4_getattr_concat": "from unittest.mock import patch\n\n\n"
+    "def helper(s):\n    return 'DEF'\n\n\ndef run(m):\n"
+    "    getattr(m, 'patc' + chr(104))(__name__ + '.helper', len).start()\n"
+    "    return helper('ab')\n",
+}
+
+
+S2_B_LOCAL = (
+    "def other():\n    def helper(s):\n        return 'B'\n\n    return helper\n"
+)
+
+
+@pytest.mark.parametrize("case", sorted(S2_TRACED))
+def test_s2_traced_routes_keep_their_off_mode_edge(tmp_path: Path, case: str) -> None:
+    local = "    def helper(s):" in S2_TRACED[case]
+    root = _tree(
+        tmp_path, {"a.py": S2_TRACED[case], "b.py": S2_B_LOCAL if local else S2_B}
+    )
+    off = extract_symbol_graph(root)
+    edge = _helper_edge(off)
+    assert edge["resolution"] == "ambiguous", "the case must start ambiguous"
+    assert extract_symbol_graph(root, call_resolution="name") == off
+    for mode in ("structural", "imports"):
+        on = extract_symbol_graph(root, call_resolution=mode)
+        assert _helper_edge(on) == edge, (case, mode)
+
+
+def test_s2_installed_builtin_route_keeps_its_off_mode_edge(tmp_path: Path) -> None:
+    """``rf_gettext_install``: CPython 3.14.10 prints ``runtime: ab``
+    (gettext's ``_`` ran) while main proved the file's own ``_``."""
+    a_py = (
+        "import gettext\n\n\ndef run():\n    return _('ab')\n\n\n"
+        "gettext.install('x')\nprint('runtime:', run())\n\n\n"
+        "def _(s):\n    return 'DEF'\n"
+    )
+    root = _tree(tmp_path, {"a.py": a_py, "b.py": "def _(s):\n    return 'B'\n"})
+    off = extract_symbol_graph(root)
+    edge = _helper_edge(off, "_")
+    assert edge["resolution"] == "ambiguous"
+    for mode in ("structural", "imports"):
+        on = extract_symbol_graph(root, call_resolution=mode)
+        assert _helper_edge(on, "_") == edge, mode

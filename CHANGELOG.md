@@ -90,6 +90,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     resolve, nor does a module-level name that any receiver's attribute write
     (`x.name = v`, `setattr`, `__dict__.update`) may rebind, and neither does a
     private name (`__x`) looked up inside a class, which CPython mangles.
+    A file that runs code from a string, a payload or an annotation
+    (`exec`, `eval`, `compile`, `breakpoint()`, `cProfile`/`pdb`/`trace`/
+    `timeit`/`doctest`-style helpers, `pickle` loads, `shelve`, `marshal`,
+    loader `get_code`/`exec_module`, `runpy` with `init_globals`,
+    `get_type_hints`, `singledispatch`, string annotations that call,
+    `__annotations__` writes; a module-level variable of a code builtin's
+    name, `compile = compile`, does not hide the builtin, and neither does a
+    Python 2 form CPython 3 reads differently, such as `except A, exec:`;
+    `code`, `trace` or `profile` imported from another package count unless
+    every use reads a name the stdlib module lacks, so `from opentelemetry
+    import trace` stays inert; a module named by any constant passed to
+    `import_module`/`__import__`, its `package` argument and `globals`
+    included, counts) resolves no call at all, function-local ones included, because such code
+    can write its caller's locals through the frame; in `imports` mode it is
+    also a run-wide `evaluator` cause, and any code-object source (`__code__`,
+    `__closure__`, `FunctionType`, ...; reads included) a `module-object`
+    cause (treesitter-chunker#699).
     A file that mentions `f_locals`, which writes function locals, resolves
     nothing. Monkeypatching from other modules is not tracked (plan risk
     R10). Wherever no binding proves a candidate, only
