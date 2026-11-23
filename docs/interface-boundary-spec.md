@@ -296,15 +296,16 @@ object: a code evaluator, a non-literal `require` or `import()`, `createRequire`
 or an unparsed JS/TS file. Stack-introspection triggers include the global
 `Error.prepareStackTrace` hook, identifier tokens spelled `caller` or
 `getFunction` in any role, cooked string or template tokens equal to either
-name, and regular-expression patterns containing either name. A lexical
-`let`, `const`, `var`, or parameter binding and references to that binding
-are exempt. A shorthand property still spells a property key.
+name, and regular-expression patterns containing either name. Variable and
+parameter names count too, because a function's inferred `.name` and export
+keys expose them. JSX text containing either name, and JSX attribute strings
+equal to either name, match after HTML character references are decoded.
 
 Node loads of `vm`, `repl`, `inspector`, and `inspector/promises` are
 evaluator causes. A `process` identifier or property name, a cooked string
-or template token equal to `process`, JSX text or an attribute value that
-spells `process` after entity decoding, or a regular-expression pattern
-containing `process` is a module-system cause. This includes lexical
+or template token equal to `process`, JSX text containing `process` or an
+attribute value equal to it after entity decoding, or a regular-expression
+pattern containing `process` is a module-system cause. This includes lexical
 bindings, since anonymous functions and classes can infer their runtime name
 from the binding. An unbound `process` identifier is exempt as an operand of
 `typeof` or equality, as the left operand of `&&`, or as the receiver of

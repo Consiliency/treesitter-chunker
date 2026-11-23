@@ -103,7 +103,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         JSM,
         '            if text == "process":\n',
         '            if text == "process":\n'
-        "                if self._lexical_token_name(node, text):\n"
+        '                if node.type == "identifier" and self.analysis._binding_scope(node, text) is not None:\n'
         "                    return\n",
     ),
     (
@@ -169,20 +169,20 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "702-process-b3-reflect-get",
         JSM,
-        "                    value = decode_js_string_sloppy(raw)\n",
-        "                    value = decode_js_string_sloppy(raw)\n"
-        '                    if (value == "process" and node.parent.type == "arguments"\n'
-        '                        and b"Reflect.get(" in node.parent.parent.text):\n'
-        '                        value = ""\n',
+        "                value = decode_js_string_sloppy(_text(node, self.source))\n",
+        "                value = decode_js_string_sloppy(_text(node, self.source))\n"
+        '                if (value == "process" and node.parent.type == "arguments"\n'
+        '                    and b"Reflect.get(" in node.parent.parent.text):\n'
+        '                    value = ""\n',
     ),
     (
         "702-process-b3-descriptor",
         JSM,
-        "                    value = decode_js_string_sloppy(raw)\n",
-        "                    value = decode_js_string_sloppy(raw)\n"
-        '                    if (value == "process" and node.parent.type == "arguments"\n'
-        '                        and b"Object.getOwnPropertyDescriptor(" in node.parent.parent.text):\n'
-        '                        value = ""\n',
+        "                value = decode_js_string_sloppy(_text(node, self.source))\n",
+        "                value = decode_js_string_sloppy(_text(node, self.source))\n"
+        '                if (value == "process" and node.parent.type == "arguments"\n'
+        '                    and b"Object.getOwnPropertyDescriptor(" in node.parent.parent.text):\n'
+        '                    value = ""\n',
     ),
     (
         "702-process-b3-destructure",
@@ -218,14 +218,16 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "702-process-jsx-text-entities",
         JSM,
-        "        return unescape(raw).strip() in _MODULE_SYSTEM_TOKEN_NAMES",
-        "        return raw.strip() in _MODULE_SYSTEM_TOKEN_NAMES",
+        "            for value in decode_jsx_text(raw)\n",
+        "            for value in decode_jsx_text(raw)\n"
+        '            if "process" not in value or "process" in raw\n',
     ),
     (
         "702-process-jsx-attribute-entities",
         JSM,
-        "                    value = unescape(raw[1:-1])",
-        "                    value = raw[1:-1]",
+        "                    for value in decode_jsx_text(_text(node, self.source)[1:-1])\n",
+        "                    for value in decode_jsx_text(_text(node, self.source)[1:-1])\n"
+        '                    if value != "process" or "process" in _text(node, self.source)\n',
     ),
     # Stack introspection (treesitter-chunker#718).
     (
@@ -265,12 +267,6 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        if text in _MODULE_SYSTEM_TOKEN_NAMES and not _in_type_position(node):",
     ),
     (
-        "718-pair-pattern",
-        JSM,
-        "            elif not self._lexical_token_name(node, text):",
-        '            elif node.parent.type != "pair_pattern" and not self._lexical_token_name(node, text):',
-    ),
-    (
         "718-shorthand-pattern",
         JSM,
         '        "shorthand_property_identifier_pattern",\n        "statement_identifier",',
@@ -288,23 +284,45 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "                if any(name in pattern for name in _MODULE_SYSTEM_TOKEN_NAMES):",
         "                if pattern in _MODULE_SYSTEM_TOKEN_NAMES:",
     ),
+    # R-718-3: no lexical exemption; JSX strings decode character references.
     (
-        "718-binding-kind",
+        "718-r3-restore-lexical-exemption",
         JSM,
-        "            binding.lexical_name or binding.cls == PARAMETER",
-        "            True",
+        "            self.shutoff.add(CAUSE_MODULE_SYSTEM)\n"
+        '            return\n        if node.type == "property_identifier":',
+        '            if text == "process" or node.type != "identifier" or self.analysis._binding_scope(node, text) is None:\n'
+        "                self.shutoff.add(CAUSE_MODULE_SYSTEM)\n"
+        '            return\n        if node.type == "property_identifier":',
     ),
     (
-        "718-variable-exemption",
+        "718-r3-skip-jsx-text",
         JSM,
-        "            binding.lexical_name or binding.cls == PARAMETER",
-        "            binding.cls == PARAMETER",
+        "                self._jsx_text(node)",
+        "                pass",
     ),
     (
-        "718-parameter-exemption",
+        "718-r3-jsx-text-run",
         JSM,
-        "            binding.lexical_name or binding.cls == PARAMETER",
-        "            binding.lexical_name",
+        "            last.next_named_sibling is not None\n",
+        "            False\n",
+    ),
+    (
+        "718-r3-jsx-attribute-js-escapes",
+        JSM,
+        '            elif kind == "string" and _parent_type(node) == "jsx_attribute":',
+        "            elif False:",
+    ),
+    (
+        "718-r3-no-html-unescape",
+        STR,
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw), html.unescape(raw))",
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw),) * 2",
+    ),
+    (
+        "718-r3-no-jsx-spec-decode",
+        STR,
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw), html.unescape(raw))",
+        "    return (html.unescape(raw),) * 2",
     ),
     (
         "718-prepare-stack-trace",
@@ -1123,8 +1141,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "module-system-strings-sloppy",
         JSM,
-        "                    value = decode_js_string_sloppy(raw)",
-        "                    value = decode_string_literal(node, self.source) or ''",
+        "                value = decode_js_string_sloppy(_text(node, self.source))",
+        "                value = decode_string_literal(node, self.source) or ''",
     ),
     (
         "import-meta-require",

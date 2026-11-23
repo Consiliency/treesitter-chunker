@@ -115,8 +115,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     cross-module resolution for the affected callers. Identifiers spelled
     `caller` or `getFunction`, cooked string or template tokens equal to
     either name, and regex patterns containing either name trigger the
-    cause. Lexical variable and parameter bindings and their references
-    are exempt.
+    cause, as do variable and parameter bindings with either name (a
+    function's inferred `.name` and export keys expose them). JSX text
+    containing either name, and JSX attribute strings equal to either
+    name, match after HTML character references decode.
     Node evaluator loads and non-exempt `process` tokens also disable
     cross-module resolution (treesitter-chunker#702). The process rule
     allows specific static members and operand positions on the unbound

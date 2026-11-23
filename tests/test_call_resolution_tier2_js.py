@@ -34,7 +34,7 @@ from chunker.call_resolution.facts import (
     valid_module_bindings,
     valid_scope_facts,
 )
-from chunker.call_resolution.js_strings import decode_js_string
+from chunker.call_resolution.js_strings import decode_js_string, decode_jsx_text
 from chunker.symbol_graph import (
     SKIP_PARTS,
     assemble_symbol_graph,
@@ -3488,13 +3488,6 @@ def test_718_stack_introspection(tmp_path: Path, text: str) -> None:
 @pytest.mark.parametrize(
     "text",
     [
-        "function inspect(caller, getFunction) { return caller(getFunction); }",
-        "let caller; var getFunction; caller = getFunction;",
-        "const caller = () => 1; caller();",
-        "const { key: caller } = obj; caller();",
-        "for (let caller of items) { caller(); }",
-        "try {} catch (caller) { caller(); }",
-        "const caller = 1; export { caller as other };",
         "const labels = {name: 'caller-name', other: `myGetFunction`};",
         "function inspect(Error) { Error.prepareStackTrace = () => ''; }",
         "function f(globalThis) { globalThis.Error.prepareStackTrace = (e, s) => s; }",
@@ -3690,6 +3683,35 @@ def test_718_constant_stack_keys(tmp_path: Path, text: str) -> None:
         ),
         pytest.param("x.ts", "type caller = number;", id="type-name"),
         pytest.param("x.js", "const key = `caller${suffix}`;", id="template-part"),
+        # R-718-3: lexical bindings are no longer exempt (the r2 controls).
+        pytest.param(
+            "x.js",
+            "function inspect(caller, getFunction) { return caller(getFunction); }",
+            id="parameters",
+        ),
+        pytest.param(
+            "x.js",
+            "let caller; var getFunction; caller = getFunction;",
+            id="let-var-assign",
+        ),
+        pytest.param("x.js", "const caller = () => 1; caller();", id="const-arrow"),
+        # The shorthand node is the only token spelling the name.
+        pytest.param("x.js", "const { caller } = fn;", id="shorthand-pattern-only"),
+        pytest.param("x.js", "const o = { caller };", id="shorthand-expression-only"),
+        pytest.param(
+            "x.js", "const { key: caller } = obj; caller();", id="pattern-value"
+        ),
+        pytest.param(
+            "x.js", "for (let caller of items) { caller(); }", id="for-of-let"
+        ),
+        pytest.param(
+            "x.js", "try {} catch (caller) { caller(); }", id="catch-parameter"
+        ),
+        pytest.param(
+            "x.js",
+            "const caller = 1; export { caller as other };",
+            id="export-alias-source",
+        ),
     ],
 )
 def test_718_stack_name_tokens(tmp_path: Path, filename: str, text: str) -> None:
@@ -3697,6 +3719,213 @@ def test_718_stack_name_tokens(tmp_path: Path, filename: str, text: str) -> None
     off, structural, on, label = _run(root, "use.ts", "t")
     assert on == structural == off
     assert label == "none(run-tainted:module-system)"
+
+
+_R3_T = "g()('./svc').t = () => 'EVIL';\n"
+_R3_TS_T = "(g() as any)('./svc').t = () => 'EVIL';\n"
+_R3_GF = (
+    "const E = Error; E.prepareStackTrace = (e, s) => s; "
+    "const fr = new Error().stack; E.prepareStackTrace = undefined;\n"
+)
+_R3_KEYS = (
+    "function g() { return g[Object.keys(require('./k'))[0]].arguments[1]; }\n" + _R3_T
+)
+
+
+def _r3_g(expr: str) -> str:
+    return f"function g() {{ return g[{expr}].arguments[1]; }}\n" + _R3_T
+
+
+# R-718-3 (B-4): a binding's name reaches runtime through NamedEvaluation
+# (``.name``) or an export key. Each case prints EVIL on node v24 (the r3
+# re-check, ``node3.log``).
+@pytest.mark.parametrize(
+    "files",
+    [
+        pytest.param(
+            {"x.js": "const caller = function () {};\n" + _r3_g("caller.name")},
+            id="B01-const-fnexpr-name",
+        ),
+        pytest.param(
+            {"x.js": "let caller = () => {};\n" + _r3_g("caller.name")},
+            id="B02-let-arrow-name",
+        ),
+        pytest.param(
+            {"x.js": "var caller = () => {};\n" + _r3_g("caller.name")},
+            id="B03-var-arrow-name",
+        ),
+        pytest.param(
+            {"x.js": "const caller = class {};\n" + _r3_g("caller.name")},
+            id="B04-const-classexpr-name",
+        ),
+        pytest.param(
+            {
+                "x.js": "function h(caller = () => {}) { return caller.name; }\n"
+                + _r3_g("h()")
+            },
+            id="B05-default-param-arrow",
+        ),
+        pytest.param(
+            {"x.js": "const [caller = () => {}] = [];\n" + _r3_g("caller.name")},
+            id="B07-array-destructure-default",
+        ),
+        pytest.param(
+            {"x.js": "let caller; caller = () => {};\n" + _r3_g("caller.name")},
+            id="B08-assign-later-arrow",
+        ),
+        pytest.param(
+            {
+                "x.js": _R3_GF + "const getFunction = () => {};\n"
+                "fr[0][getFunction.name]().arguments[1]('./svc').t = () => 'EVIL';\n"
+            },
+            id="B09-getFunction-const-arrow",
+        ),
+        pytest.param(
+            {
+                "x.js": "function h(caller = class {}) { return caller.name; }\n"
+                + _r3_g("h()")
+            },
+            id="B10-param-default-classexpr",
+        ),
+        pytest.param(
+            {"x.js": "const caller = async function () {};\n" + _r3_g("caller.name")},
+            id="B12-const-async-fn",
+        ),
+        pytest.param(
+            {"x.js": "const caller = function* () {};\n" + _r3_g("caller.name")},
+            id="B13-const-generator",
+        ),
+        pytest.param(
+            {"x.js": "let caller; caller ??= () => {};\n" + _r3_g("caller.name")},
+            id="B14-logical-assign",
+        ),
+        pytest.param(
+            {"x.js": "const caller = (function () {});\n" + _r3_g("caller.name")},
+            id="B15-paren-fnexpr",
+        ),
+        pytest.param(
+            {"x.js": _R3_KEYS, "k.ts": "export const caller = 1;\n"},
+            id="B33-ts-export-const",
+        ),
+        pytest.param(
+            {"x.js": _R3_KEYS, "k.ts": "export const caller = () => {};\n"},
+            id="B34-ts-export-const-arrow",
+        ),
+        pytest.param(
+            {"x.js": _R3_KEYS, "k.ts": "export let caller = 1;\n"},
+            id="B36-ts-export-let",
+        ),
+        pytest.param(
+            {
+                "x.ts": "namespace N { export const caller = 1; }\n"
+                "function g() { return (g as any)[Object.keys(N)[0]].arguments[1]; }\n"
+                + _R3_TS_T
+            },
+            id="N01-ts-namespace-export",
+        ),
+        pytest.param(
+            {
+                "x.ts": "const caller = (() => {}) as any;\n"
+                "function g() { return (g as any)[caller.name].arguments[1]; }\n"
+                + _R3_TS_T
+            },
+            id="N02-ts-as-arrow-name",
+        ),
+        pytest.param(
+            {
+                "x.js": "function h(caller) { caller = () => {}; return caller.name; }\n"
+                + _r3_g("h()")
+            },
+            id="N03-param-reassign-arrow",
+        ),
+    ],
+)
+def test_718_r3_named_bindings(tmp_path: Path, files: dict[str, str]) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, **files})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+_R3_PRAGMA_TEXT = "/** @jsx h */\nfunction h(t, p, ...c) { return c[0]; }\n"
+_R3_PRAGMA_ATTR = "/** @jsx h */\nfunction h(t, p) { return p.a; }\n"
+
+
+# R-718-3 (B-5): JSX text and attribute strings decode HTML character
+# references. J01 and J02 print EVIL on node v24 (classic-runtime emit).
+@pytest.mark.parametrize(
+    ("filename", "text"),
+    [
+        pytest.param("x.jsx", _R3_PRAGMA_TEXT + _r3_g("<i>caller</i>"), id="J01"),
+        pytest.param(
+            "x.jsx", _R3_PRAGMA_ATTR + _r3_g('<i a="call&#101;r" />'), id="J02"
+        ),
+        pytest.param("x.jsx", "const x = <i>call&#x65;r</i>;", id="text-hex"),
+        pytest.param("x.jsx", "const x = <i>call&#X65;r</i>;", id="text-hex-upper"),
+        pytest.param("x.jsx", "const x = <i>&#99;aller</i>;", id="text-decimal"),
+        pytest.param("x.jsx", "const x = <i>&#00099;aller</i>;", id="text-zero-padded"),
+        pytest.param("x.tsx", "const x = <i>get&#70;unction</i>;", id="text-tsx"),
+        pytest.param(
+            "x.jsx", "const x = <i>Who is the caller?</i>;", id="text-substring"
+        ),
+        pytest.param("x.jsx", "const x = <><b /> getFunction </>;", id="text-fragment"),
+        pytest.param(
+            "x.jsx", "const x = <i>&lt;mainModule&gt;</i>;", id="text-module-system"
+        ),
+        pytest.param(
+            "x.jsx", "const x = <i a='call&#x65;r' />;", id="attr-single-quote-hex"
+        ),
+        pytest.param(
+            "x.tsx", 'const x = <i a="&#103;etFunction" />;', id="attr-tsx-decimal"
+        ),
+        pytest.param(
+            "x.jsx", 'const x = <i a="c&#97;ll&#x65;r" />;', id="attr-two-references"
+        ),
+    ],
+)
+def test_718_r3_jsx_strings(tmp_path: Path, filename: str, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, filename: text})
+    facts = extract_symbol_facts_for_file(root / filename, root, call_resolution=MODE)
+    assert "module-system" in facts["scope_facts"]["module_bindings"]["shutoff"]
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    ("raw", "values"),
+    [
+        ("call&#101;r", ("caller", "caller")),
+        ("call&#x65;r", ("caller", "caller")),
+        ("&#0000099;aller", ("caller", "caller")),
+        ("it&apos;s &amp; &lt;", ("it's & <", "it's & <")),
+        # html.unescape also decodes a reference with no ``;`` and HTML5
+        # names; the JSX spec keeps both literal. Either value is matched.
+        ("call&#101r", ("call&#101r", "caller")),
+        ("&period;", ("&period;", ".")),
+        ("&#x110000;", ("&#x110000;", "\ufffd")),
+        ("c\x61ller", ("c\x61ller", "c\x61ller")),
+    ],
+)
+def test_718_r3_decode_jsx_text(raw: str, values: tuple[str, str]) -> None:
+    assert decode_jsx_text(raw) == values
+
+
+@pytest.mark.parametrize(
+    ("filename", "text"),
+    [
+        pytest.param("x.jsx", "const x = <i>call er</i>;", id="text-split"),
+        pytest.param("x.jsx", "const x = <i>call\ner</i>;", id="text-line-split"),
+        # A backslash is literal in JSX: no JS escape decodes.
+        pytest.param("x.jsx", 'const x = <i a="call\\x65r" />;', id="attr-js-escape"),
+        pytest.param("x.jsx", 'const x = <i a="callers-list" />;', id="attr-not-exact"),
+        pytest.param("x.tsx", 'const x = <i a="call&amp;er">ok</i>;', id="attr-amp"),
+    ],
+)
+def test_718_r3_jsx_controls(tmp_path: Path, filename: str, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, filename: text})
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", label
 
 
 @pytest.mark.parametrize(

@@ -140,10 +140,12 @@ logger = logging.getLogger(__name__)
 # arguments; each such call on a receiver ``this`` now gives ``*``. The
 # positional reading of "20" still runs and is never overridden, so this
 # version flags every call "20" flagged (the #717 review).
-# js "22": stack-introspection tokens can expose the CommonJS wrapper,
-# and ``with`` can shadow lexical lookup (treesitter-chunker#718).
+# js "22": stack-introspection tokens, including binding names and decoded
+# JSX, can expose the CommonJS wrapper. ``with`` can shadow lexical lookup
+# (treesitter-chunker#718).
 # js "23": Node evaluator modules and process tokens or imports can expose
-# run-wide writes (treesitter-chunker#702).
+# run-wide writes. Bare process has closed member and operand exemptions
+# (treesitter-chunker#702).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute

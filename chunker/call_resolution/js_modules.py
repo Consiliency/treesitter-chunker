@@ -67,12 +67,12 @@ each use site, so a shadowing binding is never mistaken for it.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from html import unescape
 from typing import TYPE_CHECKING, Any
 
 from .js_strings import (
     cook_template,
     decode_js_string_sloppy,
+    decode_jsx_text,
     decode_string_literal,
     module_export_name,
 )
@@ -160,9 +160,10 @@ _MODULE_SYSTEM_NAME_TOKENS = frozenset(
         "type_identifier",
     }
 )
+# Pieces of one JSX text run (R-718-3).
+_JSX_TEXT_PARTS = frozenset({"jsx_text", "html_character_reference"})
 _MODULE_SYSTEM_SPECIFIERS = frozenset({"module", "node:module"})
 _PROCESS_SPECIFIERS = frozenset({"process", "node:process"})
-_JSX_TEXT_NODES = frozenset({"jsx_text", "html_character_reference"})
 _INERT_PROCESS_MEMBERS = frozenset(
     {
         "argv",  # Command-line argument strings.
@@ -238,6 +239,10 @@ def _same(left: Any, right: Any) -> bool:
 
 def _has_token(node: Any, token: str) -> bool:
     return any(not child.is_named and child.type == token for child in node.children)
+
+
+def _parent_type(node: Any) -> str | None:
+    return node.parent.type if node.parent is not None else None
 
 
 def _text(node: Any, source: bytes) -> str:
@@ -578,15 +583,20 @@ class _ModuleFacts:
                         self.shutoff.add(CAUSE_MODULE_SYSTEM)
                     elif specifier not in _MODULE_SYSTEM_SPECIFIERS:
                         self.imports.add(specifier)
+            elif kind in ("jsx_text", "html_character_reference"):
+                self._jsx_text(node)
+            elif kind == "string" and _parent_type(node) == "jsx_attribute":
+                # A JSX attribute string decodes HTML character references,
+                # not JS escapes (R-718-3).
+                if any(
+                    value in _MODULE_SYSTEM_NAMES or value in _MODULE_SYSTEM_TOKEN_NAMES
+                    for value in decode_jsx_text(_text(node, self.source)[1:-1])
+                ):
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "string" and node.id not in handled:
                 # Matched on the value sloppy code gives the literal (legacy
                 # octal escapes decode); a malformed literal fails closed.
-                raw = _text(node, self.source)
-                value: str | None
-                if node.parent is not None and node.parent.type == "jsx_attribute":
-                    value = unescape(raw[1:-1])
-                else:
-                    value = decode_js_string_sloppy(raw)
+                value = decode_js_string_sloppy(_text(node, self.source))
                 if (
                     value is None
                     or value in _MODULE_SYSTEM_NAMES
@@ -609,8 +619,6 @@ class _ModuleFacts:
                 pattern = _text(node, self.source)
                 if any(name in pattern for name in _MODULE_SYSTEM_TOKEN_NAMES):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
-            elif kind in _JSX_TEXT_NODES and self._jsx_text_token(node):
-                self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "meta_property":
                 if not self._inert_import_meta(node):
                     self.shutoff.add(CAUSE_DYNAMIC_LOADER)
@@ -625,66 +633,32 @@ class _ModuleFacts:
         self._import_writes()
         self._namespace_uses()
 
-    def _jsx_text_token(self, node: Any) -> bool:
-        # A JSX attribute's entities are already decoded with the full string.
-        if node.parent is None or node.parent.type != "jsx_element":
-            return False
+    def _jsx_text(self, node: Any) -> None:
+        """Substring-match one run of JSX text after entity decoding.
+
+        tree-sitter splits a run at each character reference; the run is
+        one string child at runtime. JSX whitespace folding only trims or
+        joins lines with a space, so it never makes a new substring."""
+        if _parent_type(node) not in ("jsx_element", "jsx_fragment"):
+            return
         previous = node.prev_named_sibling
-        if previous is not None and previous.type in _JSX_TEXT_NODES:
-            return False
-        # Tree-sitter splits one text value into text and entity siblings.
-        end = node.end_byte
-        sibling = node.next_named_sibling
-        while sibling is not None and sibling.type in _JSX_TEXT_NODES:
-            end = sibling.end_byte
-            sibling = sibling.next_named_sibling
-        raw = self.source[node.start_byte : end].decode("utf-8")
-        # Include JSX text surrounded by formatting whitespace.
-        return unescape(raw).strip() in _MODULE_SYSTEM_TOKEN_NAMES
-
-    def _lexical_token_name(self, node: Any, name: str) -> bool:
-        """Exempt variable and parameter names whose use is lexical."""
-        from .js_scope import PARAMETER
-
-        if node.type != "identifier":
-            return False
-        parent = node.parent
-        if parent is not None:
-            if parent.type in ("jsx_namespace_name", "namespace_export"):
-                return False
-            if parent.type == "export_statement" and any(
-                child.type == "namespace" for child in parent.children
-            ):
-                return False
-            if parent.type == "export_specifier":
-                # The exported name and a re-export's source name are keys.
-                statement = parent.parent.parent
-                if (
-                    parent.child_by_field_name("alias") is None
-                    or not _same(parent.child_by_field_name("name"), node)
-                    or statement.child_by_field_name("source") is not None
-                ):
-                    return False
-            if parent.type.startswith("jsx_") and _same(
-                parent.child_by_field_name("name"), node
-            ):
-                return False
-            if (
-                parent.type in ("required_parameter", "optional_parameter")
-                and _same(parent.child_by_field_name("pattern"), node)
-                and any(
-                    child.type
-                    in ("accessibility_modifier", "readonly", "override_modifier")
-                    for child in parent.children
-                )
-            ):
-                # A TS parameter property also names a class member.
-                return False
-        scope = self.analysis._binding_scope(node, name)
-        return scope is not None and all(
-            binding.lexical_name or binding.cls == PARAMETER
-            for binding in scope.bindings[name]
+        if previous is not None and previous.type in _JSX_TEXT_PARTS:
+            return
+        last = node
+        while (
+            last.next_named_sibling is not None
+            and last.next_named_sibling.type in _JSX_TEXT_PARTS
+        ):
+            last = last.next_named_sibling
+        raw = self.source[node.start_byte : last.end_byte].decode(
+            "utf-8", errors="replace"
         )
+        if any(
+            name in value
+            for value in decode_jsx_text(raw)
+            for name in (*_MODULE_SYSTEM_TOKEN_NAMES, *_MODULE_SYSTEM_NAMES)
+        ):
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
 
     def _stack_trace_hook(self, node: Any, name: str) -> bool:
         """Match a stack-formatting hook only on the global Error receiver."""
@@ -838,14 +812,16 @@ class _ModuleFacts:
 
         text = _text(node, self.source)
         if text in _MODULE_SYSTEM_TOKEN_NAMES:
+            # Any role (R-718-3): a variable or parameter name also reaches
+            # runtime as a string, through a function's inferred ``.name``
+            # or an export key.
             if text == "process":
-                if node.type != "identifier" or not (
+                if node.type == "identifier" and (
                     self.analysis._binding_scope(node, text) is None
                     and self._inert_process_operand(node)
                 ):
-                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
-            elif not self._lexical_token_name(node, text):
-                self.shutoff.add(CAUSE_MODULE_SYSTEM)
+                    return
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
         if node.type == "property_identifier":
             # A property cannot be looked up: match the name.
