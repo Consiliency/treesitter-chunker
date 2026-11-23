@@ -23,8 +23,9 @@ A narrowed edge carries `provenance.call_resolution` and `provenance.call_rules`
 
 In Python, `structural` skips module-scope and class-body proofs in files
 that can bind names dynamically, for example through `exec`, `globals()`,
-`sys.modules` or a star import. A mention of `f_locals` can rule out proofs
-throughout the file. See the
+`sys.modules` or a star import. A mention of `f_locals`, or heap walking
+with `gc`, can rule out proofs throughout the file. A `.patch` call on any
+receiver with a computed target counts as a patcher. See the
 [Boundary IR specification](interface-boundary-spec.md#call-resolution-extension-experimental)
 for the exact rules.
 
