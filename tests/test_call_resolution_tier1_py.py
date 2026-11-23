@@ -6367,6 +6367,30 @@ def test_r10_imported_patch_multiple_fails_closed() -> None:
     assert outcome(source, "helper")["outcome"] == "none"
 
 
+# Ruling R-699-11: a private mock patcher read or called on ANY receiver
+# (a handed-in ``unittest.mock``) fails closed, like ``.patch`` (PY-10).
+# Fable's ``q_param_get_target`` and the ``pp_private_patch_*`` trees
+# printed ``runtime: 2`` on CPython 3.14.10.
+R11_PRIVATE_PATCHERS_ON_ANY_RECEIVER = {
+    "get-target": "def run(mk):\n    g, at = mk._get_target(__name__ + '.helper')\n"
+    "    mk._patch(g, at, len, None, False, None, None, None, {}).start()",
+    "multiple": "def run(mk):\n    mk._patch_multiple(__name__, helper=len).start()",
+    "object": "def run(mk, m):\n    mk._patch_object(m, 'helper', len).start()",
+    "dict": "def run(mk, d):\n    mk._patch_dict(d, helper=len).start()",
+    "handed-on": "def run(mk, f):\n    f(mk._patch_object)",
+}
+
+
+@pytest.mark.parametrize("case", sorted(R11_PRIVATE_PATCHERS_ON_ANY_RECEIVER))
+def test_r11_private_patchers_on_any_receiver_fail_closed(case: str) -> None:
+    source = (
+        HELPER
+        + R11_PRIVATE_PATCHERS_ON_ANY_RECEIVER[case]
+        + "\n\n\ndef use():\n    return helper()\n"
+    )
+    assert reason(source) == "dynamic-scope", case
+
+
 R10_IMPORTED_PATCHER_CONTROLS = {
     "constant-target": "from compat import patch as pp\ndef run():\n"
     "    pp('os.getcwd', len).start()",
@@ -6374,6 +6398,8 @@ R10_IMPORTED_PATCHER_CONTROLS = {
     "    patch('/items/' + str(i))",
     "other-name": "from compat import patched\ndef run():\n    patched(__name__ + '.x')",
     "module-named-patch": "import patch\ndef run():\n    return patch",
+    # R-699-11: an attribute write reads no patcher.
+    "private-attribute-write": "class K:\n    pass\nK._patch = 3",
 }
 
 

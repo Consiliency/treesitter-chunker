@@ -1739,6 +1739,19 @@ def _scan_patch_reads(analysis: Any, facts: _Facts) -> None:
         if value is not None and "patch" in ps._TOKEN_PARTS.split(value):
             facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
             return
+        member = (
+            node.child_by_field_name("attribute") if node.type == "attribute" else None
+        )
+        if (
+            member is not None
+            and node.id not in analysis.attribute_targets
+            and ps._text(member, source) in ps._PRIVATE_PATCHERS
+        ):
+            # R-699-11: a private mock patcher read or called on any receiver
+            # (``mk._patch(g, at, f, ...)`` on a handed-in ``unittest.mock``),
+            # the PY-10 rule for ``.patch``.
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
         if node.type == "keyword_pattern" and node.named_children:
             # R-699-10 item 3: a class-pattern keyword reads the subject's
             # attribute (``case object(patch=p)`` is ``p = subject.patch``),

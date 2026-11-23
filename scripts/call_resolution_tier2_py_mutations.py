@@ -70,6 +70,7 @@ TESTS = (
     T1 + "test_r10_imported_patchers_fail_closed",
     T1 + "test_r10_imported_patch_multiple_fails_closed",
     T1 + "test_r10_imported_patcher_controls_still_resolve",
+    T1 + "test_r11_private_patchers_on_any_receiver_fail_closed",
 )
 
 # (id, file, old text, new text). The old text must occur in the file once.
@@ -1636,6 +1637,25 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         PYM,
         "            in ps._PATCHER_IMPORT_NAMES\n            for bound, bindings in file.module_imports.items()",
         '            in ("patch",)\n            for bound, bindings in file.module_imports.items()',
+    ),
+    (
+        "r11-private-patcher-tier2",
+        PYM,
+        "            and ps._text(member, source) in ps._PRIVATE_PATCHERS",
+        "            and False",
+    ),
+    (
+        "r11-private-patcher-tier1",
+        PYS,
+        "                and _text(attribute, self.source) in _PRIVATE_PATCHERS",
+        "                and False",
+    ),
+    (
+        "r11-private-patcher-write-exempt",
+        PYM,
+        "            and node.id not in analysis.attribute_targets\n"
+        "            and ps._text(member, source) in ps._PRIVATE_PATCHERS",
+        "            and ps._text(member, source) in ps._PRIVATE_PATCHERS",
     ),
 )
 

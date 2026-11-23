@@ -286,9 +286,9 @@ that call, `__annotations__` writes, `runpy` with `init_globals`, a loader's
 counters, `get_referents`, `get_referrers` or `get_objects` anywhere). A
 `.patch` call on any receiver with a target that is not a constant string,
 `.patch` handed on, `"patch"` naming a member by string, a name imported as
-`patch` from any module and applied to such a target, or an imported private
+`patch` from any module and applied to such a target, or a private
 `unittest.mock` patcher (`_patch`, `_patch_multiple`, `_patch_object`,
-`_patch_dict`) makes the file's module-scope lookups prove nothing; monkeypatching from other modules is not
+`_patch_dict`) imported or read on any receiver makes the file's module-scope lookups prove nothing; monkeypatching from other modules is not
 tracked.
 
 With `"imports"`, everything `"structural"` does applies, and a JavaScript,
@@ -412,7 +412,8 @@ attribute name, an imported name or a constant string, a closure cell's
 with a computed target on any receiver, a `"patch"` string as a call
 argument or subscript key, a name imported as `patch` or as a private
 `unittest.mock` patcher from any module (also through a star import or a
-re-export under another name), a class-pattern keyword spelled `patch` or as
+re-export under another name), a private patcher read or called on any
+receiver, a class-pattern keyword spelled `patch` or as
 a `MonkeyPatch` method,
 `builtins`, `__main__`) or that tree-sitter and
 CPython may read differently turns Python Tier 2 off, scoped like the

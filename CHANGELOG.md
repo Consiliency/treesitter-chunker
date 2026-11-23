@@ -47,7 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     as `patch`, or as one of `unittest.mock`'s private patchers (`_patch`,
     `_patch_multiple`, `_patch_object`, `_patch_dict`), from any module and
     under any alias, also when it reaches a file through a star import or a
-    re-export under another name, and a match-statement class pattern that
+    re-export under another name, a private patcher read or called on any
+    receiver (`mk._patch_multiple(...)`), and a match-statement class
+    pattern that
     reads `patch` or a `MonkeyPatch` method (`case object(patch=p)`).
     `@router.patch("/items")` with a constant route is unaffected;
   - **cost in production code:** in a production file, a `"patch"` string

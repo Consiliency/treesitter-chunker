@@ -4341,6 +4341,15 @@ class _Analysis:
                 # (PY-10); a recognised one is an alias whose every use the
                 # closed allow-list checks.
                 self.dynamic = True
+            if (
+                attribute is not None
+                and _text(attribute, self.source) in _PRIVATE_PATCHERS
+                and node.id not in self.attribute_targets
+            ):
+                # R-699-11: ``X._patch_multiple(...)``, ``X._get_target`` with
+                # ``X._patch(...)`` on any receiver (a handed-in ``mock``),
+                # read or called, like ``.patch`` on any receiver (PY-10).
+                self.dynamic = True
         for node in self._patch_name_strings():
             self.dynamic = True  # ``getattr(X, "patch")`` (PY-10)
             break

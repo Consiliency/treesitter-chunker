@@ -4989,6 +4989,24 @@ R10_CAUSES: dict[str, tuple[str, str]] = {
         "unresolvable-writer",
     ),
 }
+# Ruling R-699-11: a private mock patcher on any receiver, read or called.
+R10_CAUSES["r11-get-target-on-receiver"] = (
+    "def go(mk, n):\n    g, at = mk._get_target(n)\n"
+    "    mk._patch(g, at, len, None, False, None, None, None, {}).start()\n",
+    "unresolvable-writer",
+)
+R10_CAUSES["r11-patch-multiple-on-receiver"] = (
+    "def go(mk, m):\n    mk._patch_multiple(m, t=len).start()\n",
+    "unresolvable-writer",
+)
+R10_CAUSES["r11-patch-object-handed-on"] = (
+    "def go(mk, f):\n    f(mk._patch_object)\n",
+    "unresolvable-writer",
+)
+R10_CAUSES["r11-patch-dict-on-receiver"] = (
+    "def go(mk, d):\n    mk._patch_dict(d, t=len).start()\n",
+    "unresolvable-writer",
+)
 for _method in ("setattr", "delattr", "setitem", "delitem", "syspath_prepend"):
     R10_CAUSES[f"class-pattern-{_method}"] = (
         f"def go(mk, n):\n    match mk:\n        case object({_method}=s):\n"
@@ -5067,6 +5085,10 @@ def test_r10_reexported_patcher_is_test_scoped(tmp_path: Path) -> None:
 
 
 R10_CONTROLS: dict[str, dict[str, str]] = {
+    # R-699-11: writing ``X._patch`` reads no patcher.
+    "private-attribute-write": {
+        "w.py": "class K:\n    pass\n\n\nK._patch = 3\n",
+    },
     "star-no-patcher": {
         "compat.py": "def pp(u):\n    return u\n",
         "w.py": "from compat import *\n",
@@ -5104,6 +5126,26 @@ def test_r10_controls_still_resolve(tmp_path: Path, case: str) -> None:
 _R10_USE = 'def run():\n    from svc import t\n\n    return t("ab")\n'
 _R10_MAIN_GO = 'import use\nimport w\n\nw.go()\nprint("runtime:", use.run())\n'
 R10_TRACED: dict[str, tuple[dict[str, str], tuple[str, str], str]] = {
+    # Fable SHOULD 1, ruling R-699-11 (trees_my3); CPython 3.14.10 printed
+    # ``runtime: 2``.
+    "x_param_get_target": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": (
+                "import unittest.mock\n\nimport use\nimport w\n\n"
+                'w.go(unittest.mock)\nprint("runtime:", use.run())\n'
+            ),
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                'NAME = "t"\n\n\ndef go(mk):\n'
+                '    g, at = mk._get_target(f"svc.{NAME}")\n'
+                "    mk._patch(g, at, len, None, False, None, None, None, {}).start()\n"
+            ),
+        },
+        ("use.py", "t"),
+        "unresolvable-writer",
+    ),
     # Fable BLOCKING 1 (trees_my3); CPython 3.14.10 printed ``runtime: 2``.
     "x_getclosurevars_nonlocals": (
         {
