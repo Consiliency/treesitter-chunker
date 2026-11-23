@@ -55,7 +55,12 @@ own namespace (``globals()``, ``locals()``, ``vars()``, ``eval``/``exec``
 without explicit globals, ``f_globals``, ``__globals__``, ``getmodule``,
 ``__import__(__name__)``, an annotation evaluator; :func:`_namespace_reader`)
 hands every import binding in it to code no use rule sees, so each is such
-a use (treesitter-chunker#724). Literal acquisitions
+a use (treesitter-chunker#724). A module returned by a *tracked getter*
+(a plain module-level ``def`` in a file that passes H1, :func:`_introspects`)
+is no escape: its uses are followed through the call result, member calls
+and function-local aliases by the same allow-list, and anything else taints
+what the getter may return (treesitter-chunker#706, :func:`_scan_results`,
+:meth:`_Builder.walk_result`). Literal acquisitions
 (``importlib.import_module('svc')``, ``__import__('svc')``,
 ``sys.modules['svc']``) taint their target wholly; dotted constant strings
 (``mock.patch('svc.t')``, ``monkeypatch.setattr('svc.t', f)``) taint the
@@ -427,6 +432,7 @@ class _Facts:
     stars: set[str] = field(default_factory=set)
     strings: set[str] = field(default_factory=set)
     shutoff: set[str] = field(default_factory=set)
+    getters: dict[str, set[tuple[str, ...]]] = field(default_factory=dict)
 
 
 def module_facts(
@@ -480,8 +486,14 @@ def module_facts(
             facts.uses.add(_record(info, "value", ()))
     _scan_imports(analysis, facts)
     own_submodules = _own_submodules(analysis, own_ref, facts.stars)
-    _scan_uses(analysis, facts, import_infos)
     handout = _namespace_handout(analysis)
+    # H1 (#706): a file that reaches its namespace without spelling a name
+    # has no tracked getters and no result aliases.
+    gate = handout is None or _introspects(analysis, reader=False)
+    _scan_uses(
+        analysis, facts, import_infos, {} if gate else _tracked_getters(analysis)
+    )
+    _scan_results(analysis, facts, import_infos, gate)
     if handout is None or handout:
         # #724: the file hands its namespace, and the import bindings in it,
         # to code the use rules do not follow.
@@ -514,6 +526,10 @@ def module_facts(
             name: module_imports[name] for name in sorted(module_imports)
         },
         "own_submodules": own_submodules,
+        "getters": {
+            name: [list(record) for record in sorted(facts.getters[name])]
+            for name in sorted(facts.getters)
+        },
     }
     return exports, module_bindings
 
@@ -808,9 +824,12 @@ def _scan_uses(
     analysis: Any,
     facts: _Facts,
     import_infos: Mapping[str, list[Mapping[str, str]]],
+    getters: Mapping[int, str] | None = None,
 ) -> None:
     """Record every use of an imported name (#697): writes, and the reads
-    that may escape a module object or reach a dunder."""
+    that may escape a module object or reach a dunder. A tracked getter's
+    own return of an import-rooted chain (#706) is recorded in
+    ``facts.getters`` and as a ``ref`` record instead of a ``value`` use."""
     from . import py_scope as ps
 
     for ident in analysis.identifier_nodes:
@@ -824,14 +843,28 @@ def _scan_uses(
         infos = _candidates(analysis, ident, import_infos)
         if not infos:
             continue
-        position = _use_position(analysis, ident)
+        position = _classify_use(analysis, ident)
         if position is None:
             continue
-        kind, chain = position
+        kind, chain, outer = position
         dunder = any(ps._dunder(part) and part not in _SAFE_DUNDERS for part in chain)
         if kind == "call" and not dunder:
             # A call of a member reads a name and hands nothing on; only a
             # dunder on the way matters.
+            continue
+        getter = (
+            _tracked_return(outer, getters)
+            if getters and kind == "value" and not dunder
+            else None
+        )
+        if getter is not None:
+            # #706: the getter may return what the chain holds. The ``ref``
+            # record keeps the chain's reference to any getter it reaches
+            # (``return getter.get`` hands that function to the caller).
+            for info in infos:
+                record = _record(info, REF_POSITION, chain)
+                facts.getters.setdefault(getter, set()).add((record[0], *record[2:]))
+                facts.uses.add(record)
             continue
         for info in infos:
             facts.uses.add(_record(info, kind, chain))
@@ -1425,6 +1458,462 @@ def _own_import(analysis: Any, ident: Any) -> bool:
         return True
     first = _first_argument(call)
     return first is None or ps._constant_string(first, analysis.source) is None
+
+
+# treesitter-chunker#706: module objects returned by functions. A *tracked
+# getter* returns import-rooted chains (``return svc``, ``return a, b``);
+# its file records what it may return (``getters``) instead of a ``value``
+# escape, and every use of a call that may invoke a getter is recorded
+# through the same closed allow-list as an imported module object
+# (:func:`_scan_results`). Assembly resolves the callee leniently to a set of
+# getters and walks the uses from the modules they return.
+#
+# The marker of a call step in a result record's chain.
+CALL_MARK = "()"
+# Call steps followed in one value: ``get()`` is one, ``get().fetch()`` two.
+# Past the cap the value escapes.
+CALL_STEPS = 3
+# The longest chain (names and call steps) a function-local alias of a
+# result may stand for: ``p = p.parent`` in a loop would grow it without end.
+# Past the cap the value escapes.
+MAX_ALIAS_CHAIN = 6
+# The positions of a result record: ``result-<p>`` for a call whose callee
+# is reached through an import binding, ``own-<p>`` for a call of this
+# file's own getter by name.
+RESULT_POSITIONS = frozenset(
+    f"{prefix}-{position}"
+    for prefix in ("result", "own")
+    for position in ("write", "call", "value")
+)
+# A record that hands on every getter its chain reaches (a tracked return of
+# a chain that may hold a function, ``return getter.get``) and taints nothing
+# else.
+REF_POSITION = "ref"
+# H1: names that hand out a namespace holding a getter or a result alias, or
+# reach the module object a getter lives in, without spelling the getter's
+# name. A file that spells one (as an identifier anywhere, or as a constant
+# string a call takes or a subscript key) has no tracked getters and no
+# result aliases: the old behaviour (an escape) holds there.
+_INTROSPECTION_NAMES = (
+    _NAMESPACE_BUILTINS
+    | _NAMESPACE_NAMES
+    | {"__import__"}
+    | frozenset(
+        {
+            "__globals__",
+            "f_globals",
+            "f_locals",
+            "f_builtins",
+            "getmodule",
+            "__builtins__",
+            "__self__",
+            "builtins",
+            "bltns",
+        }
+    )
+)
+# The nodes that open a scope a ``return`` or an alias belongs to.
+_SCOPE_NODES = frozenset(
+    {
+        "function_definition",
+        "lambda",
+        "class_definition",
+        "module",
+        "list_comprehension",
+        "set_comprehension",
+        "dictionary_comprehension",
+        "generator_expression",
+    }
+)
+
+
+def _introspects(analysis: Any, reader: bool | None = None) -> bool:
+    """H1 (#706, extended per the plan review's B1): the file spells a name
+    of :data:`_INTROSPECTION_NAMES`, reads its own namespace (#724; pass
+    ``reader`` when it is known) or mentions a frame's ``f_locals``."""
+    from . import py_scope as ps
+
+    if reader is None:
+        reader = _namespace_reader(analysis)
+    if analysis.frame_locals or reader:
+        return True
+    source = analysis.source
+    if any(
+        ps._spellings(ident, source) & _INTROSPECTION_NAMES
+        for ident in analysis.identifier_nodes
+    ):
+        return True
+    stack = [analysis.root]
+    while stack:
+        node = stack.pop()
+        stack.extend(node.named_children)
+        value = _argument_string(node, source)
+        if value is not None and (
+            value in _INTROSPECTION_NAMES
+            or set(ps._NAME_SEPARATORS.split(value)) & _INTROSPECTION_NAMES
+        ):
+            return True
+    return False
+
+
+def _scope_node(node: Any) -> Any:
+    """The nearest scope-opening ancestor of ``node``."""
+    node = node.parent
+    while node is not None and node.type not in _SCOPE_NODES:
+        node = node.parent
+    return node
+
+
+def _own_yield(function: Any) -> bool:
+    """Whether a function's own body (not a nested scope) has a ``yield``."""
+    stack = list(function.named_children)
+    while stack:
+        node = stack.pop()
+        if node.type in ("function_definition", "lambda", "class_definition"):
+            continue
+        if node.type == "yield":
+            return True
+        stack.extend(node.named_children)
+    return False
+
+
+def _tracked_getters(analysis: Any) -> dict[int, str]:
+    """G1 (#706): every ``def`` directly at module scope (not under ``if``,
+    ``try`` or a class, not nested), undecorated, not ``async``, with no
+    ``yield`` of its own and a name that is not a dunder (the runtime calls a
+    module's ``__getattr__`` and ``__dir__`` itself), by node id. Several
+    definitions of one name are one getter (their returns are joined)."""
+    from . import py_scope as ps
+
+    found: dict[int, str] = {}
+    for child in analysis.root.named_children:
+        if child.type != "function_definition":
+            continue
+        if any(token.type == "async" for token in child.children):
+            continue
+        name = child.child_by_field_name("name")
+        if name is None or _own_yield(child):
+            continue
+        text = ps._text(name, analysis.source)
+        if not ps._dunder(text):
+            found[child.id] = text
+    return found
+
+
+def _tracked_return(outer: Any, getters: Mapping[int, str]) -> str | None:
+    """The tracked getter whose own ``return`` the value ``outer`` is:
+    ``return X``, or one tuple level, ``return X, Y`` / ``return (X, Y)``."""
+    node = outer
+    parent = node.parent
+    if parent is not None and parent.type in ("expression_list", "tuple"):
+        node, parent = parent, parent.parent
+        while parent is not None and parent.type == "parenthesized_expression":
+            node, parent = parent, parent.parent
+    if parent is None or parent.type != "return_statement":
+        return None
+    scope = _scope_node(parent)
+    return getters.get(scope.id) if scope is not None else None
+
+
+def _unsafe_dunder(chain: Sequence[str]) -> bool:
+    from . import py_scope as ps
+
+    return any(ps._dunder(part) and part not in _SAFE_DUNDERS for part in chain)
+
+
+def _result_steps(node: Any, source: bytes) -> tuple[list[str], Any]:
+    """Walk up from a value: parentheses, one subscript with one integer
+    literal key before any attribute (``pair()[1]``), then attribute reads.
+    ``(chain, outermost node)``."""
+    from . import py_scope as ps
+
+    chain: list[str] = []
+    while True:
+        parent = node.parent
+        if parent is None:
+            break
+        if (
+            parent.type == "parenthesized_expression"
+            and len([c for c in parent.named_children if c.type != "comment"]) == 1
+        ):
+            node = parent
+            continue
+        if (
+            parent.type == "subscript"
+            and not chain
+            and ps._same(node, parent.child_by_field_name("value"))
+        ):
+            keys = [
+                child
+                for index, child in enumerate(parent.children)
+                if parent.field_name_for_child(index) == "subscript"
+            ]
+            if len(keys) == 1 and keys[0].type == "integer":
+                node = parent
+                continue
+            break
+        if parent.type == "attribute" and ps._same(
+            node, parent.child_by_field_name("object")
+        ):
+            attribute = parent.child_by_field_name("attribute")
+            if attribute is None:
+                break
+            chain.append(ps._text(attribute, source))
+            node = parent
+            continue
+        break
+    return chain, node
+
+
+def _alias_targets(analysis: Any, outer: Any) -> tuple[Any, list[str], bool] | None:
+    """``(scope, names, unpack)`` when ``outer`` is the whole value of a plain
+    assignment statement ``x = V`` or ``a, b = V`` whose targets are bare
+    identifiers, in a ``def`` scope the pass analyzed, none declared
+    ``global`` or ``nonlocal`` and none mangled; else ``None``."""
+    from . import py_scope as ps
+
+    parent = outer.parent
+    if parent is None or parent.type != "assignment":
+        return None
+    left = parent.child_by_field_name("left")
+    right = parent.child_by_field_name("right")
+    if left is None or right is None or right.id != outer.id:
+        return None
+    if parent.child_by_field_name("type") is not None:
+        return None
+    statement = parent.parent
+    if statement is None or statement.type != "expression_statement":
+        return None
+    if left.type == "identifier":
+        targets, unpack = [left], False
+    elif left.type in ("pattern_list", "tuple_pattern"):
+        targets = [c for c in left.named_children if c.type != "comment"]
+        if not targets or any(c.type != "identifier" for c in targets):
+            return None
+        unpack = True
+    else:
+        return None
+    scope_node = _scope_node(parent)
+    if scope_node is None or scope_node.type != "function_definition":
+        return None
+    scope = analysis.scopes.get((scope_node.id, "scope"))
+    if scope is None or scope.poisoned:
+        return None
+    names = [ps._text(target, analysis.source) for target in targets]
+    if any(name in scope.globals or name in scope.nonlocals for name in names):
+        return None
+    source = analysis.source
+    if any(ps._mangled_names(t, n, source) for t, n in zip(targets, names)):
+        return None
+    return scope, names, unpack
+
+
+def _classify_result(analysis: Any, node: Any, aliases: bool) -> tuple[Any, ...] | None:
+    """The use of a tracked value at ``node`` (a call, or a read of a result
+    alias): ``None`` (inert), ``("alias", scope, names, chain)``,
+    ``("call", chain, call)`` for a member call, or ``(position, chain)``
+    with position ``write`` or ``value``. The allow-list is
+    :func:`_classify_use`'s, plus a discarded expression statement (inert)
+    and, outside H1 files, an alias binding."""
+    from . import py_scope as ps
+
+    chain, top = _result_steps(node, analysis.source)
+    if chain and top.id in analysis.attribute_targets:
+        return "write", chain
+    if top.type == "subscript" and (
+        top.id in analysis.attribute_targets
+        or any(top.id == target.id for target in analysis.subscript_targets)
+    ):
+        return "value", chain
+    call = ps._callee_call(top)
+    if call is not None:
+        # Calling the value itself is off the list; a member call reads a
+        # name, and its result is a value to follow (the member may be a
+        # getter of the module).
+        return ("call", chain, call) if chain else ("value", chain)
+    name = _setattr_write(analysis, top)
+    if name is not None:
+        return "write", [*chain, name]
+    if _inert_context(top):
+        return None
+    parent = top.parent
+    if (
+        parent is not None
+        and parent.type == "expression_statement"
+        and len([c for c in parent.named_children if c.type != "comment"]) == 1
+    ):
+        return None
+    targets = _alias_targets(analysis, top) if aliases else None
+    if targets is not None:
+        scope, names, unpack = targets
+        if not unpack or not chain:
+            return "alias", scope, names, chain
+    return "value", chain
+
+
+def _callee_refs(
+    analysis: Any,
+    call: Any,
+    import_infos: Mapping[str, list[Mapping[str, str]]],
+    own_getters: AbstractSet[str],
+) -> list[tuple[str, tuple[str, ...]]]:
+    """``[(base, callee path)]`` a call's callee may denote: base ``""`` for
+    this file's own getter by spelling, else an import binding's record
+    base with the names read off it."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    node = call.child_by_field_name("function")
+    names: list[str] = []
+    while node is not None:
+        node = ps._unwrap(node, skip_comments=True)
+        if node.type != "attribute":
+            break
+        attribute = node.child_by_field_name("attribute")
+        if attribute is None:
+            return []
+        names.append(ps._text(attribute, source))
+        node = node.child_by_field_name("object")
+    if node is None or node.type != "identifier":
+        return []
+    names.reverse()
+    refs: list[tuple[str, tuple[str, ...]]] = []
+    if not names:
+        for spelling in sorted(ps._spellings(node, source) & own_getters):
+            refs.append(("", (spelling,)))
+    for info in _candidates(analysis, node, import_infos):
+        record = _record(info, CALL_MARK, names)
+        if record[2:]:
+            refs.append((record[0], tuple(record[2:])))
+    return refs
+
+
+def _scan_results(
+    analysis: Any,
+    facts: _Facts,
+    import_infos: Mapping[str, list[Mapping[str, str]]],
+    gate: bool,
+) -> None:
+    """#706: record every use of a call that may invoke a tracked getter
+    (``get()``, ``G.get()``, ``x.fetch()`` on a tracked value), followed
+    through member calls and function-local aliases, as result records
+    ``(base, "result-<p>" | "own-<p>", *callee, "()", *chain)``; and every
+    reference to this file's own getter that is not a direct callee as an
+    escape of whatever it returns (``("", "own-value", name, "()")``)."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    own = frozenset(facts.getters)
+    records = facts.uses
+    # (scope id, name) -> {(base, callee, prefix)}: what a result alias may
+    # hold, the prefix being the chain read off the call result.
+    aliases: dict[tuple[int, str], set[tuple[str, tuple[str, ...], tuple[str, ...]]]]
+    aliases = {}
+    Source = tuple[tuple[str, tuple[str, ...]], tuple[str, ...]]
+
+    def emit(
+        ref: tuple[str, tuple[str, ...]],
+        prefix: Sequence[str],
+        position: str,
+        chain: Sequence[str],
+    ) -> None:
+        base, callee = ref
+        kind = ("own-" if base == "" else "result-") + position
+        records.add((base, kind, *callee, CALL_MARK, *prefix, *chain))
+
+    def handle(sources: list[Source], node: Any) -> bool:
+        """Classify one use for every source; whether an alias grew."""
+        found = _classify_result(analysis, node, not gate)
+        if found is None:
+            return False
+        if found[0] == "alias":
+            _kind, scope, names, chain = found
+            grew = False
+            for ref, prefix in sources:
+                full = (*prefix, *chain)
+                if _unsafe_dunder(full) or len(full) > MAX_ALIAS_CHAIN:
+                    # ``ns = get().__dict__`` hands out the namespace; a chain
+                    # past the cap is not followed: both escape.
+                    emit(ref, prefix, "value", chain)
+                    continue
+                for name in names:
+                    bucket = aliases.setdefault((id(scope), name), set())
+                    item = (ref[0], ref[1], full)
+                    if item not in bucket:
+                        bucket.add(item)
+                        grew = True
+            return grew
+        position, chain = found[0], found[1]
+        if position == "call" and not _unsafe_dunder(chain):
+            following: list[Source] = []
+            for ref, prefix in sources:
+                if prefix.count(CALL_MARK) + 1 >= CALL_STEPS:
+                    emit(ref, prefix, "value", [])
+                else:
+                    following.append((ref, (*prefix, *chain, CALL_MARK)))
+            return bool(following) and handle(following, found[2])
+        for ref, prefix in sources:
+            emit(ref, prefix, position, chain)
+        return False
+
+    stack = [analysis.root]
+    calls: list[Any] = []
+    while stack:
+        node = stack.pop()
+        stack.extend(node.named_children)
+        if node.type == "call":
+            calls.append(node)
+    for call in calls:
+        refs = _callee_refs(analysis, call, import_infos, own)
+        if refs:
+            handle([(ref, ()) for ref in refs], call)
+
+    reads = [
+        ident
+        for ident in analysis.identifier_nodes
+        if not (
+            ps._name_part(ident)
+            or _in_import(ident)
+            or ps._scope_binding_name(ident)
+            or ps._binding_position(ident)
+        )
+    ]
+    for ident in reads:
+        for spelling in sorted(ps._spellings(ident, source) & own):
+            if ps._callee_call(ident) is None:
+                # The getter handed on as a value: whatever it returns escapes.
+                records.add(("", "own-value", spelling, CALL_MARK))
+    if not aliases:
+        return
+    # A read of an alias is any identifier of its spelling whose lookup
+    # decides in the alias's scope (closures included) or cannot say where.
+    # An alias read may bind a new alias, so the reads are found again each
+    # round; every (read, source) pair is handled once.
+    deciding: dict[int, Any] = {}
+    done: dict[int, set[tuple[str, tuple[str, ...], tuple[str, ...]]]] = {}
+    changed = True
+    while changed:
+        changed = False
+        alias_names = {name for _scope, name in aliases}
+        for ident in reads:
+            spellings = ps._spellings(ident, source)
+            if not spellings & alias_names:
+                continue
+            if ident.id not in deciding:
+                deciding[ident.id] = analysis.lookup_scope(ident)
+            decided = deciding[ident.id]
+            seen = done.setdefault(ident.id, set())
+            sources: list[Source] = []
+            for (scope_id, name), items in list(aliases.items()):
+                if name not in spellings:
+                    continue
+                if decided is not None and id(decided) != scope_id:
+                    continue
+                for item in sorted(items - seen):
+                    seen.add(item)
+                    sources.append(((item[0], item[1]), item[2]))
+            if sources and handle(sources, ident):
+                changed = True
 
 
 def _frame_locals_read(analysis: Any, ident: Any) -> bool:
@@ -2109,6 +2598,8 @@ class _Builder:
             if directory:
                 nodes.add(directory.replace("/", "."))
         self.nodes = frozenset(nodes)
+        self._getter_names: frozenset[str] | None = None
+        self._returned: dict[tuple[str, str], set[str]] = {}
 
     # -- names ------------------------------------------------------------
 
@@ -2240,6 +2731,15 @@ class _Builder:
             for star in file.stars:
                 for start in self.targets(star, path or ""):
                     found |= self.exposed(start, seen)
+            # #706: a module reached wholly hands out its getters (its own,
+            # and those its namespace imports by name), so what they return.
+            for name in self.getters_of(path or ""):
+                found |= self.returned((path or "", name))
+            reachable = self.getter_names()
+            for name in file.module_imports:
+                if name in reachable:
+                    for getter in self.getter_values(node, name):
+                        found |= self.returned(getter)
         return found
 
     # -- taints -----------------------------------------------------------
@@ -2254,9 +2754,163 @@ class _Builder:
         whole: set[str],
     ) -> None:
         """Taint what one module-object use may write or escape."""
+        if position in RESULT_POSITIONS:
+            self.walk_result(writer, base_ref, position, chain, names, whole)
+            return
         self.walk_from(
             self.module_values(base_ref, writer), position, chain, names, whole
         )
+
+    # -- getters (#706) ---------------------------------------------------
+
+    def getters_of(self, path: str) -> Mapping[str, Any]:
+        """The tracked getters of a run file: name -> ``[[base, *chain]]``."""
+        found = (self.bindings.get(path) or {}).get("getters")
+        return found if isinstance(found, Mapping) else {}
+
+    def getter_names(self) -> frozenset[str]:
+        """Every attribute name a tracked getter may be reached under: its
+        own name and, to a fixpoint, every name a module-namespace ``from M
+        import <one of them> [as X]`` binds. A name outside this set never
+        needs a getter walk."""
+        if self._getter_names is None:
+            found: set[str] = set()
+            for path in self.files:
+                found.update(self.getters_of(path))
+            changed = bool(found)
+            while changed:
+                changed = False
+                for file in self.files.values():
+                    for name, bindings in file.module_imports.items():
+                        if name not in found and any(
+                            binding.get("form") == "from"
+                            and binding.get("name") in found
+                            for binding in bindings
+                        ):
+                            found.add(name)
+                            changed = True
+            self._getter_names = frozenset(found)
+        return self._getter_names
+
+    def getter_values(
+        self, node: str, name: str, seen: set[tuple[str, str]] | None = None
+    ) -> set[tuple[str, str]]:
+        """Every tracked getter ``(path, name)`` a ``node.name`` attribute may
+        hold: the module's own getter of that name, and leniently every
+        ``from M import name`` re-export (proven or not, like
+        :meth:`attr_values`) and star source."""
+        if name not in self.getter_names():
+            return set()
+        seen = set() if seen is None else seen
+        if (node, name) in seen:
+            return set()
+        seen.add((node, name))
+        found: set[tuple[str, str]] = set()
+        path = self.modules.get(node)
+        file = self.files.get(path) if path is not None else None
+        if path is None or file is None:
+            return found
+        if name in self.getters_of(path):
+            found.add((path, name))
+        entries = list(file.module_imports.get(name, ()))
+        entry = file.exports.get(name)
+        if isinstance(entry, Mapping) and entry.get("outcome") == "import":
+            entries.append(entry.get("binding") or {})
+        for binding in entries:
+            if binding.get("form") != "from":
+                continue
+            for start in self.targets(str(binding.get("module") or ""), path):
+                found |= self.getter_values(start, str(binding.get("name") or ""), seen)
+        for star in file.stars:
+            for start in self.targets(star, path):
+                found |= self.getter_values(start, name, seen)
+        return found
+
+    def returned(self, getter: tuple[str, str]) -> set[str]:
+        """Every module a tracked getter may return (cached)."""
+        cached = self._returned.get(getter)
+        if cached is not None:
+            return cached
+        self._returned[getter] = set()  # a cycle adds nothing new
+        path, name = getter
+        found: set[str] = set()
+        records = self.getters_of(path).get(name) or ()
+        for record in records:
+            current = self.module_values(str(record[0]), path)
+            for part in record[1:]:
+                following: set[str] = set()
+                for node in current:
+                    following |= self.attr_values(node, str(part), set())
+                current = following
+            found.update(current)
+        self._returned[getter] = found
+        return found
+
+    def hand_on(self, current: AbstractSet[str], name: str, whole: set[str]) -> None:
+        """``name`` read off a value that may be one of ``current`` anywhere
+        but as a direct callee hands the getters it may hold to code no rule
+        follows: whatever they return escapes."""
+        if name not in self.getter_names():
+            return
+        for node in current:
+            for getter in self.getter_values(node, name):
+                whole.update(self.returned(getter))
+
+    def walk_result(
+        self,
+        writer: str,
+        base_ref: str,
+        position: str,
+        chain: Sequence[str],
+        names: dict[str, set[str]],
+        whole: set[str],
+    ) -> None:
+        """A result record (#706): resolve the callee leniently to a set of
+        getters, then walk the uses from the modules they return, following
+        each call step through the getters the called member may be."""
+        if CALL_MARK not in chain:
+            return
+        split = list(chain).index(CALL_MARK)
+        callee, rest = list(chain[:split]), list(chain[split + 1 :])
+        kind = position.split("-", 1)[1]
+        if not callee:
+            return
+        getters: set[tuple[str, str]] = set()
+        if position.startswith("own-"):
+            if callee[0] in self.getters_of(writer):
+                getters.add((writer, callee[0]))
+        elif callee[-1] in self.getter_names():
+            current = self.module_values(base_ref, writer)
+            for name in callee[:-1]:
+                following: set[str] = set()
+                for node in current:
+                    following |= self.attr_values(node, name, set())
+                current = following
+            for node in current:
+                getters |= self.getter_values(node, callee[-1])
+        for getter in sorted(getters):
+            current = set(self.returned(getter))
+            segment: list[str] = []
+            for part in rest:
+                if part != CALL_MARK:
+                    segment.append(part)
+                    continue
+                # A call step: the member called may be a getter of any module
+                # the value may be; follow what those return.
+                nodes = current
+                for name in segment[:-1]:
+                    self.hand_on(nodes, name, whole)
+                    following = set()
+                    for node in nodes:
+                        following |= self.attr_values(node, name, set())
+                    nodes = following
+                current = set()
+                if segment:
+                    for node in nodes:
+                        for inner in self.getter_values(node, segment[-1]):
+                            current |= self.returned(inner)
+                segment = []
+            self.walk_from(current, kind, segment, names, whole)
 
     def walk_from(
         self,
@@ -2283,9 +2937,14 @@ class _Builder:
                 whole.update(current)
                 return
             if index == len(chain) - 1 and position == "write":
+                # A write of ``M.get`` replaces the function and hands it to
+                # nobody (a name taint).
                 for node in current:
                     names.setdefault(node, set()).add(name)
                 return
+            # #706: a getter read off the value anywhere but as a direct callee
+            # (``x = A.get``, ``A.get.__call__()``, ``return getter.get``).
+            self.hand_on(current, name, whole)
             following: set[str] = set()
             for node in current:
                 following |= self.attr_values(node, name, set())
@@ -2346,8 +3005,13 @@ def build_py_module_run(
         refs += [str(taint[0]) for taint in bindings.get("taints", ())]
         refs += [str(string) for string in bindings.get("strings", ())]
         for use in bindings.get("uses", ()):
+            if str(use[1]).startswith("own-"):
+                continue  # a call of the file's own getter loads nothing
             ref = str(use[0])
             for part in use[2:]:
+                if part == CALL_MARK:
+                    # #706: a result record loads its callee's module only.
+                    break
                 ref = _join(ref, str(part))
             refs.append(ref)
         edges[path] = refs

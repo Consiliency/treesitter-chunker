@@ -3002,6 +3002,13 @@ class _Analysis:
                 return self._decide(scope, name)
         return self._module_lookup(name)  # pragma: no cover - module ends the chain
 
+    def lookup_scope(self, ident: Any) -> _Scope | None:
+        """The scope the ordinary lookup of ``ident`` decides in, or ``None``
+        when it cannot say (a dynamic or poisoned scope, an open class
+        namespace, an annotation; treesitter-chunker#706)."""
+        self.lookup(ident)
+        return self.decided
+
     def _module_lookup(self, name: str) -> dict[str, Any]:
         if self.dynamic:
             return _none("dynamic-scope")

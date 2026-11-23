@@ -581,8 +581,10 @@ ROUTES_697: dict[str, tuple[dict[str, str], str]] = {
         {"w.py": "import svc\n\n\ndef f(mp):\n    mp.setattr(svc, 't', len)\n"},
         "module-escape",
     ),
+    # #706: a returned module is followed through the call result, so the
+    # escape is the result's use (a container element), not the return.
     "return-escape": (
-        {"w.py": "import svc\n\n\ndef get():\n    return svc\n"},
+        {"w.py": "import svc\n\n\ndef get():\n    return svc\n\n\nKEEP = [get()]\n"},
         "module-escape",
     ),
     "class-attribute": ({"w.py": "class K:\n    import svc\n"}, "module-escape"),

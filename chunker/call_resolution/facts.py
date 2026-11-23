@@ -205,6 +205,12 @@ logger = logging.getLogger(__name__)
 # or a from-import is relied on by name; a recorded write of it fails closed).
 # python "29": fold 27 (Codex 4657978945: an allow-listed read's result must
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
+# python "40": treesitter-chunker#706 slice 1: tracked getters (``getters``:
+# what a module-level function may return), ``ref`` records for its returns,
+# and result records (``result-<p>``/``own-<p>``) for every use of a call
+# that may invoke one, followed through member calls and function-local
+# aliases; H1 gates getters and aliases in files that reach their
+# namespace. Only ``imports``-mode facts change.
 # python "39": treesitter-chunker#724: a file that reads its own namespace
 # (``globals()``, ``locals()``, ``vars()``, one-argument ``exec``/``eval``,
 # ``f_globals``, ``__globals__``, ``getmodule``, ``__import__(__name__)``,
@@ -253,7 +259,7 @@ logger = logging.getLogger(__name__)
 # run-wide causes and parse hazards (``module_bindings``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "21", "python": "39"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "21", "python": "40"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -699,9 +705,48 @@ _PY_MODULE_BINDING_KEYS = frozenset(
         "chains",
         "module_imports",
         "own_submodules",
+        "getters",
     }
 )
-_PY_USE_POSITIONS = frozenset({"write", "call", "value"})
+_PY_USE_POSITIONS = frozenset({"write", "call", "value", "ref"})
+# treesitter-chunker#706 result records: ``[base, "result-<p>", *callee,
+# "()", *chain]`` (base an import binding's record base) and ``["",
+# "own-<p>", <getter name>, "()", *chain]``; ``"()"`` marks a call step.
+_PY_RESULT_POSITIONS = frozenset(
+    f"{prefix}-{position}"
+    for prefix in ("result", "own")
+    for position in ("write", "call", "value")
+)
+_PY_CALL_MARK = "()"
+_PY_CALL_STEPS = 3
+
+
+def _valid_py_use(use: object) -> bool:
+    """A ``uses`` record: ``[base, position, *chain]``, or a well-formed
+    result record (#706) whose callee and chain are identifiers and call
+    marks, with one to :data:`_PY_CALL_STEPS` call steps."""
+    if not _strings(use):
+        return False
+    assert isinstance(use, list)
+    if len(use) < 2:
+        return False
+    position = use[1]
+    if position in _PY_USE_POSITIONS:
+        return True
+    if position not in _PY_RESULT_POSITIONS:
+        return False
+    rest = use[2:]
+    marks = rest.count(_PY_CALL_MARK)
+    if not 1 <= marks <= _PY_CALL_STEPS:
+        return False
+    callee = rest[: rest.index(_PY_CALL_MARK)]
+    if not callee or not all(
+        part == _PY_CALL_MARK or part.isidentifier() for part in rest
+    ):
+        return False
+    if position.startswith("own-"):
+        return use[0] == "" and len(callee) == 1
+    return bool(use[0])
 
 
 def _strings(value: object) -> bool:
@@ -728,9 +773,18 @@ def valid_py_module_bindings(value: object) -> bool:
         all(_strings(value[key]) for key in ("imports", "stars", "strings", "shutoff"))
         and set(value["shutoff"]) <= set(SHUTOFF_CAUSES)
         and isinstance(value["uses"], list)
+        and all(_valid_py_use(use) for use in value["uses"])
+        and isinstance(value["getters"], dict)
         and all(
-            _strings(use) and len(use) >= 2 and use[1] in _PY_USE_POSITIONS
-            for use in value["uses"]
+            isinstance(name, str)
+            and name.isidentifier()
+            and isinstance(records, list)
+            and bool(records)
+            and all(
+                _strings(record) and bool(record) and bool(record[0])
+                for record in records
+            )
+            for name, records in value["getters"].items()
         )
         and isinstance(value["taints"], list)
         and all(_strings(taint) and len(taint) == 2 for taint in value["taints"])

@@ -170,6 +170,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of resolving them wrongly (treesitter-chunker#724). `vars(obj)`
   and `exec(code, d)` with explicit globals do not count. The Python fact
   version moves to 39.
+- Call resolution, `"imports"` mode (experimental): a Python module returned
+  by a plain module-level function (`def get(): return svc`, `return a, b`)
+  no longer makes every call into that module unprovable. Callers' uses of
+  the result are checked like uses of an imported module (`get().t = f`,
+  `m = get(); m.t = f`, `setattr(get(), "t", f)` and any other hand-off still
+  count as writes or escapes), including member calls on it and local
+  aliases (treesitter-chunker#706). On the `spec` repository this recovers 734
+  of 947 lost resolutions; a module-scope alias (`x = mod.sub`) is still an
+  escape (treesitter-chunker#725). The Python fact version moves to 40.
 - Symbol graph extraction orders source files by case-sensitive path components
   on every platform (treesitter-chunker#687).
 - Automatic detection uses the language pack's `rst` and `asm` grammar

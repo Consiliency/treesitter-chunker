@@ -31,6 +31,7 @@ PYM = CR + "py_modules.py"
 ENG = CR + "engine.py"
 TESTS = (
     "tests/test_call_resolution_tier2_py.py",
+    "tests/test_call_resolution_py_getters.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
 )
 
@@ -100,8 +101,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "write-position",
         PYM,
-        "    if chain and top.id in analysis.attribute_targets:",
-        "    if False:",
+        '    if chain and top.id in analysis.attribute_targets:\n        return "write", chain, outer',
+        '    if False:\n        return "write", chain, outer',
     ),
     (
         "uses-recorded",
@@ -859,6 +860,201 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "    return first is None or ps._constant_string(first, analysis.source) is None",
         "    return True",
     ),
+    # treesitter-chunker#706 slice 1: tracked getters and call results.
+    (
+        "getter-decorated",
+        PYM,
+        '        if child.type != "function_definition":\n            continue\n'
+        '        if any(token.type == "async"',
+        '        if child.type == "decorated_definition":\n'
+        '            child = child.child_by_field_name("definition")\n'
+        '        if child is None or child.type != "function_definition":\n'
+        "            continue\n"
+        '        if any(token.type == "async"',
+    ),
+    (
+        "getter-async",
+        PYM,
+        '        if any(token.type == "async" for token in child.children):\n'
+        "            continue\n",
+        "",
+    ),
+    (
+        "getter-generator",
+        PYM,
+        "        if name is None or _own_yield(child):",
+        "        if name is None:",
+    ),
+    ("getter-dunder", PYM, "        if not ps._dunder(text):", "        if True:"),
+    (
+        "getter-nested-return",
+        PYM,
+        "    scope = _scope_node(parent)\n"
+        "    return getters.get(scope.id) if scope is not None else None",
+        "    scope = parent.parent\n"
+        "    while scope is not None and scope.id not in getters:\n"
+        "        scope = scope.parent\n"
+        "    return getters.get(scope.id) if scope is not None else None",
+    ),
+    (
+        "getter-conditional-def",
+        PYM,
+        "    found: dict[int, str] = {}\n"
+        "    for child in analysis.root.named_children:\n",
+        "    found: dict[int, str] = {}\n"
+        "    stack, nodes = [analysis.root], []\n"
+        "    while stack:\n"
+        "        node = stack.pop()\n"
+        "        stack.extend(node.named_children)\n"
+        '        if node.type == "function_definition" and (\n'
+        '            _scope_node(node).type == "module"\n'
+        "        ):\n"
+        "            nodes.append(node)\n"
+        "    for child in nodes:\n",
+    ),
+    (
+        "getter-introspection-gate",
+        PYM,
+        "    gate = handout is None or _introspects(analysis, reader=False)",
+        "    gate = handout is None",
+    ),
+    (
+        "h1-namespace-names",
+        PYM,
+        "    if any(\n        ps._spellings(ident, source) & _INTROSPECTION_NAMES\n",
+        "    if False and any(\n        ps._spellings(ident, source) & _INTROSPECTION_NAMES\n",
+    ),
+    (
+        "return-shape",
+        PYM,
+        '    if parent is not None and parent.type in ("expression_list", "tuple"):',
+        '    if parent is not None and parent.type in ("expression_list", "tuple", "list"):',
+    ),
+    (
+        "return-ref",
+        PYM,
+        "                facts.uses.add(record)\n            continue\n",
+        "            continue\n",
+    ),
+    (
+        "own-reference",
+        PYM,
+        '                records.add(("", "own-value", spelling, CALL_MARK))',
+        "                pass",
+    ),
+    (
+        "cross-file-reference",
+        PYM,
+        "            self.hand_on(current, name, whole)\n            following",
+        "            following",
+    ),
+    (
+        "exposed-getters",
+        PYM,
+        '            for name in self.getters_of(path or ""):\n'
+        '                found |= self.returned((path or "", name))\n',
+        "",
+    ),
+    (
+        "reexport-walk",
+        PYM,
+        '            if binding.get("form") != "from":\n                continue\n'
+        '            for start in self.targets(str(binding.get("module") or ""), path):\n'
+        "                found |= self.getter_values(",
+        "            continue\n"
+        '            for start in self.targets(str(binding.get("module") or ""), path):\n'
+        "                found |= self.getter_values(",
+    ),
+    (
+        "result-value",
+        PYM,
+        "        for ref, prefix in sources:\n            emit(ref, prefix, position, chain)\n"
+        "        return False\n",
+        '        for ref, prefix in sources:\n            if position == "write":\n'
+        "                emit(ref, prefix, position, chain)\n        return False\n",
+    ),
+    (
+        "result-write",
+        PYM,
+        '        kind = position.split("-", 1)[1]\n        if not callee:',
+        '        kind = position.split("-", 1)[1].replace("write", "call")\n'
+        "        if not callee:",
+    ),
+    (
+        "result-dunder",
+        PYM,
+        '        if position == "call" and not _unsafe_dunder(chain):',
+        '        if position == "call":',
+    ),
+    (
+        "alias-dunder",
+        PYM,
+        "                if _unsafe_dunder(full) or len(full) > MAX_ALIAS_CHAIN:",
+        "                if len(full) > MAX_ALIAS_CHAIN:",
+    ),
+    (
+        "call-step-cap",
+        PYM,
+        "                if prefix.count(CALL_MARK) + 1 >= CALL_STEPS:",
+        "                if False:",
+    ),
+    (
+        "result-member-call",
+        PYM,
+        "            return bool(following) and handle(following, found[2])",
+        "            return False",
+    ),
+    (
+        "result-call-step",
+        PYM,
+        "                        for inner in self.getter_values(node, segment[-1]):\n"
+        "                            current |= self.returned(inner)",
+        "                        pass",
+    ),
+    (
+        "alias-scope",
+        PYM,
+        "    if any(name in scope.globals or name in scope.nonlocals for name in names):\n"
+        "        return None\n",
+        "",
+    ),
+    (
+        "alias-target-shape",
+        PYM,
+        '        if not targets or any(c.type != "identifier" for c in targets):',
+        "        if not targets:",
+    ),
+    (
+        "alias-unplaced-read",
+        PYM,
+        "                if decided is not None and id(decided) != scope_id:",
+        "                if id(decided) != scope_id:",
+    ),
+    (
+        "alias-other-scope",
+        PYM,
+        "                if decided is not None and id(decided) != scope_id:\n"
+        "                    continue\n",
+        "",
+    ),
+    (
+        "alias-new-reads",
+        PYM,
+        "        alias_names = {name for _scope, name in aliases}\n        for ident in reads:",
+        "        alias_names = alias_names if 'alias_names' in dir() else "
+        "{name for _scope, name in aliases}\n        for ident in reads:",
+    ),
+    (
+        "result-scope",
+        PYM,
+        '        for use in bindings.get("uses", ()):\n            builder.walk_use(\n',
+        '        for use in bindings.get("uses", ()):\n'
+        "            scope = scope or str(use[1]) in RESULT_POSITIONS\n"
+        "            builder.walk_use(\n",
+    ),
+    # Equivalent (recorded, not run) for #706: ``subscript-literal`` (a
+    # getter returns modules or one tuple level of them; any other key
+    # raises or yields an element the over-approximation already covers).
     # Equivalent (recorded, not run): ``continuation`` (tree-sitter reports
     # every malformed continuation as an error first), ``own-name-acquisition``
     # (``sys.modules[__name__]`` already makes the file dynamic in Tier 1, so
