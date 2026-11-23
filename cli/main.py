@@ -127,7 +127,7 @@ def boundary(
             "bindings, and Python calls through import bindings and module "
             "member chains, to the one definition they prove; for Python it "
             "can resolve fewer calls than 'structural' where other files may "
-            "write a module's globals"
+            "write a module's globals. See docs/call-resolution.md for details."
         ),
     ),
     quiet: bool = typer.Option(

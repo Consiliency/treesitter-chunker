@@ -691,11 +691,12 @@ def test_rule_and_reason_vocabularies() -> None:
         "trait",
     } == engine.NON_CALLABLE_KINDS
     assert {"unmapped", "no-binding-fact", "unbound"} <= KNOWN_NONE_REASONS
+    assert "run-tainted:dynamic-scope" in KNOWN_NONE_REASONS
     # Interim reasons leave the vocabulary once replaced (stub at PR 4).
     assert not {"stub", "script-goal-deferred", "namespace-deferred"} & (
         KNOWN_NONE_REASONS
     )
-    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "20", "python": "39"}
+    assert CALL_RESOLUTION_FACT_VERSIONS == {"js": "22", "python": "39"}
     assert [engine.language_family(name) for name in ("tsx", "javascript", "go")] == [
         "js",
         "js",

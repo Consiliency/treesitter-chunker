@@ -70,7 +70,7 @@ def setup_symbol_parser(subparsers: argparse._SubParsersAction) -> None:
             "bindings, and Python calls through import bindings and module "
             "member chains, to the one definition they prove; for Python it "
             "can resolve fewer calls than 'structural' where other files may "
-            "write a module's globals"
+            "write a module's globals. See docs/call-resolution.md for details."
         ),
     )
     extract_parser.set_defaults(func=cmd_extract_symbols)

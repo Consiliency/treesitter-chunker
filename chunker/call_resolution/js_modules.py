@@ -54,9 +54,9 @@ interface and a function of one name merge.
     The file was collected through a symbolic link (E5-5).
 ``shutoff``
     Run-wide causes (E5-3): ``evaluator``, ``dynamic-loader``,
-    ``module-system``, ``module-object``, ``unparsed-file`` (text scan of a
-    file with parse errors). Under O-2 a cause in a test file applies only
-    to callers in test files.
+    ``module-system``, ``module-object``, ``unparsed-file``,
+    ``unresolvable-writer``, and ``dynamic-scope``. Under O-2 a cause in a
+    test file applies only to callers in test files unless production reaches it.
 
 Uses of the sensitive values (a namespace import, ``require``, ``module``)
 are classified by a closed allow-list after unwrapping parentheses and TS
@@ -72,6 +72,7 @@ from typing import TYPE_CHECKING, Any
 from .js_strings import (
     cook_template,
     decode_js_string_sloppy,
+    decode_jsx_text,
     decode_string_literal,
     module_export_name,
 )
@@ -120,6 +121,7 @@ CAUSE_MODULE_SYSTEM = "module-system"
 CAUSE_MODULE_OBJECT = "module-object"
 CAUSE_UNPARSED_FILE = "unparsed-file"
 CAUSE_UNRESOLVABLE_WRITER = "unresolvable-writer"
+CAUSE_DYNAMIC_SCOPE = "dynamic-scope"
 SHUTOFF_CAUSES = (
     CAUSE_EVALUATOR,
     CAUSE_DYNAMIC_LOADER,
@@ -127,6 +129,7 @@ SHUTOFF_CAUSES = (
     CAUSE_MODULE_OBJECT,
     CAUSE_UNPARSED_FILE,
     CAUSE_UNRESOLVABLE_WRITER,
+    CAUSE_DYNAMIC_SCOPE,
 )
 # ``import.meta`` reads that load nothing.
 _IMPORT_META_READS = frozenset(
@@ -146,6 +149,19 @@ MODULE_MOCKS: dict[str, frozenset[str]] = {
 MOCK_PACKAGES = {"jest": "@jest/globals", "vi": "vitest"}
 # Names that reach the CommonJS module system from anywhere.
 _MODULE_SYSTEM_NAMES = frozenset({"mainModule", "createRequire", "getBuiltinModule"})
+_STACK_KEYS = frozenset({"caller", "getFunction"})
+_STACK_NAME_TOKENS = frozenset(
+    {
+        "identifier",
+        "property_identifier",
+        "shorthand_property_identifier",
+        "shorthand_property_identifier_pattern",
+        "statement_identifier",
+        "type_identifier",
+    }
+)
+# Pieces of one JSX text run (R-718-3).
+_JSX_TEXT_PARTS = frozenset({"jsx_text", "html_character_reference"})
 _MODULE_SYSTEM_SPECIFIERS = frozenset({"module", "node:module"})
 # Fold 3, item 1: the only names an import from ``module`` may bind without
 # a run-wide cause (with ``createRequire`` under item 2). ``builtinModules``
@@ -205,6 +221,10 @@ def _same(left: Any, right: Any) -> bool:
 
 def _has_token(node: Any, token: str) -> bool:
     return any(not child.is_named and child.type == token for child in node.children)
+
+
+def _parent_type(node: Any) -> str | None:
+    return node.parent.type if node.parent is not None else None
 
 
 def _text(node: Any, source: bytes) -> str:
@@ -488,8 +508,14 @@ class _ModuleFacts:
         handled: set[int] = set()
         for node in _walk(analysis.root):
             kind = node.type
-            if kind == "call_expression":
+            if kind in _STACK_NAME_TOKENS:
+                self._name(node, handled)
+            elif kind == "call_expression":
                 self._loader_call(node, handled)
+            elif kind == "with_statement":
+                # Lookups in this body can reach properties on the with object
+                # before consulting lexical bindings.
+                self.shutoff.add(CAUSE_DYNAMIC_SCOPE)
             elif kind == "import_require_clause":
                 self._taint_literal(node.child_by_field_name("source"))
             elif kind == "import_statement":
@@ -503,28 +529,41 @@ class _ModuleFacts:
                         self.shutoff.add(CAUSE_MODULE_SYSTEM)
                     elif specifier not in _MODULE_SYSTEM_SPECIFIERS:
                         self.imports.add(specifier)
-            elif kind in (
-                "identifier",
-                "shorthand_property_identifier",
-                "shorthand_property_identifier_pattern",
-            ):
-                self._name(node, handled)
-            elif kind == "property_identifier":
-                if _text(node, self.source) in _MODULE_SYSTEM_NAMES:
-                    # A property cannot be looked up (its receiver may be an
-                    # alias of ``process``): matched by name.
+            elif kind in ("jsx_text", "html_character_reference"):
+                self._jsx_text(node)
+            elif kind == "string" and _parent_type(node) == "jsx_attribute":
+                # A JSX attribute string decodes HTML character references,
+                # not JS escapes (R-718-3).
+                if any(
+                    value in _MODULE_SYSTEM_NAMES or value in _STACK_KEYS
+                    for value in decode_jsx_text(_text(node, self.source)[1:-1])
+                ):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "string":
                 # Matched on the value sloppy code gives the literal (legacy
                 # octal escapes decode); a malformed literal fails closed.
                 value = decode_js_string_sloppy(_text(node, self.source))
-                if value is None or value in _MODULE_SYSTEM_NAMES:
+                if (
+                    value is None
+                    or value in _MODULE_SYSTEM_NAMES
+                    or value in _STACK_KEYS
+                    or self._stack_trace_hook(node, value)
+                ):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "template_string":
                 cooked = cook_template(node, self.source)
-                if cooked is None or any(
-                    name in part for part in cooked for name in _MODULE_SYSTEM_NAMES
+                if (
+                    cooked is None
+                    or any(
+                        name in part for part in cooked for name in _MODULE_SYSTEM_NAMES
+                    )
+                    or any(part in _STACK_KEYS for part in cooked)
+                    or (len(cooked) == 1 and self._stack_trace_hook(node, cooked[0]))
                 ):
+                    self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            elif kind == "regex_pattern":
+                pattern = _text(node, self.source)
+                if any(name in pattern for name in _STACK_KEYS):
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
             elif kind == "meta_property":
                 if not self._inert_import_meta(node):
@@ -539,6 +578,62 @@ class _ModuleFacts:
             self.shutoff.add(CAUSE_DYNAMIC_LOADER)
         self._import_writes()
         self._namespace_uses()
+
+    def _jsx_text(self, node: Any) -> None:
+        """Substring-match one run of JSX text after entity decoding.
+
+        tree-sitter splits a run at each character reference; the run is
+        one string child at runtime. JSX whitespace folding only trims or
+        joins lines with a space, so it never makes a new substring."""
+        if _parent_type(node) not in ("jsx_element", "jsx_fragment"):
+            return
+        previous = node.prev_named_sibling
+        if previous is not None and previous.type in _JSX_TEXT_PARTS:
+            return
+        last = node
+        while (
+            last.next_named_sibling is not None
+            and last.next_named_sibling.type in _JSX_TEXT_PARTS
+        ):
+            last = last.next_named_sibling
+        raw = self.source[node.start_byte : last.end_byte].decode(
+            "utf-8", errors="replace"
+        )
+        if any(
+            name in value
+            for value in decode_jsx_text(raw)
+            for name in (*_STACK_KEYS, *_MODULE_SYSTEM_NAMES)
+        ):
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
+
+    def _stack_trace_hook(self, node: Any, name: str) -> bool:
+        """Match a stack-formatting hook only on the global Error receiver."""
+        if name != "prepareStackTrace" or _in_type_position(node):
+            return False
+        outer = _climb_wrappers(node)
+        parent = outer.parent
+        return (
+            parent is not None
+            and (parent.type, _field_of(parent, outer))
+            in (("member_expression", "property"), ("subscript_expression", "index"))
+            and self._global_builtin(parent.child_by_field_name("object"), "Error")
+        )
+
+    def _global_builtin(self, node: Any, name: str) -> bool:
+        from .js_scope import unwrap
+
+        node = unwrap(node)
+        if node is None:
+            return False
+        if node.type == "identifier":
+            return _text(node, self.source) == name and self.analysis._refers_to_global(
+                node, name
+            )
+        return self.analysis._member_key(
+            node
+        ) == name and self.analysis._is_global_object(
+            node.child_by_field_name("object"), receiver=True
+        )
 
     def _inert_import_meta(self, node: Any) -> bool:
         """``import.meta.url`` and other plain reads; Bun's
@@ -664,6 +759,20 @@ class _ModuleFacts:
         from .js_scope import _declaration_name
 
         text = _text(node, self.source)
+        if text in _STACK_KEYS:
+            # Any role (R-718-3): a variable or parameter name also reaches
+            # runtime as a string, through a function's inferred ``.name``
+            # or an export key.
+            self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            return
+        if node.type == "property_identifier":
+            # A property cannot be looked up (its receiver may be an alias
+            # of ``process``): match the name.
+            if text in _MODULE_SYSTEM_NAMES or self._stack_trace_hook(node, text):
+                self.shutoff.add(CAUSE_MODULE_SYSTEM)
+            return
+        if node.type in ("statement_identifier", "type_identifier"):
+            return
         if node.type == "identifier" and _declaration_name(node):
             return
         if text in _MODULE_SYSTEM_NAMES:

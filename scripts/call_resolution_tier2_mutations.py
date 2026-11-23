@@ -2,8 +2,9 @@
 
 Each mutation disables one rule by a single textual edit. The script copies
 the checkout to a temporary directory, checks that the unmutated copy passes,
-then applies each mutation alone and runs the Tier 2 tests and the
-``imports`` expected-table test serially. A mutation is *killed* when a test
+then applies each mutation alone and runs the Tier 2 tests, the
+``imports`` expected-table test and the treesitter-chunker#694 Tier 1
+property-writer pins serially. A mutation is *killed* when a test
 fails. The script prints one tab-separated line per mutation and exits
 non-zero if any mutation survives or does not apply.
 
@@ -34,10 +35,138 @@ FACTS = CR + "facts.py"
 TESTS = (
     "tests/test_call_resolution_tier2_js.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
+    # treesitter-chunker#694 pins for the property-writer mutations below.
+    "tests/test_call_resolution_tier1_js.py::test_694_writer_invokers_fail_closed",
+    "tests/test_call_resolution_tier1_js.py::test_694_writer_invokers_on_other_targets_are_not_wildcards",
+    "tests/test_call_resolution_tier1_js.py::test_717_main_writer_wildcards_are_kept",
 )
 
 # (id, file, old text, new text). The old text must occur in the file.
 MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
+    # Stack introspection (treesitter-chunker#718).
+    (
+        "718-property-name-token",
+        JSM,
+        '        "property_identifier",\n        "shorthand_property_identifier",',
+        '        "shorthand_property_identifier",',
+    ),
+    (
+        "718-get-function",
+        JSM,
+        '_STACK_KEYS = frozenset({"caller", "getFunction"})',
+        '_STACK_KEYS = frozenset({"caller"})',
+    ),
+    (
+        "718-cooked-keys",
+        JSM,
+        "                    or any(part in _STACK_KEYS for part in cooked)\n",
+        "",
+    ),
+    (
+        "718-constant-stack-keys",
+        JSM,
+        "                    or value in _STACK_KEYS\n",
+        "",
+    ),
+    (
+        "718-with-statement",
+        JSM,
+        "                self.shutoff.add(CAUSE_DYNAMIC_SCOPE)",
+        "                pass",
+    ),
+    (
+        "718-type-position",
+        JSM,
+        "        if text in _STACK_KEYS:",
+        "        if text in _STACK_KEYS and not _in_type_position(node):",
+    ),
+    (
+        "718-shorthand-pattern",
+        JSM,
+        '        "shorthand_property_identifier_pattern",\n        "statement_identifier",',
+        '        "statement_identifier",',
+    ),
+    (
+        "718-shorthand-expression",
+        JSM,
+        '        "shorthand_property_identifier",\n        "shorthand_property_identifier_pattern",',
+        '        "shorthand_property_identifier_pattern",',
+    ),
+    (
+        "718-regex-substring",
+        JSM,
+        "                if any(name in pattern for name in _STACK_KEYS):",
+        "                if pattern in _STACK_KEYS:",
+    ),
+    # R-718-3: no lexical exemption; JSX strings decode character references.
+    (
+        "718-r3-restore-lexical-exemption",
+        JSM,
+        "            # or an export key.\n            self.shutoff.add(CAUSE_MODULE_SYSTEM)",
+        "            # or an export key.\n"
+        '            if node.type != "identifier" or self.analysis._binding_scope(node, text) is None:\n'
+        "                self.shutoff.add(CAUSE_MODULE_SYSTEM)",
+    ),
+    (
+        "718-r3-skip-jsx-text",
+        JSM,
+        "                self._jsx_text(node)",
+        "                pass",
+    ),
+    (
+        "718-r3-jsx-text-run",
+        JSM,
+        "            last.next_named_sibling is not None\n",
+        "            False\n",
+    ),
+    (
+        "718-r3-jsx-attribute-js-escapes",
+        JSM,
+        '            elif kind == "string" and _parent_type(node) == "jsx_attribute":',
+        "            elif False:",
+    ),
+    (
+        "718-r3-no-html-unescape",
+        STR,
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw), html.unescape(raw))",
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw),) * 2",
+    ),
+    (
+        "718-r3-no-jsx-spec-decode",
+        STR,
+        "    return (_JSX_ENTITY.sub(_jsx_entity, raw), html.unescape(raw))",
+        "    return (html.unescape(raw),) * 2",
+    ),
+    (
+        "718-prepare-stack-trace",
+        JSM,
+        '        if name != "prepareStackTrace" or _in_type_position(node):',
+        "        if True:",
+    ),
+    (
+        "718-shadowed-builtin",
+        JSM,
+        "and self.analysis._refers_to_global(\n                node, name\n            )",
+        "",
+    ),
+    (
+        "718-sibling-builtin-shadow",
+        JSM,
+        "self.analysis._refers_to_global(\n                node, name\n            )",
+        "not any(name in scope.bindings for scope in self.analysis.scopes.values())",
+    ),
+    (
+        "718-shadowed-global-object",
+        JSS,
+        "return name in _GLOBAL_OBJECTS and self._refers_to_global(node, name)",
+        "return name in _GLOBAL_OBJECTS",
+    ),
+    (
+        "718-non-global-error-receiver",
+        JSM,
+        ' and self.analysis._is_global_object(\n            node.child_by_field_name("object"), receiver=True\n        )',
+        "",
+    ),
     # Module resolution (9.2, E5-5).
     (
         "O1-more-than-one",
@@ -813,10 +942,10 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "module-system-templates",
         JSM,
-        "                if cooked is None or any(\n"
-        "                    name in part for part in cooked for name in _MODULE_SYSTEM_NAMES\n"
-        "                ):",
-        "                if False:",
+        "                    or any(\n"
+        "                        name in part for part in cooked for name in _MODULE_SYSTEM_NAMES\n"
+        "                    )\n",
+        "",
     ),
     (
         "module-system-strings-sloppy",
@@ -863,6 +992,69 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         JSS,
         "        else:\n            self.evaluator = True\n        self.global_wildcard = True",
         "        self.global_wildcard = True",
+    ),
+    # Property writers behind commas and invokers (treesitter-chunker#694).
+    (
+        "694-comma-callee",
+        JSS,
+        '    while current is not None and current.type == "sequence_expression":',
+        "    while False:",
+    ),
+    (
+        "694-comma-namespace",
+        JSS,
+        "        node = _callee(node)\n        if node is None:\n            return None\n",
+        "        node = unwrap(node)\n        if node is None:\n            return None\n",
+    ),
+    (
+        "694-bind-then-call",
+        JSS,
+        '            if self._member_key(bound) != "bind":\n                return []',
+        "            return []",
+    ),
+    (
+        "694-nested-invoker",
+        JSS,
+        "            targets.extend(self._writer_targets(obj, arguments[1:]))",
+        "            targets.extend(arguments[1:2] if self._is_property_writer(obj) else [])",
+    ),
+    (
+        "694-reflect-apply",
+        JSS,
+        "                targets.extend(self._writer_targets(arguments[0], listed))",
+        "                pass",
+    ),
+    (
+        "694-computed-invoker-chain",
+        JSS,
+        "        elif invoker in (None, _UNREADABLE_KEY) and self._writer_chain(obj):",
+        "        elif invoker in (None, _UNREADABLE_KEY) and self._is_property_writer(obj):",
+    ),
+    (
+        "694-comment-arguments",
+        JSS,
+        '    return [child for child in node.named_children if child.type != "comment"]\n\n\ndef _array_items',
+        "    return list(node.named_children)\n\n\ndef _array_items",
+    ),
+    (
+        "694-target-comma",
+        JSS,
+        "            or self._is_global_object(_callee(target), receiver=True)",
+        "            or self._is_global_object(target, receiver=True)",
+    ),
+    (
+        # The #717 review: main's positional detector is a floor; dropping
+        # it loses ``*`` on ``Object.assign.call(/* c */ this, this ?? {}, …)``.
+        "717-positional-floor",
+        JSS,
+        "        if self._positional_writer_call(node):",
+        "        if False:",
+    ),
+    (
+        "694-control-target",
+        JSS,
+        "            targets.extend(arguments[:1])",
+        "            targets.extend(arguments[:2])",
     ),
     # Exact decoding.
     (

@@ -1282,6 +1282,8 @@ _READER_J = _transactions._READER_JOIN
 _READER_FAULT = 2 * _READER_G + 2 * _READER_J
 _READER_RUN = 4 * _READER_G + 2 * _READER_J
 _READER_TEARDOWN = (1, 1, 2, 1, 1, 1)
+# Bound on H's modelled ack delay; well inside the G readiness step for held.
+_READER_HOLDER_STALL = _READER_G / 5
 _READER_STEPS = {
     "single": (1, 1, 1, "observe", 1, 1, 2, 1, 1, 1),
     "sticky": (1, 1, 1, "observe", 1, 1, "observe", 2, 1, 1, 1),
@@ -1410,7 +1412,24 @@ _READER_HOLDER = (
     _READER_NATIVE
     + r"""
 address, family = json.loads(ARGS[0])
+stall = float(ARGS[1]) if len(ARGS) > 1 else 0.0
 handle = None
+
+
+def stall_until_writer_stops(receipt, budget):
+    # Test-only descheduling model: delay the ack until W stops or the budget ends.
+    deadline = time.monotonic() + budget
+    while time.monotonic() < deadline:
+        try:
+            writer = psutil.Process(receipt["pid"])
+            if (writer.create_time() != receipt["created"]
+                    or writer.status() == psutil.STATUS_ZOMBIE):
+                return
+        except psutil.NoSuchProcess:
+            return
+        time.sleep(0.005)
+
+
 try:
     with Listener(address, family=family) as listener:
         emit("holder-ready", **identity())
@@ -1419,8 +1438,12 @@ try:
             emit("writer", **receipt)
             handle = recv_handle(connection)
             assert pipe_identity(handle) == receipt["pipe"]
-            emit("held", pipe=pipe_identity(handle))
+            if stall:
+                stall_until_writer_stops(receipt, stall)
+            # Ack W before reporting held: on held the controller may fault R,
+            # whose interrupt path SIGKILLs W's group (treesitter-chunker#690).
             connection.send("held")
+            emit("held", pipe=pipe_identity(handle))
             command("revalidate")
             assert pipe_identity(handle) == receipt["pipe"]
             emit("still-holding", pipe=pipe_identity(handle))
@@ -1893,6 +1916,7 @@ def _reader_case(
     stream="stdout",
     kind="single",
     retain=True,
+    holder_stall=0.0,
 ):
     """Real H/R/W; all public oracles execute in persistent R.
 
@@ -1924,7 +1948,9 @@ def _reader_case(
     try:
         if hold:
             address, family = _reader_address(address_directories)
-            holder = Child(_READER_HOLDER, [json.dumps([address, family])])
+            holder = Child(
+                _READER_HOLDER, [json.dumps([address, family]), str(holder_stall)]
+            )
             children.append(holder)
             ready = _expect_event_until(
                 holder, "holder-ready", time.monotonic() + steps[0]
@@ -2216,6 +2242,33 @@ def test_reader_start_interrupt_retains_staging(tmp_path, request, selected, str
     """
     _reader_case(
         tmp_path, request, selected=selected, mode="after", hold=True, stream=stream
+    )
+
+
+@pytest.mark.timeout(_READER_N["single"])
+@pytest.mark.parametrize(
+    ("selected", "stream"),
+    [(1, "stdout"), (2, "stderr")],
+    ids=["reader1-stdout", "reader2-stderr"],
+)
+def test_reader_start_interrupt_tolerates_late_holder_ack(
+    tmp_path, request, selected, stream
+):
+    """H's ack to W may lag arbitrarily; held must not precede it (treesitter-chunker#690).
+
+    H stalls before acking W until W stops or a bounded budget ends. When held
+    is reported before the ack, the controller faults R on held, R's interrupt
+    path kills W, and H's late ack hits a closed connection (BrokenPipeError).
+    With the ack first, W is alive and blocked on it, so the stall just ends.
+    """
+    _reader_case(
+        tmp_path,
+        request,
+        selected=selected,
+        mode="after",
+        hold=True,
+        stream=stream,
+        holder_stall=_READER_HOLDER_STALL,
     )
 
 

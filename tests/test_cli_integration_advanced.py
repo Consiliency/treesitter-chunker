@@ -77,7 +77,16 @@ class Class_{i}:
         assert len(chunks1) >= 2
         result2 = runner.invoke(
             app,
-            ["batch", str(src_dir), "--pattern", "*.py", "--jsonl", "--quiet"],
+            [
+                "batch",
+                "--parallel",
+                "2",
+                str(src_dir),
+                "--pattern",
+                "*.py",
+                "--jsonl",
+                "--quiet",
+            ],
         )
         assert result2.exit_code == 0
         lines = result2.stdout.strip().split("\n")
@@ -117,7 +126,16 @@ class Class_{i}:
         for pattern, expected_count in patterns:
             result = runner.invoke(
                 app,
-                ["batch", str(tmp_path), "--pattern", pattern, "--jsonl", "--quiet"],
+                [
+                    "batch",
+                    "--parallel",
+                    "2",
+                    str(tmp_path),
+                    "--pattern",
+                    pattern,
+                    "--jsonl",
+                    "--quiet",
+                ],
             )
             assert result.exit_code == 0
             lines = [line for line in result.stdout.strip().split("\n") if line]
@@ -141,6 +159,8 @@ def level_{i}_function():
             app,
             [
                 "batch",
+                "--parallel",
+                "2",
                 str(tmp_path),
                 "--pattern",
                 "**/*.py",
@@ -200,7 +220,16 @@ struct Point {
         runner = CliRunner()
         result = runner.invoke(
             app,
-            ["batch", str(tmp_path), "--pattern", "*.*", "--jsonl", "--quiet"],
+            [
+                "batch",
+                "--parallel",
+                "2",
+                str(tmp_path),
+                "--pattern",
+                "*.*",
+                "--jsonl",
+                "--quiet",
+            ],
         )
         if result.exit_code == 0:
             chunks = parse_jsonl_output(result.stdout)
@@ -230,6 +259,8 @@ class TestInteractiveMode:
                 "-m",
                 "cli.main",
                 "batch",
+                "--parallel",
+                "2",
                 str(tmp_path),
                 "--pattern",
                 "*.py",
@@ -251,7 +282,16 @@ class TestInteractiveMode:
         runner = CliRunner()
         result = runner.invoke(
             app,
-            ["batch", str(tmp_path), "--pattern", "*.py", "--jsonl", "--quiet"],
+            [
+                "batch",
+                "--parallel",
+                "2",
+                str(tmp_path),
+                "--pattern",
+                "*.py",
+                "--jsonl",
+                "--quiet",
+            ],
         )
         assert result.exit_code in {0, 1}
         if result.stdout:
@@ -271,6 +311,8 @@ class TestInteractiveMode:
                     "-m",
                     "cli.main",
                     "batch",
+                    "--parallel",
+                    "2",
                     str(tmp_path),
                     "--pattern",
                     "*.py",
@@ -380,6 +422,8 @@ runpy.run_module("cli.main", run_name="__main__")
                 "-m",
                 "cli.main",
                 "batch",
+                "--parallel",
+                "2",
                 str(tmp_path),
                 "--pattern",
                 "*.py",
@@ -438,6 +482,8 @@ runpy.run_module("cli.main", run_name="__main__")
                 "-m",
                 "cli.main",
                 "batch",
+                "--parallel",
+                "2",
                 str(tmp_path),
                 "--pattern",
                 "*.py",
@@ -478,7 +524,9 @@ class TestOutputFormats:
         assert result2.exit_code == 0
         data = json.loads(result2.stdout)
         assert isinstance(data, list)
-        result3 = runner.invoke(app, ["batch", str(test_file), "--jsonl", "--quiet"])
+        result3 = runner.invoke(
+            app, ["batch", "--parallel", "2", str(test_file), "--jsonl", "--quiet"]
+        )
         assert result3.exit_code == 0
         chunks = parse_jsonl_output(result3.stdout)
         assert len(chunks) >= 2
@@ -527,10 +575,12 @@ class TestOutputFormats:
         runner = CliRunner()
         result_quiet = runner.invoke(
             app,
-            ["batch", str(test_file), "--quiet", "--json"],
+            ["batch", "--parallel", "2", str(test_file), "--quiet", "--json"],
         )
         assert result_quiet.exit_code == 0
-        result_normal = runner.invoke(app, ["batch", str(test_file), "--json"])
+        result_normal = runner.invoke(
+            app, ["batch", "--parallel", "2", str(test_file), "--json"]
+        )
         assert result_normal.exit_code == 0
 
     @staticmethod
@@ -544,6 +594,8 @@ class TestOutputFormats:
                 "-m",
                 "cli.main",
                 "batch",
+                "--parallel",
+                "2",
                 str(tmp_path),
                 "--pattern",
                 "*.py",

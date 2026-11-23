@@ -46,9 +46,10 @@ def test_implicit_cli_baml_requires_supported_companion(
     )
     path = tmp_path / "declarations.baml"
     path.write_bytes(fixture.read_bytes())
-    result = runner.invoke(
-        app, [command, str(path), "--output-format", "json", "--quiet"]
-    )
+    args = [command, str(path), "--output-format", "json", "--quiet"]
+    if command == "batch":
+        args += ["--parallel", "2"]
+    result = runner.invoke(app, args)
     assert result.exit_code == 1, result.output
     assert json.loads(result.stdout) == []
     assert "treesitter-chunker[baml]" in result.stderr
@@ -66,6 +67,9 @@ def test_installed_cli_automatically_selects_baml(tmp_path, command):
     suffix = ".exe" if sys.platform == "win32" else ""
     entrypoint = Path(sysconfig.get_path("scripts")) / f"treesitter-chunker{suffix}"
     args = [command, str(path), "--output-format", "json", "--quiet"]
+
+    if command == "batch":
+        args += ["--parallel", "2"]
 
     def invoke(arguments):
         return subprocess.run(
@@ -103,6 +107,8 @@ def test_failed_extraction_has_status_and_structured_stdout(
     path = tmp_path / "[id]-service.py"
     path.write_text(source, encoding="utf-8")
     args = ["batch" if command == "batch" else "chunk"]
+    if command == "batch":
+        args += ["--parallel", "2"]
     args += ["--stdin"] if command == "stdin" else [str(path)]
     args += ["--lang", language, "--output-format", output_format]
     if quiet:
@@ -244,6 +250,8 @@ def test_config_warning_preserves_real_structured_chunks(
     suffix = ".exe" if sys.platform == "win32" else ""
     entrypoint = Path(sysconfig.get_path("scripts")) / f"treesitter-chunker{suffix}"
     args = ["batch" if command == "batch" else "chunk"]
+    if command == "batch":
+        args += ["--parallel", "2"]
     args += ["--stdin"] if command == "stdin" else [str(path)]
     args += [
         "--lang",
@@ -291,6 +299,8 @@ def test_empty_batch_retains_structured_output(tmp_path, output_format):
         [
             str(entrypoint),
             "batch",
+            "--parallel",
+            "2",
             str(tmp_path),
             "--quiet",
             "--output-format",
@@ -633,7 +643,7 @@ class TestCLICommands:
 """,
             )
 
-            result = runner.invoke(app, ["batch", str(tmppath)])
+            result = runner.invoke(app, ["batch", "--parallel", "2", str(tmppath)])
             assert result.exit_code == 0
             assert "2 total chunks" in result.output
             assert "from 2" in result.output
@@ -667,7 +677,7 @@ function testFunc() {}
             # Use directory with pattern as alternative test
             result = runner.invoke(
                 app,
-                ["batch", str(tmppath), "--include", "*.py"],
+                ["batch", "--parallel", "2", str(tmppath), "--include", "*.py"],
             )
             assert result.exit_code == 0
             assert "2 total chunks" in result.output
@@ -702,7 +712,7 @@ function testFunc() {}
             # Use shell redirection pattern for stdin
             result = runner.invoke(
                 app,
-                ["batch", "--stdin", "--quiet"],
+                ["batch", "--parallel", "2", "--stdin", "--quiet"],
                 input=filelist.read_text(encoding="utf-8"),
                 catch_exceptions=False,
             )
@@ -749,6 +759,8 @@ def test_function():
                     app,
                     [
                         "batch",
+                        "--parallel",
+                        "2",
                         ".",
                         "--include",
                         "*.py",

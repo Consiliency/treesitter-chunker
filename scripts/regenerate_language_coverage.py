@@ -47,6 +47,7 @@ DATA_MARKUP_LANGUAGES = frozenset(
         "html",
         "json",
         "markdown",
+        "rst",
         "latex",
         "yaml",
         "xml",

@@ -29,8 +29,8 @@ remains necessary until a reviewed language-pack migration includes BAML.
 
 - **370 / 371** pack languages **LOAD** (grammar loads + parses a trivial input under the pinned runtime); **1** fail to load.
 - **20 RICH** (>= 2 distinct boundary kinds) + **8 SPARSE** (exactly 1 kind) extraction-verified on a curated valid sample.
-- **15 EMPTY** (parse clean, 0 boundaries) and **4 EXTRACTION-GAP** (chunker advertises the extension but no parser resolves -- a real, fixable bug surfaced here).
-- **327 LOAD-ONLY** -- the long tail with no curated sample, honestly *not* extraction-tested rather than guessed.
+- **17 EMPTY** (parse clean, 0 boundaries) and **1 EXTRACTION-GAP** (chunker advertises the extension but no parser resolves -- a real, fixable bug surfaced here).
+- **325 LOAD-ONLY** -- the long tail with no curated sample, honestly *not* extraction-tested rather than guessed.
 
 ## Honest tiers
 
@@ -40,11 +40,11 @@ remains necessary until a reviewed language-pack migration includes BAML.
 
 ## Named broken / sparse / gap languages (no inflation)
 
-**EXTRACTION-GAP (no safe backing parser):** `assembly`, `cobol`, `raku`, `restructuredtext`. chunker's `EXTENSION_MAP` routes these file types to a language the parser layer cannot safely resolve; the IR records `boundary.parse_error` ("Language 'X' not found") and emits 0 nodes. The JSON `load_error` distinguishes name-mapping gaps from grammars disabled after a bounded malformed-input probe.
+**EXTRACTION-GAP (no safe backing parser):** `cobol`. chunker's `EXTENSION_MAP` routes these file types to a language the parser layer cannot safely resolve; the IR records `boundary.parse_error` ("Language 'X' not found") and emits 0 nodes. The JSON `load_error` distinguishes name-mapping gaps from grammars disabled after a bounded malformed-input probe.
 
-**EMPTY -- genuine extraction gaps (code that parses but yields no boundaries):** `erlang`, `fortran`, `fsharp`, `lua`, `nim`, `pascal`, `perl`, `powershell`, `verilog`, `vhdl`. These are real source languages whose grammar loads and parses cleanly, but chunker emits no boundary nodes for them today.
+**EMPTY -- genuine extraction gaps (code that parses but yields no boundaries):** `asm`, `erlang`, `fortran`, `fsharp`, `lua`, `nim`, `pascal`, `perl`, `powershell`, `verilog`, `vhdl`. These are real source languages whose grammar loads and parses cleanly, but chunker emits no boundary nodes for them today.
 
-**EMPTY -- expected (data/markup, no function/type surface):** `css`, `html`, `json`, `latex`, `markdown`. 0 boundaries is correct for these formats.
+**EMPTY -- expected (data/markup, no function/type surface):** `css`, `html`, `json`, `latex`, `markdown`, `rst`. 0 boundaries is correct for these formats.
 
 **SPARSE (1 kind -- thin surface):** `bash`, `elisp`, `julia`, `matlab`, `r`, `vim`, `xml`, `zig`. Mostly single-construct (function-oriented) languages where 1 kind is the honest ceiling.
 
@@ -64,8 +64,7 @@ remains necessary until a reviewed language-pack migration includes BAML.
 | `applescript` | yes | load_only | - | - |
 | `arduino` | yes | load_only | - | - |
 | `asciidoc` | yes | load_only | - | - |
-| `asm` | yes | load_only | - | - |
-| `assembly` | **NO** | extraction_gap | 0 | - |
+| `asm` | yes | empty | 0 | - |
 | `astro` | yes | load_only | - | - |
 | `avro` | yes | load_only | - | - |
 | `awk` | yes | load_only | - | - |
@@ -307,7 +306,6 @@ remains necessary until a reviewed language-pack migration includes BAML.
 | `query` | yes | load_only | - | - |
 | `r` | yes | sparse | 2 | `function` |
 | `racket` | yes | load_only | - | - |
-| `raku` | **NO** | extraction_gap | 0 | - |
 | `rasi` | yes | load_only | - | - |
 | `razor` | yes | load_only | - | - |
 | `rbs` | yes | load_only | - | - |
@@ -318,12 +316,11 @@ remains necessary until a reviewed language-pack migration includes BAML.
 | `rego` | yes | load_only | - | - |
 | `requirements` | yes | load_only | - | - |
 | `rescript` | yes | load_only | - | - |
-| `restructuredtext` | **NO** | extraction_gap | 0 | - |
 | `robot` | yes | load_only | - | - |
 | `roc` | yes | load_only | - | - |
 | `ron` | yes | load_only | - | - |
 | `rshtml` | yes | load_only | - | - |
-| `rst` | yes | load_only | - | - |
+| `rst` | yes | empty | 0 | - |
 | `rtf` | yes | load_only | - | - |
 | `ruby` | yes | rich | 4 | `class`, `method` |
 | `rust` | yes | rich | 4 | `function`, `impl_item`, `struct` |

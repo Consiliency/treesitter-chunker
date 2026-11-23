@@ -1936,6 +1936,19 @@ PANEL_CASES: dict[str, tuple[dict[str, str], str, str]] = {
         "a.js",
         "d",
     ),
+    # treesitter-chunker#694: a comma writer before ``.call``/``.apply``.
+    "I694-call": (
+        _writer("class K { m() { (0, Object.assign).call(null, this, { d: 1 }); } }\n"),
+        "a.js",
+        "d",
+    ),
+    "I694-apply": (
+        _writer(
+            "class K { m() { (0, Object.assign).apply(null, [this, { d: 1 }]); } }\n"
+        ),
+        "a.js",
+        "d",
+    ),
 }
 
 
@@ -2060,3 +2073,156 @@ def test_writer_through_this_in_a_constructor_still_resolves(tmp_path: Path) -> 
     assert off["resolution"] == "ambiguous"
     assert on["resolution"] == "resolved"
     assert on["provenance"]["call_rules"] == ["t1.lexical"]
+
+
+# ---------------------------------------------------------------------------
+# treesitter-chunker#694: property writers behind commas and invokers
+
+# Each form writes ``d`` on a receiver ``this``; node v24 confirms the write
+# when a strict class method runs with the global object as ``this``
+# (``K.prototype.m.call(globalThis)``), except ``comma-on-invoker``, which
+# throws (a comma drops ``.call``'s receiver) and stays ``*`` as before.
+WRITER_INVOKER_FORMS_694 = {
+    "comma-call": "(0, Object.assign).call(null, this, { d: f });",
+    "comma-apply": "(0, Object.assign).apply(null, [this, { d: f }]);",
+    "comma-bind-preset": "(0, Object.assign).bind(null, this)({ d: f });",
+    "comma-bind-then-call": "(0, Object.assign).bind(null)(this, { d: f });",
+    "bind-then-call": "Object.assign.bind(null)(this, { d: f });",
+    "comma-bound": "(0, Object.assign.bind(null))(this, { d: f });",
+    "bind-bind": "Object.assign.bind(null).bind(null, this)({ d: f });",
+    "nested-comma": "(0, (1, (Object.assign))).call(null, this, { d: f });",
+    "nested-paren": "((0, Object.assign)).apply(null, [this, { d: f }]);",
+    "comma-on-invoker": "(0, Object.assign.call)(null, this, { d: f });",
+    "optional-member-call": "(0, Object.assign)?.call(null, this, { d: f });",
+    "optional-call": "Object.assign.call?.(null, this, { d: f });",
+    "optional-comma-call": "(0, Object.assign)?.(this, { d: f });",
+    "bracket-comma-call": "(0, Object['assign'])['call'](null, this, { d: f });",
+    "comma-namespace": "(0, Object).assign(this, { d: f });",
+    "comma-namespace-call": (
+        "(0, Object).defineProperty.call(null, this, 'd', { value: f });"
+    ),
+    "comma-reflect-set": "(0, Reflect.set).call(null, this, 'd', f);",
+    "call-call": "Object.assign.call.call(Object.assign, null, this, { d: f });",
+    "reflect-apply": "Reflect.apply(Object.assign, null, [this, { d: f }]);",
+    "reflect-apply-comma": "Reflect.apply((0, Object.assign), null, [this, { d: f }]);",
+    "reflect-computed-apply": "Reflect[k](Object.assign, null, [this, { d: f }]);",
+    "comma-target": "Object.assign((0, this), { d: f });",
+    "commented-target": "Object.assign(/* t */ this, { d: f });",
+    "computed-invoker-of-call": "Object.assign.call[k](null, this, { d: f });",
+    "computed-invoker-of-bound": "Object.assign.bind(null)[k](this, { d: f });",
+}
+
+
+@pytest.mark.parametrize("form", sorted(WRITER_INVOKER_FORMS_694))
+def test_694_writer_invokers_fail_closed(form: str) -> None:
+    source = "class K { m(k) { " + WRITER_INVOKER_FORMS_694[form] + " } }"
+    assert js_scope.GLOBAL_WILDCARD in script_globals(source), source
+    script = "function d() {}\nfunction g() { return d(); }\n" + source
+    assert reason(script, "d", language="javascript") == "reassigned", source
+
+
+# The same shapes on a target that is not ``this`` (or a callee that is no
+# writer) write no global.
+WRITER_INVOKER_CONTROLS_694 = (
+    "(0, Object.assign).call(null, {}, { d: f });",
+    "(0, Object.assign).apply(null, [{}, this]);",
+    "(0, Object.assign).bind(null)({}, this);",
+    "Object.assign.bind(null, {})(this);",
+    "Reflect.apply(Math.max, null, [this]);",
+    "Reflect.apply(Object.assign, null, [{}, this]);",
+    "(0, f).call(null, this);",
+    "(0, Object.keys).call(null, this);",
+    "(0, Object).keys(this);",
+)
+
+
+def test_694_writer_invokers_on_other_targets_are_not_wildcards() -> None:
+    for body in WRITER_INVOKER_CONTROLS_694:
+        source = "class K { m() { " + body + " } }"
+        assert js_scope.GLOBAL_WILDCARD not in script_globals(source), source
+
+
+def test_694_writer_invoker_on_a_fresh_object_still_resolves(tmp_path: Path) -> None:
+    """Control: ``(0, Object.assign).call(null, {}, …)`` writes a fresh
+    object, so the script-global ``d`` still resolves; ``name`` mode stays
+    identical to off."""
+    root = _write(
+        tmp_path,
+        _writer("class K { m() { (0, Object.assign).call(null, {}, { d: 1 }); } }\n"),
+    )
+    off, on = _edge(_edges(root), "a.js", "d")
+    assert off["resolution"] == "ambiguous"
+    assert on["resolution"] == "resolved"
+    assert on["provenance"]["call_rules"] == ["t1.lexical"]
+    assert extract_symbol_graph(root, call_resolution="name") == (
+        extract_symbol_graph(root)
+    )
+
+
+@pytest.mark.parametrize("case", ["I694-call", "I694-apply"])
+def test_694_issue_forms_keep_name_mode_identical_to_off(
+    tmp_path: Path, case: str
+) -> None:
+    files, _, _ = PANEL_CASES[case]
+    root = _write(tmp_path, files)
+    assert extract_symbol_graph(root, call_resolution="name") == (
+        extract_symbol_graph(root)
+    )
+
+
+# treesitter-chunker#717 review: forms main (js fact version 20) flagged and
+# the comment-aware detector alone missed. Main's positional reading takes
+# the raw argument list (comments included), so the ``.call``/``.bind``
+# receiver or the ``.apply`` receiver array stands in for the target; node
+# v24 confirms each replaces the script-global ``d`` when the method runs
+# with the global object as ``this``. They stay ``*`` (``none(reassigned)``).
+POSITIONAL_WRITER_FORMS_717 = {
+    "comment-call-nullish": "Object.assign.call(/* c */ this, this ?? {}, { d: f });",
+    "comment-call-valueof": "Object.assign.call(/* c */ this, this.valueOf(), { d: f });",
+    "comment-call-spread": "Object.assign.call(/* c */ this, ...[this], { d: f });",
+    "comment-optional-call": (
+        "(Object.assign)?.['call'](/* c */ this, this ?? {}, { d: f });"
+    ),
+    "comment-bind": "Object.assign.bind(/* c */ this, this ?? {})({ d: f });",
+    "comment-apply": "Object.assign.apply(/* c */ [this], [this ?? {}, { d: f }]);",
+    "comment-apply-arraylike": (
+        "Object.assign.apply(/* c */ [this], {0: this, 1: { d: f }, length: 2});"
+    ),
+    "comment-receiver-namespace": (
+        "this['Object'].assign.call(/* c */ this, this.valueOf(), { d: f });"
+    ),
+    "comment-reflect-set-call": "Reflect.set.call(/* c */ this, {}, 'd', f, this);",
+    "comment-reflect-set-bind": "Reflect.set.bind(/* c */ this, {}, 'd', f, this)();",
+    "comment-reflect-set-apply": (
+        "Reflect.set.apply(/* c */ [this], [{}, 'd', f, this]);"
+    ),
+}
+
+
+@pytest.mark.parametrize("form", sorted(POSITIONAL_WRITER_FORMS_717))
+def test_717_main_writer_wildcards_are_kept(form: str) -> None:
+    source = "class K { m(k) { " + POSITIONAL_WRITER_FORMS_717[form] + " } }"
+    assert js_scope.GLOBAL_WILDCARD in script_globals(source), source
+    script = "function d() {}\nfunction g() { return d(); }\n" + source
+    assert reason(script, "d", language="javascript") == "reassigned", source
+
+
+def test_717_commented_invoker_receiver_keeps_the_edge_unresolved(
+    tmp_path: Path,
+) -> None:
+    """The review's graph reproduction: main left the off-mode edge
+    ambiguous; the comment-aware detector alone promoted it to
+    ``t1.lexical``. ``name`` mode stays identical to off."""
+    root = _write(
+        tmp_path,
+        _writer(
+            "class K { m() { Object.assign.call(/* c */ this, this ?? {},"
+            " { d: 1 }); } }\n"
+        ),
+    )
+    off, on = _edge(_edges(root), "a.js", "d")
+    assert off["resolution"] == "ambiguous"
+    assert on["resolution"] == "ambiguous"
+    assert extract_symbol_graph(root, call_resolution="name") == (
+        extract_symbol_graph(root)
+    )

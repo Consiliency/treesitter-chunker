@@ -127,8 +127,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     rewrite any module's exports object (a code evaluator, a non-literal
     `require` or `import()`, `createRequire`, `mainModule`,
     `getBuiltinModule`, an import of `module`, the `module` object handed on,
-    or an unparsed file whose text spells one): Tier 2 is then off for the
-    run, and the cause is logged. This holds within the run only (plan risk
+    stack introspection through `caller`, `getFunction` or
+    `Error.prepareStackTrace`, a `with` statement (treesitter-chunker#718),
+    or an unparsed JS/TS file): Tier 2 records the cause and disables
+    cross-module resolution for the affected callers. Identifiers spelled
+    `caller` or `getFunction`, cooked string or template tokens equal to
+    either name, and regex patterns containing either name trigger the
+    cause, as do variable and parameter bindings with either name (a
+    function's inferred `.name` and export keys expose them). JSX text
+    containing either name, and JSX attribute strings equal to either
+    name, match after HTML character references decode.
+    Causes confined to test files apply only to test callers (O-2). This
+    holds within the run only (plan risk
     R12, treesitter-chunker#702).
     In Python files `"imports"` also resolves calls bound by an import:
     `from m import t`, relative forms, a function-local import, and member
@@ -175,6 +185,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   IDs (`definition_id`, node IDs, `#N` suffixes and `call_site_id`) are
   identical with the option on and off. The option and its behavior may change
   until treesitter-chunker#682 is complete.
+
+### Fixed
+
+- Symbol graph extraction orders source files by case-sensitive path components
+  on every platform (treesitter-chunker#687).
+- Automatic detection uses the language pack's `rst` and `asm` grammar
+  names for `.rst`, `.asm`, and `.s` files (treesitter-chunker#692). These
+  files now parse with their grammars instead of failing to load, so
+  `auto_chunk_file` no longer takes the line-based fallback for them; like
+  Markdown, they currently produce no chunks. `list_supported_extensions()`
+  reports `rst` and `asm` instead of `restructuredtext` and `assembly`.
+- `.raku` is no longer detected, because the pack has no Raku grammar:
+  `list_supported_extensions()` drops `raku`, symbol graph directory scans
+  skip `.raku` files, and `auto_chunk_file` treats them as unknown and uses
+  the line-based fallback.
 
 ## [7.0.0] - 2026-11-19
 
