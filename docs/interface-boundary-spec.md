@@ -285,8 +285,10 @@ that call, `__annotations__` writes, `runpy` with `init_globals`, a loader's
 `get_code`) or walks the heap (`gc` other than its collector controls and
 counters, `get_referents`, `get_referrers` or `get_objects` anywhere). A
 `.patch` call on any receiver with a target that is not a constant string,
-`.patch` handed on, or `"patch"` naming a member by string makes the file's
-module-scope lookups prove nothing; monkeypatching from other modules is not
+`.patch` handed on, `"patch"` naming a member by string, a name imported as
+`patch` from any module and applied to such a target, or an imported private
+`unittest.mock` patcher (`_patch`, `_patch_multiple`, `_patch_object`,
+`_patch_dict`) makes the file's module-scope lookups prove nothing; monkeypatching from other modules is not
 tracked.
 
 With `"imports"`, everything `"structural"` does applies, and a JavaScript,
@@ -404,9 +406,14 @@ non-literal loader, other `importlib` uses, `runpy`, `sys.modules` other
 than a literal key, `sys.path` changes, `__globals__`, frame globals,
 any frame-locals spelling (`f_locals` reads included, `getargvalues`,
 `getgeneratorlocals`, `getcoroutinelocals`, `getasyncgenlocals`,
-`curframe_locals`), `locals` or `vars` as a value, an imported name or a
-constant string, a closure cell's `cell_contents` other than a read, heap
-walking with `gc`, a `.patch` call with a computed target on any receiver,
+`curframe_locals`, `getclosurevars`), `locals` or `vars` as a value, an
+attribute name, an imported name or a constant string, a closure cell's
+`cell_contents` other than a read, heap walking with `gc`, a `.patch` call
+with a computed target on any receiver, a `"patch"` string as a call
+argument or subscript key, a name imported as `patch` or as a private
+`unittest.mock` patcher from any module (also through a star import or a
+re-export under another name), a class-pattern keyword spelled `patch` or as
+a `MonkeyPatch` method,
 `builtins`, `__main__`) or that tree-sitter and
 CPython may read differently turns Python Tier 2 off, scoped like the
 JavaScript causes (test files: `test_*.py`, `*_test.py`, `conftest.py`, or a

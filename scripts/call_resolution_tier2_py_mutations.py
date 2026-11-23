@@ -66,6 +66,10 @@ TESTS = (
     T1 + "test_gc_traced_routes_fail_closed",
     T1 + "test_patch_on_any_receiver_fails_closed",
     T1 + "test_patch_on_any_receiver_controls_still_resolve",
+    # Ruling R-699-10: imported patchers from any module, in Tier 1.
+    T1 + "test_r10_imported_patchers_fail_closed",
+    T1 + "test_r10_imported_patch_multiple_fails_closed",
+    T1 + "test_r10_imported_patcher_controls_still_resolve",
 )
 
 # (id, file, old text, new text). The old text must occur in the file once.
@@ -1559,6 +1563,83 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         PYM,
         "        return method is not None and not ps._dunder(ps._text(method, analysis.source))",
         "        return True",
+    ),
+    # Ruling R-699-10 (the Fable review of #733).
+    (
+        "r10-getclosurevars-reader",
+        PYM,
+        '        "getclosurevars",\n',
+        "",
+    ),
+    (
+        "r10-imported-patch-any-module",
+        PYS,
+        '                if kind == "import_from_statement":\n'
+        "                    # treesitter-chunker#699 R-699-10 item 2",
+        '                if kind == "import_from_statement" and module_parts in (\n'
+        '                    ["unittest", "mock"],\n'
+        '                    ["mock"],\n'
+        "                ):\n"
+        "                    # treesitter-chunker#699 R-699-10 item 2",
+    ),
+    (
+        "r10-private-patchers-alias",
+        PYS,
+        "                        if last in _PATCHER_IMPORT_NAMES:",
+        '                        if last == "patch":',
+    ),
+    (
+        "r10-private-patchers-dynamic",
+        PYS,
+        "                        if last in _PRIVATE_PATCHERS:\n"
+        "                            self.dynamic = True\n",
+        "",
+    ),
+    (
+        "r10-class-pattern-keyword",
+        PYM,
+        "            if ps._spellings(keyword, source) & _CLASS_PATTERN_PATCHERS:",
+        "            if False:",
+    ),
+    (
+        "r10-class-pattern-patch",
+        PYM,
+        '_CLASS_PATTERN_PATCHERS = _PATCH_METHOD_NAMES | {"patch"}',
+        "_CLASS_PATTERN_PATCHERS = _PATCH_METHOD_NAMES",
+    ),
+    (
+        "r10-class-pattern-methods",
+        PYM,
+        '_CLASS_PATTERN_PATCHERS = _PATCH_METHOD_NAMES | {"patch"}',
+        '_CLASS_PATTERN_PATCHERS = frozenset({"patch"})',
+    ),
+    (
+        "r10-star-patcher",
+        PYM,
+        "                if builder.exposes_patcher(node, None, set()):",
+        "                if False:",
+    ),
+    (
+        "r10-reexport-patcher",
+        PYM,
+        "                ] not in _patcher_import_names() and builder.patcher_binding(",
+        "                ] not in _patcher_import_names() and False and builder.patcher_binding(",
+    ),
+    (
+        "r10-reexport-follows-stars",
+        PYM,
+        "        return any(\n            self.exposes_patcher(start, name, seen)\n"
+        "            for star in file.stars",
+        "        return False and any(\n            self.exposes_patcher(start, name, seen)\n"
+        "            for star in file.stars",
+    ),
+    (
+        "r10-reexport-follows-chains",
+        PYM,
+        "        return any(\n            self.exposes_patcher(start, name, seen)\n"
+        '            for start in self.targets(str(binding.get("module") or ""), importer)',
+        "        return False and any(\n            self.exposes_patcher(start, name, seen)\n"
+        '            for start in self.targets(str(binding.get("module") or ""), importer)',
     ),
 )
 

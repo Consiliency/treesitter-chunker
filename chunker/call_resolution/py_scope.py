@@ -1209,6 +1209,15 @@ _MOCKER_NAMES = frozenset(
     {"mocker", "module_mocker", "class_mocker", "package_mocker", "session_mocker"}
 )
 _PATCH_METHODS = ("object", "dict", "multiple")
+# treesitter-chunker#699 R-699-10 item 2: import names that are patcher
+# tokens in both tiers, from any module and under any alias: ``patch`` and
+# ``unittest.mock``'s private patchers (``_patch`` with ``_get_target``,
+# ``_patch_multiple``, ``_patch_object``, ``_patch_dict``), which apply a
+# patch with no public name spelled.
+_PRIVATE_PATCHERS = frozenset(
+    {"_patch", "_patch_multiple", "_patch_object", "_patch_dict"}
+)
+_PATCHER_IMPORT_NAMES = _PRIVATE_PATCHERS | {"patch"}
 # Builtins that hand over the calling frame's locals as a dict (#707):
 # ``locals()``, and ``vars()`` with no argument. Called in a function, they
 # make every local of that frame reachable by a computed read, the way
@@ -2159,9 +2168,22 @@ class _Analysis:
                 if not dots and module_parts in (["unittest", "mock"], ["mock"]):
                     # ``from unittest.mock import patch as p``.
                     self.mock_imported = True
+                if kind == "import_from_statement":
+                    # treesitter-chunker#699 R-699-10 item 2: an import name
+                    # spelled ``patch`` or as a private mock patcher is a
+                    # patcher token whatever module it comes from and
+                    # whatever alias it takes (``from compat import patch as
+                    # pp``, ``@patch(...)`` from a re-exporting module). Its
+                    # bound name joins the ``patch`` alias set, so W-3 and
+                    # the closed allow-list check every use, in Tier 1 and,
+                    # through :meth:`_sensitive`, in Tier 2. A private
+                    # patcher (``_patch_multiple``) is also dynamic outright:
+                    # its arguments are not ``patch``'s.
                     for last, bound in _from_import_names(node, source):
-                        if last == "patch":
+                        if last in _PATCHER_IMPORT_NAMES:
                             patch_names.update(_spellings(bound, source))
+                        if last in _PRIVATE_PATCHERS:
+                            self.dynamic = True
                 if kind == "import_statement":
                     for child in node.named_children:
                         name_node = (

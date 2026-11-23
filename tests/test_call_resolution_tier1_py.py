@@ -6311,6 +6311,82 @@ def test_patch_on_any_receiver_controls_still_resolve(case: str) -> None:
     assert proof_text(source) == ["def helper():\n    return 1"], case
 
 
+# treesitter-chunker#699 S4, ruling R-699-10 item 2: an import name spelled
+# ``patch`` or as a private mock patcher is a patcher token from any module
+# and under any alias. ``patch`` joins the W-3 alias set (a computed target
+# fails closed, a constant one keeps the own-name rule); a private patcher
+# fails closed outright. Fable's trees ``q_from_compat_*``,
+# ``q_from_mock_get_target`` and ``y_from_mock_patch_multiple_t1`` printed
+# ``runtime: 2`` on CPython 3.14.10 while #733's first head proved
+# ``helper``. Item 3: a class-pattern keyword spelled ``patch`` or as a
+# writer was already dynamic in Tier 1; it is pinned here.
+R10_IMPORTED_PATCHERS = {
+    "compat-patch-as": "from compat import patch as pp\ndef run():\n"
+    "    pp(__name__ + '.helper', len).start()",
+    "compat-bare": "from compat import patch\ndef run():\n"
+    "    patch(__name__ + '.helper', len).start()",
+    "compat-decorator": "from compat import patch\n"
+    "@patch(__name__ + '.helper', len)\ndef run():\n    return 1",
+    "relative-patch-as": "from .compat import patch as pp\ndef run():\n"
+    "    pp(__name__ + '.helper', len).start()",
+    "handed-on": "from compat import patch as pp\ndef run(f):\n    f(pp)",
+    "private-multiple": "from unittest.mock import _patch_multiple\ndef run():\n"
+    "    _patch_multiple(__name__, helper=len).start()",
+    "private-get-target": "from unittest.mock import _get_target, _patch\n"
+    "def run():\n    g, at = _get_target(__name__ + '.helper')\n"
+    "    _patch(g, at, len, None, False, None, None, None, {}).start()",
+    "private-object-alias": "import sys\nfrom unittest.mock import _patch_object as po\n"
+    "def run():\n    po(sys.modules[__name__], 'helper', len, None, False, None,"
+    " None, None, {}).start()",
+    "private-dict-any-module": "from compat import _patch_dict\ndef run(d):\n"
+    "    _patch_dict(d, helper=len).start()",
+    "private-unused": "from unittest.mock import _patch_object",
+    "class-pattern-patch": "def run(mk):\n    match mk:\n"
+    "        case object(patch=p):\n            p(__name__ + '.helper', len).start()",
+    "class-pattern-setattr": "def run(mk, m):\n    match mk:\n"
+    "        case object(setattr=s):\n            s(m, 'helper', len)",
+}
+
+
+@pytest.mark.parametrize("case", sorted(R10_IMPORTED_PATCHERS))
+def test_r10_imported_patchers_fail_closed(case: str) -> None:
+    source = (
+        HELPER + R10_IMPORTED_PATCHERS[case] + "\n\n\ndef use():\n    return helper()\n"
+    )
+    assert reason(source) == "dynamic-scope", case
+
+
+def test_r10_imported_patch_multiple_fails_closed() -> None:
+    """``patch.multiple`` on an imported ``patch`` (``q_from_compat_patch_multiple``)
+    records ``helper`` as an attribute write."""
+    source = (
+        HELPER + "from compat import patch\ndef run():\n"
+        "    patch.multiple(__name__, helper=len).start()\n\n\n"
+        "def use():\n    return helper()\n"
+    )
+    assert outcome(source, "helper")["outcome"] == "none"
+
+
+R10_IMPORTED_PATCHER_CONTROLS = {
+    "constant-target": "from compat import patch as pp\ndef run():\n"
+    "    pp('os.getcwd', len).start()",
+    "local-def-patch": "def patch(url):\n    return url\ndef run(i):\n"
+    "    patch('/items/' + str(i))",
+    "other-name": "from compat import patched\ndef run():\n    patched(__name__ + '.x')",
+    "module-named-patch": "import patch\ndef run():\n    return patch",
+}
+
+
+@pytest.mark.parametrize("case", sorted(R10_IMPORTED_PATCHER_CONTROLS))
+def test_r10_imported_patcher_controls_still_resolve(case: str) -> None:
+    source = (
+        HELPER
+        + R10_IMPORTED_PATCHER_CONTROLS[case]
+        + "\n\n\ndef use():\n    return helper()\n"
+    )
+    assert proof_text(source) == ["def helper():\n    return 1"], case
+
+
 # ---------------------------------------------------------------------------
 # The #695 re-check at 606c689f (O-3): a function rebuilt over existing code
 # without spelling a trigger (O-3a), and builtins injected before a

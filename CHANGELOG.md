@@ -43,16 +43,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `.patch` is a patcher on any receiver: `X.patch(...)` with a target that
     is not a constant string, `X.patch` handed on, and a constant `"patch"`
     naming a member by string (`getattr(X, "patch")`) fail closed, and in
-    `imports` mode are an `unresolvable-writer` cause. An HTTP client's
-    `client.patch(f"/items/{i}")` in a test file now costs that file's test
-    callers their proofs; `@router.patch("/items")` with a constant route is
-    unaffected;
+    `imports` mode are an `unresolvable-writer` cause. So is a name imported
+    as `patch`, or as one of `unittest.mock`'s private patchers (`_patch`,
+    `_patch_multiple`, `_patch_object`, `_patch_dict`), from any module and
+    under any alias, also when it reaches a file through a star import or a
+    re-export under another name, and a match-statement class pattern that
+    reads `patch` or a `MonkeyPatch` method (`case object(patch=p)`).
+    `@router.patch("/items")` with a constant route is unaffected;
+  - **cost in production code:** in a production file, a `"patch"` string
+    in any call argument or subscript key, or a `.patch` call whose first
+    argument is not a constant string, turns Python Tier 2 off for the whole
+    run, not only for that file. Examples are an argparse subcommand
+    `sub.add_parser("patch")`, an HTTP call `requests.patch(f"…/{i}")` or
+    `session.request(method="patch", url=u)`. In a test file the same
+    spelling costs only the proofs of test callers (an HTTP client's
+    `client.patch(f"/items/{i}")`). On the four trees measured for this
+    change the cost is 0 resolved edges;
   - in `imports` mode, any spelling of a frame's `f_locals` (reads
     included) or of the frame-locals proxies `getargvalues`,
     `getgeneratorlocals`, `getcoroutinelocals`, `getasyncgenlocals` and
-    `curframe_locals`, `locals` or `vars` used as a value, an imported
-    name or a constant string, and a closure cell's `cell_contents` other
-    than a plain read are run-wide `module-object` causes, so a file that
+    `curframe_locals`, `inspect.getclosurevars`, `locals` or `vars` used
+    as a value, an attribute name, an imported name or a constant string,
+    and a closure cell's `cell_contents` other than a plain read are
+    run-wide `module-object` causes, so a file that
     reads another file's frame (`gi_frame`, `cr_frame`, `tb_frame`,
     `inspect.trace()`) and applies a patcher found there shuts off Tier 2.
 
