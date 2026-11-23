@@ -780,20 +780,28 @@ def _use_position(analysis: Any, ident: Any) -> tuple[str, list[str]] | None:
     (the last name is the one written), ``("call", chain)`` for a call of a
     member, ``("value", chain)`` for anything else (an escape of whatever the
     chain reads)."""
-    chain, nodes, outer = _walk(ident, analysis.source)
+    found = _classify_use(analysis, ident)
+    return None if found is None else (found[0], found[1])
+
+
+def _classify_use(analysis: Any, node: Any) -> tuple[str, list[str], Any] | None:
+    """:func:`_use_position` of the value at ``node`` (an identifier or any
+    expression), with the outermost node of the chain read off it
+    (parentheses included): ``(position, chain, outer)``."""
+    chain, nodes, outer = _walk(node, analysis.source)
     top = nodes[-1]
     if chain and top.id in analysis.attribute_targets:
-        return "write", chain
+        return "write", chain, outer
     from . import py_scope as ps
 
     if ps._callee_call(top) is not None:
-        return "call", chain
+        return "call", chain, outer
     name = _setattr_write(analysis, outer)
     if name is not None:
-        return "write", [*chain, name]
+        return "write", [*chain, name], outer
     if _inert_context(outer):
         return None
-    return "value", chain
+    return "value", chain, outer
 
 
 def _scan_uses(
@@ -2246,7 +2254,21 @@ class _Builder:
         whole: set[str],
     ) -> None:
         """Taint what one module-object use may write or escape."""
-        current = self.module_values(base_ref, writer)
+        self.walk_from(
+            self.module_values(base_ref, writer), position, chain, names, whole
+        )
+
+    def walk_from(
+        self,
+        current: set[str],
+        position: str,
+        chain: Sequence[str],
+        names: dict[str, set[str]],
+        whole: set[str],
+    ) -> None:
+        """The steps of :meth:`walk_use` from a set of modules: what a use
+        with this position and chain may write or escape."""
+        current = set(current)
         if position == "write" and len(chain) > 1:
             # E6-6: a write through an attribute chain rooted at the module
             # (``svc.t.__code__ = ...``) changes what ``svc.t`` holds or runs.
