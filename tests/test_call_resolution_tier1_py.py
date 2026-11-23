@@ -4397,6 +4397,104 @@ def test_main_needs_a_whole_component(form: str) -> None:
 @pytest.mark.parametrize(
     "form",
     [
+        # R-698-2 NIT: a join across a replacement field is computed (plan
+        # §15 R12): each literal run is checked on its own.
+        "f'{obj:__ma{\"\"}in__}'",
+        "'{0:__ma{1}in__}'.format(obj, '')",
+    ],
+)
+def test_main_joined_across_a_replacement_field_is_r12(form: str) -> None:
+    assert proof_text(HELPER + form + "\nhelper()\n") == PROOF
+
+
+# R-698-2 S-1: a string with an invalid escape, plain and in an f-string, a
+# ``\N`` name and a line continuation, and the K-3 rule still applying.
+WARNING_SOURCE = (
+    "import re\n"
+    + HELPER
+    + "x = 'z'\n"
+    + "PAT = re.compile(f'\\d+{x}')\n"
+    + "PLAIN = re.compile('\\d+\\N{LOW LINE}\\\n')\n"
+    + "def use():\n    return helper()\n"
+)
+
+
+@pytest.mark.parametrize("main_form", ["", "f'\\d{obj:__main__}'\n"])
+def test_scope_facts_ignore_the_warnings_filters(main_form: str) -> None:
+    """Fact extraction does not depend on the process warning filters
+    (R-698-2 S-1): under ``-W error::SyntaxWarning`` an invalid escape such
+    as ``\\d`` decodes as it does by default, and no warning is issued."""
+    import warnings
+
+    from chunker.call_resolution import facts
+
+    source = (WARNING_SOURCE + main_form).encode()
+    start = source.rindex(b"helper()")
+    call = {"callee_byte_start": start, "callee_byte_end": start + 6}
+
+    def compute() -> dict[str, Any]:
+        return facts.compute_scope_facts(
+            language="python",
+            source=source,
+            call_facts=[call],
+            symbols=[],
+            path="a.py",
+            mode="imports",
+        )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        default = compute()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", SyntaxWarning)
+        strict = compute()
+    assert strict == default
+    expected = "none" if main_form else "local"
+    assert default["bindings"][f"{start}:{start + 6}"]["outcome"] == expected
+
+
+def test_decode_literal_matches_cpython() -> None:
+    """``_decode_literal`` reads what ``ast.literal_eval`` reads, for every
+    one-token literal of a seeded sample (R-698-2 S-1)."""
+    import ast
+    import io
+    import random
+    import tokenize
+    import warnings
+
+    alphabet = [*"ab_{}#\\\\\\'\"\n\r xuUN0178", "{LOW LINE}", "{NOPE}", "{}"]
+    alphabet += ["00110000", "d800", "\x00", "é", "{BYTE ORDER MARK}"]
+    # A named sequence: ``unicodedata.lookup`` accepts it, ``\N`` does not.
+    alphabet.append("{LATIN CAPITAL LETTER A WITH MACRON AND GRAVE}")
+    rng = random.Random(698)
+    for _ in range(20000):
+        prefix = rng.choice(["", "", "r", "u", "t", "b", "ur"])
+        quote = rng.choice(["'", '"', "'''", '"""'])
+        content = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 6)))
+        text = prefix + quote + content + quote
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                value = ast.literal_eval(text)
+            except (SyntaxError, ValueError):
+                value = None
+        want = value if isinstance(value, str) else None
+        got = py_scope._decode_literal(prefix, quote, content)
+        if got != want:
+            # Only text that is not one string token may differ (``'a' 'b'``,
+            # ``'a'#'``): the tree never hands such text over as one string.
+            assert got is None, text
+            try:
+                tokens = list(tokenize.generate_tokens(io.StringIO(text).readline))
+            except (tokenize.TokenError, SyntaxError):
+                continue
+            kinds = [t.type for t in tokens if t.type == tokenize.STRING]
+            assert kinds != [tokenize.STRING] or tokens[0].end[1] != len(text), text
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
         "if __name__ == '__main__':\n    pass",
         "if '__main__' == __name__:\n    pass",
         "if __name__ != ('__main__'):\n    pass",

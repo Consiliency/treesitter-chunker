@@ -34,6 +34,8 @@ TESTS = (
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
     "tests/test_call_resolution_tier1_py.py::test_main_format_strings_fail_closed",
     "tests/test_call_resolution_tier1_py.py::test_main_string_components_fail_closed",
+    "tests/test_call_resolution_tier1_py.py::test_scope_facts_ignore_the_warnings_filters",
+    "tests/test_call_resolution_tier1_py.py::test_decode_literal_matches_cpython",
 )
 
 # (id, file, old text, new text). The old text must occur in the file once.
@@ -655,10 +657,11 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "            if False:",
     ),
     (
+        # The guard exemption now lives in the shared K-3 verdict (R-698-2).
         "b-main-guard",
-        PYM,
-        "and not analysis._main_guard(node):",
-        "and False:",
+        PYS,
+        "if main_kind == _MAIN_INTERPOLATED or not self._main_guard(node):",
+        "if main_kind == _MAIN_INTERPOLATED:",
     ),
     # K-3 main-string classifier (treesitter-chunker#698, R-698-1).
     (
@@ -682,8 +685,48 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "main-fstring-tstring-parts",
         PYS,
-        "                if _interpolated_names_main(node, source):",
-        "                if False:",
+        "    if _interpolated_names_main(node, source):\n        return _MAIN_INTERPOLATED",
+        "    if False:\n        return _MAIN_INTERPOLATED",
+    ),
+    # One K-3 classifier for both tiers (treesitter-chunker#698, R-698-2 B-1).
+    (
+        "imports-main-string-shared",
+        PYM,
+        "    if analysis.main_string:",
+        "    if False:",
+    ),
+    (
+        "main-string-scan",
+        PYS,
+        "                main_kind = _main_string(node, source, value)",
+        "                main_kind = None",
+    ),
+    (
+        "main-string-constant",
+        PYS,
+        "    if value is not None and _names_main(value):\n        return _MAIN_CONSTANT",
+        "    if False:\n        return _MAIN_CONSTANT",
+    ),
+    (
+        "main-string-tier1-dynamic",
+        PYS,
+        "        if self.main_string:\n            self.dynamic = True",
+        "        if False:\n            self.dynamic = True",
+    ),
+    # S-1 decoder (R-698-2): no ``ast`` and no warnings state.
+    (
+        "s1-invalid-escape-keeps-backslash",
+        PYS,
+        "            # An invalid escape keeps its backslash (a ``SyntaxWarning``).\n"
+        "            out.append(char)",
+        "            # An invalid escape keeps its backslash (a ``SyntaxWarning``).\n"
+        "            pass",
+    ),
+    (
+        "s1-named-sequence",
+        PYS,
+        "            if len(named) != 1:\n                # A named sequence",
+        "            if False:\n                # A named sequence",
     ),
     (
         "main-undecodable-fails-closed",

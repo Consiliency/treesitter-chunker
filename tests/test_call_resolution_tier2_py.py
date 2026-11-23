@@ -1735,6 +1735,77 @@ def test_fold2_rules_each_have_a_failing_case(tmp_path: Path, case: str) -> None
     assert label == f"none({label_reason})", case
 
 
+# R-698-2 B-1 (treesitter-chunker#698): the run-wide ``__main__`` writer
+# check uses the K-3 classifier Tier 1 uses. ``use.py`` runs as the script;
+# ``w.py`` hands ``"__main__"`` to a callback that rebinds ``t`` there.
+MAIN_WRITER_USE = (
+    "from svc import t\nimport w\n\n\ndef u():\n    return t()\n\n\n"
+    "if __name__ == '__main__':\n    w.go()\n    print('RESULT', u())\n"
+)
+MAIN_WRITER_P = (
+    "import doctest\n\n\nclass P:\n"
+    "    def __getitem__(self, key):\n"
+    "        m = doctest._normalize_module(key)\n"
+    "        m.t = lambda: 'patched'\n        return ''\n\n"
+    "    def __format__(self, spec):\n"
+    "        m = doctest._normalize_module(spec)\n"
+    "        m.t = lambda: 'patched'\n        return ''\n\n\n"
+)
+MAIN_WRITERS = {
+    # The re-check's repros (714-opus-5-5-recheck.md §4): CPython 3.14 prints
+    # ``RESULT patched`` for each.
+    "stored-percent-template": "T = '%(__main__)s'\n\n\ndef go():\n    T % P()\n",
+    "fstring-spec": "def go():\n    return f'{P():__main__}'\n",
+    "stored-format-index": "T = '{0[__main__]}'\n\n\ndef go():\n    T.format(P())\n",
+    "stored-template": (
+        "import string\n\nT = '$__main__'\n\n\n"
+        "def go():\n    string.Template(T).substitute(P())\n"
+    ),
+    "tstring-spec": (
+        "def go():\n"
+        "    for i in t'{P():__main__}'.interpolations:\n"
+        "        format(i.value, i.format_spec)\n"
+    ),
+    "concatenated-percent": "T = '%(' '__main__)s'\n\n\ndef go():\n    T % P()\n",
+    # Control: the plain string the run-wide rule always caught.
+    "plain": "T = '__main__'\n\n\ndef go():\n    P()[T]\n",
+}
+
+
+@pytest.mark.parametrize("writer", sorted(MAIN_WRITERS))
+def test_main_writer_strings_shut_off_imports(tmp_path: Path, writer: str) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": MAIN_WRITER_USE,
+            "w.py": MAIN_WRITER_P + MAIN_WRITERS[writer],
+            **OTHER,
+        },
+    )
+    off, structural, on, label = _run(root, "use.py", "t")
+    assert on == off == structural
+    assert label == "none(run-tainted:module-object)"
+
+
+def test_main_writer_control_resolves(tmp_path: Path) -> None:
+    """Without a main component the same run resolves, and the script guard
+    in ``use.py`` stays exempt."""
+    writer = "T = '%(other)s'\n\n\ndef go():\n    T % P()\n"
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": MAIN_WRITER_USE,
+            "w.py": MAIN_WRITER_P + writer,
+            **OTHER,
+        },
+    )
+    off, _structural, on, label = _run(root, "use.py", "t")
+    assert label == "import"
+    assert _target(on, root) == "svc.py"
+
+
 def test_fold2_python2_exec_statement_is_an_evaluator(tmp_path: Path) -> None:
     """The Python 2 ``exec`` statement the grammar accepts is an evaluator,
     or the file does not parse; either way Tier 2 is off."""

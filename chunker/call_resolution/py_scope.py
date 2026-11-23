@@ -153,7 +153,9 @@ constant string also splits on format and attribute punctuation (``{ } [ ]
 counts wherever it is later formatted; the decoded literal parts and format
 specs of f-strings and t-strings count the same way, and a string tree-sitter
 accepts but this rule cannot decode fails closed (treesitter-chunker#698,
-R-698-1);
+R-698-1). Tier 2 reads the same verdict as its run-wide ``__main__`` cause,
+and escapes are decoded without ``ast``, so no warning filter changes the
+facts (R-698-2);
 ``X.modules[__name__]`` or
 ``X.modules.get(__name__)`` (also ``__getitem__``, ``setdefault``, ``pop``)
 through any receiver ``X``; an import of the file's own module (``import a``
@@ -284,8 +286,8 @@ the chunker emits as symbols, never the enclosing ``decorated_definition``.
 
 from __future__ import annotations
 
-import ast
 import re
+import unicodedata
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from string import Template
@@ -883,6 +885,11 @@ class _Analysis:
         self.events: list[tuple[_Scope, str, _Binding]] = []
         self.dynamic = False
         self.frame_locals = False
+        # K-3 (#698, R-698-2): a string in the file names the main module and
+        # is not the script guard's comparand. Tier 1 makes the file dynamic;
+        # Tier 2 reads the same verdict as a run-wide ``module-object`` cause,
+        # so both tiers use one classifier (:func:`_main_string`).
+        self.main_string = False
         self.star = False
         # Names written as an attribute or constant key of any receiver.
         self.attribute_writes: set[str] = set()
@@ -1474,7 +1481,7 @@ class _Analysis:
         source = self.source
         sys_names = {_SYS}
         main_names = set(_MAIN_NAMES)
-        main_strings: list[Any] = []
+        main_strings: list[tuple[Any, str]] = []
         identifiers: list[Any] = []
         # Fold 18: calls, attributes, ``|=`` statements and namespace aliases,
         # classified once every alias is known.
@@ -1548,23 +1555,20 @@ class _Analysis:
                 value = _constant_string(node, source)
                 if value is not None:
                     self._literal_use(value)
-                    if _names_main(value):
-                        # ``"__main__"`` names this module by string when the
-                        # file runs as a script (``mock.patch("__main__.f")``,
-                        # ``pydoc.locate("__main__")``,
-                        # ``pkgutil.resolve_name("__main__:__dict__")``; #695
-                        # K-3). Decided after the scan, once every attribute
-                        # write is known (see :meth:`_main_guard`).
-                        main_strings.append(node)
                     if self._names_own_module(value):
                         # Any constant string naming this module, alone or as
                         # a component of a dotted path (``getattr(pkg, "a")``,
                         # ``pkg.__dict__["a"]``, ``NAME = "a"``; N-3).
                         self.dynamic = True
-                if _interpolated_names_main(node, source):
-                    # Literal parts and format specs of f-strings and
-                    # t-strings, decoded from the tree (R-698-1).
-                    self.dynamic = True
+                main_kind = _main_string(node, source, value)
+                if main_kind is not None:
+                    # ``"__main__"`` names this module by string when the
+                    # file runs as a script (``mock.patch("__main__.f")``,
+                    # ``pydoc.locate("__main__")``,
+                    # ``pkgutil.resolve_name("__main__:__dict__")``; #695
+                    # K-3). Decided after the scan, once every attribute
+                    # write is known (see :meth:`_main_guard`).
+                    main_strings.append((node, main_kind))
             elif kind in ("subscript", "call"):
                 if kind == "subscript":
                     subscripts.append(node)
@@ -1657,9 +1661,11 @@ class _Analysis:
                     for bound in _from_import_bound_names(node):
                         main_names.update(_spellings(bound, source))
             stack.extend(node.named_children)
-        for node in main_strings:
-            if not self._main_guard(node):
-                self.dynamic = True
+        for node, main_kind in main_strings:
+            if main_kind == _MAIN_INTERPOLATED or not self._main_guard(node):
+                self.main_string = True
+        if self.main_string:
+            self.dynamic = True
         self.mock_import_names = mock_names
         self.patch_import_names = patch_names
         self.identifier_nodes = identifiers
@@ -3326,11 +3332,39 @@ def _constant_string(node: Any, source: bytes) -> str | None:
     prefix = text[:quote].lower()
     if "b" in prefix:
         return None
-    try:
-        value = ast.literal_eval(prefix.replace("f", "") + text[quote:])
-    except (SyntaxError, ValueError):
+    body = text[quote:]
+    delimiter = body[:3] if body[:3] in ("'''", '"""') else body[:1]
+    if len(body) < 2 * len(delimiter) or not body.endswith(delimiter):
         return None
-    return value if isinstance(value, str) else None
+    return _decode_literal(
+        prefix.replace("f", ""), delimiter, body[len(delimiter) : -len(delimiter)]
+    )
+
+
+_MAIN_CONSTANT = "constant"
+_MAIN_INTERPOLATED = "interpolated"
+
+
+def _main_string(node: Any, source: bytes, value: str | None) -> str | None:
+    """The K-3 ``__main__`` string classifier, shared by both tiers (#698,
+    R-698-1, R-698-2).
+
+    ``node`` is a string expression (a string, adjacent strings or ``+``) and
+    ``value`` its :func:`_constant_string`. Returns :data:`_MAIN_INTERPOLATED`
+    when a decoded literal part or format spec of an f-string or t-string
+    names the main module, or a piece cannot be decoded; it always counts.
+    Returns :data:`_MAIN_CONSTANT` when the constant value names it
+    (:func:`_names_main`); only the script guard's comparand is exempt
+    (:meth:`_Analysis._main_guard`). Otherwise ``None``. The scan in
+    :meth:`_Analysis._scan_dynamic` applies it to every string node and
+    records the verdict as ``main_string``, which Tier 1 reads as
+    ``dynamic`` and Tier 2 as a run-wide ``module-object`` cause.
+    """
+    if _interpolated_names_main(node, source):
+        return _MAIN_INTERPOLATED
+    if value is not None and _names_main(value):
+        return _MAIN_CONSTANT
+    return None
 
 
 def _names_main(value: str) -> bool:
@@ -3357,13 +3391,109 @@ def _decode_piece(prefix: str, quote: str, raw: str) -> str:
     # A plain literal with the piece's raw/non-raw prefix decodes its escapes.
     # The trailing sentinel keeps a quote at the end of a triple-quoted piece
     # (``f'''it''{x}'''``) from closing the literal early.
-    try:
-        value = ast.literal_eval(f"{prefix}{quote}{raw}#{quote}")
-    except (SyntaxError, ValueError) as exc:
-        raise _UndecodableError from exc
-    if not isinstance(value, str) or not value.endswith("#"):
+    value = _decode_literal(prefix, quote, raw + "#")
+    if value is None or not value.endswith("#"):
         raise _UndecodableError
     return value[:-1]
+
+
+_SIMPLE_ESCAPES = {
+    "\n": "",
+    "\\": "\\",
+    "'": "'",
+    '"': '"',
+    "a": "\a",
+    "b": "\b",
+    "f": "\f",
+    "n": "\n",
+    "r": "\r",
+    "t": "\t",
+    "v": "\v",
+}
+_HEX_ESCAPE_WIDTHS = {"x": 2, "u": 4, "U": 8}
+_OCTAL_DIGITS = frozenset("01234567")
+_HEX_DIGITS = frozenset("0123456789abcdefABCDEF")
+_SURROGATES = re.compile("[\ud800-\udfff]")
+
+
+def _decode_literal(prefix: str, quote: str, content: str) -> str | None:
+    """The ``str`` CPython reads from the literal ``prefix + quote + content
+    + quote``, or ``None`` where CPython rejects it or reads another type.
+
+    ``prefix`` is lower case with any ``f`` already removed; ``quote`` is
+    the opening delimiter. This decodes escapes as the compiler does instead
+    of calling ``ast.literal_eval`` (#698, R-698-2 S-1): an invalid escape
+    (``"\\d"``) is only a ``SyntaxWarning``, which a process warnings filter
+    (``-W error::SyntaxWarning``) turns into a ``SyntaxError``, so the facts
+    would depend on the filters; a ``catch_warnings`` block would change
+    process-global state other threads share. ``\\N{...}`` names come from
+    the host ``unicodedata``, as the compiler's do. Newlines are translated
+    as the tokenizer does. The text is one literal token from the tree, so a
+    delimiter inside ``content`` ends it early and gives ``None``.
+    """
+    if prefix not in ("", "r", "u") or quote not in ("'", '"', "'''", '"""'):
+        return None
+    if "\0" in content or _SURROGATES.search(content):
+        return None
+    text = content.replace("\r\n", "\n").replace("\r", "\n") + quote
+    end = len(text) - len(quote)
+    raw = prefix == "r"
+    single = len(quote) == 1
+    out: list[str] = []
+    index = 0
+    while index < len(text):
+        if text.startswith(quote, index):
+            return "".join(out) if index == end else None
+        char = text[index]
+        if char == "\n" and single:
+            return None
+        if char != "\\":
+            out.append(char)
+            index += 1
+            continue
+        # ``text`` ends with the delimiter, so a backslash has a successor.
+        escaped = text[index + 1]
+        if raw:
+            out.append(char + escaped)
+            index += 2
+        elif escaped in _SIMPLE_ESCAPES:
+            out.append(_SIMPLE_ESCAPES[escaped])
+            index += 2
+        elif escaped in _OCTAL_DIGITS:
+            stop = index + 2
+            while stop < index + 4 and text[stop] in _OCTAL_DIGITS:
+                stop += 1
+            out.append(chr(int(text[index + 1 : stop], 8)))
+            index = stop
+        elif escaped in _HEX_ESCAPE_WIDTHS:
+            digits = text[index + 2 : index + 2 + _HEX_ESCAPE_WIDTHS[escaped]]
+            if len(digits) != _HEX_ESCAPE_WIDTHS[escaped] or not set(digits) <= (
+                _HEX_DIGITS
+            ):
+                return None
+            point = int(digits, 16)
+            if point > 0x10FFFF:
+                return None
+            out.append(chr(point))
+            index += 2 + len(digits)
+        elif escaped == "N":
+            close = text.find("}", index + 3, end)
+            if text[index + 2 : index + 3] != "{" or close <= index + 3:
+                return None
+            try:
+                named = unicodedata.lookup(text[index + 3 : close])
+            except KeyError:
+                return None
+            if len(named) != 1:
+                # A named sequence: ``\\N{...}`` accepts single characters.
+                return None
+            out.append(named)
+            index = close + 1
+        else:
+            # An invalid escape keeps its backslash (a ``SyntaxWarning``).
+            out.append(char)
+            index += 1
+    return None
 
 
 def _string_runs(node: Any, source: bytes, runs: list[str], specs: list[str]) -> None:
@@ -3562,11 +3692,8 @@ def _constant_fstring(node: Any, source: bytes) -> str | None:
             pieces.append(value)
             continue
         raw = _text(child, source).replace("{{", "{").replace("}}", "}")
-        try:
-            value = ast.literal_eval(plain + quote + raw + quote)
-        except (SyntaxError, ValueError):
-            return None
-        if not isinstance(value, str):
+        value = _decode_literal(plain, quote, raw)
+        if value is None:
             return None
         pieces.append(value)
     return "".join(pieces)

@@ -16,7 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `str.format`, `format_map`, `%`, `string.Template` or logging fail closed.
   The literal parts and format specs of f-strings and t-strings count too;
   they are read from the syntax tree, and a part that cannot be decoded
-  fails closed (treesitter-chunker#698).
+  fails closed (treesitter-chunker#698). `imports` mode uses the same rule
+  for its run-wide `__main__` cause, so such a string in any run file shuts
+  off Tier 2 as a plain `'__main__'` does. Escapes in string literals are
+  decoded without `ast.literal_eval`, so call resolution facts no longer
+  depend on the process warning filters (for example
+  `-W error::SyntaxWarning`).
 
 ### Added
 

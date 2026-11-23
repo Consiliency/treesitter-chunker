@@ -74,7 +74,8 @@ builtin by lookup), ``dynamic-loader`` (a non-literal ``import_module`` or
 ``sys`` module handed on, ``__path__``, ``site.addsitedir``),
 ``module-object`` (another module's namespace: ``__globals__``,
 ``f_globals``, ``f_builtins``, a frame's ``f_locals`` other than a read,
-``getmodule``, ``pythonapi``, the ``builtins`` module, ``__main__``),
+``getmodule``, ``pythonapi``, the ``builtins`` module, ``__main__``; a
+``__main__`` string is classified by the one rule Tier 1 uses, #698),
 ``unparsed-file`` and ``unresolvable-writer``. As for TS/JS (PR 5), a cause
 shuts off Tier 2 for the callers it applies to; Tier 1 proofs keep their
 ``structural`` result except where a taint names their module global.
@@ -1043,6 +1044,14 @@ def _scan_causes(
     from . import py_scope as ps
 
     source = analysis.source
+    if analysis.main_string:
+        # K-3 (#698, R-698-2): a string naming the main module, by the one
+        # classifier Tier 1 uses (``py_scope._main_string``): a component
+        # after the format and attribute punctuation split, a default
+        # ``string.Template`` identifier, or a decoded f-string or t-string
+        # literal part or format spec (``T = "%(__main__)s"``,
+        # ``f"{P():__main__}"``). Only the script guard's comparand is exempt.
+        facts.shutoff.add(CAUSE_MODULE_OBJECT)
     stack = [analysis.root]
     while stack:
         node = stack.pop()
@@ -1062,8 +1071,6 @@ def _scan_causes(
                 continue
             parts = set(ps._NAME_SEPARATORS.split(value))
             if parts & (_MODULE_OBJECT_NAMES - {"__main__", "__mp_main__"}):
-                facts.shutoff.add(CAUSE_MODULE_OBJECT)
-            if parts & {"__main__", "__mp_main__"} and not analysis._main_guard(node):
                 facts.shutoff.add(CAUSE_MODULE_OBJECT)
             if _FRAME_LOCALS in parts:
                 facts.shutoff.add(CAUSE_MODULE_OBJECT)
