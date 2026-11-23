@@ -36,7 +36,13 @@ TESTS = (
     "tests/test_call_resolution_tier1_py.py::test_main_string_components_fail_closed",
     "tests/test_call_resolution_tier1_py.py::test_scope_facts_ignore_the_warnings_filters",
     "tests/test_call_resolution_tier1_py.py::test_decode_literal_matches_cpython",
-    "tests/test_call_resolution_tier1_py.py::test_string_runs_match_cpython_through_the_tree",
+    "tests/test_call_resolution_tier1_py.py::test_constant_fstrings_match_cpython_through_the_tree",
+    "tests/test_call_resolution_tier1_py.py::test_main_substring_rule_is_sound_against_cpython",
+    "tests/test_call_resolution_tier1_py.py::test_main_anywhere_in_an_fstring_fails_closed",
+    "tests/test_call_resolution_tier1_py.py::test_fstring_without_main_resolves",
+    "tests/test_call_resolution_tier1_py.py::test_unreadable_fstring_bytes_fail_closed",
+    "tests/test_call_resolution_tier1_py.py::test_main_needs_a_whole_component",
+    "tests/test_call_resolution_tier1_py.py::test_main_guard_resolves_the_call_in_its_body",
 )
 
 # (id, file, old text, new text). The old text must occur in the file once.
@@ -718,24 +724,58 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "s1-invalid-escape-keeps-backslash",
         PYS,
-        "            # An invalid escape keeps its backslash (a ``SyntaxWarning``).\n"
-        "            out.append(char)",
-        "            # An invalid escape keeps its backslash (a ``SyntaxWarning``).\n"
-        "            pass",
+        "    # An invalid escape keeps its backslash (a ``SyntaxWarning``).\n"
+        "    return char, index + 1",
+        "    # An invalid escape keeps its backslash (a ``SyntaxWarning``).\n"
+        '    return "", index + 1',
     ),
     (
         "s1-named-sequence",
         PYS,
-        "            if len(named) != 1:\n                # A named sequence",
-        "            if False:\n                # A named sequence",
+        "        if len(named) != 1:\n            # A named sequence",
+        "        if False:\n            # A named sequence",
+    ),
+    # R-698-3: the f-string and t-string substring rule (it replaces the
+    # piece reader, and with it the re-check 2 spec-gap mutation).
+    (
+        "r698-3-brace-view",
+        PYS,
+        '            views += (view, view.replace("{", "").replace("}", ""))',
+        "            views += (view,)",
     ),
     (
-        # Re-check 2 B-2: a spec's last gap runs to the closing brace, so a
-        # trailing backslash-newline stays a line continuation.
-        "b2-spec-gap-to-closing-brace",
+        "r698-3-decode-view",
         PYS,
-        "            end = close.start_byte if close is not None else child.end_byte",
-        "            end = child.end_byte",
+        "        for view in (base, _decode_escapes(base)):",
+        "        for view in (base,):",
+    ),
+    (
+        "r698-3-mp-main",
+        PYS,
+        "    return any(name in view for view in views for name in _MAIN_NAMES)",
+        "    return any(_MAIN in view for view in views)",
+    ),
+    (
+        "r698-3-adjacent-join",
+        PYS,
+        "                _string_sources(child, source, parts)\n        return",
+        "                _string_sources(child, source, parts)\n"
+        '                parts.append("\\0")\n        return',
+    ),
+    (
+        "r698-3-plus-join",
+        PYS,
+        "            _string_sources(left, source, parts)\n"
+        "            _string_sources(right, source, parts)",
+        "            _string_sources(left, source, parts)\n"
+        '            parts.append("\\0")\n'
+        "            _string_sources(right, source, parts)",
+    ),
+    (
+        "r698-3-plain-strings-keep-classifier",
+        PYS,
+        "    if not _has_interpolated(node, source):\n        return False\n    parts",
+        "    if False:\n        return False\n    parts",
     ),
     (
         # A raw string's final ``\"`` folded into the end token is content
@@ -750,8 +790,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "main-undecodable-fails-closed",
         PYS,
-        "    except (_UndecodableError, UnicodeDecodeError):\n        return True",
-        "    except (_UndecodableError, UnicodeDecodeError):\n        return False",
+        "    except _UndecodableError:\n        return True",
+        "    except _UndecodableError:\n        return False",
     ),
     (
         "b-sys-dunder",

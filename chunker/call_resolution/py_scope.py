@@ -3347,12 +3347,13 @@ _MAIN_INTERPOLATED = "interpolated"
 
 def _main_string(node: Any, source: bytes, value: str | None) -> str | None:
     """The K-3 ``__main__`` string classifier, shared by both tiers (#698,
-    R-698-1, R-698-2).
+    R-698-1, R-698-2, R-698-3).
 
     ``node`` is a string expression (a string, adjacent strings or ``+``) and
     ``value`` its :func:`_constant_string`. Returns :data:`_MAIN_INTERPOLATED`
-    when a decoded literal part or format spec of an f-string or t-string
-    names the main module, or a piece cannot be decoded; it always counts.
+    when the expression has an f-string or t-string and a main name occurs
+    anywhere in its source text, decoded (:func:`_interpolated_names_main`,
+    R-698-3), or a piece cannot be read; it always counts.
     Returns :data:`_MAIN_CONSTANT` when the constant value names it
     (:func:`_names_main`); only the script guard's comparand is exempt
     (:meth:`_Analysis._main_guard`). Otherwise ``None``. The scan in
@@ -3385,16 +3386,6 @@ def _names_main(value: str) -> bool:
 
 class _UndecodableError(Exception):
     """A string piece tree-sitter accepted that the K-3 decoder cannot read."""
-
-
-def _decode_piece(prefix: str, quote: str, raw: str) -> str:
-    # A plain literal with the piece's raw/non-raw prefix decodes its escapes.
-    # The trailing sentinel keeps a quote at the end of a triple-quoted piece
-    # (``f'''it''{x}'''``) from closing the literal early.
-    value = _decode_literal(prefix, quote, raw + "#")
-    if value is None or not value.endswith("#"):
-        raise _UndecodableError
-    return value[:-1]
 
 
 _SIMPLE_ESCAPES = {
@@ -3454,68 +3445,106 @@ def _decode_literal(prefix: str, quote: str, content: str) -> str | None:
             index += 1
             continue
         # ``text`` ends with the delimiter, so a backslash has a successor.
-        escaped = text[index + 1]
         if raw:
-            out.append(char + escaped)
+            out.append(char + text[index + 1])
             index += 2
-        elif escaped in _SIMPLE_ESCAPES:
-            out.append(_SIMPLE_ESCAPES[escaped])
-            index += 2
-        elif escaped in _OCTAL_DIGITS:
-            stop = index + 2
-            while stop < index + 4 and text[stop] in _OCTAL_DIGITS:
-                stop += 1
-            out.append(chr(int(text[index + 1 : stop], 8)))
-            index = stop
-        elif escaped in _HEX_ESCAPE_WIDTHS:
-            digits = text[index + 2 : index + 2 + _HEX_ESCAPE_WIDTHS[escaped]]
-            if len(digits) != _HEX_ESCAPE_WIDTHS[escaped] or not set(digits) <= (
-                _HEX_DIGITS
-            ):
-                return None
-            point = int(digits, 16)
-            if point > 0x10FFFF:
-                return None
-            out.append(chr(point))
-            index += 2 + len(digits)
-        elif escaped == "N":
-            close = text.find("}", index + 3, end)
-            if text[index + 2 : index + 3] != "{" or close <= index + 3:
-                return None
-            try:
-                named = unicodedata.lookup(text[index + 3 : close])
-            except KeyError:
-                return None
-            if len(named) != 1:
-                # A named sequence: ``\\N{...}`` accepts single characters.
-                return None
-            out.append(named)
-            index = close + 1
-        else:
-            # An invalid escape keeps its backslash (a ``SyntaxWarning``).
-            out.append(char)
-            index += 1
+            continue
+        decoded = _escape(text, index, end)
+        if decoded is None:
+            return None
+        out.append(decoded[0])
+        index = decoded[1]
     return None
 
 
-def _string_runs(node: Any, source: bytes, runs: list[str], specs: list[str]) -> None:
-    """Append the literal runs of a string expression to ``runs``.
+def _escape(text: str, index: int, end: int) -> tuple[str, int] | None:
+    """The text the escape at ``text[index]`` (a backslash with a successor)
+    decodes to in a non-raw literal, and the index after it; ``None`` where
+    CPython rejects it. A ``\\N{...}`` name must close before ``end``."""
+    char = text[index]
+    escaped = text[index + 1]
+    if escaped in _SIMPLE_ESCAPES:
+        return _SIMPLE_ESCAPES[escaped], index + 2
+    if escaped in _OCTAL_DIGITS:
+        stop = index + 2
+        while stop < index + 4 and stop < len(text) and text[stop] in _OCTAL_DIGITS:
+            stop += 1
+        return chr(int(text[index + 1 : stop], 8)), stop
+    if escaped in _HEX_ESCAPE_WIDTHS:
+        digits = text[index + 2 : index + 2 + _HEX_ESCAPE_WIDTHS[escaped]]
+        if len(digits) != _HEX_ESCAPE_WIDTHS[escaped] or not set(digits) <= (
+            _HEX_DIGITS
+        ):
+            return None
+        point = int(digits, 16)
+        if point > 0x10FFFF:
+            return None
+        return chr(point), index + 2 + len(digits)
+    if escaped == "N":
+        close = text.find("}", index + 3, end)
+        if text[index + 2 : index + 3] != "{" or close <= index + 3:
+            return None
+        try:
+            named = unicodedata.lookup(text[index + 3 : close])
+        except KeyError:
+            return None
+        if len(named) != 1:
+            # A named sequence: ``\\N{...}`` accepts single characters.
+            return None
+        return named, close + 1
+    # An invalid escape keeps its backslash (a ``SyntaxWarning``).
+    return char, index + 1
 
-    The expression is a string, adjacent strings, ``+`` or parentheses; any
-    other operand, and each interpolation, ends a run (``""`` marks the
-    break). The literal runs of format specs, nested ones included, go to
-    ``specs``. Raises :class:`_UndecodableError` for a piece it cannot decode.
+
+# A backslash-newline line continuation, after newline translation.
+_CONTINUATION = "\\\n"
+
+
+def _interpolated_names_main(node: Any, source: bytes) -> bool:
+    """Whether an f-string or t-string expression names the main module
+    anywhere in its source text (#698, R-698-3).
+
+    CPython splits an f-string or t-string differently from tree-sitter in
+    more places than a reader of its pieces can follow (a spec starting with
+    ``=`` read as a walrus, ``{{`` after a nested field, comments in debug
+    text), so the pieces are not read at all. Every string CPython hands to
+    user code from such a node (a literal part, a format spec, debug text, a
+    t-string interpolation's expression text) is built from the node's source
+    text by decoding escapes, removing backslash-newline continuations,
+    turning ``{{`` into ``{`` and dropping comments, and debug text joins the
+    literal before it across the ``{``. None of those steps puts a character
+    inside a run that was not adjacent to it once escapes, continuations and
+    braces are removed, and none removes a newline from inside one; so a
+    delivered component equal to a main name occurs as a substring of one of
+    the views :func:`_source_names_main` checks. The source text is that of
+    every string piece of the expression, joined across adjacent literals and
+    ``+`` as CPython joins them; any other operand breaks the text. A piece
+    whose quotes or bytes cannot be read fails closed.
     """
+    if not _has_interpolated(node, source):
+        return False
+    parts: list[str] = []
+    try:
+        _string_sources(node, source, parts)
+    except _UndecodableError:
+        return True
+    return _source_names_main("".join(parts))
+
+
+def _string_sources(node: Any, source: bytes, parts: list[str]) -> None:
+    # The text between the quotes of every string piece of a string
+    # expression, in order; a non-string operand appends a break (NUL, which
+    # no view removes) so no name is joined across it.
     kind = node.type
     if kind == "parenthesized_expression":
         inner = _unwrap(node, skip_comments=True)
         if inner is not node:
-            _string_runs(inner, source, runs, specs)
+            _string_sources(inner, source, parts)
             return
     elif kind == "concatenated_string":
         for child in node.named_children:
             if child.type != "comment":
-                _string_runs(child, source, runs, specs)
+                _string_sources(child, source, parts)
         return
     elif kind == "binary_operator":
         operator = node.child_by_field_name("operator")
@@ -3527,120 +3556,75 @@ def _string_runs(node: Any, source: bytes, runs: list[str], specs: list[str]) ->
             and left is not None
             and right is not None
         ):
-            _string_runs(left, source, runs, specs)
-            _string_runs(right, source, runs, specs)
+            _string_sources(left, source, parts)
+            _string_sources(right, source, parts)
             return
     elif kind == "string":
-        _string_node_runs(node, source, runs, specs)
+        start = node.children[0] if node.children else None
+        opening = _text(start, source) if start is not None else ""
+        quote_at = min(
+            (index for index in (opening.find("'"), opening.find('"')) if index >= 0),
+            default=-1,
+        )
+        if start is None or start.type != "string_start" or quote_at < 0:
+            raise _UndecodableError
+        quote = opening[quote_at:]
+        if "b" in opening[:quote_at].lower():
+            # Bytes do not join a ``str``; their templates are plan risk R12.
+            parts.append("\0")
+            return
+        # The node's end, not the end token: tree-sitter folds a raw
+        # string's final ``\"`` into it (``rf"{x}\""``).
+        if node.end_byte - len(quote) < start.end_byte:
+            raise _UndecodableError
+        text = source[start.end_byte : node.end_byte - len(quote)]
+        try:
+            parts.append(text.decode("utf-8"))
+        except UnicodeDecodeError:
+            raise _UndecodableError from None
         return
-    runs.append("")
+    parts.append("\0")
 
 
-def _string_node_runs(
-    node: Any, source: bytes, runs: list[str], specs: list[str]
-) -> None:
-    start = next((c for c in node.children if c.type == "string_start"), None)
-    opening = _text(start, source) if start is not None else ""
-    quote_at = min(
-        (index for index in (opening.find("'"), opening.find('"')) if index >= 0),
-        default=-1,
-    )
-    if quote_at < 0:
-        raise _UndecodableError
-    prefix = opening[:quote_at].lower()
-    quote = opening[quote_at:]
-    if "b" in prefix:
-        # Bytes templates are plan risk R12.
-        runs.append("")
-        return
-    interpolated = "f" in prefix or "t" in prefix
-    plain = prefix.replace("f", "").replace("t", "")
-    for child in node.children:
-        if child.type == "string_start":
-            continue
-        raw = _text(child, source)
-        if child.type == "string_end":
-            # Tree-sitter folds a raw string's final ``\'`` into the end
-            # token (``rf"{x}\""``): the text before the quote is content.
-            if not raw.endswith(quote):
-                raise _UndecodableError
-            raw = raw[: len(raw) - len(quote)]
-            if not raw:
-                continue
-        elif child.type == "interpolation":
-            _interpolation_runs(child, source, plain, quote, runs, specs)
-            continue
-        if interpolated:
-            raw = raw.replace("{{", "{").replace("}}", "}")
-        _extend_run(runs, _decode_piece(plain, quote, raw))
+def _source_names_main(text: str) -> bool:
+    """Whether a main name occurs in the source text of an f-string or
+    t-string expression under any of its views (R-698-3).
 
-
-def _extend_run(runs: list[str], piece: str) -> None:
-    # Adjacent literal pieces form one run, as CPython joins them.
-    if runs and runs[-1]:
-        runs[-1] += piece
-    else:
-        runs.append(piece)
-
-
-def _interpolation_runs(
-    node: Any,
-    source: bytes,
-    plain: str,
-    quote: str,
-    runs: list[str],
-    specs: list[str],
-) -> None:
-    children = node.children
-    for index, child in enumerate(children):
-        if child.type == "=" and index > 0 and index + 1 < len(children):
-            # ``f"{x = }"`` prepends its source text, spaces included.
-            debug = source[children[0].end_byte : children[index + 1].start_byte]
-            _extend_run(runs, debug.decode("utf-8"))
-        elif child.type == "format_specifier":
-            # A spec is its own run sequence; a nested replacement field
-            # (``f"{x:{y}}"``) breaks it.
-            spec: list[str] = []
-            position = child.start_byte + 1  # after ``:``
-            for part in child.named_children:
-                if part.type == "format_expression":
-                    gap = source[position : part.start_byte].decode("utf-8")
-                    _extend_run(spec, _decode_piece(plain, quote, gap))
-                    _interpolation_runs(part, source, plain, quote, spec, specs)
-                    position = part.end_byte
-            # The last gap runs to the closing brace, not to the node's end:
-            # tree-sitter ends the spec before a trailing newline, so
-            # ``f"{x:__main__\\<newline>}"`` would otherwise lose the line
-            # continuation CPython reads (#698, re-check 2 B-2).
-            close = child.next_sibling
-            end = close.start_byte if close is not None else child.end_byte
-            gap = source[position:end].decode("utf-8")
-            _extend_run(spec, _decode_piece(plain, quote, gap))
-            specs.extend(spec)
-    runs.append("")
-
-
-def _interpolated_names_main(node: Any, source: bytes) -> bool:
-    """Whether an f-string or t-string expression names the main module in
-    a literal part or format spec (#698, R-698-1).
-
-    The parts come from the tree-sitter node, so the facts do not depend on
-    the host Python's grammar; a piece that cannot be decoded fails closed.
-    Plain constant strings are left to :func:`_constant_string`.
+    The views are the text with newlines translated as the tokenizer does,
+    with or without backslash-newline continuations removed, each as written
+    and with every escape decoded (an escape CPython rejects is kept as
+    written), and each of those with ``{`` and ``}`` removed. Decoding as if
+    every piece were non-raw only adds views: an escape never consumes a
+    character of a name. Raw text needs no other view, since raw pieces keep
+    their backslashes and the views as written already contain them.
     """
-    if not _has_interpolated(node, source):
-        return False
-    runs: list[str] = []
-    specs: list[str] = []
-    try:
-        _string_runs(node, source, runs, specs)
-    except (_UndecodableError, UnicodeDecodeError):
-        return True
-    return any(_names_main(run) for run in runs + specs if run)
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    views: list[str] = []
+    for base in (text, text.replace(_CONTINUATION, "")):
+        for view in (base, _decode_escapes(base)):
+            views += (view, view.replace("{", "").replace("}", ""))
+    return any(name in view for view in views for name in _MAIN_NAMES)
+
+
+def _decode_escapes(text: str) -> str:
+    # Every escape of ``text`` decoded as in a non-raw literal; one CPython
+    # rejects is kept as written.
+    out: list[str] = []
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char != "\\" or index + 1 == len(text):
+            out.append(char)
+            index += 1
+            continue
+        decoded = _escape(text, index, len(text)) or (char, index + 1)
+        out.append(decoded[0])
+        index = decoded[1]
+    return "".join(out)
 
 
 def _has_interpolated(node: Any, source: bytes) -> bool:
-    # Whether :func:`_string_runs` would meet an f-string or t-string.
+    # Whether :func:`_string_sources` would meet an f-string or t-string.
     kind = node.type
     if kind == "parenthesized_expression":
         inner = _unwrap(node, skip_comments=True)
@@ -3701,8 +3685,7 @@ def _constant_fstring(node: Any, source: bytes) -> str | None:
             continue
         raw = _text(child, source)
         if child.type == "string_end":
-            # As in :func:`_string_node_runs`: after an interpolation,
-            # tree-sitter folds a raw string's final ``\"`` into the end
+            # After an interpolation, tree-sitter folds a raw string's final ``\"`` into the end
             # token (``rf"{'x'}\""``), and that text is content.
             if not raw.endswith(quote):
                 return None

@@ -1048,9 +1048,10 @@ def _scan_causes(
         # K-3 (#698, R-698-2): a string naming the main module, by the one
         # classifier Tier 1 uses (``py_scope._main_string``): a component
         # after the format and attribute punctuation split, a default
-        # ``string.Template`` identifier, or a decoded f-string or t-string
-        # literal part or format spec (``T = "%(__main__)s"``,
-        # ``f"{P():__main__}"``). Only the script guard's comparand is exempt.
+        # ``string.Template`` identifier, or a main name anywhere in an
+        # f-string's or t-string's decoded source text (``T = "%(__main__)s"``,
+        # ``f"{P():__main__}"``; R-698-3). Only the script guard's comparand
+        # is exempt.
         facts.shutoff.add(CAUSE_MODULE_OBJECT)
     stack = [analysis.root]
     while stack:

@@ -243,7 +243,10 @@ logger = logging.getLogger(__name__)
 # format and attribute punctuation and whitespace, and by a default
 # ``string.Template`` identifier, so stored templates count; f-string and
 # t-string literal parts and format specs are decoded from the tree, and an
-# undecodable one fails closed (treesitter-chunker#698, R-698-1).
+# undecodable one fails closed (treesitter-chunker#698, R-698-1). Before the
+# merge, R-698-3 replaced the f-/t-string piece reader: such a string counts
+# when a main name occurs anywhere in its decoded source text (same version,
+# unreleased; the fixtures' digests are unchanged).
 CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "39"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})

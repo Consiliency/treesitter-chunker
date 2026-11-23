@@ -1751,6 +1751,15 @@ MAIN_WRITER_P = (
     "        m = doctest._normalize_module(spec)\n"
     "        m.t = lambda: 'patched'\n        return ''\n\n\n"
 )
+# ``R.__format__`` hands the last dotted part of its spec to the resolver,
+# so a spec such as ``'=x.__main__'`` (CPython's reading of B-3) rebinds.
+MAIN_WRITER_R = (
+    "class R:\n"
+    "    def __format__(self, spec):\n"
+    "        m = doctest._normalize_module(spec.rpartition('.')[2].strip())\n"
+    "        m.t = lambda: 'patched'\n        return ''\n\n\n"
+    "r = R()\nx = e = ''\n\n\n"
+)
 MAIN_WRITERS = {
     # The re-check's repros (714-opus-5-5-recheck.md §4): CPython 3.14 prints
     # ``RESULT patched`` for each.
@@ -1781,6 +1790,32 @@ MAIN_WRITERS = {
     ),
     # Control: the plain string the run-wide rule always caught.
     "plain": "T = '__main__'\n\n\ndef go():\n    P()[T]\n",
+    # R-698-3 (re-check 3 B-3, B-4): tree-sitter reads a walrus or a nested
+    # field where CPython reads spec text; ``R`` keeps the last dotted part.
+    "walrus-spec": MAIN_WRITER_R + "def go():\n    return f'{R():=x.__main__}'\n",
+    "walrus-spec-comment": (
+        MAIN_WRITER_R + "def go():\n    return f'''{r:= 1 # .__main__\n}'''\n"
+    ),
+    "doubled-brace-after-field": (
+        MAIN_WRITER_R + "def go():\n    return f'{r:{e}{{x.__main__}}}'\n"
+    ),
+    "doubled-brace-comment": (
+        MAIN_WRITER_R + "def go():\n    return f'''{r:{e}{{1 # .__main__\n}}}'''\n"
+    ),
+    # B-5: CPython drops the comment from the debug text.
+    "debug-comment": (
+        "class S:\n    __main__ = 0\n\n\n"
+        "def go():\n"
+        "    s = f'{S.__main__#c\n=}'\n"
+        "    format(P(), s.split('.')[1].split()[0])\n"
+    ),
+    # S-2: a t-string hands its expression text to user code.
+    "tstring-expression": (
+        "class S:\n    __main__ = 0\n\n\n"
+        "def go():\n"
+        "    for i in t'{S.__main__}'.interpolations:\n"
+        "        format(P(), i.expression.rpartition('.')[2])\n"
+    ),
 }
 
 
@@ -1800,10 +1835,17 @@ def test_main_writer_strings_shut_off_imports(tmp_path: Path, writer: str) -> No
     assert label == "none(run-tainted:module-object)"
 
 
-def test_main_writer_control_resolves(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "writer",
+    [
+        "T = '%(other)s'\n\n\ndef go():\n    T % P()\n",
+        # R-698-3: an f-string naming ``__name__`` but not ``__main__``.
+        "def go():\n    return f'{__name__}'\n",
+    ],
+)
+def test_main_writer_control_resolves(tmp_path: Path, writer: str) -> None:
     """Without a main component the same run resolves, and the script guard
     in ``use.py`` stays exempt."""
-    writer = "T = '%(other)s'\n\n\ndef go():\n    T % P()\n"
     root = _write(
         tmp_path,
         {

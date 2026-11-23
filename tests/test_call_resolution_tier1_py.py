@@ -4326,6 +4326,30 @@ MAIN_FORMAT_CASES = {
     "triple-spec-continuation": "f'''{P():__main__\\\n}'''",
     "nested-field-spec-continuation": "f'{P():{\"\"}__main__\\\n}'",
     "inner-spec-continuation": "f'{P():{P():__main__\\\n}}'",
+    # R-698-3 (re-check 3): tree-sitter and CPython split these f-strings and
+    # t-strings differently. The rule now reads the whole source text.
+    # B-3: CPython ends the expression at the first ``:``, so ``=`` starts
+    # the spec; tree-sitter reads a walrus.
+    "walrus-spec": "f'{p:=x.__main__}'",
+    "walrus-spec-comment": "f'''{p:= 1 # __main__\n}'''",
+    "walrus-nested-field": "f'{h:{p:=x.__main__}}'",
+    "walrus-tstring": (
+        "[format(i.value, i.format_spec) for i in t'{p:=x.__main__}'.interpolations]"
+    ),
+    # B-4: after a nested field, CPython reads ``{{`` in a spec as a brace.
+    "doubled-brace-after-field": "f'{p:{h}{{x.__main__}}}'",
+    "doubled-brace-comment": "f'''{p:{h}{{1 # __main__\n}}}'''",
+    "doubled-brace-tstring": (
+        "[format(i.value, i.format_spec) for i in t'{p:{h}{{x.__main__}}}'"
+        ".interpolations]"
+    ),
+    # B-5: debug text drops the comment, so ``__main__`` is a component.
+    "debug-comment": "patch_main(f'{q.__main__#c\n=}')",
+    "debug-comment-tstring": "patch_main(t'{q.__main__#c\n=}')",
+    # Debug text joins the literal before it across the ``{``.
+    "debug-join": "in__ = 0\npatch_main(f'__ma{in__ =}')",
+    # Re-check 3 S-2: a t-string hands its expression text to user code.
+    "tstring-expression": "patch_main(t'{q.__main__}'.interpolations[0].expression)",
 }
 
 # The runtime probe supplies the callback, so the source isolates the
@@ -4352,7 +4376,11 @@ class PM(collections.abc.Mapping):
     __iter__ = lambda self: iter(['k'])
     __len__ = lambda self: 1
 
+class Q:
+    __getattr__ = lambda self, attr: 0
+
 h = ''.join(('hel', 'per'))
+p, q = P(), Q()
 """
 
 
@@ -4382,35 +4410,67 @@ def test_main_guard_resolves_the_call_in_its_body() -> None:
         "template = '{__main__}'",
         "string.Template('$$__main__').substitute(obj)",
         "log = '__main__ started'",
-        # A string tree-sitter accepts but the K-3 decoder cannot read.
-        r"f'\xZZ{obj}'",
     ],
 )
 def test_main_string_components_fail_closed(form: str) -> None:
     assert reason(HELPER + form + "\nhelper()\n") == "dynamic-scope"
 
 
+def test_unreadable_fstring_bytes_fail_closed() -> None:
+    # An f-string piece that is not UTF-8 cannot be searched (R-698-3).
+    data = (HELPER + "V = f'").encode() + b"\xff" + "{x}'\nhelper()\n".encode()
+    root = get_parser("python").parse(data).root_node
+    start = data.rindex(b"helper()")
+    span = {"callee_byte_start": start, "callee_byte_end": start + 6}
+    result = py_scope.analyze(root, data, "python", [span], path=NEUTRAL_PATH)
+    assert result["bindings"][f"{start}:{start + 6}"] == {
+        "outcome": "none",
+        "reason": "dynamic-scope",
+    }
+
+
 @pytest.mark.parametrize(
     "form",
     [
+        # R-698-3: ``__main__`` anywhere in an f-string's or t-string's source
+        # text counts, a whole component or not (the rule's precision cost).
         "f'{obj:prefix__main__}'",
+        "f'{obj}__main__x'",
+        "t'{obj}__main__x'",
+        "f'{obj!r:>10} is __main__'",
+        "f'{obj.__main__}'",
+        "f'{obj[\"__main__\"]}'",
+        "f'{obj}' + '__mp_main__'",
+    ],
+)
+def test_main_anywhere_in_an_fstring_fails_closed(form: str) -> None:
+    assert reason(HELPER + form + "\nhelper()\n") == "dynamic-scope"
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "f'{__name__}'",
+        "f'module {__name__=}'",
+        "t'{__name__!r:>20}'",
+        # CPython rejects the escape, and no main name is in the text.
+        r"f'\xZZ{obj}'",
+    ],
+)
+def test_fstring_without_main_resolves(form: str) -> None:
+    assert proof_text(HELPER + form + "\nhelper()\n") == PROOF
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
         "'{prefix__main__}'.format_map(obj)",
         "'$__main__x'",
         "'__main__-x'",
-        "f'{obj}__main__x'",
     ],
 )
 def test_main_needs_a_whole_component(form: str) -> None:
     assert proof_text(HELPER + form + "\nhelper()\n") == PROOF
-
-
-class _SpecRecorder:
-    def __init__(self, seen: list[str]) -> None:
-        self.seen = seen
-
-    def __format__(self, spec: str) -> str:
-        self.seen.append(spec)
-        return ""
 
 
 _REJECTED = object()
@@ -4449,69 +4509,231 @@ def _string_node(parser: Any, text: str) -> tuple[bytes, Any] | None:
     return data, node
 
 
-def test_string_runs_match_cpython_through_the_tree() -> None:
-    """The literal runs and format specs the K-3 rule reads from the
-    tree-sitter tree are the strings CPython delivers (re-check 2 B-2).
-
-    :func:`test_decode_literal_matches_cpython` feeds the decoder text that
-    is already split, so it cannot see where the tree's node boundaries cut
-    a piece; tree-sitter ends a format spec before a trailing newline, for
-    one. This parses each seeded f- or t-string, runs ``_string_runs`` and
-    compares the result with what CPython 3.14 delivers to ``__format__``
-    and as the literal parts. A piece the rule cannot decode fails closed
-    and is skipped; every decoded piece must match. Each f-string is also
-    checked with a constant interpolation through ``_constant_string``,
-    which tree-sitter's folded end token (``rf"{'x'}\\""``) once cut short.
-    """
+def test_constant_fstrings_match_cpython_through_the_tree() -> None:
+    """``_constant_string`` reads what CPython 3.14 builds from an f-string
+    whose interpolation is a constant string, through the tree-sitter node
+    (re-check 2 B-2): tree-sitter's folded end token (``rf"{'x'}\\""``) once
+    cut it short."""
     import random
 
     parser = get_parser("python")
     literal = ["a", "_", "__main__", "\\", "\\\n", "\\\r\n", "\n", "\r\n", " "]
     literal += ["\\x5f", "\\N{LOW LINE}", "\\d", "\\'", '\\"', "'", '"', "é"]
-    spec_atoms = [*literal, ":", "!", "{y}"]
     literal += ["{{", "}}"]
     rng = random.Random(714)
 
-    def piece(atoms: list[str], size: int) -> str:
-        return "".join(rng.choice(atoms) for _ in range(rng.randint(0, size)))
+    def piece(size: int) -> str:
+        return "".join(rng.choice(literal) for _ in range(rng.randint(0, size)))
 
-    checked = constants = 0
+    constants = 0
     for _ in range(4000):
-        prefix = rng.choice(["f", "t", "rf", "Rt", "F"])
+        prefix = rng.choice(["f", "rf", "F", "fR"])
         quote = rng.choice(["'", '"', "'" * 3, '"' * 3])
-        spec = ":" + piece(spec_atoms, 4) if rng.random() < 0.8 else ""
-        before, after = piece(literal, 3), piece(literal, 3)
-        if "f" in prefix.lower():
-            text = prefix + quote + before + "{'k'}" + after + quote
-            value = _cpython_reads(text, {})
-            parsed = None if value is _REJECTED else _string_node(parser, text)
-            if parsed is not None:
-                got = py_scope._constant_string(parsed[1], parsed[0])
-                if got is not None:
-                    assert got == value, text
-                    constants += 1
-        text = prefix + quote + before + "{v" + spec + "}" + after + quote
-        seen: list[str] = []
-        value = _cpython_reads(text, {"v": _SpecRecorder(seen), "y": ""})
+        text = prefix + quote + piece(3) + "{'k'}" + piece(3) + quote
+        value = _cpython_reads(text, {})
         parsed = None if value is _REJECTED else _string_node(parser, text)
-        if parsed is None:
-            continue
-        if "t" in prefix.lower():
-            strings = "".join(value.strings)
-            specs = [i.format_spec for i in value.interpolations]
-        else:
-            strings, specs = value, seen
-        runs: list[str] = []
-        rule_specs: list[str] = []
+        if parsed is not None:
+            got = py_scope._constant_string(parsed[1], parsed[0])
+            if got is not None:
+                assert got == value, text
+                constants += 1
+    assert constants > 1000
+
+
+# R-698-3 soundness gate: a generator of f-string and t-string modules (after
+# the re-check 3 generator, 714-fable/gen.py). Atoms cover escapes, line
+# continuations with every line ending, comments, debug ``=`` (with comments
+# and joined to the literal before it), conversions, nested and doubled braces
+# in specs, a spec starting with ``=``, PEP 701 quote reuse, nested f- and
+# t-strings, every prefix, adjacent literals, ``+`` and parentheses.
+_GEN_LIT = [
+    *["a", "_", "__main__", "__main__", "__mp_main__", "__ma", "in__", "_main__"],
+    *[" ", "\t", "\x0c", "\n", "\r\n", "\r", "\\\n", "\\\r\n", "\\\r", "\\"],
+    *["\\\\", "\\x5f", "\\137", "\\u005f", "\\U0000005f", "\\N{LOW LINE}"],
+    *["\\N{SPACE}", "\\N", "\\{", "\\}", "\\'", '\\"', "'", '"', "''", '""'],
+    *["$", "${", "%(", ")s", ".", ":", "!", "#", "# c", "=", "[", "]", "(", ")"],
+    *["é", "\u200b", "\ufeff", "\u2028", "\x85", "\x1f", "\x0b", "\\8", "\\d"],
+    *["-", ","],
+]
+_GEN_EXPR = [
+    *["v", "v", "v.a", "(v)", "v[0]", "v [ 0 ]", "'k'", '"k"', "'__main__'"],
+    *["v # c\n", "v\n", "\nv", "v\\\n", "v\r\n", "v\r", "v if v else v"],
+    *["{1: 2}[1]", "v,", "*v,", "v == v", "not v", "(v := 1)", "w := 1", "w:=v"],
+    *["w:= v.a", "w:=v.__main__", "w := 1 # __main__\n", "w:= 1 # c\n"],
+    *["lambda: 1", "(lambda: 1)", "v.__main__", "__main__", "v #__main__\n"],
+    *["v . a", "v\t", "v\x0c", "f'{v}'", 'f"{v}"', "f'{v:a}'", "f'''{v}'''"],
+    *["t'{v}'", "v or v", "-v", "v[1:2]", "v[::]", "v(a=1)", "[v for v in v]"],
+    *["{v}", "{**v}", "{v.__main__}", "{1 # __main__\n}", "v.__main__}"],
+    *["v(__main__=1)", "v.__mp_main__", "v is v", "v:v", "v !r", "0", "b'x'"],
+    *["in__", "in__.a", "_main__", "main__", "in__ # c\n", "'\\x5f_main__'"],
+    *["v.\\\n__main__", "v#c\n.__main__", "r'__main__'", "v['__ma' 'in__']"],
+]
+_GEN_CONV = ["", "", "", "!r", "!s", "!a", "!x", "! r", "!r ", " !r"]
+_GEN_PREFIX_I = ["f", "F", "fr", "rf", "Rf", "fR", "t", "T", "tr", "rt", "Tr", "tR"]
+_GEN_PREFIX_P = ["", "", "r", "R", "u", "U", "b", "rb", "Rb", "ur", "ft", "fb"]
+_GEN_QUOTES = ["'", '"', "'" * 3, '"' * 3]
+_GEN_PROFILES = {
+    "spec": {"interp": 0.95, "spec": 0.9, "debug": 0.1, "single": 0.85, "call": 0.1},
+    "expr": {"interp": 0.9, "spec": 0.35, "debug": 0.35, "single": 0.8, "call": 0.1},
+    "concat": {"interp": 0.4, "spec": 0.5, "debug": 0.1, "single": 0.25, "call": 0.3},
+}
+
+
+class _MainCaseGen:
+    def __init__(self, seed: int, profile: str) -> None:
+        import random
+
+        self.rng = random.Random(seed)
+        self.weights = _GEN_PROFILES[profile]
+
+    def pick(self, seq: list[str]) -> str:
+        return self.rng.choice(seq)
+
+    def lit(self, size: int, braces: bool = True) -> str:
+        atoms = _GEN_LIT + (["{{", "}}"] if braces else [])
+        return "".join(self.pick(atoms) for _ in range(self.rng.randint(0, size)))
+
+    def spec(self, depth: int) -> str:
+        out = []
+        for _ in range(self.rng.randint(0, 4)):
+            if self.rng.random() < 0.25 and depth < 3:
+                out.append(self.field(depth + 1))
+            elif self.rng.random() < 0.15:
+                out.append(self.pick([*_GEN_LIT, "{{", "}}", "{{", "{", "="]))
+            else:
+                out.append(self.pick(_GEN_LIT))
+        return "".join(out)
+
+    def space(self) -> str:
+        return self.pick(["", "", "", " ", "\n", "\t", "\\\n", "# c\n", "\r\n", "\r"])
+
+    def field(self, depth: int) -> str:
+        # An expression right after ``{`` (no space) lets debug text join
+        # the literal before it (``__ma{in__ =}``).
+        lead = "" if self.rng.random() < 0.5 else self.space()
+        text = "{" + lead + self.pick(_GEN_EXPR) + self.space()
+        if self.rng.random() < self.weights["debug"]:
+            text += "=" + self.space()
+        text += self.pick(_GEN_CONV)
+        if self.rng.random() < self.weights["spec"]:
+            text += ":" + self.spec(depth)
+        return text + "}"
+
+    def string(self) -> str:
+        quote = self.pick(_GEN_QUOTES)
+        if self.rng.random() < self.weights["interp"]:
+            body = "".join(
+                self.field(0) if self.rng.random() < 0.5 else self.lit(2)
+                for _ in range(self.rng.randint(1, 4))
+            )
+            return self.pick(_GEN_PREFIX_I) + quote + body + quote
+        braces = self.rng.random() < 0.3
+        return self.pick(_GEN_PREFIX_P) + quote + self.lit(4, braces) + quote
+
+    def expr(self, depth: int = 0) -> str:
+        roll = self.rng.random()
+        single = self.weights["single"]
+        if roll < single or depth > 2:
+            return self.string()
+        if roll < single + 0.15:
+            sep = self.pick([" ", "", "\\\n", " \\\r\n", "\t", "\x0c"])
+            return sep.join(self.string() for _ in range(self.rng.randint(2, 3)))
+        if roll < single + 0.3:
+            sep = self.pick(["\n", " # c\n", "\r\n", " ", "\n# __main__\n", "\r"])
+            inner = sep.join(
+                self.expr(depth + 1) for _ in range(self.rng.randint(1, 3))
+            )
+            return "(" + inner + sep.strip(" ") * self.rng.randint(0, 1) + ")"
+        op = self.pick([" + ", "+", " +\\\n", " % ", " * ", " + ("])
+        left, right = self.expr(depth + 1), self.expr(depth + 1)
+        return left + op + right + (")" if op.endswith("(") else "")
+
+    def module(self) -> str:
+        head = self.pick(["", "", "# c\n", "\n", "x = 1\r\n", "x = 1\r", "\ufeff"])
+        tail = self.pick(["\n", "\n", "", "\r\n", "\r", " # c\n", ";\n"])
+        if self.rng.random() < self.weights["call"]:
+            return head + "V = fn(" + self.expr() + ")" + tail
+        return head + "V = " + self.expr() + tail
+
+
+def _cpython_main_pieces(data: bytes) -> list[str] | None:
+    """Every ``str`` CPython 3.14 hands to user code from the string
+    expressions of ``data`` that names the main module by K-3
+    (``_names_main``): constants (literal runs of f- and t-strings with debug
+    text joined in, format specs at any depth) and t-string interpolation
+    expression text. ``None`` when CPython rejects the module."""
+    import ast
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
         try:
-            py_scope._string_runs(parsed[1], parsed[0], runs, rule_specs)
-        except py_scope._UndecodableError:
-            continue
-        assert "".join(runs) == strings, text
-        assert "".join(rule_specs) == "".join(specs), text
-        checked += 1
-    assert checked > 1000
-    assert constants > 500
+            tree = ast.parse(data)
+        except (SyntaxError, ValueError, RecursionError, MemoryError):
+            return None
+    pieces: list[str] = []
+    stack: list[ast.AST] = [tree]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            pieces.append(node.value)
+        elif isinstance(node, ast.Interpolation):
+            pieces.append(node.str)
+        stack.extend(ast.iter_child_nodes(node))
+    return [piece for piece in pieces if py_scope._names_main(piece)]
+
+
+def _main_case_verdict(text: str) -> str:
+    """``cp-reject``, ``closed`` (tree error or refused file), ``no-main``,
+    ``closed-main`` or ``FAIL-OPEN`` for one generated module, read as
+    ``facts.py`` reads it (lone-CR parse copy, raw source)."""
+    from chunker.core import _lone_cr_parse_copy
+
+    try:
+        data = text.encode("utf-8")
+    except UnicodeEncodeError:
+        return "cp-reject"
+    main = _cpython_main_pieces(data)
+    if main is None:
+        return "cp-reject"
+    copy = _lone_cr_parse_copy(data, "python")
+    root = get_parser("python").parse(data if copy is None else copy).root_node
+    if (
+        root.has_error
+        or py_scope.non_ascii_name(root, data) is not None
+        or py_scope.ambiguous_indentation(data) is not None
+    ):
+        return "closed"
+    path = py_scope.module_path("unit_case_module.py")
+    try:
+        analysis = py_scope._Analysis(root, data, module_path=path)
+    except RecursionError:
+        return "closed"
+    if not main:
+        return "no-main"
+    return "closed-main" if analysis.main_string else "FAIL-OPEN"
+
+
+def test_main_substring_rule_is_sound_against_cpython() -> None:
+    """R-698-3: whenever CPython hands user code a string with a ``__main__``
+    component from an f-string or t-string (a literal part, a format spec,
+    debug text or a t-string interpolation's expression text), the shared
+    K-3 classifier marks the file. Bounded: fixed seeds, fixed counts."""
+    import collections
+
+    counts: collections.Counter[str] = collections.Counter()
+    failures: list[str] = []
+    for seed, profile in ((698, "spec"), (699, "expr"), (700, "concat")):
+        gen = _MainCaseGen(seed, profile)
+        for _ in range(10000):
+            text = gen.module()
+            verdict = _main_case_verdict(text)
+            counts[verdict] += 1
+            if verdict == "FAIL-OPEN":
+                failures.append(text)
+    assert not failures, failures[:5]
+    assert counts["closed-main"] > 1000, counts
+    assert counts["no-main"] > 5000, counts
 
 
 @pytest.mark.parametrize(

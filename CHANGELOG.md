@@ -14,10 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   punctuation or whitespace (or a default `string.Template` identifier) is
   `__main__`, so templates stored in a variable and later formatted with
   `str.format`, `format_map`, `%`, `string.Template` or logging fail closed.
-  The literal parts and format specs of f-strings and t-strings count too;
-  they are read from the syntax tree, including a format spec ending in a
-  backslash-newline line continuation, and a part that cannot be decoded
-  fails closed (treesitter-chunker#698). `imports` mode uses the same rule
+  An f-string or t-string counts when `__main__` occurs anywhere in its
+  source text after escape decoding (literal parts, format specs,
+  expressions, debug text and comments alike), so no difference in how
+  tree-sitter and CPython split such a string can hide one; a part that is
+  not UTF-8 fails closed (treesitter-chunker#698). `imports` mode uses the same rule
   for its run-wide `__main__` cause, so such a string in any run file shuts
   off Tier 2 as a plain `'__main__'` does. Escapes in string literals are
   decoded without `ast.literal_eval`, so call resolution facts no longer
