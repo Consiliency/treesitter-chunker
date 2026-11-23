@@ -1792,7 +1792,7 @@ MAIN_WRITERS = {
     "plain": "T = '__main__'\n\n\ndef go():\n    P()[T]\n",
     # R-698-3 (re-check 3 B-3, B-4): tree-sitter reads a walrus or a nested
     # field where CPython reads spec text; ``R`` keeps the last dotted part.
-    "walrus-spec": MAIN_WRITER_R + "def go():\n    return f'{R():=x.__main__}'\n",
+    "walrus-spec": MAIN_WRITER_R + "def go():\n    return f'{r:=x.__main__}'\n",
     "walrus-spec-comment": (
         MAIN_WRITER_R + "def go():\n    return f'''{r:= 1 # .__main__\n}'''\n"
     ),

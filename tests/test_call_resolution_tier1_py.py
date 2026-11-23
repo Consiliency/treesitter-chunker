@@ -4316,6 +4316,9 @@ MAIN_FORMAT_CASES = {
     "tstring-concat": "patch_main(t'__ma' t'in__.{h}')",
     "tstring-escaped": r"patch_main(t'\x5f_main__.{h}')",
     "fstring-plus-literal": "patch_main(f'{\"\"}__ma' + 'in__.' + h)",
+    # R-698-3: only the joined source text holds the name (``{h}`` is not
+    # constant, so no constant value exists).
+    "fstring-plus-join": "patch_main(f'{h}.__ma' + 'in__.x')",
     # Re-check 2 B-2: tree-sitter ends a format spec before a trailing
     # newline, but CPython reads the backslash-newline before the closing
     # brace as a line continuation and hands over ``"__main__"``.
