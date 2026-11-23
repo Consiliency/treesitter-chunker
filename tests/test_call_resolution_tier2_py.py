@@ -2863,3 +2863,162 @@ def test_fold6_syspath_prepend_on_any_receiver(tmp_path: Path, line: str) -> Non
     assert label == "none(run-tainted:module-system)"
     _off, _structural, on, label = _run(root, "use.py", "t")
     assert on["resolution"] == "resolved" and label == "import"
+
+
+# ---------------------------------------------------------------------------
+# Fold 7 (#705 P6-21, P6-22): a constant method name spelled as more than one
+# literal, as a keyword value or as a subscript key. The president's
+# ``cases6/f6p_*`` trees import ``pytest``, ``sys``, ``svc``, ``other``,
+# ``importlib``, ``operator`` and ``functools`` at the top of
+# ``tests/test_b.py``; the rows keep only the lines that matter. ``runtime``
+# is what pytest 8.4.1 printed on CPython 3.14.10.
+
+_F7_HEAD = 'import calls\nimport pytest\nfrom other import t as _evil\nNAME = "t"\n'
+FOLD7_BLOCKING: dict[str, tuple[dict[str, str], str, str]] = {
+    # P6-21: the method name passed as a call argument.
+    "f6p_a19_getattr_concat": (
+        {
+            "tests/test_b.py": _F7_HEAD + "def test_go(monkeypatch):\n"
+            '    getattr(monkeypatch, "set" "attr")(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f6p_a20_getattr_plus": (
+        {
+            "tests/test_b.py": _F7_HEAD + "def test_go(monkeypatch):\n"
+            '    getattr(monkeypatch, "set" + "attr")(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f6p_a21_getattr_paren": (
+        {
+            "tests/test_b.py": _F7_HEAD + "def test_go(monkeypatch):\n"
+            '    getattr(monkeypatch, ("setattr"))(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f6p_e01_getattr_static_kw": (
+        {
+            "tests/test_b.py": _F7_HEAD + "def test_go(monkeypatch):\n"
+            "    import inspect\n"
+            '    inspect.getattr_static(monkeypatch, attr="setattr")(monkeypatch, f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f6p_e03_concat_comment": (
+        {
+            "tests/test_b.py": _F7_HEAD + "def test_go(monkeypatch):\n"
+            '    getattr(monkeypatch, "set"  # x\n'
+            '        "attr")(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f7_syspath_concat": (
+        {
+            "shadow/svc.py": 'def t(): return "SHADOW.t"\n',
+            "tests/test_b.py": "import os\ndef test_go(monkeypatch):\n"
+            '    getattr(monkeypatch, "syspath" "_prepend")(os.path.join(os.path.dirname(__file__), "..", "shadow"))\n'
+            '    import calls\n    print("RAN", calls.go())\n',
+        },
+        "module-system",
+        "RAN SHADOW.t / 1 passed",
+    ),
+    # P6-21 for pytest-mock: ``getfixturevalue`` named by ``+`` (rule row:
+    # pytest-mock is not installed in the measuring venv).
+    "getfixturevalue-plus-mocker": (
+        {
+            "tests/test_b.py": _F7_HEAD + "def test_go(request):\n"
+            '    m = getattr(request, "getfixture" + "value")("mocker")\n'
+            '    m.patch(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "unresolvable-writer",
+        "(pytest-mock: mocker.patch is unittest.mock.patch)",
+    ),
+    # P6-22: the method name as a subscript key.
+    "f6p_c08_class_dict": (
+        {
+            "tests/test_b.py": _F7_HEAD + "def test_go(monkeypatch):\n"
+            '    pytest.MonkeyPatch.__dict__["setattr"](monkeypatch, f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "f6p_c09_vars_class": (
+        {
+            "tests/test_b.py": _F7_HEAD + "def test_go(monkeypatch):\n"
+            '    vars(type(monkeypatch))["setattr"](monkeypatch, f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n'
+        },
+        "unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD7_BLOCKING))
+def test_fold7_method_names_by_constant_expression(tmp_path: Path, case: str) -> None:
+    """#705 P6-21: a constant method name is any expression Tier 1's
+    ``_constant_string`` decodes (adjacent literals, also with a comment
+    between them; ``+``; parentheses), passed positionally or as a keyword
+    value (``inspect.getattr_static(mp, attr="setattr")``). P6-22: or used as
+    a subscript key (``MonkeyPatch.__dict__["setattr"]``,
+    ``vars(type(mp))["setattr"]``). pytest printed ``RAN OTHER.t`` (``RAN
+    SHADOW.t`` for ``syspath_prepend``) in every tree, which fold 6 resolved
+    to ``svc.py``."""
+    files, reason, _runtime = FOLD7_BLOCKING[case]
+    root = _write(tmp_path, {**_SVC_OTHER, **files})
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on == off, case
+    assert label == f"none(run-tainted:{reason})", case
+
+
+def test_fold7_computed_method_name_is_r12(tmp_path: Path) -> None:
+    """The president's ``f6p_r1_name_var`` (``M = "setattr"; getattr(mp,
+    M)(...)``; pytest printed ``RAN OTHER.t``) stays the §15 R12
+    computed-string residual: a name built at run time is not followed. This
+    row pins that it is not silently claimed closed."""
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "tests/test_b.py": _F7_HEAD + "def test_go(monkeypatch):\n"
+            '    M = "setattr"\n'
+            '    getattr(monkeypatch, M)(f"svc.{NAME}", _evil)\n'
+            '    print("RAN", calls.go())\n',
+        },
+    )
+    _off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on["resolution"] == "resolved" and label == "import"
+
+
+def test_fold7_other_constant_names_record_nothing(tmp_path: Path) -> None:
+    """Controls: a constant string that is no patcher name, in an argument,
+    a keyword value or a subscript key, and a ``setattr`` constant that is
+    neither (an assignment value), record no cause."""
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "w.py": "def f(d, o):\n"
+            '    x = getattr(o, "set" "default")\n'
+            '    y = d["get" + "item"]\n'
+            '    z = dict(key="value")\n'
+            '    name = "setattr"\n'
+            "    return x, y, z, name\n",
+        },
+    )
+    facts, _graph, _context_ = _context(root)
+    (item,) = [item for item in facts if item["path"] == "w.py"]
+    assert item["scope_facts"]["module_bindings"]["shutoff"] == []

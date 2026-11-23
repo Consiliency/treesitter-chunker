@@ -574,6 +574,25 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '        if argument.type in ("list_splat", "dictionary_splat"):',
         "        if False:",
     ),
+    # Fold 7 (#705 P6-21, P6-22).
+    (
+        "p6-21-literal-only",
+        PYM,
+        "    if node.type not in _NAME_STRING_NODES or node.parent is None:",
+        '    if node.type != "string" or node.parent is None:',
+    ),
+    (
+        "p6-21-keyword-value",
+        PYM,
+        '    if parent.type == "keyword_argument" and ps._same(',
+        "    if False and ps._same(",
+    ),
+    (
+        "p6-22-subscript-key",
+        PYM,
+        '    if parent.type == "subscript":',
+        '    if parent.type == "subscript" and False:',
+    ),
     (
         "e6-6-first-attribute-write",
         PYM,

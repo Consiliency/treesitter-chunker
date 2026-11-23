@@ -1355,13 +1355,38 @@ class _Patchers:
         return None
 
 
+# P6-21: the expressions a constant name may be spelled with (``"set"
+# "attr"``, ``"set" + "attr"``, ``("setattr")``), decoded by Tier 1's
+# ``_constant_string``.
+_NAME_STRING_NODES = frozenset(
+    {"string", "concatenated_string", "binary_operator", "parenthesized_expression"}
+)
+
+
 def _argument_string(node: Any, source: bytes) -> str | None:
-    """A constant string passed directly as a call argument, or ``None``."""
+    """A constant string that names something by string: a call argument,
+    positional or a keyword value (``getattr(mp, "setattr")``,
+    ``inspect.getattr_static(mp, attr="setattr")``; #705 P6-21), or a
+    subscript key (``MonkeyPatch.__dict__["setattr"]``, ``vars(type(mp))
+    ["setattr"]``; P6-22). Any spelling ``_constant_string`` decodes counts:
+    adjacent literals (with comments between them), ``+`` and parentheses.
+    ``None`` otherwise; a name computed at run time (``M = "setattr";
+    getattr(mp, M)``) is §15 R12."""
     from . import py_scope as ps
 
-    if node.type != "string" or node.parent is None:
+    if node.type not in _NAME_STRING_NODES or node.parent is None:
         return None
-    if node.parent.type != "argument_list":
+    parent = node.parent
+    if parent.type == "keyword_argument" and ps._same(
+        node, parent.child_by_field_name("value")
+    ):
+        parent = parent.parent
+    if parent is None:
+        return None
+    if parent.type == "subscript":
+        if ps._same(node, parent.child_by_field_name("value")):
+            return None
+    elif parent.type != "argument_list":
         return None
     return ps._constant_string(node, source)
 
