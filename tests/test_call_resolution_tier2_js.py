@@ -4365,6 +4365,7 @@ def test_r699_4_oracle_routes(tmp_path: Path, text: str) -> None:
         pytest.param("process.on('x', ...fs);", id="spread-listener"),
         pytest.param("process.once('x');", id="no-listener"),
         pytest.param("process.on`x`;", id="tagged-template"),
+        pytest.param("new process.on('x', () => {});", id="constructed"),
         pytest.param(
             "import p from 'process'; p.once('x', function () {});",
             id="import-function-listener",
@@ -4386,6 +4387,8 @@ def test_r699_4_oracle_routes(tmp_path: Path, text: str) -> None:
         pytest.param("({ m: process.exit = f } = o);", id="object-default-target"),
         pytest.param("[(process.cwd)!] = fs;", id="non-null-target"),
         pytest.param("(process.cwd as any) = f;", id="as-target"),
+        pytest.param("([process.cwd] as any) = fs;", id="as-pattern-target"),
+        pytest.param("[[process.cwd]!] = fs;", id="non-null-nested-pattern"),
         pytest.param("import p from 'process'; p.cwd = f;", id="import-write"),
         pytest.param(
             "const p = require('process'); delete p.env;", id="require-delete"
@@ -4425,7 +4428,8 @@ def test_r699_4_process_escapes_trigger(tmp_path: Path, text: str) -> None:
         pytest.param("if (!process.send) process.exit(1);", id="negated-member"),
         pytest.param("process.env.HOME = 'x';", id="write-env-entry"),
         pytest.param("delete process.env.HOME;", id="delete-env-entry"),
-        pytest.param("[a = process.cwd()] = xs;", id="pattern-default-read"),
+        pytest.param("[a = process.argv] = xs;", id="pattern-default-read"),
+        pytest.param("({ a = process.argv } = o);", id="shorthand-default-read"),
         pytest.param("({ [process.platform]: v } = o);", id="pattern-computed-key"),
         pytest.param("for (const a of process.argv);", id="for-of-source"),
         pytest.param("x = process.argv;", id="assigned-from"),
