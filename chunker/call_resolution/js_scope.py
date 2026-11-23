@@ -1203,7 +1203,16 @@ class _Analysis:
         …)``, ``Object.assign.bind(null)(G, …)``; treesitter-chunker#694)
         and ``Reflect.apply(Object.assign, null, [G, …])``, where ``G`` is a
         receiver ``this`` (or the global object, which
-        :meth:`_global_object_use` already catches), may write any global."""
+        :meth:`_global_object_use` already catches), may write any global.
+
+        A call gives ``*`` when either detector flags it: the
+        comment-aware one (:meth:`_writer_targets`) or the positional one it
+        replaced (:meth:`_positional_writer_call`), so this change only adds
+        ``*`` (the #717 review: the positional reading, which counts
+        comments as arguments, flagged forms the comment-aware one missed)."""
+        if self._positional_writer_call(node):
+            self.global_wildcard = True
+            return
         targets = self._writer_targets(
             node.child_by_field_name("function"),
             _arguments(node.child_by_field_name("arguments")),
@@ -1214,6 +1223,41 @@ class _Analysis:
             for target in targets
         ):
             self.global_wildcard = True
+
+    def _positional_writer_call(self, node: Any) -> bool:
+        """The property-writer detector of js fact version 20, kept verbatim
+        apart from returning its verdict: it reads the writer's target from
+        the raw ``named_children`` of the arguments (comments included), so
+        ``Object.assign.call(/* c */ this, this ?? {}, …)`` reads ``this``.
+        Main's verdict is kept as a floor, never replaced:
+        :meth:`_is_property_writer` accepts every expression main's did (it
+        also looks through commas), so this flags everything main flagged."""
+        function = unwrap(node.child_by_field_name("function"))
+        while function is not None and function.type == "sequence_expression":
+            # ``(0, Object.assign)(this, …)`` calls the last operand.
+            operands = function.named_children
+            function = unwrap(operands[-1]) if operands else None
+        if function is None:
+            return False
+        arguments = node.child_by_field_name("arguments")
+        named = arguments.named_children if arguments is not None else []
+        target = None
+        if self._is_property_writer(function):
+            target = named[0] if named else None
+        elif function.type in _MEMBER_ACCESS and self._is_property_writer(
+            function.child_by_field_name("object")
+        ):
+            invoker = self._member_key(function)
+            if invoker in ("call", "bind"):
+                target = named[1] if len(named) > 1 else None
+            elif invoker == "apply":
+                listed = unwrap(named[1]) if len(named) > 1 else None
+                if listed is not None and listed.type == "array":
+                    items = listed.named_children
+                    target = items[0] if items else None
+            elif invoker is None or invoker == _UNREADABLE_KEY:
+                return True
+        return target is not None and self._is_global_object(target, receiver=True)
 
     def _writer_targets(self, function: Any, arguments: list[Any]) -> list[Any]:
         """The expressions a property writer may receive as its first

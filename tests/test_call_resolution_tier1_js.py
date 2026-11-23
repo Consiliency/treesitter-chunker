@@ -2168,3 +2168,61 @@ def test_694_issue_forms_keep_name_mode_identical_to_off(
     assert extract_symbol_graph(root, call_resolution="name") == (
         extract_symbol_graph(root)
     )
+
+
+# treesitter-chunker#717 review: forms main (js fact version 20) flagged and
+# the comment-aware detector alone missed. Main's positional reading takes
+# the raw argument list (comments included), so the ``.call``/``.bind``
+# receiver or the ``.apply`` receiver array stands in for the target; node
+# v24 confirms each replaces the script-global ``d`` when the method runs
+# with the global object as ``this``. They stay ``*`` (``none(reassigned)``).
+POSITIONAL_WRITER_FORMS_717 = {
+    "comment-call-nullish": "Object.assign.call(/* c */ this, this ?? {}, { d: f });",
+    "comment-call-valueof": "Object.assign.call(/* c */ this, this.valueOf(), { d: f });",
+    "comment-call-spread": "Object.assign.call(/* c */ this, ...[this], { d: f });",
+    "comment-optional-call": (
+        "(Object.assign)?.['call'](/* c */ this, this ?? {}, { d: f });"
+    ),
+    "comment-bind": "Object.assign.bind(/* c */ this, this ?? {})({ d: f });",
+    "comment-apply": "Object.assign.apply(/* c */ [this], [this ?? {}, { d: f }]);",
+    "comment-apply-arraylike": (
+        "Object.assign.apply(/* c */ [this], {0: this, 1: { d: f }, length: 2});"
+    ),
+    "comment-receiver-namespace": (
+        "this['Object'].assign.call(/* c */ this, this.valueOf(), { d: f });"
+    ),
+    "comment-reflect-set-call": "Reflect.set.call(/* c */ this, {}, 'd', f, this);",
+    "comment-reflect-set-bind": "Reflect.set.bind(/* c */ this, {}, 'd', f, this)();",
+    "comment-reflect-set-apply": (
+        "Reflect.set.apply(/* c */ [this], [{}, 'd', f, this]);"
+    ),
+}
+
+
+@pytest.mark.parametrize("form", sorted(POSITIONAL_WRITER_FORMS_717))
+def test_717_main_writer_wildcards_are_kept(form: str) -> None:
+    source = "class K { m(k) { " + POSITIONAL_WRITER_FORMS_717[form] + " } }"
+    assert js_scope.GLOBAL_WILDCARD in script_globals(source), source
+    script = "function d() {}\nfunction g() { return d(); }\n" + source
+    assert reason(script, "d", language="javascript") == "reassigned", source
+
+
+def test_717_commented_invoker_receiver_keeps_the_edge_unresolved(
+    tmp_path: Path,
+) -> None:
+    """The review's graph reproduction: main left the off-mode edge
+    ambiguous; the comment-aware detector alone promoted it to
+    ``t1.lexical``. ``name`` mode stays identical to off."""
+    root = _write(
+        tmp_path,
+        _writer(
+            "class K { m() { Object.assign.call(/* c */ this, this ?? {},"
+            " { d: 1 }); } }\n"
+        ),
+    )
+    off, on = _edge(_edges(root), "a.js", "d")
+    assert off["resolution"] == "ambiguous"
+    assert on["resolution"] == "ambiguous"
+    assert extract_symbol_graph(root, call_resolution="name") == (
+        extract_symbol_graph(root)
+    )

@@ -137,7 +137,9 @@ logger = logging.getLogger(__name__)
 # this, …)``, ``(0, Object).assign``), nested ``.call``/``.apply``/``.bind``
 # and a bound writer called later (``Object.assign.bind(null)(this, …)``),
 # ``Reflect.apply(Object.assign, null, [this, …])`` and comments between
-# arguments; each such call on a receiver ``this`` now gives ``*``.
+# arguments; each such call on a receiver ``this`` now gives ``*``. The
+# positional reading of "20" still runs and is never overridden, so this
+# version flags every call "20" flagged (the #717 review).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute

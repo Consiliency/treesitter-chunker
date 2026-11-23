@@ -38,6 +38,7 @@ TESTS = (
     # treesitter-chunker#694 pins for the property-writer mutations below.
     "tests/test_call_resolution_tier1_js.py::test_694_writer_invokers_fail_closed",
     "tests/test_call_resolution_tier1_js.py::test_694_writer_invokers_on_other_targets_are_not_wildcards",
+    "tests/test_call_resolution_tier1_js.py::test_717_main_writer_wildcards_are_kept",
 )
 
 # (id, file, old text, new text). The old text must occur in the file.
@@ -916,6 +917,14 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         JSS,
         "            or self._is_global_object(_callee(target), receiver=True)",
         "            or self._is_global_object(target, receiver=True)",
+    ),
+    (
+        # The #717 review: main's positional detector is a floor; dropping
+        # it loses ``*`` on ``Object.assign.call(/* c */ this, this ?? {}, …)``.
+        "717-positional-floor",
+        JSS,
+        "        if self._positional_writer_call(node):",
+        "        if False:",
     ),
     (
         "694-control-target",
