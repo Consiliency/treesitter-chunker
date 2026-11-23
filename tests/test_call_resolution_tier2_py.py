@@ -347,6 +347,8 @@ NEAR_MISSES: dict[str, tuple[dict[str, str], tuple[str, str], str]] = {
         {
             "a.py": "",
             "a/svc.py": SVC,
+            # A root ``svc.py`` a component-wise walk must not fall into.
+            "svc.py": "def t():\n    return 4\n",
             "use.py": "from a.svc import t\n\n\ndef u():\n    return t()\n",
         },
         ("use.py", "t"),
@@ -696,6 +698,26 @@ def test_a_write_through_another_dotted_name_is_another_module(tmp_path: Path) -
     _off, _structural, on, label = _run(root, "use.py", "t")
     assert on["resolution"] == "resolved"
     assert label == "import"
+
+
+def test_a_writer_below_the_root_also_writes_its_script_directory(
+    tmp_path: Path,
+) -> None:
+    """``tools/w.py`` run as a script (or under pytest's rootdir insertion)
+    imports ``tools/svc.py`` as ``svc``: that module is written too."""
+    root = _write(
+        tmp_path,
+        {
+            "tools/__init__.py": "",
+            "tools/svc.py": SVC,
+            "tools/w.py": "import svc\n\nsvc.t = len\n",
+            "use.py": "from tools.svc import t\n\n\ndef u():\n    return t()\n",
+            **OTHER,
+        },
+    )
+    off, _structural, on, label = _run(root, "use.py", "t")
+    assert on == off
+    assert label == "none(reassigned)"
 
 
 def test_a_write_of_another_name_leaves_the_proof(tmp_path: Path) -> None:

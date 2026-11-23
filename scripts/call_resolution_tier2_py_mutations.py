@@ -128,8 +128,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "dunder-escape",
         PYM,
-        '            if name.startswith("__") and name.endswith("__") and name not in _SAFE_DUNDERS:',
-        "            if False:",
+        "                and name not in _SAFE_DUNDERS\n            ):",
+        "                and name not in _SAFE_DUNDERS\n                and False\n            ):",
     ),
     (
         "exposure-closure",
@@ -156,10 +156,10 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "    return True",
     ),
     (
-        "lenient-targets",
+        "writer-script-directory",
         PYM,
-        '        if node == query or node.endswith("." + query) or query.endswith("." + node):',
-        "        if node == query:",
+        "            if local in self.nodes:\n                found.add(local)",
+        "            if local in self.nodes:\n                pass",
     ),
     (
         "class-scope-exposure",
@@ -236,7 +236,12 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '    called, a subscript read, or the right operand of ``in``/``not in``."""\n'
         "    return True\n",
     ),
-    ("runpy", PYM, "    if head in _LOADER_MODULES or", "    if False or"),
+    (
+        "runpy",
+        PYM,
+        "        head in _LOADER_MODULES\n",
+        "        False\n",
+    ),
     # Parse classification (E5-7 analog).
     (
         "unparsed-cause",
