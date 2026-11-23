@@ -1148,14 +1148,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "ns-exempt-factory-writes",
         PYM,
-        "    if {head, *chain} & analysis.attribute_writes:",
-        "    if {head} & analysis.attribute_writes:",
-    ),
-    (
-        "ns-exempt-factory-head-write",
-        PYM,
-        "    if {head, *chain} & analysis.attribute_writes:",
         "    if set(chain) & analysis.attribute_writes:",
+        "    if False:",
     ),
     (
         "ns-exempt-factory-other-binding",
@@ -1174,8 +1168,10 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     # identifier or constant, which each exempt position also requires), the
     # ``exec_module`` attribute-position check (a token that is no attribute
     # name has no ``.loader`` object), the receiver's mangled-name check (the
-    # lookup decides no mangled name) and ``module_path.unknown`` (every test
-    # file has a path); ``continuation`` (tree-sitter reports
+    # lookup decides no mangled name), the factory head's attribute-write
+    # check (every recorded attribute write is a module binding event) and
+    # ``module_path.unknown`` (every test file has a path); ``continuation``
+    # (tree-sitter reports
     # every malformed continuation as an error first), ``own-name-acquisition``
     # (``sys.modules[__name__]`` already makes the file dynamic in Tier 1, so
     # its exports fail closed), ``chain-matches-reference`` (the tree's chain

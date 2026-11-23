@@ -1587,9 +1587,10 @@ def _fresh_module_factory(analysis: Any, callee: Any) -> bool:
     standard-library callee (``py_scope._stdlib_name``), which holds in a
     file whose module lookups fail closed (any ``importlib`` mention makes
     them ``dynamic-scope``): no other binding of the head anywhere (an
-    assignment, a parameter, ``del``, a class or def), no star import, and
-    no recorded write of the head or of a chain name on any receiver
-    (``x.types = F``, ``importlib.util = F``, ``ns["ModuleType"] = F``)."""
+    assignment, a parameter, ``del``, a class or def, a write of its name on
+    any receiver such as ``x.types = F``), no star import, and no recorded
+    write of a chain name on any receiver (``importlib.util = F``,
+    ``ns["ModuleType"] = F``)."""
     from . import py_scope as ps
 
     source = analysis.source
@@ -1607,7 +1608,10 @@ def _fresh_module_factory(analysis: Any, callee: Any) -> bool:
     head = ps._text(node, source)
     if ps._mangled_names(node, head, source):
         return False
-    if {head, *chain} & analysis.attribute_writes:
+    if set(chain) & analysis.attribute_writes:
+        # ``importlib.util = U``, ``ns["ModuleType"] = F``. A write of the
+        # head's own name on any receiver (``x.types = F``) is already a
+        # module-scope binding event of it, which the loop below refuses.
         return False
     paths = set()
     for _scope, bound, binding in analysis.events:
