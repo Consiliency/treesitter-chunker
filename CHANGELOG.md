@@ -154,6 +154,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     function's inferred `.name` and export keys expose them). JSX text
     containing either name, and JSX attribute strings equal to either
     name, match after HTML character references decode.
+    Node evaluator loads and non-exempt `process` tokens also disable
+    cross-module resolution (treesitter-chunker#702). The process rule
+    allows specific static members and operand positions on the unbound
+    global and checks the uses of aliases bound by a static import of the
+    process module, in a file where no scope binds `require`; a `require`
+    call of it always disables cross-module resolution, and so does a
+    write to the CommonJS `require`, including a destructuring element,
+    default or loop head such as `[require] = [f]`.
+    Writes to those members, `on`/`once` other than a discarded call with
+    arrow listeners, and loose equality other than against `null` still
+    disable it, since each can hand `process` to user code.
     Causes confined to test files apply only to test callers (O-2). This
     holds within the run only (plan risk
     R12, treesitter-chunker#702).

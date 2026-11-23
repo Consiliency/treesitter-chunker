@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"22"`` for the ``js`` family and ``"40"`` for
+Schema (fact version ``"23"`` for the ``js`` family and ``"40"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -140,8 +140,17 @@ logger = logging.getLogger(__name__)
 # arguments; each such call on a receiver ``this`` now gives ``*``. The
 # positional reading of "20" still runs and is never overridden, so this
 # version flags every call "20" flagged (the #717 review).
-# js "22": stack-introspection tokens can expose the CommonJS wrapper,
-# and ``with`` can shadow lexical lookup (treesitter-chunker#718).
+# js "22": stack-introspection tokens, including binding names and decoded
+# JSX, can expose the CommonJS wrapper. ``with`` can shadow lexical lookup
+# (treesitter-chunker#718).
+# js "23": Node evaluator modules and process tokens or imports can expose
+# run-wide writes. Bare process has closed member and operand exemptions;
+# writes to those members, ``on``/``once`` outside a discarded call with
+# arrow listeners, and loose equality except against ``null`` are causes
+# (treesitter-chunker#702, R-699-4). Only a static import of process can be
+# exempt, and none in a file where any scope binds ``require`` (R-699-7;
+# same version, unreleased). A destructuring or loop-head write to the
+# wrapper's ``require`` is a dynamic-loader cause (R-699-9; same version).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -270,7 +279,7 @@ logger = logging.getLogger(__name__)
 # With the R-699-3, R-699-5 and R-699-6 folds (every constant among the
 # arguments of ``import_module``/``__import__`` is an acquisition position).
 # Unreleased as "39" on the #727 branch; renumbered after #714 took "39".
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "22", "python": "40"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "40"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
