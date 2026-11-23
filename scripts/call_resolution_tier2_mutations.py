@@ -348,12 +348,43 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '                if node.type == "property_identifier" and node.parent.text == b"this.process":\n'
         "                    return\n",
     ),
+    # R-699-7, global ``require``: restore the exemption for a ``require``
+    # call of ``process`` bound to a declared name (it replaces the
+    # 702-process-b3-bare-require mutation, whose code is gone).
     (
-        "702-process-b3-bare-require",
+        "r699-7-global-require-call",
         JSM,
-        "            self._mark_process_load(literal, names, handled)\n",
-        "            if not is_require or names != [None]:\n"
-        "                self._mark_process_load(literal, names, handled)\n",
+        "        # literal. Only a static import is the loader in either goal.\n"
+        "        self._mark_node_builtin_load(specifier)\n",
+        "        if specifier in _PROCESS_SPECIFIERS and is_require:\n"
+        "            declarator = _climb_wrappers(node).parent\n"
+        "            name = (\n"
+        "                declarator.child_by_field_name(\"name\")\n"
+        "                if declarator is not None\n"
+        "                and declarator.type == \"variable_declarator\"\n"
+        "                else None\n"
+        "            )\n"
+        "            self._mark_process_load(literal, [name], handled)\n"
+        "        else:\n"
+        "            self._mark_node_builtin_load(specifier)\n",
+    ),
+    (
+        "r699-7-global-require-import-equals",
+        JSM,
+        "                        # a global lookup in an ES module (R-699-7).\n"
+        "                        self._mark_node_builtin_load(specifier)\n",
+        "                        if specifier in _PROCESS_SPECIFIERS:\n"
+        "                            self._mark_process_load(\n"
+        "                                source_node,\n"
+        "                                [\n"
+        "                                    c\n"
+        "                                    for c in node.named_children\n"
+        "                                    if c.type == \"identifier\"\n"
+        "                                ][:1],\n"
+        "                                handled,\n"
+        "                            )\n"
+        "                        else:\n"
+        "                            self._mark_node_builtin_load(specifier)\n",
     ),
     (
         "702-process-jsx-text-entities",

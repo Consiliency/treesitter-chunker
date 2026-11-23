@@ -4185,15 +4185,8 @@ def test_702_process_members_keep_evaluator_cause(tmp_path: Path, access: str) -
             "import { env as e } from 'node:process'; typeof e;", id="safe-named-import"
         ),
         pytest.param(
-            "function f() { return p.env; } const p = require('node:process');",
-            id="safe-bound-require",
-        ),
-        pytest.param(
-            "const p = require(`process`); p.env;",
-            id="safe-require-template",
-        ),
-        pytest.param(
-            "import p = require('process'); p && true;", id="safe-import-equals"
+            "function f() { return p.env; } import p from 'node:process';",
+            id="safe-import-used-before",
         ),
         "const vm = { run() {} }; vm.run();",
         "const binding = 'contextify';",
@@ -4580,6 +4573,40 @@ def test_r699_7_route_trees(tmp_path: Path, text: str) -> None:
             " typeof p;",
             id="import-equals",
         ),
+        # The same bindings ahead of a static import, which a CommonJS emit
+        # turns into a call of the program-scope ``require``.
+        pytest.param(
+            "var require = (x) => x; import p from 'process'; typeof p;",
+            id="var-static-import",
+        ),
+        pytest.param(
+            "let require; import p from 'process'; typeof p;", id="let-static-import"
+        ),
+        pytest.param(
+            "class require {} import p from 'process'; typeof p;",
+            id="class-static-import",
+        ),
+        pytest.param(
+            "function f({ require }) {} import p from 'process'; typeof p;",
+            id="destructured-parameter-static-import",
+        ),
+        pytest.param(
+            "class C { m(require) {} } import p from 'process'; typeof p;",
+            id="method-parameter-static-import",
+        ),
+        pytest.param(
+            "try {} catch (require) {} import p from 'process'; typeof p;",
+            id="catch-parameter-static-import",
+        ),
+        pytest.param(
+            "import require from './req'; import * as p from 'process'; p.argv;",
+            id="default-import-static-import",
+        ),
+        pytest.param(
+            "import { require } from './req'; import { argv } from 'node:process';"
+            " typeof argv;",
+            id="named-import-static-import",
+        ),
     ],
 )
 def test_r699_7_bound_require_voids_process_load(tmp_path: Path, text: str) -> None:
@@ -4622,6 +4649,58 @@ def test_r699_7_unbound_require_keeps_tier2(tmp_path: Path, text: str) -> None:
     assert structural == off
     assert on["resolution"] == "resolved", label
     assert _resolved_file(on, root) == "svc.ts"
+
+
+# R-699-7, global ``require``: in an ES module a free ``require`` is a lookup
+# on the global object, which another file can set. Under node v24.22.3,
+# ``a.js`` setting ``globalThis.require`` and then a ``"type": "module"``
+# file running ``const p = require("process"); typeof p;`` printed the
+# replacement while
+# the head 8dc5fa0d resolved the call (723-r7/gr_src2, gr_tree2 in the
+# wave-3 evidence). So no ``require`` call of ``process`` is exempt, and
+# neither is ``import p = require(...)``, which ``--module preserve`` emits
+# as such a call.
+GLOBAL_REQUIRE = (
+    f"(globalThis as any).require = (x: string) => {{\n{LEAK}  return {{}};\n}};\n"
+    "export const nothing = 1;\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("name", "text"),
+    [
+        pytest.param(
+            "esm/w.js",
+            "const p = require('process');\ntypeof p;\n",
+            id="type-module-js",
+        ),
+        pytest.param(
+            "w.ts",
+            "const p = require('node:process');\ntypeof p;\nexport {};\n",
+            id="ts-module",
+        ),
+        pytest.param(
+            "w.ts", "const p = require(`process`);\np.argv;\n", id="template-specifier"
+        ),
+        pytest.param(
+            "w.ts",
+            "function f() { return p.argv; }\nconst p = require('node:process');\n",
+            id="used-before",
+        ),
+        pytest.param(
+            "w.ts",
+            "import p = require('process');\np && true;\nexport {};\n",
+            id="import-equals",
+        ),
+    ],
+)
+def test_r699_7_global_require_route(tmp_path: Path, name: str, text: str) -> None:
+    files = {**OTHERS, "svc.ts": SVC, "use.ts": USE, "a.ts": GLOBAL_REQUIRE}
+    files["esm/package.json"] = '{"type": "module"}\n'
+    root = _write(tmp_path, {**files, name: text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
 
 
 def test_p5_37_short_name_after_trailing_dot_or_space() -> None:

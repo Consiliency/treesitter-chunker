@@ -147,8 +147,9 @@ logger = logging.getLogger(__name__)
 # run-wide writes. Bare process has closed member and operand exemptions;
 # writes to those members, ``on``/``once`` outside a discarded call with
 # arrow listeners, and loose equality except against ``null`` are causes
-# (treesitter-chunker#702, R-699-4). No process load is exempt in a file
-# where any scope binds ``require`` (R-699-7; same version, unreleased).
+# (treesitter-chunker#702, R-699-4). Only a static import of process can be
+# exempt, and none in a file where any scope binds ``require`` (R-699-7;
+# same version, unreleased).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute

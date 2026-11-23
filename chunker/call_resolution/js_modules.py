@@ -582,18 +582,10 @@ class _ModuleFacts:
                 specifier = _literal_value(source_node, self.source)
                 if specifier is not None and specifier not in _MODULE_SYSTEM_SPECIFIERS:
                     if not _has_token(node.parent, "type"):
-                        if specifier in _PROCESS_SPECIFIERS:
-                            name = next(
-                                (
-                                    c
-                                    for c in node.named_children
-                                    if c.type == "identifier"
-                                ),
-                                None,
-                            )
-                            self._mark_process_load(source_node, [name], handled)
-                        else:
-                            self._mark_node_builtin_load(specifier)
+                        # ``import p = require('process')`` is never exempt:
+                        # ``--module preserve`` emits a free ``require`` call,
+                        # a global lookup in an ES module (R-699-7).
+                        self._mark_node_builtin_load(specifier)
                     self.taints.add(specifier)
                 else:
                     self.shutoff.add(CAUSE_MODULE_SYSTEM)
@@ -784,11 +776,11 @@ class _ModuleFacts:
         if specifier in _MODULE_SYSTEM_SPECIFIERS:
             self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
-        if specifier in _PROCESS_SPECIFIERS:
-            names = [self._require_binding(node)] if is_require else []
-            self._mark_process_load(literal, names, handled)
-        else:
-            self._mark_node_builtin_load(specifier)
+        # No ``require`` call of ``process`` is exempt (R-699-7): in an ES
+        # module a free ``require`` is a global lookup that another file can
+        # set (``globalThis.require = f``), and ``f`` then receives the
+        # literal. Only a static import is the loader in either goal.
+        self._mark_node_builtin_load(specifier)
         # A literal ``require`` taints whatever binds the name: an AMD
         # ``require`` parameter loads modules too.
         self.taints.add(specifier)
@@ -935,9 +927,9 @@ class _ModuleFacts:
     def _require_rebound(self) -> bool:
         """R-699-7 item 1: whether any scope of the file binds ``require``.
 
-        A call of such a binding hands the literal ``"process"`` to user
-        code, and a CommonJS emit routes the file's static imports through
-        a program-scope one, so no process load in the file is exempt. A
+        A CommonJS emit routes the file's static imports through the
+        program-scope ``require``, so such a binding receives the literal
+        ``"process"`` and no process load in the file is exempt. A
         type-only import and an ambient declaration bind no runtime value.
         """
         if self._rebound is None:
@@ -974,23 +966,6 @@ class _ModuleFacts:
                                 or spec.child_by_field_name("name")
                             )
         return names
-
-    def _require_binding(self, call: Any) -> Any:
-        outer = _climb_wrappers(call)
-        declarator = outer.parent
-        if (
-            declarator is None
-            or declarator.type != "variable_declarator"
-            or not _same(declarator.child_by_field_name("value"), outer)
-        ):
-            return None
-        declaration = declarator.parent
-        if declaration is None or (
-            declaration.parent is not None
-            and declaration.parent.type == "export_statement"
-        ):
-            return None
-        return declarator.child_by_field_name("name")
 
     def _inert_process_operand(self, node: Any) -> bool:
         outer = _climb_wrappers(node)
