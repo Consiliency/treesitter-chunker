@@ -70,6 +70,10 @@ language = api.detect_language("Makefile")  # Returns "makefile"
 language = api.detect_language("Dockerfile")  # Returns "dockerfile"
 ```
 
+The extension map uses `rst` for reStructuredText (`.rst`) and `asm` for
+assembly (`.asm` and `.s`). Raku (`.raku`) has no automatic extension
+mapping because the language pack has no Raku grammar.
+
 ### 2. Zero-Configuration File Chunking
 
 ```python

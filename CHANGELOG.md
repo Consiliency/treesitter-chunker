@@ -158,6 +158,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   identical with the option on and off. The option and its behavior may change
   until treesitter-chunker#682 is complete.
 
+### Fixed
+
+- Automatic detection uses the language pack's `rst` and `asm` grammar
+  names for `.rst`, `.asm`, and `.s` files. Symbol graph directory scans
+  also skip `.raku` files because the pack has no Raku grammar
+  (treesitter-chunker#692).
+
 ## [7.0.0] - 2026-11-19
 
 This major release requires Python 3.14 (treesitter-chunker#599) and includes

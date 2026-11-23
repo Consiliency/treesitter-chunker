@@ -39,7 +39,7 @@ class ZeroConfigAPI(ZeroConfigContract):
     """
 
     EXTENSION_MAP: ClassVar[dict[str, str]] = {
-        ".baml": "baml",
+        ".baml": "baml",  # Provided by the optional BAML companion.
         ".py": "python",
         ".js": "javascript",
         ".jsx": "javascript",
@@ -76,7 +76,7 @@ class ZeroConfigAPI(ZeroConfigContract):
         ".scss": "css",
         ".sql": "sql",
         ".md": "markdown",
-        ".rst": "restructuredtext",
+        ".rst": "rst",
         ".tex": "latex",
         ".vim": "vim",
         ".el": "elisp",
@@ -91,7 +91,6 @@ class ZeroConfigAPI(ZeroConfigContract):
         ".mli": "ocaml",
         ".pl": "perl",
         ".pm": "perl",
-        ".raku": "raku",
         ".dart": "dart",
         ".zig": "zig",
         ".nim": "nim",
@@ -102,8 +101,8 @@ class ZeroConfigAPI(ZeroConfigContract):
         ".f95": "fortran",
         ".cob": "cobol",
         ".pas": "pascal",
-        ".asm": "assembly",
-        ".s": "assembly",
+        ".asm": "asm",
+        ".s": "asm",
     }
     SHEBANG_PATTERNS: ClassVar[dict[str, str]] = {
         "python[0-9.]*": "python",

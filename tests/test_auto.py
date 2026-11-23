@@ -6,12 +6,28 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from tree_sitter_language_pack import manifest_languages
 
 from chunker.auto import ZeroConfigAPI
 from chunker.contracts.auto_contract import AutoChunkResult
 from chunker.exceptions import ChunkerError, ParserInitError
 from chunker.fallback import FallbackWarning
 from chunker.types import CodeChunk
+
+
+@pytest.fixture(scope="module")
+def pack_manifest() -> set[str]:
+    return set(manifest_languages())
+
+
+@pytest.mark.parametrize(
+    ("extension", "language"), sorted(ZeroConfigAPI.EXTENSION_MAP.items())
+)
+def test_extension_map_uses_pack_manifest_names(
+    extension: str, language: str, pack_manifest: set[str]
+) -> None:
+    # BAML has a separate, optional grammar provider.
+    assert (extension, language) == (".baml", "baml") or language in pack_manifest
 
 
 class MockRegistry:
