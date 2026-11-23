@@ -4248,6 +4248,232 @@ def test_702_causes_follow_test_scope(
         assert prod_edge["resolution"] == "resolved", prod_label
 
 
+# ---------------------------------------------------------------------------
+# R-699-4: the process allow-list must not hand the process object back.
+# Each route below ran the replacement under node v24.22.3 while the PR head
+# c6e34017 resolved the call (oracle in the wave-3 evidence, 723-r4/ and
+# 723-opus-soundness/). ``MM``/``RQ`` reach ``mainModule.require`` without
+# spelling a denied name.
+
+MM = '["main" + "Module"]'
+RQ = '["req" + "uire"]'
+EVIL = f'{MM}{RQ}("./svc").t = () => 2;\n'
+METHOD = f"class A {{\n  m() {{\n    this{EVIL}    return '/';\n  }}\n}}\n"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Hole 1: ``on``/``once`` return ``process``.
+        pytest.param(
+            f"const p = process.on('x', () => {{}});\np{EVIL}", id="on-returns"
+        ),
+        pytest.param(
+            f"const p = process.once('x', () => {{}});\np{EVIL}", id="once-returns"
+        ),
+        pytest.param(f"process.on('x', () => {{}}){EVIL}", id="on-chain-inline"),
+        pytest.param(f"process.on('x', () => {{}}).off{EVIL}", id="on-off-chain"),
+        pytest.param(
+            f"import p from 'node:process';\nconst q = p.on('x', () => {{}});\nq{EVIL}",
+            id="import-default-on",
+        ),
+        pytest.param(
+            f"const p = require('process');\nconst q = p.once('x', () => {{}});\nq{EVIL}",
+            id="require-bound-once",
+        ),
+        pytest.param(
+            f"import * as p from 'process';\nconst q = p.on('x', () => {{}});\nq{EVIL}",
+            id="namespace-import-on",
+        ),
+        # Hole 2: listeners run with ``this === process``.
+        pytest.param(
+            METHOD + "process.once('newListener', new A().m);\n"
+            "process.on('y', () => {});\n",
+            id="listener-class-method",
+        ),
+        pytest.param(
+            METHOD + "const m = new A().m;\nprocess.once('newListener', m);\n"
+            "process.on('y', () => {});\n",
+            id="listener-bound-name",
+        ),
+        # Hole 3: a write installs a method that runs with ``this === process``.
+        pytest.param(
+            METHOD + "process.cwd = new A().m;\nprocess.cwd();\n", id="write-cwd"
+        ),
+        pytest.param(
+            METHOD + "process.exit = new A().m;\nprocess.exit(0);\n", id="write-exit"
+        ),
+        pytest.param(
+            METHOD + "[process.cwd] = [new A().m];\nprocess.cwd();\n",
+            id="write-array-pattern",
+        ),
+        pytest.param(
+            METHOD + "({ m: process.exit } = new A());\nprocess.exit(0);\n",
+            id="write-object-pattern",
+        ),
+        pytest.param(
+            METHOD + "process.cwd &&= new A().m;\nprocess.cwd();\n",
+            id="write-logical-assignment",
+        ),
+        pytest.param(
+            METHOD + "for (process.cwd of [new A().m]);\nprocess.cwd();\n",
+            id="write-for-of",
+        ),
+        pytest.param(
+            "let leak;\n(Object.prototype as any).cwd = function () {\n"
+            "  leak = this;\n  return '/';\n};\n"
+            f"delete process.cwd;\nprocess.cwd();\nleak{EVIL}",
+            id="write-delete",
+        ),
+        # Hole 4: loose equality runs ToPrimitive(process).
+        pytest.param(
+            "let leak;\nconst vo = Object.prototype.valueOf;\n"
+            "Object.prototype.valueOf = function () {\n"
+            "  leak = this;\n  return vo.call(this);\n};\n"
+            f"void (process == 'x');\nObject.prototype.valueOf = vo;\nleak{EVIL}",
+            id="loose-equality-valueof",
+        ),
+        pytest.param(
+            "let leak;\nObject.prototype.valueOf = function () {\n"
+            f"  leak = this;\n  return 0;\n}};\nvoid (process != 1);\nleak{EVIL}",
+            id="loose-inequality-valueof",
+        ),
+    ],
+)
+def test_r699_4_oracle_routes(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Item 1: anything but a discarded statement call with arrow listeners.
+        pytest.param("export default process.on('x', () => {});", id="on-exported"),
+        pytest.param("void process.on('x', () => {});", id="on-voided"),
+        pytest.param("await process.once('x', () => {});", id="once-awaited"),
+        pytest.param("process.on('x', () => {}), 0;", id="on-sequence"),
+        pytest.param("const f = process.on;", id="on-read"),
+        pytest.param("(0, process.once)('x', () => {});", id="once-detached"),
+        pytest.param("process.on('x', function () {});", id="function-listener"),
+        pytest.param("process.on('x', handler);", id="named-listener"),
+        pytest.param("process.once('x', () => {}, h);", id="second-listener"),
+        pytest.param("process.on(...args);", id="spread-arguments"),
+        pytest.param("process.on(...[e, f], () => {});", id="spread-event"),
+        pytest.param("process.on('x', ...fs);", id="spread-listener"),
+        pytest.param("process.once('x');", id="no-listener"),
+        pytest.param("process.on`x`;", id="tagged-template"),
+        pytest.param(
+            "import p from 'process'; p.once('x', function () {});",
+            id="import-function-listener",
+        ),
+        # Item 2: any write to an allowed member.
+        pytest.param("process.env = {};", id="write-env"),
+        pytest.param("process.argv = [];", id="write-argv"),
+        pytest.param("process.on = f;", id="write-on"),
+        pytest.param("process.send = f;", id="write-send"),
+        pytest.param("process.cwd += '';", id="compound-assignment"),
+        pytest.param("process.cwd ??= f;", id="nullish-assignment"),
+        pytest.param("process.argv++;", id="postfix-update"),
+        pytest.param("--process.argv;", id="prefix-update"),
+        pytest.param("delete process.env;", id="delete"),
+        pytest.param("delete process?.cwd;", id="delete-optional"),
+        pytest.param("for (process.cwd in o);", id="for-in"),
+        pytest.param("[...process.argv] = xs;", id="rest-pattern"),
+        pytest.param("[process.cwd = f] = fs;", id="pattern-default-target"),
+        pytest.param("({ m: process.exit = f } = o);", id="object-default-target"),
+        pytest.param("[(process.cwd)!] = fs;", id="non-null-target"),
+        pytest.param("(process.cwd as any) = f;", id="as-target"),
+        pytest.param("import p from 'process'; p.cwd = f;", id="import-write"),
+        pytest.param(
+            "const p = require('process'); delete p.env;", id="require-delete"
+        ),
+        # Item 3: loose equality only against null or undefined.
+        pytest.param("process == 'x';", id="loose-equality-string"),
+        pytest.param("1 != process;", id="loose-inequality-right"),
+        pytest.param("process == void 0;", id="loose-equality-void"),
+        pytest.param("process == undefined;", id="loose-equality-undefined"),
+        pytest.param(
+            "function f(undefined: string) { return process == undefined; }",
+            id="loose-equality-bound-undefined",
+        ),
+        pytest.param("import p from 'process'; p == 'x';", id="import-loose-equality"),
+    ],
+)
+def test_r699_4_process_escapes_trigger(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "process.on('x', () => {});\nprocess.once('y', (v: unknown) => void v);",
+            id="arrow-listeners",
+        ),
+        pytest.param("process.on?.('x', () => {});", id="optional-call"),
+        pytest.param("process?.once('x', async () => {});", id="optional-member"),
+        pytest.param("(process.on)('x', (() => {}));", id="parenthesized"),
+        pytest.param(
+            "import p from 'node:process'; p.on('x', () => {});", id="import-listener"
+        ),
+        pytest.param("if (!process.send) process.exit(1);", id="negated-member"),
+        pytest.param("process.env.HOME = 'x';", id="write-env-entry"),
+        pytest.param("delete process.env.HOME;", id="delete-env-entry"),
+        pytest.param("[a = process.cwd()] = xs;", id="pattern-default-read"),
+        pytest.param("({ [process.platform]: v } = o);", id="pattern-computed-key"),
+        pytest.param("for (const a of process.argv);", id="for-of-source"),
+        pytest.param("x = process.argv;", id="assigned-from"),
+        pytest.param("null == process;", id="loose-equality-null"),
+        pytest.param("process != (null);", id="loose-inequality-null"),
+    ],
+)
+def test_r699_4_safe_process_uses_keep_tier2(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert structural == off
+    assert on["resolution"] == "resolved", label
+    assert _resolved_file(on, root) == "svc.ts"
+
+
+def test_r699_4_bound_uses_found_in_one_walk(tmp_path: Path) -> None:
+    """R-699-4 item 5: the uses of every process alias come from one walk of
+    the file, not one full walk per alias."""
+    from unittest.mock import patch
+
+    from chunker.call_resolution import js_modules
+
+    real = js_modules._walk
+
+    def root_walks(aliases: int) -> int:
+        text = "".join(
+            f"import p{n} from 'node:process';\np{n}.argv;\n" for n in range(aliases)
+        )
+        root = _write(
+            tmp_path / str(aliases),
+            {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text},
+        )
+        walks = 0
+
+        def counting(node: Any) -> Any:
+            nonlocal walks
+            if node.parent is None:
+                walks += 1
+            return real(node)
+
+        with patch.object(js_modules, "_walk", counting):
+            _, _, on, label = _run(root, "use.ts", "t")
+        assert on["resolution"] == "resolved", label
+        return walks
+
+    assert root_walks(2) == root_walks(30)
+
+
 def test_p5_37_short_name_after_trailing_dot_or_space() -> None:
     """P5-37: Win32 strips a trailing dot or space before the 8.3 match."""
     index = modules.ModuleIndex.build(["use.ts"], None)

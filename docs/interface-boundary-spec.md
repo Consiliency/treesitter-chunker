@@ -308,12 +308,19 @@ attribute value equal to it after entity decoding, or a regular-expression
 pattern containing `process` is a module-system cause. This includes lexical
 bindings, since anonymous functions and classes can infer their runtime name
 from the binding. An unbound `process` identifier is exempt as an operand of
-`typeof` or equality, as the left operand of `&&`, or as the receiver of
-a plain or optional dot access to `argv`, `cwd`, `env`, `exit`, `on`,
-`once`, `platform`, or `send`. Constructor access and dynamic indexing
-through these members can still disable Tier 2. A load of `process` or
-`node:process` is a module-system cause unless every bound name is used
-only in these closed positions.
+`typeof`, of `===` or `!==`, of `==` or `!=` against a `null` literal (other
+loose comparisons call an inherited `valueOf` or `toString` on `process`),
+as the left operand of `&&`, or as the receiver of a plain or optional dot
+access to `argv`, `cwd`, `env`, `exit`, `on`, `once`, `platform`, or `send`.
+`on` and `once` return `process` and call each listener with `this` set to
+`process`, so they are exempt only in a call statement whose result is
+discarded and whose listeners are all arrow functions. A write to any of
+these members (assignment, compound or logical assignment, `++`/`--`,
+`delete`, a `for…in`/`for…of` head, or a destructuring target) is a cause,
+since a method installed there runs with `this` set to `process`.
+Constructor access and dynamic indexing through these members can still
+disable Tier 2. A load of `process` or `node:process` is a module-system
+cause unless every bound name is used only in these closed positions.
 
 Any such file in production code turns Tier 2 off for the whole run, and the cause is
 logged. Three uses are exempt by closed lists: an import of only

@@ -109,14 +109,14 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "702-process-right-and-exempt",
         JSM,
-        '                and _same(parent.child_by_field_name("left"), outer)\n',
-        "",
+        'return operator == "&&" and _same(parent.child_by_field_name("left"), outer)',
+        'return operator == "&&"',
     ),
     (
         "702-process-member-list-open",
         JSM,
-        "        if prop is None or _text(prop, self.source) not in _INERT_PROCESS_MEMBERS:",
-        '        if prop is None or _text(prop, self.source) == "binding":',
+        "        if name not in _INERT_PROCESS_MEMBERS:",
+        '        if name == "binding":',
     ),
     (
         "702-process-allow-denied-member",
@@ -133,26 +133,147 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "702-process-static-member-exemption",
         JSM,
-        "        if prop is None or _text(prop, self.source) not in _INERT_PROCESS_MEMBERS:",
+        "        if name not in _INERT_PROCESS_MEMBERS:",
         "        if True:",
     ),
     (
         "702-process-typeof-exemption",
         JSM,
-        'return (parent.type == "unary_expression" and text == "typeof") or (',
-        "return (",
+        '            return self._operator(parent) == "typeof"\n',
+        "            return False\n",
     ),
     (
         "702-process-equality-exemption",
         JSM,
-        '            parent.type == "binary_expression" and text in _EQUALITY\n',
-        "            False\n",
+        '            if operator in ("===", "!=="):\n                return True\n',
+        "",
     ),
     (
         "702-process-left-and-exemption",
         JSM,
-        '                and operator.type == "&&"\n',
-        '                and operator.type == "||"\n',
+        'return operator == "&&" and _same(parent.child_by_field_name("left"), outer)',
+        'return operator == "||" and _same(parent.child_by_field_name("left"), outer)',
+    ),
+    # R-699-4: the allow-list must not hand the process object back.
+    (
+        "r699-4-loose-null-exemption",
+        JSM,
+        "                return self._null_literal(parent, outer)\n",
+        "                return False\n",
+    ),
+    (
+        "r699-4-loose-equality-any-operand",
+        JSM,
+        '        return other is not None and other.type == "null"\n',
+        "        return other is not None\n",
+    ),
+    (
+        "r699-4-write-check",
+        JSM,
+        "        if self._member_written(member):\n",
+        "        if False:\n",
+    ),
+    (
+        "r699-4-write-assignment",
+        JSM,
+        '            if kind in (\n                "assignment_expression",\n',
+        "            if kind in (\n",
+    ),
+    (
+        "r699-4-write-compound-assignment",
+        JSM,
+        '                "augmented_assignment_expression",\n                "for_in_statement",\n',
+        '                "for_in_statement",\n',
+    ),
+    (
+        "r699-4-write-for-head",
+        JSM,
+        '                "augmented_assignment_expression",\n                "for_in_statement",\n',
+        '                "augmented_assignment_expression",\n',
+    ),
+    (
+        "r699-4-write-update",
+        JSM,
+        '            if kind == "update_expression":\n                return True\n',
+        "",
+    ),
+    (
+        "r699-4-write-delete",
+        JSM,
+        '                return self._operator(parent) == "delete"\n',
+        "                return False\n",
+    ),
+    (
+        "r699-4-write-pattern-steps",
+        JSM,
+        "            if kind in _WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
+        "            if kind in _WRAPPERS:\n",
+    ),
+    (
+        "r699-4-write-wrapper-steps",
+        JSM,
+        "            if kind in _WRAPPERS or kind in _WRITE_PATTERN_STEPS:\n",
+        "            if kind in _WRITE_PATTERN_STEPS:\n",
+    ),
+    (
+        "r699-4-write-field-steps",
+        JSM,
+        "            field = _WRITE_FIELD_STEPS.get(kind)\n",
+        "            field = None\n",
+    ),
+    (
+        "r699-4-write-field-side",
+        JSM,
+        "                if not _same(parent.child_by_field_name(field), current):\n"
+        "                    return False\n",
+        "",
+    ),
+    (
+        "r699-4-listener-members",
+        JSM,
+        "        if name in _PROCESS_LISTENER_MEMBERS:\n",
+        "        if False:\n",
+    ),
+    (
+        "r699-4-listener-call",
+        JSM,
+        '        if call is None or call.type != "call_expression":\n            return False\n',
+        "        if call is None:\n            return False\n",
+    ),
+    (
+        "r699-4-listener-discarded",
+        JSM,
+        '        if statement is None or statement.type != "expression_statement":\n'
+        "            return False\n",
+        "",
+    ),
+    (
+        "r699-4-listener-arrows",
+        JSM,
+        '                and listener.type == "arrow_function"\n',
+        "                and True\n",
+    ),
+    (
+        "r699-4-listener-arity",
+        JSM,
+        "            len(named) >= 2\n",
+        "            len(named) >= 1\n",
+    ),
+    (
+        "r699-4-listener-spread-event",
+        JSM,
+        '            and named[0].type != "spread_element"\n',
+        "",
+    ),
+    (
+        "r699-4-one-walk",
+        JSM,
+        "        for node in self._name_index().get(name, ()):\n",
+        "        for node in [\n"
+        "            n\n"
+        "            for n in _walk(self.analysis.root)\n"
+        "            if n.type in _USE_NAME_TOKENS and _text(n, self.source) == name\n"
+        "        ]:\n",
     ),
     (
         "702-process-computed-reach",

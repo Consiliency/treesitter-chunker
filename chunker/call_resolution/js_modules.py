@@ -176,6 +176,39 @@ _INERT_PROCESS_MEMBERS = frozenset(
         "send",  # Sends an IPC message to the parent and reports send status.
     }
 )
+# R-699-4 item 1: members that return ``process`` (EventEmitter returns
+# ``this``) and call each listener with ``this === process``. They are
+# exempt only as a discarded statement call with arrow listeners.
+_PROCESS_LISTENER_MEMBERS = frozenset({"on", "once"})
+# Node types that may spell a use of a binding (``_uses``).
+_USE_NAME_TOKENS = frozenset(
+    {
+        "identifier",
+        "shorthand_property_identifier_pattern",
+        "shorthand_property_identifier",
+    }
+)
+# R-699-4 item 2: steps from a member access up to the assignment, update,
+# ``delete`` or ``for…in/of`` that writes it, through patterns (and their
+# expression spellings, which tree-sitter sometimes gives a pattern).
+_WRITE_PATTERN_STEPS = frozenset(
+    {
+        "array_pattern",
+        "array",
+        "object_pattern",
+        "object",
+        "rest_pattern",
+        "spread_element",
+    }
+)
+# Steps that write only when the access is their ``left`` (a default value
+# on the right is a read) or their ``value`` (a key is not written).
+_WRITE_FIELD_STEPS = {
+    "assignment_pattern": "left",
+    "object_assignment_pattern": "left",
+    "pair_pattern": "value",
+    "pair": "value",
+}
 _EVALUATOR_SPECIFIERS = frozenset(
     prefix + name
     for prefix in ("", "node:")
@@ -291,6 +324,7 @@ class _ModuleFacts:
         # Edges whose targets cannot be computed (fold 4): a production file
         # with one promotes every test file (O-2).
         self.uncomputable = False
+        self._names: dict[str, list[Any]] | None = None
         # P5-13: literal targets of ``createRequire(__filename)``.
         self.filename_taints: set[str] = set()
         self.ns_uses: set[tuple[str, str, str]] = set()
@@ -940,27 +974,37 @@ class _ModuleFacts:
         return declarator.child_by_field_name("name")
 
     def _inert_process_operand(self, node: Any) -> bool:
-        if self._inert_operand(node):
-            return True
         outer = _climb_wrappers(node)
         parent = outer.parent
         if parent is None:
             return False
+        if parent.type == "unary_expression":
+            return self._operator(parent) == "typeof"
         if parent.type == "binary_expression":
-            operator = parent.child_by_field_name("operator")
-            return (
-                operator is not None
-                and operator.type == "&&"
-                and _same(parent.child_by_field_name("left"), outer)
-            )
+            operator = self._operator(parent)
+            if operator in ("===", "!=="):
+                return True
+            if operator in ("==", "!="):
+                # R-699-4 item 3: loose equality runs ToPrimitive(process),
+                # which calls an inherited valueOf/toString with ``this ===
+                # process``, unless the other side is ``null``.
+                return self._null_literal(parent, outer)
+            return operator == "&&" and _same(parent.child_by_field_name("left"), outer)
         if parent.type != "member_expression" or not _same(
             parent.child_by_field_name("object"), outer
         ):
             return False
         prop = parent.child_by_field_name("property")
-        if prop is None or _text(prop, self.source) not in _INERT_PROCESS_MEMBERS:
+        name = _text(prop, self.source) if prop is not None else ""
+        if name not in _INERT_PROCESS_MEMBERS:
             return False
         member = _climb_wrappers(parent)
+        if self._member_written(member):
+            # R-699-4 item 2: an installed method runs with ``this ===
+            # process`` when anyone calls the member.
+            return False
+        if name in _PROCESS_LISTENER_MEMBERS:
+            return self._discarded_arrow_listen(member)
         access = member.parent
         # E5-3 already covers constructor and escaped keys. A dynamic key
         # on this receiver has no known spelling for that check.
@@ -969,6 +1013,81 @@ class _ModuleFacts:
             and access.type == "subscript_expression"
             and _same(access.child_by_field_name("object"), member)
             and self.analysis._member_key(access) is None
+        )
+
+    def _operator(self, node: Any) -> str:
+        operator = node.child_by_field_name("operator")
+        return _text(operator, self.source) if operator is not None else ""
+
+    def _null_literal(self, comparison: Any, operand: Any) -> bool:
+        """Whether the other operand of ``comparison`` is ``null``, where
+        IsLooselyEqual returns before ToPrimitive. ``undefined`` is not
+        taken: it is an identifier a parameter may rebind."""
+        from .js_scope import unwrap
+
+        left = comparison.child_by_field_name("left")
+        other = unwrap(
+            comparison.child_by_field_name("right") if _same(left, operand) else left
+        )
+        return other is not None and other.type == "null"
+
+    def _member_written(self, member: Any) -> bool:
+        """Whether ``member`` is the target of an assignment (plain,
+        compound or logical), ``++``/``--``, ``delete`` or a ``for…in/of``
+        head, directly or inside a destructuring pattern."""
+        current = member
+        while True:
+            parent = current.parent
+            if parent is None:
+                return False
+            kind = parent.type
+            if kind in _WRAPPERS or kind in _WRITE_PATTERN_STEPS:
+                current = parent
+                continue
+            field = _WRITE_FIELD_STEPS.get(kind)
+            if field is not None:
+                if not _same(parent.child_by_field_name(field), current):
+                    return False
+                current = parent
+                continue
+            if kind in (
+                "assignment_expression",
+                "augmented_assignment_expression",
+                "for_in_statement",
+            ):
+                return _same(parent.child_by_field_name("left"), current)
+            if kind == "update_expression":
+                return True
+            if kind == "unary_expression":
+                return self._operator(parent) == "delete"
+            return False
+
+    def _discarded_arrow_listen(self, member: Any) -> bool:
+        """R-699-4 item 1: ``process.on(event, () => …);`` as a statement.
+        The call returns ``process`` (discarded here) and calls each listener
+        with ``this === process`` (an arrow keeps its lexical ``this``)."""
+        from .js_scope import unwrap
+
+        call = member.parent
+        if call is None or call.type != "call_expression":
+            return False
+        statement = _climb_wrappers(call).parent
+        if statement is None or statement.type != "expression_statement":
+            return False
+        arguments = call.child_by_field_name("arguments")
+        named = (
+            [child for child in arguments.named_children if child.type != "comment"]
+            if arguments is not None and arguments.type == "arguments"
+            else []
+        )
+        return (
+            len(named) >= 2
+            and named[0].type != "spread_element"
+            and all(
+                (listener := unwrap(argument)) is not None
+                and listener.type == "arrow_function"
+                for argument in named[1:]
+            )
         )
 
     def _uses(self, scope: Any, name: str) -> list[Any] | None:
@@ -980,17 +1099,7 @@ class _ModuleFacts:
         if len(scope.bindings.get(name, ())) != 1:
             return None
         uses: list[Any] = []
-        for node in _walk(self.analysis.root):
-            if (
-                node.type
-                not in (
-                    "identifier",
-                    "shorthand_property_identifier",
-                    "shorthand_property_identifier_pattern",
-                )
-                or _text(node, self.source) != name
-            ):
-                continue
+        for node in self._name_index().get(name, ()):
             if node.type == "identifier" and _declaration_name(node):
                 continue
             if self.analysis._binding_scope(node, name) is not scope:
@@ -999,6 +1108,17 @@ class _ModuleFacts:
                 return None
             uses.append(node)
         return uses
+
+    def _name_index(self) -> dict[str, list[Any]]:
+        """Identifier-like nodes by spelling, in source order, from one walk
+        of the file (R-699-4 item 5: no full scan per bound name)."""
+        if self._names is None:
+            index: dict[str, list[Any]] = {}
+            for node in _walk(self.analysis.root):
+                if node.type in _USE_NAME_TOKENS:
+                    index.setdefault(_text(node, self.source), []).append(node)
+            self._names = index
+        return self._names
 
     def _written(self, node: Any) -> bool:
         return any(_same(node, target) for target in self.analysis.assignment_targets)

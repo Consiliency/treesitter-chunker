@@ -144,8 +144,10 @@ logger = logging.getLogger(__name__)
 # JSX, can expose the CommonJS wrapper. ``with`` can shadow lexical lookup
 # (treesitter-chunker#718).
 # js "23": Node evaluator modules and process tokens or imports can expose
-# run-wide writes. Bare process has closed member and operand exemptions
-# (treesitter-chunker#702).
+# run-wide writes. Bare process has closed member and operand exemptions;
+# writes to those members, ``on``/``once`` outside a discarded call with
+# arrow listeners, and loose equality except against ``null`` are causes
+# (treesitter-chunker#702, R-699-4).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
