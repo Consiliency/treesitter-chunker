@@ -897,22 +897,6 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "    return getters.get(scope.id) if scope is not None else None",
     ),
     (
-        "getter-conditional-def",
-        PYM,
-        "    found: dict[int, str] = {}\n"
-        "    for child in analysis.root.named_children:\n",
-        "    found: dict[int, str] = {}\n"
-        "    stack, nodes = [analysis.root], []\n"
-        "    while stack:\n"
-        "        node = stack.pop()\n"
-        "        stack.extend(node.named_children)\n"
-        '        if node.type == "function_definition" and (\n'
-        '            _scope_node(node).type == "module"\n'
-        "        ):\n"
-        "            nodes.append(node)\n"
-        "    for child in nodes:\n",
-    ),
-    (
         "getter-introspection-gate",
         PYM,
         "    gate = handout is None or _introspects(analysis, reader=False)",
@@ -1038,6 +1022,15 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "",
     ),
     (
+        "alias-nested-scope",
+        PYM,
+        "                    if nested:\n"
+        '                        emit((item[0], item[1]), item[2], "value", [])\n'
+        "                    else:\n"
+        "                        sources.append(((item[0], item[1]), item[2]))\n",
+        "                    sources.append(((item[0], item[1]), item[2]))\n",
+    ),
+    (
         "alias-new-reads",
         PYM,
         "        alias_names = {name for _scope, name in aliases}\n        for ident in reads:",
@@ -1055,6 +1048,14 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     # Equivalent (recorded, not run) for #706: ``subscript-literal`` (a
     # getter returns modules or one tuple level of them; any other key
     # raises or yields an element the over-approximation already covers).
+    # ``getter-conditional-def`` (track a module-scope ``def`` under ``if``,
+    # ``try``, ``with``, ``for`` or ``while``) is equivalent and dropped
+    # (executive ruling R-706-2, S2): its decorated-definition half is
+    # ``getter-decorated``, and the Opus 5.5 review ran the conditional half
+    # alone on 8 trees (other-branch defs, a ``try`` import fallback, a loop
+    # registry, a rebinding) with no wrong edge, only correct gains. The
+    # conditional restriction is a conservative choice no soundness test
+    # separates.
     # Equivalent (recorded, not run): ``continuation`` (tree-sitter reports
     # every malformed continuation as an error first), ``own-name-acquisition``
     # (``sys.modules[__name__]`` already makes the file dynamic in Tier 1, so

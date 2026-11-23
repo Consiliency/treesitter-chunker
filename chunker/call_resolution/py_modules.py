@@ -58,7 +58,9 @@ hands every import binding in it to code no use rule sees, so each is such
 a use (treesitter-chunker#724). A module returned by a *tracked getter*
 (a plain module-level ``def`` in a file that passes H1, :func:`_introspects`)
 is no escape: its uses are followed through the call result, member calls
-and function-local aliases by the same allow-list, and anything else taints
+and function-local aliases (a read from a nested scope is an escape: a
+closure cell is reachable from another module) by the same allow-list, and
+anything else taints
 what the getter may return (treesitter-chunker#706, :func:`_scan_results`,
 :meth:`_Builder.walk_result`). Literal acquisitions
 (``importlib.import_module('svc')``, ``__import__('svc')``,
@@ -1622,8 +1624,10 @@ def _unsafe_dunder(chain: Sequence[str]) -> bool:
 
 
 def _result_steps(node: Any, source: bytes) -> tuple[list[str], Any]:
-    """Walk up from a value: parentheses, one subscript with one integer
-    literal key before any attribute (``pair()[1]``), then attribute reads.
+    """Walk up from a value: parentheses, then subscripts that each have one
+    integer literal key, any number of them before the first attribute
+    (``pair()[1]``, ``pair()[0][1]``; a nested tuple return is an escape,
+    so only one level can hold a module), then attribute reads.
     ``(chain, outermost node)``."""
     from . import py_scope as ps
 
@@ -1668,7 +1672,8 @@ def _result_steps(node: Any, source: bytes) -> tuple[list[str], Any]:
 def _alias_targets(analysis: Any, outer: Any) -> tuple[Any, list[str], bool] | None:
     """``(scope, names, unpack)`` when ``outer`` is the whole value of a plain
     assignment statement ``x = V`` or ``a, b = V`` whose targets are bare
-    identifiers, in a ``def`` scope the pass analyzed, none declared
+    identifiers, in a ``def`` scope the pass analyzed (not a lambda,
+    comprehension, generator expression or class body), none declared
     ``global`` or ``nonlocal`` and none mangled; else ``None``."""
     from . import py_scope as ps
 
@@ -1809,6 +1814,8 @@ def _scan_results(
     # hold, the prefix being the chain read off the call result.
     aliases: dict[tuple[int, str], set[tuple[str, tuple[str, ...], tuple[str, ...]]]]
     aliases = {}
+    # scope id -> the ``def`` node of that alias scope.
+    alias_defs: dict[int, Any] = {}
     Source = tuple[tuple[str, tuple[str, ...]], tuple[str, ...]]
 
     def emit(
@@ -1836,6 +1843,7 @@ def _scan_results(
                     # past the cap is not followed: both escape.
                     emit(ref, prefix, "value", chain)
                     continue
+                alias_defs[id(scope)] = scope.node
                 for name in names:
                     bucket = aliases.setdefault((id(scope), name), set())
                     item = (ref[0], ref[1], full)
@@ -1887,8 +1895,12 @@ def _scan_results(
         return
     # A read of an alias is any identifier of its spelling whose lookup
     # decides in the alias's scope (closures included) or cannot say where.
-    # An alias read may bind a new alias, so the reads are found again each
-    # round; every (read, source) pair is handled once.
+    # A read from a nested scope (a closure, lambda, comprehension or class
+    # body) is an escape of the alias: the capture puts it in a cell another
+    # module may read and write (``fn.__closure__[i].cell_contents``,
+    # ``inspect.getclosurevars(fn).nonlocals``). An alias read may bind a new
+    # alias, so the reads are found again each round; every (read, source)
+    # pair is handled once.
     deciding: dict[int, Any] = {}
     done: dict[int, set[tuple[str, tuple[str, ...], tuple[str, ...]]]] = {}
     changed = True
@@ -1904,14 +1916,22 @@ def _scan_results(
             decided = deciding[ident.id]
             seen = done.setdefault(ident.id, set())
             sources: list[Source] = []
+            read_scope = _scope_node(ident)
             for (scope_id, name), items in list(aliases.items()):
                 if name not in spellings:
                     continue
                 if decided is not None and id(decided) != scope_id:
                     continue
+                own_def = alias_defs[scope_id]
+                nested = (
+                    own_def is None or read_scope is None or read_scope.id != own_def.id
+                )
                 for item in sorted(items - seen):
                     seen.add(item)
-                    sources.append(((item[0], item[1]), item[2]))
+                    if nested:
+                        emit((item[0], item[1]), item[2], "value", [])
+                    else:
+                        sources.append(((item[0], item[1]), item[2]))
             if sources and handle(sources, ident):
                 changed = True
 

@@ -176,7 +176,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the result are checked like uses of an imported module (`get().t = f`,
   `m = get(); m.t = f`, `setattr(get(), "t", f)` and any other hand-off still
   count as writes or escapes), including member calls on it and local
-  aliases (treesitter-chunker#706). On the `spec` repository this recovers 734
+  aliases; a local alias read from a nested function, lambda or
+  comprehension is an escape, since another module can write through the
+  closure cell (treesitter-chunker#706). On the `spec` repository this recovers 734
   of 947 lost resolutions; a module-scope alias (`x = mod.sub`) is still an
   escape (treesitter-chunker#725). The Python fact version moves to 40.
 - Symbol graph extraction orders source files by case-sensitive path components

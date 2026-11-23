@@ -40,6 +40,26 @@ MODE = "imports"
 # module, an unparsed writer, a computed loader); main gets their plain-import
 # twins wrong too. Tracked on treesitter-chunker#699.
 RESIDUALS = ("c02-", "c05-", "c06-")
+# R-706-2 (S1, S3), named in plan R12 (Python, PR 6): a loader with a constant
+# module name held in a binding (g05, the c06 family), a second instance of
+# the getter's module loaded by spec (g09; twin t03), the caller's frame
+# through a generator or a traceback (i03, j23; the c02 family), and a module
+# from a function-local ``import`` held in a closure cell (t01, t02; with an
+# unused getter in the tree, i01t, i02t). The twins are wrong on main too.
+RESIDUAL_TREES = frozenset(
+    f"review2:{name}"
+    for name in (
+        "g05-import-module-const-name",
+        "g09-find-spec-loader",
+        "t03-spec-loader-twin",
+        "i03-gen-frame-cross-file",
+        "j23-exception-traceback-frame",
+        "t01-closure-local-import-twin",
+        "t02-getclosurevars-local-import-twin",
+        "i01t-closure-cell-main-twin",
+        "i02t-getclosurevars-main-twin",
+    )
+)
 
 
 def _write(root: Path, files: dict[str, str]) -> Path:
@@ -90,11 +110,12 @@ def _replaced(printed: str) -> bool:
 
 @pytest.mark.parametrize("case", sorted(CASES))
 def test_review_trees(tmp_path: Path, case: str) -> None:
-    """The plan battery (118 trees), the plan reviews' attack trees and
-    Sol's slice-1 repros: CPython prints what was recorded, the probe edge
-    resolves exactly as recorded, and no replaced function's edge resolves
-    outside the named residuals. The 24 battery controls (a01-a24) resolve:
-    a rule that always escapes fails here."""
+    """The plan battery (118 trees), the plan reviews' attack trees,
+    Sol's slice-1 repros and the R-706-2 trees: CPython prints what was
+    recorded, the probe edge resolves exactly as recorded, and no replaced
+    function's edge resolves outside the named residuals. The battery
+    controls (a01-a24 but a12 and a20) resolve: a rule that always escapes
+    fails here."""
     probe, printed, expected, files = CASES[case]
     root = _write(
         tmp_path,
@@ -108,20 +129,25 @@ def test_review_trees(tmp_path: Path, case: str) -> None:
     assert resolution == expected, case
     name = case.split(":", 1)[1]
     if _replaced(printed) and not name.startswith(RESIDUALS):
-        assert resolution != "resolved", case
+        assert case in RESIDUAL_TREES or resolution != "resolved", case
+
+
+# Battery controls that stay ambiguous although CPython runs ``svc.t``: the
+# slice-2 alias (a20, treesitter-chunker#725), and a closure read of a result
+# alias, an escape since R-706-2 (B1; the accepted precision loss).
+AMBIGUOUS_CONTROLS = ("battery:a12-closure-read", "battery:a20-module-alias-read")
 
 
 def test_the_battery_controls_recover() -> None:
-    """Every battery control but the slice-2 alias (a20, treesitter-chunker
-    #725) resolves, and each printed ``SVC.t``."""
+    """Every battery control but :data:`AMBIGUOUS_CONTROLS` resolves, and
+    each printed ``SVC.t``."""
     controls = {
-        name: value
-        for name, value in CASES.items()
-        if name.startswith("battery:a") and not name.startswith("battery:a20")
+        name: value for name, value in CASES.items() if name.startswith("battery:a")
     }
-    assert len(controls) == 24
+    assert len(controls) == 25
     for name, (_probe, printed, expected, _files) in controls.items():
-        assert printed == "SVC.t" and expected == "resolved", name
+        assert printed == "SVC.t", name
+        assert expected == ("ambiguous" if name in AMBIGUOUS_CONTROLS else "resolved")
 
 
 # Sol's two slice-1 wrong edges and the 13 programs of the Opus review's B1,
@@ -147,6 +173,23 @@ NAMED_BLOCKERS = (
             "x07-string-annotation-caller",
         )
     ),
+    # R-706-2 B1: a result alias captured by a closure, written through the
+    # cell from another module (``__closure__``, ``getclosurevars``, a
+    # computed cell name), and the 16 programs of the review's extended
+    # generator.
+    *(
+        f"review2:{name}"
+        for name in (
+            "i01-closure-cell-cross-file",
+            "i02-getclosurevars",
+            "i08-closure-no-dunder-cross-file",
+            "v01-closure-getter-module-attr",
+            "v02-closure-getter-stored",
+            "v03-closure-callback-registered",
+            "v04-closure-in-file-own-dunder",
+        )
+    ),
+    *sorted(name for name in CASES if name.startswith("review2:gen-")),
 )
 
 
@@ -420,6 +463,15 @@ def test_incremental_runs_equal_cold_runs(tmp_path: Path) -> None:
 # getter's own file, composes steps around the result (aliases, member calls,
 # subscripts, unpacking, rebinding, closures, escapes) and ends in a use (a
 # write, ``setattr``, ``__dict__``, a helper that writes, or a harmless read).
+# R-706-2 (S4) adds the shapes of the Opus 5.5 review's extended generator:
+# reaches through ``import_module``, ``partial``, ``attrgetter``, ``getattr``,
+# ``__call__``, a star import, a staticmethod, ``lru_cache``, a getter rebound
+# after its definition or repointed by a promoted test helper, a container;
+# steps through a class attribute, ``SimpleNamespace``, a dataclass field,
+# ``partial``/``map``, ``yield``, ``await`` and starred targets; and writes
+# through ``partial(setattr)``, ``operator.setitem(vars())``, a comprehension,
+# ``__setattr__``, and another module's write through a closure cell
+# (``__closure__``, ``getclosurevars``).
 # CPython runs every program; the probe edge ``svc.py`` ``u -> t`` must not
 # resolve when ``t`` was replaced. Fixed seeds and a bounded count keep it
 # deterministic; set ``CHUNKER_GETTER_ORACLE_COUNT`` for a larger run.
@@ -442,18 +494,43 @@ def get_hub():
 
 {own}
 """
-_GET = "import hub\n\n\ndef get():\n    return hub.svc\n\n\ndef get_hub():\n    return hub\n"
+_GET = (
+    "import hub\n\n\ndef get():\n    return hub.svc\n\n\ndef get_hub():\n"
+    "    return hub\n\n\ndef decoy():\n    return hub.other\n"
+)
 _FACADE = "from get import get, get_hub\n"
+_MAIN_CLOSURE = (
+    "import use\nimport svc\nimport other\n{imp}\n\nr = use.go()\n"
+    "if callable(r):\n    {poke}\nprint(svc.u())\n"
+)
+# A test helper (promoted: production imports it) repoints ``decoy``.
+_TEST_PATCH = "import get as G\nimport hub\n\nG.decoy = hub.fetch\n"
+_HELPERS = (
+    "def ident(v):\n    return v\n\n\ndef poke_m(m):\n    m.t = other.t\n\n\n"
+    "def gen1(v):\n    yield v\n\n\nasync def aident(v):\n    return v\n"
+)
 
 
 class _Program:
-    def __init__(self, rng: random.Random, own: bool) -> None:
+    def __init__(self, rng: random.Random, own: bool, extended: float = 0.0) -> None:
         self.rng = rng
         self.own = own
+        # The share of reaches, steps and uses drawn from the R-706-2 shapes.
+        self.extended = extended
         self.lines: list[str] = []
         self.imports: set[str] = set()
         self.module_lines: list[str] = []
+        self.extra_files: dict[str, str] = {}
+        self.get_py = _GET
+        self.main = _MAIN
+        self.closure_write = False
+        self.decoy = False
         self.count = 0
+
+    def ext(self) -> bool:
+        """Whether to draw from the extended shapes (no draw when off, so
+        the plain oracle's seeds keep their programs)."""
+        return bool(self.extended) and self.rng.random() < self.extended
 
     def fresh(self, stem: str = "x") -> str:
         self.count += 1
@@ -499,8 +576,49 @@ class _Program:
                 ("sys.modules[__name__].get()", "svc"),
                 ('typing.get_type_hints(_ann)["x"]()', "svc"),
             ]
+            extended = [
+                ("importlib.import_module('get').get()", "svc"),
+                ("functools.partial(get)()", "svc"),
+                ("functools.partial(G.get)()", "svc"),
+                ("operator.attrgetter('get')(G)()", "svc"),
+                ("getattr(G, 'get')()", "svc"),
+                ("get.__call__()", "svc"),
+                ("G.get.__call__()", "svc"),
+                ("[get][0]()", "svc"),
+                ("next(iter((G.get,)))()", "svc"),
+                ("star", "svc"),
+                ("Kls.g()", "svc"),
+                ("cached()", "svc"),
+                ("rebound", "svc"),
+                ("patched", "svc"),
+                ("G.decoy()", "svc"),
+            ]
+            if self.ext():
+                options = extended
             getter = "get"
         expr, kind = self.rng.choice(options)
+        # ``decoy`` returns ``hub.other`` (unless a test helper repoints it).
+        self.decoy = expr == "G.decoy()"
+        if expr == "star":
+            self.imports.add("from hub import *")
+            expr = "fetch()"
+        elif expr == "Kls.g()":
+            self.module_lines.append("class Kls:\n    g = staticmethod(get)\n")
+        elif expr == "cached()":
+            self.imports.add("import functools")
+            self.module_lines.append("cached = functools.lru_cache(get)\n")
+        elif expr == "rebound":
+            # The getter's file rebinds it after its definition.
+            self.get_py = _GET + "\n\nget = decoy\nget = lambda: hub.svc\n"
+            expr = "G.get()"
+        elif expr == "patched":
+            self.extra_files["tests/__init__.py"] = ""
+            self.extra_files["tests/helper_patch.py"] = _TEST_PATCH
+            self.imports.add("import tests.helper_patch")
+            expr = "G.decoy()"
+        for module in ("importlib", "functools", "operator"):
+            if f"{module}." in expr:
+                self.imports.add(f"import {module}")
         if "sys." in expr:
             self.imports.add("import sys")
         if "inspect." in expr:
@@ -515,11 +633,52 @@ class _Program:
     def step(self, expr: str, kind: str) -> tuple[str, str]:
         rng = self.rng
         options = ["alias", "alias", "paren", "loop", "closure", "escape"]
+        if self.ext():
+            options = ["classattr", "nsattr", "dataclass", "partial", "map"]
+            options += ["yield", "await", "star", "starlist"]
         if kind == "hub":
             options += ["svc", "fetch", "fetch", "pair"]
         if kind == "pair":
-            options += ["first", "first", "unpack"]
+            options += ["first", "first", "unpack", "starunpack"]
         op = rng.choice(options)
+        if op == "classattr":
+            cls = self.fresh("C")
+            self.emit(f"class {cls}:")
+            self.emit(f"    m = {expr}")
+            return f"{cls}.m", kind
+        if op == "nsattr":
+            self.imports.add("import types")
+            name = self.fresh("o")
+            self.emit(f"{name} = types.SimpleNamespace()")
+            self.emit(f"{name}.m = {expr}")
+            return f"{name}.m", kind
+        if op == "dataclass":
+            self.imports.add("import dataclasses")
+            if not any("class DC" in line for line in self.module_lines):
+                self.module_lines.append(
+                    "@dataclasses.dataclass\nclass DC:\n    m: object = None\n"
+                )
+            return f"DC(m={expr}).m", kind
+        if op == "partial":
+            self.imports.add("import functools")
+            return f"functools.partial(ident, {expr})()", kind
+        if op == "map":
+            return f"list(map(ident, [{expr}]))[0]", kind
+        if op == "yield":
+            return f"next(gen1({expr}))", kind
+        if op == "await":
+            self.imports.add("import asyncio")
+            return f"asyncio.run(aident({expr}))", kind
+        if op == "star":
+            name = self.fresh("s")
+            self.emit(f"{name}, *_ = {expr}, 0")
+            return name, kind
+        if op == "starlist":
+            return f"[*[{expr}]][0]", kind
+        if op == "starunpack":
+            first = self.fresh("a")
+            self.emit(f"{first}, *_ = {expr}")
+            return first, "svc"
         if op == "alias":
             name = self.fresh()
             self.emit(f"{name} = {expr}")
@@ -571,19 +730,48 @@ class _Program:
             expr = f"{expr}.svc"
         elif kind == "pair":
             expr = f"{expr}[0]"
-        use = self.rng.choice(
-            [
-                "{e}.t = other.t",
-                "{e}.t = other.t",
-                'setattr({e}, "t", other.t)',
-                '{e}.__dict__["t"] = other.t',
-                "poke_m({e})",
-                "return {e}.u()",
-                "return {e}.w()",
-                "{e}.zz = 1",
-                "{e}",
-            ]
-        )
+        uses = [
+            "{e}.t = other.t",
+            "{e}.t = other.t",
+            'setattr({e}, "t", other.t)',
+            '{e}.__dict__["t"] = other.t',
+            "poke_m({e})",
+            "return {e}.u()",
+            "return {e}.w()",
+            "{e}.zz = 1",
+            "{e}",
+        ]
+        extended = [
+            "functools.partial(setattr, {e}, 't')(other.t)",
+            "operator.setitem(vars({e}), 't', other.t)",
+            "[setattr(m, 't', other.t) for m in [{e}]]",
+            "{e}.__setattr__('t', other.t)",
+            "hasattr({e}, 't')",
+        ]
+        if not self.own:
+            extended += ["closure-cell", "closure-cell-gcv"] * 2
+        use = self.rng.choice(extended if self.ext() else uses)
+        if self.decoy and use == "return {e}.u()":
+            use = "return {e}.w()"  # ``other`` has no ``u``
+        for module in ("functools", "operator"):
+            if f"{module}." in use:
+                self.imports.add(f"import {module}")
+        if use.startswith("closure-cell"):
+            # The caller returns a closure over the value; ``main.py`` writes
+            # through its cell.
+            name, inner = self.fresh("cell"), self.fresh("inner")
+            self.emit(f"{name} = {expr}")
+            self.emit(f"def {inner}():")
+            self.emit(f"    {name}.w()")
+            self.emit(f"return {inner}")
+            if use == "closure-cell":
+                poke, imp = "r.__closure__[0].cell_contents.t = other.t", ""
+            else:
+                poke = f"inspect.getclosurevars(r).nonlocals['{name}'].t = other.t"
+                imp = "import inspect"
+            self.main = _MAIN_CLOSURE.format(imp=imp, poke=poke)
+            self.closure_write = True
+            return
         self.emit(use.format(e=expr))
 
     def build(self) -> dict[str, str]:
@@ -596,7 +784,7 @@ class _Program:
             for _ in range(self.rng.randint(0, 3)):
                 expr, kind = self.step(expr, kind)
             self.finish(expr, kind)
-        helpers = "def ident(v):\n    return v\n\n\ndef poke_m(m):\n    m.t = other.t\n"
+        helpers = _HELPERS
         body = "\n".join(self.lines)
         module = "\n".join(self.module_lines)
         if self.own:
@@ -618,33 +806,53 @@ class _Program:
             "svc.py": _SVC,
             "other.py": _OTHER,
             "hub.py": hub,
-            "get.py": _GET,
+            "get.py": self.get_py,
             "facade.py": _FACADE,
             "use.py": use,
-            "main.py": _MAIN,
+            "main.py": self.main,
+            **self.extra_files,
         }
 
 
 _ORACLE_COUNT = int(os.environ.get("CHUNKER_GETTER_ORACLE_COUNT", "48"))
 
 
-@pytest.mark.parametrize("seed", [3, 17, 2026])
-def test_generated_programs_never_resolve_a_replaced_function(
-    tmp_path: Path, seed: int
-) -> None:
+def _run_oracle(tmp_path: Path, seed: int, extended: float) -> tuple[int, int]:
+    """Run ``_ORACLE_COUNT`` programs: no replaced function's edge resolves.
+    ``(harmless programs that resolve, replaced closure-cell writes)``."""
     rng = random.Random(seed)
-    resolved_correct = 0
+    resolved_correct = closure_writes = 0
     for index in range(_ORACLE_COUNT):
-        program = _Program(rng, own=rng.random() < 0.35).build()
+        generator = _Program(rng, own=rng.random() < 0.35, extended=extended)
+        program = generator.build()
         root = _write(tmp_path / f"p{index}", program)
         printed = _cpython(root)
         (resolution,) = _resolutions(root, "svc.py")
         if _replaced(printed):
             assert resolution != "resolved", (seed, index, program["use.py"])
+            closure_writes += generator.closure_write
         elif resolution == "resolved":
             resolved_correct += 1
+    return resolved_correct, closure_writes
+
+
+@pytest.mark.parametrize("seed", [3, 17, 2026])
+def test_generated_programs_never_resolve_a_replaced_function(
+    tmp_path: Path, seed: int
+) -> None:
+    resolved_correct, _closure_writes = _run_oracle(tmp_path, seed, 0.0)
     # The oracle is not vacuous: some harmless programs keep their proof.
     assert resolved_correct > 0, seed
+
+
+@pytest.mark.parametrize("seed", [5, 29])
+def test_generated_extended_programs_never_resolve_a_replaced_function(
+    tmp_path: Path, seed: int
+) -> None:
+    """The R-706-2 shapes (S4), drawn for 60% of reaches, steps and uses."""
+    _resolved, closure_writes = _run_oracle(tmp_path, seed, 0.6)
+    # Another module writes through a closure cell (R-706-2 B1).
+    assert closure_writes > 0, seed
 
 
 # Trees that need exactly one G1/H1/return/exposure/alias rule: each is
