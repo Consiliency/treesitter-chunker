@@ -3792,6 +3792,11 @@ def analyze(
     # the member chain of a member callee whose head is imported.
     groups: dict[str, Any] = {}
     chains: dict[str, Any] = {}
+    # #709: the calls whose import (or import group) a function scope binds,
+    # not the module namespace. Another file's write of the module global and
+    # a package's submodule import cannot rebind a function's local, so the
+    # engine applies its caller-module checks (#705 E6-1) to every other call.
+    local_imports: list[str] = []
     for fact in call_facts:
         start = int(fact["callee_byte_start"])
         end = int(fact["callee_byte_end"])
@@ -3813,12 +3818,15 @@ def analyze(
             chain = py_modules.member_chain(node, head, source)
             if chain is not None:
                 chains[key] = chain
+            decided = analysis.decided
+            if decided is not None and decided.kind == _FUNCTION:
+                local_imports.append(key)
     if not tier2:
         return {"goal": "module", "bindings": bindings}
     own = path or ""
     own_ref = py_modules.dotted_name(own)[0] if own.endswith(".py") else ""
     exports, module_bindings = py_modules.module_facts(
-        analysis, groups, chains, own_ref
+        analysis, groups, chains, own_ref, local_imports
     )
     return {
         "goal": "module",

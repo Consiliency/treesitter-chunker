@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CR = "chunker/call_resolution/"
 PYM = CR + "py_modules.py"
 ENG = CR + "engine.py"
+PYS = CR + "py_scope.py"
 TESTS = (
     "tests/test_call_resolution_tier2_py.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
@@ -318,8 +319,22 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "e6-1-own-binding",
         ENG,
         "            py_modules.own_binding_reason(run, file_context.path, head)\n"
-        "            if head\n            else None",
+        "            if head and not (key and key in py_file.local_imports)\n"
+        "            else None",
         "            None",
+    ),
+    # treesitter-chunker#709: the checks skip only function-scope imports.
+    (
+        "709-local-imports-function-scope-only",
+        PYS,
+        "            if decided is not None and decided.kind == _FUNCTION:",
+        "            if decided is not None:",
+    ),
+    (
+        "709-local-imports-skip-checks",
+        ENG,
+        "            if head and not (key and key in py_file.local_imports)",
+        "            if head",
     ),
     (
         "e6-1-package-submodule-binding",

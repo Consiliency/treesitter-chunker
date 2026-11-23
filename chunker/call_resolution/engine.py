@@ -403,14 +403,16 @@ def _python_proof(
     imports (which narrows but resolves only when every member proves the
     same definitions), followed by the call's member chain. The caller's own
     binding of ``head`` must hold what the import put there (#705 E6-1):
-    another file may write it, and a package's submodule import sets it."""
+    another file may write it, and a package's submodule import sets it.
+    Both reach only the module namespace, so a binding the lookup decided in
+    a function scope skips the check (#709); an unknown key keeps it."""
     py_file = run.files.get(file_context.path)
     if py_file is None:
         return frozenset(), outcome, ()
     if outcome.get("outcome") == "import" or (key and key in py_file.groups):
         reason = (
             py_modules.own_binding_reason(run, file_context.path, head)
-            if head
+            if head and not (key and key in py_file.local_imports)
             else None
         )
         if reason is not None:

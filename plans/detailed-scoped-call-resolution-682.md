@@ -2044,7 +2044,16 @@ the import proofs themselves (9.4-9.6). `structural` output is unchanged.
   `pkg.tool` anywhere sets the package global `tool`) fails the proof closed
   (`reassigned`, `module-escape`, `attr-submodule-conflict`). The same
   submodule check applies to the package's own Tier 1 module-scope proofs in
-  `imports` mode.
+  `imports` mode. Both routes reach only the module namespace, so the checks
+  apply only where the lookup decided the import (or import group) in the
+  module scope (treesitter-chunker#709): the facts record, as
+  `local_imports`, each call whose import a function scope binds (a local,
+  or an enclosing function's binding read through a closure or `nonlocal`),
+  and those skip the checks. A `global` import binds the module namespace
+  and keeps them; imports under module-level `if`/`try`/`with` are module
+  scope (and conditional); a class body proves nothing (`class-scope-bound`).
+  A frame's `f_locals` write in any file is already a run-wide
+  `module-object` cause.
 - **E6-2, intermediaries over-approximated (B2).** The facts record every
   import binding that lands in a module's namespace (`module_imports`),
   whatever its Tier 1 lookup gives (conditional, `try`/`except`, repeated,
@@ -4029,3 +4038,14 @@ fold 7.
 | One writer-side resolver: module path plus the attribute walk | §9.10; `py_modules._Builder.module_values`, `binding_values`, `walk_use` |
 | P6-31: R12 example list widened | §15 R12 (Python, PR 6) |
 | Pins: `test_fold8_reexported_bindings_use_the_one_resolver` (7: the Codex repro, `facade.m.t()`, two hops, `from facade import m as n`, a re-exported `from a import b`, and two writer rows; each with what CPython printed), `test_fold8_clean_reexports_still_resolve` (2); 2 new rule mutations, 2 re-anchored (112 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+
+### treesitter-chunker#709: function-local imports skip the caller-module checks
+
+`python` fact version 39 (the new `local_imports` module-binding fact); `js`
+stays at 20. No expected row changes; only `imports`-mode Tier 2 Python
+proofs whose import a function scope binds can newly resolve.
+
+| Item | Applied in |
+| --- | --- |
+| Codex r4662281735 on #705: E6-1's caller-module checks apply only to an import the lookup decided in the module scope | §9.10 (E6-1); `py_scope.analyze` (`local_imports`), `py_modules.module_facts`, `PyFile.local_imports`, `engine._python_proof`, `facts.valid_py_module_bindings` |
+| Pins: `test_709_function_local_imports_skip_the_caller_module_checks` (8: the issue's two examples, a local import shadowing the package's module-scope one, a function-local group, `nonlocal`, two closures, a comprehension), `test_709_module_scope_imports_keep_the_caller_module_checks` (8: module-scope write and submodule controls, two `global` rows, module-level `try` and `if`, a comprehension over a module-scope import, a class body), `test_709_local_imports_record_function_scope_keys_only`; each with what CPython 3.14 printed; 2 new rule mutations (114 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |

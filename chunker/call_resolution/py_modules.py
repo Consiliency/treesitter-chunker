@@ -429,13 +429,15 @@ def module_facts(
     groups: Mapping[str, Sequence[Mapping[str, str]]],
     chains: Mapping[str, Sequence[str]],
     own_ref: str,
+    local_imports: Sequence[str] = (),
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """``(exports, module_bindings)`` for one analyzed Python file.
 
     ``analysis`` is the finished :class:`.py_scope._Analysis`; ``groups``
     and ``chains`` are the per-call import groups and member chains, keyed
     by callee span; ``own_ref`` is the file's own dotted module name (for
-    ``sys.modules[__name__]``).
+    ``sys.modules[__name__]``); ``local_imports`` the callee span keys whose
+    import binding a function scope holds (#709).
     """
     from . import py_scope as ps
 
@@ -499,6 +501,7 @@ def module_facts(
             name: module_imports[name] for name in sorted(module_imports)
         },
         "own_submodules": own_submodules,
+        "local_imports": sorted(set(local_imports)),
     }
     return exports, module_bindings
 
@@ -1707,6 +1710,8 @@ class PyFile:
     module_imports: Mapping[str, Any] = field(default_factory=dict)
     # Names a package's ``__init__.py`` binds only to its own submodule.
     own_submodules: frozenset[str] = frozenset()
+    # Callee span keys whose import binding is a function's local (#709).
+    local_imports: frozenset[str] = frozenset()
     # Proof declaration -> the module-scope name it is exported under.
     exported: Mapping[tuple[str, int, int], frozenset[str]] = field(
         default_factory=dict
@@ -1827,6 +1832,7 @@ class _Builder:
                 chains=bindings.get("chains") or {},
                 module_imports=bindings.get("module_imports") or {},
                 own_submodules=frozenset(bindings.get("own_submodules") or ()),
+                local_imports=frozenset(bindings.get("local_imports") or ()),
                 exported={key: frozenset(names) for key, names in exported.items()},
             )
             if dotted:

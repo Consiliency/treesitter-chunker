@@ -3168,3 +3168,257 @@ def test_fold8_clean_reexports_still_resolve(tmp_path: Path, case: str) -> None:
     _off, _structural, on, label = _run(root, file, reference)
     assert on["resolution"] == "resolved" and label == "import", case
     assert _target(on, root) == "a/b.py", case
+
+
+# ---------------------------------------------------------------------------
+# treesitter-chunker#709 (Codex r4662281735 on #705): the caller-module checks
+# of E6-1 (another file's write of the caller's global; a package's submodule
+# import setting the ``__init__.py`` global) apply only to an import the
+# lookup decided in the module namespace. Neither route reaches a function's
+# local or its closure cell. Each tree's CPython 3.14 output (``python -E -s
+# -B -c <driver>`` in the tree; ``svc.t`` returns 1, every other ``t``
+# returns 2) is recorded beside it.
+
+_F709_PATCH = {"patch.py": "import use\nfrom other import t as o\nuse.t = o\n"}
+_F709_PKG_T = {"pkg/t.py": "def t():\n    return 2\n"}
+_F709_CLOSURE = (
+    "def outer():\n    from svc import t\n\n"
+    "    def inner():\n        return t()\n\n    return inner\n"
+)
+FOLD709_RESOLVED: dict[str, tuple[dict[str, str], str, str]] = {
+    # The issue's first example. ``import pkg.t, pkg; print(pkg.u(),
+    # type(pkg.t).__name__)`` printed ``1 module``.
+    "issue-init-function-local": (
+        {
+            "pkg/__init__.py": "def u():\n    from svc import t\n    return t()\n",
+            **_F709_PKG_T,
+        },
+        "pkg/__init__.py",
+        "1 module",
+    ),
+    # The issue's second example. ``import patch, use; print(use.u(),
+    # use.t.__module__)`` printed ``1 other``.
+    "issue-write-function-local": (
+        {
+            "use.py": "def u():\n    from svc import t\n    return t()\n",
+            **_F709_PATCH,
+        },
+        "use.py",
+        "1 other",
+    ),
+    # A function-local import shadows the package's module-scope one:
+    # ``import pkg.t, pkg; print(pkg.u())`` printed ``1``.
+    "init-local-shadows-module-import": (
+        {
+            "pkg/__init__.py": (
+                "from svc import t\n\n\ndef u():\n    from svc import t\n"
+                "    return t()\n"
+            ),
+            **_F709_PKG_T,
+        },
+        "pkg/__init__.py",
+        "1",
+    ),
+    # A group of two function-local imports (9.4): ``print(use.u(1))`` after
+    # ``import patch`` printed ``1``.
+    "function-local-group": (
+        {
+            "use.py": (
+                "def u(flag):\n    if flag:\n        from svc import t\n"
+                "    else:\n        from svc import t\n    return t()\n"
+            ),
+            **_F709_PATCH,
+        },
+        "use.py",
+        "1",
+    ),
+    # ``nonlocal`` names the enclosing function's cell: printed ``1``.
+    "nonlocal": (
+        {
+            "use.py": (
+                "def outer():\n    from svc import t\n\n"
+                "    def inner():\n        nonlocal t\n        return t()\n\n"
+                "    return inner()\n"
+            ),
+            **_F709_PATCH,
+        },
+        "use.py",
+        "1",
+    ),
+    # A nested function reads the local import through its closure:
+    # ``print(use.outer()())`` printed ``1``.
+    "closure": ({"use.py": _F709_CLOSURE, **_F709_PATCH}, "use.py", "1"),
+    "closure-init-submodule": (
+        {"pkg/__init__.py": _F709_CLOSURE, **_F709_PKG_T},
+        "pkg/__init__.py",
+        "1",
+    ),
+    # A comprehension (PEP 709, inlined) reads the function's local:
+    # printed ``1``.
+    "comprehension-in-function": (
+        {
+            "use.py": (
+                "def u():\n    from svc import t\n"
+                "    return [t() for _ in range(1)][0]\n"
+            ),
+            **_F709_PATCH,
+        },
+        "use.py",
+        "1",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD709_RESOLVED))
+def test_709_function_local_imports_skip_the_caller_module_checks(
+    tmp_path: Path, case: str
+) -> None:
+    """#709: a function-local import binding resolves although another file
+    writes the module global of that name or the package has a submodule of
+    that name; CPython ran ``svc.t`` in each tree."""
+    files, file, _runtime = FOLD709_RESOLVED[case]
+    root = _write(tmp_path, {"svc.py": SVC, **OTHER, **files})
+    off, structural, on, label = _run(root, file, "t")
+    assert off["resolution"] == "ambiguous", case
+    assert structural == off, case
+    assert label == "import", case
+    assert on["resolution"] == "resolved", case
+    assert _target(on, root) == "svc.py", case
+
+
+FOLD709_FAIL_CLOSED: dict[str, tuple[dict[str, str], str, str, str]] = {
+    # Module-scope controls: the E6-1 checks still apply.
+    # ``import patch, use; print(use.u())`` printed ``2``.
+    "module-scope-write": (
+        {"use.py": USE, **_F709_PATCH},
+        "use.py",
+        "reassigned",
+        "2",
+    ),
+    # ``import pkg.t, pkg`` makes ``pkg.t`` the submodule: ``pkg.u()`` calls
+    # the module object.
+    "module-scope-init-submodule": (
+        {
+            "pkg/__init__.py": "from svc import t\n\n\ndef u():\n    return t()\n",
+            **_F709_PKG_T,
+        },
+        "pkg/__init__.py",
+        "attr-submodule-conflict",
+        "TypeError: 'module' object is not callable",
+    ),
+    # ``global t``: the import binds the module global, which another file
+    # rewrites before the call. ``import use; print(use.u())`` printed ``2``.
+    "global-in-function": (
+        {
+            "use.py": (
+                "def u():\n    global t\n    from svc import t\n"
+                "    import patch\n    patch.hit()\n    return t()\n"
+            ),
+            "patch.py": (
+                "def hit():\n    import use\n    from other import t as o\n"
+                "    use.t = o\n"
+            ),
+        },
+        "use.py",
+        "local-variable",
+        "2",
+    ),
+    "global-in-function-module-import": (
+        {
+            "use.py": (
+                "from svc import t\n\n\ndef setup():\n    global t\n"
+                "    from svc import t\n\n\ndef u():\n    return t()\n"
+            ),
+            **_F709_PATCH,
+        },
+        "use.py",
+        "mixed-bindings",
+        "2",
+    ),
+    # Module-level ``try``/``if`` imports are module scope (printed ``2``);
+    # Tier 1 already finds them conditional, before the E6-1 checks.
+    "module-try": (
+        {
+            "use.py": (
+                "try:\n    from svc import t\nexcept ImportError:\n    pass\n\n\n"
+                "def u():\n    return t()\n"
+            ),
+            **_F709_PATCH,
+        },
+        "use.py",
+        "conditional",
+        "2",
+    ),
+    "module-if": (
+        {
+            "use.py": (
+                "import os\n\nif os.sep:\n    from svc import t\n\n\n"
+                "def u():\n    return t()\n"
+            ),
+            **_F709_PATCH,
+        },
+        "use.py",
+        "conditional",
+        "2",
+    ),
+    # A comprehension reading a module-scope import: printed ``2``.
+    "comprehension-at-module": (
+        {
+            "use.py": (
+                "from svc import t\n\n\ndef u():\n"
+                "    return [t() for _ in range(1)][0]\n"
+            ),
+            **_F709_PATCH,
+        },
+        "use.py",
+        "reassigned",
+        "2",
+    ),
+    # A class body binds its own namespace: ``K.r`` is ``1``, but the lookup
+    # never proves a class-scope binding.
+    "class-body": (
+        {"use.py": "class K:\n    from svc import t\n    r = t()\n", **_F709_PATCH},
+        "use.py",
+        "class-scope-bound",
+        "1",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD709_FAIL_CLOSED))
+def test_709_module_scope_imports_keep_the_caller_module_checks(
+    tmp_path: Path, case: str
+) -> None:
+    """#709 controls: an import in the module namespace (module level, under
+    ``if``/``try``, or through ``global``) keeps the E6-1 checks, and a class
+    body proves nothing; each keeps its off-mode edge."""
+    files, file, reason, _runtime = FOLD709_FAIL_CLOSED[case]
+    root = _write(tmp_path, {"svc.py": SVC, **OTHER, **files})
+    off, _structural, on, label = _run(root, file, "t")
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    assert label == f"none({reason})", case
+
+
+def test_709_local_imports_record_function_scope_keys_only(tmp_path: Path) -> None:
+    """The ``local_imports`` fact names the call whose import a function binds
+    and not the one whose import the module binds."""
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": (
+                "from svc import t\n\n\ndef a():\n    return t()\n\n\n"
+                "def b():\n    from svc import t\n    return t()\n"
+            ),
+        },
+    )
+    facts, _graph, _context_ = _context(root)
+    (use,) = [item for item in facts if item["path"] == "use.py"]
+    scope = use["scope_facts"]
+    assert valid_py_module_bindings(scope["module_bindings"])
+    keys = scope["module_bindings"]["local_imports"]
+    source = (root / "use.py").read_bytes()
+    starts = [int(key.split(":")[0]) for key in keys]
+    assert [source[start : start + 1] for start in starts] == [b"t"]
+    assert starts == [source.rindex(b"t()")]
