@@ -198,7 +198,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "evaluator",
         PYM,
-        "    if analysis.string_code:\n        facts.shutoff.add(CAUSE_EVALUATOR)",
+        "    if analysis.string_code or analysis.legacy_evaluator():\n"
+        "        facts.shutoff.add(CAUSE_EVALUATOR)",
         "    if False:\n        facts.shutoff.add(CAUSE_EVALUATOR)",
     ),
     (
@@ -327,10 +328,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "generic-module-acquisition",
         PYS,
-        "        if components[0] in _GENERIC_MODULE_STRINGS and (\n"
-        "            len(components) > 1 or self._acquired(node)\n"
-        "        ):",
-        "        if False:",
+        "        if head in _GENERIC_MODULE_STRINGS and (",
+        "        if False and (",
     ),
     # R-699-3 (the #727 fold).
     (
@@ -370,8 +369,9 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "r3-b3-dotted-generic",
         PYS,
-        "            len(components) > 1 or self._acquired(node)",
-        "            self._acquired(node)",
+        "                    _dunder(components[1])\n"
+        "                    or components[1] in _GENERIC_MODULE_ATTRIBUTES[head]",
+        "                    False",
     ),
     (
         "r3-b3-name-keyword",
@@ -406,8 +406,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "r3-getmodule",
         PYS,
-        '        "f_builtins",\n        "getmodule",\n',
-        '        "f_builtins",\n',
+        '        "f_builtins",\n        "getmodule",\n    }\n)',
+        '        "f_builtins",\n    }\n)',
     ),
     (
         "r3-computed-acquisition",

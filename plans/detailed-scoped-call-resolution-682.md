@@ -1189,7 +1189,10 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
       closed list of reads (`.get(...)`, a subscript read, an `in` operand);
     - a generic module name (`"code"`, `"trace"`, `"profile"`, `"timeit"`)
       as the first component of a dotted constant with two or more components
-      (`"code.InteractiveInterpreter"`, `"timeit:timeit"`), and alone as the
+      whose second component is a dunder or an attribute of that module
+      (`"code.InteractiveInterpreter"`, `"timeit:timeit"`; none of the four
+      is a package, so `"code.py"`, `"trace.log"` or `"code:fixture"` reach
+      no object of the module), and alone as the
       literal name of an acquisition: the first argument or `name=` keyword
       of `import_module`/`__import__` or of a string resolver
       (`pkgutil.resolve_name`, `pydoc.locate`/`safeimport`), a

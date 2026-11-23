@@ -212,7 +212,8 @@ makes every lookup ``dynamic-scope``, function scopes included:
   and ``singledispatch.register`` calls it);
 - a constant that is a dotted name naming any of the above, a generic
   module name (``"code"``) as the first of two or more dotted components
-  (``"timeit:timeit"``), and alone as the literal name of an acquisition
+  when the second is that module's attribute or a dunder
+  (``"timeit:timeit"``, not ``"code.py"``), and alone as the literal name of an acquisition
   (``import_module(name="code")``, ``sys.modules["code"]``,
   ``pkgutil.resolve_name("code")``, a ``logging.config`` ``"()"`` value).
 
@@ -681,12 +682,94 @@ _PICKLE_ATTRIBUTES = frozenset({"pickle", "_pickle"})
 # ``__getitem__``), the first argument or ``name=`` keyword of a string
 # resolver (``pkgutil.resolve_name``, ``pydoc.locate``/``safeimport``), or
 # the value of a ``logging.config`` factory key ``"()"``. As the first
-# component of a dotted constant with two or more components (``"code.X"``,
-# ``"timeit:timeit"``) they fail closed anywhere (R-699-3, BLOCKING 3). A
-# name stored first and passed later is a computed acquisition (plan R12,
-# class (b)).
+# component of a dotted constant with two or more components
+# (``"code.InteractiveInterpreter"``, ``"timeit:timeit"``) they fail closed
+# anywhere (R-699-3, BLOCKING 3) when the second component is an attribute of
+# that module (:data:`_GENERIC_MODULE_ATTRIBUTES`) or a dunder: none of the
+# four is a package, so a resolver, ``import_module``, a factory key or
+# ``patch`` given ``"code.py"``, ``"trace.log"`` or ``"code:fixture"``
+# reaches no object of the module and runs none of its code. A name stored
+# first and passed later is a computed acquisition (plan R12, class (b)).
 _MODULE_STRINGS = frozenset({"pickle", "_pickle", "runpy"})
 _GENERIC_MODULE_STRINGS = frozenset({"code", "trace", "profile", "timeit"})
+# Every non-dunder attribute of the four modules on CPython 3.12, 3.13 and
+# 3.14 (``dir()``; pinned against the running interpreter), less
+# ``timeit.default_timer``, which is on ``timeit``'s member allow-list.
+_GENERIC_MODULE_ATTRIBUTES: Mapping[str, frozenset[str]] = {
+    "code": frozenset(
+        {
+            "CommandCompiler",
+            "InteractiveConsole",
+            "InteractiveInterpreter",
+            "Quitter",
+            "builtins",
+            "compile_command",
+            "interact",
+            "sys",
+            "traceback",
+        }
+    ),
+    "profile": frozenset(
+        {
+            "Profile",
+            "_Utils",
+            "importlib",
+            "io",
+            "main",
+            "marshal",
+            "run",
+            "runctx",
+            "sys",
+            "time",
+        }
+    ),
+    "timeit": frozenset(
+        {
+            "Timer",
+            "_globals",
+            "default_number",
+            "default_repeat",
+            "dummy_src_name",
+            "gc",
+            "itertools",
+            "main",
+            "reindent",
+            "repeat",
+            "sys",
+            "template",
+            "time",
+            "timeit",
+        }
+    ),
+    "trace": frozenset(
+        {
+            "CoverageResults",
+            "PRAGMA_NOCOVER",
+            "Trace",
+            "_Ignore",
+            "_find_executable_linenos",
+            "_find_lines",
+            "_find_lines_from_code",
+            "_find_strings",
+            "_fullmodname",
+            "_modname",
+            "_time",
+            "dis",
+            "gc",
+            "inspect",
+            "io",
+            "linecache",
+            "main",
+            "os",
+            "pickle",
+            "sys",
+            "sysconfig",
+            "threading",
+            "token",
+            "tokenize",
+        }
+    ),
+}
 _ACQUIRERS = frozenset({"import_module", "__import__"})
 _STRING_RESOLVERS = frozenset({"resolve_name", "locate", "safeimport"})
 _FACTORY_KEY = "()"
@@ -2290,8 +2373,16 @@ class _Analysis:
         if parts & (_STRING_CODE_NAMES | _MODULE_STRINGS | {_ANNOTATIONS, _MARSHAL}):
             self._fire("string")
         components = _DOTTED_SPLIT.split(value)
-        if components[0] in _GENERIC_MODULE_STRINGS and (
-            len(components) > 1 or self._acquired(node)
+        head = components[0]
+        if head in _GENERIC_MODULE_STRINGS and (
+            (
+                len(components) > 1
+                and (
+                    _dunder(components[1])
+                    or components[1] in _GENERIC_MODULE_ATTRIBUTES[head]
+                )
+            )
+            or self._acquired(node)
         ):
             # ``"timeit:timeit"``, ``importlib.import_module(name="code")``
             # (R-699-3, BLOCKING 3).

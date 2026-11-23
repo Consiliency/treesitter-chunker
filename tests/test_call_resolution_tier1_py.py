@@ -8399,6 +8399,8 @@ STRING_CODE_FORMS: dict[str, str] = {
     ),
     "profile-factory-lone": "d = {'()': 'profile'}",
     "trace-dotted-constant": "x = 'trace.Trace'",
+    "code-dotted-dunder": "x = 'code.__builtins__'",
+    "timeit-colon-constant": "x = ['timeit:timeit']",
     # BLOCKING 4: the dispatchers evaluate string annotation values.
     "singledispatch": "from functools import singledispatch",
     "singledispatchmethod-attr": "m = functools.singledispatchmethod(f)",
@@ -8472,6 +8474,13 @@ STRING_CODE_CONTROLS: dict[str, str] = {
     "runpy-from-reexport-plain": "from multiprocessing.spawn import runpy\nrunpy.run_path('x')",
     # A generic word that is no acquisition, and an acquisition by constant.
     "generic-name-keyword": "x = f(name='code')",
+    # Dotted constants whose second component no generic module has: file
+    # names and other packages' members (this repository's
+    # ``tests/test_governed_scope.py``, Code-Index-MCP's ``baml_sdk``).
+    "generic-file-names": (
+        "x = ['trace.log', 'code.py', 'code:fixture', 'profile.json', 'trace.Options']"
+    ),
+    "timeit-default-timer-string": "x = 'timeit.default_timer'",
     "generic-factory-other": "d = {'()': 'json.JSONDecoder', 'code': 'x'}",
 }
 
@@ -8668,6 +8677,27 @@ def test_installed_builtins_pin_matches_the_interpreter() -> None:
         check=True,
     )
     assert frozenset(result.stdout.split()) == py_scope.INSTALLED_BUILTINS
+
+
+def test_generic_module_attributes_match_the_interpreter() -> None:
+    """Every non-dunder attribute of ``code``, ``profile``, ``timeit`` and
+    ``trace`` on the running interpreter is listed (``timeit.default_timer``
+    is on ``timeit``'s member allow-list instead)."""
+    import importlib
+
+    for name, listed in py_scope._GENERIC_MODULE_ATTRIBUTES.items():
+        module = importlib.import_module(name)
+        actual = {attribute for attribute in dir(module) if not _dunder15(attribute)}
+        if name == "timeit":
+            actual.discard("default_timer")
+        assert actual <= listed, (name, sorted(actual - listed))
+    assert set(py_scope._GENERIC_MODULE_ATTRIBUTES) == set(
+        py_scope._GENERIC_MODULE_STRINGS
+    )
+
+
+def _dunder15(name: str) -> bool:
+    return name.startswith("__") and name.endswith("__")
 
 
 def test_string_code_lists_are_pinned() -> None:
