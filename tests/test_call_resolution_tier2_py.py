@@ -4177,6 +4177,8 @@ def _module_bindings(root: Path) -> dict[str, dict[str, Any]]:
         # or ``__module__`` reaches it (R-724-1 item 3).
         ('"__builtins__"', ["json", "svc", "sys"]),
         ('"__loader__"', ["json", "svc", "sys"]),
+        # A dunder that is an import binding of the file hands out everything.
+        ('"__version__"', ["json", "svc", "sys"]),
         ('"f"', ["json", "svc", "sys"]),
         ('"code"', ["json", "svc", "sys"]),
         ("k", ["json", "svc", "sys"]),
@@ -4193,7 +4195,8 @@ def test_frame_read_by_constant_key_hands_out_that_binding(
         tmp_path,
         {
             "r.py": (
-                "import sys\nimport svc\nimport json\n\n\ndef f(k):\n"
+                "import sys\nimport svc\nimport json\n"
+                "from json import __version__\n\n\ndef f(k):\n"
                 f"    return sys._getframe(0).f_globals[{key}]\n"
             ),
         },
@@ -4214,7 +4217,8 @@ def test_frame_read_by_constant_key_hands_out_that_binding(
         'f("builtins.open")\n',
         'n = "f_globals"\n',
         'n = "__glo" "bals__"\n',
-        'n = "f_" + "builtins"\n',
+        'n = "f_bui" + "ltins"\n',
+        "x = frame.f_builtins\n",
         'n = f"__im{"port"}__"\n',
         'f("0.__globals__[svc]", (g,), {})\n',
         'f(**{"eval_" + "str": True})\n',
@@ -4262,6 +4266,7 @@ def test_namespace_token_in_any_role_hands_out_every_binding(
         "m.eval()\n",
         "class M:\n    def eval(self):\n        return 1\n",
         "f(eval=True)\n",
+        "b = __builtins__\nf(eval=True)\n",
         'if __name__ == "__main__":\n    pass\n',
         '"""Calls globals() and builtins.open."""\n',
         "x = 1  # globals, vars, __import__\n",

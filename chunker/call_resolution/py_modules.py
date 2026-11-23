@@ -1322,13 +1322,14 @@ def _namespace_handout(
         if name not in _NAMESPACE_EVALUATORS:
             continue
         if ps._name_part(ident):
-            members = True
+            # ``X.eval`` (a builtin on a route to the builtins); a keyword
+            # argument name (``f(eval=True)``) is neither.
+            parent = ident.parent
+            if parent is not None and parent.type == "attribute":
+                members = True
             continue
         if _in_import(ident):
             return None
-        parent = ident.parent
-        if parent is not None and parent.type == "keyword_argument":
-            continue
         if not ps._binding_position(ident):
             return None
     evaluator_strings = False

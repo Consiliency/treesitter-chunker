@@ -889,15 +889,15 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "ns-evaluator-keyword",
         PYM,
-        '        if parent is not None and parent.type == "keyword_argument":\n'
-        "            continue\n        if not ps._binding_position(ident):",
-        "        if not ps._binding_position(ident):",
+        '            if parent is not None and parent.type == "attribute":\n'
+        "                members = True",
+        "            if True:\n                members = True",
     ),
     (
         "ns-import-form",
         PYM,
-        "        if _in_import(ident):\n            return None\n        parent = ident.parent",
-        "        if _in_import(ident):\n            continue\n        parent = ident.parent",
+        "        if _in_import(ident):\n            return None\n        if not ps._binding_position",
+        "        if _in_import(ident):\n            continue\n        if not ps._binding_position",
     ),
     (
         "ns-exec-statement",
