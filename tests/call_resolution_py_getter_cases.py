@@ -2937,4 +2937,39 @@ CASES: dict[str, tuple[str, str, str, dict[str, str | int]]] = {
             "main.py": "import use\nimport svc\nimport poke\n\npoke.run(use.go())\nprint(svc.u())\n",
         },
     ),
+    "review3:t15-annotation-scope-local-import": (
+        "svc.py",
+        "OTHER.t",
+        "ambiguous",
+        {
+            "other.py": 'def t():\n    return "OTHER.t"\n\n\ndef w():\n    return 2\n',
+            "svc.py": 'def t():\n    return "SVC.t"\n\n\ndef u():\n    return t()\n\n\ndef w():\n    return 1\n',
+            "use.py": "def go():\n    import svc\n\n    def inner() -> svc.w:\n        return 1\n\n    return inner\n",
+            "poke.py": "import other\n\n\ndef run(fn):\n    fn.__annotate__.__closure__[0].cell_contents.t = other.t\n",
+            "main.py": "import use\nimport svc\nimport poke\n\npoke.run(use.go())\nprint(svc.u())\n",
+        },
+    ),
+    "review3:t16-mangled-local-import-closure": (
+        "svc.py",
+        "OTHER.t",
+        "ambiguous",
+        {
+            "other.py": 'def t():\n    return "OTHER.t"\n\n\ndef w():\n    return 2\n',
+            "svc.py": 'def t():\n    return "SVC.t"\n\n\ndef u():\n    return t()\n\n\ndef w():\n    return 1\n',
+            "use.py": "class K:\n    def go(self):\n        import svc as __m\n\n        def inner():\n            return __m.w()\n\n        return inner\n",
+            "poke.py": "import other\n\n\ndef run(fn):\n    fn.__closure__[0].cell_contents.t = other.t\n",
+            "main.py": "import use\nimport svc\nimport poke\n\npoke.run(use.K().go())\nprint(svc.u())\n",
+        },
+    ),
+    "review3:t17-inner-own-import-control": (
+        "svc.py",
+        "SVC.t",
+        "resolved",
+        {
+            "other.py": 'def t():\n    return "OTHER.t"\n\n\ndef w():\n    return 2\n',
+            "svc.py": 'def t():\n    return "SVC.t"\n\n\ndef u():\n    return t()\n\n\ndef w():\n    return 1\n',
+            "use.py": "def go():\n    def probe():\n        try:\n            import svc\n        except ImportError:\n            return None\n        return svc.w()\n\n    probe()\n    import svc\n    return svc.w()\n",
+            "main.py": 2,
+        },
+    ),
 }

@@ -1182,14 +1182,20 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "nested-import-own-scope",
         PYM,
-        "            and decided.kind == ps._FUNCTION\n            and decided is not chain[0]\n",
-        "            and decided.kind == ps._FUNCTION\n",
+        "        return decided is not chain[0] and any(scope is decided for scope in holders)",
+        "        return any(scope is decided for scope in holders)",
     ),
     (
-        "nested-import-function-kind",
+        "nested-import-decided-holder",
         PYM,
-        "            decided is not None\n            and decided.kind == ps._FUNCTION\n",
-        "            decided is not None\n",
+        "        return decided is not chain[0] and any(scope is decided for scope in holders)",
+        "        return decided is not chain[0]",
+    ),
+    (
+        "nested-import-annotation",
+        PYM,
+        "    if ps._in_annotation(ident):\n        return any(scope in chain for scope in holders)\n",
+        "",
     ),
     (
         "getter-decorated",
@@ -1400,7 +1406,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     # separates.
     # Not run for R-706-3: the fallback's ``scope in chain`` conjunct only
     # keeps a read precise when an unrelated function imports the name and
-    # the lookup cannot tell; dropping it adds escapes, never removes one.
+    # the lookup decides nowhere; dropping it adds escapes, never removes one.
     # H1's ``analysis.frame_locals`` clause (a file that may write a
     # function's locals) is equivalent since the re-stack on R-724-1: every
     # name that sets it and reaches a getter or a result alias (``f_locals``,

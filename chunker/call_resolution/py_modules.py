@@ -909,16 +909,21 @@ def _nested_import_read(
 ) -> bool:
     """Executive ruling R-706-3: whether ``ident`` may read a function-local
     import binding from a scope nested in that function (a closure, lambda,
-    comprehension or class body, or a method in one). The capture puts the
-    module in a cell another module can read and write
+    comprehension or class body, a method in one, or an annotation scope).
+    The capture puts the module in a cell another module can read and write
     (``fn.__closure__[i].cell_contents``,
-    ``inspect.getclosurevars(fn).nonlocals``), so the read hands the module
-    out, as for a getter-result alias (R-706-2 B1).
+    ``inspect.getclosurevars(fn).nonlocals``,
+    ``fn.__annotate__.__closure__``), so the read hands the module out, as
+    for a getter-result alias (R-706-2 B1).
 
-    When the lookup proves an import binding, the scope it decides in must be
-    a function other than the read's innermost scope. Otherwise any function
-    that imports a spelling of the name and encloses the read counts.
-    ``local_imports`` maps each name to the function scopes that import it."""
+    ``local_imports`` maps each name to the function scopes that import it.
+    An annotation (PEP 649/695: evaluated later in its own annotation scope)
+    counts when any such function encloses it. Otherwise, when the lookup
+    decides in a scope (the one Python's static scoping binds the name in,
+    whatever the outcome), that scope must be an importing function other
+    than the read's innermost scope. When it decides nowhere (a mangled
+    name, a poisoned or dynamic scope), any importing function that encloses
+    the read, other than the innermost scope, counts."""
     from . import py_scope as ps
 
     holders = [
@@ -931,14 +936,12 @@ def _nested_import_read(
     chain = list(analysis._chain(ident))
     if not chain:
         return False
-    outcome = analysis.lookup(ident)
-    if outcome.get("outcome") == "import":
-        decided = analysis.decided
-        return bool(
-            decided is not None
-            and decided.kind == ps._FUNCTION
-            and decided is not chain[0]
-        )
+    if ps._in_annotation(ident):
+        return any(scope in chain for scope in holders)
+    analysis.lookup(ident)
+    decided = analysis.decided
+    if decided is not None:
+        return decided is not chain[0] and any(scope is decided for scope in holders)
     return any(scope is not chain[0] and scope in chain for scope in holders)
 
 

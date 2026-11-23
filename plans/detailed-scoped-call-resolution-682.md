@@ -1961,14 +1961,18 @@ the import proofs themselves (9.4-9.6). `structural` output is unchanged.
   `__doc__`, `__file__`, `__module__`, `__version__` is read. A class-level
   import and an import redirected by `global`/`nonlocal` are escapes. So is
   a read of a function-local import binding from a scope nested in that
-  function (a closure, lambda, comprehension or class body, or a method in
-  one): the capture puts the module in a cell another module can read and
-  write (`fn.__closure__[i].cell_contents`,
-  `inspect.getclosurevars(fn).nonlocals`; executive ruling R-706-3). When the
-  lookup proves the import, it must decide in a function other than the
-  read's innermost scope; when it cannot tell, any function that imports the
-  name and encloses the read counts. A read in the importing function itself
-  and a module-level import read from a closure are unaffected. So is
+  function (a closure, lambda, comprehension or class body, a method in one,
+  or an annotation scope): the capture puts the module in a cell another
+  module can read and write (`fn.__closure__[i].cell_contents`,
+  `inspect.getclosurevars(fn).nonlocals`, `fn.__annotate__.__closure__`;
+  executive ruling R-706-3). An annotation counts when an importing function
+  encloses it. Otherwise, when the lookup decides in a scope (Python's
+  static binding scope, whatever the outcome), that scope must be an
+  importing function other than the read's innermost scope; when it decides
+  nowhere (a mangled name, a poisoned or dynamic scope), any importing
+  function that encloses the read counts. A read in the importing function
+  itself (also when an enclosing function imports the same name) and a
+  module-level import read from a closure are unaffected. So is
   every import binding of a file that hands out its own namespace
   (treesitter-chunker#724, executive ruling R-724-1). The rule is
   token-level: the file hands out its namespace when ANY token in it spells

@@ -195,7 +195,8 @@ NAMED_BLOCKERS = (
     ),
     *sorted(name for name in CASES if name.startswith("review2:gen-")),
     # R-706-3: a function-local import binding read from a nested scope (a
-    # closure, lambda, comprehension or class body), written through the
+    # closure, lambda, comprehension, class body or annotation scope, or
+    # under a mangled name the lookup cannot place), written through the
     # cell from another module, with or without a getter in the tree, and
     # whatever the reader imports.
     *(
@@ -219,6 +220,8 @@ NAMED_BLOCKERS = (
             "t09-class-body-local-import",
             "t12-conditional-local-import-closure",
             "t13-local-import-reassigned-closure",
+            "t15-annotation-scope-local-import",
+            "t16-mangled-local-import-closure",
         )
     ),
 )
