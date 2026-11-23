@@ -79,7 +79,9 @@ builtin by lookup), ``dynamic-loader`` (a non-literal ``import_module`` or
 shuts off Tier 2 for the callers it applies to; Tier 1 proofs keep their
 ``structural`` result except where a taint names their module global.
 Closure cells and code objects (Tier 1's file-wide names) cannot change a
-module attribute, so they are no Tier 2 cause.
+module attribute, but a write of a function's ``__code__``, ``__closure__``,
+``__defaults__`` or ``__kwdefaults__`` in any file makes a proven definition
+run other code: a ``module-object`` cause (#705 N-1).
 
 **Owner decision O-2.** Causes and taints that originate in test files
 (:func:`is_test_path`) apply only to callers in test files, unless a
@@ -91,7 +93,7 @@ from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Set as AbstractSet
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -307,6 +309,15 @@ _SAFE_DUNDERS = frozenset(
         "__spec__",
     }
 )
+# #705 N-1: function attributes whose write makes a function run other code
+# (or with other defaults) while every edge still names its definition:
+# ``f = svc.t; f.__code__ = other.t.__code__`` in any file made CPython run
+# ``OTHER.t``'s body for ``use.py``'s ``from svc import t`` (the president's
+# ``h5_code_alias``). A write of one in any file is a run-wide
+# ``module-object`` cause, scoped by O-2.
+_CODE_ATTRIBUTES = frozenset(
+    {"__code__", "__closure__", "__defaults__", "__kwdefaults__"}
+)
 # Outcomes of a use-site lookup that prove the name is the file's own
 # binding, not the builtin or an import.
 _OWN_BINDINGS = frozenset({"parameter", "local-variable", "expression-bound"})
@@ -462,8 +473,8 @@ def module_facts(
             # A class attribute (``K.svc``) or a binding redirected to another
             # scope holds the module where no use rule sees it.
             facts.uses.add(_record(info, "value", ()))
-    own_submodules = _own_submodules(analysis)
     _scan_imports(analysis, facts)
+    own_submodules = _own_submodules(analysis, own_ref, facts.stars)
     _scan_uses(analysis, facts, import_infos)
     _scan_causes(analysis, facts, import_infos, own_ref)
     _scan_patchers(analysis, facts)
@@ -489,18 +500,35 @@ def module_facts(
     return exports, module_bindings
 
 
-def _own_submodules(analysis: Any) -> list[str]:
+def _own_submodules(
+    analysis: Any, own_ref: str, stars: AbstractSet[str] = frozenset()
+) -> list[str]:
     """In a package ``__init__.py``, the names whose only module-scope
     bindings are unconditional imports of the package's own submodule of that
-    name (``from . import b``) and the writes those imports make: the name
-    then holds that submodule (#705 E6-3). Any other binding (a definition,
-    an assignment, an attribute write by any receiver, a conditional or other
-    import) leaves it out."""
+    name and the writes those imports make: the name then holds that
+    submodule (#705 E6-3). Any other binding (a definition, an assignment, an
+    attribute write by any receiver, a conditional or other import) leaves it
+    out.
+
+    An own-submodule import is ``from . import b`` or the absolute
+    self-import ``from <the package's full dotted name> import b``, nothing
+    else (#705 P6-1). CPython runs ``from vendor.utils import timezone`` in
+    ``myapp/utils/__init__.py`` as an import of ``vendor.utils.timezone``:
+    ``myapp.utils.timezone`` then holds the vendor module, and a later
+    ``from myapp.utils import timezone`` finds that attribute, so
+    ``_handle_fromlist`` never loads ``myapp/utils/timezone.py`` (the
+    president's ``h10_django_like`` printed ``VENDOR timezone.now``). A
+    match on the last component alone took it for the package's own.
+
+    A star import anywhere in the file leaves no name out of reach: ``from
+    .c import *`` runs after ``from . import b`` and rebinds ``b`` to
+    whatever ``c`` exports under that name, and the submodule already in
+    ``sys.modules`` is never set again (#705 P6-2; ``h9_star_rebind`` printed
+    ``C.Impl.t (class)``). Such a file has no own-submodule names."""
     from . import py_scope as ps
 
-    if not analysis.module_path.package_init:
+    if not analysis.module_path.package_init or stars:
         return []
-    own = set(analysis.own_names) | {ps._SELF}
     found: list[str] = []
     for name, bindings in sorted(analysis.module.bindings.items()):
         imports = [binding for binding in bindings if binding.cls == ps.IMPORT]
@@ -517,7 +545,7 @@ def _own_submodules(analysis: Any) -> list[str]:
             return (
                 info.get("form") == "from"
                 and info.get("name") == name
-                and (module == "." or module.rpartition(".")[2] in own)
+                and (module == "." or bool(own_ref) and module == own_ref)
             )
 
         if all(own_import(binding.info or {}) for binding in imports):
@@ -1042,12 +1070,24 @@ def _scan_causes(
                 facts.shutoff.add(CAUSE_MODULE_SYSTEM)
             if _DOTTED_STRING.fullmatch(value):
                 facts.strings.add(value.replace(":", "."))
+            if value in _CODE_ATTRIBUTES:
+                # N-1: ``setattr(f, "__code__", c)`` and every other spelling
+                # that names the attribute by string.
+                facts.shutoff.add(CAUSE_MODULE_OBJECT)
     for ident in analysis.identifier_nodes:
         name = ps._text(ident, source)
         spellings = ps._spellings(ident, source)
         if _FRAME_LOCALS in spellings and not _frame_locals_read(analysis, ident):
             facts.shutoff.add(CAUSE_MODULE_OBJECT)
         if ps._name_part(ident):
+            parent = ident.parent
+            if (
+                name in _CODE_ATTRIBUTES
+                and parent is not None
+                and parent.id in analysis.attribute_targets
+            ):
+                # N-1: ``f.__code__ = other.__code__`` (any receiver).
+                facts.shutoff.add(CAUSE_MODULE_OBJECT)
             if spellings & _MODULE_OBJECT_NAMES:
                 facts.shutoff.add(CAUSE_MODULE_OBJECT)
             if spellings & _RESOLVER_NAMES:
@@ -1179,20 +1219,109 @@ def _callee_names(call: Any, source: bytes) -> list[str] | None:
     return list(reversed(names))
 
 
+def _monkeypatch_aliases(analysis: Any) -> set[str]:
+    """The local names that hold a pytest ``MonkeyPatch`` (#705 P6-3): any
+    name whose spelling contains ``monkeypatch`` (any case: the
+    ``monkeypatch`` fixture, ``pytest.MonkeyPatch()``), and, to a fixpoint,
+    every name bound by an assignment, a walrus or a ``with ... as`` from a
+    value rooted at one (``mp = monkeypatch``, ``with
+    monkeypatch.context() as m``)."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    pairs: list[tuple[Any, Any]] = []
+    stack = [analysis.root]
+    while stack:
+        node = stack.pop()
+        stack.extend(node.named_children)
+        if node.type == "assignment":
+            pairs.append(
+                (node.child_by_field_name("left"), node.child_by_field_name("right"))
+            )
+        elif node.type == "named_expression":
+            pairs.append(
+                (node.child_by_field_name("name"), node.child_by_field_name("value"))
+            )
+        elif node.type == "as_pattern":
+            target = node.child_by_field_name("alias")
+            value = node.named_children[0] if node.named_children else None
+            pairs.append((target, value))
+    aliases: set[str] = set()
+
+    def rooted(value: Any) -> bool:
+        while value is not None:
+            value = ps._unwrap(value, skip_comments=True)
+            if value.type == "identifier":
+                text = ps._text(value, source)
+                return "monkeypatch" in text.lower() or text in aliases
+            if value.type == "call":
+                value = value.child_by_field_name("function")
+            elif value.type == "attribute":
+                attribute = value.child_by_field_name("attribute")
+                if attribute is not None and "monkeypatch" in (
+                    ps._text(attribute, source).lower()
+                ):
+                    return True
+                value = value.child_by_field_name("object")
+            else:
+                return False
+        return False
+
+    changed = True
+    while changed:
+        changed = False
+        for target, value in pairs:
+            if target is None or value is None or not rooted(value):
+                continue
+            target = ps._unwrap(target, skip_comments=True)
+            if target.type == "as_pattern_target" and target.named_children:
+                target = target.named_children[0]
+            if target.type != "identifier":
+                continue
+            name = ps._text(target, source)
+            if name not in aliases:
+                aliases.add(name)
+                changed = True
+    return aliases
+
+
 def _scan_patchers(analysis: Any, facts: _Facts) -> None:
     """Patcher targets (#705 E6-5), a closed list of callees:
     ``unittest.mock``/``mock`` ``patch`` (``mock.patch``, a pytest-mock
     fixture's ``.patch``, a bare ``patch``), ``X.patch.object``,
     ``X.patch.dict``, ``X.patch.multiple``, and ``setattr``/``delattr`` on a
-    receiver whose name contains ``monkeypatch``. A string target that is
-    not a constant names a module the rules cannot compute: an
-    ``unresolvable-writer`` cause (scoped by O-2 like any cause). So is a
-    ``patch.object`` attribute that is not a constant. A constant string
-    target taints the module it names wholly (``patch.multiple('svc', ...)``
-    rebinds several of its globals), besides the dotted-string rule."""
+    pytest ``MonkeyPatch``. A string target that is not a constant names a
+    module the rules cannot compute: an ``unresolvable-writer`` cause (scoped
+    by O-2 like any cause). So is a ``patch.object`` attribute that is not a
+    constant, and a first argument of ``patch.multiple``/``patch.dict`` that
+    is not a constant string. A constant string target taints the module it
+    names wholly (``patch.multiple('svc', ...)`` rebinds several of its
+    globals), besides the dotted-string rule.
+
+    **Spellings (#705 P6-3).** Which callee is ``patch`` is decided at the
+    use site by the Tier 1 W-3 alias sets (:meth:`.py_scope._Analysis.\
+    _sensitive`): the mock-module names (``from unittest import mock as m``
+    gives ``m.patch``), the ``patch`` names (``from unittest.mock import
+    patch as p``), and every local alias of the mock module, ``patch`` or a
+    pytest-mock fixture, besides the literal spellings above. A
+    ``MonkeyPatch`` receiver is any name :func:`_monkeypatch_aliases` finds
+    (``mp = monkeypatch``). The president's trees ``h3a``/``h3b``/``h6`` ran
+    ``OTHER.t`` under pytest through exactly these spellings, and ``h3c``
+    through ``patch.multiple(MOD, t=...)`` with a computed ``MOD``. A
+    ``patch`` method of anything else (``requests.patch(url)``) is no
+    patcher."""
     from . import py_scope as ps
 
     source = analysis.source
+    monkeypatches: set[str] | None = None
+
+    def is_patch(node: Any, names: Sequence[str]) -> bool:
+        if node is not None and analysis._sensitive(node, ps._PATCH):
+            return True
+        return names[-1] == "patch" and (
+            len(names) == 1 or "mock" in names[:-1] or names[0] in _MOCKER_NAMES
+        )
+
     stack = [analysis.root]
     while stack:
         node = stack.pop()
@@ -1202,6 +1331,15 @@ def _scan_patchers(analysis: Any, facts: _Facts) -> None:
         names = _callee_names(node, source)
         if not names:
             continue
+        function = node.child_by_field_name("function")
+        function = (
+            ps._unwrap(function, skip_comments=True) if function is not None else None
+        )
+        receiver = (
+            function.child_by_field_name("object")
+            if function is not None and function.type == "attribute"
+            else None
+        )
         arguments = [
             argument
             for argument in ps._call_arguments(node)
@@ -1210,24 +1348,17 @@ def _scan_patchers(analysis: Any, facts: _Facts) -> None:
         first = arguments[0] if arguments else None
         constant = ps._constant_string(first, source) if first is not None else None
         last = names[-1]
-        patch = last == "patch" and (
-            len(names) == 1 or "mock" in names[:-1] or names[0] in _MOCKER_NAMES
-        )
+        patch = is_patch(function, names)
         method = (
             len(names) >= 2
-            and names[-2] == "patch"
-            and last
-            in (
-                "object",
-                "dict",
-                "multiple",
-            )
+            and last in ("object", "dict", "multiple")
+            and is_patch(receiver, names[:-1])
         )
-        monkeypatch = (
-            len(names) >= 2
-            and last in ("setattr", "delattr")
-            and "monkeypatch" in names[-2]
-        )
+        monkeypatch = len(names) >= 2 and last in ("setattr", "delattr")
+        if monkeypatch and "monkeypatch" not in names[-2].lower():
+            if monkeypatches is None:
+                monkeypatches = _monkeypatch_aliases(analysis)
+            monkeypatch = len(names) == 2 and names[0] in monkeypatches
         if patch:
             if first is None or constant is None:
                 facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
@@ -1240,6 +1371,10 @@ def _scan_patchers(analysis: Any, facts: _Facts) -> None:
         elif method:
             if constant is not None:
                 facts.taints.add((constant.replace(":", "."), "*"))
+            else:
+                # P6-3: ``patch.multiple(MOD, t=f)`` with a computed ``MOD``
+                # (and ``patch.dict`` alike) names a target no rule computes.
+                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
         elif monkeypatch:
             # The string form takes the target first: ``setattr("m.t", v)``
             # (two arguments) and ``delattr("m.t")`` (one); the object form
@@ -1348,6 +1483,16 @@ class PyModuleRun:
     test_shutoff: Mapping[str, str] = field(default_factory=dict)
     test_scope: frozenset[str] = frozenset()
 
+    @property
+    def file_set(self) -> frozenset[str]:
+        """The run's Python file paths (one hashable set, for the pytest
+        basedirs computed once per run)."""
+        found = self.__dict__.get("_file_set")
+        if found is None:
+            found = frozenset(self.files)
+            object.__setattr__(self, "_file_set", found)
+        return found
+
     def caller_shutoff(self, caller: str) -> str | None:
         active = dict(self.shutoff)
         if caller in self.test_scope:
@@ -1431,6 +1576,7 @@ class _Builder:
                 if package:
                     modules[dotted] = path
         self.modules = modules
+        self.file_set = frozenset(self.files)
         nodes = set(modules)
         for directory in directories:
             if directory:
@@ -1514,7 +1660,7 @@ class _Builder:
         on ``sys.path`` for the writer (:func:`shadow_directories`)."""
         found = {dotted} if dotted in self.nodes else set()
         if dotted:
-            for directory in shadow_directories(set(self.files), writer):
+            for directory in shadow_directories(self.file_set, writer):
                 local = ".".join([*directory, dotted])
                 if local in self.nodes:
                     found.add(local)
@@ -1767,12 +1913,63 @@ def _resolve_parts(
     return found if found is not None else "module-not-found"
 
 
-def shadow_directories(files: set[str], importer: str) -> list[list[str]]:
+def _pytest_basedir(files: AbstractSet[str], path: str) -> list[str]:
+    """The directory pytest's ``prepend`` import mode puts first on
+    ``sys.path`` for a module it imports: the first ancestor of ``path``
+    (its own directory included) without ``__init__.py``."""
+    current = path.split("/")[:-1]
+    while current and "/".join(current) + "/__init__.py" in files:
+        current = current[:-1]
+    return current
+
+
+def _pytest_imported(path: str) -> bool:
+    """Whether pytest imports ``path`` itself while collecting (its default
+    ``python_files`` and conftest names), inserting its basedir."""
+    name = path.rsplit("/", 1)[-1]
+    return name == TEST_CONFTEST or (
+        name.endswith(".py")
+        and (name.startswith(TEST_PREFIX) or name.endswith(TEST_SUFFIX))
+    )
+
+
+_BASEDIR_CACHE: dict[frozenset[str], tuple[tuple[str, ...], ...]] = {}
+
+
+def pytest_basedirs(files: AbstractSet[str]) -> tuple[tuple[str, ...], ...]:
+    """The basedir of every file pytest imports while collecting the run
+    (test modules and every ``conftest.py``), below the root (#705 P6-4).
+
+    In ``prepend`` mode pytest inserts each one's basedir at ``sys.path[0]``
+    and never removes it, so a test module sees the basedirs of every
+    conftest and test module imported before it: the president's
+    ``h4_conftest_basedir`` (``tests/conftest.py`` beside ``tests/helpers.py``,
+    the test in ``tests/unit/``) printed ``TESTS helpers.h`` for ``from
+    helpers import h``, and its control without the conftest printed ``ROOT
+    helpers.h``. Computed once per file set."""
+    key = files if isinstance(files, frozenset) else frozenset(files)
+    found = _BASEDIR_CACHE.get(key)
+    if found is None:
+        basedirs = {
+            tuple(_pytest_basedir(key, path))
+            for path in key
+            if path.endswith(".py") and _pytest_imported(path)
+        }
+        found = tuple(sorted(basedir for basedir in basedirs if basedir))
+        if len(_BASEDIR_CACHE) > 8:
+            _BASEDIR_CACHE.clear()
+        _BASEDIR_CACHE[key] = found
+    return found
+
+
+def shadow_directories(files: AbstractSet[str], importer: str) -> list[list[str]]:
     """The directories below the root that may come first on ``sys.path`` for
     ``importer``: its own (a script run directly), and for a test file
     (:func:`is_test_path`) every directory up to and including the first
     ancestor without ``__init__.py``, pytest's ``rootdir`` insertion in
-    ``prepend`` mode (#705 E6-4). The root itself is never one."""
+    ``prepend`` mode (#705 E6-4), and the basedir of every test module and
+    conftest pytest imports in the run (#705 P6-4, :func:`pytest_basedirs`).
+    The root itself is never one."""
     directory = importer.split("/")[:-1]
     found: list[list[str]] = [directory] if directory else []
     if is_test_path(importer):
@@ -1781,6 +1978,9 @@ def shadow_directories(files: set[str], importer: str) -> list[list[str]]:
             current = current[:-1]
             if current:
                 found.append(current)
+        for basedir in pytest_basedirs(files):
+            if list(basedir) not in found:
+                found.append(list(basedir))
     return found
 
 
@@ -1804,7 +2004,7 @@ def resolve_module(run: PyModuleRun, ref: str, importer: str) -> _Module | str:
     parts = [part for part in ref.split(".") if part]
     if not parts:
         return "module-not-found"
-    for directory in shadow_directories(set(run.files), importer):
+    for directory in shadow_directories(run.file_set, importer):
         stem = "/".join([*directory, parts[0]])
         if (
             f"{stem}.py" in run.files
@@ -1896,7 +2096,9 @@ def _own_submodule_import(file: PyFile, entry: Mapping[str, Any], name: str) -> 
     """Whether a package binds ``name`` only to its own submodule of that
     name (the analyzer's ``own_submodules``; #705 E6-3)."""
     del entry
-    return file.package and name in file.own_submodules
+    # P6-2: a star import may rebind any name (the analyzer leaves such a
+    # file no own-submodule names; this holds for facts that predate it).
+    return file.package and not file.stars and name in file.own_submodules
 
 
 def own_binding_reason(run: PyModuleRun, caller: str, name: str) -> str | None:

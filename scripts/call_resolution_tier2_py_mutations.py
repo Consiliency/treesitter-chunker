@@ -230,8 +230,12 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "module-object-attribute-names",
         PYM,
-        "        if ps._name_part(ident):\n            if spellings & _MODULE_OBJECT_NAMES:",
-        "        if ps._name_part(ident):\n            if False:",
+        "            if spellings & _MODULE_OBJECT_NAMES:\n"
+        "                facts.shutoff.add(CAUSE_MODULE_OBJECT)\n"
+        "            if spellings & _RESOLVER_NAMES:",
+        "            if False:\n"
+        "                facts.shutoff.add(CAUSE_MODULE_OBJECT)\n"
+        "            if spellings & _RESOLVER_NAMES:",
     ),
     (
         "frame-locals-reads",
@@ -411,6 +415,70 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         PYM,
         "        elif method:\n            if constant is not None:",
         "        elif method:\n            if False:",
+    ),
+    # Fold 3 (#705 P6-1..P6-4, N-1).
+    (
+        "p6-1-own-import-full-name",
+        PYM,
+        '(module == "." or bool(own_ref) and module == own_ref)',
+        '(module == "." or module.rpartition(".")[2] == own_ref.rpartition(".")[2])',
+    ),
+    (
+        "p6-2-star-init-has-no-own-submodules",
+        PYM,
+        "    if not analysis.module_path.package_init or stars:",
+        "    if not analysis.module_path.package_init:",
+    ),
+    (
+        "p6-2-star-init-at-assembly",
+        PYM,
+        "    return file.package and not file.stars and name in file.own_submodules",
+        "    return file.package and name in file.own_submodules",
+    ),
+    (
+        "p6-3-w3-patch-aliases",
+        PYM,
+        "        if node is not None and analysis._sensitive(node, ps._PATCH):",
+        "        if False:",
+    ),
+    (
+        "p6-3-monkeypatch-aliases",
+        PYM,
+        "            monkeypatch = len(names) == 2 and names[0] in monkeypatches",
+        "            monkeypatch = False",
+    ),
+    (
+        "p6-3-computed-method-target",
+        PYM,
+        "                # (and ``patch.dict`` alike) names a target no rule computes.\n"
+        "                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)",
+        "                # (and ``patch.dict`` alike) names a target no rule computes.\n"
+        "                pass",
+    ),
+    (
+        "p6-4-run-wide-pytest-basedirs",
+        PYM,
+        "        for basedir in pytest_basedirs(files):",
+        "        for basedir in ():",
+    ),
+    (
+        "p6-4-conftest-is-imported",
+        PYM,
+        "    return name == TEST_CONFTEST or (",
+        "    return (",
+    ),
+    (
+        "n-1-code-attribute-write",
+        PYM,
+        "                # N-1: ``f.__code__ = other.__code__`` (any receiver).\n"
+        "                facts.shutoff.add(CAUSE_MODULE_OBJECT)",
+        "                pass",
+    ),
+    (
+        "n-1-code-attribute-string",
+        PYM,
+        "            if value in _CODE_ATTRIBUTES:",
+        "            if False:",
     ),
     (
         "e6-6-first-attribute-write",

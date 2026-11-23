@@ -866,8 +866,8 @@ def test_run_wide_causes_fail_closed(tmp_path: Path, case: str) -> None:
 @pytest.mark.parametrize(
     "writer",
     [
-        "def f(g, h):\n    g.__code__ = h.__code__\n",
         "def f(g):\n    g.__closure__[0].cell_contents = len\n",
+        "def f(g):\n    return g.__code__, g.__defaults__\n",
         "import ctypes\n\n\ndef f():\n    return ctypes.windll\n",
         # A syntax check: ``compile`` alone runs nothing (#705 Q2).
         "def check(src):\n    compile(src, 'x', 'exec')\n    return True\n",
@@ -878,8 +878,10 @@ def test_run_wide_causes_fail_closed(tmp_path: Path, case: str) -> None:
 def test_routes_that_cannot_change_a_module_attribute_are_no_cause(
     tmp_path: Path, writer: str
 ) -> None:
-    """Closure cells, code objects, ``ctypes`` without ``pythonapi`` and
-    frame-locals reads leave every module attribute as it is."""
+    """Closure cells, reads of code objects and defaults, ``ctypes``
+    without ``pythonapi`` and frame-locals reads leave every module attribute
+    as it is (a write of ``__code__`` and its kin is a cause since fold 3,
+    #705 N-1)."""
     root = _write(tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, "w.py": writer})
     _off, _structural, on, label = _run(root, "use.py", "t")
     assert on["resolution"] == "resolved"
@@ -1360,7 +1362,9 @@ FOLD2_BLOCKING: dict[str, tuple[dict[str, str], tuple[str, str], str, str, str]]
     "e6-6-code-write": (
         {"patch.py": "import svc\n" + PATCHER + "svc.t.__code__ = o.__code__\n"},
         ("use.py", "t"),
-        "reassigned",
+        # Fold 3 (N-1): a ``__code__`` write is a run-wide cause first; the
+        # E6-6 chain taint still fails ``svc.py``'s own Tier 1 proof.
+        "run-tainted:module-object",
         "import patch, use; print(use.u())",
         "2 (other.t's code runs)",
     ),
@@ -1763,3 +1767,346 @@ def test_fold2_init_definition_shadowed_by_a_submodule(tmp_path: Path) -> None:
     assert structural["resolution"] == "resolved"
     assert on == off
     assert label == "none(attr-submodule-conflict)"
+
+
+# ---------------------------------------------------------------------------
+# Fold 3 (#705 P6-1..P6-4, N-1): the president's trees at fold 2, verbatim
+# (``pr6-705-review/president/cases/<id>/tree``). ``runtime`` is what CPython
+# 3.14.10 printed for ``python -B -E -s main.py`` in the tree, or, for a test
+# tree, ``python -B -E -s -m pytest -q -s -p no:cacheprovider --rootdir=.
+# tests``: in every row a function other than the one the ``imports`` edge
+# named at fold 2 runs. ``(files, (file, reference), reason, runtime)``.
+
+_CALLS = "import svc\ndef go(): return svc.t()\n"
+_SVC_OTHER = {
+    "svc.py": 'def t(): return "SVC.t"\n',
+    "other.py": 'def t(): return "OTHER.t"\n',
+    "tests/calls.py": _CALLS,
+}
+FOLD3_BLOCKING: dict[str, tuple[dict[str, str], tuple[str, str], str, str]] = {
+    # P6-1: an absolute import from another package whose last component has
+    # the package's own name is no own-submodule import.
+    "h1_own_sub_lastpart": (
+        {
+            "a/__init__.py": "from x.a import b\n",
+            "a/b.py": 'def t(): return "A.B.t (own submodule)"\n',
+            "x/__init__.py": "",
+            "x/a/__init__.py": "",
+            "x/a/b.py": 'def t(): return "X.A.B.t"\n',
+            "main.py": 'from a import b\ndef go(): return b.t()\nprint("RAN", go())\n',
+        },
+        ("main.py", "b.t"),
+        "attr-submodule-conflict",
+        "RAN X.A.B.t",
+    ),
+    "h10_django_like": (
+        {
+            "vendor/__init__.py": "",
+            "vendor/utils/__init__.py": "",
+            "vendor/utils/timezone.py": 'def now(): return "VENDOR timezone.now"\n',
+            "myapp/__init__.py": "",
+            "myapp/utils/__init__.py": "from vendor.utils import timezone\n",
+            "myapp/utils/timezone.py": 'def now(): return "MYAPP timezone.now"\n',
+            "main.py": (
+                "from myapp.utils import timezone\n"
+                "def go(): return timezone.now()\n"
+                'print("RAN", go())\n'
+            ),
+        },
+        ("main.py", "timezone.now"),
+        "attr-submodule-conflict",
+        "RAN VENDOR timezone.now",
+    ),
+    # P6-2: a star import after ``from . import b`` rebinds ``b``.
+    "h9_star_rebind": (
+        {
+            "a/__init__.py": "from . import b\nfrom .c import *\n",
+            "a/b.py": 'def t(): return "A.B.t (submodule)"\n',
+            "a/c.py": (
+                "class Impl:\n    @staticmethod\n"
+                '    def t(): return "C.Impl.t (class)"\nb = Impl\n'
+            ),
+            "decoy.py": 'def t(): return "DECOY"\n',
+            "main.py": 'from a import b\ndef go(): return b.t()\nprint("RAN", go())\n',
+        },
+        ("main.py", "b.t"),
+        "attr-submodule-conflict",
+        "RAN C.Impl.t (class)",
+    ),
+    # P6-3: the W-3 spellings of ``patch`` and ``monkeypatch``.
+    "h3a_mock_alias": (
+        {
+            **_SVC_OTHER,
+            "tests/test_b.py": (
+                "from unittest import mock as m\nimport calls\n"
+                'from other import t as _evil\nNAME = "t"\ndef test_go():\n'
+                '    with m.patch(f"svc.{NAME}", _evil):\n'
+                '        print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "h3b_patch_alias": (
+        {
+            **_SVC_OTHER,
+            "tests/test_b.py": (
+                "from unittest.mock import patch as p\nimport calls\n"
+                'from other import t as _evil\nNAME = "t"\ndef test_go():\n'
+                '    with p(f"svc.{NAME}", _evil):\n'
+                '        print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "h3c_multiple_computed": (
+        {
+            **_SVC_OTHER,
+            "tests/test_b.py": (
+                "from unittest import mock\nimport calls\n"
+                'from other import t as _evil\nMOD = "s" + "vc"\ndef test_go():\n'
+                "    with mock.patch.multiple(MOD, t=_evil):\n"
+                '        print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "h6_mp_alias": (
+        {
+            **_SVC_OTHER,
+            "tests/test_b.py": (
+                'import calls\nfrom other import t as _evil\nNAME = "t"\n'
+                "def test_go(monkeypatch):\n    mp = monkeypatch\n"
+                '    mp.setattr(f"svc.{NAME}", _evil)\n'
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "run-tainted:unresolvable-writer",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # P6-4: ``tests/conftest.py``'s basedir ``tests/`` is on ``sys.path``
+    # before the test module in ``tests/unit/`` imports ``helpers``.
+    "h4_conftest_basedir": (
+        {
+            "helpers.py": 'def h(): return "ROOT helpers.h"\n',
+            "tests/conftest.py": "",
+            "tests/helpers.py": 'def h(): return "TESTS helpers.h"\n',
+            "tests/unit/test_x.py": (
+                'from helpers import h\ndef test_which(): print("RAN", h())\n'
+            ),
+        },
+        ("tests/unit/test_x.py", "h"),
+        "script-dir-shadow",
+        "RAN TESTS helpers.h / 1 passed",
+    ),
+    # N-1: code-object surgery through a local alias in another file.
+    "h5_code_alias": (
+        {
+            "svc.py": 'def t(): return "SVC.t"\n',
+            "other.py": 'def t(): return "OTHER.t"\n',
+            "patch.py": "import svc, other\nf = svc.t\nf.__code__ = other.t.__code__\n",
+            "use.py": "from svc import t\ndef u(): return t()\n",
+            "main.py": 'import patch, use\nprint("RAN", use.u())\n',
+        },
+        ("use.py", "t"),
+        "run-tainted:module-object",
+        "RAN OTHER.t",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD3_BLOCKING))
+def test_fold3_president_cases_keep_their_off_mode_edge(
+    tmp_path: Path, case: str
+) -> None:
+    """#705 P6-1..P6-4 and N-1: each president's tree, whose CPython 3.14 or
+    pytest run is recorded in its ``runtime`` field, keeps its off-mode edge
+    in ``imports`` mode with the recorded reason.
+
+    - P6-1 (``h1``, ``h10``): ``from vendor.utils import timezone`` in
+      ``myapp/utils/__init__.py`` binds the vendor module; the later ``from
+      myapp.utils import timezone`` finds that attribute and
+      ``_handle_fromlist`` never loads ``myapp/utils/timezone.py``.
+    - P6-2 (``h9``): ``from .c import *`` after ``from . import b`` rebinds
+      ``b`` to ``c.Impl``; ``a.b`` already in ``sys.modules`` is never set
+      again.
+    - P6-3 (``h3a``, ``h3b``, ``h3c``, ``h6``): ``m.patch``, ``p(...)``,
+      ``patch.multiple(MOD, ...)`` and ``mp.setattr`` replace ``svc.t`` for
+      the duration of the test, so ``calls.go`` runs ``other.t``.
+    - P6-4 (``h4``): pytest's ``prepend`` mode inserted ``tests/`` (the
+      conftest's basedir) and then ``tests/unit/``; ``helpers`` is found in
+      ``tests/``.
+    - N-1 (``h5``): the assigned ``__code__`` runs ``other.t``'s body under
+      ``svc.t``'s name.
+    """
+    files, (file, reference), reason, _runtime = FOLD3_BLOCKING[case]
+    root = _write(tmp_path, files)
+    off, _structural, on, label = _run(root, file, reference)
+    assert off["resolution"] in ("ambiguous", "resolved"), case
+    assert on == off, case
+    assert label == f"none({reason})", case
+
+
+FOLD3_CONTROLS: dict[str, tuple[dict[str, str], tuple[str, str], str]] = {
+    # P6-4 control (pytest: ``RAN ROOT helpers.h``): no conftest, so only the
+    # test's own basedir ``tests/unit/`` is inserted; ``helpers`` resolves to
+    # the root's, as before fold 3.
+    "h4b_no_conftest_control": (
+        {
+            "helpers.py": 'def h(): return "ROOT helpers.h"\n',
+            "tests/helpers.py": 'def h(): return "TESTS helpers.h"\n',
+            "tests/unit/test_x.py": (
+                'from helpers import h\ndef test_which(): print("RAN", h())\n'
+            ),
+        },
+        ("tests/unit/test_x.py", "h"),
+        "helpers.py",
+    ),
+    # P6-3 control: ``requests.patch(url)`` is an HTTP call, no patcher, even
+    # with a computed argument.
+    "requests-patch-control": (
+        {
+            **_SVC_OTHER,
+            "tests/test_b.py": (
+                'import requests\nimport calls\nNAME = "t"\ndef test_go():\n'
+                '    requests.patch(f"http://h/{NAME}")\n'
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "svc.py",
+    ),
+    # P6-1 control: the absolute self-import is the package's own submodule.
+    "absolute-self-import": (
+        {
+            "myapp/__init__.py": "",
+            "myapp/utils/__init__.py": "from myapp.utils import timezone\n",
+            "myapp/utils/timezone.py": "def now():\n    return 1\n",
+            "other.py": "def now():\n    return 2\n",
+            "main.py": "from myapp.utils import timezone\n\n\ndef go():\n    return timezone.now()\n",
+        },
+        ("main.py", "timezone.now"),
+        "myapp/utils/timezone.py",
+    ),
+    # P6-1 control: the relative form, as before.
+    "relative-own-import": (
+        {
+            "a/__init__.py": "from . import b\n",
+            "a/b.py": "def t():\n    return 1\n",
+            "other.py": "def t():\n    return 2\n",
+            "main.py": "from a import b\n\n\ndef go():\n    return b.t()\n",
+        },
+        ("main.py", "b.t"),
+        "a/b.py",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FOLD3_CONTROLS))
+def test_fold3_controls_still_resolve(tmp_path: Path, case: str) -> None:
+    files, (file, reference), target = FOLD3_CONTROLS[case]
+    root = _write(tmp_path, files)
+    _off, _structural, on, label = _run(root, file, reference)
+    assert on["resolution"] == "resolved", (case, label)
+    assert label == "import", case
+    assert _target(on, root) == target
+
+
+def test_fold3_patcher_causes_stay_test_scoped(tmp_path: Path) -> None:
+    """P6-3 under O-2: the aliased patchers are causes for test callers only;
+    a production caller of ``svc.t`` keeps its proof."""
+    files = dict(FOLD3_BLOCKING["h3a_mock_alias"][0])
+    files["use.py"] = "from svc import t\n\n\ndef u():\n    return t()\n"
+    root = _write(tmp_path, files)
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import"
+
+
+def test_fold3_star_init_has_no_own_submodules(tmp_path: Path) -> None:
+    """P6-2 at the fact level: an ``__init__.py`` with a star import records
+    no own-submodule names, and one without records its relative import."""
+    root = _write(
+        tmp_path,
+        {
+            "a/__init__.py": "from . import b\nfrom .c import *\n",
+            "a/b.py": "",
+            "a/c.py": "",
+            "k/__init__.py": "from . import b\n",
+            "k/b.py": "",
+        },
+    )
+    facts, _graph, _context_ = _context(root)
+    own = {
+        item["path"]: item["scope_facts"]["module_bindings"]["own_submodules"]
+        for item in facts
+        if item["path"].endswith("__init__.py")
+    }
+    assert own == {"a/__init__.py": [], "k/__init__.py": ["b"]}
+
+
+@pytest.mark.parametrize(
+    "writer",
+    [
+        "def f(g, h):\n    g.__code__ = h.__code__\n",
+        "def f(g, h):\n    setattr(g, '__code__', h.__code__)\n",
+        "def f(g):\n    g.__defaults__ = (2,)\n",
+        "def f(g):\n    g.__kwdefaults__ = {}\n",
+        "def f(g):\n    del g.__closure__\n",
+    ],
+)
+def test_fold3_function_code_writes_are_a_cause(tmp_path: Path, writer: str) -> None:
+    """#705 N-1: a write of a function's ``__code__``, ``__closure__``,
+    ``__defaults__`` or ``__kwdefaults__`` in any file, through any receiver
+    (a parameter, a local alias as in ``h5_code_alias``) or by constant name,
+    is a run-wide ``module-object`` cause: the proven definition may run other
+    code (CPython 3.14 ran ``OTHER.t`` for ``h5``)."""
+    root = _write(tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, "w.py": writer})
+    off, _structural, on, label = _run(root, "use.py", "t")
+    assert on == off
+    assert label == "none(run-tainted:module-object)"
+
+
+def test_fold3_star_init_rejects_recorded_own_submodules(tmp_path: Path) -> None:
+    """#705 P6-2, assembly side: even a fact record that lists ``b`` as an
+    own submodule of a package whose ``__init__.py`` has a star import is not
+    trusted (``h9_star_rebind`` ran ``C.Impl.t``)."""
+    root = _write(tmp_path, FOLD3_BLOCKING["h9_star_rebind"][0])
+    facts, _graph, _context_ = _context(root)
+    for item in facts:
+        if item["path"] == "a/__init__.py":
+            item["scope_facts"]["module_bindings"]["own_submodules"] = ["b"]
+    run = py_modules.build_py_module_run(facts)
+    binding = {"form": "from", "module": "a", "name": "b", "bound": "b"}
+    outcome = py_modules.resolve_import(run, "main.py", binding, ["t"])
+    assert outcome == {"outcome": "none", "reason": "attr-submodule-conflict"}
+
+
+def test_fold3_conftest_basedir_reaches_the_writer_side(tmp_path: Path) -> None:
+    """#705 P6-4, writer side: ``import helpers; helpers.h = o`` in
+    ``tests/unit/test_w.py`` writes ``tests/helpers.py`` when
+    ``tests/conftest.py`` exists (pytest on CPython 3.14: ``tests/`` is on
+    ``sys.path`` first, ``helpers.run()`` returns 2), so that file's own
+    Tier 1 proof of ``h`` fails closed for test callers."""
+    root = _write(
+        tmp_path,
+        {
+            "helpers.py": "def h():\n    return 0\n",
+            "tests/conftest.py": "",
+            "tests/helpers.py": "def h():\n    return 1\n\n\ndef run():\n    return h()\n",
+            "tests/unit/test_w.py": (
+                "import helpers\nfrom other import t as o\n\n\n"
+                "def test_w():\n    helpers.h = o\n    assert helpers.run() == 2\n"
+            ),
+            **OTHER,
+        },
+    )
+    _off, structural, on, label = _run(root, "tests/helpers.py", "h")
+    assert structural["resolution"] == "resolved"
+    assert on["resolution"] != "resolved"
+    assert label == "none(reassigned)"
