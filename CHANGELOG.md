@@ -137,7 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `sys.modules['m']`) makes the whole module, and every module it exposes,
     unprovable, in `"imports"` mode also for that module's own module-level
     `structural` proofs. Tier 2 is off for the run when a file may load or
-    write any module (`exec`, `eval`, `compile`, a non-literal
+    write any module (`exec`, `eval`, a non-literal
     `import_module` or `__import__`, other `importlib` uses, `runpy`,
     `sys.modules` other than a literal key, `sys.path`/`meta_path`/
     `path_hooks` changes, `__path__`, `__globals__`, frame globals,

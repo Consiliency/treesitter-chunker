@@ -759,7 +759,10 @@ def test_a_tainted_hop_fails_the_proof(tmp_path: Path) -> None:
 CAUSES: dict[str, tuple[str, str]] = {
     "exec": ("def f(s):\n    exec(s)\n", "evaluator"),
     "eval-handed-on": ("e = eval\n", "evaluator"),
-    "compile": ("def f(s):\n    return compile(s, 'x', 'exec')\n", "evaluator"),
+    "exec-compile": (
+        "def f(s):\n    exec(compile(s, 'x', 'exec'))\n",
+        "evaluator",
+    ),
     "import-module-computed": (
         "import importlib\n\n\ndef f(n):\n    return importlib.import_module(n)\n",
         "dynamic-loader",
@@ -866,6 +869,8 @@ def test_run_wide_causes_fail_closed(tmp_path: Path, case: str) -> None:
         "def f(g, h):\n    g.__code__ = h.__code__\n",
         "def f(g):\n    g.__closure__[0].cell_contents = len\n",
         "import ctypes\n\n\ndef f():\n    return ctypes.windll\n",
+        # A syntax check: ``compile`` alone runs nothing (#705 Q2).
+        "def check(src):\n    compile(src, 'x', 'exec')\n    return True\n",
         "def f(tb):\n    return tb.tb_frame.f_locals.get('x'), tb.tb_frame.f_code\n",
         "def f(fr):\n    return 'x' in fr.f_locals and fr.f_locals['x']\n",
     ],

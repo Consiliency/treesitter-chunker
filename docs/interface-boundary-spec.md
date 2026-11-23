@@ -319,7 +319,36 @@ A JavaScript or TypeScript file the parser cannot read cleanly (including any
 file with a lone carriage return, U+2028, U+2029 or an HTML-like comment,
 including a JavaScript `<!--` or `-->` that the parser reads as code)
 counts as rewriting any module (scoped like any other cause: test code affects only test
-callers unless production code reaches it). Wherever Tier 2 is off, the output equals `"structural"`. Python imports prove nothing yet.
+callers unless production code reaches it). For JavaScript and TypeScript
+callers, wherever Tier 2 is off the output equals `"structural"`.
+
+For Python callers `"imports"` resolves a call bound by `from m import t`
+(relative forms and function-local imports included) or a member chain on an
+imported module (`m.t()`, `pkg.mod.t()`) when the module name resolves, one
+component at a time from the root (a package before a module before a
+namespace directory), to exactly one run file, and its module-scope binding
+leads within three re-export hops to one definition its own scope lookup
+proves (`t2.import`, `t2.namespace`). Two or more imports of one name narrow
+to their group. A sibling in the importer's own directory, a standard-library
+module name, a relative import leaving the root, a name that is also a
+submodule, a single conditional import, star imports and module
+`__getattr__` leave the edge unchanged. Other files' writes to a module's
+globals are counted: an imported module object may only be read, called
+through, compared with `is`, or written by name; a named write (or a constant
+`mock.patch('m.t')`-style string) makes that name unprovable, and any other
+use (passed to a function, aliased, returned, `__dict__`, `vars(m)`, a
+literal `import_module('m')` or `sys.modules['m']`) makes the whole module,
+and every module it exposes, unprovable. That also applies to the written
+module's own module-level `"structural"` proofs, so `"imports"` can resolve
+fewer Python calls than `"structural"`. A Python file that may load or write
+any module (`exec`, `eval`, a non-literal loader, other `importlib` uses,
+`runpy`, `sys.modules` other than a literal key, `sys.path` changes,
+`__globals__`, frame globals, `builtins`, `__main__`) or that tree-sitter and
+CPython may read differently turns Python Tier 2 off, scoped like the
+JavaScript causes (test files: `test_*.py`, `*_test.py`, `conftest.py`, or a
+`tests` or `test` directory). On the real trees measured for
+treesitter-chunker#682, Python Tier 2 resolved no additional calls: every tree
+had such production code.
 
 A narrowed edge changes only `target`, `resolution`, `candidates` and
 `metadata.is_internal`, and adds `provenance.call_resolution` (the mode) and

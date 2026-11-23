@@ -117,7 +117,13 @@ and never resolve. Elsewhere only the symbol-kind and language-family filters
 narrow. `imports` adds Tier 2: JavaScript, TypeScript and TSX calls bound by a
 relative ES import resolve when the specifier names exactly one file of the run
 and its exports lead to one proven definition (`t2.import`, `t2.namespace`);
-more than one file variant leaves the edge unchanged. Run `boundary` without
+more than one file variant leaves the edge unchanged. Python calls bound by an
+import (`from m import t`, `m.t()`) resolve when the module name resolves from
+the extraction root to exactly one file and leads to one proven definition;
+other files' writes to a module's globals make it unprovable, so for Python
+`imports` can resolve fewer calls than `structural`, and a file that may load
+or write any module (`exec`, a non-literal `import_module`, `sys.path`
+changes, ...) turns Python Tier 2 off. Run `boundary` without
 `--lang` for Tier 2, since a language filter leaves other variants uncollected.
 Narrowed edges carry
 `provenance.call_resolution`

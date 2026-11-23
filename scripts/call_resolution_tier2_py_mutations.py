@@ -183,6 +183,12 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        if False:",
     ),
     (
+        "compile-is-no-evaluator",
+        PYM,
+        '_EVALUATORS = frozenset({"exec", "eval", "execfile"})',
+        '_EVALUATORS = frozenset({"exec", "eval", "compile", "execfile"})',
+    ),
+    (
         "computed-import-module",
         PYM,
         "        if not _literal_module(analysis, first, facts, own_ref):\n"

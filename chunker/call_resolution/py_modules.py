@@ -65,7 +65,7 @@ module's own Tier 1 module-scope proofs included (``imports`` mode only:
 ``structural`` stays as it was).
 
 **Run-wide causes (E5-3 analog).** Routes that can obtain or write any
-module: ``evaluator`` (``exec``, ``eval``, ``compile``, ``execfile``, the
+module: ``evaluator`` (``exec``, ``eval``, ``execfile``, the
 builtin by lookup), ``dynamic-loader`` (a non-literal ``import_module`` or
 ``__import__``, any other ``importlib`` use off a closed list, ``runpy``,
 ``imp``, ``zipimport``, string-to-module resolvers), ``module-system``
@@ -256,7 +256,10 @@ _LOADER_PATHS = frozenset(
 _SITE_PATHS = frozenset({("site", "addsitedir"), ("site", "main")})
 _SYS_MODULE_GETTERS = frozenset({"get", "pop", "setdefault", "__getitem__"})
 _SYS_PATH_NAMES = frozenset({"path", "meta_path", "path_hooks", "path_importer_cache"})
-_EVALUATORS = frozenset({"exec", "eval", "compile", "execfile"})
+# ``compile`` alone only builds a code object; running one takes ``exec`` or
+# ``eval`` (causes themselves) or a globals dict a tracked route reaches, so
+# it is no cause (executive ruling on #705, Q2).
+_EVALUATORS = frozenset({"exec", "eval", "execfile"})
 # Names that reach another module's namespace in any identifier position
 # (an attribute, a keyword argument) or as a component of a constant string.
 _MODULE_OBJECT_NAMES = frozenset(
