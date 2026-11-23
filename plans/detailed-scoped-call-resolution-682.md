@@ -564,6 +564,18 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     `this` (`this.Object.assign`; C-1), through a comma callee
     (`(0, Object.assign)(…)`), or through `.call`/`.apply`/`.bind`; a
     computed or escaped key on `Object` or `Reflect` counts as one.
+    Commas, and parentheses with no comment inside them, are looked
+    through at every level, on the writer, its namespace and its target
+    (`(0, Object.assign).call(null, this, …)`, `(0, Object).assign(this,
+    …)`, `Object.assign((0, this), …)`); invokers nest on the writer
+    (`Object.assign.call.call(…)`; an invoker's own receiver argument is
+    not read as the writer), a bound writer called later counts
+    (`Object.assign.bind(null)(this, …)`), and so do
+    `Reflect.apply(Object.assign, null, [this, …])` and a computed key on
+    `Reflect` read as `apply` (treesitter-chunker#694). A call also gives
+    `*` whenever the positional reading of js fact version 20 does (the
+    target read from the raw argument list, comments included), so the
+    comment-aware reading only adds `*` (the #717 review).
   - In a script, a global-object write of `x` (or `*`) also makes that
     file's top-level binding of `x` (or of every name) `reassigned`.
   - A lookup that lands on a script-goal top level narrows only if no other
@@ -754,8 +766,65 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     methods, `in` forms and every `match __name__` form. `__mp_main__`, the name a multiprocessing spawn
     child imports the script under, counts as `__main__`. Constant strings
     split on `.` and `:` (the `pkgutil.resolve_name('pkg.mod:attr')` form)
-    for this rule, the own-name rule and the dynamic attribute names; no
-    resolver maps `/` to this module's namespace. Also a
+    for the own-name rule and the dynamic attribute names; no
+    resolver maps `/` to this module's namespace. For this rule
+    (treesitter-chunker#698, executive ruling R-698-1) a constant string also
+    splits on format and attribute punctuation (`{ } [ ] ! ( ) $ %`) and
+    whitespace, and a component also counts when a default `string.Template`
+    would look it up (`'$__main__-x'`). A field, key, attribute, conversion or
+    format spec reaches user code on its own, so the string is classified
+    wherever it is later used: a stored template (`T = '{:__main__}'`, then
+    `T.format(P())`, `T % P()`, `T.format_map(P())`,
+    `string.Template(T).substitute(P())`), `__mod__`, `operator.mod`,
+    `Formatter().vformat`, `Template` aliases and subclasses with the default
+    or a punctuation delimiter, logging templates and bound `.format`
+    methods. **f-strings and t-strings are classified by substring**
+    (executive ruling R-698-3, after five review rounds each found another
+    place where tree-sitter and CPython split them differently: a spec
+    starting with `=` read as a walrus, `{{` after a nested field in a spec,
+    a comment in debug text, a spec ending in a backslash-newline, a raw end
+    quote folded into the end token). Such an expression counts when
+    `__main__` or `__mp_main__` occurs anywhere in its source text, which
+    is the text between the quotes of every string piece, joined across
+    adjacent literals and `+` as CPython joins them (another operand breaks
+    it): literal parts, expressions, conversions, specs, debug text and
+    comments alike (`f'__main__.{h}'`, `f'{P():__main__}'`,
+    `f'{p:=x.__main__}'`, `f'{q.__main__#c`, newline, `=}'`,
+    `t'{q.__main__}'`, whose `.interpolations[0].expression` is
+    `'q.__main__'`). The text is searched in eight views: newlines
+    translated as the tokenizer does; with or without backslash-newline
+    continuations; as written or with every escape decoded by the
+    `_decode_literal` rules (one CPython rejects is kept as written); and
+    each of those with `{` and `}` removed. **Soundness:** every string
+    CPython hands to user code from the node (a literal part, a format spec
+    at any depth, debug text, a t-string interpolation's expression text) is
+    built from that source text by decoding escapes, removing
+    continuations, turning `{{` into `{`, dropping comments, and, for debug
+    text, joining the expression's text to the literal before it across the
+    `{` (`f'__ma{in__ =}'` hands over `'__main__ ='`). None of those steps
+    places a character next to one it was not next to once escapes,
+    continuations and braces are removed, and none removes a newline from
+    inside a run; an escape never consumes a character of a name, since no
+    escape letter, digit or `\N{...}` name contains `_`. So a delivered
+    component equal to a main name is a substring of one of the views.
+    A committed generator (`test_main_substring_rule_is_sound_against_cpython`,
+    30,000 seeded modules) and an uncommitted sweep of 720,000 modules check
+    this against CPython 3.14's own parse with 0 fail-open. The pieces are
+    not parsed, so no tree-sitter split matters; a piece that is not UTF-8,
+    or whose quotes cannot be read, fails closed. The cost is precision
+    only: `__main__` need not be a whole component (`f'{obj}__main__x'`
+    fails closed), and on 6,487 real files the rule changes one file's
+    verdict (`ensurepip/__init__.py`, already dynamic) and no edge in
+    `chunker/`, `_pytest`, `click` or `rich`. Plain constant strings and
+    `string.Template` templates keep the component classifier above, so the
+    script guard's `'__main__'` comparand is unaffected. Escapes in every
+    constant string are
+    decoded by a small decoder, not `ast.literal_eval`, so the facts do not
+    depend on the process warning filters either (`-W error::SyntaxWarning`
+    makes an invalid escape such as `'\d'` a `SyntaxError`; R-698-2 S-1).
+    One classifier (`py_scope._main_string`) serves both tiers: Tier 1 reads
+    its verdict as `dynamic`, and Tier 2 as the run-wide `module-object`
+    cause for `__main__` (§9.10; R-698-2 B-1). Also a
     constant string (a literal, adjacent literals or literals joined by `+`)
     that is one of those attribute names or `modules`, alone or as a part of
     a dotted path (`getattr(f, '__globals__')`, `attrgetter('sys.modules')`;
@@ -1103,7 +1172,8 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     to a function's locals (PEP 667, Python 3.13+). A file that mentions
     `f_locals` anywhere, as an attribute or a constant string, gives
     `dynamic-scope` for every lookup, function scopes included. Without it,
-    `exec` and `locals()` cannot rebind a function's locals. The same
+    `locals()` cannot rebind a function's locals (string code can: see the
+    next item). The same
     file-wide rule covers every other route that rebinds a binding without
     spelling an assignment to that name (Codex 4655078224): closure cells
     (`__closure__`, `cell_contents`, `types.CellType`), a function rebuilt over
@@ -1127,6 +1197,117 @@ are **cut** (ruling 2.1). The binding proof covers those cases.
     reachable without naming it (`type(f)`, `f.__class__`,
     `type(lambda: 0)`), so a function rebuilt over existing code is caught
     through the code object it needs (#695 re-check at 606c689f).
+  - **String code fails closed file-wide (treesitter-chunker#699 S2; plan
+    `699-702` PY-1..PY-5 and PY-8, ruling R-699-1 B-1, B-2, B-4, B-5).** A
+    string run as code can reach its caller's frame and write a function's
+    locals with nothing spelled outside the string (PEP 667:
+    `exec("import sys; sys._getframe(1).f_locals['helper'] = len")` in the
+    function that defines `helper` ran `len`). So every trigger below makes
+    every lookup `dynamic-scope`, function scopes included, decided by one
+    classifier that also gives Tier 2 its causes (§9.10):
+    - the builtins `exec`, `eval`, `execfile`, `compile` and `breakpoint`
+      (and the Python 2 `exec` statement), decided by the ordinary lookup at
+      the use site: a use is the builtin unless the lookup proves the file's
+      own binding and that binding dominates the use (ruling R-699-3,
+      BLOCKING 1). Every binding in a function scope does, since a use that
+      runs first raises `UnboundLocalError` or `NameError` (a `def` or
+      `class`, a parameter, a variable, an expression binding, an import from
+      a module other than `builtins`). No module or class binding does: a
+      use may run before it, so `from re import compile` (`builtin-shadow`),
+      `compile = compile`, `(compile := compile)` and a use before
+      `compile = re.compile` all count, and an import from `builtins` counts
+      anywhere. A binding the scope pass records only to fail closed, which
+      CPython 3.14 does not make, shadows but never proves (ruling R-699-5,
+      BLOCKING 1): the Python 2 list-comprehension leak into the enclosing
+      scope, the `B` of `except A, B:` (PEP 758 makes it a second exception
+      class, a read) and the identifiers of a type parameter's bound,
+      constraints or default (`def go[T: exec]()`). A proof needs at least
+      one real binding of the name in the deciding scope, so `eval = str`
+      and `breakpoint = print` in a function still prove, and so does a type
+      parameter's own name (`def go[exec]()`, a `TypeVar`). As an attribute or a dotted constant string they count only
+      in a file that reaches the builtins namespace (`builtins`,
+      `__builtins__`, `__self__`, `f_builtins`, `bltns`, `getmodule`, or a
+      module acquired by a computed name: `import_module(len.__module__)`,
+      `sys.modules[int.__module__]`), so `model.eval()` is not one, and
+      neither is `re.compile` on a receiver the ordinary lookup proves is an
+      import of `re` (R-699-3);
+    - absolute imports of `cProfile`, `profile`, `bdb`, `pdb`, `trace`,
+      `code`, `codeop`, `doctest`, `marshal` and `multiprocessing.reduction`;
+      in any position (an attribute, a keyword, a definition or import name,
+      or a component of a dotted constant string): `cProfile`, `bdb`, `pdb`,
+      `_pyprofile`, `codeop`, `doctest`, `fileConfig`, `Unpickler`,
+      `_Unpickler`, `ForkingPickler`, `_ForkingPickler`, `shelve`, `Shelf`,
+      `DbfilenameShelf`, `BsdDbShelf`, `breakpointhook`,
+      `__breakpointhook__`, `get_type_hints`, `eval_str`, `ForwardRef`,
+      `evaluate_forward_ref`, `_eval_type`, `get_code`, `source_to_code`,
+      `exec_module`, `load_module`, `read_code`, and the dispatchers
+      `singledispatch` and `singledispatchmethod`, whose `register` evaluates
+      any `str` annotation value, nested in a generic or bound to a name
+      first (R-699-3, BLOCKING 4) (the list includes the standard library's
+      re-exports a scan of every 3.14 module finds,
+      `scripts/scan_stdlib_string_code_reexports.py`); `marshal` and the
+      generic module names `code`, `trace`, `profile` as an attribute or a
+      name imported from a stdlib module (CPython's `test` package counts as
+      one, R-699-5); `runpy` as an attribute; `code`, `trace` and `profile`
+      imported by name out of any other module, relative imports included,
+      by a closed allow-list (R-699-5, SHOULD 1): the bound name stays inert
+      only when every use reads an attribute absent from that stdlib
+      module's pinned `dir()` table and not a dunder, so `from opentelemetry
+      import trace; trace.get_tracer(...)` stays inert and `from compat
+      import code; code.InteractiveInterpreter()`, passing the name on,
+      aliasing it, a computed `getattr` or a subscript fire;
+    - `pickle`, `_pickle`, `timeit` and `runpy` by member allow-list: every
+      use of a name an import of one binds, unless a real binding of the
+      file's own in the deciding scope proves the use (a phantom one, above,
+      does not; R-699-5) (a from-import of the module's
+      name out of any other module binds the module itself, R-699-3
+      BLOCKING 2: `from logging.handlers import pickle as pk`, `from
+      multiprocessing.spawn import runpy`), and an attribute named `pickle`
+      on any receiver (a module can arrive as a parameter: `m.pickle.loads(p)`
+      with `logging.handlers` passed in ran the payload), must read
+      `dumps`/`dump`/`Pickler`/`PickleBuffer`/the protocol constants and
+      exceptions, `default_timer`, or call `run_path`/`run_module` directly
+      with one positional argument and only `run_name`/`alter_sys`;
+    - a string annotation whose decoded value contains `(` or `:=` or that
+      cannot be folded, and any mention of `__annotations__` other than a
+      closed list of reads (`.get(...)`, a subscript read, an `in` operand);
+    - a generic module name (`"code"`, `"trace"`, `"profile"`, `"timeit"`)
+      as the first component of a dotted constant with two or more components
+      whose second component is a dunder or an attribute of that module
+      (`"code.InteractiveInterpreter"`, `"timeit:timeit"`; none of the four
+      is a package, so `"code.py"`, `"trace.log"` or `"code:fixture"` reach
+      no object of the module), and alone as the
+      literal name of an acquisition: any constant among the arguments of
+      `import_module`/`__import__`, at any depth (R-699-6: an empty name
+      after the dots resolves to the `package` argument, or to
+      `__package__`/`__name__` in `__import__`'s `globals`, so
+      `import_module(".", "trace")` and `__import__("", {"__package__":
+      "trace"}, None, [], 1)` return the stdlib module; there is no
+      leading-dot exemption, since a project module named `trace` may
+      re-export the stdlib one), the first argument or `name=` keyword
+      of a string resolver
+      (`pkgutil.resolve_name`, `pydoc.locate`/`safeimport`), a
+      `sys.modules[...]` key, a `logging.config` factory value (`"()"`), or
+      an entry point's module path (`EntryPoint(n, "mod:attr", g)`, its
+      `value=` or `pkg_resources`' `module_name=`, and
+      `EntryPoint.parse("n = mod:attr")`, all of which `.load()` imports)
+      (R-699-3, BLOCKING 3: Tier 1 now matches Tier 2's E-20 causes). In
+      these positions the test runs before the dotted-name gate (R-699-5,
+      BLOCKING 2): the constant fires when any part, split on every
+      character that cannot be in an identifier (`.`, `:`, `/`, whitespace,
+      an `ext://` prefix, `[extras]`), is a string-code module name, so
+      `pkgutil.resolve_name("timeit:timeit\n")`, `pydoc.locate(".timeit.timeit")`,
+      `{"()": "ext://timeit.timeit"}` and `EntryPoint(value="timeit : timeit")`
+      fire.
+
+    In a file that imports or aliases the mock module, `patch` or a
+    pytest-mock fixture, a computed attribute read (`getattr` by lookup,
+    `attrgetter`, `methodcaller`, `getattr_static`, `__getattribute__` with a
+    name that is not a constant, any of them handed on, `inspect.getmembers`)
+    makes module-scope lookups dynamic (PY-5). The names `gettext.install()`
+    and `sys.displayhook` put into `builtins` (`_`, `gettext`, `ngettext`,
+    `pgettext`, `npgettext`) never prove at module scope (`builtin-shadow`,
+    PY-4).
   - **Line continuations.** A backslash continuation inside a target is only
     a token. Valid targets the reader does not understand still poison the
     scope: `del f()`, `with a as f():` and `type(x).attr = v` (which
@@ -1562,7 +1743,8 @@ default expression, `non-callable` for a called namespace object and
 `unmapped` for an import literal that does not decode. Fold 1 adds
 `run-tainted:evaluator`, `run-tainted:dynamic-loader`,
 `run-tainted:module-system`, `run-tainted:module-object`,
-`run-tainted:unparsed-file` and `run-tainted:unresolvable-writer` (9.9).
+`run-tainted:unparsed-file`, `run-tainted:unresolvable-writer`, and
+`run-tainted:dynamic-scope` (9.9).
 PR 6 (Python, 9.10) adds `module-escape` (a module another file may write
 wholly), `module-getattr` (fold 2, E6-3: a package's module `__getattr__`
 may answer a submodule name) and reports `reassigned` for a name another file writes,
@@ -1976,10 +2158,19 @@ the import proofs themselves (9.4-9.6). `structural` output is unchanged.
 - **Run-wide causes (executive rule 3, E5-3 analog).** Every trigger is
   decided by the ordinary lookup at the use site (a builtin is one the file
   does not bind; a module is the import binding the lookup proves).
-  `evaluator`: `exec`, `eval`, `execfile` (any use), the Python 2 `exec`
-  statement. `compile` alone is no cause (executive ruling on #705, Q2): it
-  only builds a code object, which runs through `exec`/`eval` or a globals
-  dict a tracked route reaches. `dynamic-loader`: `import_module` or `__import__` with a
+  `evaluator`: every string-code trigger of §7.3's shared classifier
+  (treesitter-chunker#699 S2): `exec`, `eval`, `execfile`, `compile`,
+  `breakpoint` by use-site lookup, the Python 2 `exec` statement, the stdlib
+  string-code helpers, `pickle` loads (in production code too, ruling Q8),
+  `shelve` and the unpicklers, annotation evaluators, string annotations and
+  `__annotations__` writes, `marshal`, loader methods and `runpy` off its
+  allow-list. The shared classifier keeps every PR 6 `evaluator` cause
+  (R-699-3): an `exec`/`eval`/`execfile` use the full lookup leaves possibly
+  the builtin through the frame or lazy-annotation rules is a cause even
+  where the use-site proof finds a parameter or local definition. Ruling Q2 on #705 (`compile` alone is no cause) is reversed by
+  R-699-1 B-1: `type(f)(compile(src, "<s>", "exec"), {})()` runs a code
+  object with neither `exec` nor `eval`, and CPython 3.14 ran a writer of
+  that shape from another file. `dynamic-loader`: `import_module` or `__import__` with a
   non-literal first argument, a literal naming a module this rule set
   classifies (`importlib`, `builtins`, `sys`, `runpy`, ...), any `importlib`
   use off the closed list (`importlib.metadata`, `importlib.resources`,
@@ -1996,10 +2187,18 @@ the import proofs themselves (9.4-9.6). `structural` output is unchanged.
   `site.addsitedir`, a string naming `sys` and `modules`. `module-object`:
   `__globals__`, `f_globals`, `f_builtins`, `getmodule`, `__builtins__`,
   the `builtins` module, `bltns`, `__main__`/`__mp_main__` outside the
-  module-level guard, `pythonapi`, `PyFrame_LocalsToFast`, and a frame's
+  module-level guard (as a string, by the K-3 classifier of §7.3 that Tier 1
+  uses, so a stored template such as `T = '%(__main__)s'` or an f-string
+  spec such as `f'{P():__main__}'` counts; R-698-2 B-1), `pythonapi`, `PyFrame_LocalsToFast`, and a frame's
   `f_locals` other than a read (`.get(...)`, a subscript read, an `in`
   operand), because a module-level frame's `f_locals` is the module's
-  globals. `unresolvable-writer`: a relative `import_module` whose package
+  globals; and, since treesitter-chunker#699 B-1, any mention of a
+  code-object source, reads included (`__code__`, `__closure__`,
+  `CodeType`, `FunctionType`, `LambdaType`, `CellType`, the frame and
+  generator `*_code` fields, `co_*`, `dis`, `codeobj`, `_get_code_object`,
+  `monitoring`, `getstats`, `_code`, `code_linenos`, and the `annotationlib`
+  rebuilders): `type(use.run)(use.run.__code__, {"t": len})()` in another
+  file ran `len` for `use.py`'s proven `t`. `unresolvable-writer`: a relative `import_module` whose package
   is not a literal. As for TS/JS (PR 5), a cause shuts off Tier 2 for the
   callers it applies to (`run-tainted:<cause>`); Tier 1 proofs keep their
   `structural` result except where a taint names their module global.
@@ -2010,11 +2209,10 @@ the import proofs themselves (9.4-9.6). `structural` output is unchanged.
   **Tier 1 triggers that stay file-local:** `globals`, `vars`, `locals`
   (they reach the file's own namespace; `vars(svc)` is an escape of `svc`),
   the own-name rule, the attribute-write rule, the namespace and mock rules
-  (writes through a module are escapes or named writes here), and the
-  closure-cell and code-object names (`__closure__`, `cell_contents`,
-  `__code__`, `CodeType`, `FunctionType`, `ctypes` without `pythonapi`,
-  ...) used on objects no module chain reaches: they change what a function
-  runs, not which definition a module attribute holds. A write through an
+  (writes through a module are escapes or named writes here), and
+  `cell_contents` and `ctypes` without `pythonapi` used on objects no module
+  chain reaches (the code-object names are causes since #699 B-1, above;
+  closure-cell writes are slice S4 of #699). A write through an
   attribute chain rooted at an imported module (`svc.t.__code__ = …`) taints
   the chain's first attribute, `svc.t` (fold 2, E6-6); such a write through
   an object obtained otherwise is plan risk R12.
@@ -2995,11 +3193,11 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | R7 | Python extension modules shadow `.py` | Accept. |
 | R8 | Interim behavior between PRs | Experimental label, plus a per-head CHANGELOG statement (4.5). |
 | R9 | Scripts outside the run can redefine a global: HTML-included scripts outside the run, `dist/`, `node_modules`, `.mjs` and `.cjs` files, inline `<script>` in `.vue` and `.svelte` files (none of these is collected), and raw HTML in Markdown or reStructuredText that a site generator renders, which, like any generated page, is outside the run | Accept: they are not scanned. In-run HTML, XML and PHP files count as declaring every global (PR 3). |
-| R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: a computed call on a receiver `this` that may be an indirect `eval` (`this[k](s)`, `this['ev' + 'al'](s)`; `*` would switch off script-top resolution in about 52 of 1136 npm files); hand-offs of a receiver `this` through a variable or an expression (`const s = this; s.d = f`, `const w = this.window; w.d = f`, `(0, this).d =`, `(c ? this : o).d =`, `(c || this).d =`, the receiver argument of `Reflect.set(o, 'd', v, this)`, `Object.assign(...[this], …)`), except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)` with `this` first, which give `*`; `Reflect.get(f, 'constructor')`, and computed keys that may reach `constructor` on arbitrary objects (`x[k](s)`, `x['constr' + 'uctor'](s)`, `f[['constructor']](s)`, `const { [k]: F } = f`); writer hand-offs the analysis cannot identify syntactically (`const a = Object.assign; a(this, …)`, `Reflect.apply(Object.assign, null, [this, …])`, `Object['assign'](...[this], …)`, and a helper given `this`: `h(this)`) | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
+| R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: a computed call on a receiver `this` that may be an indirect `eval` (`this[k](s)`, `this['ev' + 'al'](s)`; `*` would switch off script-top resolution in about 52 of 1136 npm files); hand-offs of a receiver `this` through a variable or an expression (`const s = this; s.d = f`, `const w = this.window; w.d = f`, `(0, this).d =`, `(c ? this : o).d =`, `(c || this).d =`, the receiver argument of `Reflect.set(o, 'd', v, this)`, `Object.assign(...[this], …)`), except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)` with `this` first, which give `*`; `Reflect.get(f, 'constructor')`, and computed keys that may reach `constructor` on arbitrary objects (`x[k](s)`, `x['constr' + 'uctor'](s)`, `f[['constructor']](s)`, `const { [k]: F } = f`); writer hand-offs the analysis cannot identify syntactically (`const a = Object.assign; a(this, …)`, `Function.prototype.call.call(Object.assign, null, this, …)`, `Reflect.apply(Object.assign, null, xs)` with a non-literal argument list, `Object['assign'](...[this], …)`, a conditional writer `(c ? Object.assign : f)(this, …)`, and a helper given `this`: `h(this)`; comma and parenthesized writers before `.call`/`.apply`/`.bind`, bound writers called later and `Reflect.apply` with a literal argument list give `*` since treesitter-chunker#694; not seen at that head either: a comment inside the parentheses around a writer, its namespace or its target (`(/* c */ Object.assign).call(null, this, …)`, `(/* c */ Object).assign(this, …)`, `Object.assign((/* c */ this), …)`), a bound writer returned through an invoker (`Object.assign.bind.call(Object.assign, null)(this, …)`), an invoker's explicit receiver as the writer (`Object.keys.call.call(Object.assign, null, this, …)`), a destructured writer (`const {assign} = Object; assign(this, …)`), a non-literal `.apply` argument list (`Object.assign.apply(null, arguments)`, an array-like `{0: this, 1: …, length: 2}`), spread inside a literal argument list (`Object.assign.apply(null, [...[this], …])`), legacy accessors (`this.__defineGetter__('d', …)`, also through a comma, `.call` or `Object.prototype.__defineGetter__.call(this, …)`), and `Object.setPrototypeOf(this, …)`, which writes the global object's prototype; an own declaration still wins there, so it gives no wrong edge today) | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
 | R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) | **Closed for `imports` mode by PR 6** (treesitter-chunker#697, 9.10): named writes, escapes, literal acquisitions and dotted strings in any run file taint the written names or modules, and a taint fails Tier 2 proofs and the module's own Tier 1 module-scope proofs. `structural` stays as on main (byte-identical), so there it remains accepted. **Residual (executive ruling on #705, Q1; treesitter-chunker#699):** a writer whose target module cannot be determined (a non-literal loader, such as `exec(src, mod.__dict__)` with `mod` from a computed import) is a run-wide cause, which shuts off Tier 2 only; it can still invalidate a Tier 1 proof in `imports` mode, as in `structural`. |
-| R12 | Python run-time binding no syntactic rule sees (PR 4). **Scope rule** (executive decision, #695 re-check at 606c689f): in Tier 1 Python, a wrong resolved edge in the same file blocks if it can be produced using only names or constant strings that appear in the file, through ordinary binding, attribute or call semantics. Reflective access to interpreter internals is treated differently: that is, objects obtained by introspection rather than spelled out, such as `gc` referents, `inspect.getmembers`, `dir()` plus `getattr`, code objects from `dis`/`monitoring`, frames, and the builtins module reached via `__self__`/`__builtins__`. Such a route gets a trigger when a small one closes it. Otherwise it is named here, filed as a follow-up issue (treesitter-chunker#699), and does not block. **String-code execution through stdlib helpers** is the `exec` family by another name and stays here, like the JS string-code paths of R11 (executive ruling at the 8fd7c1a2 re-check, P-4; treesitter-chunker#699): a constant program a library runs, for example `cProfile.run('helper = len')` and `cProfile.runctx`, `profile.run`, `bdb.Bdb().run`, `trace.Trace().run`, `timeit.timeit('import __main__ as m; m.helper = len')`, `code.InteractiveInterpreter().runsource(…)`, `doctest.testmod()` on the file's own docstrings, and `pickle.loads(b'c__main__\n__dict__\n.')` or `pickle.loads(b'cbuiltins\n__dict__\n.')`. Also here: a third-party module that re-exports `builtins` under another name (the stdlib's one alias, `enum.bltns`, is a trigger; treesitter-chunker#699). Named by the re-check at 14e8f044 (Q-4, Q-7; treesitter-chunker#699): a resolver given a module name taken from `X.__module__`, a computed string (`pydoc.locate(int.__module__).__dict__.update(D)`, `mock.patch(run.__module__ + '.helper', len)`); and `annotationlib.ForwardRef.evaluate` or `typing.evaluate_forward_ref` on a constant string, which is the string-code family above. Named by the re-check at a6734480 (S-4; treesitter-chunker#699): a class with a catch-all `__getattr__` handing a function to `functools.update_wrapper`/`wraps`, whose `__annotate__` copy `annotationlib` then runs under substitute globals (the member name is computed, so no trigger is spelled). Routes that cannot change a proven binding, by the Codex 4655078224 audit: parameter defaults (`__defaults__`, `__kwdefaults__`; parameter lookups never prove); `__func__` (read-only; a rebinding through the function it yields still needs a code object or a cell); `__wrapped__` (introspection metadata only); frames from `sys.settrace`/`setprofile`, `inspect.currentframe`, `sys._getframe` and `sys._current_frames` (`inspect.getgeneratorlocals`/`getcoroutinelocals`/`getasyncgenlocals` and `getargvalues(frame).locals` return the live `f_locals` proxy and are triggers, #695 P-3b; so is `pdb.Pdb().curframe_locals`, #695 Q-3; other frame routes rebind only through `f_locals`/`f_globals`/`f_builtins`/`f_code`, all triggers, or through a computed attribute name, which stays here: `[v for k, v in inspect.getmembers(fr) if k.endswith('_locals')][0]['helper'] = len`, or the same with `dir()` plus `getattr`); any C extension module other than `ctypes`. `__self__` is not such a route: `len.__self__` is the `builtins` module, which is writable, so `__self__` and `__builtins__` are dynamic attributes in every spelling (#695, PR 4 finding O-3b). Heap walking (`gc.get_referents`/`get_referrers`/`get_objects`) gets no trigger (it would cost panel A's correct `gc_referrers` resolution) and stays here under `gc` tricks, among them a gc-found globals dict written with a spelling the attribute-write rule does not list (`g = [o for o in gc.get_referents(run) if type(o) is dict][0]; g.update(D)`) and gc-found code or cells run under `type(f)(…)`. Named by the re-check at 606c689f (PR 4 findings O-3, O-5): computed-name member walks on functions and frames (`inspect.getmembers`, `dir` plus `getattr`); a function rebuilt with a positional closure tuple (and code) taken from `gc` or `inspect.getmembers` (`type(invoke)(code, {}, None, None, cells)`, with no `closure=` keyword); `runpy` re-running the file (`runpy.run_path(__file__, init_globals={'helper': len}, run_name='x')`); recompiling or unmarshalling the file's own source (a second instance of the module); and a same-file `gettext.install()` ahead of a module-level definition that has not run yet. Also: a helper in another module that writes its caller's globals or locals through frames (`sys._getframe(1).f_globals` or `.f_locals` there, not here; #695 panel A2) or `exec(code, mod.__dict__)`; computed strings beyond constant literals (`'__glo' + name`); `X.modules` uses other than `X.modules[__name__]` and its getters (`m = collections._sys.modules; m[__name__]`); `gc` tricks, and C-level access other than through `ctypes`/`pythonapi`; replacing a function's `__code__` (the edge still names the right definition, which then runs other code). Named by the president's #695 ruling (section 4): same-file resolvers that take the module name as a value, `pkgutil.resolve_name(__name__).helper = len`, `pydoc.locate(__name__).helper = len` and `mock.patch(__name__ + '.helper', len)` self-patches; other computed strings (`'%s' % …`, `b'…'.decode()`, including `b'__main__.helper'.decode()`, and an f-string with an interpolation and a `__main__` part, `f'__main__.{h}'`; #695 L-2); `X.modules[__spec__.name]` and other `X.modules` keys, including through a `sys` class attribute or alias with a computed key (`K.ss.modules[k]`, `getattr(K, '_K__s').modules[k]`); `from sys import __dict__ as sd` with a computed key (`sd[''.join(['mod', 'ules'])][k]`; #695 J-3); **cross-file submodule rebinding** (another module importing `pkg.X` sets `pkg/__init__.py`'s global `X` with no write in any source of `pkg/__init__.py`); **builtins injected from another module** (`gettext.install()`, or `builtins.X = …` elsewhere) ahead of a module-level definition that has not run yet, also an R10 item for the deferred follow-up. Also: reaching the module without spelling its name by iterating a package's namespace (`for m in pkg.__dict__.values()` (which fails closed since fold 24), `inspect.getmembers(pkg)`, `pkgutil.iter_modules`, and `g(**pkg.__dict__)`). Named by the re-check at f7f0b0bd (R-5); same-file writes through these in the spellings the attribute-write rule lists (§7.3) fail closed. Fold 18 (executive ruling) moved the former "other write spellings" out of here: writer aliases, `operator.setitem`, `|=` and non-literal `update()` on a namespace dict now fail closed (§7.3). **Computed writes are closed at the write site** (fold 19, executive ruling E-19, which withdraws E-18b): a writer with a computed name on any receiver (W-1), a namespace dict that escapes (W-2) and a `unittest.mock` or pytest-mock patch with a computed target (W-3, extended to receiver-based patchers in fold 20) fail closed (§7.3), so the module or namespace acquisitions this entry names (resolvers given the module name as a value or `X.__module__`, `X.modules` with a computed key, iterating a package's namespace, a module handed over) matter only together with a write, and every write **spelled in this file** is either recorded (a constant name, on any receiver) or fails closed (narrowed by E-20). **What stays here for writes** is reflective and string-code only: heap walking, computed-name member walks and the other reflective routes above, and string-code execution (P-4); treesitter-chunker#699. **Named by E-20 (fold 21; #699):** attribute writes performed inside library functions on an object handed to them, non-blocking as an analog of P-4 (the writing semantics belong to the library): `functools.update_wrapper`/`wraps` (`update_wrapper(m, types.SimpleNamespace(helper=f), assigned=())`), `argparse`/`optparse` namespaces (`parse_args([...], namespace=m)`, `values=m`), `copy._reconstruct`, pickle's BUILD, and third-party equivalents; ancestor-package acquisition with a computed name (`getattr(pkg, __name__.rpartition('.')[2])` in a package submodule) and iterating a package's namespace; `X._sys.modules` is a trigger since fold 21. Pytest framework patchers under other names (an arbitrary `.patch` parameter, a typed `MockerFixture` parameter, `getattr(mocker, 'patch')`) stay #697/#699. Also here: the module object handed over by another module (a sibling re-export, a function returning it, a parameter); a module loaded under a loader-chosen name (`importlib.util.spec_from_file_location`, `runpy` with a custom name); and by-name submodule loading with a computed name in `__init__.py` (`pkgutil.walk_packages(__path__, __name__ + '.')`), which rebinds a package global with no write in the source. Self-references that spell the module's name are no longer here: they give `dynamic-scope` (#695 panel A7, the ruling's B-4 and the general rule of its re-check) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
+| R12 | Python run-time binding no syntactic rule sees (PR 4). **Scope rule** (executive decision, #695 re-check at 606c689f): in Tier 1 Python, a wrong resolved edge in the same file blocks if it can be produced using only names or constant strings that appear in the file, through ordinary binding, attribute or call semantics. Reflective access to interpreter internals is treated differently: that is, objects obtained by introspection rather than spelled out, such as `gc` referents, `inspect.getmembers`, `dir()` plus `getattr`, code objects from `dis`/`monitoring`, frames, and the builtins module reached via `__self__`/`__builtins__`. Such a route gets a trigger when a small one closes it. Otherwise it is named here, filed as a follow-up issue (treesitter-chunker#699), and does not block. **Closed by treesitter-chunker#699 S2** (ruling R-699-1; §7.3): string-code execution through the stdlib helpers below, `pickle` loads, `shelve`, the unpicklers and `breakpoint()`, the annotation evaluators (`ForwardRef.evaluate`, `evaluate_forward_ref`, `get_type_hints`, `eval_str`, string annotations, `__annotations__` writes), `runpy` with `init_globals`, recompiling or unmarshalling the file's own source (`compile`, `marshal`, a loader's `get_code`/`exec_module`), a same-file or cross-file `gettext.install()` and `sys.displayhook` (`builtin-shadow`), computed attribute reads beside a mock or patch value, and `exec`/`eval` reaching a function's locals through its frame; their former text follows for the record. What stays here of that family: string code run by a library with no rule (a template engine, `numexpr`, IPython), a pickle read from disk or received over `multiprocessing` `Pipe`/`Connection.recv` (ruling R-699-1 B-4), a generic module name (`"code"`) stored in a variable before it is acquired (also as the `package` argument, `p = "trace"; import_module(".", p)`, R-699-6), and the PY-6/PY-7/PY-9/PY-10 routes of slice S4. Named by ruling R-699-3 (SHOULD 2; treesitter-chunker#699): **the cross-file Tier 1 builtin re-export.** Another file binds a code builtin under any name (`run_code = exec`), re-exports it (`from builtins import exec`, `from builtins import *`) or hands it out from a module `__getattr__` (`return getattr(builtins, name)`), and this file imports it by a name that spells no code builtin (`from o import run_code; run_code(src)`), or as `exec`/`compile`/`breakpoint` from that module inside a function (a function-scope import from a module other than `builtins` proves the file's own binding). The string code then writes this file's function locals through its frame (CPython 3.14.10: `r_exec_reexport_from_other` runs `len`). Tier 2 is shut off by the other file's own `evaluator` cause; Tier 1 reads one file at a time. Also here: `builtins.run_code = exec` in another file (builtins injected from another module, named below), a third-party module that re-exports `marshal` (a from-import of `marshal` counts only out of a stdlib module, so `from flask_restful import marshal` is no trigger), a non-stdlib re-export of `code`, `trace` or `profile` used only through attributes absent from the stdlib module's pinned table (ruling R-699-5 checks every other use against that closed allow-list: `from compat import code; code.InteractiveInterpreter()`, `from pkg import trace; trace.Trace()` and `from .compat import profile; profile.run(src)` fire, `from opentelemetry import trace; trace.get_tracer()` does not; named by ruling R-699-6: the same module read as an attribute of another module, `import compat; compat.code.InteractiveInterpreter()`, also as an alias, `from pkg import compat` or `getattr(compat, "code")`, and a proxy whose `__getattr__` maps an off-table name onto the stdlib module, `from compat import code; code.xInteractiveInterpreter()`, which are the module handed over by another module named below), and a string resolver or `import_module` reached through an alias the file binds with a lone generic name (`from pkgutil import resolve_name as r; r("code")`, whose `resolve_name` mention keeps module scope dynamic as on main; a dotted constant such as `r("code:X")` fires anyway). **String-code execution through stdlib helpers** was the `exec` family by another name and stayed here, like the JS string-code paths of R11 (executive ruling at the 8fd7c1a2 re-check, P-4; treesitter-chunker#699): a constant program a library runs, for example `cProfile.run('helper = len')` and `cProfile.runctx`, `profile.run`, `bdb.Bdb().run`, `trace.Trace().run`, `timeit.timeit('import __main__ as m; m.helper = len')`, `code.InteractiveInterpreter().runsource(…)`, `doctest.testmod()` on the file's own docstrings, and `pickle.loads(b'c__main__\n__dict__\n.')` or `pickle.loads(b'cbuiltins\n__dict__\n.')`. Also here: a third-party module that re-exports `builtins` under another name (the stdlib's one alias, `enum.bltns`, is a trigger; treesitter-chunker#699), among them `six.moves.builtins` (named by ruling R-699-5: `from six.moves.builtins import exec` inside a function is an import from a module other than `builtins`, so it proves the file's own binding while CPython runs the builtin, `a11_func_import_six_builtins`). Named by the re-check at 14e8f044 (Q-4, Q-7; treesitter-chunker#699): a resolver given a module name taken from `X.__module__`, a computed string (`pydoc.locate(int.__module__).__dict__.update(D)`, `mock.patch(run.__module__ + '.helper', len)`); and `annotationlib.ForwardRef.evaluate` or `typing.evaluate_forward_ref` on a constant string, which is the string-code family above. Named by the re-check at a6734480 (S-4; treesitter-chunker#699): a class with a catch-all `__getattr__` handing a function to `functools.update_wrapper`/`wraps`, whose `__annotate__` copy `annotationlib` then runs under substitute globals (the member name is computed, so no trigger is spelled). Routes that cannot change a proven binding, by the Codex 4655078224 audit: parameter defaults (`__defaults__`, `__kwdefaults__`; parameter lookups never prove); `__func__` (read-only; a rebinding through the function it yields still needs a code object or a cell); `__wrapped__` (introspection metadata only); frames from `sys.settrace`/`setprofile`, `inspect.currentframe`, `sys._getframe` and `sys._current_frames` (`inspect.getgeneratorlocals`/`getcoroutinelocals`/`getasyncgenlocals` and `getargvalues(frame).locals` return the live `f_locals` proxy and are triggers, #695 P-3b; so is `pdb.Pdb().curframe_locals`, #695 Q-3; other frame routes rebind only through `f_locals`/`f_globals`/`f_builtins`/`f_code`, all triggers, or through a computed attribute name, which stays here: `[v for k, v in inspect.getmembers(fr) if k.endswith('_locals')][0]['helper'] = len`, or the same with `dir()` plus `getattr`); any C extension module other than `ctypes`. `__self__` is not such a route: `len.__self__` is the `builtins` module, which is writable, so `__self__` and `__builtins__` are dynamic attributes in every spelling (#695, PR 4 finding O-3b). Heap walking (`gc.get_referents`/`get_referrers`/`get_objects`) gets no trigger (it would cost panel A's correct `gc_referrers` resolution) and stays here under `gc` tricks, among them a gc-found globals dict written with a spelling the attribute-write rule does not list (`g = [o for o in gc.get_referents(run) if type(o) is dict][0]; g.update(D)`) and gc-found code or cells run under `type(f)(…)`. Named by the re-check at 606c689f (PR 4 findings O-3, O-5): computed-name member walks on functions and frames (`inspect.getmembers`, `dir` plus `getattr`); a function rebuilt with a positional closure tuple (and code) taken from `gc` or `inspect.getmembers` (`type(invoke)(code, {}, None, None, cells)`, with no `closure=` keyword); `runpy` re-running the file (`runpy.run_path(__file__, init_globals={'helper': len}, run_name='x')`); recompiling or unmarshalling the file's own source (a second instance of the module); and a same-file `gettext.install()` ahead of a module-level definition that has not run yet. Also: a helper in another module that writes its caller's globals or locals through frames (`sys._getframe(1).f_globals` or `.f_locals` there, not here; #695 panel A2) or `exec(code, mod.__dict__)`; computed strings beyond constant literals (`'__glo' + name`); `X.modules` uses other than `X.modules[__name__]` and its getters (`m = collections._sys.modules; m[__name__]`); `gc` tricks, and C-level access other than through `ctypes`/`pythonapi`; replacing a function's `__code__` (the edge still names the right definition, which then runs other code). Named by the president's #695 ruling (section 4): same-file resolvers that take the module name as a value, `pkgutil.resolve_name(__name__).helper = len`, `pydoc.locate(__name__).helper = len` and `mock.patch(__name__ + '.helper', len)` self-patches; other computed strings (`b'…'.decode()`, including `b'__main__.helper'.decode()`; #695 L-2). **Named by R-698-1** (treesitter-chunker#698; #699), after the string rule above closed f-string literal parts and specs, t-strings and constant `.format`/`%`/`Template` templates in any position: a `Template` subclass whose custom delimiter is not punctuation the rule splits on (`class T(string.Template): delimiter = '#'`, then `T('#__main__').substitute(P())`); bytes `%` templates (`b'%(__main__)s' % PB()`, the `b'…'.decode()` family); and computed templates, whose `__main__` part only exists at run time (`'{:' + '__ma' + str('in__') + '}'`, `'__ma%sn__' % 'i'`, `f'{x}'` with `x` computed), including a component joined across a replacement field at run time, which no source view contains (`f'{P():__ma{""}in__}'`, `'{0:__ma{1}in__}'.format(P(), '')`; R-698-2; none of R-698-3's source views contains it either) or is cut out of a larger component by the callback (`'{:x__main__}'` with `spec[1:]`, `'__main__-x'` split on `-`). **Changed by R-698-3** (treesitter-chunker#698): an f-string or t-string is classified by a substring search of its decoded source text (§7.3, with its soundness argument), so a place where tree-sitter and CPython split such a string differently is no longer a residual: re-check 3's B-3 (a spec starting with `=`), B-4 (`{{` after a nested field), B-5 (a comment in debug text) and S-2 (a t-string's `.interpolations[i].expression`) fail closed with every earlier one. Two related routes outside string formatting stay here, on main as well, filed on #699: a plain attribute `x.__main__` whose user `__getattr__` receives `'__main__'` (no string is spelled), and a PEP 263 coding declaration other than UTF-8 in Tier 1 (`# coding: utf-7` reads `'+AF8AXw-main+AF8AXw-'` as `'__main__'`; `imports` mode already refuses such a file as a parse hazard); `X.modules[__spec__.name]` and other `X.modules` keys, including through a `sys` class attribute or alias with a computed key (`K.ss.modules[k]`, `getattr(K, '_K__s').modules[k]`); `from sys import __dict__ as sd` with a computed key (`sd[''.join(['mod', 'ules'])][k]`; #695 J-3); **cross-file submodule rebinding** (another module importing `pkg.X` sets `pkg/__init__.py`'s global `X` with no write in any source of `pkg/__init__.py`); **builtins injected from another module** (`gettext.install()`, or `builtins.X = …` elsewhere) ahead of a module-level definition that has not run yet, also an R10 item for the deferred follow-up. Also: reaching the module without spelling its name by iterating a package's namespace (`for m in pkg.__dict__.values()` (which fails closed since fold 24), `inspect.getmembers(pkg)`, `pkgutil.iter_modules`, and `g(**pkg.__dict__)`). Named by the re-check at f7f0b0bd (R-5); same-file writes through these in the spellings the attribute-write rule lists (§7.3) fail closed. Fold 18 (executive ruling) moved the former "other write spellings" out of here: writer aliases, `operator.setitem`, `|=` and non-literal `update()` on a namespace dict now fail closed (§7.3). **Computed writes are closed at the write site** (fold 19, executive ruling E-19, which withdraws E-18b): a writer with a computed name on any receiver (W-1), a namespace dict that escapes (W-2) and a `unittest.mock` or pytest-mock patch with a computed target (W-3, extended to receiver-based patchers in fold 20) fail closed (§7.3), so the module or namespace acquisitions this entry names (resolvers given the module name as a value or `X.__module__`, `X.modules` with a computed key, iterating a package's namespace, a module handed over) matter only together with a write, and every write **spelled in this file** is either recorded (a constant name, on any receiver) or fails closed (narrowed by E-20). **What stays here for writes** is reflective and string-code only: heap walking, computed-name member walks and the other reflective routes above, and string-code execution (P-4); treesitter-chunker#699. **Named by E-20 (fold 21; #699):** attribute writes performed inside library functions on an object handed to them, non-blocking as an analog of P-4 (the writing semantics belong to the library): `functools.update_wrapper`/`wraps` (`update_wrapper(m, types.SimpleNamespace(helper=f), assigned=())`), `argparse`/`optparse` namespaces (`parse_args([...], namespace=m)`, `values=m`), `copy._reconstruct`, pickle's BUILD, and third-party equivalents; ancestor-package acquisition with a computed name (`getattr(pkg, __name__.rpartition('.')[2])` in a package submodule) and iterating a package's namespace; `X._sys.modules` is a trigger since fold 21. Pytest framework patchers under other names (an arbitrary `.patch` parameter, a typed `MockerFixture` parameter, `getattr(mocker, 'patch')`) stay #697/#699. Also here: the module object handed over by another module (a sibling re-export, a function returning it, a parameter); a module loaded under a loader-chosen name (`importlib.util.spec_from_file_location`, `runpy` with a custom name); and by-name submodule loading with a computed name in `__init__.py` (`pkgutil.walk_packages(__path__, __name__ + '.')`), which rebinds a package global with no write in the source. Self-references that spell the module's name are no longer here: they give `dynamic-scope` (#695 panel A7, the ruling's B-4 and the general rule of its re-check) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
 | R12 (TS/JS, PR 5) | Tier 2 routes no syntactic rule in the run's JS/TS files sees, under the same scope rule (filed as treesitter-chunker#702): bare-specifier aliases into the run (package self-reference, workspace symlinks, tsconfig `paths`) used to write a module's exports object, since taints follow only relative specifiers; resolution configured outside JS/TS files (`package.json` `browser` maps, bundler aliases and extension lists, tsconfig `rootDirs`, `moduleSuffixes` with a segment on the inert list); uncollected siblings a bundler prefers (`.mjs`, `.mts`, `.cjs`, `.json`; also R9); loader hooks (`Module._extensions`, `register()`), `vm`/`process.binding` string code (the R11 family) and build-time transforms. Fold 1 (E5-6, filed on #702): writers outside the run (files not collected, such as `.cjs`/`.mjs`/`.cts`/`.mts`, or removed by a language filter) and build-output directories such as `.next/` (collection is unchanged, which keeps the off-mode identity). Also named in fold 1: `mainModule`/`getBuiltinModule` reached through a computed property key the analysis reads as unreadable (it gives `evaluator` instead); a local AMD `require` parameter called with a non-literal (only a literal call taints); a saved timer later called with source text (Node rejects it). Fold 2 (O-2): a test-only module the classifier does not name (for example under `e2e/` or `cypress/`) counts as production, so its causes stay run-wide (conservative); a production-only module the classifier names but no production file reaches by a static or literal edge (an entry point loaded by configuration, such as a `test/` server script) is treated as test code, and its causes then reach only test callers. Promotion makes production use of a test-named file through the import graph sound. Fold 4 names the routes it closes by promotion rather than resolution: package `imports` aliases (`#x`), absolute and `file:` specifiers, `import.meta.glob`, and directory symlinks under the root (every test file is then production); a createRequire base other than the file itself (`unresolvable-writer`); and test-framework module mocks outside the closed list (`jest.requireMock`, `vi.importMock` and framework config such as `moduleNameMapper`) stay here. Fold 5 adds: a `fileURLToPath(import.meta.url)` base (not accepted, so it fails closed as an `unresolvable-writer`), and any `data:` or `file:` specifier (uncomputable, so it promotes). Fold 6 adds bare specifiers that reach the run through `node_modules` symlinks (workspace links), on #702. Fold 7 removes Windows 8.3 short names from this list: they are now uncomputable (§9.9). Fold 9 (E5-7) removes the text scan, so no text-scan residual remains: an unparsed JS/TS file is always a cause. Every cheap trigger the PR 5 review and folds 1 and 2 found is closed in §9.1–9.3 and §9.9 | Accept: Tier 2 holds within what the run's JS/TS files show syntactically. |
-| R12 (Python, PR 6) | Tier 2 Python routes no syntactic rule in the run's files sees, under the executive scope rule (treesitter-chunker#699): a module named by a computed string with no run-wide trigger in its route (a string-code helper such as `cProfile.run`, already R12); writes performed inside library functions on a module handed to them are escapes here (the module is tainted wholly), but a third-party library that obtains a run module by itself (plugin registries, `entry_points().load()`, Django `import_string` from settings) is configuration outside Python files; writers outside the run (uncollected files, `.pth` files, `sitecustomize`, `PYTHONSTARTUP`); extension modules and `.pyc`-only modules that shadow a `.py` (R7); `builtins` written through a route that spells neither `builtins` nor `__builtins__` (`len.__self__`, which Tier 1 still catches in its own file); raw memory through `ctypes` without `pythonapi`; heap walking (`gc`); a module loaded under a loader-chosen name. Run-wide causes shut off Tier 2 only (as for TS/JS; executive ruling on #705, Q1); a write they may make to a module's globals is the R10 residual. The loader refinement (following an `import_module` result through the shared alias mechanism) is a possible future narrowing on #699 (ruling Q3). Fold 2 named a code-object or closure write through an object no module chain reaches (`f.__code__ = …` on a parameter, or a local alias `f = svc.t; f.__code__ = …`); since fold 3 (N-1) a write of `__code__`, `__closure__`, `__defaults__` or `__kwdefaults__` in any file is a run-wide `module-object` cause, so it is no longer here. Fold 2 also names: files CPython rejects but tree-sitter accepts (non-UTF-8 bytes in a comment, zero-width characters, a raw line break in a string; such a file cannot be imported, so no edge in it runs); and module objects handed back by functions (`return intake, intake_graph`), whose tracking through call results is the follow-up N2 (treesitter-chunker#706). Computed patcher targets are no longer here: they are an `unresolvable-writer` cause (E6-5). Fold 3 names: pytest `pythonpath`, `rootdir` and `python_files` settings and `importmode` other than `prepend` (tool configuration; the basedirs follow pytest's default file names), and a `MonkeyPatch` held in an attribute (`self.mp.setattr(...)`), alongside the framework patchers under other names in R12 (PR 4). Fold 4 named the `pytest` or `_pytest.monkeypatch` module object handed on (fold 6, E6-9b, matches MonkeyPatch methods on any receiver, so that no longer matters for MonkeyPatch), and, as an **off-mode residual outside PR 6** (P6-8), a star import in a package `__init__.py` under a condition, in `try` or through a relative middle module that rebinds a submodule name: with no other definition of the name, off mode already resolves the call to the submodule and `structural`/`imports` must keep it byte-identical (decision `None`, Tier 2 never consulted), while CPython runs the star-imported object. Fold 6 names the remaining string-lookup family: a pytest-mock fixture or a `patch`/`mocker` method obtained by a name built at run time (`getattr(request, FN)`, `"getfixture" + "value"`, a class `__dict__` lookup, `getattr(mocker, n)`); the `"getfixturevalue"` call-argument rule is a best-effort narrowing (MonkeyPatch methods are matched by name since E6-9b, in any constant spelling since fold 7, P6-21/P6-22: a positional argument, a keyword value or a subscript key, as adjacent literals, `+` or parenthesized; the residual is a method name computed at run time: `M = "setattr"; getattr(mp, M)`, `getattr(mp, "set" + suffix)`, or a constant that reaches the lookup through a binding, a default, a loop/match target, a splat or a container index, or through `%`/`format`/`join`/`decode`). Also named (P6-19, a Tier 1 E-21 gap outside PR 6): introspection makes a function-local mock-kind alias reachable. treesitter-chunker#707 closes `locals()` and no-argument `vars()` in the function (comprehensions, nested functions and class bodies included), `locals`/`vars` as a value, an attribute or a constant name anywhere in the file, and every file-wide frame trigger (`f_locals` reads included); closure cells were already file-wide triggers. R-707-1 widens this: `locals`/`vars` in any constant string (exactly or as a dotted, `:` or bracket component: `attrgetter('__self__.locals')`, `N = 'locals'`, a default) or as an imported name (`from compat import locals as get`) counts, and a sensitive parameter (a pytest `mocker`) of such a function is reachable like an alias. What stays here (treesitter-chunker#699; the cross-file frame reads are S4's PY-6/PY-9): a frame handed to another module that reads `f_locals` there (`helper(sys._getframe())`, `inspect.currentframe()`, `inspect.stack()`, a traceback's `tb_frame`, a generator's, coroutine's or async generator's frame (`gi_frame`, `cr_frame`, `ag_frame`) read in another file, `inspect.trace()`), or a callee that reads its caller's frame itself (`sys._getframe(1).f_locals` in the other file), including through debugger and tracing hooks another module installs (`sys.settrace`, `sys.breakpointhook`); the `locals`/`vars` builtin re-exported by another module under another name (`from compat import get_locals`); `f_locals` reached by a computed attribute name (`getattr(fr, 'f_' + 'locals')`); `locals`/`vars` spelled only by a string computed at run time (`''.join(['loc', 'als'])`, `b'locals'.decode()`); and frames found by `gc`. | Accept: Tier 2 Python holds within what the run's Python files show syntactically. |
+| R12 (Python, PR 6) | Tier 2 Python routes no syntactic rule in the run's files sees, under the executive scope rule (treesitter-chunker#699): a module named by a computed string with no run-wide trigger in its route (a string-code helper such as `cProfile.run` is an `evaluator` cause since treesitter-chunker#699 S2, and so is any code-object source, reads included, since B-1); writes performed inside library functions on a module handed to them are escapes here (the module is tainted wholly), but a third-party library that obtains a run module by itself (plugin registries, `entry_points().load()`, Django `import_string` from settings) is configuration outside Python files; writers outside the run (uncollected files, `.pth` files, `sitecustomize`, `PYTHONSTARTUP`); extension modules and `.pyc`-only modules that shadow a `.py` (R7); `builtins` written through a route that spells neither `builtins` nor `__builtins__` (`len.__self__`, which Tier 1 still catches in its own file); raw memory through `ctypes` without `pythonapi`; heap walking (`gc`); a module loaded under a loader-chosen name. Run-wide causes shut off Tier 2 only (as for TS/JS; executive ruling on #705, Q1); a write they may make to a module's globals is the R10 residual. The loader refinement (following an `import_module` result through the shared alias mechanism) is a possible future narrowing on #699 (ruling Q3). Fold 2 named a code-object or closure write through an object no module chain reaches (`f.__code__ = …` on a parameter, or a local alias `f = svc.t; f.__code__ = …`); since fold 3 (N-1) a write of `__code__`, `__closure__`, `__defaults__` or `__kwdefaults__` in any file is a run-wide `module-object` cause, so it is no longer here. Fold 2 also names: files CPython rejects but tree-sitter accepts (non-UTF-8 bytes in a comment, zero-width characters, a raw line break in a string; such a file cannot be imported, so no edge in it runs); and module objects handed back by functions (`return intake, intake_graph`), whose tracking through call results is the follow-up N2 (treesitter-chunker#706). Computed patcher targets are no longer here: they are an `unresolvable-writer` cause (E6-5). Fold 3 names: pytest `pythonpath`, `rootdir` and `python_files` settings and `importmode` other than `prepend` (tool configuration; the basedirs follow pytest's default file names), and a `MonkeyPatch` held in an attribute (`self.mp.setattr(...)`), alongside the framework patchers under other names in R12 (PR 4). Fold 4 named the `pytest` or `_pytest.monkeypatch` module object handed on (fold 6, E6-9b, matches MonkeyPatch methods on any receiver, so that no longer matters for MonkeyPatch), and, as an **off-mode residual outside PR 6** (P6-8), a star import in a package `__init__.py` under a condition, in `try` or through a relative middle module that rebinds a submodule name: with no other definition of the name, off mode already resolves the call to the submodule and `structural`/`imports` must keep it byte-identical (decision `None`, Tier 2 never consulted), while CPython runs the star-imported object. Fold 6 names the remaining string-lookup family: a pytest-mock fixture or a `patch`/`mocker` method obtained by a name built at run time (`getattr(request, FN)`, `"getfixture" + "value"`, a class `__dict__` lookup, `getattr(mocker, n)`); the `"getfixturevalue"` call-argument rule is a best-effort narrowing (MonkeyPatch methods are matched by name since E6-9b, in any constant spelling since fold 7, P6-21/P6-22: a positional argument, a keyword value or a subscript key, as adjacent literals, `+` or parenthesized; the residual is a method name computed at run time: `M = "setattr"; getattr(mp, M)`, `getattr(mp, "set" + suffix)`, or a constant that reaches the lookup through a binding, a default, a loop/match target, a splat or a container index, or through `%`/`format`/`join`/`decode`). Also named (P6-19, a Tier 1 E-21 gap outside PR 6): introspection makes a function-local mock-kind alias reachable. treesitter-chunker#707 closes `locals()` and no-argument `vars()` in the function (comprehensions, nested functions and class bodies included), `locals`/`vars` as a value, an attribute or a constant name anywhere in the file, and every file-wide frame trigger (`f_locals` reads included); closure cells were already file-wide triggers. R-707-1 widens this: `locals`/`vars` in any constant string (exactly or as a dotted, `:` or bracket component: `attrgetter('__self__.locals')`, `N = 'locals'`, a default) or as an imported name (`from compat import locals as get`) counts, and a sensitive parameter (a pytest `mocker`) of such a function is reachable like an alias. What stays here (treesitter-chunker#699; the cross-file frame reads are S4's PY-6/PY-9): a frame handed to another module that reads `f_locals` there (`helper(sys._getframe())`, `inspect.currentframe()`, `inspect.stack()`, a traceback's `tb_frame`, a generator's, coroutine's or async generator's frame (`gi_frame`, `cr_frame`, `ag_frame`) read in another file, `inspect.trace()`), or a callee that reads its caller's frame itself (`sys._getframe(1).f_locals` in the other file), including through debugger and tracing hooks another module installs (`sys.settrace`; `sys.breakpointhook` is an `evaluator` cause since treesitter-chunker#699 S2); the `locals`/`vars` builtin re-exported by another module under another name (`from compat import get_locals`); `f_locals` reached by a computed attribute name (`getattr(fr, 'f_' + 'locals')`); `locals`/`vars` spelled only by a string computed at run time (`''.join(['loc', 'als'])`, `b'locals'.decode()`); and frames found by `gc`. | Accept: Tier 2 Python holds within what the run's Python files show syntactically. |
 
 **Owner notice** (informational, from the ruling): these are delegated
 decisions, all stricter than or consistent with the issue:
@@ -3008,6 +3206,83 @@ decisions, all stricter than or consistent with the issue:
 - Python redefinitions never resolve;
 - kind or family filtering alone never resolves an edge;
 - extension collisions give `none` (O-1 decided (a) by the owner).
+
+### R12. Runtime routes outside the binding model
+
+The tables below supersede the original R12 entries above for route status.
+
+The Tier 1 Python scope rule from the treesitter-chunker#695 review
+(606c689f) treats a wrong same-file resolution as blocking when ordinary
+binding, attribute or call semantics can produce it using names or constant
+strings spelled in the file. The review allows named residuals for reflective
+routes when a small trigger cannot close them. Tier 2 applies the same
+principle to the collected files. A run-wide cause shuts off Tier 2.
+Recognized writes to identifiable Python modules can also suppress their own
+Tier 1 module-scope proofs (R10).
+
+Class (a) uses a fixed trigger at the use site. Class (b) is a documented
+limit. Class (c) needs configuration or broader program modelling and stays
+in R12. R-699-1 calls for one follow-up tracker for class (c), including J4.
+The issue column records where each route was reported or assigned. The
+[call resolution guide](../docs/call-resolution.md) describes the limits for
+users.
+
+#### Python
+
+| Route | Class | Status | Tracking issue |
+| --- | --- | --- | --- |
+| P1–P2. Heap walking through `gc.get_referents`, `get_referrers` or `get_objects` to find writable namespaces, code or closure cells | (a) | Planned in both tiers (PY-7, B-7) | treesitter-chunker#699 |
+| P3, P22. Member walks with `inspect.getmembers` or `dir()` plus `getattr`, including computed frame, code and namespace names, and frames obtained from outside the run | (b) | Documented limit. Spelled heap-walking calls are covered by the planned P1–P2 rule. | treesitter-chunker#699 |
+| P4–P5. `runpy` with custom globals, recompiling or unmarshalling the file, and rebuilding functions using code objects or closure cells | (a) | Planned (PY-3, PY-8, B-1, B-2) | treesitter-chunker#699 |
+| P6. `gettext.install()` and `sys.displayhook` | (a) | Planned (PY-4) | treesitter-chunker#699 |
+| P7. Standard-library code runners and payload evaluators, including profilers, debuggers, `timeit`, `doctest`, `pickle.loads`, `ForkingPickler`, `shelve` and `breakpoint` | (a) | Planned (PY-1, PY-8, B-2, B-4) | treesitter-chunker#699 |
+| Pickled data received through `multiprocessing` IPC, such as `Connection.recv()` | (b) | Documented limit (R-699-1, B-4) | treesitter-chunker#699 |
+| P8. An installed package re-exports `builtins` under another name | (b) | Documented limit. The standard-library alias `enum.bltns` already has a trigger. | treesitter-chunker#699 |
+| P9. Resolvers taking a module name from `X.__module__` | Closed | Closed at the write site (folds 19 and 21) | treesitter-chunker#699 |
+| P10. Forward references or string annotations evaluated through `typing`, including `__annotations__` writes and `singledispatch.register` | (a) | Planned (PY-2, B-5) | treesitter-chunker#699 |
+| P11. Catch-all `__getattr__` supplies a function to `update_wrapper` for later use as `__annotate__` | (b) | Documented limit | treesitter-chunker#699 |
+| P12. Library writes to objects passed to `update_wrapper`/`wraps`, `argparse`/`optparse`, `copy._reconstruct`, pickle BUILD or equivalents | (b) | Documented limit. Passing a tracked module is already an escape in `imports`. | treesitter-chunker#699 |
+| P13. Computed module acquisition, such as `getattr(pkg, __name__.rpartition('.')[2])`, a computed `sys.modules` key through an alias, or iterating package members | (b) | Documented limit. Spelled writes fail closed at the write site. `X._sys.modules` is a trigger since fold 21. | treesitter-chunker#699 |
+| P14–P15. Patchers under unrecognized names and module-supplied `patch` values via computed `getattr` | (a) | Planned (PY-10, PY-5). Computed targets on recognized patchers and spelled MonkeyPatch methods already fail closed. | treesitter-chunker#699 |
+| Computed pytest fixture or patcher method names that reach the lookup through variables, splats, containers or runtime formatting | (b) | Documented limit. Constant spellings covered by E6-9b and fold 7 already fail closed. | treesitter-chunker#699 |
+| P16. Following a non-literal `import_module` result through aliases to narrow its effects | Precision | Deferred | treesitter-chunker#699 |
+| P17. A writer with an unknown target module affects a Tier 1 proof, including `exec(code, mod.__dict__)` with a computed module | (c) | Open (R10, ruling Q1) | treesitter-chunker#699 |
+| P18. A cross-file closure-cell write changes the target of a Tier 2 edge | (a) | Planned (PY-6) | treesitter-chunker#699 |
+| P19. A cross-file closure-cell or caller-frame write changes the target of a Tier 1 function-local edge | (c) | Open in both modes (R-699-1, Q11) | treesitter-chunker#699 |
+| P20–P21. Cross-file frame access, live locals proxies, and an aliased `locals`/`vars` builtin re-exported across files | (a) | Planned (PY-9, B-6). Includes a callee accessing its caller's frame, including via debugger or tracing hooks another module installs (`sys.settrace`, `sys.breakpointhook`). | treesitter-chunker#699, treesitter-chunker#707 |
+| A function-local patcher alias escapes through `locals()`, no-argument `vars()`, or recognized reads of a frame's locals | (a) | Pending in treesitter-chunker#721 | treesitter-chunker#707 |
+| Constant `__main__` and `__mp_main__` format fields, including stored string templates and literal portions of f-strings and t-strings | (a) | Pending in treesitter-chunker#714 | treesitter-chunker#698 |
+| P23. Bytes `%` templates, runtime-built templates and `Template` subclasses with unsupported delimiters | (b) | Documented limit | treesitter-chunker#699 |
+| P23. A formatting callback cuts `__main__` out of a larger component, such as a format spec containing `x__main__` | (b) | Documented limit (R-698-1) | treesitter-chunker#699 |
+| P23. A name joined across a replacement field, such as `f'{P():__ma{""}in__}'` | (b) | Documented limit (R-698-2) | treesitter-chunker#699 |
+| A file exposes its import bindings through its own namespace, for example through `globals()` or `locals()` | (a) | Planned (R-706-1) | treesitter-chunker#724 |
+| A helper returns an imported module and code writes through the result | (a) | Tracking of returned modules planned (R-706-1) | treesitter-chunker#706 |
+| A function's body is replaced through `__code__` | (b) | The definition can still be the right binding. Spelled writes of `__code__`, `__closure__`, `__defaults__` and `__kwdefaults__` already cause Tier 2 shutoff (PR 6, N-1). | treesitter-chunker#699 |
+| Cross-file submodule rebinding, including loading by a computed name in `__init__.py`, and cross-file builtin injection outside recognized triggers | (c) | Open | treesitter-chunker#699 |
+| Modules loaded under a loader-chosen name or acquired by configured plugins | (c) | Open. Named module escapes are already tracked. | treesitter-chunker#699 |
+| Startup hooks, `.pth` files, debuggers or tracing hooks installed outside the run, native access invisible to the scan, and extension or `.pyc`-only modules shadowing `.py` | (b) | Documented limit (R7) | treesitter-chunker#699 |
+| Pytest `pythonpath`, `rootdir`, `python_files` and import-mode settings | (c) | Open | treesitter-chunker#699 |
+| A package star import rebinds a submodule that name mode already resolved | Baseline | Outside the remove-only pass (PR 6, P6-8) | treesitter-chunker#685 |
+
+#### TypeScript and JavaScript
+
+| Route | Class | Status | Tracking issue |
+| --- | --- | --- | --- |
+| J1. Bare-specifier aliases into the run through package self-reference, workspace links or tsconfig `paths` | (c) | Open | treesitter-chunker#702 |
+| J2. `package.json` maps, bundler aliases and extension lists, tsconfig `rootDirs` and `moduleSuffixes`, or sibling files preferred by an external resolver | (c) | Open (R6) | treesitter-chunker#702 |
+| J3a. Code evaluated through `vm`, `inspector` or `repl` builtins | (a) | Planned (JS-1) | treesitter-chunker#702 |
+| Third-party re-exports of `vm` | (b) | Documented limit | treesitter-chunker#702 |
+| J3b, J6. `process.binding` and reflective lookups with a spelled `process` token or specifier | (a) | Planned (JS-2, R-699-2 and R-718-3) | treesitter-chunker#702 |
+| J3c. `Module._extensions` and loader registration through the visible module system | Closed | Covered by existing module-system causes | treesitter-chunker#702 |
+| J3d. Node startup flags, Babel plugins and macros, or flag-enabled test module mocks | (b) | Documented limit | treesitter-chunker#702 |
+| J4. Writers in uncollected `.mjs`/`.cjs`/`.mts`/`.cts` files or files excluded by a language filter | (c) | Open. Needs facts-only collection or other broader modelling. | treesitter-chunker#702 |
+| J5. Build output such as `.next/` collected as source | (b) | Documented limit | treesitter-chunker#702 |
+| `caller` or `getFunction` spelled in the source, including in local bindings and decoded JSX text or attribute values, or a parsed `with` statement | (a) | Pending in treesitter-chunker#720 (R-718-3) | treesitter-chunker#718 |
+| J7. Stack keys without a full spelling, such as `/^cal+er$/` or names loaded from JSON, and computed properties or reflective calls recovered through data flow | (b) | Documented limit (see also R11) | treesitter-chunker#702 |
+| O-2 classification misses, such as config-only production entry points under `test/`, and mocks outside the closed list such as `jest.requireMock` or `vi.importMock` | (c) | Open. Test paths outside the classifier, such as `e2e/`, already count as production. | treesitter-chunker#702 |
+| Package `#` aliases, absolute and URL specifiers, `import.meta.glob`, unknown `createRequire` bases, short Windows names, and directory symlinks | Closed | Test files count as production when such paths cannot be located (see §9.9) | treesitter-chunker#702 |
+| Collected JS/TS files the parser cannot read cleanly | Closed | Covered by `unparsed-file` since E5-7 | treesitter-chunker#702 |
+| AMD `require` parameters called with a computed name and loader methods obtained through computed keys | (b) | Documented limit where no cause fires. Unreadable computed property keys can already record `evaluator`. | treesitter-chunker#702 |
 
 ## 16. Acceptance criteria for this plan
 
@@ -3384,7 +3659,7 @@ Only adds `none`; no expected row changes. `python` fact version 11.
 
 | Item | Applied in |
 | --- | --- |
-| K-3/K-4: a constant string with a `__main__` component (split on `.` and `:`) is dynamic, except as a comparison operand (through parentheses, or a tuple, list or set operand of `in`) or in a `case` pattern | §7.3 dynamic binding |
+| K-3/K-4: a constant string with a `__main__` component (split on `.` and `:`; since R-698-1 also on format and attribute punctuation and whitespace, with f-string and t-string parts, treesitter-chunker#698; since R-698-2 the same classifier is Tier 2's run-wide `__main__` cause; since R-698-3 an f-string or t-string counts when a main name occurs anywhere in its decoded source text) is dynamic, except as a comparison operand (through parentheses, or a tuple, list or set operand of `in`) or in a `case` pattern | §7.3 dynamic binding |
 | Closing the class: `__mp_main__` (a multiprocessing spawn child's name for the script) counts as `__main__` for the alias and string rules; the own-name and dynamic-attribute string rules also split on `:` (`pkgutil.resolve_name('pkg.a:__dict__')`, `'sys:modules'`); `/` maps no resolver to this module | §7.3 |
 | Pins: the 7 K-3 trees (`test_fold9_695_cases_keep_their_off_mode_edge`), unit pins and the guard controls (`==` both ways, `in`, `!=` with parentheses, `case`); mutation: string rule 12, exemption 5, `:` for `__main__` 2, own name 1, dynamic attributes 1, `__mp_main__` 2, `case` exemption 1 failures | `tests/test_call_resolution_tier1_py.py` |
 
@@ -3938,7 +4213,7 @@ expected row changes.
 | O-3: ship PR 6 as designed; Python Tier 2 gains nothing on the measured trees and loses `structural` resolutions where other files may write a module | §1, §9.10 (gain table), §15 |
 | O-4: keep the experimental label on `structural` and `imports` | §1, §4.5, §13.1, §15 |
 | Q1: run-wide causes shut off Tier 2 only (PR 5 precedent); named writes still void the written module's Tier 1 proofs; the unknown-target writer residual | §9.10; §15 R10 (residual, treesitter-chunker#699) |
-| Q2: `compile` alone is no evaluator cause | §9.10; `py_modules._EVALUATORS` |
+| Q2: `compile` alone is no evaluator cause (**reversed** by ruling R-699-1 B-1, treesitter-chunker#699 S2) | §9.10; `py_modules._EVALUATORS` (removed by S2) |
 | Q3: the loader refinement is not applied (a possible future narrowing on #699) | §15 R12 (Python) |
 | Pins: `test_routes_that_cannot_change_a_module_attribute_are_no_cause` (a `compile`-only syntax check), `test_run_wide_causes_fail_closed[exec-compile]`; the `compile-is-no-evaluator` mutation | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
 
@@ -4039,10 +4314,57 @@ fold 7.
 | P6-31: R12 example list widened | §15 R12 (Python, PR 6) |
 | Pins: `test_fold8_reexported_bindings_use_the_one_resolver` (7: the Codex repro, `facade.m.t()`, two hops, `from facade import m as n`, a re-exported `from a import b`, and two writer rows; each with what CPython printed), `test_fold8_clean_reexports_still_resolve` (2); 2 new rule mutations, 2 re-anchored (112 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
 
-### treesitter-chunker#707 (a local alias that escapes through `locals()`)
+### Follow-up: treesitter-chunker#694 (comma writers before `.call`/`.apply`/`.bind`)
 
-`python` fact version 39 (the digests change only by the version); `js`
-stays at 20. No expected row changes; the off-mode baseline is unchanged.
+`js` fact version 21; `python` stays 38. The fixture facts are unchanged
+apart from the version (every `js` digest moves only because the version is
+hashed with the facts). No expected row changes. Only adds `none`.
+
+| Item | Applied in |
+| --- | --- |
+| A comma or parenthesized writer before `.call`/`.apply`/`.bind` (`(0, Object.assign).call(null, this, …)`, `.apply(null, [this, …])`), at any depth, with optional chaining, is a property writer | §7.2 script goal; `js_scope._callee`, `_Analysis._writer_targets` |
+| A bound writer called later (`Object.assign.bind(null)(this, …)`, `.bind(null).bind(null, this)(…)`), nested invokers (`Object.assign.call.call(…)`) and a computed invoker on any writer chain | §7.2; `_Analysis._writer_targets`, `_writer_chain` |
+| `Reflect.apply(Object.assign, null, [this, …])` (also through a computed key on `Reflect`); a comma namespace (`(0, Object).assign`), a comma target (`Object.assign((0, this), …)`) and comments between arguments | §7.2; §15 R11; `_Analysis._writer_namespace`, `js_scope._arguments` |
+| The #717 review: the comment-aware reading dropped `*` that the positional reading of js 20 gave (`Object.assign.call(/* c */ this, this ?? {}, …)`, the same through `.apply`/`.bind` and `Reflect.set`; 512 of the review's 11,340 generated forms, 384 of which node v24 confirmed replace the global). The positional reading now runs first and is never overridden, so every call main flagged is still flagged: 0 of 11,340 forms are flagged by main and not here | §7.2; `_Analysis._property_writer_call`, `_positional_writer_call` |
+| Pins: `test_694_writer_invokers_fail_closed` (25 forms; node v24 confirms each writes the global through `this`, except `(0, Object.assign.call)(…)`, which throws and stays `*` as before), `test_694_writer_invokers_on_other_targets_are_not_wildcards` (9 controls), `test_694_writer_invoker_on_a_fresh_object_still_resolves`, `test_694_issue_forms_keep_name_mode_identical_to_off` (2), panel rows `I694-call` and `I694-apply`; `test_717_main_writer_wildcards_are_kept` (11 forms main flagged, each `none(reassigned)`), `test_717_commented_invoker_receiver_keeps_the_edge_unresolved`; 10 new rule mutations (`717-positional-floor` drops the floor) | `tests/test_call_resolution_tier1_js.py`; `scripts/call_resolution_tier2_mutations.py` |
+
+### Follow-up: treesitter-chunker#699 S2 (string code and code objects)
+
+`python` fact version 40 (39 on the branch until treesitter-chunker#714
+took 39 on main; merged with main at ce0a5463); `js` stays 22. The fixture
+facts are unchanged apart from the version (every `python` digest moves only
+because the version is hashed with the facts: with the version forced back to
+39 the digests equal main's). No expected row changes; no Boundary IR golden changes; the
+off-mode baseline is unchanged (MANIFEST 654e61b3). Only adds `none`.
+
+| Item | Applied in |
+| --- | --- |
+| One string-code and code-object classifier for both tiers (fold-8 precedent); use-site lookups decided once the scopes are complete, before any S2 flag applies | §7.3, §9.10; `py_scope._string_code_rules`, `_verify_string_code`; `py_modules._scan_causes` |
+| PY-1 with B-4 and Q8: stdlib string-code helpers, `pickle`/`timeit` by member allow-list, `shelve`, `ForkingPickler`/`_ForkingPickler`, `multiprocessing.reduction`, `breakpoint`/`breakpointhook`; a production `pickle.loads` is a run-wide `evaluator` | §7.3; `_STRING_CODE_NAMES`, `_STRING_CODE_MODULES`, `_CHECKED_MODULES` |
+| PY-2 with B-5: annotation evaluators, string annotations, `__annotations__` writes (`singledispatch.register` calls `get_type_hints`) | §7.3; `_string_code_literal`, `_attribute_read` |
+| PY-3: `runpy` off its allow-list, `compile`, `marshal`, loader methods and `read_code` | §7.3; `_plain_runpy_call`, `_CODE_BUILTINS` |
+| PY-4: `gettext.install()` and `sys.displayhook` names are `builtin-shadow`, Tier 2 import groups included | §7.3; `INSTALLED_BUILTINS`, `SHADOWED_NAMES`, `py_modules.import_group` |
+| PY-5: computed attribute reads in mock files, `inspect.getmembers` there | §7.3; `_computed_getter`, `_constant_names` |
+| PY-8 with B-2: every string-code trigger, the PY-3 ones included, fails closed file-wide (an explicitly imported `exec` alias too) | §7.3; `_verify_string_code` |
+| B-1 (reverses Q2): every code-object source is a Tier 2 `module-object` cause, reads included; `compile` is an `evaluator` | §9.10; `_CODE_OBJECT_NAMES` |
+| Measured cost (pmcp 3d86b78d, spec 85bb2b6d, this repository at efec7912, Code-Index-MCP bcc0f603): 8 production and 70 test edges lost in `structural` and the same in `imports`, 0 gained; spec's 6 are the expected file-wide `exec` edges | the PR's evidence |
+| Pins: `test_string_code_fails_closed_file_wide` (102 forms, each before a function-local and a module-level proof), `test_string_code_controls_still_resolve` (28), 15 runtime-traced trees (`test_s2_traced_routes_keep_their_off_mode_edge`) and the `gettext.install` tree, the stdlib re-export pin (23 entries, `scripts/scan_stdlib_string_code_reexports.py`), the `INSTALLED_BUILTINS` pin against the interpreter, Tier 2 `CAUSES` rows for each rule, O-2 and imports-mode facts tests; four fold-14/15 controls that keep a string-code helper now fail closed (`S2_FLIPPED_CONTROLS`); 22 new rule mutations, 3 re-anchored, `compile-is-no-evaluator` removed (133 in all) | `tests/test_call_resolution_tier1_py.py`, `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+| R-699-5 BLOCKING 1: the Python 2 list-comprehension leak, `except A, B:` (PEP 758) and a type parameter's bound, constraints or default are phantom bindings that shadow but never prove a builtin or a checked module name; a proof needs one real binding in the deciding scope (a type parameter's own name is real) | §7.3; `_Binding.phantom`, `_Analysis._real_binding`, `_is_builtin`, `_checked_use`, `_type_parameter_names` |
+| R-699-5 BLOCKING 2: in an acquisition position the constant is tested before the dotted-name gate, split on every non-identifier character; entry points (`EntryPoint(...)` value or `module_name`, `EntryPoint.parse`) are resolvers | §7.3; `_ACQUIRED_PARTS`, `_ACQUIRED_MODULES`, `_Analysis._entry_point_value` |
+| R-699-5 SHOULD 1: `code`, `trace` and `profile` from-imported out of a non-stdlib or relative module are checked by a closed allow-list (attributes absent from the pinned table, no dunder) | §7.3; §15 R12; `_REEXPORT_CHECKED`, `_checked_import`, `_safe_module_use` |
+| R-699-5 SHOULD 2 and NIT: `six.moves.builtins` named in R12; the 3.15 `dir()` additions recorded as harmless; `test` is standard library for S2 (Tier 2 module resolution keeps the shared table) | §15 R12; `_GENERIC_MODULE_ATTRIBUTES` comment, `_S2_STDLIB_MODULES` |
+| R-699-5 pins and mutations: 37 new `STRING_CODE_FORMS`, 4 controls, 2 local controls, 4 own-binding controls, 7 Tier 2 `CAUSES` rows and 2 no-cause rows; 17 new rule mutations, 2 re-anchored (166 in all); cost unchanged against 11ed3604 (8 production / 70 test edges lost in `structural`, the same in `imports`), Code-Index-MCP gains 11 `evaluator` cause files (`import_module(".vendor.trace", __name__)` in generated `baml_sdk` packages) that cost no edge | `tests/test_call_resolution_tier1_py.py`, `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+| R-699-6 BLOCKING 1: every constant among the arguments of `import_module`/`__import__` is an acquisition position, at any depth (the `package` argument, the `globals` dict and its values, keyword forms); no leading-dot exemption (it would reopen i17/i18 against R-699-5 SHOULD 1; the 11 Code-Index-MCP cause files cost 0 edges) | §7.3; `_Analysis._in_acquirer_call`, `_acquired` |
+| R-699-6 NIT: R12 names `compat.code.X` (the module read off another module's attribute) and the off-table proxy beside the from-import line, and the `package` argument stored in a variable | §15 R12 |
+| R-699-6 pins and mutations: 8 new `STRING_CODE_FORMS` (i10–i15 shapes, a `globals=` keyword form, and `resolve_name(name=...)` so the `name=` branch stays killed), 3 Tier 2 `CAUSES` rows (i10, i13, i14); 3 new rule mutations (169 on the branch, 187 with #714's after the merge with main ce0a5463; all killed); CPython 3.14.10 runs every pinned payload (`727-recheck-opus6/o3_head.txt`, rt=2); cost against main ce0a5463 equal to the prior head 237f67c2 (6 production / 70 test edges lost in `structural`, the same in `imports`, 0 gained; no new cause file on pmcp, spec, this repository or Code-Index-MCP), and this repository's two `_pytest` production edges resolve now that the measured tree carries the renamed `runpy-loader` mutation ID. #714's Tier 2 main-writer trees switch from `doctest._normalize_module` (an S2 `evaluator` cause) to `pydoc.resolve` | `tests/test_call_resolution_tier1_py.py`, `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+
+### Follow-up: treesitter-chunker#707 (a local alias that escapes through `locals()`)
+
+`python` fact version 41 (39 on the branch until treesitter-chunker#714 took
+39 and treesitter-chunker#727 took 40 on main); `js` stays 22. The fixture
+facts are unchanged apart from the version (the digests change only by the
+version). No expected row changes; no Boundary IR golden changes; the
+off-mode baseline is unchanged (MANIFEST 654e61b3). Only adds `none`.
 
 | Item | Applied in |
 | --- | --- |

@@ -24,6 +24,7 @@ nav:
   - Architecture: architecture.md
   - Boundary IR:
     - Interface Boundary Spec: interface-boundary-spec.md
+    - Call Resolution: call-resolution.md
     - Interface Boundary Roadmap: interface-boundary-roadmap.md
     - Agent Interface Readiness: agent-interface-readiness.md
   - Troubleshooting: troubleshooting.md

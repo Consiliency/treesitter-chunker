@@ -84,10 +84,6 @@ SYNTHETIC_LABELS = Counter(
         ): 1,
         ("tests/test_packing_hint.py", f'file_path="{SYSTEM_TMP}/x.py",'): 1,
         (
-            "tests/test_parallel.py",
-            f'non_existent = Path("{SYSTEM_TMP}/does_not_exist_12345.py")',
-        ): 1,
-        (
             "tests/test_plugin_system.py",
             f'config.plugin_dirs = [Path("{SYSTEM_TMP}/plugins")]',
         ): 1,

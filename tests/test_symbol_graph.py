@@ -1,6 +1,69 @@
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+from unittest.mock import Mock
 
+import pytest
+
+from chunker import symbol_graph
 from chunker.symbol_graph import extract_symbol_graph
+
+
+def test_collect_source_files_uses_case_sensitive_path_components(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class WindowsSourceFile(PureWindowsPath):
+        def is_file(self) -> bool:
+            return True
+
+    root = Mock(spec=Path)
+    root.exists.return_value = True
+    root.is_file.return_value = False
+    root.rglob.return_value = [
+        WindowsSourceFile("project/app.py"),
+        WindowsSourceFile("project/D.py"),
+        WindowsSourceFile("project/D/sub.py"),
+        WindowsSourceFile("project/other.py"),
+    ]
+    monkeypatch.setattr(symbol_graph, "Path", lambda _: root)
+
+    files = symbol_graph.collect_source_files("project", "python")
+
+    assert [path.parts[1:] for path in files] == [
+        ("D", "sub.py"),
+        ("D.py",),
+        ("app.py",),
+        ("other.py",),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("filename", "source"),
+    [
+        ("doc.rst", "Heading\n=======\n\nA paragraph.\n"),
+        ("code.asm", "global start\nstart:\n    mov eax, 1\n"),
+        ("code.s", ".text\n.globl start\nstart:\n    mov $1, %eax\n"),
+    ],
+)
+def test_extract_symbol_graph_with_pack_mapped_file(
+    tmp_path: Path, filename: str, source: str
+) -> None:
+    (tmp_path / filename).write_text(source, encoding="utf-8")
+    (tmp_path / "code.py").write_text("def example():\n    pass\n", encoding="utf-8")
+
+    graph = extract_symbol_graph(tmp_path)
+
+    assert graph["errors"] == []
+    assert graph["metadata"]["files_processed"] == 2
+    assert [symbol["name"] for symbol in graph["symbols"]["functions"]] == ["example"]
+
+
+def test_extract_symbol_graph_skips_raku_without_pack_grammar(tmp_path: Path) -> None:
+    (tmp_path / "code.raku").write_text('say "hello";\n', encoding="utf-8")
+    (tmp_path / "code.py").write_text("def example():\n    pass\n", encoding="utf-8")
+
+    graph = extract_symbol_graph(tmp_path)
+
+    assert graph["errors"] == []
+    assert graph["metadata"]["files_processed"] == 1
 
 
 def test_extract_symbol_graph_python_project(tmp_path: Path):

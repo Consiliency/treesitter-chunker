@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Python structural call resolution now treats a constant string as a
+  `__main__` self-reference when a component split on format and attribute
+  punctuation or whitespace (or a default `string.Template` identifier) is
+  `__main__`, so templates stored in a variable and later formatted with
+  `str.format`, `format_map`, `%`, `string.Template` or logging fail closed.
+  An f-string or t-string counts when `__main__` occurs anywhere in its
+  source text after escape decoding (literal parts, format specs,
+  expressions, debug text and comments alike), so no difference in how
+  tree-sitter and CPython split such a string can hide one; a part that is
+  not UTF-8 fails closed (treesitter-chunker#698). `imports` mode uses the same rule
+  for its run-wide `__main__` cause, so such a string in any run file shuts
+  off Tier 2 as a plain `'__main__'` does. Escapes in string literals are
+  decoded without `ast.literal_eval`, so call resolution facts no longer
+  depend on the process warning filters (for example
+  `-W error::SyntaxWarning`).
+- Python call resolution no longer trusts a patcher alias (`p = mock.patch`)
+  or a pytest-mock `mocker` parameter local to a function whose locals can be
+  read as a dict: `locals()` or a no-argument `vars()` in the function
+  (comprehensions and nested functions included), `locals`/`vars` as a
+  value, an attribute, an imported name or in any constant string anywhere
+  in the file (`attrgetter('__self__.locals')`, `N = 'locals'`), or a frame's
+  `f_locals`. Such a patcher can be handed out and patch a module from
+  another file, so the run's Tier 2 proofs fail closed
+  (treesitter-chunker#707).
+
 ### Added
 
 - **Experimental:** opt-in scope-aware call resolution, `call_resolution`
@@ -72,6 +99,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     resolve, nor does a module-level name that any receiver's attribute write
     (`x.name = v`, `setattr`, `__dict__.update`) may rebind, and neither does a
     private name (`__x`) looked up inside a class, which CPython mangles.
+    A file that runs code from a string, a payload or an annotation
+    (`exec`, `eval`, `compile`, `breakpoint()`, `cProfile`/`pdb`/`trace`/
+    `timeit`/`doctest`-style helpers, `pickle` loads, `shelve`, `marshal`,
+    loader `get_code`/`exec_module`, `runpy` with `init_globals`,
+    `get_type_hints`, `singledispatch`, string annotations that call,
+    `__annotations__` writes; a module-level variable of a code builtin's
+    name, `compile = compile`, does not hide the builtin, and neither does a
+    Python 2 form CPython 3 reads differently, such as `except A, exec:`;
+    `code`, `trace` or `profile` imported from another package count unless
+    every use reads a name the stdlib module lacks, so `from opentelemetry
+    import trace` stays inert; a module named by any constant passed to
+    `import_module`/`__import__`, its `package` argument and `globals`
+    included, counts) resolves no call at all, function-local ones included, because such code
+    can write its caller's locals through the frame; in `imports` mode it is
+    also a run-wide `evaluator` cause, and any code-object source (`__code__`,
+    `__closure__`, `FunctionType`, ...; reads included) a `module-object`
+    cause (treesitter-chunker#699).
     A file that mentions `f_locals`, which writes function locals, resolves
     nothing. Monkeypatching from other modules is not tracked (plan risk
     R10). Wherever no binding proves a candidate, only
@@ -109,8 +153,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     rewrite any module's exports object (a code evaluator, a non-literal
     `require` or `import()`, `createRequire`, `mainModule`,
     `getBuiltinModule`, an import of `module`, the `module` object handed on,
-    or an unparsed file whose text spells one): Tier 2 is then off for the
-    run, and the cause is logged. This holds within the run only (plan risk
+    stack introspection through `caller`, `getFunction` or
+    `Error.prepareStackTrace`, a `with` statement (treesitter-chunker#718),
+    or an unparsed JS/TS file): Tier 2 records the cause and disables
+    cross-module resolution for the affected callers. Identifiers spelled
+    `caller` or `getFunction`, cooked string or template tokens equal to
+    either name, and regex patterns containing either name trigger the
+    cause, as do variable and parameter bindings with either name (a
+    function's inferred `.name` and export keys expose them). JSX text
+    containing either name, and JSX attribute strings equal to either
+    name, match after HTML character references decode.
+    Causes confined to test files apply only to test callers (O-2). This
+    holds within the run only (plan risk
     R12, treesitter-chunker#702).
     In Python files `"imports"` also resolves calls bound by an import:
     `from m import t`, relative forms, a function-local import, and member
@@ -157,6 +211,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   IDs (`definition_id`, node IDs, `#N` suffixes and `call_site_id`) are
   identical with the option on and off. The option and its behavior may change
   until treesitter-chunker#682 is complete.
+
+### Fixed
+
+- Symbol graph extraction orders source files by case-sensitive path components
+  on every platform (treesitter-chunker#687).
+- Automatic detection uses the language pack's `rst` and `asm` grammar
+  names for `.rst`, `.asm`, and `.s` files (treesitter-chunker#692). These
+  files now parse with their grammars instead of failing to load, so
+  `auto_chunk_file` no longer takes the line-based fallback for them; like
+  Markdown, they currently produce no chunks. `list_supported_extensions()`
+  reports `rst` and `asm` instead of `restructuredtext` and `assembly`.
+- `.raku` is no longer detected, because the pack has no Raku grammar:
+  `list_supported_extensions()` drops `raku`, symbol graph directory scans
+  skip `.raku` files, and `auto_chunk_file` treats them as unknown and uses
+  the line-based fallback.
 
 ## [7.0.0] - 2026-11-19
 

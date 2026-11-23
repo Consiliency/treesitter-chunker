@@ -147,15 +147,14 @@ SAMPLE_LANGUAGES: dict[str, str] = {
     "pascal": "sample.pas",
     "verilog": "sample.v",
     "vhdl": "sample.vhdl",
-    "raku": "sample.raku",
-    "assembly": "sample.asm",
+    "asm": "sample.asm",
     "css": "sample.css",
     "html": "sample.html",
     "json": "sample.json",
     "yaml": "sample.yaml",
     "xml": "sample.xml",
     "markdown": "sample.md",
-    "restructuredtext": "sample.rst",
+    "rst": "sample.rst",
     "latex": "sample.tex",
 }
 
@@ -321,13 +320,8 @@ def compute_coverage() -> dict[str, Any]:
 
         languages[name] = record
 
-    # Extraction targets chunker advertises (via EXTENSION_MAP) under a name the
-    # pack does not enumerate at all -- e.g. ``assembly``/``restructuredtext``
-    # (the pack ships these as ``asm``/``rst``) and ``cobol``/``fsharp``/``raku``
-    # (no pack grammar under any name). A user dropping the matching file gets
-    # ``status=error`` + 0 nodes; the IR records ``boundary.parse_error``. These
-    # are advertised-but-broken, the most damning coverage class, and would be
-    # invisible if we only iterated the pack. Record them explicitly.
+    # Include extraction targets the pack does not enumerate so the report
+    # captures their parser errors as well.
     for name in sorted(extraction_targets - set(pack)):
         probe = extraction_probe(name)
         languages[name] = {

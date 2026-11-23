@@ -102,6 +102,8 @@ def test_existing_batch_json_command_still_works(tmp_path: Path):
         app,
         [
             "batch",
+            "--parallel",
+            "2",
             str(tmp_path),
             "--lang",
             "python",

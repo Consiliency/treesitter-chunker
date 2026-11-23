@@ -244,6 +244,9 @@ definition can change resolution without changing call-site IDs.
 
 ### Call resolution extension (experimental)
 
+For a guide to the modes, test scoping and known limits, see
+[Call resolution](call-resolution.md).
+
 `call_resolution` is an opt-in, experimental option on `extract_symbol_graph`,
 `extract_boundary_ir` and the `symbols extract` and `boundary` CLI commands
 (`--call-resolution`), orthogonal to `resolution_mode`
@@ -272,9 +275,14 @@ For Python callers it proves bindings through the LEGB scope chain
 redefinitions narrow to their group and never resolve; module-scope and
 class-body lookups in a file that may bind names at run time (`exec`,
 `globals`, `sys.modules` and the like) or has a star import prove nothing, as
-do module-level definitions of builtin names, class-body lookups in a class
+do module-level definitions of builtin names (and of the names
+`gettext.install()` puts into `builtins`), class-body lookups in a class
 with a base or keyword argument, and every lookup in a file that mentions
-`f_locals`; monkeypatching from other modules is not tracked.
+`f_locals` or runs code from a string, a payload or an annotation (`exec`,
+`eval`, `compile`, `breakpoint()`, `cProfile`/`pdb`/`timeit`-style helpers,
+`pickle.loads`, `shelve`, `marshal`, `get_type_hints`, string annotations
+that call, `__annotations__` writes, `runpy` with `init_globals`, a loader's
+`get_code`); monkeypatching from other modules is not tracked.
 
 With `"imports"`, everything `"structural"` does applies, and a JavaScript,
 TypeScript or TSX call whose callee a relative ES import binds (`import { t }`,
@@ -292,8 +300,15 @@ unless the segment is on a closed list of names no resolver uses (`test`,
 `spec`, `stories`, `types`, …). Some files can rewrite any module's exports
 object: a code evaluator, a non-literal `require` or `import()`, `createRequire`,
 `mainModule`, `getBuiltinModule` or an import of `module`, the CommonJS
-`module` object handed on, or an unparsed file whose text spells one. Any such
-file in production code turns Tier 2 off for the whole run, and the cause is
+`module` object handed on, a stack-introspection trigger, a `with` statement,
+or an unparsed JS/TS file. Stack-introspection triggers include the global
+`Error.prepareStackTrace` hook, identifier tokens spelled `caller` or
+`getFunction` in any role, cooked string or template tokens equal to either
+name, and regular-expression patterns containing either name. Variable and
+parameter names count too, because a function's inferred `.name` and export
+keys expose them. JSX text containing either name, and JSX attribute strings
+equal to either name, match after HTML character references are decoded.
+Any such file in production code turns Tier 2 off for the whole run, and the cause is
 logged. Three uses are exempt by closed lists: an import of only
 `builtinModules` or `isBuiltin` from `module`; `const r = createRequire(…)`
 used only as `r('<literal>')` (which counts as a `require` of that path) or
@@ -341,9 +356,11 @@ literal `import_module('m')` or `sys.modules['m']`) makes the whole module,
 and every module it exposes, unprovable. That also applies to the written
 module's own module-level `"structural"` proofs, so `"imports"` can resolve
 fewer Python calls than `"structural"`. A Python file that may load or write
-any module (`exec`, `eval`, a non-literal loader, other `importlib` uses,
-`runpy`, `sys.modules` other than a literal key, `sys.path` changes,
-`__globals__`, frame globals, `builtins`, `__main__`) or that tree-sitter and
+any module (`exec`, `eval`, `compile`, any of the string-code triggers
+above, a code object or closure such as `f.__code__` (reads included), a
+non-literal loader, other `importlib` uses, `runpy`, `sys.modules` other
+than a literal key, `sys.path` changes, `__globals__`, frame globals,
+`builtins`, `__main__`) or that tree-sitter and
 CPython may read differently turns Python Tier 2 off, scoped like the
 JavaScript causes (test files: `test_*.py`, `*_test.py`, `conftest.py`, or a
 `tests` or `test` directory). On the real trees measured for

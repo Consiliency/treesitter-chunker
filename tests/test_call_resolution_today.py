@@ -76,20 +76,6 @@ ZERO_CALL_TREES = {
     "rt-java",
     "rt-kotlin",
 }
-# treesitter-chunker#687: collect_source_files sorts Path objects, and WindowsPath
-# sorts case-insensitively, so py-namespace-dir (D.py, D/sub.py, app.py, other.py)
-# emits its symbol-graph lists in another order on Windows. Parity views,
-# digests, cache keys and ``today`` still match. Never regenerate for this
-# (plan section 11.2).
-WINDOWS_PATH_ORDER = pytest.mark.xfail(
-    sys.platform == "win32",
-    strict=True,
-    reason=(
-        "treesitter-chunker#687: case-insensitive WindowsPath sort in "
-        "collect_source_files"
-    ),
-)
-WINDOWS_PATH_ORDER_RUNS = {"py-namespace-dir/default"}
 # Product code whose change must never land together with a baseline change.
 PRODUCT_PREFIXES = ("chunker/", "cli/")
 BASELINE_MANIFEST = "tests/fixtures/call_resolution/off_mode_baseline/MANIFEST.sha256"
@@ -191,16 +177,7 @@ def test_today_matches_off_mode_output(tree: str) -> None:
         assert _today_calls(graph) == expected, run.run_id
 
 
-@pytest.mark.parametrize(
-    "run_id",
-    [
-        pytest.param(
-            run.run_id,
-            marks=WINDOWS_PATH_ORDER if run.run_id in WINDOWS_PATH_ORDER_RUNS else (),
-        )
-        for run in RUNS
-    ],
-)
+@pytest.mark.parametrize("run_id", [run.run_id for run in RUNS])
 def test_off_mode_matches_the_baseline(run_id: str) -> None:
     """Cold and warm-incremental off-mode documents equal the committed baseline."""
     (run,) = (run for run in RUNS if run.run_id == run_id)
