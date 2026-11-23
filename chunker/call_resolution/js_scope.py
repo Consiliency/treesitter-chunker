@@ -155,6 +155,8 @@ _WRITER_NAMESPACES = frozenset(namespace for namespace, _ in _PROPERTY_WRITERS)
 # A static key the analysis cannot read: a string or template key with an
 # escape (``o['\x61ssign']``). It may be any name, so it fails closed.
 _UNREADABLE_KEY = "\0unreadable"
+# A property writer's target when an unreadable invoker may pass any argument.
+_ANY_TARGET = object()
 # Timer arguments that are certainly functions, never source text.
 _FUNCTION_ARGUMENTS = frozenset(
     {"function_expression", "arrow_function", "generator_function"}
@@ -397,6 +399,35 @@ def unwrap(node: Any) -> Any:
         # ``<T>x``: the expression follows the type arguments.
         current = named[-1] if current.type == "type_assertion" else named[0]
     return current
+
+
+def _callee(node: Any) -> Any:
+    """``node`` without transparent wrappers and comma expressions, at every
+    level: ``(0, (1, (Object.assign)))`` -> ``Object.assign``. A comma
+    expression evaluates to its last operand (treesitter-chunker#694)."""
+    current = unwrap(node)
+    while current is not None and current.type == "sequence_expression":
+        operands = [
+            child for child in current.named_children if child.type != "comment"
+        ]
+        current = unwrap(operands[-1]) if operands else None
+    return current
+
+
+def _arguments(node: Any) -> list[Any]:
+    """The argument expressions of an ``arguments`` node, without comments."""
+    if node is None:
+        return []
+    return [child for child in node.named_children if child.type != "comment"]
+
+
+def _array_items(node: Any) -> list[Any] | None:
+    """The items of an array literal (through parentheses and commas), or
+    ``None`` for any other expression."""
+    node = _callee(node)
+    if node is None or node.type != "array":
+        return None
+    return [child for child in node.named_children if child.type != "comment"]
 
 
 class _Analysis:
@@ -1125,79 +1156,140 @@ class _Analysis:
             return self._static_key(named[0]) if named else None
         return self._static_key(key)
 
-    def _writer_namespace(self, node: Any) -> bool:
-        """Whether an expression is ``Object`` or ``Reflect``: the global
+    def _writer_namespace(self, node: Any) -> str | None:
+        """``"Object"`` or ``"Reflect"`` when an expression is that global
         name, or that property of the global object (``globalThis.Object``,
         ``window['Reflect']``) or of a receiver ``this`` (``this.Object``;
-        C-1, the president's #691 re-check)."""
-        node = unwrap(node)
+        C-1, the president's #691 re-check), also as the last operand of a
+        comma expression (``(0, Object)``, treesitter-chunker#694); else
+        ``None``."""
+        node = _callee(node)
         if node is None:
-            return False
+            return None
         if node.type == "identifier":
             name = _text(node, self.source)
-            return name in _WRITER_NAMESPACES and self._refers_to_global(node, name)
+            if name in _WRITER_NAMESPACES and self._refers_to_global(node, name):
+                return name
+            return None
         if node.type in _MEMBER_ACCESS:
-            return self._member_key(node) in _WRITER_NAMESPACES and (
-                self._is_global_object(
-                    node.child_by_field_name("object"), receiver=True
-                )
-            )
-        return False
+            key = self._member_key(node)
+            if key in _WRITER_NAMESPACES and self._is_global_object(
+                node.child_by_field_name("object"), receiver=True
+            ):
+                return key
+        return None
 
     def _is_property_writer(self, node: Any) -> bool:
         """Whether an expression is a property writer: ``Object.assign``,
         ``Object['defineProperty']``, ``Reflect[`set`]`` and the rest of
-        :data:`_PROPERTY_WRITERS`. An escaped or computed key on ``Object``
+        :data:`_PROPERTY_WRITERS`, through parentheses and commas
+        (``(0, Object.assign)``). An escaped or computed key on ``Object``
         or ``Reflect`` may name one, so it counts too (fail closed)."""
-        node = unwrap(node)
+        node = _callee(node)
         if node is None or node.type not in _MEMBER_ACCESS:
             return False
-        obj = node.child_by_field_name("object")
-        if not self._writer_namespace(obj):
+        namespace = self._writer_namespace(node.child_by_field_name("object"))
+        if namespace is None:
             return False
         key = self._member_key(node)
         if key is None or key == _UNREADABLE_KEY:
             return True
-        namespace = unwrap(obj)
-        namespace_name = (
-            _text(namespace, self.source)
-            if namespace.type == "identifier"
-            else self._member_key(namespace)
-        )
-        return (namespace_name, key) in _PROPERTY_WRITERS
+        return (namespace, key) in _PROPERTY_WRITERS
 
     def _property_writer_call(self, node: Any) -> None:
         """``Object.assign(G, …)``, ``Object['defineProperty'](G, …)`` and the
-        like, also through ``.call``/``.apply``/``.bind``, where ``G`` is a
+        like, also through ``.call``/``.apply``/``.bind`` (nested, and on a
+        comma or parenthesized writer: ``(0, Object.assign).call(null, G,
+        …)``, ``Object.assign.bind(null)(G, …)``; treesitter-chunker#694)
+        and ``Reflect.apply(Object.assign, null, [G, …])``, where ``G`` is a
         receiver ``this`` (or the global object, which
         :meth:`_global_object_use` already catches), may write any global."""
-        function = unwrap(node.child_by_field_name("function"))
-        while function is not None and function.type == "sequence_expression":
-            # ``(0, Object.assign)(this, …)`` calls the last operand.
-            operands = function.named_children
-            function = unwrap(operands[-1]) if operands else None
-        if function is None:
-            return
-        arguments = node.child_by_field_name("arguments")
-        named = arguments.named_children if arguments is not None else []
-        target = None
-        if self._is_property_writer(function):
-            target = named[0] if named else None
-        elif function.type in _MEMBER_ACCESS and self._is_property_writer(
-            function.child_by_field_name("object")
+        targets = self._writer_targets(
+            node.child_by_field_name("function"),
+            _arguments(node.child_by_field_name("arguments")),
+        )
+        if any(
+            target is _ANY_TARGET
+            or self._is_global_object(_callee(target), receiver=True)
+            for target in targets
         ):
-            invoker = self._member_key(function)
-            if invoker in ("call", "bind"):
-                target = named[1] if len(named) > 1 else None
-            elif invoker == "apply":
-                listed = unwrap(named[1]) if len(named) > 1 else None
-                if listed is not None and listed.type == "array":
-                    items = listed.named_children
-                    target = items[0] if items else None
-            elif invoker is None or invoker == _UNREADABLE_KEY:
-                self.global_wildcard = True
-        if target is not None and self._is_global_object(target, receiver=True):
             self.global_wildcard = True
+
+    def _writer_targets(self, function: Any, arguments: list[Any]) -> list[Any]:
+        """The expressions a property writer may receive as its first
+        argument when ``function`` is called with ``arguments``: empty when
+        ``function`` is no writer (or the target is not spelled out), and
+        :data:`_ANY_TARGET` when an unreadable invoker may pass any.
+
+        Parentheses and commas are looked through at every level (a comma
+        expression evaluates to its last operand). ``F.call(t, a, …)`` and
+        ``F.bind(t, a, …)`` pass ``a, …`` to ``F``; ``F.apply(t, [a, …])``
+        passes the array's items; ``F.bind(t, a, …)(b, …)`` passes ``a, …,
+        b, …``; ``Reflect.apply(F, t, [a, …])`` passes the array's items. A
+        computed key on ``Reflect`` may name ``apply`` as well as a writer.
+        The receiver argument of a nested invoker is not checked, so
+        ``F.call.call(other, …)`` is read as ``F`` (this only adds ``*``)."""
+        function = _callee(function)
+        if function is None:
+            return []
+        if function.type == "call_expression":
+            # ``F.bind(t, a, …)(b, …)``.
+            bound = _callee(function.child_by_field_name("function"))
+            if bound is None or bound.type not in _MEMBER_ACCESS:
+                return []
+            if self._member_key(bound) != "bind":
+                return []
+            preset = _arguments(function.child_by_field_name("arguments"))
+            return self._writer_targets(
+                bound.child_by_field_name("object"), preset[1:] + arguments
+            )
+        if function.type not in _MEMBER_ACCESS:
+            return []
+        obj = function.child_by_field_name("object")
+        invoker = self._member_key(function)
+        targets: list[Any] = []
+        if self._writer_namespace(obj) == "Reflect" and invoker in (
+            "apply",
+            None,
+            _UNREADABLE_KEY,
+        ):
+            listed = _array_items(arguments[2]) if len(arguments) > 2 else None
+            if listed is not None:
+                targets.extend(self._writer_targets(arguments[0], listed))
+        if self._is_property_writer(function):
+            targets.extend(arguments[:1])
+        elif invoker in ("call", "bind"):
+            targets.extend(self._writer_targets(obj, arguments[1:]))
+        elif invoker == "apply":
+            listed = _array_items(arguments[1]) if len(arguments) > 1 else None
+            if listed is not None:
+                targets.extend(self._writer_targets(obj, listed))
+        elif invoker in (None, _UNREADABLE_KEY) and self._writer_chain(obj):
+            # ``Object.assign[k](…)``, ``Object.assign.call[k](…)``: the key
+            # may name any invoker.
+            targets.append(_ANY_TARGET)
+        return targets
+
+    def _writer_chain(self, node: Any) -> bool:
+        """Whether an expression is a property writer or an invoker of one
+        (``Object.assign``, ``(0, Object.assign).call``,
+        ``Object.assign.bind(null)``)."""
+        node = _callee(node)
+        if node is None:
+            return False
+        if self._is_property_writer(node):
+            return True
+        if node.type == "call_expression":
+            node = _callee(node.child_by_field_name("function"))
+            if node is None or node.type not in _MEMBER_ACCESS:
+                return False
+            if self._member_key(node) != "bind":
+                return False
+        elif node.type not in _MEMBER_ACCESS or self._member_key(node) not in (
+            _INVOKERS
+        ):
+            return False
+        return self._writer_chain(node.child_by_field_name("object"))
 
     def _use_site(self, node: Any) -> tuple[Any, Any]:
         """``(expression, parent)``: ``node`` with its transparent wrappers,

@@ -132,6 +132,12 @@ logger = logging.getLogger(__name__)
 # js "20": PR 5 fold 11 (P5-50: in JavaScript, a ``<!--`` in code, or a
 # ``-->`` in code with only whitespace and comments before it on its line,
 # makes the file unparsed).
+# js "21": treesitter-chunker#694: property-writer calls look through
+# parentheses and commas at every level (``(0, Object.assign).call(null,
+# this, …)``, ``(0, Object).assign``), nested ``.call``/``.apply``/``.bind``
+# and a bound writer called later (``Object.assign.bind(null)(this, …)``),
+# ``Reflect.apply(Object.assign, null, [this, …])`` and comments between
+# arguments; each such call on a receiver ``this`` now gives ``*``.
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -239,7 +245,7 @@ logger = logging.getLogger(__name__)
 # run-wide causes and parse hazards (``module_bindings``).
 # python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
 # ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "38"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "21", "python": "38"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
