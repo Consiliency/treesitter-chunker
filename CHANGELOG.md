@@ -9,10 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Python structural call resolution now detects `__main__` self-references
-  in f-string literal parts and format specs and in constant templates
-  used with `str.format`, `str.format_map`, `%` and `string.Template`
-  (treesitter-chunker#698).
+- Python structural call resolution now treats a constant string as a
+  `__main__` self-reference when a component split on format and attribute
+  punctuation or whitespace (or a default `string.Template` identifier) is
+  `__main__`, so templates stored in a variable and later formatted with
+  `str.format`, `format_map`, `%`, `string.Template` or logging fail closed.
+  The literal parts and format specs of f-strings and t-strings count too;
+  they are read from the syntax tree, and a part that cannot be decoded
+  fails closed (treesitter-chunker#698).
 
 ### Added
 

@@ -3,10 +3,10 @@
 Each mutation disables one rule by a single textual edit. The script copies
 the checkout to a temporary directory, checks that the unmutated copy passes,
 then applies each mutation alone and runs the Tier 2 Python tests, the
-``imports`` expected-table test and the shared K-3 format regression serially.
-A mutation is *killed* when a test fails. The script prints one tab-separated
-line per mutation and exits
-non-zero if any mutation survives or does not apply.
+``imports`` expected-table test and the shared K-3 main-string regressions
+serially. A mutation is *killed* when a test fails. The script prints one
+tab-separated line per mutation and exits non-zero if any mutation survives
+or does not apply.
 
 Usage (Python 3.14, from the repository root)::
 
@@ -33,6 +33,7 @@ TESTS = (
     "tests/test_call_resolution_tier2_py.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
     "tests/test_call_resolution_tier1_py.py::test_main_format_strings_fail_closed",
+    "tests/test_call_resolution_tier1_py.py::test_main_string_components_fail_closed",
 )
 
 # (id, file, old text, new text). The old text must occur in the file once.
@@ -659,11 +660,36 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "and not analysis._main_guard(node):",
         "and False:",
     ),
+    # K-3 main-string classifier (treesitter-chunker#698, R-698-1).
     (
-        "main-format-template",
+        "main-component-split",
         PYS,
-        "            _main_format_call(node, source, template_names) for node in calls",
-        "            False for node in calls",
+        '_MAIN_COMPONENTS = re.compile(r"[.:{}\\[\\]!()$%\\s]")',
+        '_MAIN_COMPONENTS = re.compile(r"[.:]")',
+    ),
+    (
+        "main-percent-fields",
+        PYS,
+        '_MAIN_COMPONENTS = re.compile(r"[.:{}\\[\\]!()$%\\s]")',
+        '_MAIN_COMPONENTS = re.compile(r"[.:{}\\[\\]!$%\\s]")',
+    ),
+    (
+        "main-template-identifier",
+        PYS,
+        '(match["named"] or match["braced"]) in _MAIN_NAMES',
+        "False",
+    ),
+    (
+        "main-fstring-tstring-parts",
+        PYS,
+        "                if _interpolated_names_main(node, source):",
+        "                if False:",
+    ),
+    (
+        "main-undecodable-fails-closed",
+        PYS,
+        "    except (_UndecodableError, UnicodeDecodeError):\n        return True",
+        "    except (_UndecodableError, UnicodeDecodeError):\n        return False",
     ),
     (
         "b-sys-dunder",

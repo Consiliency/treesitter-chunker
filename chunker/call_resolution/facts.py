@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"20"`` for the ``js`` family and ``"38"`` for
+Schema (fact version ``"20"`` for the ``js`` family and ``"39"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -197,28 +197,21 @@ logger = logging.getLogger(__name__)
 # or a from-import is relied on by name; a recorded write of it fails closed).
 # python "29": fold 27 (Codex 4657978945: an allow-listed read's result must
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
-# python "39": K-3 also sees main names in f-string parts and constant
-# format templates (treesitter-chunker#698).
-# python "38": PR 6 fold 7 (#705 P6-21, P6-22): a constant name (patcher
-# method or ``getfixturevalue``) counts in any spelling ``_constant_string``
-# decodes, as a positional argument, a keyword value or a subscript key.
-# python "37": PR 6 fold 6 (#705 E6-9b): ``setattr``/``delattr``/
-# ``syspath_prepend`` (and ``setitem``/``delitem``) are MonkeyPatch methods
-# on any receiver except the ``operator`` module, also by name as a call
-# argument or as a method reference; the MonkeyPatch instance and class kinds
-# are gone.
-# python "36": PR 6 fold 5 (#705 P6-10..P6-15, E6-9a): the patcher-escape
-# scan runs in every file (causes O-2-scoped by the file's own
-# classification); ``syspath_prepend`` on a MonkeyPatch is ``module-system``;
-# MonkeyPatch aliases must be unreachable bindings; ``getfixturevalue``
-# reached by alias or by ``getattr`` is a computed fixture; an annotation is
-# safe only with no call in between.
-# python "35": PR 6 fold 4 (#705 E6-9): pytest's ``MonkeyPatch`` is a patcher
-# kind (imports of it under any alias, ``MonkeyPatch()``/``.context()``,
-# ``getfixturevalue``; no substring rule), and in a test file a patcher value
-# off the E-21 allow-list, or a computed ``getfixturevalue``, is an
-# ``unresolvable-writer`` cause. The fixtures' digests change only by the
-# version.
+# python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
+# ordinary lookup at the use site, so open class namespaces fail closed).
+# python "31": Tier 2 Python (plan PR 6): the module-scope export table,
+# what ``import m`` binds (``bound``), import groups and member chains of
+# calls, every use of an imported module object (writes and escapes, #697),
+# literal module acquisitions, star imports, dotted constant strings,
+# run-wide causes and parse hazards (``module_bindings``).
+# python "32": PR 6 fold 1 (#705 Q2): ``compile`` alone is no evaluator
+# cause; the fixtures' digests are unchanged, but a file that only compiles
+# source loses its ``evaluator`` shutoff.
+# python "33": PR 6 fold 2 (#705 E6-1..E6-8): ``module_imports`` (every
+# import binding in the module namespace), patcher targets (computed ones a
+# cause, constant ones a whole-module taint), write chains taint their first
+# attribute, ``__path__``/``__spec__`` reads are safe, and the Tier 2 module
+# facts are computed only in ``imports`` mode (empty otherwise).
 # python "34": PR 6 fold 3 (#705 P6-1..P6-4, N-1): own-submodule imports
 # are ``from . import x`` or the package's full dotted name only, and none in
 # an ``__init__.py`` with a star import; patchers follow the Tier 1 W-3
@@ -226,21 +219,31 @@ logger = logging.getLogger(__name__)
 # ``patch.dict`` target is a cause; a write of a function's ``__code__``,
 # ``__closure__``, ``__defaults__`` or ``__kwdefaults__`` is a
 # ``module-object`` cause.
-# python "33": PR 6 fold 2 (#705 E6-1..E6-8): ``module_imports`` (every
-# import binding in the module namespace), patcher targets (computed ones a
-# cause, constant ones a whole-module taint), write chains taint their first
-# attribute, ``__path__``/``__spec__`` reads are safe, and the Tier 2 module
-# facts are computed only in ``imports`` mode (empty otherwise).
-# python "32": PR 6 fold 1 (#705 Q2): ``compile`` alone is no evaluator
-# cause; the fixtures' digests are unchanged, but a file that only compiles
-# source loses its ``evaluator`` shutoff.
-# python "31": Tier 2 Python (plan PR 6): the module-scope export table,
-# what ``import m`` binds (``bound``), import groups and member chains of
-# calls, every use of an imported module object (writes and escapes, #697),
-# literal module acquisitions, star imports, dotted constant strings,
-# run-wide causes and parse hazards (``module_bindings``).
-# python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
-# ordinary lookup at the use site, so open class namespaces fail closed).
+# python "35": PR 6 fold 4 (#705 E6-9): pytest's ``MonkeyPatch`` is a patcher
+# kind (imports of it under any alias, ``MonkeyPatch()``/``.context()``,
+# ``getfixturevalue``; no substring rule), and in a test file a patcher value
+# off the E-21 allow-list, or a computed ``getfixturevalue``, is an
+# ``unresolvable-writer`` cause. The fixtures' digests change only by the
+# version.
+# python "36": PR 6 fold 5 (#705 P6-10..P6-15, E6-9a): the patcher-escape
+# scan runs in every file (causes O-2-scoped by the file's own
+# classification); ``syspath_prepend`` on a MonkeyPatch is ``module-system``;
+# MonkeyPatch aliases must be unreachable bindings; ``getfixturevalue``
+# reached by alias or by ``getattr`` is a computed fixture; an annotation is
+# safe only with no call in between.
+# python "37": PR 6 fold 6 (#705 E6-9b): ``setattr``/``delattr``/
+# ``syspath_prepend`` (and ``setitem``/``delitem``) are MonkeyPatch methods
+# on any receiver except the ``operator`` module, also by name as a call
+# argument or as a method reference; the MonkeyPatch instance and class kinds
+# are gone.
+# python "38": PR 6 fold 7 (#705 P6-21, P6-22): a constant name (patcher
+# method or ``getfixturevalue``) counts in any spelling ``_constant_string``
+# decodes, as a positional argument, a keyword value or a subscript key.
+# python "39": K-3 classifies a ``__main__`` string by components split on
+# format and attribute punctuation and whitespace, and by a default
+# ``string.Template`` identifier, so stored templates count; f-string and
+# t-string literal parts and format specs are decoded from the tree, and an
+# undecodable one fails closed (treesitter-chunker#698, R-698-1).
 CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "20", "python": "39"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})

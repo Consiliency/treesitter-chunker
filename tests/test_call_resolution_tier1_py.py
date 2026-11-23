@@ -4280,12 +4280,53 @@ MAIN_FORMAT_CASES = {
     "safe-substitute": "string.Template(template='${__main__}').safe_substitute(P())",
     "template-suffix": "string.Template('$__main__!').substitute(P())",
     "template-import-alias": "from string import Template as T\nT('$__main__').substitute(P())",
+    # R-698-1 B-1: a stored template is classified as a string, wherever it
+    # is formatted later.
+    "stored-format": "T = '{:__main__}'\nT.format(P())",
+    "stored-format-map": "T = '{__main__}'\nT.format_map(P())",
+    "stored-percent": "T = '%(__main__)s'\nT % P()",
+    "stored-percent-augmented": "T = '%(__main__)s'\nT %= P()",
+    "stored-template": "T = '$__main__'\nstring.Template(T).substitute(P())",
+    "stored-template-hyphen": "T = '$__main__-x'\nstring.Template(T).substitute(P())",
+    "stored-template-space": "T = '$__main__ x'\nstring.Template(T).substitute(P())",
+    "docstring-template": "class D:\n    '{:__main__}'\nD.__doc__.format(P())",
+    # R-698-1 S-1: other routes to the same constant string.
+    "dunder-mod": "'%(__main__)s'.__mod__(P())",
+    "str-dunder-mod": "str.__mod__('%(__main__)s', P())",
+    "operator-mod": "operator.mod('%(__main__)s', P())",
+    "formatter-vformat": "string.Formatter().vformat('{:__main__}', (P(),), {})",
+    "template-alias-assign": "T = string.Template\nT('$__main__').substitute(P())",
+    "template-subclass": "class T(string.Template):\n    pass\nT('$__main__').substitute(P())",
+    "template-subclass-brace-delimiter": (
+        "class T(string.Template):\n    delimiter = '@'\nT('@{__main__}').substitute(P())"
+    ),
+    "logging-percent": "logging.warning('%(__main__)s', PM())",
+    "logging-brace-style": (
+        "_h = logging.StreamHandler()\n"
+        "_h.setFormatter(logging.Formatter('{p:__main__}', style='{', validate=False))\n"
+        "logging.getLogger('x').addHandler(_h)\n"
+        "logging.getLogger('x').warning('m', extra={'p': P()})"
+    ),
+    "bound-format-method": "F = '{:__main__}'.format\nF(P())",
+    "mapped-format-method": "list(map('{:__main__}'.format, [P()]))",
+    # R-698-1 S-2: t-string literal parts, also passed directly.
+    "tstring-literal": "patch_main(t'__main__.{h}')",
+    "tstring-no-interpolation": "patch_main(t'__main__')",
+    "tstring-spec": "[format(i.value, i.format_spec) for i in t'{P():__main__}'.interpolations]",
+    "tstring-concat": "patch_main(t'__ma' t'in__.{h}')",
+    "tstring-escaped": r"patch_main(t'\x5f_main__.{h}')",
+    "fstring-plus-literal": "patch_main(f'{\"\"}__ma' + 'in__.' + h)",
 }
 
 # The runtime probe supplies the callback, so the source isolates the
-# format string as the only module-rebinding signal visible to Tier 1.
+# format string as the only module-rebinding signal visible to Tier 1. Each
+# case, run with this source on CPython 3.14.10 under a profiler, handed the
+# main name to the callback and then called the rebound ``helper``.
 MAIN_FORMAT_SOURCE = """\
 from format_probe import patch_main
+import collections.abc
+import logging
+import operator
 import string
 
 def helper(*args):
@@ -4295,6 +4336,11 @@ class P:
     __format__ = lambda self, spec: patch_main(spec) if spec else ''
     __getitem__ = lambda self, key: patch_main(key)
     __getattr__ = lambda self, attr: patch_main(attr)
+
+class PM(collections.abc.Mapping):
+    __getitem__ = lambda self, key: patch_main(key)
+    __iter__ = lambda self: iter(['k'])
+    __len__ = lambda self: 1
 
 h = ''.join(('hel', 'per'))
 """
@@ -4306,6 +4352,13 @@ def test_main_format_strings_fail_closed(form: str) -> None:
     assert reason(source) == "dynamic-scope"
 
 
+def test_main_format_source_alone_resolves() -> None:
+    # Control: without a main component the probe source is not dynamic, so
+    # each case above fails closed because of its string.
+    source = MAIN_FORMAT_SOURCE + "'{:other}'.format(P())\nresult = helper('ab')\n"
+    assert outcome(source, "helper", -1)["outcome"] == "local"
+
+
 def test_main_guard_resolves_the_call_in_its_body() -> None:
     source = HELPER + "if __name__ == '__main__':\n    helper()\n"
     assert proof_text(source) == PROOF
@@ -4314,13 +4367,30 @@ def test_main_guard_resolves_the_call_in_its_body() -> None:
 @pytest.mark.parametrize(
     "form",
     [
-        "f'{obj:prefix__main__}'",
-        "'{prefix__main__}'.format_map(obj)",
+        # R-698-1: these pinned the narrower format-site rule; any constant
+        # string with a punctuation-split main component now fails closed.
         "template = '{__main__}'",
         "string.Template('$$__main__').substitute(obj)",
+        "log = '__main__ started'",
+        # A string tree-sitter accepts but the K-3 decoder cannot read.
+        r"f'\xZZ{obj}'",
     ],
 )
-def test_main_format_requires_a_component_at_a_format_site(form: str) -> None:
+def test_main_string_components_fail_closed(form: str) -> None:
+    assert reason(HELPER + form + "\nhelper()\n") == "dynamic-scope"
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "f'{obj:prefix__main__}'",
+        "'{prefix__main__}'.format_map(obj)",
+        "'$__main__x'",
+        "'__main__-x'",
+        "f'{obj}__main__x'",
+    ],
+)
+def test_main_needs_a_whole_component(form: str) -> None:
     assert proof_text(HELPER + form + "\nhelper()\n") == PROOF
 
 

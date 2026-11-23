@@ -146,10 +146,14 @@ every other comparison, ``in``, chain, ``match`` form, or guard in a function,
 method or class fails closed; ``__mp_main__``, the name a multiprocessing
 spawn child imports the script under, counts as ``__main__``, and constant
 strings split on ``.`` and ``:`` (``pkgutil.resolve_name("pkg.mod:attr")``)
-for this rule, the own-name rule and the dynamic attribute names. The main
-name also counts in decoded f-string literal parts and format specs,
-including nested specs, and in constant templates for ``format``,
-``format_map``, ``%`` and ``string.Template`` (treesitter-chunker#698);
+for the own-name rule and the dynamic attribute names. For this rule a
+constant string also splits on format and attribute punctuation (``{ } [ ]
+! ( ) $ %`` and whitespace), and on the identifier a default
+``string.Template`` substitutes, so a stored template (``T = "{:__main__}"``)
+counts wherever it is later formatted; the decoded literal parts and format
+specs of f-strings and t-strings count the same way, and a string tree-sitter
+accepts but this rule cannot decode fails closed (treesitter-chunker#698,
+R-698-1);
 ``X.modules[__name__]`` or
 ``X.modules.get(__name__)`` (also ``__getitem__``, ``setdefault``, ``pop``)
 through any receiver ``X``; an import of the file's own module (``import a``
@@ -389,6 +393,13 @@ _MAIN_NAMES = frozenset({_MAIN, "__mp_main__"})
 # to this module's namespace (``runpy.run_path`` and
 # ``spec_from_file_location`` build a new module object).
 _NAME_SEPARATORS = re.compile(r"[.:]")
+# K-3 components of a ``__main__`` string (R-698-1): format and attribute
+# punctuation and whitespace split a constant string, because a format field,
+# key, attribute, conversion or spec (``"{0[__main__]}"``, ``"{:__main__}"``,
+# ``"%(__main__)s"``, ``"$__main__ "``) reaches user code on its own wherever
+# the template is later used. ``-`` and other characters stay inside a
+# component; a default ``string.Template`` identifier is matched separately.
+_MAIN_COMPONENTS = re.compile(r"[.:{}\[\]!()$%\s]")
 # ``frame.f_locals`` writes through to a function's locals (PEP 667, Python
 # 3.13+): every lookup of a file that mentions it fails closed.
 _FRAME_LOCALS = "f_locals"
@@ -1464,7 +1475,6 @@ class _Analysis:
         sys_names = {_SYS}
         main_names = set(_MAIN_NAMES)
         main_strings: list[Any] = []
-        template_names = {"Template"}
         identifiers: list[Any] = []
         # Fold 18: calls, attributes, ``|=`` statements and namespace aliases,
         # classified once every alias is known.
@@ -1551,9 +1561,9 @@ class _Analysis:
                         # a component of a dotted path (``getattr(pkg, "a")``,
                         # ``pkg.__dict__["a"]``, ``NAME = "a"``; N-3).
                         self.dynamic = True
-                if _fstring_names_main(node, source) or _percent_template_names_main(
-                    node, source
-                ):
+                if _interpolated_names_main(node, source):
+                    # Literal parts and format specs of f-strings and
+                    # t-strings, decoded from the tree (R-698-1).
                     self.dynamic = True
             elif kind in ("subscript", "call"):
                 if kind == "subscript":
@@ -1582,10 +1592,6 @@ class _Analysis:
                     for last, bound in _from_import_names(node, source):
                         if last in _OPERATOR_WRITERS:
                             operator_names.update(_spellings(bound, source))
-                if not dots and module_parts == ["string"]:
-                    for last, bound in _from_import_names(node, source):
-                        if last == "Template":
-                            template_names.update(_spellings(bound, source))
                 if not dots and module_parts == ["pydoc"]:
                     for last, _bound in _from_import_names(node, source):
                         if last in _PYDOC_RESOLVERS:
@@ -1654,10 +1660,6 @@ class _Analysis:
         for node in main_strings:
             if not self._main_guard(node):
                 self.dynamic = True
-        if not self.dynamic and any(
-            _main_format_call(node, source, template_names) for node in calls
-        ):
-            self.dynamic = True
         self.mock_import_names = mock_names
         self.patch_import_names = patch_names
         self.identifier_nodes = identifiers
@@ -3332,98 +3334,200 @@ def _constant_string(node: Any, source: bytes) -> str | None:
 
 
 def _names_main(value: str) -> bool:
-    return any(part in _MAIN_NAMES for part in _NAME_SEPARATORS.split(value))
+    """Whether a decoded string names the main module for K-3 (R-698-1).
 
-
-def _fstring_names_main(node: Any, source: bytes) -> bool:
-    strings = node.named_children if node.type == "concatenated_string" else (node,)
-    if not any(
-        string.type == "string"
-        and any(child.type == "interpolation" for child in string.named_children)
-        for string in strings
-    ):
+    A component counts when it equals a main name after splitting on
+    :data:`_MAIN_COMPONENTS`, or when a default ``string.Template`` (``$``
+    delimiter, default identifier pattern) would look it up
+    (``"$__main__-x"``).
+    """
+    if "main__" not in value:
         return False
-    # CPython's expression parser decodes escapes and separates literal text
-    # from replacement fields, including those inside format specs.
+    return any(part in _MAIN_NAMES for part in _MAIN_COMPONENTS.split(value)) or any(
+        (match["named"] or match["braced"]) in _MAIN_NAMES
+        for match in Template.pattern.finditer(value)
+    )
+
+
+class _UndecodableError(Exception):
+    """A string piece tree-sitter accepted that the K-3 decoder cannot read."""
+
+
+def _decode_piece(prefix: str, quote: str, raw: str) -> str:
+    # A plain literal with the piece's raw/non-raw prefix decodes its escapes.
+    # The trailing sentinel keeps a quote at the end of a triple-quoted piece
+    # (``f'''it''{x}'''``) from closing the literal early.
     try:
-        expression = ast.parse(f"({_text(node, source)})", mode="eval")
-    except (SyntaxError, ValueError):
-        return False
-    return any(
-        isinstance(part, ast.Constant)
-        and isinstance(part.value, str)
-        and _names_main(part.value)
-        for joined in ast.walk(expression)
-        if isinstance(joined, ast.JoinedStr)
-        for part in joined.values
+        value = ast.literal_eval(f"{prefix}{quote}{raw}#{quote}")
+    except (SyntaxError, ValueError) as exc:
+        raise _UndecodableError from exc
+    if not isinstance(value, str) or not value.endswith("#"):
+        raise _UndecodableError
+    return value[:-1]
+
+
+def _string_runs(node: Any, source: bytes, runs: list[str], specs: list[str]) -> None:
+    """Append the literal runs of a string expression to ``runs``.
+
+    The expression is a string, adjacent strings, ``+`` or parentheses; any
+    other operand, and each interpolation, ends a run (``""`` marks the
+    break). The literal runs of format specs, nested ones included, go to
+    ``specs``. Raises :class:`_UndecodableError` for a piece it cannot decode.
+    """
+    kind = node.type
+    if kind == "parenthesized_expression":
+        inner = _unwrap(node, skip_comments=True)
+        if inner is not node:
+            _string_runs(inner, source, runs, specs)
+            return
+    elif kind == "concatenated_string":
+        for child in node.named_children:
+            if child.type != "comment":
+                _string_runs(child, source, runs, specs)
+        return
+    elif kind == "binary_operator":
+        operator = node.child_by_field_name("operator")
+        left = node.child_by_field_name("left")
+        right = node.child_by_field_name("right")
+        if (
+            operator is not None
+            and operator.type == "+"
+            and left is not None
+            and right is not None
+        ):
+            _string_runs(left, source, runs, specs)
+            _string_runs(right, source, runs, specs)
+            return
+    elif kind == "string":
+        _string_node_runs(node, source, runs, specs)
+        return
+    runs.append("")
+
+
+def _string_node_runs(
+    node: Any, source: bytes, runs: list[str], specs: list[str]
+) -> None:
+    start = next((c for c in node.children if c.type == "string_start"), None)
+    opening = _text(start, source) if start is not None else ""
+    quote_at = min(
+        (index for index in (opening.find("'"), opening.find('"')) if index >= 0),
+        default=-1,
     )
+    if quote_at < 0:
+        raise _UndecodableError
+    prefix = opening[:quote_at].lower()
+    quote = opening[quote_at:]
+    if "b" in prefix:
+        # Bytes templates are plan risk R12.
+        runs.append("")
+        return
+    interpolated = "f" in prefix or "t" in prefix
+    plain = prefix.replace("f", "").replace("t", "")
+    for child in node.children:
+        if child.type == "string_start":
+            continue
+        raw = _text(child, source)
+        if child.type == "string_end":
+            # Tree-sitter folds a raw string's final ``\'`` into the end
+            # token (``rf"{x}\""``): the text before the quote is content.
+            if not raw.endswith(quote):
+                raise _UndecodableError
+            raw = raw[: len(raw) - len(quote)]
+            if not raw:
+                continue
+        elif child.type == "interpolation":
+            _interpolation_runs(child, source, plain, quote, runs, specs)
+            continue
+        if interpolated:
+            raw = raw.replace("{{", "{").replace("}}", "}")
+        _extend_run(runs, _decode_piece(plain, quote, raw))
 
 
-_FORMAT_FIELDS = re.compile(r"[{}\[\]!]")
-_PERCENT_FIELDS = re.compile(r"[()]")
-
-
-def _main_in_template(node: Any, source: bytes, delimiters: re.Pattern[str]) -> bool:
-    # Format punctuation can bound a field, key or spec that user code sees
-    # on its own. Treat those pieces conservatively as K-3 components.
-    value = _constant_string(node, source)
-    return value is not None and any(
-        _names_main(part) for part in delimiters.split(value)
-    )
-
-
-def _percent_template_names_main(node: Any, source: bytes) -> bool:
-    if node.type != "binary_operator":
-        return False
-    operator = node.child_by_field_name("operator")
-    left = node.child_by_field_name("left")
-    return (
-        operator is not None
-        and operator.type == "%"
-        and left is not None
-        and _main_in_template(left, source, _PERCENT_FIELDS)
-    )
-
-
-def _main_format_call(node: Any, source: bytes, template_names: set[str]) -> bool:
-    function = node.child_by_field_name("function")
-    if function is None:
-        return False
-    function = _unwrap(function, skip_comments=True)
-    if function.type == "attribute":
-        name_node = function.child_by_field_name("attribute")
-        receiver = function.child_by_field_name("object")
+def _extend_run(runs: list[str], piece: str) -> None:
+    # Adjacent literal pieces form one run, as CPython joins them.
+    if runs and runs[-1]:
+        runs[-1] += piece
     else:
-        name_node = function
-        receiver = None
-    if name_node is None:
+        runs.append(piece)
+
+
+def _interpolation_runs(
+    node: Any,
+    source: bytes,
+    plain: str,
+    quote: str,
+    runs: list[str],
+    specs: list[str],
+) -> None:
+    children = node.children
+    for index, child in enumerate(children):
+        if child.type == "=" and index > 0 and index + 1 < len(children):
+            # ``f"{x = }"`` prepends its source text, spaces included.
+            debug = source[children[0].end_byte : children[index + 1].start_byte]
+            _extend_run(runs, debug.decode("utf-8"))
+        elif child.type == "format_specifier":
+            # A spec is its own run sequence; a nested replacement field
+            # (``f"{x:{y}}"``) breaks it.
+            spec: list[str] = []
+            position = child.start_byte + 1  # after ``:``
+            for part in child.named_children:
+                if part.type == "format_expression":
+                    gap = source[position : part.start_byte].decode("utf-8")
+                    _extend_run(spec, _decode_piece(plain, quote, gap))
+                    _interpolation_runs(part, source, plain, quote, spec, specs)
+                    position = part.end_byte
+            gap = source[position : child.end_byte].decode("utf-8")
+            _extend_run(spec, _decode_piece(plain, quote, gap))
+            specs.extend(spec)
+    runs.append("")
+
+
+def _interpolated_names_main(node: Any, source: bytes) -> bool:
+    """Whether an f-string or t-string expression names the main module in
+    a literal part or format spec (#698, R-698-1).
+
+    The parts come from the tree-sitter node, so the facts do not depend on
+    the host Python's grammar; a piece that cannot be decoded fails closed.
+    Plain constant strings are left to :func:`_constant_string`.
+    """
+    if not _has_interpolated(node, source):
         return False
-    name = _text(name_node, source)
-    if receiver is not None and name in ("format", "format_map"):
-        # Bound calls carry the template on the receiver. Unbound calls
-        # (str.format_map(template, mapping)) pass it as the first argument.
-        return _main_in_template(receiver, source, _FORMAT_FIELDS) or any(
-            _main_in_template(arg, source, _FORMAT_FIELDS)
-            for arg in _call_arguments(node)[:1]
+    runs: list[str] = []
+    specs: list[str] = []
+    try:
+        _string_runs(node, source, runs, specs)
+    except (_UndecodableError, UnicodeDecodeError):
+        return True
+    return any(_names_main(run) for run in runs + specs if run)
+
+
+def _has_interpolated(node: Any, source: bytes) -> bool:
+    # Whether :func:`_string_runs` would meet an f-string or t-string.
+    kind = node.type
+    if kind == "parenthesized_expression":
+        inner = _unwrap(node, skip_comments=True)
+        return inner is not node and _has_interpolated(inner, source)
+    if kind == "concatenated_string":
+        return any(_has_interpolated(child, source) for child in node.named_children)
+    if kind == "binary_operator":
+        operator = node.child_by_field_name("operator")
+        return (
+            operator is not None
+            and operator.type == "+"
+            and any(
+                side is not None and _has_interpolated(side, source)
+                for side in (
+                    node.child_by_field_name("left"),
+                    node.child_by_field_name("right"),
+                )
+            )
         )
-    if name == "Template" or (
-        function.type == "identifier" and _spellings(name_node, source) & template_names
-    ):
-        # The constructed Template can be stored before substitute or
-        # safe_substitute is called, so classify it at construction.
-        for arg in _call_arguments(node):
-            if arg.type == "keyword_argument":
-                keyword = arg.child_by_field_name("name")
-                if keyword is None or _text(keyword, source) != "template":
-                    continue
-                arg = arg.child_by_field_name("value")
-            value = _constant_string(arg, source) if arg is not None else None
-            if value is not None and any(
-                _names_main(match["named"] or match["braced"] or "")
-                for match in Template.pattern.finditer(value)
-            ):
-                return True
-    return False
+    if kind != "string" or not node.children:
+        return False
+    opening = _text(node.children[0], source).lower()
+    return node.children[0].type == "string_start" and (
+        "f" in opening or "t" in opening
+    )
 
 
 def _constant_fstring(node: Any, source: bytes) -> str | None:
