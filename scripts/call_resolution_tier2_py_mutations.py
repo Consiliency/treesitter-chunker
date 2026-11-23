@@ -863,8 +863,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "ns-string-components",
         PYM,
-        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"]")',
-        '_TOKEN_SEPARATORS = re.compile(r"[.:]")',
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{}!]")',
+        '_TOKEN_SEPARATORS = re.compile(r"[.:{}!]")',
     ),
     (
         "ns-joined-strings",
@@ -877,16 +877,20 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "ns-evaluator",
         PYM,
-        "        if not ps._binding_position(ident) and not _exec_into_fresh_module(\n"
-        "            analysis, ident\n        ):\n            return None\n    evaluator_strings",
-        "        if False:\n            return None\n    evaluator_strings",
+        "        if not ps._binding_position(ident):\n"
+        "            if not _exec_into_fresh_module(analysis, ident):\n"
+        "                return None\n            exempted = True\n    evaluator_strings",
+        "        if False:\n            if False:\n"
+        "                return None\n            exempted = True\n    evaluator_strings",
     ),
     (
         "ns-evaluator-binding",
         PYM,
-        "        if not ps._binding_position(ident) and not _exec_into_fresh_module(\n"
-        "            analysis, ident\n        ):\n            return None\n    evaluator_strings",
-        "        if True:\n            return None\n    evaluator_strings",
+        "        if not ps._binding_position(ident):\n"
+        "            if not _exec_into_fresh_module(analysis, ident):\n"
+        "                return None\n            exempted = True\n    evaluator_strings",
+        "        if True:\n            if True:\n"
+        "                return None\n            exempted = True\n    evaluator_strings",
     ),
     (
         "ns-evaluator-keyword",
@@ -995,9 +999,9 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "ns-exempt-exec",
         PYM,
-        "        if not ps._binding_position(ident) and not _exec_into_fresh_module(\n"
-        "            analysis, ident\n        ):",
-        "        if not ps._binding_position(ident):",
+        "            if not _exec_into_fresh_module(analysis, ident):\n"
+        "                return None\n",
+        "            if True:\n                return None\n",
     ),
     (
         "ns-exempt-factory-list",
@@ -1163,6 +1167,147 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "    if len(paths) != 1:\n        return False\n    (path,) = paths",
         "    if not paths:\n        return False\n    path = sorted(paths)[-1]",
     ),
+    # R-724-4: format-field separators, the voided exemption, the
+    # ``__class__`` write, and the S-3 routes.
+    (
+        "ns-separator-open-brace",
+        PYM,
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{}!]")',
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"}!]")',
+    ),
+    (
+        "ns-separator-close-brace",
+        PYM,
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{}!]")',
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{!]")',
+    ),
+    (
+        "ns-separator-bang",
+        PYM,
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{}!]")',
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"{}]")',
+    ),
+    (
+        "ns-exempt-void",
+        PYM,
+        "    if exempted and worded:\n",
+        "    if False:\n",
+    ),
+    (
+        "ns-exempt-void-exec",
+        PYM,
+        "                return None\n            exempted = True\n    evaluator_strings",
+        "                return None\n    evaluator_strings",
+    ),
+    (
+        "ns-exempt-void-token",
+        PYM,
+        "                # lookup proves is not this file's namespace.\n"
+        "                exempted = True\n",
+        "                # lookup proves is not this file's namespace.\n",
+    ),
+    (
+        "ns-exempt-void-words",
+        PYM,
+        "        if set(_TOKEN_WORDS.split(value)) & _EXEMPT_VOIDING_WORDS or",
+        "        if False or",
+    ),
+    (
+        "ns-exempt-void-word-split",
+        PYM,
+        '_TOKEN_WORDS = re.compile(r"[^0-9A-Za-z_]+")',
+        '_TOKEN_WORDS = re.compile(r"[.:\\[\\]\'\\"{}!]")',
+    ),
+    (
+        "ns-exempt-void-factory-names",
+        PYM,
+        "_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS | frozenset(\n"
+        "    path[-1] for path in _FRESH_MODULE_FACTORIES\n)",
+        "_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS | frozenset(\n"
+        "    path[-1] for path in () \n)",
+    ),
+    (
+        "ns-exempt-void-factory-parts",
+        PYM,
+        "        if set(_TOKEN_WORDS.split(value)) & _EXEMPT_VOIDING_WORDS or _token_match(\n"
+        "            value, _FACTORY_PARTS\n        ):",
+        "        if set(_TOKEN_WORDS.split(value)) & _EXEMPT_VOIDING_WORDS or _token_match(\n"
+        "            value, frozenset()\n        ):",
+    ),
+    (
+        "ns-exempt-class-write",
+        PYM,
+        '    if "__class__" in analysis.attribute_writes:\n',
+        "    if False:\n",
+    ),
+    (
+        "ns-own-route",
+        PYM,
+        "        if _own_module_route(analysis, ident, name):\n            return None\n",
+        "",
+    ),
+    (
+        "ns-own-resolver-name",
+        PYM,
+        '    if first.type == "identifier" and ps._text(first, source) == "__name__":\n'
+        "        return True\n",
+        "",
+    ),
+    (
+        "ns-own-resolver-constant",
+        PYM,
+        "    return head in {*analysis.module_path.components, *analysis.own_names}",
+        "    return False",
+    ),
+    (
+        "ns-own-resolver-path",
+        PYM,
+        "    return head in {*analysis.module_path.components, *analysis.own_names}",
+        "    return head in {*analysis.own_names}",
+    ),
+    (
+        "ns-own-resolver-callee",
+        PYM,
+        "    if callee is not ident and not ps._same(\n"
+        '        ident, callee.child_by_field_name("attribute")\n    ):\n        return False\n',
+        "",
+    ),
+    (
+        "ns-own-attribute",
+        PYM,
+        "            and (ps._text(holder, source), name) in _OWN_MODULE_ATTRIBUTES\n",
+        "            and False\n",
+    ),
+    (
+        "ns-own-resolver-locate",
+        PYM,
+        '_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "locate", "resolve"})',
+        '_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "resolve"})',
+    ),
+    (
+        "ns-own-resolver-resolve",
+        PYM,
+        '_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "locate", "resolve"})',
+        '_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "locate"})',
+    ),
+    (
+        "ns-own-resolver-resolve-name",
+        PYM,
+        '_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "locate", "resolve"})',
+        '_OWN_NAME_RESOLVERS = frozenset({"locate", "resolve"})',
+    ),
+    ("ns-token-getmembers", PYM, '        "getmembers",\n', ""),
+    ("ns-token-getmembers-static", PYM, '        "getmembers_static",\n', ""),
+    ("ns-token-doctest-finder", PYM, '        "DocTestFinder",\n', ""),
+    ("ns-token-globs", PYM, '        "globs",\n', ""),
+    ("ns-token-rlcompleter", PYM, '        "rlcompleter",\n', ""),
+    (
+        "ns-token-dunder-builtins",
+        PYM,
+        '        "rlcompleter",\n        "__builtins__",\n',
+        '        "rlcompleter",\n',
+    ),
+    ("ns-token-pyeval-getglobals", PYM, '        "PyEval_GetGlobals",\n', ""),
     # Equivalent (recorded, not run): the R-724-2 keyword filter of
     # ``_positional_arguments`` (a keyword argument is no attribute,
     # identifier or constant, which each exempt position also requires), the

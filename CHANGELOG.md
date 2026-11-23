@@ -177,7 +177,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `spec.loader.exec_module(mod)` on a module the function itself creates
   with `types.ModuleType` or `importlib.util.module_from_spec`, and
   `__import__` of a constant name that is not the file's own package or a
-  module-system module such as `sys`. The Python fact version moves to 39.
+  module-system module such as `sys`; a file whose constants spell a listed
+  name or the module factory as a word, or that sets `__class__`, gets no
+  exemption. `inspect.getmembers`, `doctest.DocTestFinder` and `globs`,
+  `rlcompleter`, `__builtins__`, `PyEval_GetGlobals`, a resolver given the
+  file's own name (`pkgutil.resolve_name(__name__)`) and pytest's
+  `request.module` count too. The Python fact version moves to 39.
 - Symbol graph extraction orders source files by case-sensitive path components
   on every platform (treesitter-chunker#687).
 - Automatic detection uses the language pack's `rst` and `asm` grammar

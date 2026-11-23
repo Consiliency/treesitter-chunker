@@ -213,9 +213,11 @@ logger = logging.getLogger(__name__)
 # also taints itself wholly (its submodules), and a handed-out ``sys``,
 # ``importlib`` or ``builtins`` adds ``module-system``. R-724-2 exempts
 # ``exec(code, X.__dict__)`` and ``<name>.loader.exec_module(X)`` on a fresh
-# module local and ``__import__`` of a constant foreign module. Only
-# ``imports``-mode facts change; the fixtures' digests change only by the
-# version.
+# module local and ``__import__`` of a constant foreign module. R-724-4
+# (same version, unreleased): format-field separators, more tokens, the
+# own-name resolvers and ``request.module``, and the exemption voided by a
+# constant word or a ``__class__`` write. Only ``imports``-mode facts change;
+# the fixtures' digests change only by the version.
 # python "38": PR 6 fold 7 (#705 P6-21, P6-22): a constant name (patcher
 # method or ``getfixturevalue``) counts in any spelling ``_constant_string``
 # decodes, as a positional argument, a keyword value or a subscript key.

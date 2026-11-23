@@ -61,7 +61,10 @@ package ``__init__.py`` hands out its submodules too
 whose object is provably not the file's namespace (R-724-2:
 ``exec(code, mod.__dict__)`` and ``spec.loader.exec_module(mod)`` on a
 fresh module local, ``__import__`` of a constant foreign module; see
-:func:`_not_own_namespace`). Literal acquisitions
+:func:`_not_own_namespace`). R-724-4 voids those exemptions in a file whose
+constants spell a token or a factory name as a word, or that writes
+``__class__``, and adds resolvers given the file's own name and pytest's
+``request.module`` (:func:`_own_module_route`). Literal acquisitions
 (``importlib.import_module('svc')``, ``__import__('svc')``,
 ``sys.modules['svc']``) taint their target wholly; dotted constant strings
 (``mock.patch('svc.t')``, ``monkeypatch.setattr('svc.t', f)``) taint the
@@ -1248,11 +1251,32 @@ _NAMESPACE_TOKENS = frozenset(
         "_eval_type",
         "call_annotate_function",
         "call_evaluate_function",
+        # R-724-4 (S-3): routes that spell no other listed name, each kept
+        # at a measured production cost of 0 edges.
+        # ``inspect.getmembers(frame)`` lists ``f_globals`` by content;
+        # ``doctest.DocTestFinder().find(fn)[0].globs`` holds the module's
+        # bindings; ``rlcompleter.Completer()`` reads ``__main__``'s;
+        # ``[v for k, v in __builtins__.items() if k.startswith("glob")]``
+        # picks a builtin by content; ``ctypes.pythonapi.PyEval_GetGlobals``
+        # returns the calling frame's globals.
+        "getmembers",
+        "getmembers_static",
+        "DocTestFinder",
+        "globs",
+        "rlcompleter",
+        "__builtins__",
+        "PyEval_GetGlobals",
     }
 )
 # The components a constant string is matched by: dotted, ``:``-separated,
-# bracketed and quoted parts (``"0.__globals__[svc]"``, ``"builtins.open"``).
-_TOKEN_SEPARATORS = re.compile(r"[.:\[\]'\"]")
+# bracketed, quoted and format-field parts (``"0.__globals__[svc]"``,
+# ``"builtins.open"``, ``"{0.__globals__!r}"``: ``string.Formatter``
+# resolves the field without its caller spelling ``get_field``).
+_TOKEN_SEPARATORS = re.compile(r"[.:\[\]'\"{}!]")
+# R-724-4: a constant's words, split at every non-identifier character. In a
+# file with an exempt use, a word spelling a token or a factory name voids
+# every exemption (:data:`_EXEMPT_VOIDING_WORDS`).
+_TOKEN_WORDS = re.compile(r"[^0-9A-Za-z_]+")
 # A frame's namespace dicts, read by a constant key (:func:`_frame_read_keys`).
 _FRAME_DICTS = frozenset({"f_locals", "f_globals"})
 # The evaluators run code in the calling frame's namespace. They count in any
@@ -1307,6 +1331,8 @@ def _namespace_handout(
     source = analysis.source
     routes = False
     members = False
+    exempted = False
+    worded = False
     keys: set[str] = set()
     for ident in analysis.identifier_nodes:
         spellings = ps._spellings(ident, source)
@@ -1314,6 +1340,7 @@ def _namespace_handout(
             if _not_own_namespace(analysis, ident):
                 # R-724-2: the token applies to an object the use-site
                 # lookup proves is not this file's namespace.
+                exempted = True
                 continue
             read = _frame_read_keys(analysis, ident)
             if read is None or any(
@@ -1327,6 +1354,8 @@ def _namespace_handout(
         name = ps._text(ident, source)
         if name == _MAIN and _import_target(ident):
             return None
+        if _own_module_route(analysis, ident, name):
+            return None
         if name not in _NAMESPACE_EVALUATORS:
             continue
         if ps._name_part(ident):
@@ -1338,10 +1367,10 @@ def _namespace_handout(
             continue
         if _in_import(ident):
             return None
-        if not ps._binding_position(ident) and not _exec_into_fresh_module(
-            analysis, ident
-        ):
-            return None
+        if not ps._binding_position(ident):
+            if not _exec_into_fresh_module(analysis, ident):
+                return None
+            exempted = True
     evaluator_strings = False
     stack = [analysis.root]
     while stack:
@@ -1363,6 +1392,10 @@ def _namespace_handout(
             continue
         if _token_match(value, _NAMESPACE_TOKENS):
             return None
+        if set(_TOKEN_WORDS.split(value)) & _EXEMPT_VOIDING_WORDS or _token_match(
+            value, _FACTORY_PARTS
+        ):
+            worded = True
         if _token_match(value, _BUILTINS_ROUTES):
             routes = True
         if value in _NAMESPACE_EVALUATORS:
@@ -1374,7 +1407,66 @@ def _namespace_handout(
             return None
     if routes and (members or evaluator_strings):
         return None
+    if exempted and worded:
+        # R-724-4: the code an exempt ``exec`` runs may spell a token with
+        # any delimiter (``"import sys; d = sys._getframe(1).f_globals"``),
+        # and a patch target may name a factory or its module
+        # (``mock.patch("types.ModuleType", fake)``).
+        return None
     return frozenset(keys)
+
+
+# R-724-4 (S-3): resolvers that return the module a name denotes. Applied to
+# ``__name__``, or to a constant whose first component is a component of the
+# file's own module path (``pkgutil.resolve_name("use:svc")``), one returns
+# the file's own module or a package holding it, as
+# ``importlib.import_module(__name__)`` does
+# (``logging.config.BaseConfigurator({}).resolve(__name__)``).
+_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "locate", "resolve"})
+# R-724-4 (S-3): attribute reads that are a test module itself (pytest's
+# ``request.module``).
+_OWN_MODULE_ATTRIBUTES = frozenset({("request", "module")})
+
+
+def _own_module_route(analysis: Any, ident: Any, name: str) -> bool:
+    """Whether ``ident`` is a route to the file's own module that spells no
+    listed token: a callee named in :data:`_OWN_NAME_RESOLVERS` whose first
+    argument is ``__name__`` or a constant naming the file's own module or a
+    package holding it, or the attribute of
+    :data:`_OWN_MODULE_ATTRIBUTES`."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    parent = ident.parent
+    if parent is not None and parent.type == "attribute":
+        holder = parent.child_by_field_name("object")
+        holder = ps._unwrap(holder, skip_comments=True) if holder is not None else None
+        if (
+            holder is not None
+            and holder.type == "identifier"
+            and ps._same(ident, parent.child_by_field_name("attribute"))
+            and (ps._text(holder, source), name) in _OWN_MODULE_ATTRIBUTES
+        ):
+            return True
+    if name not in _OWN_NAME_RESOLVERS:
+        return False
+    callee = parent if parent is not None and parent.type == "attribute" else ident
+    if callee is not ident and not ps._same(
+        ident, callee.child_by_field_name("attribute")
+    ):
+        return False
+    call = ps._callee_call(callee)
+    arguments = ps._call_arguments(call) if call is not None else []
+    if not arguments:
+        return False
+    first = ps._unwrap(arguments[0], skip_comments=True)
+    if first.type == "identifier" and ps._text(first, source) == "__name__":
+        return True
+    value = ps._constant_string(first, source)
+    if not value:
+        return False
+    head = re.split(r"[.:]", value.strip())[0]
+    return head in {*analysis.module_path.components, *analysis.own_names}
 
 
 # R-724-2: the closed allow-list of token uses whose object the use-site
@@ -1391,6 +1483,16 @@ def _namespace_handout(
 _FRESH_MODULE_FACTORIES = frozenset(
     {("types", "ModuleType"), ("importlib", "util", "module_from_spec")}
 )
+# R-724-4: a constant that spells a token or a factory's own name as a word
+# (:data:`_TOKEN_WORDS`), or any name of a factory path as a component
+# (:data:`_TOKEN_SEPARATORS`), voids every exempt use of the file. A patch
+# target or a module key may name the factory or its module
+# (``mock.patch("types.ModuleType", F)``, ``mock.patch("importlib.util",
+# U)``, ``mock.patch.dict(sys.modules, {"types": T})``).
+_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS | frozenset(
+    path[-1] for path in _FRESH_MODULE_FACTORIES
+)
+_FACTORY_PARTS = frozenset(part for path in _FRESH_MODULE_FACTORIES for part in path)
 
 
 def _not_own_namespace(analysis: Any, ident: Any) -> bool:
@@ -1550,6 +1652,10 @@ def _fresh_module_local(analysis: Any, ident: Any) -> bool:
     name = ps._text(ident, analysis.source)
     scope = next(iter(analysis._chain(ident)), None)
     if scope is None or scope.kind != ps._FUNCTION:
+        return False
+    if "__class__" in analysis.attribute_writes:
+        # R-724-4: ``mod.__class__ = M`` on any receiver may give the module
+        # a ``__dict__`` property that returns another namespace.
         return False
     # The lookup decides in this function (a ``global`` or ``nonlocal``
     # name, a mangled name, a poisoned scope and a file that may write a
