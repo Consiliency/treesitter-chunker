@@ -738,6 +738,16 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "            end = child.end_byte",
     ),
     (
+        # A raw string's final ``\"`` folded into the end token is content
+        # in the constant-interpolation f-string reader too.
+        "b2-constant-fstring-folded-end",
+        PYS,
+        "            if not raw.endswith(quote):\n"
+        "                return None\n"
+        "            raw = raw[: len(raw) - len(quote)]\n",
+        "            continue\n",
+    ),
+    (
         "main-undecodable-fails-closed",
         PYS,
         "    except (_UndecodableError, UnicodeDecodeError):\n        return True",

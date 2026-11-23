@@ -3688,7 +3688,7 @@ def _constant_fstring(node: Any, source: bytes) -> str | None:
     plain = prefix.replace("f", "")
     pieces: list[str] = []
     for child in node.children:
-        if child.type in ("string_start", "string_end"):
+        if child.type == "string_start":
             continue
         if child.type == "interpolation":
             inner = [c for c in child.children if c.type not in ("{", "}")]
@@ -3699,8 +3699,15 @@ def _constant_fstring(node: Any, source: bytes) -> str | None:
                 return None
             pieces.append(value)
             continue
-        raw = _text(child, source).replace("{{", "{").replace("}}", "}")
-        value = _decode_literal(plain, quote, raw)
+        raw = _text(child, source)
+        if child.type == "string_end":
+            # As in :func:`_string_node_runs`: after an interpolation,
+            # tree-sitter folds a raw string's final ``\"`` into the end
+            # token (``rf"{'x'}\""``), and that text is content.
+            if not raw.endswith(quote):
+                return None
+            raw = raw[: len(raw) - len(quote)]
+        value = _decode_literal(plain, quote, raw.replace("{{", "{").replace("}}", "}"))
         if value is None:
             return None
         pieces.append(value)

@@ -4413,6 +4413,42 @@ class _SpecRecorder:
         return ""
 
 
+_REJECTED = object()
+
+
+def _cpython_reads(text: str, env: dict[str, Any]) -> Any:
+    # The value CPython 3.14 builds from the expression, or ``_REJECTED``.
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            return eval(compile(text, "<case>", "eval"), env)  # noqa: S307
+        except SyntaxError:
+            return _REJECTED
+
+
+def _string_node(parser: Any, text: str) -> tuple[bytes, Any] | None:
+    # ``V = <text>`` parsed: the source and string node, or ``None`` on a
+    # tree-sitter error. The rule reads literal parts by child text, so a
+    # string's children must tile it with no byte left out.
+    data = ("V = " + text + "\n").encode("utf-8")
+    root = parser.parse(data).root_node
+    if root.has_error:
+        return None
+    node = root.named_children[0].named_children[0].child_by_field_name("right")
+    assert node is not None, text
+    assert node.type in ("string", "concatenated_string"), text
+    for string in [node, *node.named_children]:
+        if string.type == "string":
+            edges = [string.start_byte]
+            for kid in string.children:
+                edges += [kid.start_byte, kid.end_byte]
+            edges.append(string.end_byte)
+            assert edges[::2] == edges[1::2], text
+    return data, node
+
+
 def test_string_runs_match_cpython_through_the_tree() -> None:
     """The literal runs and format specs the K-3 rule reads from the
     tree-sitter tree are the strings CPython delivers (re-check 2 B-2).
@@ -4423,68 +4459,59 @@ def test_string_runs_match_cpython_through_the_tree() -> None:
     one. This parses each seeded f- or t-string, runs ``_string_runs`` and
     compares the result with what CPython 3.14 delivers to ``__format__``
     and as the literal parts. A piece the rule cannot decode fails closed
-    and is skipped; every decoded piece must match.
+    and is skipped; every decoded piece must match. Each f-string is also
+    checked with a constant interpolation through ``_constant_string``,
+    which tree-sitter's folded end token (``rf"{'x'}\\""``) once cut short.
     """
     import random
-    import warnings
 
     parser = get_parser("python")
     literal = ["a", "_", "__main__", "\\", "\\\n", "\\\r\n", "\n", "\r\n", " "]
-    literal += ["\\x5f", "\\N{LOW LINE}", "\\d", "\\'", "'", '"', "{{", "}}", "é"]
-    spec_atoms = [*(atom for atom in literal if atom not in ("{{", "}}")), ":", "!"]
-    spec_atoms.append("{y}")
+    literal += ["\\x5f", "\\N{LOW LINE}", "\\d", "\\'", '\\"', "'", '"', "é"]
+    spec_atoms = [*literal, ":", "!", "{y}"]
+    literal += ["{{", "}}"]
     rng = random.Random(714)
 
     def piece(atoms: list[str], size: int) -> str:
         return "".join(rng.choice(atoms) for _ in range(rng.randint(0, size)))
 
-    checked = 0
+    checked = constants = 0
     for _ in range(4000):
         prefix = rng.choice(["f", "t", "rf", "Rt", "F"])
         quote = rng.choice(["'", '"', "'" * 3, '"' * 3])
         spec = ":" + piece(spec_atoms, 4) if rng.random() < 0.8 else ""
-        body = piece(literal, 3) + "{v" + spec + "}" + piece(literal, 3)
-        text = prefix + quote + body + quote
+        before, after = piece(literal, 3), piece(literal, 3)
+        if "f" in prefix.lower():
+            text = prefix + quote + before + "{'k'}" + after + quote
+            value = _cpython_reads(text, {})
+            parsed = None if value is _REJECTED else _string_node(parser, text)
+            if parsed is not None:
+                got = py_scope._constant_string(parsed[1], parsed[0])
+                if got is not None:
+                    assert got == value, text
+                    constants += 1
+        text = prefix + quote + before + "{v" + spec + "}" + after + quote
         seen: list[str] = []
-        env: dict[str, Any] = {"v": _SpecRecorder(seen), "y": ""}
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            try:
-                value = eval(compile(text, "<case>", "eval"), env)  # noqa: S307
-            except SyntaxError:
-                continue
+        value = _cpython_reads(text, {"v": _SpecRecorder(seen), "y": ""})
+        parsed = None if value is _REJECTED else _string_node(parser, text)
+        if parsed is None:
+            continue
         if "t" in prefix.lower():
             strings = "".join(value.strings)
             specs = [i.format_spec for i in value.interpolations]
         else:
             strings, specs = value, seen
-        data = ("V = " + text + "\n").encode("utf-8")
-        root = parser.parse(data).root_node
-        if root.has_error:
-            continue
-        node = root.named_children[0].named_children[0].child_by_field_name("right")
-        assert node is not None, text
-        assert node.type in ("string", "concatenated_string"), text
-        # The literal parts are read by child text, so a string's children
-        # must tile it with no byte left out.
-        for string in [node, *node.named_children]:
-            if string.type == "string":
-                kids = string.children
-                edges = [string.start_byte] + [
-                    edge for kid in kids for edge in (kid.start_byte, kid.end_byte)
-                ]
-                edges.append(string.end_byte)
-                assert edges[::2] == edges[1::2], text
         runs: list[str] = []
         rule_specs: list[str] = []
         try:
-            py_scope._string_runs(node, data, runs, rule_specs)
+            py_scope._string_runs(parsed[1], parsed[0], runs, rule_specs)
         except py_scope._UndecodableError:
             continue
         assert "".join(runs) == strings, text
         assert "".join(rule_specs) == "".join(specs), text
         checked += 1
     assert checked > 1000
+    assert constants > 500
 
 
 @pytest.mark.parametrize(
