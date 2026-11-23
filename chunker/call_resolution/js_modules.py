@@ -54,9 +54,9 @@ interface and a function of one name merge.
     The file was collected through a symbolic link (E5-5).
 ``shutoff``
     Run-wide causes (E5-3): ``evaluator``, ``dynamic-loader``,
-    ``module-system``, ``module-object``, ``unparsed-file`` (text scan of a
-    file with parse errors). Under O-2 a cause in a test file applies only
-    to callers in test files.
+    ``module-system``, ``module-object``, ``unparsed-file``,
+    ``unresolvable-writer``, and ``dynamic-scope``. Under O-2 a cause in a
+    test file applies only to callers in test files unless production reaches it.
 
 Uses of the sensitive values (a namespace import, ``require``, ``module``)
 are classified by a closed allow-list after unwrapping parentheses and TS
@@ -120,6 +120,7 @@ CAUSE_MODULE_SYSTEM = "module-system"
 CAUSE_MODULE_OBJECT = "module-object"
 CAUSE_UNPARSED_FILE = "unparsed-file"
 CAUSE_UNRESOLVABLE_WRITER = "unresolvable-writer"
+CAUSE_DYNAMIC_SCOPE = "dynamic-scope"
 SHUTOFF_CAUSES = (
     CAUSE_EVALUATOR,
     CAUSE_DYNAMIC_LOADER,
@@ -127,6 +128,7 @@ SHUTOFF_CAUSES = (
     CAUSE_MODULE_OBJECT,
     CAUSE_UNPARSED_FILE,
     CAUSE_UNRESOLVABLE_WRITER,
+    CAUSE_DYNAMIC_SCOPE,
 )
 # ``import.meta`` reads that load nothing.
 _IMPORT_META_READS = frozenset(
@@ -146,9 +148,7 @@ MODULE_MOCKS: dict[str, frozenset[str]] = {
 MOCK_PACKAGES = {"jest": "@jest/globals", "vi": "vitest"}
 # Names that reach the CommonJS module system from anywhere.
 _MODULE_SYSTEM_NAMES = frozenset({"mainModule", "createRequire", "getBuiltinModule"})
-_STACK_REFLECTORS = frozenset(
-    {("Reflect", "get"), ("Object", "getOwnPropertyDescriptor")}
-)
+_STACK_KEYS = frozenset({"caller", "getFunction"})
 _MODULE_SYSTEM_SPECIFIERS = frozenset({"module", "node:module"})
 # Fold 3, item 1: the only names an import from ``module`` may bind without
 # a run-wide cause (with ``createRequire`` under item 2). ``builtinModules``
@@ -493,6 +493,10 @@ class _ModuleFacts:
             kind = node.type
             if kind == "call_expression":
                 self._loader_call(node, handled)
+            elif kind == "with_statement":
+                # Lookups in this body can reach properties on the with object
+                # before consulting lexical bindings.
+                self.shutoff.add(CAUSE_DYNAMIC_SCOPE)
             elif kind == "import_require_clause":
                 self._taint_literal(node.child_by_field_name("source"))
             elif kind == "import_statement":
@@ -557,16 +561,15 @@ class _ModuleFacts:
     def _stack_key_use(self, node: Any, name: str) -> bool:
         """Stack introspection may expose a CommonJS wrapper (treesitter-chunker#718).
 
-        Property names are independent of lexical bindings. Builtin names in
-        reflective access and stack formatting are resolved at the use site.
+        A literal stack key can flow through ordinary bindings and calls.
+        An unquoted property name must be a property read or destructuring
+        key. The stack-formatting hook still needs the global Error receiver.
         """
-        from .js_scope import unwrap
-
-        if name not in ("caller", "getFunction", "prepareStackTrace"):
+        if name not in _STACK_KEYS and name != "prepareStackTrace":
             return False
         if _in_type_position(node):
             return False
-        if name == "getFunction" and node.type != "property_identifier":
+        if name in _STACK_KEYS and node.type != "property_identifier":
             return True
         outer = _climb_wrappers(node)
         parent = outer.parent
@@ -585,26 +588,8 @@ class _ModuleFacts:
             outer, parent = parent, parent.parent
         if parent is None:
             return False
-        if parent.type == "pair_pattern" and _same(
+        return parent.type == "pair_pattern" and _same(
             parent.child_by_field_name("key"), outer
-        ):
-            return True
-        if name != "caller" or parent.type != "arguments":
-            return False
-        call = parent.parent
-        if call is None or call.type != "call_expression":
-            return False
-        args = [child for child in parent.named_children if child.type != "comment"]
-        if len(args) < 2 or not _same(args[1], outer):
-            return False
-        function = unwrap(call.child_by_field_name("function"))
-        if function is None:
-            return False
-        method = self.analysis._member_key(function)
-        return any(
-            method == key
-            and self._global_builtin(function.child_by_field_name("object"), builtin)
-            for builtin, key in _STACK_REFLECTORS
         )
 
     def _global_builtin(self, node: Any, name: str) -> bool:
@@ -751,7 +736,7 @@ class _ModuleFacts:
             return
         if (
             node.type == "shorthand_property_identifier_pattern"
-            and text in ("caller", "getFunction")
+            and text in _STACK_KEYS
             and node.parent is not None
             and node.parent.type in ("object_pattern", "object_assignment_pattern")
         ):

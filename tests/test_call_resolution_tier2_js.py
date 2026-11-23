@@ -3485,9 +3485,7 @@ def test_718_stack_introspection(tmp_path: Path, text: str) -> None:
     "text",
     [
         "function inspect(caller, getFunction) { return caller(getFunction); }",
-        "const labels = {caller: 'caller'};",
-        "function inspect(Reflect, fn) { return Reflect.get(fn, 'caller'); }",
-        "function inspect(Object, fn) { return Object.getOwnPropertyDescriptor(fn, 'caller'); }",
+        "const labels = {caller: 'caller-name'};",
         "function inspect(Error) { Error.prepareStackTrace = () => ''; }",
         "Error.captureStackTrace({});",
     ],
@@ -3498,21 +3496,162 @@ def test_718_stack_introspection_controls(tmp_path: Path, text: str) -> None:
     assert on["resolution"] == "resolved", label
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "const k = 'caller';\n"
+            "function g() { return g[k].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C03-const-key",
+        ),
+        pytest.param(
+            "function g() { const k = Object.getOwnPropertyNames(g).find(n => n === 'caller'); return g[k].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C05-filter-names",
+        ),
+        pytest.param(
+            "const get = Reflect.get;\n"
+            "function g() { return get(g, 'caller').arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C07-reflect-get-alias",
+        ),
+        pytest.param(
+            "function g() { return Reflect.get.call(null, g, 'caller').arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C08-reflect-get-call",
+        ),
+        pytest.param(
+            "function g() { return Reflect.getOwnPropertyDescriptor(g, 'caller').value.arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C10-reflect-gopd",
+        ),
+        pytest.param(
+            "function g() { for (const n of Object.getOwnPropertyNames(g)) { switch (n) { case 'caller': return g[n].arguments[1]; } } }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C13-switch-case",
+        ),
+        pytest.param(
+            "function g(k = 'caller') { return g[k].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C16-default-param",
+        ),
+        pytest.param(
+            "function g() { return ['caller'].map(k => g[k])[0].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C17-array-map",
+        ),
+        pytest.param(
+            "const k = 'caller';\n"
+            "function g() { const { [k]: c } = g; return c.arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C18-destructure-computed-var",
+        ),
+        pytest.param(
+            "const o = { k: 'caller' };\n"
+            "function g() { return g[o.k].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C21-object-literal-value",
+        ),
+        pytest.param("const labels = {caller: 'caller'};", id="object-labels"),
+        pytest.param(r"const key = `c\u0061ller`;", id="cooked-template"),
+        pytest.param(r"const key = 'c\141ller';", id="cooked-sloppy-string"),
+    ],
+)
+def test_718_constant_stack_keys(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "function g() { with (g) { return caller.arguments[1]; } }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C12-with",
+        ),
+        pytest.param(
+            "function g(caller) { with (g) { return caller.arguments[1]; } }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C22-with-shadows-local-caller",
+        ),
+        pytest.param(
+            "function g(Reflect) { with (globalThis) { return Reflect.get(g, 'caller').arguments[1]; } }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C23-with-globalThis-Reflect",
+        ),
+        pytest.param(
+            "function g(Object) { with (globalThis) { return Object.getOwnPropertyDescriptor(g, 'caller').value.arguments[1]; } }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C24-with-globalThis-Object-gopd",
+        ),
+        pytest.param(
+            "const E = Error; E.prepareStackTrace = (e, s) => s; const fr = new Error().stack; E.prepareStackTrace = undefined;\n"
+            "with (fr[0]) { getFunction().arguments[1]('./svc').t = () => 'EVIL'; }\n",
+            id="S08-with-getFunction-ident",
+        ),
+        pytest.param(
+            "const mainModule = 0;\n"
+            "with (process) { mainModule.require('./svc').t = () => 'EVIL'; }\n",
+            id="P01-with-process-mainModule",
+        ),
+    ],
+)
+def test_718_with_statement(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text})
+    facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
+    assert "dynamic-scope" in facts["scope_facts"]["module_bindings"]["shutoff"]
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label in {
+        "none(run-tainted:dynamic-scope)",
+        "none(run-tainted:module-system)",
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "interface F { caller: unknown }",
+        "interface F { ['caller']: unknown }",
+        "type F = { getFunction(): void };",
+        "type F = 'getFunction';",
+    ],
+)
+def test_718_type_space_controls(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", label
+
+
 @pytest.mark.parametrize("promoted", [False, True])
-def test_718_stack_introspection_test_scope(tmp_path: Path, promoted: bool) -> None:
+@pytest.mark.parametrize(
+    ("text", "cause"),
+    [
+        ("function inspect(frame) { return frame.getFunction(); }", "module-system"),
+        ("const key = 'caller';", "module-system"),
+        ("function inspect(object) { with (object) {} }", "dynamic-scope"),
+    ],
+)
+def test_718_stack_introspection_test_scope(
+    tmp_path: Path, promoted: bool, text: str, cause: str
+) -> None:
     files = {
         **OTHERS,
         "svc.ts": SVC,
         "use.ts": USE,
         "tests/use.test.ts": USE.replace("./svc", "../svc"),
-        "tests/frames.js": "function inspect(frame) { return frame.getFunction(); }",
+        "tests/frames.js": text,
     }
     if promoted:
         files["app.ts"] = "import './tests/frames';"
     root = _write(tmp_path, files)
     _, _, test_edge, test_label = _run(root, "tests/use.test.ts", "t")
     assert test_edge["resolution"] == "ambiguous"
-    assert test_label == "none(run-tainted:module-system)"
+    assert test_label == f"none(run-tainted:{cause})"
     _, _, prod_edge, prod_label = _run(root, "use.ts", "t")
     if promoted:
         assert prod_edge["resolution"] == "ambiguous"

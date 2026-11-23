@@ -110,8 +110,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `require` or `import()`, `createRequire`, `mainModule`,
     `getBuiltinModule`, an import of `module`, the `module` object handed on,
     stack introspection through `caller`, `getFunction` or
-    `Error.prepareStackTrace` (treesitter-chunker#718), or an unparsed JS/TS
-    file): Tier 2 is then off for the run, and the cause is logged. This
+    `Error.prepareStackTrace`, a `with` statement (treesitter-chunker#718),
+    or an unparsed JS/TS file): Tier 2 records the cause and disables
+    cross-module resolution for the affected callers. Cooked string
+    literals equal to `caller` or `getFunction` count in any value position.
+    Causes confined to test files apply only to test callers (O-2). This
     holds within the run only (plan risk
     R12, treesitter-chunker#702).
     In Python files `"imports"` also resolves calls bound by an import:

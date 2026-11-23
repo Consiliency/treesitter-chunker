@@ -48,8 +48,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "718-get-function",
         JSM,
-        'if name not in ("caller", "getFunction", "prepareStackTrace"):',
-        'if name not in ("caller", "prepareStackTrace"):',
+        '_STACK_KEYS = frozenset({"caller", "getFunction"})',
+        '_STACK_KEYS = frozenset({"caller"})',
     ),
     (
         "718-cooked-keys",
@@ -58,22 +58,42 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "",
     ),
     (
-        "718-reflect-get",
+        "718-constant-stack-keys",
         JSM,
-        '("Reflect", "get"), ',
-        "",
+        '        if name in _STACK_KEYS and node.type != "property_identifier":',
+        '        if name == "getFunction" and node.type != "property_identifier":',
     ),
     (
-        "718-descriptor",
+        "718-with-statement",
         JSM,
-        ', ("Object", "getOwnPropertyDescriptor")',
-        ",",
+        "                self.shutoff.add(CAUSE_DYNAMIC_SCOPE)",
+        "                pass",
+    ),
+    (
+        "718-type-position",
+        JSM,
+        "        if _in_type_position(node):\n            return False\n"
+        '        if name in _STACK_KEYS and node.type != "property_identifier":',
+        '        if name in _STACK_KEYS and node.type != "property_identifier":',
+    ),
+    (
+        "718-pair-pattern",
+        JSM,
+        '        return parent.type == "pair_pattern" and _same(',
+        '        return parent.type == "unused" and _same(',
+    ),
+    (
+        "718-shorthand-pattern",
+        JSM,
+        '            node.type == "shorthand_property_identifier_pattern"\n'
+        "            and text in _STACK_KEYS",
+        '            node.type == "unused"\n            and text in _STACK_KEYS',
     ),
     (
         "718-prepare-stack-trace",
         JSM,
-        'if name not in ("caller", "getFunction", "prepareStackTrace"):',
-        'if name not in ("caller", "getFunction"):',
+        'if name not in _STACK_KEYS and name != "prepareStackTrace":',
+        "if name not in _STACK_KEYS:",
     ),
     (
         "718-shadowed-builtin",
@@ -856,10 +876,10 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "module-system-templates",
         JSM,
-        "                if cooked is None or any(\n"
-        "                    name in part for part in cooked for name in _MODULE_SYSTEM_NAMES\n"
-        "                ):",
-        "                if False:",
+        "                    or any(\n"
+        "                        name in part for part in cooked for name in _MODULE_SYSTEM_NAMES\n"
+        "                    )\n",
+        "",
     ),
     (
         "module-system-strings-sloppy",

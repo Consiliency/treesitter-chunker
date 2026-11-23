@@ -129,10 +129,11 @@ logger = logging.getLogger(__name__)
 # js "19": PR 5 fold 10 (P5-47 unparsed on lone CR, LS/PS or HTML-like
 # comments; P5-48 module-scope ``arguments`` declarations; P5-49 static
 # class members are module level).
-# js "22": stack introspection can reach the CommonJS wrapper (treesitter-chunker#718).
 # js "20": PR 5 fold 11 (P5-50: in JavaScript, a ``<!--`` in code, or a
 # ``-->`` in code with only whitespace and comments before it on its line,
 # makes the file unparsed).
+# js "22": stack introspection can reach the CommonJS wrapper, and ``with``
+# can shadow lexical lookup (treesitter-chunker#718).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -288,6 +289,7 @@ TIER2_NONE_REASONS = (
     "run-tainted:module-object",
     "run-tainted:unparsed-file",
     "run-tainted:unresolvable-writer",
+    "run-tainted:dynamic-scope",
     # Tier 2 Python (PR 6): a module another file may write wholly (#697),
     # and a package whose module ``__getattr__`` answers a submodule name
     # (#705 E6-3).
