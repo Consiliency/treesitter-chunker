@@ -43,22 +43,28 @@ RESIDUALS = ("c02-", "c05-", "c06-")
 # R-706-2 (S1, S3), named in plan R12 (Python, PR 6): a loader with a constant
 # module name held in a binding (g05, the c06 family), a second instance of
 # the getter's module loaded by spec (g09; twin t03), the caller's frame
-# through a generator or a traceback (i03, j23; the c02 family), and a module
-# from a function-local ``import`` held in a closure cell (t01, t02; with an
-# unused getter in the tree, i01t, i02t). The twins are wrong on main too.
+# through a generator or a traceback read in a file that does not import the
+# module (i03r, j23r; the c02 family), and a module from a function-local
+# ``import`` held in a closure cell (t01; with an unused getter in the tree,
+# i01t). The twins are wrong on main too. Since the re-stack on #726's
+# R-724-1 token rule, i02t, i03, j23 and t02 are ambiguous: their reader
+# spells ``getclosurevars`` or ``f_locals`` and imports ``svc``, which it
+# then hands out; i03r and j23r keep the frame route pinned.
 RESIDUAL_TREES = frozenset(
-    f"review2:{name}"
-    for name in (
-        "g05-import-module-const-name",
-        "g09-find-spec-loader",
-        "t03-spec-loader-twin",
-        "i03-gen-frame-cross-file",
-        "j23-exception-traceback-frame",
-        "t01-closure-local-import-twin",
-        "t02-getclosurevars-local-import-twin",
-        "i01t-closure-cell-main-twin",
-        "i02t-getclosurevars-main-twin",
-    )
+    {
+        *(
+            f"review2:{name}"
+            for name in (
+                "g05-import-module-const-name",
+                "g09-find-spec-loader",
+                "t03-spec-loader-twin",
+                "t01-closure-local-import-twin",
+                "i01t-closure-cell-main-twin",
+            )
+        ),
+        "review3:i03r-gen-frame-helper-reader",
+        "review3:j23r-traceback-frame-helper-reader",
+    }
 )
 
 
@@ -903,12 +909,29 @@ RULE_TREES: dict[str, dict[str, str]] = {
         "use.py": "from get import pair\nimport other\n\n\ndef go():\n"
         "    *rest, last = pair()\n    rest[0].t = other.t\n",
     },
-    # H1 by name: a frame read by the constant key ``"get"`` is no #724
-    # reader (no import is named ``get``), but it reaches the getter.
+    # A frame read by the constant key ``"get"``, which names no import
+    # binding: #724's rule (R-724-1 item 3) hands out the whole namespace.
     "h1-frame-key": {
         "get.py": "import sys\nimport svc\nimport other\n\n\ndef get():\n"
         "    return svc\n\n\ndef poke():\n"
         '    sys._getframe(0).f_globals["get"]().t = other.t\n',
+        "use.py": "import get as G\n\n\ndef go():\n    G.poke()\n",
+    },
+    # H1, a frame read by a constant key: ``"get"`` names an import binding
+    # too, so #724 hands out only that binding (the module ``other``), but
+    # the key reaches the getter, which is defined later.
+    "h1-import-named-frame-key": {
+        "get.py": "import sys\nimport svc\nimport other\nimport other as get\n\n\n"
+        "def get():\n    return svc\n\n\ndef poke():\n"
+        '    sys._getframe(0).f_globals["get"]().t = other.t\n',
+        "use.py": "import get as G\n\n\ndef go():\n    G.poke()\n",
+    },
+    # H1, a route to the builtins: ``__builtins__`` with a computed member
+    # (no token is spelled) is ``globals``, which reaches the getter.
+    "h1-builtins-route": {
+        "get.py": "import svc\nimport other\n\nK = ''.join(['glo', 'bals'])\n\n\n"
+        "def get():\n    return svc\n\n\ndef poke():\n"
+        "    __builtins__[K]()['get']().t = other.t\n",
         "use.py": "import get as G\n\n\ndef go():\n    G.poke()\n",
     },
 }

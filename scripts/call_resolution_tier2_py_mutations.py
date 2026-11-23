@@ -732,8 +732,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '        if missing.get("reason") == "unbound"',
         "        if True",
     ),
-    # treesitter-chunker#724: a namespace reader hands out its import
-    # bindings.
+    # treesitter-chunker#724, R-724-1: a file with a namespace-reaching
+    # token hands out its import bindings.
     (
         "ns-reader-hands-out-imports",
         PYM,
@@ -743,9 +743,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "ns-names",
         PYM,
-        "            read = _frame_read_keys(analysis, ident)\n            if read is None:\n"
-        "                return None\n            keys |= read\n            continue\n",
-        "            pass\n",
+        "        if spellings & _NAMESPACE_TOKENS:\n            if _not_own_namespace(",
+        "        if False:\n            if _not_own_namespace(",
     ),
     ("ns-frame-key", PYM, "            keys |= read\n", "            pass\n"),
     (
@@ -761,10 +760,94 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "    outer",
     ),
     (
-        "ns-getmodule",
+        "ns-key-dunder",
         PYM,
-        '        "getmodule",\n        "getargvalues",',
-        '        "getargvalues",',
+        "                ps._dunder(key) or key not in import_names for key in read",
+        "                key not in import_names for key in read",
+    ),
+    (
+        "ns-key-import-binding",
+        PYM,
+        "                ps._dunder(key) or key not in import_names for key in read",
+        "                ps._dunder(key) for key in read",
+    ),
+    (
+        "ns-token-globals",
+        PYM,
+        '        "globals",\n        "locals",',
+        '        "locals",',
+    ),
+    (
+        "ns-token-locals",
+        PYM,
+        '        "locals",\n        "vars",',
+        '        "vars",',
+    ),
+    (
+        "ns-token-vars",
+        PYM,
+        '        "vars",\n',
+        "",
+    ),
+    (
+        "ns-token-f-builtins",
+        PYM,
+        '        "f_builtins",\n        "__globals__",',
+        '        "__globals__",',
+    ),
+    (
+        "ns-token-import",
+        PYM,
+        '        "__import__",\n        "getmodule",',
+        '        "getmodule",',
+    ),
+    (
+        "ns-token-getmodule",
+        PYM,
+        '        "getmodule",\n        "getclosurevars",',
+        '        "getclosurevars",',
+    ),
+    (
+        "ns-token-getclosurevars",
+        PYM,
+        '        "getclosurevars",\n',
+        "",
+    ),
+    (
+        "ns-token-loader",
+        PYM,
+        '        "__loader__",\n',
+        "",
+    ),
+    (
+        "ns-token-spec",
+        PYM,
+        '        "__loader__",\n        "__spec__",\n',
+        '        "__loader__",\n',
+    ),
+    (
+        "ns-token-load-module",
+        PYM,
+        '        "load_module",\n',
+        "",
+    ),
+    (
+        "ns-token-exec-module",
+        PYM,
+        '        "exec_module",\n',
+        "",
+    ),
+    (
+        "ns-token-get-field",
+        PYM,
+        '        "get_field",\n',
+        "",
+    ),
+    (
+        "ns-token-builtins",
+        PYM,
+        '        # The builtins module, which holds every builtin above.\n        "builtins",\n',
+        "",
     ),
     (
         "ns-annotation-evaluator",
@@ -773,92 +856,313 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '        "get_annotations",',
     ),
     (
-        "ns-builtin-lookup",
+        "ns-strings",
         PYM,
-        "    outcome = analysis.lookup(ident)\n"
-        '    if outcome.get("outcome") == "local" or outcome.get("reason") in _OWN_BINDINGS:\n'
-        "        return False\n    call = ps._callee_call(ident)\n    if call is None:\n"
-        "        # Handed on",
-        "    call = ps._callee_call(ident)\n    if call is None:\n        # Handed on",
+        "        if _token_match(value, _NAMESPACE_TOKENS):\n            return None",
+        "        if False:\n            return None",
     ),
     (
-        "ns-handed-on",
+        "ns-string-components",
         PYM,
-        "        # Handed on (``g = globals``; ``run(vars)``): it may be called here.\n"
-        "        return True\n",
-        "        return False\n",
+        '_TOKEN_SEPARATORS = re.compile(r"[.:\\[\\]\'\\"]")',
+        '_TOKEN_SEPARATORS = re.compile(r"[.:]")',
     ),
     (
-        "ns-vars-argument",
+        "ns-joined-strings",
         PYM,
-        "        return not (len(positional) == 1 and len(arguments) == 1)",
-        "        return True",
+        '        if kind not in ("string", "concatenated_string", "binary_operator"):\n'
+        '            continue\n        if (\n            kind == "string"',
+        '        if kind != "string":\n'
+        '            continue\n        if (\n            kind == "string"',
     ),
     (
-        "ns-explicit-globals",
+        "ns-evaluator",
         PYM,
-        '        return bool(namespace.type == "none")',
-        "        return True",
+        "        if not ps._binding_position(ident) and not _exec_into_fresh_module(\n"
+        "            analysis, ident\n        ):\n            return None\n    evaluator_strings",
+        "        if False:\n            return None\n    evaluator_strings",
     ),
     (
-        "ns-none-globals",
+        "ns-evaluator-binding",
         PYM,
-        '        return bool(namespace.type == "none")',
-        "        return False",
+        "        if not ps._binding_position(ident) and not _exec_into_fresh_module(\n"
+        "            analysis, ident\n        ):\n            return None\n    evaluator_strings",
+        "        if True:\n            return None\n    evaluator_strings",
     ),
     (
-        "ns-keyword-globals",
+        "ns-evaluator-keyword",
         PYM,
-        '                if key is not None and ps._text(key, analysis.source) == "globals":',
-        "                if False:",
+        '            if parent is not None and parent.type == "attribute":\n'
+        "                members = True",
+        "            if True:\n                members = True",
     ),
     (
         "ns-import-form",
         PYM,
-        "            # spelled at its uses.\n            return None",
-        "            # spelled at its uses.\n            continue",
+        "        if _in_import(ident):\n            return None\n        if not ps._binding_position",
+        "        if _in_import(ident):\n            continue\n        if not ps._binding_position",
+    ),
+    (
+        "ns-exec-statement",
+        PYM,
+        '        if kind == "exec_statement":\n            return None',
+        '        if kind == "exec_statement":\n            continue',
     ),
     (
         "ns-builtins-members",
         PYM,
-        "    if routes and (members or builtin_strings):",
-        "    if routes and builtin_strings:",
+        "    if routes and (members or evaluator_strings):",
+        "    if routes and evaluator_strings:",
     ),
     (
         "ns-members-receiver",
         PYM,
-        "    if routes and (members or builtin_strings):",
-        "    if members or builtin_strings:",
-    ),
-    (
-        "ns-strings",
-        PYM,
-        "        if set(ps._NAME_SEPARATORS.split(value)) & _NAMESPACE_NAMES:\n            return None",
-        "        if False:\n            return None",
-    ),
-    (
-        "ns-f_builtins-route",
-        PYM,
-        '"__self__", "f_builtins"}',
-        '"__self__"}',
+        "    if routes and (members or evaluator_strings):",
+        "    if members or evaluator_strings:",
     ),
     (
         "ns-builtin-strings",
         PYM,
-        "            builtin_strings = True",
+        "            evaluator_strings = True",
         "            pass",
     ),
     (
-        "ns-dunder-import",
+        "ns-routes-strings",
         PYM,
-        "            if _own_import(analysis, ident):\n                return None",
-        "            if False:\n                return None",
+        "        if _token_match(value, _BUILTINS_ROUTES):\n            routes = True",
+        "        if False:\n            routes = True",
     ),
     (
-        "ns-dunder-import-constant",
+        "ns-main-import",
         PYM,
-        "    return first is None or ps._constant_string(first, analysis.source) is None",
-        "    return True",
+        "        if name == _MAIN and _import_target(ident):\n            return None",
+        "        if False:\n            return None",
+    ),
+    (
+        "ns-main-string",
+        PYM,
+        "        if value == _MAIN and _argument_string(node, source) is not None:",
+        "        if False:",
+    ),
+    (
+        "ns-main-from-module",
+        PYM,
+        "        return module is not None and module.id == node.id",
+        "        return True",
+    ),
+    (
+        "ns-package-submodules",
+        PYM,
+        '            facts.taints.add((own_ref, "*"))\n    _scan_causes',
+        "            pass\n    _scan_causes",
+    ),
+    (
+        "ns-package-every-binding",
+        PYM,
+        "        if handout is None and analysis.module_path.package_init and own_ref:",
+        "        if analysis.module_path.package_init and own_ref:",
+    ),
+    (
+        "ns-module-system",
+        PYM,
+        "            facts.shutoff.add(CAUSE_MODULE_SYSTEM)\n        if handout is None and analysis",
+        "            pass\n        if handout is None and analysis",
+    ),
+    (
+        "ns-module-system-importlib",
+        PYM,
+        '_MODULE_SYSTEM_MODULES = frozenset({"sys", "importlib", "builtins"})',
+        '_MODULE_SYSTEM_MODULES = frozenset({"sys", "builtins"})',
+    ),
+    (
+        "ns-module-system-builtins",
+        PYM,
+        '_MODULE_SYSTEM_MODULES = frozenset({"sys", "importlib", "builtins"})',
+        '_MODULE_SYSTEM_MODULES = frozenset({"sys", "importlib"})',
+    ),
+    (
+        "ns-module-system-root",
+        PYM,
+        '        if any((_dotted(info) or [""])[0] in _MODULE_SYSTEM_MODULES for info in handed):',
+        '        if any((_dotted(info) or [""])[-1] in _MODULE_SYSTEM_MODULES for info in handed):',
+    ),
+    # R-724-2: the closed allow-list of exempt token uses.
+    (
+        "ns-exempt-token",
+        PYM,
+        "            if _not_own_namespace(analysis, ident):",
+        "            if False:",
+    ),
+    (
+        "ns-exempt-exec",
+        PYM,
+        "        if not ps._binding_position(ident) and not _exec_into_fresh_module(\n"
+        "            analysis, ident\n        ):",
+        "        if not ps._binding_position(ident):",
+    ),
+    (
+        "ns-exempt-factory-list",
+        PYM,
+        '    {("types", "ModuleType"), ("importlib", "util", "module_from_spec")}',
+        '    {("importlib", "util", "module_from_spec")}',
+    ),
+    (
+        "ns-exempt-exec-receiver",
+        PYM,
+        "        and _fresh_module_local(analysis, ps._unwrap(receiver, skip_comments=True))",
+        "        and True",
+    ),
+    (
+        "ns-exempt-loader-receiver",
+        PYM,
+        "        and len(arguments) == 1\n        and _fresh_module_local(analysis, arguments[0])",
+        "        and len(arguments) == 1",
+    ),
+    (
+        "ns-exempt-exec-name",
+        PYM,
+        '    if ps._text(ident, source) != "exec" or not _unshadowed_builtin(analysis, "exec"):',
+        '    if not _unshadowed_builtin(analysis, "exec"):',
+    ),
+    (
+        "ns-exempt-exec-builtin",
+        PYM,
+        '    if ps._text(ident, source) != "exec" or not _unshadowed_builtin(analysis, "exec"):',
+        '    if ps._text(ident, source) != "exec":',
+    ),
+    (
+        "ns-exempt-unshadowed-star",
+        PYM,
+        "    return not analysis.star and not any(\n        bound == name",
+        "    return not any(\n        bound == name",
+    ),
+    (
+        "ns-exempt-splat",
+        PYM,
+        '        value.type in ("keyword_argument", "list_splat", "dictionary_splat")',
+        '        value.type in ("keyword_argument", "dictionary_splat")',
+    ),
+    (
+        "ns-exempt-exec-arity",
+        PYM,
+        "    if arguments is None or len(arguments) != 2:",
+        "    if arguments is None or len(arguments) < 2:",
+    ),
+    (
+        "ns-exempt-exec-dict",
+        PYM,
+        '        and ps._text(attribute, source) == "__dict__"',
+        '        and ps._text(attribute, source) != ""',
+    ),
+    (
+        "ns-exempt-loader-name",
+        PYM,
+        '        or ps._text(loader_name, source) != "loader"',
+        '        or ps._text(loader_name, source) == ""',
+    ),
+    (
+        "ns-exempt-loader-holder",
+        PYM,
+        '        or holder is None\n        or holder.type != "identifier"',
+        "        or holder is None",
+    ),
+    (
+        "ns-exempt-loader-arity",
+        PYM,
+        "        and len(arguments) == 1\n        and _fresh_module_local(analysis, arguments[0])",
+        "        and len(arguments) >= 1\n        and _fresh_module_local(analysis, arguments[0])",
+    ),
+    (
+        "ns-exempt-import-builtin",
+        PYM,
+        '    if not _unshadowed_builtin(analysis, "__import__"):\n        return False',
+        "",
+    ),
+    (
+        "ns-exempt-import-arity",
+        PYM,
+        "    if arguments is None or len(arguments) != 1:\n        return False\n"
+        "    value = ps._constant_string(arguments[0], analysis.source)",
+        "    if arguments is None or len(arguments) < 1:\n        return False\n"
+        "    value = ps._constant_string(arguments[0], analysis.source)",
+    ),
+    (
+        "ns-exempt-import-parts",
+        PYM,
+        "    if not all(part.isidentifier() for part in parts):\n        return False\n",
+        "",
+    ),
+    (
+        "ns-exempt-import-classified",
+        PYM,
+        "        and parts[0] not in _CLASSIFIED_MODULES\n",
+        "",
+    ),
+    (
+        "ns-exempt-import-own",
+        PYM,
+        "        and parts[0] not in own\n",
+        "",
+    ),
+    (
+        "ns-exempt-import-own-path",
+        PYM,
+        "    own = set(analysis.module_path.components) | set(analysis.own_names)",
+        "    own = set(analysis.own_names)",
+    ),
+    (
+        "ns-exempt-fresh-function",
+        PYM,
+        "    if scope is None or scope.kind != ps._FUNCTION:",
+        "    if scope is None:",
+    ),
+    (
+        "ns-exempt-fresh-lookup",
+        PYM,
+        "    if analysis.decided is not scope or len(scope.bindings.get(name, ())) != 1:",
+        "    if len(scope.bindings.get(name, ())) != 1:",
+    ),
+    (
+        "ns-exempt-fresh-one-binding",
+        PYM,
+        "    if analysis.decided is not scope or len(scope.bindings.get(name, ())) != 1:",
+        "    if analysis.decided is not scope:",
+    ),
+    (
+        "ns-exempt-fresh-one-site",
+        PYM,
+        "    if len(sites) != 1:\n        return False\n    (site,) = sites",
+        "    if len(sites) > 1:\n        return False\n    (site,) = sites[:1] or [None]",
+    ),
+    (
+        "ns-exempt-factory-mangled",
+        PYM,
+        "    if ps._mangled_names(node, head, source):",
+        "    if False:",
+    ),
+    (
+        "ns-exempt-factory-star",
+        PYM,
+        '    if node is None or node.type != "identifier" or analysis.star:',
+        '    if node is None or node.type != "identifier":',
+    ),
+    (
+        "ns-exempt-factory-writes",
+        PYM,
+        "    if set(chain) & analysis.attribute_writes:",
+        "    if False:",
+    ),
+    (
+        "ns-exempt-factory-other-binding",
+        PYM,
+        "        if dotted is None:\n            return False\n        paths.add",
+        "        if dotted is None:\n            continue\n        paths.add",
+    ),
+    (
+        "ns-exempt-factory-one-path",
+        PYM,
+        "    if len(paths) != 1:\n        return False\n    (path,) = paths",
+        "    if not paths:\n        return False\n    path = sorted(paths)[-1]",
     ),
     # treesitter-chunker#706 slice 1: tracked getters and call results.
     (
@@ -899,14 +1203,26 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "getter-introspection-gate",
         PYM,
-        "    gate = handout is None or _introspects(analysis, reader=False)",
+        "    gate = _introspects(analysis, handout, routes_seen)",
         "    gate = handout is None",
     ),
     (
-        "h1-namespace-names",
+        "h1-frame-key-read",
         PYM,
-        "    if any(\n        ps._spellings(ident, source) & _INTROSPECTION_NAMES\n",
-        "    if False and any(\n        ps._spellings(ident, source) & _INTROSPECTION_NAMES\n",
+        "    return bool(handout is None or handout or analysis.frame_locals or any(",
+        "    return bool(handout is None or analysis.frame_locals or any(",
+    ),
+    (
+        "h1-builtins-routes",
+        PYM,
+        "or handout or analysis.frame_locals or any(routes_seen))",
+        "or handout or analysis.frame_locals)",
+    ),
+    (
+        "h1-routes-seen",
+        PYM,
+        "    if routes_seen is not None:\n        routes_seen.append(routes)\n",
+        "    if routes_seen is not None:\n        routes_seen.append(False)\n",
     ),
     (
         "return-shape",
@@ -1056,7 +1372,21 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     # registry, a rebinding) with no wrong edge, only correct gains. The
     # conditional restriction is a conservative choice no soundness test
     # separates.
-    # Equivalent (recorded, not run): ``continuation`` (tree-sitter reports
+    # H1's ``analysis.frame_locals`` clause (a file that may write a
+    # function's locals) is equivalent since the re-stack on R-724-1: every
+    # name that sets it and reaches a getter or a result alias (``f_locals``,
+    # the frame-locals readers, ``__closure__``/``cell_contents`` through a
+    # nested read, ``exec(..., closure=)``) is also a #724 token, a bare
+    # evaluator or a nested-scope read, each an escape on its own.
+    # Equivalent (recorded, not run): the R-724-2 keyword filter of
+    # ``_positional_arguments`` (a keyword argument is no attribute,
+    # identifier or constant, which each exempt position also requires), the
+    # ``exec_module`` attribute-position check (a token that is no attribute
+    # name has no ``.loader`` object), the receiver's mangled-name check (the
+    # lookup decides no mangled name), the factory head's attribute-write
+    # check (every recorded attribute write is a module binding event) and
+    # ``module_path.unknown`` (every test file has a path); ``continuation``
+    # (tree-sitter reports
     # every malformed continuation as an error first), ``own-name-acquisition``
     # (``sys.modules[__name__]`` already makes the file dynamic in Tier 1, so
     # its exports fail closed), ``chain-matches-reference`` (the tree's chain

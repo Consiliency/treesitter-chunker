@@ -211,12 +211,17 @@ logger = logging.getLogger(__name__)
 # that may invoke one, followed through member calls and function-local
 # aliases; H1 gates getters and aliases in files that reach their
 # namespace. Only ``imports``-mode facts change.
-# python "39": treesitter-chunker#724: a file that reads its own namespace
-# (``globals()``, ``locals()``, ``vars()``, one-argument ``exec``/``eval``,
-# ``f_globals``, ``__globals__``, ``getmodule``, ``__import__(__name__)``,
-# annotation evaluators) records a ``value`` use of every import binding in
-# it. Only ``imports``-mode facts change; the fixtures' digests change only
-# by the version.
+# python "39": treesitter-chunker#724, R-724-1: a file in which any token
+# spells a namespace-reaching name (``globals``, ``f_globals``,
+# ``__import__``, ``builtins``, ``__spec__``, ...; any role, any constant
+# spelling), uses a bare ``eval``/``exec`` or imports ``__main__`` records
+# a ``value`` use of every import binding in it; a package ``__init__.py``
+# also taints itself wholly (its submodules), and a handed-out ``sys``,
+# ``importlib`` or ``builtins`` adds ``module-system``. R-724-2 exempts
+# ``exec(code, X.__dict__)`` and ``<name>.loader.exec_module(X)`` on a fresh
+# module local and ``__import__`` of a constant foreign module. Only
+# ``imports``-mode facts change; the fixtures' digests change only by the
+# version.
 # python "38": PR 6 fold 7 (#705 P6-21, P6-22): a constant name (patcher
 # method or ``getfixturevalue``) counts in any spelling ``_constant_string``
 # decodes, as a positional argument, a keyword value or a subscript key.

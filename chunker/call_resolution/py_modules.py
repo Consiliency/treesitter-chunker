@@ -51,17 +51,23 @@ lookup at the use site), which taints exactly that name, and an operand of
 assignment value, a container, a dunder attribute such as ``__dict__``)
 taints the whole module, and through it every module it exposes as an
 attribute (its submodules and the modules it imports). A file that reads its
-own namespace (``globals()``, ``locals()``, ``vars()``, ``eval``/``exec``
-without explicit globals, ``f_globals``, ``__globals__``, ``getmodule``,
-``__import__(__name__)``, an annotation evaluator; :func:`_namespace_reader`)
-hands every import binding in it to code no use rule sees, so each is such
-a use (treesitter-chunker#724). A module returned by a *tracked getter*
-(a plain module-level ``def`` in a file that passes H1, :func:`_introspects`)
-is no escape: its uses are followed through the call result, member calls
-and function-local aliases (a read from a nested scope is an escape: a
-closure cell is reachable from another module) by the same allow-list, and
-anything else taints
-what the getter may return (treesitter-chunker#706, :func:`_scan_results`,
+own namespace (any token spelling ``globals``, ``locals``, ``vars``,
+``f_globals``, ``__globals__``, ``__import__``, ``getmodule``, ``builtins``
+and the rest of :data:`_NAMESPACE_TOKENS`, a bare ``eval``/``exec``, an
+import of ``__main__``; :func:`_namespace_handout`) hands every import
+binding in it to code no use rule sees, so each is such a use, and a
+package ``__init__.py`` hands out its submodules too
+(treesitter-chunker#724, R-724-1). A closed allow-list exempts a token use
+whose object is provably not the file's namespace (R-724-2:
+``exec(code, mod.__dict__)`` and ``spec.loader.exec_module(mod)`` on a
+fresh module local, ``__import__`` of a constant foreign module; see
+:func:`_not_own_namespace`).
+A module returned by a *tracked getter* (a plain module-level ``def`` in a
+file that passes H1, :func:`_introspects`) is no escape: its uses are
+followed through the call result, member calls and function-local aliases
+(a read from a nested scope is an escape: a closure cell is reachable from
+another module) by the same allow-list, and anything else taints what the
+getter may return (treesitter-chunker#706, :func:`_scan_results`,
 :meth:`_Builder.walk_result`). Literal acquisitions
 (``importlib.import_module('svc')``, ``__import__('svc')``,
 ``sys.modules['svc']``) taint their target wholly; dotted constant strings
@@ -488,10 +494,11 @@ def module_facts(
             facts.uses.add(_record(info, "value", ()))
     _scan_imports(analysis, facts)
     own_submodules = _own_submodules(analysis, own_ref, facts.stars)
-    handout = _namespace_handout(analysis)
+    routes_seen: list[bool] = []
+    handout = _namespace_handout(analysis, frozenset(import_infos), routes_seen)
     # H1 (#706): a file that reaches its namespace without spelling a name
     # has no tracked getters and no result aliases.
-    gate = handout is None or _introspects(analysis, reader=False)
+    gate = _introspects(analysis, handout, routes_seen)
     _scan_uses(
         analysis, facts, import_infos, {} if gate else _tracked_getters(analysis)
     )
@@ -499,12 +506,25 @@ def module_facts(
     if handout is None or handout:
         # #724: the file hands its namespace, and the import bindings in it,
         # to code the use rules do not follow.
-        facts.uses.update(
-            _record(info, "value", ())
+        handed = [
+            info
             for name, infos in import_infos.items()
             if handout is None or name in handout
             for info in infos
-        )
+        ]
+        facts.uses.update(_record(info, "value", ()) for info in handed)
+        if any((_dotted(info) or [""])[0] in _MODULE_SYSTEM_MODULES for info in handed):
+            # R-724-1 item 4: a handed-out ``sys``, ``importlib`` or
+            # ``builtins`` reaches every module (``d["sys"].modules["svc"]``),
+            # as passing it on does.
+            facts.shutoff.add(CAUSE_MODULE_SYSTEM)
+        if handout is None and analysis.module_path.package_init and own_ref:
+            # R-724-1 item 2: a package's namespace holds its submodules,
+            # which are not import bindings (``globals()["svc"]`` in
+            # ``pkg/__init__.py`` is ``pkg.svc``). As for
+            # ``sys.modules[__name__]``, the package is tainted wholly, and
+            # through it every submodule.
+            facts.taints.add((own_ref, "*"))
     _scan_causes(analysis, facts, import_infos, own_ref)
     patchers = _Patchers(analysis)
     _scan_patchers(analysis, facts, patchers)
@@ -1216,44 +1236,54 @@ def _scan_causes(
                 )
 
 
-# treesitter-chunker#724: forms that read the file's own namespace (a dict
-# or module object holding its import bindings) and can hand it to other
-# code. ``helper(globals())`` after ``import svc`` lets ``helper`` run
-# ``d["svc"].t = f``, which CPython 3.14 honours while ``svc.py``'s own
-# ``t()`` call was proven. A file with any of them is a *namespace reader*
-# (:func:`_namespace_reader`): every import binding in it counts as handed
-# out, a ``value`` use, as if the module were passed as an argument.
-#
-# The builtins that read the calling frame's namespace, decided by the
-# ordinary lookup at the use: a binding of the file's own is not the builtin.
-_NAMESPACE_BUILTINS = frozenset(
-    {"globals", "locals", "vars", "eval", "exec", "execfile"}
-)
-# The evaluators and ``vars``, with their argument that keeps the file's
-# namespace out (``vars(obj)`` reads ``obj.__dict__``; ``exec(code, d)``
-# runs ``code`` in ``d``).
-_NAMESPACE_EVALUATORS = frozenset({"eval", "exec", "execfile"})
-# Names that reach a namespace dict of a frame or function, or a function's
-# module, in any identifier position (``sys._getframe().f_globals``,
-# ``fn.__globals__``, ``inspect.getmodule(fn)``, the frame-locals readers of
-# ``inspect`` and ``pdb``), and the annotation evaluators, which run a
-# string annotation (``def h(x: "svc")``) against the defining file's
-# globals (``typing.get_type_hints(h)["x"]`` is the module ``svc``).
-_NAMESPACE_ATTRIBUTES = frozenset(
+# treesitter-chunker#724, executive ruling R-724-1: a file hands out its
+# namespace, every import binding in it, when ANY token in it spells a name
+# that reaches a namespace (:data:`_NAMESPACE_TOKENS`), in any role: an
+# identifier, an attribute, an import name, a keyword argument or a constant
+# string (decoded and joined across adjacent literals and ``+``, matched
+# exactly or as a dotted or bracket component). ``helper(globals())`` after
+# ``import svc`` lets ``helper`` run ``d["svc"].t = f``, which CPython 3.14
+# honours while ``svc.py``'s own ``t()`` call was proven. Shadowing is
+# ignored: any spelling counts, so a token list closes the spelling and
+# position variants a trigger list leaves open (the 726 Fable review, B-1 to
+# B-7). Each handed-out binding is a ``value`` use, as if the module were
+# passed as an argument.
+_NAMESPACE_TOKENS = frozenset(
     {
+        # The builtins that return the calling frame's namespace.
+        "globals",
+        "locals",
+        "vars",
+        # A frame's or a function's namespace dicts, and the builtins dict
+        # (``f_builtins["globals"]()``).
         "f_globals",
         "f_locals",
+        "f_builtins",
         "__globals__",
+        # A module object from a name, a frame or a function
+        # (``__import__(__name__)``, ``inspect.getmodule(fn)``), and the
+        # globals a closure reads (``inspect.getclosurevars(fn).globals``).
+        "__import__",
         "getmodule",
+        "getclosurevars",
+        # The module's own loader (``__spec__.loader.load_module(__name__)``).
+        "__loader__",
+        "__spec__",
+        "load_module",
+        "exec_module",
+        # ``string.Formatter().get_field("0.__globals__[svc]", (fn,), {})``.
+        "get_field",
+        # The builtins module, which holds every builtin above.
+        "builtins",
+        # The frame-locals readers of ``inspect`` and ``pdb``.
         "getargvalues",
         "getgeneratorlocals",
         "getcoroutinelocals",
         "getasyncgenlocals",
         "curframe_locals",
-    }
-)
-_ANNOTATION_EVALUATORS = frozenset(
-    {
+        # The annotation evaluators, which run a string annotation
+        # (``def h(x: "svc")``) against the defining file's globals
+        # (``typing.get_type_hints(h)["x"]`` is the module ``svc``).
         "get_type_hints",
         "get_annotations",
         "eval_str",
@@ -1264,53 +1294,63 @@ _ANNOTATION_EVALUATORS = frozenset(
         "call_evaluate_function",
     }
 )
-_NAMESPACE_NAMES = _NAMESPACE_ATTRIBUTES | _ANNOTATION_EVALUATORS
+# The components a constant string is matched by: dotted, ``:``-separated,
+# bracketed and quoted parts (``"0.__globals__[svc]"``, ``"builtins.open"``).
+_TOKEN_SEPARATORS = re.compile(r"[.:\[\]'\"]")
 # A frame's namespace dicts, read by a constant key (:func:`_frame_read_keys`).
 _FRAME_DICTS = frozenset({"f_locals", "f_globals"})
-# Names that reach the ``builtins`` module or a frame's builtins dict, on
-# which ``X.globals()`` or ``X.exec(code)`` is the builtin itself
-# (``builtins.globals()`` and ``frame.f_builtins["globals"]()`` return the
-# caller's globals). Another receiver's ``.eval()`` (``model.eval()``) or
-# ``.globals`` (a Jinja environment) is not.
-_BUILTINS_ROUTES = frozenset(
-    {"builtins", "__builtins__", "__builtin__", "bltns", "__self__", "f_builtins"}
-)
-_SPLATS = frozenset({"list_splat", "dictionary_splat"})
+# The evaluators run code in the calling frame's namespace. They count in any
+# bare spelling, called with any arguments or handed on (``exec(code, d)``
+# included: ``d`` may be the namespace). Another object's ``.eval()``
+# (``model.eval()``) and ``compile``'s mode string ``"exec"`` count only in a
+# file that spells a route to the builtins (:data:`_BUILTINS_ROUTES`), where
+# ``__builtins__.exec(...)`` or ``getattr(bltns, "eval")`` is the builtin.
+_NAMESPACE_EVALUATORS = frozenset({"eval", "exec", "execfile"})
+_BUILTINS_ROUTES = frozenset({"__builtins__", "__builtin__", "bltns", "__self__"})
+# The modules whose handed-out binding is itself a route to every module
+# (``d["sys"].modules["svc"]``, ``d["importlib"].import_module("svc")``):
+# a ``module-system`` cause (R-724-1 item 4).
+_MODULE_SYSTEM_MODULES = frozenset({"sys", "importlib", "builtins"})
+_MAIN = "__main__"
 
 
-def _namespace_reader(analysis: Any) -> bool:
-    """Whether the file hands out every import binding in it
-    (:func:`_namespace_handout`)."""
-    return _namespace_handout(analysis) is None
+def _token_match(value: str, names: AbstractSet[str]) -> bool:
+    """Whether a decoded constant string is one of ``names``, exactly or as
+    a component (:data:`_TOKEN_SEPARATORS`)."""
+    return value in names or bool(set(_TOKEN_SEPARATORS.split(value)) & names)
 
 
-def _namespace_handout(analysis: Any) -> frozenset[str] | None:
-    """The import binding names the file hands out by reading its own
-    namespace (#724): ``None`` for every one, else the names a frame
-    namespace read by a constant key reaches (``frame.f_locals.get("code")``
-    hands out a binding named ``code``, ``"x" in frame.f_globals`` none).
+def _namespace_handout(
+    analysis: Any,
+    import_names: AbstractSet[str] = frozenset(),
+    routes_seen: list[bool] | None = None,
+) -> frozenset[str] | None:
+    """The import binding names the file hands out by reaching its own
+    namespace (#724, R-724-1): ``None`` for every one, else the names a frame
+    namespace read by a constant key reaches. When it returns a set and
+    ``routes_seen`` is given, it appends whether the file spells a route to
+    the builtins (:data:`_BUILTINS_ROUTES`), which H1 reads
+    (:func:`_introspects`).
 
-    Every binding is handed out by a ``globals()``,
-    ``locals()``, ``vars()`` with no argument, ``eval``/``exec``/
-    ``execfile`` without explicit globals, ``__import__`` of anything but a
-    constant (``__import__(__name__)``), any of these builtins handed on
-    (``g = globals``) or imported, a spelling of :data:`_NAMESPACE_NAMES`, or
-    one of :data:`_NAMESPACE_NAMES` as a constant string a call takes or a
-    subscript key (``getattr(fn, "__globals__")``). ``X.globals()``,
-    ``X.exec(...)`` and a builtin's name as such a string
-    (``getattr(builtins, "globals")``) count only in a file that spells a
-    route to the ``builtins`` module (:data:`_BUILTINS_ROUTES`, as a name or
-    a constant string).
+    Every binding is handed out when any token of the file spells one of
+    :data:`_NAMESPACE_TOKENS` (an identifier in any role, an attribute, an
+    import name, a keyword argument name, or a component of a constant
+    string), whatever binding the name has; when the file imports
+    ``__main__`` (an import statement, or ``"__main__"`` as a call argument
+    or subscript key); when a bare ``eval``,
+    ``exec`` or ``execfile`` is used other than as a binding, or the
+    statement ``exec``; and, in a file that spells a route to the builtins
+    (:data:`_BUILTINS_ROUTES`), when ``X.eval``/``X.exec`` or the string
+    ``"eval"``/``"exec"`` appears.
 
-    A frame's ``f_locals`` or ``f_globals`` read by a constant key
-    (``.get(K)``, ``[K]``) reaches only the binding named ``K`` of whichever
-    frame it is; ``K in`` reaches none (another module's frame is plan risk
-    R12, #699 PY-9).
-
-    These do not count: ``vars(obj)`` with one argument, and ``exec(code,
-    d)`` or ``eval(expr, d)`` with explicit globals that are not the literal
-    ``None`` (``d`` holding ``None`` at run time is plan risk R12, a value
-    the rules do not follow)."""
+    One narrowing: a frame's ``f_locals`` or ``f_globals`` read by a constant
+    key (``.get(K)``, ``[K]``) hands out only the binding named ``K``, and
+    only when ``K`` is a non-dunder name that is an import binding of the
+    file (``import_names``). Any other key hands out every binding: a dunder
+    (``__builtins__``, ``__loader__``, ``__spec__``, ``__name__``) reaches
+    the whole namespace, and a function or class (``f_globals["go"]``)
+    reaches it through ``__globals__`` or ``__module__``. ``K in`` reads
+    no value and hands out none."""
     from . import py_scope as ps
 
     source = analysis.source
@@ -1319,65 +1359,353 @@ def _namespace_handout(analysis: Any) -> frozenset[str] | None:
     keys: set[str] = set()
     for ident in analysis.identifier_nodes:
         spellings = ps._spellings(ident, source)
-        if spellings & _NAMESPACE_NAMES:
+        if spellings & _NAMESPACE_TOKENS:
+            if _not_own_namespace(analysis, ident):
+                # R-724-2: the token applies to an object the use-site
+                # lookup proves is not this file's namespace.
+                continue
             read = _frame_read_keys(analysis, ident)
-            if read is None:
+            if read is None or any(
+                ps._dunder(key) or key not in import_names for key in read
+            ):
                 return None
             keys |= read
             continue
         if spellings & _BUILTINS_ROUTES:
             routes = True
         name = ps._text(ident, source)
-        if name == "__import__":
-            if _own_import(analysis, ident):
-                return None
-            continue
-        if name not in _NAMESPACE_BUILTINS:
+        if name == _MAIN and _import_target(ident):
+            return None
+        if name not in _NAMESPACE_EVALUATORS:
             continue
         if ps._name_part(ident):
+            # ``X.eval`` (a builtin on a route to the builtins); a keyword
+            # argument name (``f(eval=True)``) is neither.
             parent = ident.parent
             if parent is not None and parent.type == "attribute":
                 members = True
             continue
         if _in_import(ident):
-            # ``from builtins import globals as g``: the bound name is not
-            # spelled at its uses.
             return None
-        if _namespace_builtin(analysis, ident, name):
+        if not ps._binding_position(ident) and not _exec_into_fresh_module(
+            analysis, ident
+        ):
             return None
-    builtin_strings = False
+    evaluator_strings = False
     stack = [analysis.root]
     while stack:
         node = stack.pop()
         stack.extend(node.named_children)
-        if node.type == "exec_statement":
+        kind = node.type
+        if kind == "exec_statement":
             return None
-        if node.type == "string" and not routes:
-            value = ps._constant_string(node, source)
-            if value is not None and (
-                set(ps._NAME_SEPARATORS.split(value)) & _BUILTINS_ROUTES
-            ):
-                # ``sys.modules["builtins"]``, ``import_module("builtins")``.
-                routes = True
-        value = _argument_string(node, source)
+        if kind not in ("string", "concatenated_string", "binary_operator"):
+            continue
+        if (
+            kind == "string"
+            and node.parent is not None
+            and (node.parent.type == "concatenated_string")
+        ):
+            continue
+        value = ps._constant_string(node, source)
         if value is None:
             continue
-        if set(ps._NAME_SEPARATORS.split(value)) & _NAMESPACE_NAMES:
+        if _token_match(value, _NAMESPACE_TOKENS):
             return None
-        if value in _NAMESPACE_BUILTINS:
-            # ``getattr(builtins, "globals")()``; a plain ``"exec"`` (the mode
-            # ``compile`` takes) names nothing.
-            builtin_strings = True
-    if routes and (members or builtin_strings):
+        if _token_match(value, _BUILTINS_ROUTES):
+            routes = True
+        if value in _NAMESPACE_EVALUATORS:
+            evaluator_strings = True
+        if value == _MAIN and _argument_string(node, source) is not None:
+            # ``importlib.import_module("__main__")``,
+            # ``sys.modules["__main__"]`` (the script guard compares the
+            # constant, which is neither).
+            return None
+    if routes and (members or evaluator_strings):
         return None
+    if routes_seen is not None:
+        routes_seen.append(routes)
     return frozenset(keys)
 
 
+# R-724-2: the closed allow-list of token uses whose object the use-site
+# lookup proves is not the file's own namespace. It covers what the costed
+# sites do (spec ``ingest.py``'s ``exec(code, mod.__dict__)``,
+# Code-Index-MCP's ``spec.loader.exec_module(probe)`` and
+# ``__import__("hashlib")``) and nothing more; every other use of a token
+# stays a trigger (any frame, function or ``globals()`` route included).
+#
+# The receiver is a fresh module: a function local, decided by the lookup at
+# the use, whose one binding in its function is ``X = <one of these>(...)``,
+# the callee proven by its imports (``import types``, ``import
+# importlib.util``, ``from importlib.util import module_from_spec``).
+_FRESH_MODULE_FACTORIES = frozenset(
+    {("types", "ModuleType"), ("importlib", "util", "module_from_spec")}
+)
+
+
+def _not_own_namespace(analysis: Any, ident: Any) -> bool:
+    """Whether a token identifier is one of R-724-2's exempt uses:
+    ``<name>.loader.exec_module(X)`` on a fresh module ``X``
+    (:func:`_fresh_module_local`), or ``__import__(K)`` of a constant
+    absolute module name ``K`` that is not the file's own module, its
+    package or a classified module (:func:`_foreign_import_constant`)."""
+    from . import py_scope as ps
+
+    name = ps._text(ident, analysis.source)
+    if name == "exec_module":
+        return _loader_exec_into_fresh_module(analysis, ident)
+    if name == "__import__":
+        return _foreign_import_constant(analysis, ident)
+    return False
+
+
+def _unshadowed_builtin(analysis: Any, name: str) -> bool:
+    """Whether ``name`` is bound nowhere in the file, which has no star
+    import: every use of it is the builtin."""
+    return not analysis.star and not any(
+        bound == name for _scope, bound, _binding in analysis.events
+    )
+
+
+def _positional_arguments(call: Any) -> list[Any] | None:
+    """A call's arguments when every one is positional (no keyword, no
+    ``*``/``**`` splat, no generator argument), else ``None``."""
+    from . import py_scope as ps
+
+    arguments = call.child_by_field_name("arguments")
+    if arguments is None or arguments.type != "argument_list":
+        return None
+    values = ps._call_arguments(call)
+    if any(
+        value.type in ("keyword_argument", "list_splat", "dictionary_splat")
+        for value in values
+    ):
+        return None
+    return values
+
+
+def _exec_into_fresh_module(analysis: Any, ident: Any) -> bool:
+    """``exec(code, X.__dict__)``: the builtin ``exec`` called with exactly
+    two positional arguments, the globals being a fresh module's
+    ``__dict__`` (spec ``ingest.py``). The code runs in ``X``'s namespace;
+    ``globals()`` there is ``X.__dict__``."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    if ps._text(ident, source) != "exec" or not _unshadowed_builtin(analysis, "exec"):
+        return False
+    call = ps._callee_call(ident)
+    arguments = _positional_arguments(call) if call is not None else None
+    if arguments is None or len(arguments) != 2:
+        return False
+    namespace = arguments[1]
+    if namespace.type != "attribute":
+        return False
+    attribute = namespace.child_by_field_name("attribute")
+    receiver = namespace.child_by_field_name("object")
+    return (
+        attribute is not None
+        and ps._text(attribute, source) == "__dict__"
+        and receiver is not None
+        and _fresh_module_local(analysis, ps._unwrap(receiver, skip_comments=True))
+    )
+
+
+def _loader_exec_into_fresh_module(analysis: Any, ident: Any) -> bool:
+    """``<name>.loader.exec_module(X)``: the attribute ``exec_module`` of a
+    name's ``loader``, called with exactly one positional argument, a fresh
+    module (Code-Index-MCP ``safety_runtime_smoke.py``). The loader runs the
+    module's code in ``X``'s namespace."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    attribute = ident.parent
+    if (
+        attribute is None
+        or attribute.type != "attribute"
+        or not ps._same(ident, attribute.child_by_field_name("attribute"))
+    ):
+        return False
+    loader = attribute.child_by_field_name("object")
+    loader = ps._unwrap(loader, skip_comments=True) if loader is not None else None
+    if loader is None or loader.type != "attribute":
+        return False
+    loader_name = loader.child_by_field_name("attribute")
+    holder = loader.child_by_field_name("object")
+    holder = ps._unwrap(holder, skip_comments=True) if holder is not None else None
+    if (
+        loader_name is None
+        or ps._text(loader_name, source) != "loader"
+        or holder is None
+        or holder.type != "identifier"
+    ):
+        return False
+    call = ps._callee_call(attribute)
+    arguments = _positional_arguments(call) if call is not None else None
+    return (
+        arguments is not None
+        and len(arguments) == 1
+        and _fresh_module_local(analysis, arguments[0])
+    )
+
+
+def _foreign_import_constant(analysis: Any, ident: Any) -> bool:
+    """``__import__(K)``: the builtin called with exactly one positional
+    argument, a constant absolute module name (Code-Index-MCP
+    ``stdio_runner.py``'s ``__import__("hashlib")``). It returns ``K``'s
+    top-level package, which :func:`_scan_causes` already taints wholly
+    (``import K; f(K)``). Not exempt: a relative or empty name, a name
+    whose top-level package is a classified module (``sys``,
+    ``importlib``, ``builtins``, ``__main__``, ``inspect``, ``gc``, ...:
+    ``__import__("sys").modules[__name__]``), or a name whose top-level
+    package is any component of the file's own module path (it may be the
+    file's own package, and so reach the file). A constant spelling a token
+    (``__import__("builtins")``) is a string token itself. A shadowing
+    binding of ``__import__`` is a token too; a star import is checked."""
+    from . import py_scope as ps
+
+    if not _unshadowed_builtin(analysis, "__import__"):
+        return False
+    call = ps._callee_call(ident)
+    arguments = _positional_arguments(call) if call is not None else None
+    if arguments is None or len(arguments) != 1:
+        return False
+    value = ps._constant_string(arguments[0], analysis.source)
+    if not value:
+        return False
+    parts = value.split(".")
+    if not all(part.isidentifier() for part in parts):
+        return False
+    own = set(analysis.module_path.components) | set(analysis.own_names)
+    return (
+        not analysis.module_path.unknown
+        and parts[0] not in _CLASSIFIED_MODULES
+        and parts[0] not in own
+    )
+
+
+def _fresh_module_local(analysis: Any, ident: Any) -> bool:
+    """Whether ``ident`` is a function local whose ONE binding in its
+    function is ``ident = F(...)``, ``F`` proven by its import to be
+    ``types.ModuleType`` or ``importlib.util.module_from_spec``
+    (:data:`_FRESH_MODULE_FACTORIES`). Such a value is a new module object,
+    never the file's own module: a rebinding (another assignment, a ``for``
+    or ``with`` target, ``del``, a walrus, a ``nonlocal`` write from an inner
+    function), a ``global`` declaration or a parameter of the name makes it
+    no fresh module."""
+    from . import py_scope as ps
+
+    if ident is None or ident.type != "identifier":
+        return False
+    name = ps._text(ident, analysis.source)
+    scope = next(iter(analysis._chain(ident)), None)
+    if scope is None or scope.kind != ps._FUNCTION:
+        return False
+    # The lookup decides in this function (a ``global`` or ``nonlocal``
+    # name, a mangled name, a poisoned scope and a file that may write a
+    # function's locals, ``f_locals`` or a closure cell, decide nowhere or
+    # elsewhere).
+    analysis.lookup(ident)
+    if analysis.decided is not scope or len(scope.bindings.get(name, ())) != 1:
+        return False
+    sites = [
+        site
+        for site in analysis._binding_sites_of(name)
+        if next(iter(analysis._chain(site)), None) is scope
+    ]
+    if len(sites) != 1:
+        return False
+    (site,) = sites
+    assignment = site.parent
+    if assignment is None or assignment.type != "assignment":
+        return False
+    value = assignment.child_by_field_name("right")
+    value = ps._unwrap(value, skip_comments=True) if value is not None else None
+    if value is None or value.type != "call":
+        return False
+    callee = value.child_by_field_name("function")
+    callee = ps._unwrap(callee, skip_comments=True) if callee is not None else None
+    return callee is not None and _fresh_module_factory(analysis, callee)
+
+
+def _fresh_module_factory(analysis: Any, callee: Any) -> bool:
+    """Whether a callee is one of :data:`_FRESH_MODULE_FACTORIES`: an
+    identifier or attribute chain whose head is bound ONLY by imports in the
+    file, all denoting one absolute path, which joined with the chain is the
+    factory (``types.ModuleType``, ``importlib.util.module_from_spec``,
+    ``module_from_spec`` from ``importlib.util``). Fold 25's proof of a
+    standard-library callee (``py_scope._stdlib_name``), which holds in a
+    file whose module lookups fail closed (any ``importlib`` mention makes
+    them ``dynamic-scope``): no other binding of the head anywhere (an
+    assignment, a parameter, ``del``, a class or def, a write of its name on
+    any receiver such as ``x.types = F``), no star import, and no recorded
+    write of a chain name on any receiver (``importlib.util = F``,
+    ``ns["ModuleType"] = F``)."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    chain: list[str] = []
+    node = callee
+    while node is not None and node.type == "attribute":
+        attribute = node.child_by_field_name("attribute")
+        if attribute is None:
+            return False
+        chain.append(ps._text(attribute, source))
+        node = node.child_by_field_name("object")
+        node = ps._unwrap(node, skip_comments=True) if node is not None else None
+    if node is None or node.type != "identifier" or analysis.star:
+        return False
+    head = ps._text(node, source)
+    if ps._mangled_names(node, head, source):
+        return False
+    if set(chain) & analysis.attribute_writes:
+        # ``importlib.util = U``, ``ns["ModuleType"] = F``. A write of the
+        # head's own name on any receiver (``x.types = F``) is already a
+        # module-scope binding event of it, which the loop below refuses.
+        return False
+    paths = set()
+    for _scope, bound, binding in analysis.events:
+        if bound != head:
+            continue
+        dotted = _dotted(binding.info or {}) if binding.cls == ps.IMPORT else None
+        if dotted is None:
+            return False
+        paths.add(tuple(dotted))
+    if len(paths) != 1:
+        return False
+    (path,) = paths
+    return (*path, *reversed(chain)) in _FRESH_MODULE_FACTORIES
+
+
+def _import_target(ident: Any) -> bool:
+    """Whether an identifier is the first component of the module an import
+    statement imports (``import __main__``, ``import __main__ as me``,
+    ``from __main__ import x``)."""
+    node = ident.parent
+    if node is None or node.type != "dotted_name":
+        return False
+    first = node.named_children[0] if node.named_children else None
+    if first is None or first.id != ident.id:
+        return False
+    above = node.parent
+    if above is not None and above.type == "aliased_import":
+        above = above.parent
+    if above is None:
+        return False
+    if above.type == "import_statement":
+        return True
+    if above.type == "import_from_statement":
+        module = above.child_by_field_name("module_name")
+        return module is not None and module.id == node.id
+    return False
+
+
 def _frame_read_keys(analysis: Any, ident: Any) -> frozenset[str] | None:
-    """For an identifier spelled like one of :data:`_NAMESPACE_NAMES`: the
-    binding names it hands out when it is a frame's ``f_locals`` or
-    ``f_globals`` read by a constant key (:func:`_frame_locals_read`'s
-    closed list: ``.get(K)``, ``[K]``, ``K in``), else ``None`` (every
+    """For an identifier spelled like one of :data:`_NAMESPACE_TOKENS`: the
+    keys it reads when it is a frame's ``f_locals`` or ``f_globals`` read by
+    a constant key (:func:`_frame_locals_read`'s closed list: ``.get(K)``,
+    ``[K]``, ``K in``, the last reading none), else ``None`` (every
     binding)."""
     from . import py_scope as ps
 
@@ -1404,62 +1732,6 @@ def _frame_read_keys(analysis: Any, ident: Any) -> frozenset[str] | None:
         return frozenset()
     value = ps._constant_string(key, source) if key is not None else None
     return None if value is None else frozenset({value})
-
-
-def _namespace_builtin(analysis: Any, ident: Any, name: str) -> bool:
-    """Whether an identifier spelled like a builtin of
-    :data:`_NAMESPACE_BUILTINS` reads the file's namespace: the ordinary
-    lookup at the use does not prove a binding of the file's own, and it is
-    not a call that keeps the namespace out."""
-    from . import py_scope as ps
-
-    if ps._binding_position(ident):
-        return False
-    outcome = analysis.lookup(ident)
-    if outcome.get("outcome") == "local" or outcome.get("reason") in _OWN_BINDINGS:
-        return False
-    call = ps._callee_call(ident)
-    if call is None:
-        # Handed on (``g = globals``; ``run(vars)``): it may be called here.
-        return True
-    arguments = ps._call_arguments(call)
-    if any(argument.type in _SPLATS for argument in arguments):
-        return True
-    positional = [a for a in arguments if a.type != "keyword_argument"]
-    if name == "vars":
-        return not (len(positional) == 1 and len(arguments) == 1)
-    if name in _NAMESPACE_EVALUATORS:
-        namespace = positional[1] if len(positional) >= 2 else None
-        if namespace is None:
-            for argument in arguments:
-                if argument.type != "keyword_argument":
-                    continue
-                key = argument.child_by_field_name("name")
-                if key is not None and ps._text(key, analysis.source) == "globals":
-                    namespace = argument.child_by_field_name("value")
-        if namespace is None:
-            return True
-        namespace = ps._unwrap(namespace, skip_comments=True)
-        return bool(namespace.type == "none")
-    return True
-
-
-def _own_import(analysis: Any, ident: Any) -> bool:
-    """The builtin ``__import__`` (by the ordinary lookup) used other than
-    in a call with a constant first argument: ``__import__(__name__)``
-    returns this module (or its top package), and a computed name may be
-    ``__name__``."""
-    from . import py_scope as ps
-
-    if ps._name_part(ident) or _in_import(ident) or ps._binding_position(ident):
-        return False
-    if not _builtin_at(analysis, ident):
-        return False
-    call = ps._callee_call(ident)
-    if call is None:
-        return True
-    first = _first_argument(call)
-    return first is None or ps._constant_string(first, analysis.source) is None
 
 
 # treesitter-chunker#706: module objects returned by functions. A *tracked
@@ -1491,29 +1763,6 @@ RESULT_POSITIONS = frozenset(
 # a chain that may hold a function, ``return getter.get``) and taints nothing
 # else.
 REF_POSITION = "ref"
-# H1: names that hand out a namespace holding a getter or a result alias, or
-# reach the module object a getter lives in, without spelling the getter's
-# name. A file that spells one (as an identifier anywhere, or as a constant
-# string a call takes or a subscript key) has no tracked getters and no
-# result aliases: the old behaviour (an escape) holds there.
-_INTROSPECTION_NAMES = (
-    _NAMESPACE_BUILTINS
-    | _NAMESPACE_NAMES
-    | {"__import__"}
-    | frozenset(
-        {
-            "__globals__",
-            "f_globals",
-            "f_locals",
-            "f_builtins",
-            "getmodule",
-            "__builtins__",
-            "__self__",
-            "builtins",
-            "bltns",
-        }
-    )
-)
 # The nodes that open a scope a ``return`` or an alias belongs to.
 _SCOPE_NODES = frozenset(
     {
@@ -1529,33 +1778,27 @@ _SCOPE_NODES = frozenset(
 )
 
 
-def _introspects(analysis: Any, reader: bool | None = None) -> bool:
-    """H1 (#706, extended per the plan review's B1): the file spells a name
-    of :data:`_INTROSPECTION_NAMES`, reads its own namespace (#724; pass
-    ``reader`` when it is known) or mentions a frame's ``f_locals``."""
-    from . import py_scope as ps
+def _introspects(
+    analysis: Any, handout: frozenset[str] | None, routes_seen: Sequence[bool]
+) -> bool:
+    """H1 (#706, extended per the plan review's B1): whether the file may
+    hand out a namespace holding a getter or a result alias, or reach the
+    module object a getter lives in, without spelling the getter's name. Such
+    a file has no tracked getters and no result aliases (the old escape holds
+    there). ``handout`` is :func:`_namespace_handout`'s result and
+    ``routes_seen`` what it appended, so H1 is
+    #724's token rule with its R-724-2 allow-list, plus three cases that rule
+    narrows for import bindings alone:
 
-    if reader is None:
-        reader = _namespace_reader(analysis)
-    if analysis.frame_locals or reader:
-        return True
-    source = analysis.source
-    if any(
-        ps._spellings(ident, source) & _INTROSPECTION_NAMES
-        for ident in analysis.identifier_nodes
-    ):
-        return True
-    stack = [analysis.root]
-    while stack:
-        node = stack.pop()
-        stack.extend(node.named_children)
-        value = _argument_string(node, source)
-        if value is not None and (
-            value in _INTROSPECTION_NAMES
-            or set(ps._NAME_SEPARATORS.split(value)) & _INTROSPECTION_NAMES
-        ):
-            return True
-    return False
+    - a frame's ``f_locals``/``f_globals`` read by a constant key
+      (``handout`` not empty): the key may name a getter or a result alias;
+    - any mention of ``f_locals`` or another name that may write a
+      function's locals (``analysis.frame_locals``);
+    - a spelling of a route to the builtins (:data:`_BUILTINS_ROUTES`:
+      ``__builtins__``, ``__self__``, ``bltns``, the rest of
+      ``_DYNAMIC_ATTRIBUTES`` with the tokens), on which a computed member
+      may be ``globals``."""
+    return bool(handout is None or handout or analysis.frame_locals or any(routes_seen))
 
 
 def _scope_node(node: Any) -> Any:
