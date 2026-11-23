@@ -1321,9 +1321,13 @@ class _Patchers:
                 # P6-12: ``g = request.getfixturevalue; g("monkeypatch")``.
                 self.computed_fixture = True
             elif node.type == "string" and (
-                ps._constant_string(node, self.source) == _GETFIXTUREVALUE
+                node.parent is not None
+                and node.parent.type == "argument_list"
+                and ps._constant_string(node, self.source) == _GETFIXTUREVALUE
             ):
-                # P6-15: ``getattr(request, "getfixturevalue")("monkeypatch")``.
+                # P6-15: ``getattr(request, "getfixturevalue")("monkeypatch")``
+                # (any call taking the name: ``getattr``, ``attrgetter``,
+                # ``methodcaller``); a plain constant names nothing.
                 self.computed_fixture = True
         changed = True
         while changed:

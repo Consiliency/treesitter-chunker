@@ -2205,9 +2205,13 @@ Every rule only adds `none`.
 - **P6-12 and P6-15, `getfixturevalue` by alias or by name.** An
   `X.getfixturevalue` attribute that is not the callee of a direct call
   (`g = request.getfixturevalue`, `f4_mp_getfixture_alias`), and the
-  constant string `"getfixturevalue"` (`getattr(request,
-  "getfixturevalue")`, `f4_mp_getattr_method`), count as a computed fixture
-  name: an `unresolvable-writer` cause.
+  constant string `"getfixturevalue"` passed to any call (`getattr(request,
+  "getfixturevalue")`, `f4_mp_getattr_method`; also `attrgetter`,
+  `methodcaller`), count as a computed fixture name: an
+  `unresolvable-writer` cause. A plain constant elsewhere names nothing (the
+  first fold-5 measurement showed the rule flagging this tool's own
+  `_GETFIXTUREVALUE = "getfixturevalue"`; it is now limited to call
+  arguments).
 - **P6-14, annotations.** A patcher in an annotation is safe only when it is
   the annotation itself or sits in an `attribute`/`subscript`/
   `generic_type`/union chain of it, with no call or argument list in

@@ -2506,3 +2506,17 @@ def test_fold5_local_aliases_and_plain_annotations_stay_safe(
     facts, _graph, _context_ = _context(root)
     (item,) = [item for item in facts if item["path"] == "tests/test_b.py"]
     assert item["scope_facts"]["module_bindings"]["shutoff"] == []
+
+
+def test_fold5_plain_getfixturevalue_constant_is_no_cause(tmp_path: Path) -> None:
+    """P6-15 control: the constant ``"getfixturevalue"`` names a fixture
+    lookup only as a call argument (``getattr(request, "getfixturevalue")``);
+    a plain constant (this tool's own ``_GETFIXTUREVALUE``) records no
+    cause."""
+    root = _write(
+        tmp_path,
+        {**_SVC_OTHER, "names.py": 'GET = "getfixturevalue"\n'},
+    )
+    facts, _graph, _context_ = _context(root)
+    (item,) = [item for item in facts if item["path"] == "names.py"]
+    assert item["scope_facts"]["module_bindings"]["shutoff"] == []
