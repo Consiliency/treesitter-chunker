@@ -244,6 +244,9 @@ definition can change resolution without changing call-site IDs.
 
 ### Call resolution extension (experimental)
 
+For a guide to the modes, test scoping and known limits, see
+[Call resolution](call-resolution.md).
+
 `call_resolution` is an opt-in, experimental option on `extract_symbol_graph`,
 `extract_boundary_ir` and the `symbols extract` and `boundary` CLI commands
 (`--call-resolution`), orthogonal to `resolution_mode`

@@ -15,6 +15,7 @@ Welcome to the Tree-sitter Chunker documentation! Tree-sitter Chunker is a power
 - **[Cookbook](cookbook.md)** - Practical recipes and examples
 - **[Architecture](architecture.md)** - System design and internals
 - **[Boundary IR Spec](interface-boundary-spec.md)** - Deterministic interface boundary schema
+- **[Call Resolution](call-resolution.md)** - What each mode can prove and where it has limits
 - **[Boundary IR Roadmap](interface-boundary-roadmap.md)** - Sequenced implementation plan for boundary extraction
 - **[Agent Interface Readiness](agent-interface-readiness.md)** - Assessment of repository readiness for external orchestrators
 - **[Packaging & Releases](packaging.md)** - Build, tag, and publish workflow
