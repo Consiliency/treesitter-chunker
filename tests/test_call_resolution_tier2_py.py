@@ -844,6 +844,95 @@ CAUSES: dict[str, tuple[str, str]] = {
         "import ctypes\n\n\ndef f(o):\n    ctypes.pythonapi.PyObject_SetAttr(o)\n",
         "module-object",
     ),
+    # treesitter-chunker#699 B-1 (ruling R-699-1, reversing #705 Q2): every
+    # code-object source is a cause, reads included. ``type(f)(code, g)()``
+    # runs a code object with neither ``exec`` nor ``eval``.
+    "b1-closure-cell-write": (
+        "def f(g):\n    g.__closure__[0].cell_contents = len\n",
+        "module-object",
+    ),
+    "b1-code-read": (
+        "def f(g):\n    return g.__code__, g.__defaults__\n",
+        "module-object",
+    ),
+    "b1-code-string": (
+        "def f(g):\n    return getattr(g, '__code__')\n",
+        "module-object",
+    ),
+    "b1-frame-code": ("def f(tb):\n    return tb.tb_frame.f_code\n", "module-object"),
+    "b1-function-type": ("import types\n\nF = types.FunctionType\n", "module-object"),
+    "b1-compile-alone": (
+        "def check(src):\n    compile(src, 'x', 'exec')\n    return True\n",
+        "evaluator",
+    ),
+    # The traced B-1 writers (CPython 3.14.10: ``use.u`` runs ``len``).
+    "b1-functype-code-read": (
+        "import use\n\nG = type(use.u)(use.u.__code__, {'t': len})\n",
+        "module-object",
+    ),
+    "b1-closure-swap": (
+        "import use\n\nf = use.u\n"
+        "G = type(f)(f.__code__, {}, None, None, (lambda x: lambda: x)(len).__closure__)\n",
+        "module-object",
+    ),
+    "b1-compile-functype": (
+        "def f():\n    pass\n\n\n"
+        "type(f)(compile('import svc; svc.t = len', '<s>', 'exec'), {})()\n",
+        "evaluator",
+    ),
+    "b1-lambda-type-compile": (
+        "F = type(lambda: 0)\nF(compile('import svc; svc.t = len', '<s>', 'exec'), {})()\n",
+        "evaluator",
+    ),
+    "b1-marshal-functype": (
+        "import marshal\n\n\ndef f():\n    pass\n\n\ntype(f)(marshal.loads(b''), {})()\n",
+        "evaluator",
+    ),
+    "b1-loader-get-code": (
+        "import use\n\ng = {}\ntype(use.u)(use.__spec__.loader.get_code('use'), g)()\n",
+        "evaluator",
+    ),
+    "b1-find-spec-get-code": (
+        "import importlib.util\n\n\ndef f():\n    pass\n\n\n"
+        "type(f)(importlib.util.find_spec('use').loader.get_code('use'), {})()\n",
+        "evaluator",
+    ),
+    # #699 PY-1/PY-2/PY-3 (Q8: a production ``pickle.loads`` included):
+    # code run from a string, a payload or an annotation.
+    "py1-pickle-loads": (
+        "import pickle\n\n\ndef f(b):\n    return pickle.loads(b)\n",
+        "evaluator",
+    ),
+    "py1-pickle-attr": ("import trace\n\nx = trace.pickle.loads(b'')\n", "evaluator"),
+    "py1-cprofile": (
+        "import cProfile\n\ncProfile.run('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "py1-timeit": ("import timeit\n\ntimeit.timeit('import svc')\n", "evaluator"),
+    "py1-forkingpickler": (
+        "from multiprocessing.reduction import ForkingPickler\n\n"
+        "x = ForkingPickler.loads(b'')\n",
+        "evaluator",
+    ),
+    "py1-shelve": ("import shelve\n\nx = shelve.Shelf({})\n", "evaluator"),
+    "py1-breakpoint": ("breakpoint()\n", "evaluator"),
+    "py2-get-type-hints": (
+        "import typing\n\n\ndef f(g):\n    return typing.get_type_hints(g)\n",
+        "evaluator",
+    ),
+    "py2-annotation-string": (
+        "def ann(x: \"__import__('svc').__setattr__('t', len) or int\" = 0):\n    pass\n",
+        "evaluator",
+    ),
+    "py2-annotations-write": (
+        "def g(x: int):\n    pass\n\n\ng.__annotations__['x'] = 'int'\n",
+        "evaluator",
+    ),
+    "py3-runpy-string": (
+        "import importlib\n\nr = importlib.import_module('runpy')\n",
+        "evaluator",
+    ),
+    "py8-exec-alias": ("from builtins import exec as run\n", "evaluator"),
 }
 
 
@@ -866,22 +955,27 @@ def test_run_wide_causes_fail_closed(tmp_path: Path, case: str) -> None:
 @pytest.mark.parametrize(
     "writer",
     [
-        "def f(g):\n    g.__closure__[0].cell_contents = len\n",
-        "def f(g):\n    return g.__code__, g.__defaults__\n",
+        "def f(g):\n    return g.__defaults__, g.__name__\n",
         "import ctypes\n\n\ndef f():\n    return ctypes.windll\n",
-        # A syntax check: ``compile`` alone runs nothing (#705 Q2).
-        "def check(src):\n    compile(src, 'x', 'exec')\n    return True\n",
-        "def f(tb):\n    return tb.tb_frame.f_locals.get('x'), tb.tb_frame.f_code\n",
+        "def f(tb):\n    return tb.tb_frame.f_locals.get('x'), tb.tb_lineno\n",
         "def f(fr):\n    return 'x' in fr.f_locals and fr.f_locals['x']\n",
+        # #699: the allow-listed uses of the checked modules, lookalikes and
+        # the file's own bindings.
+        "import pickle\n\nX = pickle.dumps([1])\n",
+        "import timeit\n\nX = timeit.default_timer()\n",
+        "import re\n\nP = re.compile('x')\n",
+        "def f(m):\n    return m.eval()\n",
+        "def f(g):\n    return g.__annotations__.get('x')\n",
     ],
 )
 def test_routes_that_cannot_change_a_module_attribute_are_no_cause(
     tmp_path: Path, writer: str
 ) -> None:
-    """Closure cells, reads of code objects and defaults, ``ctypes``
-    without ``pythonapi`` and frame-locals reads leave every module attribute
-    as it is (a write of ``__code__`` and its kin is a cause since fold 3,
-    #705 N-1)."""
+    """Reads of defaults, ``ctypes`` without ``pythonapi``, frame-locals
+    reads and the #699 allow-listed uses leave every module attribute as it
+    is. Every code-object source, reads included, is a cause since #699 B-1
+    (ruling R-699-1, reversing #705 Q2), and a write of ``__defaults__`` or
+    ``__kwdefaults__`` since fold 3 (#705 N-1)."""
     root = _write(tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, "w.py": writer})
     _off, _structural, on, label = _run(root, "use.py", "t")
     assert on["resolution"] == "resolved"
@@ -1015,6 +1109,66 @@ def test_a_test_file_production_reaches_is_production(tmp_path: Path) -> None:
     off, _structural, on, label = _run(root, "use.py", "t")
     assert on == off
     assert label == "none(run-tainted:evaluator)"
+
+
+@pytest.mark.parametrize(
+    ("writer", "cause"),
+    [
+        ("import pickle\n\n\ndef load(b):\n    return pickle.loads(b)\n", "evaluator"),
+        ("def f(g):\n    return g.__code__\n", "module-object"),
+    ],
+)
+def test_s2_causes_follow_o2(tmp_path: Path, writer: str, cause: str) -> None:
+    """#699 S2 causes are scoped by O-2 like every cause: in a test file they
+    reach only test callers, until a production file imports it."""
+    files = {
+        "svc.py": SVC,
+        "use.py": USE,
+        **OTHER,
+        "tests/__init__.py": "",
+        "tests/test_use.py": "from svc import t\n\n\ndef test_u():\n    return t()\n",
+        "tests/helpers.py": writer,
+    }
+    root = _write(tmp_path / "test-only", files)
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import"
+    off, _structural, on, label = _run(root, "tests/test_use.py", "t")
+    assert on == off
+    assert label == f"none(run-tainted:{cause})"
+    promoted = _write(
+        tmp_path / "promoted", {**files, "app.py": "from tests import helpers\n"}
+    )
+    off, _structural, on, label = _run(promoted, "use.py", "t")
+    assert on == off
+    assert label == f"none(run-tainted:{cause})"
+
+
+def test_s2_causes_are_recorded_in_imports_mode_facts(tmp_path: Path) -> None:
+    """The digest harness extracts in ``structural`` mode, where the Tier 2
+    module facts are empty: pin the #699 S2 causes in ``imports`` facts."""
+    writers = {
+        "a.py": "import pickle\n\nX = pickle.loads(b'')\n",
+        "b.py": "def f(g):\n    return g.__code__\n",
+        "c.py": "import pickle\n\nX = pickle.dumps(1)\n",
+        "d.py": "def f(g):\n    return g.__code__\n\n\nexec('x')\n",
+    }
+    root = _write(tmp_path, writers)
+    shutoff = {}
+    for name in writers:
+        facts = extract_symbol_facts_for_file(
+            root / name, root, None, call_resolution=MODE
+        )
+        shutoff[name] = facts["scope_facts"]["module_bindings"]["shutoff"]
+        structural = extract_symbol_facts_for_file(
+            root / name, root, None, call_resolution="structural"
+        )
+        assert not structural["scope_facts"].get("module_bindings", {}).get("shutoff")
+    assert shutoff == {
+        "a.py": ["evaluator"],
+        "b.py": ["module-object"],
+        "c.py": [],
+        "d.py": ["evaluator", "module-object"],
+    }
 
 
 def test_unknown_directory_symlinks_make_every_file_production(tmp_path: Path) -> None:
@@ -2057,6 +2211,7 @@ def test_fold3_star_init_has_no_own_submodules(tmp_path: Path) -> None:
         "def f(g, h):\n    setattr(g, '__code__', h.__code__)\n",
         "def f(g):\n    g.__defaults__ = (2,)\n",
         "def f(g):\n    g.__kwdefaults__ = {}\n",
+        "def f(g):\n    setattr(g, '__defaults__', (2,))\n",
         "def f(g):\n    del g.__closure__\n",
     ],
 )
@@ -2412,7 +2567,10 @@ FOLD5_BLOCKING: dict[str, tuple[dict[str, str], tuple[str, str], str, str]] = {
             '    print("RAN", calls.go())\n'
         },
         ("tests/calls.py", "svc.t"),
-        "run-tainted:unresolvable-writer",
+        # #699 B-5: reading ``__annotations__`` other than through the closed
+        # read list evaluates the annotations (an ``evaluator``, which sorts
+        # before ``unresolvable-writer``).
+        "run-tainted:evaluator",
         "RAN OTHER.t / 1 passed",
     ),
 }
@@ -2787,7 +2945,12 @@ def test_fold6_monkeypatch_methods_on_any_receiver(tmp_path: Path, case: str) ->
     root = _write(tmp_path, {**_SVC_OTHER, **files})
     off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
     assert on == off, case
-    assert label == "none(run-tainted:unresolvable-writer)", case
+    # #699 S2 causes sort first where a tree also spells one: the annotation
+    # evaluator ``get_type_hints`` (``evaluator``) and a ``__closure__``
+    # mention (``module-object``, B-1).
+    expected = {"f5_hints_locals": "evaluator", "f5_closure_cell": "module-object"}
+    cause = expected.get(case, "unresolvable-writer")
+    assert label == f"none(run-tainted:{cause})", case
 
 
 FOLD6_CONTROLS: dict[str, tuple[str, str | None]] = {

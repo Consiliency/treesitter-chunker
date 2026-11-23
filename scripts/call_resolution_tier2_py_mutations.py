@@ -26,10 +26,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CR = "chunker/call_resolution/"
 PYM = CR + "py_modules.py"
+PYS = CR + "py_scope.py"
 ENG = CR + "engine.py"
+T1 = "tests/test_call_resolution_tier1_py.py::"
 TESTS = (
     "tests/test_call_resolution_tier2_py.py",
     "tests/test_call_resolution_engine.py::test_expected_imports_tables_hold_at_this_head",
+    # treesitter-chunker#699 S2: the shared string-code classifier's Tier 1
+    # half (the list pins are left out, so behaviour must kill each one).
+    T1 + "test_string_code_fails_closed_file_wide",
+    T1 + "test_string_code_controls_still_resolve",
+    T1 + "test_own_bindings_of_code_builtins_leave_function_proofs_alone",
+    T1 + "test_module_level_import_of_a_code_builtin_is_builtin_shadow",
+    T1 + "test_string_code_inside_the_function_defeats_its_own_proof",
+    T1 + "test_mock_scoped_computed_getters_fail_closed",
+    T1 + "test_computed_getters_outside_mock_files_or_constant_still_resolve",
+    T1 + "test_installed_builtins_never_prove_at_module_level",
+    T1 + "test_each_string_code_name_counts_in_every_position",
+    T1 + "test_s2_traced_routes_keep_their_off_mode_edge",
+    T1 + "test_s2_installed_builtin_route_keeps_its_off_mode_edge",
 )
 
 # (id, file, old text, new text). The old text must occur in the file once.
@@ -176,17 +191,155 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "        return []\n    return []",
     ),
     # Run-wide causes.
+    # #699 S2: Tier 2 reads the shared classifier (one classifier per side,
+    # the fold-8 precedent); ``compile`` is an evaluator since B-1.
     (
         "evaluator",
         PYM,
-        "        if name in _EVALUATORS and _builtin_at(analysis, ident):",
+        "    if analysis.string_code:\n        facts.shutoff.add(CAUSE_EVALUATOR)",
+        "    if False:\n        facts.shutoff.add(CAUSE_EVALUATOR)",
+    ),
+    (
+        "b1-code-objects-cause",
+        PYM,
+        "    if analysis.code_objects:\n        facts.shutoff.add(CAUSE_MODULE_OBJECT)",
+        "    if False:\n        facts.shutoff.add(CAUSE_MODULE_OBJECT)",
+    ),
+    (
+        "b1-code-reads",
+        PYS,
+        '        "__code__",\n        "gi_code",\n        "cr_code",\n        "ag_code",\n'
+        '        "f_code",\n        "co_code",\n        "co_names",\n        "co_consts",\n'
+        '        "co_varnames",\n        "co_freevars",\n        "co_cellvars",\n'
+        '        "dis",\n        "codeobj",',
+        '        "gi_code",\n        "cr_code",\n        "ag_code",\n'
+        '        "f_code",\n        "co_code",\n        "co_names",\n        "co_consts",\n'
+        '        "co_varnames",\n        "co_freevars",\n        "co_cellvars",\n'
+        '        "dis",\n        "codeobj",',
+    ),
+    (
+        "b1-compile-is-an-evaluator",
+        PYS,
+        '_CODE_BUILTINS = frozenset({"exec", "eval", "execfile", "compile", "breakpoint"})',
+        '_CODE_BUILTINS = frozenset({"exec", "eval", "execfile", "breakpoint"})',
+    ),
+    (
+        "b4-breakpoint",
+        PYS,
+        '_CODE_BUILTINS = frozenset({"exec", "eval", "execfile", "compile", "breakpoint"})',
+        '_CODE_BUILTINS = frozenset({"exec", "eval", "execfile", "compile"})',
+    ),
+    (
+        "py1-drop-name",
+        PYS,
+        '        "doctest",\n        "fileConfig",\n',
+        '        "doctest",\n',
+    ),
+    (
+        "py1-drop-module",
+        PYS,
+        '    {"cProfile", "profile", "bdb", "pdb", "trace", "code", "codeop", "doctest"}',
+        '    {"cProfile", "profile", "bdb", "pdb", "code", "codeop", "doctest"}',
+    ),
+    (
+        "py1-pickle-loads-safe",
+        PYS,
+        '        "dumps",\n        "dump",\n        "Pickler",',
+        '        "dumps",\n        "loads",\n        "dump",\n        "Pickler",',
+    ),
+    (
+        "py1-timeit-safe",
+        PYS,
+        '    "timeit": frozenset({"default_timer"}),',
+        '    "timeit": frozenset({"default_timer", "timeit"}),',
+    ),
+    (
+        "py1-skip-use-site-lookup",
+        PYS,
+        '        return outcome.get("outcome") == "local" or (\n'
+        '            outcome.get("outcome") == "none"\n'
+        '            and outcome.get("reason") in _OWN_BINDING_REASONS\n        )',
+        "        return False",
+    ),
+    (
+        "py1-pickle-any-receiver",
+        PYS,
+        "                    if parent.id not in self.attribute_targets:\n"
+        '                        self.string_checks.append(("module:pickle", parent))',
+        "                    pass",
+    ),
+    (
+        "b4-forkingpickler",
+        PYS,
+        '        "ForkingPickler",\n        "_ForkingPickler",\n',
+        '        "_ForkingPickler",\n',
+    ),
+    (
+        "py3-runpy-two-positional",
+        PYS,
+        "        return positional == 1\n",
+        "        return positional in (1, 2)\n",
+    ),
+    (
+        "py2-annotation-raw-text",
+        PYS,
+        '            and (value is None or "(" in value or ":=" in value)\n',
+        '            and ("(" in _text(node, source) or ":=" in _text(node, source))\n',
+    ),
+    (
+        "b5-annotations-write",
+        PYS,
+        "            if _ANNOTATIONS in spellings and not self._attribute_read(ident):",
+        "            if False:",
+    ),
+    (
+        "py8-file-wide",
+        PYS,
+        "        if self.string_code:\n            self.dynamic = True\n            self.frame_locals = True",
+        "        if self.string_code:\n            self.dynamic = True",
+    ),
+    (
+        "b2-marshal-attribute-module-only",
+        PYS,
+        '                    self._fire("marshal")  # ``pstats.marshal``',
+        "                    self.dynamic = True  # ``pstats.marshal``",
+    ),
+    (
+        "py8-exec-from-builtins",
+        PYS,
+        "            if module in _BUILTIN_MODULES and last in _CODE_BUILTINS:",
+        "            if False:",
+    ),
+    (
+        "builtins-reach-gate",
+        PYS,
+        "        if builtin_mentions and self.builtins_reach:",
+        "        if builtin_mentions:",
+    ),
+    (
+        "dotted-name-gate",
+        PYS,
+        "        if not _DOTTED_NAME.fullmatch(value):\n            return\n",
+        "",
+    ),
+    (
+        "generic-module-acquisition",
+        PYS,
+        '        if value.split(".")[0] in _GENERIC_MODULE_STRINGS and self._acquired(node):',
         "        if False:",
     ),
     (
-        "compile-is-no-evaluator",
-        PYM,
-        '_EVALUATORS = frozenset({"exec", "eval", "execfile"})',
-        '_EVALUATORS = frozenset({"exec", "eval", "compile", "execfile"})',
+        "py5-mock-getattr",
+        PYS,
+        '            elif mock_file and name == "getattr":\n'
+        '                self.string_checks.append(("getattr", ident))',
+        '            elif mock_file and name == "getattr":\n                pass',
+    ),
+    (
+        "py4-installed-builtins",
+        PYS,
+        "SHADOWED_NAMES = BUILTINS | INSTALLED_BUILTINS",
+        "SHADOWED_NAMES = BUILTINS",
     ),
     (
         "computed-import-module",
@@ -672,8 +825,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "b-resolver-identifier",
         PYM,
         "        if spellings & _RESOLVER_NAMES:\n            facts.shutoff.add(CAUSE_DYNAMIC_LOADER)\n"
-        "        if name in _EVALUATORS",
-        "        if name in _EVALUATORS",
+        '        if name == "__import__"',
+        '        if name == "__import__"',
     ),
     (
         "b-relative-import-module",
@@ -719,9 +872,9 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     ),
     (
         "b-exec-statement",
-        PYM,
-        '        if kind == "exec_statement":\n            facts.shutoff.add(CAUSE_EVALUATOR)',
-        '        if kind == "exec_statement":\n            pass',
+        PYS,
+        '        self._fire("builtin")  # string code (#699 PY-8)',
+        "        pass",
     ),
     (
         "b-missing-reason-fact",

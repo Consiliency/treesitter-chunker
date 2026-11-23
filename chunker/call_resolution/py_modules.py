@@ -65,8 +65,11 @@ module's own Tier 1 module-scope proofs included (``imports`` mode only:
 ``structural`` stays as it was).
 
 **Run-wide causes (E5-3 analog).** Routes that can obtain or write any
-module: ``evaluator`` (``exec``, ``eval``, ``execfile``, the
-builtin by lookup), ``dynamic-loader`` (a non-literal ``import_module`` or
+module: ``evaluator`` (code run from a string, a payload or an annotation,
+as Tier 1's shared classifier decides it: ``exec``, ``eval``, ``execfile``,
+``compile`` and ``breakpoint`` by use-site lookup, the stdlib string-code
+helpers, ``pickle`` loads, annotation evaluators, ``marshal`` and loader
+methods; treesitter-chunker#699 S2), ``dynamic-loader`` (a non-literal ``import_module`` or
 ``__import__``, any other ``importlib`` use off a closed list, ``runpy``,
 ``imp``, ``zipimport``, string-to-module resolvers), ``module-system``
 (``sys.modules`` off its closed list, writes of ``sys.path``,
@@ -78,10 +81,13 @@ builtin by lookup), ``dynamic-loader`` (a non-literal ``import_module`` or
 ``unparsed-file`` and ``unresolvable-writer``. As for TS/JS (PR 5), a cause
 shuts off Tier 2 for the callers it applies to; Tier 1 proofs keep their
 ``structural`` result except where a taint names their module global.
-Closure cells and code objects (Tier 1's file-wide names) cannot change a
-module attribute, but a write of a function's ``__code__``, ``__closure__``,
-``__defaults__`` or ``__kwdefaults__`` in any file makes a proven definition
-run other code: a ``module-object`` cause (#705 N-1).
+A write of a function's ``__code__``, ``__closure__``, ``__defaults__`` or
+``__kwdefaults__`` in any file makes a proven definition run other code: a
+``module-object`` cause (#705 N-1). Since treesitter-chunker#699 B-1
+(ruling R-699-1, reversing #705 Q2) any mention of a code-object source is
+one too, reads included: ``type(f)(f.__code__, {"t": len})()`` runs a
+function's code under substitute globals with neither ``exec`` nor
+``eval``.
 
 **Owner decision O-2.** Causes and taints that originate in test files
 (:func:`is_test_path`) apply only to callers in test files, unless a
@@ -262,10 +268,6 @@ _LOADER_PATHS = frozenset(
 _SITE_PATHS = frozenset({("site", "addsitedir"), ("site", "main")})
 _SYS_MODULE_GETTERS = frozenset({"get", "pop", "setdefault", "__getitem__"})
 _SYS_PATH_NAMES = frozenset({"path", "meta_path", "path_hooks", "path_importer_cache"})
-# ``compile`` alone only builds a code object; running one takes ``exec`` or
-# ``eval`` (causes themselves) or a globals dict a tracked route reaches, so
-# it is no cause (executive ruling on #705, Q2).
-_EVALUATORS = frozenset({"exec", "eval", "execfile"})
 # Names that reach another module's namespace in any identifier position
 # (an attribute, a keyword argument) or as a component of a constant string.
 _MODULE_OBJECT_NAMES = frozenset(
@@ -1043,14 +1045,22 @@ def _scan_causes(
     from . import py_scope as ps
 
     source = analysis.source
+    # treesitter-chunker#699 S2: one classifier serves both tiers (the
+    # fold-8 precedent). Code run from a string, a payload or an annotation
+    # (Tier 1 file-wide) is a run-wide ``evaluator`` cause (Q8: a production
+    # ``pickle.loads`` included); a code-object source, reads included, is a
+    # ``module-object`` cause (B-1, reversing #705 Q2: ``type(f)(code, g)()``
+    # runs a code object with neither ``exec`` nor ``eval``).
+    if analysis.string_code:
+        facts.shutoff.add(CAUSE_EVALUATOR)
+    if analysis.code_objects:
+        facts.shutoff.add(CAUSE_MODULE_OBJECT)
     stack = [analysis.root]
     while stack:
         node = stack.pop()
         stack.extend(node.named_children)
         kind = node.type
-        if kind == "exec_statement":
-            facts.shutoff.add(CAUSE_EVALUATOR)
-        elif kind in ("string", "concatenated_string", "binary_operator"):
+        if kind in ("string", "concatenated_string", "binary_operator"):
             if (
                 kind == "string"
                 and node.parent is not None
@@ -1118,8 +1128,6 @@ def _scan_causes(
             facts.shutoff.add(CAUSE_MODULE_OBJECT)
         if spellings & _RESOLVER_NAMES:
             facts.shutoff.add(CAUSE_DYNAMIC_LOADER)
-        if name in _EVALUATORS and _builtin_at(analysis, ident):
-            facts.shutoff.add(CAUSE_EVALUATOR)
         if name == "__import__" and _builtin_at(analysis, ident):
             call = ps._callee_call(ident)
             first = _first_argument(call) if call is not None else None
@@ -1661,7 +1669,7 @@ def import_group(
         len(bindings) < 2
         or any(binding.cls != ps.IMPORT or not binding.info for binding in bindings)
         or (scope.kind in (ps._MODULE, ps._CLASS) and ps._dunder(name))
-        or (scope.kind == ps._MODULE and name in ps.BUILTINS)
+        or (scope.kind == ps._MODULE and name in ps.SHADOWED_NAMES)
     ):
         return []
     return [dict(binding.info) for binding in bindings]

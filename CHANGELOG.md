@@ -72,6 +72,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     resolve, nor does a module-level name that any receiver's attribute write
     (`x.name = v`, `setattr`, `__dict__.update`) may rebind, and neither does a
     private name (`__x`) looked up inside a class, which CPython mangles.
+    A file that runs code from a string, a payload or an annotation
+    (`exec`, `eval`, `compile`, `breakpoint()`, `cProfile`/`pdb`/`trace`/
+    `timeit`/`doctest`-style helpers, `pickle` loads, `shelve`, `marshal`,
+    loader `get_code`/`exec_module`, `runpy` with `init_globals`,
+    `get_type_hints`, string annotations that call, `__annotations__` writes)
+    resolves no call at all, function-local ones included, because such code
+    can write its caller's locals through the frame; in `imports` mode it is
+    also a run-wide `evaluator` cause, and any code-object source (`__code__`,
+    `__closure__`, `FunctionType`, ...; reads included) a `module-object`
+    cause (treesitter-chunker#699).
     A file that mentions `f_locals`, which writes function locals, resolves
     nothing. Monkeypatching from other modules is not tracked (plan risk
     R10). Wherever no binding proves a candidate, only
