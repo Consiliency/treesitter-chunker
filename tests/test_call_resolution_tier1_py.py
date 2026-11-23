@@ -4265,6 +4265,580 @@ def test_main_and_own_name_strings_fail_closed(path: str, form: str) -> None:
     }, form
 
 
+MAIN_FORMAT_CASES = {
+    "fstring-spec": "f'{P():__main__}'",
+    "format": "'{:__main__}'.format(P())",
+    "format-map": "'{__main__}'.format_map(P())",
+    "percent": "'%(__main__)s' % P()",
+    "template": "string.Template('$__main__').substitute(P())",
+    "m23_fstring_interp": "patch_main(f'__main__.{h}')",
+    "nested-spec": "f'{P():{P():__main__}}'",
+    "escaped-spec": r"f'{P():\x5f\x5fmain__}'",
+    "format-index": "'{0[__main__]}'.format(P())",
+    "format-attribute": "'{0.__main__}'.format(P())",
+    "format-conversion": "'{__main__!s}'.format_map(P())",
+    "unbound-format-map": "str.format_map('{__main__}', P())",
+    "folded-percent": "('%(' + '__ma' 'in__)s') % P()",
+    "safe-substitute": "string.Template(template='${__main__}').safe_substitute(P())",
+    "template-suffix": "string.Template('$__main__!').substitute(P())",
+    "template-import-alias": "from string import Template as T\nT('$__main__').substitute(P())",
+    # R-698-1 B-1: a stored template is classified as a string, wherever it
+    # is formatted later.
+    "stored-format": "T = '{:__main__}'\nT.format(P())",
+    "stored-format-map": "T = '{__main__}'\nT.format_map(P())",
+    "stored-percent": "T = '%(__main__)s'\nT % P()",
+    "stored-percent-augmented": "T = '%(__main__)s'\nT %= P()",
+    "stored-template": "T = '$__main__'\nstring.Template(T).substitute(P())",
+    "stored-template-hyphen": "T = '$__main__-x'\nstring.Template(T).substitute(P())",
+    "stored-template-space": "T = '$__main__ x'\nstring.Template(T).substitute(P())",
+    "docstring-template": "class D:\n    '{:__main__}'\nD.__doc__.format(P())",
+    # R-698-1 S-1: other routes to the same constant string.
+    "dunder-mod": "'%(__main__)s'.__mod__(P())",
+    "str-dunder-mod": "str.__mod__('%(__main__)s', P())",
+    "operator-mod": "operator.mod('%(__main__)s', P())",
+    "formatter-vformat": "string.Formatter().vformat('{:__main__}', (P(),), {})",
+    "template-alias-assign": "T = string.Template\nT('$__main__').substitute(P())",
+    "template-subclass": "class T(string.Template):\n    pass\nT('$__main__').substitute(P())",
+    "template-subclass-brace-delimiter": (
+        "class T(string.Template):\n    delimiter = '@'\nT('@{__main__}').substitute(P())"
+    ),
+    "logging-percent": "logging.warning('%(__main__)s', PM())",
+    "logging-brace-style": (
+        "_h = logging.StreamHandler()\n"
+        "_h.setFormatter(logging.Formatter('{p:__main__}', style='{', validate=False))\n"
+        "logging.getLogger('x').addHandler(_h)\n"
+        "logging.getLogger('x').warning('m', extra={'p': P()})"
+    ),
+    "bound-format-method": "F = '{:__main__}'.format\nF(P())",
+    "mapped-format-method": "list(map('{:__main__}'.format, [P()]))",
+    # R-698-1 S-2: t-string literal parts, also passed directly.
+    "tstring-literal": "patch_main(t'__main__.{h}')",
+    "tstring-no-interpolation": "patch_main(t'__main__')",
+    "tstring-spec": "[format(i.value, i.format_spec) for i in t'{P():__main__}'.interpolations]",
+    "tstring-concat": "patch_main(t'__ma' t'in__.{h}')",
+    "tstring-escaped": r"patch_main(t'\x5f_main__.{h}')",
+    "fstring-plus-literal": "patch_main(f'{\"\"}__ma' + 'in__.' + h)",
+    # R-698-3: only the joined source text holds the name (``{h}`` is not
+    # constant, so no constant value exists).
+    "fstring-plus-join": "patch_main(f'{h}.__ma' + 'in__.x')",
+    # Re-check 2 B-2: tree-sitter ends a format spec before a trailing
+    # newline, but CPython reads the backslash-newline before the closing
+    # brace as a line continuation and hands over ``"__main__"``.
+    "fstring-spec-continuation": "f'{P():__main__\\\n}'",
+    "tstring-spec-continuation": (
+        "[format(i.value, i.format_spec) for i in t'{P():__main__\\\n}'.interpolations]"
+    ),
+    "triple-spec-continuation": "f'''{P():__main__\\\n}'''",
+    "nested-field-spec-continuation": "f'{P():{\"\"}__main__\\\n}'",
+    "inner-spec-continuation": "f'{P():{P():__main__\\\n}}'",
+    # R-698-3 (re-check 3): tree-sitter and CPython split these f-strings and
+    # t-strings differently. The rule now reads the whole source text.
+    # B-3: CPython ends the expression at the first ``:``, so ``=`` starts
+    # the spec; tree-sitter reads a walrus.
+    "walrus-spec": "f'{p:=x.__main__}'",
+    "walrus-spec-comment": "f'''{p:= 1 # __main__\n}'''",
+    "walrus-nested-field": "f'{h:{p:=x.__main__}}'",
+    "walrus-tstring": (
+        "[format(i.value, i.format_spec) for i in t'{p:=x.__main__}'.interpolations]"
+    ),
+    # B-4: after a nested field, CPython reads ``{{`` in a spec as a brace.
+    "doubled-brace-after-field": "f'{p:{h}{{x.__main__}}}'",
+    "doubled-brace-comment": "f'''{p:{h}{{1 # __main__\n}}}'''",
+    "doubled-brace-tstring": (
+        "[format(i.value, i.format_spec) for i in t'{p:{h}{{x.__main__}}}'"
+        ".interpolations]"
+    ),
+    # B-5: debug text drops the comment, so ``__main__`` is a component.
+    "debug-comment": "patch_main(f'{q.__main__#c\n=}')",
+    "debug-comment-tstring": "patch_main(t'{q.__main__#c\n=}')",
+    # Debug text joins the literal before it across the ``{``.
+    "debug-join": "in__ = 0\npatch_main(f'__ma{in__ =}')",
+    # Re-check 3 S-2: a t-string hands its expression text to user code.
+    "tstring-expression": "patch_main(t'{q.__main__}'.interpolations[0].expression)",
+}
+
+# The runtime probe supplies the callback, so the source isolates the
+# format string as the only module-rebinding signal visible to Tier 1. Each
+# case, run with this source on CPython 3.14.10 under a profiler, handed the
+# main name to the callback and then called the rebound ``helper``.
+MAIN_FORMAT_SOURCE = """\
+from format_probe import patch_main
+import collections.abc
+import logging
+import operator
+import string
+
+def helper(*args):
+    return 'original'
+
+class P:
+    __format__ = lambda self, spec: patch_main(spec) if spec else ''
+    __getitem__ = lambda self, key: patch_main(key)
+    __getattr__ = lambda self, attr: patch_main(attr)
+
+class PM(collections.abc.Mapping):
+    __getitem__ = lambda self, key: patch_main(key)
+    __iter__ = lambda self: iter(['k'])
+    __len__ = lambda self: 1
+
+class Q:
+    __getattr__ = lambda self, attr: 0
+
+h = ''.join(('hel', 'per'))
+p, q = P(), Q()
+"""
+
+
+@pytest.mark.parametrize("form", MAIN_FORMAT_CASES.values(), ids=MAIN_FORMAT_CASES)
+def test_main_format_strings_fail_closed(form: str) -> None:
+    source = MAIN_FORMAT_SOURCE + form + "\nresult = helper('ab')\n"
+    assert reason(source) == "dynamic-scope"
+
+
+def test_main_format_source_alone_resolves() -> None:
+    # Control: without a main component the probe source is not dynamic, so
+    # each case above fails closed because of its string.
+    source = MAIN_FORMAT_SOURCE + "'{:other}'.format(P())\nresult = helper('ab')\n"
+    assert outcome(source, "helper", -1)["outcome"] == "local"
+
+
+def test_main_guard_resolves_the_call_in_its_body() -> None:
+    source = HELPER + "if __name__ == '__main__':\n    helper()\n"
+    assert proof_text(source) == PROOF
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        # R-698-1: these pinned the narrower format-site rule; any constant
+        # string with a punctuation-split main component now fails closed.
+        "template = '{__main__}'",
+        "string.Template('$$__main__').substitute(obj)",
+        "log = '__main__ started'",
+    ],
+)
+def test_main_string_components_fail_closed(form: str) -> None:
+    assert reason(HELPER + form + "\nhelper()\n") == "dynamic-scope"
+
+
+def test_unreadable_fstring_bytes_fail_closed() -> None:
+    # An f-string piece that is not UTF-8 cannot be searched (R-698-3).
+    data = (HELPER + "V = f'").encode() + b"\xff" + "{x}'\nhelper()\n".encode()
+    root = get_parser("python").parse(data).root_node
+    start = data.rindex(b"helper()")
+    span = {"callee_byte_start": start, "callee_byte_end": start + 6}
+    result = py_scope.analyze(root, data, "python", [span], path=NEUTRAL_PATH)
+    assert result["bindings"][f"{start}:{start + 6}"] == {
+        "outcome": "none",
+        "reason": "dynamic-scope",
+    }
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        # R-698-3: ``__main__`` anywhere in an f-string's or t-string's source
+        # text counts, a whole component or not (the rule's precision cost).
+        "f'{obj:prefix__main__}'",
+        "f'{obj}__main__x'",
+        "t'{obj}__main__x'",
+        "f'{obj!r:>10} is __main__'",
+        "f'{obj.__main__}'",
+        "f'{obj[\"__main__\"]}'",
+        "f'{obj}' + '__mp_main__'",
+    ],
+)
+def test_main_anywhere_in_an_fstring_fails_closed(form: str) -> None:
+    assert reason(HELPER + form + "\nhelper()\n") == "dynamic-scope"
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "f'{__name__}'",
+        "f'module {__name__=}'",
+        "t'{__name__!r:>20}'",
+        # CPython rejects the escape, and no main name is in the text.
+        r"f'\xZZ{obj}'",
+    ],
+)
+def test_fstring_without_main_resolves(form: str) -> None:
+    assert proof_text(HELPER + form + "\nhelper()\n") == PROOF
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "'{prefix__main__}'.format_map(obj)",
+        "'$__main__x'",
+        "'__main__-x'",
+    ],
+)
+def test_main_needs_a_whole_component(form: str) -> None:
+    assert proof_text(HELPER + form + "\nhelper()\n") == PROOF
+
+
+_REJECTED = object()
+
+
+def _cpython_reads(text: str, env: dict[str, Any]) -> Any:
+    # The value CPython 3.14 builds from the expression, or ``_REJECTED``.
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            return eval(compile(text, "<case>", "eval"), env)  # noqa: S307
+        except SyntaxError:
+            return _REJECTED
+
+
+def _string_node(parser: Any, text: str) -> tuple[bytes, Any] | None:
+    # ``V = <text>`` parsed: the source and string node, or ``None`` on a
+    # tree-sitter error. The rule reads literal parts by child text, so a
+    # string's children must tile it with no byte left out.
+    data = ("V = " + text + "\n").encode("utf-8")
+    root = parser.parse(data).root_node
+    if root.has_error:
+        return None
+    node = root.named_children[0].named_children[0].child_by_field_name("right")
+    assert node is not None, text
+    assert node.type in ("string", "concatenated_string"), text
+    for string in [node, *node.named_children]:
+        if string.type == "string":
+            edges = [string.start_byte]
+            for kid in string.children:
+                edges += [kid.start_byte, kid.end_byte]
+            edges.append(string.end_byte)
+            assert edges[::2] == edges[1::2], text
+    return data, node
+
+
+def test_constant_fstrings_match_cpython_through_the_tree() -> None:
+    """``_constant_string`` reads what CPython 3.14 builds from an f-string
+    whose interpolation is a constant string, through the tree-sitter node
+    (re-check 2 B-2): tree-sitter's folded end token (``rf"{'x'}\\""``) once
+    cut it short."""
+    import random
+
+    parser = get_parser("python")
+    literal = ["a", "_", "__main__", "\\", "\\\n", "\\\r\n", "\n", "\r\n", " "]
+    literal += ["\\x5f", "\\N{LOW LINE}", "\\d", "\\'", '\\"', "'", '"', "é"]
+    literal += ["{{", "}}"]
+    rng = random.Random(714)
+
+    def piece(size: int) -> str:
+        return "".join(rng.choice(literal) for _ in range(rng.randint(0, size)))
+
+    constants = 0
+    for _ in range(4000):
+        prefix = rng.choice(["f", "rf", "F", "fR"])
+        quote = rng.choice(["'", '"', "'" * 3, '"' * 3])
+        text = prefix + quote + piece(3) + "{'k'}" + piece(3) + quote
+        value = _cpython_reads(text, {})
+        parsed = None if value is _REJECTED else _string_node(parser, text)
+        if parsed is not None:
+            got = py_scope._constant_string(parsed[1], parsed[0])
+            if got is not None:
+                assert got == value, text
+                constants += 1
+    assert constants > 1000
+
+
+# R-698-3 soundness gate: a generator of f-string and t-string modules (after
+# the re-check 3 generator, 714-fable/gen.py). Atoms cover escapes, line
+# continuations with every line ending, comments, debug ``=`` (with comments
+# and joined to the literal before it), conversions, nested and doubled braces
+# in specs, a spec starting with ``=``, PEP 701 quote reuse, nested f- and
+# t-strings, every prefix, adjacent literals, ``+`` and parentheses.
+_GEN_LIT = [
+    *["a", "_", "__main__", "__main__", "__mp_main__", "__ma", "in__", "_main__"],
+    *[" ", "\t", "\x0c", "\n", "\r\n", "\r", "\\\n", "\\\r\n", "\\\r", "\\"],
+    *["\\\\", "\\x5f", "\\137", "\\u005f", "\\U0000005f", "\\N{LOW LINE}"],
+    *["\\N{SPACE}", "\\N", "\\{", "\\}", "\\'", '\\"', "'", '"', "''", '""'],
+    *["$", "${", "%(", ")s", ".", ":", "!", "#", "# c", "=", "[", "]", "(", ")"],
+    *["é", "\u200b", "\ufeff", "\u2028", "\x85", "\x1f", "\x0b", "\\8", "\\d"],
+    *["-", ","],
+]
+_GEN_EXPR = [
+    *["v", "v", "v.a", "(v)", "v[0]", "v [ 0 ]", "'k'", '"k"', "'__main__'"],
+    *["v # c\n", "v\n", "\nv", "v\\\n", "v\r\n", "v\r", "v if v else v"],
+    *["{1: 2}[1]", "v,", "*v,", "v == v", "not v", "(v := 1)", "w := 1", "w:=v"],
+    *["w:= v.a", "w:=v.__main__", "w := 1 # __main__\n", "w:= 1 # c\n"],
+    *["lambda: 1", "(lambda: 1)", "v.__main__", "__main__", "v #__main__\n"],
+    *["v . a", "v\t", "v\x0c", "f'{v}'", 'f"{v}"', "f'{v:a}'", "f'''{v}'''"],
+    *["t'{v}'", "v or v", "-v", "v[1:2]", "v[::]", "v(a=1)", "[v for v in v]"],
+    *["{v}", "{**v}", "{v.__main__}", "{1 # __main__\n}", "v.__main__}"],
+    *["v(__main__=1)", "v.__mp_main__", "v is v", "v:v", "v !r", "0", "b'x'"],
+    *["in__", "in__.a", "_main__", "main__", "in__ # c\n", "'\\x5f_main__'"],
+    *["v.\\\n__main__", "v#c\n.__main__", "r'__main__'", "v['__ma' 'in__']"],
+]
+_GEN_CONV = ["", "", "", "!r", "!s", "!a", "!x", "! r", "!r ", " !r"]
+_GEN_PREFIX_I = ["f", "F", "fr", "rf", "Rf", "fR", "t", "T", "tr", "rt", "Tr", "tR"]
+_GEN_PREFIX_P = ["", "", "r", "R", "u", "U", "b", "rb", "Rb", "ur", "ft", "fb"]
+_GEN_QUOTES = ["'", '"', "'" * 3, '"' * 3]
+_GEN_PROFILES = {
+    "spec": {"interp": 0.95, "spec": 0.9, "debug": 0.1, "single": 0.85, "call": 0.1},
+    "expr": {"interp": 0.9, "spec": 0.35, "debug": 0.35, "single": 0.8, "call": 0.1},
+    "concat": {"interp": 0.4, "spec": 0.5, "debug": 0.1, "single": 0.25, "call": 0.3},
+}
+
+
+class _MainCaseGen:
+    def __init__(self, seed: int, profile: str) -> None:
+        import random
+
+        self.rng = random.Random(seed)
+        self.weights = _GEN_PROFILES[profile]
+
+    def pick(self, seq: list[str]) -> str:
+        return self.rng.choice(seq)
+
+    def lit(self, size: int, braces: bool = True) -> str:
+        atoms = _GEN_LIT + (["{{", "}}"] if braces else [])
+        return "".join(self.pick(atoms) for _ in range(self.rng.randint(0, size)))
+
+    def spec(self, depth: int) -> str:
+        out = []
+        for _ in range(self.rng.randint(0, 4)):
+            if self.rng.random() < 0.25 and depth < 3:
+                out.append(self.field(depth + 1))
+            elif self.rng.random() < 0.15:
+                out.append(self.pick([*_GEN_LIT, "{{", "}}", "{{", "{", "="]))
+            else:
+                out.append(self.pick(_GEN_LIT))
+        return "".join(out)
+
+    def space(self) -> str:
+        return self.pick(["", "", "", " ", "\n", "\t", "\\\n", "# c\n", "\r\n", "\r"])
+
+    def field(self, depth: int) -> str:
+        # An expression right after ``{`` (no space) lets debug text join
+        # the literal before it (``__ma{in__ =}``).
+        lead = "" if self.rng.random() < 0.5 else self.space()
+        text = "{" + lead + self.pick(_GEN_EXPR) + self.space()
+        if self.rng.random() < self.weights["debug"]:
+            text += "=" + self.space()
+        text += self.pick(_GEN_CONV)
+        if self.rng.random() < self.weights["spec"]:
+            text += ":" + self.spec(depth)
+        return text + "}"
+
+    def string(self) -> str:
+        quote = self.pick(_GEN_QUOTES)
+        if self.rng.random() < self.weights["interp"]:
+            body = "".join(
+                self.field(0) if self.rng.random() < 0.5 else self.lit(2)
+                for _ in range(self.rng.randint(1, 4))
+            )
+            return self.pick(_GEN_PREFIX_I) + quote + body + quote
+        braces = self.rng.random() < 0.3
+        return self.pick(_GEN_PREFIX_P) + quote + self.lit(4, braces) + quote
+
+    def expr(self, depth: int = 0) -> str:
+        roll = self.rng.random()
+        single = self.weights["single"]
+        if roll < single or depth > 2:
+            return self.string()
+        if roll < single + 0.15:
+            sep = self.pick([" ", "", "\\\n", " \\\r\n", "\t", "\x0c"])
+            return sep.join(self.string() for _ in range(self.rng.randint(2, 3)))
+        if roll < single + 0.3:
+            sep = self.pick(["\n", " # c\n", "\r\n", " ", "\n# __main__\n", "\r"])
+            inner = sep.join(
+                self.expr(depth + 1) for _ in range(self.rng.randint(1, 3))
+            )
+            return "(" + inner + sep.strip(" ") * self.rng.randint(0, 1) + ")"
+        op = self.pick([" + ", "+", " +\\\n", " % ", " * ", " + ("])
+        left, right = self.expr(depth + 1), self.expr(depth + 1)
+        return left + op + right + (")" if op.endswith("(") else "")
+
+    def module(self) -> str:
+        head = self.pick(["", "", "# c\n", "\n", "x = 1\r\n", "x = 1\r", "\ufeff"])
+        tail = self.pick(["\n", "\n", "", "\r\n", "\r", " # c\n", ";\n"])
+        if self.rng.random() < self.weights["call"]:
+            return head + "V = fn(" + self.expr() + ")" + tail
+        return head + "V = " + self.expr() + tail
+
+
+def _cpython_main_pieces(data: bytes) -> list[str] | None:
+    """Every ``str`` CPython 3.14 hands to user code from the string
+    expressions of ``data`` that names the main module by K-3
+    (``_names_main``): constants (literal runs of f- and t-strings with debug
+    text joined in, format specs at any depth) and t-string interpolation
+    expression text. ``None`` when CPython rejects the module."""
+    import ast
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            tree = ast.parse(data)
+        except (SyntaxError, ValueError, RecursionError, MemoryError):
+            return None
+    pieces: list[str] = []
+    stack: list[ast.AST] = [tree]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            pieces.append(node.value)
+        elif isinstance(node, ast.Interpolation):
+            pieces.append(node.str)
+        stack.extend(ast.iter_child_nodes(node))
+    return [piece for piece in pieces if py_scope._names_main(piece)]
+
+
+def _main_case_verdict(text: str) -> str:
+    """``cp-reject``, ``closed`` (tree error or refused file), ``no-main``,
+    ``closed-main`` or ``FAIL-OPEN`` for one generated module, read as
+    ``facts.py`` reads it (lone-CR parse copy, raw source)."""
+    from chunker.core import _lone_cr_parse_copy
+
+    try:
+        data = text.encode("utf-8")
+    except UnicodeEncodeError:
+        return "cp-reject"
+    main = _cpython_main_pieces(data)
+    if main is None:
+        return "cp-reject"
+    copy = _lone_cr_parse_copy(data, "python")
+    root = get_parser("python").parse(data if copy is None else copy).root_node
+    if (
+        root.has_error
+        or py_scope.non_ascii_name(root, data) is not None
+        or py_scope.ambiguous_indentation(data) is not None
+    ):
+        return "closed"
+    path = py_scope.module_path("unit_case_module.py")
+    try:
+        analysis = py_scope._Analysis(root, data, module_path=path)
+    except RecursionError:
+        return "closed"
+    if not main:
+        return "no-main"
+    return "closed-main" if analysis.main_string else "FAIL-OPEN"
+
+
+def test_main_substring_rule_is_sound_against_cpython() -> None:
+    """R-698-3: whenever CPython hands user code a string with a ``__main__``
+    component from an f-string or t-string (a literal part, a format spec,
+    debug text or a t-string interpolation's expression text), the shared
+    K-3 classifier marks the file. Bounded: fixed seeds, fixed counts."""
+    import collections
+
+    counts: collections.Counter[str] = collections.Counter()
+    failures: list[str] = []
+    for seed, profile in ((698, "spec"), (699, "expr"), (700, "concat")):
+        gen = _MainCaseGen(seed, profile)
+        for _ in range(10000):
+            text = gen.module()
+            verdict = _main_case_verdict(text)
+            counts[verdict] += 1
+            if verdict == "FAIL-OPEN":
+                failures.append(text)
+    assert not failures, failures[:5]
+    assert counts["closed-main"] > 1000, counts
+    assert counts["no-main"] > 5000, counts
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        # R-698-2 NIT: a join across a replacement field is computed (plan
+        # §15 R12): each literal run is checked on its own.
+        "f'{obj:__ma{\"\"}in__}'",
+        "'{0:__ma{1}in__}'.format(obj, '')",
+    ],
+)
+def test_main_joined_across_a_replacement_field_is_r12(form: str) -> None:
+    assert proof_text(HELPER + form + "\nhelper()\n") == PROOF
+
+
+# R-698-2 S-1: a string with an invalid escape, plain and in an f-string, a
+# ``\N`` name and a line continuation, and the K-3 rule still applying.
+WARNING_SOURCE = (
+    "import re\n"
+    + HELPER
+    + "x = 'z'\n"
+    + "PAT = re.compile(f'\\d+{x}')\n"
+    + "PLAIN = re.compile('\\d+\\N{LOW LINE}\\\n')\n"
+    + "def use():\n    return helper()\n"
+)
+
+
+@pytest.mark.parametrize("main_form", ["", "f'\\d{obj:__main__}'\n"])
+def test_scope_facts_ignore_the_warnings_filters(main_form: str) -> None:
+    """Fact extraction does not depend on the process warning filters
+    (R-698-2 S-1): under ``-W error::SyntaxWarning`` an invalid escape such
+    as ``\\d`` decodes as it does by default, and no warning is issued."""
+    import warnings
+
+    from chunker.call_resolution import facts
+
+    source = (WARNING_SOURCE + main_form).encode()
+    start = source.rindex(b"helper()")
+    call = {"callee_byte_start": start, "callee_byte_end": start + 6}
+
+    def compute() -> dict[str, Any]:
+        return facts.compute_scope_facts(
+            language="python",
+            source=source,
+            call_facts=[call],
+            symbols=[],
+            path="a.py",
+            mode="imports",
+        )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        default = compute()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", SyntaxWarning)
+        strict = compute()
+    assert strict == default
+    expected = "none" if main_form else "local"
+    assert default["bindings"][f"{start}:{start + 6}"]["outcome"] == expected
+
+
+def test_decode_literal_matches_cpython() -> None:
+    """``_decode_literal`` reads what ``ast.literal_eval`` reads, for every
+    one-token literal of a seeded sample (R-698-2 S-1)."""
+    import ast
+    import io
+    import random
+    import tokenize
+    import warnings
+
+    alphabet = [*"ab_{}#\\\\\\'\"\n\r xuUN0178", "{LOW LINE}", "{NOPE}", "{}"]
+    alphabet += ["00110000", "d800", "\x00", "é", "{BYTE ORDER MARK}"]
+    # A named sequence: ``unicodedata.lookup`` accepts it, ``\N`` does not.
+    alphabet.append("{LATIN CAPITAL LETTER A WITH MACRON AND GRAVE}")
+    rng = random.Random(698)
+    for _ in range(20000):
+        prefix = rng.choice(["", "", "r", "u", "t", "b", "ur"])
+        quote = rng.choice(["'", '"', "'''", '"""'])
+        content = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 6)))
+        text = prefix + quote + content + quote
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                value = ast.literal_eval(text)
+            except (SyntaxError, ValueError):
+                value = None
+        want = value if isinstance(value, str) else None
+        got = py_scope._decode_literal(prefix, quote, content)
+        if got != want:
+            # Only text that is not one string token may differ (``'a' 'b'``,
+            # ``'a'#'``): the tree never hands such text over as one string.
+            assert got is None, text
+            try:
+                tokens = list(tokenize.generate_tokens(io.StringIO(text).readline))
+            except (tokenize.TokenError, SyntaxError):
+                continue
+            kinds = [t.type for t in tokens if t.type == tokenize.STRING]
+            assert kinds != [tokenize.STRING] or tokens[0].end[1] != len(text), text
+
+
 @pytest.mark.parametrize(
     "form",
     [

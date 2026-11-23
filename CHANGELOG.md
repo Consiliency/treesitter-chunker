@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Python structural call resolution now treats a constant string as a
+  `__main__` self-reference when a component split on format and attribute
+  punctuation or whitespace (or a default `string.Template` identifier) is
+  `__main__`, so templates stored in a variable and later formatted with
+  `str.format`, `format_map`, `%`, `string.Template` or logging fail closed.
+  An f-string or t-string counts when `__main__` occurs anywhere in its
+  source text after escape decoding (literal parts, format specs,
+  expressions, debug text and comments alike), so no difference in how
+  tree-sitter and CPython split such a string can hide one; a part that is
+  not UTF-8 fails closed (treesitter-chunker#698). `imports` mode uses the same rule
+  for its run-wide `__main__` cause, so such a string in any run file shuts
+  off Tier 2 as a plain `'__main__'` does. Escapes in string literals are
+  decoded without `ast.literal_eval`, so call resolution facts no longer
+  depend on the process warning filters (for example
+  `-W error::SyntaxWarning`).
+
 ### Added
 
 - **Experimental:** opt-in scope-aware call resolution, `call_resolution`
@@ -126,8 +144,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     rewrite any module's exports object (a code evaluator, a non-literal
     `require` or `import()`, `createRequire`, `mainModule`,
     `getBuiltinModule`, an import of `module`, the `module` object handed on,
-    or an unparsed file whose text spells one): Tier 2 is then off for the
-    run, and the cause is logged. This holds within the run only (plan risk
+    stack introspection through `caller`, `getFunction` or
+    `Error.prepareStackTrace`, a `with` statement (treesitter-chunker#718),
+    or an unparsed JS/TS file): Tier 2 records the cause and disables
+    cross-module resolution for the affected callers. Identifiers spelled
+    `caller` or `getFunction`, cooked string or template tokens equal to
+    either name, and regex patterns containing either name trigger the
+    cause, as do variable and parameter bindings with either name (a
+    function's inferred `.name` and export keys expose them). JSX text
+    containing either name, and JSX attribute strings equal to either
+    name, match after HTML character references decode.
+    Causes confined to test files apply only to test callers (O-2). This
+    holds within the run only (plan risk
     R12, treesitter-chunker#702).
     In Python files `"imports"` also resolves calls bound by an import:
     `from m import t`, relative forms, a function-local import, and member

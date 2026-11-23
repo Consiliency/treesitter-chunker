@@ -346,6 +346,7 @@ def test_cli_help_states_the_current_head() -> None:
         ), module
         # PR 6: and Python calls through import bindings (#705 E6-8).
         assert "and Python calls through import bindings and module" in text, module
+        assert "See docs/call-resolution.md for details." in text, module
 
 
 def test_experimental_label_and_spec_text() -> None:

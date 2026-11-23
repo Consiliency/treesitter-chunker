@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"21"`` for the ``js`` family and ``"39"`` for
+Schema (fact version ``"22"`` for the ``js`` family and ``"40"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -140,6 +140,8 @@ logger = logging.getLogger(__name__)
 # arguments; each such call on a receiver ``this`` now gives ``*``. The
 # positional reading of "20" still runs and is never overridden, so this
 # version flags every call "20" flagged (the #717 review).
+# js "22": stack-introspection tokens can expose the CommonJS wrapper,
+# and ``with`` can shadow lexical lookup (treesitter-chunker#718).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -247,7 +249,15 @@ logger = logging.getLogger(__name__)
 # python "38": PR 6 fold 7 (#705 P6-21, P6-22): a constant name (patcher
 # method or ``getfixturevalue``) counts in any spelling ``_constant_string``
 # decodes, as a positional argument, a keyword value or a subscript key.
-# python "39": treesitter-chunker#699 S2 (plan 699-702 PY-1..PY-5, PY-8;
+# python "39": K-3 classifies a ``__main__`` string by components split on
+# format and attribute punctuation and whitespace, and by a default
+# ``string.Template`` identifier, so stored templates count; f-string and
+# t-string literal parts and format specs are decoded from the tree, and an
+# undecodable one fails closed (treesitter-chunker#698, R-698-1). Before the
+# merge, R-698-3 replaced the f-/t-string piece reader: such a string counts
+# when a main name occurs anywhere in its decoded source text (same version,
+# unreleased; the fixtures' digests are unchanged).
+# python "40": treesitter-chunker#699 S2 (plan 699-702 PY-1..PY-5, PY-8;
 # ruling R-699-1 B-1, B-2, B-4, B-5): code run from a string, a payload or
 # an annotation (stdlib string-code helpers, ``pickle``/``timeit``/``runpy``
 # by member allow-list, ``shelve``, unpicklers, ``breakpoint``, annotation
@@ -257,7 +267,10 @@ logger = logging.getLogger(__name__)
 # code-object name, reads included, is a ``module-object`` cause (reversing
 # #705 Q2); the names ``gettext.install()`` puts into ``builtins`` are
 # ``builtin-shadow``; computed attribute reads in mock files fail closed.
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "21", "python": "39"}
+# With the R-699-3, R-699-5 and R-699-6 folds (every constant among the
+# arguments of ``import_module``/``__import__`` is an acquisition position).
+# Unreleased as "39" on the #727 branch; renumbered after #714 took "39".
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "22", "python": "40"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -305,6 +318,7 @@ TIER2_NONE_REASONS = (
     "run-tainted:module-object",
     "run-tainted:unparsed-file",
     "run-tainted:unresolvable-writer",
+    "run-tainted:dynamic-scope",
     # Tier 2 Python (PR 6): a module another file may write wholly (#697),
     # and a package whose module ``__getattr__`` answers a submodule name
     # (#705 E6-3).

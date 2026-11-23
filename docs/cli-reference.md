@@ -102,8 +102,10 @@ uses stderr so stdout remains parseable JSON.
 `--cache-dir` selects the persistent Boundary IR cache directory. `--force-rebuild`
 bypasses cache reads and refreshes records for the current snapshot.
 
-`--call-resolution` is experimental (treesitter-chunker#682). `name`, the
-default, is the usual name-only resolution. `structural` narrows `ambiguous`
+`--call-resolution` is experimental (treesitter-chunker#682). See
+[Call resolution](call-resolution.md) for the modes, test scoping and known
+limits. `name`, the default, is the usual name-only resolution.
+`structural` narrows `ambiguous`
 call edges whose callee is a bare identifier in a Python, JavaScript, TypeScript
 or TSX file. For JavaScript, TypeScript and TSX callers it resolves an edge
 when a lexical binding in the caller's file proves its one target
