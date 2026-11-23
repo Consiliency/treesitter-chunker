@@ -4478,6 +4478,152 @@ def test_r699_4_bound_uses_found_in_one_walk(tmp_path: Path) -> None:
     assert root_walks(2) == root_walks(30)
 
 
+# R-699-7 item 1: a ``require`` some scope of the file binds is user code, so
+# the literal ``"process"`` it receives is no loader call; under a CommonJS
+# emit a program-scope one also receives every static import's specifier.
+# The five route trees printed the replacement under node v24.22.3 while the
+# head 8dc5fa0d resolved the call (723-fable-recheck/hunt.py in the wave-3
+# evidence).
+LEAK = "  leak = Reflect.get(globalThis, x);\n"
+REQUIRE_EXPORT = f"export function require(x) {{\n{LEAK}  return {{}};\n}}\n"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            f"let leak;\nfunction require(x) {{\n{LEAK}"
+            "  return { cwd() { return '/'; } };\n}\n"
+            f"const p = require('process');\np.cwd();\nleak{EVIL}",
+            id="shadowed-require-function",
+        ),
+        pytest.param(
+            "let leak;\n((require) => {\n  const p = require('process');\n"
+            f"  p.cwd();\n}})((x) => {{\n{LEAK}"
+            f"  return {{ cwd() {{ return '/'; }} }};\n}});\nleak{EVIL}",
+            id="shadowed-require-parameter",
+        ),
+        pytest.param(
+            "let leak;\n((require) => {\n  const p = require('process');\n"
+            f"  typeof p;\n}})((x) => {{\n{LEAK}}});\nleak{EVIL}",
+            id="shadowed-require-typeof",
+        ),
+        pytest.param(
+            "import { require } from './req';\nconst p = require('process');\n"
+            "typeof p;\n",
+            id="imported-require",
+        ),
+        pytest.param(
+            f"let leak;\nfunction require(x) {{\n{LEAK}"
+            "  return { default: { cwd() { return '/'; } } };\n}\n"
+            f"import p from 'process';\np.cwd();\nleak{EVIL}",
+            id="import-under-shadowed-require",
+        ),
+    ],
+)
+def test_r699_7_route_trees(tmp_path: Path, text: str) -> None:
+    files = {**OTHERS, "svc.ts": SVC, "use.ts": USE, "req.ts": REQUIRE_EXPORT}
+    root = _write(tmp_path, {**files, "w.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "var require = (x) => x; const p = require('process'); typeof p;",
+            id="var",
+        ),
+        pytest.param("let require; const p = require('process'); typeof p;", id="let"),
+        pytest.param(
+            "class require {} const p = require('process'); typeof p;", id="class"
+        ),
+        pytest.param(
+            "function f({ require }) { const p = require('process'); typeof p; }",
+            id="destructured-parameter",
+        ),
+        pytest.param(
+            "class C { m(require) { const p = require('process'); typeof p; } }",
+            id="method-parameter",
+        ),
+        pytest.param(
+            "try {} catch (require) { const p = require('process'); typeof p; }",
+            id="catch-parameter",
+        ),
+        pytest.param(
+            "function require(x) { return x; } const p = require(`process`);"
+            " typeof p;",
+            id="template-specifier",
+        ),
+        pytest.param(
+            "function require(x) { return x; } const p = require('node:process');"
+            " typeof p;",
+            id="node-specifier",
+        ),
+        pytest.param(
+            "import require from './req'; const p = require('process'); typeof p;",
+            id="default-import",
+        ),
+        pytest.param(
+            "const p = require('process'); typeof p;"
+            " { function require(x) { return x; } }",
+            id="block-function-elsewhere",
+        ),
+        pytest.param(
+            "import p from 'process'; typeof p; function require(x) { return x; }",
+            id="import-then-declaration",
+        ),
+        pytest.param(
+            "function require(x) { return x; } import p = require('process');"
+            " typeof p;",
+            id="import-equals",
+        ),
+    ],
+)
+def test_r699_7_bound_require_voids_process_load(tmp_path: Path, text: str) -> None:
+    files = {**OTHERS, "svc.ts": SVC, "use.ts": USE, "req.ts": REQUIRE_EXPORT}
+    root = _write(tmp_path, {**files, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "function require(x) { return x; } const p = require('procesz');"
+            " typeof p;",
+            id="other-specifier",
+        ),
+        pytest.param(
+            "declare function require(x: string): any;\n"
+            "import p from 'process'; typeof p;",
+            id="ambient-declaration",
+        ),
+        pytest.param(
+            "import type { require } from './req';\n"
+            "import p from 'process'; typeof p;",
+            id="type-only-import",
+        ),
+        pytest.param(
+            "const o = { require(x: string) { return x; } };\n"
+            "import p from 'process'; typeof p;",
+            id="method-name",
+        ),
+    ],
+)
+def test_r699_7_unbound_require_keeps_tier2(tmp_path: Path, text: str) -> None:
+    files = {**OTHERS, "svc.ts": SVC, "use.ts": USE, "req.ts": REQUIRE_EXPORT}
+    root = _write(tmp_path, {**files, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert structural == off
+    assert on["resolution"] == "resolved", label
+    assert _resolved_file(on, root) == "svc.ts"
+
+
 def test_p5_37_short_name_after_trailing_dot_or_space() -> None:
     """P5-37: Win32 strips a trailing dot or space before the 8.3 match."""
     index = modules.ModuleIndex.build(["use.ts"], None)

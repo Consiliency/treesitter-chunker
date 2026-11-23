@@ -275,6 +275,25 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "            if n.type in _USE_NAME_TOKENS and _text(n, self.source) == name\n"
         "        ]:\n",
     ),
+    # R-699-7: a ``require`` bound in the file voids every process load.
+    (
+        "r699-7-bound-require",
+        JSM,
+        "        if not names or self._require_rebound():\n",
+        "        if not names:\n",
+    ),
+    (
+        "r699-7-bound-require-type-only",
+        JSM,
+        "                binding.cls != TYPE_ONLY and not binding.ambient\n",
+        "                not binding.ambient\n",
+    ),
+    (
+        "r699-7-bound-require-ambient",
+        JSM,
+        "                binding.cls != TYPE_ONLY and not binding.ambient\n",
+        "                binding.cls != TYPE_ONLY\n",
+    ),
     (
         "702-process-computed-reach",
         JSM,

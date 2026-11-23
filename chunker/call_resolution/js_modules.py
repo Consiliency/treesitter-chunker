@@ -325,6 +325,7 @@ class _ModuleFacts:
         # with one promotes every test file (O-2).
         self.uncomputable = False
         self._names: dict[str, list[Any]] | None = None
+        self._rebound: bool | None = None
         # P5-13: literal targets of ``createRequire(__filename)``.
         self.filename_taints: set[str] = set()
         self.ns_uses: set[tuple[str, str, str]] = set()
@@ -916,7 +917,7 @@ class _ModuleFacts:
         self, literal: Any, names: list[Any], handled: set[int]
     ) -> None:
         """Exempt a process load only if every bound name stays in safe uses."""
-        if not names:
+        if not names or self._require_rebound():
             self.shutoff.add(CAUSE_MODULE_SYSTEM)
             return
         for name in names:
@@ -930,6 +931,24 @@ class _ModuleFacts:
                 self.shutoff.add(CAUSE_MODULE_SYSTEM)
                 return
         handled.add(literal.id)
+
+    def _require_rebound(self) -> bool:
+        """R-699-7 item 1: whether any scope of the file binds ``require``.
+
+        A call of such a binding hands the literal ``"process"`` to user
+        code, and a CommonJS emit routes the file's static imports through
+        a program-scope one, so no process load in the file is exempt. A
+        type-only import and an ambient declaration bind no runtime value.
+        """
+        if self._rebound is None:
+            from .js_scope import TYPE_ONLY
+
+            self._rebound = any(
+                binding.cls != TYPE_ONLY and not binding.ambient
+                for scope in self.analysis.scopes.values()
+                for binding in scope.bindings.get("require", ())
+            )
+        return self._rebound
 
     def _process_import_names(self, statement: Any) -> list[Any]:
         if any(child.type == "import_attribute" for child in statement.named_children):
