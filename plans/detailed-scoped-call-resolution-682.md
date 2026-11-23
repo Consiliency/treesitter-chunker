@@ -2141,8 +2141,9 @@ or pytest ran (`test_fold3_president_cases_keep_their_off_mode_edge`).
 **Real-tree outcome (owner decision O-3: shipped as designed).** Python Tier 2
 gains nothing on the measured trees. `imports` is compared with `structural`
 on git-tracked `.py` files, with Python 3.14, at PR 6 fold 2 and again at
-fold 3 (identical; the treesitter-chunker rows use a copy of the fold-3
-head); each row names
+fold 3 (every resolved, gain and loss count identical; the
+treesitter-chunker rows use a copy of the fold-3 head, whose own new code adds
+13 production and 15 test ambiguous edges); each row names
 its extraction root (the `sys.path` entry). "ambiguous" counts off-mode
 ambiguous Python call edges; "S → I" is the resolved count under
 `structural` and then `imports` (gain / lost); "pot" is what Tier 2 would add
@@ -2154,8 +2155,8 @@ with run-wide causes removed (a diagnostic only).
 | pmcp: root = `src/` | 62 | 883 | 63 → 63 (0 / 0) | 1 | – | – | – | dynamic-loader, evaluator, module-object, module-system |
 | spec: root = repo | 375 | 4676 | 2410 → 1463 (0 / 947) | 50 | 4026 | 1136 → 1114 (0 / 22) | 0 | dynamic-loader, evaluator, module-object, module-system |
 | spec: root = `src/` | 97 | 501 | 200 → 185 (0 / 15) | 6 | – | – | – | evaluator, module-object, module-system |
-| treesitter-chunker: root = repo, no fixtures | 852 | 4969 | 412 → 412 (0 / 0) | 59 | 9850 | 1030 → 906 (0 / 124) | 92 | dynamic-loader, module-object, module-system |
-| treesitter-chunker: root holds only `chunker/` | 335 | 2885 | 259 → 259 (0 / 0) | 29 | – | – | – | dynamic-loader, module-object, module-system |
+| treesitter-chunker: root = repo, no fixtures | 852 | 4982 | 412 → 412 (0 / 0) | 59 | 9865 | 1030 → 906 (0 / 124) | 92 | dynamic-loader, module-object, module-system |
+| treesitter-chunker: root holds only `chunker/` | 335 | 2892 | 259 → 259 (0 / 0) | 29 | – | – | – | dynamic-loader, module-object, module-system |
 | Code-Index-MCP: root = repo | 1111 | 11573 | 279 → 279 (0 / 0) | 8 | 11468 | 797 → 797 (0 / 0) | 6 | dynamic-loader, evaluator, module-object, module-system, unparsed-file, unresolvable-writer |
 | Code-Index-MCP: root holds only `mcp_server/` | 290 | 6626 | 103 → 103 (0 / 0) | 7 | – | – | – | dynamic-loader, module-object, module-system, unparsed-file |
 
