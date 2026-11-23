@@ -344,6 +344,8 @@ def test_cli_help_states_the_current_head() -> None:
         assert (
             "'imports' also resolves JS/TS calls through relative import" in text
         ), module
+        # PR 6: and Python calls through import bindings (#705 E6-8).
+        assert "and Python calls through import bindings and module" in text, module
 
 
 def test_experimental_label_and_spec_text() -> None:

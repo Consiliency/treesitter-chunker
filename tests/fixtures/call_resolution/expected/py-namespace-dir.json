@@ -17,7 +17,23 @@
      ],
      "caller": "go",
      "file": "app.py",
+     "imports": {
+      "candidate_ids": [
+       "8ad53b894978a2203fa65e638e6062c9f1f7c917",
+       "969c7a10d07776913d7042e8fa406ee60039df24",
+       "ffa3acd1f1ee062a2ac2f836e5e6976f2959f676"
+      ],
+      "candidates": [
+       "D/sub.py:1:helper",
+       "other.py:1:helper",
+       "D.py:1:helper"
+      ],
+      "outcome": "none(module-not-found)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 5,
+     "pr": 6,
      "reference": "helper",
      "today": {
       "candidate_ids": [

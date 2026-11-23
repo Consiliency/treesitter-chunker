@@ -24,6 +24,8 @@ naming any version, are separate owner questions.
 | Redefinition policy | An **executive decision that Greenfield accepted in writing** (section 8). It is stricter than the issue's Python rule. Python redefinitions are never resolved. Plain-JS hoisted function declarations resolve to the last one (`t1.js_hoist`, in its own PR). TS duplicate bodies stay ambiguous. A TS overload set resolves to its implementation. |
 | Extension collisions | When a relative import matches more than one file variant, the result is `none` (ruling 2.2). **O-1 decided (a) by the owner** (PR 5): the edge is left unchanged. |
 | Test-file scoping | **O-2 decided "scope by caller" by the owner** (PR 5 fold 2): Tier 2 causes and taints that originate in test files apply only to edges whose caller is a test file; production causes stay run-wide. A test file any production file reaches is production (9.9). |
+| Python Tier 2 outcome | **O-3 decided by the owner: ship PR 6 as designed** (fold 1 on #705). On the measured real trees Python `imports` resolves no additional calls (each tree has genuine production run-wide causes), and it resolves fewer calls than `structural` where other files may write a module (#697 taints). Both are documented outcomes (9.10). |
+| Experimental label | **O-4 decided by the owner: keep it** on `structural` and `imports` after PR 6, because real-code precision has not been measured (4.5, 13.1). |
 | IDs | No ID input changes. `definition_id`, `node_id`, `#N` and `call_site_id` are byte-identical on and off. A harness proves it for every fixture, on both the symbol graph and Boundary IR. |
 | Schema and cache | Boundary IR stays at `3.0`, and the new provenance keys are additive. On-mode `parity_digest` changes, which Greenfield accepted. Off-mode cache keys are unchanged. Switching modes on one cache directory is a cold run in both directions. |
 | Delivery | Seven strictly sequential PRs (0–6). All of Tier 1 merges before any Tier 2. Only PR 6 closes treesitter-chunker#682. No heavy local runs on dev0; full validation runs in CI. No release. |
@@ -242,7 +244,9 @@ the option is off.
 ### 4.5 Experimental label
 
 The option is marked experimental in CLI help, docstrings and CHANGELOG
-(Unreleased) from PR 1 until PR 6. Each PR's CHANGELOG entry states exactly
+(Unreleased) from PR 1, and **stays experimental after PR 6** for both
+`structural` and `imports` (owner decision O-4: real-code precision has not
+been measured). Each PR's CHANGELOG entry states exactly
 what each value does at that head. For example, after PR 1, `structural`
 applies only the kind and family filters and resolves nothing.
 
@@ -1550,6 +1554,12 @@ default expression, `non-callable` for a called namespace object and
 `run-tainted:evaluator`, `run-tainted:dynamic-loader`,
 `run-tainted:module-system`, `run-tainted:module-object`,
 `run-tainted:unparsed-file` and `run-tainted:unresolvable-writer` (9.9).
+PR 6 (Python, 9.10) adds `module-escape` (a module another file may write
+wholly), `module-getattr` (fold 2, E6-3: a package's module `__getattr__`
+may answer a submodule name) and reports `reassigned` for a name another file writes,
+`non-callable` for a called submodule, `external-module` for a
+standard-library name and `unknown-variant` for a skipped-directory
+component.
 
 ### 9.9 PR 5 fold 1 (the president's rulings E5-1..E5-5 on #703)
 
@@ -1878,6 +1888,515 @@ wheel payload returns to 346 files.
   precise rule was chosen over the blunt "any `<!--`/`-->` on a code byte"
   fallback; it costs nothing on the 8 measured trees.
 
+### 9.10 PR 6: Tier 2 Python (applied)
+
+`chunker/call_resolution/py_modules.py`. Each rule only adds `none`, except
+the import proofs themselves (9.4-9.6). `structural` output is unchanged.
+
+- **Import bindings (9.4).** `from m import x [as y]` binds `(m, x)`;
+  `import a.b` binds `a` to module `a` (the facts' `bound`), `import a.b as
+  m` binds `m` to module `a.b`. A call `x()` follows `(m, x)`; a member
+  chain `m.f()`, `a.b.f()`, `u.f()` (read from the tree, which must match the
+  reference exactly) follows the chain attribute by attribute, each
+  intermediate value a module. Two or more imports of one name and nothing
+  else (`try`/`except` fallbacks, two sequential imports) form a group: every
+  member must prove a target, and the union narrows; it resolves only when
+  every member proves the same definitions. A single conditional import is
+  `conditional`; a group mixed with any other binding stays
+  `mixed-bindings`. `t2.import` for a bare call, `t2.namespace` for a chain.
+- **Module paths (9.5).** One component at a time from the root, regular
+  package before module before namespace directory; an intermediate module
+  gives `module-not-found`. An absolute import whose first component exists
+  in the importer's own non-root directory gives `script-dir-shadow`
+  (checked first). A first component that is a standard-library module name
+  (`STDLIB_MODULES`: CPython 3.14's `sys.stdlib_module_names` plus the
+  modules 3.13 removed, pinned by a test) gives `external-module`: builtin
+  and frozen modules win over any file, and the root's place on `sys.path`
+  relative to the standard library depends on how the program starts. A
+  component named like a directory collection skips (`SKIP_PARTS`) gives
+  `unknown-variant`. Relative imports start at the importer's package; the
+  root is the `sys.path` entry, not a package, so a root-level relative
+  import gives `outside-root`. Extension modules and `.pyi` stubs are not
+  collected (R7).
+- **Name lookup (9.6).** The target's export table is every module-scope
+  name's Tier 1 module lookup (so the target's own `dynamic-scope`,
+  `star-import`, `conditional`, `expression-bound`, `builtin-shadow`,
+  `mixed-bindings` and attribute-write rules apply). A name missing from it
+  is `export-not-found` (or the module's own `dynamic-scope`, `star-import`
+  or `unmapped`). A package binding the name and holding a submodule of that
+  name is `attr-submodule-conflict`, unless the only bindings are its own
+  unconditional submodule import (`from . import b`) and the writes that
+  import makes (`own_submodules`; fold 2, E6-3). A submodule the resolver
+  cannot read (a skipped-directory name, S-1) counts as a submodule. A
+  submodule only is a module value (`non-callable` when called), unless the
+  package defines a module-level `__getattr__` (`module-getattr`: PEP 562
+  answers before the submodule loads, E6-3) or may bind names at run time
+  (its own `dynamic-scope`, `star-import` or `unmapped`, A-3). An import
+  entry is a hop; more than 3 hops `hop-limit`, a revisited pair `cycle`.
+- **Other files' writes (treesitter-chunker#697, executive rule 2).** Every
+  use of an imported name is found by the ordinary lookup at the use site
+  (every import of the name when the lookup cannot tell, as for a
+  `try: import svc / except: svc = None` head; none when it proves the
+  file's own binding). An imported module object may appear only in a
+  CLOSED allow-list: an attribute read or a call of a member; an attribute
+  write (assignment, augmented, `del`, `for`/`with` target, through
+  parentheses) or `setattr`/`delattr` with a constant name and the builtin
+  verified by the lookup, which records exactly that name; an operand of
+  `is`, `is not` or `not`, or a bare `if`/`elif`/`while` test. Every other
+  use is an escape: the value the chain reads (the module itself, or a
+  submodule or module re-export reached through it) is tainted wholly, and so
+  is a module whose dunder attribute other than `__name__`, `__qualname__`,
+  `__doc__`, `__file__`, `__module__`, `__version__` is read. A class-level
+  import and an import redirected by `global`/`nonlocal` are escapes. A
+  literal acquisition (`importlib.import_module('svc')`, `__import__('svc')`,
+  `sys.modules['svc']` or `.get`/`.pop`/`.setdefault` with a constant,
+  `sys.modules[__name__]`) taints its target wholly; a dotted constant
+  string (`mock.patch('svc.t')`, `monkeypatch.setattr('svc.t', f)`,
+  `'svc:t'`) records its name; `from m import *` taints wholly every module
+  `m` exposes. A wholly tainted module taints every module it exposes as an
+  attribute (its submodules, the modules it imports at module scope, its
+  star sources' exposures), transitively. A written module name denotes the
+  run module of that dotted name and, for an absolute name written from a
+  file below the root, the one in the writer's own directory; within one
+  process a dotted name is one module object, and the same file imported
+  under another name is a separate object a write does not reach, so no
+  other module is meant. A tainted name gives `reassigned`, a wholly tainted
+  module `module-escape`, wherever a lookup meets it: the first target, any
+  hop, any chain step, **and the module's own Tier 1 module-scope proofs in
+  `imports` mode** (a proof declaration exported under that name).
+- **Run-wide causes (executive rule 3, E5-3 analog).** Every trigger is
+  decided by the ordinary lookup at the use site (a builtin is one the file
+  does not bind; a module is the import binding the lookup proves).
+  `evaluator`: `exec`, `eval`, `execfile` (any use), the Python 2 `exec`
+  statement. `compile` alone is no cause (executive ruling on #705, Q2): it
+  only builds a code object, which runs through `exec`/`eval` or a globals
+  dict a tracked route reaches. `dynamic-loader`: `import_module` or `__import__` with a
+  non-literal first argument, a literal naming a module this rule set
+  classifies (`importlib`, `builtins`, `sys`, `runpy`, ...), any `importlib`
+  use off the closed list (`importlib.metadata`, `importlib.resources`,
+  `importlib.abc`, `invalidate_caches`, `util.find_spec`, `import_module`
+  with a literal, `reload` of a name), `runpy`, `imp`, `zipimport`, the
+  string resolvers (`pkgutil.resolve_name`, `get_loader`, `find_loader`,
+  `pydoc.locate`, `safeimport`, `importfile`, `logging.config._resolve`,
+  `_importer`, and `resolve_name`/`safeimport`/`find_class` in any
+  position). `module-system`: `sys.modules` off its closed list (a literal
+  key read or written, a literal getter, `'x' in sys.modules`),
+  `sys.path`/`meta_path`/`path_hooks`/`path_importer_cache` other than an
+  `in` operand, a dunder of `sys`, `sys` handed on, `os.sys`/`X._sys`
+  treated as `sys`, `from sys import modules`, `__path__`,
+  `site.addsitedir`, a string naming `sys` and `modules`. `module-object`:
+  `__globals__`, `f_globals`, `f_builtins`, `getmodule`, `__builtins__`,
+  the `builtins` module, `bltns`, `__main__`/`__mp_main__` outside the
+  module-level guard, `pythonapi`, `PyFrame_LocalsToFast`, and a frame's
+  `f_locals` other than a read (`.get(...)`, a subscript read, an `in`
+  operand), because a module-level frame's `f_locals` is the module's
+  globals. `unresolvable-writer`: a relative `import_module` whose package
+  is not a literal. As for TS/JS (PR 5), a cause shuts off Tier 2 for the
+  callers it applies to (`run-tainted:<cause>`); Tier 1 proofs keep their
+  `structural` result except where a taint names their module global.
+  **Tier 1 file-wide triggers that become run-wide** in Tier 2: `exec`,
+  `eval`, `__import__`, `importlib`, `sys.modules`, `__builtins__`/
+  `builtins`, `__main__`, `__globals__`, `f_globals`, `f_builtins`,
+  `getmodule`, the string resolvers, `pythonapi`, and `f_locals` (writes).
+  **Tier 1 triggers that stay file-local:** `globals`, `vars`, `locals`
+  (they reach the file's own namespace; `vars(svc)` is an escape of `svc`),
+  the own-name rule, the attribute-write rule, the namespace and mock rules
+  (writes through a module are escapes or named writes here), and the
+  closure-cell and code-object names (`__closure__`, `cell_contents`,
+  `__code__`, `CodeType`, `FunctionType`, `ctypes` without `pythonapi`,
+  ...) used on objects no module chain reaches: they change what a function
+  runs, not which definition a module attribute holds. A write through an
+  attribute chain rooted at an imported module (`svc.t.__code__ = …`) taints
+  the chain's first attribute, `svc.t` (fold 2, E6-6); such a write through
+  an object obtained otherwise is plan risk R12.
+- **Parse classification (E5-7 analog, executive rule 5).** A Python file
+  Tier 1 does not analyze (a tree error, `RecursionError`, an analyzer
+  failure, a non-ASCII identifier, ambiguous indentation) is a run-wide
+  `unparsed-file` cause, scoped by O-2, and so is a file CPython and
+  tree-sitter may read differently with no tree error (`parse_hazard`): a
+  lone CR, a NUL, vertical-tab or Ctrl-Z byte, a PEP 263 coding declaration
+  other than UTF-8 or ASCII (CPython's normalization), a BOM with any coding
+  declaration, both tab- and space-indented lines (CPython's `TabError`
+  rules), and a `line_continuation` that is not exactly a backslash before
+  the line break. No tokenizer is written; the rules are byte rules. Cost on
+  the 8 measured trees: 0 files.
+- **O-2 for Python (owner decision, executive rule 4).** Classifier
+  (`is_test_path`, closed, case-sensitive, path-based): a basename
+  `test_*.py`, `*_test.py` or `conftest.py` (pytest loads it only), or a
+  directory segment exactly `tests` or `test`. Not test code: `testing/`,
+  `contest.py`, `Tests/`, `my_tests.py`, `test.py`, `tests.py`. Promotion is
+  the fixpoint over every edge a file may load another through (imports,
+  uses, acquisitions, stars, dotted strings, each resolved like a taint
+  target, every prefix of a dotted name); a test file a production file
+  reaches is production. A directory symlink under the root, or not knowing
+  (`directory_symlinks=None`), makes every test file production (P5-2).
+  Causes and taints from test-scope files apply only to callers in
+  test-scope files.
+
+**Fold 2 (the president's rulings E6-1..E6-8 on #705).** Each rule only adds
+`none`, except E6-7 (a narrowing) and the E6-3 own-submodule allowance.
+
+- **E6-1, a module's own bindings are re-checked (A-1, A-4, B1).** A Tier 2
+  proof starts from the caller's own binding of the reference's head name.
+  Another file's write of that name (`use.t = o`, `setattr(use, 't', o)`,
+  `mock.patch('use.t', o)`, `use.svc = other`), a whole-module taint of the
+  caller, or, in a package `__init__.py`, a submodule of that name (importing
+  `pkg.tool` anywhere sets the package global `tool`) fails the proof closed
+  (`reassigned`, `module-escape`, `attr-submodule-conflict`). The same
+  submodule check applies to the package's own Tier 1 module-scope proofs in
+  `imports` mode.
+- **E6-2, intermediaries over-approximated (B2).** The facts record every
+  import binding that lands in a module's namespace (`module_imports`),
+  whatever its Tier 1 lookup gives (conditional, `try`/`except`, repeated,
+  in a file with `globals()`). Chain walks, star exposure, aliases
+  (`from mid import svc as s`) and the whole-taint closure follow all of
+  them, so a write through `mid.svc` taints `svc`.
+- **E6-3, package attributes (A-2/B4, A-3/B3).** `import a.b as m` binds
+  `getattr(a, "b")` (CPython 3.7+ `IMPORT_FROM`), so each component after
+  the first is resolved as an attribute of its package, with the conflict,
+  export and taint checks; the result must be a module, else
+  `attr-submodule-conflict`. A package binding `b` other than by its own
+  unconditional `from . import b` gives `attr-submodule-conflict`. A package
+  with a module-level `__getattr__` makes every submodule access through the
+  package attribute `none(module-getattr)`: PEP 562 answers `from pkg import
+  sub`, `pkg.sub` and `import pkg.sub as m` before (or instead of) the
+  submodule. The reason is new because neither `export-not-found` (the name
+  exists) nor `attr-submodule-conflict` (no binding names it) describes it;
+  for `import pkg.sub as m` CPython loads the submodule first, so there the
+  rule closes an edge that would be right, as ruled.
+- **E6-4, pytest's `rootdir` insertion (A-5).** For a test-classified
+  importer, every directory from its own up to and including the first
+  ancestor without `__init__.py` (pytest's `basedir`, `prepend` mode) may
+  come first on `sys.path`, stopping at the root: a first component found in
+  any of them gives `script-dir-shadow`, and writes from that importer name
+  those directories' modules too.
+- **E6-5, patcher targets (A-6, B-S1).** A closed list of callees: `patch`
+  from `unittest.mock`/`mock` (`mock.patch`, a pytest-mock fixture's
+  `.patch`, a bare `patch`), `X.patch.object`/`.dict`/`.multiple`, and
+  `setattr`/`delattr` on a receiver whose name contains `monkeypatch`. A
+  target string that is not a constant (`mock.patch(f"svc.{n}")`,
+  `monkeypatch.setattr(n, f)`), and a `patch.object` attribute that is not
+  one, is an `unresolvable-writer` cause, scoped by O-2. A constant target
+  taints the module it names wholly (`patch.multiple('svc', t=o)`), besides
+  the dotted-string rule. `requests.patch(url)` is not on the list.
+- **E6-6, write chains (B-S2).** A write through an attribute chain rooted at
+  an imported module taints the chain's first attribute (`svc.t.__code__ =
+  o.__code__` taints `svc.t`).
+- **E6-7, safe reads (N1, A-S2).** A plain read of a module's `__path__`,
+  `__spec__`, `__file__`, `__name__` or `__doc__` is a safe use, not an
+  escape; `__path__` stays a run-wide `module-system` cause.
+- **E6-8, cost and cleanup.** The Python module facts are computed only in
+  `imports` mode; `structural` and `name` records carry empty tables, as on
+  main, and an `imports` assembly given a file without them treats it as
+  `unparsed-file`. A submodule name the collector skips for directories
+  (`pkg/build.py`) counts as a submodule (S-1). Panel B's 20 surviving
+  mutations are killed or recorded as equivalent in the mutation script.
+
+**Fold 3 (the president's review P6-1..P6-4 and N-1 on #705).** Each rule
+only adds `none`. Every row is the president's tree, with what CPython 3.14
+or pytest ran (`test_fold3_president_cases_keep_their_off_mode_edge`).
+
+- **P6-1, own-submodule imports by full name.** An import in a package
+  `__init__.py` is an import of its own submodule only as `from . import b`
+  or `from <the package's full dotted name> import b`. `from vendor.utils
+  import timezone` in `myapp/utils/__init__.py` binds the vendor module; the
+  later `from myapp.utils import timezone` finds that attribute and never
+  loads `myapp/utils/timezone.py` (`h10_django_like`, `h1_own_sub_lastpart`:
+  `attr-submodule-conflict`). Fold 2 compared only the last component.
+- **P6-2, a star import leaves no own-submodule name.** An `__init__.py`
+  with any star import records no own-submodule names, and the assembly
+  also refuses one there (`not file.stars`): `from .c import *` after `from
+  . import b` rebinds `b`, and the submodule already in `sys.modules` is
+  never set again (`h9_star_rebind`).
+- **P6-3, patchers follow the Tier 1 W-3 aliases.** Which callee is `patch`
+  is decided at the use site by the Tier 1 alias sets (the mock-module
+  names, the `patch` names and every local alias of the mock module,
+  `patch` or a pytest-mock fixture), besides the literal spellings of E6-5:
+  `from unittest import mock as m` … `m.patch(...)` (`h3a`), `from
+  unittest.mock import patch as p` … `p(...)` (`h3b`). A `MonkeyPatch` is
+  any name containing `monkeypatch` (any case) and, to a fixpoint, a name
+  bound from one by assignment, walrus or `with … as` (`mp = monkeypatch`,
+  `h6`). A first argument of `patch.multiple`/`patch.dict` that is not a
+  constant string is an `unresolvable-writer` cause, as for `patch`
+  (`h3c`). An object target (`patch.dict(os.environ, …)`) cannot be told
+  from a computed string, so it fails closed too; on the measured trees
+  that adds one test-scope cause in pmcp (whose tests already had causes)
+  and changes no count. `requests.patch(url)` stays unaffected.
+- **P6-4, pytest's basedirs for the whole run.** For a test-classified
+  importer or writer, the directories that may come first on `sys.path` are
+  its own chain (E6-4) and the basedir of every file pytest imports while
+  collecting (`test_*.py`, `*_test.py`, `conftest.py`), each the first
+  ancestor without `__init__.py`, computed once per run: `tests/conftest.py`
+  puts `tests/` first for a test in `tests/unit/` (`h4_conftest_basedir`:
+  `script-dir-shadow`). Without the conftest (`h4b`) the import resolves as
+  before. Both `resolve_module` and `_Builder.starts` use the set.
+- **N-1, function code writes are a cause.** A write of a function's
+  `__code__`, `__closure__`, `__defaults__` or `__kwdefaults__` in any file
+  (any receiver, or by constant name) is a run-wide `module-object` cause,
+  scoped by O-2: `f = svc.t; f.__code__ = other.t.__code__` made CPython run
+  `OTHER.t` for `use.py`'s proven `from svc import t` (`h5_code_alias`). Its
+  measured cost on the four trees is 0 (each already has a production
+  `module-object` cause).
+
+**Fold 4 (the president's re-check P6-5..P6-9; executive ruling E6-9).**
+E6-9 reuses Tier 1's E-21 closed allow-list for patcher values, so this class
+stops recurring; every rule only adds `none`.
+
+- **E6-9 / P6-6, `MonkeyPatch` is a patcher kind** beside Tier 1's mock
+  module, `patch` and `mocker`. Its class is any name `from pytest import
+  MonkeyPatch` or `from _pytest.monkeypatch import MonkeyPatch` binds (in any
+  alias), the bare name and any `X.MonkeyPatch` attribute (so every alias of
+  either module); an instance is the `monkeypatch` fixture, `MonkeyPatch()`,
+  `X.context()` on either, and every name bound from one by assignment,
+  walrus or `with … as`. Fold 3's substring rule is gone. Its closed
+  allow-list: `setattr`, `delattr`, `setitem`, `delitem`, `setenv`,
+  `delenv`, `syspath_prepend`, `chdir`, `undo` and `context` called on an
+  instance, `MonkeyPatch()`/`MonkeyPatch.context()` called on the class, a
+  binding position, an annotation and an alias binding.
+  `from pytest import MonkeyPatch as MP; m = MP(); m.setattr(f"svc.{N}", …)`
+  ran `OTHER.t` under pytest (`f3_mp_from_import`).
+- **E6-9 / P6-5, patcher values off the allow-list.** In a test-classified
+  file, any use of a patcher value (the mock module, `patch` and `mocker`,
+  decided by Tier 1's alias sets and its `_safe_use`, and `MonkeyPatch`) off
+  its allow-list is an `unresolvable-writer` cause, scoped by O-2: an
+  argument (decorator arguments included), a container element, `return`
+  or `yield`, `functools.partial`, an assignment the alias sets do not
+  track. pytest ran `OTHER.t` for `run(patch)`, `@deco(mock.patch)`,
+  `[mock.patch][0](…)`, `functools.partial(patch, …)` and
+  `helper(monkeypatch)` (`f3_patch_as_arg`, `f3_patch_decorator_arg`,
+  `f3_patch_list_escape`, `f3_patch_partial`, `f3_mp_param`). Allowed calls
+  with constant targets keep their exact taints. (Fold 4 left production
+  files out; E6-9a, below, withdraws that.)
+- **E6-9 / P6-7, fixtures by name.** `request.getfixturevalue('<name>')`
+  with `monkeypatch` yields a `MonkeyPatch`, and with a pytest-mock fixture
+  name (`mocker`, `class_mocker`, `module_mocker`, `package_mocker`,
+  `session_mocker`) a fixture whose `.patch` is `patch`
+  (`f3_mp_getfixture` ran `OTHER.t`). A computed fixture name is an
+  `unresolvable-writer` cause, scoped by O-2.
+- **P6-8: no change.** It is off-mode behaviour (§15 R12, Python, PR 6).
+- **P6-9 (method).** The Boundary IR hash includes the checkout's absolute
+  path, so head-vs-main comparisons are run from one path.
+
+**Fold 5 (the president's re-check P6-10..P6-16; executive ruling E6-9a).**
+Every rule only adds `none`.
+
+- **E6-9a / P6-13, the patcher-escape scan runs in every Python file.**
+  Fold 4 said production files needed none because Tier 1's E-21 makes the
+  hand-off file dynamic. That holds only for the file's own lookups: the
+  hidden write still reaches another module. Production `main.py` ran
+  `OTHER.t` after production `app.py` did `run(patch)`,
+  `helper(pytest.MonkeyPatch())` or `[pytest.MonkeyPatch()][0].setattr(…)`
+  (`f4_prod_patch_param`, `f4_prod_mp_param`, `f4_prod_mp_list`). The cause
+  stays scoped by O-2 through the file's own classification. The
+  `getfixturevalue` rules below apply in every file too, under the same
+  scoping; production code does not call `getfixturevalue`. The fixture
+  seed is a parameter named `monkeypatch` (as E6-9 says), not the spelling:
+  this tool's own local flag `monkeypatch = …` is no fixture. On the measured
+  trees the only new production cause is in treesitter-chunker:
+  `chunker/call_resolution/py_scope.py`, through Tier 1's own readback rule
+  (`mock_names.add("mock")` reads like `getattr(X, "mock")`), which Tier 1
+  also applies to that file; it costs no resolved edge.
+- **P6-10, `syspath_prepend` is `module-system`.** `monkeypatch.
+  syspath_prepend(p)` is `sys.path.insert(0, p)` plus
+  `importlib.invalidate_caches()`; pytest ran `shadow/svc.py`'s `t`
+  (`f4_mp_syspath_prepend`; the plain `sys.path.insert` control
+  `f4_ctl_syspath_insert` was already a cause). It stays on the allow-list
+  only so that it is not also an escape.
+- **P6-11, MonkeyPatch aliases mirror Tier 1.** An assignment, walrus or
+  `with … as` alias is safe only for a binding no computed read reaches
+  (Tier 1's `_reachable_binding` is false: a function local, not a module or
+  class global or a `global`-declared name). A module-level `MP =
+  pytest.MonkeyPatch()` that the test imports (`f4_mp_global_cross`,
+  `f4_mp_global_attr`) is now an escape.
+- **P6-12 and P6-15, `getfixturevalue` by alias or by name.** An
+  `X.getfixturevalue` attribute that is not the callee of a direct call
+  (`g = request.getfixturevalue`, `f4_mp_getfixture_alias`), and the
+  constant string `"getfixturevalue"` passed to any call (`getattr(request,
+  "getfixturevalue")`, `f4_mp_getattr_method`; also `attrgetter`,
+  `methodcaller`), count as a computed fixture name: an
+  `unresolvable-writer` cause. A plain constant elsewhere names nothing (the
+  first fold-5 measurement showed the rule flagging this tool's own
+  `_GETFIXTUREVALUE = "getfixturevalue"`; it is now limited to call
+  arguments).
+- **P6-14, annotations.** A patcher in an annotation is safe only when it is
+  the annotation itself or sits in an `attribute`/`subscript`/
+  `generic_type`/union chain of it, with no call or argument list in
+  between: `def inner(a: helper(monkeypatch))` runs `helper` when the
+  annotations are evaluated (`f4_mp_annot_eval`).
+- **P6-16: no change** (`chdir`, `setenv`, `delenv` cannot redirect an
+  import without a relative `sys.path` entry, every source of which is
+  already `module-system`).
+
+**Fold 6 (the president's re-check P6-17..P6-20; executive ruling E6-9b).**
+E6-9b ends the MonkeyPatch class structurally: stop proving which receiver
+is a MonkeyPatch, and match the method.
+
+- **E6-9b / P6-17, MonkeyPatch methods on any receiver.** pytest hands a
+  `MonkeyPatch` out with no seed spelled: `request.node.funcargs
+  ["monkeypatch"]` with `usefixtures` or an autouse fixture, a
+  `pytest_fixture_setup` hook's value, a closure cell, a frame's `f_locals`
+  (its own or a caller's), `locals()`, and `get_type_hints(localns=locals())`
+  evaluating a string annotation. pytest ran `OTHER.t` in each of the
+  president's eight trees. Every route ends in a spelled method call, so in
+  every Python file (causes O-2-scoped by the file's own classification)
+  `X.setattr`, `X.delattr`, `X.setitem`, `X.delitem` and `X.syspath_prepend`
+  are handled as MonkeyPatch calls whatever `X` is, unless the ordinary
+  Tier 1 lookup resolves `X` to the `operator` module:
+  - `setattr`/`delattr` string form (two positional arguments; one for
+    `delattr`) with a constant target taints the module it names wholly, and
+    with any other target is an `unresolvable-writer`;
+  - with more positional arguments (the object form, or an unbound
+    `MonkeyPatch.setattr(mp, "m.t", v)`), the second one must be a constant;
+  - a computed `target=`/`name=` keyword, or a `*`/`**` splat, is an
+    `unresolvable-writer`;
+  - `syspath_prepend` is `module-system` (P6-10);
+  - `setitem`/`delitem` take the mapping as a value, which the #697 use rules
+    already classify, so their name adds no cause;
+  - the same names as a method reference (`s = mp.setattr`) or as a constant
+    call argument (`getattr(mp, "setattr")`, `operator.methodcaller(
+    "setattr", …)`) are an `unresolvable-writer` (`module-system` for
+    `syspath_prepend`).
+
+  The builtin `setattr(…)` is a bare call and is unaffected. Cost: the tool's
+  own `chunker/` and `scripts/` gain no cause; the measured trees gain no
+  production cause (§ real-tree outcome).
+- **P6-18, `getfixturevalue` by string.** The four string spellings
+  (a variable, a loop over a tuple, a concatenation, the class `__dict__`)
+  each end in `mp.setattr(…)`, so E6-9b closes them. The `"getfixturevalue"`
+  call-argument rule is a best-effort narrowing for pytest-mock fixtures;
+  what it misses is named in §15 R12.
+- **Removed as redundant.** The MonkeyPatch instance and class kinds of folds
+  3–5: the `monkeypatch` parameter seed, `MonkeyPatch` imports in any alias,
+  `MonkeyPatch()`/`.context()` results and their alias fixpoint, the
+  MonkeyPatch allow-list (its methods, the unreachable-alias rule of P6-11,
+  the annotation rule of P6-14), the MonkeyPatch value escape and the
+  receiver check in `_scan_patchers`. The pytest-mock fixture-by-name
+  tracking stays: `.patch` on an arbitrary receiver is no patcher. Every
+  earlier test row stays and passes.
+- **P6-19: no change here.** A Tier 1 mock-kind local alias escapes through
+  `locals()`, a `nonlocal` cell or a frame (Tier 1 E-21, outside PR 6); the
+  executive files the follow-up, and §15 R12 names it.
+
+**Fold 7 (the president's re-check P6-21..P6-26).** One finding, P6-21,
+reopened by fold 6: a constant method name was recognised only as a single
+string literal passed positionally.
+
+- **P6-21, any constant spelling.** A constant name (a MonkeyPatch write
+  method, `syspath_prepend`, `getfixturevalue`) counts in any spelling Tier
+  1's `_constant_string` decodes: adjacent literals (also with a comment
+  between them), `+` and parentheses, as a positional argument or a keyword
+  value. pytest ran `OTHER.t` for `getattr(mp, "set" "attr")`, `getattr(mp,
+  "set" + "attr")`, `getattr(mp, ("setattr"))`, the comment-split literals
+  and `inspect.getattr_static(mp, attr="setattr")`, and `SHADOW.t` for
+  `getattr(mp, "syspath" "_prepend")(…)`.
+- **P6-22, subscript keys.** The same constant as a subscript key counts too:
+  `MonkeyPatch.__dict__["setattr"]`, `vars(type(mp))["setattr"]` (pytest ran
+  `OTHER.t` for both), and the `getfixturevalue`/pytest-mock names alike.
+- **Still R12:** a name computed at run time (`M = "setattr"; getattr(mp,
+  M)`, the president's `f6p_r1_name_var`, pinned as unresolved by a test).
+- The tool's own `chunker/` and `scripts/` gain no cause; the measured trees
+  gain no production cause.
+
+**Fold 8 (Codex review r4661935648 on #705).** A module that re-exports an
+`import a.b as m` binding resolved `a.b` as a module path, skipping the E6-3
+package-attribute check that a direct `import a.b as m` gets. With
+`a/__init__.py` doing `from . import b` and then `from vendor import impl as
+b`, `facade.py: import a.b as m` and a caller doing `from facade import m;
+m.t()`, CPython ran `vendor.impl.t` while the tool proved `a/b.py:t`. The
+fix is structural: one resolver per altitude.
+
+- **Proofs: `_resolve_binding`.** Every proof path turns an import binding
+  into a value through one function: a direct import in the caller
+  (`resolve_import`, for a single import and for each member of an import
+  group) and every re-export hop through an intermediary (`_attribute`'s
+  import branch, recursively up to the hop limit, so `facade.m`, a two-hop
+  re-export and `from facade import m as n` all pass the same checks). It
+  applies script-directory and pytest shadowing, standard-library names and
+  skipped directories (`resolve_module`, now called only there), and for
+  every attribute step `_attribute`'s checks: E6-3 `attr-submodule-conflict`,
+  `module-getattr`, P6-1 own imports by full name, the P6-2 star rule, and
+  each module's taints (E6-1, E6-2), the intermediary's own taint on the
+  re-exported name included.
+- **Writer side: `_Builder.module_values`.** The over-approximating twin:
+  every run node a module reference may denote, the module path and, for a
+  dotted absolute name, the attribute walk through `attr_values`
+  (submodules, every import binding of the name, star sources). It now reads
+  every `import`-form binding (`binding_values`, so re-exports and the
+  whole-taint closure) and every module-object use record (`walk_use`).
+  Fold 7 had the same gap there: `import a.b as m; m.t = o` (or `facade.m.t
+  = o`) wrote `vendor.impl.t` (CPython ran `OTHER.t` for `use.py`'s `from
+  vendor.impl import t`) while only `a/b.py` was tainted.
+- **Audit (every place a dotted module path becomes a target):**
+  `resolve_import` and `_attribute` → `_resolve_binding`;
+  `_Builder.binding_values` (import form) and `walk_use` →
+  `module_values`; `_Builder.attr_values` and `exposed` reach bindings only
+  through `binding_values`; module-path primitives stay where a module path
+  is meant: `from M import …` sources, star sources, literal acquisitions
+  (`import_module`/`__import__`/`sys.modules` name `sys.modules` entries),
+  O-2 promotion (`_production` walks every prefix and, transitively, each
+  intermediary's own imports, so `vendor/impl.py` is reached through
+  `a/__init__.py`); dotted constant strings already walk attributes from
+  their first component. `own_binding_reason` and `tier1_reason` read the
+  caller's own names and follow no binding.
+- The analyzer's facts are unchanged (the fix is in assembly), so the
+  `python` fact version stays 38 and the digests are unchanged.
+
+**Real-tree outcome (owner decision O-3: shipped as designed).** Python Tier 2
+gains nothing on the measured trees. `imports` is compared with `structural`
+on git-tracked `.py` files, with Python 3.14, at PR 6 fold 2 and again at
+folds 3 to 8 (every resolved, gain and loss count identical; the
+treesitter-chunker rows use a copy of the newest head, whose own new code adds
+ambiguous edges); each row names
+its extraction root (the `sys.path` entry). "ambiguous" counts off-mode
+ambiguous Python call edges; "S → I" is the resolved count under
+`structural` and then `imports` (gain / lost); "pot" is what Tier 2 would add
+with run-wide causes removed (a diagnostic only).
+
+| Tree and root | Files | Prod ambiguous | Prod S → I (gain / lost) | Prod pot | Test ambiguous | Test S → I (gain / lost) | Test pot | Production causes |
+| --- | ---: | ---: | --- | ---: | ---: | --- | ---: | --- |
+| pmcp: root = repo | 267 | 1772 | 110 → 110 (0 / 0) | 0 | 5580 | 908 → 908 (0 / 0) | 29 | dynamic-loader, evaluator, module-object, module-system |
+| pmcp: root = `src/` | 62 | 883 | 63 → 63 (0 / 0) | 1 | – | – | – | dynamic-loader, evaluator, module-object, module-system |
+| spec: root = repo | 375 | 4676 | 2410 → 1463 (0 / 947) | 50 | 4026 | 1136 → 1114 (0 / 22) | 0 | dynamic-loader, evaluator, module-object, module-system |
+| spec: root = `src/` | 97 | 501 | 200 → 185 (0 / 15) | 6 | – | – | – | evaluator, module-object, module-system |
+| treesitter-chunker: root = repo, no fixtures | 852 | 4989 | 412 → 412 (0 / 0) | 59 | 9902 | 1030 → 906 (0 / 124) | 92 | dynamic-loader, module-object, module-system, unresolvable-writer |
+| treesitter-chunker: root holds only `chunker/` | 335 | 2896 | 259 → 259 (0 / 0) | 29 | – | – | – | dynamic-loader, module-object, module-system, unresolvable-writer |
+| Code-Index-MCP: root = repo | 1111 | 11573 | 279 → 279 (0 / 0) | 8 | 11468 | 797 → 797 (0 / 0) | 6 | dynamic-loader, evaluator, module-object, module-system, unparsed-file, unresolvable-writer |
+| Code-Index-MCP: root holds only `mcp_server/` | 290 | 6626 | 103 → 103 (0 / 0) | 7 | – | – | – | dynamic-loader, module-object, module-system, unparsed-file |
+
+Why the gain is zero, and what the losses are:
+
+- **Production causes.** Every tree has genuine production run-wide causes:
+  - custom loaders such as `exec(compile(src), module.__dict__)`;
+  - `eval(..., vars(module))`;
+  - plugin loading with `importlib.import_module(name)` and a computed
+    `getattr`;
+  - `sys.path` inserts in scripts;
+  - `sys.modules[__name__] = …`.
+- **Small upside.** Even with the causes removed, Tier 2 would add 0 to 92
+  edges per tree. Most ambiguous Python edges are member calls
+  (`self.x()`, `obj.x()`), which Tier 2 never touches.
+- **Losses: potential writes the rules cannot rule out.** The losses are
+  #697 taints, which apply to the written module's Tier 1 module-scope proofs
+  in `imports` mode. No file of those trees performs such a write. In `spec`,
+  the whole −947 (and −22 for tests) comes from three functions that return
+  modules (`return intake, intake_graph`; `return spec_graph`; a lazily
+  imported `event_ingress`), repeated in its two bundled copies, plus the
+  exposure closure over what those modules import. Tracking returned modules
+  through call results is follow-up N2 (treesitter-chunker#706).
+- **Code-Index-MCP.** Its earlier −39 came from one read of
+  `mcp_server.__path__`. E6-7 makes that read safe, so the loss is now 0.
+
+**Cost (E6-8).** These figures are facts-extraction wall time for git-tracked
+`.py` files on a shared host. Before fold 2, `structural` paid for the Tier 2
+module facts; it no longer does:
+
+| Tree | Mode | Before fold 2 | `module_facts` before | After fold 2 | `module_facts` after |
+| --- | --- | ---: | ---: | ---: | ---: |
+| spec | `structural` | 8.8 s | 2.2 s | 6.3 s | 0 s |
+| spec | `imports` | 8.9 s | 2.4 s | 9.0 s | 2.5 s |
+| Code-Index-MCP | `structural` | 26.9 s | 5.9 s | 20.9 s | 0 s |
+| Code-Index-MCP | `imports` | 27.2 s | 6.0 s | 27.7 s | 6.6 s |
+
 ## 10. Fixtures
 
 ### 10.1 Layout, provenance and tool exclusions
@@ -2181,6 +2700,7 @@ compares the analyzer's output with them.
 | script-dir-shadow | py-script-dir-import, probe one-root (`probe-r9/` as root) |
 | attr-submodule-conflict | py-attr-vs-submodule |
 | Tier 2 TS/JS fail-closed classes (PR 5): string decoding, specifier forms, suffix siblings, directory `package.json`, export forms, stars, namespace escapes, CommonJS reach | `test_tier2_positives_resolve_end_to_end`, `test_tier2_near_misses_keep_their_off_mode_edge`, `test_other_member_calls_are_not_eligible` and the unit tests in `tests/test_call_resolution_tier2_js.py`, on trees the tests write (11.2); the `imports` fields of the expected tables (`test_expected_imports_tables_hold_at_this_head`) |
+| Tier 2 Python (PR 6): import bindings, module paths, name lookup, member chains, import groups; #697 writes and escapes; run-wide causes; parse classification; O-2 | `test_tier2_positives_resolve_end_to_end`, `test_tier2_near_misses_keep_their_off_mode_edge`, `test_other_files_writes_fail_closed` (the #697 route table), `test_run_wide_causes_fail_closed`, `test_unparsed_files_are_a_run_wide_cause`, `test_test_classifier_is_closed_and_case_sensitive` and the O-2 tests in `tests/test_call_resolution_tier2_py.py`, on trees the tests write (11.2); the PR 6 `imports` fields of the expected tables |
 
 **Generated coverage for the three reasons no valid tree produces (R-3).**
 
@@ -2380,7 +2900,7 @@ treesitter-chunker#682; **only PR 6 closes it**. The executive sizes each panel.
 | **3** | **`t1.js_hoist` and globals:** hoisting with Annex B, `script_globals` including implicit globals, script-goal lookups, TS namespace merging, inherited ambient status. | PR 3 rows (rt-js) |
 | **4** | **Tier 1 Python.** | PR 4 rows |
 | **5** | **Tier 2 TS/JS.** Introduces `imports`. Applies the owner's O-1 decision (a). | PR 5 rows |
-| **6** | **Tier 2 Python.** Closes treesitter-chunker#682. Removes the experimental label if the owner agrees. | PR 6 rows |
+| **6** | **Tier 2 Python.** Closes treesitter-chunker#682 and #697. Keeps the experimental label (owner decision O-4). | PR 6 rows |
 
 ### 13.2 Test lanes
 
@@ -2455,6 +2975,8 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | Q8 | Wrong single-candidate edges, and proofs whose binding is not in C0 | Out of scope. Follow-up issue filed by the executive as treesitter-chunker#685 ("Call resolution: demote wrong single-candidate edges caused by qualified-name-first matching"). |
 | **O-1** | **Decided by the owner: (a)** (relayed by the executive for PR 5). When `./svc` matches more than one file (for example `svc.ts` and `svc.tsx`), toolchains disagree: tsc and Vite pick `svc.ts`, esbuild and Bun pick `svc.tsx`. **(a), decided:** leave the edge unchanged (`none(ambiguous-extension)`); the probe `use.ts` call stays ambiguous. Resolve only when exactly one file variant exists. Rejected: (b) pick `svc.ts` by TypeScript's order; (c) as (b), tagged `t2.import_ext_order`. | **Closed.** PR 5 applies (a): the probe `use.ts` row, the ts-ext-collision rows, js-importer-ext-order `use2` and ts-dts give `ambiguous-extension`. |
 | **O-2** | **Decided by the owner: "scope by caller"** (relayed by the executive for PR 5 fold 2). Test code never runs in production but can rewire modules at test time. | **Closed.** Run-wide causes and per-module taints from test files fail closed only edges whose caller is a test file; production causes and taints affect every caller. The classifier is closed and path-based, and production reachability promotes test files (9.9). |
+| **O-3** | **Decided by the owner: ship PR 6 as designed** (fold 1 on #705). Python Tier 2 gains nothing on the measured trees and loses `structural` resolutions where other files may write a module. | **Closed.** Recorded in 9.10 and the PR 6 description; the gain table is in 9.10. |
+| **O-4** | **Decided by the owner: keep the experimental label** on `structural` and `imports` (13.1 had offered to remove it in PR 6). Real-code precision has not been measured. | **Closed.** 4.5 and 13.1 updated; CLI help, docstrings and CHANGELOG keep "experimental". |
 | R1 | The analyzer misses a binding form | Fail closed; the allow-list test (7.5). |
 | R2 | JS goal detection. CommonJS files stay script goal (a top-level `require(` also occurs in AMD browser scripts). | Accept. Misclassification only adds `none` through the script-global check; hoisting behaves the same inside a CommonJS wrapper. |
 | R3 | A third parse per file when on | Opt-in only. Record timings in each PR. |
@@ -2465,9 +2987,10 @@ the wording of gates 5 and 7 and to the parity-digest change.
 | R8 | Interim behavior between PRs | Experimental label, plus a per-head CHANGELOG statement (4.5). |
 | R9 | Scripts outside the run can redefine a global: HTML-included scripts outside the run, `dist/`, `node_modules`, `.mjs` and `.cjs` files, inline `<script>` in `.vue` and `.svelte` files (none of these is collected), and raw HTML in Markdown or reStructuredText that a site generator renders, which, like any generated page, is outside the run | Accept: they are not scanned. In-run HTML, XML and PHP files count as declaring every global (PR 3). |
 | R11 | Global writes no syntactic rule sees (PR 3): a strict function (an ES-module function or class method) that receives the global object as `this` through a call the analysis cannot see, beyond what the `this.x =` rule covers (for example an alias of `this` handed on: `const s = this; s.d = f`); open-ended references to the global object (`event.view`, `getGlobal()`); and string-code paths (`require('vm').runInThisContext`, `document.write('<script>…')`, `importScripts`, DOM script injection, inline event handlers). Named examples: a computed call on a receiver `this` that may be an indirect `eval` (`this[k](s)`, `this['ev' + 'al'](s)`; `*` would switch off script-top resolution in about 52 of 1136 npm files); hand-offs of a receiver `this` through a variable or an expression (`const s = this; s.d = f`, `const w = this.window; w.d = f`, `(0, this).d =`, `(c ? this : o).d =`, `(c || this).d =`, the receiver argument of `Reflect.set(o, 'd', v, this)`, `Object.assign(...[this], …)`), except `Object.assign`/`Object.defineProperty`/`Reflect.set(this, …)` with `this` first, which give `*`; `Reflect.get(f, 'constructor')`, and computed keys that may reach `constructor` on arbitrary objects (`x[k](s)`, `x['constr' + 'uctor'](s)`, `f[['constructor']](s)`, `const { [k]: F } = f`); writer hand-offs the analysis cannot identify syntactically (`const a = Object.assign; a(this, …)`, `Reflect.apply(Object.assign, null, [this, …])`, `Object['assign'](...[this], …)`, and a helper given `this`: `h(this)`) | Accept: script-goal resolution holds within what the run's files show syntactically (§7.2). |
-| R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) is not tracked | Accept. This is the same kind of risk as the module-scope preference the issue asks for. |
-| R12 | Python run-time binding no syntactic rule sees (PR 4). **Scope rule** (executive decision, #695 re-check at 606c689f): in Tier 1 Python, a wrong resolved edge in the same file blocks if it can be produced using only names or constant strings that appear in the file, through ordinary binding, attribute or call semantics. Reflective access to interpreter internals is treated differently: that is, objects obtained by introspection rather than spelled out, such as `gc` referents, `inspect.getmembers`, `dir()` plus `getattr`, code objects from `dis`/`monitoring`, frames, and the builtins module reached via `__self__`/`__builtins__`. Such a route gets a trigger when a small one closes it. Otherwise it is named here, filed as a follow-up issue (treesitter-chunker#699), and does not block. **String-code execution through stdlib helpers** is the `exec` family by another name and stays here, like the JS string-code paths of R11 (executive ruling at the 8fd7c1a2 re-check, P-4; treesitter-chunker#699): a constant program a library runs, for example `cProfile.run('helper = len')` and `cProfile.runctx`, `profile.run`, `bdb.Bdb().run`, `trace.Trace().run`, `timeit.timeit('import __main__ as m; m.helper = len')`, `code.InteractiveInterpreter().runsource(…)`, `doctest.testmod()` on the file's own docstrings, and `pickle.loads(b'c__main__\n__dict__\n.')` or `pickle.loads(b'cbuiltins\n__dict__\n.')`. Also here: a third-party module that re-exports `builtins` under another name (the stdlib's one alias, `enum.bltns`, is a trigger; treesitter-chunker#699). Named by the re-check at 14e8f044 (Q-4, Q-7; treesitter-chunker#699): a resolver given a module name taken from `X.__module__`, a computed string (`pydoc.locate(int.__module__).__dict__.update(D)`, `mock.patch(run.__module__ + '.helper', len)`); and `annotationlib.ForwardRef.evaluate` or `typing.evaluate_forward_ref` on a constant string, which is the string-code family above. Named by the re-check at a6734480 (S-4; treesitter-chunker#699): a class with a catch-all `__getattr__` handing a function to `functools.update_wrapper`/`wraps`, whose `__annotate__` copy `annotationlib` then runs under substitute globals (the member name is computed, so no trigger is spelled). Routes that cannot change a proven binding, by the Codex 4655078224 audit: parameter defaults (`__defaults__`, `__kwdefaults__`; parameter lookups never prove); `__func__` (read-only; a rebinding through the function it yields still needs a code object or a cell); `__wrapped__` (introspection metadata only); frames from `sys.settrace`/`setprofile`, `inspect.currentframe`, `sys._getframe` and `sys._current_frames` (`inspect.getgeneratorlocals`/`getcoroutinelocals`/`getasyncgenlocals` and `getargvalues(frame).locals` return the live `f_locals` proxy and are triggers, #695 P-3b; so is `pdb.Pdb().curframe_locals`, #695 Q-3; other frame routes rebind only through `f_locals`/`f_globals`/`f_builtins`/`f_code`, all triggers, or through a computed attribute name, which stays here: `[v for k, v in inspect.getmembers(fr) if k.endswith('_locals')][0]['helper'] = len`, or the same with `dir()` plus `getattr`); any C extension module other than `ctypes`. `__self__` is not such a route: `len.__self__` is the `builtins` module, which is writable, so `__self__` and `__builtins__` are dynamic attributes in every spelling (#695 O-3b). Heap walking (`gc.get_referents`/`get_referrers`/`get_objects`) gets no trigger (it would cost panel A's correct `gc_referrers` resolution) and stays here under `gc` tricks, among them a gc-found globals dict written with a spelling the attribute-write rule does not list (`g = [o for o in gc.get_referents(run) if type(o) is dict][0]; g.update(D)`) and gc-found code or cells run under `type(f)(…)`. Named by the re-check at 606c689f (O-3, O-5): computed-name member walks on functions and frames (`inspect.getmembers`, `dir` plus `getattr`); a function rebuilt with a positional closure tuple (and code) taken from `gc` or `inspect.getmembers` (`type(invoke)(code, {}, None, None, cells)`, with no `closure=` keyword); `runpy` re-running the file (`runpy.run_path(__file__, init_globals={'helper': len}, run_name='x')`); recompiling or unmarshalling the file's own source (a second instance of the module); and a same-file `gettext.install()` ahead of a module-level definition that has not run yet. Also: a helper in another module that writes its caller's globals or locals through frames (`sys._getframe(1).f_globals` or `.f_locals` there, not here; #695 panel A2) or `exec(code, mod.__dict__)`; computed strings beyond constant literals (`'__glo' + name`); `X.modules` uses other than `X.modules[__name__]` and its getters (`m = collections._sys.modules; m[__name__]`); `gc` tricks, and C-level access other than through `ctypes`/`pythonapi`; replacing a function's `__code__` (the edge still names the right definition, which then runs other code). Named by the president's #695 ruling (section 4): same-file resolvers that take the module name as a value, `pkgutil.resolve_name(__name__).helper = len`, `pydoc.locate(__name__).helper = len` and `mock.patch(__name__ + '.helper', len)` self-patches; other computed strings (`'%s' % …`, `b'…'.decode()`, including `b'__main__.helper'.decode()`, and an f-string with an interpolation and a `__main__` part, `f'__main__.{h}'`; #695 L-2); `X.modules[__spec__.name]` and other `X.modules` keys, including through a `sys` class attribute or alias with a computed key (`K.ss.modules[k]`, `getattr(K, '_K__s').modules[k]`); `from sys import __dict__ as sd` with a computed key (`sd[''.join(['mod', 'ules'])][k]`; #695 J-3); **cross-file submodule rebinding** (another module importing `pkg.X` sets `pkg/__init__.py`'s global `X` with no write in any source of `pkg/__init__.py`); **builtins injected from another module** (`gettext.install()`, or `builtins.X = …` elsewhere) ahead of a module-level definition that has not run yet, also an R10 item for the deferred follow-up. Also: reaching the module without spelling its name by iterating a package's namespace (`for m in pkg.__dict__.values()` (which fails closed since fold 24), `inspect.getmembers(pkg)`, `pkgutil.iter_modules`, and `g(**pkg.__dict__)`). Named by the re-check at f7f0b0bd (R-5); same-file writes through these in the spellings the attribute-write rule lists (§7.3) fail closed. Fold 18 (executive ruling) moved the former "other write spellings" out of here: writer aliases, `operator.setitem`, `|=` and non-literal `update()` on a namespace dict now fail closed (§7.3). **Computed writes are closed at the write site** (fold 19, executive ruling E-19, which withdraws E-18b): a writer with a computed name on any receiver (W-1), a namespace dict that escapes (W-2) and a `unittest.mock` or pytest-mock patch with a computed target (W-3, extended to receiver-based patchers in fold 20) fail closed (§7.3), so the module or namespace acquisitions this entry names (resolvers given the module name as a value or `X.__module__`, `X.modules` with a computed key, iterating a package's namespace, a module handed over) matter only together with a write, and every write **spelled in this file** is either recorded (a constant name, on any receiver) or fails closed (narrowed by E-20). **What stays here for writes** is reflective and string-code only: heap walking, computed-name member walks and the other reflective routes above, and string-code execution (P-4); treesitter-chunker#699. **Named by E-20 (fold 21; #699):** attribute writes performed inside library functions on an object handed to them, non-blocking as an analog of P-4 (the writing semantics belong to the library): `functools.update_wrapper`/`wraps` (`update_wrapper(m, types.SimpleNamespace(helper=f), assigned=())`), `argparse`/`optparse` namespaces (`parse_args([...], namespace=m)`, `values=m`), `copy._reconstruct`, pickle's BUILD, and third-party equivalents; ancestor-package acquisition with a computed name (`getattr(pkg, __name__.rpartition('.')[2])` in a package submodule) and iterating a package's namespace; `X._sys.modules` is a trigger since fold 21. Pytest framework patchers under other names (an arbitrary `.patch` parameter, a typed `MockerFixture` parameter, `getattr(mocker, 'patch')`) stay #697/#699. Also here: the module object handed over by another module (a sibling re-export, a function returning it, a parameter); a module loaded under a loader-chosen name (`importlib.util.spec_from_file_location`, `runpy` with a custom name); and by-name submodule loading with a computed name in `__init__.py` (`pkgutil.walk_packages(__path__, __name__ + '.')`), which rebinds a package global with no write in the source. Self-references that spell the module's name are no longer here: they give `dynamic-scope` (#695 panel A7, the ruling's B-4 and the general rule of its re-check) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
+| R10 | Python monkeypatching (`import a; a.d = x`, `setattr(a, "d", …)`, `mock.patch("a.d")`) | **Closed for `imports` mode by PR 6** (treesitter-chunker#697, 9.10): named writes, escapes, literal acquisitions and dotted strings in any run file taint the written names or modules, and a taint fails Tier 2 proofs and the module's own Tier 1 module-scope proofs. `structural` stays as on main (byte-identical), so there it remains accepted. **Residual (executive ruling on #705, Q1; treesitter-chunker#699):** a writer whose target module cannot be determined (a non-literal loader, such as `exec(src, mod.__dict__)` with `mod` from a computed import) is a run-wide cause, which shuts off Tier 2 only; it can still invalidate a Tier 1 proof in `imports` mode, as in `structural`. |
+| R12 | Python run-time binding no syntactic rule sees (PR 4). **Scope rule** (executive decision, #695 re-check at 606c689f): in Tier 1 Python, a wrong resolved edge in the same file blocks if it can be produced using only names or constant strings that appear in the file, through ordinary binding, attribute or call semantics. Reflective access to interpreter internals is treated differently: that is, objects obtained by introspection rather than spelled out, such as `gc` referents, `inspect.getmembers`, `dir()` plus `getattr`, code objects from `dis`/`monitoring`, frames, and the builtins module reached via `__self__`/`__builtins__`. Such a route gets a trigger when a small one closes it. Otherwise it is named here, filed as a follow-up issue (treesitter-chunker#699), and does not block. **String-code execution through stdlib helpers** is the `exec` family by another name and stays here, like the JS string-code paths of R11 (executive ruling at the 8fd7c1a2 re-check, P-4; treesitter-chunker#699): a constant program a library runs, for example `cProfile.run('helper = len')` and `cProfile.runctx`, `profile.run`, `bdb.Bdb().run`, `trace.Trace().run`, `timeit.timeit('import __main__ as m; m.helper = len')`, `code.InteractiveInterpreter().runsource(…)`, `doctest.testmod()` on the file's own docstrings, and `pickle.loads(b'c__main__\n__dict__\n.')` or `pickle.loads(b'cbuiltins\n__dict__\n.')`. Also here: a third-party module that re-exports `builtins` under another name (the stdlib's one alias, `enum.bltns`, is a trigger; treesitter-chunker#699). Named by the re-check at 14e8f044 (Q-4, Q-7; treesitter-chunker#699): a resolver given a module name taken from `X.__module__`, a computed string (`pydoc.locate(int.__module__).__dict__.update(D)`, `mock.patch(run.__module__ + '.helper', len)`); and `annotationlib.ForwardRef.evaluate` or `typing.evaluate_forward_ref` on a constant string, which is the string-code family above. Named by the re-check at a6734480 (S-4; treesitter-chunker#699): a class with a catch-all `__getattr__` handing a function to `functools.update_wrapper`/`wraps`, whose `__annotate__` copy `annotationlib` then runs under substitute globals (the member name is computed, so no trigger is spelled). Routes that cannot change a proven binding, by the Codex 4655078224 audit: parameter defaults (`__defaults__`, `__kwdefaults__`; parameter lookups never prove); `__func__` (read-only; a rebinding through the function it yields still needs a code object or a cell); `__wrapped__` (introspection metadata only); frames from `sys.settrace`/`setprofile`, `inspect.currentframe`, `sys._getframe` and `sys._current_frames` (`inspect.getgeneratorlocals`/`getcoroutinelocals`/`getasyncgenlocals` and `getargvalues(frame).locals` return the live `f_locals` proxy and are triggers, #695 P-3b; so is `pdb.Pdb().curframe_locals`, #695 Q-3; other frame routes rebind only through `f_locals`/`f_globals`/`f_builtins`/`f_code`, all triggers, or through a computed attribute name, which stays here: `[v for k, v in inspect.getmembers(fr) if k.endswith('_locals')][0]['helper'] = len`, or the same with `dir()` plus `getattr`); any C extension module other than `ctypes`. `__self__` is not such a route: `len.__self__` is the `builtins` module, which is writable, so `__self__` and `__builtins__` are dynamic attributes in every spelling (#695, PR 4 finding O-3b). Heap walking (`gc.get_referents`/`get_referrers`/`get_objects`) gets no trigger (it would cost panel A's correct `gc_referrers` resolution) and stays here under `gc` tricks, among them a gc-found globals dict written with a spelling the attribute-write rule does not list (`g = [o for o in gc.get_referents(run) if type(o) is dict][0]; g.update(D)`) and gc-found code or cells run under `type(f)(…)`. Named by the re-check at 606c689f (PR 4 findings O-3, O-5): computed-name member walks on functions and frames (`inspect.getmembers`, `dir` plus `getattr`); a function rebuilt with a positional closure tuple (and code) taken from `gc` or `inspect.getmembers` (`type(invoke)(code, {}, None, None, cells)`, with no `closure=` keyword); `runpy` re-running the file (`runpy.run_path(__file__, init_globals={'helper': len}, run_name='x')`); recompiling or unmarshalling the file's own source (a second instance of the module); and a same-file `gettext.install()` ahead of a module-level definition that has not run yet. Also: a helper in another module that writes its caller's globals or locals through frames (`sys._getframe(1).f_globals` or `.f_locals` there, not here; #695 panel A2) or `exec(code, mod.__dict__)`; computed strings beyond constant literals (`'__glo' + name`); `X.modules` uses other than `X.modules[__name__]` and its getters (`m = collections._sys.modules; m[__name__]`); `gc` tricks, and C-level access other than through `ctypes`/`pythonapi`; replacing a function's `__code__` (the edge still names the right definition, which then runs other code). Named by the president's #695 ruling (section 4): same-file resolvers that take the module name as a value, `pkgutil.resolve_name(__name__).helper = len`, `pydoc.locate(__name__).helper = len` and `mock.patch(__name__ + '.helper', len)` self-patches; other computed strings (`'%s' % …`, `b'…'.decode()`, including `b'__main__.helper'.decode()`, and an f-string with an interpolation and a `__main__` part, `f'__main__.{h}'`; #695 L-2); `X.modules[__spec__.name]` and other `X.modules` keys, including through a `sys` class attribute or alias with a computed key (`K.ss.modules[k]`, `getattr(K, '_K__s').modules[k]`); `from sys import __dict__ as sd` with a computed key (`sd[''.join(['mod', 'ules'])][k]`; #695 J-3); **cross-file submodule rebinding** (another module importing `pkg.X` sets `pkg/__init__.py`'s global `X` with no write in any source of `pkg/__init__.py`); **builtins injected from another module** (`gettext.install()`, or `builtins.X = …` elsewhere) ahead of a module-level definition that has not run yet, also an R10 item for the deferred follow-up. Also: reaching the module without spelling its name by iterating a package's namespace (`for m in pkg.__dict__.values()` (which fails closed since fold 24), `inspect.getmembers(pkg)`, `pkgutil.iter_modules`, and `g(**pkg.__dict__)`). Named by the re-check at f7f0b0bd (R-5); same-file writes through these in the spellings the attribute-write rule lists (§7.3) fail closed. Fold 18 (executive ruling) moved the former "other write spellings" out of here: writer aliases, `operator.setitem`, `|=` and non-literal `update()` on a namespace dict now fail closed (§7.3). **Computed writes are closed at the write site** (fold 19, executive ruling E-19, which withdraws E-18b): a writer with a computed name on any receiver (W-1), a namespace dict that escapes (W-2) and a `unittest.mock` or pytest-mock patch with a computed target (W-3, extended to receiver-based patchers in fold 20) fail closed (§7.3), so the module or namespace acquisitions this entry names (resolvers given the module name as a value or `X.__module__`, `X.modules` with a computed key, iterating a package's namespace, a module handed over) matter only together with a write, and every write **spelled in this file** is either recorded (a constant name, on any receiver) or fails closed (narrowed by E-20). **What stays here for writes** is reflective and string-code only: heap walking, computed-name member walks and the other reflective routes above, and string-code execution (P-4); treesitter-chunker#699. **Named by E-20 (fold 21; #699):** attribute writes performed inside library functions on an object handed to them, non-blocking as an analog of P-4 (the writing semantics belong to the library): `functools.update_wrapper`/`wraps` (`update_wrapper(m, types.SimpleNamespace(helper=f), assigned=())`), `argparse`/`optparse` namespaces (`parse_args([...], namespace=m)`, `values=m`), `copy._reconstruct`, pickle's BUILD, and third-party equivalents; ancestor-package acquisition with a computed name (`getattr(pkg, __name__.rpartition('.')[2])` in a package submodule) and iterating a package's namespace; `X._sys.modules` is a trigger since fold 21. Pytest framework patchers under other names (an arbitrary `.patch` parameter, a typed `MockerFixture` parameter, `getattr(mocker, 'patch')`) stay #697/#699. Also here: the module object handed over by another module (a sibling re-export, a function returning it, a parameter); a module loaded under a loader-chosen name (`importlib.util.spec_from_file_location`, `runpy` with a custom name); and by-name submodule loading with a computed name in `__init__.py` (`pkgutil.walk_packages(__path__, __name__ + '.')`), which rebinds a package global with no write in the source. Self-references that spell the module's name are no longer here: they give `dynamic-scope` (#695 panel A7, the ruling's B-4 and the general rule of its re-check) | Accept: Python resolution holds within what the file shows syntactically (7.3). |
 | R12 (TS/JS, PR 5) | Tier 2 routes no syntactic rule in the run's JS/TS files sees, under the same scope rule (filed as treesitter-chunker#702): bare-specifier aliases into the run (package self-reference, workspace symlinks, tsconfig `paths`) used to write a module's exports object, since taints follow only relative specifiers; resolution configured outside JS/TS files (`package.json` `browser` maps, bundler aliases and extension lists, tsconfig `rootDirs`, `moduleSuffixes` with a segment on the inert list); uncollected siblings a bundler prefers (`.mjs`, `.mts`, `.cjs`, `.json`; also R9); loader hooks (`Module._extensions`, `register()`), `vm`/`process.binding` string code (the R11 family) and build-time transforms. Fold 1 (E5-6, filed on #702): writers outside the run (files not collected, such as `.cjs`/`.mjs`/`.cts`/`.mts`, or removed by a language filter) and build-output directories such as `.next/` (collection is unchanged, which keeps the off-mode identity). Also named in fold 1: `mainModule`/`getBuiltinModule` reached through a computed property key the analysis reads as unreadable (it gives `evaluator` instead); a local AMD `require` parameter called with a non-literal (only a literal call taints); a saved timer later called with source text (Node rejects it). Fold 2 (O-2): a test-only module the classifier does not name (for example under `e2e/` or `cypress/`) counts as production, so its causes stay run-wide (conservative); a production-only module the classifier names but no production file reaches by a static or literal edge (an entry point loaded by configuration, such as a `test/` server script) is treated as test code, and its causes then reach only test callers. Promotion makes production use of a test-named file through the import graph sound. Fold 4 names the routes it closes by promotion rather than resolution: package `imports` aliases (`#x`), absolute and `file:` specifiers, `import.meta.glob`, and directory symlinks under the root (every test file is then production); a createRequire base other than the file itself (`unresolvable-writer`); and test-framework module mocks outside the closed list (`jest.requireMock`, `vi.importMock` and framework config such as `moduleNameMapper`) stay here. Fold 5 adds: a `fileURLToPath(import.meta.url)` base (not accepted, so it fails closed as an `unresolvable-writer`), and any `data:` or `file:` specifier (uncomputable, so it promotes). Fold 6 adds bare specifiers that reach the run through `node_modules` symlinks (workspace links), on #702. Fold 7 removes Windows 8.3 short names from this list: they are now uncomputable (§9.9). Fold 9 (E5-7) removes the text scan, so no text-scan residual remains: an unparsed JS/TS file is always a cause. Every cheap trigger the PR 5 review and folds 1 and 2 found is closed in §9.1–9.3 and §9.9 | Accept: Tier 2 holds within what the run's JS/TS files show syntactically. |
+| R12 (Python, PR 6) | Tier 2 Python routes no syntactic rule in the run's files sees, under the executive scope rule (treesitter-chunker#699): a module named by a computed string with no run-wide trigger in its route (a string-code helper such as `cProfile.run`, already R12); writes performed inside library functions on a module handed to them are escapes here (the module is tainted wholly), but a third-party library that obtains a run module by itself (plugin registries, `entry_points().load()`, Django `import_string` from settings) is configuration outside Python files; writers outside the run (uncollected files, `.pth` files, `sitecustomize`, `PYTHONSTARTUP`); extension modules and `.pyc`-only modules that shadow a `.py` (R7); `builtins` written through a route that spells neither `builtins` nor `__builtins__` (`len.__self__`, which Tier 1 still catches in its own file); raw memory through `ctypes` without `pythonapi`; heap walking (`gc`); a module loaded under a loader-chosen name. Run-wide causes shut off Tier 2 only (as for TS/JS; executive ruling on #705, Q1); a write they may make to a module's globals is the R10 residual. The loader refinement (following an `import_module` result through the shared alias mechanism) is a possible future narrowing on #699 (ruling Q3). Fold 2 named a code-object or closure write through an object no module chain reaches (`f.__code__ = …` on a parameter, or a local alias `f = svc.t; f.__code__ = …`); since fold 3 (N-1) a write of `__code__`, `__closure__`, `__defaults__` or `__kwdefaults__` in any file is a run-wide `module-object` cause, so it is no longer here. Fold 2 also names: files CPython rejects but tree-sitter accepts (non-UTF-8 bytes in a comment, zero-width characters, a raw line break in a string; such a file cannot be imported, so no edge in it runs); and module objects handed back by functions (`return intake, intake_graph`), whose tracking through call results is the follow-up N2 (treesitter-chunker#706). Computed patcher targets are no longer here: they are an `unresolvable-writer` cause (E6-5). Fold 3 names: pytest `pythonpath`, `rootdir` and `python_files` settings and `importmode` other than `prepend` (tool configuration; the basedirs follow pytest's default file names), and a `MonkeyPatch` held in an attribute (`self.mp.setattr(...)`), alongside the framework patchers under other names in R12 (PR 4). Fold 4 named the `pytest` or `_pytest.monkeypatch` module object handed on (fold 6, E6-9b, matches MonkeyPatch methods on any receiver, so that no longer matters for MonkeyPatch), and, as an **off-mode residual outside PR 6** (P6-8), a star import in a package `__init__.py` under a condition, in `try` or through a relative middle module that rebinds a submodule name: with no other definition of the name, off mode already resolves the call to the submodule and `structural`/`imports` must keep it byte-identical (decision `None`, Tier 2 never consulted), while CPython runs the star-imported object. Fold 6 names the remaining string-lookup family: a pytest-mock fixture or a `patch`/`mocker` method obtained by a name built at run time (`getattr(request, FN)`, `"getfixture" + "value"`, a class `__dict__` lookup, `getattr(mocker, n)`); the `"getfixturevalue"` call-argument rule is a best-effort narrowing (MonkeyPatch methods are matched by name since E6-9b, in any constant spelling since fold 7, P6-21/P6-22: a positional argument, a keyword value or a subscript key, as adjacent literals, `+` or parenthesized; the residual is a method name computed at run time: `M = "setattr"; getattr(mp, M)`, `getattr(mp, "set" + suffix)`, or a constant that reaches the lookup through a binding, a default, a loop/match target, a splat or a container index, or through `%`/`format`/`join`/`decode`). Also named (P6-19, a Tier 1 E-21 gap outside PR 6, follow-up filed by the executive): introspection (`locals()`, frames, closure cells) makes a function-local mock-kind alias reachable. | Accept: Tier 2 Python holds within what the run's Python files show syntactically. |
 
 **Owner notice** (informational, from the ruling): these are delegated
 decisions, all stricter than or consistent with the issue:
@@ -2890,9 +3413,9 @@ assignment to it:
 | Route | Decision |
 | --- | --- |
 | `__closure__`, `cell_contents`, `types.CellType` | **File-wide trigger**: cells hold function-scope bindings |
-| `types.FunctionType`, `types.LambdaType` (the same type) | **File-wide trigger**: existing code with a new closure or globals. The type is reachable without its name (`type(f)`, `f.__class__`, `type(lambda: 0)`), so soundness rests on the code-object sources (this row's neighbors and the `dis`/`monitoring`, `getstats` and `_code`/`code_linenos` rows), not on the type's name (corrected at the 606c689f re-check, O-3a) |
+| `types.FunctionType`, `types.LambdaType` (the same type) | **File-wide trigger**: existing code with a new closure or globals. The type is reachable without its name (`type(f)`, `f.__class__`, `type(lambda: 0)`), so soundness rests on the code-object sources (this row's neighbors and the `dis`/`monitoring`, `getstats` and `_code`/`code_linenos` rows), not on the type's name (corrected at the 606c689f re-check, PR 4 finding O-3a) |
 | `__code__`, `types.CodeType`, `gi_code`, `cr_code`, `ag_code`, `f_code`, `co_code`, `co_names`, `co_consts`, `co_varnames`, `co_freevars`, `co_cellvars` (`code.replace(co_names=…)` renames the name a call site loads) | **File-wide trigger** |
-| `dis`, `codeobj`, `_get_code_object` (`dis.Bytecode(f).codeobj`, `get_instructions` constants), `monitoring` (code objects handed to `sys.monitoring` callbacks) | **File-wide trigger** (added at the 606c689f re-check, O-3a): code objects reached without spelling `__code__`, which `type(f)(code, globals)` runs under new bindings |
+| `dis`, `codeobj`, `_get_code_object` (`dis.Bytecode(f).codeobj`, `get_instructions` constants), `monitoring` (code objects handed to `sys.monitoring` callbacks) | **File-wide trigger** (added at the 606c689f re-check, PR 4 finding O-3a): code objects reached without spelling `__code__`, which `type(f)(code, globals)` runs under new bindings |
 | `getstats` (`cProfile.Profile().getstats()` entries' `.code`, the only API that exposes `_lsprof`'s code objects) | **File-wide trigger** (added at the 8fd7c1a2 re-check, P-3a): another code-object source |
 | `_code` (`traceback.FrameSummary._code`), `code_linenos` (the code objects `bdb.Bdb` caches as keys) | **File-wide trigger** (added at the 14e8f044 re-check, Q-3): more code-object sources |
 | `call_annotate_function`, `call_evaluate_function`, `__annotate__`, `__annotate_func__` (the class-dict key behind `type.__annotate__`, also read by `annotationlib.get_annotate_from_class_namespace` for `NamedTuple`/`TypedDict`; added at the a6734480 re-check, S-3) | **File-wide trigger** (added at the 14e8f044 re-check, Q-3): `annotationlib` rebuilds the function it is given from `__code__` under a `_StringifierDict`, so a user function handed over runs under substitute globals |
@@ -2906,7 +3429,7 @@ assignment to it:
 | `gc.get_referents`/`get_referrers`/`get_objects` | no trigger: stays R12 under `gc` tricks (corrected at the 606c689f re-check): `gc`, `inspect.getmembers` and `dir()` plus `getattr` reach objects by computed means, which R12 accepts. Among them: a gc-found globals dict written with an unlisted spelling (`update(D)`), and gc-found code or cells run under `type(f)(…)`. A trigger would also cost panel A's correct `gc_referrers` resolution |
 | `__defaults__`, `__kwdefaults__` | no trigger: only parameter values change, and parameter lookups never prove (R12) |
 | `__func__` | no trigger: read-only (CPython 3.14 raises `AttributeError`); the function it yields rebinds a name only through a code object or a cell |
-| `__self__`, `__builtins__` as an attribute | **Module-scope trigger** (dynamic attribute; corrected at the 606c689f re-check, O-3b): `__self__` is read-only, but `len.__self__` is the writable `builtins` module; `f.__builtins__` and `os.__builtins__` are its namespace dict. Either reaches the builtins a module-scope lookup falls back to before a module-level definition runs |
+| `__self__`, `__builtins__` as an attribute | **Module-scope trigger** (dynamic attribute; corrected at the 606c689f re-check, PR 4 finding O-3b): `__self__` is read-only, but `len.__self__` is the writable `builtins` module; `f.__builtins__` and `os.__builtins__` are its namespace dict. Either reaches the builtins a module-scope lookup falls back to before a module-level definition runs |
 | `builtins` as an attribute or a constant string, `bltns` | **Module-scope trigger** (dynamic attribute; added at the 8fd7c1a2 re-check, P-2): `inspect.builtins`, `site.builtins`, `mock.patch('builtins.helper', …)`, `mock.patch.dict('builtins.__dict__', …)`, `pydoc.locate('builtins')`, `pkgutil.resolve_name('builtins')`; `enum.bltns` is the only other stdlib name for the module (a scan of every importable stdlib module). A third-party re-export under another name stays R12 |
 | `__wrapped__` | no trigger: introspection metadata; a decorated definition is already not a proof |
 
@@ -2918,7 +3441,7 @@ against a pinned list, the `closure=` keyword, code surgery and `ctypes`,
 and controls that still resolve. Mutation: identifier trigger 30, string
 trigger 27, `closure=` 1 failures, and each sampled name 2–3.
 
-### PR 4: re-check at 606c689f (O-3)
+### PR 4: re-check at 606c689f (PR 4 finding O-3)
 
 Only adds `none`; no expected row changes. `python` fact version 15. Two
 classes still gave wrong `resolved` edges in the caller's own file; both
@@ -2927,12 +3450,12 @@ were already wrong at `e314f451`.
 | Item | Applied in |
 | --- | --- |
 | Executive scope rule: a wrong same-file resolved edge blocks if only names or constant strings the file spells produce it through ordinary binding, attribute or call semantics; reflective access to interpreter internals gets a trigger when a small one closes it, and otherwise is named in R12, filed as a follow-up and does not block | §15 R12 |
-| O-3a: a function rebuilt over existing code without spelling a trigger (`type(run)(dis.Bytecode(run).codeobj, {'helper': len})()`, also via `run.__class__`, `type(lambda: 0)`, `dis.get_instructions` constants, computed keys from `dis`, a `sys.monitoring` callback). `dis`, `codeobj`, `_get_code_object` and `monitoring` are file-wide names | §7.3 `f_locals`; `_FILE_WIDE_NAMES` |
-| O-3b: builtins injected before a module-level definition runs, through `f.__builtins__`, `os.__builtins__` or `len.__self__` (the `builtins` module), written with `update(D)`, `\|=` or `update_wrapper(..., updated=('__dict__',))`. `__builtins__` and `__self__` are dynamic attributes in every spelling | §7.3 dynamic binding; `_DYNAMIC_ATTRIBUTES` |
+| PR 4 finding O-3a: a function rebuilt over existing code without spelling a trigger (`type(run)(dis.Bytecode(run).codeobj, {'helper': len})()`, also via `run.__class__`, `type(lambda: 0)`, `dis.get_instructions` constants, computed keys from `dis`, a `sys.monitoring` callback). `dis`, `codeobj`, `_get_code_object` and `monitoring` are file-wide names | §7.3 `f_locals`; `_FILE_WIDE_NAMES` |
+| PR 4 finding O-3b: builtins injected before a module-level definition runs, through `f.__builtins__`, `os.__builtins__` or `len.__self__` (the `builtins` module), written with `update(D)`, `\|=` or `update_wrapper(..., updated=('__dict__',))`. `__builtins__` and `__self__` are dynamic attributes in every spelling | §7.3 dynamic binding; `_DYNAMIC_ATTRIBUTES` |
 | Audit corrections: the `FunctionType` row rests on the code-object sources; `__self__` is a trigger, not read-only; frames also rebind through a computed attribute name (R12); the `gc` rationale is "R12 (`gc` tricks)", naming a gc-found globals dict written with `update(D)` and gc-found code or cells run under `type(f)(…)` | PR 4 audit table above; §15 R12 |
 | Named in R12: computed-name member walks on functions and frames (`inspect.getmembers`, `dir()` plus `getattr`), a function rebuilt with a positional closure from `gc`/`getmembers`, `runpy` re-running the file, recompiling or unmarshalling the file's own source, a same-file `gettext.install()` | §15 R12 |
 | Flipped to fail closed (correct before, harmless): `l1_dis_type_globals_ctrl_call` (imports `dis`), `c32_local_rebuilt` | — |
-| Pins: the 12 O-3 trees end to end (`test_fold13_695_cases_keep_their_off_mode_edge`), one control per tree that still resolves (`test_fold13_controls_still_resolve`), builtins reached as an attribute (`test_builtins_reached_as_an_attribute_fail_closed`), the pinned file-wide list. Mutation: dropping `__builtins__` fails 5 tests, `__self__` 6, `dis` 3, `codeobj` 2, `_get_code_object` 2, `monitoring` 3 | `tests/test_call_resolution_tier1_py.py` |
+| Pins: the 12 PR 4 finding O-3 trees end to end (`test_fold13_695_cases_keep_their_off_mode_edge`), one control per tree that still resolves (`test_fold13_controls_still_resolve`), builtins reached as an attribute (`test_builtins_reached_as_an_attribute_fail_closed`), the pinned file-wide list. Mutation: dropping `__builtins__` fails 5 tests, `__self__` 6, `dis` 3, `codeobj` 2, `_get_code_object` 2, `monitoring` 3 | `tests/test_call_resolution_tier1_py.py` |
 
 ### PR 4: re-check at 8fd7c1a2 (P-2, P-3, P-4)
 
@@ -3374,3 +3897,135 @@ row changes.
 | P5-50 (a) a `<!--` on a code byte makes a JavaScript file unparsed | §9.9; `facts._hidden_html_comment` |
 | P5-50 (b) a `-->` on a code byte with only whitespace and comments before it on its line makes a JavaScript file unparsed | §9.9; `facts._hidden_html_comment` |
 | Pins: `test_p5_50_hidden_html_comments_are_unparsed` (8: the six repros and the two line-start controls), `test_p5_50_html_text_outside_code_stays_parsed` (8: the no-line-break control, strings, templates, regexes, `i-->0`, and the `.ts`/`.tsx` forms), `test_p5_50_substitution_in_a_template_is_code`; 4 new rule mutations | `tests/test_call_resolution_tier2_js.py`; `scripts/call_resolution_tier2_mutations.py` |
+
+### PR 6: Tier 2 Python (treesitter-chunker#682, closes #682 and #697)
+
+`python` fact version 31 at the first PR 6 head (32 at fold 1, 33 at fold 2,
+34 at fold 3, 35 at fold 4, 36 at fold 5, 37 at fold 6, 38 at fold 7;
+`js` stays 20 with unchanged digests). 18 expected
+rows gain an `imports` field (`{5: 31, 6: 18}`): 9 positives (7 resolve, 2
+narrow to their import group) and 9 near-misses.
+
+| Item | Applied in |
+| --- | --- |
+| Import bindings, groups and member chains (9.4) | §9.10; `py_scope.analyze`, `py_modules.import_group`, `py_modules.member_chain`, `engine._python_proof` |
+| Module paths: component-wise precedence, script directory, standard-library names, skipped directories, relative imports (9.5) | §9.10; `py_modules.resolve_module`, `_resolve_parts` |
+| Name lookup: export table, conflicts, hops, cycles (9.6) | §9.10; `py_modules._attribute` |
+| #697: closed allow-list of module-object uses, escapes, literal acquisitions, dotted strings, exposure closure, Tier 1 module-scope proofs in `imports` mode | §9.10; `py_modules._use_position`, `_scan_uses`, `_Builder.walk_use`, `build_py_module_run`, `tier1_reason` |
+| Run-wide causes (executive rule 3), Tier 1 triggers made run-wide | §9.10; `py_modules._scan_causes`, `_classify_path`, `_sys_modules`, `_frame_locals_read` |
+| Parse classification (executive rule 5) | §9.10; `py_modules.parse_hazard` |
+| O-2 for Python (executive rule 4) | §9.10; `py_modules.is_test_path`, `_production` |
+| Lanes: `tests/test_call_resolution_tier2_py.py` in `CI_SMOKE_TESTS` and `run_platform_core.py`; wheel payload 347 files | §13.2; `chunker/build/builder.py` |
+| Pins: `tests/test_call_resolution_tier2_py.py`; `test_expected_imports_tables_hold_at_this_head`, `test_expected_imports_rows_per_pr_are_pinned`; rule mutations in `scripts/call_resolution_tier2_py_mutations.py` | `tests/test_call_resolution_tier2_py.py`; `tests/test_call_resolution_engine.py` |
+
+### PR 6: fold 1 (owner decisions O-3, O-4; executive rulings on #705)
+
+`python` fact version 32: the fixtures' digests are unchanged, but a file
+that only compiles source loses its `evaluator` cause. `js` stays at 20. No
+expected row changes.
+
+| Item | Applied in |
+| --- | --- |
+| O-3: ship PR 6 as designed; Python Tier 2 gains nothing on the measured trees and loses `structural` resolutions where other files may write a module | §1, §9.10 (gain table), §15 |
+| O-4: keep the experimental label on `structural` and `imports` | §1, §4.5, §13.1, §15 |
+| Q1: run-wide causes shut off Tier 2 only (PR 5 precedent); named writes still void the written module's Tier 1 proofs; the unknown-target writer residual | §9.10; §15 R10 (residual, treesitter-chunker#699) |
+| Q2: `compile` alone is no evaluator cause | §9.10; `py_modules._EVALUATORS` |
+| Q3: the loader refinement is not applied (a possible future narrowing on #699) | §15 R12 (Python) |
+| Pins: `test_routes_that_cannot_change_a_module_attribute_are_no_cause` (a `compile`-only syntax check), `test_run_wide_causes_fail_closed[exec-compile]`; the `compile-is-no-evaluator` mutation | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+
+### PR 6: fold 2 (the president's rulings E6-1..E6-8 on #705)
+
+`python` fact version 33; `js` stays at 20. No expected row changes. The
+fixture outputs are identical to fold 1.
+
+| Item | Applied in |
+| --- | --- |
+| E6-1: a module's own bindings re-checked for Tier 2 proofs (A-1, B1); a package `__init__.py` name that is also a submodule conflicts, for Tier 2 and Tier 1 (A-4) | §9.10; `engine._python_proof`, `py_modules.own_binding_reason`, `tier1_reason` |
+| E6-2: every module-namespace import binding followed (`module_imports`) | §9.10; `py_modules.module_facts`, `_Builder.attr_values`, `_Builder.exposed` |
+| E6-3: `import a.b as m` as attribute access; own submodule imports (`own_submodules`); `module-getattr` | §9.8, §9.10; `py_modules.resolve_import`, `_attribute`, `_own_submodules` |
+| E6-4: pytest `rootdir` insertion for test importers | §9.10; `py_modules.shadow_directories` |
+| E6-5: patcher targets | §9.10; `py_modules._scan_patchers` |
+| E6-6: write chains taint their first attribute | §9.10; `_Builder.walk_use` |
+| E6-7: `__path__`/`__spec__` reads safe | §9.10; `py_modules._SAFE_DUNDERS` |
+| E6-8: module facts only in `imports`; S-1; mutation gaps; wording; CLI help and docstrings; measurement roots; this table's fact versions; "PR 4 finding O-3" | §9.10; `facts.compute_scope_facts`, `py_scope.analyze`, `_attribute`; `chunker/cli/symbol_commands.py`, `cli/main.py`, `chunker/symbol_graph.py`, `chunker/boundary/adapter.py` |
+| Pins: `test_fold2_blocking_cases_keep_their_off_mode_edge` (23 panel repros, each with its CPython 3.14 result), `test_fold2_written_module_loses_its_own_tier1_proof` (6), `test_fold2_controls_still_resolve` (4), `test_fold2_package_path_read_keeps_the_packages_own_proofs`, `test_fold2_computed_patcher_targets_are_test_scoped_causes` (3), `test_fold2_structural_facts_carry_no_tier2_tables`, `test_fold2_rules_each_have_a_failing_case` (19), `test_fold2_python2_exec_statement_is_an_evaluator`, `test_fold2_init_definition_shadowed_by_a_submodule`; 35 new rule mutations (82 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+
+### PR 6: fold 3 (the president's review P6-1..P6-4 on #705)
+
+`python` fact version 34; `js` stays at 20. No expected row changes. The
+fixture outputs are identical to fold 2.
+
+| Item | Applied in |
+| --- | --- |
+| P6-1: own-submodule imports are `from . import b` or the package's full dotted name | §9.10; `py_modules._own_submodules` |
+| P6-2: no own-submodule names in an `__init__.py` with a star import | §9.10; `py_modules._own_submodules`, `_own_submodule_import` |
+| P6-3: patchers follow the Tier 1 W-3 aliases and `MonkeyPatch` aliases; computed `patch.multiple`/`patch.dict` targets are causes | §9.10; `py_modules._scan_patchers`, `_monkeypatch_aliases` |
+| P6-4: pytest basedirs of every collected test module and conftest, for test importers and writers | §9.10; `py_modules.pytest_basedirs`, `shadow_directories` |
+| N-1: a write of `__code__`, `__closure__`, `__defaults__` or `__kwdefaults__` is a `module-object` cause | §9.10; §15 R12 (Python); `py_modules._CODE_ATTRIBUTES`, `_scan_causes` |
+| N-5: #706 cited for N2; O-3 rows say "may write" | §1, §9.10, §15 |
+| Pins: `test_fold3_president_cases_keep_their_off_mode_edge` (9 president's trees, each with its CPython 3.14 or pytest result), `test_fold3_controls_still_resolve` (4: `h4b`, `requests.patch`, the absolute self-import, the relative import), `test_fold3_patcher_causes_stay_test_scoped`, `test_fold3_star_init_has_no_own_submodules`, `test_fold3_star_init_rejects_recorded_own_submodules`, `test_fold3_conftest_basedir_reaches_the_writer_side`, `test_fold3_function_code_writes_are_a_cause` (5); 10 new rule mutations (92 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+
+### PR 6: fold 4 (the president's re-check P6-5..P6-9; executive ruling E6-9)
+
+`python` fact version 35; `js` stays at 20. No expected row changes. The
+fixture outputs are identical to fold 3.
+
+| Item | Applied in |
+| --- | --- |
+| E6-9: Tier 1's E-21 closed allow-list reused for patcher values; `MonkeyPatch` a patcher kind (P6-6), no substring rule | §9.10; `py_modules._Patchers`, `_scan_patchers` |
+| P6-5: in a test file, a patcher value off the allow-list is an `unresolvable-writer` cause; production unchanged (Tier 1 E-21) | §9.10; `py_modules._scan_patcher_escapes`, `module_facts(test_file=...)`, `py_scope.analyze` |
+| P6-7: `getfixturevalue` of a patcher fixture yields that kind; a computed name is a cause | §9.10; `py_modules._Patchers` |
+| P6-8: off-mode residual, no change | §15 R12 (Python, PR 6) |
+| Pins: `test_fold4_patcher_values_are_test_scoped_causes` (9: the six president's trees, `f3_mp_getfixture`, a `getfixturevalue("mocker")` row and a computed fixture name; each with what pytest printed), `test_fold4_allow_listed_patcher_uses_keep_their_exact_taints` (3), `test_fold4_production_patcher_values_are_no_cause`; 10 new rule mutations, one replaced (102 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+
+### PR 6: fold 5 (the president's re-check P6-10..P6-16; executive ruling E6-9a)
+
+`python` fact version 36; `js` stays at 20. No expected row changes. The
+fixture outputs are identical to fold 4.
+
+| Item | Applied in |
+| --- | --- |
+| E6-9a / P6-13: the patcher-escape scan runs in every Python file; causes O-2-scoped by the file's own classification | §9.10; `py_modules.module_facts`, `_scan_patcher_escapes` |
+| P6-10: `syspath_prepend` on a MonkeyPatch is `module-system` | §9.10; `py_modules._scan_patchers` |
+| P6-11: MonkeyPatch aliases safe only as unreachable bindings | §9.10; `py_modules._Patchers._local_alias`, `safe_use` |
+| P6-12, P6-15: `getfixturevalue` by alias or `getattr` is a computed fixture | §9.10; `py_modules._Patchers` |
+| P6-14: annotation positions without a call in between | §9.10; `py_modules._ANNOTATION_PARTS`, `_Patchers.safe_use` |
+| Pins: `test_fold5_president_cases_keep_their_off_mode_edge` (9 president's trees, each with what CPython 3.14 or pytest printed), `test_fold5_syspath_insert_control`, `test_fold5_production_patcher_causes_stay_production_scoped`, `test_fold5_local_aliases_and_plain_annotations_stay_safe`; fold 4's production control removed (E6-9a); 6 new rule mutations, one removed (107 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+
+### PR 6: fold 6 (the president's re-check P6-17..P6-20; executive ruling E6-9b)
+
+`python` fact version 37; `js` stays at 20. No expected row changes. The
+fixture outputs are identical to fold 5.
+
+| Item | Applied in |
+| --- | --- |
+| E6-9b / P6-17: MonkeyPatch methods on any receiver (except `operator`), by name as a call argument and as a method reference | §9.10; `py_modules._scan_patch_methods`, `_patch_method_call`, `_operator_module`, `_argument_string` |
+| P6-18: string spellings of `getfixturevalue` closed by E6-9b; the family named | §9.10; §15 R12 (Python, PR 6) |
+| Redundant MonkeyPatch receiver tracking removed (folds 3–5) | §9.10; `py_modules._Patchers` (pytest-mock fixtures only), `_scan_patcher_escapes`, `_scan_patchers` |
+| P6-19: Tier 1 E-21 gap, follow-up | §15 R12 (Python, PR 6) |
+| Pins: `test_fold6_monkeypatch_methods_on_any_receiver` (19: the eight P6-17 and four P6-18 president's trees, five method-name spellings, a splat and a pytest-mock fixture handed on; each with what pytest printed), `test_fold6_controls_keep_their_treatment` (5, with `operator.setitem`), `test_fold6_syspath_prepend_on_any_receiver` (2); 7 new rule mutations, 9 removed with the code they targeted, 6 re-anchored (107 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+
+### PR 6: fold 7 (the president's re-check P6-21..P6-26)
+
+`python` fact version 38; `js` stays at 20. No expected row changes. The
+fixture outputs are identical to fold 6.
+
+| Item | Applied in |
+| --- | --- |
+| P6-21: constant names in any `_constant_string` spelling, positional or keyword value | §9.10; `py_modules._argument_string`, `_NAME_STRING_NODES` |
+| P6-22: constant names as subscript keys | §9.10; `py_modules._argument_string` |
+| R12 sentence corrected: the computed-name residual | §15 R12 (Python, PR 6) |
+| Pins: `test_fold7_method_names_by_constant_expression` (9: seven president's trees, a `syspath_prepend` concatenation and a `getfixturevalue` `+` row; each with what pytest printed), `test_fold7_computed_method_name_is_r12`, `test_fold7_other_constant_names_record_nothing`; 3 new rule mutations (110 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |
+
+### PR 6: fold 8 (Codex review r4661935648)
+
+`python` fact version stays 38 (the analyzer's facts are unchanged); `js`
+stays at 20. No expected row changes. The fixture outputs are identical to
+fold 7.
+
+| Item | Applied in |
+| --- | --- |
+| One proof resolver for import bindings: direct imports, import groups and every re-export hop | §9.10; `py_modules._resolve_binding`, `resolve_import`, `_attribute` |
+| One writer-side resolver: module path plus the attribute walk | §9.10; `py_modules._Builder.module_values`, `binding_values`, `walk_use` |
+| P6-31: R12 example list widened | §15 R12 (Python, PR 6) |
+| Pins: `test_fold8_reexported_bindings_use_the_one_resolver` (7: the Codex repro, `facade.m.t()`, two hops, `from facade import m as n`, a re-exported `from a import b`, and two writer rows; each with what CPython printed), `test_fold8_clean_reexports_still_resolve` (2); 2 new rule mutations, 2 re-anchored (112 in all) | `tests/test_call_resolution_tier2_py.py`; `scripts/call_resolution_tier2_py_mutations.py` |

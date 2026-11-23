@@ -110,8 +110,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `require` or `import()`, `createRequire`, `mainModule`,
     `getBuiltinModule`, an import of `module`, the `module` object handed on,
     or an unparsed file whose text spells one): Tier 2 is then off for the
-    run, and the cause is logged. Python imports prove nothing yet. This
-    holds within the run only (plan risk R12, treesitter-chunker#702).
+    run, and the cause is logged. This holds within the run only (plan risk
+    R12, treesitter-chunker#702).
+    In Python files `"imports"` also resolves calls bound by an import:
+    `from m import t`, relative forms, a function-local import, and member
+    chains on an imported module (`m.t()`, `pkg.mod.t()` after `import
+    pkg.mod`, `u.t()` after `import pkg.mod as u`). Module names are
+    resolved one component at a time from the extraction root (the
+    `sys.path` entry), a package before a module before a namespace
+    directory at every component; the name is then followed through the
+    target's module-scope bindings, up to three re-export hops (`__init__`
+    re-exports included), to the definition the target's own scope lookup
+    proves. Two or more imports of one name (`try`/`except` fallbacks)
+    narrow to their group. A sibling in the importer's own directory
+    (script-directory shadowing), a standard-library module name, relative
+    imports leaving the root, a name that is also a submodule, a single
+    conditional import, star imports, module `__getattr__`, and anything the
+    target's own lookup does not prove never resolve. **Other files' writes
+    to a module's globals are counted** (treesitter-chunker#697): an imported
+    module object may only be read, called through, compared with `is`, or
+    written by name (`m.t = f`, `del m.t`, `setattr(m, 't', f)`); a named
+    write, a literal `mock.patch('m.t')` or `monkeypatch.setattr('m.t', f)`,
+    makes that name unprovable, and any other use (passed to a function,
+    aliased, returned, `m.__dict__`, `vars(m)`, a class-level import, a
+    literal `importlib.import_module('m')`, `__import__('m')` or
+    `sys.modules['m']`) makes the whole module, and every module it exposes
+    (also through conditional or repeated imports), unprovable, in
+    `"imports"` mode also for that module's own module-level `structural`
+    proofs; a write to the importing module's own binding (`use.t = f`)
+    blocks the import proof too. `import a.b as m` reads what package `a`
+    binds as `b`, a package's module `__getattr__` makes its submodules
+    unprovable, test files also see pytest's `rootdir` insertion, and a
+    computed `mock.patch`/`monkeypatch.setattr` target turns Tier 2 off for
+    test callers. Tier 2 is off for the run when a file may load or
+    write any module (`exec`, `eval`, a non-literal
+    `import_module` or `__import__`, other `importlib` uses, `runpy`,
+    `sys.modules` other than a literal key, `sys.path`/`meta_path`/
+    `path_hooks` changes, `__path__`, `__globals__`, frame globals,
+    `builtins`, `__main__`) or cannot be parsed the same way by tree-sitter
+    and CPython (a syntax error, a lone CR, a NUL or vertical-tab byte, a
+    non-UTF-8 coding declaration, tab- and space-indented lines). Causes
+    and taints from test files (`test_*.py`, `*_test.py`, `conftest.py`, or
+    under `tests/` or `test/`) apply only to calls from test files, unless a
+    production file imports the test file.
 
   IDs (`definition_id`, node IDs, `#N` suffixes and `call_site_id`) are
   identical with the option on and off. The option and its behavior may change

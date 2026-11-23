@@ -17,7 +17,21 @@
      ],
      "caller": "go",
      "file": "tools/run.py",
+     "imports": {
+      "candidate_ids": [
+       "afaa42fb2179835ef735118990950146ed8d2926",
+       "ba4da54e6f75fb70f26a79a2857636f6d5ba3577"
+      ],
+      "candidates": [
+       "util.py:1:helper",
+       "tools/util.py:1:helper"
+      ],
+      "outcome": "none(script-dir-shadow)",
+      "resolution": "ambiguous",
+      "rules": []
+     },
      "line": 5,
+     "pr": 6,
      "reference": "helper",
      "today": {
       "candidate_ids": [

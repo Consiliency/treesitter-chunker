@@ -1122,7 +1122,12 @@ def extract_boundary_ir(
     ``"imports"`` also resolves JavaScript, TypeScript and TSX calls bound by
     a relative ES import to the one exported definition that proves them
     (``t2.import``, ``t2.namespace``); more than one file variant of the
-    specifier leaves the edge unchanged.
+    specifier leaves the edge unchanged. Python calls bound by an import or a
+    module member chain resolve to the one definition the target module
+    proves; other files' potential writes to a module's globals make the
+    written names unprovable (also for that module's own ``"structural"``
+    proofs), so Python ``"imports"`` can resolve fewer calls than
+    ``"structural"``.
     """
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"
