@@ -57,7 +57,11 @@ and the rest of :data:`_NAMESPACE_TOKENS`, a bare ``eval``/``exec``, an
 import of ``__main__``; :func:`_namespace_handout`) hands every import
 binding in it to code no use rule sees, so each is such a use, and a
 package ``__init__.py`` hands out its submodules too
-(treesitter-chunker#724, R-724-1). Literal acquisitions
+(treesitter-chunker#724, R-724-1). A closed allow-list exempts a token use
+whose object is provably not the file's namespace (R-724-2:
+``exec(code, mod.__dict__)`` and ``spec.loader.exec_module(mod)`` on a
+fresh module local, ``__import__`` of a constant foreign module; see
+:func:`_not_own_namespace`). Literal acquisitions
 (``importlib.import_module('svc')``, ``__import__('svc')``,
 ``sys.modules['svc']``) taint their target wholly; dotted constant strings
 (``mock.patch('svc.t')``, ``monkeypatch.setattr('svc.t', f)``) taint the
@@ -1307,6 +1311,10 @@ def _namespace_handout(
     for ident in analysis.identifier_nodes:
         spellings = ps._spellings(ident, source)
         if spellings & _NAMESPACE_TOKENS:
+            if _not_own_namespace(analysis, ident):
+                # R-724-2: the token applies to an object the use-site
+                # lookup proves is not this file's namespace.
+                continue
             read = _frame_read_keys(analysis, ident)
             if read is None or any(
                 ps._dunder(key) or key not in import_names for key in read
@@ -1330,7 +1338,9 @@ def _namespace_handout(
             continue
         if _in_import(ident):
             return None
-        if not ps._binding_position(ident):
+        if not ps._binding_position(ident) and not _exec_into_fresh_module(
+            analysis, ident
+        ):
             return None
     evaluator_strings = False
     stack = [analysis.root]
@@ -1365,6 +1375,254 @@ def _namespace_handout(
     if routes and (members or evaluator_strings):
         return None
     return frozenset(keys)
+
+
+# R-724-2: the closed allow-list of token uses whose object the use-site
+# lookup proves is not the file's own namespace. It covers what the costed
+# sites do (spec ``ingest.py``'s ``exec(code, mod.__dict__)``,
+# Code-Index-MCP's ``spec.loader.exec_module(probe)`` and
+# ``__import__("hashlib")``) and nothing more; every other use of a token
+# stays a trigger (any frame, function or ``globals()`` route included).
+#
+# The receiver is a fresh module: a function local, decided by the lookup at
+# the use, whose one binding in its function is ``X = <one of these>(...)``,
+# the callee proven by its imports (``import types``, ``import
+# importlib.util``, ``from importlib.util import module_from_spec``).
+_FRESH_MODULE_FACTORIES = frozenset(
+    {("types", "ModuleType"), ("importlib", "util", "module_from_spec")}
+)
+
+
+def _not_own_namespace(analysis: Any, ident: Any) -> bool:
+    """Whether a token identifier is one of R-724-2's exempt uses:
+    ``<name>.loader.exec_module(X)`` on a fresh module ``X``
+    (:func:`_fresh_module_local`), or ``__import__(K)`` of a constant
+    absolute module name ``K`` that is not the file's own module, its
+    package or a classified module (:func:`_foreign_import_constant`)."""
+    from . import py_scope as ps
+
+    name = ps._text(ident, analysis.source)
+    if name == "exec_module":
+        return _loader_exec_into_fresh_module(analysis, ident)
+    if name == "__import__":
+        return _foreign_import_constant(analysis, ident)
+    return False
+
+
+def _unshadowed_builtin(analysis: Any, name: str) -> bool:
+    """Whether ``name`` is bound nowhere in the file, which has no star
+    import: every use of it is the builtin."""
+    return not analysis.star and not any(
+        bound == name for _scope, bound, _binding in analysis.events
+    )
+
+
+def _positional_arguments(call: Any) -> list[Any] | None:
+    """A call's arguments when every one is positional (no keyword, no
+    ``*``/``**`` splat, no generator argument), else ``None``."""
+    from . import py_scope as ps
+
+    arguments = call.child_by_field_name("arguments")
+    if arguments is None or arguments.type != "argument_list":
+        return None
+    values = ps._call_arguments(call)
+    if any(
+        value.type in ("keyword_argument", "list_splat", "dictionary_splat")
+        for value in values
+    ):
+        return None
+    return values
+
+
+def _exec_into_fresh_module(analysis: Any, ident: Any) -> bool:
+    """``exec(code, X.__dict__)``: the builtin ``exec`` called with exactly
+    two positional arguments, the globals being a fresh module's
+    ``__dict__`` (spec ``ingest.py``). The code runs in ``X``'s namespace;
+    ``globals()`` there is ``X.__dict__``."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    if ps._text(ident, source) != "exec" or not _unshadowed_builtin(analysis, "exec"):
+        return False
+    call = ps._callee_call(ident)
+    arguments = _positional_arguments(call) if call is not None else None
+    if arguments is None or len(arguments) != 2:
+        return False
+    namespace = arguments[1]
+    if namespace.type != "attribute":
+        return False
+    attribute = namespace.child_by_field_name("attribute")
+    receiver = namespace.child_by_field_name("object")
+    return (
+        attribute is not None
+        and ps._text(attribute, source) == "__dict__"
+        and receiver is not None
+        and _fresh_module_local(analysis, ps._unwrap(receiver, skip_comments=True))
+    )
+
+
+def _loader_exec_into_fresh_module(analysis: Any, ident: Any) -> bool:
+    """``<name>.loader.exec_module(X)``: the attribute ``exec_module`` of a
+    name's ``loader``, called with exactly one positional argument, a fresh
+    module (Code-Index-MCP ``safety_runtime_smoke.py``). The loader runs the
+    module's code in ``X``'s namespace."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    attribute = ident.parent
+    if (
+        attribute is None
+        or attribute.type != "attribute"
+        or not ps._same(ident, attribute.child_by_field_name("attribute"))
+    ):
+        return False
+    loader = attribute.child_by_field_name("object")
+    loader = ps._unwrap(loader, skip_comments=True) if loader is not None else None
+    if loader is None or loader.type != "attribute":
+        return False
+    loader_name = loader.child_by_field_name("attribute")
+    holder = loader.child_by_field_name("object")
+    holder = ps._unwrap(holder, skip_comments=True) if holder is not None else None
+    if (
+        loader_name is None
+        or ps._text(loader_name, source) != "loader"
+        or holder is None
+        or holder.type != "identifier"
+    ):
+        return False
+    call = ps._callee_call(attribute)
+    arguments = _positional_arguments(call) if call is not None else None
+    return (
+        arguments is not None
+        and len(arguments) == 1
+        and _fresh_module_local(analysis, arguments[0])
+    )
+
+
+def _foreign_import_constant(analysis: Any, ident: Any) -> bool:
+    """``__import__(K)``: the builtin called with exactly one positional
+    argument, a constant absolute module name (Code-Index-MCP
+    ``stdio_runner.py``'s ``__import__("hashlib")``). It returns ``K``'s
+    top-level package, which :func:`_scan_causes` already taints wholly
+    (``import K; f(K)``). Not exempt: a relative or empty name, a name
+    whose top-level package is a classified module (``sys``,
+    ``importlib``, ``builtins``, ``__main__``, ``inspect``, ``gc``, ...:
+    ``__import__("sys").modules[__name__]``), or a name whose top-level
+    package is any component of the file's own module path (it may be the
+    file's own package, and so reach the file). A constant spelling a token
+    (``__import__("builtins")``) is a string token itself. A shadowing
+    binding of ``__import__`` is a token too; a star import is checked."""
+    from . import py_scope as ps
+
+    if not _unshadowed_builtin(analysis, "__import__"):
+        return False
+    call = ps._callee_call(ident)
+    arguments = _positional_arguments(call) if call is not None else None
+    if arguments is None or len(arguments) != 1:
+        return False
+    value = ps._constant_string(arguments[0], analysis.source)
+    if not value:
+        return False
+    parts = value.split(".")
+    if not all(part.isidentifier() for part in parts):
+        return False
+    own = set(analysis.module_path.components) | set(analysis.own_names)
+    return (
+        not analysis.module_path.unknown
+        and parts[0] not in _CLASSIFIED_MODULES
+        and parts[0] not in own
+    )
+
+
+def _fresh_module_local(analysis: Any, ident: Any) -> bool:
+    """Whether ``ident`` is a function local whose ONE binding in its
+    function is ``ident = F(...)``, ``F`` proven by its import to be
+    ``types.ModuleType`` or ``importlib.util.module_from_spec``
+    (:data:`_FRESH_MODULE_FACTORIES`). Such a value is a new module object,
+    never the file's own module: a rebinding (another assignment, a ``for``
+    or ``with`` target, ``del``, a walrus, a ``nonlocal`` write from an inner
+    function), a ``global`` declaration or a parameter of the name makes it
+    no fresh module."""
+    from . import py_scope as ps
+
+    if ident is None or ident.type != "identifier":
+        return False
+    source = analysis.source
+    name = ps._text(ident, source)
+    if ps._mangled_names(ident, name, source):
+        return False
+    scope = next(iter(analysis._chain(ident)), None)
+    if scope is None or scope.kind != ps._FUNCTION:
+        return False
+    # The lookup decides in this function (a ``global`` or ``nonlocal``
+    # name, a poisoned scope and a file that may write a function's locals,
+    # ``f_locals`` or a closure cell, decide nowhere or elsewhere).
+    analysis.lookup(ident)
+    if analysis.decided is not scope or len(scope.bindings.get(name, ())) != 1:
+        return False
+    sites = [
+        site
+        for site in analysis._binding_sites_of(name)
+        if next(iter(analysis._chain(site)), None) is scope
+    ]
+    if len(sites) != 1:
+        return False
+    (site,) = sites
+    assignment = site.parent
+    if assignment is None or assignment.type != "assignment":
+        return False
+    value = assignment.child_by_field_name("right")
+    value = ps._unwrap(value, skip_comments=True) if value is not None else None
+    if value is None or value.type != "call":
+        return False
+    callee = value.child_by_field_name("function")
+    callee = ps._unwrap(callee, skip_comments=True) if callee is not None else None
+    return callee is not None and _fresh_module_factory(analysis, callee)
+
+
+def _fresh_module_factory(analysis: Any, callee: Any) -> bool:
+    """Whether a callee is one of :data:`_FRESH_MODULE_FACTORIES`: an
+    identifier or attribute chain whose head is bound ONLY by imports in the
+    file, all denoting one absolute path, which joined with the chain is the
+    factory (``types.ModuleType``, ``importlib.util.module_from_spec``,
+    ``module_from_spec`` from ``importlib.util``). Fold 25's proof of a
+    standard-library callee (``py_scope._stdlib_name``), which holds in a
+    file whose module lookups fail closed (any ``importlib`` mention makes
+    them ``dynamic-scope``): no other binding of the head anywhere (an
+    assignment, a parameter, ``del``, a class or def), no star import, and
+    no recorded write of the head or of a chain name on any receiver
+    (``x.types = F``, ``importlib.util = F``, ``ns["ModuleType"] = F``)."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    chain: list[str] = []
+    node = callee
+    while node is not None and node.type == "attribute":
+        attribute = node.child_by_field_name("attribute")
+        if attribute is None:
+            return False
+        chain.append(ps._text(attribute, source))
+        node = node.child_by_field_name("object")
+        node = ps._unwrap(node, skip_comments=True) if node is not None else None
+    if node is None or node.type != "identifier" or analysis.star:
+        return False
+    head = ps._text(node, source)
+    if ps._mangled_names(node, head, source):
+        return False
+    if {head, *chain} & analysis.attribute_writes:
+        return False
+    paths = set()
+    for _scope, bound, binding in analysis.events:
+        if bound != head:
+            continue
+        dotted = _dotted(binding.info or {}) if binding.cls == ps.IMPORT else None
+        if dotted is None:
+            return False
+        paths.add(tuple(dotted))
+    if len(paths) != 1:
+        return False
+    (path,) = paths
+    return (*path, *reversed(chain)) in _FRESH_MODULE_FACTORIES
 
 
 def _import_target(ident: Any) -> bool:

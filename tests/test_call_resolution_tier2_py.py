@@ -3941,8 +3941,10 @@ NAMESPACE_TOKEN_COST: dict[str, dict[str, str]] = {
             "    return vars(K())\n"
         ),
     },
-    # spec's ``ingest.py``: ``exec(code, mod.__dict__)`` runs in ``mod``, but
-    # explicit globals may be the namespace (c11).
+    # spec's ``ingest.py`` shape: ``exec(code, mod.__dict__)`` on a fresh
+    # ``types.ModuleType`` is exempt since R-724-2, but ``eval("1", {})``
+    # is not: no costed site passes a literal dict, so the allow-list leaves
+    # it out, and explicit globals may be the namespace (c11).
     "exec-explicit-globals": {
         "use.py": (
             "import types\nimport svc\n\n\ndef go():\n"
@@ -3984,9 +3986,6 @@ NAMESPACE_TOKEN_COST: dict[str, dict[str, str]] = {
             '    return f.f_locals.get("code")\n'
         ),
     },
-    "dunder-import-of-a-constant": {
-        "use.py": 'import svc\n\n\ndef go():\n    return __import__("json")\n',
-    },
 }
 
 # Name -> files. A file that keeps its namespace to itself: CPython printed
@@ -4023,6 +4022,508 @@ NAMESPACE_CONTROLS: dict[str, dict[str, str]] = {
             'import svc\n\n\ndef go():\n    """Reads no globals() of its own."""\n'
             "    return 1  # globals\n\n\n"
             'if __name__ == "__main__":\n    go()\n'
+        ),
+    },
+}
+
+
+# R-724-2: the closed allow-list. Name -> files; each is a costed site's
+# shape (spec ``ingest.py``'s ``exec(code, mod.__dict__)``, Code-Index-MCP's
+# ``spec.loader.exec_module(probe)`` and ``__import__("hashlib")``), whose
+# token applies to an object the use-site lookup proves is not the file's
+# own namespace. CPython 3.14 printed ``SVC.t`` for each, and ``svc.py``'s
+# proof stays.
+NAMESPACE_EXEMPT: dict[str, dict[str, str]] = {
+    "dunder-import-of-a-constant": {
+        "use.py": 'import svc\n\n\ndef go():\n    return __import__("json")\n',
+    },
+    "exec-into-moduletype": {
+        "use.py": (
+            "import types\n"
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    import types\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc = 1\\nt = 2', mod.__dict__)\n"
+            "    return mod\n"
+        ),
+    },
+    "exec-module-from-spec": {
+        "probe_mod.py": "svc = None\n",
+        "use.py": (
+            "import importlib.util\n"
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    spec = importlib.util.spec_from_file_location('probe', 'probe_mod.py')\n"
+            "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n"
+            "    return probe\n"
+        ),
+    },
+    "exec-module-from-import": {
+        "probe_mod.py": "svc = None\n",
+        "use.py": (
+            "from importlib.util import module_from_spec, spec_from_file_location\n"
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    spec = spec_from_file_location('probe', 'probe_mod.py')\n"
+            "    probe = module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n"
+            "    return probe\n"
+        ),
+    },
+    "dunder-import-constant": {
+        "use.py": (
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    return __import__('hashlib').sha256(b'x').hexdigest()\n"
+        ),
+    },
+    "dunder-import-dotted": {
+        "use.py": ("import svc\n\n\ndef go():\n    return __import__('os.path')\n"),
+    },
+}
+
+# R-724-2 adversarial pins: an exempt-looking shape aimed at the file's own
+# module. The own module comes from iterating ``sys.modules``, a run-wide
+# ``module-system`` cause only, which leaves a Tier 1 proof alone (R10), so
+# only the namespace rule closes each tree: with the allow-list's checks
+# forced to pass, every one but the two arity pins resolves ``svc.py``'s
+# ``t`` (r724-2/cases_r2b.py, FORCE_EXEMPT). CPython 3.14 printed
+# ``OTHER.t`` for each.
+NAMESPACE_EXEMPT_PINS: dict[str, dict[str, str]] = {
+    "exec-own-module": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-moduletype-rebound": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-moduletype-rebound-later": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    for i in range(2):\n"
+            "        if i:\n"
+            "            exec('svc.t = other.t', mod.__dict__)\n"
+            "        mod = types.ModuleType('m')\n"
+            "        mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+        ),
+    },
+    "exec-alias-of-own": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    own = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    mod = own if own else types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-global-mod": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "mod = None\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    global mod\n"
+            "    mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+            "    mod = types.ModuleType('m')\n"
+        ),
+    },
+    "exec-closure-mod": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    def inner():\n"
+            "        exec('svc.t = other.t', mod.__dict__)\n"
+            "    inner()\n"
+            "    return types.ModuleType('m')\n"
+        ),
+    },
+    "exec-nonlocal-rebind": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    def inner():\n"
+            "        nonlocal mod\n"
+            "        mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    inner()\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-walrus-rebind": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    [mod := m for k, m in sys.modules.items() if k == __name__]\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-for-rebind": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    for k, mod in sys.modules.items():\n"
+            "        if k == __name__:\n"
+            "            break\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-param-mod": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go(mod=None):\n"
+            "    mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+            "    return types.ModuleType('m')\n"
+        ),
+    },
+    "exec-module-scope-mod": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "mod = types.ModuleType('m')\n"
+            "mod = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-fake-types-class": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class types:\n"
+            "    @staticmethod\n"
+            "    def ModuleType(name):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-types-rebound": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "class F:\n"
+            "    @staticmethod\n"
+            "    def ModuleType(name):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "types = F\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-types-attribute-patched": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def fake(name):\n"
+            "    return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "types.ModuleType = fake\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "exec-importlib-util-patched": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import importlib.util\n"
+            "\n"
+            "\n"
+            "class U:\n"
+            "    @staticmethod\n"
+            "    def module_from_spec(spec):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "importlib.util = U\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = importlib.util.module_from_spec(None)\n"
+            "    exec('svc.t = other.t', probe.__dict__)\n"
+        ),
+    },
+    "exec-try-fallback": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "try:\n"
+            "    from importlib_missing import module_from_spec\n"
+            "except ImportError:\n"
+            "    def module_from_spec(spec):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = module_from_spec(None)\n"
+            "    exec('svc.t = other.t', probe.__dict__)\n"
+        ),
+    },
+    "exec-star-shadow": {
+        "helper.py": (
+            "import sys\n"
+            "__all__ = ['module_from_spec']\n"
+            "\n"
+            "\n"
+            "def module_from_spec(spec):\n"
+            "    return [m for k, m in sys.modules.items() if k == 'use'][0]\n"
+        ),
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "from importlib.util import module_from_spec\n"
+            "from helper import *\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = module_from_spec(None)\n"
+            "    exec('svc.t = other.t', probe.__dict__)\n"
+        ),
+    },
+    "exec-shadowed-exec": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def exec(code, ns):\n"
+            "    [m for k, m in sys.modules.items() if k == __name__][0].svc.t = other.t\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('x = 1', mod.__dict__)\n"
+        ),
+    },
+    "exec-third-argument": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__, [m for k, m in sys.modules.items() if k == __name__][0].__dict__)\n"
+        ),
+    },
+    "exec-keyword-globals": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import types\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    own = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    exec('svc.t = other.t', own.__dict__)\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('x = 1', mod.__dict__)\n"
+        ),
+    },
+    "exec-module-own": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import importlib.util\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "    spec = importlib.util.spec_from_file_location(__name__, 'patch_mod.py')\n"
+            "    spec.loader.exec_module(probe)\n"
+        ),
+        "patch_mod.py": "svc.t = other.t\n",
+    },
+    "exec-module-two-args": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "import importlib.util\n"
+            "\n"
+            "\n"
+            "class L:\n"
+            "    def exec_module(self, m, own):\n"
+            "        own.svc.t = other.t\n"
+            "\n"
+            "\n"
+            "class S:\n"
+            "    loader = L()\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = importlib.util.module_from_spec(importlib.util.spec_from_loader('p', None))\n"
+            "    S.loader.exec_module(probe, [m for k, m in sys.modules.items() if k == __name__][0])\n"
+        ),
+    },
+    "dunder-import-name": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    __import__(__name__).svc.t = other.t\n"
+        ),
+    },
+    "dunder-import-sys": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    __import__('sys').modules[__name__].svc.t = other.t\n"
+        ),
+    },
+    "dunder-import-importlib": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    __import__('importlib').import_module(__name__).svc.t = other.t\n"
+        ),
+    },
+    "dunder-import-handed": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = __import__\n"
+            "    f('use').svc.t = other.t\n"
+            "    return __import__('hashlib')\n"
+        ),
+    },
+    "dunder-import-gc": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    g = __import__('gc')\n"
+            "    [m for m in g.get_objects() if type(m) is type(sys) and m.__name__ == 'use'][0].svc.t = other.t\n"
         ),
     },
 }
@@ -4126,6 +4627,336 @@ def test_namespace_controls_keep_their_proof(tmp_path: Path, case: str) -> None:
     assert _target(on, root) == "svc.py"
 
 
+@pytest.mark.parametrize("case", sorted(NAMESPACE_EXEMPT))
+def test_namespace_exempt_shapes_keep_their_proof(tmp_path: Path, case: str) -> None:
+    """R-724-2: a token whose object the use-site lookup proves is not the
+    file's own namespace hands out nothing: ``exec(code, mod.__dict__)``
+    and ``spec.loader.exec_module(probe)`` on a fresh module local, and
+    ``__import__`` of a constant foreign module. CPython 3.14 runs
+    ``svc.py``'s own ``t``; the edge matches ``structural``."""
+    root = _write(tmp_path, {**_NS_BASE, **NAMESPACE_EXEMPT[case]})
+    assert _cpython(root) == "SVC.t", case
+    _off, structural, on, label = _run(root, "svc.py", "t")
+    assert on["resolution"] == "resolved", (case, label)
+    assert on["to"] == structural["to"], case
+    assert _target(on, root) == "svc.py"
+
+
+@pytest.mark.parametrize("case", sorted(NAMESPACE_EXEMPT_PINS))
+def test_namespace_exempt_shape_aimed_at_own_module_hands_out(
+    tmp_path: Path, case: str
+) -> None:
+    """R-724-2 adversarial pins: the exempt shapes aimed at the file's own
+    module (a rebound, aliased, global, closure, ``nonlocal``, walrus,
+    ``for`` or parameter receiver, a fake or patched factory, a shadowed
+    ``exec`` or ``__import__``, an extra argument, ``__import__`` of
+    ``__name__``, ``sys``, ``importlib`` or ``gc``) stay triggers. CPython
+    3.14 runs the replacement; ``svc.py``'s ``t`` keeps its off-mode edge."""
+    root = _write(tmp_path, {**_NS_BASE, **NAMESPACE_EXEMPT_PINS[case]})
+    assert _cpython(root) == "OTHER.t", case
+    off, structural, on, label = _run(root, "svc.py", "t")
+    assert structural["resolution"] == "resolved", case
+    assert on == off and on["resolution"] == "ambiguous", case
+    assert label == "none(module-escape)", case
+
+
+_FRESH = "\n\n\ndef f(code, spec):\n"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        # exec into a fresh module local (spec ``ingest.py``).
+        "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+        "    exec(code, mod.__dict__)\n",
+        _FRESH + "    import types\n    mod = types.ModuleType('m')\n"
+        "    exec(code, (mod).__dict__)\n",
+        "import types as t" + _FRESH + "    mod = t.ModuleType('m')\n"
+        "    exec(code, mod.__dict__)\n",
+        "from types import ModuleType" + _FRESH + "    mod = ModuleType('m')\n"
+        "    exec(code, mod.__dict__)\n",
+        "import importlib.util"
+        + _FRESH
+        + "    mod = importlib.util.module_from_spec(spec)\n"
+        "    exec(code, mod.__dict__)\n",
+        # The loader runs a module into a fresh module local (Code-Index-MCP).
+        "import importlib.util"
+        + _FRESH
+        + "    probe = importlib.util.module_from_spec(spec)\n"
+        "    spec.loader.exec_module(probe)\n",
+        "from importlib.util import module_from_spec"
+        + _FRESH
+        + "    probe = module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        "from importlib import util"
+        + _FRESH
+        + "    probe = util.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        "import importlib.util as iu"
+        + _FRESH
+        + "    probe = iu.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        # ``__import__`` of a constant foreign module.
+        "x = __import__('hashlib')\n",
+        "x = __import__('os.path')\n",
+        'x = __import__("js" "on").dumps\n',
+    ],
+)
+def test_namespace_exempt_use_hands_out_nothing(tmp_path: Path, source: str) -> None:
+    """R-724-2: each exempt shape alone hands out no binding."""
+    root = _write(tmp_path, {"r.py": "import svc\n" + source})
+    assert ["svc", "value"] not in _module_bindings(root)["r.py"]["uses"], source
+
+
+@pytest.mark.parametrize(
+    ("path", "source"),
+    [
+        # exec: arity, keywords, splats, receivers outside the closed list.
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(code, mod.__dict__, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(code, globals=mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(*(code, mod.__dict__))\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(code, mod.__dict__.copy())\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(code, mod)\n",
+        ),
+        ("r.py", "import types\nmod = types.ModuleType('m')\nexec(c, mod.__dict__)\n"),
+        ("r.py", "import types\n\n\ndef f(code, mod):\n    exec(code, mod.__dict__)\n"),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.SimpleNamespace()\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    mod = spec\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    del mod\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    global mod\n"
+            "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    def g():\n        nonlocal mod\n        mod = spec\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    def g():\n        exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    return lambda: exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    [exec(code, mod.__dict__) for _ in ()]\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    [mod := spec for _ in ()]\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod, x = types.ModuleType('m'), 1\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        # The factory: not proven by its import.
+        (
+            "r.py",
+            "import types\ntypes = spec"
+            + _FRESH
+            + "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types\nimport os as types"
+            + _FRESH
+            + "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "from x import *\nimport types"
+            + _FRESH
+            + "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types\ntypes.ModuleType = spec"
+            + _FRESH
+            + "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util\nimportlib.util = spec"
+            + _FRESH
+            + "    mod = importlib.util.module_from_spec(spec)\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "from .types import ModuleType"
+            + _FRESH
+            + "    mod = ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import importlib"
+            + _FRESH
+            + "    mod = importlib.import_module('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(*code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    eval(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    exec(code, mod.__class__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    [mod := types.ModuleType('m') for _ in ()]\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+            "    def g():\n        return mod\n"
+            "    g.__closure__[0].cell_contents = spec\n    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import types as __t\n_K__t = None\n\n\nclass K:\n"
+            "    def f(self, code):\n        mod = __t.ModuleType('m')\n"
+            "        exec(code, mod.__dict__)\n",
+        ),
+        # exec itself not the builtin.
+        (
+            "r.py",
+            "import types\nexec = print"
+            + _FRESH
+            + "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        # exec_module: arity, keywords, the receiver, the loader position.
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe, 1)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.loader.exec_module(module=probe)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.a.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.other.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.loader.exec_module(*probe)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "    run = spec.loader.exec_module\n    run(probe)\n",
+        ),
+        (
+            "r.py",
+            "import sys"
+            + _FRESH
+            + "    spec.loader.exec_module(sys.modules[__name__])\n",
+        ),
+        # __import__: classified, own, relative, computed, extra arguments,
+        # handed on, shadowed.
+        ("r.py", "x = __import__('sys')\n"),
+        ("r.py", "x = __import__('importlib.util')\n"),
+        ("r.py", "x = __import__('builtins')\n"),
+        ("r.py", "x = __import__('__main__')\n"),
+        ("r.py", "x = __import__('inspect')\n"),
+        ("r.py", "x = __import__('gc')\n"),
+        ("r.py", "x = __import__('r')\n"),
+        ("pkg/r.py", "x = __import__('pkg.other')\n"),
+        ("pkg/r.py", "x = __import__('pkg')\n"),
+        ("r.py", "x = __import__('.x')\n"),
+        ("r.py", "x = __import__('')\n"),
+        ("r.py", "x = __import__('a-b')\n"),
+        ("r.py", "x = __import__('json', {})\n"),
+        ("r.py", "x = __import__('json', level=0)\n"),
+        ("r.py", "x = __import__('f_globals')\n"),
+        ("r.py", "x = __import__(name)\n"),
+        ("r.py", "f = __import__\nx = __import__('json')\n"),
+        ("r.py", "def __import__(n):\n    return n\n\n\nx = __import__('json')\n"),
+        ("r.py", "from x import *\nx = __import__('json')\n"),
+    ],
+)
+def test_namespace_exempt_near_miss_hands_out_every_binding(
+    tmp_path: Path, path: str, source: str
+) -> None:
+    """R-724-2: every use outside the closed allow-list stays a trigger."""
+    root = _write(tmp_path, {path: "import svc\n" + source})
+    assert ["svc", "value"] in _module_bindings(root)[path]["uses"], source
+
+
 def test_namespace_reader_records_value_uses_of_every_binding(
     tmp_path: Path,
 ) -> None:
@@ -4226,7 +5057,7 @@ def test_frame_read_by_constant_key_hands_out_that_binding(
         "x = __loader__\n",
         "x = y.load_module\n",
         "x.exec_module(m)\n",
-        "x = __import__('json')\n",
+        "x = __import__(name)\n",
         "import builtins\n",
         # Shadowing is ignored.
         "def f(vars):\n    return vars()\n",

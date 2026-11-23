@@ -742,8 +742,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "ns-names",
         PYM,
-        "        if spellings & _NAMESPACE_TOKENS:\n            read = _frame_read_keys",
-        "        if False:\n            read = _frame_read_keys",
+        "        if spellings & _NAMESPACE_TOKENS:\n            if _not_own_namespace(",
+        "        if False:\n            if _not_own_namespace(",
     ),
     ("ns-frame-key", PYM, "            keys |= read\n", "            pass\n"),
     (
@@ -877,13 +877,15 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "ns-evaluator",
         PYM,
-        "        if not ps._binding_position(ident):\n            return None\n    evaluator_strings",
+        "        if not ps._binding_position(ident) and not _exec_into_fresh_module(\n"
+        "            analysis, ident\n        ):\n            return None\n    evaluator_strings",
         "        if False:\n            return None\n    evaluator_strings",
     ),
     (
         "ns-evaluator-binding",
         PYM,
-        "        if not ps._binding_position(ident):\n            return None\n    evaluator_strings",
+        "        if not ps._binding_position(ident) and not _exec_into_fresh_module(\n"
+        "            analysis, ident\n        ):\n            return None\n    evaluator_strings",
         "        if True:\n            return None\n    evaluator_strings",
     ),
     (
@@ -983,7 +985,202 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '        if any((_dotted(info) or [""])[0] in _MODULE_SYSTEM_MODULES for info in handed):',
         '        if any((_dotted(info) or [""])[-1] in _MODULE_SYSTEM_MODULES for info in handed):',
     ),
-    # Equivalent (recorded, not run): ``continuation`` (tree-sitter reports
+    # R-724-2: the closed allow-list of exempt token uses.
+    (
+        "ns-exempt-token",
+        PYM,
+        "            if _not_own_namespace(analysis, ident):",
+        "            if False:",
+    ),
+    (
+        "ns-exempt-exec",
+        PYM,
+        "        if not ps._binding_position(ident) and not _exec_into_fresh_module(\n"
+        "            analysis, ident\n        ):",
+        "        if not ps._binding_position(ident):",
+    ),
+    (
+        "ns-exempt-factory-list",
+        PYM,
+        '    {("types", "ModuleType"), ("importlib", "util", "module_from_spec")}',
+        '    {("importlib", "util", "module_from_spec")}',
+    ),
+    (
+        "ns-exempt-exec-receiver",
+        PYM,
+        "        and _fresh_module_local(analysis, ps._unwrap(receiver, skip_comments=True))",
+        "        and True",
+    ),
+    (
+        "ns-exempt-loader-receiver",
+        PYM,
+        "        and len(arguments) == 1\n        and _fresh_module_local(analysis, arguments[0])",
+        "        and len(arguments) == 1",
+    ),
+    (
+        "ns-exempt-exec-name",
+        PYM,
+        '    if ps._text(ident, source) != "exec" or not _unshadowed_builtin(analysis, "exec"):',
+        '    if not _unshadowed_builtin(analysis, "exec"):',
+    ),
+    (
+        "ns-exempt-exec-builtin",
+        PYM,
+        '    if ps._text(ident, source) != "exec" or not _unshadowed_builtin(analysis, "exec"):',
+        '    if ps._text(ident, source) != "exec":',
+    ),
+    (
+        "ns-exempt-unshadowed-star",
+        PYM,
+        "    return not analysis.star and not any(\n        bound == name",
+        "    return not any(\n        bound == name",
+    ),
+    (
+        "ns-exempt-splat",
+        PYM,
+        '        value.type in ("keyword_argument", "list_splat", "dictionary_splat")',
+        '        value.type in ("keyword_argument", "dictionary_splat")',
+    ),
+    (
+        "ns-exempt-exec-arity",
+        PYM,
+        "    if arguments is None or len(arguments) != 2:",
+        "    if arguments is None or len(arguments) < 2:",
+    ),
+    (
+        "ns-exempt-exec-dict",
+        PYM,
+        '        and ps._text(attribute, source) == "__dict__"',
+        '        and ps._text(attribute, source) != ""',
+    ),
+    (
+        "ns-exempt-loader-name",
+        PYM,
+        '        or ps._text(loader_name, source) != "loader"',
+        '        or ps._text(loader_name, source) == ""',
+    ),
+    (
+        "ns-exempt-loader-holder",
+        PYM,
+        '        or holder is None\n        or holder.type != "identifier"',
+        "        or holder is None",
+    ),
+    (
+        "ns-exempt-loader-arity",
+        PYM,
+        "        and len(arguments) == 1\n        and _fresh_module_local(analysis, arguments[0])",
+        "        and len(arguments) >= 1\n        and _fresh_module_local(analysis, arguments[0])",
+    ),
+    (
+        "ns-exempt-import-builtin",
+        PYM,
+        '    if not _unshadowed_builtin(analysis, "__import__"):\n        return False',
+        "",
+    ),
+    (
+        "ns-exempt-import-arity",
+        PYM,
+        "    if arguments is None or len(arguments) != 1:\n        return False\n"
+        "    value = ps._constant_string(arguments[0], analysis.source)",
+        "    if arguments is None or len(arguments) < 1:\n        return False\n"
+        "    value = ps._constant_string(arguments[0], analysis.source)",
+    ),
+    (
+        "ns-exempt-import-parts",
+        PYM,
+        "    if not all(part.isidentifier() for part in parts):\n        return False\n",
+        "",
+    ),
+    (
+        "ns-exempt-import-classified",
+        PYM,
+        "        and parts[0] not in _CLASSIFIED_MODULES\n",
+        "",
+    ),
+    (
+        "ns-exempt-import-own",
+        PYM,
+        "        and parts[0] not in own\n",
+        "",
+    ),
+    (
+        "ns-exempt-import-own-path",
+        PYM,
+        "    own = set(analysis.module_path.components) | set(analysis.own_names)",
+        "    own = set(analysis.own_names)",
+    ),
+    (
+        "ns-exempt-fresh-function",
+        PYM,
+        "    if scope is None or scope.kind != ps._FUNCTION:",
+        "    if scope is None:",
+    ),
+    (
+        "ns-exempt-fresh-lookup",
+        PYM,
+        "    if analysis.decided is not scope or len(scope.bindings.get(name, ())) != 1:",
+        "    if len(scope.bindings.get(name, ())) != 1:",
+    ),
+    (
+        "ns-exempt-fresh-one-binding",
+        PYM,
+        "    if analysis.decided is not scope or len(scope.bindings.get(name, ())) != 1:",
+        "    if analysis.decided is not scope:",
+    ),
+    (
+        "ns-exempt-fresh-one-site",
+        PYM,
+        "    if len(sites) != 1:\n        return False\n    (site,) = sites",
+        "    if len(sites) > 1:\n        return False\n    (site,) = sites[:1] or [None]",
+    ),
+    (
+        "ns-exempt-fresh-receiver-mangled",
+        PYM,
+        "    name = ps._text(ident, source)\n    if ps._mangled_names(ident, name, source):",
+        "    name = ps._text(ident, source)\n    if False:",
+    ),
+    (
+        "ns-exempt-factory-mangled",
+        PYM,
+        "    if ps._mangled_names(node, head, source):",
+        "    if False:",
+    ),
+    (
+        "ns-exempt-factory-star",
+        PYM,
+        '    if node is None or node.type != "identifier" or analysis.star:',
+        '    if node is None or node.type != "identifier":',
+    ),
+    (
+        "ns-exempt-factory-writes",
+        PYM,
+        "    if {head, *chain} & analysis.attribute_writes:",
+        "    if {head} & analysis.attribute_writes:",
+    ),
+    (
+        "ns-exempt-factory-head-write",
+        PYM,
+        "    if {head, *chain} & analysis.attribute_writes:",
+        "    if set(chain) & analysis.attribute_writes:",
+    ),
+    (
+        "ns-exempt-factory-other-binding",
+        PYM,
+        "        if dotted is None:\n            return False\n        paths.add",
+        "        if dotted is None:\n            continue\n        paths.add",
+    ),
+    (
+        "ns-exempt-factory-one-path",
+        PYM,
+        "    if len(paths) != 1:\n        return False\n    (path,) = paths",
+        "    if not paths:\n        return False\n    path = sorted(paths)[-1]",
+    ),
+    # Equivalent (recorded, not run): the R-724-2 keyword filter of
+    # ``_positional_arguments`` (a keyword argument is no attribute,
+    # identifier or constant, which each exempt position also requires), the
+    # ``exec_module`` attribute-position check (a token that is no attribute
+    # name has no ``.loader`` object) and ``module_path.unknown`` (every test
+    # file has a path); ``continuation`` (tree-sitter reports
     # every malformed continuation as an error first), ``own-name-acquisition``
     # (``sys.modules[__name__]`` already makes the file dynamic in Tier 1, so
     # its exports fail closed), ``chain-matches-reference`` (the tree's chain

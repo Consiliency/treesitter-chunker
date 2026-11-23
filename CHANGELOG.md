@@ -172,7 +172,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unprovable instead of resolving them wrongly (treesitter-chunker#724). A
   package `__init__.py` hands out its submodules too, and a handed-out
   `sys`, `importlib` or `builtins` shuts off cross-file resolution like
-  passing it on. The Python fact version moves to 39.
+  passing it on. Three uses are exempt because the object they apply to is
+  provably not the file's own namespace: `exec(code, mod.__dict__)` and
+  `spec.loader.exec_module(mod)` on a module the function itself creates
+  with `types.ModuleType` or `importlib.util.module_from_spec`, and
+  `__import__` of a constant name that is not the file's own package or a
+  module-system module such as `sys`. The Python fact version moves to 39.
 - Symbol graph extraction orders source files by case-sensitive path components
   on every platform (treesitter-chunker#687).
 - Automatic detection uses the language pack's `rst` and `asm` grammar

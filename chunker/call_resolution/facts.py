@@ -211,7 +211,9 @@ logger = logging.getLogger(__name__)
 # spelling), uses a bare ``eval``/``exec`` or imports ``__main__`` records
 # a ``value`` use of every import binding in it; a package ``__init__.py``
 # also taints itself wholly (its submodules), and a handed-out ``sys``,
-# ``importlib`` or ``builtins`` adds ``module-system``. Only
+# ``importlib`` or ``builtins`` adds ``module-system``. R-724-2 exempts
+# ``exec(code, X.__dict__)`` and ``<name>.loader.exec_module(X)`` on a fresh
+# module local and ``__import__`` of a constant foreign module. Only
 # ``imports``-mode facts change; the fixtures' digests change only by the
 # version.
 # python "38": PR 6 fold 7 (#705 P6-21, P6-22): a constant name (patcher
