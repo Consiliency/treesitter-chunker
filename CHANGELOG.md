@@ -160,6 +160,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Call resolution, `"imports"` mode (experimental): a Python file that reads
+  its own namespace (`globals()`, `locals()`, `vars()` with no argument,
+  `exec`/`eval` without explicit globals, a frame's `f_globals`, a
+  function's `__globals__`, `inspect.getmodule`, `__import__(__name__)`, or
+  a string annotation evaluated by `typing.get_type_hints`) now counts as
+  handing out every module it imports, so another file writing through that
+  namespace (`d["svc"].t = f`) makes the module's own calls unprovable
+  instead of resolving them wrongly (treesitter-chunker#724). `vars(obj)`
+  and `exec(code, d)` with explicit globals do not count. The Python fact
+  version moves to 39.
 - Symbol graph extraction orders source files by case-sensitive path components
   on every platform (treesitter-chunker#687).
 - Automatic detection uses the language pack's `rst` and `asm` grammar

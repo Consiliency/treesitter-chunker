@@ -9,7 +9,9 @@ non-zero if any mutation survives or does not apply.
 
 Usage (Python 3.14, from the repository root)::
 
-    uv run --locked --all-extras python scripts/call_resolution_tier2_py_mutations.py
+    uv run --locked --all-extras python scripts/call_resolution_tier2_py_mutations.py [ID ...]
+
+With mutation ids as arguments, only those run.
 
 Run it only with headroom: it runs the narrow Tier 2 Python tests once per
 mutation, serially.
@@ -729,6 +731,128 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         '        if missing.get("reason") == "unbound"',
         "        if True",
     ),
+    # treesitter-chunker#724: a namespace reader hands out its import
+    # bindings.
+    (
+        "ns-reader-hands-out-imports",
+        PYM,
+        "    if handout is None or handout:\n        # #724",
+        "    if False:\n        # #724",
+    ),
+    (
+        "ns-names",
+        PYM,
+        "            read = _frame_read_keys(analysis, ident)\n            if read is None:\n"
+        "                return None\n            keys |= read\n            continue\n",
+        "            pass\n",
+    ),
+    ("ns-frame-key", PYM, "            keys |= read\n", "            pass\n"),
+    (
+        "ns-frame-computed-key",
+        PYM,
+        "    return None if value is None else frozenset({value})",
+        "    return frozenset() if value is None else frozenset({value})",
+    ),
+    (
+        "ns-frame-read-only",
+        PYM,
+        "    if not _frame_locals_read(analysis, ident):\n        return None\n    outer",
+        "    outer",
+    ),
+    (
+        "ns-getmodule",
+        PYM,
+        '        "getmodule",\n        "getargvalues",',
+        '        "getargvalues",',
+    ),
+    (
+        "ns-annotation-evaluator",
+        PYM,
+        '        "get_type_hints",\n        "get_annotations",',
+        '        "get_annotations",',
+    ),
+    (
+        "ns-builtin-lookup",
+        PYM,
+        "    outcome = analysis.lookup(ident)\n"
+        '    if outcome.get("outcome") == "local" or outcome.get("reason") in _OWN_BINDINGS:\n'
+        "        return False\n    call = ps._callee_call(ident)\n    if call is None:\n"
+        "        # Handed on",
+        "    call = ps._callee_call(ident)\n    if call is None:\n        # Handed on",
+    ),
+    (
+        "ns-handed-on",
+        PYM,
+        "        # Handed on (``g = globals``; ``run(vars)``): it may be called here.\n"
+        "        return True\n",
+        "        return False\n",
+    ),
+    (
+        "ns-vars-argument",
+        PYM,
+        "        return not (len(positional) == 1 and len(arguments) == 1)",
+        "        return True",
+    ),
+    (
+        "ns-explicit-globals",
+        PYM,
+        '        return bool(namespace.type == "none")',
+        "        return True",
+    ),
+    (
+        "ns-none-globals",
+        PYM,
+        '        return bool(namespace.type == "none")',
+        "        return False",
+    ),
+    (
+        "ns-keyword-globals",
+        PYM,
+        '                if key is not None and ps._text(key, analysis.source) == "globals":',
+        "                if False:",
+    ),
+    (
+        "ns-import-form",
+        PYM,
+        "            # spelled at its uses.\n            return None",
+        "            # spelled at its uses.\n            continue",
+    ),
+    (
+        "ns-builtins-members",
+        PYM,
+        "    if routes and (members or builtin_strings):",
+        "    if routes and builtin_strings:",
+    ),
+    (
+        "ns-members-receiver",
+        PYM,
+        "    if routes and (members or builtin_strings):",
+        "    if members or builtin_strings:",
+    ),
+    (
+        "ns-strings",
+        PYM,
+        "        if set(ps._NAME_SEPARATORS.split(value)) & _NAMESPACE_NAMES:\n            return None",
+        "        if False:\n            return None",
+    ),
+    (
+        "ns-builtin-strings",
+        PYM,
+        "            builtin_strings = True",
+        "            pass",
+    ),
+    (
+        "ns-dunder-import",
+        PYM,
+        "            if _own_import(analysis, ident):\n                return None",
+        "            if False:\n                return None",
+    ),
+    (
+        "ns-dunder-import-constant",
+        PYM,
+        "    return first is None or ps._constant_string(first, analysis.source) is None",
+        "    return True",
+    ),
     # Equivalent (recorded, not run): ``continuation`` (tree-sitter reports
     # every malformed continuation as an error first), ``own-name-acquisition``
     # (``sys.modules[__name__]`` already makes the file dynamic in Tier 1, so
@@ -763,7 +887,13 @@ def _pytest(root: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    """Run every mutation, or only the ids given as arguments."""
+    only = set(sys.argv[1:] if argv is None else argv)
+    unknown = only - {m[0] for m in MUTATIONS}
+    if unknown:
+        print(f"unknown mutation ids: {sorted(unknown)}", file=sys.stderr)
+        return 2
     with tempfile.TemporaryDirectory(prefix="tier2-py-mutations-") as tmp:
         copy = Path(tmp) / "repo"
         copy.mkdir()
@@ -776,7 +906,8 @@ def main() -> int:
             print("baseline fails; no mutation is meaningful", file=sys.stderr)
             return 2
         bad = 0
-        for ident, relative, old, new in MUTATIONS:
+        selected = [m for m in MUTATIONS if not only or m[0] in only]
+        for ident, relative, old, new in selected:
             path = copy / relative
             original = path.read_text(encoding="utf-8")
             if original.count(old) != 1:
@@ -810,7 +941,7 @@ def main() -> int:
             killed = result.returncode == 1
             bad += not killed
             print(f"{'KILLED' if killed else 'SURVIVED'}\t{ident}\t{failed}")
-        total = len(MUTATIONS)
+        total = len(selected)
         print(f"{total - bad}/{total} killed")
         return 1 if bad else 0
 

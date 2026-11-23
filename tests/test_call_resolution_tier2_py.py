@@ -1218,7 +1218,9 @@ FOLD2_BLOCKING: dict[str, tuple[dict[str, str], tuple[str, str], str, str, str]]
             "patch.py": "import mid\n" + PATCHER + "mid.svc.t = o\n",
         },
         ("use.py", "t"),
-        "reassigned",
+        # #724: ``mid.py`` reads its own namespace, so its ``import svc``
+        # is handed out and ``svc`` is tainted wholly, not only ``svc.t``.
+        "module-escape",
         "import patch, use; print(use.u())",
         "2 (other.t runs)",
     ),
@@ -2787,7 +2789,16 @@ def test_fold6_monkeypatch_methods_on_any_receiver(tmp_path: Path, case: str) ->
     root = _write(tmp_path, {**_SVC_OTHER, **files})
     off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
     assert on == off, case
-    assert label == "none(run-tainted:unresolvable-writer)", case
+    if case in _FOLD6_NAMESPACE_READERS:
+        # #724: the test file reads its own namespace (``locals()``), so
+        # its ``import calls`` is handed out and ``calls``
+        # is tainted wholly, which decides first.
+        assert label == "none(module-escape)", case
+    else:
+        assert label == "none(run-tainted:unresolvable-writer)", case
+
+
+_FOLD6_NAMESPACE_READERS = frozenset({"f5_locals_dict", "f5_hints_locals"})
 
 
 FOLD6_CONTROLS: dict[str, tuple[str, str | None]] = {
@@ -3168,3 +3179,320 @@ def test_fold8_clean_reexports_still_resolve(tmp_path: Path, case: str) -> None:
     _off, _structural, on, label = _run(root, file, reference)
     assert on["resolution"] == "resolved" and label == "import", case
     assert _target(on, root) == "a/b.py", case
+
+
+# treesitter-chunker#724: a file that reads its own namespace hands out every
+# import binding in it. Each tree's ``main.py`` imports ``use`` (the reader,
+# or the file that reaches it), runs it and prints which ``t`` body
+# ``svc.u()`` ran. ``svc.py``'s ``u -> t`` is a Tier 1 proof; ``other.py``
+# defines another ``t``, so name mode is ambiguous.
+_NS_SVC = 'def t():\n    return "SVC.t"\n\n\ndef u():\n    return t()\n'
+_NS_BASE = {
+    "svc.py": _NS_SVC,
+    "other.py": 'def t():\n    return "OTHER.t"\n',
+    "main.py": "import use\nimport svc\n\nuse.go()\nprint(svc.u())\n",
+}
+_NS_POKE = "import get as G\n\n\ndef go():\n    G.poke()\n"
+_NS_HELPER = {
+    "helper.py": 'import other\n\n\ndef patch(d):\n    d["svc"].t = other.t\n'
+}
+
+# Name -> (files, what CPython 3.14 prints). Every pinned case printed
+# ``OTHER.t`` (the replacement ran); main 64bae100 resolved ``svc.py``'s
+# ``t`` in all but c01 and c04, whose getter return or module alias was
+# already an escape.
+NAMESPACE_HANDOUT: dict[str, dict[str, str]] = {
+    # The #706 plan battery (706/battery-final4).
+    "c01-locals-leak-alias": {
+        "get.py": "import svc\n\n\ndef get():\n    return svc\n",
+        "helper.py": 'import other\n\n\ndef patch(d):\n    d["m"].t = other.t\n',
+        "use.py": (
+            "from get import get\nimport helper\n\n\ndef go():\n    m = get()\n"
+            "    helper.patch(locals())\n"
+        ),
+    },
+    "c01-twin-locals-leak-import": {
+        **_NS_HELPER,
+        "use.py": "import helper\n\n\ndef go():\n    import svc\n    helper.patch(locals())\n",
+    },
+    "c04-globals-leak-module-alias": {
+        "holder.py": "import svc\n",
+        "helper.py": 'import other\n\n\ndef patch(d):\n    d["SV"].t = other.t\n',
+        "use.py": (
+            "import holder as H\nimport helper\nSV = H.svc\n\n\ndef go():\n"
+            "    helper.patch(globals())\n"
+        ),
+    },
+    "c04-twin-globals-leak-import": {
+        **_NS_HELPER,
+        "use.py": "import svc\nimport helper\n\n\ndef go():\n    helper.patch(globals())\n",
+    },
+    "c03-twin-exec-import": {
+        "use.py": 'import svc\nimport other\n\n\ndef go():\n    exec("svc.t = other.t")\n',
+    },
+    # The plan review's twins (706-opus, plain imports).
+    "x02t-own-f_globals": {
+        "get.py": (
+            "import sys\nimport svc\nimport other\n\n\ndef poke():\n"
+            '    sys._getframe(0).f_globals["svc"].t = other.t\n'
+        ),
+        "use.py": _NS_POKE,
+    },
+    "x03t-own-__globals__": {
+        "get.py": (
+            "import svc\nimport other\n\n\ndef poke():\n"
+            '    poke.__globals__["svc"].t = other.t\n'
+        ),
+        "use.py": _NS_POKE,
+    },
+    "y01t-own-getmodule": {
+        "get.py": (
+            "import inspect\nimport svc\nimport other\n\n\ndef poke():\n"
+            "    inspect.getmodule(poke).svc.t = other.t\n"
+        ),
+        "use.py": _NS_POKE,
+    },
+    "y02t-own-dunder-import": {
+        "get.py": (
+            "import svc\nimport other\n\n\ndef poke():\n"
+            "    __import__(__name__).svc.t = other.t\n"
+        ),
+        "use.py": _NS_POKE,
+    },
+    "y05t-caller-f_globals": {
+        "use.py": (
+            "import sys\nimport svc\nimport other\n\n\ndef go():\n"
+            '    sys._getframe(0).f_globals["svc"].t = other.t\n'
+        ),
+    },
+    "z01t-caller-globals": {
+        "use.py": (
+            "import svc\nimport other\n\n\ndef go():\n"
+            '    globals()["svc"].t = other.t\n'
+        ),
+    },
+    "x06t-string-annotation": {
+        "get.py": (
+            'import typing\nimport svc\nimport other\n\n\ndef h(x: "svc"):\n'
+            '    pass\n\n\ndef poke():\n    typing.get_type_hints(h)["x"].t = other.t\n'
+        ),
+        "use.py": _NS_POKE,
+    },
+    # More spellings of the same rule.
+    "vars-no-argument": {
+        "use.py": (
+            "import other\n\n\ndef go():\n    import svc\n"
+            '    vars()["svc"].t = other.t\n'
+        ),
+    },
+    "eval-one-argument": {
+        "use.py": 'import svc\nimport other\n\n\ndef go():\n    eval("svc").t = other.t\n',
+    },
+    "exec-none-globals": {
+        "use.py": (
+            "import svc\nimport other\n\n\ndef go():\n"
+            '    exec("svc.t = other.t", None)\n'
+        ),
+    },
+    "globals-handed-on": {
+        "use.py": (
+            "import svc\nimport other\n\nns = globals\n\n\ndef go():\n"
+            '    ns()["svc"].t = other.t\n'
+        ),
+    },
+    "builtins-globals-attribute": {
+        "use.py": (
+            "import builtins\nimport svc\nimport other\n\n\ndef go():\n"
+            '    builtins.globals()["svc"].t = other.t\n'
+        ),
+    },
+    "globals-imported-under-another-name": {
+        "use.py": (
+            "from builtins import globals as g\nimport svc\nimport other\n\n\n"
+            'def go():\n    g()["svc"].t = other.t\n'
+        ),
+    },
+    "builtins-globals-by-string": {
+        "use.py": (
+            "import builtins\nimport svc\nimport other\n\n\ndef go():\n"
+            '    getattr(builtins, "globals")()["svc"].t = other.t\n'
+        ),
+    },
+    "f_globals-computed-key": {
+        "use.py": (
+            "import sys\nimport svc\nimport other\n\n\ndef go():\n"
+            '    k = "s" + "vc"\n    sys._getframe(0).f_globals[k].t = other.t\n'
+        ),
+    },
+    "f_locals-written": {
+        "use.py": (
+            "import sys\nimport other\n\n\ndef go():\n    import svc\n"
+            "    f = sys._getframe(0)\n    m = f.f_locals\n"
+            '    m["svc"].t = other.t\n'
+        ),
+    },
+    "f_globals-by-string": {
+        "use.py": (
+            "import sys\nimport svc\nimport other\n\n\ndef go():\n"
+            '    getattr(sys._getframe(0), "f_globals")["svc"].t = other.t\n'
+        ),
+    },
+    "from-import-of-a-submodule": {
+        "pkg/__init__.py": "",
+        "pkg/svc.py": _NS_SVC,
+        "main.py": "import use\nimport pkg.svc\n\nuse.go()\nprint(pkg.svc.u())\n",
+        "use.py": (
+            "from pkg import svc\nimport other\n\n\ndef go():\n"
+            '    globals()["svc"].t = other.t\n'
+        ),
+    },
+}
+
+# Name -> files. A file that keeps its namespace to itself: CPython printed
+# ``SVC.t`` for each, and ``svc.py``'s proof stays.
+NAMESPACE_CONTROLS: dict[str, dict[str, str]] = {
+    "no-reader": {"use.py": "import svc\n\n\ndef go():\n    return svc.t\n"},
+    # ``vars(obj)`` reads ``obj.__dict__``.
+    "vars-with-argument": {
+        "use.py": (
+            "import svc\n\n\nclass K:\n    pass\n\n\ndef go():\n"
+            "    return vars(K())\n"
+        ),
+    },
+    # spec's ``ingest.py``: ``exec(code, mod.__dict__)`` runs in ``mod``.
+    "exec-explicit-globals": {
+        "use.py": (
+            "import types\nimport svc\n\n\ndef go():\n"
+            '    mod = types.ModuleType("m")\n    exec("x = 1", mod.__dict__)\n'
+            '    eval("1", {})\n'
+        ),
+    },
+    "exec-keyword-globals": {
+        "use.py": 'import svc\n\n\ndef go():\n    exec("x = 1", globals={})\n',
+    },
+    # A model's ``.eval()`` and a template environment's ``.globals``.
+    "eval-and-globals-methods": {
+        "use.py": (
+            "import svc\n\n\nclass M:\n    globals = {}\n\n    def eval(self):\n"
+            "        return self\n\n\ndef go():\n    M().eval()\n"
+            '    M.globals["x"] = 1\n'
+        ),
+    },
+    # The ordinary lookup at the use proves the file's own binding.
+    "own-binding-named-locals": {
+        "use.py": ("import svc\n\n\ndef go(locals=dict):\n    return locals()\n"),
+    },
+    # A frame read by a constant key reaches only the binding of that name
+    # (pmcp's ``tb.tb_frame.f_locals.get("code")``), and ``in`` none.
+    "frame-read-of-another-name": {
+        "use.py": (
+            "import sys\nimport svc\n\n\ndef go():\n    f = sys._getframe(0)\n"
+            '    code = f.f_locals.get("code")\n    seen = "svc" in f.f_globals\n'
+            '    return code, seen, f.f_globals["sys"]\n'
+        ),
+    },
+    # ``compile``'s mode string names no builtin to call.
+    "exec-mode-string": {
+        "use.py": 'import svc\n\n\ndef go():\n    return compile("1", "f", "exec")\n',
+    },
+    "dunder-import-of-a-constant": {
+        "use.py": 'import svc\n\n\ndef go():\n    return __import__("json")\n',
+    },
+}
+
+
+def _cpython(root: Path) -> str:
+    import subprocess
+    import sys
+
+    run = subprocess.run(
+        [sys.executable, "-B", "-E", "-s", "main.py"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=True,
+    )
+    return run.stdout.strip().splitlines()[-1]
+
+
+@pytest.mark.parametrize("case", sorted(NAMESPACE_HANDOUT))
+def test_namespace_reader_hands_out_its_import_bindings(
+    tmp_path: Path, case: str
+) -> None:
+    """#724: ``globals()``, ``locals()``, ``vars()``, one-argument
+    ``exec``/``eval``, ``f_globals``, ``__globals__``, ``getmodule``,
+    ``__import__(__name__)`` and string annotations evaluated by
+    ``get_type_hints`` hand out every import binding of the file that spells
+    them, so the imported module is tainted wholly. CPython 3.14 runs the
+    replacement in each tree; ``svc.py``'s ``t`` keeps its off-mode edge."""
+    root = _write(tmp_path, {**_NS_BASE, **NAMESPACE_HANDOUT[case]})
+    assert _cpython(root) == "OTHER.t", case
+    probe = "pkg/svc.py" if (root / "pkg/svc.py").exists() else "svc.py"
+    off, structural, on, label = _run(root, probe, "t")
+    assert structural["resolution"] == "resolved", case
+    assert on == off and on["resolution"] == "ambiguous", case
+    assert label == "none(module-escape)", case
+
+
+@pytest.mark.parametrize("case", sorted(NAMESPACE_CONTROLS))
+def test_namespace_controls_keep_their_proof(tmp_path: Path, case: str) -> None:
+    """#724 controls: ``vars(obj)``, ``exec``/``eval`` with explicit
+    globals, another object's ``.eval()`` or ``.globals``, a binding of the
+    file's own named ``locals`` and ``__import__`` of a constant read no
+    namespace of the file: ``svc.py``'s ``t`` stays resolved."""
+    root = _write(tmp_path, {**_NS_BASE, **NAMESPACE_CONTROLS[case]})
+    assert _cpython(root) == "SVC.t", case
+    _off, _structural, on, label = _run(root, "svc.py", "t")
+    assert on["resolution"] == "resolved", (case, label)
+    assert _target(on, root) == "svc.py"
+
+
+def test_namespace_reader_records_value_uses_of_every_binding(
+    tmp_path: Path,
+) -> None:
+    """The reader rule records a ``value`` use of each import binding,
+    function-local and ``from`` imports included, and nothing in a file that
+    reads no namespace."""
+    root = _write(
+        tmp_path,
+        {
+            "r.py": (
+                "import a.b\nfrom c import d as e\n\n\ndef f():\n    import g\n"
+                "    return locals()\n"
+            ),
+            "n.py": "import a.b\nfrom c import d as e\n",
+        },
+    )
+    facts = {
+        item["path"]: item["scope_facts"]["module_bindings"]
+        for item in (
+            extract_symbol_facts_for_file(path, root, None, call_resolution=MODE)
+            for path in collect_source_files(root, None)
+        )
+    }
+    assert ["a", "value"] in facts["r.py"]["uses"]
+    assert ["c", "value", "d"] in facts["r.py"]["uses"]
+    assert ["g", "value"] in facts["r.py"]["uses"]
+    assert facts["n.py"]["uses"] == []
+
+
+def test_frame_read_by_constant_key_hands_out_that_binding(tmp_path: Path) -> None:
+    """#724: ``frame.f_globals["svc"]`` hands out the binding named ``svc``
+    only; another import of the file stays unrecorded."""
+    root = _write(
+        tmp_path,
+        {
+            "r.py": (
+                "import sys\nimport svc\nimport json\n\n\ndef f():\n"
+                '    return sys._getframe(0).f_globals["svc"]\n'
+            ),
+        },
+    )
+    (item,) = [
+        extract_symbol_facts_for_file(path, root, None, call_resolution=MODE)
+        for path in collect_source_files(root, None)
+    ]
+    uses = item["scope_facts"]["module_bindings"]["uses"]
+    assert ["svc", "value"] in uses
+    assert ["json", "value"] not in uses and ["sys", "value"] not in uses
