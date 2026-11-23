@@ -3695,6 +3695,9 @@ def test_718_constant_stack_keys(tmp_path: Path, text: str) -> None:
             id="let-var-assign",
         ),
         pytest.param("x.js", "const caller = () => 1; caller();", id="const-arrow"),
+        # The shorthand node is the only token spelling the name.
+        pytest.param("x.js", "const { caller } = fn;", id="shorthand-pattern-only"),
+        pytest.param("x.js", "const o = { caller };", id="shorthand-expression-only"),
         pytest.param(
             "x.js", "const { key: caller } = obj; caller();", id="pattern-value"
         ),
