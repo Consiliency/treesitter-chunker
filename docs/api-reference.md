@@ -161,6 +161,10 @@ Represents a semantic chunk of code extracted from a file.
 **Methods:**
 - `generate_id() -> str`: Generate a unique ID based on content and location
 
+### JavaScript parent context
+
+Call `ContextFactory.create_context_extractor("javascript").extract_parent_context(node, root, source)` to get enclosing scope signatures in outer-to-inner order. Each item includes the scope node and its one-based starting line. Generator declarations and expressions retain the original spelling of their signature, including internal line endings.
+
 ## Parser Management
 
 ### get_parser
