@@ -123,6 +123,23 @@ def test_networkx_yed_import_keeps_caller_label_beside_graphics(
     assert {name: edge[DECLARED[name]] for name in EDGE_CALLER} == EDGE_CALLER
 
 
+def test_yed_renders_non_string_chunk_names():
+    np = pytest.importorskip("numpy")
+    class_chunk, function_chunk = chunk_file(FIXTURE, "python")[:2]
+    class_chunk.metadata["name"] = np.array(["Renderer", "Display"])
+    function_chunk.metadata["name"] = 0
+    exporter = GraphMLyEdExporter()
+    exporter.add_chunks([class_chunk, function_chunk])
+
+    xml = exporter.export_string(pretty_print=False)
+    graph = nx.parse_graphml(xml)
+    assert (
+        graph.nodes[class_chunk.node_id]["label"]
+        == "class_definition\n['Renderer' 'Display']"
+    )
+    assert graph.nodes[function_chunk.node_id]["label"] == "function_definition\n0"
+
+
 @pytest.mark.parametrize("route", ["plain", "yed", "delegated"])
 def test_key_ids_stay_and_declared_names_are_unique(route):
     exporter, _, options = _graph(route)
