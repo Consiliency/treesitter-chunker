@@ -208,6 +208,8 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
             Number of logical lines
         """
         text = source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
+        if self.language == "python":
+            text = text.replace("\r\n", "\n").replace("\r", "\n")
         logical_lines = 0
         in_multiline_comment = False
         in_multiline_string = False
@@ -259,8 +261,15 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
         Returns:
             All complexity metrics
         """
-        text = source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
-        lines_of_code = len(text.split("\n"))
+        end = node.end_byte
+        span = source[node.start_byte : end]
+        lines_of_code = 1 + span.count(b"\n")
+        if self.language == "python":
+            lines_of_code += span.count(b"\r") - span.count(b"\r\n")
+            # A final comment can include the CR but exclude the LF of a CRLF.
+            # That ending is complete on the next byte, outside this node.
+            if span.endswith(b"\r") and source[end : end + 1] == b"\n":
+                lines_of_code -= 1
         return ComplexityMetrics(
             cyclomatic=self.calculate_cyclomatic_complexity(node),
             cognitive=self.calculate_cognitive_complexity(node),
