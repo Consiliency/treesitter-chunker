@@ -51,7 +51,9 @@ own options; consult their `--help` rather than assuming this schema applies.
 `ChunkerConfig` supports TOML, YAML and JSON and provides `PluginConfig` objects that you pass to `PluginManager.chunk_file()`.
 Calling `ChunkerConfig.find_config()` returns a path; pass that path to the
 constructor to load it. Construction without a path does not discover or load
-files or apply environment overrides.
+files or apply environment overrides. Calling `config.load(path)` again replaces
+the plugin settings with those from the new file and reapplies current environment
+overrides when enabled. If the load fails, the previous path and settings remain active.
 
 Discovery searches for `chunker.config.toml`, `.yaml`, `.yml` or `.json` in the
 starting directory and parents, then `~/.chunker/config.*`. It does not search

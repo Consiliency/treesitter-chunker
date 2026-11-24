@@ -251,6 +251,74 @@ class TestPerformanceImpactOfConfigLookups:
         )
 
 
+class TestChunkerConfigReload:
+    @pytest.fixture(autouse=True)
+    def clean_config_env(self, monkeypatch):
+        for key in list(os.environ):
+            if key.startswith("CHUNKER_"):
+                monkeypatch.delenv(key)
+
+    @staticmethod
+    @pytest.mark.parametrize("use_env_vars", [False, True])
+    def test_reload_replaces_language_settings(tmp_path, monkeypatch, use_env_vars):
+        path = tmp_path / "config.json"
+        path.write_text(
+            '{"chunker": {"enabled_languages": ["python"]},'
+            ' "languages": {"python": {"min_chunk_size": 8}}}',
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("CHUNKER_LANGUAGES_PYTHON_MAX_CHUNK_SIZE", "20")
+        config = ChunkerConfig(path, use_env_vars=use_env_vars)
+        assert config.get_plugin_config("python").min_chunk_size == 8
+        assert not config.get_plugin_config("rust").enabled
+
+        path.write_text("{}", encoding="utf-8")
+        monkeypatch.delenv("CHUNKER_LANGUAGES_PYTHON_MAX_CHUNK_SIZE")
+        monkeypatch.setenv("CHUNKER_LANGUAGES_RUST_MIN_CHUNK_SIZE", "12")
+        config.load(path)
+        fresh = ChunkerConfig(path, use_env_vars=use_env_vars)
+
+        assert config.enabled_languages is fresh.enabled_languages is None
+        assert config.plugin_configs == fresh.plugin_configs
+        assert config.get_plugin_config("python") == PluginConfig()
+        assert config.get_plugin_config("rust") == PluginConfig(
+            min_chunk_size=12 if use_env_vars else 1
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("invalid_env", [False, True], ids=["file", "env"])
+    def test_failed_reload_preserves_loaded_config(tmp_path, monkeypatch, invalid_env):
+        original = tmp_path / "original.json"
+        old_data = {
+            "chunker": {
+                "enabled_languages": ["python"],
+                "plugin_dirs": ["plugins"],
+                "default_plugin_config": {"min_chunk_size": 3},
+            },
+            "languages": {"python": {"max_chunk_size": 17}},
+        }
+        original.write_text(json.dumps(old_data), encoding="utf-8")
+        config = ChunkerConfig(original, use_env_vars=invalid_env)
+        replacement = tmp_path / "replacement.json"
+        if invalid_env:
+            replacement.write_text("{}", encoding="utf-8")
+            monkeypatch.setenv("CHUNKER_LANGUAGES_RUST_MIN_CHUNK_SIZE", "bad")
+            error = ValueError
+        else:
+            replacement.write_text('{"languages": {"rust": null}}', encoding="utf-8")
+            error = AttributeError
+
+        with pytest.raises(error):
+            config.load(replacement)
+
+        assert config.config_path == original
+        assert config.data == old_data
+        assert config.plugin_dirs == [tmp_path / "plugins"]
+        assert config.enabled_languages == {"python"}
+        assert config.default_plugin_config == PluginConfig(min_chunk_size=3)
+        assert config.plugin_configs == {"python": PluginConfig(max_chunk_size=17)}
+
+
 class TestConfigHotReloadingDuringChunking:
     """Test config hot-reloading during active chunking operations."""
 

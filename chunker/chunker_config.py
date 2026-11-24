@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import tomllib
+from copy import copy
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -79,24 +80,31 @@ class ChunkerConfig:
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
         ext = config_path.suffix.lower()
+        candidate = copy(self)
         try:
             if ext == ".toml":
                 # tomllib requires binary mode
                 with Path(config_path).open("rb") as f:
-                    self.data = tomllib.load(f)
+                    candidate.data = tomllib.load(f)
             elif ext in {".yaml", ".yml"}:
                 with Path(config_path).open(encoding="utf-8") as f:
-                    self.data = yaml.safe_load(f) or {}
+                    candidate.data = yaml.safe_load(f) or {}
             elif ext == ".json":
-                self.data = load_json_file(config_path)
+                candidate.data = load_json_file(config_path)
             else:
                 raise ValueError(f"Unsupported config format: {ext}")
-            self.config_path = config_path
+            candidate.config_path = config_path
             if self.use_env_vars:
-                self.data = self._expand_env_vars(self.data)
-            self._parse_config()
+                candidate.data = candidate._expand_env_vars(candidate.data)
+            candidate._parse_config()
             if self.use_env_vars:
-                self._apply_env_overrides()
+                candidate._apply_env_overrides()
+            self.config_path = candidate.config_path
+            self.data = candidate.data
+            self.plugin_dirs = candidate.plugin_dirs
+            self.enabled_languages = candidate.enabled_languages
+            self.default_plugin_config = candidate.default_plugin_config
+            self.plugin_configs = candidate.plugin_configs
             logger.info("Loaded configuration from: %s", config_path)
         except (FileNotFoundError, OSError, SyntaxError) as e:
             logger.error("Failed to load config from %s: %s", config_path, e)
@@ -143,13 +151,14 @@ class ChunkerConfig:
         plugin_dirs = chunker_config.get("plugin_dirs", [])
         self.plugin_dirs = [self._resolve_path(p) for p in plugin_dirs]
         enabled = chunker_config.get("enabled_languages")
-        if enabled:
-            self.enabled_languages = set(enabled)
+        self.enabled_languages = set(enabled) if enabled else None
         default_config = chunker_config.get("default_plugin_config", {})
         self.default_plugin_config = self._parse_plugin_config(default_config)
         languages = self.data.get("languages", {})
-        for lang, config in languages.items():
-            self.plugin_configs[lang] = self._parse_plugin_config(config)
+        self.plugin_configs = {
+            lang: self._parse_plugin_config(config)
+            for lang, config in languages.items()
+        }
 
     @classmethod
     def _parse_plugin_config(cls, config_dict: dict[str, Any]) -> PluginConfig:
