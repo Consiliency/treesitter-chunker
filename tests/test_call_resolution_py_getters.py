@@ -262,6 +262,34 @@ def test_yield_in_nested_definition_makes_getter_a_generator(
     assert _resolutions(root, "svc.py") == ["ambiguous"]
 
 
+@pytest.mark.parametrize(
+    ("binding", "read"),
+    [
+        ("__class__ = get()", "cell.cell_contents"),
+        ("import svc as __class__", "cell.cell_contents"),
+        ("from get import get as __class__", "cell.cell_contents()"),
+    ],
+)
+def test_super_implicitly_captures_a_class_cell(
+    tmp_path: Path, binding: str, read: str
+) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": _SVC,
+            "other.py": _OTHER,
+            "get.py": "import svc\ndef get(): return svc\n",
+            "use.py": "from get import get\ndef go():\n"
+            f"    {binding}\n    def inner(): return super\n    return inner\n",
+            "poke.py": "import other\ndef run(fn):\n    cell, = fn.__closure__\n"
+            f"    {read}.t = other.t\n",
+            "main.py": "import use, poke, svc\npoke.run(use.go())\nprint(svc.u())\n",
+        },
+    )
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
 @pytest.mark.parametrize("holder", ["m = get()", "import svc as m"])
 @pytest.mark.parametrize(
     ("capture", "evaluator"),

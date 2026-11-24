@@ -529,7 +529,15 @@ def module_facts(
             entry = dict(info)
             if entry not in module_imports.setdefault(name, []):
                 module_imports[name].append(entry)
-        if scope.kind == ps._CLASS or name in scope.globals or name in scope.nonlocals:
+        # A nested function that only spells `super` implicitly captures
+        # a local named __class__. Its closure cell can expose this import.
+        implicit_cell = scope.kind == ps._FUNCTION and name == "__class__"
+        if (
+            implicit_cell
+            or scope.kind == ps._CLASS
+            or name in scope.globals
+            or name in scope.nonlocals
+        ):
             # A class attribute (``K.svc``) or a binding redirected to another
             # scope holds the module where no use rule sees it.
             facts.uses.add(_record(info, "value", ()))
@@ -2189,6 +2197,9 @@ def _alias_targets(analysis: Any, outer: Any) -> tuple[Any, list[str], bool] | N
     if scope is None or scope.poisoned:
         return None
     names = [ps._text(target, analysis.source) for target in targets]
+    if "__class__" in names:
+        # `super` can capture this alias without an explicit read.
+        return None
     if any(name in scope.globals or name in scope.nonlocals for name in names):
         return None
     source = analysis.source
