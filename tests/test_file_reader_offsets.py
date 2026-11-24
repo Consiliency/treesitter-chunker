@@ -175,3 +175,10 @@ def test_watch_physical_offsets_and_decode_error(tmp_path):
     start = source.index(body)
     assert (span["start_byte"], span["end_byte"]) == (start, start + len(body))
     assert source[span["start_byte"] : span["end_byte"]] == body
+
+
+def test_token_file_requires_utf8_for_baml(tmp_path):
+    path = tmp_path / "broken.baml"
+    path.write_bytes(b"function f() -> string { prompt: `\xff` }\r\n")
+    with pytest.raises(UnicodeDecodeError):
+        chunk_file_with_token_limit(path, "baml", 100)
