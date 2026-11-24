@@ -1,0 +1,25 @@
+{
+  "schema": "treesitter-chunker.reference-oracle.v1",
+  "language": "javascript",
+  "fixture": "generator_parents.js",
+  "issues": ["treesitter-chunker#552"],
+  "scopes": {
+    "root": {"node_type": "program", "row": 0, "column": 0},
+    "ordinary": {"node_type": "function_declaration", "row": 1, "column": 0},
+    "declared": {"node_type": "generator_function_declaration", "row": 2, "column": 0},
+    "exported": {"node_type": "generator_function_declaration", "row": 3, "column": 7},
+    "named": {"node_type": "generator_function", "row": 4, "column": 19},
+    "outer": {"node_type": "function_declaration", "row": 5, "column": 0},
+    "anon": {"node_type": "generator_function", "row": 6, "column": 11},
+    "method": {"node_type": "method_definition", "row": 10, "column": 17}
+  },
+  "parent_context": [
+    {"issue": "treesitter-chunker#552", "node_type": "call_expression", "row": 0, "column": 0, "parents": []},
+    {"issue": "treesitter-chunker#552", "node_type": "return_statement", "row": 1, "column": 23, "parents": [{"scope": "ordinary", "summary": "function ordinary(a) { ... }"}]},
+    {"issue": "treesitter-chunker#552", "node_type": "yield_expression", "row": 2, "column": 24, "parents": [{"scope": "declared", "summary": "function* declared(a) { ... }"}]},
+    {"issue": "treesitter-chunker#552", "node_type": "yield_expression", "row": 3, "column": 31, "parents": [{"scope": "exported", "summary": "function* exported(a) { ... }"}]},
+    {"issue": "treesitter-chunker#552", "node_type": "yield_expression", "row": 4, "column": 40, "parents": [{"scope": "named", "summary": "function* named(a) { ... }"}]},
+    {"issue": "treesitter-chunker#552", "node_type": "yield_expression", "row": 8, "column": 8, "parents": [{"scope": "outer", "summary": "function outer() { ... }"}, {"scope": "anon", "summary": "async function* (\n        config = {limit: 1}\n    ) { ... }"}]},
+    {"issue": "treesitter-chunker#552", "node_type": "yield_expression", "row": 10, "column": 30, "parents": [{"scope": "method", "summary": "*method(a) { ... }"}]}
+  ]
+}
