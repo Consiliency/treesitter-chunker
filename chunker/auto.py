@@ -305,12 +305,10 @@ class ZeroConfigAPI(ZeroConfigContract):
                         newline="",
                     )
                     if token_limit:
-                        # Match chunk_file_with_token_limit's universal-newline reader.
-                        normalized = unruled_source.replace("\r\n", "\n").replace(
-                            "\r", "\n"
-                        )
+                        # Same raw text chunk_file_with_token_limit reads
+                        # (newline="", treesitter-chunker#758).
                         extracted = chunk_text_with_token_limit(
-                            normalized,
+                            unruled_source,
                             language,
                             token_limit,
                             file_path=str(file_path),
