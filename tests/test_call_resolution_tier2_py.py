@@ -5620,6 +5620,27 @@ def test_namespace_exempt_use_hands_out_nothing(tmp_path: Path, source: str) -> 
     assert ["svc", "value"] not in _module_bindings(root)["r.py"]["uses"], source
 
 
+@pytest.mark.parametrize("local", [True, False], ids=["function", "module"])
+def test_fresh_receiver_proof_requires_function_scope(local: bool) -> None:
+    """Isolate the receiver proof from the evaluator's own file-wide effect."""
+    from chunker.call_resolution import py_scope
+    from chunker.parser import get_parser
+
+    lines = ["mod = types.ModuleType('m')", "consume(mod)"]
+    body = "def go():\n    " + "\n    ".join(lines) if local else "\n".join(lines)
+    source = ("import types\n" + body + "\n").encode()
+    root = get_parser("python").parse(source).root_node
+    analysis = py_scope._Analysis(
+        root, source, module_path=py_scope.module_path("r.py")
+    )
+    receiver = next(
+        node
+        for node in analysis.identifier_nodes
+        if node.text == b"mod" and node.parent.type == "argument_list"
+    )
+    assert py_modules._fresh_module_local(analysis, receiver) is local
+
+
 @pytest.mark.parametrize(
     "hazard", ["compile(code, 'x', 'exec')", "gc.get_objects()", "frame.f_locals"]
 )
