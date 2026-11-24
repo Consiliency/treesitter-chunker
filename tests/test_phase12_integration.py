@@ -1,8 +1,13 @@
 """Integration tests for Phase 12: Graph & Database Export."""
 
 import csv
+import os
 import sqlite3
+import subprocess
+import sys
 import xml.etree.ElementTree as ET
+from contextlib import closing
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -228,6 +233,70 @@ class TestDotExporter:
         assert "yellow" in dot_str
 
 
+def _snapshot(sample_chunks, marker):
+    exporter = SQLiteExporter()
+    exporter.add_chunks(
+        [
+            replace(
+                sample_chunks[0],
+                chunk_id="shared",
+                file_path=f"{marker}.py",
+                content=f"{marker} café\r\n",
+            ),
+            replace(
+                sample_chunks[1], chunk_id=marker, file_path="util.py", content="end"
+            ),
+        ]
+    )
+    exporter.add_relationship(*exporter.chunks, "CALLS")
+    return exporter
+
+
+def _assert_snapshot(path, marker, indexed=True):
+    with closing(sqlite3.connect(path)) as db:
+
+        def rows(sql):
+            return db.execute(sql).fetchall()
+
+        assert rows("PRAGMA integrity_check") == [("ok",)]
+        assert rows("PRAGMA foreign_key_check") == []
+        assert rows(
+            "SELECT chunks.id, path, content FROM chunks JOIN files ON file_id=files.id ORDER BY chunks.id"
+        ) == sorted(
+            [
+                ("shared", f"{marker}.py", f"{marker} café\r\n"),
+                (marker, "util.py", "end"),
+            ]
+            if marker
+            else []
+        )
+        assert rows(
+            "SELECT source_id,target_id,relationship_type FROM relationships"
+        ) == ([("shared", marker, "CALLS")] if marker else [])
+        assert rows("SELECT id, content FROM chunks_fts ORDER BY id") == sorted(
+            [("shared", f"{marker} café\r\n"), (marker, "end")] if marker else []
+        )
+        assert rows("SELECT id FROM chunks_fts WHERE chunks_fts MATCH 'café'") == (
+            [("shared",)] if marker else []
+        )
+        assert rows(
+            "SELECT file_path,chunk_count FROM file_summary ORDER BY file_path"
+        ) == sorted([(f"{marker}.py", 1), ("util.py", 1)] if marker else [])
+        assert dict(
+            rows("SELECT key,value FROM schema_info WHERE key LIKE 'total_%'")
+        ) == {
+            "total_files": "2" if marker else "0",
+            "total_chunks": "2" if marker else "0",
+            "total_relationships": "1" if marker else "0",
+        }
+        assert (
+            bool(
+                rows("SELECT name FROM sqlite_schema WHERE name='idx_chunks_position'")
+            )
+            == indexed
+        )
+
+
 class TestSQLiteExporter:
     """Test SQLite export functionality."""
 
@@ -284,6 +353,157 @@ class TestSQLiteExporter:
         indices = {row[0] for row in cursor.fetchall()}
         assert any("file_path" in idx for idx in indices)
         conn.close()
+
+    @pytest.mark.parametrize("existing", [True, False])
+    @pytest.mark.parametrize("error", ["duplicate", "foreign key"])
+    def test_failed_build(self, tmp_path, sample_chunks, existing, error):
+        path = tmp_path / "snapshot.db"
+        if existing:
+            _snapshot(sample_chunks, "before").export(path)
+        exporter = _snapshot(sample_chunks, "after")
+        if error == "duplicate":
+            exporter.add_chunks(exporter.chunks[:1])
+        else:
+            exporter.relationships[0]["target_id"] = "missing"
+        with pytest.raises(sqlite3.IntegrityError):
+            exporter.export(path)
+        if existing:
+            _assert_snapshot(path, "before")
+        assert list(tmp_path.iterdir()) == ([path] if existing else [])
+
+    @pytest.mark.parametrize("indexed", [True, False])
+    def test_replacement(self, tmp_path, sample_chunks, indexed):
+        path = tmp_path / "snapshot.db"
+        for marker in ["before", "after", None]:
+            exporter = _snapshot(sample_chunks, marker) if marker else SQLiteExporter()
+            exporter.export(path, create_indices=indexed)
+            _assert_snapshot(path, marker, indexed)
+            assert list(tmp_path.iterdir()) == [path]
+
+    def test_live_publication(self, tmp_path, sample_chunks):
+        path = tmp_path / "café #?.db" if os.name != "nt" else tmp_path / "café #.db"
+        _snapshot(sample_chunks, "before").export(path)
+        with closing(sqlite3.connect(path)) as reader:
+            reader.execute("UPDATE files SET size=123")
+            reader.commit()
+            reader.execute("BEGIN")
+
+            def paths():
+                return reader.execute("SELECT path FROM files ORDER BY path").fetchall()
+
+            assert paths() == [("before.py",), ("util.py",)]
+            _snapshot(sample_chunks, "after").export(path)
+            assert paths() == [("before.py",), ("util.py",)]
+            _assert_snapshot(path, "after")
+            reader.rollback()
+            assert paths() == [("after.py",), ("util.py",)]
+            reader.execute("BEGIN IMMEDIATE")
+            script = """
+import sqlite3, sys
+from pathlib import Path
+from chunker.export.sqlite_exporter import SQLiteExporter
+try:
+    SQLiteExporter().export(Path(sys.argv[1]))
+except sqlite3.OperationalError as exc:
+    assert 'locked' in str(exc), exc
+else:
+    raise AssertionError('locked export succeeded')
+"""
+            subprocess.run(
+                [sys.executable, "-c", script, str(path)], timeout=30, check=True
+            )
+            reader.rollback()
+        _assert_snapshot(path, "after")
+        SQLiteExporter().export(path)
+        moved = path.rename(tmp_path / "closed.db")
+        _assert_snapshot(moved, None)
+
+    def test_interrupted_backup(self, tmp_path, sample_chunks, monkeypatch):
+        path = tmp_path / "snapshot.db"
+        _snapshot(sample_chunks, "before").export(path)
+        exporter = _snapshot(sample_chunks, "after")
+        exporter.chunks[0].content = "large " * 300000
+
+        def interrupt(status, remaining, total):
+            assert status == sqlite3.SQLITE_OK and 0 < remaining < total
+            raise RuntimeError("interrupted")
+
+        monkeypatch.setattr(
+            "chunker.export.sqlite_exporter._backup_progress", interrupt
+        )
+        with pytest.raises(RuntimeError, match="interrupted"):
+            exporter.export(path)
+        _assert_snapshot(path, "before")
+
+    @pytest.mark.parametrize("contents", [b"x", b"unrelated " * 100])
+    def test_existing_non_database(self, tmp_path, contents):
+        path = tmp_path / "snapshot.db"
+        path.write_bytes(contents)
+        with pytest.raises(sqlite3.DatabaseError):
+            SQLiteExporter().export(path)
+        assert path.read_bytes() == contents
+
+    @pytest.mark.parametrize("suffix", ["-wal", "-shm", "-journal"])
+    def test_orphan_sidecar(self, tmp_path, suffix):
+        path = tmp_path / "snapshot.db"
+        orphan = path.with_name(path.name + suffix)
+        orphan.write_bytes(b"orphan")
+        with pytest.raises(sqlite3.OperationalError, match="orphan"):
+            SQLiteExporter().export(path)
+        assert list(tmp_path.iterdir()) == [orphan]
+        assert orphan.read_bytes() == b"orphan"
+
+    def test_unsupported_paths(self, tmp_path, sample_chunks):
+        path = tmp_path / "snapshot.db"
+        _snapshot(sample_chunks, "before").export(path)
+        with pytest.raises(ValueError):
+            SQLiteExporter().export(tmp_path)
+        hard = tmp_path / "hard.db"
+        hard.hardlink_to(path)
+        with pytest.raises(ValueError):
+            SQLiteExporter().export(hard)
+        _assert_snapshot(path, "before")
+        try:
+            (tmp_path / "link.db").symlink_to(path)
+        except OSError:
+            pytest.skip("symlink creation unavailable")
+        with pytest.raises(ValueError):
+            SQLiteExporter().export(tmp_path / "link.db")
+        _assert_snapshot(path, "before")
+
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX write permissions")
+    def test_read_only_destination(self, tmp_path, sample_chunks):
+        path = tmp_path / "snapshot.db"
+        _snapshot(sample_chunks, "before").export(path)
+        path.chmod(0o444)
+        try:
+            if os.access(path, os.W_OK):
+                pytest.skip("process can write read-only files")
+            with pytest.raises(sqlite3.OperationalError):
+                SQLiteExporter().export(path)
+            _assert_snapshot(path, "before")
+        finally:
+            path.chmod(0o644)
+
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX link publication")
+    def test_first_publish_race(self, tmp_path, sample_chunks, monkeypatch):
+        path = tmp_path / "snapshot.db"
+        winner = tmp_path / "winner.db"
+        _snapshot(sample_chunks, "before").export(winner)
+        link = os.link
+
+        def race(stage, final):
+            link(winner, final)
+            link(stage, final)
+
+        def release(_delay):
+            _assert_snapshot(path, "before")
+            winner.unlink()
+
+        monkeypatch.setattr(os, "link", race)
+        monkeypatch.setattr("chunker.export.sqlite_exporter.time.sleep", release)
+        _snapshot(sample_chunks, "after").export(path)
+        _assert_snapshot(path, "after")
 
 
 class TestPostgresExporter:

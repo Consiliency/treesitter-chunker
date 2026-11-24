@@ -79,6 +79,7 @@ COMMON_TESTS = [
     "tests/test_graphml_caller_label_import.py",
     "tests/test_package_graphml_whitespace.py",
     "tests/test_sqlite_export_contract.py",
+    "tests/test_phase12_integration.py::TestSQLiteExporter::test_live_publication",
     "tests/test_platform_support_contract.py",
     "tests/test_exceptions.py",
     "tests/test_fallback_chunking.py",

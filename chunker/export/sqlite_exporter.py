@@ -1,11 +1,63 @@
 """SQLite export implementation for code chunks."""
 
-import contextlib
 import json
+import logging
+import os
 import sqlite3
+import stat
+import tempfile
+import time
+from contextlib import closing
 from pathlib import Path
 
 from .database_exporter_base import DatabaseExporterBase
+
+
+def _backup_progress(status: int, remaining: int, total: int) -> None:
+    if status in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+        raise sqlite3.OperationalError("destination database is locked")
+
+
+def _publish_snapshot(stage: Path, output: Path) -> None:
+    try:
+        info = output.lstat()
+    except FileNotFoundError:
+        # A journal may belong to an old main file. Never adopt it.
+        for suffix in ("-journal", "-wal", "-shm"):
+            if os.path.lexists(str(output) + suffix) and not output.exists():
+                raise sqlite3.OperationalError(
+                    f"orphan SQLite sidecar: {output}{suffix}"
+                )
+        try:
+            if os.name == "nt":
+                os.rename(stage, output)  # Windows rename never overwrites.
+            else:
+                os.link(stage, output)
+        except FileExistsError:
+            info = output.lstat()
+        else:
+            return
+
+    if not stat.S_ISREG(info.st_mode):
+        raise ValueError(f"expected a regular SQLite database: {output}")
+    # A newly published POSIX file has two links until stage cleanup.
+    for _ in range(5):
+        if info.st_nlink == 1:
+            break
+        time.sleep(0.01)
+        info = output.lstat()
+    if info.st_nlink != 1:
+        raise ValueError(f"cannot replace a multiply linked database: {output}")
+    if 0 < info.st_size < 100:
+        raise sqlite3.DatabaseError(f"file is not a database: {output}")
+
+    uri = output.absolute().as_uri() + "?mode=rw"
+    with (
+        closing(sqlite3.connect(stage)) as source,
+        closing(sqlite3.connect(uri, uri=True, timeout=0)) as destination,
+    ):
+        destination.execute("SELECT count(*) FROM sqlite_schema").fetchone()
+        source.backup(destination, pages=256, progress=_backup_progress, sleep=0)
 
 
 class SQLiteExporter(DatabaseExporterBase):
@@ -198,9 +250,29 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
             enable_fts: Whether to populate full-text search
             **options: Additional options
         """
-        if output_path.exists():
-            output_path.unlink()
-        conn = sqlite3.connect(str(output_path))
+        stage_dir = tempfile.TemporaryDirectory(dir=output_path.parent)
+        try:
+            stage = Path(stage_dir.name) / "snapshot.db"
+            self._write_snapshot(stage, create_indices)
+            _publish_snapshot(stage, output_path)
+        except BaseException as exc:
+            try:
+                stage_dir.cleanup()
+            except OSError as cleanup_error:
+                exc.add_note(f"SQLite staging cleanup also failed: {cleanup_error}")
+            raise
+        else:
+            try:
+                stage_dir.cleanup()
+            except OSError:
+                logging.getLogger(__name__).warning(
+                    "SQLite snapshot published, but staging cleanup failed at %s",
+                    stage_dir.name,
+                    exc_info=True,
+                )
+
+    def _write_snapshot(self, stage: Path, create_indices: bool) -> None:
+        conn = sqlite3.connect(stage)
         conn.row_factory = sqlite3.Row
         try:
             conn.executescript(self.get_schema_ddl())
@@ -306,8 +378,7 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
                 )
             if create_indices:
                 for index_stmt in self.get_index_statements():
-                    with contextlib.suppress(sqlite3.OperationalError):
-                        conn.execute(index_stmt)
+                    conn.execute(index_stmt)
             conn.execute(
                 """
                 INSERT INTO schema_info (key, value)
@@ -327,6 +398,13 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
             """,
             )
             conn.commit()
+            busy, logged, copied = conn.execute(
+                "PRAGMA wal_checkpoint(TRUNCATE)"
+            ).fetchone()
+            if busy or logged != copied:
+                raise sqlite3.OperationalError(
+                    "staged SQLite WAL checkpoint incomplete"
+                )
         finally:
             conn.close()
 
