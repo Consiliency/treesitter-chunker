@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Batch recursive patterns now respect their directory prefix. A missing explicit
+  path from arguments or stdin now returns status 1 after successful inputs are
+  emitted, and its diagnostic appears on stderr even in quiet mode. Batch CSV
+  now quotes fields containing delimiters, quotes or line breaks
+  (treesitter-chunker#763).
+
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is
