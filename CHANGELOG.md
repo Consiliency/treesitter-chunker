@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Python context definition lookup recognizes imports, unpacking, loops, aliases, assignment expressions and splat parameters. Reference lookup excludes unpacking, def splat and walrus targets (treesitter-chunker#544, treesitter-chunker#554, treesitter-chunker#555).
+
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is

@@ -1,5 +1,7 @@
 """Python-specific context extraction implementation."""
 
+from collections.abc import Iterator
+
 from tree_sitter import Node
 
 from chunker.context.extractor import BaseContextExtractor
@@ -18,28 +20,111 @@ _COMPREHENSION_SCOPES = frozenset(
 )
 _FUNCTION_SCOPES = frozenset({"function_definition", "lambda"})
 _DEFAULT_PARAMETERS = frozenset({"default_parameter", "typed_default_parameter"})
-_LAMBDA_PARAMETER_LISTS = frozenset({"lambda_parameters"})
-_PARAMETER_LISTS = frozenset({"parameters"}) | _LAMBDA_PARAMETER_LISTS
+_PARAMETER_LISTS = frozenset({"parameters", "lambda_parameters"})
 _SPLAT_PATTERNS = frozenset({"list_splat_pattern", "dictionary_splat_pattern"})
 
 
 def _is_parameter_name(node: Node) -> bool:
-    """Check if an identifier names a lookup-visible parameter.
-
-    Plain ``def`` and ``lambda`` parameters count, and so do lambda splats
-    (``lambda *items, **options``). ``def`` splats remain tracked by
-    treesitter-chunker#554.
-    """
+    """Check plain and splat parameter names on their declaration side."""
     parent = node.parent
     if node.type != "identifier" or parent is None:
         return False
     if parent.type in _PARAMETER_LISTS:
         return True
-    return (
-        parent.type in _SPLAT_PATTERNS
-        and parent.parent is not None
-        and parent.parent.type in _LAMBDA_PARAMETER_LISTS
+    if parent.type not in _SPLAT_PATTERNS:
+        return False
+    parameters = parent.parent
+    if parameters is not None and parameters.type == "typed_parameter":
+        parameters = parameters.parent
+    return parameters is not None and parameters.type in _PARAMETER_LISTS
+
+
+def _target_container(identifier: Node) -> Node | None:
+    """Climb destructuring wrappers, stopping at selectors and subscripts."""
+    target = identifier
+    while target.parent is not None and target.parent.type in {
+        "pattern_list",
+        "tuple_pattern",
+        "list_pattern",
+        "tuple",
+        "list",
+        "list_splat_pattern",
+        "list_splat",
+        "parenthesized_expression",
+    }:
+        target = target.parent
+    container = target.parent
+    if container is None:
+        return None
+    if container.type == "as_pattern_target":
+        return container
+    if (
+        container.type in {"assignment", "for_statement", "for_in_clause"}
+        and container.child_by_field_name("left") == target
+    ):
+        return container
+    return None
+
+
+def _header_expressions(node: Node) -> Iterator[Node]:
+    """Expressions in a nested declaration evaluated by its enclosing scope."""
+    bases = node.child_by_field_name("superclasses")
+    if bases is not None:
+        yield bases
+    parameters = node.child_by_field_name("parameters")
+    if parameters is not None:
+        for param in parameters.named_children:
+            value = param.child_by_field_name("value")
+            if param.type in _DEFAULT_PARAMETERS and value is not None:
+                yield value
+
+
+def _escaping_walruses(node: Node) -> Iterator[Node]:
+    if node.type == "named_expression":
+        yield node
+    children = (
+        _header_expressions(node)
+        if node.type in _FUNCTION_SCOPES or node.type == "class_definition"
+        else node.named_children
     )
+    for child in children:
+        yield from _escaping_walruses(child)
+
+
+def _scope_candidates(scope: Node) -> Iterator[Node]:
+    """Traverse this owner's bindings in syntax order, pruning nested bodies."""
+
+    def visit(node: Node) -> Iterator[Node]:
+        if node != scope:
+            if (
+                node.type != "named_expression"
+                or scope.type not in _COMPREHENSION_SCOPES
+            ):
+                yield node
+            if node.type in _FUNCTION_SCOPES or node.type == "class_definition":
+                if scope.type not in _COMPREHENSION_SCOPES:
+                    for expr in _header_expressions(node):
+                        yield from _escaping_walruses(expr)
+                return
+            if node.type in _COMPREHENSION_SCOPES:
+                if scope.type not in _COMPREHENSION_SCOPES:
+                    yield from _escaping_walruses(node)
+                return
+        default = (
+            node.child_by_field_name("value")
+            if node.type in _DEFAULT_PARAMETERS
+            else None
+        )
+        bases = (
+            node.child_by_field_name("superclasses")
+            if node.type == "class_definition"
+            else None
+        )
+        for child in node.named_children:
+            if child != default and child != bases:
+                yield from visit(child)
+
+    yield from visit(scope)
 
 
 class PythonContextExtractor(BaseContextExtractor):
@@ -160,44 +245,20 @@ class PythonContextExtractor(BaseContextExtractor):
         }:
             return True
         if (
-            parent.type in {"list_splat_pattern", "dictionary_splat_pattern"}
-            and parent.parent is not None
-            and parent.parent.type == "lambda_parameters"
+            parent.type == "named_expression"
+            and parent.child_by_field_name("name") == identifier_node
         ):
             return True
-        if PythonContextExtractor._is_binding_target(identifier_node):
+        if (
+            _is_parameter_name(identifier_node)
+            or _target_container(identifier_node) is not None
+        ):
             return True
         return bool(
             parent.type in {"aliased_import", "dotted_name"}
             and parent.parent
             and parent.parent.type in {"import_statement", "import_from_statement"},
         )
-
-    @staticmethod
-    def _is_binding_target(identifier_node: Node) -> bool:
-        """Check if an identifier is a loop, ``with`` or ``except`` target.
-
-        Targets may be nested in tuple and list patterns and starred, for
-        example ``for left, (right, *rest) in rows`` or
-        ``with f() as (a, *b)``.
-        """
-        target = identifier_node
-        while target.parent is not None and target.parent.type in {
-            "pattern_list",
-            "tuple_pattern",
-            "list_pattern",
-            "tuple",
-            "list",
-            "list_splat_pattern",
-            "list_splat",
-        }:
-            target = target.parent
-        container = target.parent
-        if container is None:
-            return False
-        if container.type in {"for_statement", "for_in_clause"}:
-            return container.child_by_field_name("left") == target
-        return container.type == "as_pattern_target"
 
     def _find_definition(
         self,
@@ -312,53 +373,106 @@ class PythonSymbolResolver(BaseSymbolResolver):
             return node.text.decode("utf-8") if node.text else None
         return PythonScopeAnalyzer._get_defined_name(node)
 
-    def _search_scope_for_definition(
-        self,
-        symbol_name: str,
-        scope_node: Node,
-    ) -> Node | None:
-        """Search a scope's own bindings, never the scope's own name.
-
-        ``def f`` and ``class C`` bind their names in the containing scope,
-        so a lookup that starts inside them finds parameters and locals
-        first, and finds the name itself only while ascending. A method's or
-        nested class's own name is therefore not visible from inside it.
-        """
-
-        def search_node(node: Node) -> Node | None:
-            if (
-                node != scope_node
-                and self._is_definition_node(node)
-                and self._get_defined_name(node) == symbol_name
-            ):
-                return node
-            for child in node.children:
-                if self._creates_new_scope(child) and child != scope_node:
-                    if (
-                        self._is_definition_node(child)
-                        and self._get_defined_name(child) == symbol_name
-                    ):
-                        return child
-                    continue
-                result = search_node(child)
-                if result:
-                    return result
+    def _binding_for(self, node: Node, name: str) -> Node | None:
+        if node.type in {
+            "import_statement",
+            "import_from_statement",
+            "future_import_statement",
+        }:
+            return (
+                node
+                if name in PythonScopeAnalyzer._extract_imported_names(node)
+                else None
+            )
+        if node.type == "named_expression":
+            target = node.child_by_field_name("name")
+            return target if target and self._get_node_text(target) == name else None
+        if self._is_definition_node(node) and self._get_defined_name(node) == name:
+            return node
+        if node.type != "identifier" or self._get_node_text(node) != name:
             return None
+        container = _target_container(node)
+        if container is None:
+            return None
+        if container.type == "assignment":
+            return container
+        if container.type == "as_pattern_target":
+            pattern = container.parent
+            if (
+                pattern is None
+                or pattern.parent is None
+                or pattern.parent.type not in {"with_item", "except_clause"}
+            ):
+                return None
+        return node
 
-        return search_node(scope_node)
+    def _lookup_definition(
+        self, symbol_name: str, scope_node: Node, ast: Node
+    ) -> Node | None:
+        current: Node | None = scope_node
+        while current is not None:
+            first = None
+            directive = None
+            for candidate in _scope_candidates(current):
+                if (
+                    candidate.type in {"global_statement", "nonlocal_statement"}
+                    and current != ast
+                ):
+                    if any(
+                        self._get_node_text(n) == symbol_name
+                        for n in candidate.named_children
+                    ):
+                        directive = candidate.type
+                        break
+                elif first is None:
+                    first = self._binding_for(candidate, symbol_name)
+                    # These scopes cannot redirect a binding to another owner.
+                    if first is not None and (
+                        current == ast or current.type in _COMPREHENSION_SCOPES
+                    ):
+                        return first
+            if directive is None and first is not None:
+                return first
+            if current == ast:
+                return None
+            current = (
+                ast
+                if directive == "global_statement"
+                else self._get_parent_scope(current) or ast
+            )
+        return None
 
     def _get_parent_scope(self, node: Node) -> Node | None:
-        """Ascend to the next scope whose names are visible from ``node``.
-
-        A class body's names are not visible from the functions, lambdas,
-        comprehensions or classes nested in it, so lookup skips class scopes
-        while ascending. The class's own name is defined in its parent scope.
-        """
-        current = node.parent
-        while current:
-            if self._creates_new_scope(current) and current.type != "class_definition":
-                return current
-            current = current.parent
+        """Cross nested defaults and outermost iterables in their evaluation scope."""
+        child = node
+        parent = node.parent
+        skip = None
+        while parent is not None:
+            if (
+                parent.type in _DEFAULT_PARAMETERS
+                and parent.child_by_field_name("value") == child
+                and parent.parent is not None
+            ):
+                skip = parent.parent.parent
+            elif (
+                parent.type == "for_in_clause"
+                and parent.child_by_field_name("right") == child
+            ):
+                comp = parent.parent
+                if comp is not None and comp.type in _COMPREHENSION_SCOPES:
+                    first = next(
+                        (c for c in comp.named_children if c.type == "for_in_clause"),
+                        None,
+                    )
+                    if parent == first:
+                        skip = comp
+            elif (
+                self._creates_new_scope(parent)
+                and parent != skip
+                and parent.type != "class_definition"
+            ):
+                return parent
+            child, parent = parent, parent.parent
         return None
 
     @staticmethod
@@ -656,7 +770,7 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                     alias = child.child_by_field_name("alias")
                     if alias and alias.text:
                         names.add(alias.text.decode("utf-8"))
-        elif import_node.type == "import_from_statement":
+        elif import_node.type in {"import_from_statement", "future_import_statement"}:
             in_import_list = False
             for child in import_node.children:
                 if child.type == "import":
