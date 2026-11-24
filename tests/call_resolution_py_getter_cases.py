@@ -14,7 +14,8 @@ programs of its extended generator, ``gen-ext``) are appended by
 ``battery:a12-closure-read`` as ``ambiguous``. The ``review3:`` trees (the
 re-stack on treesitter-chunker#726's R-724-1 head and executive ruling
 R-706-3) and the ``review2:`` trees they flip are recorded by
-``backlog-wave3/706-r3/append_cases.py``.
+``backlog-wave3/706-r3/append_cases.py``. R-706-7 records the comparisons
+in a05 and a22 as escapes.
 """
 
 from __future__ import annotations
@@ -92,7 +93,7 @@ CASES: dict[str, tuple[str, str, str, dict[str, str | int]]] = {
     "battery:a05-inert-test": (
         "svc.py",
         "SVC.t",
-        "resolved",
+        "ambiguous",
         {
             "get.py": 3,
             "main.py": 2,
@@ -310,7 +311,7 @@ CASES: dict[str, tuple[str, str, str, dict[str, str | int]]] = {
     "battery:a22-identity-with-object": (
         "svc.py",
         "SVC.t",
-        "resolved",
+        "ambiguous",
         {
             "get.py": 3,
             "main.py": 2,

@@ -167,8 +167,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "inert-context",
         PYM,
-        "    if _inert_context(outer):\n        return None\n",
-        "",
+        "    if _inert_context(outer):",
+        "    if False:",
     ),
     (
         "dunder-escape",
@@ -179,7 +179,7 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "exposure-closure",
         PYM,
-        "                whole[scope].add(other)\n                pending.append(other)",
+        "                modules.add(other)\n                pending.append(other)",
         "                pass",
     ),
     (
@@ -1887,9 +1887,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "result-call-step",
         PYM,
-        "                        for inner in self.getter_values(node, segment[-1]):\n"
         "                            current |= self.returned(inner)",
-        "                        pass",
+        "                            pass",
     ),
     (
         "alias-scope",
@@ -1938,9 +1937,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
         "            scope = scope or str(use[1]) in RESULT_POSITIONS\n"
         "            builder.walk_use(\n",
     ),
-    # Equivalent (recorded, not run) for #706: ``subscript-literal`` (a
-    # getter returns modules or one tuple level of them; any other key
-    # raises or yields an element the over-approximation already covers).
+    # R-706-7 pins literal subscription and unpacking of a proven tuple
+    # against unknown shapes and module/tuple-subclass protocol methods.
     # ``getter-conditional-def`` (track a module-scope ``def`` under ``if``,
     # ``try``, ``with``, ``for`` or ``while``) is equivalent and dropped
     # (executive ruling R-706-2, S2): its decorated-definition half is

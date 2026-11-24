@@ -46,8 +46,12 @@ function-local `m = get()` followed by `m.t()` can preserve the proof for
 a call to `t()` inside `svc`. A write such as `get().t = replacement`
 invalidates that proof. Passing the result or its alias to `setattr` or
 `delattr` exposes the whole module, even with a literal key, because another
-module can replace the callable. A nested function that captures the local import
-or result alias exposes the module because other code can access its cell.
+module can replace the callable. Comparisons, truth tests, arithmetic and
+formatting also expose their getter-result operands. For example,
+`m.t += x` both writes `t` and can pass its old value to `x.__radd__`.
+Literal indexing and local unpacking preserve the proof when the getter
+always returns a built-in tuple display. A nested function that captures
+the local import or result alias exposes the module through its closure cell.
 Python can therefore resolve fewer calls in `imports` than in `structural`.
 Other cross-file writes to closure cells or frame locals can still leave a
 Tier 1 edge resolved when the scan cannot associate the write with its binding.

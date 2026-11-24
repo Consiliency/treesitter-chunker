@@ -41,7 +41,7 @@ which covers ``__init__`` re-exports); anything else is
 revisiting a pair gives ``cycle``.
 
 **Writes from other files (#697).** An imported module object may appear
-only in a CLOSED allow-list of uses (:func:`_use_position`): an attribute
+only in a CLOSED allow-list of uses (:func:`_classify_use`): an attribute
 read (a member chain), a call of one, an attribute write (``svc.t = f``,
 ``del svc.t``, ``svc.t += 1``, a ``for``/``with`` target, and ``setattr`` /
 ``delattr`` with a constant name, the builtin verified by the ordinary
@@ -548,9 +548,8 @@ def module_facts(
     # H1 (#706): a file that reaches its namespace without spelling a name
     # has no tracked getters and no result aliases.
     gate = _introspects(analysis, handout, routes_seen)
-    _scan_uses(
-        analysis, facts, import_infos, {} if gate else _tracked_getters(analysis)
-    )
+    getters = {} if gate else _tracked_getters(analysis)
+    _scan_uses(analysis, facts, import_infos, getters)
     _scan_results(analysis, facts, import_infos, gate)
     if handout is None or handout:
         # #724: the file hands its namespace, and the import bindings in it,
@@ -598,6 +597,9 @@ def module_facts(
             name: module_imports[name] for name in sorted(module_imports)
         },
         "own_submodules": own_submodules,
+        "tuple_getters": sorted(
+            name for name in facts.getters if _tuple_getter(analysis, name, getters)
+        ),
         "getters": {
             name: [list(record) for record in sorted(facts.getters[name])]
             for name in sorted(facts.getters)
@@ -847,8 +849,8 @@ def _walk(ident: Any, source: bytes) -> tuple[list[str], list[Any], Any]:
 
 
 def _inert_context(outer: Any) -> bool:
-    """An operand of ``is``/``is not``, of ``not``, or a bare ``if``/``elif``
-    /``while`` test: no method of the value runs and it goes nowhere."""
+    """Identity and truth tests exempted for ordinary imported modules.
+    Getter-related operands use the run-wide handout rule even here."""
     parent = outer.parent
     if parent is None:
         return False
@@ -905,16 +907,6 @@ def _setattr_write(analysis: Any, outer: Any) -> str | None:
     return ps._constant_string(ps._unwrap(items[1], skip_comments=True), source)
 
 
-def _use_position(analysis: Any, ident: Any) -> tuple[str, list[str]] | None:
-    """The closed allow-list of uses of an imported module object, or
-    ``None`` for an inert use: ``("write", chain)`` for an attribute write
-    (the last name is the one written), ``("call", chain)`` for a call of a
-    member, ``("value", chain)`` for anything else (an escape of whatever the
-    chain reads)."""
-    found = _classify_use(analysis, ident)
-    return None if found is None else (found[0], found[1])
-
-
 def _mangled_chain(node: Any, chain: Sequence[str], source: bytes) -> bool:
     """A private attribute may have a different runtime spelling in a class."""
     from . import py_scope as ps
@@ -922,10 +914,9 @@ def _mangled_chain(node: Any, chain: Sequence[str], source: bytes) -> bool:
     return any(ps._mangled_names(node, part, source) for part in chain)
 
 
-def _classify_use(analysis: Any, node: Any) -> tuple[str, list[str], Any] | None:
-    """:func:`_use_position` of the value at ``node`` (an identifier or any
-    expression), with the outermost node of the chain read off it
-    (parentheses included): ``(position, chain, outer)``."""
+def _classify_use(analysis: Any, node: Any) -> tuple[str, list[str], Any]:
+    """The use of an imported value: its position, the attribute names read,
+    and the outermost expression in that chain (parentheses included)."""
     chain, nodes, outer = _walk(node, analysis.source)
     if _mangled_chain(node, chain, analysis.source):
         # Stop at the root: the written or referenced member (possibly a
@@ -942,8 +933,27 @@ def _classify_use(analysis: Any, node: Any) -> tuple[str, list[str], Any] | None
     if name is not None:
         return "write", [*chain, name], outer
     if _inert_context(outer):
-        return None
+        # The bare import rules exempt these operations. A getter or a
+        # module it can return still escapes through an operator (R-706-7).
+        return HOLDER_POSITION, chain, outer
     return "value", chain, outer
+
+
+def _augmented_target(node: Any) -> bool:
+    """Whether the value in this target is read for an in-place operation."""
+    from . import py_scope as ps
+
+    parent = node.parent
+    while parent is not None and parent.type in (
+        "parenthesized_expression",
+        "tuple_pattern",
+    ):
+        node, parent = parent, parent.parent
+    return (
+        parent is not None
+        and parent.type == "augmented_assignment"
+        and ps._same(node, parent.child_by_field_name("left"))
+    )
 
 
 def _holder_read(ident: Any) -> bool:
@@ -997,10 +1007,18 @@ def _scan_uses(
             for info in infos:
                 facts.uses.add(_record(info, "value", ()))
             continue
-        position = _classify_use(analysis, ident)
-        if position is None:
-            continue
-        kind, chain, outer = position
+        kind, chain, outer = _classify_use(analysis, ident)
+        if kind == "write":
+            if _augmented_target(outer):
+                # The reflected or in-place operator receives the old value.
+                facts.uses.update(_record(info, "value", chain) for info in infos)
+            elif outer.parent is not None and outer.parent.type == "argument_list":
+                # A literal setter can be rebound in another file. Retain the
+                # ordinary named write and expose the getter-related modules
+                # reachable through its first argument (before the key).
+                facts.uses.update(
+                    _record(info, HOLDER_POSITION, chain[:-1]) for info in infos
+                )
         dunder = any(ps._dunder(part) and part not in _SAFE_DUNDERS for part in chain)
         if kind == "call" and not dunder:
             # A call of a member reads a name and hands nothing on; only a
@@ -2038,6 +2056,8 @@ def _frame_read_keys(analysis: Any, ident: Any) -> frozenset[str] | None:
 #
 # The marker of a call step in a result record's chain.
 CALL_MARK = "()"
+# Selecting or unpacking an element dispatches unless the result is a built-in tuple.
+ITEM_MARK = "[]"
 # Call steps followed in one value: ``get()`` is one, ``get().fetch()`` two.
 # Past the cap the value escapes.
 CALL_STEPS = 3
@@ -2054,12 +2074,15 @@ MAX_ALIAS_PATHS = 32
 RESULT_POSITIONS = frozenset(
     f"{prefix}-{position}"
     for prefix in ("result", "own")
-    for position in ("write", "call", "value")
+    for position in ("write", "call", "value", "item")
 )
 # A record that hands on every getter its chain reaches (a tracked return of
 # a chain that may hold a function, ``return getter.get``) and taints nothing
 # else.
 REF_POSITION = "ref"
+# The operand only exposes modules related to a getter. This preserves the
+# established literal-setter and condition precision for ordinary imports.
+HOLDER_POSITION = "getter-holder"
 # The nodes that open a scope a ``return`` or an alias belongs to.
 _SCOPE_NODES = frozenset(
     {
@@ -2147,6 +2170,38 @@ def _tracked_getters(analysis: Any) -> dict[int, str]:
     return found
 
 
+def _tuple_getter(analysis: Any, name: str, getters: Mapping[int, str]) -> bool:
+    """Every possible local definition ends in an explicit tuple return,
+    and all its earlier returns are tuple displays without a starred item."""
+    from . import py_scope as ps
+
+    bindings = analysis.module.bindings.get(name, ())
+    if not bindings or analysis.star or analysis.dynamic:
+        return False
+    for binding in bindings:
+        if binding.decl is None or binding.decl.id not in getters:
+            return False
+        body = binding.decl.child_by_field_name("body")
+        statements = [n for n in body.named_children if n.type != "comment"]
+        if not statements or statements[-1].type != "return_statement":
+            return False  # no proof against implicit fallthrough
+        while statements:
+            node = statements.pop()
+            if node.type == "return_statement":
+                values = [c for c in node.named_children if c.type != "comment"]
+                if len(values) != 1:
+                    return False
+                value = ps._unwrap(values[0], skip_comments=True)
+                if value.type not in ("tuple", "expression_list") or any(
+                    c.type in ("list_splat", "dictionary_splat")
+                    for c in value.named_children
+                ):
+                    return False
+            elif node.type not in ("function_definition", "lambda", "class_definition"):
+                statements.extend(node.named_children)
+    return True
+
+
 def _tracked_return(outer: Any, getters: Mapping[int, str]) -> str | None:
     """The tracked getter whose own ``return`` the value ``outer`` is:
     ``return X``, or one tuple level, ``return X, Y`` / ``return (X, Y)``."""
@@ -2189,7 +2244,7 @@ def _result_steps(node: Any, source: bytes) -> tuple[list[str], Any]:
             continue
         if (
             parent.type == "subscript"
-            and not chain
+            and all(step == ITEM_MARK for step in chain)
             and ps._same(node, parent.child_by_field_name("value"))
         ):
             keys = [
@@ -2198,6 +2253,7 @@ def _result_steps(node: Any, source: bytes) -> tuple[list[str], Any]:
                 if parent.field_name_for_child(index) == "subscript"
             ]
             if len(keys) == 1 and keys[0].type == "integer":
+                chain.append(ITEM_MARK)
                 node = parent
                 continue
             break
@@ -2261,20 +2317,20 @@ def _alias_targets(analysis: Any, outer: Any) -> tuple[Any, list[str], bool] | N
     return scope, names, unpack
 
 
-def _classify_result(analysis: Any, node: Any, aliases: bool) -> tuple[Any, ...] | None:
+def _classify_result(
+    analysis: Any, node: Any, chain: list[str], top: Any, aliases: bool
+) -> tuple[Any, ...] | None:
     """The use of a tracked value at ``node`` (a call, or a read of a result
-    alias): ``None`` (inert), ``("alias", scope, names, chain)``,
-    ``("call", chain, call)`` for a member call, or ``(position, chain)``
-    with position ``write`` or ``value``. The allow-list is
-    :func:`_classify_use`'s, plus a discarded expression statement (inert)
-    and, outside H1 files, an alias binding."""
+    alias). Follow a member call or local alias binding, ignore a discarded
+    value, and record each member write or whole-value escape. An augmented
+    target both reads the previous value and writes the name."""
     from . import py_scope as ps
 
-    chain, top = _result_steps(node, analysis.source)
     if _mangled_chain(node, chain, analysis.source):
         return "value", []
-    if chain and top.id in analysis.attribute_targets:
-        return "write", chain
+    target = ps._unwrap(top, skip_comments=True)
+    if chain and target.id in analysis.attribute_targets:
+        return ("update" if _augmented_target(top) else "write"), chain
     if top.type == "subscript" and (
         top.id in analysis.attribute_targets
         or any(top.id == target.id for target in analysis.subscript_targets)
@@ -2285,11 +2341,13 @@ def _classify_result(analysis: Any, node: Any, aliases: bool) -> tuple[Any, ...]
         # Calling the value itself is off the list; a member call reads a
         # name, and its result is a value to follow (the member may be a
         # getter of the module).
-        return ("call", chain, call) if chain else ("value", chain)
-    # Even a bare setattr or delattr can be replaced by another module.
-    # Its target argument follows the ordinary value-escape path (R-706-6).
-    if _inert_context(top):
-        return None
+        return (
+            ("call", chain, call)
+            if chain and chain[-1] != ITEM_MARK
+            else ("value", chain)
+        )
+    # Callable arguments (including setattr/delattr), operators, comparisons
+    # and truth tests all fall through to an escape (R-706-6, R-706-7).
     parent = top.parent
     if (
         parent is not None
@@ -2300,8 +2358,8 @@ def _classify_result(analysis: Any, node: Any, aliases: bool) -> tuple[Any, ...]
     targets = _alias_targets(analysis, top) if aliases else None
     if targets is not None:
         scope, names, unpack = targets
-        if not unpack or not chain:
-            return "alias", scope, names, chain
+        if not unpack or all(step == ITEM_MARK for step in chain):
+            return "alias", scope, names, chain, unpack
     return "value", chain
 
 
@@ -2385,11 +2443,22 @@ def _scan_results(
         sources = [(ref, prefix) for ref, prefix in sources if ref not in escaped]
         if not sources:
             return
-        found = _classify_result(analysis, node, not gate)
+        chain, top = _result_steps(node, analysis.source)
+        found = _classify_result(analysis, node, chain, top, not gate)
+        # Even a discarded subscription or an unread unpacked local executes
+        # the protocol. Record it independently of any later alias use.
+        if ITEM_MARK in chain:
+            end = chain.count(ITEM_MARK)
+            for ref, prefix in sources:
+                emit(ref, prefix, "item", chain[:end])
         if found is None:
             return
         if found[0] == "alias":
-            _kind, scope, names, chain = found
+            _kind, scope, names, chain, unpack = found
+            if unpack:
+                chain = [*chain, ITEM_MARK]
+                for ref, prefix in sources:
+                    emit(ref, prefix, "item", chain)
             for ref, prefix in sources:
                 if ref in escaped:
                     continue
@@ -2418,6 +2487,10 @@ def _scan_results(
                         pending.setdefault(key, set()).add(item)
             return
         position, chain = found[0], found[1]
+        if position == "update":
+            for ref, prefix in sources:
+                emit(ref, prefix, "value", chain)
+            position = "write"
         if position == "call" and not _unsafe_dunder(chain):
             following: list[Source] = []
             for ref, prefix in sources:
@@ -3391,6 +3464,15 @@ class _Builder:
                         found |= self.returned(getter)
         return found
 
+    def close_exposure(self, modules: set[str]) -> None:
+        """Include every module reachable from these module objects."""
+        pending = sorted(modules)
+        while pending:
+            node = pending.pop()
+            for other in sorted(self.exposed(node) - modules):
+                modules.add(other)
+                pending.append(other)
+
     def exposes_patcher(self, node: str, name: str | None) -> bool:
         """R-699-10 item 2, R-699-12 item 3: whether module ``node`` binds
         ``patch`` by a module-scope from-import under ``name`` (``from
@@ -3568,8 +3650,14 @@ class _Builder:
                 getters |= self.getter_values(node, callee[-1])
         for getter in sorted(getters):
             current = set(self.returned(getter))
+            exact_tuple = getter[1] in self.bindings[getter[0]].get("tuple_getters", ())
             segment: list[str] = []
             for part in rest:
+                if part == ITEM_MARK:
+                    if segment or not exact_tuple:
+                        self.walk_from(current, "value", segment, names, whole)
+                    exact_tuple = False  # the selected element has no tuple proof
+                    continue
                 if part != CALL_MARK:
                     segment.append(part)
                     continue
@@ -3583,10 +3671,14 @@ class _Builder:
                         following |= self.attr_values(node, name, set())
                     nodes = following
                 current = set()
+                exact_tuple = True
                 if segment:
                     for node in nodes:
                         for inner in self.getter_values(node, segment[-1]):
                             current |= self.returned(inner)
+                            exact_tuple &= inner[1] in self.bindings[inner[0]].get(
+                                "tuple_getters", ()
+                            )
                 segment = []
             self.walk_from(current, kind, segment, names, whole)
 
@@ -3713,6 +3805,7 @@ def build_py_module_run(
     production = _production(builder, edges, directory_symlinks)
     names: dict[bool, dict[str, set[str]]] = {True: {}, False: {}}
     whole: dict[bool, set[str]] = {True: set(), False: set()}
+    holders: dict[bool, set[str]] = {True: set(), False: set()}
     causes: list[tuple[str, str]] = []
     for path in sorted(builder.files):
         bindings = builder.bindings.get(path) or {}
@@ -3725,10 +3818,10 @@ def build_py_module_run(
             builder.walk_use(
                 path,
                 str(use[0]),
-                str(use[1]),
+                "value" if use[1] == HOLDER_POSITION else str(use[1]),
                 [str(p) for p in use[2:]],
                 names[scope],
-                whole[scope],
+                holders[scope] if use[1] == HOLDER_POSITION else whole[scope],
             )
         for ref, name in bindings.get("taints", ()):
             # Every recorded taint reference is absolute (the analyzer makes a
@@ -3765,13 +3858,20 @@ def build_py_module_run(
                 for start in builder.targets(module, path)
             ):
                 causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
+    # A holder may expose a getter, or be one of the modules a getter
+    # returns. Include the reachable submodules in both directions: an
+    # imported submodule of a returned package can be passed independently.
+    returns: set[str] = set()
+    if any(holders.values()):
+        for path in builder.files:
+            for name in builder.getters_of(path):
+                returns.update(builder.returned((path, name)))
+        builder.close_exposure(returns)
     for scope in (True, False):
-        pending = sorted(whole[scope])
-        while pending:
-            node = pending.pop()
-            for other in sorted(builder.exposed(node) - whole[scope]):
-                whole[scope].add(other)
-                pending.append(other)
+        if returns and holders[scope]:
+            builder.close_exposure(holders[scope])
+            whole[scope].update(holders[scope] & returns)
+        builder.close_exposure(whole[scope])
 
     def by_path(dotted_names: dict[str, set[str]]) -> dict[str, frozenset[str]]:
         result: dict[str, set[str]] = {}

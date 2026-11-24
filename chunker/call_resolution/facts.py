@@ -770,18 +770,20 @@ _PY_MODULE_BINDING_KEYS = frozenset(
         "module_imports",
         "own_submodules",
         "getters",
+        "tuple_getters",
     }
 )
-_PY_USE_POSITIONS = frozenset({"write", "call", "value", "ref"})
+_PY_USE_POSITIONS = frozenset({"write", "call", "value"})
 # treesitter-chunker#706 result records: ``[base, "result-<p>", *callee,
 # "()", *chain]`` (base an import binding's record base) and ``["",
 # "own-<p>", <getter name>, "()", *chain]``; ``"()"`` marks a call step.
 _PY_RESULT_POSITIONS = frozenset(
     f"{prefix}-{position}"
     for prefix in ("result", "own")
-    for position in ("write", "call", "value")
+    for position in ("write", "call", "value", "item")
 )
 _PY_CALL_MARK = "()"
+_PY_ITEM_MARK = "[]"
 _PY_CALL_STEPS = 3
 
 
@@ -803,7 +805,7 @@ def _valid_py_use(use: object) -> bool:
     if len(use) < 2:
         return False
     position = use[1]
-    if position == "ref":
+    if position in ("ref", "getter-holder"):
         return _valid_py_module_ref(use[0]) and all(
             part.isidentifier() for part in use[2:]
         )
@@ -820,11 +822,15 @@ def _valid_py_use(use: object) -> bool:
     if not 1 <= marks <= _PY_CALL_STEPS:
         return False
     callee = rest[: rest.index(_PY_CALL_MARK)]
-    if not callee or not all(
-        part == _PY_CALL_MARK or part.isidentifier() for part in rest
+    if not callee or not all(part.isidentifier() for part in callee):
+        return False
+    if position.endswith("-item") and rest[-1] != _PY_ITEM_MARK:
+        return False
+    if not all(
+        part in (_PY_CALL_MARK, _PY_ITEM_MARK) or part.isidentifier() for part in rest
     ):
         return False
-    if any(a == b == _PY_CALL_MARK for a, b in zip(rest, rest[1:])):
+    if any(b == _PY_CALL_MARK and not a.isidentifier() for a, b in zip(rest, rest[1:])):
         return False
     if position.startswith("own-"):
         return use[0] == "" and len(callee) == 1
@@ -857,6 +863,8 @@ def valid_py_module_bindings(value: object) -> bool:
         and isinstance(value["uses"], list)
         and all(_valid_py_use(use) for use in value["uses"])
         and isinstance(value["getters"], dict)
+        and _strings(value["tuple_getters"])
+        and set(value["tuple_getters"]) <= value["getters"].keys()
         and all(
             isinstance(name, str)
             and name.isidentifier()

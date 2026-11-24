@@ -129,7 +129,7 @@ def test_review_trees(tmp_path: Path, case: str) -> None:
     trees: CPython prints what was recorded, the probe edge resolves exactly
     as recorded, and no replaced function's edge resolves outside the named
     residuals. The battery
-    controls (a01-a24 but a12 and a20) resolve: a rule that always escapes
+    controls outside AMBIGUOUS_CONTROLS resolve: a rule that always escapes
     fails here."""
     probe, printed, expected, files = CASES[case]
     root = _write(
@@ -152,7 +152,13 @@ def test_review_trees(tmp_path: Path, case: str) -> None:
 # Battery controls that stay ambiguous although CPython runs ``svc.t``: the
 # slice-2 alias (a20, treesitter-chunker#725), and a closure read of a result
 # alias, an escape since R-706-2 (B1; the accepted precision loss).
-AMBIGUOUS_CONTROLS = ("battery:a12-closure-read", "battery:a20-module-alias-read")
+# R-706-7 also exposes comparison and truth-test operands.
+AMBIGUOUS_CONTROLS = (
+    "battery:a05-inert-test",
+    "battery:a12-closure-read",
+    "battery:a20-module-alias-read",
+    "battery:a22-identity-with-object",
+)
 
 
 def test_the_battery_controls_recover() -> None:
@@ -566,6 +572,12 @@ def test_facts_record_getters_and_result_records(tmp_path: Path) -> None:
     "corrupt",
     [
         lambda b: b.update(getters=[]),
+        lambda b: b.update(tuple_getters="get"),
+        lambda b: b.update(tuple_getters=["absent"]),
+        lambda b: b["uses"].append(["pkg", "getter-holder", "bad member!"]),
+        lambda b: b["uses"].append(["pkg", "result-item", "f", "()", "x"]),
+        lambda b: b["uses"].append(["pkg", "result-item", "[]", "()", "[]"]),
+        lambda b: b["uses"].append(["pkg", "result-value", "f", "()", "[]", "()"]),
         lambda b: b.update(getters={"g": []}),
         lambda b: b.update(getters={"g": [[""]]}),
         lambda b: b.update(getters={"not a name": [["svc"]]}),
@@ -696,11 +708,12 @@ def test_literal_setter_target_exposes_getter_result(
 
 @pytest.mark.parametrize("method", ["setattr", "delattr"])
 @pytest.mark.parametrize("route", ["local", "star", "module", "builtins"])
-@pytest.mark.parametrize("target", ["get()", "alias"])
+@pytest.mark.parametrize("target", ["get()", "alias", "holder", "svc"])
 def test_shadowed_writer_with_getter_result_escapes(
     tmp_path: Path, method: str, route: str, target: str
 ) -> None:
-    use = "from get import get\nimport other\n"
+    imports = {"holder": "import get as holder", "svc": "import svc"}
+    use = imports.get(target, "from get import get") + "\nimport other\n"
     if route == "star":
         use += "from bridge import *\n"
     use += "\ndef go():\n"
@@ -710,8 +723,9 @@ def test_shadowed_writer_with_getter_result_escapes(
         use += "    alias = get()\n"
     args = f"{target}, 'unrelated'" + (", other.t" if method == "setattr" else "")
     files = _getter_tree(use + f"    {method}({args})\n")
+    receiver = "obj.get()" if target == "holder" else "obj"
     files["helper.py"] = (
-        "import other\n\ndef custom(obj, key, *args):\n    obj.t = other.t\n"
+        f"import other\n\ndef custom(obj, key, *args):\n    {receiver}.t = other.t\n"
     )
     if route == "star":
         files["bridge.py"] = f"from helper import custom as {method}\n"
@@ -724,6 +738,216 @@ def test_shadowed_writer_with_getter_result_escapes(
     root = _write(tmp_path, files)
     assert _cpython(root) == "OTHER.t"
     assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
+@pytest.mark.parametrize(
+    ("receiver", "member", "read"),
+    [
+        ("import get as source", "source.get", "old()"),
+        ("from bridge import pick", "pick().get", "old()"),
+        ("from bridge import pick", "pick().svc", "old"),
+    ],
+)
+def test_augmented_member_exposes_previous_value(
+    tmp_path: Path, receiver: str, member: str, read: str
+) -> None:
+    use = (
+        f"{receiver}\nimport other\n\nclass Take:\n"
+        f"    def __radd__(self, old):\n        {read}.t = other.t\n        return old\n"
+        f"\ndef go():\n    {member} += Take()\n"
+    )
+    root = _write(
+        tmp_path,
+        {
+            **_getter_tree(use),
+            "hub.py": "from get import get\nimport svc\n",
+            "bridge.py": "def pick():\n    import hub\n    return hub\n",
+        },
+    )
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
+@pytest.mark.parametrize(
+    ("method", "statement", "result"),
+    [
+        ("__radd__", "m + hook", "0"),
+        ("__add__", "hook + m", "0"),
+        ("__eq__", "m == hook", "True"),
+        ("__ne__", "m != hook", "True"),
+        ("__contains__", "m in hook", "True"),
+        ("__contains__", "m not in hook", "True"),
+        ("__iadd__", "hook += m", "self"),
+        ("__radd__", "m += hook", "old"),
+        ("__getitem__", "hook[m]", "0"),
+        ("take", "hook.take(old=m)", "None"),
+    ],
+)
+def test_operator_or_argument_hands_result_alias_to_other_operand(
+    tmp_path: Path, method: str, statement: str, result: str
+) -> None:
+    use = (
+        "from get import get\nimport other\n\nclass Hook:\n"
+        f"    def {method}(self, old):\n        old.t = other.t\n        return {result}\n"
+        f"\ndef go():\n    m = get()\n    hook = Hook()\n    {statement}\n"
+    )
+    root = _write(tmp_path, _getter_tree(use))
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+    assert ["get", "result-value", "get", "()"] in _bindings(root, "use.py")["uses"]
+
+
+@pytest.mark.parametrize(
+    ("method", "statement", "signature", "result"),
+    [
+        ("__neg__", "-m", "self", "0"),
+        ("__bool__", "if m: pass", "self", "True"),
+        ("__bool__", "not m", "self", "False"),
+        ("__bool__", "m and 1", "self", "True"),
+        ("__bool__", "m or 1", "self", "False"),
+        ("__bool__", "while m: pass", "self", "False"),
+        ("__format__", 'f"{m}"', "self, spec", "''"),
+        ("__format__", "format(m)", "self, spec", "''"),
+        ("__str__", 'f"{m!s}"', "self", "''"),
+        ("__str__", "str(m)", "self", "''"),
+        ("__repr__", 'f"{m!r}"', "self", "''"),
+        ("__index__", "[1][m]", "self", "0"),
+        ("__hash__", "{m}", "self", "0"),
+        ("__call__", "m()", "self", "0"),
+        ("__len__", "if m: pass", "self", "0"),
+        ("__iadd__", "m += 1", "self, rhs", "self"),
+        ("__getitem__", "m[0]", "self, key", "self"),
+        ("__iter__", "a, b = m", "self", "iter((self, self))"),
+    ],
+)
+def test_getter_operand_dispatches_through_module_subclass(
+    tmp_path: Path, method: str, statement: str, signature: str, result: str
+) -> None:
+    files = _getter_tree(
+        f"from get import get\n\ndef go():\n    m = get()\n    {statement}\n"
+    )
+    files["install.py"] = (
+        "import types, svc, other\n\nclass Hook(types.ModuleType):\n"
+        f"    def {method}({signature}):\n        self.t = other.t\n        return {result}\n"
+        "\nsvc.__class__ = Hook\n"
+    )
+    files["main.py"] = "import install\n" + _MAIN
+    root = _write(tmp_path, files)
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+    uses = _bindings(root, "use.py")["uses"]
+    if method in ("__getitem__", "__iter__"):
+        assert ["get", "result-item", "get", "()", "[]"] in uses
+    else:
+        assert ["get", "result-value", "get", "()"] in uses
+
+
+@pytest.mark.parametrize("use", ["pair()[0].w()", "a, b = pair()\n    a.w()"])
+@pytest.mark.parametrize(
+    ("body", "tuple_proven"),
+    [
+        ("return svc, other", True),
+        ("return (svc, other)", True),
+        ("if mode: return svc\n    return svc, other", False),
+        ("if mode: return inner()\n    return svc, other", False),
+        ("if mode: return tuple((svc, other))\n    return svc, other", False),
+        ("if mode: return *items, svc\n    return svc, other", False),
+        ("if not mode: return svc, other", False),
+        ("x = (svc, other)\n    return x", False),
+    ],
+)
+def test_only_a_proven_tuple_getter_keeps_item_precision(
+    tmp_path: Path, use: str, body: str, tuple_proven: bool
+) -> None:
+    files = _getter_tree(f"from get import pair\n\ndef go():\n    {use}\n")
+    files["get.py"] = f"import svc, other\n\ndef pair(mode=False):\n    {body}\n"
+    root = _write(tmp_path, files)
+    assert _cpython(root) == "SVC.t"
+    assert ("pair" in _bindings(root, "get.py")["tuple_getters"]) == tuple_proven
+    assert _resolutions(root, "svc.py", expected_file="svc.py") == [
+        "resolved" if tuple_proven else "ambiguous"
+    ]
+
+
+@pytest.mark.parametrize("selection", ["get()[0]", "a, b = get()"])
+def test_tuple_subclass_can_override_selection(tmp_path: Path, selection: str) -> None:
+    files = _getter_tree(f"from get import get\n\ndef go():\n    {selection}\n")
+    files["get.py"] = (
+        "import svc, other\n\nclass Pair(tuple):\n"
+        "    def __getitem__(self, key):\n        svc.t = other.t\n        return svc\n"
+        "    def __iter__(self):\n        svc.t = other.t\n        return super().__iter__()\n"
+        "\ndef get():\n    return Pair((svc, other))\n"
+    )
+    root = _write(tmp_path, files)
+    assert _cpython(root) == "OTHER.t"
+    assert "get" not in _bindings(root, "get.py")["tuple_getters"]
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
+def test_augmented_subscript_exposes_old_tuple_element(tmp_path: Path) -> None:
+    files = _getter_tree(
+        "from get import pair\nimport other\n\nclass Take:\n"
+        "    def __radd__(self, old):\n        old.t = other.t\n        return old\n"
+        "\ndef go():\n    try:\n        pair()[0] += Take()\n    except TypeError:\n        pass\n"
+    )
+    files["get.py"] = "import svc, other\n\ndef pair():\n    return svc, other\n"
+    root = _write(tmp_path, files)
+    assert _cpython(root) == "OTHER.t"  # dispatch precedes the failed tuple store
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
+@pytest.mark.parametrize("expression", ["m[0]", "a, b = m"])
+def test_mixed_tuple_and_module_return_exposes_protocol_operand(
+    tmp_path: Path, expression: str
+) -> None:
+    files = _getter_tree(
+        f"from get import pair\n\ndef go():\n    m = pair(False)\n    {expression}\n"
+    )
+    files["get.py"] = (
+        "import svc, other\n\ndef pair(flag):\n    if flag: return svc, other\n    return svc\n"
+    )
+    files["install.py"] = (
+        "import types, svc, other\n\nclass Hook(types.ModuleType):\n"
+        "    def __getitem__(self, key):\n        self.t = other.t\n        return self\n"
+        "    def __iter__(self):\n        self.t = other.t\n        return iter((self, self))\n"
+        "\nsvc.__class__ = Hook\n"
+    )
+    files["main.py"] = "import install\n" + _MAIN
+    root = _write(tmp_path, files)
+    assert _cpython(root) == "OTHER.t"
+    assert "pair" not in _bindings(root, "get.py")["tuple_getters"]
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
+def test_setter_reaches_submodule_of_an_independently_returned_package(
+    tmp_path: Path,
+) -> None:
+    files = _getter_tree(
+        "import facade, other\n\ndef go():\n    setattr(facade, 'spare', other.t)\n"
+    )
+    files["get.py"] = "import pkg\n\ndef get():\n    return pkg\n"
+    files["pkg/__init__.py"] = "import svc as child\n"
+    files["facade.py"] = "import svc as child\n"
+    files["inject.py"] = (
+        "import use, other\n\ndef custom(holder, key, value):\n    holder.child.t = value\n"
+        "\nuse.setattr = custom\n"
+    )
+    files["main.py"] = "import inject\n" + _MAIN
+    root = _write(tmp_path, files)
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
+def test_setter_on_unrelated_plain_module_keeps_named_taint(tmp_path: Path) -> None:
+    files = _getter_tree("import plain\n\ndef go():\n    setattr(plain, 'spare', 2)\n")
+    files["plain.py"] = _SVC
+    root = _write(tmp_path, files)
+    assert _cpython(root) == "SVC.t"
+    assert _resolutions(root, "plain.py", expected_file="plain.py") == ["resolved"]
+    _, _, context = _context(root)
+    assert (
+        context.py_modules.taint_reason("plain.py", "plain.py", "spare") == "reassigned"
+    )
 
 
 @pytest.mark.parametrize("deep", [False, True])
