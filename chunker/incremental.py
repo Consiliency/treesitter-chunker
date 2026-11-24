@@ -3,11 +3,14 @@
 import difflib
 import hashlib
 import json
+import math
 import pickle
 from collections import Counter, defaultdict
+from dataclasses import fields
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from tempfile import NamedTemporaryFile
+from typing import Any, get_type_hints
 
 from .chunker import chunk_text
 from .interfaces.incremental import (
@@ -516,14 +519,17 @@ class DefaultChunkCache(ChunkCache):
             language=chunks[0].language if chunks else "",
             metadata=metadata or {},
         )
-        cache_path = self._get_cache_path(file_path)
-        with Path(cache_path).open("wb") as f:
+        self._persist_entry(entry)
+
+    def _persist_entry(self, entry: CacheEntry) -> None:
+        cache_path = self._get_cache_path(entry.file_path)
+        with cache_path.open("wb") as f:
             pickle.dump(entry, f)
-        self._index[file_path] = {
-            "file_hash": file_hash,
+        self._index[entry.file_path] = {
+            "file_hash": entry.file_hash,
             "timestamp": entry.timestamp.isoformat(),
-            "chunk_count": len(chunks),
-            "cache_file": str(cache_path.name),
+            "chunk_count": len(entry.chunks),
+            "cache_file": cache_path.name,
         }
         self._save_index()
         self.stats["stores"] += 1
@@ -612,58 +618,172 @@ class DefaultChunkCache(ChunkCache):
         }
 
     def export_cache(self, output_path: str) -> None:
-        """Export cache to file for persistence."""
-        export_data = {"index": self._index, "entries": {}}
-        for file_path in self._index:
-            entry = self.retrieve(file_path)
-            if entry:
-                export_data["entries"][file_path] = {
-                    "file_hash": entry.file_hash,
-                    "timestamp": entry.timestamp.isoformat(),
-                    "language": entry.language,
-                    "metadata": entry.metadata,
-                    "chunks": [
-                        {
-                            "chunk_id": chunk.chunk_id,
-                            "node_type": chunk.node_type,
-                            "start_line": chunk.start_line,
-                            "end_line": chunk.end_line,
-                            "content": chunk.content,
-                            "parent_context": chunk.parent_context,
-                        }
-                        for chunk in entry.chunks
-                    ],
-                }
-        with Path(output_path).open("w", encoding="utf-8") as f:
-            json.dump(export_data, f, indent=2)
+        """Write a complete v1 UTF-8 JSON snapshot, replacing the backup on success.
+
+        Entry and chunk metadata must be ordinary JSON trees with string keys
+        and finite numbers. Tuples, non-string keys and cycles raise ValueError.
+        """
+        entries = {}
+        for path in self._index:
+            entry = self.retrieve(path)
+            if entry is None:
+                raise ValueError(f"Missing indexed cache entry {path!r}")
+            record = {
+                "file_hash": entry.file_hash,
+                "timestamp": entry.timestamp.isoformat(timespec="microseconds"),
+                "language": entry.language,
+                "metadata": entry.metadata,
+                "chunks": [
+                    {f.name: getattr(chunk, f.name) for f in fields(CodeChunk)}
+                    for chunk in entry.chunks
+                ],
+            }
+            try:
+                _validate_backup_entry(record)
+            except (ValueError, RecursionError) as error:
+                raise ValueError(f"Invalid cache entry {path!r}: {error}") from error
+            entries[path] = record
+
+        output = Path(output_path)
+        with NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=output.parent,
+            delete_on_close=False,
+        ) as temp:
+            json.dump({"format_version": 1, "entries": entries}, temp, allow_nan=False)
+            temp.close()
+            Path(temp.name).replace(output)
 
     def import_cache(self, input_path: str) -> None:
-        """Import cache from file."""
-        with Path(input_path).open("r", encoding="utf-8") as f:
-            import_data = json.load(f)
-        self.invalidate()
-        for file_path, entry_data in import_data["entries"].items():
-            chunks = []
-            for chunk_data in entry_data["chunks"]:
-                chunk = CodeChunk(
-                    language=entry_data["language"],
-                    file_path=file_path,
-                    node_type=chunk_data["node_type"],
-                    start_line=chunk_data["start_line"],
-                    end_line=chunk_data["end_line"],
-                    byte_start=0,
-                    byte_end=0,
-                    parent_context=chunk_data["parent_context"],
-                    content=chunk_data["content"],
-                    chunk_id=chunk_data["chunk_id"],
-                )
-                chunks.append(chunk)
-            self.store(
-                file_path=file_path,
-                chunks=chunks,
-                file_hash=entry_data["file_hash"],
-                metadata=entry_data.get("metadata", {}),
+        """Replace the cache with a validated v1 snapshot, preserving entry ages.
+
+        Unversioned backups omit spans and identities. Rebuild from source
+        when import raises a legacy-format ValueError.
+        """
+        with Path(input_path).open(encoding="utf-8") as src:
+            snapshot = json.load(src, object_pairs_hook=_unique_backup_keys)
+        if not isinstance(snapshot, dict):
+            raise ValueError("Expected a cache backup object")
+        if "format_version" not in snapshot:
+            raise ValueError(
+                "Legacy cache backup: spans and IDs cannot be recovered; rebuild from source"
             )
+        version = snapshot["format_version"]
+        if type(version) is not int or version != 1:
+            raise ValueError(f"Unsupported cache format_version: {version!r}")
+        records = snapshot.get("entries")
+        if not isinstance(records, dict):
+            raise ValueError("Expected entries object in cache backup")
+        entries = []
+        for path, record in records.items():
+            try:
+                # Check UTF-8 encodability before replacement.
+                self._get_cache_path(path)
+                entries.append(_decode_backup_entry(path, record))
+            except (ValueError, RecursionError) as error:
+                raise ValueError(f"Invalid cache entry {path!r}: {error}") from error
+        self.invalidate()
+        for entry in entries:
+            self._persist_entry(entry)
+
+
+def _unique_backup_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"Duplicate cache backup key {key!r}")
+        result[key] = value
+    return result
+
+
+def _validate_backup_json(value: Any, location: str) -> None:
+    """Reject coercions that Python's JSON encoder normally allows."""
+    if type(value) is dict:
+        for key, child in value.items():
+            if type(key) is not str:
+                raise ValueError(f"{location} requires string keys")
+            _validate_backup_json(child, f"{location}[{key!r}]")
+    elif type(value) is list:
+        for i, child in enumerate(value):
+            _validate_backup_json(child, f"{location}[{i}]")
+    elif type(value) is float:
+        if not math.isfinite(value):
+            raise ValueError(f"{location} requires a finite number")
+    elif value is not None and type(value) not in (str, bool, int):
+        raise ValueError(f"{location} cannot store {type(value).__name__} in JSON")
+
+
+_CHUNK_BACKUP_TYPES = get_type_hints(CodeChunk)
+
+
+def _validate_backup_chunk(record: Any, location: str) -> None:
+    if not isinstance(record, dict) or record.keys() != _CHUNK_BACKUP_TYPES.keys():
+        keys = set(record) if isinstance(record, dict) else set()
+        raise ValueError(
+            f"{location} has invalid fields: {keys ^ _CHUNK_BACKUP_TYPES.keys()}"
+        )
+    for name, expected in _CHUNK_BACKUP_TYPES.items():
+        value = record[name]
+        if expected == list[str]:
+            valid = type(value) is list and all(type(v) is str for v in value)
+        elif expected == dict[str, Any]:
+            valid = isinstance(value, dict)
+            _validate_backup_json(value, f"{location}.{name}")
+        elif expected == int:
+            valid = type(value) is int
+        else:
+            valid = type(value) is str or (expected == (str | None) and value is None)
+        if not valid:
+            raise ValueError(f"{location}.{name} must be {expected}")
+
+
+def _validate_backup_entry(record: Any) -> datetime:
+    if not isinstance(record, dict):
+        raise ValueError("Expected an entry object")
+    for name in ("file_hash", "language", "timestamp"):
+        if type(record.get(name)) is not str:
+            raise ValueError(f"Expected string field {name}")
+    try:
+        timestamp = datetime.fromisoformat(record["timestamp"])
+    except ValueError as error:
+        raise ValueError("Invalid timestamp") from error
+    if (
+        record["timestamp"]
+        not in (
+            timestamp.isoformat(timespec="seconds"),
+            timestamp.isoformat(timespec="microseconds"),
+        )
+        or timestamp.tzinfo is not None
+    ):
+        raise ValueError("Expected a local ISO timestamp with seconds or microseconds")
+    if not isinstance(record.get("chunks"), list):
+        raise ValueError("Expected chunks array")
+    if not isinstance(record.get("metadata"), dict):
+        raise ValueError("Expected metadata object")
+    _validate_backup_json(record["metadata"], "metadata")
+    for i, chunk in enumerate(record["chunks"]):
+        _validate_backup_chunk(chunk, f"chunks[{i}]")
+    return timestamp
+
+
+def _decode_backup_entry(path: str, record: Any) -> CacheEntry:
+    timestamp = _validate_backup_entry(record)
+    chunks = []
+    for values in record["chunks"]:
+        # __post_init__ derives identities, including those explicitly cleared
+        # after construction. Restore the complete validated state verbatim.
+        chunk = CodeChunk.__new__(CodeChunk)
+        vars(chunk).update(values)
+        chunks.append(chunk)
+    return CacheEntry(
+        file_path=path,
+        file_hash=record["file_hash"],
+        timestamp=timestamp,
+        language=record["language"],
+        metadata=record["metadata"],
+        chunks=chunks,
+    )
 
 
 class DefaultChangeDetector(ChangeDetector):
