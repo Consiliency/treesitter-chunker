@@ -1,10 +1,42 @@
 """Token counting implementation using tiktoken."""
 
+import re
+from collections.abc import Callable, Iterator
 from typing import ClassVar
 
 import tiktoken
 
 from chunker.interfaces.token import TokenCounter
+
+
+def _group_ranges(
+    text: str, ends: list[int], fits: Callable[[str], bool]
+) -> Iterator[tuple[str, bool]]:
+    """Group contiguous ranges, or yield one oversized range for subdivision."""
+    first = 0
+    start = 0
+    while first < len(ends):
+        best = first
+        probe = first + 1
+        while fits(text[start : ends[probe - 1]]):
+            best = probe
+            if best == len(ends):
+                break
+            probe = min(len(ends), first + 2 * (best - first))
+
+        # Refine a failed geometric probe. Only measured fits are accepted:
+        # BPE counts need not increase monotonically as a range grows.
+        while best > first and probe - best > 1:
+            mid = (probe + best) // 2
+            if fits(text[start : ends[mid - 1]]):
+                best = mid
+            else:
+                probe = mid
+        accepted = best > first
+        first = best if accepted else first + 1
+        end = ends[first - 1]
+        yield text[start:end], accepted
+        start = end
 
 
 class TiktokenCounter(TokenCounter):
@@ -85,144 +117,51 @@ class TiktokenCounter(TokenCounter):
         max_tokens: int,
         model: str = "gpt-4",
     ) -> list[str]:
+        """Partition text exactly, preferring whole LF-terminated lines.
+
+        The budget must be positive. A single Unicode scalar whose encoding
+        exceeds the budget is returned whole.
         """
-        Split text into chunks that don't exceed the token limit.
-
-        This implementation tries to split on natural boundaries
-        (lines, sentences) when possible to maintain readability.
-
-        Args:
-            text: The text to split
-            max_tokens: Maximum tokens per chunk
-            model: The tokenizer model to use
-
-        Returns:
-            List of text chunks
-        """
+        if max_tokens <= 0:
+            raise ValueError("max_tokens must be positive")
         if not text:
             return []
-        encoding = self._get_encoding(model)
-        tokens = encoding.encode(text)
-        if len(tokens) <= max_tokens:
-            return [text]
-        chunks = []
-        current_chunk_tokens = []
-        lines = text.split("\n")
-        current_lines = []
-        for line in lines:
-            line_tokens = encoding.encode(line + "\n")
-            if len(line_tokens) > max_tokens:
-                if current_lines:
-                    chunks.append("\n".join(current_lines))
-                    current_lines = []
-                    current_chunk_tokens = []
-                line_chunks = self._split_long_line(
-                    line,
-                    max_tokens,
-                    encoding,
-                )
-                chunks.extend(line_chunks[:-1])
-                current_lines = [line_chunks[-1]] if line_chunks[-1] else []
-                current_chunk_tokens = (
-                    encoding.encode(
-                        line_chunks[-1],
-                    )
-                    if line_chunks[-1]
-                    else []
-                )
-            elif len(current_chunk_tokens) + len(line_tokens) > max_tokens:
-                if current_lines:
-                    chunks.append("\n".join(current_lines))
-                current_lines = [line]
-                current_chunk_tokens = line_tokens
-            else:
-                current_lines.append(line)
-                current_chunk_tokens.extend(line_tokens)
-        if current_lines:
-            chunks.append("\n".join(current_lines))
-        return chunks
 
-    def _split_long_line(
-        self,
-        line: str,
-        max_tokens: int,
-        encoding: tiktoken.Encoding,
-    ) -> list[str]:
-        """Split a single long line that exceeds token limit."""
-        chunks = []
-        sentences = []
-        current = []
-        for char in line:
-            current.append(char)
-            if char in ".!?" and len(current) > 1:
-                sentences.append("".join(current))
-                current = []
-        if current:
-            sentences.append("".join(current))
-        current_chunk = []
-        current_tokens = []
-        for sentence in sentences:
-            sentence_tokens = encoding.encode(sentence)
-            if len(sentence_tokens) > max_tokens:
-                if current_chunk:
-                    chunks.append("".join(current_chunk))
-                    current_chunk = []
-                    current_tokens = []
-                word_chunks = self._split_sentence_by_words(
-                    sentence,
-                    max_tokens,
-                    encoding,
-                )
-                chunks.extend(word_chunks[:-1])
-                current_chunk = [word_chunks[-1]] if word_chunks[-1] else []
-                current_tokens = (
-                    encoding.encode(
-                        word_chunks[-1],
-                    )
-                    if word_chunks[-1]
-                    else []
-                )
-            elif len(current_tokens) + len(sentence_tokens) > max_tokens:
-                if current_chunk:
-                    chunks.append("".join(current_chunk))
-                current_chunk = [sentence]
-                current_tokens = sentence_tokens
+        def fits(part: str) -> bool:
+            return self.count_tokens(part, model) <= max_tokens
+
+        if fits(text):
+            return [text]
+
+        ends = [match.end() for match in re.finditer("\n", text)]
+        if not ends or ends[-1] != len(text):
+            ends.append(len(text))
+        parts = []
+        for block, accepted in _group_ranges(text, ends, fits):
+            if accepted:
+                parts.append(block)
             else:
-                current_chunk.append(sentence)
-                current_tokens.extend(sentence_tokens)
-        if current_chunk:
-            chunks.append("".join(current_chunk))
-        return chunks
+                parts.extend(self._split_long_line(block, fits))
+        return parts
 
     @staticmethod
-    def _split_sentence_by_words(
-        sentence: str,
-        max_tokens: int,
-        encoding: tiktoken.Encoding,
-    ) -> list[str]:
-        """Split a sentence by words when it's too long."""
-        words = sentence.split()
-        chunks = []
-        current_chunk = []
-        current_tokens = []
-        for word in words:
-            word_with_space = word + " "
-            word_tokens = encoding.encode(word_with_space)
-            if len(word_tokens) > max_tokens:
-                if current_chunk:
-                    chunks.append(" ".join(current_chunk))
-                    current_chunk = []
-                    current_tokens = []
-                chunks.append(word[: max_tokens * 3])
-                continue
-            if len(current_tokens) + len(word_tokens) > max_tokens:
-                if current_chunk:
-                    chunks.append(" ".join(current_chunk))
-                current_chunk = [word]
-                current_tokens = word_tokens
+    def _split_long_line(text: str, fits: Callable[[str], bool]) -> Iterator[str]:
+        """Bisect a line at an interior boundary and retain both exact slices."""
+        if len(text) == 1 or fits(text):
+            yield text
+            return
+        mid = len(text) // 2
+        # Keep cuts in the middle half so each recursive step makes progress.
+        cut = mid
+        for distance in range(len(text) // 4 + 1):
+            for pos in (mid - distance, mid + distance):
+                if 0 < pos < len(text) and (
+                    text[pos - 1].isspace() or text[pos - 1] in ".,;:!?"
+                ):
+                    cut = pos
+                    break
             else:
-                current_chunk.append(word)
-                current_tokens.extend(word_tokens)
-        if current_chunk:
-            chunks.append(" ".join(current_chunk))
-        return chunks
+                continue
+            break
+        yield from TiktokenCounter._split_long_line(text[:cut], fits)
+        yield from TiktokenCounter._split_long_line(text[cut:], fits)

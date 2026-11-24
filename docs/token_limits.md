@@ -7,7 +7,7 @@ The treesitter-chunker now includes built-in support for respecting token limits
 ```python
 from chunker.chunker import chunk_file_with_token_limit
 
-# Chunk a file ensuring no chunk exceeds 1000 tokens
+# Chunk a file with a budget of 1000 tokens
 chunks = chunk_file_with_token_limit(
     "example.py", 
     language="python", 
@@ -37,7 +37,16 @@ for chunk in chunks:
 
 ### 2. Automatic Chunk Splitting
 
-When a chunk exceeds the specified token limit, it's automatically split while preserving code structure:
+Supply a positive token budget. Joining each split parent's content in order
+reproduces its text exactly, including whitespace. For parents backed by
+contiguous source bytes, each part's UTF-8 byte span slices back to its
+content. Semantic parents may overlap or leave gaps in the file.
+
+Each part fits the requested encoding's budget except when one Unicode scalar
+alone costs more. That scalar is returned whole with its actual token count
+and `token_limit_exceeded=True`. Other parts omit the flag. The string-only
+counter returns the same scalar as a string. Nonpositive budgets and invalid
+partitions returned by a custom counter raise `ValueError`.
 
 ```python
 # Large functions/classes are split intelligently
@@ -79,7 +88,7 @@ def chunk_text_with_token_limit(
 ) -> list[CodeChunk]
 ```
 
-Chunks text ensuring no chunk exceeds the token limit.
+Chunks text under the positive token budget, with the single-scalar exception above.
 
 #### `chunk_file_with_token_limit()`
 
@@ -93,7 +102,7 @@ def chunk_file_with_token_limit(
 ) -> list[CodeChunk]
 ```
 
-Chunks a file ensuring no chunk exceeds the token limit.
+Chunks a file under the positive token budget, with the single-scalar exception above.
 
 #### `count_chunk_tokens()`
 
@@ -131,10 +140,10 @@ When using token-aware chunking, chunks include additional metadata:
 {
     "token_count": 156,           # Number of tokens in the chunk
     "tokenizer_model": "gpt-4",   # Model used for tokenization
-    "chars_per_token": 4.2,       # Average characters per token
     "is_split": True,             # Whether chunk was split from larger chunk
     "split_index": 1,             # Index if split (1, 2, 3...)
-    "original_chunk_id": "abc123" # ID of original chunk before splitting
+    "original_chunk_id": "abc123", # ID of original chunk before splitting
+    # "token_limit_exceeded": True  # Present only on an over-budget scalar
 }
 ```
 
@@ -156,9 +165,14 @@ class LargeClass:
         # ...
 ```
 
-If this class exceeds the token limit, it will be split into:
+Depending on the budget, the returned content might be grouped as follows.
+
 - Chunk 1: Class header + `__init__` + `method1`
-- Chunk 2: Class header + `method2`
+- Chunk 2: `method2`
+
+The physical header occurs once in the ordered content. Class parts also
+carry the header in `parent_context`. Budget separately for context if you
+include it in a prompt. Oversized methods and preambles are subdivided.
 
 ### Function Splitting
 

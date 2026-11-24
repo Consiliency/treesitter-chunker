@@ -44,7 +44,9 @@ class TokenCounter(ABC):
         model: str = "gpt-4",
     ) -> list[str]:
         """
-        Split text into chunks that don't exceed the token limit.
+        Return ordered nonempty parts that concatenate to the input (empty: []).
+        The budget must be positive. Each part fits the requested model's
+        budget except a single Unicode scalar that cannot fit on its own.
 
         Args:
             text: The text to split
