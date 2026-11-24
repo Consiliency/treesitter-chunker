@@ -8,6 +8,7 @@ pytest.importorskip("httpx", reason="httpx required for API tests")
 from fastapi.testclient import TestClient
 
 from api.server import app
+from chunker.exceptions import LanguageNotFoundError
 
 
 def _auth_headers(monkeypatch):
@@ -58,6 +59,10 @@ def test_graph_xref_detects_file_languages(tmp_path, monkeypatch, include_python
 
 @pytest.mark.parametrize("paths", [["input.unknown"], ["helper.py", "input.unknown"]])
 def test_graph_xref_rejects_unknown_extension(tmp_path, monkeypatch, paths):
+    def unexpected_parse(*args):
+        pytest.fail("xref parsed a file before validating all extensions")
+
+    monkeypatch.setattr("api.server.chunk_file", unexpected_parse)
     for path in paths:
         (tmp_path / path).write_text("def helper(): pass", encoding="utf-8")
     monkeypatch.setenv("TREE_SITTER_CHUNKER_API_ROOT", str(tmp_path))
@@ -66,6 +71,22 @@ def test_graph_xref_rejects_unknown_extension(tmp_path, monkeypatch, paths):
     )
     assert response.status_code == 400
     assert "input.unknown" in response.json()["detail"]
+
+
+def test_graph_xref_reports_unavailable_parser(tmp_path, monkeypatch):
+    def missing_parser(path, language):
+        assert Path(path).name == "Main.hs"
+        assert language == "haskell"
+        raise LanguageNotFoundError(language, [])
+
+    monkeypatch.setattr("api.server.chunk_file", missing_parser)
+    (tmp_path / "Main.hs").touch()
+    monkeypatch.setenv("TREE_SITTER_CHUNKER_API_ROOT", str(tmp_path))
+    response = TestClient(app).post(
+        "/graph/xref", json={"paths": ["Main.hs"]}, headers=_auth_headers(monkeypatch)
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "No parser available for haskell (Main.hs)"
 
 
 def test_nearest_tests_endpoint(tmp_path, monkeypatch):
@@ -115,6 +136,22 @@ def test_graph_cut_bounds(options, expected_nodes):
         "nodes": expected_nodes,
         "edges": edges[: max(0, len(expected_nodes) - 1)],
     }
+
+
+@pytest.mark.parametrize("params", [{}, {"budget": None}])
+def test_graph_cut_default_budget(params):
+    seeds = [f"seed-{index:03}" for index in range(201)]
+    response = TestClient(app).post(
+        "/graph/cut",
+        json={
+            "seeds": seeds,
+            "nodes": [{"id": seed} for seed in seeds],
+            "edges": [],
+            "params": params,
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json() == {"nodes": seeds[:200], "edges": []}
 
 
 @pytest.mark.parametrize("bound", ["radius", "budget"])

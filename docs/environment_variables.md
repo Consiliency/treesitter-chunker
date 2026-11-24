@@ -92,7 +92,8 @@ filesystem-backed endpoints can serve requests.
 The API rejects absolute paths, `..` traversal, and symlink escapes.
 `/graph/xref` detects each file's language by extension using the same rules
 as `/chunk/file`. An existing file with an unknown extension makes the entire
-xref request return HTTP 400.
+xref request return HTTP 400 before any file is parsed. If a detected language
+has no available parser, xref returns HTTP 400 naming the file and language.
 
 `/graph/cut` accepts the graph's `nodes` and `edges` directly and returns a
 bounded subgraph around the supplied seed IDs. Omitted or null `params.radius`

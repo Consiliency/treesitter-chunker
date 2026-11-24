@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 # Import the simplified chunker API
 from chunker import __version__, chunk_file, chunk_text, list_languages
 from chunker.auto import ZeroConfigAPI
+from chunker.exceptions import LanguageNotFoundError
 from chunker.graph.cut import graph_cut
 from chunker.graph.xref import build_xref
 from chunker._internal.path_confinement import resolve_within_root
@@ -449,7 +450,7 @@ async def graph_xref_endpoint(
     _: None = Depends(require_api_token),
 ):
     paths = [_resolve_api_path(path) for path in request.paths]
-    chunks = []
+    files = []
     for path in paths:
         if path.is_file():
             language = _detect_file_language(path)
@@ -458,7 +459,17 @@ async def graph_xref_endpoint(
                     status_code=400,
                     detail=f"Cannot auto-detect language for {path.name}",
                 )
+            files.append((path, language))
+
+    chunks = []
+    for path, language in files:
+        try:
             chunks.extend(chunk_file(str(path), language))
+        except LanguageNotFoundError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No parser available for {language} ({path.name})",
+            ) from exc
     nodes, edges = build_xref(chunks)
     return GraphResponse(nodes=nodes, edges=edges)
 
