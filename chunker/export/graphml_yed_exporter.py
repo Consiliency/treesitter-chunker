@@ -90,8 +90,11 @@ class GraphMLyEdExporter(GraphMLExporter):
         label.set("fontFamily", "Arial")
         label.set("fontSize", "12")
         label.set("textColor", style["text"])
-        name = f"{node.properties.get('name', '')}"
-        label.text = node.label if name == "" else f"{node.label}\n{name}"
+        # Format each part exactly once, as f"{label}\n{name}" did, then compare
+        # plain str copies so a caller's str subclass cannot reformat or compare.
+        type_text = str.__str__(format(node.label, ""))
+        name_text = str.__str__(format(node.properties.get("name", ""), ""))
+        label.text = type_text if name_text == "" else f"{type_text}\n{name_text}"
         shape = ET.SubElement(shape_node, "y:Shape")
         shape.set("type", style["shape"])
 

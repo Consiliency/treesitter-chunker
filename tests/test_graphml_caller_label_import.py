@@ -140,6 +140,40 @@ def test_yed_renders_non_string_chunk_names():
     assert graph.nodes[function_chunk.node_id]["label"] == "function_definition\n0"
 
 
+def test_yed_formats_each_name_once_and_compares_plain_text():
+    class Bracketed(str):
+        __slots__ = ()
+
+        def __format__(self, spec):
+            return Bracketed(f"[{str.__str__(self)}]")
+
+    class TypedName(str):
+        __slots__ = ()
+
+        def __eq__(self, other):
+            if not isinstance(other, TypedName):
+                raise TypeError("expected TypedName")
+            return str.__eq__(self, other)
+
+        __hash__ = str.__hash__
+
+    class Typed:
+        def __format__(self, spec):
+            return TypedName("Renderer")
+
+    class_chunk, function_chunk = chunk_file(FIXTURE, "python")[:2]
+    class_chunk.metadata["name"] = Bracketed("Renderer")
+    function_chunk.metadata["name"] = Typed()
+    exporter = GraphMLyEdExporter()
+    exporter.add_chunks([class_chunk, function_chunk])
+
+    graph = nx.parse_graphml(exporter.export_string(pretty_print=False))
+    assert graph.nodes[class_chunk.node_id]["label"] == "class_definition\n[Renderer]"
+    assert (
+        graph.nodes[function_chunk.node_id]["label"] == "function_definition\nRenderer"
+    )
+
+
 @pytest.mark.parametrize("route", ["plain", "yed", "delegated"])
 def test_key_ids_stay_and_declared_names_are_unique(route):
     exporter, _, options = _graph(route)
