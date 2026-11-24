@@ -30,7 +30,7 @@ def _publish_snapshot(stage: Path, output: Path) -> None:
                 )
         try:
             if os.name == "nt":
-                os.rename(stage, output)  # Windows rename never overwrites.
+                stage.rename(output)  # Windows rename never overwrites.
             else:
                 os.link(stage, output)
         except FileExistsError:
@@ -408,26 +408,31 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
         finally:
             conn.close()
 
-    @staticmethod
-    def get_example_queries() -> dict[str, str]:
+    _file_path_column = "f.path"
+    _file_join = "JOIN files f ON f.id = c.file_id"
+
+    @classmethod
+    def get_example_queries(cls) -> dict[str, str]:
         """Get example queries for SQLite."""
-        queries = super().get_analysis_queries()
+        queries = cls.get_analysis_queries()
         queries.update(
             {
                 "search_content": """
                 -- Full-text search for content
-                SELECT c.id, c.file_path, c.chunk_type, c.start_line, c.end_line,
+                SELECT c.id, f.path AS file_path, c.chunk_type, c.start_line, c.end_line,
                        snippet(chunks_fts, 1, '<b>', '</b>', '...', 32) as match_snippet
-                FROM chunks_fts fts
-                JOIN chunks c ON fts.id = c.id
+                FROM chunks_fts
+                JOIN chunks c ON chunks_fts.id = c.id
+                JOIN files f ON f.id = c.file_id
                 WHERE chunks_fts MATCH ?
-                ORDER BY rank;
+                ORDER BY chunks_fts.rank;
             """,
                 "complex_functions": """
                 -- Find the most complex functions
-                SELECT c.file_path, c.chunk_type, c.start_line, c.end_line,
+                SELECT f.path AS file_path, c.chunk_type, c.start_line, c.end_line,
                        cc.cyclomatic_complexity, cc.cognitive_complexity, cc.token_count
                 FROM chunks c
+                JOIN files f ON f.id = c.file_id
                 JOIN chunk_complexity cc ON c.id = cc.chunk_id
                 WHERE c.chunk_type IN ('function', 'method')
                 ORDER BY cc.cyclomatic_complexity DESC
@@ -435,22 +440,25 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
             """,
                 "file_dependencies": """
                 -- Find all files that a given file depends on
-                SELECT DISTINCT target_file.file_path as dependency
+                SELECT DISTINCT target_file.path as dependency
                 FROM chunks source
                 JOIN relationships r ON source.id = r.source_id
                 JOIN chunks target ON r.target_id = target.id
-                JOIN (SELECT DISTINCT file_path FROM chunks) target_file ON target.file_path = target_file.file_path
-                WHERE source.file_path = ?
+                JOIN files target_file ON target.file_id = target_file.id
+                JOIN files source_file ON source.file_id = source_file.id
+                WHERE source_file.path = ?
                 AND r.relationship_type IN ('IMPORTS', 'INCLUDES')
                 ORDER BY dependency;
             """,
                 "duplicate_detection": """
                 -- Find potentially duplicate chunks (same content)
-                SELECT c1.file_path as file1, c1.start_line as line1,
-                       c2.file_path as file2, c2.start_line as line2,
+                SELECT f1.path as file1, c1.start_line as line1,
+                       f2.path as file2, c2.start_line as line2,
                        c1.chunk_type, LENGTH(c1.content) as size
                 FROM chunks c1
                 JOIN chunks c2 ON c1.content = c2.content AND c1.id < c2.id
+                JOIN files f1 ON f1.id = c1.file_id
+                JOIN files f2 ON f2.id = c2.file_id
                 WHERE c1.chunk_type = c2.chunk_type
                 ORDER BY size DESC;
             """,

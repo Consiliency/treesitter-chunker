@@ -883,64 +883,53 @@ class XMLExporter:
             f.write(xml_str)
 ```
 
-### SQLite Export
+### SQLite and PostgreSQL database queries
+
+The normalized SQLite schema and query examples below belong to
+`chunker.export.sqlite_exporter.SQLiteExporter`. The package-level
+`chunker.export.SQLiteExporter` has a separate API and schema.
 
 ```python
+from contextlib import closing
+from pathlib import Path
 import sqlite3
-from typing import List
-from chunker import CodeChunk
 
-class SQLiteExporter:
-    """Export chunks to SQLite database."""
-    
-    def export(self, chunks: List[CodeChunk], db_path: str):
-        """Export chunks to SQLite."""
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        # Create tables
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS chunks (
-                chunk_id TEXT PRIMARY KEY,
-                language TEXT,
-                file_path TEXT,
-                node_type TEXT,
-                start_line INTEGER,
-                end_line INTEGER,
-                byte_start INTEGER,
-                byte_end INTEGER,
-                parent_context TEXT,
-                content TEXT
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_file_path ON chunks(file_path)
-        ''')
-        
-        cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_node_type ON chunks(node_type)
-        ''')
-        
-        # Insert chunks
-        for chunk in chunks:
-            cursor.execute('''
-                INSERT OR REPLACE INTO chunks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                chunk.chunk_id,
-                chunk.language,
-                chunk.file_path,
-                chunk.node_type,
-                chunk.start_line,
-                chunk.end_line,
-                chunk.byte_start,
-                chunk.byte_end,
-                chunk.parent_context,
-                chunk.content
-            ))
-        
-        conn.commit()
-        conn.close()
+from chunker.export.sqlite_exporter import SQLiteExporter
+
+path = Path("chunks.db")
+exporter = SQLiteExporter()
+exporter.add_chunks(chunks)
+exporter.export(path)
+with closing(sqlite3.connect(path)) as db:
+    sql = SQLiteExporter.get_example_queries()["search_content"]
+    hits = db.execute(sql, ("parser",)).fetchall()
+```
+
+An export builds a complete snapshot in the destination directory. A successful
+replacement makes all rows and search entries visible together to new transactions.
+A WAL reader can finish its current transaction on the old snapshot. An empty
+export publishes an empty snapshot. Build and publication errors preserve the
+previous committed snapshot, and a failed first export leaves the path absent.
+
+Use a writable parent directory and a writable regular SQLite file with a single
+link, or a new path. Symlinks and orphan SQLite sidecars are rejected. Use a
+filesystem supporting SQLite locks and same-filesystem no-overwrite publication
+(hard links on POSIX). Other clients should use SQLite locking and leave the
+destination and sidecar names in place. Allow disk space for a complete staged
+database and for the destination WAL or rollback journal. A competing writer,
+a rollback-journal reader, or incompatible WAL page sizes can prevent replacement.
+Retry lock errors after the conflicting transaction ends.
+
+For PostgreSQL, execute the examples against the PostgreSQL export schema using
+a psycopg connection. The read helpers use positional `%s` parameters.
+
+```python
+from chunker.export.postgres_exporter import PostgresExporter
+
+sql = PostgresExporter.get_advanced_queries()["full_text_search"]
+with connection.cursor() as cursor:
+    cursor.execute(sql, ("parser",))
+    hits = cursor.fetchall()
 ```
 
 ## Integration Examples
