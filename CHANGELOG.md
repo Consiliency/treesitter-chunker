@@ -9,12 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Structured Parquet batch exports now isolate partitioned chunks under
-  `<base>_chunks/`. Partition directory names longer than 255 encoded bytes
-  use a SHA-256 digest, with original typed values preserved in the rows.
-  Empty streaming exports now create or replace both schema-correct Parquet
-  files (treesitter-chunker#749).
-
+- Python chunk metadata now lists each decorator call site once in `calls` and
+  `call_spans` (treesitter-chunker#604).
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is
