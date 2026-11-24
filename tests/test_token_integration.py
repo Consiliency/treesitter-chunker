@@ -88,7 +88,7 @@ def hello_world():
 
         # Each chunk should contain complete functions (lines ending with a number)
         for chunk in chunks:
-            lines = chunk.split("\n")
+            lines = chunk.splitlines()
             # Check that functions are complete
             for i in range(0, len(lines), 2):  # Functions are 2 lines each
                 if i < len(lines) - 1:  # Not the last line

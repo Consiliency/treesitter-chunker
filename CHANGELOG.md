@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Token-limited file reads, standard VFS chunking and repository processing
   (including watch deltas) preserve source line endings. For valid UTF-8,
   contiguous source-backed chunk spans and content refer to the original bytes.
+  Oversized functions retain LF, CRLF and lone CR across token splits.
   Standard VFS source decoding uses UTF-8 on all platforms. Rechunk affected
   files to refresh occurrence IDs and parent links (treesitter-chunker#758).
 
