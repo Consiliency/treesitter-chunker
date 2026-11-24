@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import argparse
-import re
 import shlex
 from importlib.metadata import distribution
 
 from typer.testing import CliRunner
 
-from chunker.cli.grammar_commands import setup_grammar_parser
 from chunker.exceptions import LanguageNotFoundError
 
 
@@ -36,30 +33,35 @@ class TestLanguageNotFoundErrorMessages:
         assert "tree-sitter-language-pack" in error_str or "language-pack" in error_str
 
     def test_guidance_names_registered_cli_commands(self):
-        guidance = str(LanguageNotFoundError("rust", []))
-        commands = re.findall(
-            r"(?<![\w/-])((?:treesitter-chunker|tsc) [^\n]+)", guidance
-        )
-        assert commands, "Missing installed grammar build command"
+        language = "rust"
+        guidance = str(LanguageNotFoundError(language, []))
+        commands = [
+            shlex.split(line)
+            for line in guidance.splitlines()
+            if line.startswith("      ")
+        ]
         scripts = distribution("treesitter-chunker").entry_points.select(
             group="console_scripts"
         )
-        for command in commands:
-            program, *arguments = shlex.split(command)
+        for program, *arguments in commands:
+            if program == "pip":
+                assert arguments == ["install", "tree-sitter-language-pack"]
+                continue
+            assert program in scripts.names, f"Unregistered executable: {program}"
             result = CliRunner().invoke(scripts[program].load(), [*arguments, "--help"])
-            assert result.exit_code == 0, f"{command}\n{result.output}"
+            assert result.exit_code == 0, result.output
+
+        assert ["treesitter-chunker", "setup", "grammars", language] in commands
 
     def test_guidance_explains_pin_sources(self):
         guidance = str(LanguageNotFoundError("rust", []))
-        assert "SHA-256" in guidance and "trusted-artifacts.json" in guidance
-        command = re.search(r"python -m chunker\.cli ([^\n]+)", guidance)
-        assert command
-        parser = argparse.ArgumentParser()
-        setup_grammar_parser(parser.add_subparsers())
-        args = parser.parse_args(shlex.split(command[1]))
-        assert args.grammar_command == "info"
-        assert args.language == "rust"
-        assert args.trusted_artifacts is not None
+        assert (
+            "SHA-256" in guidance and "user-config trusted-artifacts.json" in guidance
+        )
+        assert (
+            "https://consiliency.github.io/treesitter-chunker/grammar_management/#approved-pins"
+            in guidance
+        )
 
     def test_error_includes_available_count(self):
         """Test that error message includes count of available languages."""
