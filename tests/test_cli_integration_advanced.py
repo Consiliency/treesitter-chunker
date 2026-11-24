@@ -95,51 +95,33 @@ class Class_{i}:
         assert result3.exit_code == 0
         assert "python" in result3.stdout
 
-    @classmethod
-    def test_glob_pattern_expansion(cls, tmp_path):
-        """Test complex file pattern matching."""
-        (tmp_path / "src" / "core").mkdir(parents=True)
-        (tmp_path / "src" / "utils").mkdir()
-        (tmp_path / "tests").mkdir()
-        files = [
-            "src/core/main.py",
-            "src/core/config.py",
-            "src/utils/helpers.py",
-            "src/utils/data.json",
-            "tests/test_main.py",
-            "tests/test_config.py",
-            "README.md",
+    @pytest.mark.parametrize(
+        ("pattern", "expected"),
+        [
+            ("src/**/*.py", ["src/c.py", "src/sub/a.py"]),
+            ("**/*.py", ["src/c.py", "src/sub/a.py", "sub/src/b.py"]),
+            ("src/*.py", ["src/c.py"]),
+            ("missing/*.py", []),
+        ],
+    )
+    def test_glob_pattern_expansion(self, tmp_path, monkeypatch, pattern, expected):
+        for name in ["src/c.py", "src/sub/a.py", "sub/src/b.py"]:
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"def {path.stem}(): return 42", encoding="utf-8")
+        (tmp_path / "src" / "directory.py").mkdir()
+        monkeypatch.chdir(tmp_path)
+        result = CliRunner().invoke(
+            app,
+            ["batch", "--pattern", pattern, "--parallel", "1", "--jsonl", "--quiet"],
+        )
+        assert result.exit_code == 0, result.output
+        assert result.stderr == ""
+        paths = [
+            Path(json.loads(line)["file_path"]).relative_to(tmp_path).as_posix()
+            for line in result.stdout.splitlines()
         ]
-        for file_path in files:
-            full_path = tmp_path / file_path
-            if file_path.endswith(".py"):
-                full_path.write_text("def test(): pass")
-            else:
-                full_path.write_text("data")
-        runner = CliRunner()
-        patterns = [
-            ("**/*.py", 5),
-            ("src/**/*.py", 3),
-            ("**/test_*.py", 2),
-            ("src/*/*.py", 3),
-        ]
-        for pattern, expected_count in patterns:
-            result = runner.invoke(
-                app,
-                [
-                    "batch",
-                    "--parallel",
-                    "2",
-                    str(tmp_path),
-                    "--pattern",
-                    pattern,
-                    "--jsonl",
-                    "--quiet",
-                ],
-            )
-            assert result.exit_code == 0
-            lines = [line for line in result.stdout.strip().split("\n") if line]
-            assert len(lines) >= expected_count
+        assert sorted(paths) == expected
 
     @classmethod
     def test_recursive_directory_processing(cls, tmp_path):

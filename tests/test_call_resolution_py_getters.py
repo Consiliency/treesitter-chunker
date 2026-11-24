@@ -238,6 +238,36 @@ _OTHER = 'def t():\n    return "OTHER.t"\n\n\ndef w():\n    return 2\n'
 _MAIN = "import use\nimport svc\n\nuse.go()\nprint(svc.u())\n"
 
 
+@pytest.mark.parametrize("holder", ["m = get()", "import svc as m"])
+@pytest.mark.parametrize(
+    ("capture", "evaluator"),
+    [
+        ("type A = m.w\n    return A", "fn.evaluate_value"),
+        ("def f[T: m.w](): pass\n    return f", "fn.__type_params__[0].evaluate_bound"),
+        ("type A[T: m.w] = int\n    return A", "fn.__type_params__[0].evaluate_bound"),
+        ("def f():\n        nonlocal m\n    return f", "fn"),
+        ("def f(x):\n        match x:\n            case m.w: pass\n    return f", "fn"),
+    ],
+)
+def test_implicit_cell_exposes_holder(
+    tmp_path: Path, holder: str, capture: str, evaluator: str
+) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": _SVC,
+            "other.py": _OTHER,
+            "use.py": "def get():\n    import svc\n    return svc\n\n"
+            f"def go():\n    {holder}\n    {capture}\n",
+            "poke.py": "import other\n\ndef run(fn):\n"
+            f"    {evaluator}.__closure__[0].cell_contents.t = other.t\n",
+            "main.py": "import use, poke, svc\npoke.run(use.go())\nprint(svc.u())\n",
+        },
+    )
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
 def test_a_write_through_a_result_taints_that_name_only(tmp_path: Path) -> None:
     """``get().t = f`` taints ``svc.t`` (``reassigned``) and leaves another
     name of ``svc`` resolved."""

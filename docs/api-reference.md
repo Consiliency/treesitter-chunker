@@ -161,6 +161,31 @@ Represents a semantic chunk of code extracted from a file.
 **Methods:**
 - `generate_id() -> str`: Generate a unique ID based on content and location
 
+### Python symbol lookup
+
+`find_symbol_definition(name, scope_node, ast)` returns the first syntactic binding in the owning lexical scope. The API takes a scope and has no use-position argument.
+
+```python
+from chunker import get_parser
+from chunker.context.factory import ContextFactory
+
+root = get_parser("python").parse(b"import os, sys").root_node
+resolver = ContextFactory.create_symbol_resolver("python")
+statement = resolver.find_symbol_definition("sys", root, root)
+assert statement == resolver.find_symbol_definition("os", root, root)
+assert statement.type == "import_statement" and statement.start_byte == 0
+```
+
+Import and unpacking results span their statement. Loop, with, exception, walrus and splat targets span the bound identifier. The companion `get_symbol_type` inspects a node's parent and can return `unknown` for a statement result. Reference lookup searches by spelling across the supplied tree and excludes unpacking targets, splat parameters and walrus targets.
+
+### JavaScript reference lookup
+
+The resolver returned by `ContextFactory.create_symbol_resolver("javascript")` finds references by spelling across the supplied tree. It excludes declared binding targets in parameters, catch clauses, loop declarations and destructuring. A bare loop write such as `for (x of xs)` remains a reference to `x`. So do rest writes such as `[...x] = xs` and renamed property writes such as `({key: x} = obj)`.
+
+### JavaScript parent context
+
+Call `ContextFactory.create_context_extractor("javascript").extract_parent_context(node, root, source)` to get enclosing scope signatures in outer-to-inner order. Each item includes the scope node and its one-based starting line. Generator declarations and expressions retain the original spelling of their signature, including internal line endings.
+
 ## Parser Management
 
 ### get_parser
@@ -409,6 +434,12 @@ Parallel helpers default to `use_cache=True` and
 `~/.cache/treesitter-chunker/ast_cache.db`. Pass `cache_dir=` to
 `ParallelChunker`, `chunk_files_parallel` or `chunk_directory_parallel` to keep
 the cache in a private directory, or `use_cache=False` to disable it.
+Automatic stores bind chunks to the source bytes used for extraction. A cold
+streaming worker copies the source to private temporary storage and falls back
+to uncached streaming if scratch storage is unavailable. Version 3.1 refreshes
+each eligible file, language and mode on first use after upgrade. With manual
+`cache_chunks()` calls, keep the path representative of the supplied chunks
+until the store completes.
 
 ### chunk_files_parallel
 

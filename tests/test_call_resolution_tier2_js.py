@@ -34,7 +34,7 @@ from chunker.call_resolution.facts import (
     valid_module_bindings,
     valid_scope_facts,
 )
-from chunker.call_resolution.js_strings import decode_js_string
+from chunker.call_resolution.js_strings import decode_js_string, decode_jsx_text
 from chunker.symbol_graph import (
     SKIP_PARTS,
     assemble_symbol_graph,
@@ -3433,6 +3433,597 @@ def test_p5_44_controls(tmp_path: Path, text: str) -> None:
     assert on["resolution"] == "resolved", label
 
 
+# Each snippet isolates a syntax trigger in a file unrelated to the import.
+@pytest.mark.parametrize(
+    "text",
+    [
+        "function inspect() { return inspect.caller; }",
+        "function inspect() { return arguments.callee.caller; }",
+        "function inspect(fn) { return fn?.['caller']; }",
+        r"function inspect(fn) { return fn[`c\u0061ller`]; }",
+        "function inspect(fn) { return Reflect.get(fn, 'caller'); }",
+        "Object.getOwnPropertyDescriptor(Function.prototype, 'caller');",
+        "function inspect(fn) { const {caller: frame} = fn; return frame; }",
+        "function inspect(fn) { const {caller} = fn; return caller; }",
+        "function inspect(frame) { return frame.getFunction(); }",
+        "function inspect(frame) { return frame['getFunction'](); }",
+        r"function inspect(frame) { return frame[`get\u0046unction`](); }",
+        r"const key = `get\u0046unction`;",
+        "Error.prepareStackTrace = (error, frames) => frames;",
+        r"globalThis.Error[`prepare\u0053tackTrace`] = (_, frames) => frames;",
+        "Error.prepareStackTrace = (_, frames) => frames; Error.captureStackTrace({});",
+        "{ const Error = {}; } Error.prepareStackTrace = (error, frames) => frames;",
+        "function f(Error) {} Error.prepareStackTrace = (error, frames) => frames;",
+    ],
+    ids=[
+        "caller",
+        "callee-caller",
+        "computed-caller",
+        "cooked-caller",
+        "reflect-get",
+        "descriptor",
+        "destructure",
+        "shorthand-destructure",
+        "get-function",
+        "computed-get-function",
+        "cooked-get-function",
+        "constant-get-function",
+        "prepare-stack-trace",
+        "computed-prepare-stack-trace",
+        "capture-with-hook",
+        "sibling-block-error-shadow",
+        "sibling-function-error-shadow",
+    ],
+)
+def test_718_stack_introspection(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text})
+    facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
+    assert "module-system" in facts["scope_facts"]["module_bindings"]["shutoff"]
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    # A computed escape or Function reference may already report evaluator.
+    assert label in {"none(run-tainted:module-system)", "none(run-tainted:evaluator)"}
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "const labels = {name: 'caller-name', other: `myGetFunction`};",
+        "function inspect(Error) { Error.prepareStackTrace = () => ''; }",
+        "function f(globalThis) { globalThis.Error.prepareStackTrace = (e, s) => s; }",
+        "const foo = {}; foo.Error.prepareStackTrace = (e, s) => s;",
+        "Error.captureStackTrace({});",
+    ],
+)
+def test_718_stack_introspection_controls(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text})
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", label
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "const k = 'caller';\n"
+            "function g() { return g[k].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C03-const-key",
+        ),
+        pytest.param(
+            "function g() { const k = Object.getOwnPropertyNames(g).find(n => n === 'caller'); return g[k].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C05-filter-names",
+        ),
+        pytest.param(
+            "const get = Reflect.get;\n"
+            "function g() { return get(g, 'caller').arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C07-reflect-get-alias",
+        ),
+        pytest.param(
+            "function g() { return Reflect.get.call(null, g, 'caller').arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C08-reflect-get-call",
+        ),
+        pytest.param(
+            "function g() { return Reflect.getOwnPropertyDescriptor(g, 'caller').value.arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C10-reflect-gopd",
+        ),
+        pytest.param(
+            "function g() { for (const n of Object.getOwnPropertyNames(g)) { switch (n) { case 'caller': return g[n].arguments[1]; } } }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C13-switch-case",
+        ),
+        pytest.param(
+            "function g(k = 'caller') { return g[k].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C16-default-param",
+        ),
+        pytest.param(
+            "function g() { return ['caller'].map(k => g[k])[0].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C17-array-map",
+        ),
+        pytest.param(
+            "const k = 'caller';\n"
+            "function g() { const { [k]: c } = g; return c.arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C18-destructure-computed-var",
+        ),
+        pytest.param(
+            "const o = { k: 'caller' };\n"
+            "function g() { return g[o.k].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C21-object-literal-value",
+        ),
+        pytest.param("const labels = {caller: 'caller'};", id="object-labels"),
+        pytest.param(r"const key = `c\u0061ller`;", id="cooked-template"),
+        pytest.param(r"const key = 'c\141ller';", id="cooked-sloppy-string"),
+    ],
+)
+def test_718_constant_stack_keys(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    ("filename", "text"),
+    [
+        pytest.param(
+            "x.ts",
+            "enum K { caller }\n"
+            "function g(): any { return (g as any)[K[0]].arguments[1]; }\n"
+            "(g() as any)('./svc').t = () => 'EVIL';\n",
+            id="E03-enum-reverse-index",
+        ),
+        pytest.param(
+            "x.js",
+            "const o = { caller: 1 };\n"
+            "function g() { return g[Object.keys(o)[0]].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H10-obj-key-keys",
+        ),
+        pytest.param(
+            "x.js",
+            "const o = { caller() {} };\n"
+            "function g() { return g[Object.keys(o)[0]].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H11-obj-method-keys",
+        ),
+        pytest.param(
+            "x.js",
+            "const caller = 1;\n"
+            "function g() { return g[Object.keys({ caller })[0]].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H12-obj-shorthand-keys",
+        ),
+        pytest.param(
+            "x.js",
+            "class A { caller() {} }\n"
+            "function g() { return g[Object.getOwnPropertyNames(A.prototype)[1]].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H13-class-method-names",
+        ),
+        pytest.param(
+            "x.js",
+            "function caller() {}\n"
+            "function g() { return g[caller.name].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H14-fn-name",
+        ),
+        pytest.param(
+            "x.js",
+            "const E = Error; E.prepareStackTrace = (e, s) => s; const fr = new Error().stack; E.prepareStackTrace = undefined;\n"
+            "const o = { getFunction: 1 };\n"
+            "fr[0][Object.keys(o)[0]]().arguments[1]('./svc').t = () => 'EVIL';\n",
+            id="H15-getFunction-obj-key",
+        ),
+        pytest.param(
+            "x.js",
+            "class A { static caller = 1 }\n"
+            "function g() { return g[Object.keys(A)[0]].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H16-class-static-field-keys",
+        ),
+        pytest.param(
+            "x.js",
+            "const E = Error; E.prepareStackTrace = (e, s) => s; const fr = new Error().stack; E.prepareStackTrace = undefined;\n"
+            "const getFunction = 0;\n"
+            "fr[0][Object.keys({ getFunction })[0]]().arguments[1]('./svc').t = () => 'EVIL';\n",
+            id="H17-var-name-shorthand-getFunction",
+        ),
+        pytest.param(
+            "x.js",
+            "function g() { return g[/caller/.source].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H20-regex-source",
+        ),
+        pytest.param(
+            "x.js",
+            "function g() { const k = Object.getOwnPropertyNames(g).find(n => /^caller$/.test(n)); return g[k].arguments[1]; }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="H21-regex-filter",
+        ),
+        pytest.param(
+            "x.js",
+            "const E = Error; E.prepareStackTrace = (e, s) => s; const fr = new Error().stack; E.prepareStackTrace = undefined;\n"
+            "const P = Object.getPrototypeOf(fr[0]); const m = Object.getOwnPropertyNames(P).find(n => /^getFunction$/.test(n));\n"
+            "fr[0][m]().arguments[1]('./svc').t = () => 'EVIL';\n",
+            id="H22-regex-filter-getFunction",
+        ),
+        pytest.param("x.ts", "class caller {}", id="class-name"),
+        pytest.param("x.js", "caller();", id="free-name"),
+        pytest.param(
+            "x.js",
+            "{ let caller = 0; } caller();",
+            id="sibling-variable-does-not-exempt",
+        ),
+        pytest.param(
+            "x.js", "let other = 0; export { other as caller };", id="export-name"
+        ),
+        pytest.param(
+            "x.js", "const caller = 0; export { caller };", id="export-shorthand"
+        ),
+        pytest.param(
+            "x.js",
+            "const caller = 0; export * as caller from './svc';",
+            id="export-namespace",
+        ),
+        pytest.param(
+            "x.ts",
+            "class C { constructor(readonly caller: number) {} }",
+            id="parameter-property",
+        ),
+        pytest.param(
+            "x.tsx", "const caller = 0; const x = <caller />;", id="jsx-intrinsic"
+        ),
+        pytest.param("x.ts", "type caller = number;", id="type-name"),
+        pytest.param("x.js", "const key = `caller${suffix}`;", id="template-part"),
+        # R-718-3: lexical bindings are no longer exempt (the r2 controls).
+        pytest.param(
+            "x.js",
+            "function inspect(caller, getFunction) { return caller(getFunction); }",
+            id="parameters",
+        ),
+        pytest.param(
+            "x.js",
+            "let caller; var getFunction; caller = getFunction;",
+            id="let-var-assign",
+        ),
+        pytest.param("x.js", "const caller = () => 1; caller();", id="const-arrow"),
+        # The shorthand node is the only token spelling the name.
+        pytest.param("x.js", "const { caller } = fn;", id="shorthand-pattern-only"),
+        pytest.param("x.js", "const o = { caller };", id="shorthand-expression-only"),
+        pytest.param(
+            "x.js", "const { key: caller } = obj; caller();", id="pattern-value"
+        ),
+        pytest.param(
+            "x.js", "for (let caller of items) { caller(); }", id="for-of-let"
+        ),
+        pytest.param(
+            "x.js", "try {} catch (caller) { caller(); }", id="catch-parameter"
+        ),
+        pytest.param(
+            "x.js",
+            "const caller = 1; export { caller as other };",
+            id="export-alias-source",
+        ),
+    ],
+)
+def test_718_stack_name_tokens(tmp_path: Path, filename: str, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, filename: text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+_R3_T = "g()('./svc').t = () => 'EVIL';\n"
+_R3_TS_T = "(g() as any)('./svc').t = () => 'EVIL';\n"
+_R3_GF = (
+    "const E = Error; E.prepareStackTrace = (e, s) => s; "
+    "const fr = new Error().stack; E.prepareStackTrace = undefined;\n"
+)
+_R3_KEYS = (
+    "function g() { return g[Object.keys(require('./k'))[0]].arguments[1]; }\n" + _R3_T
+)
+
+
+def _r3_g(expr: str) -> str:
+    return f"function g() {{ return g[{expr}].arguments[1]; }}\n" + _R3_T
+
+
+# R-718-3 (B-4): a binding's name reaches runtime through NamedEvaluation
+# (``.name``) or an export key. Each case prints EVIL on node v24 (the r3
+# re-check, ``node3.log``).
+@pytest.mark.parametrize(
+    "files",
+    [
+        pytest.param(
+            {"x.js": "const caller = function () {};\n" + _r3_g("caller.name")},
+            id="B01-const-fnexpr-name",
+        ),
+        pytest.param(
+            {"x.js": "let caller = () => {};\n" + _r3_g("caller.name")},
+            id="B02-let-arrow-name",
+        ),
+        pytest.param(
+            {"x.js": "var caller = () => {};\n" + _r3_g("caller.name")},
+            id="B03-var-arrow-name",
+        ),
+        pytest.param(
+            {"x.js": "const caller = class {};\n" + _r3_g("caller.name")},
+            id="B04-const-classexpr-name",
+        ),
+        pytest.param(
+            {
+                "x.js": "function h(caller = () => {}) { return caller.name; }\n"
+                + _r3_g("h()")
+            },
+            id="B05-default-param-arrow",
+        ),
+        pytest.param(
+            {"x.js": "const [caller = () => {}] = [];\n" + _r3_g("caller.name")},
+            id="B07-array-destructure-default",
+        ),
+        pytest.param(
+            {"x.js": "let caller; caller = () => {};\n" + _r3_g("caller.name")},
+            id="B08-assign-later-arrow",
+        ),
+        pytest.param(
+            {
+                "x.js": _R3_GF + "const getFunction = () => {};\n"
+                "fr[0][getFunction.name]().arguments[1]('./svc').t = () => 'EVIL';\n"
+            },
+            id="B09-getFunction-const-arrow",
+        ),
+        pytest.param(
+            {
+                "x.js": "function h(caller = class {}) { return caller.name; }\n"
+                + _r3_g("h()")
+            },
+            id="B10-param-default-classexpr",
+        ),
+        pytest.param(
+            {"x.js": "const caller = async function () {};\n" + _r3_g("caller.name")},
+            id="B12-const-async-fn",
+        ),
+        pytest.param(
+            {"x.js": "const caller = function* () {};\n" + _r3_g("caller.name")},
+            id="B13-const-generator",
+        ),
+        pytest.param(
+            {"x.js": "let caller; caller ??= () => {};\n" + _r3_g("caller.name")},
+            id="B14-logical-assign",
+        ),
+        pytest.param(
+            {"x.js": "const caller = (function () {});\n" + _r3_g("caller.name")},
+            id="B15-paren-fnexpr",
+        ),
+        pytest.param(
+            {"x.js": _R3_KEYS, "k.ts": "export const caller = 1;\n"},
+            id="B33-ts-export-const",
+        ),
+        pytest.param(
+            {"x.js": _R3_KEYS, "k.ts": "export const caller = () => {};\n"},
+            id="B34-ts-export-const-arrow",
+        ),
+        pytest.param(
+            {"x.js": _R3_KEYS, "k.ts": "export let caller = 1;\n"},
+            id="B36-ts-export-let",
+        ),
+        pytest.param(
+            {
+                "x.ts": "namespace N { export const caller = 1; }\n"
+                "function g() { return (g as any)[Object.keys(N)[0]].arguments[1]; }\n"
+                + _R3_TS_T
+            },
+            id="N01-ts-namespace-export",
+        ),
+        pytest.param(
+            {
+                "x.ts": "const caller = (() => {}) as any;\n"
+                "function g() { return (g as any)[caller.name].arguments[1]; }\n"
+                + _R3_TS_T
+            },
+            id="N02-ts-as-arrow-name",
+        ),
+        pytest.param(
+            {
+                "x.js": "function h(caller) { caller = () => {}; return caller.name; }\n"
+                + _r3_g("h()")
+            },
+            id="N03-param-reassign-arrow",
+        ),
+    ],
+)
+def test_718_r3_named_bindings(tmp_path: Path, files: dict[str, str]) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, **files})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+_R3_PRAGMA_TEXT = "/** @jsx h */\nfunction h(t, p, ...c) { return c[0]; }\n"
+_R3_PRAGMA_ATTR = "/** @jsx h */\nfunction h(t, p) { return p.a; }\n"
+
+
+# R-718-3 (B-5): JSX text and attribute strings decode HTML character
+# references. J01 and J02 print EVIL on node v24 (classic-runtime emit).
+@pytest.mark.parametrize(
+    ("filename", "text"),
+    [
+        pytest.param("x.jsx", _R3_PRAGMA_TEXT + _r3_g("<i>caller</i>"), id="J01"),
+        pytest.param(
+            "x.jsx", _R3_PRAGMA_ATTR + _r3_g('<i a="call&#101;r" />'), id="J02"
+        ),
+        pytest.param("x.jsx", "const x = <i>call&#x65;r</i>;", id="text-hex"),
+        pytest.param("x.jsx", "const x = <i>call&#X65;r</i>;", id="text-hex-upper"),
+        pytest.param("x.jsx", "const x = <i>&#99;aller</i>;", id="text-decimal"),
+        pytest.param("x.jsx", "const x = <i>&#00099;aller</i>;", id="text-zero-padded"),
+        pytest.param("x.tsx", "const x = <i>get&#70;unction</i>;", id="text-tsx"),
+        pytest.param(
+            "x.jsx", "const x = <i>Who is the caller?</i>;", id="text-substring"
+        ),
+        pytest.param("x.jsx", "const x = <><b /> getFunction </>;", id="text-fragment"),
+        pytest.param(
+            "x.jsx", "const x = <i>&lt;mainModule&gt;</i>;", id="text-module-system"
+        ),
+        pytest.param(
+            "x.jsx", "const x = <i a='call&#x65;r' />;", id="attr-single-quote-hex"
+        ),
+        pytest.param(
+            "x.tsx", 'const x = <i a="&#103;etFunction" />;', id="attr-tsx-decimal"
+        ),
+        pytest.param(
+            "x.jsx", 'const x = <i a="c&#97;ll&#x65;r" />;', id="attr-two-references"
+        ),
+    ],
+)
+def test_718_r3_jsx_strings(tmp_path: Path, filename: str, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, filename: text})
+    facts = extract_symbol_facts_for_file(root / filename, root, call_resolution=MODE)
+    assert "module-system" in facts["scope_facts"]["module_bindings"]["shutoff"]
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    ("raw", "values"),
+    [
+        ("call&#101;r", ("caller", "caller")),
+        ("call&#x65;r", ("caller", "caller")),
+        ("&#0000099;aller", ("caller", "caller")),
+        ("it&apos;s &amp; &lt;", ("it's & <", "it's & <")),
+        # html.unescape also decodes a reference with no ``;`` and HTML5
+        # names; the JSX spec keeps both literal. Either value is matched.
+        ("call&#101r", ("call&#101r", "caller")),
+        ("&period;", ("&period;", ".")),
+        ("&#x110000;", ("&#x110000;", "\ufffd")),
+        ("c\x61ller", ("c\x61ller", "c\x61ller")),
+    ],
+)
+def test_718_r3_decode_jsx_text(raw: str, values: tuple[str, str]) -> None:
+    assert decode_jsx_text(raw) == values
+
+
+@pytest.mark.parametrize(
+    ("filename", "text"),
+    [
+        pytest.param("x.jsx", "const x = <i>call er</i>;", id="text-split"),
+        pytest.param("x.jsx", "const x = <i>call\ner</i>;", id="text-line-split"),
+        # A backslash is literal in JSX: no JS escape decodes.
+        pytest.param("x.jsx", 'const x = <i a="call\\x65r" />;', id="attr-js-escape"),
+        pytest.param("x.jsx", 'const x = <i a="callers-list" />;', id="attr-not-exact"),
+        pytest.param("x.tsx", 'const x = <i a="call&amp;er">ok</i>;', id="attr-amp"),
+    ],
+)
+def test_718_r3_jsx_controls(tmp_path: Path, filename: str, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, filename: text})
+    _, _, on, label = _run(root, "use.ts", "t")
+    assert on["resolution"] == "resolved", label
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "function g() { with (g) { return caller.arguments[1]; } }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C12-with",
+        ),
+        pytest.param(
+            "function g(caller) { with (g) { return caller.arguments[1]; } }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C22-with-shadows-local-caller",
+        ),
+        pytest.param(
+            "function g(Reflect) { with (globalThis) { return Reflect.get(g, 'caller').arguments[1]; } }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C23-with-globalThis-Reflect",
+        ),
+        pytest.param(
+            "function g(Object) { with (globalThis) { return Object.getOwnPropertyDescriptor(g, 'caller').value.arguments[1]; } }\n"
+            "g()('./svc').t = () => 'EVIL';\n",
+            id="C24-with-globalThis-Object-gopd",
+        ),
+        pytest.param(
+            "const E = Error; E.prepareStackTrace = (e, s) => s; const fr = new Error().stack; E.prepareStackTrace = undefined;\n"
+            "with (fr[0]) { getFunction().arguments[1]('./svc').t = () => 'EVIL'; }\n",
+            id="S08-with-getFunction-ident",
+        ),
+        pytest.param(
+            "const mainModule = 0;\n"
+            "with (process) { mainModule.require('./svc').t = () => 'EVIL'; }\n",
+            id="P01-with-process-mainModule",
+        ),
+    ],
+)
+def test_718_with_statement(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.js": text})
+    facts = extract_symbol_facts_for_file(root / "x.js", root, call_resolution=MODE)
+    assert "dynamic-scope" in facts["scope_facts"]["module_bindings"]["shutoff"]
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label in {
+        "none(run-tainted:dynamic-scope)",
+        "none(run-tainted:module-system)",
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "interface F { caller: unknown }",
+        "interface F { ['caller']: unknown }",
+        "type F = { getFunction(): void };",
+        "type F = 'getFunction';",
+    ],
+)
+def test_718_type_space_tokens(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize("promoted", [False, True])
+@pytest.mark.parametrize(
+    ("text", "cause"),
+    [
+        ("function inspect(frame) { return frame.getFunction(); }", "module-system"),
+        ("const key = 'caller';", "module-system"),
+        ("function inspect(object) { with (object) {} }", "dynamic-scope"),
+    ],
+)
+def test_718_stack_introspection_test_scope(
+    tmp_path: Path, promoted: bool, text: str, cause: str
+) -> None:
+    files = {
+        **OTHERS,
+        "svc.ts": SVC,
+        "use.ts": USE,
+        "tests/use.test.ts": USE.replace("./svc", "../svc"),
+        "tests/frames.js": text,
+    }
+    if promoted:
+        files["app.ts"] = "import './tests/frames';"
+    root = _write(tmp_path, files)
+    _, _, test_edge, test_label = _run(root, "tests/use.test.ts", "t")
+    assert test_edge["resolution"] == "ambiguous"
+    assert test_label == f"none(run-tainted:{cause})"
+    _, _, prod_edge, prod_label = _run(root, "use.ts", "t")
+    if promoted:
+        assert prod_edge["resolution"] == "ambiguous"
+        assert prod_label == test_label
+    else:
+        assert prod_edge["resolution"] == "resolved", prod_label
+
+
 def test_p5_41_parsed_typeof_require_chain_is_a_loader(tmp_path: Path) -> None:
     """The parsed path never exempts ``typeof require(...)…``."""
     root = _write(
@@ -3442,6 +4033,779 @@ def test_p5_41_parsed_typeof_require_chain_is_a_loader(tmp_path: Path) -> None:
     off, _, on, label = _run(root, "use.ts", "t")
     assert on == off
     assert label == "none(run-tainted:dynamic-loader)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("import * as v from 'node:vm';", id="static-import"),
+        pytest.param("export { Script } from 'vm';", id="reexport"),
+        pytest.param("require('node:repl');", id="require"),
+        pytest.param("import(`inspector`);", id="dynamic-import"),
+        pytest.param(
+            "import v = require('node:inspector/promises');", id="import-equals"
+        ),
+        pytest.param(
+            CR + "const r = createRequire(__filename); r('node:vm');",
+            id="create-require",
+        ),
+        pytest.param("import 'node:inspector';", id="side-effect-import"),
+        pytest.param("import 'repl';", id="bare-repl"),
+        pytest.param("import 'node:repl';", id="node-repl"),
+        pytest.param("import 'inspector/promises';", id="bare-inspector-promises"),
+    ],
+)
+def test_702_evaluator_loads(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:evaluator)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("process.binding;", id="denied-member"),
+        pytest.param("process.hrtime;", id="member-outside-closed-list"),
+        pytest.param("process['env'];", id="computed-process-member"),
+        pytest.param("process.cwd[key];", id="computed-key-on-allowed-member"),
+        pytest.param("true && process;", id="right-of-and"),
+        pytest.param("process || null;", id="left-of-or"),
+        pytest.param("globalThis.process;", id="global-property"),
+        pytest.param("globalThis?.process;", id="optional-member"),
+        pytest.param("globalThis['process'];", id="bracket"),
+        pytest.param("Reflect.get(globalThis, 'process');", id="reflect-get"),
+        pytest.param("const { process: p } = globalThis;", id="destructure"),
+        pytest.param(
+            "Object.getOwnPropertyDescriptor(globalThis, 'process').get();",
+            id="descriptor",
+        ),
+        pytest.param("const g = globalThis; g.process;", id="global-alias"),
+        pytest.param("function f() { return this.process; }", id="sloppy-this"),
+        pytest.param(r"const key = 'pr\u006fcess';", id="cooked-string"),
+        pytest.param("globalThis[`process`];", id="template"),
+        pytest.param("const key = /^process$/;", id="regex"),
+        pytest.param("function process() {}", id="function-name"),
+        pytest.param("class process {}", id="class-name"),
+        pytest.param("const process = 1; void process;", id="lexical-binding"),
+        pytest.param("const process = () => 1;", id="inferred-function-name"),
+        pytest.param("const process = class {};", id="inferred-class-name"),
+        pytest.param("function f(process: number) { return process; }", id="parameter"),
+        pytest.param(
+            "function f(process: number) { return typeof process; }", id="bound-operand"
+        ),
+        pytest.param("const process = { env: {} }; process.env;", id="bound-member"),
+        pytest.param("export const process = 1;", id="exported-variable"),
+        pytest.param("const p = 1; export { p as process };", id="exported-name"),
+        pytest.param("const process = 1; const o = { process };", id="shorthand"),
+        pytest.param("{ let process = 0; } process;", id="sibling-binding"),
+        pytest.param("require('node:process');", id="require"),
+        pytest.param("require('process');", id="bare-specifier"),
+        pytest.param("const p = require('node:process');", id="bound-require"),
+        pytest.param(
+            "const p = require('process'); p.env; void p;", id="bound-require-escape"
+        ),
+        pytest.param(
+            "export const p = require('process'); p.env;", id="exported-require"
+        ),
+        pytest.param("import p from 'node:process';", id="default-import"),
+        pytest.param(
+            "import process from 'node:process'; typeof process;", id="import-name"
+        ),
+        pytest.param("import 'node:process';", id="side-effect-import"),
+        pytest.param("import p from 'process'; p.hrtime;", id="import-denied-member"),
+        pytest.param(
+            "import p from 'process'; p.env; export { p };", id="exported-import"
+        ),
+        pytest.param("import * as p from 'node:process';", id="namespace-import"),
+        pytest.param("import { env as e } from 'node:process';", id="named-import"),
+        pytest.param("import p = require('node:process');", id="import-equals"),
+        pytest.param("export { env } from 'node:process';", id="reexport"),
+        pytest.param("import('node:process');", id="dynamic-import"),
+    ],
+)
+def test_702_process_tokens_and_loads(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "<span>process</span>;",
+        "<span>pr&#111;cess</span>;",
+        "<span>pr&#x6f;cess</span>;",
+        '<span title="pr&#111;cess" />;',
+    ],
+)
+def test_702_process_jsx_tokens(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.tsx": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize("access", [".constructor", "['constructor']"])
+def test_702_process_members_keep_evaluator_cause(tmp_path: Path, access: str) -> None:
+    root = _write(
+        tmp_path,
+        {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": f"process.cwd{access};"},
+    )
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:evaluator)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("process?.argv.length;", id="optional-global-member"),
+        pytest.param("process.cwd();", id="global-member"),
+        pytest.param("process.env.HOME;", id="environment"),
+        pytest.param("process.exit(0);", id="exit"),
+        pytest.param("process.on('exit', () => {});", id="listener"),
+        pytest.param("process.once('exit', () => {});", id="one-shot-listener"),
+        pytest.param("process.platform;", id="platform"),
+        pytest.param(
+            "if (process.send) process.send?.({ ready: true });", id="process-send"
+        ),
+        pytest.param("typeof process;", id="typeof"),
+        pytest.param("process === undefined;", id="strict-equality-left"),
+        pytest.param("undefined !== process;", id="strict-inequality-right"),
+        pytest.param("process == null;", id="loose-equality"),
+        pytest.param("null != process;", id="loose-inequality"),
+        pytest.param("process && true;", id="left-of-and"),
+        pytest.param("import p from 'node:process'; p.env;", id="safe-default-import"),
+        pytest.param(
+            "import * as p from 'process'; p?.argv;", id="safe-namespace-import"
+        ),
+        pytest.param(
+            "import { env as e } from 'node:process'; typeof e;", id="safe-named-import"
+        ),
+        pytest.param(
+            "function f() { return p.env; } import p from 'node:process';",
+            id="safe-import-used-before",
+        ),
+        "const vm = { run() {} }; vm.run();",
+        "const binding = 'contextify';",
+        "import type { Script } from 'node:vm';",
+        "import type p from 'node:process';",
+        "import type v = require('node:vm');",
+        "export type { Script } from 'node:vm';",
+        "type T = typeof import('node:vm');",
+        "const text = 'node:vm';",
+        "const text = 'node:process';",
+        CR + "const r = createRequire(__filename); r.resolve('node:vm');",
+    ],
+)
+def test_702_inert_uses_keep_tier2(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert structural == off
+    assert on["resolution"] == "resolved", label
+    assert _resolved_file(on, root) == "svc.ts"
+
+
+@pytest.mark.parametrize("promoted", [False, True])
+@pytest.mark.parametrize(
+    ("text", "cause"),
+    [
+        ("import 'node:vm';", "evaluator"),
+        ("process.binding;", "module-system"),
+    ],
+)
+def test_702_causes_follow_test_scope(
+    tmp_path: Path, promoted: bool, text: str, cause: str
+) -> None:
+    test_use = USE.replace("./svc", "../svc")
+    files = {
+        **OTHERS,
+        "svc.ts": SVC,
+        "use.ts": USE,
+        "tests/use.test.ts": test_use,
+        "tests/w.ts": text,
+    }
+    if promoted:
+        files["app.ts"] = "import './tests/w';"
+    root = _write(tmp_path, files)
+    _, _, test_edge, test_label = _run(root, "tests/use.test.ts", "t")
+    assert test_edge["resolution"] == "ambiguous"
+    assert test_label == f"none(run-tainted:{cause})"
+    _, _, prod_edge, prod_label = _run(root, "use.ts", "t")
+    if promoted:
+        assert prod_edge["resolution"] == "ambiguous"
+        assert prod_label == test_label
+    else:
+        assert prod_edge["resolution"] == "resolved", prod_label
+
+
+# ---------------------------------------------------------------------------
+# R-699-4: the process allow-list must not hand the process object back.
+# Each route below ran the replacement under node v24.22.3 while the PR head
+# c6e34017 resolved the call (oracle in the wave-3 evidence, 723-r4/ and
+# 723-opus-soundness/). ``MM``/``RQ`` reach ``mainModule.require`` without
+# spelling a denied name.
+
+MM = '["main" + "Module"]'
+RQ = '["req" + "uire"]'
+EVIL = f'{MM}{RQ}("./svc").t = () => 2;\n'
+METHOD = f"class A {{\n  m() {{\n    this{EVIL}    return '/';\n  }}\n}}\n"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Hole 1: ``on``/``once`` return ``process``.
+        pytest.param(
+            f"const p = process.on('x', () => {{}});\np{EVIL}", id="on-returns"
+        ),
+        pytest.param(
+            f"const p = process.once('x', () => {{}});\np{EVIL}", id="once-returns"
+        ),
+        pytest.param(f"process.on('x', () => {{}}){EVIL}", id="on-chain-inline"),
+        pytest.param(f"process.on('x', () => {{}}).off{EVIL}", id="on-off-chain"),
+        pytest.param(
+            f"import p from 'node:process';\nconst q = p.on('x', () => {{}});\nq{EVIL}",
+            id="import-default-on",
+        ),
+        pytest.param(
+            f"const p = require('process');\nconst q = p.once('x', () => {{}});\nq{EVIL}",
+            id="require-bound-once",
+        ),
+        pytest.param(
+            f"import * as p from 'process';\nconst q = p.on('x', () => {{}});\nq{EVIL}",
+            id="namespace-import-on",
+        ),
+        # Hole 2: listeners run with ``this === process``.
+        pytest.param(
+            METHOD + "process.once('newListener', new A().m);\n"
+            "process.on('y', () => {});\n",
+            id="listener-class-method",
+        ),
+        pytest.param(
+            METHOD + "const m = new A().m;\nprocess.once('newListener', m);\n"
+            "process.on('y', () => {});\n",
+            id="listener-bound-name",
+        ),
+        # Hole 3: a write installs a method that runs with ``this === process``.
+        pytest.param(
+            METHOD + "process.cwd = new A().m;\nprocess.cwd();\n", id="write-cwd"
+        ),
+        pytest.param(
+            METHOD + "process.exit = new A().m;\nprocess.exit(0);\n", id="write-exit"
+        ),
+        pytest.param(
+            METHOD + "[process.cwd] = [new A().m];\nprocess.cwd();\n",
+            id="write-array-pattern",
+        ),
+        pytest.param(
+            METHOD + "({ m: process.exit } = new A());\nprocess.exit(0);\n",
+            id="write-object-pattern",
+        ),
+        pytest.param(
+            METHOD + "process.cwd &&= new A().m;\nprocess.cwd();\n",
+            id="write-logical-assignment",
+        ),
+        pytest.param(
+            METHOD + "for (process.cwd of [new A().m]);\nprocess.cwd();\n",
+            id="write-for-of",
+        ),
+        pytest.param(
+            "let leak;\n(Object.prototype as any).cwd = function () {\n"
+            "  leak = this;\n  return '/';\n};\n"
+            f"delete process.cwd;\nprocess.cwd();\nleak{EVIL}",
+            id="write-delete",
+        ),
+        # Hole 4: loose equality runs ToPrimitive(process).
+        pytest.param(
+            "let leak;\nconst vo = Object.prototype.valueOf;\n"
+            "Object.prototype.valueOf = function () {\n"
+            "  leak = this;\n  return vo.call(this);\n};\n"
+            f"void (process == 'x');\nObject.prototype.valueOf = vo;\nleak{EVIL}",
+            id="loose-equality-valueof",
+        ),
+        pytest.param(
+            "let leak;\nObject.prototype.valueOf = function () {\n"
+            f"  leak = this;\n  return 0;\n}};\nvoid (process != 1);\nleak{EVIL}",
+            id="loose-inequality-valueof",
+        ),
+    ],
+)
+def test_r699_4_oracle_routes(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Item 1: anything but a discarded statement call with arrow listeners.
+        pytest.param("export default process.on('x', () => {});", id="on-exported"),
+        pytest.param("void process.on('x', () => {});", id="on-voided"),
+        pytest.param("await process.once('x', () => {});", id="once-awaited"),
+        pytest.param("process.on('x', () => {}), 0;", id="on-sequence"),
+        pytest.param("const f = process.on;", id="on-read"),
+        pytest.param("(0, process.once)('x', () => {});", id="once-detached"),
+        pytest.param("process.on('x', function () {});", id="function-listener"),
+        pytest.param("process.on('x', handler);", id="named-listener"),
+        pytest.param("process.once('x', () => {}, h);", id="second-listener"),
+        pytest.param("process.on(...args);", id="spread-arguments"),
+        pytest.param("process.on(...[e, f], () => {});", id="spread-event"),
+        pytest.param("process.on('x', ...fs);", id="spread-listener"),
+        pytest.param("process.once('x');", id="no-listener"),
+        pytest.param("process.on`x`;", id="tagged-template"),
+        pytest.param("new process.on('x', () => {});", id="constructed"),
+        pytest.param(
+            "import p from 'process'; p.once('x', function () {});",
+            id="import-function-listener",
+        ),
+        # Item 2: any write to an allowed member.
+        pytest.param("process.env = {};", id="write-env"),
+        pytest.param("process.argv = [];", id="write-argv"),
+        pytest.param("process.on = f;", id="write-on"),
+        pytest.param("process.send = f;", id="write-send"),
+        pytest.param("process.cwd += '';", id="compound-assignment"),
+        pytest.param("process.cwd ??= f;", id="nullish-assignment"),
+        pytest.param("process.argv++;", id="postfix-update"),
+        pytest.param("--process.argv;", id="prefix-update"),
+        pytest.param("delete process.env;", id="delete"),
+        pytest.param("delete process?.cwd;", id="delete-optional"),
+        pytest.param("for (process.cwd in o);", id="for-in"),
+        pytest.param("[...process.argv] = xs;", id="rest-pattern"),
+        pytest.param("[process.cwd = f] = fs;", id="pattern-default-target"),
+        pytest.param("({ m: process.exit = f } = o);", id="object-default-target"),
+        pytest.param("[(process.cwd)!] = fs;", id="non-null-target"),
+        pytest.param("(process.cwd as any) = f;", id="as-target"),
+        pytest.param("([process.cwd] as any) = fs;", id="as-pattern-target"),
+        pytest.param("[[process.cwd]!] = fs;", id="non-null-nested-pattern"),
+        pytest.param("import p from 'process'; p.cwd = f;", id="import-write"),
+        pytest.param(
+            "const p = require('process'); delete p.env;", id="require-delete"
+        ),
+        # Item 3: loose equality only against null or undefined.
+        pytest.param("process == 'x';", id="loose-equality-string"),
+        pytest.param("1 != process;", id="loose-inequality-right"),
+        pytest.param("process == void 0;", id="loose-equality-void"),
+        pytest.param("process == undefined;", id="loose-equality-undefined"),
+        pytest.param(
+            "function f(undefined: string) { return process == undefined; }",
+            id="loose-equality-bound-undefined",
+        ),
+        pytest.param("import p from 'process'; p == 'x';", id="import-loose-equality"),
+    ],
+)
+def test_r699_4_process_escapes_trigger(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "process.on('x', () => {});\nprocess.once('y', (v: unknown) => void v);",
+            id="arrow-listeners",
+        ),
+        pytest.param("process.on?.('x', () => {});", id="optional-call"),
+        pytest.param("process?.once('x', async () => {});", id="optional-member"),
+        pytest.param("(process.on)('x', (() => {}));", id="parenthesized"),
+        pytest.param(
+            "import p from 'node:process'; p.on('x', () => {});", id="import-listener"
+        ),
+        pytest.param("if (!process.send) process.exit(1);", id="negated-member"),
+        pytest.param("process.env.HOME = 'x';", id="write-env-entry"),
+        pytest.param("delete process.env.HOME;", id="delete-env-entry"),
+        pytest.param("[a = process.argv] = xs;", id="pattern-default-read"),
+        pytest.param("({ a = process.argv } = o);", id="shorthand-default-read"),
+        pytest.param("({ [process.platform]: v } = o);", id="pattern-computed-key"),
+        pytest.param("for (const a of process.argv);", id="for-of-source"),
+        pytest.param("x = process.argv;", id="assigned-from"),
+        pytest.param("null == process;", id="loose-equality-null"),
+        pytest.param("process != (null);", id="loose-inequality-null"),
+    ],
+)
+def test_r699_4_safe_process_uses_keep_tier2(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert structural == off
+    assert on["resolution"] == "resolved", label
+    assert _resolved_file(on, root) == "svc.ts"
+
+
+def test_r699_4_bound_uses_found_in_one_walk(tmp_path: Path) -> None:
+    """R-699-4 item 5: the uses of every process alias come from one walk of
+    the file, not one full walk per alias."""
+    from unittest.mock import patch
+
+    from chunker.call_resolution import js_modules
+
+    real = js_modules._walk
+
+    def root_walks(aliases: int) -> int:
+        text = "".join(
+            f"import p{n} from 'node:process';\np{n}.argv;\n" for n in range(aliases)
+        )
+        root = _write(
+            tmp_path / str(aliases),
+            {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text},
+        )
+        walks = 0
+
+        def counting(node: Any) -> Any:
+            nonlocal walks
+            if node.parent is None:
+                walks += 1
+            return real(node)
+
+        with patch.object(js_modules, "_walk", counting):
+            _, _, on, label = _run(root, "use.ts", "t")
+        assert on["resolution"] == "resolved", label
+        return walks
+
+    assert root_walks(2) == root_walks(30)
+
+
+# R-699-7 item 1: a ``require`` some scope of the file binds is user code, so
+# the literal ``"process"`` it receives is no loader call; under a CommonJS
+# emit a program-scope one also receives every static import's specifier.
+# The five route trees printed the replacement under node v24.22.3 while the
+# head 8dc5fa0d resolved the call (723-fable-recheck/hunt.py in the wave-3
+# evidence).
+LEAK = "  leak = Reflect.get(globalThis, x);\n"
+REQUIRE_EXPORT = f"export function require(x) {{\n{LEAK}  return {{}};\n}}\n"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            f"let leak;\nfunction require(x) {{\n{LEAK}"
+            "  return { cwd() { return '/'; } };\n}\n"
+            f"const p = require('process');\np.cwd();\nleak{EVIL}",
+            id="shadowed-require-function",
+        ),
+        pytest.param(
+            "let leak;\n((require) => {\n  const p = require('process');\n"
+            f"  p.cwd();\n}})((x) => {{\n{LEAK}"
+            f"  return {{ cwd() {{ return '/'; }} }};\n}});\nleak{EVIL}",
+            id="shadowed-require-parameter",
+        ),
+        pytest.param(
+            "let leak;\n((require) => {\n  const p = require('process');\n"
+            f"  typeof p;\n}})((x) => {{\n{LEAK}}});\nleak{EVIL}",
+            id="shadowed-require-typeof",
+        ),
+        pytest.param(
+            "import { require } from './req';\nconst p = require('process');\n"
+            "typeof p;\n",
+            id="imported-require",
+        ),
+        pytest.param(
+            f"let leak;\nfunction require(x) {{\n{LEAK}"
+            "  return { default: { cwd() { return '/'; } } };\n}\n"
+            f"import p from 'process';\np.cwd();\nleak{EVIL}",
+            id="import-under-shadowed-require",
+        ),
+    ],
+)
+def test_r699_7_route_trees(tmp_path: Path, text: str) -> None:
+    files = {**OTHERS, "svc.ts": SVC, "use.ts": USE, "req.ts": REQUIRE_EXPORT}
+    root = _write(tmp_path, {**files, "w.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "var require = (x) => x; const p = require('process'); typeof p;",
+            id="var",
+        ),
+        pytest.param("let require; const p = require('process'); typeof p;", id="let"),
+        pytest.param(
+            "class require {} const p = require('process'); typeof p;", id="class"
+        ),
+        pytest.param(
+            "function f({ require }) { const p = require('process'); typeof p; }",
+            id="destructured-parameter",
+        ),
+        pytest.param(
+            "class C { m(require) { const p = require('process'); typeof p; } }",
+            id="method-parameter",
+        ),
+        pytest.param(
+            "try {} catch (require) { const p = require('process'); typeof p; }",
+            id="catch-parameter",
+        ),
+        pytest.param(
+            "function require(x) { return x; } const p = require(`process`);"
+            " typeof p;",
+            id="template-specifier",
+        ),
+        pytest.param(
+            "function require(x) { return x; } const p = require('node:process');"
+            " typeof p;",
+            id="node-specifier",
+        ),
+        pytest.param(
+            "import require from './req'; const p = require('process'); typeof p;",
+            id="default-import",
+        ),
+        pytest.param(
+            "const p = require('process'); typeof p;"
+            " { function require(x) { return x; } }",
+            id="block-function-elsewhere",
+        ),
+        pytest.param(
+            "import p from 'process'; typeof p; function require(x) { return x; }",
+            id="import-then-declaration",
+        ),
+        pytest.param(
+            "function require(x) { return x; } import p = require('process');"
+            " typeof p;",
+            id="import-equals",
+        ),
+        # The same bindings ahead of a static import, which a CommonJS emit
+        # turns into a call of the program-scope ``require``.
+        pytest.param(
+            "var require = (x) => x; import p from 'process'; typeof p;",
+            id="var-static-import",
+        ),
+        pytest.param(
+            "let require; import p from 'process'; typeof p;", id="let-static-import"
+        ),
+        pytest.param(
+            "class require {} import p from 'process'; typeof p;",
+            id="class-static-import",
+        ),
+        pytest.param(
+            "function f({ require }) {} import p from 'process'; typeof p;",
+            id="destructured-parameter-static-import",
+        ),
+        pytest.param(
+            "class C { m(require) {} } import p from 'process'; typeof p;",
+            id="method-parameter-static-import",
+        ),
+        pytest.param(
+            "try {} catch (require) {} import p from 'process'; typeof p;",
+            id="catch-parameter-static-import",
+        ),
+        pytest.param(
+            "import require from './req'; import * as p from 'process'; p.argv;",
+            id="default-import-static-import",
+        ),
+        pytest.param(
+            "import { require } from './req'; import { argv } from 'node:process';"
+            " typeof argv;",
+            id="named-import-static-import",
+        ),
+    ],
+)
+def test_r699_7_bound_require_voids_process_load(tmp_path: Path, text: str) -> None:
+    files = {**OTHERS, "svc.ts": SVC, "use.ts": USE, "req.ts": REQUIRE_EXPORT}
+    root = _write(tmp_path, {**files, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "function require(x) { return x; } const p = require('procesz');"
+            " typeof p;",
+            id="other-specifier",
+        ),
+        pytest.param(
+            "declare function require(x: string): any;\n"
+            "import p from 'process'; typeof p;",
+            id="ambient-declaration",
+        ),
+        pytest.param(
+            "import type { require } from './req';\n"
+            "import p from 'process'; typeof p;",
+            id="type-only-import",
+        ),
+        pytest.param(
+            "const o = { require(x: string) { return x; } };\n"
+            "import p from 'process'; typeof p;",
+            id="method-name",
+        ),
+    ],
+)
+def test_r699_7_unbound_require_keeps_tier2(tmp_path: Path, text: str) -> None:
+    files = {**OTHERS, "svc.ts": SVC, "use.ts": USE, "req.ts": REQUIRE_EXPORT}
+    root = _write(tmp_path, {**files, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert structural == off
+    assert on["resolution"] == "resolved", label
+    assert _resolved_file(on, root) == "svc.ts"
+
+
+# R-699-7, global ``require``: in an ES module a free ``require`` is a lookup
+# on the global object, which another file can set. Under node v24.22.3,
+# ``a.js`` setting ``globalThis.require`` and then a ``"type": "module"``
+# file running ``const p = require("process"); typeof p;`` printed the
+# replacement while
+# the head 8dc5fa0d resolved the call (723-r7/gr_src2, gr_tree2 in the
+# wave-3 evidence). So no ``require`` call of ``process`` is exempt, and
+# neither is ``import p = require(...)``, which ``--module preserve`` emits
+# as such a call.
+GLOBAL_REQUIRE = (
+    f"(globalThis as any).require = (x: string) => {{\n{LEAK}  return {{}};\n}};\n"
+    "export const nothing = 1;\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("name", "text"),
+    [
+        pytest.param(
+            "esm/w.js",
+            "const p = require('process');\ntypeof p;\n",
+            id="type-module-js",
+        ),
+        pytest.param(
+            "w.ts",
+            "const p = require('node:process');\ntypeof p;\nexport {};\n",
+            id="ts-module",
+        ),
+        pytest.param(
+            "w.ts", "const p = require(`process`);\np.argv;\n", id="template-specifier"
+        ),
+        pytest.param(
+            "w.ts",
+            "function f() { return p.argv; }\nconst p = require('node:process');\n",
+            id="used-before",
+        ),
+        pytest.param(
+            "w.ts",
+            "import p = require('process');\np && true;\nexport {};\n",
+            id="import-equals",
+        ),
+    ],
+)
+def test_r699_7_global_require_route(tmp_path: Path, name: str, text: str) -> None:
+    files = {**OTHERS, "svc.ts": SVC, "use.ts": USE, "a.ts": GLOBAL_REQUIRE}
+    files["esm/package.json"] = '{"type": "module"}\n'
+    root = _write(tmp_path, {**files, name: text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:module-system)"
+
+
+# R-699-9: a write to the CommonJS wrapper's ``require`` through a pattern
+# element, a default or a loop head declares nothing, so no scope binds
+# ``require``; tsc emits imports in source order, so the replacement then
+# receives the exempt static import's literal ``"process"``. Each tree below
+# is a tsc 5.9.3 ``--module commonjs`` emit that printed EVIL under node
+# v24.22.3 while the head 643d3314 and main resolved the call
+# (723-fable-recheck2/hunt2.py in the wave-3 evidence). Any assignment target
+# spelled ``require`` that is free or program-scope is a ``dynamic-loader``
+# cause.
+G_LOADER = (
+    f"(x) => {{\n{LEAK}"
+    '  return { default: { cwd() { return "/"; } }, cwd() { return "/"; } };\n}'
+)
+G_IMPORT = 'import p from "process";\np.cwd();\n'
+G_TAIL = f"leak{EVIL}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            f"let leak;\n[require] = [{G_LOADER}];\n{G_IMPORT}{G_TAIL}",
+            id="g-array-assign",
+        ),
+        pytest.param(
+            f"let leak;\n({{ a: require }} = {{ a: {G_LOADER} }});\n{G_IMPORT}{G_TAIL}",
+            id="g-object-assign",
+        ),
+        pytest.param(
+            f"let leak;\n[require = {G_LOADER}] = [];\n{G_IMPORT}{G_TAIL}",
+            id="g-array-default",
+        ),
+        pytest.param(
+            f"let leak;\n[[require]] = [[{G_LOADER}]];\n{G_IMPORT}{G_TAIL}",
+            id="g-nested-array",
+        ),
+        pytest.param(
+            f"let leak;\nfor ([require] of [[{G_LOADER}]]);\n{G_IMPORT}{G_TAIL}",
+            id="g-for-of-pattern",
+        ),
+        pytest.param(
+            f"let leak;\nfunction f() {{\n  [require] = [{G_LOADER}];\n}}\nf();\n"
+            f"{G_IMPORT}{G_TAIL}",
+            id="g-fn-array-assign",
+        ),
+        pytest.param(
+            f"let leak;\n[require] = [{G_LOADER}];\n"
+            f'import p from "process";\ntypeof p;\n{G_TAIL}',
+            id="g-array-assign-typeof",
+        ),
+        pytest.param(
+            f"let leak;\n[require] = [{G_LOADER}];\n"
+            f'import * as p from "process";\np.cwd();\n{G_TAIL}',
+            id="g-array-assign-star",
+        ),
+    ],
+)
+def test_r699_9_require_pattern_write_route_trees(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "w.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:dynamic-loader)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("[...require] = [];", id="array-rest"),
+        pytest.param("({ ...require } = {});", id="object-rest"),
+        pytest.param("({ a: [require] } = { a: [1] });", id="nested-object-array"),
+        pytest.param("for ({ a: require } of [{ a: 1 }]);", id="for-of-object"),
+        pytest.param("for ([require] in { a: 1 });", id="for-in-array"),
+        pytest.param(
+            "[require] = [() => ({ t: () => 2 })];\n"
+            "import { t } from './svc';\nexport const r = t();\n",
+            id="own-import-no-process",
+        ),
+    ],
+)
+def test_r699_9_require_pattern_write_is_a_cause(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert on == structural == off
+    assert label == "none(run-tainted:dynamic-loader)"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(f"let requirf;\n[requirf] = [1];\n{G_IMPORT}", id="other-name"),
+        pytest.param(
+            "function f() {\n  let require;\n  [require] = [1];\n  return require;\n}\n",
+            id="nested-local-require",
+        ),
+        pytest.param("const o: any = {};\n[o.require] = [1];\n", id="member-target"),
+    ],
+)
+def test_r699_9_other_pattern_writes_keep_tier2(tmp_path: Path, text: str) -> None:
+    root = _write(tmp_path, {**OTHERS, "svc.ts": SVC, "use.ts": USE, "x.ts": text})
+    off, structural, on, label = _run(root, "use.ts", "t")
+    assert structural == off
+    assert on["resolution"] == "resolved", label
+    assert _resolved_file(on, root) == "svc.ts"
 
 
 def test_p5_37_short_name_after_trailing_dot_or_space() -> None:

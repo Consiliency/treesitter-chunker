@@ -1,13 +1,18 @@
-from dataclasses import asdict
+import subprocess
+import sys
+import tracemalloc
+from dataclasses import asdict, replace
+from pathlib import Path
 
-from chunker.incremental import DefaultIncrementalProcessor
-from chunker.interfaces.incremental import ChangeType
+import pytest
+
+from chunker import chunk_text
+from chunker.incremental import DefaultIncrementalProcessor, SimpleIncrementalIndex
+from chunker.interfaces.incremental import ChangeType, ChunkChange, ChunkDiff
 from chunker.types import CodeChunk
 
 
 def test_move_attribution_uses_source_order_for_ambiguous_candidates():
-    from chunker import chunk_text
-
     old = chunk_text(
         "def foo():\n    return 1\n\ndef bar():\n    return 1\n",
         "python",
@@ -72,8 +77,6 @@ def test_content_diff_reparses_with_path_and_definition_identity(monkeypatch):
 
 
 def test_overload_diff_preserves_every_definition():
-    from chunker import chunk_text
-
     source = "class A { int foo(int a) { return 1; } int foo(String a) { return 2; } int foo(int a, int b) { return 3; } }"
     old = chunk_text(source, "java", file_path="A.java")
     new = chunk_text(source.replace("return 2", "return 4"), "java", file_path="A.java")
@@ -94,8 +97,6 @@ def test_overload_diff_preserves_every_definition():
 
 
 def test_update_body_edit_removes_previous_occurrence():
-    from chunker import chunk_text
-
     old = chunk_text("def f():\n    return 1\n", "python", file_path="a.py")
     new = chunk_text("def f():\n    return 2\n", "python", file_path="a.py")
     processor = DefaultIncrementalProcessor()
@@ -105,8 +106,6 @@ def test_update_body_edit_removes_previous_occurrence():
 
 
 def test_update_refreshes_unchanged_chunk_positions():
-    from chunker import chunk_text
-
     source = "def f():\n    return 1\n\ndef g():\n    return 2\n"
     old = chunk_text(source, "python", file_path="a.py")
     new = chunk_text(
@@ -122,8 +121,6 @@ def test_update_refreshes_unchanged_chunk_positions():
 
 
 def test_multiline_overload_deletion_and_relocation_reconstructs_new_file():
-    from chunker import chunk_text
-
     old_source = (
         "class A {\n"
         "  int foo(int a) { return 1; }\n"
@@ -149,8 +146,6 @@ def test_multiline_overload_deletion_and_relocation_reconstructs_new_file():
 
 
 def test_move_detection_never_reuses_a_target():
-    from chunker import chunk_text
-
     old = chunk_text(
         "def foo():\n    return 1\n\ndef bar():\n    return 1\n",
         "python",
@@ -163,8 +158,6 @@ def test_move_detection_never_reuses_a_target():
 
 
 def test_duplicate_python_definition_reduction_and_relocation():
-    from chunker import chunk_text
-
     body = "def f():\n    return 1\n"
     old = chunk_text(body + "\n" + body, "python", file_path="a.py")
     new_source = "\n" + body
@@ -180,8 +173,6 @@ def test_duplicate_python_definition_reduction_and_relocation():
 
 
 def test_move_detection_preserves_complete_collision_context():
-    from chunker import chunk_text
-
     body = "def f():\n    return 1\n"
     old = chunk_text(body + "\n" + body, "python", file_path="a.py")
     new_source = body + "\n\n" + body
@@ -197,8 +188,6 @@ def test_move_detection_preserves_complete_collision_context():
 
 
 def test_unchanged_method_refreshes_parent_identity_and_stored_state():
-    from chunker import chunk_text
-
     source = "class A { int f() { return 1; } int x = 1; }"
     old = [
         c
@@ -222,3 +211,223 @@ def test_unchanged_method_refreshes_parent_identity_and_stored_state():
     assert [asdict(c) for c in diff.unchanged_chunks] == fields
     assert [asdict(c) for c in processor.update_chunks(old, diff)] == fields
     assert [asdict(c) for c in processor.file_chunks["A.java"]] == fields
+
+
+def _rebuilt(chunks):
+    index = SimpleIncrementalIndex()
+    for chunk in chunks:
+        index.update_chunk(None, chunk)
+    return index
+
+
+@pytest.mark.parametrize("api", ["list", "content", "stored_content"])
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_index_tracks_successive_source_shifts(api, newline):
+    path = "a.py"
+    body = newline.join(("def f():", "    return 1", ""))
+    other = chunk_text(body, "python", file_path="other.py")
+    old = chunk_text(body, "python", file_path=path)
+    index = _rebuilt(old + other)
+    processor = DefaultIncrementalProcessor()
+    processor.store_chunks(path, old)
+    for shift in (1, 2, 2):
+        source = newline * shift + body
+        new = chunk_text(source, "python", file_path=path)
+        if api == "list":
+            diff = processor.compute_diff(path, new)
+            assert diff.added == diff.removed == diff.modified == []
+        elif api == "content":
+            diff = processor.compute_diff(old, source, "python")
+        else:
+            diff = processor.compute_diff(path, source, "python")
+            processor.store_chunks(path, new)
+        assert diff.summary["unchanged"] == 1
+        assert diff.summary["modified"] == 0
+        assert diff.changes == []
+        assert [c.chunk_id for c in diff.unchanged_chunks] == [new[0].chunk_id]
+        changed = old[0].chunk_id != new[0].chunk_id
+        pairs = [(old[0].chunk_id, new[0].chunk_id)] if changed else []
+        assert [(a.chunk_id, b.chunk_id) for a, b in diff.occurrence_updates] == pairs
+        assert index.get_update_cost(diff) == len(pairs) / 2
+        before = len(index.update_log)
+        index.batch_update(diff)
+        events = index.update_log[before:]
+        assert [(e["old_id"], e["new_id"]) for e in events] == pairs
+        assert all(e["action"] == "update" for e in events)
+        fresh = _rebuilt(new + other)
+        assert index.index == fresh.index
+        assert sorted(index.search("DEF F")) == sorted(fresh.search("DEF F"))
+        assert len(index.search("DEF F")) == 2
+        assert index.index[new[0].chunk_id]["line_range"] == (1 + shift, 2 + shift)
+        if shift == 1 and newline == "\n":
+            assert old[0].start_line == 1
+            assert old[0].chunk_id == "dfb9527c729f936e770bbf5bdc5df5fdd092ea67"
+            assert new[0].chunk_id == "4cecc8b4404968a6014ba21cc90f1a5497c7fcd0"
+        old = new
+
+
+@pytest.mark.parametrize(
+    ("old_prefix", "new_prefix", "same_id"),
+    [("  ", "\n\n", True), ("#a\n", "#ab\n", False)],
+)
+def test_index_tracks_independent_byte_and_line_shifts(old_prefix, new_prefix, same_id):
+    body = "def f():\n    return 1\n"
+    old = chunk_text(old_prefix + body, "python", file_path="a.py")
+    new = chunk_text(new_prefix + body, "python", file_path="a.py")
+    assert (old[0].chunk_id == new[0].chunk_id) == same_id
+    assert (old[0].start_line != new[0].start_line) == same_id
+    diff = DefaultIncrementalProcessor().compute_diff(old, new_prefix + body, "python")
+    index = _rebuilt(old)
+    index.batch_update(diff)
+    assert len(diff.occurrence_updates) == 1
+    assert index.index == _rebuilt(new).index
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "affected"),
+    [
+        ("start_line", 2, True),
+        ("end_line", 3, True),
+        ("file_path", "other.py", True),
+        ("node_type", "other_type", True),
+        ("parent_chunk_id", "parent", False),
+        ("metadata", {"key": "value"}, False),
+    ],
+)
+def test_same_id_payload_updates(field, value, affected):
+    (old,) = chunk_text("def f():\n    return 1", "python", file_path="a.py")
+    new = replace(old, **{field: value})
+    processor = DefaultIncrementalProcessor()
+    processor.store_chunks("a.py", [old])
+    diff = processor.compute_diff("a.py", [new])
+    index = _rebuilt([old])
+    assert diff.unchanged_chunks[0] is new
+    assert diff.changes == []
+    assert index.get_update_cost(diff) == int(affected)
+    index.batch_update(diff)
+    assert len(index.update_log) == 1 + int(affected)
+    assert index.index == {
+        old.chunk_id: {
+            "content": "def f():\n    return 1",
+            "file_path": value if field == "file_path" else "a.py",
+            "node_type": value if field == "node_type" else "function_definition",
+            "line_range": (
+                value if field == "start_line" else 1,
+                value if field == "end_line" else 2,
+            ),
+        }
+    }
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_index_handles_one_sided_duplicate_routes(reverse):
+    body = "def f():\n    return 1\n"
+    previous, current = body + "\n" + body, "\n" + body
+    if reverse:
+        previous, current = current, previous
+    old = chunk_text(previous, "python", file_path="a.py")
+    new = chunk_text(current, "python", file_path="a.py")
+    diff = DefaultIncrementalProcessor().compute_diff(old, current, "python")
+    assert diff.summary["added"] == len(new)
+    assert diff.summary["deleted"] == len(old)
+    assert diff.summary["moved"] == 0
+    assert diff.occurrence_updates == []
+    index = _rebuilt(old)
+    index.batch_update(diff)
+    assert index.index == _rebuilt(new).index
+    assert len(index.search("def f")) == len(new)
+
+
+def test_index_applies_mixed_edits_and_refreshes():
+    old_source = "def gone(): pass\n\ndef edit(): return 1\n\ndef same(): return 3"
+    source = "class Added: pass\n\ndef edit(): return 12\n\ndef same(): return 3"
+    old = chunk_text(old_source, "python", file_path="a.py")
+    new = chunk_text(source, "python", file_path="a.py")
+    diff = DefaultIncrementalProcessor().compute_diff(old, source, "python")
+    assert [diff.summary[k] for k in ("added", "deleted", "modified", "unchanged")] == [
+        1
+    ] * 4
+    assert len(diff.occurrence_updates) == 1
+    index = _rebuilt(old)
+    index.batch_update(diff)
+    assert index.index == _rebuilt(new).index
+    assert len(index.update_log) == len(old) + 4
+
+
+def test_batch_retires_all_old_ids_before_publishing():
+    old = _chunk("first", definition_id="first")
+    other = _chunk("second", definition_id="second")
+    edited = replace(old, chunk_id=other.chunk_id, content="changed")
+    shifted = replace(other, chunk_id=old.chunk_id, start_line=2)
+    change = ChunkChange(edited.chunk_id, ChangeType.MODIFIED, old, edited, [], 1.0)
+    diff = ChunkDiff(
+        [change], [], [], [(old, edited)], [shifted], {}, [(other, shifted)]
+    )
+    index = _rebuilt([old, other])
+    index.batch_update(diff)
+    assert index.index == _rebuilt([edited, shifted]).index
+    assert [e["action"] for e in index.update_log] == ["add", "add", "update", "update"]
+
+
+@pytest.mark.parametrize(
+    "regions",
+    [[], [(2, 2)], [(5, 3)], [(6, 7), (3, 5), (3, 5), (4, 4), (9, 9), (3, 1)]],
+)
+def test_merge_matches_bounded_line_set_oracle(regions):
+    base = _chunk("body", definition_id="one")
+    full = [
+        replace(
+            base,
+            chunk_id=f"{path}-{start}-{end}",
+            file_path=path,
+            start_line=start,
+            end_line=end,
+        )
+        for path in ("b.py", "a.py")
+        for start in range(1, 11)
+        for end in range(1, 11)
+    ]
+    incremental = [replace(full[0]), replace(full[0])]
+    changed = {line for a, b in regions for line in range(a, b + 1)}
+    supplied = {c.chunk_id for c in incremental}
+    retained = [
+        c
+        for c in full
+        if c.chunk_id not in supplied
+        and changed.isdisjoint(range(c.start_line, c.end_line + 1))
+    ]
+    expected = sorted(incremental + retained, key=lambda c: (c.file_path, c.start_line))
+    actual = DefaultIncrementalProcessor.merge_incremental_results(
+        full, incremental, regions
+    )
+    assert list(map(id, actual)) == list(map(id, expected))
+
+
+def _measure_merge_peak():
+    merge = DefaultIncrementalProcessor.merge_incremental_results
+    for region_end, chunk_end in ((100, 200100), (100000, 200100), (100, 300000)):
+        chunk = replace(
+            _chunk("body", definition_id="one"), start_line=200001, end_line=chunk_end
+        )
+        full, incremental, regions = [chunk], [], [(1, region_end)]
+        tracemalloc.start()
+        try:
+            result = merge(full, incremental, regions)
+            _, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        assert len(result) == 1 and result[0] is chunk
+        assert peak < 512 * 1024, (region_end, chunk_end, peak)
+
+
+def test_merge_allocation_is_independent_of_both_span_lengths():
+    # Keep fixtures, parser imports and pytest's allocations outside each measurement.
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import runpy, sys; runpy.run_path(sys.argv[1])['_measure_merge_peak']()",
+            str(Path(__file__).resolve()),
+        ],
+        check=True,
+    )

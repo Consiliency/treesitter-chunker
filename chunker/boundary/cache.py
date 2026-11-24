@@ -94,9 +94,16 @@ def _valid_call_resolution_facts(
     )
 
 
+def _base_key_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    fields = {field: payload.get(field) for field in BOUNDARY_CACHE_KEY_FIELDS}
+    if "physical_row_version" in payload:
+        fields["physical_row_version"] = payload["physical_row_version"]
+    return fields
+
+
 def build_boundary_cache_key(payload: dict[str, Any]) -> str:
     """Build a deterministic Boundary IR cache key from frozen fields."""
-    key_payload = {field: payload.get(field) for field in BOUNDARY_CACHE_KEY_FIELDS}
+    key_payload = _base_key_fields(payload)
     encoded = json.dumps(
         key_payload,
         sort_keys=True,

@@ -5,7 +5,7 @@ each file with the bytes it already read and stores ``facts["scope_facts"]``.
 Scope facts are never emitted. They are stored only in on-mode Boundary cache
 records, whose keys carry the file family's fact version.
 
-Schema (fact version ``"20"`` for the ``js`` family and ``"38"`` for
+Schema (fact version ``"23"`` for the ``js`` family and ``"43"`` for
 ``python``; both analyzers are real):
 
 ``version``
@@ -140,6 +140,17 @@ logger = logging.getLogger(__name__)
 # arguments; each such call on a receiver ``this`` now gives ``*``. The
 # positional reading of "20" still runs and is never overridden, so this
 # version flags every call "20" flagged (the #717 review).
+# js "22": stack-introspection tokens, including binding names and decoded
+# JSX, can expose the CommonJS wrapper. ``with`` can shadow lexical lookup
+# (treesitter-chunker#718).
+# js "23": Node evaluator modules and process tokens or imports can expose
+# run-wide writes. Bare process has closed member and operand exemptions;
+# writes to those members, ``on``/``once`` outside a discarded call with
+# arrow listeners, and loose equality except against ``null`` are causes
+# (treesitter-chunker#702, R-699-4). Only a static import of process can be
+# exempt, and none in a file where any scope binds ``require`` (R-699-7;
+# same version, unreleased). A destructuring or loop-head write to the
+# wrapper's ``require`` is a dynamic-loader cause (R-699-9; same version).
 # python "2": the Python scope analyzer replaces the stub (plan PR 4).
 # python "3": the #695 panel fold (metaclass namespaces, ``f_locals``,
 # builtin shadowing, tab-width indentation, ``__main__``, literal attribute
@@ -205,7 +216,104 @@ logger = logging.getLogger(__name__)
 # or a from-import is relied on by name; a recorded write of it fails closed).
 # python "29": fold 27 (Codex 4657978945: an allow-listed read's result must
 # not reach the namespace; ``keys()`` leaves ``_NS_READS``).
-# python "40": treesitter-chunker#706 slice 1: tracked getters (``getters``:
+# python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
+# ordinary lookup at the use site, so open class namespaces fail closed).
+# python "31": Tier 2 Python (plan PR 6): the module-scope export table,
+# what ``import m`` binds (``bound``), import groups and member chains of
+# calls, every use of an imported module object (writes and escapes, #697),
+# literal module acquisitions, star imports, dotted constant strings,
+# run-wide causes and parse hazards (``module_bindings``).
+# python "32": PR 6 fold 1 (#705 Q2): ``compile`` alone is no evaluator
+# cause; the fixtures' digests are unchanged, but a file that only compiles
+# source loses its ``evaluator`` shutoff.
+# python "33": PR 6 fold 2 (#705 E6-1..E6-8): ``module_imports`` (every
+# import binding in the module namespace), patcher targets (computed ones a
+# cause, constant ones a whole-module taint), write chains taint their first
+# attribute, ``__path__``/``__spec__`` reads are safe, and the Tier 2 module
+# facts are computed only in ``imports`` mode (empty otherwise).
+# python "34": PR 6 fold 3 (#705 P6-1..P6-4, N-1): own-submodule imports
+# are ``from . import x`` or the package's full dotted name only, and none in
+# an ``__init__.py`` with a star import; patchers follow the Tier 1 W-3
+# aliases and ``MonkeyPatch`` aliases, and a computed ``patch.multiple`` /
+# ``patch.dict`` target is a cause; a write of a function's ``__code__``,
+# ``__closure__``, ``__defaults__`` or ``__kwdefaults__`` is a
+# ``module-object`` cause.
+# python "35": PR 6 fold 4 (#705 E6-9): pytest's ``MonkeyPatch`` is a patcher
+# kind (imports of it under any alias, ``MonkeyPatch()``/``.context()``,
+# ``getfixturevalue``; no substring rule), and in a test file a patcher value
+# off the E-21 allow-list, or a computed ``getfixturevalue``, is an
+# ``unresolvable-writer`` cause. The fixtures' digests change only by the
+# version.
+# python "36": PR 6 fold 5 (#705 P6-10..P6-15, E6-9a): the patcher-escape
+# scan runs in every file (causes O-2-scoped by the file's own
+# classification); ``syspath_prepend`` on a MonkeyPatch is ``module-system``;
+# MonkeyPatch aliases must be unreachable bindings; ``getfixturevalue``
+# reached by alias or by ``getattr`` is a computed fixture; an annotation is
+# safe only with no call in between.
+# python "37": PR 6 fold 6 (#705 E6-9b): ``setattr``/``delattr``/
+# ``syspath_prepend`` (and ``setitem``/``delitem``) are MonkeyPatch methods
+# on any receiver except the ``operator`` module, also by name as a call
+# argument or as a method reference; the MonkeyPatch instance and class kinds
+# are gone.
+# python "38": PR 6 fold 7 (#705 P6-21, P6-22): a constant name (patcher
+# method or ``getfixturevalue``) counts in any spelling ``_constant_string``
+# decodes, as a positional argument, a keyword value or a subscript key.
+# python "39": K-3 classifies a ``__main__`` string by components split on
+# format and attribute punctuation and whitespace, and by a default
+# ``string.Template`` identifier, so stored templates count; f-string and
+# t-string literal parts and format specs are decoded from the tree, and an
+# undecodable one fails closed (treesitter-chunker#698, R-698-1). Before the
+# merge, R-698-3 replaced the f-/t-string piece reader: such a string counts
+# when a main name occurs anywhere in its decoded source text (same version,
+# unreleased; the fixtures' digests are unchanged).
+# python "40": treesitter-chunker#699 S2 (plan 699-702 PY-1..PY-5, PY-8;
+# ruling R-699-1 B-1, B-2, B-4, B-5): code run from a string, a payload or
+# an annotation (stdlib string-code helpers, ``pickle``/``timeit``/``runpy``
+# by member allow-list, ``shelve``, unpicklers, ``breakpoint``, annotation
+# evaluators, string annotations, ``__annotations__`` writes, ``compile``,
+# ``marshal``, loader methods, and ``exec``/``eval``) fails closed file-wide
+# in Tier 1 and is a run-wide ``evaluator`` cause in Tier 2; every
+# code-object name, reads included, is a ``module-object`` cause (reversing
+# #705 Q2); the names ``gettext.install()`` puts into ``builtins`` are
+# ``builtin-shadow``; computed attribute reads in mock files fail closed.
+# With the R-699-3, R-699-5 and R-699-6 folds (every constant among the
+# arguments of ``import_module``/``__import__`` is an acquisition position).
+# Unreleased as "39" on the #727 branch; renumbered after #714 took "39".
+# python "41": treesitter-chunker#707: a function-scope sensitive alias (E-21)
+# is reachable when its function's locals may be read as a dict: a
+# ``locals()`` or no-argument ``vars()`` call inside it, ``locals``/``vars``
+# as a value, an attribute, an imported name or in any constant string
+# (exactly or as a dotted, ``:`` or bracket component; R-707-1) anywhere in
+# the file, or a file-wide frame trigger (``f_locals`` reads included); a
+# parameter or other binding of such a function is reachable too (R-707-1).
+# Unreleased as "39" on the #721 branch; renumbered after #714 and #727.
+# python "42": treesitter-chunker#699 S4 (plan 699-702 PY-6, PY-7, PY-9,
+# PY-10; ruling R-699-1 Q2, Q5, Q6, B-6, B-7): ``gc`` by member allow-list
+# plus the heap walkers as tokens fails closed file-wide in Tier 1 and is a
+# run-wide ``module-object`` cause in Tier 2; ``.patch`` on any receiver is a
+# patcher (W-3 semantics; handed on or named by string it fails closed in
+# Tier 1 and is an ``unresolvable-writer`` in Tier 2); in Tier 2 every
+# frame-locals spelling (``f_locals`` reads included, ``getargvalues``,
+# ``getgeneratorlocals``, ``getcoroutinelocals``, ``getasyncgenlocals``,
+# ``curframe_locals``), ``locals``/``vars`` as a value, import name or
+# constant-string token, and ``cell_contents`` other than a plain read are
+# ``module-object`` causes. Provisional: renumbered at merge if #726 or #729
+# lands first.
+# python "43": treesitter-chunker#724, R-724-1: a file in which any token
+# spells a namespace-reaching name (``globals``, ``f_globals``,
+# ``__import__``, ``builtins``, ``__spec__``, ...; any role, any constant
+# spelling), uses a bare ``eval``/``exec`` or imports ``__main__`` records
+# a ``value`` use of every import binding in it; a package ``__init__.py``
+# also taints itself wholly (its submodules), and a handed-out ``sys``,
+# ``importlib`` or ``builtins`` adds ``module-system``. R-724-2 exempts
+# ``exec(code, X.__dict__)`` and ``<name>.loader.exec_module(X)`` on a fresh
+# module local and ``__import__`` of a constant foreign module. R-724-4
+# (same version, unreleased): format-field separators, more tokens, the
+# own-name resolvers and ``request.module``, and the exemption voided by a
+# constant word or a ``__class__`` write. Only ``imports``-mode facts change;
+# the fixtures' digests change only by the version. R-724-7 limits freshness
+# to types.ModuleType because a loader may return an existing module.
+# python "44": treesitter-chunker#706 slice 1: tracked getters (``getters``:
 # what a module-level function may return), ``ref`` records for its returns,
 # and result records (``result-<p>``/``own-<p>``) for every use of a call
 # that may invoke one, followed through member calls and function-local
@@ -214,60 +322,7 @@ logger = logging.getLogger(__name__)
 # files that reach their namespace. R-706-3: a read of a function-local
 # import from a nested scope records a ``value`` use. Only ``imports``-mode
 # facts change.
-# python "39": treesitter-chunker#724, R-724-1: a file in which any token
-# spells a namespace-reaching name (``globals``, ``f_globals``,
-# ``__import__``, ``builtins``, ``__spec__``, ...; any role, any constant
-# spelling), uses a bare ``eval``/``exec`` or imports ``__main__`` records
-# a ``value`` use of every import binding in it; a package ``__init__.py``
-# also taints itself wholly (its submodules), and a handed-out ``sys``,
-# ``importlib`` or ``builtins`` adds ``module-system``. R-724-2 exempts
-# ``exec(code, X.__dict__)`` and ``<name>.loader.exec_module(X)`` on a fresh
-# module local and ``__import__`` of a constant foreign module. Only
-# ``imports``-mode facts change; the fixtures' digests change only by the
-# version.
-# python "38": PR 6 fold 7 (#705 P6-21, P6-22): a constant name (patcher
-# method or ``getfixturevalue``) counts in any spelling ``_constant_string``
-# decodes, as a positional argument, a keyword value or a subscript key.
-# python "37": PR 6 fold 6 (#705 E6-9b): ``setattr``/``delattr``/
-# ``syspath_prepend`` (and ``setitem``/``delitem``) are MonkeyPatch methods
-# on any receiver except the ``operator`` module, also by name as a call
-# argument or as a method reference; the MonkeyPatch instance and class kinds
-# are gone.
-# python "36": PR 6 fold 5 (#705 P6-10..P6-15, E6-9a): the patcher-escape
-# scan runs in every file (causes O-2-scoped by the file's own
-# classification); ``syspath_prepend`` on a MonkeyPatch is ``module-system``;
-# MonkeyPatch aliases must be unreachable bindings; ``getfixturevalue``
-# reached by alias or by ``getattr`` is a computed fixture; an annotation is
-# safe only with no call in between.
-# python "35": PR 6 fold 4 (#705 E6-9): pytest's ``MonkeyPatch`` is a patcher
-# kind (imports of it under any alias, ``MonkeyPatch()``/``.context()``,
-# ``getfixturevalue``; no substring rule), and in a test file a patcher value
-# off the E-21 allow-list, or a computed ``getfixturevalue``, is an
-# ``unresolvable-writer`` cause. The fixtures' digests change only by the
-# version.
-# python "34": PR 6 fold 3 (#705 P6-1..P6-4, N-1): own-submodule imports
-# are ``from . import x`` or the package's full dotted name only, and none in
-# an ``__init__.py`` with a star import; patchers follow the Tier 1 W-3
-# aliases and ``MonkeyPatch`` aliases, and a computed ``patch.multiple`` /
-# ``patch.dict`` target is a cause; a write of a function's ``__code__``,
-# ``__closure__``, ``__defaults__`` or ``__kwdefaults__`` is a
-# ``module-object`` cause.
-# python "33": PR 6 fold 2 (#705 E6-1..E6-8): ``module_imports`` (every
-# import binding in the module namespace), patcher targets (computed ones a
-# cause, constant ones a whole-module taint), write chains taint their first
-# attribute, ``__path__``/``__spec__`` reads are safe, and the Tier 2 module
-# facts are computed only in ``imports`` mode (empty otherwise).
-# python "32": PR 6 fold 1 (#705 Q2): ``compile`` alone is no evaluator
-# cause; the fixtures' digests are unchanged, but a file that only compiles
-# source loses its ``evaluator`` shutoff.
-# python "31": Tier 2 Python (plan PR 6): the module-scope export table,
-# what ``import m`` binds (``bound``), import groups and member chains of
-# calls, every use of an imported module object (writes and escapes, #697),
-# literal module acquisitions, star imports, dotted constant strings,
-# run-wide causes and parse hazards (``module_bindings``).
-# python "30": fold 28 (Codex 4658232413: allow-listed callees verified by the
-# ordinary lookup at the use site, so open class namespaces fail closed).
-CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "21", "python": "40"}
+CALL_RESOLUTION_FACT_VERSIONS: dict[str, str] = {"js": "23", "python": "44"}
 
 ANALYZED_LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 # Extensions that make a JavaScript/TypeScript file an ES module.
@@ -315,6 +370,7 @@ TIER2_NONE_REASONS = (
     "run-tainted:module-object",
     "run-tainted:unparsed-file",
     "run-tainted:unresolvable-writer",
+    "run-tainted:dynamic-scope",
     # Tier 2 Python (PR 6): a module another file may write wholly (#697),
     # and a package whose module ``__getattr__`` answers a submodule name
     # (#705 E6-3).

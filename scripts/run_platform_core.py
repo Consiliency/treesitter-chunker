@@ -27,6 +27,9 @@ COMMON_TESTS = [
     "tests/test_streaming.py::TestBufferOptimization::test_repeated_streaming_preserves_eager_fixture_chunks",
     "tests/test_streaming.py::TestBufferOptimization::test_file_hash_matches_sha256_for_chunk_sizes",
     "tests/test_cr_only_python_lines.py",
+    "tests/test_cr_only_source_lines.py",
+    "tests/test_boundary_physical_row_cache.py",
+    "tests/test_file_reader_offsets.py",
     "tests/test_config.py",
     "tests/test_env_config.py",
     "tests/test_config_advanced_scenarios.py",
@@ -66,6 +69,7 @@ COMMON_TESTS = [
     "tests/test_user_grammar_publication.py",
     "tests/test_git_aware_linked_worktree.py",
     "tests/test_git_aware_contract.py",
+    "tests/test_repo_ignore_scope.py",
     "tests/test_python_version_hints_contract.py",
     "tests/test_python_reference_oracle_contract.py",
     "tests/test_javascript_version_hints_contract.py",
@@ -79,6 +83,7 @@ COMMON_TESTS = [
     "tests/test_graphml_caller_label_import.py",
     "tests/test_package_graphml_whitespace.py",
     "tests/test_sqlite_export_contract.py",
+    "tests/test_phase12_integration.py::TestSQLiteExporter::test_live_publication",
     "tests/test_platform_support_contract.py",
     "tests/test_exceptions.py",
     "tests/test_fallback_chunking.py",
@@ -139,7 +144,16 @@ def main() -> int:
     args = parser.parse_args()
 
     tests = tests_for_platform(args.platform)
-    cmd = [sys.executable, "-m", "pytest", "-xq", *tests]
+    cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-xq",
+        "-rfEs",
+        "-p",
+        "scripts.pytest_skip_report",
+        *tests,
+    ]
     if args.platform == "linux":
         cmd += ["--cov=chunker", "--cov-report=xml"]
     print(f"Running platform core batch for {args.platform}:")

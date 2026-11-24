@@ -97,7 +97,8 @@ CREATE TABLE IF NOT EXISTS relationships (
 
 -- Partitioned table for large codebases (by language)
 CREATE TABLE IF NOT EXISTS chunks_partitioned (
-    LIKE chunks INCLUDING ALL
+    LIKE chunks INCLUDING DEFAULTS INCLUDING GENERATED,
+    PRIMARY KEY (id, language)
 ) PARTITION BY LIST (language);
 
 -- Create partitions for common languages
@@ -107,7 +108,16 @@ CREATE TABLE IF NOT EXISTS chunks_java PARTITION OF chunks_partitioned FOR VALUE
 CREATE TABLE IF NOT EXISTS chunks_cpp PARTITION OF chunks_partitioned FOR VALUES IN ('c', 'cpp', 'c++');
 
 -- Full-text search configuration
-CREATE TEXT SEARCH CONFIGURATION IF NOT EXISTS code_search (COPY = simple);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_catalog.pg_ts_config AS cfg
+        JOIN pg_catalog.pg_namespace AS ns ON ns.oid = cfg.cfgnamespace
+        WHERE cfg.cfgname = 'code_search' AND ns.nspname = current_schema()
+    ) THEN
+        CREATE TEXT SEARCH CONFIGURATION code_search (COPY = pg_catalog.simple);
+    END IF;
+END $$;
 
 -- Add trigram index for similarity search on main table
 CREATE INDEX IF NOT EXISTS idx_chunks_content_trgm ON chunks USING GIN (content gin_trgm_ops);
@@ -503,10 +513,12 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
         else:
             raise ValueError(f"Unknown format: {fmt}")
 
-    @staticmethod
-    def get_advanced_queries() -> dict[str, str]:
+    _read_parameter = "%s"
+
+    @classmethod
+    def get_advanced_queries(cls) -> dict[str, str]:
         """Get PostgreSQL-specific advanced queries."""
-        queries = super().get_analysis_queries()
+        queries = cls.get_analysis_queries()
         queries.update(
             {
                 "similarity_search": """

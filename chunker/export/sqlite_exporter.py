@@ -1,11 +1,63 @@
 """SQLite export implementation for code chunks."""
 
-import contextlib
 import json
+import logging
+import os
 import sqlite3
+import stat
+import tempfile
+import time
+from contextlib import closing
 from pathlib import Path
 
 from .database_exporter_base import DatabaseExporterBase
+
+
+def _backup_progress(status: int, remaining: int, total: int) -> None:
+    if status in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+        raise sqlite3.OperationalError("destination database is locked")
+
+
+def _publish_snapshot(stage: Path, output: Path) -> None:
+    try:
+        info = output.lstat()
+    except FileNotFoundError:
+        # A journal may belong to an old main file. Never adopt it.
+        for suffix in ("-journal", "-wal", "-shm"):
+            if os.path.lexists(str(output) + suffix) and not output.exists():
+                raise sqlite3.OperationalError(
+                    f"orphan SQLite sidecar: {output}{suffix}"
+                )
+        try:
+            if os.name == "nt":
+                stage.rename(output)  # Windows rename never overwrites.
+            else:
+                os.link(stage, output)
+        except FileExistsError:
+            info = output.lstat()
+        else:
+            return
+
+    if not stat.S_ISREG(info.st_mode):
+        raise ValueError(f"expected a regular SQLite database: {output}")
+    # A newly published POSIX file has two links until stage cleanup.
+    for _ in range(5):
+        if info.st_nlink == 1:
+            break
+        time.sleep(0.01)
+        info = output.lstat()
+    if info.st_nlink != 1:
+        raise ValueError(f"cannot replace a multiply linked database: {output}")
+    if 0 < info.st_size < 100:
+        raise sqlite3.DatabaseError(f"file is not a database: {output}")
+
+    uri = output.absolute().as_uri() + "?mode=rw"
+    with (
+        closing(sqlite3.connect(stage)) as source,
+        closing(sqlite3.connect(uri, uri=True, timeout=0)) as destination,
+    ):
+        destination.execute("SELECT count(*) FROM sqlite_schema").fetchone()
+        source.backup(destination, pages=256, progress=_backup_progress, sleep=0)
 
 
 class SQLiteExporter(DatabaseExporterBase):
@@ -198,9 +250,29 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
             enable_fts: Whether to populate full-text search
             **options: Additional options
         """
-        if output_path.exists():
-            output_path.unlink()
-        conn = sqlite3.connect(str(output_path))
+        stage_dir = tempfile.TemporaryDirectory(dir=output_path.parent)
+        try:
+            stage = Path(stage_dir.name) / "snapshot.db"
+            self._write_snapshot(stage, create_indices)
+            _publish_snapshot(stage, output_path)
+        except BaseException as exc:
+            try:
+                stage_dir.cleanup()
+            except OSError as cleanup_error:
+                exc.add_note(f"SQLite staging cleanup also failed: {cleanup_error}")
+            raise
+        else:
+            try:
+                stage_dir.cleanup()
+            except OSError:
+                logging.getLogger(__name__).warning(
+                    "SQLite snapshot published, but staging cleanup failed at %s",
+                    stage_dir.name,
+                    exc_info=True,
+                )
+
+    def _write_snapshot(self, stage: Path, create_indices: bool) -> None:
+        conn = sqlite3.connect(stage)
         conn.row_factory = sqlite3.Row
         try:
             conn.executescript(self.get_schema_ddl())
@@ -306,8 +378,7 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
                 )
             if create_indices:
                 for index_stmt in self.get_index_statements():
-                    with contextlib.suppress(sqlite3.OperationalError):
-                        conn.execute(index_stmt)
+                    conn.execute(index_stmt)
             conn.execute(
                 """
                 INSERT INTO schema_info (key, value)
@@ -327,29 +398,41 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
             """,
             )
             conn.commit()
+            busy, logged, copied = conn.execute(
+                "PRAGMA wal_checkpoint(TRUNCATE)"
+            ).fetchone()
+            if busy or logged != copied:
+                raise sqlite3.OperationalError(
+                    "staged SQLite WAL checkpoint incomplete"
+                )
         finally:
             conn.close()
 
-    @staticmethod
-    def get_example_queries() -> dict[str, str]:
+    _file_path_column = "f.path"
+    _file_join = "JOIN files f ON f.id = c.file_id"
+
+    @classmethod
+    def get_example_queries(cls) -> dict[str, str]:
         """Get example queries for SQLite."""
-        queries = super().get_analysis_queries()
+        queries = cls.get_analysis_queries()
         queries.update(
             {
                 "search_content": """
                 -- Full-text search for content
-                SELECT c.id, c.file_path, c.chunk_type, c.start_line, c.end_line,
+                SELECT c.id, f.path AS file_path, c.chunk_type, c.start_line, c.end_line,
                        snippet(chunks_fts, 1, '<b>', '</b>', '...', 32) as match_snippet
-                FROM chunks_fts fts
-                JOIN chunks c ON fts.id = c.id
+                FROM chunks_fts
+                JOIN chunks c ON chunks_fts.id = c.id
+                JOIN files f ON f.id = c.file_id
                 WHERE chunks_fts MATCH ?
-                ORDER BY rank;
+                ORDER BY chunks_fts.rank;
             """,
                 "complex_functions": """
                 -- Find the most complex functions
-                SELECT c.file_path, c.chunk_type, c.start_line, c.end_line,
+                SELECT f.path AS file_path, c.chunk_type, c.start_line, c.end_line,
                        cc.cyclomatic_complexity, cc.cognitive_complexity, cc.token_count
                 FROM chunks c
+                JOIN files f ON f.id = c.file_id
                 JOIN chunk_complexity cc ON c.id = cc.chunk_id
                 WHERE c.chunk_type IN ('function', 'method')
                 ORDER BY cc.cyclomatic_complexity DESC
@@ -357,22 +440,25 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
             """,
                 "file_dependencies": """
                 -- Find all files that a given file depends on
-                SELECT DISTINCT target_file.file_path as dependency
+                SELECT DISTINCT target_file.path as dependency
                 FROM chunks source
                 JOIN relationships r ON source.id = r.source_id
                 JOIN chunks target ON r.target_id = target.id
-                JOIN (SELECT DISTINCT file_path FROM chunks) target_file ON target.file_path = target_file.file_path
-                WHERE source.file_path = ?
+                JOIN files target_file ON target.file_id = target_file.id
+                JOIN files source_file ON source.file_id = source_file.id
+                WHERE source_file.path = ?
                 AND r.relationship_type IN ('IMPORTS', 'INCLUDES')
                 ORDER BY dependency;
             """,
                 "duplicate_detection": """
                 -- Find potentially duplicate chunks (same content)
-                SELECT c1.file_path as file1, c1.start_line as line1,
-                       c2.file_path as file2, c2.start_line as line2,
+                SELECT f1.path as file1, c1.start_line as line1,
+                       f2.path as file2, c2.start_line as line2,
                        c1.chunk_type, LENGTH(c1.content) as size
                 FROM chunks c1
                 JOIN chunks c2 ON c1.content = c2.content AND c1.id < c2.id
+                JOIN files f1 ON f1.id = c1.file_id
+                JOIN files f2 ON f2.id = c2.file_id
                 WHERE c1.chunk_type = c2.chunk_type
                 ORDER BY size DESC;
             """,

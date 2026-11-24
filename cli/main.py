@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 import fnmatch
+import io
 import json
 import os
 import sys
@@ -81,7 +83,7 @@ else:
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterable, Iterator
 
 app.add_typer(repo_app, name="repo", help="Repository processing commands")
 app.add_typer(setup_app, name="setup", help="Grammar setup and management")
@@ -127,7 +129,7 @@ def boundary(
             "bindings, and Python calls through import bindings and module "
             "member chains, to the one definition they prove; for Python it "
             "can resolve fewer calls than 'structural' where other files may "
-            "write a module's globals"
+            "write a module's globals. See docs/call-resolution.md for details."
         ),
     ),
     quiet: bool = typer.Option(
@@ -309,19 +311,15 @@ def _print_input_error(message: str) -> None:
 
 def get_files_from_patterns(
     patterns: list[str],
-    base_path: Path = Path.cwd(),
+    base_path: Path | None = None,
 ) -> Iterator[Path]:
-    """Get files matching glob patterns."""
+    """Get regular files matching patterns relative to the given base or cwd."""
+    if base_path is None:
+        base_path = Path.cwd()
     for pattern in patterns:
-        # Handle recursive glob patterns
-        if "**" in pattern:
-            for path in base_path.rglob(pattern.replace("**/", "")):
-                if path.is_file():
-                    yield path
-        else:
-            for path in base_path.glob(pattern):
-                if path.is_file():
-                    yield path
+        for path in base_path.glob(pattern):
+            if path.is_file():
+                yield path
 
 
 def should_include_file(
@@ -737,25 +735,33 @@ def batch(
     files_to_process = []
     rejected_inputs = False
 
+    def admit_explicit_file(path: Path) -> None:
+        nonlocal rejected_inputs
+        if not should_include_file(path, include_patterns, exclude_patterns):
+            return
+        try:
+            error = _non_regular_input_error(path)
+        except FileNotFoundError:
+            error = f"{path}: file not found"
+        except OSError as exc:
+            error = f"{path}: {exc.strerror or exc}"
+        except ValueError as exc:
+            # A stdin path can contain a NUL, which stat rejects before the OS call.
+            error = f"{path}: {exc}"
+        if error:
+            # Rich expands tabs and removes carriage returns from file names.
+            print(f"Error: {error}", file=sys.stderr)
+            rejected_inputs = True
+        else:
+            files_to_process.append(path)
+
     if from_stdin:
-        # Read file_path paths from stdin
         for line in sys.stdin:
-            path = Path(line.strip())
-            if (
-                not path.exists()
-                or path.is_dir()
-                or not should_include_file(path, include_patterns, exclude_patterns)
-            ):
-                continue
-            input_error = _non_regular_input_error(path)
-            if input_error:
-                # Named explicitly but unreadable as a file: report it rather
-                # than skip silently or block opening it (treesitter-chunker#435).
-                _print_input_error(input_error)
-                rejected_inputs = True
-            else:
-                files_to_process.append(path)
-    # Process provided paths
+            name = line.strip()
+            if name:
+                path = Path(name)
+                if not path.is_dir():
+                    admit_explicit_file(path)
     elif not paths and pattern:
         # Use pattern to find files
         files_to_process.extend(
@@ -766,44 +772,16 @@ def batch(
     elif paths:
         # Process provided paths
         for path in paths:
-            if path.is_file():
-                if should_include_file(path, include_patterns, exclude_patterns):
-                    files_to_process.append(path)
-            elif path.is_dir():
-                # Process directory
-                if recursive:
-                    files_to_process.extend(
-                        file_path
-                        for file_path in path.rglob("*")
-                        if file_path.is_file()
-                        and should_include_file(
-                            file_path,
-                            include_patterns,
-                            exclude_patterns,
-                        )
-                    )
-                else:
-                    files_to_process.extend(
-                        file_path
-                        for file_path in path.iterdir()
-                        if file_path.is_file()
-                        and should_include_file(
-                            file_path,
-                            include_patterns,
-                            exclude_patterns,
-                        )
-                    )
-            elif path.exists() and should_include_file(
-                path, include_patterns, exclude_patterns
-            ):
-                # FIFOs, devices and sockets named explicitly are rejected
-                # without being opened, unless --include/--exclude filter them
-                # out (treesitter-chunker#435). Directory walks above only
-                # collect regular files (Path.is_file()).
-                _print_input_error(
-                    _non_regular_input_error(path) or f"{path} is not a regular file"
+            if path.is_dir():
+                entries = path.rglob("*") if recursive else path.iterdir()
+                files_to_process.extend(
+                    entry
+                    for entry in entries
+                    if entry.is_file()
+                    and should_include_file(entry, include_patterns, exclude_patterns)
                 )
-                rejected_inputs = True
+            else:
+                admit_explicit_file(path)
     else:
         stderr_console.print(
             "[red]Error: No files specified. Use paths, --pattern, or --stdin[/red]",
@@ -884,16 +862,30 @@ def batch(
                 f"{result['file_path']}:{result['start_line']}-{result['end_line']}:{result['node_type']}",
             )
     elif output_format == "csv":
-        # CSV format with headers
         if all_results:
-            print(
-                "file_path,language,node_type,start_line,end_line,size,parent_context",
+            fields = (
+                "file_path",
+                "language",
+                "node_type",
+                "start_line",
+                "end_line",
+                "size",
+                "parent_context",
             )
+            # The CSV dialect quotes both CR and LF. Let stdout supply the
+            # platform newline after each complete record, as for other formats.
+            record = io.StringIO(newline="")
+            writer = csv.writer(record)
+
+            def write_row(values: Iterable[object]) -> None:
+                writer.writerow(values)
+                print(record.getvalue().removesuffix("\r\n"))
+                record.seek(0)
+                record.truncate()
+
+            write_row(fields)
             for result in all_results:
-                parent = result["parent_context"] or ""
-                print(
-                    f"{result['file_path']},{result['language']},{result['node_type']},{result['start_line']},{result['end_line']},{result['size']},{parent}",
-                )
+                write_row(result[field] for field in fields)
     else:
         # Summary table (default). Quiet suppresses progress only.
         summary: dict[str, int] = {}

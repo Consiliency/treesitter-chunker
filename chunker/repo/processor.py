@@ -538,14 +538,14 @@ class RepoProcessor(RepoProcessorInterface):
     ) -> str | FileChunkResult:
         """Read file with fallback encoding support."""
         try:
-            return file_path.read_text(encoding="utf-8")
+            return file_path.read_text(encoding="utf-8", newline="")
         except UnicodeDecodeError:
             pass
 
         # Try fallback encodings
         for encoding in ["latin-1", "cp1252"]:
             try:
-                return file_path.read_text(encoding=encoding)
+                return file_path.read_text(encoding=encoding, newline="")
             except (OSError, FileNotFoundError, IndexError):
                 continue
 
@@ -602,7 +602,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
         Args:
             repo_path: Path to repository root
-            since_commit: Commit hash or reference (HEAD~1, etc.)
+            since_commit: Commit hash or reference (defaults to HEAD~1)
             branch: Branch to compare against (default: current branch)
 
         Returns:
@@ -619,9 +619,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                     diff = repo.commit(since_commit).diff(repo.head.commit)
                 elif repo.head.is_valid():
                     try:
-                        # Check if HEAD~1 exists
-                        repo.commit("HEAD~1")
-                        diff = repo.head.commit.diff("HEAD~1")
+                        diff = repo.commit("HEAD~1").diff(repo.head.commit)
                     except (self.git.BadName, self.git.GitCommandError):
                         # No previous commit (initial commit scenario)
                         return []
@@ -1044,11 +1042,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             if not language or not path.is_file():
                 continue
             try:
-                content = (
-                    path.read_bytes().decode("utf-8")
-                    if language == "baml"
-                    else path.read_text(encoding="utf-8")
-                )
+                content = path.read_bytes().decode("utf-8")
             except UnicodeDecodeError as exc:
                 errors.append(
                     {"file": rel, "error": str(exc), "type": type(exc).__name__}

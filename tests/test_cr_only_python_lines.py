@@ -17,7 +17,8 @@ import pytest
 
 from chunker import chunk_file, chunk_text, get_parser
 from chunker.boundary import extract_boundary_ir
-from chunker.core import _line_ending_offsets, _lone_cr_parse_copy
+from chunker.core import _lone_cr_parse_copy
+from chunker.metadata import MetadataExtractorFactory
 from chunker.streaming import chunk_file_streaming
 from chunker.symbol_graph import extract_symbol_graph
 from chunker.vfs import LocalFileSystem
@@ -156,6 +157,53 @@ CALL_TEMPLATE = b"def alpha():\r    beta(\r        1)\r\rdef beta(x):\r    retur
 NEWLINES = {"lf": b"\n", "cr": b"\r", "crlf": b"\r\n"}
 
 
+@pytest.mark.parametrize("newline", [*NEWLINES, "mixed"])
+def test_complexity_line_metrics(tmp_path: Path, newline: str):
+    # The four executable lines are the definition, the if and both returns.
+    # U+2028 inside the string is data, and the final comment may own a CR.
+    lines = [
+        b"def alpha(x):",
+        b'    """Doc',
+        b'    more."""',
+        b"",
+        b"    if x:",
+        b'        return "one\xe2\x80\xa8two"',
+        b"    return 1",
+        b"    # end",
+    ]
+    if newline == "mixed":
+        endings = [b"\n", b"\r", b"\r\n", b"\n", b"\r", b"\r", b"\n", b"\r\n"]
+    else:
+        endings = [NEWLINES[newline]] * len(lines)
+    raw = (
+        b"# preamble"
+        + endings[0]
+        + b"".join(line + ending for line, ending in zip(lines, endings, strict=True))
+    )
+    path = tmp_path / "metrics.py"
+    path.write_bytes(raw)
+    (chunk,) = [
+        c for c in chunk_file(path, "python") if c.node_type == "function_definition"
+    ]
+    start = physical_line(raw, raw.index(lines[0]))
+    end = physical_line(raw, raw.index(lines[-1]) + len(lines[-1]))
+    assert (chunk.start_line, chunk.end_line) == (start, end)
+    metrics = chunk.metadata["complexity"]
+    assert (metrics["lines_of_code"], metrics["logical_lines"]) == (end - start + 1, 4)
+
+
+@pytest.mark.parametrize("newline", sorted(NEWLINES))
+def test_raw_python_complexity_line_metrics(newline: str):
+    raw = b"def f(): return (1" + NEWLINES[newline] + b"+ 2)"
+    tree = get_parser("python").parse(raw)
+    (node,) = tree.root_node.named_children
+    assert node.type == "function_definition" and not node.has_error
+    analyzer = MetadataExtractorFactory.create_analyzer("python")
+    assert analyzer is not None
+    metrics = analyzer.analyze_complexity(node, raw)
+    assert (metrics.lines_of_code, metrics.logical_lines) == (2, 2)
+
+
 def call_oracle(raw: bytes) -> tuple[int, int, int, int]:
     """Raw span and physical lines of the ``beta(...)`` call in ``raw``."""
     start = raw.index(b"beta(")
@@ -261,56 +309,3 @@ def test_parse_copy_only_for_lone_cr(raw: bytes, copied: bool):
     assert copy.replace(b"\n", b"\r") == raw.replace(b"\n", b"\r")
     # Every other language parses the raw bytes.
     assert _lone_cr_parse_copy(raw, "javascript") is None
-
-
-# Other languages still parse raw bytes, so Tree-sitter rows count LF only;
-# call-site lines must stay consistent with those chunk rows
-# (treesitter-chunker#601 tracks changing them).
-NON_PYTHON_CALLS = {
-    "javascript": (
-        "js",
-        b"function alpha() {\r  beta(\r    1);\r}\r\rfunction beta(x) {\r"
-        b"  return x;\r}\r",
-    ),
-    "c": (
-        "c",
-        b"int beta(int x) {\r  return x;\r}\r\rint alpha(void) {\r"
-        b"  return beta(\r    1);\r}\r",
-    ),
-}
-
-
-def lf_line(raw: bytes, offset: int) -> int:
-    return raw[:offset].count(b"\n") + 1
-
-
-@pytest.mark.parametrize("variant", ["cr", "mixed"])
-@pytest.mark.parametrize("language", sorted(NON_PYTHON_CALLS))
-def test_other_languages_count_only_lf(tmp_path: Path, language: str, variant: str):
-    extension, raw = NON_PYTHON_CALLS[language]
-    if variant == "mixed":
-        # LF everywhere except a lone CR inside the multiline call.
-        raw = raw.replace(b"\r", b"\n").replace(b"(\n", b"(\r")
-    path = tmp_path / f"calls.{extension}"
-    path.write_bytes(raw)
-    assert _line_ending_offsets(raw, language) == [
-        index for index, byte in enumerate(raw) if byte == 0x0A
-    ]
-    graph = extract_symbol_graph(path, language, fail_fast=True)
-    (row,) = [r for r in graph["relationships"] if r["type"] == "calls"]
-    start = raw.index(b"beta(\r")  # the call, not the C definition
-    end = raw.index(b"1)", start) + len(b"1)")
-    location = row["location"]
-    assert (location["byte_start"], location["byte_end"]) == (start, end)
-    assert (location["start_line"], location["end_line"]) == (
-        lf_line(raw, start),
-        lf_line(raw, end - 1),
-    )
-    (owner,) = [
-        chunk
-        for chunk in chunk_file(path, language)
-        if chunk.byte_start <= start and end <= chunk.byte_end
-    ]
-    # The call lies within its chunk's (LF-only) rows.
-    assert owner.start_line <= location["start_line"]
-    assert location["end_line"] <= owner.end_line

@@ -60,8 +60,11 @@ package ``__init__.py`` hands out its submodules too
 (treesitter-chunker#724, R-724-1). A closed allow-list exempts a token use
 whose object is provably not the file's namespace (R-724-2:
 ``exec(code, mod.__dict__)`` and ``spec.loader.exec_module(mod)`` on a
-fresh module local, ``__import__`` of a constant foreign module; see
-:func:`_not_own_namespace`). A read of a function-local import binding from
+fresh ``types.ModuleType`` local, ``__import__`` of a constant foreign module; see
+:func:`_not_own_namespace`). R-724-4 voids those exemptions in a file whose
+constants spell a token or a factory name as a word. A write to ``__class__``
+voids the receiver proof. R-724-4 also adds resolvers given the file's own name and pytest's
+``request.module`` (:func:`_own_module_route`). A read of a function-local import binding from
 a nested scope is an escape too: a closure cell is reachable from another
 module (R-706-3, :func:`_nested_import_read`). A module returned by a
 *tracked getter* (a plain module-level ``def`` in a
@@ -85,8 +88,11 @@ module's own Tier 1 module-scope proofs included (``imports`` mode only:
 ``structural`` stays as it was).
 
 **Run-wide causes (E5-3 analog).** Routes that can obtain or write any
-module: ``evaluator`` (``exec``, ``eval``, ``execfile``, the
-builtin by lookup), ``dynamic-loader`` (a non-literal ``import_module`` or
+module: ``evaluator`` (code run from a string, a payload or an annotation,
+as Tier 1's shared classifier decides it: ``exec``, ``eval``, ``execfile``,
+``compile`` and ``breakpoint`` by use-site lookup, the stdlib string-code
+helpers, ``pickle`` loads, annotation evaluators, ``marshal`` and loader
+methods; treesitter-chunker#699 S2), ``dynamic-loader`` (a non-literal ``import_module`` or
 ``__import__``, any other ``importlib`` use off a closed list, ``runpy``,
 ``imp``, ``zipimport``, string-to-module resolvers), ``module-system``
 (``sys.modules`` off its closed list, writes of ``sys.path``,
@@ -94,14 +100,18 @@ builtin by lookup), ``dynamic-loader`` (a non-literal ``import_module`` or
 ``sys`` module handed on, ``__path__``, ``site.addsitedir``),
 ``module-object`` (another module's namespace: ``__globals__``,
 ``f_globals``, ``f_builtins``, a frame's ``f_locals`` other than a read,
-``getmodule``, ``pythonapi``, the ``builtins`` module, ``__main__``),
+``getmodule``, ``pythonapi``, the ``builtins`` module, ``__main__``; a
+``__main__`` string is classified by the one rule Tier 1 uses, #698),
 ``unparsed-file`` and ``unresolvable-writer``. As for TS/JS (PR 5), a cause
 shuts off Tier 2 for the callers it applies to; Tier 1 proofs keep their
 ``structural`` result except where a taint names their module global.
-Closure cells and code objects (Tier 1's file-wide names) cannot change a
-module attribute, but a write of a function's ``__code__``, ``__closure__``,
-``__defaults__`` or ``__kwdefaults__`` in any file makes a proven definition
-run other code: a ``module-object`` cause (#705 N-1).
+A write of a function's ``__code__``, ``__closure__``, ``__defaults__`` or
+``__kwdefaults__`` in any file makes a proven definition run other code: a
+``module-object`` cause (#705 N-1). Since treesitter-chunker#699 B-1
+(ruling R-699-1, reversing #705 Q2) any mention of a code-object source is
+one too, reads included: ``type(f)(f.__code__, {"t": len})()`` runs a
+function's code under substitute globals with neither ``exec`` nor
+``eval``.
 
 **Owner decision O-2.** Causes and taints that originate in test files
 (:func:`is_test_path`) apply only to callers in test files, unless a
@@ -282,10 +292,6 @@ _LOADER_PATHS = frozenset(
 _SITE_PATHS = frozenset({("site", "addsitedir"), ("site", "main")})
 _SYS_MODULE_GETTERS = frozenset({"get", "pop", "setdefault", "__getitem__"})
 _SYS_PATH_NAMES = frozenset({"path", "meta_path", "path_hooks", "path_importer_cache"})
-# ``compile`` alone only builds a code object; running one takes ``exec`` or
-# ``eval`` (causes themselves) or a globals dict a tracked route reaches, so
-# it is no cause (executive ruling on #705, Q2).
-_EVALUATORS = frozenset({"exec", "eval", "execfile"})
 # Names that reach another module's namespace in any identifier position
 # (an attribute, a keyword argument) or as a component of a constant string.
 _MODULE_OBJECT_NAMES = frozenset(
@@ -307,8 +313,41 @@ _MODULE_OBJECT_NAMES = frozenset(
     }
 )
 # A frame's ``f_locals``: for a module-level frame it is the module's
-# globals (PEP 667), so any use but a read is a ``module-object`` cause.
+# globals, and for a function frame a write-through proxy of its locals (PEP
+# 667). treesitter-chunker#699 PY-9 (ruling R-699-1 Q5 and B-6): any
+# spelling is a ``module-object`` cause, reads included, and so are the
+# other frame-locals proxies Tier 1 lists (``inspect.getargvalues(fr)
+# .locals``, ``getgeneratorlocals``, ``getcoroutinelocals``,
+# ``getasyncgenlocals``, ``pdb``'s ``curframe_locals``). A file that reads a
+# frame another file hands it (``gi_frame``, ``cr_frame``, ``ag_frame``,
+# ``tb_frame``, ``inspect.trace()``, ``sys._getframe(1)``) can take a patcher
+# or module object out of that frame's locals and apply it out of sight, and
+# every way to read them spells one of these names. Token level (R-724-1): an
+# identifier in any role, or a word of a constant string.
 _FRAME_LOCALS = "f_locals"
+_FRAME_READERS = frozenset(
+    {
+        _FRAME_LOCALS,
+        "getargvalues",
+        "getgeneratorlocals",
+        "getcoroutinelocals",
+        "getasyncgenlocals",
+        "curframe_locals",
+        # R-699-10 item 1: ``inspect.getclosurevars(f)`` hands out the
+        # contents of ``f``'s closure cells (``.nonlocals``) and the globals
+        # it names (``.globals``), another file's imported module among
+        # them, with no cell or frame name spelled.
+        "getclosurevars",
+    }
+)
+# treesitter-chunker#699 PY-6: a closure cell's ``cell_contents`` other than
+# a plain read (an attribute target, ``del``, the descriptor used as a
+# receiver: ``type(c).cell_contents.__set__(c, v)``; any other identifier
+# role; a word of a constant string: ``setattr(c, "cell_contents", v)``)
+# rewrites a cell another file's function closes over: a ``module-object``
+# cause. ``__closure__`` needs no rule of its own: every mention is a cause
+# since B-1.
+_CELL_CONTENTS = "cell_contents"
 _RESOLVER_NAMES = frozenset({"resolve_name", "safeimport", "find_class"})
 # Dunder attributes of a module object that read a plain value. Any other
 # dunder (``__dict__``, ``__setattr__``, ``__class__``, ``__spec__``,
@@ -531,6 +570,7 @@ def module_facts(
     patchers = _Patchers(analysis)
     _scan_patchers(analysis, facts, patchers)
     _scan_patch_methods(analysis, facts)
+    _scan_patch_reads(analysis, facts)
     _scan_patcher_escapes(analysis, facts, patchers)
     hazard = parse_hazard(source, analysis.root)
     module_bindings = {
@@ -717,6 +757,10 @@ def _candidates(
     kind = outcome.get("outcome")
     if kind == "import":
         return [outcome.get("binding") or {}]
+    if analysis.decided is not None and analysis.real_deciding_scope(ident) is None:
+        # A phantom binding (e.g. a name in a type parameter's bound)
+        # cannot shadow an outer import at runtime.
+        return infos
     if kind == "local" or outcome.get("reason") in _OWN_BINDINGS:
         return []
     return infos
@@ -844,6 +888,29 @@ def _classify_use(analysis: Any, node: Any) -> tuple[str, list[str], Any] | None
     return "value", chain, outer
 
 
+def _holder_read(ident: Any) -> bool:
+    """Include implicit closure references and the base of a value pattern."""
+    from . import py_scope as ps
+
+    parent = ident.parent
+    if parent is not None and parent.type == "nonlocal_statement":
+        # The declaration alone captures the enclosing cell.
+        return True
+    if parent is not None and parent.type == "dotted_name" and not _in_import(ident):
+        parts = ps._identifier_children(parent)
+        return bool(
+            parts
+            and parts[0].id == ident.id
+            and (
+                len(parts) > 1
+                or (parent.parent is not None and parent.parent.type == "class_pattern")
+            )
+        )
+    return not (
+        ps._name_part(ident) or _in_import(ident) or ps._binding_position(ident)
+    )
+
+
 def _scan_uses(
     analysis: Any,
     facts: _Facts,
@@ -863,12 +930,7 @@ def _scan_uses(
         if binding.cls == ps.IMPORT and scope.kind == ps._FUNCTION:
             local_imports.setdefault(name, []).append(scope)
     for ident in analysis.identifier_nodes:
-        if (
-            ps._name_part(ident)
-            or _in_import(ident)
-            or ps._scope_binding_name(ident)
-            or ps._binding_position(ident)
-        ):
+        if not _holder_read(ident):
             continue
         infos = _candidates(analysis, ident, import_infos)
         if not infos:
@@ -938,8 +1000,7 @@ def _nested_import_read(
         return False
     if ps._in_annotation(ident):
         return any(scope in chain for scope in holders)
-    analysis.lookup(ident)
-    decided = analysis.decided
+    decided = analysis.lookup_scope(ident)
     if decided is not None:
         return decided is not chain[0] and any(scope is decided for scope in holders)
     return any(scope is not chain[0] and scope in chain for scope in holders)
@@ -1174,14 +1235,45 @@ def _scan_causes(
     from . import py_scope as ps
 
     source = analysis.source
+    # treesitter-chunker#699 S2: one classifier serves both tiers (the
+    # fold-8 precedent). Code run from a string, a payload or an annotation
+    # (Tier 1 file-wide) is a run-wide ``evaluator`` cause (Q8: a production
+    # ``pickle.loads`` included); a code-object source, reads included, is a
+    # ``module-object`` cause (B-1, reversing #705 Q2: ``type(f)(code, g)()``
+    # runs a code object with neither ``exec`` nor ``eval``).
+    # The full-lookup test PR 6 used for ``exec``/``eval``/``execfile`` is
+    # kept too (R-699-3): a frame rule or a lazy annotation leaves the use
+    # possibly the builtin even where the use-site proof excludes it.
+    if analysis.string_code or analysis.legacy_evaluator():
+        facts.shutoff.add(CAUSE_EVALUATOR)
+    if analysis.code_objects:
+        facts.shutoff.add(CAUSE_MODULE_OBJECT)
+    if analysis.heap_walk:
+        # treesitter-chunker#699 PY-7 with B-7: Tier 1's ``gc`` verdict (a use
+        # off the member list, a heap-walker token) is a run-wide cause too:
+        # ``gc.get_referents(use.run)`` hands over another module's globals.
+        facts.shutoff.add(CAUSE_MODULE_OBJECT)
+    if any(node is None for node, _by_lookup in analysis._locals_readers()):
+        # treesitter-chunker#699 PY-9: ``locals``/``vars`` as a value, an
+        # import name or a constant-string word (Tier 1's R-707-1 token
+        # rule): another file may call it (``get_locals = locals``) and hand
+        # the dict of its frame's locals on.
+        facts.shutoff.add(CAUSE_MODULE_OBJECT)
+    if analysis.main_string:
+        # K-3 (#698, R-698-2): a string naming the main module, by the one
+        # classifier Tier 1 uses (``py_scope._main_string``): a component
+        # after the format and attribute punctuation split, a default
+        # ``string.Template`` identifier, or a main name anywhere in an
+        # f-string's or t-string's decoded source text (``T = "%(__main__)s"``,
+        # ``f"{P():__main__}"``; R-698-3). Only the script guard's comparand
+        # is exempt.
+        facts.shutoff.add(CAUSE_MODULE_OBJECT)
     stack = [analysis.root]
     while stack:
         node = stack.pop()
         stack.extend(node.named_children)
         kind = node.type
-        if kind == "exec_statement":
-            facts.shutoff.add(CAUSE_EVALUATOR)
-        elif kind in ("string", "concatenated_string", "binary_operator"):
+        if kind in ("string", "concatenated_string", "binary_operator"):
             if (
                 kind == "string"
                 and node.parent is not None
@@ -1192,11 +1284,12 @@ def _scan_causes(
             if value is None:
                 continue
             parts = set(ps._NAME_SEPARATORS.split(value))
+            words = set(ps._TOKEN_WORDS.split(value))
             if parts & (_MODULE_OBJECT_NAMES - {"__main__", "__mp_main__"}):
                 facts.shutoff.add(CAUSE_MODULE_OBJECT)
-            if parts & {"__main__", "__mp_main__"} and not analysis._main_guard(node):
+            if words & _FRAME_READERS:
                 facts.shutoff.add(CAUSE_MODULE_OBJECT)
-            if _FRAME_LOCALS in parts:
+            if _CELL_CONTENTS in words:
                 facts.shutoff.add(CAUSE_MODULE_OBJECT)
             if parts & _RESOLVER_NAMES:
                 facts.shutoff.add(CAUSE_DYNAMIC_LOADER)
@@ -1211,7 +1304,9 @@ def _scan_causes(
     for ident in analysis.identifier_nodes:
         name = ps._text(ident, source)
         spellings = ps._spellings(ident, source)
-        if _FRAME_LOCALS in spellings and not _frame_locals_read(analysis, ident):
+        if spellings & _FRAME_READERS:
+            facts.shutoff.add(CAUSE_MODULE_OBJECT)
+        if _CELL_CONTENTS in spellings and not _cell_read(analysis, ident):
             facts.shutoff.add(CAUSE_MODULE_OBJECT)
         if ps._name_part(ident):
             parent = ident.parent
@@ -1249,8 +1344,6 @@ def _scan_causes(
             facts.shutoff.add(CAUSE_MODULE_OBJECT)
         if spellings & _RESOLVER_NAMES:
             facts.shutoff.add(CAUSE_DYNAMIC_LOADER)
-        if name in _EVALUATORS and _builtin_at(analysis, ident):
-            facts.shutoff.add(CAUSE_EVALUATOR)
         if name == "__import__" and _builtin_at(analysis, ident):
             call = ps._callee_call(ident)
             first = _first_argument(call) if call is not None else None
@@ -1345,11 +1438,28 @@ _NAMESPACE_TOKENS = frozenset(
         "_eval_type",
         "call_annotate_function",
         "call_evaluate_function",
+        # R-724-4 (S-3): routes that spell no other listed name, each kept
+        # at a measured production cost of 0 edges.
+        # ``inspect.getmembers(frame)`` lists ``f_globals`` by content;
+        # ``doctest.DocTestFinder().find(fn)[0].globs`` holds the module's
+        # bindings; ``rlcompleter.Completer()`` reads ``__main__``'s;
+        # ``[v for k, v in __builtins__.items() if k.startswith("glob")]``
+        # picks a builtin by content; ``ctypes.pythonapi.PyEval_GetGlobals``
+        # returns the calling frame's globals.
+        "getmembers",
+        "getmembers_static",
+        "DocTestFinder",
+        "globs",
+        "rlcompleter",
+        "__builtins__",
+        "PyEval_GetGlobals",
     }
 )
 # The components a constant string is matched by: dotted, ``:``-separated,
-# bracketed and quoted parts (``"0.__globals__[svc]"``, ``"builtins.open"``).
-_TOKEN_SEPARATORS = re.compile(r"[.:\[\]'\"]")
+# bracketed, quoted and format-field parts (``"0.__globals__[svc]"``,
+# ``"builtins.open"``, ``"{0.__globals__!r}"``: ``string.Formatter``
+# resolves the field without its caller spelling ``get_field``).
+_TOKEN_SEPARATORS = re.compile(r"[.:\[\]'\"{}!]")
 # A frame's namespace dicts, read by a constant key (:func:`_frame_read_keys`).
 _FRAME_DICTS = frozenset({"f_locals", "f_globals"})
 # The evaluators run code in the calling frame's namespace. They count in any
@@ -1409,6 +1519,8 @@ def _namespace_handout(
     source = analysis.source
     routes = False
     members = False
+    exempted = False
+    worded = False
     keys: set[str] = set()
     for ident in analysis.identifier_nodes:
         spellings = ps._spellings(ident, source)
@@ -1416,6 +1528,7 @@ def _namespace_handout(
             if _not_own_namespace(analysis, ident):
                 # R-724-2: the token applies to an object the use-site
                 # lookup proves is not this file's namespace.
+                exempted = True
                 continue
             read = _frame_read_keys(analysis, ident)
             if read is None or any(
@@ -1429,6 +1542,8 @@ def _namespace_handout(
         name = ps._text(ident, source)
         if name == _MAIN and _import_target(ident):
             return None
+        if _own_module_route(analysis, ident, name):
+            return None
         if name not in _NAMESPACE_EVALUATORS:
             continue
         if ps._name_part(ident):
@@ -1440,10 +1555,10 @@ def _namespace_handout(
             continue
         if _in_import(ident):
             return None
-        if not ps._binding_position(ident) and not _exec_into_fresh_module(
-            analysis, ident
-        ):
-            return None
+        if not ps._binding_position(ident):
+            if not _exec_into_fresh_module(analysis, ident):
+                return None
+            exempted = True
     evaluator_strings = False
     stack = [analysis.root]
     while stack:
@@ -1465,6 +1580,10 @@ def _namespace_handout(
             continue
         if _token_match(value, _NAMESPACE_TOKENS):
             return None
+        if set(ps._TOKEN_WORDS.split(value)) & _EXEMPT_VOIDING_WORDS or _token_match(
+            value, _FACTORY_PARTS
+        ):
+            worded = True
         if _token_match(value, _BUILTINS_ROUTES):
             routes = True
         if value in _NAMESPACE_EVALUATORS:
@@ -1476,24 +1595,86 @@ def _namespace_handout(
             return None
     if routes and (members or evaluator_strings):
         return None
+    if exempted and worded:
+        # R-724-4: the code an exempt ``exec`` runs may spell a token with
+        # any delimiter (``"import sys; d = sys._getframe(1).f_globals"``),
+        # and a patch target may name a factory or its module
+        # (``mock.patch("types.ModuleType", fake)``).
+        return None
     if routes_seen is not None:
         routes_seen.append(routes)
     return frozenset(keys)
 
 
+# R-724-4 (S-3): resolvers that return the module a name denotes. Applied to
+# ``__name__``, or to a constant whose first component is a component of the
+# file's own module path (``pkgutil.resolve_name("use:svc")``), one returns
+# the file's own module or a package holding it, as
+# ``importlib.import_module(__name__)`` does
+# (``logging.config.BaseConfigurator({}).resolve(__name__)``).
+_OWN_NAME_RESOLVERS = frozenset({"resolve_name", "locate", "resolve"})
+# R-724-4 (S-3): attribute reads that are a test module itself (pytest's
+# ``request.module``).
+_OWN_MODULE_ATTRIBUTES = frozenset({("request", "module")})
+
+
+def _own_module_route(analysis: Any, ident: Any, name: str) -> bool:
+    """Whether ``ident`` is a route to the file's own module that spells no
+    listed token: a callee named in :data:`_OWN_NAME_RESOLVERS` whose first
+    argument is ``__name__`` or a constant naming the file's own module or a
+    package holding it, or the attribute of
+    :data:`_OWN_MODULE_ATTRIBUTES`."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    parent = ident.parent
+    if parent is not None and parent.type == "attribute":
+        holder = parent.child_by_field_name("object")
+        holder = ps._unwrap(holder, skip_comments=True) if holder is not None else None
+        if (
+            holder is not None
+            and holder.type == "identifier"
+            and ps._same(ident, parent.child_by_field_name("attribute"))
+            and (ps._text(holder, source), name) in _OWN_MODULE_ATTRIBUTES
+        ):
+            return True
+    if name not in _OWN_NAME_RESOLVERS:
+        return False
+    callee = parent if parent is not None and parent.type == "attribute" else ident
+    if callee is not ident and not ps._same(
+        ident, callee.child_by_field_name("attribute")
+    ):
+        return False
+    call = ps._callee_call(callee)
+    arguments = ps._call_arguments(call) if call is not None else []
+    if not arguments:
+        return False
+    first = ps._unwrap(arguments[0], skip_comments=True)
+    if first.type == "identifier" and ps._text(first, source) == "__name__":
+        return True
+    value = ps._constant_string(first, source)
+    if not value:
+        return False
+    head = re.split(r"[.:]", value.strip())[0]
+    return head in {*analysis.module_path.components, *analysis.own_names}
+
+
 # R-724-2: the closed allow-list of token uses whose object the use-site
-# lookup proves is not the file's own namespace. It covers what the costed
-# sites do (spec ``ingest.py``'s ``exec(code, mod.__dict__)``,
-# Code-Index-MCP's ``spec.loader.exec_module(probe)`` and
-# ``__import__("hashlib")``) and nothing more; every other use of a token
-# stays a trigger (any frame, function or ``globals()`` route included).
-#
-# The receiver is a fresh module: a function local, decided by the lookup at
-# the use, whose one binding in its function is ``X = <one of these>(...)``,
-# the callee proven by its imports (``import types``, ``import
-# importlib.util``, ``from importlib.util import module_from_spec``).
-_FRESH_MODULE_FACTORIES = frozenset(
-    {("types", "ModuleType"), ("importlib", "util", "module_from_spec")}
+# lookup proves is not the file's own namespace. This covers a constant
+# foreign import and exec or loader execution into a fresh module local.
+# The receiver's one binding in the function must call types.ModuleType,
+# with the constructor identified through its import (R-724-7).
+# module_from_spec delegates creation to the loader, which can return the
+# importing module itself. Its historical names remain voiding tokens.
+# R-724-4: a constant that spells a token or a factory's own name as a word
+# (:data:`py_scope._TOKEN_WORDS`), or any name of a factory path as a component
+# (:data:`_TOKEN_SEPARATORS`), voids every exempt use of the file. A patch
+# target or a module key may name the factory or its module
+# (``mock.patch("types.ModuleType", F)``, ``mock.patch("importlib.util",
+# U)``, ``mock.patch.dict(sys.modules, {"types": T})``).
+_EXEMPT_VOIDING_WORDS = _NAMESPACE_TOKENS | {"ModuleType", "module_from_spec"}
+_FACTORY_PARTS = frozenset(
+    {"types", "ModuleType", "importlib", "util", "module_from_spec"}
 )
 
 
@@ -1641,8 +1822,7 @@ def _foreign_import_constant(analysis: Any, ident: Any) -> bool:
 def _fresh_module_local(analysis: Any, ident: Any) -> bool:
     """Whether ``ident`` is a function local whose ONE binding in its
     function is ``ident = F(...)``, ``F`` proven by its import to be
-    ``types.ModuleType`` or ``importlib.util.module_from_spec``
-    (:data:`_FRESH_MODULE_FACTORIES`). Such a value is a new module object,
+    ``types.ModuleType``. Such a value is a new module object,
     never the file's own module: a rebinding (another assignment, a ``for``
     or ``with`` target, ``del``, a walrus, a ``nonlocal`` write from an inner
     function), a ``global`` declaration or a parameter of the name makes it
@@ -1655,11 +1835,15 @@ def _fresh_module_local(analysis: Any, ident: Any) -> bool:
     scope = next(iter(analysis._chain(ident)), None)
     if scope is None or scope.kind != ps._FUNCTION:
         return False
+    if "__class__" in analysis.attribute_writes:
+        # R-724-4: ``mod.__class__ = M`` on any receiver may give the module
+        # a ``__dict__`` property that returns another namespace.
+        return False
     # The lookup decides in this function (a ``global`` or ``nonlocal``
     # name, a mangled name, a poisoned scope and a file that may write a
     # function's locals, ``f_locals`` or a closure cell, decide nowhere or
     # elsewhere).
-    analysis.lookup(ident)
+    analysis.lookup(ident, namespace_receiver=True)
     if analysis.decided is not scope or len(scope.bindings.get(name, ())) != 1:
         return False
     sites = [
@@ -1683,11 +1867,10 @@ def _fresh_module_local(analysis: Any, ident: Any) -> bool:
 
 
 def _fresh_module_factory(analysis: Any, callee: Any) -> bool:
-    """Whether a callee is one of :data:`_FRESH_MODULE_FACTORIES`: an
+    """Whether a callee is the stdlib module constructor: an
     identifier or attribute chain whose head is bound ONLY by imports in the
     file, all denoting one absolute path, which joined with the chain is the
-    factory (``types.ModuleType``, ``importlib.util.module_from_spec``,
-    ``module_from_spec`` from ``importlib.util``). Fold 25's proof of a
+    factory (``types.ModuleType``). Fold 25's proof of a
     standard-library callee (``py_scope._stdlib_name``), which holds in a
     file whose module lookups fail closed (any ``importlib`` mention makes
     them ``dynamic-scope``): no other binding of the head anywhere (an
@@ -1728,7 +1911,7 @@ def _fresh_module_factory(analysis: Any, callee: Any) -> bool:
     if len(paths) != 1:
         return False
     (path,) = paths
-    return (*path, *reversed(chain)) in _FRESH_MODULE_FACTORIES
+    return (*path, *reversed(chain)) == ("types", "ModuleType")
 
 
 def _import_target(ident: Any) -> bool:
@@ -1757,7 +1940,7 @@ def _import_target(ident: Any) -> bool:
 def _frame_read_keys(analysis: Any, ident: Any) -> frozenset[str] | None:
     """For an identifier spelled like one of :data:`_NAMESPACE_TOKENS`: the
     keys it reads when it is a frame's ``f_locals`` or ``f_globals`` read by
-    a constant key (:func:`_frame_locals_read`'s closed list: ``.get(K)``,
+    a constant key (closed list: ``.get(K)``,
     ``[K]``, ``K in``, the last reading none), else ``None`` (every
     binding)."""
     from . import py_scope as ps
@@ -1765,7 +1948,7 @@ def _frame_read_keys(analysis: Any, ident: Any) -> frozenset[str] | None:
     source = analysis.source
     if not ps._spellings(ident, source) & _FRAME_DICTS:
         return None
-    if not _frame_locals_read(analysis, ident):
+    if not analysis._attribute_read(ident):
         return None
     outer = ident.parent
     while outer.parent is not None and outer.parent.type == "parenthesized_expression":
@@ -1827,6 +2010,7 @@ _SCOPE_NODES = frozenset(
         "set_comprehension",
         "dictionary_comprehension",
         "generator_expression",
+        "type_alias_statement",
     }
 )
 
@@ -2172,16 +2356,7 @@ def _scan_results(
         if refs:
             handle([(ref, ()) for ref in refs], call)
 
-    reads = [
-        ident
-        for ident in analysis.identifier_nodes
-        if not (
-            ps._name_part(ident)
-            or _in_import(ident)
-            or ps._scope_binding_name(ident)
-            or ps._binding_position(ident)
-        )
-    ]
+    reads = [ident for ident in analysis.identifier_nodes if _holder_read(ident)]
     for ident in reads:
         for spelling in sorted(ps._spellings(ident, source) & own):
             if ps._callee_call(ident) is None:
@@ -2232,9 +2407,10 @@ def _scan_results(
                 changed = True
 
 
-def _frame_locals_read(analysis: Any, ident: Any) -> bool:
-    """``X.f_locals`` used only as a read (a closed list): ``.get(...)``
-    called, a subscript read, or the right operand of ``in``/``not in``."""
+def _cell_read(analysis: Any, ident: Any) -> bool:
+    """``X.cell_contents`` only read (PY-6): an attribute that is not a
+    target (assignment, augmented assignment, ``del``) and not the receiver
+    of a dunder (``type(c).cell_contents.__set__``)."""
     from . import py_scope as ps
 
     parent = ident.parent
@@ -2242,30 +2418,21 @@ def _frame_locals_read(analysis: Any, ident: Any) -> bool:
         parent is None
         or parent.type != "attribute"
         or not ps._same(ident, parent.child_by_field_name("attribute"))
+        or parent.id in analysis.attribute_targets
     ):
         return False
     outer = parent
     while outer.parent is not None and outer.parent.type == "parenthesized_expression":
         outer = outer.parent
     above = outer.parent
-    if above is None:
-        return False
-    if above.type == "attribute" and ps._same(
-        outer, above.child_by_field_name("object")
+    if (
+        above is not None
+        and above.type == "attribute"
+        and ps._same(outer, above.child_by_field_name("object"))
     ):
         method = above.child_by_field_name("attribute")
-        return (
-            method is not None
-            and ps._text(method, analysis.source) == "get"
-            and ps._callee_call(above) is not None
-        )
-    if above.type == "subscript" and ps._same(
-        outer, above.child_by_field_name("value")
-    ):
-        return above.id not in analysis.attribute_targets and not any(
-            above.id == target.id for target in analysis.subscript_targets
-        )
-    return _operand_of_in(parent)
+        return method is not None and not ps._dunder(ps._text(method, analysis.source))
+    return True
 
 
 # pytest-mock fixture names whose ``.patch`` is ``unittest.mock.patch``.
@@ -2308,6 +2475,7 @@ _SYSPATH_METHOD = "syspath_prepend"
 # rules already classify (``vars(svc)``, ``svc.__dict__``, ``sys.modules``,
 # ``f_globals``), so their name adds nothing.
 _PATCH_METHOD_NAMES = _WRITE_METHODS | {"setitem", "delitem", _SYSPATH_METHOD}
+_CLASS_PATTERN_PATCHERS = _PATCH_METHOD_NAMES | {"patch"}
 _MP_FIXTURE_ARGUMENTS = frozenset({"target", "name"})
 _GETFIXTUREVALUE = "getfixturevalue"
 _FIXTURE_MOCKER = "mocker"
@@ -2651,21 +2819,30 @@ def _scan_patchers(
     ``getfixturevalue`` of a pytest-mock fixture name holds a fixture whose
     ``.patch`` is ``patch`` (:class:`_Patchers`). The president's trees
     ``h3a``/``h3b`` ran ``OTHER.t`` under pytest through these spellings, and ``h3c``
-    through ``patch.multiple(MOD, t=...)`` with a computed ``MOD``. A
-    ``patch`` method of anything else (``requests.patch(url)``) is no
-    patcher."""
+    through ``patch.multiple(MOD, t=...)`` with a computed ``MOD``.
+
+    treesitter-chunker#699 PY-10 (ruling R-699-1 Q6, in the E6-9b style):
+    ``X.patch(...)``, ``X.patch.object(...)``, ``.dict`` and ``.multiple``
+    are patcher calls on ANY receiver (a parameter, ``S().patch(...)``,
+    ``requests.patch(url)``): a computed target is an
+    ``unresolvable-writer``, a constant one taints the module it names. The
+    same names reached without a direct call (``p = mk.patch``) or by a
+    constant name (``getattr(mk, "patch")``) are an ``unresolvable-writer``
+    (:func:`_scan_patch_reads`)."""
     from . import py_scope as ps
 
     source = analysis.source
     patchers = patchers if patchers is not None else _Patchers(analysis)
-    mockers = _MOCKER_NAMES | patchers.mockers
 
     def is_patch(node: Any, names: Sequence[str]) -> bool:
         if node is not None and analysis._sensitive(node, ps._PATCH):
             return True
-        return names[-1] == "patch" and (
-            len(names) == 1 or "mock" in names[:-1] or names[0] in mockers
-        )
+        if node is not None and ps._is_patch_attribute(node, source):
+            # PY-10: ``X.patch`` on any receiver, which subsumes the former
+            # name checks (``mock.patch``, a fixture's or a fixture alias's
+            # ``.patch``).
+            return True
+        return list(names) == ["patch"]  # a bare ``patch``
 
     stack = [analysis.root]
     while stack:
@@ -2683,6 +2860,9 @@ def _scan_patchers(
             else None
         )
         names = _callee_names(node, source)
+        if not names and receiver is not None and function is not None:
+            # PY-10: ``S().patch(u)``, ``ms[0].patch.object(...)``.
+            names = [ps._text(function.child_by_field_name("attribute"), source)]
         if not names:
             continue
         arguments = [
@@ -2695,8 +2875,7 @@ def _scan_patchers(
         last = names[-1]
         patch = is_patch(function, names)
         method = (
-            len(names) >= 2
-            and receiver is not None
+            receiver is not None
             and last in ("object", "dict", "multiple")
             and is_patch(receiver, names[:-1])
         )
@@ -2718,6 +2897,63 @@ def _scan_patchers(
                 facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
 
 
+def _scan_patch_reads(analysis: Any, facts: _Facts) -> None:
+    """treesitter-chunker#699 PY-10, the E6-9b form of the hand-off rule:
+    ``X.patch`` for any ``X`` read other than applied where it is read
+    (called, or ``.object``/``.dict``/``.multiple`` called on it), and a
+    constant ``"patch"`` that names a member by string (a call argument or
+    subscript key, whole or as a dotted component: ``getattr(mk, "patch")``,
+    ``operator.methodcaller("patch", t)``), are an ``unresolvable-writer``:
+    the call that applies the patcher is out of sight. A ``.patch`` the mock
+    rules recognise (``p = mock.patch``) is an alias whose uses
+    :func:`_scan_patcher_escapes` checks instead. Writing ``X.patch = v``
+    reads no patcher."""
+    from . import py_scope as ps
+
+    source = analysis.source
+    stack = [analysis.root]
+    while stack:
+        node = stack.pop()
+        stack.extend(node.named_children)
+        value = _argument_string(node, source)
+        if value is not None and "patch" in ps._TOKEN_PARTS.split(value):
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
+        if ps._patch_token_string(node, source):
+            # R-699-12 items 1 and 2: ``"patch"`` exactly in any position
+            # (``__match_args__ = ("patch",)``, ``case {"patch": p}``), or a
+            # private patcher as a word of any constant string
+            # (``getattr(mk, "_pa" "tch")``).
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
+        if node.type == "identifier" and (
+            ps._spellings(node, source) & ps._PRIVATE_PATCH_TOKENS
+        ):
+            # R-699-12 item 1: a private patcher (or ``_get_target``) in any
+            # identifier role: a name, an attribute on any receiver (R-699-11),
+            # an import or alias name, a keyword, a class-pattern keyword.
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
+        if node.type == "keyword_pattern" and node.named_children:
+            # R-699-10 item 3: a class-pattern keyword reads the subject's
+            # attribute (``case object(patch=p)`` is ``p = subject.patch``),
+            # so ``patch`` and the E6-9b ``MonkeyPatch`` methods spelled
+            # there are patchers read out of sight, whatever the subject.
+            keyword = node.named_children[0]
+            if ps._spellings(keyword, source) & _CLASS_PATTERN_PATCHERS:
+                facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+                return
+        if (
+            node.type == "attribute"
+            and ps._is_patch_attribute(node, source)
+            and node.id not in analysis.attribute_targets
+            and not ps._patch_applied(node, source)
+            and not analysis._sensitive(node, ps._PATCH)
+        ):
+            facts.shutoff.add(CAUSE_UNRESOLVABLE_WRITER)
+            return
+
+
 def import_group(
     analysis: Any, head: Any, outcome: Mapping[str, Any]
 ) -> list[dict[str, str]]:
@@ -2735,7 +2971,7 @@ def import_group(
         len(bindings) < 2
         or any(binding.cls != ps.IMPORT or not binding.info for binding in bindings)
         or (scope.kind in (ps._MODULE, ps._CLASS) and ps._dunder(name))
-        or (scope.kind == ps._MODULE and name in ps.BUILTINS)
+        or (scope.kind == ps._MODULE and name in ps.SHADOWED_NAMES)
     ):
         return []
     return [dict(binding.info) for binding in bindings]
@@ -3058,6 +3294,35 @@ class _Builder:
                         found |= self.returned(getter)
         return found
 
+    def exposes_patcher(self, node: str, name: str | None) -> bool:
+        """R-699-10 item 2, R-699-12 item 3: whether module ``node`` binds
+        ``patch`` by a module-scope from-import under ``name`` (``from
+        unittest.mock import patch as pp``, read back by ``from node import
+        pp`` at any scope), or under any name (``None``: what ``from node
+        import *`` may hand over; underscore names and ``__all__`` are not
+        narrowed, which only fails closed). A private patcher needs no
+        following: it is a token of the file that binds it (R-699-12).
+
+        One hop is enough. Every run file in a longer chain (``compat``
+        re-exporting ``compat2``'s ``pp``, or star-importing it) records the
+        same cause for its own hop, and O-2 promotion makes that file
+        production whenever a production file imports it. Reading the
+        re-export as a module attribute (``compat.pp``,
+        ``import_module("compat").pp``) is not followed (R12)."""
+        from . import py_scope as ps
+
+        path = self.modules.get(node)
+        file = self.files.get(path) if path is not None else None
+        if file is None:
+            return False
+        return any(
+            binding.get("form") == "from"
+            and str(binding.get("name") or "").split(".")[-1] == ps._PATCH
+            for bound, bindings in file.module_imports.items()
+            if name is None or bound == name
+            for binding in bindings
+        )
+
     # -- taints -----------------------------------------------------------
 
     def walk_use(
@@ -3269,6 +3534,23 @@ class _Builder:
             whole.update(current)
 
 
+def _private_patch_tokens() -> frozenset[str]:
+    from . import py_scope as ps
+
+    return ps._PRIVATE_PATCH_TOKENS
+
+
+def _split_import_ref(ref: str) -> tuple[str, str]:
+    """``(module reference, last name)`` of an import reference
+    (:func:`_scan_imports`: ``compat.pp``, ``.pp``, ``..pkg.compat.pp``)."""
+    dots = len(ref) - len(ref.lstrip("."))
+    rest = ref[dots:]
+    if "." not in rest:
+        return "." * dots, rest
+    module, name = rest.rsplit(".", 1)
+    return "." * dots + module, name
+
+
 def _production(
     builder: _Builder,
     edges: Mapping[str, Sequence[str]],
@@ -3367,6 +3649,25 @@ def build_py_module_run(
         for star in bindings.get("stars", ()):
             for node in builder.targets(str(star), path):
                 whole[scope].update(builder.exposed(node))
+                if builder.exposes_patcher(node, None):
+                    # R-699-10 item 2: ``from compat import *`` hands over
+                    # a patcher under a name this file never spells as one
+                    # (``pp(f"svc.{NAME}", f)``): an ``unresolvable-writer``
+                    # of the importing file, scoped by O-2.
+                    causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
+        for ref in bindings.get("imports", ()):
+            # R-699-12 item 3: ``from compat import pp`` at any scope (module,
+            # function, class body; relative too), where ``compat`` binds
+            # ``patch`` as ``pp``. A name spelled ``patch`` is the file's own
+            # W-3 rules, a private patcher its own token.
+            module, name = _split_import_ref(str(ref))
+            if name == "patch" or name in _private_patch_tokens():
+                continue
+            if any(
+                builder.exposes_patcher(start, name)
+                for start in builder.targets(module, path)
+            ):
+                causes.append((CAUSE_UNRESOLVABLE_WRITER, path))
     for scope in (True, False):
         pending = sorted(whole[scope])
         while pending:

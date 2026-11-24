@@ -2,16 +2,19 @@
 with token information."""
 
 import copy
+import re
+from bisect import bisect_left
+from collections.abc import Iterable
 from typing import Any
 
 import tree_sitter
 
-from chunker.core import _walk, chunk_file
+from chunker.core import _line_ending_offsets, _walk, chunk_file
 from chunker.interfaces.token import TokenAwareChunker, TokenCounter
 from chunker.packing import compute_pack_hint
 from chunker.types import CodeChunk
 
-from .counter import TiktokenCounter
+from .counter import TiktokenCounter, _group_ranges
 
 
 class TreeSitterTokenAwareChunker(TokenAwareChunker):
@@ -99,7 +102,8 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
 
         This enhances existing Tree-sitter chunks with token counts and
         splits large chunks that exceed token limits while preserving
-        semantic boundaries as much as possible.
+        semantic boundaries as much as possible. An over-budget Unicode scalar
+        is emitted alone with token_limit_exceeded=True.
 
         Args:
             file_path: Path to the file to chunk
@@ -110,6 +114,8 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         Returns:
             List of chunks with token information in metadata
         """
+        if max_tokens <= 0:
+            raise ValueError("max_tokens must be positive")
         chunks = chunk_file(file_path, language)
         chunks_with_tokens = self.add_token_info(chunks, model)
         final_chunks = []
@@ -195,9 +201,9 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         A more sophisticated version would re-parse with Tree-sitter.
         """
         content = chunk.content
-        lines = content.split("\n")
         method_starts = []
-        for i, line in enumerate(lines):
+        for match in re.finditer(r"[^\r\n]+", content):
+            line = match.group()
             stripped = line.strip()
             if any(
                 pattern in stripped
@@ -211,155 +217,107 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
                     "protected ",
                 ]
             ) and (line.startswith((" ", "\t")) and not line.startswith("        ")):
-                method_starts.append(i)
+                method_starts.append(match.start())
         if not method_starts:
             return self._split_by_lines(chunk, max_tokens, model)
-        chunks = []
-        current_part = []
-        current_tokens = 0
-        class_header_lines = lines[: method_starts[0]] if method_starts else []
-        class_header = "\n".join(class_header_lines)
-        header_tokens = self.token_counter.count_tokens(class_header, model)
-        if header_tokens > max_tokens:
-            return self._split_by_lines(chunk, max_tokens, model)
-        current_part = class_header_lines.copy()
-        current_tokens = header_tokens
-        # Running cursor into the original content so two byte-identical methods
-        # in separate sub-chunks anchor to their OWN occurrence, not the first
-        # (COREFIX: class-split duplicate-method disambiguation).
-        search_from = 0
 
-        def _emit(part_lines: list[str]) -> None:
-            nonlocal search_from
-            # The stored content MUST be a contiguous slice of the source so its
-            # byte span slices back to it (README token-split span contract:
-            # "slicing the original file bytes at a chunk span reproduces its
-            # content", incl. token-split chunks). So content is the method
-            # portion only; the class header is preserved as context in
-            # parent_context, NOT prepended into content (which would make the
-            # content non-contiguous and break slice-back).
-            method_lines = part_lines[len(class_header_lines) :]
-            chunk_content = "\n".join(method_lines)
-            new_chunk = self._create_sub_chunk(
-                chunk,
-                chunk_content,
-                len(chunks),
-                search_from=search_from,
-            )
-            if class_header:
-                base = new_chunk.parent_context or ""
-                new_chunk.parent_context = (
-                    f"{class_header}\n{base}" if base else class_header
+        def fits(part: str) -> bool:
+            return self.token_counter.count_tokens(part, model) <= max_tokens
+
+        header = content[: method_starts[0]].removesuffix("\n").removesuffix("\r")
+        if not fits(header):
+            # Avoid repeating an oversized preamble on every serialized part.
+            first_line = re.split(r"[\r\n]", header, maxsplit=1)[0]
+            header = first_line if fits(first_line) else ""
+        context = chunk.parent_context
+        if header:
+            context = f"{header}\n{context}" if context else header
+
+        ends = [pos for pos in method_starts if pos] + [len(content)]
+        parts = []
+        for block, accepted in _group_ranges(content, ends, fits):
+            if accepted:
+                parts.append(block)
+            else:
+                parts.extend(
+                    self.token_counter.split_text_by_tokens(block, max_tokens, model)
                 )
-            chunks.append(new_chunk)
-            # Advance the cursor past this sub-chunk's own occurrence so two
-            # byte-identical methods anchor to distinct offsets.
-            found = chunk.content.find(chunk_content, search_from)
-            if found >= 0:
-                search_from = found + len(chunk_content)
-
-        for i, start_idx in enumerate(method_starts):
-            end_idx = method_starts[i + 1] if i + 1 < len(method_starts) else len(lines)
-            method_lines = lines[start_idx:end_idx]
-            method_content = "\n".join(method_lines)
-            method_tokens = self.token_counter.count_tokens(
-                method_content,
-                model,
-            )
-            if (
-                current_tokens + method_tokens > max_tokens
-                and current_part != class_header_lines
-            ):
-                _emit(current_part)
-                current_part = class_header_lines.copy()
-                current_tokens = header_tokens
-            current_part.extend(method_lines)
-            current_tokens += method_tokens
-        if current_part and current_part != class_header_lines:
-            _emit(current_part)
-        return chunks if chunks else [chunk]
+        return self._materialize_parts(chunk, parts, max_tokens, model, context)
 
     def _split_by_lines(
+        self, chunk: CodeChunk, max_tokens: int, model: str
+    ) -> list[CodeChunk]:
+        parts = self.token_counter.split_text_by_tokens(
+            chunk.content, max_tokens, model
+        )
+        return self._materialize_parts(
+            chunk, parts, max_tokens, model, chunk.parent_context
+        )
+
+    def _materialize_parts(
         self,
-        chunk: CodeChunk,
+        parent: CodeChunk,
+        parts: Iterable[str],
         max_tokens: int,
         model: str,
+        context: str,
     ) -> list[CodeChunk]:
-        """Split a chunk by lines while trying to preserve logical groups."""
-        text_parts = self.token_counter.split_text_by_tokens(
-            chunk.content,
-            max_tokens,
-            model,
-        )
+        """Validate the partition while advancing character, byte and line cursors."""
         chunks = []
-        search_from = 0
-        for i, part in enumerate(text_parts):
-            new_chunk = self._create_sub_chunk(chunk, part, i, search_from=search_from)
-            chunks.append(new_chunk)
-            # Advance the search cursor past this part so a repeated part maps to
-            # its OWN occurrence, not the first (COREFIX token-offset fix).
-            found = chunk.content.find(part, search_from)
-            search_from = (found + len(part)) if found >= 0 else search_from + len(part)
+        offset = 0
+        byte_start = parent.byte_start
+        start_line = parent.start_line
+        # Index the parent so a cut between CR and LF advances the row only
+        # after the LF. Offsets are relative to the parent's UTF-8 source.
+        line_endings = _line_ending_offsets(parent.content.encode())
+        if (
+            parent.content.endswith("\r")
+            and len(line_endings) > parent.end_line - start_line
+        ):
+            # A parser span may itself end between the CR and LF of a CRLF.
+            line_endings.pop()
+        for index, part in enumerate(parts, start=1):
+            if not part or not parent.content.startswith(part, offset):
+                raise ValueError(
+                    "Token counter returned an empty or out-of-order source part"
+                )
+            count = self.token_counter.count_tokens(part, model)
+            if count > max_tokens and len(part) != 1:
+                raise ValueError(
+                    "Token counter returned a divisible part over the token budget"
+                )
+            byte_end = byte_start + len(part.encode("utf-8"))
+            end_line = parent.start_line + bisect_left(
+                line_endings, byte_end - parent.byte_start
+            )
+            child = CodeChunk(
+                language=parent.language,
+                file_path=parent.file_path,
+                node_type=f"{parent.node_type}_part_{index}",
+                start_line=start_line,
+                end_line=end_line,
+                byte_start=byte_start,
+                byte_end=byte_end,
+                parent_context=context,
+                content=part,
+                parent_chunk_id=parent.chunk_id,
+                references=parent.references.copy(),
+                dependencies=parent.dependencies.copy(),
+                metadata={
+                    "token_count": count,
+                    "tokenizer_model": model,
+                    "is_split": True,
+                    "split_index": index,
+                    "original_chunk_id": parent.chunk_id,
+                    "original_token_count": parent.metadata.get("token_count", 0),
+                },
+            )
+            if count > max_tokens:
+                child.metadata["token_limit_exceeded"] = True
+            chunks.append(child)
+            offset += len(part)
+            byte_start = byte_end
+            start_line = end_line
+        if offset != len(parent.content):
+            raise ValueError("Token counter returned an incomplete source partition")
         return chunks
-
-    def _create_sub_chunk(
-        self,
-        original_chunk: CodeChunk,
-        content: str,
-        index: int,
-        search_from: int = 0,
-    ) -> CodeChunk:
-        """Create a sub-chunk from an original chunk.
-
-        ``content`` MUST be a contiguous slice of ``original_chunk.content`` so
-        the sub-chunk's byte span slices back to it (README token-split span
-        contract). ``search_from`` locates ``content`` STARTING at a running
-        position so repeated identical parts map to their OWN occurrence, not
-        the first (COREFIX).
-        """
-        found = original_chunk.content.find(content, search_from)
-        content_offset = (
-            found if found >= 0 else max(original_chunk.content.find(content), 0)
-        )
-        start_offset = original_chunk.content[:content_offset].count("\n")
-        byte_offset = len(original_chunk.content[:content_offset].encode("utf-8"))
-        # The byte/line span describes ``content``'s real, contiguous region in
-        # the parent, so slicing the source at [byte_start, byte_end] reproduces
-        # ``content`` exactly and never overshoots the parent's byte_end.
-        new_chunk = CodeChunk(
-            language=original_chunk.language,
-            file_path=original_chunk.file_path,
-            node_type=f"{original_chunk.node_type}_part_{index + 1}",
-            start_line=original_chunk.start_line + start_offset,
-            end_line=original_chunk.start_line + start_offset + content.count("\n"),
-            byte_start=original_chunk.byte_start + byte_offset,
-            byte_end=original_chunk.byte_start
-            + byte_offset
-            + len(content.encode("utf-8")),
-            parent_context=original_chunk.parent_context,
-            content=content,
-            parent_chunk_id=original_chunk.chunk_id,
-            references=original_chunk.references.copy(),
-            dependencies=original_chunk.dependencies.copy(),
-            metadata={
-                "token_count": self.token_counter.count_tokens(
-                    content,
-                    original_chunk.metadata.get(
-                        "tokenizer_model",
-                        "gpt-4",
-                    ),
-                ),
-                "tokenizer_model": original_chunk.metadata.get(
-                    "tokenizer_model",
-                    "gpt-4",
-                ),
-                "is_split": True,
-                "split_index": index + 1,
-                "original_chunk_id": original_chunk.chunk_id,
-                "original_token_count": original_chunk.metadata.get(
-                    "token_count",
-                    0,
-                ),
-            },
-        )
-        return new_chunk

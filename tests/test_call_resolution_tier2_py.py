@@ -115,6 +115,18 @@ def _run(
     return off_edge, pick(structural), pick(on), label
 
 
+def _recorded_causes(root: Path) -> set[str]:
+    """Every run-wide cause the ``imports`` facts of the tree record. A
+    #699 S4 frame-locals cause (``module-object``) sorts before
+    ``unresolvable-writer`` in the label, so rows that test the patcher
+    escape rules check that their own cause is still recorded."""
+    causes: set[str] = set()
+    for path in sorted(root.rglob("*.py")):
+        facts = extract_symbol_facts_for_file(path, root, None, call_resolution=MODE)
+        causes.update(facts["scope_facts"]["module_bindings"]["shutoff"])
+    return causes
+
+
 def _target(graph_edge: dict[str, Any], root: Path) -> str:
     graph = extract_symbol_graph(root, call_resolution=MODE)
     return str(graph["symbol_lookup"][graph_edge["to"]]["file"])
@@ -846,6 +858,181 @@ CAUSES: dict[str, tuple[str, str]] = {
         "import ctypes\n\n\ndef f(o):\n    ctypes.pythonapi.PyObject_SetAttr(o)\n",
         "module-object",
     ),
+    # treesitter-chunker#699 B-1 (ruling R-699-1, reversing #705 Q2): every
+    # code-object source is a cause, reads included. ``type(f)(code, g)()``
+    # runs a code object with neither ``exec`` nor ``eval``.
+    "b1-closure-cell-write": (
+        "def f(g):\n    g.__closure__[0].cell_contents = len\n",
+        "module-object",
+    ),
+    "b1-code-read": (
+        "def f(g):\n    return g.__code__, g.__defaults__\n",
+        "module-object",
+    ),
+    "b1-code-string": (
+        "def f(g):\n    return getattr(g, '__code__')\n",
+        "module-object",
+    ),
+    "b1-frame-code": ("def f(tb):\n    return tb.tb_frame.f_code\n", "module-object"),
+    "b1-function-type": ("import types\n\nF = types.FunctionType\n", "module-object"),
+    "b1-compile-alone": (
+        "def check(src):\n    compile(src, 'x', 'exec')\n    return True\n",
+        "evaluator",
+    ),
+    # The traced B-1 writers (CPython 3.14.10: ``use.u`` runs ``len``).
+    "b1-functype-code-read": (
+        "import use\n\nG = type(use.u)(use.u.__code__, {'t': len})\n",
+        "module-object",
+    ),
+    "b1-closure-swap": (
+        "import use\n\nf = use.u\n"
+        "G = type(f)(f.__code__, {}, None, None, (lambda x: lambda: x)(len).__closure__)\n",
+        "module-object",
+    ),
+    "b1-compile-functype": (
+        "def f():\n    pass\n\n\n"
+        "type(f)(compile('import svc; svc.t = len', '<s>', 'exec'), {})()\n",
+        "evaluator",
+    ),
+    "b1-lambda-type-compile": (
+        "F = type(lambda: 0)\nF(compile('import svc; svc.t = len', '<s>', 'exec'), {})()\n",
+        "evaluator",
+    ),
+    "b1-marshal-functype": (
+        "import marshal\n\n\ndef f():\n    pass\n\n\ntype(f)(marshal.loads(b''), {})()\n",
+        "evaluator",
+    ),
+    "b1-loader-get-code": (
+        "import use\n\ng = {}\ntype(use.u)(use.__spec__.loader.get_code('use'), g)()\n",
+        "evaluator",
+    ),
+    "b1-find-spec-get-code": (
+        "import importlib.util\n\n\ndef f():\n    pass\n\n\n"
+        "type(f)(importlib.util.find_spec('use').loader.get_code('use'), {})()\n",
+        "evaluator",
+    ),
+    # #699 PY-1/PY-2/PY-3 (Q8: a production ``pickle.loads`` included):
+    # code run from a string, a payload or an annotation.
+    "py1-pickle-loads": (
+        "import pickle\n\n\ndef f(b):\n    return pickle.loads(b)\n",
+        "evaluator",
+    ),
+    "py1-pickle-attr": ("import trace\n\nx = trace.pickle.loads(b'')\n", "evaluator"),
+    "py1-cprofile": (
+        "import cProfile\n\ncProfile.run('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "py1-timeit": ("import timeit\n\ntimeit.timeit('import svc')\n", "evaluator"),
+    "py1-forkingpickler": (
+        "from multiprocessing.reduction import ForkingPickler\n\n"
+        "x = ForkingPickler.loads(b'')\n",
+        "evaluator",
+    ),
+    "py1-shelve": ("import shelve\n\nx = shelve.Shelf({})\n", "evaluator"),
+    "py1-breakpoint": ("breakpoint()\n", "evaluator"),
+    "py2-get-type-hints": (
+        "import typing\n\n\ndef f(g):\n    return typing.get_type_hints(g)\n",
+        "evaluator",
+    ),
+    "py2-annotation-string": (
+        "def ann(x: \"__import__('svc').__setattr__('t', len) or int\" = 0):\n    pass\n",
+        "evaluator",
+    ),
+    "py2-annotations-write": (
+        "def g(x: int):\n    pass\n\n\ng.__annotations__['x'] = 'int'\n",
+        "evaluator",
+    ),
+    "py3-runpy-string": (
+        "import importlib\n\nr = importlib.import_module('runpy')\n",
+        "evaluator",
+    ),
+    "py8-exec-alias": ("from builtins import exec as run\n", "evaluator"),
+    # R-699-3: a module binding of a code builtin never proves (BLOCKING 1),
+    # a from-import of a checked module's name out of any module binds the
+    # module (BLOCKING 2), the dispatchers evaluate string annotations
+    # (BLOCKING 4), and ``getmodule`` reaches ``builtins``.
+    "r3-compile-self-alias": (
+        "compile = compile\n"
+        "G = type(lambda: 0)(compile('import svc; svc.t = len', '<s>', 'exec'), {})\n",
+        "evaluator",
+    ),
+    "r3-walrus-compile": ("(compile := compile)\n", "evaluator"),
+    "r3-breakpoint-self-alias": (
+        "breakpoint = breakpoint\nbreakpoint()\n",
+        "evaluator",
+    ),
+    "r3-pickle-from-reexport": (
+        "from logging.handlers import pickle as pk\n\nX = pk.loads(b'')\n",
+        "evaluator",
+    ),
+    "r3-runpy-from-reexport": (
+        "from multiprocessing.spawn import runpy\n\nrunpy.run_path('x', {})\n",
+        "evaluator",
+    ),
+    "r3-singledispatch-alias": (
+        "import functools\n\nA = \"__import__('svc').__setattr__('t', len) or int\"\n\n\n"
+        "@functools.singledispatch\ndef sd(x):\n    pass\n\n\n"
+        "def g(x: A):\n    pass\n\n\nsd.register(g)\n",
+        "evaluator",
+    ),
+    "r3-getmodule-exec": (
+        "import inspect\n\ninspect.getmodule(len).exec('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    # R-699-5: a phantom binding proves nothing (BLOCKING 1); a resolver's
+    # constant fires on any part, and entry points are resolvers (BLOCKING
+    # 2); a non-stdlib re-export of a generic module is checked (SHOULD 1).
+    "r5-listcomp-leak-exec": (
+        "def f():\n    [exec for exec in [print]]\n"
+        "    exec('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "r5-except-comma-exec": (
+        "def f():\n    try:\n        pass\n    except KeyError, exec:\n"
+        "        pass\n    exec('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "r5-tparam-bound-exec": (
+        "def f[T: exec]():\n    exec('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "r5-pickle-listcomp": (
+        "import pickle\n\n\ndef f(b):\n    [pickle for pickle in []]\n"
+        "    return pickle.loads(b)\n",
+        "evaluator",
+    ),
+    "r5-resolve-name-newline": (
+        "import pkgutil\n\nF = pkgutil.resolve_name('timeit:timeit\\n')\n",
+        "evaluator",
+    ),
+    "r5-entrypoint-spaces": (
+        "from importlib.metadata import EntryPoint\n\n"
+        "F = EntryPoint(name='x', value='timeit : timeit', group='g').load()\n",
+        "evaluator",
+    ),
+    "r5-project-reexport": (
+        "from compat import code\n\n"
+        "code.InteractiveInterpreter().runsource('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    # R-699-6: the ``package`` argument and ``__import__``'s ``globals`` name
+    # the module when the name after the dots is empty (i10, i13, i14).
+    "r6-import-module-package": (
+        "import importlib\n\n"
+        "importlib.import_module('.', 'trace').Trace(count=0, trace=0)"
+        ".run('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "r6-dunder-import-package": (
+        "__import__('', {'__package__': 'trace'}, None, [], 1)"
+        ".Trace(count=0, trace=0).run('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
+    "r6-dunder-import-name": (
+        "__import__('', {'__name__': 'profile.x'}, None, [], 1)"
+        ".run('import svc; svc.t = len')\n",
+        "evaluator",
+    ),
 }
 
 
@@ -869,7 +1056,11 @@ def test_run_wide_causes_fail_closed(tmp_path: Path, case: str) -> None:
     # R-724-1 item 4: a writer that spells a namespace-reaching name hands
     # out its ``sys`` or ``builtins``, a ``module-system`` cause, which is
     # reported first.
-    assert label == f"none(run-tainted:{_CAUSES_HANDED_OUT.get(case, cause)})", case
+    if case == "b1-loader-get-code":
+        # use.__spec__ hands out the writer's import of use.
+        assert label == "none(module-escape)"
+    else:
+        assert label == f"none(run-tainted:{_CAUSES_HANDED_OUT.get(case, cause)})", case
     _own_off, own_structural, own_on, _own_label = _run(root, "svc.py", "t")
     assert own_structural["resolution"] == "resolved"
     for key in ("resolution", "candidates", "to"):
@@ -879,22 +1070,41 @@ def test_run_wide_causes_fail_closed(tmp_path: Path, case: str) -> None:
 @pytest.mark.parametrize(
     "writer",
     [
-        "def f(g):\n    g.__closure__[0].cell_contents = len\n",
-        "def f(g):\n    return g.__code__, g.__defaults__\n",
+        "def f(g):\n    return g.__defaults__, g.__name__\n",
         "import ctypes\n\n\ndef f():\n    return ctypes.windll\n",
-        # A syntax check: ``compile`` alone runs nothing (#705 Q2).
-        "def check(src):\n    compile(src, 'x', 'exec')\n    return True\n",
-        "def f(tb):\n    return tb.tb_frame.f_locals.get('x'), tb.tb_frame.f_code\n",
-        "def f(fr):\n    return 'x' in fr.f_locals and fr.f_locals['x']\n",
+        # #699 S4 controls: a cell read, the collector's controls, ``locals()``
+        # called, ``vars(obj)``, frame metadata, ``.patch`` with a constant
+        # target and a ``.patch`` attribute write. (Frame-locals reads are a
+        # cause since #699 PY-9: ``S4_CAUSES``.)
+        "def f(c):\n    return c.cell_contents\n",
+        "def f(c):\n    return c.cell_contents.copy()\n",
+        "import gc\n\ngc.collect()\ngc.set_debug(gc.DEBUG_STATS)\n",
+        "def f():\n    x = 1\n    return len(locals()), x\n",
+        "class K:\n    a = 1\n\n\nN = len(vars(K))\n",
+        "def f(tb):\n    return tb.tb_lineno, tb.tb_frame.f_lineno\n",
+        "def f(router):\n    return router.patch('/items/{id}')\n",
+        "class K:\n    pass\n\n\nK.patch = 1\n",
+        # #699: the allow-listed uses of the checked modules, lookalikes and
+        # the file's own bindings.
+        "import pickle\n\nX = pickle.dumps([1])\n",
+        "import timeit\n\nX = timeit.default_timer()\n",
+        "import re\n\nP = re.compile('x')\n",
+        "def f(m):\n    return m.eval()\n",
+        "def f(g):\n    return g.__annotations__.get('x')\n",
+        # R-699-5: a real binding beside a phantom one, and a third-party
+        # ``trace`` read off the stdlib module's attribute table.
+        "def f():\n    eval = str\n    [eval for eval in []]\n    return eval('1')\n",
+        "from opentelemetry import trace\n\nT = trace.get_tracer(__name__)\n",
     ],
 )
 def test_routes_that_cannot_change_a_module_attribute_are_no_cause(
     tmp_path: Path, writer: str
 ) -> None:
-    """Closure cells, reads of code objects and defaults, ``ctypes``
-    without ``pythonapi`` and frame-locals reads leave every module attribute
-    as it is (a write of ``__code__`` and its kin is a cause since fold 3,
-    #705 N-1)."""
+    """Reads of defaults, ``ctypes`` without ``pythonapi``, frame-locals
+    reads and the #699 allow-listed uses leave every module attribute as it
+    is. Every code-object source, reads included, is a cause since #699 B-1
+    (ruling R-699-1, reversing #705 Q2), and a write of ``__defaults__`` or
+    ``__kwdefaults__`` since fold 3 (#705 N-1)."""
     root = _write(tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, "w.py": writer})
     _off, _structural, on, label = _run(root, "use.py", "t")
     assert on["resolution"] == "resolved"
@@ -1028,6 +1238,120 @@ def test_a_test_file_production_reaches_is_production(tmp_path: Path) -> None:
     off, _structural, on, label = _run(root, "use.py", "t")
     assert on == off
     assert label == "none(run-tainted:evaluator)"
+
+
+@pytest.mark.parametrize(
+    ("writer", "cause"),
+    [
+        ("import pickle\n\n\ndef load(b):\n    return pickle.loads(b)\n", "evaluator"),
+        ("def f(g):\n    return g.__code__\n", "module-object"),
+    ],
+)
+def test_s2_causes_follow_o2(tmp_path: Path, writer: str, cause: str) -> None:
+    """#699 S2 causes are scoped by O-2 like every cause: in a test file they
+    reach only test callers, until a production file imports it."""
+    files = {
+        "svc.py": SVC,
+        "use.py": USE,
+        **OTHER,
+        "tests/__init__.py": "",
+        "tests/test_use.py": "from svc import t\n\n\ndef test_u():\n    return t()\n",
+        "tests/helpers.py": writer,
+    }
+    root = _write(tmp_path / "test-only", files)
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import"
+    off, _structural, on, label = _run(root, "tests/test_use.py", "t")
+    assert on == off
+    assert label == f"none(run-tainted:{cause})"
+    promoted = _write(
+        tmp_path / "promoted", {**files, "app.py": "from tests import helpers\n"}
+    )
+    off, _structural, on, label = _run(promoted, "use.py", "t")
+    assert on == off
+    assert label == f"none(run-tainted:{cause})"
+
+
+# R-699-3 (Sol BLOCKING on #727): the shared classifier keeps every PR 6
+# ``evaluator`` cause. The full lookup with the frame and annotation rules
+# leaves these ``eval`` uses possibly the builtin, although the use-site
+# proof finds a parameter or a local definition.
+PR6_EVALUATOR_READERS = {
+    "frame-read-eval-parameter": (
+        "def generator():\n    yield\n\n\n"
+        "value = generator().gi_frame.f_locals.get('x')\n\n\n"
+        "def f(eval):\n    return eval('1')\n"
+    ),
+    "lazy-annotation-local-eval": (
+        "def f():\n    def eval(value):\n        return value\n\n"
+        "    def g(x: eval('1')):\n        return x\n\n    return g\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(PR6_EVALUATOR_READERS))
+def test_s2_keeps_pr6_evaluator_causes(tmp_path: Path, case: str) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": USE,
+            **OTHER,
+            "reader.py": PR6_EVALUATOR_READERS[case],
+        },
+    )
+    facts = extract_symbol_facts_for_file(
+        root / "reader.py", root, None, call_resolution=MODE
+    )
+    # #699 S4 (PY-9): the ``f_locals`` read is a ``module-object`` cause too.
+    assert facts["scope_facts"]["module_bindings"]["shutoff"][0] == "evaluator", case
+    off, _structural, on, label = _run(root, "use.py", "t")
+    assert on == off and on["resolution"] == "ambiguous", case
+    assert label == "none(run-tainted:evaluator)", case
+
+
+def test_s2_parameter_eval_without_frame_rule_is_no_cause(tmp_path: Path) -> None:
+    """The control: with no frame or annotation rule the parameter proves
+    the use, as in PR 6."""
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": USE,
+            **OTHER,
+            "reader.py": "def f(eval):\n    return eval('1')\n",
+        },
+    )
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import"
+
+
+def test_s2_causes_are_recorded_in_imports_mode_facts(tmp_path: Path) -> None:
+    """The digest harness extracts in ``structural`` mode, where the Tier 2
+    module facts are empty: pin the #699 S2 causes in ``imports`` facts."""
+    writers = {
+        "a.py": "import pickle\n\nX = pickle.loads(b'')\n",
+        "b.py": "def f(g):\n    return g.__code__\n",
+        "c.py": "import pickle\n\nX = pickle.dumps(1)\n",
+        "d.py": "def f(g):\n    return g.__code__\n\n\nexec('x')\n",
+    }
+    root = _write(tmp_path, writers)
+    shutoff = {}
+    for name in writers:
+        facts = extract_symbol_facts_for_file(
+            root / name, root, None, call_resolution=MODE
+        )
+        shutoff[name] = facts["scope_facts"]["module_bindings"]["shutoff"]
+        structural = extract_symbol_facts_for_file(
+            root / name, root, None, call_resolution="structural"
+        )
+        assert not structural["scope_facts"].get("module_bindings", {}).get("shutoff")
+    assert shutoff == {
+        "a.py": ["evaluator"],
+        "b.py": ["module-object"],
+        "c.py": [],
+        "d.py": ["evaluator", "module-object"],
+    }
 
 
 def test_unknown_directory_symlinks_make_every_file_production(tmp_path: Path) -> None:
@@ -1485,12 +1809,8 @@ FOLD2_CONTROLS: dict[str, tuple[dict[str, str], tuple[str, str], str]] = {
         ("use.py", "t"),
         "svc.py",
     ),
-    # E6-5: an HTTP client's ``.patch(url)`` is no patcher.
-    "http-patch-is-no-patcher": (
-        {"w.py": "import requests\n\n\ndef f(url):\n    return requests.patch(url)\n"},
-        ("use.py", "t"),
-        "svc.py",
-    ),
+    # (E6-5's ``requests.patch(url)`` control is a patcher since #699 PY-10:
+    # ``S4_CAUSES["p10-requests-computed"]``.)
 }
 
 
@@ -1750,6 +2070,135 @@ def test_fold2_rules_each_have_a_failing_case(tmp_path: Path, case: str) -> None
     assert label == f"none({label_reason})", case
 
 
+# R-698-2 B-1 (treesitter-chunker#698): the run-wide ``__main__`` writer
+# check uses the K-3 classifier Tier 1 uses. ``use.py`` runs as the script;
+# ``w.py`` hands ``"__main__"`` to a callback that rebinds ``t`` there.
+MAIN_WRITER_USE = (
+    "from svc import t\nimport w\n\n\ndef u():\n    return t()\n\n\n"
+    "if __name__ == '__main__':\n    w.go()\n    print('RESULT', u())\n"
+)
+# ``pydoc.resolve`` imports a module by name and returns it first; it is no
+# cause of its own, so only the main string shuts off Tier 2 (``doctest``,
+# the resolver #714 used, is a string-code module since
+# treesitter-chunker#699 S2 and an ``evaluator`` cause).
+MAIN_WRITER_P = (
+    "import pydoc\n\n\nclass P:\n"
+    "    def __getitem__(self, key):\n"
+    "        m = pydoc.resolve(key)[0]\n"
+    "        m.t = lambda: 'patched'\n        return ''\n\n"
+    "    def __format__(self, spec):\n"
+    "        m = pydoc.resolve(spec)[0]\n"
+    "        m.t = lambda: 'patched'\n        return ''\n\n\n"
+)
+# ``R.__format__`` hands the last dotted part of its spec to the resolver,
+# so a spec such as ``'=x.__main__'`` (CPython's reading of B-3) rebinds.
+MAIN_WRITER_R = (
+    "class R:\n"
+    "    def __format__(self, spec):\n"
+    "        m = pydoc.resolve(spec.rpartition('.')[2].strip())[0]\n"
+    "        m.t = lambda: 'patched'\n        return ''\n\n\n"
+    "r = R()\nx = e = ''\n\n\n"
+)
+MAIN_WRITERS = {
+    # The re-check's repros (714-opus-5-5-recheck.md §4): CPython 3.14 prints
+    # ``RESULT patched`` for each.
+    "stored-percent-template": "T = '%(__main__)s'\n\n\ndef go():\n    T % P()\n",
+    "fstring-spec": "def go():\n    return f'{P():__main__}'\n",
+    "stored-format-index": "T = '{0[__main__]}'\n\n\ndef go():\n    T.format(P())\n",
+    "stored-template": (
+        "import string\n\nT = '$__main__'\n\n\n"
+        "def go():\n    string.Template(T).substitute(P())\n"
+    ),
+    "tstring-spec": (
+        "def go():\n"
+        "    for i in t'{P():__main__}'.interpolations:\n"
+        "        format(i.value, i.format_spec)\n"
+    ),
+    "concatenated-percent": "T = '%(' '__main__)s'\n\n\ndef go():\n    T % P()\n",
+    # Re-check 2 B-2: a backslash-newline before a spec's closing brace is a
+    # line continuation, so CPython hands ``"__main__"`` to ``__format__``.
+    "fstring-spec-continuation": "def go():\n    return f'{P():__main__\\\n}'\n",
+    "tstring-spec-continuation": (
+        "def go():\n"
+        "    for i in t'{P():__main__\\\n}'.interpolations:\n"
+        "        format(i.value, i.format_spec)\n"
+    ),
+    "triple-spec-continuation": "def go():\n    return f'''{P():__main__\\\n}'''\n",
+    "nested-field-spec-continuation": (
+        "def go():\n    return f'{P():{\"\"}__main__\\\n}'\n"
+    ),
+    # Control: the plain string the run-wide rule always caught.
+    "plain": "T = '__main__'\n\n\ndef go():\n    P()[T]\n",
+    # R-698-3 (re-check 3 B-3, B-4): tree-sitter reads a walrus or a nested
+    # field where CPython reads spec text; ``R`` keeps the last dotted part.
+    "walrus-spec": MAIN_WRITER_R + "def go():\n    return f'{r:=x.__main__}'\n",
+    "walrus-spec-comment": (
+        MAIN_WRITER_R + "def go():\n    return f'''{r:= 1 # .__main__\n}'''\n"
+    ),
+    "doubled-brace-after-field": (
+        MAIN_WRITER_R + "def go():\n    return f'{r:{e}{{x.__main__}}}'\n"
+    ),
+    "doubled-brace-comment": (
+        MAIN_WRITER_R + "def go():\n    return f'''{r:{e}{{1 # .__main__\n}}}'''\n"
+    ),
+    # B-5: CPython drops the comment from the debug text.
+    "debug-comment": (
+        "class S:\n    __main__ = 0\n\n\n"
+        "def go():\n"
+        "    s = f'{S.__main__#c\n=}'\n"
+        "    format(P(), s.split('.')[1].split()[0])\n"
+    ),
+    # S-2: a t-string hands its expression text to user code.
+    "tstring-expression": (
+        "class S:\n    __main__ = 0\n\n\n"
+        "def go():\n"
+        "    for i in t'{S.__main__}'.interpolations:\n"
+        "        format(P(), i.expression.rpartition('.')[2])\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("writer", sorted(MAIN_WRITERS))
+def test_main_writer_strings_shut_off_imports(tmp_path: Path, writer: str) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": MAIN_WRITER_USE,
+            "w.py": MAIN_WRITER_P + MAIN_WRITERS[writer],
+            **OTHER,
+        },
+    )
+    off, structural, on, label = _run(root, "use.py", "t")
+    assert on == off == structural
+    assert label == "none(run-tainted:module-object)"
+
+
+@pytest.mark.parametrize(
+    "writer",
+    [
+        "T = '%(other)s'\n\n\ndef go():\n    T % P()\n",
+        # R-698-3: an f-string naming ``__name__`` but not ``__main__``.
+        "def go():\n    return f'{__name__}'\n",
+    ],
+)
+def test_main_writer_control_resolves(tmp_path: Path, writer: str) -> None:
+    """Without a main component the same run resolves, and the script guard
+    in ``use.py`` stays exempt."""
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": SVC,
+            "use.py": MAIN_WRITER_USE,
+            "w.py": MAIN_WRITER_P + writer,
+            **OTHER,
+        },
+    )
+    off, _structural, on, label = _run(root, "use.py", "t")
+    assert label == "import"
+    assert _target(on, root) == "svc.py"
+
+
 def test_fold2_python2_exec_statement_is_an_evaluator(tmp_path: Path) -> None:
     """The Python 2 ``exec`` statement the grammar accepts is an evaluator,
     or the file does not parse; either way Tier 2 is off."""
@@ -1983,14 +2432,14 @@ FOLD3_CONTROLS: dict[str, tuple[dict[str, str], tuple[str, str], str]] = {
         ("tests/unit/test_x.py", "h"),
         "helpers.py",
     ),
-    # P6-3 control: ``requests.patch(url)`` is an HTTP call, no patcher, even
-    # with a computed argument.
-    "requests-patch-control": (
+    # (P6-3's ``requests.patch(f"...")`` control is a test-scoped patcher
+    # since #699 PY-10: ``test_s4_patch_on_any_receiver_is_test_scoped``.)
+    "requests-patch-constant": (
         {
             **_SVC_OTHER,
             "tests/test_b.py": (
-                'import requests\nimport calls\nNAME = "t"\ndef test_go():\n'
-                '    requests.patch(f"http://h/{NAME}")\n'
+                "import requests\nimport calls\ndef test_go():\n"
+                '    requests.patch("http://h/t")\n'
                 '    print("RAN", calls.go())\n'
             ),
         },
@@ -2072,6 +2521,7 @@ def test_fold3_star_init_has_no_own_submodules(tmp_path: Path) -> None:
         "def f(g, h):\n    setattr(g, '__code__', h.__code__)\n",
         "def f(g):\n    g.__defaults__ = (2,)\n",
         "def f(g):\n    g.__kwdefaults__ = {}\n",
+        "def f(g):\n    setattr(g, '__defaults__', (2,))\n",
         "def f(g):\n    del g.__closure__\n",
     ],
 )
@@ -2427,7 +2877,10 @@ FOLD5_BLOCKING: dict[str, tuple[dict[str, str], tuple[str, str], str, str]] = {
             '    print("RAN", calls.go())\n'
         },
         ("tests/calls.py", "svc.t"),
-        "run-tainted:unresolvable-writer",
+        # #699 B-5: reading ``__annotations__`` other than through the closed
+        # read list evaluates the annotations (an ``evaluator``, which sorts
+        # before ``unresolvable-writer``).
+        "run-tainted:evaluator",
         "RAN OTHER.t / 1 passed",
     ),
 }
@@ -2814,6 +3267,7 @@ def test_fold6_monkeypatch_methods_on_any_receiver(tmp_path: Path, case: str) ->
 
 _FOLD6_NAMESPACE_READERS = {
     "f5_locals_dict": "module-escape",
+    "f5_closure_cell": "run-tainted:module-object",
     "f5_hints_locals": "module-escape",
     "f5_frame_locals": "module-escape",
     "f5_frame_walk": "run-tainted:module-system",
@@ -3869,6 +4323,270 @@ NAMESPACE_TOKENS: dict[str, dict[str, str]] = {
             '    exec("svc.t = other.t", None if c else None)\n'
         ),
     },
+    # R-724-4 (B-1): a format field delimited by ``{``, ``}`` or ``!``.
+    "t18b-formatter-subclass-braces": {
+        "use.py": (
+            "import string\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class F(string.Formatter):\n"
+            "    def format_field(self, value, spec):\n"
+            '        value["svc"].t = other.t\n'
+            '        return ""\n'
+            "\n"
+            "\n"
+            "def go():\n"
+            '    F().format("{0.__globals__}", go)\n'
+        ),
+    },
+    "t18d-formatter-subclass-conversion": {
+        "use.py": (
+            "import string\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class F(string.Formatter):\n"
+            "    def convert_field(self, value, conversion):\n"
+            '        value["svc"].t = other.t\n'
+            '        return ""\n'
+            "\n"
+            "\n"
+            "def go():\n"
+            '    F().format("{0.__globals__!r}", go)\n'
+        ),
+    },
+    "t18e-formatter-subclass-frame": {
+        "use.py": (
+            "import string\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class F(string.Formatter):\n"
+            "    def format_field(self, value, spec):\n"
+            '        value["svc"].t = other.t\n'
+            '        return ""\n'
+            "\n"
+            "\n"
+            "def go():\n"
+            '    F().format("{0.f_globals}", sys._getframe(0))\n'
+        ),
+    },
+    # R-724-4 (S-3): routes that spell no earlier listed name.
+    "t05-getmembers-frame": {
+        "use.py": (
+            "import inspect\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in inspect.getmembers(sys._getframe(0)) if isinstance(v, dict) and "svc" in v][0]["svc"].t = other.t\n'
+        ),
+    },
+    "t06-getmembers-function": {
+        "use.py": (
+            "import inspect\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in inspect.getmembers(go) if isinstance(v, dict) and "svc" in v][0]["svc"].t = other.t\n'
+        ),
+    },
+    "t45b-dataclass-init-getmembers": {
+        "use.py": (
+            "import dataclasses\n"
+            "import inspect\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "@dataclasses.dataclass\n"
+            "class C:\n"
+            "    x: int = 0\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in inspect.getmembers(C.__init__) if isinstance(v, dict) and "svc" in v][0]["svc"].t = other.t\n'
+        ),
+    },
+    "t49-settrace-getmembers": {
+        "use.py": (
+            "import inspect\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def probe():\n"
+            "    pass\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    def tracer(frame, event, arg):\n"
+            '        [v for k, v in inspect.getmembers(frame) if isinstance(v, dict) and "svc" in v][0]["svc"].t = other.t\n'
+            "    \n"
+            "    sys.settrace(tracer)\n"
+            "    try:\n"
+            "        probe()\n"
+            "    finally:\n"
+            "        sys.settrace(None)\n"
+        ),
+    },
+    "t50-getmembers-static-frame": {
+        "use.py": (
+            "import inspect\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = sys._getframe(0)\n"
+            '    [d.__get__(f) for k, d in inspect.getmembers_static(f) if k.endswith("_globals")][0]["svc"].t = other.t\n'
+        ),
+    },
+    "t08-dunder-builtins-items": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in __builtins__.items() if k.startswith("glob")][0]()["svc"].t = other.t\n'
+        ),
+    },
+    "t08b-dunder-builtins-items-evaluator": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in __builtins__.items() if k.startswith("ev")][0]("svc").t = other.t\n'
+        ),
+    },
+    "t10-function-builtins-items": {
+        "use.py": (
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    [v for k, v in go.__builtins__.items() if k.startswith("glob")][0]()["svc"].t = other.t\n'
+        ),
+    },
+    "t20-doctest-finder-globs": {
+        "use.py": (
+            "import doctest\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    """Doc.\n'
+            "\n"
+            "    >>> 1\n"
+            "    1\n"
+            '    """\n'
+            '    doctest.DocTestFinder().find(go)[0].globs["svc"].t = other.t\n'
+        ),
+    },
+    "x16-dunder-import-doctest": {
+        "use.py": (
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    """Doc.\n'
+            "\n"
+            "    >>> 1\n"
+            "    1\n"
+            '    """\n'
+            '    __import__("doctest").DocTestFinder().find(go)[0].globs["svc"].t = other.t\n'
+        ),
+    },
+    "t21-pydoc-locate-name": {
+        "use.py": (
+            "import pydoc\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    pydoc.locate(__name__).svc.t = other.t\n"
+        ),
+    },
+    "t22-pkgutil-resolve-name": {
+        "use.py": (
+            "import pkgutil\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    pkgutil.resolve_name(__name__).svc.t = other.t\n"
+        ),
+    },
+    "t22b-pkgutil-resolve-constant": {
+        "use.py": (
+            "import pkgutil\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            '    pkgutil.resolve_name("use:svc").t = other.t\n'
+        ),
+    },
+    "t42-logging-config-resolve-name": {
+        "use.py": (
+            "import logging.config\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    logging.config.BaseConfigurator({}).resolve(__name__).svc.t = other.t\n"
+        ),
+    },
+    "t25-ctypes-pyeval-getglobals": {
+        "use.py": (
+            "import ctypes\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    f = ctypes.pythonapi.PyEval_GetGlobals\n"
+            "    f.restype = ctypes.py_object\n"
+            '    f()["svc"].t = other.t\n'
+        ),
+    },
+    "t29-rlcompleter-script": {
+        "main.py": (
+            "import rlcompleter\n"
+            "import use\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "use.go()\n"
+            "c = rlcompleter.Completer()\n"
+            'c.complete("sv", 0)\n'
+            'c.namespace["svc"].t = other.t\n'
+            "print(svc.u())\n"
+        ),
+        "use.py": "def go():\n    pass\n",
+    },
 }
 
 # R-724-1 item 4: a handed-out ``sys`` or ``importlib`` raises the run-wide
@@ -3941,6 +4659,35 @@ NAMESPACE_TOKEN_COST: dict[str, dict[str, str]] = {
         "use.py": (
             "import svc\n\n\nclass K:\n    pass\n\n\ndef go():\n"
             "    return vars(K())\n"
+        ),
+    },
+    # R-724-7: these loaders happen to create fresh modules at runtime.
+    "exec-module-from-spec": {
+        "probe_mod.py": "svc = None\n",
+        "use.py": (
+            "import importlib.util\n"
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    spec = importlib.util.spec_from_file_location('probe', 'probe_mod.py')\n"
+            "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n"
+            "    return probe\n"
+        ),
+    },
+    "exec-module-from-import": {
+        "probe_mod.py": "svc = None\n",
+        "use.py": (
+            "from importlib.util import module_from_spec, spec_from_file_location\n"
+            "import svc\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    spec = spec_from_file_location('probe', 'probe_mod.py')\n"
+            "    probe = module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n"
+            "    return probe\n"
         ),
     },
     # spec's ``ingest.py`` shape: ``exec(code, mod.__dict__)`` on a fresh
@@ -4029,12 +4776,8 @@ NAMESPACE_CONTROLS: dict[str, dict[str, str]] = {
 }
 
 
-# R-724-2: the closed allow-list. Name -> files; each is a costed site's
-# shape (spec ``ingest.py``'s ``exec(code, mod.__dict__)``, Code-Index-MCP's
-# ``spec.loader.exec_module(probe)`` and ``__import__("hashlib")``), whose
-# token applies to an object the use-site lookup proves is not the file's
-# own namespace. CPython 3.14 printed ``SVC.t`` for each, and ``svc.py``'s
-# proof stays.
+# R-724-2 / R-724-7: CPython prints SVC.t for each exempt operation.
+# The loader control explicitly constructs its receiver with ModuleType.
 NAMESPACE_EXEMPT: dict[str, dict[str, str]] = {
     "dunder-import-of-a-constant": {
         "use.py": 'import svc\n\n\ndef go():\n    return __import__("json")\n',
@@ -4052,32 +4795,13 @@ NAMESPACE_EXEMPT: dict[str, dict[str, str]] = {
             "    return mod\n"
         ),
     },
-    "exec-module-from-spec": {
+    "exec-module-into-moduletype": {
         "probe_mod.py": "svc = None\n",
         "use.py": (
-            "import importlib.util\n"
-            "import svc\n"
-            "\n"
-            "\n"
-            "def go():\n"
+            "import importlib.util, types, svc\n\ndef go():\n"
             "    spec = importlib.util.spec_from_file_location('probe', 'probe_mod.py')\n"
-            "    probe = importlib.util.module_from_spec(spec)\n"
+            "    probe = types.ModuleType('probe')\n"
             "    spec.loader.exec_module(probe)\n"
-            "    return probe\n"
-        ),
-    },
-    "exec-module-from-import": {
-        "probe_mod.py": "svc = None\n",
-        "use.py": (
-            "from importlib.util import module_from_spec, spec_from_file_location\n"
-            "import svc\n"
-            "\n"
-            "\n"
-            "def go():\n"
-            "    spec = spec_from_file_location('probe', 'probe_mod.py')\n"
-            "    probe = module_from_spec(spec)\n"
-            "    spec.loader.exec_module(probe)\n"
-            "    return probe\n"
         ),
     },
     "dunder-import-constant": {
@@ -4102,6 +4826,18 @@ NAMESPACE_EXEMPT: dict[str, dict[str, str]] = {
 # ``t`` (r724-2/cases_r2b.py, FORCE_EXEMPT). CPython 3.14 printed
 # ``OTHER.t`` for each.
 NAMESPACE_EXEMPT_PINS: dict[str, dict[str, str]] = {
+    "loader-returns-importer": {
+        "use.py": (
+            "import sys, importlib.util, svc, other\n"
+            "from importlib.machinery import ModuleSpec\n\n"
+            "class Loader:\n"
+            "    def create_module(self, spec):\n"
+            "        return next(m for k, m in sys.modules.items() if k == __name__)\n\n"
+            "def go():\n"
+            "    mod = importlib.util.module_from_spec(ModuleSpec('sample', Loader()))\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
     "exec-own-module": {
         "use.py": (
             "import sys\n"
@@ -4528,6 +5264,203 @@ NAMESPACE_EXEMPT_PINS: dict[str, dict[str, str]] = {
             "    [m for m in g.get_objects() if type(m) is type(sys) and m.__name__ == 'use'][0].svc.t = other.t\n"
         ),
     },
+    # R-724-4 (B-1): the code an exempt ``exec`` runs spells a token as a word.
+    "x09b-exec-code-frame-read-spaced": {
+        "use.py": (
+            "import types\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec(\"import sys; d = sys._getframe(1).f_globals; d['svc'].t = d['other'].t\", mod.__dict__)\n"
+        ),
+    },
+    "x09c-exec-code-dunder-import-own": {
+        "use.py": (
+            "import types\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec(\"m = __import__('use'); m.svc.t = m.other.t\", mod.__dict__)\n"
+        ),
+    },
+    "x09f-exec-code-globals-call": {
+        "use.py": (
+            "import types\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    mod.go = go\n"
+            "    exec(\"d = go.__globals__; d['svc'].t = d['other'].t\", mod.__dict__)\n"
+        ),
+    },
+    # R-724-4 (B-2): a patch target or module key names the factory.
+    "x04c-factory-patched-by-mock-string-same-file": {
+        "use.py": (
+            "import types\n"
+            "from unittest import mock\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def fake(name):\n"
+            "    return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "mock.patch('types.ModuleType', fake).start()\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "x04d-module-from-spec-patched-by-mock-string-same-file": {
+        "use.py": (
+            "import importlib.util\n"
+            "from unittest import mock\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "def fake(name):\n"
+            "    return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "mock.patch('importlib.util.module_from_spec', fake).start()\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = importlib.util.module_from_spec(None)\n"
+            "    exec('svc.t = other.t', probe.__dict__)\n"
+        ),
+    },
+    "x04e-factory-module-patched-by-mock-string": {
+        "use.py": (
+            "import importlib.util\n"
+            "from unittest import mock\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class U:\n"
+            "    @staticmethod\n"
+            "    def module_from_spec(spec):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "mock.patch('importlib.util', U).start()\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = importlib.util.module_from_spec(None)\n"
+            "    exec('svc.t = other.t', probe.__dict__)\n"
+        ),
+    },
+    "x04f-factory-module-key-in-patched-sys-modules": {
+        "use.py": (
+            "from unittest import mock\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class F:\n"
+            "    @staticmethod\n"
+            "    def ModuleType(name):\n"
+            "        return [m for k, m in sys.modules.items() if k == __name__][0]\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    with mock.patch.dict(sys.modules, {'types': F}):\n"
+            "        import types\n"
+            "        mod = types.ModuleType('m')\n"
+            "        exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    # R-724-4 (B-2): ``__class__`` written on any receiver.
+    "x07-class-reassigned-dict-property": {
+        "use.py": (
+            "import types\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class M(types.ModuleType):\n"
+            "    __dict__ = property(lambda self: [m for k, m in sys.modules.items() if k == __name__][0].__dict__)\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    mod.__class__ = M\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
+    "x07b-class-reassigned-exec-module": {
+        "helper.py": (
+            "import other\n"
+            "\n"
+            "\n"
+            "class L:\n"
+            "    def exec_module(self, m):\n"
+            "        m.__dict__['svc'].t = other.t\n"
+            "\n"
+            "\n"
+            "class S:\n"
+            "    loader = L()\n"
+        ),
+        "use.py": (
+            "import importlib.util\n"
+            "import helper\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class M(type(sys)):\n"
+            "    __dict__ = property(lambda self: [m for k, m in sys.modules.items() if k == __name__][0].__dict__)\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    probe = importlib.util.module_from_spec(importlib.util.spec_from_loader('p', None))\n"
+            "    probe.__class__ = M\n"
+            "    spec = helper.S\n"
+            "    spec.loader.exec_module(probe)\n"
+        ),
+    },
+    "x07c-class-reassigned-by-setattr": {
+        "use.py": (
+            "import types\n"
+            "import sys\n"
+            "import svc\n"
+            "import other\n"
+            "\n"
+            "\n"
+            "class M(types.ModuleType):\n"
+            "    __dict__ = property(lambda self: [m for k, m in sys.modules.items() if k == __name__][0].__dict__)\n"
+            "\n"
+            "\n"
+            "def go():\n"
+            "    mod = types.ModuleType('m')\n"
+            "    setattr(mod, '__class__', M)\n"
+            "    exec('svc.t = other.t', mod.__dict__)\n"
+        ),
+    },
 }
 
 
@@ -4677,24 +5610,8 @@ _FRESH = "\n\n\ndef f(code, spec):\n"
         "    exec(code, mod.__dict__)\n",
         "from types import ModuleType" + _FRESH + "    mod = ModuleType('m')\n"
         "    exec(code, mod.__dict__)\n",
-        "import importlib.util"
-        + _FRESH
-        + "    mod = importlib.util.module_from_spec(spec)\n"
-        "    exec(code, mod.__dict__)\n",
-        # The loader runs a module into a fresh module local (Code-Index-MCP).
-        "import importlib.util"
-        + _FRESH
-        + "    probe = importlib.util.module_from_spec(spec)\n"
+        "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
         "    spec.loader.exec_module(probe)\n",
-        "from importlib.util import module_from_spec"
-        + _FRESH
-        + "    probe = module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
-        "from importlib import util"
-        + _FRESH
-        + "    probe = util.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
-        "import importlib.util as iu"
-        + _FRESH
-        + "    probe = iu.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
         # ``__import__`` of a constant foreign module.
         "x = __import__('hashlib')\n",
         "x = __import__('os.path')\n",
@@ -4707,9 +5624,80 @@ def test_namespace_exempt_use_hands_out_nothing(tmp_path: Path, source: str) -> 
     assert ["svc", "value"] not in _module_bindings(root)["r.py"]["uses"], source
 
 
+@pytest.mark.parametrize("local", [True, False], ids=["function", "module"])
+def test_fresh_receiver_proof_requires_function_scope(local: bool) -> None:
+    """Isolate the receiver proof from the evaluator's own file-wide effect."""
+    from chunker.call_resolution import py_scope
+    from chunker.parser import get_parser
+
+    lines = ["mod = types.ModuleType('m')", "consume(mod)"]
+    body = "def go():\n    " + "\n    ".join(lines) if local else "\n".join(lines)
+    source = ("import types\n" + body + "\n").encode()
+    root = get_parser("python").parse(source).root_node
+    analysis = py_scope._Analysis(
+        root, source, module_path=py_scope.module_path("r.py")
+    )
+    receiver = next(
+        node
+        for node in analysis.identifier_nodes
+        if node.text == b"mod" and node.parent.type == "argument_list"
+    )
+    assert py_modules._fresh_module_local(analysis, receiver) is local
+
+
+@pytest.mark.parametrize(
+    "hazard", ["compile(code, 'x', 'exec')", "gc.get_objects()", "frame.f_locals"]
+)
+def test_namespace_exempt_receiver_with_independent_hazard(
+    tmp_path: Path, hazard: str
+) -> None:
+    source = f"""import svc, types, gc
+
+def f(code, frame):
+    mod = types.ModuleType('m')
+    {hazard}
+    exec(code, mod.__dict__)
+"""
+    root = _write(tmp_path, {"r.py": source})
+    assert ["svc", "value"] in _module_bindings(root)["r.py"]["uses"]
+
+
 @pytest.mark.parametrize(
     ("path", "source"),
     [
+        # A loader may return the importer in any import spelling.
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    mod = importlib.util.module_from_spec(spec)\n"
+            "    exec(code, mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util"
+            + _FRESH
+            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "from importlib.util import module_from_spec"
+            + _FRESH
+            + "    probe = module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "from importlib import util"
+            + _FRESH
+            + "    probe = util.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            "import importlib.util as iu"
+            + _FRESH
+            + "    probe = iu.module_from_spec(spec)\n    spec.loader.exec_module(probe)\n",
+        ),
         # exec: arity, keywords, splats, receivers outside the closed list.
         (
             "r.py",
@@ -4844,6 +5832,13 @@ def test_namespace_exempt_use_hands_out_nothing(tmp_path: Path, source: str) -> 
             "    eval(code, mod.__dict__)\n",
         ),
         (
+            # The parameter is a callback, so S2's builtin evaluator check
+            # cannot mask the handout rule's exec-only callee check.
+            "r.py",
+            "import types\n\ndef f(code, eval):\n    mod = types.ModuleType('m')\n"
+            "    eval(code, mod.__dict__)\n",
+        ),
+        (
             "r.py",
             "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
             "    exec(code, mod.__class__)\n",
@@ -4871,9 +5866,9 @@ def test_namespace_exempt_use_hands_out_nothing(tmp_path: Path, source: str) -> 
         ),
         (
             "r.py",
-            "from x import *\nimport importlib.util"
+            "from x import *\nimport types"
             + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            + "    probe = types.ModuleType('m')\n"
             "    spec.loader.exec_module(probe)\n",
         ),
         (
@@ -4891,51 +5886,37 @@ def test_namespace_exempt_use_hands_out_nothing(tmp_path: Path, source: str) -> 
         # exec_module: arity, keywords, the receiver, the loader position.
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.loader.exec_module(probe, 1)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.loader.exec_module(module=probe)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.exec_module(probe)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.a.loader.exec_module(probe)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.other.exec_module(probe)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    spec.loader.exec_module(*probe)\n",
         ),
         (
             "r.py",
-            "import importlib.util"
-            + _FRESH
-            + "    probe = importlib.util.module_from_spec(spec)\n"
+            "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
             "    run = spec.loader.exec_module\n    run(probe)\n",
         ),
         (
@@ -5094,6 +6075,10 @@ def test_frame_read_by_constant_key_hands_out_that_binding(
         # builtins.
         "b = __builtins__\nm.eval(x)\n",
         'b = d["__builtins__"]\nm.eval(x)\n',
+        # The same with a route that is no token (``__builtins__`` is one
+        # since R-724-4).
+        "b = __builtin__\nm.eval(x)\n",
+        'b = d["__builtin__"]\nm.eval(x)\n',
         # The Python 2 statement.
         "exec 'x = 1'\n",
         'g = getattr(bltns, "ex" "ec")\n',
@@ -5115,7 +6100,7 @@ def test_namespace_token_in_any_role_hands_out_every_binding(
         "m.eval()\n",
         "class M:\n    def eval(self):\n        return 1\n",
         "f(eval=True)\n",
-        "b = __builtins__\nf(eval=True)\n",
+        "b = __builtin__\nf(eval=True)\n",
         'if __name__ == "__main__":\n    pass\n',
         '"""Calls globals() and builtins.open."""\n',
         "x = 1  # globals, vars, __import__\n",
@@ -5132,6 +6117,111 @@ def test_namespace_token_absent_hands_out_nothing(tmp_path: Path, source: str) -
     root = _write(tmp_path, {"r.py": "import sys\nimport svc\n" + source})
     facts = _module_bindings(root)["r.py"]
     assert ["svc", "value"] not in facts["uses"], source
+
+
+_R4_EXEC = "import types" + _FRESH + "    mod = types.ModuleType('m')\n"
+_R4_LOADER = "import types" + _FRESH + "    probe = types.ModuleType('m')\n"
+
+
+@pytest.mark.parametrize(
+    ("path", "source"),
+    [
+        # B-1: format-field delimiters are component separators.
+        ("r.py", 's = "{0.__globals__}"\n'),
+        ("r.py", 's = "{0.f_globals!r}"\n'),
+        ("r.py", 's = "globals{0"\n'),
+        ("r.py", 's = "0}globals"\n'),
+        ("r.py", 's = "0!globals"\n'),
+        # B-1: in a file with an exempt use, a constant spelling a token as a
+        # word (the code an exempt exec runs, any other constant).
+        (
+            "r.py",
+            _R4_EXEC + "    exec('d = sys._getframe(1).f_globals; d', mod.__dict__)\n",
+        ),
+        (
+            "r.py",
+            _R4_LOADER + "    spec.loader.exec_module(probe)\n    s = 'a globals b'\n",
+        ),
+        ("r.py", "x = __import__('hashlib')\ns = 'a globals b'\n"),
+        (
+            "r.py",
+            'import types\n\ndef f(code):\n    """Inspect the globals here."""\n'
+            "    mod = types.ModuleType('m')\n    exec(code, mod.__dict__)\n",
+        ),
+        # B-2: a factory's own name as a word, any factory path name as a
+        # component (a patch target, a module key).
+        ("r.py", _R4_EXEC + "    exec(code, mod.__dict__)\n    s = 'a ModuleType b'\n"),
+        (
+            "r.py",
+            "from unittest import mock\nmock.patch('importlib.util', u).start()\n"
+            + _R4_LOADER
+            + "    spec.loader.exec_module(probe)\n",
+        ),
+        (
+            "r.py",
+            _R4_EXEC + "    exec(code, mod.__dict__)\n    d = {'types': t}\n",
+        ),
+        # B-2: ``__class__`` written on any receiver.
+        ("r.py", _R4_EXEC + "    mod.__class__ = M\n    exec(code, mod.__dict__)\n"),
+        (
+            "r.py",
+            _R4_LOADER + "    setattr(probe, '__class__', M)\n"
+            "    spec.loader.exec_module(probe)\n",
+        ),
+        # S-3: a resolver given the file's own name or a package holding it.
+        ("r.py", "import pkgutil\nm = pkgutil.resolve_name(__name__)\n"),
+        ("r.py", "import pydoc\nm = pydoc.locate((__name__))\n"),
+        ("r.py", "m = c.resolve(__name__)\n"),
+        ("r.py", "from pkgutil import resolve_name\nm = resolve_name('r:svc')\n"),
+        ("pkg/r.py", "import pydoc\nm = pydoc.locate('pkg.other')\n"),
+        # S-3: tokens that each close a tree alone.
+        ("r.py", "import doctest\nf = doctest.DocTestFinder()\n"),
+        ("r.py", "g = t.globs\n"),
+        # S-3: pytest's ``request.module``.
+        ("tests/test_r.py", "def test_a(request):\n    m = request.module\n"),
+    ],
+)
+def test_namespace_r724_4_hands_out_every_binding(
+    tmp_path: Path, path: str, source: str
+) -> None:
+    """R-724-4: a token in a format field; any word spelling a token, a
+    factory's own name, or a factory path name as a component in a file with
+    an exempt use; a ``__class__`` write in a file with a fresh-module
+    receiver; a resolver given the file's own name; pytest's
+    ``request.module``. Each hands out every import binding."""
+    root = _write(tmp_path, {path: "import svc\n" + source})
+    assert ["svc", "value"] in _module_bindings(root)[path]["uses"], source
+
+
+@pytest.mark.parametrize(
+    ("path", "source"),
+    [
+        ("r.py", 's = "{0.name}"\n'),
+        ("r.py", 's = "{0!r:>{width}}"\n'),
+        ("r.py", _R4_EXEC + "    exec('x = 1; y = x', mod.__dict__)\n"),
+        ("r.py", "x = __import__('hashlib')\ns = 'a my_globals b'\n"),
+        ("r.py", _R4_EXEC + "    exec(code, mod.__dict__)\n    s = 'a util b'\n"),
+        ("r.py", _R4_EXEC + "    k = mod.__class__\n    exec(code, mod.__dict__)\n"),
+        ("r.py", "import pkgutil\nm = pkgutil.resolve_name('json:dumps')\n"),
+        ("r.py", "import pydoc\nm = pydoc.locate(name)\n"),
+        ("r.py", "m = p.resolve()\nn = p.resolve(x, __name__)\n"),
+        ("r.py", "import logging\nlog = logging.getLogger(__name__)\n"),
+        ("r.py", "m = c.resolve_name\nn = resolve.other(__name__)\n"),
+        (
+            "tests/test_r.py",
+            "def test_a(request, req):\n    m = request.node\n    n = req.module\n",
+        ),
+    ],
+)
+def test_namespace_r724_4_near_miss_hands_out_nothing(
+    tmp_path: Path, path: str, source: str
+) -> None:
+    """R-724-4 near misses: a format field naming no token, an exempt use in
+    a file whose constants spell no listed word, a ``__class__`` read, a
+    resolver given another name or none, and another fixture attribute
+    hand out nothing."""
+    root = _write(tmp_path, {path: "import svc\n" + source})
+    assert ["svc", "value"] not in _module_bindings(root)[path]["uses"], source
 
 
 def test_package_reader_hands_out_its_submodules(tmp_path: Path) -> None:
@@ -5210,3 +6300,2247 @@ def test_module_system_cause_from_a_test_file_is_test_scoped(tmp_path: Path) -> 
     _off, _structural, on, label = _run(root, "tests/test_c.py", "svc.t")
     assert on["resolution"] != "resolved"
     assert label == "none(run-tainted:module-system)"
+
+
+# ---------------------------------------------------------------------------
+# treesitter-chunker#707: a function-local alias of a patcher (E-21) is
+# reachable when its function's locals may be read as a dict. The
+# president's ``f5_mock_locals`` (#705 review) hands ``p = mock.patch`` out
+# through ``return locals()``; ``tests/test_b.py`` reads it back and patches
+# ``svc.t``. ``runtime`` is what pytest printed on CPython 3.14.10 for each
+# tree (``helpers_mp.py`` as shown, ``test_b.py`` as below).
+
+_I707_TEST = (
+    'import calls\nfrom helpers_mp import make\nfrom other import t as _evil\nNAME = "t"\n'
+    'def test_go():\n    {use}\n    print("RAN", calls.go())\n'
+)
+_I707_ESCAPE = 'make()["p"](f"svc.{NAME}", _evil).start()'
+_I707_MOCK = "from unittest import mock\n"
+ISSUE707_BLOCKING: dict[str, tuple[str, str]] = {
+    "f5_mock_locals": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n    return locals()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "vars_no_argument": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n    return vars()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # PEP 709 inlines the comprehension: its ``locals()`` is ``make``'s.
+    "list_comprehension": (
+        _I707_MOCK
+        + "def make():\n    p = mock.patch\n    return [locals() for _ in [0]][0]\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # A nested function's ``locals()`` holds the free variables it reads.
+    "nested_free_variable": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n    def g():\n"
+        "        x = p\n        return locals()\n    return g()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # The builtin as a value, called later from ``make``'s frame.
+    "module_alias": (
+        _I707_MOCK + "L = locals\ndef make():\n    p = mock.patch\n    return L()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "partial": (
+        _I707_MOCK + "import functools\ndef make():\n    p = mock.patch\n"
+        "    return functools.partial(locals)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # The builtin as an attribute or by constant name.
+    "attribute": (
+        _I707_MOCK
+        + "def make():\n    p = mock.patch\n    return len.__self__.locals()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "getattr_constant": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n"
+        "    return getattr(len.__self__, 'locals')()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # A frame's locals read with a computed key (Tier 2 lets ``f_locals``
+    # reads pass as no module write).
+    "getframe_f_locals_get": (
+        _I707_MOCK + "import sys\ndef make():\n    p = mock.patch\n"
+        "    return {k: sys._getframe().f_locals.get(k) for k in ['p']}\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "currentframe_f_locals_subscript": (
+        _I707_MOCK + "import inspect\ndef make():\n    p = mock.patch\n"
+        "    return {k: inspect.currentframe().f_locals[k] for k in ['p']}\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # A splat may be zero arguments: ``vars(*())`` is ``vars()`` (R-707-1,
+    # Sonnet SHOULD-2).
+    "vars_empty_splat": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n    return vars(*())\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "vars_empty_dictionary_splat": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n    return vars(**{})\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+}
+
+
+def _i707_root(tmp_path: Path, helper: str, use: str) -> Path:
+    return _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "tests/helpers_mp.py": helper,
+            "tests/test_b.py": _I707_TEST.replace("{use}", use),
+        },
+    )
+
+
+@pytest.mark.parametrize("case", sorted(ISSUE707_BLOCKING))
+def test_issue707_local_patcher_alias_escapes_through_locals(
+    tmp_path: Path, case: str
+) -> None:
+    """treesitter-chunker#707: ``p = mock.patch`` in a function is on the
+    E-21 allow-list only while no computed read reaches ``p``. A
+    ``locals()`` or no-argument ``vars()`` call in the function (also in a
+    comprehension or nested function), ``locals`` as a value, an attribute or
+    a constant name anywhere in the file, or a frame's ``f_locals`` makes
+    every local of the function reachable, like ``globals()`` at module
+    scope. pytest printed ``RAN OTHER.t`` in every tree; main 64bae100
+    resolved ``svc.t`` to ``svc.py``."""
+    helper, _runtime = ISSUE707_BLOCKING[case]
+    root = _i707_root(tmp_path, helper, _I707_ESCAPE)
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    # #699 S4 (PY-9): a spelled ``f_locals`` or a ``locals``/``vars`` value is
+    # a ``module-object`` cause too, which sorts first; the escape rule's own
+    # cause is still recorded.
+    cause = "module-object" if case in ISSUE707_FRAME_TOKENS else "unresolvable-writer"
+    if case == "getframe_f_locals_get":
+        assert cause in _recorded_causes(root)
+        cause = "module-system"  # sys was handed out
+    assert label == f"none(run-tainted:{cause})", case
+    assert "unresolvable-writer" in _recorded_causes(root), case
+
+
+# The ISSUE707_BLOCKING rows that spell a #699 S4 (PY-9) frame-locals token:
+# ``f_locals``, or ``locals`` as a value or a constant name.
+ISSUE707_FRAME_TOKENS = frozenset(
+    {
+        "module_alias",
+        "partial",
+        "getattr_constant",
+        "getframe_f_locals_get",
+        "currentframe_f_locals_subscript",
+    }
+)
+
+
+ISSUE707_CONTROLS: dict[str, str] = {
+    # The same alias with no ``locals()`` (CPython: ``RAN SVC.t``).
+    "no_locals": _I707_MOCK + "def make():\n    p = mock.patch\n    return {}\n",
+    # ``vars(obj)`` reads ``obj.__dict__``, not the frame.
+    "vars_with_argument": _I707_MOCK
+    + "def make():\n    p = mock.patch\n    n = len(vars(make))\n    return {}\n",
+    # The use-site lookup proves a local definition: not the builtin.
+    "local_def_named_locals": _I707_MOCK + "def make():\n    def locals():\n"
+    "        return {}\n    p = mock.patch\n    return locals()\n",
+    # R-707-1 (Sonnet SHOULD-1): ``locals()`` in another function reads that
+    # function's frame, not ``make``'s (CPython: ``RAN SVC.t``).
+    "locals_in_other_function": _I707_MOCK
+    + "def make():\n    p = mock.patch\n    return {}\n"
+    "def other():\n    return locals()\n",
+    # R-707-1 (Sonnet SHOULD-3): a keyword named ``vars``/``locals`` reads no
+    # frame (CPython: ``RAN SVC.t``).
+    "keyword_named_vars": _I707_MOCK
+    + "def make():\n    p = mock.patch\n    return {'x': dict(vars=1)}\n",
+    "keyword_named_locals": _I707_MOCK
+    + "def make():\n    p = mock.patch\n    return {'x': dict(locals=1)}\n",
+}
+
+
+@pytest.mark.parametrize("case", sorted(ISSUE707_CONTROLS))
+def test_issue707_controls_still_resolve(tmp_path: Path, case: str) -> None:
+    root = _i707_root(tmp_path, ISSUE707_CONTROLS[case], "make()")
+    _off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on["resolution"] == "resolved" and label == "import", case
+    assert _target(on, root) == "svc.py", case
+
+
+ISSUE707_FAIL_CLOSED: dict[str, str] = {
+    # ``locals`` bound by assignment is not proven to be other than the
+    # builtin (CPython: ``dict()``, ``RAN SVC.t``): a harmless loss.
+    "local_assignment_named_locals": _I707_MOCK
+    + "def make():\n    locals = dict\n    p = mock.patch\n    return locals()\n",
+    # A class body's ``locals()`` is its namespace, without ``make``'s
+    # locals (CPython 3.14), but any reader inside the function counts.
+    "class_body": _I707_MOCK + "def make():\n    p = mock.patch\n    class K:\n"
+    "        d = locals()\n    return K.d\n",
+}
+
+
+@pytest.mark.parametrize("case", sorted(ISSUE707_FAIL_CLOSED))
+def test_issue707_conservative_readers_fail_closed(tmp_path: Path, case: str) -> None:
+    root = _i707_root(tmp_path, ISSUE707_FAIL_CLOSED[case], "make()")
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on == off, case
+    assert label == "none(run-tainted:unresolvable-writer)", case
+
+
+# ---------------------------------------------------------------------------
+# R-707-1 (#721 Opus review, BLOCKING-1): ``locals``/``vars`` is a token
+# (R-724-1). Any constant string, matched exactly or as a dotted, ``:`` or
+# bracket component, and an imported name, make every function's locals
+# readable as a dict. ``runtime`` is what pytest printed on CPython 3.14.10
+# with ``tests/test_b.py`` reading ``p`` back as in ISSUE707_BLOCKING.
+_I707_COMPAT = {"tests/compat.py": "locals = locals\nvars = vars\n"}
+ISSUE707_TOKENS: dict[str, tuple[str, str]] = {
+    "attrgetter_dotted": (
+        _I707_MOCK + "import operator\ndef make():\n    p = mock.patch\n"
+        "    return operator.attrgetter('__self__.locals')(len)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "attrgetter_dotted_vars": (
+        _I707_MOCK + "import operator\ndef make():\n    p = mock.patch\n"
+        "    return operator.attrgetter('__self__.vars')(len)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "formatter_get_field": (
+        _I707_MOCK + "import string\ndef make():\n    p = mock.patch\n"
+        "    return string.Formatter().get_field("
+        "'0.__self__.locals', (len,), {})[0]()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "reduce_getattr_list": (
+        _I707_MOCK + "import functools\ndef make():\n    p = mock.patch\n"
+        "    return functools.reduce(getattr, ['__self__', 'locals'], len)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "constant_module_variable": (
+        _I707_MOCK + "N = 'locals'\ndef make():\n    p = mock.patch\n"
+        "    return getattr(len.__self__, N)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "constant_in_tuple_variable": (
+        _I707_MOCK + "N = ('locals',)\ndef make():\n    p = mock.patch\n"
+        "    return getattr(len.__self__, N[0])()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "constant_dict_value": (
+        _I707_MOCK + "def make():\n    p = mock.patch\n"
+        "    return getattr(len.__self__, {'k': 'locals'}['k'])()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "constant_default_argument": (
+        _I707_MOCK + "def make(n='locals'):\n    p = mock.patch\n"
+        "    return getattr(len.__self__, n)()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    # ``compat.py`` re-exports the builtins; the token is spelled here.
+    "compat_import_as": (
+        _I707_MOCK + "from compat import locals as get\ndef make():\n"
+        "    p = mock.patch\n    return get()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+    "compat_vars_as": (
+        _I707_MOCK + "from compat import vars as v\ndef make():\n"
+        "    p = mock.patch\n    return v()\n",
+        "RAN OTHER.t / 1 passed",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(ISSUE707_TOKENS))
+def test_r707_1_locals_tokens_make_local_alias_reachable(
+    tmp_path: Path, case: str
+) -> None:
+    """R-707-1 BLOCKING-1: pytest printed ``RAN OTHER.t`` in every tree;
+    main 64bae100 and #721 head 4cf523e3 resolved ``svc.t`` to ``svc.py``."""
+    helper, _runtime = ISSUE707_TOKENS[case]
+    root = _i707_root(tmp_path, helper, _I707_ESCAPE)
+    _write(root, _I707_COMPAT)
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    # #699 S4 (PY-9): each tree spells a ``locals``/``vars`` token, now a
+    # ``module-object`` cause too, which sorts first; the escape rule's own
+    # cause is still recorded.
+    assert label == "none(run-tainted:module-object)", case
+    assert "unresolvable-writer" in _recorded_causes(root), case
+
+
+# R-707-1 (#721 Opus review, BLOCKING-2): a sensitive *parameter* (a
+# pytest-mock ``mocker``) of a function whose locals may be read as a dict is
+# reachable, like an alias. ``runtime`` is what pytest printed on CPython
+# 3.14.10 (pytest-mock replaced by a minimal ``mocker`` fixture plugin).
+_I707_PARAM_HEAD = 'import calls{imports}\nfrom other import t as _evil\nNAME = "t"\n'
+_I707_PARAM_PATCH = '.patch(f"svc.{NAME}", _evil)\n    print("RAN", calls.go())\n'
+ISSUE707_PARAMETERS: dict[str, tuple[str, str]] = {
+    "mocker_locals_subscript": (
+        _I707_PARAM_HEAD.format(imports="")
+        + 'def test_go(mocker):\n    d = locals(); d["mocker"]'
+        + _I707_PARAM_PATCH,
+        "RAN OTHER.t / 1 passed",
+    ),
+    "mocker_locals_get": (
+        _I707_PARAM_HEAD.format(imports="")
+        + 'def test_go(mocker):\n    locals().get("mocker")'
+        + _I707_PARAM_PATCH,
+        "RAN OTHER.t / 1 passed",
+    ),
+    "mocker_vars_subscript": (
+        _I707_PARAM_HEAD.format(imports="")
+        + 'def test_go(mocker):\n    vars()["mocker"]'
+        + _I707_PARAM_PATCH,
+        "RAN OTHER.t / 1 passed",
+    ),
+    "mocker_frame_f_locals": (
+        _I707_PARAM_HEAD.format(imports=", sys")
+        + 'def test_go(mocker):\n    sys._getframe().f_locals["mocker"]'
+        + _I707_PARAM_PATCH,
+        "RAN OTHER.t / 1 passed",
+    ),
+    "fixture_returns_locals": (
+        _I707_PARAM_HEAD.format(imports=", pytest")
+        + "@pytest.fixture\ndef env(mocker):\n    return locals()\n"
+        + 'def test_go(env):\n    env["mocker"]'
+        + _I707_PARAM_PATCH,
+        "RAN OTHER.t / 1 passed",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(ISSUE707_PARAMETERS))
+def test_r707_1_sensitive_parameter_escapes_through_locals(
+    tmp_path: Path, case: str
+) -> None:
+    """R-707-1 BLOCKING-2: pytest printed ``RAN OTHER.t`` in every tree;
+    main 64bae100 and #721 head 4cf523e3 resolved ``svc.t`` to ``svc.py``."""
+    test_b, _runtime = ISSUE707_PARAMETERS[case]
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "tests/helpers_mp.py": "def make():\n    return {}\n",
+            "tests/test_b.py": test_b,
+        },
+    )
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    # #699 S4 (PY-9): a spelled ``f_locals`` is a ``module-object`` cause too.
+    cause = (
+        "module-object" if case == "mocker_frame_f_locals" else "unresolvable-writer"
+    )
+    assert cause in _recorded_causes(root), case
+    assert label == "none(module-escape)", case  # the file hands out calls
+    assert "unresolvable-writer" in _recorded_causes(root), case
+
+
+# ---------------------------------------------------------------------------
+# treesitter-chunker#699 S4 (plan 699-702 PY-6, PY-7, PY-9, PY-10; ruling
+# R-699-1 Q2, Q5, Q6, B-6 and B-7, R-707-1 item 4): closure-cell writes, ``gc``,
+# frame-locals readers in another file and ``.patch`` on any receiver are
+# run-wide causes, scoped by O-2. Each ``S4_CAUSES`` row is the one writer
+# file of a tree; every spelling is decided by a token rule (R-724-1) or a
+# closed allow-list, never by a deny-list of positions.
+
+S4_CAUSES: dict[str, tuple[str, str]] = {
+    # PY-6: ``cell_contents`` other than a plain read (no ``__closure__``
+    # spelled; the cell is handed in).
+    "c6-attribute-write": ("def f(c):\n    c.cell_contents = len\n", "module-object"),
+    "c6-augmented": ("def f(c):\n    c.cell_contents += 1\n", "module-object"),
+    "c6-delete": ("def f(c):\n    del c.cell_contents\n", "module-object"),
+    "c6-setattr-joined": (
+        "def f(c):\n    setattr(c, 'cell_' 'contents', len)\n",
+        "module-object",
+    ),
+    "c6-descriptor": (
+        "def f(c):\n    type(c).cell_contents.__set__(c, len)\n",
+        "module-object",
+    ),
+    "c6-keyword": ("def f(g):\n    return g(cell_contents=len)\n", "module-object"),
+    # PY-7 with B-7: ``gc`` off its member list, or a heap-walker token.
+    "g7-get-referents": (
+        "import gc\n\nimport svc\n\n"
+        "[d for d in gc.get_referents(svc.t) if type(d) is dict][0]['t'] = len\n",
+        "module-object",
+    ),
+    "g7-from-import": (
+        "from gc import get_referrers as r\n\n\ndef f(x):\n    return r(x)\n",
+        "module-object",
+    ),
+    "g7-alias": ("import gc as g\n\nm = g\n", "module-object"),
+    "g7-get-objects": ("import gc\n\nX = gc.get_objects()\n", "module-object"),
+    "g7-garbage": ("import gc\n\nX = gc.garbage\n", "module-object"),
+    "g7-attribute": ("import compat\n\nX = compat.gc.garbage\n", "module-object"),
+    "g7-token-import": ("from compat import get_referents\n", "module-object"),
+    "g7-token-string": (
+        "def f(o):\n    return getattr(o, 'get_referrers')\n",
+        "module-object",
+    ),
+    # PY-9 with B-6: frame-locals readers, reads included, and their proxies.
+    "f9-f-locals-get": (
+        "def f(tb):\n    return tb.tb_frame.f_locals.get('x'), tb.tb_lineno\n",
+        "module-object",
+    ),
+    "f9-f-locals-in": (
+        "def f(fr):\n    return 'x' in fr.f_locals and fr.f_locals['x']\n",
+        "module-object",
+    ),
+    "f9-f-locals-gen": (
+        "def f(g):\n    return g.gi_frame.f_locals['p']\n",
+        "module-object",
+    ),
+    "f9-getargvalues": (
+        # ``ArgInfo`` is a named tuple: ``[3]`` is ``.locals`` with no
+        # ``locals`` token spelled.
+        "import inspect\n\n\ndef f(fr):\n    return inspect.getargvalues(fr)[3]\n",
+        "module-object",
+    ),
+    "f9-getgeneratorlocals": (
+        "from inspect import getgeneratorlocals as gl\n\n\ndef f(g):\n    return gl(g)\n",
+        "module-object",
+    ),
+    "f9-getcoroutinelocals": (
+        "import inspect\n\n\ndef f(c):\n    return inspect.getcoroutinelocals(c)\n",
+        "module-object",
+    ),
+    "f9-getasyncgenlocals": (
+        "import inspect\n\n\ndef f(a):\n    return inspect.getasyncgenlocals(a)\n",
+        "module-object",
+    ),
+    "f9-curframe-locals": (
+        "def f(p):\n    return p.curframe_locals\n",
+        "module-object",
+    ),
+    "f9-formatter-bracket": (
+        "import string\n\n\ndef f(fr):\n"
+        "    return string.Formatter().get_field('0.f_locals[p]', (fr,), {})\n",
+        "module-object",
+    ),
+    "f9-locals-value": ("get_locals = locals\n", "module-object"),
+    "f9-vars-value": ("V = vars\n", "module-object"),
+    "f9-locals-import-name": ("from compat import locals as L\n", "module-object"),
+    "f9-locals-string": (
+        "G = getattr(len.__self__, 'loc' 'als')\n",
+        "module-object",
+    ),
+    # PY-10: ``.patch`` on any receiver (``unresolvable-writer``).
+    "p10-parameter-computed": (
+        "def go(mk, n):\n    mk.patch(n, len).start()\n",
+        "unresolvable-writer",
+    ),
+    "p10-requests-computed": (
+        "import requests\n\n\ndef f(url):\n    return requests.patch(url)\n",
+        "unresolvable-writer",
+    ),
+    "p10-call-receiver": (
+        "def go(get, n):\n    get().patch(n, len)\n",
+        "unresolvable-writer",
+    ),
+    "p10-alias": (
+        "def go(mk):\n    p = mk.patch\n    return p\n",
+        "unresolvable-writer",
+    ),
+    "p10-getattr": (
+        "def go(mk):\n    return getattr(mk, 'pat' 'ch')\n",
+        "unresolvable-writer",
+    ),
+    "p10-methodcaller": (
+        "import operator\n\nM = operator.methodcaller('patch', 'svc.t', len)\n",
+        "unresolvable-writer",
+    ),
+    "p10-object-computed": (
+        "def go(x, m, n):\n    x.patch.object(m, n, len)\n",
+        "unresolvable-writer",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(S4_CAUSES))
+def test_s4_causes_fail_closed(tmp_path: Path, case: str) -> None:
+    writer, cause = S4_CAUSES[case]
+    root = _write(tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, "w.py": writer})
+    off, structural, on, label = _run(root, "use.py", "t")
+    assert structural == off
+    assert on == off, case
+    assert label == f"none(run-tainted:{cause})", case
+    facts = extract_symbol_facts_for_file(
+        root / "w.py", root, None, call_resolution=MODE
+    )
+    assert facts["scope_facts"]["module_bindings"]["shutoff"] == [cause], case
+
+
+S4_CONSTANT_PATCH_TAINT = "def go(client):\n    client.patch('svc', t=len)\n"
+
+
+def test_s4_constant_patch_target_taints_its_module(tmp_path: Path) -> None:
+    """PY-10: a constant first argument of ``X.patch`` on any receiver taints
+    the module it names (W-3 semantics), and is no run-wide cause."""
+    root = _write(
+        tmp_path,
+        {"svc.py": SVC, "use.py": USE, **OTHER, "w.py": S4_CONSTANT_PATCH_TAINT},
+    )
+    facts = extract_symbol_facts_for_file(
+        root / "w.py", root, None, call_resolution=MODE
+    )
+    bindings = facts["scope_facts"]["module_bindings"]
+    assert bindings["shutoff"] == []
+    assert ["svc", "*"] in bindings["taints"]
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "ambiguous" and label is not None
+    assert label.startswith("none(") and "run-tainted" not in label
+
+
+def test_s4_patch_on_any_receiver_is_test_scoped(tmp_path: Path) -> None:
+    """PY-10 under O-2 (ruling Q6: test-edge cost accepted): an HTTP client's
+    ``.patch(f"...")`` in a test file is a cause for test callers only; a
+    production caller keeps its proof."""
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "use.py": USE,
+            "svc.py": SVC,
+            "tests/test_b.py": (
+                'import requests\nimport calls\nNAME = "t"\ndef test_go():\n'
+                '    requests.patch(f"http://h/{NAME}")\n'
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+    )
+    _off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on["resolution"] == "ambiguous"
+    assert label == "none(run-tainted:unresolvable-writer)"
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import"
+
+
+# The runtime-traced cross-file trees. ``runtime`` is what CPython 3.14.10
+# printed (``python main.py``: ``runtime: 2`` means ``len`` ran instead of the
+# proven ``svc.t``; the ``xf_*`` rows ran under pytest with a minimal
+# ``mocker`` plugin and printed ``RAN OTHER.t``). main 891e8997 resolved every
+# one except the two cell trees (closed by B-1's ``__closure__`` rule),
+# ``p10x_param_patch`` and ``c6_param_cell_write``, which are pinned with
+# their spelling. The probe sources and outputs are in the S4 evidence
+# directory (``699-s4/``).
+_S4_SVC = 'def t(s):\n    return "DEF"\n'
+_S4_DECOY = (
+    'def helper(s):\n    return "B"\n\n\ndef _(s):\n    return "B"\n\n\n'
+    'def t(s):\n    return "B"\n'
+)
+S4_TRACED: dict[str, tuple[dict[str, str], tuple[str, str], str]] = {
+    # plan 699-702 (planner/probes2.py)
+    "t2_cell_contents_cross_file": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": (
+                "def outer():\n"
+                "    from svc import t\n"
+                "\n"
+                "    def inner():\n"
+                '        return t("ab")\n'
+                "\n"
+                "    return inner\n"
+            ),
+            "w.py": (
+                "import use\n"
+                "\n"
+                "f = use.outer()\n"
+                "f.__closure__[0].cell_contents = len\n"
+            ),
+            "main.py": 'import w\n\nprint("runtime:", w.f())\n',
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # plan 699-702 (planner/probes2.py)
+    "t2_cell_contents_setattr_string": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": (
+                "def outer():\n"
+                "    from svc import t\n"
+                "\n"
+                "    def inner():\n"
+                '        return t("ab")\n'
+                "\n"
+                "    return inner\n"
+            ),
+            "w.py": (
+                "import use\n"
+                "\n"
+                "f = use.outer()\n"
+                'setattr(f.__closure__[0], "cell_contents", len)\n'
+            ),
+            "main.py": 'import w\n\nprint("runtime:", w.f())\n',
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # plan 699-702 (planner/probes2.py)
+    "t2_frame_callee_reads_caller": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'def run():\n    from svc import t\n\n    return t("ab")\n',
+            "helpers.py": (
+                "from unittest import mock\n"
+                "\n"
+                "\n"
+                "def make(cb):\n"
+                "    import svc\n"
+                "\n"
+                "    p = mock.patch\n"
+                "    return cb()\n"
+            ),
+            "reader.py": (
+                "import sys\n"
+                "\n"
+                "\n"
+                "def cb():\n"
+                '    sys._getframe(1).f_locals["p"].object(sys._getframe(1).f_locals["svc"], "t", len).start()\n'
+            ),
+            "main.py": (
+                "import helpers\n"
+                "import reader\n"
+                "import use\n"
+                "\n"
+                "helpers.make(reader.cb)\n"
+                'print("runtime:", use.run())\n'
+            ),
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # plan 699-702 (planner/probes2.py)
+    "t2_locals_builtin_reexported": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'def run():\n    from svc import t\n\n    return t("ab")\n',
+            "compat.py": "get_locals = locals\n",
+            "helpers.py": (
+                "from unittest import mock\n"
+                "\n"
+                "from compat import get_locals\n"
+                "\n"
+                "\n"
+                "def make():\n"
+                "    import svc\n"
+                "\n"
+                "    p = mock.patch\n"
+                "    return get_locals()\n"
+            ),
+            "reader.py": (
+                'def go(loc):\n    loc["p"].object(loc["svc"], "t", len).start()\n'
+            ),
+            "main.py": (
+                "import helpers\n"
+                "import reader\n"
+                "import use\n"
+                "\n"
+                "reader.go(helpers.make())\n"
+                'print("runtime:", use.run())\n'
+            ),
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # plan review 699-702-opus (mine.py)
+    "y_gc_globals_other_file": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'from svc import t\n\n\ndef run():\n    return t("ab")\n',
+            "w.py": (
+                "import gc\n"
+                "\n"
+                "import use\n"
+                "\n"
+                '[d for d in gc.get_referents(use.run) if type(d) is dict][0]["t"] = len\n'
+            ),
+            "main.py": 'import w\nimport use\n\nprint("runtime:", use.run())\n',
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # plan review 699-702-opus (mine.py)
+    "y_getargvalues_reads_caller": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'def run():\n    from svc import t\n\n    return t("ab")\n',
+            "helpers.py": (
+                "from unittest import mock\n"
+                "\n"
+                "\n"
+                "def make(cb):\n"
+                "    import svc\n"
+                "\n"
+                "    p = mock.patch\n"
+                "    return cb()\n"
+            ),
+            "reader.py": (
+                "import inspect\n"
+                "import sys\n"
+                "\n"
+                "\n"
+                "def cb():\n"
+                "    loc = inspect.getargvalues(sys._getframe(1)).locals\n"
+                '    loc["p"].object(loc["svc"], "t", len).start()\n'
+            ),
+            "main.py": (
+                "import helpers\n"
+                "import reader\n"
+                "import use\n"
+                "\n"
+                "helpers.make(reader.cb)\n"
+                'print("runtime:", use.run())\n'
+            ),
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # S4 battery (699-s4/s4probes.py)
+    "f9_formatter_field": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'def run():\n    from svc import t\n\n    return t("ab")\n',
+            "helpers.py": (
+                "from unittest import mock\n"
+                "\n"
+                "\n"
+                "def make(cb):\n"
+                "    import svc\n"
+                "\n"
+                "    p = mock.patch\n"
+                "    return cb()\n"
+            ),
+            "reader.py": (
+                "import string\n"
+                "import sys\n"
+                "\n"
+                "\n"
+                "def cb():\n"
+                "    fr = sys._getframe(1)\n"
+                "    F = string.Formatter()\n"
+                '    F.get_field("0.f_locals[p]", (fr,), {})[0].object(F.get_field("0.f_locals[svc]", (fr,), {})[0], "t", len).start()\n'
+            ),
+            "main.py": (
+                "import helpers\n"
+                "import reader\n"
+                "import use\n"
+                "\n"
+                "helpers.make(reader.cb)\n"
+                'print("runtime:", use.run())\n'
+            ),
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # S4 battery (699-s4/s4probes.py)
+    "f9_getgeneratorlocals": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'def run():\n    from svc import t\n\n    return t("ab")\n',
+            "helpers.py": (
+                "from unittest import mock\n"
+                "\n"
+                "\n"
+                "def make():\n"
+                "    import svc\n"
+                "\n"
+                "    p = mock.patch\n"
+                "    yield 1\n"
+            ),
+            "reader.py": (
+                "import inspect\n"
+                "\n"
+                "import helpers\n"
+                "\n"
+                "\n"
+                "def go():\n"
+                "    g = helpers.make()\n"
+                "    next(g)\n"
+                "    loc = inspect.getgeneratorlocals(g)\n"
+                '    loc["p"].object(loc["svc"], "t", len).start()\n'
+            ),
+            "main.py": (
+                "import reader\n"
+                "import use\n"
+                "\n"
+                "reader.go()\n"
+                'print("runtime:", use.run())\n'
+            ),
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # S4 battery (699-s4/s4probes.py)
+    "f9_getcoroutinelocals": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'def run():\n    from svc import t\n\n    return t("ab")\n',
+            "helpers.py": (
+                "from unittest import mock\n"
+                "\n"
+                "\n"
+                "async def make():\n"
+                "    import svc\n"
+                "\n"
+                "    p = mock.patch\n"
+                '    await __import__("asyncio").sleep(0)\n'
+            ),
+            "reader.py": (
+                "import inspect\n"
+                "\n"
+                "import helpers\n"
+                "\n"
+                "\n"
+                "def go():\n"
+                "    c = helpers.make()\n"
+                "    c.send(None)\n"
+                "    loc = inspect.getcoroutinelocals(c)\n"
+                '    loc["p"].object(loc["svc"], "t", len).start()\n'
+                "    c.close()\n"
+            ),
+            "main.py": (
+                "import reader\n"
+                "import use\n"
+                "\n"
+                "reader.go()\n"
+                'print("runtime:", use.run())\n'
+            ),
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # S4 battery (699-s4/s4probes.py)
+    "f9_vars_value_reexport": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'def run():\n    from svc import t\n\n    return t("ab")\n',
+            "compat.py": "get_vars = vars\n",
+            "helpers.py": (
+                "from unittest import mock\n"
+                "\n"
+                "from compat import get_vars\n"
+                "\n"
+                "\n"
+                "def make():\n"
+                "    import svc\n"
+                "\n"
+                "    p = mock.patch\n"
+                "    return get_vars()\n"
+            ),
+            "reader.py": (
+                'def go(loc):\n    loc["p"].object(loc["svc"], "t", len).start()\n'
+            ),
+            "main.py": (
+                "import helpers\n"
+                "import reader\n"
+                "import use\n"
+                "\n"
+                "reader.go(helpers.make())\n"
+                'print("runtime:", use.run())\n'
+            ),
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # S4 battery (699-s4/s4probes.py)
+    "f9_locals_string_reexport": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'def run():\n    from svc import t\n\n    return t("ab")\n',
+            "compat.py": 'get_locals = getattr(len.__self__, "loc" "als")\n',
+            "helpers.py": (
+                "from unittest import mock\n"
+                "\n"
+                "from compat import get_locals\n"
+                "\n"
+                "\n"
+                "def make():\n"
+                "    import svc\n"
+                "\n"
+                "    p = mock.patch\n"
+                "    return get_locals()\n"
+            ),
+            "reader.py": (
+                'def go(loc):\n    loc["p"].object(loc["svc"], "t", len).start()\n'
+            ),
+            "main.py": (
+                "import helpers\n"
+                "import reader\n"
+                "import use\n"
+                "\n"
+                "reader.go(helpers.make())\n"
+                'print("runtime:", use.run())\n'
+            ),
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # S4 battery (699-s4/s4probes.py)
+    "p10x_param_patch": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'def run():\n    from svc import t\n\n    return t("ab")\n',
+            "w.py": 'def go(mk):\n    mk.patch("s" + "vc.t", len).start()\n',
+            "main.py": (
+                "import unittest.mock\n"
+                "\n"
+                "import use\n"
+                "import w\n"
+                "\n"
+                "w.go(unittest.mock)\n"
+                'print("runtime:", use.run())\n'
+            ),
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # S4 battery (699-s4/s4probes.py)
+    "c6_param_cell_write": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": (
+                "def outer():\n"
+                "    from svc import t\n"
+                "\n"
+                "    def inner():\n"
+                '        return t("ab")\n'
+                "\n"
+                "    return inner\n"
+            ),
+            "cells.py": "import use\n\nF = use.outer()\nC = F.__closure__[0]\n",
+            "w.py": (
+                "import cells\n"
+                "\n"
+                "\n"
+                "def put(c):\n"
+                "    c.cell_contents = len\n"
+                "\n"
+                "\n"
+                "put(cells.C)\n"
+            ),
+            "main.py": 'import cells\nimport w\n\nprint("runtime:", cells.F())\n',
+        },
+        ("use.py", "t"),
+        "2",
+    ),
+    # #721 review residual (rev721-opus/cases*.json), under pytest
+    "xf_gen_frame": (
+        {
+            "tests/helpers_mp.py": (
+                "from unittest import mock\n"
+                "def make():\n"
+                "    p = mock.patch\n"
+                "    yield 1\n"
+            ),
+            "tests/test_b.py": (
+                "import calls\n"
+                "from helpers_mp import make\n"
+                "from other import t as _evil\n"
+                'NAME = "t"\n'
+                "def test_go():\n"
+                '    g = make(); next(g); g.gi_frame.f_locals["p"](f"svc.{NAME}", _evil).start()\n'
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "RAN OTHER.t / 1 passed",
+    ),
+    # #721 review residual (rev721-opus/cases*.json), under pytest
+    "xf_cr_frame": (
+        {
+            "tests/helpers_mp.py": (
+                "from unittest import mock\n"
+                "import asyncio\n"
+                "async def make():\n"
+                "    p = mock.patch\n"
+                "    await asyncio.sleep(0)\n"
+            ),
+            "tests/test_b.py": (
+                "import calls\n"
+                "from helpers_mp import make\n"
+                "from other import t as _evil\n"
+                'NAME = "t"\n'
+                "def test_go():\n"
+                '    c = make(); c.send(None); c.cr_frame.f_locals["p"](f"svc.{NAME}", _evil).start(); c.close()\n'
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "RAN OTHER.t / 1 passed",
+    ),
+    # #721 review residual (rev721-opus/cases*.json), under pytest
+    "xf_tb_frame": (
+        {
+            "tests/helpers_mp.py": (
+                "from unittest import mock\n"
+                "def make():\n"
+                "    p = mock.patch\n"
+                "    raise KeyError\n"
+            ),
+            "tests/test_b.py": (
+                "import calls\n"
+                "from helpers_mp import make\n"
+                "from other import t as _evil\n"
+                'NAME = "t"\n'
+                "def test_go():\n"
+                "    try:\n"
+                "        make()\n"
+                "    except KeyError as e:\n"
+                '        e.__traceback__.tb_next.tb_frame.f_locals["p"](f"svc.{NAME}", _evil).start()\n'
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "RAN OTHER.t / 1 passed",
+    ),
+    # #721 review residual (rev721-opus/cases*.json), under pytest
+    "xf_inspect_trace": (
+        {
+            "tests/helpers_mp.py": (
+                "from unittest import mock\n"
+                "def make():\n"
+                "    p = mock.patch\n"
+                "    raise KeyError\n"
+            ),
+            "tests/test_b.py": (
+                "import calls\n"
+                "from helpers_mp import make\n"
+                "from other import t as _evil\n"
+                'NAME = "t"\n'
+                "def test_go():\n"
+                "    import inspect\n"
+                "    try:\n"
+                "        make()\n"
+                "    except KeyError:\n"
+                '        inspect.trace()[-1].frame.f_locals["p"](f"svc.{NAME}", _evil).start()\n'
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "RAN OTHER.t / 1 passed",
+    ),
+    # #721 review residual (rev721-opus/cases*.json), under pytest
+    "xf_getargvalues": (
+        {
+            "tests/helpers_mp.py": (
+                "from unittest import mock\n"
+                "def make():\n"
+                "    p = mock.patch\n"
+                "    raise KeyError\n"
+            ),
+            "tests/test_b.py": (
+                "import calls\n"
+                "from helpers_mp import make\n"
+                "from other import t as _evil\n"
+                'NAME = "t"\n'
+                "def test_go():\n"
+                "    import inspect\n"
+                "    try:\n"
+                "        make()\n"
+                "    except KeyError as e:\n"
+                '        inspect.getargvalues(e.__traceback__.tb_next.tb_frame).locals["p"](f"svc.{NAME}", _evil).start()\n'
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "RAN OTHER.t / 1 passed",
+    ),
+    # #721 review residual (rev721-opus/cases*.json), under pytest
+    "xf_gc": (
+        {
+            "tests/helpers_mp.py": (
+                "from unittest import mock\n"
+                "import sys\n"
+                "def make():\n"
+                "    p = mock.patch\n"
+                "    return sys._getframe()\n"
+            ),
+            "tests/test_b.py": (
+                "import calls\n"
+                "from helpers_mp import make\n"
+                "from other import t as _evil\n"
+                'NAME = "t"\n'
+                "def test_go():\n"
+                '    import gc; fr = make(); [x for x in gc.get_referents(fr) if getattr(x, "__name__", "") == "pat" "ch"][0](f"svc.{NAME}", _evil).start()\n'
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "RAN OTHER.t / 1 passed",
+    ),
+}
+
+S4_TRACED_CONTROLS: dict[str, tuple[dict[str, str], tuple[str, str]]] = {
+    "ctl_f9_locals_called": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'from svc import t\n\n\ndef run():\n    return t("ab")\n',
+            "w.py": "def f():\n    x = 1\n    return len(locals())\n\n\nN = f()\n",
+            "main.py": 'import w\nimport use\n\nprint("runtime:", use.run())\n',
+        },
+        ("use.py", "t"),
+    ),
+    "ctl_f9_vars_object": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'from svc import t\n\n\ndef run():\n    return t("ab")\n',
+            "w.py": "class K:\n    a = 1\n\n\nN = len(vars(K))\n",
+            "main.py": 'import w\nimport use\n\nprint("runtime:", use.run())\n',
+        },
+        ("use.py", "t"),
+    ),
+    "ctl_f9_frame_lineno": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'from svc import t\n\n\ndef run():\n    return t("ab")\n',
+            "w.py": (
+                "import inspect\n"
+                "\n"
+                "\n"
+                "def f():\n"
+                "    return inspect.currentframe().f_lineno\n"
+                "\n"
+                "\n"
+                "N = f()\n"
+            ),
+            "main.py": 'import w\nimport use\n\nprint("runtime:", use.run())\n',
+        },
+        ("use.py", "t"),
+    ),
+    "ctl_p10x_const_route": (
+        {
+            "svc.py": _S4_SVC,
+            "b.py": _S4_DECOY,
+            "use.py": 'def run():\n    from svc import t\n\n    return t("ab")\n',
+            "w.py": (
+                "class S:\n"
+                "    def patch(self, url):\n"
+                "        return url\n"
+                "\n"
+                "\n"
+                "def go():\n"
+                '    S().patch("/items/1")\n'
+            ),
+            "main.py": 'import use\nimport w\n\nw.go()\nprint("runtime:", use.run())\n',
+        },
+        ("use.py", "t"),
+    ),
+    "xf_ctl_no_reader": (
+        {
+            "tests/helpers_mp.py": (
+                "from unittest import mock\n"
+                "def make():\n"
+                "    p = mock.patch\n"
+                "    return {}\n"
+            ),
+            "tests/test_b.py": (
+                "import calls\n"
+                "from helpers_mp import make\n"
+                "from other import t as _evil\n"
+                'NAME = "t"\n'
+                "def test_go():\n"
+                "    make()\n"
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+    ),
+    "xf_vars_obj_ctl": (
+        {
+            "tests/helpers_mp.py": (
+                "from unittest import mock\n"
+                "def make():\n"
+                "    p = mock.patch\n"
+                "    n = len(vars(make))\n"
+                "    return {}\n"
+            ),
+            "tests/test_b.py": (
+                "import calls\n"
+                "from helpers_mp import make\n"
+                "from other import t as _evil\n"
+                'NAME = "t"\n'
+                "def test_go():\n"
+                "    make()\n"
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+    ),
+    "xf_locals_other_func_ctl": (
+        {
+            "tests/helpers_mp.py": (
+                "from unittest import mock\n"
+                "def make():\n"
+                "    p = mock.patch\n"
+                "    return {}\n"
+                "def other():\n"
+                "    return locals()\n"
+            ),
+            "tests/test_b.py": (
+                "import calls\n"
+                "from helpers_mp import make\n"
+                "from other import t as _evil\n"
+                'NAME = "t"\n'
+                "def test_go():\n"
+                "    make()\n"
+                '    print("RAN", calls.go())\n'
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+    ),
+}
+
+
+# The label each traced tree gets; every other is ``module-object``.
+_S4_TRACED_CAUSES = {"p10x_param_patch": "unresolvable-writer"}
+
+
+@pytest.mark.parametrize("case", sorted(S4_TRACED))
+def test_s4_traced_routes_fail_closed(tmp_path: Path, case: str) -> None:
+    files, (file, reference), _runtime = S4_TRACED[case]
+    extra = _SVC_OTHER if file == "tests/calls.py" else {}
+    root = _write(tmp_path, {**extra, **files})
+    off, _structural, on, label = _run(root, file, reference)
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    cause = _S4_TRACED_CAUSES.get(case, "module-object")
+    assert cause in _recorded_causes(root), case
+    if case in {
+        "xf_cr_frame",
+        "xf_gen_frame",
+        "xf_getargvalues",
+        "xf_inspect_trace",
+        "xf_tb_frame",
+    }:
+        assert label == "none(module-escape)", case
+    elif case in {
+        "f9_formatter_field",
+        "t2_frame_callee_reads_caller",
+        "y_getargvalues_reads_caller",
+    }:
+        assert label == "none(run-tainted:module-system)", case
+    else:
+        assert label == f"none(run-tainted:{cause})", case
+
+
+@pytest.mark.parametrize("case", sorted(S4_TRACED_CONTROLS))
+def test_s4_traced_controls_still_resolve(tmp_path: Path, case: str) -> None:
+    """CPython printed ``runtime: DEF`` (pytest ``RAN SVC.t``) in each."""
+    files, (file, reference) = S4_TRACED_CONTROLS[case]
+    extra = _SVC_OTHER if file == "tests/calls.py" else {}
+    root = _write(tmp_path, {**extra, **files})
+    off, _structural, on, label = _run(root, file, reference)
+    assert off["resolution"] == "ambiguous", case
+    assert on["resolution"] == "resolved" and label == "import", case
+
+
+# Patcher rules that PY-10 now overlaps: every earlier row of theirs also
+# spells a computed ``.patch(...)``, which is a cause on any receiver since
+# #699 S4, so these rows spell no ``.patch`` and keep each rule observable
+# (and its mutation killed). A pytest-mock fixture taken by name and handed
+# on (#705 P6-5, E6-9), a ``getfixturevalue`` reached as an attribute or by
+# string (P6-12, P6-15), and a ``mocker`` parameter whose function's locals
+# are handed out (R-707-1 BLOCKING-2).
+_S4_KEEP = "import calls\n\n\ndef keep(x):\n    return x\n\n\n"
+S4_PATCHER_RULES_WITHOUT_PATCH: dict[str, str] = {
+    "fixture-handed-on": (
+        _S4_KEEP
+        + 'def test_go(request):\n    keep(request.getfixturevalue("mocker"))\n'
+    ),
+    "fixture-alias-handed-on": (
+        _S4_KEEP + "def test_go(request):\n"
+        '    m = request.getfixturevalue("mocker")\n    keep(m)\n'
+    ),
+    "getfixturevalue-attribute": (
+        _S4_KEEP + "def test_go(request):\n    g = request.getfixturevalue\n"
+        '    g("mocker").stopall()\n'
+    ),
+    "getfixturevalue-string": (
+        _S4_KEEP + "def test_go(request):\n"
+        '    getattr(request, "getfixturevalue")("mocker").stopall()\n'
+    ),
+    "mocker-parameter-locals": (
+        _S4_KEEP + "def test_go(mocker):\n    keep(locals())\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(S4_PATCHER_RULES_WITHOUT_PATCH))
+def test_s4_overlapped_patcher_rules_still_fire(tmp_path: Path, case: str) -> None:
+    root = _write(
+        tmp_path,
+        {**_SVC_OTHER, "tests/test_b.py": S4_PATCHER_RULES_WITHOUT_PATCH[case]},
+    )
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    assert "unresolvable-writer" in _recorded_causes(root), case
+    expected = (
+        "module-escape"
+        if case == "mocker-parameter-locals"
+        else "run-tainted:unresolvable-writer"
+    )
+    assert label == f"none({expected})", case
+
+
+def test_s4_fixture_kept_without_escape_is_no_cause(tmp_path: Path) -> None:
+    """The control: the same fixture fetched by name and used on its
+    allow-list (``stopall``) is no cause."""
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "tests/test_b.py": (
+                "import calls\n\n\ndef test_go(request):\n"
+                '    request.getfixturevalue("mocker").stopall()\n'
+            ),
+        },
+    )
+    _off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on["resolution"] == "resolved" and label == "import"
+
+
+# ---------------------------------------------------------------------------
+# treesitter-chunker#699 S4, ruling R-699-10 (the Fable soundness review of
+# #733): ``inspect.getclosurevars`` is a frame/closure reader (item 1); an
+# import name spelled ``patch`` or as a private mock patcher is a patcher
+# token from any module and under any alias, followed through a star import
+# or a re-export under another name (item 2); a class-pattern keyword spelled
+# ``patch`` or as an E6-9b ``MonkeyPatch`` method is a patcher read out of
+# sight (item 3). Each ``R10_CAUSES`` row is the one writer file of a tree.
+
+R10_CAUSES: dict[str, tuple[str, str]] = {
+    "getclosurevars-nonlocals": (
+        "import inspect\n\n\ndef f(g):\n    return inspect.getclosurevars(g).nonlocals\n",
+        "module-object",
+    ),
+    "getclosurevars-import-name": (
+        "from inspect import getclosurevars as cv\n\n\ndef f(g):\n    return cv(g)\n",
+        "module-object",
+    ),
+    "getclosurevars-string": (
+        "import inspect\n\n\ndef f(g):\n"
+        "    return getattr(inspect, 'getclosure' 'vars')(g)\n",
+        "module-object",
+    ),
+    "compat-patch-as": (
+        "from compat import patch as pp\n\n\ndef go(n):\n    pp(n, len).start()\n",
+        "unresolvable-writer",
+    ),
+    "compat-patch-decorator": (
+        "from compat import patch\n\nNAME = 't'\n\n\n"
+        "@patch(f'svc.{NAME}', len)\ndef go():\n    pass\n",
+        "unresolvable-writer",
+    ),
+    "relative-patch-as": (
+        "from .compat import patch as pp\n\n\ndef go(n):\n    pp(n, len).start()\n",
+        "unresolvable-writer",
+    ),
+    "compat-patch-handed-on": (
+        "from compat import patch as pp\n\n\ndef go(f):\n    f(pp)\n",
+        "unresolvable-writer",
+    ),
+    "private-patch-multiple": (
+        "from unittest.mock import _patch_multiple\n\n\n"
+        "def go(m):\n    _patch_multiple(m, t=len).start()\n",
+        "unresolvable-writer",
+    ),
+    "private-get-target": (
+        "from unittest.mock import _get_target, _patch\n\n\ndef go(n):\n"
+        "    g, at = _get_target(n)\n"
+        "    _patch(g, at, len, None, False, None, None, None, {}).start()\n",
+        "unresolvable-writer",
+    ),
+    "private-patch-object-alias": (
+        "from unittest.mock import _patch_object as po\n\n\ndef go(m, n):\n"
+        "    po(m, n, len, None, False, None, None, None, {}).start()\n",
+        "unresolvable-writer",
+    ),
+    "private-patch-dict-any-module": (
+        "from compat import _patch_dict\n\n\ndef go(d):\n"
+        "    _patch_dict(d, t=len).start()\n",
+        "unresolvable-writer",
+    ),
+    "class-pattern-patch": (
+        "def go(mk, n):\n    match mk:\n        case object(patch=p):\n"
+        "            p(n, len).start()\n",
+        "unresolvable-writer",
+    ),
+}
+# Ruling R-699-11: a private mock patcher on any receiver, read or called.
+R10_CAUSES["r11-get-target-on-receiver"] = (
+    "def go(mk, n):\n    g, at = mk._get_target(n)\n"
+    "    mk._patch(g, at, len, None, False, None, None, None, {}).start()\n",
+    "unresolvable-writer",
+)
+R10_CAUSES["r11-patch-multiple-on-receiver"] = (
+    "def go(mk, m):\n    mk._patch_multiple(m, t=len).start()\n",
+    "unresolvable-writer",
+)
+R10_CAUSES["r11-patch-object-handed-on"] = (
+    "def go(mk, f):\n    f(mk._patch_object)\n",
+    "unresolvable-writer",
+)
+R10_CAUSES["r11-patch-dict-on-receiver"] = (
+    "def go(mk, d):\n    mk._patch_dict(d, t=len).start()\n",
+    "unresolvable-writer",
+)
+# Ruling R-699-12 items 1 and 2: the private patchers and ``_get_target``
+# in any role, and ``"patch"`` exactly in any position.
+R10_CAUSES.update(
+    {
+        "r12-private-getattr": (
+            "def go(mk, m):\n    getattr(mk, '_patch_multiple')(m, t=len).start()\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-getattr-joined": (
+            "def go(mk, m):\n    getattr(mk, '_pa' 'tch_multiple')(m, t=len)\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-fstring": (
+            "def go(mk, m):\n    getattr(mk, f\"{'_patch'}_multiple\")(m, t=len)\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-methodcaller": (
+            "import operator\n\nM = operator.methodcaller('_patch_object', 1)\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-class-pattern": (
+            "def go(mk, m):\n    match mk:\n        case object(_patch_multiple=p):\n"
+            "            p(m, t=len)\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-mapping-key": (
+            "def go(mk, m):\n    match vars(mk):\n        case {'_patch_dict': p}:\n"
+            "            p(m)\n",
+            "unresolvable-writer",
+        ),
+        "r12-get-target-import": (
+            "from unittest.mock import _get_target\n\n\ndef go(n):\n"
+            "    g, at = _get_target(n)\n    g().t = len\n",
+            "unresolvable-writer",
+        ),
+        "r12-get-target-receiver": (
+            "def go(mk, n):\n    g, at = mk._get_target(n)\n    setattr(g(), 't', len)\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-attribute-write": (
+            "class K:\n    pass\n\n\nK._patch = 3\n",
+            "unresolvable-writer",
+        ),
+        "r12-private-definition": (
+            "def _get_target(t):\n    return t\n",
+            "unresolvable-writer",
+        ),
+        "r12-match-args": (
+            "class K:\n    __match_args__ = ('patch',)\n",
+            "unresolvable-writer",
+        ),
+        "r12-mapping-key": (
+            "def go(mk, n):\n    match vars(mk):\n        case {'patch': p}:\n"
+            "            p(n, len)\n",
+            "unresolvable-writer",
+        ),
+        "r12-list-element": ("M = ['get', 'patch']\n", "unresolvable-writer"),
+        # A dotted component in a member-naming position (PY-10), which the
+        # exact-string rule does not see.
+        "r12-attrgetter-dotted": (
+            "import operator\n\nG = operator.attrgetter('m.patch')\n",
+            "unresolvable-writer",
+        ),
+        "r12-comparison": (
+            "def go(d):\n    return [v for k, v in d.items() if k == 'patch']\n",
+            "unresolvable-writer",
+        ),
+        "r12-name-in-variable": (
+            "def go(mk, n):\n    m = 'patch'\n    getattr(mk, m)(n, len)\n",
+            "unresolvable-writer",
+        ),
+    }
+)
+for _method in ("setattr", "delattr", "setitem", "delitem", "syspath_prepend"):
+    R10_CAUSES[f"class-pattern-{_method}"] = (
+        f"def go(mk, n):\n    match mk:\n        case object({_method}=s):\n"
+        "            s(n)\n",
+        "unresolvable-writer",
+    )
+
+
+@pytest.mark.parametrize("case", sorted(R10_CAUSES))
+def test_r10_causes_fail_closed(tmp_path: Path, case: str) -> None:
+    writer, cause = R10_CAUSES[case]
+    root = _write(tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, "w.py": writer})
+    off, structural, on, label = _run(root, "use.py", "t")
+    assert structural == off
+    assert on == off, case
+    assert label == f"none(run-tainted:{cause})", case
+    facts = extract_symbol_facts_for_file(
+        root / "w.py", root, None, call_resolution=MODE
+    )
+    assert facts["scope_facts"]["module_bindings"]["shutoff"] == [cause], case
+
+
+# Item 2 at assembly: a patcher a run module binds under a name the importing
+# file never spells as one, reached by ``from compat import *`` (through
+# chained stars too) or by ``from compat import pp``. Neither file records a
+# cause of its own; the run records the importer's ``unresolvable-writer``.
+_R10_COMPAT_PP = "from unittest.mock import patch as pp\n"
+R10_REEXPORTS: dict[str, dict[str, str]] = {
+    "star": {"compat.py": _R10_COMPAT_PP, "w.py": "from compat import *\n"},
+    "star-chain": {
+        "compat.py": "from compat2 import *\n",
+        "compat2.py": _R10_COMPAT_PP,
+        "w.py": "from compat import *\n",
+    },
+    "other-name": {"compat.py": _R10_COMPAT_PP, "w.py": "from compat import pp\n"},
+    "other-name-chain": {
+        "compat.py": "from compat2 import pp\n",
+        "compat2.py": _R10_COMPAT_PP,
+        "w.py": "from compat import pp\n",
+    },
+    # R-699-12 item 3: the from-import at any scope.
+    "function-scope": {
+        "compat.py": _R10_COMPAT_PP,
+        "w.py": "def go(n):\n    from compat import pp as zz\n\n    zz(n, len)\n",
+    },
+    "class-scope": {
+        "compat.py": _R10_COMPAT_PP,
+        "w.py": "class K:\n    from compat import pp\n",
+    },
+    "relative-function-scope": {
+        "pkg/__init__.py": "",
+        "pkg/compat.py": _R10_COMPAT_PP,
+        "pkg/w.py": "def go(n):\n    from .compat import pp\n\n    pp(n, len)\n",
+    },
+}
+
+
+@pytest.mark.parametrize("case", sorted(R10_REEXPORTS))
+def test_r10_reexported_patchers_fail_closed(tmp_path: Path, case: str) -> None:
+    root = _write(
+        tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, **R10_REEXPORTS[case]}
+    )
+    off, structural, on, label = _run(root, "use.py", "t")
+    assert structural == off
+    assert on == off, case
+    assert label == "none(run-tainted:unresolvable-writer)", case
+    assert not _recorded_causes(root), case
+
+
+def test_r10_reexported_patcher_is_test_scoped(tmp_path: Path) -> None:
+    """O-2: a test file's star import of a patcher costs test callers only."""
+    root = _write(
+        tmp_path,
+        {
+            **_SVC_OTHER,
+            "use.py": "import svc\n\n\ndef u():\n    return svc.t()\n",
+            "tests/compat.py": _R10_COMPAT_PP,
+            "tests/test_w.py": "from compat import *\n",
+        },
+    )
+    _off, _structural, on, label = _run(root, "use.py", "svc.t")
+    assert on["resolution"] == "resolved" and label == "import"
+    off, _structural, on, label = _run(root, "tests/calls.py", "svc.t")
+    assert on == off
+    assert label == "none(run-tainted:unresolvable-writer)"
+
+
+R10_CONTROLS: dict[str, dict[str, str]] = {
+    # R-699-12 item 2 matches ``"patch"`` exactly, not as a substring.
+    "patch-substring": {
+        "w.py": "M = ['patches', 'patch-1', '/v1/patch', 'patch' 'es', 'patch' + 'es']\n"
+    },
+    "star-no-patcher": {
+        "compat.py": "def pp(u):\n    return u\n",
+        "w.py": "from compat import *\n",
+    },
+    "other-name-not-patcher": {
+        "compat.py": "from os.path import join as pp\n",
+        "w.py": "from compat import pp\n",
+    },
+    "patch-constant-target": {
+        "w.py": "from compat import patch as pp\n\n\ndef go():\n"
+        "    pp('os.getcwd', len).start()\n",
+    },
+    "class-pattern-other": {
+        "w.py": "def go(mk):\n    match mk:\n        case object(real=p):\n"
+        "            p(1)\n",
+    },
+    "getsource": {
+        "w.py": "import inspect\n\n\ndef go():\n    return inspect.getsource(go)\n",
+    },
+}
+
+
+@pytest.mark.parametrize("case", sorted(R10_CONTROLS))
+def test_r10_controls_still_resolve(tmp_path: Path, case: str) -> None:
+    root = _write(
+        tmp_path, {"svc.py": SVC, "use.py": USE, **OTHER, **R10_CONTROLS[case]}
+    )
+    _off, _structural, on, label = _run(root, "use.py", "t")
+    assert on["resolution"] == "resolved" and label == "import", case
+
+
+# The review trees, runtime-traced (``733-fable-soundness/`` and
+# ``733-r10/`` in the evidence directory). ``main.txt`` is the entry script,
+# outside the run.
+_R10_USE = 'def run():\n    from svc import t\n\n    return t("ab")\n'
+_R10_MAIN_GO = 'import use\nimport w\n\nw.go()\nprint("runtime:", use.run())\n'
+R10_TRACED: dict[str, tuple[dict[str, str], tuple[str, str], str]] = {
+    # Fable SHOULD 1, ruling R-699-11 (trees_my3); CPython 3.14.10 printed
+    # ``runtime: 2``.
+    "x_param_get_target": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": (
+                "import unittest.mock\n\nimport use\nimport w\n\n"
+                'w.go(unittest.mock)\nprint("runtime:", use.run())\n'
+            ),
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                'NAME = "t"\n\n\ndef go(mk):\n'
+                '    g, at = mk._get_target(f"svc.{NAME}")\n'
+                "    mk._patch(g, at, len, None, False, None, None, None, {}).start()\n"
+            ),
+        },
+        ("use.py", "t"),
+        "unresolvable-writer",
+    ),
+    # Fable BLOCKING 1 (trees_my3); CPython 3.14.10 printed ``runtime: 2``.
+    "x_getclosurevars_nonlocals": (
+        {
+            "b.py": _S4_DECOY,
+            "helpers.py": (
+                "def make():\n"
+                "    import svc\n"
+                "\n"
+                "    def inner():\n"
+                '        return svc.t("x")\n'
+                "\n"
+                "    return inner\n"
+            ),
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                "import inspect\n"
+                "\n"
+                "import helpers\n"
+                "\n"
+                "\n"
+                "def go():\n"
+                "    cv = inspect.getclosurevars(helpers.make())\n"
+                "    list(cv.nonlocals.values())[0].t = len\n"
+            ),
+        },
+        ("use.py", "t"),
+        "module-object",
+    ),
+    # Fable BLOCKING 1 (trees_my3); CPython 3.14.10 printed ``runtime: 2``.
+    "x_getclosurevars_globals": (
+        {
+            "b.py": _S4_DECOY,
+            "helpers.py": ('import svc\n\n\ndef peek():\n    return svc.t("x")\n'),
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                "import inspect\n"
+                "\n"
+                "import helpers\n"
+                "\n"
+                "\n"
+                "def go():\n"
+                "    cv = inspect.getclosurevars(helpers.peek)\n"
+                "    list(cv.globals.values())[0].t = len\n"
+            ),
+        },
+        ("use.py", "t"),
+        "module-object",
+    ),
+    # Fable BLOCKING 2 (trees_my3); CPython 3.14.10 printed ``runtime: 2``.
+    "x_reexport_patch_as": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from unittest.mock import patch\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                "from compat import patch as pp\n"
+                "\n"
+                'NAME = "t"\n'
+                "\n"
+                "\n"
+                "def go():\n"
+                '    pp(f"svc.{NAME}", len).start()\n'
+            ),
+        },
+        ("use.py", "t"),
+        "unresolvable-writer",
+    ),
+    # Fable BLOCKING 2 (trees_my3); CPython 3.14.10 printed ``runtime: 2``.
+    "x_reexport_star": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from unittest.mock import patch as pp\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                "from compat import *\n"
+                "\n"
+                'NAME = "t"\n'
+                "\n"
+                "\n"
+                "def go():\n"
+                '    pp(f"svc.{NAME}", len).start()\n'
+            ),
+        },
+        ("use.py", "t"),
+        "unresolvable-writer",
+    ),
+    # Fable BLOCKING 3 (trees_my3); CPython 3.14.10 printed ``runtime: 2``.
+    "x_class_pattern_keyword": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": (
+                "import unittest.mock\n"
+                "\n"
+                "import use\n"
+                "import w\n"
+                "\n"
+                "w.go(unittest.mock)\n"
+                'print("runtime:", use.run())\n'
+            ),
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                'NAME = "t"\n'
+                "\n"
+                "\n"
+                "def go(mk):\n"
+                "    match mk:\n"
+                "        case object(patch=p):\n"
+                '            p(f"svc.{NAME}", len).start()\n'
+            ),
+        },
+        ("use.py", "t"),
+        "unresolvable-writer",
+    ),
+    # Fable BLOCKING 3, E6-9b (trees_my4); CPython 3.14.10 printed ``runtime: 2``.
+    "y_monkeypatch_class_pattern": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": (
+                "import pytest\n"
+                "\n"
+                "import use\n"
+                "import w\n"
+                "\n"
+                "w.go(pytest.MonkeyPatch())\n"
+                'print("runtime:", use.run())\n'
+            ),
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                'NAME = "t"\n'
+                "\n"
+                "\n"
+                "def go(mk):\n"
+                "    match mk:\n"
+                "        case object(setattr=s):\n"
+                '            s(f"svc.{NAME}", len)\n'
+            ),
+        },
+        ("use.py", "t"),
+        "unresolvable-writer",
+    ),
+    # Fable SHOULD 1 (trees_my4); CPython 3.14.10 printed ``runtime: 2``.
+    "y_from_mock_patch_multiple_t2": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                "from unittest.mock import _patch_multiple\n"
+                "\n"
+                'MOD = "".join(["s", "vc"])\n'
+                'NAME = "t"\n'
+                "\n"
+                "\n"
+                "def go():\n"
+                "    _patch_multiple(MOD, t=len).start()\n"
+            ),
+        },
+        ("use.py", "t"),
+        "unresolvable-writer",
+    ),
+    # Fable SHOULD 1 (trees_my3); CPython 3.14.10 printed ``runtime: 2``.
+    "x_from_mock_get_target": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                "from unittest.mock import _get_target, _patch\n"
+                "\n"
+                'NAME = "t"\n'
+                "\n"
+                "\n"
+                "def go():\n"
+                '    g, at = _get_target(f"svc.{NAME}")\n'
+                "    _patch(g, at, len, None, False, None, None, None, {}).start()\n"
+            ),
+        },
+        ("use.py", "t"),
+        "unresolvable-writer",
+    ),
+    # R-699-10 battery (trees_r10); CPython 3.14.10 printed ``runtime: 2``.
+    "r10_reexport_other_name": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from unittest.mock import patch as pp\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                "from compat import pp\n"
+                "\n"
+                'NAME = "t"\n'
+                "\n"
+                "\n"
+                "def go():\n"
+                '    pp(f"svc.{NAME}", len).start()\n'
+            ),
+        },
+        ("use.py", "t"),
+        "unresolvable-writer",
+    ),
+    # R-699-10 battery (trees_r10); CPython 3.14.10 printed ``runtime: 2``.
+    "r10_reexport_chain_star": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from compat2 import *\n",
+            "compat2.py": "from unittest.mock import patch as pp\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": (
+                "from compat import *\n"
+                "\n"
+                'NAME = "t"\n'
+                "\n"
+                "\n"
+                "def go():\n"
+                '    pp(f"svc.{NAME}", len).start()\n'
+            ),
+        },
+        ("use.py", "t"),
+        "unresolvable-writer",
+    ),
+    # Fable BLOCKING 1 under pytest (pm_cases.json): ``RAN OTHER.t``.
+    "pm_getclosurevars": (
+        {
+            "svc.py": 'def t(): return "SVC.t"\n',
+            "other.py": 'def t(): return "OTHER.t"\n',
+            "tests/calls.py": ("import svc\ndef go(): return svc.t()\n"),
+            "tests/test_b.py": (
+                "import inspect\n"
+                "import calls, helpers\n"
+                "from other import t as _evil\n"
+                "def test_go():\n"
+                "    list(inspect.getclosurevars(helpers.make()).nonlocals.values())[0].t = _evil\n"
+                '    print("RAN", calls.go())\n'
+            ),
+            "tests/helpers.py": (
+                "def make():\n"
+                "    import svc\n"
+                "    def inner():\n"
+                "        return svc.t()\n"
+                "    return inner\n"
+            ),
+        },
+        ("tests/calls.py", "svc.t"),
+        "module-object",
+    ),
+}
+R10_TRACED_CONTROLS: dict[str, dict[str, str]] = {
+    # CPython 3.14.10 printed ``runtime: DEF``.
+    "ctl_r10_star_no_patcher": {
+        "b.py": _S4_DECOY,
+        "compat.py": ("def pp(u):\n    return u\n"),
+        "main.txt": _R10_MAIN_GO,
+        "svc.py": _S4_SVC,
+        "use.py": _R10_USE,
+        "w.py": (
+            "from compat import *\n"
+            "\n"
+            'NAME = "t"\n'
+            "\n"
+            "\n"
+            "def go():\n"
+            '    pp(f"svc.{NAME}")\n'
+        ),
+    },
+    # CPython 3.14.10 printed ``runtime: DEF``.
+    "ctl_r10_reexport_not_patcher": {
+        "b.py": _S4_DECOY,
+        "compat.py": "from os.path import join as pp\n",
+        "main.txt": _R10_MAIN_GO,
+        "svc.py": _S4_SVC,
+        "use.py": _R10_USE,
+        "w.py": (
+            "from compat import pp\n"
+            "\n"
+            'NAME = "t"\n'
+            "\n"
+            "\n"
+            "def go():\n"
+            "    pp(f\"svc.{NAME}\", 'x')\n"
+        ),
+    },
+    # CPython 3.14.10 printed ``runtime: DEF``.
+    "ctl_r10_class_pattern_other": {
+        "b.py": _S4_DECOY,
+        "main.txt": (
+            "import unittest.mock\n"
+            "\n"
+            "import use\n"
+            "import w\n"
+            "\n"
+            "w.go(unittest.mock)\n"
+            'print("runtime:", use.run())\n'
+        ),
+        "svc.py": _S4_SVC,
+        "use.py": _R10_USE,
+        "w.py": (
+            'NAME = "t"\n'
+            "\n"
+            "\n"
+            "def go(mk):\n"
+            "    match mk:\n"
+            "        case object(real=p):\n"
+            "            p(1)\n"
+        ),
+    },
+    # CPython 3.14.10 printed ``runtime: DEF``.
+    "ctl_r10_getsource": {
+        "b.py": _S4_DECOY,
+        "main.txt": _R10_MAIN_GO,
+        "svc.py": _S4_SVC,
+        "use.py": _R10_USE,
+        "w.py": (
+            'NAME = "t"\n'
+            "\n"
+            "\n"
+            "def go():\n"
+            "    import inspect\n"
+            "    return inspect.getsource(go)\n"
+        ),
+    },
+}
+
+
+@pytest.mark.parametrize("case", sorted(R10_TRACED))
+def test_r10_traced_routes_fail_closed(tmp_path: Path, case: str) -> None:
+    files, (file, reference), cause = R10_TRACED[case]
+    root = _write(tmp_path, files)
+    off, _structural, on, label = _run(root, file, reference)
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    if case == "pm_getclosurevars":
+        assert cause in _recorded_causes(root), case
+    expected = (
+        "module-escape" if case == "pm_getclosurevars" else f"run-tainted:{cause}"
+    )
+    assert label == f"none({expected})", case
+
+
+@pytest.mark.parametrize("case", sorted(R10_TRACED_CONTROLS))
+def test_r10_traced_controls_still_resolve(tmp_path: Path, case: str) -> None:
+    root = _write(tmp_path, R10_TRACED_CONTROLS[case])
+    off, _structural, on, label = _run(root, "use.py", "t")
+    assert off["resolution"] == "ambiguous", case
+    assert on["resolution"] == "resolved" and label == "import", case
+
+
+# Ruling R-699-12, the Fable re-check's trees (``733-fable-recheck/``),
+# runtime-traced: CPython 3.14.10 printed ``runtime: 2`` in each while
+# 26a119b8 resolved ``use.py``'s ``t``. Module-attribute reads of a
+# re-export (``compat.pp``, ``import_module("compat").pp``) are R12.
+_R12_MAIN_MOCK = (
+    "import unittest.mock\n\nimport use\nimport w\n\n"
+    'w.go(unittest.mock)\nprint("runtime:", use.run())\n'
+)
+R12_TRACED: dict[str, tuple[dict[str, str], str]] = {
+    "d_class_pattern_private": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    match mk:\n        case object(_patch_multiple=p):\n            p("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "d_class_pattern_private_get_target": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    match mk:\n        case object(_get_target=gt, _patch=p):\n            g, at = gt(f"svc.{NAME}")\n            p(g, at, len, None, False, None, None, None, {}).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "d_class_pattern_match_args": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'class M(type):\n    def __instancecheck__(cls, o):\n        return True\n\n\nclass K(metaclass=M):\n    __match_args__ = (\'patch\',)\n\n\nNAME = "t"\n\n\ndef go(mk):\n    match mk:\n        case K(p):\n            p(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "d_mapping_pattern_dict": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    match mk.__dict__:\n        case {\'patch\': p}:\n            p(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_mapping_pattern_vars": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    match vars(mk):\n        case {\'patch\': p}:\n            p(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_dict_items_compare": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    for k, v in mk.__dict__.items():\n        if k == \'patch\':\n            v(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_getattr_private_literal": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    getattr(mk, \'_patch_multiple\')("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_getattr_private_concat": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    getattr(mk, \'_patch\' \'_multiple\')("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_getattr_patch_get_target": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": "NAME = \"t\"\n\n\ndef go(mk):\n    g, at = mk._get_target(f\"svc.{NAME}\")\n    getattr(mk, '_pa' 'tch')(g, at, len, None, False, None, None, None, {}).start()\n",
+        },
+        "unresolvable-writer",
+    ),
+    "e_getattr_both_strings": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": "NAME = \"t\"\n\n\ndef go(mk):\n    g, at = getattr(mk, '_get_target')(f\"svc.{NAME}\")\n    getattr(mk, '_pa' 'tch')(g, at, len, None, False, None, None, None, {}).start()\n",
+        },
+        "unresolvable-writer",
+    ),
+    "e_attrgetter_private": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'import operator\n\nNAME = "t"\n\n\ndef go(mk):\n    operator.attrgetter(\'_patch_multiple\')(mk)("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_methodcaller_private": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'import operator\n\nNAME = "t"\n\n\ndef go(mk):\n    operator.methodcaller(\'_patch_multiple\', "s" + "vc", t=len)(mk).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_getattribute_private": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    mk.__getattribute__(\'_patch_multiple\')("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "e_fstring_private": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    getattr(mk, f\'_patch_multiple\')("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "f_get_target_setattr": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    g, at = mk._get_target(f"svc.{NAME}")\n    setattr(g(), at, len)\n',
+        },
+        "unresolvable-writer",
+    ),
+    "f_get_target_attr_write": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R12_MAIN_MOCK,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go(mk):\n    g, at = mk._get_target(f"svc.{NAME}")\n    g().t = len\n',
+        },
+        "unresolvable-writer",
+    ),
+    "f_from_mock_get_target_write": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'from unittest.mock import _get_target\n\nNAME = "t"\n\n\ndef go():\n    g, at = _get_target(f"svc.{NAME}")\n    g().t = len\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_get_target_from_as": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'from unittest.mock import _get_target as gt\n\nNAME = "t"\n\n\ndef go():\n    g, at = gt(f"svc.{NAME}")\n    g().t = len\n',
+        },
+        "unresolvable-writer",
+    ),
+    "c_function_scope_from": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from unittest.mock import patch as pp\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go():\n    from compat import pp\n    pp(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "c_class_scope_from": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from unittest.mock import patch as pp\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go():\n    class K:\n        from compat import pp\n    K.pp(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_function_scope_from_as": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from unittest.mock import patch as pp\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go():\n    from compat import pp as zz\n    zz(f"svc.{NAME}", len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_function_scope_private": (
+        {
+            "b.py": _S4_DECOY,
+            "compat.py": "from unittest.mock import _patch_multiple as pm\n",
+            "main.txt": _R10_MAIN_GO,
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go():\n    from compat import pm\n    pm("s" + "vc", t=len).start()\n',
+        },
+        "unresolvable-writer",
+    ),
+    "i_relative_function_scope": (
+        {
+            "b.py": _S4_DECOY,
+            "main.txt": _R10_MAIN_GO,
+            "pkg/__init__.py": "",
+            "pkg/compat.py": "from unittest.mock import patch as pp\n",
+            "pkg/user.py": 'NAME = "t"\n\n\ndef run():\n    from .compat import pp\n\n    pp(f"svc.{NAME}", len).start()\n',
+            "svc.py": _S4_SVC,
+            "use.py": _R10_USE,
+            "w.py": 'NAME = "t"\n\n\ndef go():\n    from pkg.user import run\n    run()\n',
+        },
+        "unresolvable-writer",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(R12_TRACED))
+def test_r12_traced_routes_fail_closed(tmp_path: Path, case: str) -> None:
+    files, cause = R12_TRACED[case]
+    root = _write(tmp_path, files)
+    off, _structural, on, label = _run(root, "use.py", "t")
+    assert off["resolution"] == "ambiguous", case
+    assert on == off, case
+    assert label == f"none(run-tainted:{cause})", case
