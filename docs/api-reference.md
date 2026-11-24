@@ -409,6 +409,12 @@ Parallel helpers default to `use_cache=True` and
 `~/.cache/treesitter-chunker/ast_cache.db`. Pass `cache_dir=` to
 `ParallelChunker`, `chunk_files_parallel` or `chunk_directory_parallel` to keep
 the cache in a private directory, or `use_cache=False` to disable it.
+Automatic stores bind chunks to the source bytes used for extraction. A cold
+streaming worker copies the source to private temporary storage and falls back
+to uncached streaming if scratch storage is unavailable. Version 3.1 refreshes
+each eligible file, language and mode on first use after upgrade. With manual
+`cache_chunks()` calls, keep the path representative of the supplied chunks
+until the store completes.
 
 ### chunk_files_parallel
 
