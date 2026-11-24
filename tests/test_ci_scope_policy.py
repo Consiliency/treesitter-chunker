@@ -164,23 +164,121 @@ def test_build_input_inventory():
     assert names <= changes.BUILD_INPUT_ROOT_FILES
 
 
+ALL_PR_LANES = {
+    "schema": "1",
+    "code": "true",
+    "docs": "true",
+    "policy": "true",
+    "full": "false",
+}
+
+
 @pytest.mark.parametrize(
-    "raw", [b"M\0a", b"M\0", b"R100\0a\0b\0", b"M\0\xff\0", b"M\0../a\0", b"M\0/a\0"]
+    "raw",
+    [
+        b"M\0a",
+        b"M\0",
+        b"M\0\0",
+        b"\xff\0a\0",
+        b"R100\0a\0b\0",
+        b"C100\0a\0b\0",
+        b"R100\0a\0",
+        b"C100\0a\0",
+        b"M\0../a\0",
+        b"M\0/\xff.md\0",
+        b"M\0docs//\xff.md\0",
+        b"M\0docs/./\xff.md\0",
+        b"M\0docs/../\xff.md\0",
+    ],
 )
 def test_malformed_diff(raw):
-    with pytest.raises((ValueError, UnicodeError)):
+    with pytest.raises(ValueError):
         changes.parse_diff(raw)
 
 
+@pytest.mark.parametrize("bad", [b"X\0a\0", b"A\0../a\0"])
+@pytest.mark.parametrize("bad_first", [True, False])
+def test_byte_path_cannot_mask_invalid_record(bad, bad_first):
+    valid = b"M\0docs/\xff.md\0"
+    with pytest.raises(ValueError):
+        changes.parse_diff(bad + valid if bad_first else valid + bad)
+
+
+@pytest.mark.parametrize(
+    ("status", "path"),
+    [
+        (b"A", b"name-\xff.md"),
+        (b"M", b"docs/\xc3\xa9-\x80.png"),
+        (b"D", b"plans/\xe2\x82.md"),
+        (b"T", b"specs/\xfe.md"),
+        (b"A", b"name-\xff.py"),
+    ],
+)
+def test_byte_paths_require_all_pr_lanes(status, path):
+    parsed = changes.parse_diff(status + b"\0" + path + b"\0")
+    [(parsed_status, parsed_path)] = parsed
+    assert parsed_status == status.decode("ascii")
+    assert parsed_path.encode("utf-8", "surrogateescape") == path
+    assert changes.classify(parsed) == ALL_PR_LANES
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"D\0docs/old.md\0A\0docs/new-\xff.md\0",
+        b"D\0docs/old-\xff.md\0A\0docs/new.md\0",
+    ],
+)
+def test_byte_path_in_move_runs_all_pr_lanes(raw):
+    assert changes.classify(changes.parse_diff(raw)) == ALL_PR_LANES
+
+
 def test_nul_diff():
-    assert changes.parse_diff("D\0README.md\0A\0docs/é\nx.md\0".encode()) == [
-        ("D", "README.md"),
-        ("A", "docs/é\nx.md"),
-    ]
+    path = "docs/é\ufffd\r\nx.md"
+    parsed = changes.parse_diff(("D\0notes.md\0A\0" + path + "\0").encode("utf-8"))
+    assert parsed == [("D", "notes.md"), ("A", path)]
+    assert changes.classify(parsed) == {**ALL_PR_LANES, "code": "false"}
 
 
 def git(repo, *args):
     return subprocess.check_output(["git", "-C", str(repo), *args]).decode().strip()
+
+
+def test_real_pr_byte_path(tmp_path, monkeypatch):
+    repo = tmp_path
+    git(repo, "init", "-b", "main")
+    git(repo, "config", "user.email", "fixture@example.test")
+    git(repo, "config", "user.name", "fixture")
+    git(repo, "commit", "--allow-empty", "-m", "base")
+    base = git(repo, "rev-parse", "HEAD")
+    git(repo, "switch", "-c", "byte-path")
+
+    # Populate the index directly so the host filesystem never sees the name.
+    cmd = ["git", "-C", str(repo)]
+    blob = subprocess.check_output([*cmd, "hash-object", "-w", "--stdin"], input=b"doc")
+    path = b"docs/name-\xff.md"
+    subprocess.run(
+        [*cmd, "update-index", "-z", "--index-info"],
+        input=b"100644 " + blob.strip() + b"\t" + path + b"\0",
+        check=True,
+    )
+    git(repo, "commit", "--quiet", "-m", "add byte path")
+    head = git(repo, "rev-parse", "HEAD")
+    raw = subprocess.check_output(
+        [*cmd, "diff", "--no-renames", "--name-status", "-z", base, head, "--"]
+    )
+    assert raw == b"A\0" + path + b"\0"
+
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(changes, "repo_url", lambda _repo: str(repo))
+    event = {
+        "repository": {"default_branch": "main"},
+        "pull_request": {
+            "base": {"sha": base, "ref": "main", "repo": {}},
+            "head": {"sha": head, "repo": {}},
+        },
+    }
+    assert changes.detect("pull_request", event) == ALL_PR_LANES
 
 
 def test_real_pr_graph_and_force_push(tmp_path, monkeypatch):
