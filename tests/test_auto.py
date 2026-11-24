@@ -719,3 +719,19 @@ def test_mixed_directory_wrappers(real_api, tmp_path):
         "file_path": str(tmp_path / "data.unknown")
     }
     assert core.chunk_file(tmp_path / "notes.md", "markdown") == []
+
+
+def test_runtime_version_read_error_falls_back(real_api, tmp_path):
+    source = "def hello():\n    return 42\n"
+    path = tmp_path / "example.py"
+    path.write_bytes(source.encode())
+    failure = OSError(5, "injected EIO reading tree-sitter metadata")
+    with patch.object(auto, "distribution_version", side_effect=failure) as lookup:
+        result = real_api.auto_chunk_file(path)
+    assert lookup.call_count == 1
+    assert result.fallback_used and result.chunks
+    assert result.metadata == {
+        "file_path": str(path),
+        "fallback_reason": "tree_sitter_failed",
+    }
+    assert "".join(c["content"] for c in result.chunks) == source

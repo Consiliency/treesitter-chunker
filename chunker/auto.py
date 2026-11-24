@@ -327,14 +327,14 @@ class ZeroConfigAPI(ZeroConfigContract):
                     )
                 else:
                     extracted = chunk_file(file_path, language)
-        except (LanguageNotFoundError, ParserError, OSError, IndexError):
-            if language == "baml":
-                raise
-        else:
-            if extracted is not None:
+                # Built inside the handler, as before, so a failed runtime
+                # version lookup falls back like any other read error.
                 return _extraction_result(
                     extracted, language, unruled_source, file_path
                 )
+        except (LanguageNotFoundError, ParserError, OSError, IndexError):
+            if language == "baml":
+                raise
         content = file_path.read_text(encoding="utf-8", errors="replace")
         code_chunks = self._fallback_chunker.chunk_text(
             content,
@@ -480,12 +480,10 @@ class ZeroConfigAPI(ZeroConfigContract):
                     )
                 if not extracted and not _has_chunk_rules(language):
                     unruled_source = text
+                return _extraction_result(extracted, language, unruled_source)
         except (LanguageNotFoundError, ParserError, IndexError, KeyError):
             if language == "baml":
                 raise
-        else:
-            if extracted is not None:
-                return _extraction_result(extracted, language, unruled_source)
         code_chunks = self._fallback_chunker.chunk_in_memory(text)
         chunks = []
         for chunk in code_chunks:
