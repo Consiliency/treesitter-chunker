@@ -2118,9 +2118,9 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     ),
     (
         "s4-frame-readers-words",
-        PYS,
-        '_TOKEN_WORDS = re.compile(r"[^A-Za-z0-9_]+")',
-        '_TOKEN_WORDS = re.compile(r"[.:]")',
+        PYM,
+        "if words & _FRAME_READERS:",
+        "if set(ps._DOTTED_SPLIT.split(value)) & _FRAME_READERS:",
     ),
     (
         "s4-locals-value-cause",
