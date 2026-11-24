@@ -44,7 +44,9 @@ In Python `imports` mode a plain module-level getter can return an imported
 module, or a tuple of modules. For example, if `get()` returns `svc`, a
 function-local `m = get()` followed by `m.t()` can preserve the proof for
 a call to `t()` inside `svc`. A write such as `get().t = replacement`
-invalidates that proof. A nested function that captures the local import
+invalidates that proof. Passing the result or its alias to `setattr` or
+`delattr` exposes the whole module, even with a literal key, because another
+module can replace the callable. A nested function that captures the local import
 or result alias exposes the module because other code can access its cell.
 Python can therefore resolve fewer calls in `imports` than in `structural`.
 Other cross-file writes to closure cells or frame locals can still leave a

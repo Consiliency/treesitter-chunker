@@ -1024,8 +1024,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "f8-writer-attribute-walk",
         PYM,
-        "            found |= current\n",
-        "            pass\n",
+        "                    if current - found:",
+        "                    if False:",
     ),
     (
         "e6-6-first-attribute-write",
@@ -1847,10 +1847,11 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "result-value",
         PYM,
-        "        for ref, prefix in sources:\n            emit(ref, prefix, position, chain)\n"
-        "        return False\n",
-        '        for ref, prefix in sources:\n            if position == "write":\n'
-        "                emit(ref, prefix, position, chain)\n        return False\n",
+        "        for ref, prefix in sources:\n"
+        "            emit(ref, prefix, position, chain)\n",
+        "        for ref, prefix in sources:\n"
+        '            if position == "write":\n'
+        "                emit(ref, prefix, position, chain)\n",
     ),
     (
         "result-write",
@@ -1880,8 +1881,8 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "result-member-call",
         PYM,
-        "            return bool(following) and handle(following, found[2])",
-        "            return False",
+        "            handle(following, found[2])\n",
+        "",
     ),
     (
         "result-call-step",
@@ -1906,31 +1907,28 @@ MUTATIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "alias-unplaced-read",
         PYM,
-        "                if decided is not None and id(decided) != scope_id:",
-        "                if id(decided) != scope_id:",
+        "            if decided is not None and id(decided) != scope_id:",
+        "            if id(decided) != scope_id:",
     ),
     (
         "alias-other-scope",
         PYM,
-        "                if decided is not None and id(decided) != scope_id:\n"
-        "                    continue\n",
+        "            if decided is not None and id(decided) != scope_id:\n"
+        "                continue\n",
         "",
     ),
     (
         "alias-nested-scope",
         PYM,
-        "                    if nested:\n"
-        '                        emit((item[0], item[1]), item[2], "value", [])\n'
-        "                    else:\n"
-        "                        sources.append(((item[0], item[1]), item[2]))\n",
-        "                    sources.append(((item[0], item[1]), item[2]))\n",
+        "            if own_def is None or read_scope is None or read_scope.id != own_def.id:",
+        "            if False:",
     ),
     (
         "alias-new-reads",
         PYM,
-        "        alias_names = {name for _scope, name in aliases}\n        for ident in reads:",
-        "        alias_names = alias_names if 'alias_names' in dir() else "
-        "{name for _scope, name in aliases}\n        for ident in reads:",
+        "    while pending:\n        (scope_id, name), items = pending.popitem()",
+        "    for _ in range(len(pending)):\n"
+        "        (scope_id, name), items = pending.popitem()",
     ),
     (
         "result-scope",

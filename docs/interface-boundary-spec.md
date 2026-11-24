@@ -402,7 +402,9 @@ whole module and every module it exposes unprovable. A plain module-level
 function can return an import-rooted chain or a tuple of such values.
 When the resolver can account for the getter and its uses, it follows the
 returned modules through member calls and ordinary function-local aliases.
-A write through the result invalidates the affected name. Passing the
+A syntactic member write through the result invalidates the affected name.
+Passing the result or a local alias to `setattr` or `delattr` exposes its
+whole value, including when the attribute name is a literal. Passing the
 result to unknown code, capturing a local alias or imported module in a
 nested scope, or exposing the getter itself invalidates proofs for the
 modules made reachable. These rules affect the written module's own

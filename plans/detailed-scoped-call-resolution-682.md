@@ -2251,6 +2251,9 @@ the import proofs themselves (9.4-9.6). `structural` output is unchanged.
   puts the alias in a cell another module may read and write
   (`fn.__closure__[i].cell_contents`, `inspect.getclosurevars(fn).nonlocals`;
   executive ruling R-706-2, B1). A discarded expression statement is inert.
+  The target of a `setattr` or `delattr` call counts as an argument escape
+  even with a literal key (R-706-6). A different module can replace the
+  callable. Syntactic member writes still taint the named binding.
   Anything else (an argument, a return, a container, a store, a module-scope
   or class-body binding, iteration) is a whole taint of everything the
   getter may return. A getter referenced anywhere but as a direct callee (in
@@ -3399,7 +3402,7 @@ users.
 | P23. A formatting callback cuts `__main__` out of a larger component, such as a format spec containing `x__main__` | (b) | Documented limit (R-698-1) | treesitter-chunker#699 |
 | P23. A name joined across a replacement field, such as `f'{P():__ma{""}in__}'` | (b) | Documented limit (R-698-2) | treesitter-chunker#699 |
 | A file exposes its import bindings through its own namespace, for example through `globals()` or `locals()` | Closed | Closed by treesitter-chunker#726 for the namespace routes in §9.10 (R-724-1 through R-724-7). | treesitter-chunker#724 |
-| A helper returns an imported module and code writes through the result | Closed | Tracked getters and function-local result aliases follow §9.10 (R-706-1 through R-706-4). The frame and loader limits are recorded under R10/R12. Module-scope aliases remain a separate follow-up. | treesitter-chunker#706, treesitter-chunker#725 |
+| A helper returns an imported module and code writes through the result | Closed | Tracked getters and function-local result aliases follow §9.10 (R-706-1 through R-706-4 and R-706-6). The frame and loader limits are recorded under R10/R12. Module-scope aliases remain a separate follow-up. | treesitter-chunker#706, treesitter-chunker#725 |
 | A function's body is replaced through `__code__` | (b) | The definition can still be the right binding. Spelled writes of `__code__`, `__closure__`, `__defaults__` and `__kwdefaults__` already cause Tier 2 shutoff (PR 6, N-1). | treesitter-chunker#699 |
 | Cross-file submodule rebinding, including loading by a computed name in `__init__.py`, and cross-file builtin injection outside recognized triggers | (c) | Open | treesitter-chunker#699 |
 | Modules loaded under a loader-chosen name or acquired by configured plugins | (c) | Open. Named module escapes are already tracked. | treesitter-chunker#699 |

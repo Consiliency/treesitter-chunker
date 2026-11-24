@@ -811,10 +811,10 @@ def _valid_py_use(use: object) -> bool:
         return True
     if position not in _PY_RESULT_POSITIONS:
         return False
-    # setattr/delattr accept any string as the final write target, including
-    # the spelling we use for a call step. Only the preceding path is syntax.
-    rest = use[2:-1] if position.endswith("-write") else use[2:]
-    if position.endswith("-call") and (not rest or not rest[-1].isidentifier()):
+    rest = use[2:]
+    if position.endswith(("-write", "-call")) and (
+        not rest or not rest[-1].isidentifier()
+    ):
         return False
     marks = rest.count(_PY_CALL_MARK)
     if not 1 <= marks <= _PY_CALL_STEPS:

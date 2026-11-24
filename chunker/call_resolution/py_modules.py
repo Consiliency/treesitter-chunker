@@ -2286,9 +2286,8 @@ def _classify_result(analysis: Any, node: Any, aliases: bool) -> tuple[Any, ...]
         # name, and its result is a value to follow (the member may be a
         # getter of the module).
         return ("call", chain, call) if chain else ("value", chain)
-    name = _setattr_write(analysis, top)
-    if name is not None:
-        return "write", [*chain, name]
+    # Even a bare setattr or delattr can be replaced by another module.
+    # Its target argument follows the ordinary value-escape path (R-706-6).
     if _inert_context(top):
         return None
     parent = top.parent
@@ -2360,14 +2359,11 @@ def _scan_results(
     source = analysis.source
     own = frozenset(facts.getters)
     records = facts.uses
-    # (scope id, name) -> {(base, callee, prefix)}: what a result alias may
-    # hold, the prefix being the chain read off the call result.
-    aliases: dict[tuple[int, str], set[tuple[str, tuple[str, ...], tuple[str, ...]]]]
-    aliases = {}
-    # scope id -> the ``def`` node of that alias scope.
-    alias_defs: dict[int, Any] = {}
     Ref = tuple[str, tuple[str, ...]]
     Source = tuple[Ref, tuple[str, ...]]
+    aliases: dict[tuple[int, str], set[Source]] = {}
+    pending: dict[tuple[int, str], set[Source]] = {}
+    alias_defs: dict[int, Any] = {}
     prefixes: dict[Ref, set[tuple[str, ...]]] = {}
     escaped: set[Ref] = set()
     result_uses: dict[Ref, set[tuple[str, ...]]] = {}
@@ -2384,17 +2380,16 @@ def _scan_results(
             (base, kind, *callee, CALL_MARK, *prefix, *chain)
         )
 
-    def handle(sources: list[Source], node: Any) -> bool:
-        """Classify one use for every source; whether an alias grew."""
+    def handle(sources: list[Source], node: Any) -> None:
+        """Classify this use and enqueue newly discovered alias sources."""
         sources = [(ref, prefix) for ref, prefix in sources if ref not in escaped]
         if not sources:
-            return False
+            return
         found = _classify_result(analysis, node, not gate)
         if found is None:
-            return False
+            return
         if found[0] == "alias":
             _kind, scope, names, chain = found
-            grew = False
             for ref, prefix in sources:
                 if ref in escaped:
                     continue
@@ -2415,12 +2410,13 @@ def _scan_results(
                 paths.add(full)
                 alias_defs[id(scope)] = scope.node
                 for name in names:
-                    bucket = aliases.setdefault((id(scope), name), set())
-                    item = (ref[0], ref[1], full)
+                    key = (id(scope), name)
+                    bucket = aliases.setdefault(key, set())
+                    item = (ref, full)
                     if item not in bucket:
                         bucket.add(item)
-                        grew = True
-            return grew
+                        pending.setdefault(key, set()).add(item)
+            return
         position, chain = found[0], found[1]
         if position == "call" and not _unsafe_dunder(chain):
             following: list[Source] = []
@@ -2429,10 +2425,10 @@ def _scan_results(
                     emit(ref, prefix, "value", [])
                 else:
                     following.append((ref, (*prefix, *chain, CALL_MARK)))
-            return bool(following) and handle(following, found[2])
+            handle(following, found[2])
+            return
         for ref, prefix in sources:
             emit(ref, prefix, position, chain)
-        return False
 
     stack = [analysis.root]
     calls: list[Any] = []
@@ -2446,55 +2442,38 @@ def _scan_results(
         if refs:
             handle([(ref, ()) for ref in refs], call)
 
-    reads = [ident for ident in analysis.identifier_nodes if _holder_read(ident)]
-    for ident in reads:
-        for spelling in sorted(ps._spellings(ident, source) & own):
-            if ps._callee_call(ident) is None:
+    reads: dict[str, list[Any]] = {}
+    for ident in analysis.identifier_nodes:
+        if not _holder_read(ident):
+            continue
+        for spelling in ps._spellings(ident, source):
+            if pending:
+                reads.setdefault(spelling, []).append(ident)
+            if spelling in own and ps._callee_call(ident) is None:
                 # The getter handed on as a value: whatever it returns escapes.
                 records.add(("", "own-value", spelling, CALL_MARK))
-    # A read of an alias is any identifier of its spelling whose lookup
-    # decides in the alias's scope (closures included) or cannot say where.
-    # A read from a nested scope (a closure, lambda, comprehension or class
-    # body) is an escape of the alias: the capture puts it in a cell another
-    # module may read and write (``fn.__closure__[i].cell_contents``,
-    # ``inspect.getclosurevars(fn).nonlocals``). An alias read may bind a new
-    # alias, so the reads are found again each round; every (read, source)
-    # pair is handled once.
+    # Each (scope, alias, source) is enqueued once. Visit only reads of that
+    # spelling, including every possible binding when lookup is inconclusive.
     deciding: dict[int, Any] = {}
-    done: dict[int, set[tuple[str, tuple[str, ...], tuple[str, ...]]]] = {}
-    changed = bool(aliases)
-    while changed:
-        changed = False
-        alias_names = {name for _scope, name in aliases}
-        for ident in reads:
-            spellings = ps._spellings(ident, source)
-            if not spellings & alias_names:
-                continue
+    while pending:
+        (scope_id, name), items = pending.popitem()
+        for ident in reads.get(name, ()):
             if ident.id not in deciding:
                 deciding[ident.id] = analysis.lookup_scope(ident)
             decided = deciding[ident.id]
-            seen = done.setdefault(ident.id, set())
-            sources: list[Source] = []
+            if decided is not None and id(decided) != scope_id:
+                continue
             read_scope = _scope_node(ident)
-            for (scope_id, name), items in list(aliases.items()):
-                if name not in spellings:
-                    continue
-                if decided is not None and id(decided) != scope_id:
-                    continue
-                own_def = alias_defs[scope_id]
-                nested = (
-                    own_def is None or read_scope is None or read_scope.id != own_def.id
-                )
-                for item in sorted(items - seen):
-                    seen.add(item)
-                    if (item[0], item[1]) in escaped:
-                        continue
-                    if nested:
-                        emit((item[0], item[1]), item[2], "value", [])
-                    else:
-                        sources.append(((item[0], item[1]), item[2]))
-            if sources and handle(sources, ident):
-                changed = True
+            own_def = alias_defs[scope_id]
+            sources = [
+                (ref, prefix) for ref, prefix in sorted(items) if ref not in escaped
+            ]
+            if own_def is None or read_scope is None or read_scope.id != own_def.id:
+                # A nested scope can expose the alias through its closure cell.
+                for ref, prefix in sources:
+                    emit(ref, prefix, "value", [])
+            else:
+                handle(sources, ident)
     for uses in result_uses.values():
         records.update(uses)
 
@@ -3242,6 +3221,8 @@ class _Builder:
             if directory:
                 nodes.add(directory.replace("/", "."))
         self.nodes = frozenset(nodes)
+        self._module_refs: dict[tuple[str, str], set[str]] = {}
+        self._pending_refs: dict[tuple[str, str], set[str]] | None = None
         self._getter_names: frozenset[str] | None = None
         self._returned: dict[tuple[str, str], set[str]] = {}
 
@@ -3326,17 +3307,41 @@ class _Builder:
         binding of the name, E6-2, and star sources). A use of ``m`` (``m.t =
         f``, ``m`` handed on) and a re-export of it write what CPython bound,
         not only ``a/b/c.py``."""
-        found = set(self.targets(ref, writer))
-        parts = ref.split(".")
-        if ref and not ref.startswith(".") and len(parts) > 1:
-            current = self.targets(parts[0], writer)
-            for part in parts[1:]:
-                following: set[str] = set()
-                for node in current:
-                    following |= self.attr_values(node, part, set())
-                current = following
-            found |= current
-        return found
+        if ref.startswith(".") or "." not in ref:
+            return self.targets(ref, writer)
+        key = (ref, writer)
+        if key in self._module_refs:
+            return self._module_refs[key]
+        # A dotted package import may read the very attribute it binds (or
+        # reach it through other imports). Start with the physical modules,
+        # then add attribute candidates until every discovered path is stable.
+        if self._pending_refs is not None:
+            if key not in self._pending_refs:
+                self._pending_refs[key] = self.targets(ref, writer)
+            return self._pending_refs[key]
+        pending = {key: self.targets(ref, writer)}
+        self._pending_refs = pending
+        try:
+            changed = True
+            while changed:
+                changed = False
+                count = len(pending)
+                for (dotted, importer), found in list(pending.items()):
+                    parts = dotted.split(".")
+                    current = self.targets(parts[0], importer)
+                    for part in parts[1:]:
+                        following: set[str] = set()
+                        for node in current:
+                            following |= self.attr_values(node, part, set())
+                        current = following
+                    if current - found:
+                        found.update(current)
+                        changed = True
+                changed |= len(pending) != count
+            self._module_refs.update(pending)
+        finally:
+            self._pending_refs = None
+        return self._module_refs[key]
 
     def starts(self, dotted: str, writer: str = "") -> set[str]:
         """The run nodes an absolute dotted name may denote: the root-relative
@@ -3548,7 +3553,6 @@ class _Builder:
         kind = position.split("-", 1)[1]
         if not callee:
             return
-        write_target = rest.pop() if kind == "write" and rest else None
         getters: set[tuple[str, str]] = set()
         if position.startswith("own-"):
             if callee[0] in self.getters_of(writer):
@@ -3584,8 +3588,6 @@ class _Builder:
                         for inner in self.getter_values(node, segment[-1]):
                             current |= self.returned(inner)
                 segment = []
-            if write_target is not None:
-                segment.append(write_target)
             self.walk_from(current, kind, segment, names, whole)
 
     def walk_from(

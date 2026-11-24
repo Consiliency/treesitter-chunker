@@ -577,6 +577,8 @@ def test_facts_record_getters_and_result_records(tmp_path: Path) -> None:
         lambda b: b["uses"].append(["get.", "result-value", "get", "()"]),
         lambda b: b["uses"].append(["get", "result-write", "get", "()", "()", "t"]),
         lambda b: b["uses"].append(["get", "result-write", "get", "()"]),
+        lambda b: b["uses"].append(["get", "result-write", "get", "()", "()"]),
+        lambda b: b["uses"].append(["get", "result-write", "get", "()", "bad member!"]),
         lambda b: b["uses"].append(["get", "result-call", "get", "()"]),
         lambda b: b["uses"].append(["get", "result-value", "get"]),
         lambda b: b["uses"].append(["get", "result-value", "()", "t"]),
@@ -681,20 +683,89 @@ def test_incremental_cache_reextracts_malformed_getter_record(
     )
 
 
-@pytest.mark.parametrize("attribute", ["()", "", "bad member!"])
-def test_literal_getter_write_keeps_arbitrary_attribute_name(
+@pytest.mark.parametrize("attribute", ["t", "()", "", "bad member!"])
+def test_literal_setter_target_exposes_getter_result(
     tmp_path: Path, attribute: str
 ) -> None:
     use = f"from get import get\n\ndef go():\n    setattr(get(), {attribute!r}, 1)\n"
     root = _write(tmp_path, _getter_tree(use))
-    assert ["get", "result-write", "get", "()", attribute] in _bindings(root, "use.py")[
-        "uses"
-    ]
+    assert ["get", "result-value", "get", "()"] in _bindings(root, "use.py")["uses"]
     _, _, context = _context(root)
-    assert (
-        context.py_modules.taint_reason("svc.py", "svc.py", attribute) == "reassigned"
+    assert context.py_modules.taint_reason("svc.py", "svc.py", "w") == "module-escape"
+
+
+@pytest.mark.parametrize("method", ["setattr", "delattr"])
+@pytest.mark.parametrize("route", ["local", "star", "module", "builtins"])
+@pytest.mark.parametrize("target", ["get()", "alias"])
+def test_shadowed_writer_with_getter_result_escapes(
+    tmp_path: Path, method: str, route: str, target: str
+) -> None:
+    use = "from get import get\nimport other\n"
+    if route == "star":
+        use += "from bridge import *\n"
+    use += "\ndef go():\n"
+    if route == "local":
+        use += f"    if True:\n        from helper import custom as {method}\n"
+    if target == "alias":
+        use += "    alias = get()\n"
+    args = f"{target}, 'unrelated'" + (", other.t" if method == "setattr" else "")
+    files = _getter_tree(use + f"    {method}({args})\n")
+    files["helper.py"] = (
+        "import other\n\ndef custom(obj, key, *args):\n    obj.t = other.t\n"
     )
-    assert _resolutions(root, "svc.py", expected_file="svc.py") == ["resolved"]
+    if route == "star":
+        files["bridge.py"] = f"from helper import custom as {method}\n"
+    if route in {"module", "builtins"}:
+        namespace = "use" if route == "module" else "builtins"
+        files["main.py"] = (
+            f"import {namespace} as ns\nfrom helper import custom\nns.{method} = custom\n"
+            "from use import go\nfrom svc import u\ngo()\nprint(u())\n"
+        )
+    root = _write(tmp_path, files)
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
+@pytest.mark.parametrize("deep", [False, True])
+def test_dotted_import_cycle_retains_submodule_and_getter(
+    tmp_path: Path, deep: bool
+) -> None:
+    files = _getter_tree("")
+    if deep:
+        files["pkg/__init__.py"] = "import pkg.middle as middle\n"
+        files["pkg/middle/__init__.py"] = "import pkg.middle.item as item\n"
+        module = "pkg.middle.item"
+    else:
+        files["pkg/__init__.py"] = "import pkg.item as item\n"
+        module = "pkg.item"
+    files[module.replace(".", "/") + ".py"] = "from get import get\n"
+    files["use.py"] = (
+        f"import {module} as it\nimport other\n\ndef go():\n    it.get().t = other.t\n"
+    )
+    root = _write(tmp_path, files)
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
+def test_dotted_import_cycle_retains_rebound_package_attribute(tmp_path: Path) -> None:
+    # All three imports of pkg.item.next load the same sys.modules entry.
+    # IMPORT_FROM follows the current pkg.item, which changes after each bind.
+    files = _getter_tree(
+        "import pkg, other\n\ndef go():\n    pkg.item.get().t = other.t\n"
+    )
+    files.update(
+        {
+            "pkg/__init__.py": "import pkg.item as item\n"
+            + "import pkg.item.next as item\n" * 3,
+            "pkg/item/__init__.py": "",
+            "pkg/item/next.py": "import step1 as next\n",
+            "step1.py": "import step2 as next\n",
+            "step2.py": "from get import get\n",
+        }
+    )
+    root = _write(tmp_path, files)
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
 
 
 def test_branching_result_alias_paths_collapse_to_one_escape(tmp_path: Path) -> None:
