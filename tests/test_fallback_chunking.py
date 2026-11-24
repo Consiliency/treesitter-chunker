@@ -391,3 +391,25 @@ class TestFallbackManager:
                 ), f"Chunk {i} byte span does not slice back to content"
         finally:
             temp_path.unlink(missing_ok=True)
+
+
+def test_zero_config_crlf_windows_at_unicode_path(tmp_path):
+    from chunker.auto import ZeroConfigAPI
+    from chunker.grammar.registry import UniversalLanguageRegistry
+
+    path = tmp_path / "résumé-日本.md"
+    data = b"repeated\r\n" * 50 + "café\r\n".encode()
+    path.write_bytes(data)
+    api = ZeroConfigAPI(
+        UniversalLanguageRegistry(tmp_path, None, None, tmp_path / "cache")
+    )
+    result = api.auto_chunk_file(path)
+    assert result.metadata == {
+        "file_path": str(path),
+        "fallback_reason": "no_chunk_rules",
+    }
+    assert [(c["start_line"], c["end_line"]) for c in result.chunks] == [
+        (1, 50),
+        (51, 51),
+    ]
+    assert "".join(c["content"] for c in result.chunks) == data.decode("utf-8")

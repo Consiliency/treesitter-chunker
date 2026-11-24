@@ -10,13 +10,15 @@ from __future__ import annotations
 import re
 import warnings
 from importlib.metadata import version as distribution_version
+from io import StringIO
+from itertools import batched
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from .chunker import chunk_file_with_token_limit, chunk_text_with_token_limit
 from ._internal.registry import baml_companion_available
 from .contracts.auto_contract import AutoChunkResult, ZeroConfigContract
-from .core import chunk_file, chunk_text, ensure_regular_file
+from .core import chunk_file, chunk_text, ensure_regular_file, resolve_chunk_predicates
 from .exceptions import (
     BamlExtraRequiredError,
     ChunkerError,
@@ -24,9 +26,76 @@ from .exceptions import (
     ParserError,
 )
 from .fallback.sliding_window_fallback import SlidingWindowFallback
+from .languages import language_config_registry
+from .parser import get_parser
 
 if TYPE_CHECKING:
     from .contracts.registry_contract import UniversalRegistryContract
+    from .types import CodeChunk
+
+
+def _has_chunk_rules(language: str) -> bool:
+    # Configured languages own their empty-result policy, including custom rules.
+    if language_config_registry.get(language) is not None:
+        return True
+    grammar = get_parser(language).language
+    if grammar is None:
+        return True
+    select, ignore = resolve_chunk_predicates(language)
+    return any(
+        grammar.node_kind_is_visible(i)
+        and (kind := grammar.node_kind_for_id(i))
+        and select(kind)
+        and not ignore(kind)
+        for i in range(grammar.node_kind_count)
+    )
+
+
+def _extraction_result(
+    chunks: list[CodeChunk],
+    language: str,
+    unruled_source: str | None,
+    file_path: Path | None = None,
+) -> AutoChunkResult:
+    metadata = {"file_path": str(file_path)} if file_path is not None else {}
+    if (
+        not chunks
+        and unruled_source
+        and not unruled_source.isspace()
+        and "\0" not in unruled_source
+    ):
+        windows = []
+        start_line = 1
+        # Universal newline boundaries, retaining the original line endings.
+        with StringIO(unruled_source, newline="") as source:
+            for lines in batched(source, 50, strict=False):
+                end_line = start_line + len(lines) - 1
+                windows.append(
+                    {
+                        "content": "".join(lines),
+                        "type": "fallback_lines",
+                        "start_line": start_line,
+                        "end_line": end_line,
+                        "metadata": {"fallback_reason": "no_chunk_rules"},
+                    }
+                )
+                start_line = end_line + 1
+        metadata["fallback_reason"] = "no_chunk_rules"
+        return AutoChunkResult(windows, language, False, True, metadata)
+
+    chunk_dicts = []
+    for chunk in chunks:
+        item: dict[str, Any] = {
+            "content": chunk.content,
+            "type": chunk.node_type,
+            "start_line": chunk.start_line,
+            "end_line": chunk.end_line,
+        }
+        if getattr(chunk, "metadata", None):
+            item["metadata"] = chunk.metadata
+        chunk_dicts.append(item)
+    metadata["tree_sitter_version"] = distribution_version("tree-sitter")
+    return AutoChunkResult(chunk_dicts, language, False, False, metadata)
 
 
 class ZeroConfigAPI(ZeroConfigContract):
@@ -36,7 +105,8 @@ class ZeroConfigAPI(ZeroConfigContract):
     - Detects languages from file extensions and content
     - Uses grammars from installed, admitted sources (package-supplied, or
       local grammars under their pins); it never downloads or builds one
-    - Falls back to text chunking when no grammar is available
+    - Falls back to text chunking for unavailable grammars and for nonblank,
+      NUL-free sources when an unruled grammar yields no chunks
     """
 
     EXTENSION_MAP: ClassVar[dict[str, str]] = {
@@ -179,12 +249,12 @@ class ZeroConfigAPI(ZeroConfigContract):
         language: str | None = None,
         token_limit: int | None = None,
     ) -> AutoChunkResult:
-        """Automatically chunk a file with zero configuration.
+        """Automatically chunk a file, recovering text for grammars without chunk rules.
 
         Args:
             file_path: Path to file
             language: Override language detection
-            token_limit: Optional token limit per chunk
+            token_limit: Optional token limit for structural chunks
 
         Returns:
             Chunking result with metadata
@@ -224,36 +294,43 @@ class ZeroConfigAPI(ZeroConfigContract):
         grammar_downloaded = False
         if language == "baml" and not baml_companion_available():
             raise BamlExtraRequiredError
+        extracted = None
+        unruled_source = None
         try:
             if self.registry.is_language_installed(language):
-                if token_limit:
-                    chunks = chunk_file_with_token_limit(
+                if not _has_chunk_rules(language):
+                    unruled_source = file_path.read_text(
+                        encoding="utf-8",
+                        errors="replace",
+                        newline="",
+                    )
+                    if token_limit:
+                        # Match chunk_file_with_token_limit's universal-newline reader.
+                        normalized = unruled_source.replace("\r\n", "\n").replace(
+                            "\r", "\n"
+                        )
+                        extracted = chunk_text_with_token_limit(
+                            normalized,
+                            language,
+                            token_limit,
+                            file_path=str(file_path),
+                        )
+                    else:
+                        extracted = chunk_text(
+                            unruled_source, language, file_path=str(file_path)
+                        )
+                elif token_limit:
+                    extracted = chunk_file_with_token_limit(
                         file_path,
                         language,
                         max_tokens=token_limit,
                     )
                 else:
-                    chunks = chunk_file(file_path, language)
-                chunk_dicts = []
-                for chunk in chunks:
-                    chunk_dict = {
-                        "content": chunk.content,
-                        "type": chunk.node_type,
-                        "start_line": chunk.start_line,
-                        "end_line": chunk.end_line,
-                    }
-                    if hasattr(chunk, "metadata") and chunk.metadata:
-                        chunk_dict["metadata"] = chunk.metadata
-                    chunk_dicts.append(chunk_dict)
-                return AutoChunkResult(
-                    chunks=chunk_dicts,
-                    language=language,
-                    grammar_downloaded=grammar_downloaded,
-                    fallback_used=False,
-                    metadata={
-                        "file_path": str(file_path),
-                        "tree_sitter_version": distribution_version("tree-sitter"),
-                    },
+                    extracted = chunk_file(file_path, language)
+                # Built inside the handler, as before, so a failed runtime
+                # version lookup falls back like any other read error.
+                return _extraction_result(
+                    extracted, language, unruled_source, file_path
                 )
         except (LanguageNotFoundError, ParserError, OSError, IndexError):
             if language == "baml":
@@ -363,12 +440,14 @@ class ZeroConfigAPI(ZeroConfigContract):
         """Chunk text with installed, admitted grammars or text fallback.
 
         Nothing is downloaded or built: the text is parsed with a grammar an
-        installed, admitted source provides, or chunked by the text fallback.
+        installed, admitted source provides. An unruled grammar that yields no
+        chunks uses line fallback for nonblank, NUL-free text.
 
         Args:
             text: Text content to chunk
             language: Language of the text
-            token_limit: Optional token limit
+            token_limit: Optional token limit for structural chunks
+            include_retrieval_metadata: Enrich structural chunks for retrieval
 
         Returns:
             Chunking result
@@ -382,41 +461,26 @@ class ZeroConfigAPI(ZeroConfigContract):
         grammar_downloaded = False
         if language == "baml" and not baml_companion_available():
             raise BamlExtraRequiredError
+        extracted = None
+        unruled_source = None
         try:
             if self.registry.is_language_installed(language):
                 if token_limit:
-                    chunks = chunk_text_with_token_limit(
+                    extracted = chunk_text_with_token_limit(
                         text,
                         language,
                         max_tokens=token_limit,
                         include_retrieval_metadata=include_retrieval_metadata,
                     )
                 else:
-                    chunks = chunk_text(
+                    extracted = chunk_text(
                         text,
                         language,
                         include_retrieval_metadata=include_retrieval_metadata,
                     )
-                chunk_dicts = []
-                for chunk in chunks:
-                    chunk_dict = {
-                        "content": chunk.content,
-                        "type": chunk.node_type,
-                        "start_line": chunk.start_line,
-                        "end_line": chunk.end_line,
-                    }
-                    if hasattr(chunk, "metadata") and chunk.metadata:
-                        chunk_dict["metadata"] = chunk.metadata
-                    chunk_dicts.append(chunk_dict)
-                return AutoChunkResult(
-                    chunks=chunk_dicts,
-                    language=language,
-                    grammar_downloaded=grammar_downloaded,
-                    fallback_used=False,
-                    metadata={
-                        "tree_sitter_version": distribution_version("tree-sitter")
-                    },
-                )
+                if not extracted and not _has_chunk_rules(language):
+                    unruled_source = text
+                return _extraction_result(extracted, language, unruled_source)
         except (LanguageNotFoundError, ParserError, IndexError, KeyError):
             if language == "baml":
                 raise

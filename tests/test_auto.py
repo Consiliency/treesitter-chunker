@@ -9,6 +9,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 from tree_sitter_language_pack import manifest_languages
 
+from chunker import auto, core, parser
+from chunker.chunker import chunk_file_with_token_limit
+from chunker.grammar.registry import UniversalLanguageRegistry
+from chunker.languages import language_config_registry
+from chunker.languages.base import LanguageConfig
 from chunker.auto import ZeroConfigAPI
 from chunker.contracts.auto_contract import AutoChunkResult
 from chunker.exceptions import ChunkerError, ParserInitError
@@ -399,3 +404,334 @@ class TestZeroConfigAPI:
         assert results == {"python": True, "rust": False, "not-a-language": False}
         install.assert_not_called()
         assert not api.registry.is_language_installed("rust")
+
+
+@pytest.fixture
+def real_api(tmp_path):
+    return ZeroConfigAPI(
+        UniversalLanguageRegistry(tmp_path, None, None, tmp_path / "cache")
+    )
+
+
+def assert_line_fallback(result, language, expected, path=None):
+    reason = {"fallback_reason": "no_chunk_rules"}
+    assert result.language == language
+    assert result.fallback_used is True
+    assert result.grammar_downloaded is False
+    assert result.metadata == (reason | {"file_path": str(path)} if path else reason)
+    assert result.chunks == [
+        {
+            "type": "fallback_lines",
+            "content": content,
+            "start_line": start,
+            "end_line": end,
+            "metadata": reason,
+        }
+        for start, end, content in expected
+    ]
+
+
+@pytest.mark.parametrize(
+    ("name", "language", "source"),
+    [
+        ("valid.asm", "asm", "main:\n    nop\n"),
+        ("valid.css", "css", "p { color: red; }\n"),
+        ("valid.erl", "erlang", "-module(sample).\n"),
+        ("valid.f90", "fortran", "program hello\nend program hello\n"),
+        ("valid.fs", "fsharp", "module Sample\nlet x = 1\n"),
+        ("valid.html", "html", "<p>Hello</p>\n"),
+        ("valid.json", "json", '{"value":1}\n'),
+        ("valid.tex", "latex", "Hello world.\n"),
+        ("valid.md", "markdown", "# Title\n"),
+        ("valid.nim", "nim", "let x = 1\n"),
+        ("valid.pas", "pascal", "program sample;\nbegin\nend.\n"),
+        ("valid.pl", "perl", "my $x = 1;\n"),
+        ("valid.ps1", "powershell", "$x = 1\n"),
+        ("valid.rst", "rst", "Title\n=====\n"),
+        ("valid.v", "verilog", "module sample; endmodule\n"),
+        ("valid.vhdl", "vhdl", "entity sample is\nend sample;\n"),
+        ("CMakeLists.txt", "cmake", 'message("hello")\n'),
+        ("valid.s", "asm", "main:\n    nop\n"),
+        ("override.other", "ini", "[group]\nkey=value\n"),
+    ],
+)
+def test_unruled_grammar(real_api, tmp_path, name, language, source):
+    path = tmp_path / name
+    path.write_bytes(source.encode())
+    override = language if name == "override.other" else None
+    assert real_api.detect_language(path) == (None if override else language)
+    assert not parser.get_parser(language).parse(source.encode()).root_node.has_error
+    expected = [(1, source.count("\n"), source)]
+    assert_line_fallback(
+        real_api.auto_chunk_file(path, language=override), language, expected, path
+    )
+    assert_line_fallback(real_api.chunk_text(source, language), language, expected)
+
+
+@pytest.mark.parametrize(
+    ("language", "source", "contents"),
+    [
+        ("python", "# comment\nx = 1\n", []),
+        ("python", "def f():\n    pass\n", ["def f():\n    pass"]),
+        ("lua", "local x = 1\n", []),
+        ("lua", "function f() return 2 end\n", []),
+        ("lua", "local f = function() return 1 end\n", ["function() return 1 end"]),
+        (
+            "lua",
+            "function f() return 2 end\nlocal g = function() return 1 end\n",
+            ["function() return 1 end"],
+        ),
+    ],
+)
+def test_ruled_extraction(real_api, tmp_path, language, source, contents):
+    assert not parser.get_parser(language).parse(source.encode()).root_node.has_error
+    path = tmp_path / ("example.py" if language == "python" else "example.lua")
+    path.write_bytes(source.encode())
+    for result in (
+        real_api.auto_chunk_file(path),
+        real_api.chunk_text(source, language),
+    ):
+        assert not result.fallback_used
+        assert "fallback_reason" not in result.metadata
+        assert [(c["type"], c["content"]) for c in result.chunks] == [
+            ("function_definition", content) for content in contents
+        ]
+
+
+@pytest.mark.parametrize("source", ["", " \t\r\n", "\u2003", '{"x":"\0"}'])
+def test_unruled_empty_binary_policy(real_api, tmp_path, source):
+    path = tmp_path / "data.json"
+    path.write_bytes(source.encode())
+    results = [real_api.auto_chunk_file(path)]
+    if source:
+        results.append(real_api.chunk_text(source, "json"))
+    else:
+        with pytest.raises(ValueError, match="Text cannot be empty"):
+            real_api.chunk_text(source, "json")
+    for result in results:
+        assert not result.fallback_used
+        assert result.chunks == []
+
+
+def test_imperfect_utf8(real_api, tmp_path):
+    path = tmp_path / "data.json"
+    path.write_bytes(b'"a\xffb"\r\n')
+    assert_line_fallback(
+        real_api.auto_chunk_file(path), "json", [(1, 1, '"a\ufffdb"\r\n')], path
+    )
+
+
+@pytest.mark.parametrize(
+    ("language", "source", "fallback"),
+    [
+        ("json", '{"x":\n', True),
+        ("lua", "local x =\n", False),
+    ],
+)
+def test_unruled_error_tree(real_api, tmp_path, language, source, fallback):
+    path = tmp_path / f"data.{language}"
+    path.write_bytes(source.encode())
+    assert parser.get_parser(language).parse(source.encode()).root_node.has_error
+    for result, expected_path in (
+        (real_api.auto_chunk_file(path), path),
+        (real_api.chunk_text(source, language), None),
+    ):
+        if fallback:
+            assert_line_fallback(result, language, [(1, 1, source)], expected_path)
+        else:
+            assert not result.fallback_used
+            assert result.chunks == []
+            assert "fallback_reason" not in result.metadata
+
+
+@pytest.mark.parametrize(
+    "source", ['"' + "x\u2028y\u2029" * 55 + '"', '"' + "long word " * 500 + '"']
+)
+def test_unruled_physical_line(real_api, tmp_path, source):
+    path = tmp_path / "data.json"
+    path.write_bytes(source.encode())
+    assert not parser.get_parser("json").parse(source.encode()).root_node.has_error
+    expected = [(1, 1, source)]
+    assert_line_fallback(
+        real_api.auto_chunk_file(path, token_limit=8), "json", expected, path
+    )
+    assert_line_fallback(
+        real_api.chunk_text(
+            source, "json", token_limit=8, include_retrieval_metadata=True
+        ),
+        "json",
+        expected,
+    )
+
+
+def test_unruled_windows(real_api, tmp_path):
+    lines = [f"line {i}" + ("\r", "\r\n", "\n")[i % 3] for i in range(120)] + ["last"]
+    source = "".join(lines)
+    expected = [
+        (1, 50, "".join(lines[:50])),
+        (51, 100, "".join(lines[50:100])),
+        (101, 121, "".join(lines[100:])),
+    ]
+    path = tmp_path / "notes.md"
+    path.write_bytes(source.encode())
+    assert_line_fallback(real_api.auto_chunk_file(path), "markdown", expected, path)
+    assert_line_fallback(real_api.chunk_text(source, "markdown"), "markdown", expected)
+
+
+@pytest.mark.parametrize(
+    ("token_limit", "extractor"),
+    [(None, "chunk_text"), (16, "chunk_text_with_token_limit")],
+)
+def test_unruled_file_snapshot(real_api, tmp_path, token_limit, extractor):
+    path = tmp_path / "notes.md"
+    original = "original paragraph\r\n"
+    path.write_bytes(original.encode())
+    extract = getattr(auto, extractor)
+
+    def replace_after_extraction(*args, **kwargs):
+        chunks = extract(*args, **kwargs)
+        assert chunks == []
+        path.write_bytes(b"new paragraph\r\n")
+        return chunks
+
+    with patch.object(auto, extractor, side_effect=replace_after_extraction) as called:
+        result = real_api.auto_chunk_file(path, token_limit=token_limit)
+    called.assert_called_once()
+    assert_line_fallback(result, "markdown", [(1, 1, original)], path)
+
+
+@pytest.mark.parametrize("limit", [None, 4096])
+def test_nested_json_preserves_existing_extraction(real_api, tmp_path, limit):
+    path = tmp_path / "deep.json"
+    source = "[" * 901 + "\r\n0\r" + "]" * 901
+    path.write_bytes(source.encode())
+    assert not parser.get_parser("json").parse(source.encode()).root_node.has_error
+    expected = (
+        chunk_file_with_token_limit(path, "json", limit)
+        if limit
+        else core.chunk_file(path, "json")
+    )
+    assert expected
+    result = real_api.auto_chunk_file(path, token_limit=limit)
+    assert not result.fallback_used
+    assert result.chunks == [
+        {
+            "content": c.content,
+            "type": c.node_type,
+            "start_line": c.start_line,
+            "end_line": c.end_line,
+            **({"metadata": c.metadata} if c.metadata else {}),
+        }
+        for c in expected
+    ]
+
+
+def test_unruled_active_provider(real_api, tmp_path):
+    source = "a = 1\n"
+    path = tmp_path / "example.md"
+    path.write_bytes(source.encode())
+    for provider, fallback in [("markdown", True), ("lua", False), ("markdown", True)]:
+        active = parser.get_parser(provider)
+        assert not active.parse(source.encode()).root_node.has_error
+        with patch.object(parser._state.factory, "get_parser", return_value=active):
+            for result in (
+                real_api.auto_chunk_file(path),
+                real_api.chunk_text(source, "markdown"),
+            ):
+                assert result.fallback_used is fallback
+                assert bool(result.chunks) is fallback
+
+
+def test_configured_markdown_owns_empty_results(real_api, tmp_path, monkeypatch):
+    class Paragraphs(LanguageConfig):
+        language_id = "markdown"
+        chunk_types = {"paragraph"}
+
+    config = Paragraphs()
+    assert real_api.chunk_text("paragraph\n", "markdown").fallback_used
+    monkeypatch.setattr(
+        language_config_registry, "_configs", language_config_registry._configs.copy()
+    )
+    language_config_registry.register(config)
+    path = tmp_path / "example.md"
+    for source, types in [
+        ("paragraph\n", ["paragraph"]),
+        ("# Title\n", []),
+        ("paragraph\n", []),
+    ]:
+        if source.startswith("paragraph") and not types:
+            config.chunk_types.clear()
+        path.write_bytes(source.encode())
+        for result in (
+            real_api.auto_chunk_file(path),
+            real_api.chunk_text(source, "markdown"),
+        ):
+            assert not result.fallback_used
+            assert [c["type"] for c in result.chunks] == types
+
+
+def test_unruled_extraction_failure(real_api, tmp_path, monkeypatch):
+    source = '{"key":1}\n'
+    path = tmp_path / "data.json"
+    path.write_bytes(source.encode())
+    # The legacy fallback classifies a path. Use a real path even for <text>.
+    fallback = real_api._fallback_chunker.chunk_text
+    monkeypatch.setattr(
+        real_api._fallback_chunker,
+        "chunk_text",
+        lambda text, _: fallback(text, str(path)),
+    )
+    with patch.object(
+        auto, "chunk_text", side_effect=ParserInitError("json", "injected")
+    ) as extract:
+        for result, metadata in [
+            (real_api.auto_chunk_file(path), {"file_path": str(path)}),
+            (real_api.chunk_text(source, "json"), {}),
+        ]:
+            assert result.fallback_used and result.chunks
+            assert result.metadata == metadata | {
+                "fallback_reason": "tree_sitter_failed"
+            }
+            assert all(
+                c.get("metadata", {}).get("fallback_reason") != "no_chunk_rules"
+                for c in result.chunks
+            )
+    assert extract.call_count == 2
+
+
+def test_mixed_directory_wrappers(real_api, tmp_path):
+    sources = {
+        "notes.md": "plain paragraph\n",
+        "code.py": "def f(): pass\n",
+        "data.unknown": "some text\n",
+    }
+    for name, source in sources.items():
+        (tmp_path / name).write_bytes(source.encode())
+    results = {
+        p.name: real_api.auto_chunk_file(p)
+        for p in tmp_path.iterdir()
+        if p.is_file() and p.name in sources
+    }
+    assert results["notes.md"].metadata["fallback_reason"] == "no_chunk_rules"
+    assert not results["code.py"].fallback_used
+    assert results["data.unknown"].fallback_used
+    assert results["data.unknown"].metadata == {
+        "file_path": str(tmp_path / "data.unknown")
+    }
+    assert core.chunk_file(tmp_path / "notes.md", "markdown") == []
+
+
+def test_runtime_version_read_error_falls_back(real_api, tmp_path):
+    source = "def hello():\n    return 42\n"
+    path = tmp_path / "example.py"
+    path.write_bytes(source.encode())
+    failure = OSError(5, "injected EIO reading tree-sitter metadata")
+    with patch.object(auto, "distribution_version", side_effect=failure) as lookup:
+        result = real_api.auto_chunk_file(path)
+    assert lookup.call_count == 1
+    assert result.fallback_used and result.chunks
+    assert result.metadata == {
+        "file_path": str(path),
+        "fallback_reason": "tree_sitter_failed",
+    }
+    assert "".join(c["content"] for c in result.chunks) == source

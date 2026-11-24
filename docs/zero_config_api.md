@@ -86,7 +86,7 @@ result = api.auto_chunk_file("main.go")
 
 # Check if fallback was used
 if result.fallback_used:
-    print("Used text-based chunking (tree-sitter unavailable)")
+    print("Used text-based chunking", result.metadata.get("fallback_reason"))
 ```
 
 ### 3. Direct Text Chunking
@@ -101,12 +101,41 @@ def hello(name):
 result = api.chunk_text(code, "python")
 ```
 
+With Markdown and Lua prefetched, use a registry that recognizes the installed
+grammars. A headingless Markdown paragraph yields a line chunk. A Lua file with
+only an assignment yields an empty result because the grammar has structural
+rules for other constructs.
+
+```python
+from pathlib import Path
+from chunker.auto import ZeroConfigAPI
+from chunker.grammar.discovery import GrammarDiscoveryService
+from chunker.grammar.download import GrammarDownloadManager
+from chunker.grammar.registry import UniversalLanguageRegistry
+
+api = ZeroConfigAPI(UniversalLanguageRegistry(
+    Path("grammars"), GrammarDiscoveryService(), GrammarDownloadManager()
+))
+result = api.chunk_text("One paragraph.\n", "markdown")
+assert result.fallback_used
+assert result.metadata.get("fallback_reason") == "no_chunk_rules"
+assert result.chunks[0]["metadata"]["fallback_reason"] == "no_chunk_rules"
+assert result.chunks[0]["content"] == "One paragraph.\n"
+
+ruled = api.chunk_text("local x = 1\n", "lua")
+assert ruled.chunks == [] and not ruled.fallback_used
+```
+
 ### 4. Token-Limited Chunking
 
 ```python
 # Limit chunks to specific token count
 result = api.auto_chunk_file("large_file.py", token_limit=1000)
 ```
+
+The `no_chunk_rules` fallback uses consecutive windows of up to 50 physical lines.
+A single line can exceed `token_limit`. Token limits and retrieval metadata
+apply to structural chunks.
 
 ### 5. Language Preloading
 
@@ -178,6 +207,18 @@ Each chunk dictionary contains:
 - `end_line`: Ending line number
 - `metadata`: Optional additional metadata
 
+For fallback results, use `result.metadata.get("fallback_reason")`:
+
+| Value | Meaning |
+|---|---|
+| `"no_chunk_rules"` | Extraction succeeded with zero chunks and the grammar has no applicable chunk rules. Each recovered `fallback_lines` chunk carries this reason. |
+| `"tree_sitter_failed"` | The specified or detected grammar was unavailable or extraction raised a handled error. |
+| `None` | Language detection found no language for the file. |
+
+For an unruled grammar, blank or NUL-containing source keeps its empty
+structural result. Nonblank text is preserved with its original line endings,
+including the final newline when present.
+
 ## Error Handling
 
 ```python
@@ -245,7 +286,7 @@ for root, dirs, files in os.walk("src"):
 ## Best Practices
 
 1. **Check Before Production Runs**: Use `preload_languages()` to confirm grammars are available before processing; it installs nothing
-2. **Check Results**: Always check `fallback_used` to know if tree-sitter chunking was successful
+2. **Check Results**: Use `fallback_used` to identify text fallback and look up its optional reason
 3. **Handle Unknown Languages**: Implement fallback logic for files with unknown languages
 4. **Pin Local Grammars**: Build a grammar the pack does not supply with the grammar commands and pin it; unpinned local grammars are ignored
 
@@ -307,9 +348,9 @@ process_file("Makefile")
   or built automatically
 
 ### Fallback Warnings
-- Normal for non-code files (markdown, config files)
-- Check file extension mapping if unexpected
-- Verify tree-sitter installation
+The legacy unknown-language and parser-failure routes may emit a fallback
+warning. Successful extraction with `no_chunk_rules` emits line chunks without
+a missing-grammar warning. Use the result metadata to diagnose the route.
 
 ### Performance Issues
 - Preload languages before batch processing
