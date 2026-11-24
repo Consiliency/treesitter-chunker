@@ -2,130 +2,98 @@
 
 import os
 import re
+import warnings
 from pathlib import Path
+
+try:
+    from pathspec.patterns.gitignore.spec import GitIgnoreSpecPattern
+except ImportError:  # pathspec 0.x
+    from pathspec.patterns.gitwildmatch import (
+        GitWildMatchPattern as GitIgnoreSpecPattern,
+    )
+
+
+def _ends_in_escape(text: str) -> bool:
+    return (len(text) - len(text.rstrip("\\"))) % 2 == 1
+
+
+# NUL cannot occur in a filename. Marking the end of both the pattern and the
+# entry prevents pathspec's implicit match of descendants, across its supported
+# compiler versions. Directory inheritance is handled by the matcher.
+_ENTRY_END = "\0"
 
 
 class GitignorePattern:
-    """Represents a single gitignore pattern with its rules."""
+    """A compiled rule for one entry relative to its declaring directory."""
 
     def __init__(self, pattern: str, base_dir: Path):
-        """
-        Initialize a gitignore pattern.
-
-        Args:
-            pattern: The pattern string from gitignore
-            base_dir: The directory containing the gitignore file
-        """
         self.original = pattern
         self.base_dir = base_dir
-        self.is_negation = False
-        self.is_directory_only = False
-        self.is_anchored = False
-
-        # Parse the pattern
-        self._parse_pattern()
-
-    def _parse_pattern(self) -> None:
-        """Parse the gitignore pattern and set flags."""
-        pattern = self.original.strip()
-
-        # Skip empty lines and comments
-        if not pattern or pattern.startswith("#"):
-            self.pattern = None
+        # Git discards unescaped trailing spaces, even after an escaped space.
+        line = pattern.rstrip(" ")
+        if line != pattern and _ends_in_escape(line):
+            line += " "
+        self.is_negation = line.startswith("!")
+        self.is_directory_only = line.endswith("/")
+        line = line.removesuffix("/")
+        self.is_anchored = "/" in line
+        self.pattern: re.Pattern[str] | None = None
+        if line in ("", "!") or line.startswith("#"):
             return
+        if self.is_negation:
+            line = line[1:]
+            if line.startswith(("!", "#")):
+                line = "\\" + line
 
-        # Handle negation
-        if pattern.startswith("!"):
-            self.is_negation = True
-            pattern = pattern[1:]
-
-        # Handle directory-only patterns
-        if pattern.endswith("/"):
-            self.is_directory_only = True
-            pattern = pattern[:-1]
-
-        # Handle anchored patterns (containing / but not starting with /)
-        if "/" in pattern:
-            self.is_anchored = True
-            # Convert to relative path pattern
-            if pattern.startswith("/"):
-                pattern = pattern[1:]
-
-        # Convert gitignore pattern to regex
-        self.pattern = self._gitignore_to_regex(pattern)
-
-    def _gitignore_to_regex(self, pattern: str) -> re.Pattern[str]:
-        """Convert gitignore pattern to regex pattern."""
-        # Escape special regex characters except * and ?
-        pattern = re.escape(pattern)
-
-        # Convert gitignore wildcards to regex
-        pattern = pattern.replace(
-            r"\*\*/",
-            ".*/",
-        )  # ** matches any number of directories
-        pattern = pattern.replace(r"\*\*", ".*")  # ** at end matches anything
-        pattern = pattern.replace(r"\*", "[^/]*")  # * matches anything except /
-        pattern = pattern.replace(
-            r"\?",
-            "[^/]",
-        )  # ? matches any single character except /
-
-        # Add anchoring
-        pattern = "^" + pattern if self.is_anchored else "(^|.*/)" + pattern
-
-        # Add end anchor
-        pattern += "(/.*)?$"
-
-        return re.compile(pattern)
+        # pathspec splits on slashes before processing escapes. Git allows
+        # an escaped internal slash, but it still requires a path component:
+        # **\/x matches a/x and a/b/x, while **/x also matches x.
+        segments = line.split("/")
+        for index, segment in enumerate(segments):
+            escaped_slash = _ends_in_escape(segment)
+            if escaped_slash:
+                if index == len(segments) - 1 or segment == "\\":
+                    return
+                segment = segment[:-1]
+            if len(segment) >= 2 and not segment.strip("*"):
+                segment = "*/**" if escaped_slash else "**"
+            segments[index] = segment
+        line = "/".join(segments)
+        if line[0].isspace():
+            line = "\\" + line
+        if line.endswith("/**"):
+            # Contents include the immediate children of this directory.
+            line += "/*"
+        try:
+            regex, _ = GitIgnoreSpecPattern.pattern_to_regex(line + _ENTRY_END)
+            if regex is not None:
+                # Older compilers emit valid Git bracket escapes such as [[]
+                # verbatim. Python warns about potential future set syntax.
+                with warnings.catch_warnings(action="ignore", category=FutureWarning):
+                    self.pattern = re.compile(regex, re.DOTALL)
+        except (ValueError, re.error):
+            # One unusable rule must not discard the rest of its file.
+            pass
 
     def matches(self, path: Path, is_dir: bool = False) -> bool:
-        """
-        Check if the pattern matches the given path.
-
-        Args:
-            path: Path to check (relative to base_dir)
-            is_dir: Whether the path is a directory
-
-        Returns:
-            True if pattern matches
-        """
-        if self.pattern is None:
+        if self.pattern is None or (self.is_directory_only and not is_dir):
             return False
-
-        # Directory-only patterns shouldn't match files
-        if self.is_directory_only and not is_dir:
-            return False
-
-        # Convert path to string for matching
-        path_str = str(path).replace(os.sep, "/")
-
-        return bool(self.pattern.match(path_str))
+        return self.pattern.fullmatch(path.as_posix() + _ENTRY_END) is not None
 
 
 class GitignoreMatcher:
-    """Matches paths against gitignore patterns."""
+    """Match repository entries against rules from their ancestor directories."""
 
     def __init__(self, patterns: list[str] | None = None, base_dir: Path | None = None):
-        """
-        Initialize the matcher with patterns.
-
-        Args:
-            patterns: List of gitignore patterns
-            base_dir: Base directory for pattern matching
-        """
-        self.base_dir = Path(base_dir) if base_dir else Path.cwd()
+        self.base_dir = Path(os.path.normpath(Path.cwd() / (base_dir or Path())))
         self.patterns: list[GitignorePattern] = []
+        self._groups: dict[str, list[GitignorePattern]] = {}
         self._cache: dict[tuple[str, bool], bool] = {}
-
         if patterns:
             self.add_patterns(patterns)
-
-        # Add default patterns
         self._add_default_patterns()
 
     def _add_default_patterns(self) -> None:
-        """Add default patterns that should always be ignored."""
         default_patterns = [
             ".git/",
             ".svn/",
@@ -148,127 +116,101 @@ class GitignoreMatcher:
             "venv/",
         ]
 
-        for pattern in default_patterns:
-            self.patterns.append(GitignorePattern(pattern, self.base_dir))
+        self.add_patterns(default_patterns)
 
     def add_patterns(self, patterns: list[str], base_dir: Path | None = None) -> None:
-        """
-        Add patterns from a list.
-
-        Args:
-            patterns: List of gitignore patterns
-            base_dir: Base directory for these patterns
-        """
-        base = Path(base_dir) if base_dir else self.base_dir
-
-        for pattern in patterns:
-            pattern_obj = GitignorePattern(pattern, base)
-            if pattern_obj.pattern is not None:
-                self.patterns.append(pattern_obj)
+        """Append rules declared in base_dir (the matcher root by default)."""
+        base = (
+            Path(os.path.normpath(Path.cwd() / base_dir)) if base_dir else self.base_dir
+        )
+        if not base.is_relative_to(self.base_dir):
+            return
+        group = self._groups.setdefault(base.relative_to(self.base_dir).as_posix(), [])
+        for line in patterns:
+            rule = GitignorePattern(line, base)
+            if rule.pattern is not None:
+                group.append(rule)
+                self.patterns.append(rule)
+        self.clear_cache()
 
     def load_gitignore_file(self, gitignore_path: Path) -> None:
-        """
-        Load patterns from a gitignore file.
-
-        Args:
-            gitignore_path: Path to the gitignore file
-        """
-        if not gitignore_path.exists():
-            return
-
-        base_dir = gitignore_path.parent
-        patterns = []
-
+        """Read a regular rule file without following a .gitignore symlink."""
         try:
-            with Path(gitignore_path).open(encoding="utf-8") as f:
-                for line in f:
-                    stripped_line = line.strip()
-                    if stripped_line and not stripped_line.startswith("#"):
-                        patterns.append(stripped_line)
-
-            self.add_patterns(patterns, base_dir)
-        except (OSError, FileNotFoundError, IndexError):
-            # Silently ignore errors reading gitignore
+            if not gitignore_path.is_file(follow_symlinks=False):
+                return
+            with gitignore_path.open(
+                encoding="utf-8-sig", errors="surrogateescape", newline="\n"
+            ) as rules:
+                lines = [line.removesuffix("\n").removesuffix("\r") for line in rules]
+            self.add_patterns(lines, gitignore_path.parent)
+        except OSError:
             pass
 
+    def _entry_ignored(self, entry: Path, directory: bool) -> bool:
+        # Search highest precedence first: nearest file, then latest line.
+        spelling = entry.as_posix()
+        base = spelling.rpartition("/")[0]
+        while True:
+            if rules := self._groups.get(base or "."):
+                local = Path(spelling[len(base) + 1 :]) if base else entry
+                for rule in reversed(rules):
+                    if rule.matches(local, directory):
+                        return not rule.is_negation
+            if not base:
+                return False
+            base = base.rpartition("/")[0]
+
     def should_ignore(self, path: str | Path, is_dir: bool = False) -> bool:
-        """
-        Check if a path should be ignored.
+        """Return whether this entry or one of its ancestor directories is ignored."""
+        relative = path if isinstance(path, Path) else Path(path)
+        if relative.anchor or ".." in relative.parts:
+            absolute = Path(os.path.normpath(self.base_dir / relative))
+            if not absolute.is_relative_to(self.base_dir):
+                return False
+            relative = absolute.relative_to(self.base_dir)
 
-        Args:
-            path: Path to check (relative to base_dir)
-            is_dir: Whether the path is a directory
-
-        Returns:
-            True if the path should be ignored
-        """
-        path = Path(path)
-
-        # Check cache
-        cache_key = (str(path), is_dir)
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-
-        # Make path relative to base_dir
-        try:
-            if path.is_absolute():
-                path = path.relative_to(self.base_dir)
-        except ValueError:
-            # Path is not under base_dir
-            self._cache[cache_key] = False
-            return False
-
-        # Check all patterns
-        ignored = False
-        for pattern in self.patterns:
-            if pattern.matches(path, is_dir):
-                ignored = not pattern.is_negation
-
-        self._cache[cache_key] = ignored
+        # Walk up to the nearest known decision, then evaluate only missing
+        # entries from parent to child. Siblings reuse their parent directly.
+        pending = []
+        entry, directory = relative, is_dir
+        while entry.parts:
+            key = (entry.as_posix(), directory)
+            if key in self._cache:
+                ignored = self._cache[key]
+                break
+            pending.append((entry, key))
+            entry, directory = entry.parent, True
+        else:
+            ignored = False
+        for entry, key in reversed(pending):
+            ignored = ignored or self._entry_ignored(entry, key[1])
+            self._cache[key] = ignored
         return ignored
 
     def filter_paths(self, paths: list[Path], check_is_dir: bool = True) -> list[Path]:
-        """
-        Filter a list of paths, removing ignored ones.
-
-        Args:
-            paths: List of paths to filter
-            check_is_dir: Whether to check if paths are directories
-
-        Returns:
-            List of paths that should not be ignored
-        """
-        result = []
-        for path in paths:
-            is_dir = path.is_dir() if check_is_dir else False
-            if not self.should_ignore(path, is_dir):
-                result.append(path)
-        return result
+        """Retain eligible paths in their original order and spelling."""
+        return [
+            path
+            for path in paths
+            if not self.should_ignore(
+                path,
+                check_is_dir and (self.base_dir / path).is_dir(follow_symlinks=False),
+            )
+        ]
 
     def clear_cache(self) -> None:
-        """Clear the pattern matching cache."""
         self._cache.clear()
 
 
 def load_gitignore_patterns(repo_path: Path) -> GitignoreMatcher:
-    """
-    Load all gitignore patterns from a repository.
-
-    Searches for .gitignore files at all levels and combines their patterns.
-
-    Args:
-        repo_path: Path to the repository root
-
-    Returns:
-        GitignoreMatcher configured with all patterns
-    """
+    """Collect .gitignore rules top-down, pruning excluded directories."""
     matcher = GitignoreMatcher(base_dir=repo_path)
-
-    # Find all .gitignore files in the repository
-    for gitignore_path in repo_path.rglob(".gitignore"):
-        # Skip .gitignore files that are themselves ignored
-        relative_path = gitignore_path.relative_to(repo_path)
-        if not matcher.should_ignore(relative_path.parent, is_dir=True):
-            matcher.load_gitignore_file(gitignore_path)
-
+    for base, directories, files in matcher.base_dir.walk():
+        if ".gitignore" in files:
+            matcher.load_gitignore_file(base / ".gitignore")
+        directories[:] = [
+            name
+            for name in directories
+            if not matcher.should_ignore(base / name, is_dir=True)
+        ]
     return matcher

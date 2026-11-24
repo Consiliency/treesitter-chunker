@@ -3,12 +3,13 @@ with token information."""
 
 import copy
 import re
+from bisect import bisect_left
 from collections.abc import Iterable
 from typing import Any
 
 import tree_sitter
 
-from chunker.core import _walk, chunk_file
+from chunker.core import _line_ending_offsets, _walk, chunk_file
 from chunker.interfaces.token import TokenAwareChunker, TokenCounter
 from chunker.packing import compute_pack_hint
 from chunker.types import CodeChunk
@@ -201,7 +202,7 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         """
         content = chunk.content
         method_starts = []
-        for match in re.finditer(r"[^\n]+", content):
+        for match in re.finditer(r"[^\r\n]+", content):
             line = match.group()
             stripped = line.strip()
             if any(
@@ -223,10 +224,10 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         def fits(part: str) -> bool:
             return self.token_counter.count_tokens(part, model) <= max_tokens
 
-        header = content[: method_starts[0]].removesuffix("\n")
+        header = content[: method_starts[0]].removesuffix("\n").removesuffix("\r")
         if not fits(header):
             # Avoid repeating an oversized preamble on every serialized part.
-            first_line = header.partition("\n")[0]
+            first_line = re.split(r"[\r\n]", header, maxsplit=1)[0]
             header = first_line if fits(first_line) else ""
         context = chunk.parent_context
         if header:
@@ -261,11 +262,20 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         model: str,
         context: str,
     ) -> list[CodeChunk]:
-        """Validate the partition while advancing character, byte and LF cursors."""
+        """Validate the partition while advancing character, byte and line cursors."""
         chunks = []
         offset = 0
         byte_start = parent.byte_start
         start_line = parent.start_line
+        # Index the parent so a cut between CR and LF advances the row only
+        # after the LF. Offsets are relative to the parent's UTF-8 source.
+        line_endings = _line_ending_offsets(parent.content.encode(), parent.language)
+        if (
+            parent.content.endswith("\r")
+            and len(line_endings) > parent.end_line - start_line
+        ):
+            # A parser span may itself end between the CR and LF of a CRLF.
+            line_endings.pop()
         for index, part in enumerate(parts, start=1):
             if not part or not parent.content.startswith(part, offset):
                 raise ValueError(
@@ -277,7 +287,9 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
                     "Token counter returned a divisible part over the token budget"
                 )
             byte_end = byte_start + len(part.encode("utf-8"))
-            end_line = start_line + part.count("\n")
+            end_line = parent.start_line + bisect_left(
+                line_endings, byte_end - parent.byte_start
+            )
             child = CodeChunk(
                 language=parent.language,
                 file_path=parent.file_path,

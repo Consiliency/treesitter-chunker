@@ -117,7 +117,7 @@ class TiktokenCounter(TokenCounter):
         max_tokens: int,
         model: str = "gpt-4",
     ) -> list[str]:
-        """Partition text exactly, preferring whole LF-terminated lines.
+        """Partition text exactly, preferring whole LF, CRLF or CR lines.
 
         The budget must be positive. A single Unicode scalar whose encoding
         exceeds the budget is returned whole.
@@ -133,7 +133,7 @@ class TiktokenCounter(TokenCounter):
         if fits(text):
             return [text]
 
-        ends = [match.end() for match in re.finditer("\n", text)]
+        ends = [match.end() for match in re.finditer(r"\r\n|[\r\n]", text)]
         if not ends or ends[-1] != len(text):
             ends.append(len(text))
         parts = []

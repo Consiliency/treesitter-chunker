@@ -161,6 +161,23 @@ Represents a semantic chunk of code extracted from a file.
 **Methods:**
 - `generate_id() -> str`: Generate a unique ID based on content and location
 
+### Python symbol lookup
+
+`find_symbol_definition(name, scope_node, ast)` returns the first syntactic binding in the owning lexical scope. The API takes a scope and has no use-position argument.
+
+```python
+from chunker import get_parser
+from chunker.context.factory import ContextFactory
+
+root = get_parser("python").parse(b"import os, sys").root_node
+resolver = ContextFactory.create_symbol_resolver("python")
+statement = resolver.find_symbol_definition("sys", root, root)
+assert statement == resolver.find_symbol_definition("os", root, root)
+assert statement.type == "import_statement" and statement.start_byte == 0
+```
+
+Import and unpacking results span their statement. Loop, with, exception, walrus and splat targets span the bound identifier. The companion `get_symbol_type` inspects a node's parent and can return `unknown` for a statement result. Reference lookup searches by spelling across the supplied tree and excludes unpacking targets, splat parameters and walrus targets.
+
 ### JavaScript reference lookup
 
 The resolver returned by `ContextFactory.create_symbol_resolver("javascript")` finds references by spelling across the supplied tree. It excludes declared binding targets in parameters, catch clauses, loop declarations and destructuring. A bare loop write such as `for (x of xs)` remains a reference to `x`. So do rest writes such as `[...x] = xs` and renamed property writes such as `({key: x} = obj)`.

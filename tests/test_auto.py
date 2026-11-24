@@ -2,6 +2,7 @@
 
 import tempfile
 import warnings
+from importlib.metadata import distribution
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -317,6 +318,25 @@ class TestZeroConfigAPI:
         assert result.language == "python"
         assert result.fallback_used is False
         assert len(result.chunks) == 1
+
+    @pytest.mark.parametrize("entry_point", ["file", "text"])
+    def test_tree_sitter_runtime_version(self, api, tmp_path, entry_point):
+        source = "def hello():\n    return 42"
+        if entry_point == "file":
+            path = tmp_path / "example.py"
+            path.write_text(source, encoding="utf-8", newline="\n")
+            result = api.auto_chunk_file(path)
+        else:
+            result = api.chunk_text(source, "python")
+
+        assert result.fallback_used is False
+        assert [(c["type"], c["content"]) for c in result.chunks] == [
+            ("function_definition", source)
+        ]
+        assert (
+            result.metadata["tree_sitter_version"]
+            == distribution("tree-sitter").version
+        )
 
     def test_chunk_text_empty(self, api):
         """Test chunking empty text raises error."""

@@ -85,11 +85,7 @@ class VFSChunker:
 
     def _chunk_file_standard(self, path: str, language: str) -> list[CodeChunk]:
         """Standard chunking for smaller files."""
-        content = (
-            self.vfs.read_bytes(path).decode("utf-8")
-            if language == "baml"
-            else self.vfs.read_text(path)
-        )
+        content = self.vfs.read_bytes(path).decode("utf-8")
         with optimized_gc("batch"):
             return chunk_text(content, file_path=path, language=language)
 
