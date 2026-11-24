@@ -462,6 +462,26 @@ def test_batch_missing_only_and_filtered_inputs(tmp_path, run_batch, stdin):
         assert result.stderr == b""
 
 
+def test_batch_invalid_stdin_preserves_sibling(tmp_path, run_batch):
+    (tmp_path / "valid.py").write_text("def valid(): return 42", encoding="utf-8")
+    result = run_batch(
+        ["--stdin", "--json", "--quiet", "-j1"], input="bad\0name.py\nvalid.py\n"
+    )
+    assert result.returncode == 1
+    assert result.stderr.startswith(b"Error: bad\0name.py: ")
+    assert b"Traceback" not in result.stderr
+    assert [r["file_path"] for r in json.loads(result.stdout)] == ["valid.py"]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file names")
+def test_batch_missing_filename_control_characters(run_batch):
+    name = "with\ttab\rand-cr.py"
+    result = run_batch([name, "--json", "--quiet", "-j1"])
+    assert result.returncode == 1
+    assert result.stderr == f"Error: {name}: file not found\n".encode()
+    assert json.loads(result.stdout) == []
+
+
 def test_batch_dangling_symlink(tmp_path):
     link = tmp_path / "dangling.py"
     try:

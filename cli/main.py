@@ -745,8 +745,12 @@ def batch(
             error = f"{path}: file not found"
         except OSError as exc:
             error = f"{path}: {exc.strerror or exc}"
+        except ValueError as exc:
+            # A stdin path can contain a NUL, which stat rejects before the OS call.
+            error = f"{path}: {exc}"
         if error:
-            _print_input_error(error)
+            # Rich expands tabs and removes carriage returns from file names.
+            print(f"Error: {error}", file=sys.stderr)
             rejected_inputs = True
         else:
             files_to_process.append(path)
