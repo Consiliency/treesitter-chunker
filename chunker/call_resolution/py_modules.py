@@ -673,6 +673,17 @@ def _record(
     )
 
 
+def _private_import_bases(node: Any, base: str, source: bytes) -> list[str]:
+    """Other possible IMPORT_NAME operands; CPython mangles only undotted names."""
+    from . import py_scope as ps
+
+    name = base.lstrip(".")
+    if "." in name or not ps._mangle_eligible(name):
+        return []
+    prefix = base[: len(base) - len(name)]
+    return [prefix + mangled for mangled in ps._mangled_names(node, name, source)]
+
+
 def _scan_imports(analysis: Any, facts: _Facts) -> None:
     """Every module an import statement names (promotion edges), and star
     imports."""
@@ -694,13 +705,24 @@ def _scan_imports(analysis: Any, facts: _Facts) -> None:
                     "dotted_name",
                     "identifier",
                 ):
-                    facts.imports.add(".".join(ps._dotted_parts(imported, source)))
+                    base = ".".join(ps._dotted_parts(imported, source))
+                    facts.imports.add(base)
+                    private_bases = _private_import_bases(node, base, source)
+                    if private_bases:
+                        # The source-spelled binding cannot prove which module
+                        # is held. Each candidate may expose its getters.
+                        facts.uses.update(
+                            (ref, "value") for ref in [base, *private_bases]
+                        )
         elif node.type == "import_from_statement":
             dots, parts = ps._module_parts(node, source)
             base = "." * dots + ".".join(parts)
             if not dots and parts == ["__future__"]:
                 continue
             facts.imports.add(base)
+            private_bases = _private_import_bases(node, base, source)
+            if private_bases:
+                facts.uses.update((ref, "value") for ref in [base, *private_bases])
             for index, child in enumerate(node.children):
                 if child.type == "wildcard_import":
                     facts.stars.add(base)
@@ -715,6 +737,17 @@ def _scan_imports(analysis: Any, facts: _Facts) -> None:
                     name = ".".join(ps._dotted_parts(imported, source))
                     if name:
                         facts.imports.add(_join(base, name))
+                        members = ps._mangled_names(node, name, source)
+                        if members or private_bases:
+                            # A private IMPORT_FROM operand is also mangled.
+                            # Taint the namespace and each candidate member,
+                            # including a submodule of a namespace package.
+                            for ref in [base, *private_bases]:
+                                facts.uses.add((ref, "value"))
+                                facts.uses.update(
+                                    (ref, "value", member)
+                                    for member in [name, *members]
+                                )
 
 
 _IMPORT_NODES = frozenset(
@@ -876,11 +909,22 @@ def _use_position(analysis: Any, ident: Any) -> tuple[str, list[str]] | None:
     return None if found is None else (found[0], found[1])
 
 
+def _mangled_chain(node: Any, chain: Sequence[str], source: bytes) -> bool:
+    """A private attribute may have a different runtime spelling in a class."""
+    from . import py_scope as ps
+
+    return any(ps._mangled_names(node, part, source) for part in chain)
+
+
 def _classify_use(analysis: Any, node: Any) -> tuple[str, list[str], Any] | None:
     """:func:`_use_position` of the value at ``node`` (an identifier or any
     expression), with the outermost node of the chain read off it
     (parentheses included): ``(position, chain, outer)``."""
     chain, nodes, outer = _walk(node, analysis.source)
+    if _mangled_chain(node, chain, analysis.source):
+        # Stop at the root: the written or referenced member (possibly a
+        # re-exported getter) cannot be identified by its source spelling.
+        return "value", [], node
     top = nodes[-1]
     if chain and top.id in analysis.attribute_targets:
         return "write", chain, outer
@@ -2218,6 +2262,8 @@ def _classify_result(analysis: Any, node: Any, aliases: bool) -> tuple[Any, ...]
     from . import py_scope as ps
 
     chain, top = _result_steps(node, analysis.source)
+    if _mangled_chain(node, chain, analysis.source):
+        return "value", []
     if chain and top.id in analysis.attribute_targets:
         return "write", chain
     if top.type == "subscript" and (

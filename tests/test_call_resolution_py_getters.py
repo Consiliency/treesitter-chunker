@@ -263,6 +263,61 @@ def test_yield_in_nested_definition_makes_getter_a_generator(
 
 
 @pytest.mark.parametrize(
+    ("imports", "write"),
+    [
+        ("from get import get", "get().__t = replacement"),
+        ("from get import get", "m = get()\n        m.__t = replacement"),
+        ("import get", "get.__fetch()._K__t = replacement"),
+        ("import svc", "svc.__t = replacement"),
+    ],
+)
+def test_private_attribute_in_a_class_uses_its_mangled_name(
+    tmp_path: Path, imports: str, write: str
+) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": 'def _K__t(): return "SVC.t"\ndef u(): return _K__t()\n',
+            "other.py": 'def _K__t(): return "OTHER.t"\n',
+            "get.py": "import svc\ndef get(): return svc\ndef _K__fetch(): return svc\n",
+            "use.py": imports + "\nfrom other import _K__t as replacement\n"
+            f"class K:\n    def run(self):\n        {write}\n",
+            "main.py": "import use, svc\nuse.K().run()\nprint(svc.u())\n",
+        },
+    )
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py", "_K__t") == ["ambiguous"]
+
+
+@pytest.mark.parametrize(
+    ("provider", "getter", "acquire"),
+    [
+        ("provider", "_K__fetch", "from provider import __fetch as g"),
+        ("_K__provider", "get", "from __provider import get as g"),
+        ("_K__provider", "get", "import __provider as m\n        g = m.get"),
+        ("pkg/_K__provider", "_K__fetch", "from .__provider import __fetch as g"),
+    ],
+)
+def test_private_import_can_supply_a_getter(
+    tmp_path: Path, provider: str, getter: str, acquire: str
+) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "svc.py": _SVC,
+            "other.py": _OTHER,
+            f"{provider}.py": f"import svc\ndef {getter}(): return svc\n",
+            "pkg/__init__.py": "",
+            "pkg/use.py": "import other\nclass K:\n    def run(self):\n"
+            f"        {acquire}\n        g().t = other.t\n",
+            "main.py": "from pkg import use\nimport svc\nuse.K().run()\nprint(svc.u())\n",
+        },
+    )
+    assert _cpython(root) == "OTHER.t"
+    assert _resolutions(root, "svc.py") == ["ambiguous"]
+
+
+@pytest.mark.parametrize(
     ("binding", "read"),
     [
         ("__class__ = get()", "cell.cell_contents"),
