@@ -9,11 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- HTTP `/graph/xref` uses the same language detection as `/chunk/file`,
-  including JSX, and returns HTTP 400 for unknown extensions or unavailable
-  parsers. `/graph/cut`
-  honors zero radius and budget and rejects negative bounds (treesitter-chunker#743).
-
+- Python chunk metadata now lists each decorator call site once in `calls` and
+  `call_spans` (treesitter-chunker#604).
 - Python structural call resolution now treats a constant string as a
   `__main__` self-reference when a component split on format and attribute
   punctuation or whitespace (or a default `string.Template` identifier) is
