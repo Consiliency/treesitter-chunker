@@ -76,33 +76,48 @@ def test_nested_reader_offsets(tmp_path, reader):
     assert chunks[1].parent_chunk_id == chunks[0].chunk_id
 
 
-def test_token_file_split_offsets(tmp_path):
+@pytest.mark.parametrize(
+    "endings",
+    [(b"\n",) * 4, (b"\r\n",) * 4, (b"\r",) * 4, (b"\r", b"\r\n", b"\n", b"\r")],
+    ids=["lf", "crlf", "cr", "mixed"],
+)
+def test_token_file_split_offsets(tmp_path, endings):
     path = tmp_path / "split.py"
     lines = [
         b"def f():",
         "    # café".encode(),
         b"    apple = 1",
-        b"    berry = 2",
-        b"    return apple + berry",
+        b"    apple = 1",
+        b"    return apple",
     ]
-    path.write_bytes(b"# head\r\n" + b"\r\n".join(lines) + b"\r\n")
+    prefix = "# préface".encode() + endings[0]
+    physical_lines = [
+        line + end for line, end in zip(lines, (*endings, b""), strict=True)
+    ]
+    body = b"".join(physical_lines)
+    path.write_bytes(prefix + body + endings[-1])
     source = path.read_bytes()
     (parent,) = chunk_file(path, "python")
     parts = chunk_file_with_token_limit(path, "python", 10)
     assert len(parts) > 1
-    previous_end = parent.byte_start
+    # Every physical line fits the budget. A cut must be at a fixture line end.
+    cursor = len(prefix)
+    line_ends = set()
+    for line in physical_lines:
+        cursor += len(line)
+        line_ends.add(cursor)
+    cursor = len(prefix)
     encoding = tiktoken.get_encoding("cl100k_base")
     for part in parts:
         content = part.content.encode()
-        start = source.index(content)
-        assert previous_end <= start < part.byte_end <= parent.byte_end
-        assert (part.byte_start, part.byte_end) == (start, start + len(content))
-        assert source[part.byte_start : part.byte_end] == content
+        end = cursor + len(content)
+        assert content == source[cursor:end]
+        assert (part.byte_start, part.byte_end) == (cursor, end)
+        assert end in line_ends
         assert part.parent_chunk_id == parent.chunk_id
         assert part.metadata["token_count"] == len(encoding.encode(part.content)) <= 10
-        previous_end = part.byte_end
-    for line in lines:
-        assert sum(part.content.count(line.decode()) for part in parts) == 1
+        cursor = end
+    assert cursor == len(prefix) + len(body)
 
 
 @pytest.mark.parametrize("streaming", [False, True])

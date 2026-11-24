@@ -74,6 +74,9 @@ Rechunk previously translated files and rebuild their occurrence-ID joins and
 parent links. Named structural IDs still depend on path and route. On CR-only
 input, a language's raw grammar can also select different declarations.
 
+- Token splitting of oversized functions preserves the original line endings
+  between parts. Joining the parts in order reproduces the function body,
+  including its declaration and indentation.
 - Token-limited files replace invalid UTF-8 outside BAML. Offsets then refer
   to the decoded text re-encoded as UTF-8. BAML uses strict UTF-8.
 - Standard VFS chunking obtains bytes from the backend and strictly decodes
